@@ -17,8 +17,6 @@ The output must be:
 
 There is one spec, one plan, one data model and one checklist for the whole product: a new phase extends them in place, writing what the product is now rather than an amendment beside what it was. Only tasks are split by phase, one file per phase under `specs/tasks/`. FR, SC and story ids are numbered once across the whole spec, and the per-task design notes of `plan.md` have one section per phase.
 
-Rules: changes for each task should be under 500 lines of code ideally, or maximum 1000 lines.
-
 Each fact lives in one file; the others cite it by its id (FR-012, plan §4.2, Story 1 scenario 3) rather than restating it.
 
 Every cited id is a link to where it is defined, so a click in the editor or on GitHub lands on it: `[FR-012](../spec.md#fr-012)`, `plan [§4.2](../plan.md#42-…)`, `[T2.001](tasks/002-charter-portal.md#t2.001)`. Write ids as plain text and run `pnpm run specs:link`: it anchors every FR, SC and task item, links every citation to it (a story or a § to its heading), and names any id cited that nothing defines. `pnpm run specs:check` changes nothing and fails while a file is stale or a citation dangles. Never hand-edit a generated link or `<a id>` anchor; the next run rewrites them.
