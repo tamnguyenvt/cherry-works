@@ -3,7 +3,7 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { RepoCharter } from "./RepoCharter.js";
 
-/** The tabs of plan §4, in the order the mockup draws them. A view is mounted
+/** The tabs of plan §12.5, in the order the mockup draws them. A view is mounted
  *  into the sheet under them, one task each. */
 const TABS = [
   ["repo", "Repo Charter"],
@@ -21,7 +21,7 @@ type Opened = { title: string; context?: string; body: ComponentChildren };
 type Said = { did: string; detail?: string };
 
 /** The page's shell: the header, the tabs, the sheet each view is rendered
- *  into, and the modal and the toast every view speaks through (plan §4).
+ *  into, and the modal and the toast every view speaks through (plan §12.5).
  *
  *  It holds no charter and calls no route. What the modal and the toast show
  *  belongs to whoever opens them, so both are state here and neither is opened
@@ -96,7 +96,7 @@ function Portal() {
         <div class="sheet" data-tab={tab}>
           {/* Mounted when its tab is shown and gone when another is, so each
               view reads the charter afresh and none of them holds it between
-              showings (FR-007). */}
+              showings (FR-110). */}
           {tab === "repo" && <RepoCharter />}
         </div>
       </main>
@@ -107,7 +107,7 @@ function Portal() {
   );
 }
 
-/** The one modal of plan §4, over whatever view is showing: a title, the
+/** The one modal of plan §12.5, over whatever view is showing: a title, the
  *  identity or file it is about, and a body that scrolls. Closed by its ×, by
  *  the overlay behind it and by Escape — three ways out, since what it shows is
  *  read rather than filled in. */

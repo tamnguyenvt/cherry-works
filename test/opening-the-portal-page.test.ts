@@ -14,10 +14,28 @@ test("the header carries the search box, Build with its two ways to build, and D
   });
 });
 
+test("the header reads as the mockup draws it: the brand, the repository, the search, Build and Doctor", async () => {
+  await inTheBrowser({}, async (page) => {
+    const headerClasses = await page.locator(".top > *").evaluateAll((children) => children.map(({ className }) => className));
+
+    assert.deepEqual(headerClasses, ["brand", "repo", "search", "split", "btn"]);
+    assert.equal(await page.locator(".top > .btn").innerText(), "Doctor");
+  });
+});
+
 test("the build menu closes on the next click anywhere", async () => {
   await inTheBrowser({}, async (page) => {
     await page.getByLabel("More build options").click();
     await page.locator(".sheet").click();
+
+    assert.equal(await page.locator(".split .menu").count(), 0);
+  });
+});
+
+test("the build menu closes on the click that chose from it", async () => {
+  await inTheBrowser({}, async (page) => {
+    await page.getByLabel("More build options").click();
+    await page.locator(".split .menu button", { hasText: "Preview" }).click();
 
     assert.equal(await page.locator(".split .menu").count(), 0);
   });
@@ -32,6 +50,16 @@ test("the three tabs are shown, the repository charter first, and the one clicke
 
     assert.equal(await page.locator(".flowtab.on").innerText(), "Vendor");
     assert.equal(await page.locator(".sheet").getAttribute("data-tab"), "vendor");
+  });
+});
+
+test("the vendor and test sheets hold nothing yet, since no view is mounted in them", async () => {
+  await inTheBrowser({}, async (page) => {
+    for (const tabName of ["Vendor", "Test"]) {
+      await page.getByRole("button", { name: tabName, exact: true }).click();
+
+      assert.equal(await page.locator(".sheet").innerHTML(), "");
+    }
   });
 });
 

@@ -1644,6 +1644,31 @@ The page shell from the mockup ([§12.5](#125-the-page)) — the header with the
 search, Build and Doctor; the three tabs; the modal and the toast — as components
 with no data. Tested in a real browser.
 
+What was already there when the task opened: `main.tsx` renders `Portal`, with
+the header, the Build menu, the three tabs, the sheet, `Modal` and `Toast`, and
+`index.html` carries the mockup's shell styles. `opening-the-portal-page.test.ts`
+opens the page in Chromium through `in-the-browser.ts`. The repository view is
+already mounted in the sheet; it is held against [T2.004](tasks/002-charter-portal.md#t2.004), not here. The task
+holds the shell against the mockup and [§12.5](#125-the-page), and adds nothing that needs a
+route.
+
+Acceptance:
+- The header carries the brand, a slot for the repository, the search box, Build
+  with its menu of Preview and Build, and Doctor, in the mockup's order.
+- The Build menu opens from its caret, and closes on the next click anywhere,
+  the click that chose from it included.
+- The three tabs are Repo Charter, Vendor and Test, in that order; Repo Charter
+  is on when the page opens, and the one clicked is the one on.
+- The Vendor and Test sheets are empty: nothing there calls a route yet.
+- Neither the modal nor the toast is drawn until a view opens it.
+- Every citation in `main.tsx` names this plan's [§12.5](#125-the-page) and [FR-110](spec.md#fr-110), where
+  the shell's reasons are, rather than numbers that point elsewhere.
+
+Not in this task: the repository's name in the header, which no route answers
+yet; what Search, Build, Preview and Doctor do ([T2.007](tasks/002-charter-portal.md#t2.007), [T2.022](tasks/002-charter-portal.md#t2.022), [T2.023](tasks/002-charter-portal.md#t2.023));
+anything that opens the modal or raises the toast ([T2.008](tasks/002-charter-portal.md#t2.008) onward); the
+mockup's logo image, an asset the package does not hold.
+
 #### 17.2.4 T2.004 — The repository view
 
 Kind chips with counts, the line saying when that kind comes up, the table of
