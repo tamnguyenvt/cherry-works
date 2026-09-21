@@ -109,14 +109,27 @@ export function faultsByFileDTO(faultsByFile: FaultsByFile, repo: URL): DataDTOs
   };
 }
 
+/** One primitive as its file holds it now: the primitive as the whole charter
+ *  sees it, its body, and its revision — a content hash — which a save
+ *  hands back to say which text it was made over (FR-075, FR-078). */
+export function primitiveSnapshotDTO(scopedPrimitive: ScopedPrimitive, revision: string): DataDTOs.PrimitiveSnapshot {
+  return {
+    type: "PrimitiveSnapshot",
+    data: { scopedPrimitive: scopedPrimitiveDTO(scopedPrimitive), body: scopedPrimitive.primitive.body, revision },
+  };
+}
+
 /** What a build did, or would do: the four lists as they are. */
 export function planSummaryDTO({ added, edited, deleted, unchanged }: PlanSummary): DataDTOs.PlanSummary {
   return { type: "PlanSummary", data: { added, edited, deleted, unchanged } };
 }
 
 /** One header a kind takes: what a driver asks an author by. */
-export function primitiveHeaderDTO({ field, shape, required }: PrimitiveHeader): DataDTOs.PrimitiveHeader {
-  return { type: "PrimitiveHeader", data: { field, shape, required } };
+export function primitiveHeaderDTO({ field, shape, required, allowedValues }: PrimitiveHeader): DataDTOs.PrimitiveHeader {
+  return {
+    type: "PrimitiveHeader",
+    data: { field, shape, required, ...(allowedValues === undefined ? {} : { allowedValues }) },
+  };
 }
 
 /** Everything one kind takes, and one of that kind written out. */

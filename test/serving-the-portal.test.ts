@@ -107,7 +107,8 @@ test("every verb but GET is sent as JSON, and no CORS header answers another ori
   const path = "/api/charter/root/primitives";
   try {
     const json = { ...bearer(address), "content-type": "application/json; charset=utf-8" };
-    assert.equal((await send(address, path, { method: "POST", headers: json })).statusCode, 404);
+    // Past the guard, and refused by the route for carrying no body.
+    assert.equal((await send(address, path, { method: "POST", headers: json })).statusCode, 400);
     assert.equal((await send(address, path, { method: "POST", headers: bearer(address) })).statusCode, 415);
     const form = { ...bearer(address), "content-type": "application/x-www-form-urlencoded" };
     assert.equal((await send(address, path, { method: "DELETE", headers: form })).statusCode, 415);

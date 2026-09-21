@@ -91,9 +91,10 @@ export interface ForManagingCharter {
    * Reads and says, as `doctor` and `list` do: there is no way through this to
    * write anything (FR-041).
    *
-   * The identity is taken as typed. An identity this charter holds nothing of is
-   * raised rather than given back, for the reason an unknown kind is: there is
-   * no file it is wrong with, and nothing to explain.
+   * The identity is taken as typed. Text that is not `<kind>:<id>`, and an
+   * identity this charter holds nothing of, are raised rather than given back,
+   * for the reason an unknown kind is: there is no file it is wrong with, and
+   * nothing to explain.
    *
    * A charter with an error explains nothing and hands the errors back, the way
    * a listing does: a charter that does not hold would answer for a primitive it
@@ -206,15 +207,60 @@ export interface ForManagingCharter {
    * `explain` would say it — its identity, the file it went into, this
    * repository's layer — so a caller can say it without going and looking.
    *
-   * Nothing is compiled. A primitive just written is one its author has yet to
-   * write the body of, and a build is the command that compiles a charter
-   * (FR-020).
+   * The body is what its author typed, and empty where none was: at the command
+   * line the body is written in an editor afterwards (FR-117).
    *
-   * A word that is no kind, and a file this identity already has, are raised
-   * rather than given back: neither leaves a file to report a fault under, and
-   * the second would write over what somebody authored.
+   * Nothing is compiled: a build is the command that compiles a charter
+   * (FR-020, FR-079).
+   *
+   * A word that is no kind, and an identity the charter already holds in any
+   * layer, are raised rather than given back: neither leaves a file to report a
+   * fault under, and the second names the file already holding it.
    */
-  add(kind: string, id: string, headers: AuthoredHeaders): Promise<DataDTOs.ScopedPrimitive | DataDTOs.Faults>;
+  add(
+    kind: string,
+    id: string,
+    headers: UnparsedHeaders,
+    body?: string,
+  ): Promise<DataDTOs.ScopedPrimitive | DataDTOs.Faults>;
+
+  /**
+   * One primitive as the charter read it — its headers, its body, the file
+   * and the layer — and the content hash of it written out, the revision a
+   * save is made over (FR-075, FR-078).
+   *
+   * Reads and says: there is no way through this to write anything (FR-041).
+   * Asked of the files as read rather than of the validation, so a primitive
+   * opens whatever else in the charter is wrong. An identity the charter holds
+   * nothing of is raised, as `explain` raises it.
+   */
+  open(identity: string): Promise<DataDTOs.PrimitiveSnapshot>;
+
+  /**
+   * One repository primitive's headers and body written over, its kind, id and
+   * file kept (FR-075).
+   *
+   * Raised with nothing written for a vendored or builtin primitive, naming
+   * where it came from (FR-077), and for a primitive that, read again, no
+   * longer writes out as `revision`, naming the file (FR-078). Answers the kind will not take come
+   * back as the faults `add` gives for them. Nothing is compiled or committed
+   * (FR-079).
+   */
+  rewrite(
+    identity: string,
+    headers: UnparsedHeaders,
+    body: string,
+    revision: string,
+  ): Promise<DataDTOs.ScopedPrimitive | DataDTOs.Faults>;
+
+  /**
+   * One repository primitive's file taken away, and nothing else (FR-076):
+   * what still names it is reported dangling by the next validation. Raised for
+   * a vendored or builtin primitive, as a rewrite is (FR-077). What comes back
+   * is the primitive that was removed. Nothing is compiled or committed
+   * (FR-079).
+   */
+  remove(identity: string): Promise<DataDTOs.ScopedPrimitive>;
 
   /**
    * What this repository configured itself with, on its own — no charter read
@@ -265,5 +311,6 @@ export interface SettingsOptions {
 }
 
 /** What one primitive's author answered, under the header each answer fills
- *  in: a line, or the entries of a list. */
-export type AuthoredHeaders = Readonly<Record<string, string | readonly string[]>>;
+ *  in: a line, or the entries of a list — not yet read by the kind's schema,
+ *  which is what refuses what the kind will not take. */
+export type UnparsedHeaders = Readonly<Record<string, string | readonly string[]>>;

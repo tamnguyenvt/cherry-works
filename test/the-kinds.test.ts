@@ -11,6 +11,7 @@ import {
   primitiveHeadersOf,
   primitiveOf,
 } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
+import { SIGNALS } from "../src/hexagon/domain/models/charter/primitive/SensorPrimitive.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -43,12 +44,13 @@ const asking = async (argv: readonly string[]) => {
 };
 
 /** Every header `cw kinds <kind>` named, read back off the answer the way an
- *  author reads it: one indented line per header, its name and its shape. */
+ *  author reads it: one indented line per header, its name and its shape, and
+ *  the values it may hold where the set is closed. */
 const headersNamedIn = (answer: string) =>
   answer
     .split("\n")
     .flatMap((line) => {
-      const named = /^ {2}(\S+)\s+(line|list)$/.exec(line);
+      const named = /^ {2}(\S+)\s+(line|list)(?:, one of .+)?$/.exec(line);
       return named === null ? [] : [{ field: named[1]!, shape: named[2]! }];
     });
 
@@ -90,6 +92,15 @@ test("cw kinds <kind> names what that kind's contract requires, and no more (FR-
       kind,
     );
   }
+});
+
+test("a header read from a closed set carries its values, and no other header does (FR-118)", async () => {
+  for (const kind of KINDS)
+    for (const { field, allowedValues } of primitiveHeadersOf(kind))
+      assert.deepEqual(allowedValues, kind === "sensor" && field === "signal" ? SIGNALS : undefined, `${kind} ${field}`);
+
+  const { results } = await asking(["kinds", "sensor"]);
+  assert.match(results, new RegExp(`signal\\s+line, one of ${SIGNALS.join(", ")}\n`));
 });
 
 test("the sample it shows is a primitive of that kind, as an author writes one (FR-001)", async () => {

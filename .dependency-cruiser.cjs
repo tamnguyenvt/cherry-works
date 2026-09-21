@@ -59,14 +59,16 @@ module.exports = {
         "The portal's page runs in the browser and knows only the JSON the " +
         "server answers with (FR-005). It imports itself, the DTOs it parses " +
         "that JSON with, the routes' types it calls them by, and the " +
-        "libraries it renders and calls with — preact, codemirror, marked, " +
-        "zod and hono's client — and never the hexagon, the filesystem or " +
+        "libraries it renders and calls with — react, shadcn's own (radix, " +
+        "cva, clsx, tailwind-merge, lucide, sonner, cmdk), tanstack query, " +
+        "codemirror, marked, zod and hono's client — and never the hexagon, " +
+        "the filesystem or " +
         "node:*.",
       from: { path: "^src/driver/portal/page/" },
       to: {
         pathNot:
           "^src/driver/portal/page/|^src/hexagon/port/driver/dtos/|^src/driver/portal/routes\\.ts$|" +
-          "node_modules/.*/(preact|@codemirror/[^/]+|marked|zod|hono)/",
+          "node_modules/.*/(react|react-dom|@tanstack/react-query|radix-ui|class-variance-authority|clsx|tailwind-merge|lucide-react|sonner|cmdk|@codemirror/[^/]+|marked|zod|hono)/",
       },
     },
     {

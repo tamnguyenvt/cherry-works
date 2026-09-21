@@ -1,5 +1,5 @@
 import { covers } from "../../../utils/globs.js";
-import { KINDS, PRIMITIVE_CLASSES, primitiveOf, type Primitive } from "./primitive/Primitive.js";
+import { identityOf, KINDS, PRIMITIVE_CLASSES, primitiveOf, type Primitive } from "./primitive/Primitive.js";
 import { CharterRootFault, FaultsByFile, type Fault } from "../Fault.js";
 import type { ForParsingYaml } from "../../../port/zdriven/ForParsingYaml.js";
 
@@ -321,7 +321,7 @@ export function charterRootOf(
   const read = (one: AuthoredFile, scope: Scope) => {
     try {
       const primitive = primitiveOf(one.contents, yamlParser);
-      primitives.push(new ScopedPrimitive(`${primitive.kind}:${primitive.headers.id}`, scope, one.path, primitive));
+      primitives.push(new ScopedPrimitive(identityOf({ kind: primitive.kind, id: primitive.headers.id }), scope, one.path, primitive));
     } catch (raised) {
       // Every fault one file has arrives together (FR-009); anything else is
       // not this file being wrong and is not ours to swallow.

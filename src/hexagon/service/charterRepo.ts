@@ -6,7 +6,7 @@ import {
   type CharterRoot,
 } from "../domain/models/charter/CharterRoot.js";
 import { BUILTIN_PRIMITIVES } from "../domain/models/charter/builtin/index.js";
-import { KINDS, type Primitive } from "../domain/models/charter/primitive/Primitive.js";
+import { identityOf, KINDS, type Primitive } from "../domain/models/charter/primitive/Primitive.js";
 import { Fault } from "../domain/models/Fault.js";
 import { charterFolderIn, CHARTER_DIRECTORY, vendorFolderIn } from "../domain/path.js";
 import type { ForParsingYaml } from "../port/zdriven/ForParsingYaml.js";
@@ -108,5 +108,5 @@ export async function writeCharter(
     );
 
   await fileWriter.write(file, primitive.toMarkdown());
-  return new ScopedPrimitive(`${primitive.kind}:${primitive.headers.id}`, REPO_SCOPE, path, primitive);
+  return new ScopedPrimitive(identityOf({ kind: primitive.kind, id: primitive.headers.id }), REPO_SCOPE, path, primitive);
 }

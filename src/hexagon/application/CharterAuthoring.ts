@@ -3,8 +3,9 @@ import { loadSettings } from "../service/settingsRepo.js";
 import { loadTestSuites } from "../service/testSuitesRepo.js";
 import { driftedVendors } from "../service/vendorRepo.js";
 import { runSuite, TestRunReport } from "../domain/services/testService.js";
-import { CharterPrimitiveFault, Fault, Faults, FaultsByFile } from "../domain/models/Fault.js";
-import type { CharterRoot } from "../domain/models/charter/CharterRoot.js";
+import { Fault, Faults, FaultsByFile } from "../domain/models/Fault.js";
+import { REPO_SCOPE, ScopedPrimitive, type CharterRoot } from "../domain/models/charter/CharterRoot.js";
+import { RepoScopedPrimitive } from "../domain/specifications/RepoScopedPrimitive.js";
 import type { DataDTOs, OutcomeDTOs } from "../port/driver/dtos/index.js";
 import {
   catalogueDTO,
@@ -12,6 +13,7 @@ import {
   explanationOutcomeDTO,
   faultsByFileDTO,
   faultsDTO,
+  primitiveSnapshotDTO,
   planSummaryDTO,
   primitiveKindsDTO,
   primitiveRequirementsDTO,
@@ -20,18 +22,20 @@ import {
   testRunReportDTO,
   workspaceSettingsDTO,
 } from "./dtos.js";
+import { contentHashOf } from "./helper.js";
 import { compile } from "../domain/services/compileService.js";
 import { executePlan, plan, previewPlan, type PlanSummary } from "../service/buildService.js";
 import type { WorkspaceSettings } from "../domain/models/Settings.js";
 import { AGENT_PROVIDERS } from "../domain/models/AgentProvider.js";
 import { CHARTER_DIRECTORY, settingsFileIn, testFolderIn } from "../domain/path.js";
-import type { AuthoredHeaders, ForManagingCharter, SettingsOptions } from "../port/driver/ForManagingCharter.js";
+import type { UnparsedHeaders, ForManagingCharter, SettingsOptions } from "../port/driver/ForManagingCharter.js";
 import type { ForVCS } from "../port/zdriven/ForVCS.js";
 import {
   isKind,
   KINDS,
   PRIMITIVE_CLASSES,
   PrimitiveRequirements,
+  identityOf,
   primitiveOf,
   primitiveHeadersOf,
   primitiveSampleOf,
@@ -191,10 +195,13 @@ export class CharterAuthoring implements ForManagingCharter {
    * Reads and says: this holds a writing port and never reaches for it (FR-041).
    */
   async explain(identity: string): Promise<OutcomeDTOs.ExplanationOutcome | DataDTOs.FaultsByFile> {
+    // Held to the shape an identity is written in before anything is read: text
+    // that is not one names nothing to look for (FR-014).
+    const primitiveIdentity = identityOf(identity);
     const [charter, , faultsByFiles] = await this.#read();
     if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
 
-    const declared = charter.primitiveById.get(identity);
+    const declared = charter.primitiveById.get(primitiveIdentity);
     if (declared === undefined)
       throw new Fault(
         `This charter holds no "${identity}".`,
@@ -220,7 +227,7 @@ export class CharterAuthoring implements ForManagingCharter {
             ? [
                 [
                   one.file,
-                  one.suite.cases.filter((each) => each.activatedIdentity === identity).map((each) => each.describe()),
+                  one.suite.cases.filter((each) => each.activatedIdentity === primitiveIdentity).map((each) => each.describe()),
                 ] as const,
               ]
             : [],
@@ -350,54 +357,150 @@ export class CharterAuthoring implements ForManagingCharter {
   }
 
   /**
-   * One primitive written where its kind is authored (FR-039).
+   * One primitive written where its kind is authored (FR-039), with the body
+   * its author typed — empty from the command line, where the body is written
+   * in an editor afterwards (FR-117).
    *
-   * Neither of the two steps every reading use case here is: no charter is read
-   * and nothing is asked of it. What arrives is what an author answered, and
+   * Nothing is validated and nothing is asked of the charter but which
+   * identities it already holds. What arrives is what an author answered, and
    * reading it as the primitive it claims to be is what refuses an answer its
    * kind will not take — the same reading a file of it would get, so there is no
    * second contract here to keep in step with the kind's (FR-004). Where it goes
    * is the convention: a directory per kind, since nothing reads the directory
    * (FR-002).
    *
-   * A file already there is refused rather than written over: what somebody
-   * authored is theirs, and this is the one command that writes into the
-   * charter.
+   * An identity the charter already holds, in any layer, is refused naming the
+   * file holding it: one identity names one primitive in the whole charter, and
+   * a second file claiming it is a collision the next read would report
+   * (FR-014). The files are read without being validated, so a charter wrong
+   * somewhere else can still be added to.
    */
-  async add(kindWord: string, id: string, headers: AuthoredHeaders): Promise<DataDTOs.ScopedPrimitive | DataDTOs.Faults> {
+  async add(
+    kindWord: string,
+    id: string,
+    headers: UnparsedHeaders,
+    body = "",
+  ): Promise<DataDTOs.ScopedPrimitive | DataDTOs.Faults> {
     const kind = this.#kindOf(kindWord);
-
-    // An answer under a name the kind never named is refused rather than
-    // parsed away: a kind's schema reads the headers it holds and drops the
-    // rest, so a file written from these would be missing what its author
-    // believes they said, and they would find that out at a later read or not
-    // at all (FR-011). Said here because what a kind takes is the engine's to
-    // say, in the same words whether the answer was typed at a prompt or given
-    // as a flag (FR-012), and said beside whatever else the answers got wrong,
-    // so one run names all of it (FR-009).
-    const headerFields = primitiveHeadersOf(kind).map((header) => header.field);
-    const unknownFieldFault = Object.keys(headers)
-      .filter((field) => !headerFields.includes(field))
-      .map(
-        (field) =>
-          new CharterPrimitiveFault(
-            `A ${kind} holds no "${field}".`,
-            `Answer one of what a ${kind} holds: ${headerFields.join(", ")}.`,
-          ),
-      );
 
     let primitive: Primitive;
     try {
-      primitive = primitiveOf({ headers: { kind, id, ...headers }, body: "" });
+      primitive = primitiveOf({ headers: { ...headers, kind, id }, body });
     } catch (raised) {
       // Every fault the answers have, not the first, the way a charter's are
       // read (FR-009).
       if (!(raised instanceof AggregateError)) throw raised;
-      return faultsDTO(new Faults([...unknownFieldFault, ...(raised.errors as readonly Fault[])]));
+      return faultsDTO(new Faults(raised.errors as readonly Fault[]));
     }
-    if (unknownFieldFault.length > 0) return faultsDTO(new Faults(unknownFieldFault));
+
+    const charter = await loadCharters(this.#repoPath, this.#fileReader, this.#yamlParser);
+    const claimingPrimitive = charter.primitiveById.get(identityOf({ kind, id }));
+    if (claimingPrimitive !== undefined)
+      throw new Fault(
+        `"${identityOf({ kind, id })}" is already there, declared by ${claimingPrimitive.file}, and one identity names one primitive in the whole charter.`,
+        `Open ${claimingPrimitive.file}, or run this again with an id this charter has not got.`,
+      );
 
     return scopedPrimitiveDTO(await writeCharter(this.#repoPath, primitive, this.#fileReader, this.#fileWriter));
+  }
+
+  /**
+   * One primitive as the charter read it: its headers, its body, the file and
+   * layer it is in, and its revision (FR-075, FR-078).
+   *
+   * Asked of the files as read rather than of the validation, so a primitive
+   * opens whatever else in the charter is wrong — which is when its author most
+   * needs to open it. The revision is the content hash of `toMarkdown()`, the
+   * text a save writes, so a save made over it is checked against the primitive
+   * read again then.
+   */
+  async open(identity: string): Promise<DataDTOs.PrimitiveSnapshot> {
+    const scopedPrimitive = await this.#scopedPrimitiveOf(identity);
+    return primitiveSnapshotDTO(scopedPrimitive, await contentHashOf(scopedPrimitive.primitive.toMarkdown()));
+  }
+
+  /**
+   * One repository primitive's file written over with new headers and a new
+   * body, keeping its kind, its id and the file it is in (FR-075).
+   *
+   * Refused — raised, with nothing written — for a primitive this repository
+   * did not author (FR-077), and for one whose revision is no longer the one
+   * its author opened, so an edit made on disk since is not lost under
+   * this one (FR-078). Answers the kind will not take come back as the faults
+   * `add` gives for them, since both read answers the one way.
+   *
+   * Kind and id are the identity's, never the headers': an edit cannot move a
+   * file, and a rename is a new primitive and a deletion. Nothing is compiled
+   * and nothing committed (FR-079).
+   */
+  async rewrite(
+    identity: string,
+    headers: UnparsedHeaders,
+    body: string,
+    revision: string,
+  ): Promise<DataDTOs.ScopedPrimitive | DataDTOs.Faults> {
+    const scopedPrimitive = await this.#scopedPrimitiveOf(identity);
+    if (!RepoScopedPrimitive.isSatisfiedBy(scopedPrimitive))
+      throw new Fault(
+        `${identity} was not authored in this repository, and ${scopedPrimitive.file} is read-only here.`,
+        `To differ from it, author a primitive of your own under an identity of its own.`,
+      );
+    // Read again now and hashed the way `open` hashed it: the two differ only
+    // if the file changed since (FR-078).
+    if ((await contentHashOf(scopedPrimitive.primitive.toMarkdown())) !== revision)
+      throw new Fault(
+        `${scopedPrimitive.file} changed on disk after it was opened, and saving would write over that change.`,
+        `Open it again to see what changed, then make your edit there.`,
+      );
+
+    // Kind and id are the identity's, whatever the headers say.
+    let primitive: Primitive;
+    try {
+      primitive = primitiveOf({
+        headers: { ...headers, kind: scopedPrimitive.primitive.kind, id: scopedPrimitive.primitive.headers.id },
+        body,
+      });
+    } catch (raised) {
+      if (!(raised instanceof AggregateError)) throw raised;
+      return faultsDTO(new Faults(raised.errors as readonly Fault[]));
+    }
+
+    await this.#fileWriter.write(new URL(scopedPrimitive.file, this.#repoPath), primitive.toMarkdown());
+    return scopedPrimitiveDTO(new ScopedPrimitive(identity, REPO_SCOPE, scopedPrimitive.file, primitive));
+  }
+
+  /**
+   * One repository primitive's file taken away, and nothing else (FR-076).
+   *
+   * Refused for a primitive this repository did not author, as a rewrite is
+   * (FR-077). What still names it is left as it is: the next validation reports
+   * each as dangling, and what to do about them is its author's call. Nothing is
+   * compiled and nothing committed (FR-079).
+   */
+  async remove(identity: string): Promise<DataDTOs.ScopedPrimitive> {
+    const scopedPrimitive = await this.#scopedPrimitiveOf(identity);
+    if (!RepoScopedPrimitive.isSatisfiedBy(scopedPrimitive))
+      throw new Fault(
+        `${identity} was not authored in this repository, and ${scopedPrimitive.file} is read-only here.`,
+        `To differ from it, author a primitive of your own under an identity of its own.`,
+      );
+    await this.#fileWriter.delete(new URL(scopedPrimitive.file, this.#repoPath));
+    return scopedPrimitiveDTO(scopedPrimitive);
+  }
+
+  /** The primitive one identity names, off the files as read and not the
+   *  validation. Raised when the charter holds nothing of it, the way `explain`
+   *  raises it: there is no file it is wrong with. */
+  async #scopedPrimitiveOf(identity: string): Promise<ScopedPrimitive> {
+    const primitiveIdentity = identityOf(identity);
+    const charter = await loadCharters(this.#repoPath, this.#fileReader, this.#yamlParser);
+    const scopedPrimitive = charter.primitiveById.get(primitiveIdentity);
+    if (scopedPrimitive === undefined)
+      throw new Fault(
+        `This charter holds no "${identity}".`,
+        'Run "cw list --min" to see every identity it does hold.',
+      );
+    return scopedPrimitive;
   }
 
   /** One word read as the kind it names. Raised rather than reported, the way a

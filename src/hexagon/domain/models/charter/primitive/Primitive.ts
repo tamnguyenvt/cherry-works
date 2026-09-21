@@ -9,7 +9,7 @@ import { PosturePrimitive } from "./PosturePrimitive.js";
 import { SensorPrimitive } from "./SensorPrimitive.js";
 import { SkillPrimitive } from "./SkillPrimitive.js";
 import { BasePrimitive, DELIMITER } from "./BasePrimitive.js";
-import { CharterPrimitiveFault, throwAggregateError } from "../../Fault.js";
+import { CharterPrimitiveFault, throwAggregateError, type Fault } from "../../Fault.js";
 import { formatFrontmatterValue } from "../../helper.js";
 import type { ForParsingYaml } from "../../../../port/zdriven/ForParsingYaml.js";
 
@@ -59,6 +59,21 @@ export const PRIMITIVE_IDENTITY_SCHEMA = z
   .regex(/^[a-z0-9-]+:[a-z0-9-]+$/)
   .transform((identity) => identity as PrimitiveIdentity);
 
+/** One identity: the one a kind and an id make together, or one as it was
+ *  typed, held to the shape an identity is written in. The one place an
+ *  identity is written and read, so nothing else spells it. Typed text that is
+ *  not `<kind>:<id>` is raised: it names nothing to look for (FR-014). */
+export function identityOf(kindAndId: { readonly kind: string; readonly id: string } | string): PrimitiveIdentity {
+  if (typeof kindAndId !== "string") return `${kindAndId.kind}:${kindAndId.id}`;
+  const parsed = PRIMITIVE_IDENTITY_SCHEMA.safeParse(kindAndId);
+  if (!parsed.success)
+    throw new CharterPrimitiveFault(
+      `"${kindAndId}" is not an identity: one is a kind and an id with a colon between them.`,
+      'Write it as <kind>:<id>, as in "guide:no-any".',
+    );
+  return parsed.data;
+}
+
 export function isKind(value: unknown): value is Kind {
   return typeof value === "string" && (KINDS as readonly string[]).includes(value);
 }
@@ -68,8 +83,9 @@ const CLASS_OF = new Map<Kind, (typeof PRIMITIVE_CLASSES)[number]>(
   PRIMITIVE_CLASSES.map((one) => [one.kind, one]),
 );
 
-/** One header a kind's author may answer for: the shape the answer takes, and
- *  whether a file written without it is refused. What is asked before a file of
+/** One header a kind's author may answer for: the shape the answer takes,
+ *  whether a file written without it is refused, and — where the kind reads it
+ *  from a closed set — the values it may hold. What is asked before a file of
  *  this kind can be written, and what is refused where a file was written
  *  without it — one declaration, read twice. */
 export class PrimitiveHeader {
@@ -77,6 +93,10 @@ export class PrimitiveHeader {
     readonly field: string,
     readonly shape: "line" | "list",
     readonly required: boolean,
+    /** Every value the kind reads this header as, where the set is closed — a
+     *  sensor's `signal` — so it is chosen rather than typed (FR-118). A header
+     *  whose set is open has none. */
+    readonly allowedValues?: readonly string[],
   ) {}}
 
 /** Everything one kind takes of whoever authors it: every header in the order
@@ -110,7 +130,20 @@ export function primitiveHeadersOf(kind: Kind): readonly PrimitiveHeader[] {
 
   return Object.entries(kindClass.schema.shape)
     .filter(([field]) => field !== "id")
-    .map(([field, type]) => new PrimitiveHeader(field, shapeOf(type), field in required));
+    .map(([field, type]) => {
+      // What the header holds — an array of lines, a closed set, or one line —
+      // with optional and readonly taken off: they wrap what is held rather than
+      // being part of it.
+      let heldType: unknown = type;
+      while (!(heldType instanceof z.ZodArray) && typeof (heldType as { unwrap?: unknown })?.unwrap === "function")
+        heldType = (heldType as { unwrap: () => unknown }).unwrap();
+      return new PrimitiveHeader(
+        field,
+        heldType instanceof z.ZodArray ? "list" : "line",
+        field in required,
+        heldType instanceof z.ZodEnum ? (heldType.options as readonly string[]) : undefined,
+      );
+    });
 }
 
 /** One primitive of this kind as its own class declares one, written out the
@@ -123,21 +156,9 @@ export function primitiveSampleOf(kind: Kind): string {
     .join("\n");
 }
 
-/** What one header holds, read off the schema it is parsed by: a list where the
- *  schema takes an array of lines, and one line otherwise. Optional and
- *  readonly are wrappers around what is being held rather than part of it, so
- *  they are taken off before the question is asked. */
-function shapeOf(type: unknown): "line" | "list" {
-  let held = type;
-  while (!(held instanceof z.ZodArray) && typeof (held as { unwrap?: unknown })?.unwrap === "function")
-    held = (held as { unwrap: () => unknown }).unwrap();
-
-  return held instanceof z.ZodArray ? "list" : "line";
-}
-
 /** Headers and body as a caller already holds them, for a primitive nobody has
  *  written a file for yet: what `cw add` gathers from whoever is authoring it. */
-export interface PrimitiveDraft {
+export interface UnparsedPrimitive {
   readonly headers: Readonly<Record<string, unknown>>;
   readonly body: string;
 }
@@ -156,10 +177,18 @@ export interface PrimitiveDraft {
  * The kind is the one the headers declare, and it must be one the charter
  * knows. Where a primitive sits says nothing about what it is: a file is read as
  * what it says it is (FR-003).
+ *
+ * An unparsed primitive is what an author answered, so a header under a name
+ * the kind never named is refused rather than parsed away: the kind's schema
+ * reads the headers it holds and drops the rest, and a file written from the
+ * answers would be missing what its author believes they said (FR-011). Said
+ * in the same words whether the answer was typed at a prompt, given as a flag
+ * or sent from the portal (FR-012), and beside whatever else the answers got
+ * wrong (FR-009). A file is read as it always was.
  */
-export function primitiveOf(draft: PrimitiveDraft): Primitive;
+export function primitiveOf(unparsedPrimitive: UnparsedPrimitive): Primitive;
 export function primitiveOf(text: string, parser: ForParsingYaml): Primitive;
-export function primitiveOf(input: string | PrimitiveDraft, parser?: ForParsingYaml): Primitive {
+export function primitiveOf(input: string | UnparsedPrimitive, parser?: ForParsingYaml): Primitive {
   let headers: Readonly<Record<string, unknown>>;
   let body: string;
 
@@ -201,5 +230,27 @@ export function primitiveOf(input: string | PrimitiveDraft, parser?: ForParsingY
             `Declare a kind the charter knows: ${KINDS.join(", ")}.`,
           ),
     ]);
-  return CLASS_OF.get(headers.kind)!.of(headers, body);
+  const kind = headers.kind;
+  if (typeof input === "string") return CLASS_OF.get(kind)!.of(headers, body);
+
+  const headerFields = primitiveHeadersOf(kind).map((header) => header.field);
+  const unknownHeaderFaults = Object.keys(headers)
+    .filter((field) => field !== "kind" && field !== "id" && !headerFields.includes(field))
+    .map(
+      (field) =>
+        new CharterPrimitiveFault(
+          `A ${kind} holds no "${field}".`,
+          `Answer one of what a ${kind} holds: ${headerFields.join(", ")}.`,
+        ),
+    );
+  let primitive: Primitive | undefined;
+  let schemaFaults: readonly Fault[] = [];
+  try {
+    primitive = CLASS_OF.get(kind)!.of(headers, body);
+  } catch (raised) {
+    if (!(raised instanceof AggregateError)) throw raised;
+    schemaFaults = raised.errors as readonly Fault[];
+  }
+  if (primitive === undefined || unknownHeaderFaults.length > 0) throwAggregateError([...unknownHeaderFaults, ...schemaFaults]);
+  return primitive;
 }

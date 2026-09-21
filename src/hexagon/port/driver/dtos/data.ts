@@ -95,6 +95,18 @@ const scopedPrimitives = dto(
   }),
 );
 
+/** One primitive as its file holds it now: the primitive as the whole charter
+ *  sees it, its markdown body, and the content hash of it written out — the
+ *  revision a save is made over. */
+const primitiveSnapshot = dto(
+  "PrimitiveSnapshot",
+  z.object({
+    scopedPrimitive,
+    body: z.string(),
+    revision: z.string(),
+  }),
+);
+
 /** What a build did, or would do, to each file it touches. */
 const planSummary = dto(
   "PlanSummary",
@@ -106,14 +118,16 @@ const planSummary = dto(
   }),
 );
 
-/** One header a kind takes: whether it holds a line or a list, and whether a
- *  file written without it is refused. */
+/** One header a kind takes: whether it holds a line or a list, whether a file
+ *  written without it is refused, and the values it may hold where the kind
+ *  reads it from a closed set. */
 const primitiveHeader = dto(
   "PrimitiveHeader",
   z.object({
     field: z.string(),
     shape: z.enum(["line", "list"]),
     required: z.boolean(),
+    allowedValues: strings.optional(),
   }),
 );
 
@@ -198,6 +212,7 @@ export const DataDTOs = byType(
   primitiveHeader,
   primitiveKinds,
   primitiveRequirements,
+  primitiveSnapshot,
   scopedPrimitive,
   scopedPrimitives,
   testCaseReport,
@@ -218,6 +233,7 @@ export namespace DataDTOs {
   export type PrimitiveKinds = z.infer<typeof DataDTOs.PrimitiveKinds>;
   export type PrimitiveHeader = z.infer<typeof DataDTOs.PrimitiveHeader>;
   export type PrimitiveRequirements = z.infer<typeof DataDTOs.PrimitiveRequirements>;
+  export type PrimitiveSnapshot = z.infer<typeof DataDTOs.PrimitiveSnapshot>;
   export type ScopedPrimitive = z.infer<typeof DataDTOs.ScopedPrimitive>;
   export type ScopedPrimitives = z.infer<typeof DataDTOs.ScopedPrimitives>;
   export type TestCaseReport = z.infer<typeof DataDTOs.TestCaseReport>;

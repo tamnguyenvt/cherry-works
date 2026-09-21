@@ -23,11 +23,14 @@ by its ids; the shape of each piece of data is the data model's, cited by its §
 | Argument parsing | `yargs` | Nested command groups (`cw vendor add`), per-command help with examples, strict rejection of unknown flags, and a "Did you mean" suggestion ([FR-094](spec.md#fr-094), [FR-095](spec.md#fr-095)). |
 | Interactive input | `prompts` | The setup questions and `cw add`'s questions. Lives in the command that asks rather than behind a port: a use case is called with its answers, so whoever drove it is the one that put the questions ([§8](#8-setup-fr-054--fr-058), [§9.3](#93-cw-add-kind-id-prompts-and-header-flags-fr-064--fr-074)). |
 | Server | Hono on `node:http` through `@hono/node-server` | One user, one repository, a dozen routes. The routes are chained into one typed app, so the page calls them through `hc` with every answer typed, and nothing is written twice between the server and the page. |
+| Routes | `@hono/zod-openapi`: each route a `createRoute` — path, params, query, request headers, request body and every response under its status, inline, with the `DataDTOs` schemas | A route's request body and answers are declared once, as OpenAPI declares them; a request of the wrong shape is refused with `400` before the engine is asked, and `hc` types the page's calls off the same declaration, request and answer alike. |
 | Page calls | `hc` from `hono/client`, typed by `typeof api` from `routes.ts` | The page imports the routes' types only ([§2.2](#22-dependency-rules)); a route renamed or an answer changed is a type error in the page. |
 | Address | `127.0.0.1`, port 9927 by default, the next free one when it is taken | [FR-106](spec.md#fr-106) and the spec's edge case where the port is taken. Never `0.0.0.0`. |
-| Page | Preact, with hooks and JSX; no router, no store | Components rather than the mockup's string templates, so a view re-renders from what the server answered instead of being rebuilt by hand. Preact rather than React for size — a few kilobytes in a package installed globally — and rather than a server framework, whose own server, bundler and tsconfig would fight the composition root and the dependency rules. Seven views and no shared state worth a store: `useState` in the component that owns it. |
-| Page type-checking | `src/driver/portal/page/tsconfig.json` with `lib: ["ES2023", "DOM"]`, `jsx: "react-jsx"`, `jsxImportSource: "preact"`, excluded from the root one | The root config is Node-only (`types: ["node"]`) and stays so: a DOM global in engine code is a mistake the compiler should catch. `typecheck` runs both configs. The page entry in `tsup` sets the same JSX options. |
-| Body editor | CodeMirror 6 (`@codemirror/view`, `state`, `lang-markdown`), bundled | Markdown highlighting offline ([FR-119](spec.md#fr-119)). The mockup loads Monaco from a CDN, which breaks [FR-111](spec.md#fr-111), and Monaco bundled is several megabytes with web workers; CodeMirror is a fraction of that and needs no worker. |
+| Page | React, with hooks and JSX; no router, no store | Components rather than the mockup's string templates, so a view re-renders from what the server answered instead of being rebuilt by hand. React rather than Preact because the components below are written for it, and Radix under them does not hold up under `preact/compat`; the size it adds is small beside CodeMirror's. Rather than a server framework, whose own server, bundler and tsconfig would fight the composition root and the dependency rules. Seven views and no shared state worth a store: `useState` in the component that owns it. |
+| Page components | shadcn/ui — Radix primitives styled with Tailwind v4, their source copied into `src/driver/portal/page/components/ui/` — with lucide icons and sonner toasts | The form, the tabs, the dialog, the menu, the select, the table and the toast are components with their keyboard and focus behaviour already right, rather than written by hand. The mockup gives the layout; the look is shadcn's own. Tailwind's CLI builds `dist/portal/styles.css` after `tsup`, from the page's sources alone. |
+| Page data | TanStack Query: one hook per route in `page/queries.ts` | A view asks a hook for what it shows rather than fetching in an effect. What a route answered is kept under its key and asked again whenever a view showing it is mounted ([FR-110](spec.md#fr-110)); a write marks what it changed as stale, so every listing asks again at once. |
+| Page type-checking | `src/driver/portal/page/tsconfig.json` with `lib: ["ES2023", "DOM"]`, `jsx: "react-jsx"`, `jsxImportSource: "react"`, excluded from the root one | The root config is Node-only (`types: ["node"]`) and stays so: a DOM global in engine code is a mistake the compiler should catch. `typecheck` runs both configs. The page entry in `tsup` sets the same JSX options. |
+| Body editor | CodeMirror 6 (`@codemirror/view`, `state`, `lang-markdown`, `language` for the highlighting, `commands` for the keymap and undo), bundled | Markdown highlighting offline ([FR-119](spec.md#fr-119)). The mockup loads Monaco from a CDN, which breaks [FR-111](spec.md#fr-111), and Monaco bundled is several megabytes with web workers; CodeMirror is a fraction of that and needs no worker. |
 | Markdown preview | `marked`, bundled | The preview view of [FR-119](spec.md#fr-119). A body is any markdown an author writes, which a hand-written renderer would not cover. |
 | What the engine brings | `src/hexagon/domain/models/charter/builtin/`: one module per primitive, each a class extending its kind's own class, and an `index.ts` exporting the list | A kind that grows, renames or drops a header breaks these modules when the package is type-checked. Anything read at run time — JSON, markdown, a file shipped beside `dist/` — moves that failure to somebody else's `cw` run ([§5.4](#54-what-the-engine-brings-fr-096--fr-103)). |
 
@@ -119,7 +122,7 @@ and dynamic `import()` all count. The rules live in `.dependency-cruiser.cjs`:
 | `driven-answers-only-its-port` | a driven adapter knows nothing of the hexagon but the driven port it implements |
 | `dtos-are-zod-only` | `port/driver/dtos/` imports `zod` and nothing else, so nothing more of the hexagon is bundled into the page |
 | `models-know-no-dto` | `domain/` and `service/` import no driver port, so a model knows nothing of what a driver reads; the application makes the DTOs ([§2.5](#25-models-are-classes-and-a-driver-reads-their-dtos)) |
-| `page-is-browser-code` | `src/driver/portal/page` imports only itself, `port/driver/dtos/`, `routes.ts`, `preact`, `@codemirror/*`, `marked`, `zod` and `hono` |
+| `page-is-browser-code` | `src/driver/portal/page` imports only itself, `port/driver/dtos/`, `routes.ts`, `react`, shadcn's own (`radix-ui`, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `sonner`), `@tanstack/react-query`, `@codemirror/*`, `marked`, `zod` and `hono` |
 | `page-knows-routes-only-as-types` | what the page imports from `routes.ts` is types, for `hc`, and nothing that runs |
 | `adapters-do-not-know-each-other` | a driver and a driven adapter meet only at `main.ts` |
 | `no-circular` | a cycle means two modules are one wearing two names |
@@ -756,22 +759,32 @@ from flags is byte for byte the file written from answers ([FR-074](spec.md#fr-0
 
 Three use cases on `ForManagingCharter`:
 
-- **`open(identity)`** — the opened primitive of data-model [§15.1](data-model.md#151-opened-primitive-fr-075-fr-078), its revision
-  the file's text as read. It works whenever that primitive's own file reads,
+- **`open(identity)`** — the primitive snapshot of data-model [§15.1](data-model.md#151-primitive-snapshot-fr-075-fr-078), its revision
+  the content hash of the primitive written out by `toMarkdown()`. It works whenever that primitive's own file reads,
   whatever else in the charter is wrong: it is asked of the primitives
   `charterRootOf` read, not of validation.
 - **`rewrite(identity, headers, body, revision)`** — refuses a vendored
-  primitive naming its vendor folder ([FR-077](spec.md#fr-077)); refuses when the file's text is no
-  longer `revision` ([FR-078](spec.md#fr-078)); refuses answers the kind will not take with the
+  primitive naming its vendor folder ([FR-077](spec.md#fr-077)); refuses when the primitive, read again,
+  no longer hashes to `revision` ([FR-078](spec.md#fr-078)); refuses answers the kind will not take with the
   faults `add` gives ([FR-075](spec.md#fr-075)). Kind and identity are taken from the identity,
   never from the headers, so an edit cannot move a file.
 - **`remove(identity)`** — deletes the repository primitive's file and nothing
   else; refuses a vendored one ([FR-076](spec.md#fr-076), [FR-077](spec.md#fr-077)). Primitives and tests still
   naming it are reported by the next validation as dangling, not rewritten.
 
-A revision is the text rather than a hash of it: the hexagon imports no
-`node:crypto`, primitive files are small, and comparing two strings needs
-nothing. The hash is the portal's, over HTTP ([§12.2](#122-the-route-table)). A builtin primitive has no
+All four that name one primitive — `explain`, `open`, `rewrite`, `remove` —
+take the identity as text, as a route has it in its path and the command line
+has it typed, and read it with `identityOf` inside the application, the one
+place an identity is written and read: text that is not `<kind>:<id>` is
+refused there. Nothing outside the hexagon spells or splits one.
+
+A revision is the content hash — SHA-256, in hex — of the primitive written
+out by `toMarkdown()`, the text a save writes, rather than of the file as
+read: the charter's one reading is all `open` and `rewrite` need, and a change
+on disk that only reformats the file is not one a save is refused for.
+`contentHashOf` in `application/helper.ts` computes it, with Web Crypto, a
+global of the runtime, so the hexagon imports no `node:crypto`. The same short
+string is what crosses HTTP ([§12.2](#122-the-route-table)). A builtin primitive has no
 file for `rewrite` or `remove` to act on, and is refused as a vendored one is
 ([Story 12](spec.md#user-story-12---the-instructions-arrive-with-the-engine-not-with-the-repository-priority-p3), scenario 7).
 
@@ -890,27 +903,29 @@ stays the one composition root. `startPortal` fails at start naming
 
 ### 12.2 The route table
 
-The routes are chained on one Hono app in `routes.ts`: a method and a path, the
-use case it calls, and the status its answer goes out with. Routes are resources
+The routes are chained on one `OpenAPIHono` app in `routes.ts`, each declared
+with `createRoute`: a method and a path, what it takes, the use case it calls,
+and every answer it sends under its status. Routes are resources
 under `/api`, JSON in and out; the page itself is served from `/`. No route holds
 a rule — each reads its arguments, calls one port method, and sends the answer
 on as the port gave it ([§2.5](#25-models-are-classes-and-a-driver-reads-their-dtos)).
 
 The verb says what a route does to the repository: every `GET` only reads, so
 the reader/writer split ([FR-093](spec.md#fr-093)) is visible in the table and [§12.4](#124-security-fr-106) has to guard
-only the other three verbs. A primitive is addressed as `:kind/:id` rather than
-by its identity: `kind:id` holds a colon, and two path segments need no
-encoding.
+only the other three verbs. A primitive is addressed by its identity, one path
+segment, `guide:no-any`: a colon is allowed in a segment, and the route passes
+it on as it came; one not written `<kind>:<id>` is refused by the engine, a
+`422` and a `DataDTOs.Fault`.
 
 | Method and path | Port call | Spec |
 |---|---|---|
 | `GET /api/charter/root/faults` | `ForManagingCharter.doctor()`, its `faultsByFile` | [FR-115](spec.md#fr-115) |
 | `GET /api/charter/root/primitives` | `fullList(matching?)` | [FR-112](spec.md#fr-112) – [FR-114](spec.md#fr-114) |
 | `POST /api/charter/root/primitives` | `add(kind, id, headers, body)` | [FR-117](spec.md#fr-117) |
-| `GET /api/charter/root/primitives/:kind/:id` | `open(identity)` | [FR-075](spec.md#fr-075), [FR-078](spec.md#fr-078) |
-| `PUT /api/charter/root/primitives/:kind/:id` | `rewrite(identity, headers, body, revision)` | [FR-075](spec.md#fr-075), [FR-078](spec.md#fr-078) |
-| `DELETE /api/charter/root/primitives/:kind/:id` | `remove(identity)` | [FR-076](spec.md#fr-076) |
-| `GET /api/charter/root/primitives/:kind/:id/explanation` | `explain(identity)` | [FR-029](spec.md#fr-029), [FR-116](spec.md#fr-116) |
+| `GET /api/charter/root/primitives/:identity` | `open(identity)` | [FR-075](spec.md#fr-075), [FR-078](spec.md#fr-078) |
+| `PUT /api/charter/root/primitives/:identity` | `rewrite(identity, headers, body, revision)` | [FR-075](spec.md#fr-075), [FR-078](spec.md#fr-078) |
+| `DELETE /api/charter/root/primitives/:identity` | `remove(identity)` | [FR-076](spec.md#fr-076) |
+| `GET /api/charter/root/primitives/:identity/explanation` | `explain(identity)` | [FR-029](spec.md#fr-029), [FR-116](spec.md#fr-116) |
 | `GET /api/definitions/kinds` | `kinds()` | [FR-112](spec.md#fr-112), [FR-113](spec.md#fr-113) |
 | `GET /api/definitions/kinds/:kind/requirements` | `listPrimitiveRequirements(kind)` | [FR-117](spec.md#fr-117), [FR-118](spec.md#fr-118) |
 | `GET /api/charter/root/build` | `preview()` | [FR-120](spec.md#fr-120) |
@@ -938,12 +953,12 @@ named `outcome` still reaches that file. The listing is always the whole
 charter, never one kind of it: whoever shows it by kind is counting every kind
 too.
 
-**Revisions over HTTP.** `GET` of a primitive answers with an `ETag`, a hash of
-the revision `open` returned; `PUT` sends it back as `If-Match`. The server
-opens the file again, hashes it, and answers `412 Precondition Failed` naming the
-file when the two differ — otherwise it passes the revision it just read on to
-`rewrite`, which checks it once more. Hashing lives here, where `node:crypto` may
-be imported; the hexagon compares text ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079)).
+**Revisions over HTTP.** `GET` of a primitive answers with an `ETag`, the
+revision `open` returned — already a content hash ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079)) — in quotes; `PUT`
+sends it back as `If-Match`. The server opens the primitive again and answers
+`412 Precondition Failed` naming the file when the two differ — otherwise it
+passes the revision it just opened on to `rewrite`, which checks it once more.
+Nothing is hashed here.
 
 **Statuses.** `200` with the answer; `201` for a `POST` that created something,
 with the new resource's path; `204` for a `DELETE`. Faults given back — a charter
@@ -991,9 +1006,14 @@ header (repository, search, Build with its preview menu, Doctor), three tabs
 (Repo Charter, Vendor, Test), a modal for explain, doctor, build and a test
 file's text, and a toast for what was just done.
 
-Each view is a Preact component that asks one route when it is shown and renders
-what comes back. The body editor is CodeMirror mounted into a `ref` by one small
-component that owns it; Preact never renders inside it. What the mockup computes
+Each view is a React component that asks a hook of `queries.ts` for what it
+shows when it is mounted, and renders what comes back; none fetches in an
+effect. Every dialog is declared once in `components/Dialogs.tsx`, under the
+name it is opened by, with its title, whether it holds a draft and what it
+renders from its params; a view opens one with `useDialog().open(name,
+params)`, typed by that dialog's params. The body editor is CodeMirror mounted by a `ref` callback of one small
+component that owns it, which takes it down again; React never renders inside
+it. What the mockup computes
 in the browser — the faults, a case's outcome, the doctor report, the build plan,
 the explain relations — is exactly what the engine answers, and the page shows
 what comes back. The mockup's seed data is test data for the views, not a model
@@ -1034,7 +1054,7 @@ registered under it as a group; a positional on a command that stands alone
 | `cw kinds [kind]` | `kinds`, or `listPrimitiveRequirements` | [FR-059](spec.md#fr-059) – [FR-063](spec.md#fr-063) |
 | `cw add <kind> <id> [--header k=v …]` | `listPrimitiveRequirements`, then `add` | [FR-064](spec.md#fr-064) – [FR-074](spec.md#fr-074) |
 | `cw edit <identity>` | `open`, then the author's editor on its file | [FR-075](spec.md#fr-075), [FR-109](spec.md#fr-109) |
-| `cw remove <identity>` | `remove` | [FR-076](spec.md#fr-076), [FR-077](spec.md#fr-077) |
+| `cw remove <identity> [--yes]` | `open`, a yes-or-no question, then `remove` | [FR-076](spec.md#fr-076), [FR-077](spec.md#fr-077) |
 | `cw explain <identity>` | `explain` | [FR-029](spec.md#fr-029) |
 | `cw doctor` | `doctor` | [FR-013](spec.md#fr-013), [FR-014](spec.md#fr-014), [FR-080](spec.md#fr-080), [FR-081](spec.md#fr-081) |
 | `cw test` | `test` | [FR-082](spec.md#fr-082) – [FR-089](spec.md#fr-089) |
@@ -1636,7 +1656,7 @@ Acceptance:
 
 Not in this task: the page that reads these routes ([T2.003](tasks/002-charter-portal.md#t2.003) –
 [T2.005](tasks/002-charter-portal.md#t2.005)), the vendor layer shown on its own ([T2.006](tasks/002-charter-portal.md#t2.006)), and the
-primitive routes by `:kind/:id` ([T2.015](tasks/002-charter-portal.md#t2.015)).
+primitive routes by `:identity` ([T2.015](tasks/002-charter-portal.md#t2.015)).
 
 #### 17.2.3 T2.003 — The page shell
 
@@ -1731,19 +1751,21 @@ Acceptance, the vendor layer ([T2.006](tasks/002-charter-portal.md#t2.006)):
 - A repository with no vendor shows the empty state of each kind.
 
 Acceptance, search ([T2.007](tasks/002-charter-portal.md#t2.007)):
-- A word typed in the header replaces the tabs with every primitive of every
-  layer the engine keeps for it, each with its identity, kind, description and
-  file, and nothing else ([Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenario 3).
+- A word typed in the header lists, in a dropdown under the box, every
+  primitive of every layer the engine keeps for it, each with its kind, id,
+  description and layer, and nothing else; the tab under it is left as it was
+  ([Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenario 3).
 - A header value only `ScopedPrimitive` carries, such as a sensor's `signal`,
   is found.
-- Clearing the box returns to the tab that was showing ([Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenario 7).
+- Choosing a result shows its layer's tab with its kind selected and opens it;
+  Escape clears the box and closes the list ([Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenario 7).
 
 Acceptance, the explanation ([T2.008](tasks/002-charter-portal.md#t2.008)):
-- `GET /api/charter/root/primitives/:kind/:id/explanation` answers `200` and
+- `GET /api/charter/root/primitives/:identity/explanation` answers `200` and
   an `OutcomeDTOs.ExplanationOutcome`; `422` and a `DataDTOs.FaultsByFile` over
   a charter holding an error; `422` and a `DataDTOs.Fault` for an identity the
   charter does not hold ([§12.2](#122-the-route-table)).
-- Every row, in every tab and in search, has an Explain button opening the
+- Every row, in every tab, has an Explain button opening the
   modal on that primitive.
 - The modal shows its kind and description, when it comes up, every header it
   declared but its id and description — a sensor's `signal` and `run` among
@@ -1775,22 +1797,153 @@ repository view's table. The sources panel waits for [T2.026](tasks/002-charter-
 
 #### 17.2.7 T2.007 — Search
 
-The search box in the header replaces the tabs with the matching primitives of
-every layer; Clear returns to the tab ([FR-114](spec.md#fr-114)).
+The search box in the header lists the matching primitives of every layer in a
+dropdown under it; choosing one opens it where it is listed ([FR-114](spec.md#fr-114)).
 
 #### 17.2.8 T2.008 — The explanation route and modal
 
-`GET …/:kind/:id/explanation` and the Explain modal, each identity in it opening
+`GET …/:identity/explanation` and the Explain modal, each identity in it opening
 its own explanation ([FR-116](spec.md#fr-116)).
 
 #### 17.2.9 T2.009 — Adding carries a body
 
 `add(kind, id, headers, body = "")`, the body written by `toMarkdown` ([§9.3](#93-cw-add-kind-id-prompts-and-header-flags-fr-064--fr-074)).
-`primitiveOf` already takes a draft with a body.
+`primitiveOf` already takes an `UnparsedPrimitive` with a body.
+
+[Story 6](spec.md#user-story-6---author-edit-and-delete-a-primitive-without-looking-anything-up-priority-p2) lands as one change, [T2.009](tasks/002-charter-portal.md#t2.009) – [T2.018](tasks/002-charter-portal.md#t2.018) its steps ([SC-026](spec.md#sc-026)). What
+was already there when it opened: `add(kind, id, headers)` writing an empty
+body through `writeCharter`, which refuses only a file already at
+`<kind>/<id>.md`; `cw add` and `cw kinds`; `listPrimitiveRequirements` with no
+allowed values; the Repo Charter and Vendor listings with an Explain button per
+row and no way to open a primitive; `@codemirror/*` and `marked` declared and
+not yet imported.
+
+**An identity is refused wherever it is claimed.** `add` reads the charter's
+files with `loadCharters` — not `#read`, so a charter holding an error elsewhere
+can still be added to — and refuses an identity `primitiveById` already holds,
+raised naming the file claiming it, whichever layer that is ([Story 6](spec.md#user-story-6---author-edit-and-delete-a-primitive-without-looking-anything-up-priority-p2)
+scenario 3, [Story 10](spec.md#user-story-10---write-a-primitive-with-no-terminal-to-answer-at-priority-p1) scenario 5). `writeCharter` keeps its own refusal for a
+file standing at the path under another identity.
+
+**Open, rewrite and remove read the files, not the validation.** All three ask
+`loadCharters` which file declares the identity, so each works on a charter
+holding an error — which is when an author most needs to open a file and fix
+it. `open` answers the primitive as that reading holds it, with the content
+hash of its `toMarkdown()` as the revision; `rewrite` reads the charter again
+and refuses when the primitive no longer hashes to that revision. Nothing reads a
+file twice. It answers `DataDTOs.PrimitiveSnapshot`: `{ scopedPrimitive, body, revision }`.
+
+`rewrite(identity, headers, body, revision)` and `remove(identity)` raise a
+`Fault` for an identity the charter holds nothing of, and for one the
+`RepoScopedPrimitive` specification is not satisfied by — a vendored or builtin
+primitive — naming its file, which names the vendor folder ([FR-077](spec.md#fr-077)). `rewrite` raises when the primitive no longer hashes to `revision`, naming
+the file ([FR-078](spec.md#fr-078)), and answers the `Faults` `add` gives for answers the kind
+will not take — both go through one private reading of kind, id, headers and
+body into a primitive, so they cannot refuse in different words ([FR-075](spec.md#fr-075)).
+It writes `toMarkdown()` over the file the primitive was read from, wherever
+that is, and answers the `ScopedPrimitive` it wrote. `remove` deletes that file
+and answers the `ScopedPrimitive` it removed. Neither builds nor commits ([FR-079](spec.md#fr-079)).
+
+**Allowed values.** `PrimitiveHeader` gains `allowedValues`, read off the
+schema the way `shape` is — a `z.enum` answers its options, anything else none.
+`cw kinds <kind>` prints them beside the shape, `line, one of …` ([FR-109](spec.md#fr-109)).
+
+**The command line.** `cw remove <identity>` asks `open` which file it is,
+asks whoever is at the terminal whether to remove it, and on a yes calls
+`remove` and prints the file it removed. `--yes` answers ahead; with nobody at
+the terminal and no `--yes` it removes nothing and says to pass it. A vendored
+or builtin primitive is refused before anything is asked. `cw edit <identity>` calls `open`, refuses a builtin primitive,
+and runs `$VISUAL`, else `$EDITOR`, on the file with the terminal handed over,
+waiting for it to exit; neither set is refused naming both ([§13](#13-the-command-line-fr-093--fr-095-fr-109)).
+
+**The routes** are the rows of [§12.2](#122-the-route-table) marked for this story. `POST` takes
+`{ kind, id, headers, body }` and answers `201` with a `Location`; `GET` of one
+primitive answers the `PrimitiveSnapshot` with an `ETag`, its revision in
+quotes; `PUT` takes `{ headers, body }` and `If-Match`, opens the primitive
+again and answers `412` with a `DataDTOs.Fault` naming the file when the
+revision differs or `If-Match` is missing, and otherwise passes the revision it
+opened to `rewrite`; `DELETE` answers `204`.
+
+**The page.** A **New <kind>** button on the Repo Charter view's header opens the
+form in the modal for the kind shown, and each row's id opens that primitive.
+The form's rows are the requirements' headers in the engine's order — a box per
+entry with Add and × for a list, a `<select>` for a header with allowed values,
+a line otherwise, and the rationale offering every `corpus:` identity of the
+listing — under the kind (a `<select>` of `kinds()` on a new primitive) and the
+id. On an existing primitive both are shown as text, with the line "the
+identity is the file — rename by creating a new primitive and deleting this
+one". Blank lines and blank list entries are not sent. A vendored or builtin
+primitive opens as a read-only view of its headers, file and body, saying that
+to differ from it an author writes a primitive under an identity of their own.
+
+The body is a Source/Preview switch: Source is CodeMirror with
+`lang-markdown`, mounted by a `ref` callback and never re-rendered by React; Preview
+is `marked`, with raw HTML in the body escaped rather than rendered, since a
+vendor's body is text someone else wrote and this page holds a token that
+writes.
+
+Acceptance, the engine ([T2.009](tasks/002-charter-portal.md#t2.009) – [T2.014](tasks/002-charter-portal.md#t2.014)):
+- `add` with a body writes the file `cw add` writes for the same answers with
+  that body under the frontmatter; with none, the file it wrote before.
+- `add` under an identity a vendored or builtin primitive holds writes nothing
+  and raises naming that primitive's file.
+- `open` answers the headers, body, file, scope and the content hash of the
+  primitive's `toMarkdown()` as its revision, for a repository, a vendored and a builtin primitive, and still
+  answers over a charter where another file holds an error.
+- `rewrite` with the revision `open` gave replaces the file with the new
+  headers and body, keeping its kind, id and path; nothing else on disk changes.
+- `rewrite` after the file changed on disk raises naming the file and writes
+  nothing; of a vendored primitive raises naming its vendor folder; with answers
+  the kind refuses answers the `Faults` `add` gives for the same answers.
+- `remove` deletes the repository primitive's file and nothing else; a
+  primitive still naming it is reported dangling by the next `cw doctor`;
+  `remove` of a vendored or builtin one raises and deletes nothing.
+- `cw remove <identity>` asks before removing and removes nothing on a no, or
+  with nobody at the terminal and no `--yes`; on a yes, or with `--yes`, it
+  prints the file it removed; `cw edit <identity>` runs
+  the editor `$VISUAL` names on the primitive's file, refuses when neither
+  variable is set and when the primitive is builtin.
+- `listPrimitiveRequirements("sensor")` names `signal`'s allowed values, the
+  `SIGNALS` list; no other header of any kind has any. `cw kinds sensor` prints
+  them.
+
+Acceptance, the routes ([T2.015](tasks/002-charter-portal.md#t2.015)):
+- `POST /api/charter/root/primitives` answers `201` and the `ScopedPrimitive`,
+  `422` and `Faults` for answers the kind refuses, `422` and a `Fault` for an
+  identity already claimed.
+- `GET …/:identity` answers `200`, a `PrimitiveSnapshot` and an `ETag`; `PUT`
+  with that `ETag` as `If-Match` answers `200`; with another, or none, `412`
+  and a `Fault` naming the file, and the file is unchanged.
+- `DELETE …/:identity` answers `204` and the file is gone; of a vendored one,
+  `422` and a `Fault`.
+- `GET /api/definitions/kinds/:kind/requirements` answers `200` and the
+  `PrimitiveRequirements`; a word that is no kind, `422` and a `Fault`.
+
+Acceptance, the page ([T2.016](tasks/002-charter-portal.md#t2.016) – [T2.018](tasks/002-charter-portal.md#t2.018)), in a real browser:
+- New asks the kind, the id and every header the kind takes, a guide's globs a
+  box each and a sensor's signal a choice of its allowed values, with the body
+  editor ([Story 6](spec.md#user-story-6---author-edit-and-delete-a-primitive-without-looking-anything-up-priority-p2) scenario 1).
+- Creating writes the file `cw add` writes for the same answers, with the body
+  typed; the listing shows it without a reload.
+- Answers the kind refuses, and an identity already claimed, write nothing and
+  are shown in the engine's words in the form (scenarios 2, 3).
+- An existing repository primitive opens with its kind and id locked and the
+  rename line; saving rewrites its file; deleting removes it (scenarios 4 – 6).
+- A vendored primitive opens read-only, with its file under `.cw/vendor/`, and
+  nothing on it saves or deletes (scenario 7).
+- After any save or delete nothing under `.cw/out/` changed (scenario 8).
+- Saving after the file changed on disk is refused as "the file changed on
+  disk", naming it, and the other change stays (scenario 9).
+- Source shows the body with markdown highlighting; Preview renders it, a
+  `<script>` in the body shown as text.
+
+Not in this story: Build, Preview and Doctor from the header ([Story 7](spec.md#user-story-7---build-preview-and-check-the-repositorys-health-priority-p3)); the
+vendor sources panel ([T2.026](tasks/002-charter-portal.md#t2.026)); `cw suite edit` ([T2.029](tasks/002-charter-portal.md#t2.029)); opening a primitive
+from the Explain modal or from search; a body on `cw add` ([§13](#13-the-command-line-fr-093--fr-095-fr-109)).
 
 #### 17.2.10 T2.010 — Opening a primitive
 
-`open(identity)` with its revision ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079), data-model [§15.1](data-model.md#151-opened-primitive-fr-075-fr-078)).
+`open(identity)` with its revision ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079), data-model [§15.1](data-model.md#151-primitive-snapshot-fr-075-fr-078)).
 
 #### 17.2.11 T2.011 — Rewriting a primitive
 

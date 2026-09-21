@@ -59,7 +59,12 @@ export class KindsCommand implements Command<typeof OPTIONS> {
       code: EXIT_OK,
       result: [
         `A ${kind} requires:`,
-        ...required.map((one) => `  ${one.data.field.padEnd(widestField)}  ${one.data.shape}`),
+        // A header read from a closed set is one of those values or refused, so
+        // the values are part of what it requires (FR-118).
+        ...required.map(
+          ({ data: { field, shape, allowedValues } }) =>
+            `  ${field.padEnd(widestField)}  ${shape}${allowedValues === undefined ? "" : `, one of ${allowedValues.join(", ")}`}`,
+        ),
         "",
         `Write one the way this ${kind} is written:`,
         data.sample,

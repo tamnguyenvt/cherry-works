@@ -60,7 +60,7 @@ test("a word sent with the listing narrows it to what mentions the word, and an 
 
 test("one primitive is explained by kind and id, with when it comes up (FR-029, FR-116)", async () => {
   const answer = await portal({ [at("guide/no-any.md")]: guide("no-any", ["rationale: corpus:why"]), [at("corpus/why.md")]: primitive("corpus", "why") }).request(
-    "/charter/root/primitives/guide/no-any/explanation",
+    "/charter/root/primitives/guide:no-any/explanation",
   );
 
   assert.equal(answer.status, 200);
@@ -71,7 +71,7 @@ test("one primitive is explained by kind and id, with when it comes up (FR-029, 
 });
 
 test("an identity the charter holds nothing of is explained as a fault under no file", async () => {
-  const answer = await portal({}).request("/charter/root/primitives/guide/nowhere/explanation");
+  const answer = await portal({}).request("/charter/root/primitives/guide:nowhere/explanation");
 
   assert.equal(answer.status, 422);
   const { data } = DataDTOs.Fault.parse(await answer.json());
@@ -80,7 +80,7 @@ test("an identity the charter holds nothing of is explained as a fault under no 
 
 test("a charter with an error explains nothing and hands back what is wrong under its file", async () => {
   const answer = await portal({ [at("guide/no-any.md")]: guide("no-any", ['mixins: ["nowhere"]']) }).request(
-    "/charter/root/primitives/guide/no-any/explanation",
+    "/charter/root/primitives/guide:no-any/explanation",
   );
 
   assert.equal(answer.status, 422);

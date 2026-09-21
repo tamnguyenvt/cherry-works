@@ -34,7 +34,8 @@ refused against.
    primitive of each comes up; take the one whose line matches what is being
    asked for.
 2. Run \`cw kinds <kind>\`. It names every header that kind requires, the shape
-   each takes — one line, or a list — and a sample written in full.
+   each takes — one line, or a list — the values one drawn from a closed set
+   may hold, and a sample written in full.
 3. Run \`cw add <kind> <id> --header <name>=<value>\`, one \`--header\` for each
    header step 2 named, and for any other the sample shows this primitive
    needs. A header that takes a list is given once per entry, in order; one that

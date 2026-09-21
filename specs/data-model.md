@@ -115,9 +115,10 @@ What a kind answers to whoever asks what it takes.
 
 ```ts
 PrimitiveHeader = {
-  field:    string,
-  shape:    "line" | "list",
-  required: boolean,
+  field:          string,
+  shape:          "line" | "list",
+  required:       boolean,
+  allowedValues?: string[],     // only where the kind reads it from a closed set
 }
 
 PrimitiveRequirements = {
@@ -155,7 +156,7 @@ nothing included.
 ### 2.3 Header answers (FR-064 – FR-074)
 
 ```ts
-AuthoredHeaders = Record<string, string | string[]>   // a line, or the entries of a list
+UnparsedHeaders = Record<string, string | string[]>   // a line, or the entries of a list
 ```
 
 What an author answered, under the header each answer fills in. A prompt and a
@@ -513,7 +514,7 @@ its schema up by its `type`.
 | Set | Holds |
 |---|---|
 | `OutcomeDTOs` | the DTOs named `…Outcome`: what came of a use case doing something — `DoctorOutcome` ([§14](#14-doctor-outcome-fr-080-fr-081)), `ExplanationOutcome` ([§13](#13-explanation-fr-029)) |
-| `DataDTOs` | every other DTO: what one model says, whether a use case answers with it on its own or another DTO holds it — `Catalogue`, `CatalogueEntry`, `Fault`, `Faults`, `FaultsByFile`, `PlanSummary`, `PrimitiveHeader`, `PrimitiveKinds`, `PrimitiveRequirements`, `ScopedPrimitive`, `TestCaseReport`, `TestCasesByFile`, `TestRunReport`, `TestSuite`, `WorkspaceSettings` |
+| `DataDTOs` | every other DTO: what one model says, whether a use case answers with it on its own or another DTO holds it — `Catalogue`, `CatalogueEntry`, `Fault`, `Faults`, `FaultsByFile`, `PlanSummary`, `PrimitiveHeader`, `PrimitiveKinds`, `PrimitiveRequirements`, `PrimitiveSnapshot`, `ScopedPrimitive`, `TestCaseReport`, `TestCasesByFile`, `TestRunReport`, `TestSuite`, `WorkspaceSettings` |
 
 Each set holds every schema under its model's name, keys in alphabetical order,
 beside a namespace of the same name holding the type inferred from it, so
@@ -536,8 +537,9 @@ type is.
 | `listPrimitiveRequirements` | `PrimitiveRequirements` |
 | `kinds` | `PrimitiveKinds` |
 | `add` | the `ScopedPrimitive` it wrote, or the `Faults` its answers were refused for |
-| `open` | the opened primitive ([§15.1](#151-opened-primitive-fr-075-fr-078)) |
-| `rewrite` | the `Faults` its answers were refused for, when they are |
+| `open` | `PrimitiveSnapshot` ([§15.1](#151-primitive-snapshot-fr-075-fr-078)) |
+| `rewrite` | the `ScopedPrimitive` it wrote, or the `Faults` its answers were refused for |
+| `remove` | the `ScopedPrimitive` it removed |
 | `suites` | every test suite as [§11.2](#112-test-suites-listed) says it |
 | `addSuite` | the new file's name |
 | `settings` | `WorkspaceSettings` |
@@ -546,8 +548,8 @@ type is.
 | `ForVendoringCharters.add`, `remove` | the folder the vendor landed in or left, a string: a name is already plain JSON and no model stands behind it |
 | `ForVendoringCharters.installed` | one vendor install per folder ([§10.2](#102-vendor-install-fr-053-fr-122)) |
 
-`open`, `rewrite`, `remove`, `suites`, `addSuite`, `writeSuite`, `removeSuite`
-and `installed` have not landed; the DTO each answers beyond what this table
+`suites`, `addSuite`, `writeSuite`, `removeSuite` and `installed` have not
+landed; the DTO each answers beyond what this table
 names is declared when it does, in the sets of [§12.2](#122-the-two-sets).
 
 A `Fault` raised because a use case cannot run is not an answer; its DTO is
@@ -612,20 +614,18 @@ The `CharterRoot` and the settings are not part of it.
 
 ## 15. Authoring in the portal
 
-### 15.1 Opened primitive (FR-075, FR-078)
+### 15.1 Primitive snapshot (FR-075, FR-078)
 
-What `open(identity)` answers about one primitive.
+What `open(identity)` answers about one primitive, as `PrimitiveSnapshot`.
 
 | Field | Holds |
 |---|---|
-| headers | its headers as authored |
+| scopedPrimitive | the primitive as the whole charter sees it ([§12.2](#122-the-two-sets)): its headers as authored, the file that declares it, and its layer ([§3.2](#32-scope-fr-017--fr-024)) |
 | body | its markdown body |
-| file | the file that declares it |
-| scope | its layer ([§3.2](#32-scope-fr-017--fr-024)) |
-| revision | the file's text as read |
+| revision | the content hash (SHA-256, hex) of the primitive written out by `toMarkdown()`, the text a save writes |
 
-A revision is the file's whole text, not a hash of it. A hash of the revision is
-what crosses HTTP as an `ETag`.
+A save is refused when the primitive, read again, no longer hashes to the
+revision it was opened at. The revision is what crosses HTTP as an `ETag`.
 
 ### 15.2 Draft
 
@@ -640,4 +640,4 @@ only in the page and is gone when saved or cancelled.
 | mixins | the mixins it lends from |
 | rationale | the corpus it cites, chosen from the charter's corpus |
 | body | markdown, possibly empty |
-| revision | for an existing primitive, the revision it was opened at ([§15.1](#151-opened-primitive-fr-075-fr-078)) |
+| revision | for an existing primitive, the revision it was opened at ([§15.1](#151-primitive-snapshot-fr-075-fr-078)) |

@@ -5,65 +5,77 @@ import { inTheBrowser } from "./in-the-browser.js";
 test("the header carries the search box, Build with its two ways to build, and Doctor", async () => {
   await inTheBrowser({}, async (page) => {
     await assert.doesNotReject(page.getByPlaceholder("Search everything").waitFor());
-    assert.equal(await page.locator(".split .menu").count(), 0);
+    await assert.doesNotReject(page.getByRole("button", { name: "Doctor" }).waitFor());
+    assert.equal(await page.getByRole("menu").count(), 0);
 
     await page.getByLabel("More build options").click();
 
-    assert.deepEqual(await page.locator(".split .menu b").allInnerTexts(), ["Preview", "Build"]);
-    await assert.doesNotReject(page.getByRole("button", { name: "Doctor" }).waitFor());
+    assert.deepEqual(
+      (await page.getByRole("menuitem").allInnerTexts()).map((item) => item.split("\n")[0]),
+      ["Preview", "Build"],
+    );
   });
 });
 
-test("the header reads as the mockup draws it: the brand, the repository, the search, Build and Doctor", async () => {
+test("the header reads as the mockup draws it: the brand, the search, Build and Doctor", async () => {
   await inTheBrowser({}, async (page) => {
-    const headerClasses = await page.locator(".top > *").evaluateAll((children) => children.map(({ className }) => className));
+    const header = page.locator("header");
 
-    assert.deepEqual(headerClasses, ["brand", "repo", "search", "split", "btn"]);
-    assert.equal(await page.locator(".top > .btn").innerText(), "Doctor");
+    assert.match(await header.innerText(), /^Cherry Works/);
+    assert.equal(await header.getByPlaceholder("Search everything").count(), 1);
+    assert.deepEqual(
+      await header.getByRole("button").evaluateAll((buttons) => buttons.map((one) => one.getAttribute("aria-label") ?? one.textContent)),
+      ["Build", "More build options", "Doctor"],
+    );
   });
 });
 
 test("the build menu closes on the next click anywhere", async () => {
   await inTheBrowser({}, async (page) => {
     await page.getByLabel("More build options").click();
-    await page.locator(".sheet").click();
+    await page.getByRole("menu").waitFor();
+    await page.mouse.click(5, 400);
 
-    assert.equal(await page.locator(".split .menu").count(), 0);
+    await page.getByRole("menu").waitFor({ state: "detached" });
+    assert.equal(await page.getByRole("menu").count(), 0);
   });
 });
 
 test("the build menu closes on the click that chose from it", async () => {
   await inTheBrowser({}, async (page) => {
     await page.getByLabel("More build options").click();
-    await page.locator(".split .menu button", { hasText: "Preview" }).click();
+    await page.getByRole("menuitem", { name: /Preview/ }).click();
 
-    assert.equal(await page.locator(".split .menu").count(), 0);
+    await page.getByRole("menu").waitFor({ state: "detached" });
+    assert.equal(await page.getByRole("menu").count(), 0);
   });
 });
 
 test("the three tabs are shown, the repository charter first, and the one clicked is the one on", async () => {
   await inTheBrowser({}, async (page) => {
-    assert.deepEqual(await page.locator(".flowtab").allInnerTexts(), ["Repo Charter", "Vendor", "Test"]);
-    assert.equal(await page.locator(".flowtab.on").innerText(), "Repo Charter");
+    assert.deepEqual(await page.getByRole("tab").allInnerTexts(), ["Repo Charter", "Vendor", "Test"]);
+    assert.equal(await page.getByRole("tab", { selected: true }).innerText(), "Repo Charter");
 
-    await page.getByRole("button", { name: "Vendor" }).click();
+    await page.getByRole("tab", { name: "Vendor" }).click();
 
-    assert.equal(await page.locator(".flowtab.on").innerText(), "Vendor");
-    assert.equal(await page.locator(".sheet").getAttribute("data-tab"), "vendor");
+    assert.equal(await page.getByRole("tab", { selected: true }).innerText(), "Vendor");
+    assert.equal(await page.getByRole("tabpanel").getAttribute("aria-labelledby"), await page.getByRole("tab", { name: "Vendor" }).getAttribute("id"));
   });
 });
 
 test("the test sheet holds nothing yet, since no view is mounted in it", async () => {
   await inTheBrowser({}, async (page) => {
-    await page.getByRole("button", { name: "Test", exact: true }).click();
+    await page.getByRole("tab", { name: "Test" }).click();
 
-    assert.equal(await page.locator(".sheet").innerHTML(), "");
+    assert.equal(await page.getByRole("tabpanel").innerHTML(), "");
   });
 });
 
 test("nothing is shown over the page until a view opens it", async () => {
   await inTheBrowser({}, async (page) => {
-    assert.equal(await page.locator(".mdovl").count(), 0);
-    assert.equal(await page.locator(".toast").count(), 0);
+    await page.getByRole("tab").first().waitFor();
+
+    assert.equal(await page.getByRole("dialog").count(), 0);
+    assert.equal(await page.locator("[data-sonner-toast]").count(), 0);
   });
 });

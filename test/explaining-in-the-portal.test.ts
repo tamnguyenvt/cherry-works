@@ -16,20 +16,21 @@ const charter = {
   "file:///repo/.cw/test/activation.json": `${JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] })}\n`,
 };
 
-/** The text of each part of the modal, under its title. */
+/** The text of each part of the dialog, under its title. */
 const sectionsOf = async (page: import("playwright").Page) =>
   Object.fromEntries(
-    await page.locator(".xsec").evaluateAll((sections) =>
-      sections.map((section) => [section.querySelector(".xsec-t")!.textContent, section.querySelector(".xsec-b")!.textContent]),
-    ),
+    await page
+      .getByRole("dialog")
+      .getByRole("region")
+      .evaluateAll((sections) => sections.map((section) => [section.getAttribute("aria-label"), section.querySelector("h3 + div")!.textContent])),
   );
 
 test("a row's Explain opens what the engine says of it: when it comes up, what it pulls in, what names it (FR-029)", async () => {
   await inTheBrowser(charter, async (page) => {
     await page.getByLabel("Explain guide:no-any").click();
-    await page.locator(".xsec").first().waitFor();
+    await page.getByRole("dialog").getByRole("region").first().waitFor();
 
-    assert.equal(await page.locator(".modal-h .c").innerText(), "guide:no-any");
+    assert.equal(await page.getByRole("dialog").locator('[data-slot="dialog-description"]').innerText(), "guide:no-any");
     const sections = await sectionsOf(page);
     assert.equal(sections["When it comes up"], GuidePrimitive.activatesWhen);
     assert.match(sections["What it pulls in"], /mixin:voice/);
@@ -41,13 +42,14 @@ test("a row's Explain opens what the engine says of it: when it comes up, what i
 
 test("a sensor's explanation shows the signal it answers to and the command it runs", async () => {
   await inTheBrowser({ [at("sensor/check.md")]: primitive("sensor", "check", ["signal: Stop", "run: pnpm lint"]) }, async (page) => {
-    await page.locator(".chip", { hasText: "sensor" }).click();
+    await page.getByRole("radio", { name: "sensor" }).click();
     await page.getByLabel("Explain sensor:check").click();
-    await page.locator(".xsec").first().waitFor();
+    await page.getByRole("dialog").getByRole("region").first().waitFor();
 
     const declaredHeaders = await page
-      .locator(".declared")
-      .evaluateAll((rows) => rows.map((row) => [...row.querySelectorAll(".mono")].map((one) => one.textContent)));
+      .getByRole("region", { name: "What it declares" })
+      .locator("dl > div")
+      .evaluateAll((rows) => rows.map((row) => [row.querySelector("dt")!.textContent, row.querySelector("dd")!.textContent]));
     assert.deepEqual(declaredHeaders, [
       ["signal", "Stop"],
       ["run", "pnpm lint"],
@@ -58,9 +60,9 @@ test("a sensor's explanation shows the signal it answers to and the command it r
 test("every identity in an explanation opens its own (FR-116)", async () => {
   await inTheBrowser(charter, async (page) => {
     await page.getByLabel("Explain guide:no-any").click();
-    await page.locator(".idlink", { hasText: "corpus:why" }).click();
-    await page.locator(".modal-h .c", { hasText: "corpus:why" }).waitFor();
-    await page.locator(".idlink", { hasText: "guide:no-any" }).waitFor();
+    await page.getByRole("dialog").getByRole("button", { name: "corpus:why" }).click();
+    await page.getByRole("dialog").locator('[data-slot="dialog-description"]', { hasText: "corpus:why" }).waitFor();
+    await page.getByRole("dialog").getByRole("button", { name: "guide:no-any" }).waitFor();
 
     assert.match((await sectionsOf(page))["Cited by"], /guide:no-any/);
   });
@@ -69,29 +71,33 @@ test("every identity in an explanation opens its own (FR-116)", async () => {
 test("a rationale no corpus answers to is said not to resolve", async () => {
   await inTheBrowser({ [at("guide/no-any.md")]: primitive("guide", "no-any", ["rationale: corpus:gone"]) }, async (page) => {
     await page.getByLabel("Explain guide:no-any").click();
-    await page.locator(".xsec").first().waitFor();
+    await page.getByRole("dialog").getByRole("region").first().waitFor();
 
     assert.equal((await sectionsOf(page))["What it pulls in"], "corpus:gone (does not resolve)");
   });
 });
 
-test("the modal closes by its ×, by the overlay behind it, and by Escape", async () => {
+test("the dialog closes by its ×, by the overlay behind it, and by Escape", async () => {
   await inTheBrowser(charter, async (page) => {
     const explain = page.getByLabel("Explain guide:no-any");
 
     await explain.click();
-    await page.getByLabel("Close").click();
-    assert.equal(await page.locator(".mdovl").count(), 0);
+    await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
+    await page.getByRole("dialog").waitFor({ state: "detached" });
 
     await explain.click();
-    await page.locator(".mdovl").click({ position: { x: 5, y: 5 } });
-    assert.equal(await page.locator(".mdovl").count(), 0);
+    // Clicked once the dialog has finished coming in, as a reader clicks: a
+    // click while it is still animating in is not taken as one outside it.
+    await page.evaluate("Promise.all(document.querySelector('[role=dialog]').getAnimations().map((animation) => animation.finished))");
+    await page.mouse.click(5, 5);
+    await page.getByRole("dialog").waitFor({ state: "detached" });
 
     await explain.click();
     // Pressed once the modal is drawn, as a reader presses it: the key is
     // listened for from then on.
-    await page.locator(".xsec").first().waitFor();
+    await page.getByRole("dialog").getByRole("region").first().waitFor();
     await page.keyboard.press("Escape");
-    assert.equal(await page.locator(".mdovl").count(), 0);
+    await page.getByRole("dialog").waitFor({ state: "detached" });
+    assert.equal(await page.getByRole("dialog").count(), 0);
   });
 });

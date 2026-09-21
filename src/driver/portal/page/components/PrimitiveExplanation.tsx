@@ -1,13 +1,8 @@
-import type { ComponentChildren } from "preact";
-import { useEffect, useState } from "preact/hooks";
-import type { DataDTOs, OutcomeDTOs } from "#hexagon/port/driver/dtos/index.js";
-import { client } from "./client.js";
-
-/** What asking for one explanation can come back as: the explanation, the
- *  faults of a charter the engine will not read, or the one fault of an
- *  identity it holds nothing of — raised, so the routes' types do not carry it
- *  (plan §12.2). */
-type Answered = OutcomeDTOs.ExplanationOutcome | DataDTOs.FaultsByFile | DataDTOs.Fault;
+import type { ReactNode } from "react";
+import type { DataDTOs } from "#hexagon/port/driver/dtos/index.js";
+import { useExplanation } from "../queries.js";
+import { Button } from "./ui/button.js";
+import { Separator } from "./ui/separator.js";
 
 /**
  * Everything the engine says about one primitive, the answer `cw explain`
@@ -18,26 +13,14 @@ type Answered = OutcomeDTOs.ExplanationOutcome | DataDTOs.FaultsByFile | DataDTO
  * primitives those are is the engine's answer, so nothing here works a
  * relation out.
  */
-export function Explanation({ identity, onExplain }: { identity: string; onExplain: (identity: string) => void }) {
-  const [answered, setAnswered] = useState<Answered | null>(null);
+export function PrimitiveExplanation({ identity, onExplain }: { identity: string; onExplain: (identity: string) => void }) {
+  const { data: answered } = useExplanation(identity);
 
-  useEffect(() => {
-    void (async () => {
-      // An identity is `kind:id`, and the route takes the two apart so no colon
-      // is sent in a path.
-      const separator = identity.indexOf(":");
-      const kind = identity.slice(0, separator);
-      const id = identity.slice(separator + 1);
-      const response = await client.charter.root.primitives[":kind"][":id"].explanation.$get({ param: { kind, id } });
-      setAnswered((await response.json()) as Answered);
-    })();
-  }, [identity]);
-
-  if (answered === null) return null;
+  if (answered === undefined) return null;
   if (answered.type === "Fault")
     return (
       <ExplanationSection title="Not in this charter">
-        {answered.data.message} <span class="quiet">{answered.data.fix}</span>
+        {answered.data.message} <span className="text-muted-foreground">{answered.data.fix}</span>
       </ExplanationSection>
     );
   if (answered.type === "FaultsByFile")
@@ -46,9 +29,9 @@ export function Explanation({ identity, onExplain }: { identity: string; onExpla
   const { scopedPrimitive, activatesWhen, useMixins, rationale, hosts, citers, testCasesByFile } = answered.data;
   const { kind, description, file, scope, headers } = scopedPrimitive.data;
   const linkTo = ({ data }: DataDTOs.ScopedPrimitive) => (
-    <button key={data.identity} class="idlink" onClick={() => onExplain(data.identity)}>
+    <Button key={data.identity} variant="link" className="h-auto p-0 font-mono text-xs" onClick={() => onExplain(data.identity)}>
       {data.identity}
-    </button>
+    </Button>
   );
   // A rationale the charter holds no corpus for is still what the author
   // wrote, so it is said, and said not to resolve, rather than left out.
@@ -60,35 +43,38 @@ export function Explanation({ identity, onExplain }: { identity: string; onExpla
   const declaredHeaders = Object.entries(headers).filter(([name]) => name !== "id" && name !== "description");
 
   return (
-    <>
+    <div className="space-y-3">
       <ExplanationSection title="What it is">
         <b>{kind}</b> — {description}
       </ExplanationSection>
       <ExplanationSection title="When it comes up">{activatesWhen}</ExplanationSection>
       {declaredHeaders.length > 0 && (
         <ExplanationSection title="What it declares">
-          {declaredHeaders.map(([name, value]) => (
-            <div key={name} class="declared">
-              <span class="mono header-name">{name}</span> <span class="mono">{typeof value === "string" ? value : value.join(", ")}</span>
-            </div>
-          ))}
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-mono text-xs">
+            {declaredHeaders.map(([name, value]) => (
+              <div key={name} className="contents">
+                <dt className="text-muted-foreground">{name}</dt>
+                <dd>{typeof value === "string" ? value : value.join(", ")}</dd>
+              </div>
+            ))}
+          </dl>
         </ExplanationSection>
       )}
       {(useMixins.length > 0 || rationale !== undefined || unresolvedRationale !== undefined) && (
         <ExplanationSection title="What it pulls in">
           {useMixins.map((one) => (
             <div key={one.data.identity}>
-              {linkTo(one)} <span class="quiet">lends its body</span>
+              {linkTo(one)} <span className="text-muted-foreground">lends its body</span>
             </div>
           ))}
           {rationale !== undefined && (
             <div>
-              {linkTo(rationale)} <span class="quiet">the reasoning it cites</span>
+              {linkTo(rationale)} <span className="text-muted-foreground">the reasoning it cites</span>
             </div>
           )}
           {unresolvedRationale !== undefined && (
-            <div>
-              <span class="mono bad">{unresolvedRationale}</span> <span class="bad">(does not resolve)</span>
+            <div className="text-destructive">
+              <span className="font-mono">{unresolvedRationale}</span> (does not resolve)
             </div>
           )}
         </ExplanationSection>
@@ -109,13 +95,13 @@ export function Explanation({ identity, onExplain }: { identity: string; onExpla
       )}
       <ExplanationSection title="Tested by">
         {testCases.length === 0 ? (
-          <span class="quiet">No test case names it.</span>
+          <span className="text-muted-foreground">No test case names it.</span>
         ) : (
           testCases.map(([testFile, situations]) => (
-            <div key={testFile} class="cases">
-              <span class="mono">{testFile}</span>
+            <div key={testFile}>
+              <span className="font-mono text-xs">{testFile}</span>
               {situations.map((situation) => (
-                <div key={situation} class="mono case">
+                <div key={situation} className="pl-3 font-mono text-xs">
                   {situation}
                 </div>
               ))}
@@ -124,18 +110,19 @@ export function Explanation({ identity, onExplain }: { identity: string; onExpla
         )}
       </ExplanationSection>
       <ExplanationSection title="File">
-        <span class="mono">{file}</span> <span class="quiet">in the {scope} layer</span>
+        <span className="font-mono text-xs">{file}</span> <span className="text-muted-foreground">in the {scope} layer</span>
       </ExplanationSection>
-    </>
+    </div>
   );
 }
 
-/** One titled part of the explanation. */
-function ExplanationSection({ title, children }: { title: string; children: ComponentChildren }) {
+/** One titled part of the explanation, a region named by its title. */
+function ExplanationSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div class="xsec">
-      <div class="xsec-t">{title}</div>
-      <div class="xsec-b">{children}</div>
-    </div>
+    <section aria-label={title} className="space-y-1">
+      <Separator />
+      <h3 className="pt-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">{title}</h3>
+      <div className="text-sm">{children}</div>
+    </section>
   );
 }

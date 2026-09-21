@@ -19,8 +19,11 @@ export default defineConfig([
     platform: "browser",
     target: "es2022",
     tsconfig: `${page}/tsconfig.json`,
-    // A browser reads no node_modules: preact and the rest are bundled in.
+    // A browser reads no node_modules: react and the rest are bundled in, the
+    // production build of each.
     noExternal: [/./],
+    define: { "process.env.NODE_ENV": '"production"' },
+    minify: true,
     outDir: "dist/portal",
     clean: true,
     onSuccess: () => copyFile(`${page}/index.html`, "dist/portal/index.html"),
