@@ -162,9 +162,9 @@ export class CharterAuthoring implements ForManagingCharter {
   }
 
   /**
-   * Which file declares one identity, which layer it arrived in, the mixins it
-   * uses and the corpus it cites, what uses or cites it, and the situations this
-   * repository wrote down about it (FR-014, FR-017).
+   * Which file declares one identity, which layer it arrived in, when it comes
+   * up, the mixins it uses and the corpus it cites, what uses or cites it, and
+   * the situations this repository wrote down about it (FR-014, FR-017).
    *
    * The charter is asked, not searched here: one identity space covers every
    * layer, and which file answers to a name, and which names one primitive
@@ -217,6 +217,9 @@ export class CharterAuthoring implements ForManagingCharter {
 
     return explanationOutcomeDTO(
       declared,
+      // When it comes up is its kind's to say, in the words `cw kinds` says it
+      // in, so it is read off the class that reads the kind (FR-029).
+      PRIMITIVE_CLASSES.find((one) => one.kind === declared.primitive.kind)!.activatesWhen,
       charter.mixinsOf(declared),
       charter.rationaleOf(declared),
       charter.hostsOf(declared),

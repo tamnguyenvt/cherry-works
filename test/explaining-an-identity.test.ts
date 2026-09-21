@@ -9,6 +9,7 @@ import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 
 const repo = "/repo";
 
@@ -78,8 +79,37 @@ test("an identity is traced in one command to the file that declares it", async 
     "guide:no-any  What no-any is for.",
     "  .cw/charter/guide/no-any.md",
     "  authored in this repository",
+    "  comes up when a touched file matches one of its `globs`, or every turn where globs are not specified",
     "",
   ].join("\n"));
+});
+
+test("an explanation says when the primitive comes up, in the words its kind says it in", async () => {
+  const kinds = await run(charter, ["kinds"]);
+  const sensor = await run(
+    { [new URL("sensor/no-secrets.md", root).href]: primitive("sensor", "no-secrets", ["signal: PreToolUse", 'run: "pnpm test"']) },
+    ["explain", "sensor:no-secrets"],
+  );
+
+  const activatesWhen = /^sensor {2}(.+)$/m.exec(kinds.results)?.[1];
+  assert.ok(activatesWhen);
+  assert.ok(sensor.results.split("\n").includes(`  comes up when ${activatesWhen}`));
+});
+
+test("what explaining finds reaches a driver as its DTO, saying when the primitive comes up and the rationale it cites", async () => {
+  const readers = new InMemoryFileReaders({
+    [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", ["rationale: corpus:gone"]),
+  });
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryVCS());
+
+  // Sent and read back, the way the portal's page will read it.
+  const explanationOutcomeDTO = OutcomeDTOs.ExplanationOutcome.parse(
+    JSON.parse(JSON.stringify(await charterAuthoringApp.explain("guide:no-any"))),
+  );
+
+  assert.equal(explanationOutcomeDTO.data.activatesWhen, "a touched file matches one of its `globs`, or every turn where globs are not specified");
+  assert.equal(explanationOutcomeDTO.data.rationale, undefined);
+  assert.equal(explanationOutcomeDTO.data.scopedPrimitive.data.headers.rationale, "corpus:gone");
 });
 
 test("a vendored identity is named the same way, and says which layer it came from", async () => {
@@ -118,14 +148,14 @@ test("an explanation says what uses a mixin and what cites a corpus", async () =
   assert.match(corpus.results, /^ {2}rationale of guide:no-any$/m);
 });
 
-test("a rationale citing a corpus the charter does not hold is left out", async () => {
+test("a rationale citing a corpus the charter does not hold is named, and marked as not resolving", async () => {
   const { code, results } = await run(
     { [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", ["rationale: corpus:gone"]) },
     ["explain", "guide:no-any"],
   );
 
   assert.equal(code, EXIT_OK);
-  assert.doesNotMatch(results, /rationale/);
+  assert.match(results, /^ {2}rationale corpus:gone \(does not resolve\)$/m);
 });
 
 /** One test file, written the way an author writes it, in the folder tests are

@@ -30,14 +30,15 @@ const doctorOutcome = dto(
   }),
 );
 
-/** What explaining one primitive found (FR-014, FR-017): the primitive, the
- *  mixins it uses and the corpus it cites, what uses or cites it, and the test
- *  cases that name it. A rationale it cites and this charter does not hold is
- *  left out here and read off the primitive's own headers. */
+/** What explaining one primitive found (FR-014, FR-017): the primitive, when
+ *  it comes up, the mixins it uses and the corpus it cites, what uses or cites
+ *  it, and the test cases that name it. A rationale it cites and this charter
+ *  does not hold is left out here and read off the primitive's own headers. */
 const explanationOutcome = dto(
   "ExplanationOutcome",
   z.object({
     scopedPrimitive: DataDTOs.ScopedPrimitive,
+    activatesWhen: z.string(),
     useMixins: z.array(DataDTOs.ScopedPrimitive).readonly(),
     rationale: DataDTOs.ScopedPrimitive.optional(),
     hosts: z.array(DataDTOs.ScopedPrimitive).readonly(),

@@ -226,7 +226,7 @@ Asked of it, and derived rather than held: `allFaultsByFiles`, every fault under
 the file that has to change — the faults of reading, and `compositeFaultsByFiles`,
 what is wrong only once the files are read together (a second claim on an
 identity, a mixin nothing answers to, a mixin that does not reach its host, a
-rationale no corpus answers to, the warnings of [§6.2](#62-the-four-warnings-fr-014)). Also `primitiveById`,
+rationale no corpus answers to, the warnings of [§6.1](#61-the-three-warnings-fr-014)). Also `primitiveById`,
 `mixins`, `corpora`, and the relations `mixinsOf`, `rationaleOf`, `hostsOf` and
 `citersOf` ([§13](#13-explanation-fr-029)). The first claim on an identity is the one `primitiveById`
 keeps; the second is the file a collision is filed under.
@@ -295,30 +295,17 @@ that kind's own headers, and one list of them. Nothing of it is kept on disk
 **Invariant**: the body names no header of any kind and restates no kind's
 requirements ([FR-097](spec.md#fr-097)). What it says instead is which command to ask.
 
-## 6. Agent context and validation warnings
+## 6. Validation warnings
 
-### 6.1 Agent context (FR-113)
+### 6.1 The three warnings (FR-014)
 
-A value derived from a primitive's headers, never declared.
-
-| Value | When |
-|---|---|
-| `expensive` | the whole body is put into the main agent's context in every session: a guide that declares no `globs` |
-| `cheap` | otherwise |
-
-### 6.2 The four warnings (FR-014)
-
-Four faults of severity `warn`, each filed under a file of the charter:
+Three faults of severity `warn`, each filed under a file of the charter:
 
 | Warning | Filed under |
 |---|---|
 | a corpus no primitive cites | the corpus |
 | a mixin no primitive names | the mixin |
-| more than four primitives with an `expensive` agent context | the charter folder, since the fault is about the charter and no one file of it |
 | a guide, sensor or posture no test case names | that primitive |
-
-The threshold of four is a named constant in the domain, with its reason written
-beside it (spec Assumptions).
 
 ## 7. Catalogues (FR-025 – FR-028)
 
@@ -601,7 +588,6 @@ What the engine says about one identity: `OutcomeDTOs.ExplanationOutcome`.
 | `citers` | the primitives that cite it, where it is a corpus |
 | `testCasesByFile` | every case naming the identity, by its situation, under its test file |
 | activates when | when it comes up: its kind's `activatesWhen` |
-| agent context | `expensive` or `cheap` ([§6.1](#61-agent-context-fr-113)) |
 
 A mixin named and not resolved is likewise read off the primitive's own `mixins`
 header. Every identity in an explanation is itself explainable ([FR-116](spec.md#fr-116)). The last
@@ -655,5 +641,3 @@ only in the page and is gone when saved or cancelled.
 | rationale | the corpus it cites, chosen from the charter's corpus |
 | body | markdown, possibly empty |
 | revision | for an existing primitive, the revision it was opened at ([§15.1](#151-opened-primitive-fr-075-fr-078)) |
-
-There is no agent-context field: agent context is derived ([§6.1](#61-agent-context-fr-113)).

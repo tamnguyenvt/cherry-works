@@ -345,7 +345,7 @@ file. What is left are the questions no single file answers, asked by
 - a mixin named that no layer holds ([FR-007](spec.md#fr-007));
 - a mixin whose files neither cover nor are covered by its host's ([§5.2](#52-mixins-fr-006-fr-007));
 - a `rationale` citing no corpus the charter holds, as a `warn` ([FR-005](spec.md#fr-005));
-- the four warnings of [§4.4](#44-the-four-validation-warnings-fr-014).
+- the three warnings of [§4.4](#44-the-three-validation-warnings-fr-014).
 
 `allFaultsByFiles` is the two together, the faults of reading and of reading
 together, under the file that has to change. A fault of severity `error` stops
@@ -356,22 +356,17 @@ errors back rather than acting on a charter that does not hold ([FR-040](spec.md
 Validation is no command of its own ([FR-013](spec.md#fr-013)). It is a private step of
 `CharterAuthoring`, and `doctor` is where its whole report is read ([§10.1](#101-doctor-fr-013-fr-014-fr-080-fr-081)).
 
-### 4.4 The four validation warnings (FR-014)
+### 4.4 The three validation warnings (FR-014)
 
-The four warnings and the file each is filed under are data-model [§6.2](data-model.md#62-the-four-warnings-fr-014). The
-first three — a corpus nobody cites, a mixin nobody lends from, more than four
-primitives with an `expensive` agent context — are raised in
-`compositeFaultsByFiles`, each a `warn`. Agent context is read off the primitive
-(data-model [§6.1](data-model.md#61-agent-context-fr-113)), never declared.
+The three warnings and the file each is filed under are data-model [§6.1](data-model.md#61-the-three-warnings-fr-014). The
+first two — a corpus nobody cites, a mixin nobody lends from — are raised in
+`compositeFaultsByFiles`, each a `warn`.
 
-The fourth, a guide, sensor or posture that no test case names, needs the tests.
+The third, a guide, sensor or posture that no test case names, needs the tests.
 So validation reads `.cw/test/` beside the charter and the settings, and a
 function beside `runSuite` in `testService` answers it. A test file that does
 not read is skipped for this question — `cw test` is where it is named — so a
 broken test file does not also flood validation.
-
-The threshold of four is a constant in the domain with its reason written beside
-it (spec Assumptions).
 
 ## 5. Identity and layers
 
@@ -808,7 +803,7 @@ name it. The relations are asked of `CharterRoot` — `mixinsOf`, `rationaleOf`,
 `loadTestSuites` and matched by each case's own `activatedIdentity`, each named by
 the situation `cw test` reports it under; a test file that does not read names
 nothing here. When the primitive comes up is read off its kind's
-`activatesWhen`, and its agent context off its headers (data-model [§6.1](data-model.md#61-agent-context-fr-113)).
+`activatesWhen`.
 `cw explain` prints every relation; the portal opens each identity in it as its
 own explanation.
 
@@ -1002,7 +997,11 @@ component that owns it; Preact never renders inside it. What the mockup computes
 in the browser — the faults, a case's outcome, the doctor report, the build plan,
 the explain relations — is exactly what the engine answers, and the page shows
 what comes back. The mockup's seed data is test data for the views, not a model
-of the charter.
+of the charter, and the rules it computes by are placeholders: when a primitive
+comes up is its kind's `activatesWhen`, and what a kind requires is its contract
+([FR-113](spec.md#fr-113)). Where the two differ the engine is right — a guide declaring no
+`globs` is valid and comes up every turn, though the mockup reports it as an
+error.
 
 The repository view lists every catalogue entry, a chip per kind from `kinds()`
 with its count, so the page names no kind of its own and a kind nothing was
@@ -1013,8 +1012,7 @@ layer.
 The form for a primitive is built from `listPrimitiveRequirements`: one row per
 header in its shape — a box per entry for a list, a choice for a closed set —
 then the description, the mixins, and the rationale offering the charter's
-corpus ([FR-117](spec.md#fr-117), [FR-118](spec.md#fr-118)). There is no agent-context switch: it follows from the
-headers. Kind and id are chosen on a new primitive, and shown and locked on an
+corpus ([FR-117](spec.md#fr-117), [FR-118](spec.md#fr-118)). Kind and id are chosen on a new primitive, and shown and locked on an
 existing one ([FR-075](spec.md#fr-075)).
 
 ## 13. The command line (FR-093 – FR-095, FR-109)
@@ -1584,6 +1582,32 @@ the page has a port answer to show. Each change is held to [SC-026](spec.md#sc-0
 The cases naming the identity, matched by each case's `activatedIdentity` and
 named by its situation; `ExplainCommand` prints every relation ([§10.2](#102-explain-fr-029-fr-116)).
 
+What was already there when the task opened: `explain` reads the test files and
+answers `testCasesByFile`, and `cw explain` prints each case as `pinned down by
+<file>: <situation>`. What [FR-029](spec.md#fr-029) still asks of the explanation, and this task
+adds on both surfaces — the port's `ExplanationOutcome`, which the portal will
+read in [T2.008](tasks/002-charter-portal.md#t2.008), and `cw explain`:
+
+- **When it comes up.** `ExplanationOutcome` carries `activatesWhen`, the
+  primitive's kind's own `activatesWhen`; `cw explain` prints it as `comes up
+  when <activatesWhen>`.
+- **A rationale that does not resolve, marked.** A corpus the charter does not
+  hold stays out of `rationale` and is read off the primitive's own `rationale`
+  header, which `scopedPrimitive` already carries (data-model [§13](data-model.md#13-explanation-fr-029)). `cw explain`
+  prints it as `rationale <identity> (does not resolve)`, the mockup's words,
+  rather than leaving it out.
+
+Acceptance:
+- Every kind's explanation prints `comes up when` followed by that kind's
+  `activatesWhen`, the same text `cw kinds` prints.
+- A primitive citing a corpus the charter does not hold still explains, exit 0,
+  and prints its rationale marked `(does not resolve)`.
+- `ExplanationOutcome` parses with its schema carrying `activatesWhen`.
+- The test-case lines stay as they are.
+
+Not in this task: the explanation route and the modal ([T2.008](tasks/002-charter-portal.md#t2.008)), and a mixin that does not resolve — that is
+an error, so a charter holding one explains nothing and is sent to `cw doctor`.
+
 #### 17.2.2 T2.002 — The first routes
 
 `GET /api/charter/root/faults`, sending the `faultsByFile` of
@@ -1680,13 +1704,13 @@ reader, printing what it printed before. It landed with [T035](tasks/001-charter
 four answers are unwell is worked out behind the port, and vendor drift is asked
 of `service/vendorRepo.ts` rather than of `ForVendoringCharters` ([§10.1](#101-doctor-fr-013-fr-014-fr-080-fr-081)).
 
-#### 17.2.20 T2.020 — The three warnings the charter alone answers
+#### 17.2.20 T2.020 — The two warnings the charter alone answers
 
-The first three warnings of [§4.4](#44-the-four-validation-warnings-fr-014), the threshold a named constant with its reason.
+The first two warnings of [§4.4](#44-the-three-validation-warnings-fr-014).
 
 #### 17.2.21 T2.021 — The warning for a primitive no case names
 
-The fourth warning of [§4.4](#44-the-four-validation-warnings-fr-014), with validation reading `.cw/test/`.
+The third warning of [§4.4](#44-the-three-validation-warnings-fr-014), with validation reading `.cw/test/`.
 
 #### 17.2.22 T2.022 — Preview and build from the header
 

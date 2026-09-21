@@ -59,10 +59,11 @@ export function doctorOutcomeDTO(
 }
 
 /** What explaining a primitive found: the primitive as the whole charter sees
- *  it, the mixins it uses and the corpus it cites, what uses or cites it, and
- *  the test cases that name it (FR-014, FR-017). */
+ *  it, when its kind comes up, the mixins it uses and the corpus it cites,
+ *  what uses or cites it, and the test cases that name it (FR-014, FR-017). */
 export function explanationOutcomeDTO(
   scopedPrimitive: ScopedPrimitive,
+  activatesWhen: string,
   useMixins: readonly ScopedPrimitive[],
   rationale: ScopedPrimitive | undefined,
   hosts: readonly ScopedPrimitive[],
@@ -73,6 +74,7 @@ export function explanationOutcomeDTO(
     type: "ExplanationOutcome",
     data: {
       scopedPrimitive: scopedPrimitiveDTO(scopedPrimitive),
+      activatesWhen,
       useMixins: useMixins.map(scopedPrimitiveDTO),
       ...(rationale === undefined ? {} : { rationale: scopedPrimitiveDTO(rationale) }),
       hosts: hosts.map(scopedPrimitiveDTO),

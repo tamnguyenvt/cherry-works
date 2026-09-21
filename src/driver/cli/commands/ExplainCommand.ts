@@ -23,9 +23,9 @@ const OPTIONS = {
  * (FR-017, SC-006).
  *
  * One command and one answer: what the primitive is for, the file it was
- * authored in, which layer that file arrived in, the mixins it uses and the
- * corpus it cites, what uses or cites it, and the situations this repository
- * wrote down about it (FR-014). The identity is passed on
+ * authored in, which layer that file arrived in, when it comes up, the mixins
+ * it uses and the corpus it cites, what uses or cites it, and the situations
+ * this repository wrote down about it (FR-014). The identity is passed on
  * as it was typed — which names this charter answers to is the charter's
  * business, and one it does not comes back as a fault the command line reports
  * the way it reports any other.
@@ -51,15 +51,25 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
       };
     }
 
-    const { scopedPrimitive, useMixins, rationale, hosts, citers, testCasesByFile } = explanationOutcomeDTO.data;
+    const { scopedPrimitive, activatesWhen, useMixins, rationale, hosts, citers, testCasesByFile } = explanationOutcomeDTO.data;
+    // A corpus the charter does not hold is not in `rationale`: what was cited
+    // is read off the primitive's own header, and said as not resolving rather
+    // than left out, since it is a warning and the explanation still stands
+    // (FR-029).
+    const citedRationale = scopedPrimitive.data.headers.rationale;
     return {
       code: EXIT_OK,
       result: [
         `${scopedPrimitive.data.identity}  ${scopedPrimitive.data.description}`,
         `  ${scopedPrimitive.data.file}`,
         `  ${layer(scopedPrimitive.data.scope)}`,
+        `  comes up when ${activatesWhen}`,
         ...useMixins.map(({ data }) => `  uses mixin ${data.identity}`),
-        ...(rationale === undefined ? [] : [`  rationale ${rationale.data.identity}`]),
+        ...(rationale !== undefined
+          ? [`  rationale ${rationale.data.identity}`]
+          : citedRationale !== undefined
+            ? [`  rationale ${String(citedRationale)} (does not resolve)`]
+            : []),
         ...hosts.map(({ data }) => `  mixin of ${data.identity}`),
         ...citers.map(({ data }) => `  rationale of ${data.identity}`),
         ...Object.entries(testCasesByFile.data).flatMap(([file, situations]) =>
