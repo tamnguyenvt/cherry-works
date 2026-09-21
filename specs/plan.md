@@ -1614,6 +1614,30 @@ an error, so a charter holding one explains nothing and is sent to `cw doctor`.
 `OutcomeDTOs.DoctorOutcome`, and `GET /api/charter/root/primitives`, sending
 `DataDTOs.Catalogue` as it is, with the statuses of [§12.2](#122-the-route-table).
 
+What was already there when the task opened: both routes are chained in
+`routes.ts`, beside `GET /api/definitions/kinds`, and
+`reading-the-charter-over-http.test.ts` asks each through the app's own
+`request`. The task holds them against [§12.2](#122-the-route-table) and adds nothing the table does not ask
+for.
+
+Acceptance:
+- `GET /api/charter/root/primitives` over a charter that holds answers `200`
+  and a `DataDTOs.Catalogue` that parses with its schema, every layer's entries
+  in it, the builtin one included.
+- The same route over a charter holding an error answers `422` and a
+  `DataDTOs.FaultsByFile` naming the file that has to change ([FR-115](spec.md#fr-115)).
+- `GET /api/charter/root/faults` answers `200` and a `DataDTOs.FaultsByFile`
+  whether the charter holds or not: what is wrong is the answer this route is
+  for, not a refusal. Over a charter that holds, `files` is empty.
+- A raised `Fault` is `422` with its `DataDTOs.Fault`; anything else is `500`
+  and its message, logged to the terminal.
+- Every route reads the repository afresh; nothing of the charter is held
+  between calls ([FR-110](spec.md#fr-110)).
+
+Not in this task: the page that reads these routes ([T2.003](tasks/002-charter-portal.md#t2.003) –
+[T2.005](tasks/002-charter-portal.md#t2.005)), the vendor layer shown on its own ([T2.006](tasks/002-charter-portal.md#t2.006)), and the
+primitive routes by `:kind/:id` ([T2.015](tasks/002-charter-portal.md#t2.015)).
+
 #### 17.2.3 T2.003 — The page shell
 
 The page shell from the mockup ([§12.5](#125-the-page)) — the header with the repository, the

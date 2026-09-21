@@ -21,8 +21,7 @@ const guide = (id: string, headers: readonly string[] = []) => primitive("guide"
 /** The routes over one repository held in memory, asked the way the page asks
  *  them: the app's own `request`, so what is tested is the route and its status
  *  rather than the guards the server wraps it in (plan §6, tested there). */
-const portal = (files: Readonly<Record<string, string>>) => {
-  const held = new InMemoryFileReaders(files);
+const portal = (files: Readonly<Record<string, string>>, held = new InMemoryFileReaders(files)) => {
   const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS());
   return api(charterAuthoringApp);
 };
@@ -73,4 +72,41 @@ test("what validating found is sent as it stands, a charter that holds having no
   assert.equal(wrong.status, 200);
   const { data } = DataDTOs.FaultsByFile.parse(await wrong.json());
   assert.ok(data.files[".cw/charter/guide/no-any.md"]?.some(({ data: { message } }) => /the mixin "nowhere"/.test(message)));
+});
+
+test("the charter is read again on every call, so what changed on disk is what the next call sends (FR-110)", async () => {
+  const held = new InMemoryFileReaders({ [at("guide/no-any.md")]: guide("no-any") });
+  const portalRoutes = portal({}, held);
+  await portalRoutes.request("/charter/root/primitives");
+
+  held.write(new URL(at("corpus/why.md")), primitive("corpus", "why"));
+  const answer = await portalRoutes.request("/charter/root/primitives");
+
+  const { data } = DataDTOs.Catalogue.parse(await answer.json());
+  assert.ok(data.entries.some((one) => one.data.identity === "corpus:why"));
+});
+
+test("a fault raised rather than given back is sent as a fault, under no file (plan §12.2)", async () => {
+  // Settings that do not read leave nothing to validate against, so reading
+  // them raises: there is no charter file it is wrong with.
+  const answer = await portal({ "file:///repo/.cw/settings.json": "not json" }).request("/charter/root/primitives");
+
+  assert.equal(answer.status, 422);
+  const { type, data } = DataDTOs.Fault.parse(await answer.json());
+  assert.equal(type, "Fault");
+  assert.match(data.message, /not JSON/);
+});
+
+test("what the engine never meant to say is a 500 with its message, the whole of it logged (plan §12.2)", async (t) => {
+  const consoleErrorMock = t.mock.method(console, "error", () => {});
+  const held = new InMemoryFileReaders();
+  t.mock.method(held, "readFilesRecursively", async () => {
+    throw new Error("The disk went away.");
+  });
+
+  const answer = await portal({}, held).request("/charter/root/primitives");
+
+  assert.equal(answer.status, 500);
+  assert.equal(await answer.text(), "The disk went away.");
+  assert.equal(consoleErrorMock.mock.callCount(), 1);
 });
