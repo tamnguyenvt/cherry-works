@@ -1,6 +1,6 @@
 # Tasks, phase 001: Charter, Engine and Agent Authoring
 
-Everything here has landed. Each task was one reviewable change held to [SC-026](../spec.md#sc-026),
+Everything here has landed. Each task was one reviewable change,
 leaving the repository building and green. The design behind each task is
 plan [§17.1](../plan.md#171-phase-001-the-charter-its-engine-and-agent-authoring), keyed by task id.
 

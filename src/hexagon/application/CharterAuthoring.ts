@@ -16,6 +16,7 @@ import {
   primitiveKindsDTO,
   primitiveRequirementsDTO,
   scopedPrimitiveDTO,
+  scopedPrimitivesDTO,
   testRunReportDTO,
   workspaceSettingsDTO,
 } from "./dtos.js";
@@ -159,6 +160,18 @@ export class CharterAuthoring implements ForManagingCharter {
 
     const { catalogue } = compile(charter, []);
     return catalogueDTO(kind === undefined ? catalogue : catalogue.filterByKind(kind));
+  }
+
+  /** Every primitive the charter read, or those mentioning a word, each as the
+   *  whole charter sees it (FR-112, FR-114). Whether one mentions the word is
+   *  the primitive's own to say. */
+  async fullList(matching?: string): Promise<DataDTOs.ScopedPrimitives | DataDTOs.FaultsByFile> {
+    const [charter, , faultsByFiles] = await this.#read();
+    if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
+
+    return scopedPrimitivesDTO(
+      matching === undefined ? charter.primitives : charter.primitives.filter((one) => one.mentions(matching)),
+    );
   }
 
   /**

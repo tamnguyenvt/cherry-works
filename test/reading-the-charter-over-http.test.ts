@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { api } from "../src/driver/portal/routes.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
+import { DataDTOs, OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -26,19 +26,65 @@ const portal = (files: Readonly<Record<string, string>>, held = new InMemoryFile
   return api(charterAuthoringApp);
 };
 
-test("the listing is sent as the catalogue the charter compiles to (FR-009)", async () => {
+test("the listing is sent as every primitive the charter read, each under its layer (FR-112)", async () => {
   const answer = await portal({ [at("guide/no-any.md")]: guide("no-any"), [at("corpus/why.md")]: primitive("corpus", "why") }).request(
     "/charter/root/primitives",
   );
 
   assert.equal(answer.status, 200);
   // Parsed by its schema, which is how the page reads it.
-  const { type, data } = DataDTOs.Catalogue.parse(await answer.json());
-  assert.equal(type, "Catalogue");
+  const { type, data } = DataDTOs.ScopedPrimitives.parse(await answer.json());
+  assert.equal(type, "ScopedPrimitives");
   assert.deepEqual(
-    data.entries.map((one) => one.data.identity),
-    ["corpus:why", "guide:no-any", "skill:cw-author"],
+    data.primitives.map((one) => [one.data.identity, one.data.scope]),
+    [
+      ["corpus:why", "repo"],
+      ["guide:no-any", "repo"],
+      ["skill:cw-author", "builtin"],
+    ],
   );
+});
+
+test("a word sent with the listing narrows it to what mentions the word, and an empty one narrows nothing (FR-114)", async () => {
+  const portalRoutes = portal({ [at("guide/no-any.md")]: guide("no-any"), [at("corpus/why.md")]: primitive("corpus", "why") });
+
+  const narrowed = DataDTOs.ScopedPrimitives.parse(await (await portalRoutes.request("/charter/root/primitives?matching=WHY")).json());
+  assert.deepEqual(
+    narrowed.data.primitives.map((one) => one.data.identity),
+    ["corpus:why"],
+  );
+
+  const unnarrowed = DataDTOs.ScopedPrimitives.parse(await (await portalRoutes.request("/charter/root/primitives?matching=")).json());
+  assert.equal(unnarrowed.data.primitives.length, 3);
+});
+
+test("one primitive is explained by kind and id, with when it comes up (FR-029, FR-116)", async () => {
+  const answer = await portal({ [at("guide/no-any.md")]: guide("no-any", ["rationale: corpus:why"]), [at("corpus/why.md")]: primitive("corpus", "why") }).request(
+    "/charter/root/primitives/guide/no-any/explanation",
+  );
+
+  assert.equal(answer.status, 200);
+  const { data } = OutcomeDTOs.ExplanationOutcome.parse(await answer.json());
+  assert.equal(data.scopedPrimitive.data.identity, "guide:no-any");
+  assert.equal(data.activatesWhen, GuidePrimitive.activatesWhen);
+  assert.equal(data.rationale?.data.identity, "corpus:why");
+});
+
+test("an identity the charter holds nothing of is explained as a fault under no file", async () => {
+  const answer = await portal({}).request("/charter/root/primitives/guide/nowhere/explanation");
+
+  assert.equal(answer.status, 422);
+  const { data } = DataDTOs.Fault.parse(await answer.json());
+  assert.match(data.message, /holds no "guide:nowhere"/);
+});
+
+test("a charter with an error explains nothing and hands back what is wrong under its file", async () => {
+  const answer = await portal({ [at("guide/no-any.md")]: guide("no-any", ['mixins: ["nowhere"]']) }).request(
+    "/charter/root/primitives/guide/no-any/explanation",
+  );
+
+  assert.equal(answer.status, 422);
+  assert.deepEqual(Object.keys(DataDTOs.FaultsByFile.parse(await answer.json()).data.files), [".cw/charter/guide/no-any.md"]);
 });
 
 test("every kind is sent with the line saying when it comes up, whatever the charter holds (FR-010)", async () => {
@@ -82,8 +128,8 @@ test("the charter is read again on every call, so what changed on disk is what t
   held.write(new URL(at("corpus/why.md")), primitive("corpus", "why"));
   const answer = await portalRoutes.request("/charter/root/primitives");
 
-  const { data } = DataDTOs.Catalogue.parse(await answer.json());
-  assert.ok(data.entries.some((one) => one.data.identity === "corpus:why"));
+  const { data } = DataDTOs.ScopedPrimitives.parse(await answer.json());
+  assert.ok(data.primitives.some((one) => one.data.identity === "corpus:why"));
 });
 
 test("a fault raised rather than given back is sent as a fault, under no file (plan §12.2)", async () => {

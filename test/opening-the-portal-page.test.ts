@@ -53,13 +53,11 @@ test("the three tabs are shown, the repository charter first, and the one clicke
   });
 });
 
-test("the vendor and test sheets hold nothing yet, since no view is mounted in them", async () => {
+test("the test sheet holds nothing yet, since no view is mounted in it", async () => {
   await inTheBrowser({}, async (page) => {
-    for (const tabName of ["Vendor", "Test"]) {
-      await page.getByRole("button", { name: tabName, exact: true }).click();
+    await page.getByRole("button", { name: "Test", exact: true }).click();
 
-      assert.equal(await page.locator(".sheet").innerHTML(), "");
-    }
+    assert.equal(await page.locator(".sheet").innerHTML(), "");
   });
 });
 

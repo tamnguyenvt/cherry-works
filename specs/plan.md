@@ -905,7 +905,7 @@ encoding.
 | Method and path | Port call | Spec |
 |---|---|---|
 | `GET /api/charter/root/faults` | `ForManagingCharter.doctor()`, its `faultsByFile` | [FR-115](spec.md#fr-115) |
-| `GET /api/charter/root/primitives` | `list()` | [FR-112](spec.md#fr-112) – [FR-114](spec.md#fr-114) |
+| `GET /api/charter/root/primitives` | `fullList(matching?)` | [FR-112](spec.md#fr-112) – [FR-114](spec.md#fr-114) |
 | `POST /api/charter/root/primitives` | `add(kind, id, headers, body)` | [FR-117](spec.md#fr-117) |
 | `GET /api/charter/root/primitives/:kind/:id` | `open(identity)` | [FR-075](spec.md#fr-075), [FR-078](spec.md#fr-078) |
 | `PUT /api/charter/root/primitives/:kind/:id` | `rewrite(identity, headers, body, revision)` | [FR-075](spec.md#fr-075), [FR-078](spec.md#fr-078) |
@@ -1169,9 +1169,9 @@ its reader to `catalog.min.json` first ([§6.3](#63-the-hosts-entry-file-fr-035-
 
 What each task settled beyond the sections above: the modules it touched, how it
 is tested, and how it landed. Keyed by task id. The task lists, with what each
-task cites and depends on, are in `specs/tasks/`. Every change is held to the
-size of [SC-026](spec.md#sc-026) and leaves the repository building and green; a change need not
-be user-visible, and the independently testable unit is the story.
+task cites and depends on, are in `specs/tasks/`. Every change leaves the
+repository building and green. In phase 001 a change was one task; from phase
+002 it is one story, its tasks the steps inside it ([SC-026](spec.md#sc-026)).
 
 ### 17.1 Phase 001: the charter, its engine and agent authoring
 
@@ -1575,7 +1575,7 @@ that it says whose it is and what it does not cover ([FR-099](spec.md#fr-099), [
 The list is [tasks/002-charter-portal.md](./tasks/002-charter-portal.md). The
 stories go in spec order: [Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), [Story 6](spec.md#user-story-6---author-edit-and-delete-a-primitive-without-looking-anything-up-priority-p2), [Story 7](spec.md#user-story-7---build-preview-and-check-the-repositorys-health-priority-p3), [Story 8](spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4) and [Story 9](spec.md#user-story-9---write-run-and-correct-the-self-regression-tests-priority-p5). Within
 a story the engine half lands before the page half, so every change that touches
-the page has a port answer to show. Each change is held to [SC-026](spec.md#sc-026).
+the page has a port answer to show. Each story lands as one change ([SC-026](spec.md#sc-026)).
 
 #### 17.2.1 T2.001 — The test cases naming an identity
 
@@ -1659,7 +1659,7 @@ Acceptance:
   the click that chose from it included.
 - The three tabs are Repo Charter, Vendor and Test, in that order; Repo Charter
   is on when the page opens, and the one clicked is the one on.
-- The Vendor and Test sheets are empty: nothing there calls a route yet.
+- The Test sheet is empty: nothing there calls a route yet. (The Vendor sheet was empty too until [T2.006](tasks/002-charter-portal.md#t2.006) mounted its listing there.)
 - Neither the modal nor the toast is drawn until a view opens it.
 - Every citation in `main.tsx` names this plan's [§12.5](#125-the-page) and [FR-110](spec.md#fr-110), where
   the shell's reasons are, rather than numbers that point elsewhere.
@@ -1678,6 +1678,91 @@ answer every kind under its `activatesWhen`, so the page names no kind of its ow
 ([§9.1](#91-what-a-kind-requires-fr-059-fr-062-fr-063), [§12.5](#125-the-page)). The view asks afresh each time the tab is shown. There is no
 layer filter or label of its own: every catalogue entry is listed with its file,
 and the file names its layer ([§5.3](#53-the-builtin-layer-supplied-rather-than-stored-fr-017--fr-024)).
+
+[Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1) lands as one change, [T2.004](tasks/002-charter-portal.md#t2.004) – [T2.008](tasks/002-charter-portal.md#t2.008) its steps ([SC-026](spec.md#sc-026)). What
+was already there when it opened: `RepoCharter.tsx` in the Repo Charter sheet,
+asking `GET /api/definitions/kinds` and `GET /api/charter/root/primitives` each
+time it is shown, with its chips, `activatesWhen` line, table and empty state
+held by `reading-the-repository-charter.test.ts`; `cw kinds`, `cw list` and
+`cw explain` on the command line.
+
+**The portal lists the charter, not the catalogue.** `list` answers the
+catalogue, which records no layer and only the headers an agent surveys by, so
+neither the vendor layer ([FR-112](spec.md#fr-112)) nor a search over every header ([FR-114](spec.md#fr-114)) can be
+answered from it. `list` and `cw list` stay as they are. Beside `list`,
+`ForManagingCharter` gains `fullList(matching?)`, answering off the charter it
+loaded: `DataDTOs.ScopedPrimitives`, each primitive as the
+`DataDTOs.ScopedPrimitive` `explain` already answers with — its file, its
+`scope` and every header it declared — or `DataDTOs.FaultsByFile` over a
+charter holding an error. `GET /api/charter/root/primitives` answers it in
+place of `list`.
+
+**Search is the engine's.** Given a word, `fullList` keeps a primitive whose
+identity, kind, description, kind's `activatesWhen`, file or any header value
+holds it, ignoring case. `GET /api/charter/root/primitives?matching=<word>`
+asks it; the page filters nothing itself.
+
+Acceptance, the repository view ([T2.004](tasks/002-charter-portal.md#t2.004)):
+- Every kind `kinds()` answers has a chip, in the engine's order, carrying how
+  many primitives of it the tab's layers hold; a kind with none still has its
+  chip and shows its empty state ([Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenarios 1, 6).
+- The line above the table is the shown kind's `activatesWhen`, the text
+  `cw kinds` prints.
+- Each row names the id, the description and the file; a guide's row also its
+  globs and its rationale, and every kind that may name mixins a column for
+  them ([Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenario 2).
+- The Repo Charter tab lists the `repo` and `builtin` scopes; a builtin
+  primitive's file reads `(built into cw)/…`.
+- The view asks again each time its tab is shown ([FR-110](spec.md#fr-110)).
+- `GET /api/charter/root/primitives` answers `200` and a
+  `DataDTOs.ScopedPrimitives` that parses with its schema, every layer in it;
+  `cw list` prints what it printed before.
+
+Acceptance, the faults view ([T2.005](tasks/002-charter-portal.md#t2.005)):
+- Over a charter holding an error, the tab says the engine will not read the
+  charter and shows every file with its faults under it, each fault's message
+  and fix, in place of chips and table ([Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenario 5).
+- The faults are the `DataDTOs.FaultsByFile` the listing route answers `422`
+  with, the ones `cw doctor` prints.
+
+Acceptance, the vendor layer ([T2.006](tasks/002-charter-portal.md#t2.006)):
+- The Vendor tab lists the `vendor` scope with the repository view's chips,
+  line and table, and nothing on it writes.
+- A repository with no vendor shows the empty state of each kind.
+
+Acceptance, search ([T2.007](tasks/002-charter-portal.md#t2.007)):
+- A word typed in the header replaces the tabs with every primitive of every
+  layer the engine keeps for it, each with its identity, kind, description and
+  file, and nothing else ([Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenario 3).
+- A header value only `ScopedPrimitive` carries, such as a sensor's `signal`,
+  is found.
+- Clearing the box returns to the tab that was showing ([Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenario 7).
+
+Acceptance, the explanation ([T2.008](tasks/002-charter-portal.md#t2.008)):
+- `GET /api/charter/root/primitives/:kind/:id/explanation` answers `200` and
+  an `OutcomeDTOs.ExplanationOutcome`; `422` and a `DataDTOs.FaultsByFile` over
+  a charter holding an error; `422` and a `DataDTOs.Fault` for an identity the
+  charter does not hold ([§12.2](#122-the-route-table)).
+- Every row, in every tab and in search, has an Explain button opening the
+  modal on that primitive.
+- The modal shows its kind and description, when it comes up, every header it
+  declared but its id and description — a sensor's `signal` and `run` among
+  them, so what it answers to and runs is read beside its kind's line — the
+  mixins and
+  the rationale it pulls in — a rationale that does not resolve marked
+  `(does not resolve)` — the primitives that lend from or cite it, every test
+  case naming it by its situation under its file, under "Tested by", and its
+  file and layer
+  ([Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenario 4).
+- Every identity in the modal opens that primitive's own explanation ([FR-116](spec.md#fr-116)).
+- `cw explain` prints the same declared headers, one `declares <header>: <value>`
+  line each ([FR-109](spec.md#fr-109)).
+- A guide declaring no globs reads `all patterns` in the listing's globs column.
+- The modal closes by its ×, the overlay and Escape.
+
+Not in this story: each test case's last outcome in the modal, which the page
+holds only once the test view runs the tests ([T2.030](tasks/002-charter-portal.md#t2.030)); the vendor sources
+panel ([T2.026](tasks/002-charter-portal.md#t2.026)); editing from a row ([T2.016](tasks/002-charter-portal.md#t2.016)).
 
 #### 17.2.5 T2.005 — The faults view
 

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { validator } from "hono/validator";
 import { Fault, type ForManagingCharter } from "#hexagon/port/driver/ForManagingCharter.js";
 import { faultDTO } from "#hexagon/application/dtos.js";
 
@@ -27,12 +28,25 @@ export function api(charterAuthoringApp: ForManagingCharter) {
       return c.text(raised.message, 500);
     })
     .get("/charter/root/faults", async (c) => c.json((await charterAuthoringApp.doctor()).data.faultsByFile))
-    .get("/charter/root/primitives", async (c) => {
-      // The whole listing, never one kind of it: whoever is showing it by kind
-      // is counting every kind as well, so a narrowed answer would be a second
-      // call for what the first one already carried.
-      const catalogueDTO = await charterAuthoringApp.list();
-      return catalogueDTO.type === "FaultsByFile" ? c.json(catalogueDTO, 422) : c.json(catalogueDTO);
+    .get(
+      "/charter/root/primitives",
+      // Declared, so the page's call is typed with the word it may send; what a
+      // word matches is the engine's to say.
+      validator("query", ({ matching }): { matching?: string } => (typeof matching === "string" ? { matching } : {})),
+      async (c) => {
+      // Never one kind of it: whoever is showing it by kind is counting every
+      // kind as well, so a narrowed answer would be a second call for what the
+      // first one already carried. A word searched for narrows it, and an empty
+      // box is no word.
+      const scopedPrimitivesDTO = await charterAuthoringApp.fullList(c.req.valid("query").matching || undefined);
+      return scopedPrimitivesDTO.type === "FaultsByFile" ? c.json(scopedPrimitivesDTO, 422) : c.json(scopedPrimitivesDTO);
+    },
+    )
+    .get("/charter/root/primitives/:kind/:id/explanation", async (c) => {
+      // Two segments rather than the identity itself, whose colon would need
+      // encoding in a path (plan §12.2).
+      const explanationOutcomeDTO = await charterAuthoringApp.explain(`${c.req.param("kind")}:${c.req.param("id")}`);
+      return explanationOutcomeDTO.type === "FaultsByFile" ? c.json(explanationOutcomeDTO, 422) : c.json(explanationOutcomeDTO);
     })
     .get("/definitions/kinds", async (c) => c.json(await charterAuthoringApp.kinds()));
 }

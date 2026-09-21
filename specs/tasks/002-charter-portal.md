@@ -1,13 +1,10 @@
 # Tasks, phase 002: Charter Portal
 
-Each task is one reviewable change of ≤ 500 changed lines where the work divides on a seam of its own, and ≤ 1000 where it does not ([SC-026](../spec.md#sc-026)), leaving the repository building and green.
+Each story is one reviewable change, leaving the repository building and green ([SC-026](../spec.md#sc-026)). Its tasks are the steps inside that change, done in the order listed: within a story the engine half comes before the page half. What each task
+settles — modules, tests — is plan [§17.2](../plan.md#172-phase-002-the-charter-portal).
 
-Increments need not be user-visible; the independently-testable unit is the
-story. Within a story the engine half lands before the page half. What each task
-settles — modules, tests, how it lands — is plan [§17.2](../plan.md#172-phase-002-the-charter-portal).
-
-Task ids are `T2.<nnn>`. Each is cut from `002-charter-portal` as
-`task/<id>-<slug>`.
+Task ids are `T2.<nnn>`. A story is cut from `002-charter-portal` as
+`task/story-<n>-<slug>` and squash-merged back as one commit named after the story. [T2.001](#t2.001) – [T2.003](#t2.003) landed one task to a change, before this was so.
 
 Legend: `[P]` = parallelisable with its siblings. "Depends on" names what must land first.
 
@@ -23,11 +20,11 @@ Independent test: see spec [Story 5](../spec.md#user-story-5---see-what-the-char
 ### Portal
 - [x] <a id="t2.002"></a>**T2.002** The first routes: the charter's faults and its primitives. *([FR-112](../spec.md#fr-112), [FR-115](../spec.md#fr-115); plan [§12.2](../plan.md#122-the-route-table), [§17.2.2](../plan.md#1722-t2002--the-first-routes))*
 - [x] <a id="t2.003"></a>**T2.003** The page shell, with no data. *(plan [§12.5](../plan.md#125-the-page), [§17.2.3](../plan.md#1723-t2003--the-page-shell))*
-- [ ] <a id="t2.004"></a>**T2.004** The repository view, with the kinds answered by the engine. *([FR-109](../spec.md#fr-109), [FR-110](../spec.md#fr-110), [FR-112](../spec.md#fr-112), [FR-113](../spec.md#fr-113); [Story 5](../spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1) scenarios 1, 2, 6; plan [§9.4](../plan.md#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079), [§17.2.4](../plan.md#1724-t2004--the-repository-view); data-model [§2.2](../data-model.md#22-primitive-kinds-fr-060-fr-113))* Depends on [T2.002](#t2.002), [T2.003](#t2.003).
-- [ ] <a id="t2.005"></a>**T2.005** [P] The faults view in place of the listing. *([FR-115](../spec.md#fr-115); [Story 5](../spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1) scenario 5; plan [§17.2.5](../plan.md#1725-t2005--the-faults-view))* Depends on [T2.002](#t2.002), [T2.003](#t2.003).
-- [ ] <a id="t2.006"></a>**T2.006** [P] The vendor layer's primitives, read-only. *([FR-112](../spec.md#fr-112); plan [§17.2.6](../plan.md#1726-t2006--the-vendor-layers-primitives))* Depends on [T2.004](#t2.004).
-- [ ] <a id="t2.007"></a>**T2.007** Search across both layers. *([FR-114](../spec.md#fr-114); [Story 5](../spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1) scenarios 3, 7; plan [§17.2.7](../plan.md#1727-t2007--search))* Depends on [T2.004](#t2.004).
-- [ ] <a id="t2.008"></a>**T2.008** The explanation route and the Explain modal. *([FR-029](../spec.md#fr-029), [FR-116](../spec.md#fr-116); [Story 5](../spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1) scenario 4; plan [§17.2.8](../plan.md#1728-t2008--the-explanation-route-and-modal))* Depends on [T2.001](#t2.001), [T2.004](#t2.004).
+- [x] <a id="t2.004"></a>**T2.004** The repository view, with the kinds answered by the engine. *([FR-109](../spec.md#fr-109), [FR-110](../spec.md#fr-110), [FR-112](../spec.md#fr-112), [FR-113](../spec.md#fr-113); [Story 5](../spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1) scenarios 1, 2, 6; plan [§9.4](../plan.md#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079), [§17.2.4](../plan.md#1724-t2004--the-repository-view); data-model [§2.2](../data-model.md#22-primitive-kinds-fr-060-fr-113))* Depends on [T2.002](#t2.002), [T2.003](#t2.003).
+- [x] <a id="t2.005"></a>**T2.005** [P] The faults view in place of the listing. *([FR-115](../spec.md#fr-115); [Story 5](../spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1) scenario 5; plan [§17.2.5](../plan.md#1725-t2005--the-faults-view))* Depends on [T2.002](#t2.002), [T2.003](#t2.003).
+- [x] <a id="t2.006"></a>**T2.006** [P] The vendor layer's primitives, read-only. *([FR-112](../spec.md#fr-112); plan [§17.2.6](../plan.md#1726-t2006--the-vendor-layers-primitives))* Depends on [T2.004](#t2.004).
+- [x] <a id="t2.007"></a>**T2.007** Search across both layers. *([FR-114](../spec.md#fr-114); [Story 5](../spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1) scenarios 3, 7; plan [§17.2.7](../plan.md#1727-t2007--search))* Depends on [T2.004](#t2.004).
+- [x] <a id="t2.008"></a>**T2.008** The explanation route and the Explain modal. *([FR-029](../spec.md#fr-029), [FR-116](../spec.md#fr-116); [Story 5](../spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1) scenario 4; plan [§17.2.8](../plan.md#1728-t2008--the-explanation-route-and-modal))* Depends on [T2.001](#t2.001), [T2.004](#t2.004).
 
 ---
 

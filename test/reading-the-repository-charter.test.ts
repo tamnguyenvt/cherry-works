@@ -46,11 +46,19 @@ test("a guide is listed with what it is for, the file it is in, the globs it mat
   });
 });
 
+test("a guide declaring no globs is listed as matching all patterns, since it comes up every turn", async () => {
+  await inTheBrowser({ [at("guide/everywhere.md")]: primitive("guide", "everywhere") }, async (page) => {
+    await page.locator(".chrow:not(.chhead)").waitFor();
+
+    assert.equal(await page.locator(".chrow:not(.chhead) .cgl").first().innerText(), "all patterns");
+  });
+});
+
 test("a mixin is listed without a column for the mixins it may not name", async () => {
   await inTheBrowser(charter, async (page) => {
     await page.locator(".chip", { hasText: "mixin" }).click();
 
-    assert.deepEqual(await page.locator(".chhead > span").allTextContents(), ["Id", "Description"]);
+    assert.deepEqual(await page.locator(".chhead > span").allTextContents(), ["Id", "Description", ""]);
     assert.equal(await page.locator(".chrow:not(.chhead) .cid").innerText(), "voice");
   });
 });
@@ -77,12 +85,24 @@ test("the charter is read again when the tab is shown again, so a file written m
   });
 });
 
-test("a charter the engine will not read is said to be so, rather than listed as holding nothing", async () => {
+test("a charter the engine will not read shows every fault under its file in place of a listing (FR-115)", async () => {
   await inTheBrowser({ [at("guide/broken.md")]: "not a primitive at all\n" }, async (page) => {
-    assert.equal(
-      await page.locator(".mem-empty").innerText(),
-      "The engine will not read this charter, so there is no listing to show.",
-    );
+    await page.locator(".refused").waitFor();
+
+    assert.equal(await page.locator(".refused b").innerText(), "The engine will not read this charter");
+    assert.deepEqual(await page.locator(".dcrow .dcfile").allInnerTexts(), [".cw/charter/guide/broken.md"]);
+    assert.ok((await page.locator(".dcrow .dcfaults > span").count()) > 0);
     assert.equal(await page.locator(".chip").count(), 0);
+  });
+});
+
+test("the repository's tab lists what was authored here and what the engine brings, and nothing vendored (FR-112)", async () => {
+  const vendored = new URL("guide/small-diffs.md", "file:///repo/.cw/vendor/acme/").href;
+  await inTheBrowser({ ...charter, [vendored]: primitive("guide", "small-diffs") }, async (page) => {
+    await page.locator(".chip.on").waitFor();
+
+    assert.deepEqual(await page.locator(".chrow:not(.chhead) .cid").allInnerTexts(), ["no-any"]);
+    await page.locator(".chip", { hasText: "skill" }).click();
+    assert.deepEqual(await page.locator(".chrow:not(.chhead) .cp").allInnerTexts(), ["(built into cw)/skill/cw-author.md"]);
   });
 });

@@ -80,6 +80,8 @@ test("an identity is traced in one command to the file that declares it", async 
     "  .cw/charter/guide/no-any.md",
     "  authored in this repository",
     "  comes up when a touched file matches one of its `globs`, or every turn where globs are not specified",
+    "  declares tags: types",
+    "  declares globs: src/**/*.ts",
     "",
   ].join("\n"));
 });
@@ -94,6 +96,17 @@ test("an explanation says when the primitive comes up, in the words its kind say
   const activatesWhen = /^sensor {2}(.+)$/m.exec(kinds.results)?.[1];
   assert.ok(activatesWhen);
   assert.ok(sensor.results.split("\n").includes(`  comes up when ${activatesWhen}`));
+});
+
+test("an explanation says what the primitive itself declared, so a sensor names the signal and the command it runs", async () => {
+  const { results } = await run(
+    { [new URL("sensor/no-secrets.md", root).href]: primitive("sensor", "no-secrets", ["signal: PreToolUse", 'run: "pnpm test"']) },
+    ["explain", "sensor:no-secrets"],
+  );
+
+  assert.match(results, /^ {2}declares signal: PreToolUse$/m);
+  assert.match(results, /^ {2}declares run: pnpm test$/m);
+  assert.doesNotMatch(results, /declares (id|description):/);
 });
 
 test("what explaining finds reaches a driver as its DTO, saying when the primitive comes up and the rationale it cites", async () => {

@@ -1,7 +1,9 @@
 import { render } from "preact";
 import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import { RepoCharter } from "./RepoCharter.js";
+import { CharterListing } from "./CharterListing.js";
+import { Explanation } from "./Explanation.js";
+import { SearchResults } from "./SearchResults.js";
 
 /** The tabs of plan §12.5, in the order the mockup draws them. A view is mounted
  *  into the sheet under them, one task each. */
@@ -25,12 +27,20 @@ type Said = { did: string; detail?: string };
  *
  *  It holds no charter and calls no route. What the modal and the toast show
  *  belongs to whoever opens them, so both are state here and neither is opened
- *  until a view arrives to open it. */
+ *  until a view arrives to open it. The word in the search box is state here
+ *  too: while it says anything, the sheet shows what matches it in place of the
+ *  tab, and the tab is still the one shown once the box is cleared (FR-114). */
 function Portal() {
   const [tab, setTab] = useState<Tab>("repo");
   const [buildMenu, setBuildMenu] = useState(false);
   const [opened, setOpened] = useState<Opened | null>(null);
   const [said, setSaid] = useState<Said | null>(null);
+  const [searchedWord, setSearchedWord] = useState("");
+
+  // Every identity the modal shows opens its own explanation in the same
+  // modal, keyed by the identity so each one asks the engine afresh.
+  const openExplanation = (identity: string) =>
+    setOpened({ title: "Explain", context: identity, body: <Explanation key={identity} identity={identity} onExplain={openExplanation} /> });
 
   // The menu closes on the next click anywhere, as a menu does, including the
   // click that chose from it.
@@ -53,7 +63,14 @@ function Portal() {
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3.2-3.2" />
           </svg>
-          <input type="search" placeholder="Search everything" spellcheck={false} autocomplete="off" />
+          <input
+            type="search"
+            placeholder="Search everything"
+            spellcheck={false}
+            autocomplete="off"
+            value={searchedWord}
+            onInput={(event) => setSearchedWord(event.currentTarget.value)}
+          />
         </div>
         <div class="split">
           <button class="btn">Build</button>
@@ -86,9 +103,13 @@ function Portal() {
       </header>
 
       <main class="shell">
-        <div class="flowtabs">
+        <div class={searchedWord === "" ? "flowtabs" : "flowtabs dim"}>
           {TABS.map(([which, name]) => (
-            <button key={which} class={which === tab ? "flowtab on" : "flowtab"} onClick={() => setTab(which)}>
+            <button key={which} class={which === tab ? "flowtab on" : "flowtab"} onClick={() => {
+                setTab(which);
+                setSearchedWord("");
+              }}
+            >
               {name}
             </button>
           ))}
@@ -96,8 +117,16 @@ function Portal() {
         <div class="sheet" data-tab={tab}>
           {/* Mounted when its tab is shown and gone when another is, so each
               view reads the charter afresh and none of them holds it between
-              showings (FR-110). */}
-          {tab === "repo" && <RepoCharter />}
+              showings (FR-110). The repository's tab holds what the engine
+              brings beside what was authored here; the vendor's is read-only,
+              and nothing on it writes (FR-112). */}
+          {searchedWord !== "" ? (
+            <SearchResults word={searchedWord} onClear={() => setSearchedWord("")} onExplain={openExplanation} />
+          ) : tab === "repo" ? (
+            <CharterListing key="repo" scopes={["repo", "builtin"]} onExplain={openExplanation} />
+          ) : tab === "vendor" ? (
+            <CharterListing key="vendor" scopes={["vendor"]} onExplain={openExplanation} />
+          ) : null}
         </div>
       </main>
 

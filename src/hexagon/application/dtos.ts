@@ -157,6 +157,19 @@ export function scopedPrimitiveDTO({ identity, scope, file, primitive }: ScopedP
   };
 }
 
+/** Every primitive given, as the whole charter sees each, ordered by identity
+ *  the way the catalogue orders its entries. */
+export function scopedPrimitivesDTO(scopedPrimitives: readonly ScopedPrimitive[]): DataDTOs.ScopedPrimitives {
+  return {
+    type: "ScopedPrimitives",
+    data: {
+      primitives: [...scopedPrimitives]
+        .sort((one, another) => (one.identity < another.identity ? -1 : one.identity > another.identity ? 1 : 0))
+        .map(scopedPrimitiveDTO),
+    },
+  };
+}
+
 /** One test case: the situation it put, whether it passed, and where it did
  *  not, the fault that says why. */
 export function testCaseReportDTO({ situation, passed, unmet }: TestCaseReport): DataDTOs.TestCaseReport {

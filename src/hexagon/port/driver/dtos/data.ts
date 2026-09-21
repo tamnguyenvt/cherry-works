@@ -85,6 +85,16 @@ const scopedPrimitive = dto(
   }),
 );
 
+/** Every primitive the charter holds, each as the whole charter sees it,
+ *  ordered by identity. What the portal lists by, since it names the layer and
+ *  every header where the catalogue names neither. */
+const scopedPrimitives = dto(
+  "ScopedPrimitives",
+  z.object({
+    primitives: z.array(scopedPrimitive).readonly(),
+  }),
+);
+
 /** What a build did, or would do, to each file it touches. */
 const planSummary = dto(
   "PlanSummary",
@@ -189,6 +199,7 @@ export const DataDTOs = byType(
   primitiveKinds,
   primitiveRequirements,
   scopedPrimitive,
+  scopedPrimitives,
   testCaseReport,
   testCasesByFile,
   testRunReport,
@@ -208,6 +219,7 @@ export namespace DataDTOs {
   export type PrimitiveHeader = z.infer<typeof DataDTOs.PrimitiveHeader>;
   export type PrimitiveRequirements = z.infer<typeof DataDTOs.PrimitiveRequirements>;
   export type ScopedPrimitive = z.infer<typeof DataDTOs.ScopedPrimitive>;
+  export type ScopedPrimitives = z.infer<typeof DataDTOs.ScopedPrimitives>;
   export type TestCaseReport = z.infer<typeof DataDTOs.TestCaseReport>;
   export type TestCasesByFile = z.infer<typeof DataDTOs.TestCasesByFile>;
   export type TestRunReport = z.infer<typeof DataDTOs.TestRunReport>;

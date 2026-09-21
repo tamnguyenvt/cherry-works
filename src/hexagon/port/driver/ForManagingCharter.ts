@@ -69,6 +69,21 @@ export interface ForManagingCharter {
   list(kind?: string): Promise<DataDTOs.Catalogue | DataDTOs.FaultsByFile>;
 
   /**
+   * Every primitive of every layer, off the charter as it was read rather than
+   * the catalogue it compiles to: each with its file, the layer it arrived in,
+   * and every header it declared (FR-112, FR-114). What the portal lists by;
+   * `list` stays what an agent surveys by.
+   *
+   * Given a word, only the primitives that mention it — in the identity, the
+   * kind, the description, when the kind comes up, the file or any header
+   * value, ignoring case.
+   *
+   * A charter with an error is refused with nothing listed and the errors given
+   * back, as `list` refuses it.
+   */
+  fullList(matching?: string): Promise<DataDTOs.ScopedPrimitives | DataDTOs.FaultsByFile>;
+
+  /**
    * Which file declares one identity, and which layer that file arrived in
    * (FR-017, SC-006); the mixins it uses and the corpus it cites, and what uses
    * or cites it (FR-014).

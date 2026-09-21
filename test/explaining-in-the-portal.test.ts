@@ -1,0 +1,97 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { inTheBrowser } from "./in-the-browser.js";
+import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
+
+const at = (path: string) => new URL(path, "file:///repo/.cw/charter/").href;
+
+const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
+  ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
+
+/** A guide pulling in a mixin and citing a corpus, and a test case naming it. */
+const charter = {
+  [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:why", 'mixins: ["voice"]']),
+  [at("corpus/why.md")]: primitive("corpus", "why"),
+  [at("mixin/voice.md")]: primitive("mixin", "voice"),
+  "file:///repo/.cw/test/activation.json": `${JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] })}\n`,
+};
+
+/** The text of each part of the modal, under its title. */
+const sectionsOf = async (page: import("playwright").Page) =>
+  Object.fromEntries(
+    await page.locator(".xsec").evaluateAll((sections) =>
+      sections.map((section) => [section.querySelector(".xsec-t")!.textContent, section.querySelector(".xsec-b")!.textContent]),
+    ),
+  );
+
+test("a row's Explain opens what the engine says of it: when it comes up, what it pulls in, what names it (FR-029)", async () => {
+  await inTheBrowser(charter, async (page) => {
+    await page.getByLabel("Explain guide:no-any").click();
+    await page.locator(".xsec").first().waitFor();
+
+    assert.equal(await page.locator(".modal-h .c").innerText(), "guide:no-any");
+    const sections = await sectionsOf(page);
+    assert.equal(sections["When it comes up"], GuidePrimitive.activatesWhen);
+    assert.match(sections["What it pulls in"], /mixin:voice/);
+    assert.match(sections["What it pulls in"], /corpus:why/);
+    assert.match(sections["Tested by"], /\.cw\/test\/activation\.jsontouching src\/one\.ts activates guide:no-any/);
+    assert.match(sections["File"], /\.cw\/charter\/guide\/no-any\.md in the repo layer/);
+  });
+});
+
+test("a sensor's explanation shows the signal it answers to and the command it runs", async () => {
+  await inTheBrowser({ [at("sensor/check.md")]: primitive("sensor", "check", ["signal: Stop", "run: pnpm lint"]) }, async (page) => {
+    await page.locator(".chip", { hasText: "sensor" }).click();
+    await page.getByLabel("Explain sensor:check").click();
+    await page.locator(".xsec").first().waitFor();
+
+    const declaredHeaders = await page
+      .locator(".declared")
+      .evaluateAll((rows) => rows.map((row) => [...row.querySelectorAll(".mono")].map((one) => one.textContent)));
+    assert.deepEqual(declaredHeaders, [
+      ["signal", "Stop"],
+      ["run", "pnpm lint"],
+    ]);
+  });
+});
+
+test("every identity in an explanation opens its own (FR-116)", async () => {
+  await inTheBrowser(charter, async (page) => {
+    await page.getByLabel("Explain guide:no-any").click();
+    await page.locator(".idlink", { hasText: "corpus:why" }).click();
+    await page.locator(".modal-h .c", { hasText: "corpus:why" }).waitFor();
+    await page.locator(".idlink", { hasText: "guide:no-any" }).waitFor();
+
+    assert.match((await sectionsOf(page))["Cited by"], /guide:no-any/);
+  });
+});
+
+test("a rationale no corpus answers to is said not to resolve", async () => {
+  await inTheBrowser({ [at("guide/no-any.md")]: primitive("guide", "no-any", ["rationale: corpus:gone"]) }, async (page) => {
+    await page.getByLabel("Explain guide:no-any").click();
+    await page.locator(".xsec").first().waitFor();
+
+    assert.equal((await sectionsOf(page))["What it pulls in"], "corpus:gone (does not resolve)");
+  });
+});
+
+test("the modal closes by its ×, by the overlay behind it, and by Escape", async () => {
+  await inTheBrowser(charter, async (page) => {
+    const explain = page.getByLabel("Explain guide:no-any");
+
+    await explain.click();
+    await page.getByLabel("Close").click();
+    assert.equal(await page.locator(".mdovl").count(), 0);
+
+    await explain.click();
+    await page.locator(".mdovl").click({ position: { x: 5, y: 5 } });
+    assert.equal(await page.locator(".mdovl").count(), 0);
+
+    await explain.click();
+    // Pressed once the modal is drawn, as a reader presses it: the key is
+    // listened for from then on.
+    await page.locator(".xsec").first().waitFor();
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator(".mdovl").count(), 0);
+  });
+});

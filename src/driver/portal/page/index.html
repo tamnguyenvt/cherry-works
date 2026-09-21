@@ -46,6 +46,7 @@ a:hover { color: #171717; }
 .flowtabs { display: flex; gap: 4px; padding: 4px; background: #e9e9ec; border-radius: 11px; margin-bottom: 18px; }
 .flowtab { flex: 1; padding: 9px 12px; border: 0; border-radius: 8px; background: none; color: #71717a; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .flowtab.on { background: #fff; color: #171717; box-shadow: 0 1px 3px rgba(0,0,0,.09); }
+.flowtabs.dim { opacity: .45; }
 .sheet { background: #fff; border: 1px solid #e4e4e7; border-radius: 16px; padding: 20px 22px 6px; }
 
 /* modal */
@@ -81,9 +82,10 @@ a:hover { color: #171717; }
 .panel { border: 1px solid #e4e4e7; border-radius: 14px; background: #fff; overflow: hidden; margin-bottom: 16px; }
 .mem-empty { padding: 22px; text-align: center; font-size: 12.5px; color: #a1a1aa; }
 .chrow { display: grid; gap: 10px; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f7f7f8; }
-.chrow.g { grid-template-columns: minmax(96px, 128px) minmax(0, 1fr) 150px 108px 98px; align-items: start; }
-.chrow.n { grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) 130px; }
-.chrow.m { grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); }
+.chrow.g { grid-template-columns: minmax(96px, 128px) minmax(0, 1fr) 150px 108px 98px 26px; align-items: start; }
+.chrow.n { grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) 130px 26px; }
+.chrow.m { grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) 26px; }
+.chrow.s { grid-template-columns: minmax(160px, 260px) minmax(0, 1fr) 26px; }
 .chrow:last-child { border-bottom: 0; }
 .chrow:hover { background: #fafafa; }
 .chrow.chhead { padding: 9px 15px; background: #fafafa; border-bottom: 1px solid #ececef; }
@@ -100,6 +102,36 @@ a:hover { color: #171717; }
 .chrow.g .cgl span { font-size: 9.5px; padding: 2px 5px; }
 .chrow .cgl i { font-style: normal; font-size: 10.5px; color: #c4c4c8; }
 .chrow .cgl i.said { color: #b91c1c; }
+.xpl { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid transparent; border-radius: 7px; background: none; color: #d4d4d8; cursor: pointer; padding: 0; }
+.chrow:hover .xpl { color: #a1a1aa; border-color: #e4e4e7; background: #fff; }
+.xpl:hover { color: #171717 !important; border-color: #171717 !important; }
+.sec-head2 .btn.small { margin-left: auto; padding: 6px 11px; font-size: 11.5px; }
+.sec-head2 span b { font-weight: 400; color: #171717; }
+
+/* the charter the engine will not read: what is wrong, under each file */
+.refused { display: flex; align-items: center; gap: 10px; padding: 13px 15px; margin-bottom: 14px; border: 1px solid #f6d9d9; border-radius: 12px; background: #fef6f6; }
+.refused i { width: 8px; height: 8px; border-radius: 50%; background: #b91c1c; flex-shrink: 0; }
+.refused b { font-size: 12.5px; font-weight: 700; color: #171717; }
+.refused span { flex: 1; min-width: 0; font-size: 11.5px; line-height: 1.55; color: #71717a; }
+.dcrow { display: flex; align-items: baseline; gap: 10px; padding: 11px 16px; border-bottom: 1px solid #f4f4f5; }
+.dcrow:last-child { border-bottom: 0; }
+.dcrow .dcfile { flex-shrink: 0; min-width: 210px; font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: #b91c1c; }
+.dcrow .dcfaults { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 12px; line-height: 1.55; color: #3f3f46; }
+.dcrow .dcfaults i { font-style: normal; color: #71717a; }
+
+/* one primitive explained, a titled part at a time */
+.xsec { padding: 14px 16px; border-bottom: 1px solid #f4f4f5; }
+.xsec:last-child { border-bottom: 0; }
+.xsec-t { margin-bottom: 7px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #a1a1aa; }
+.xsec-b { font-size: 12.5px; line-height: 1.65; color: #3f3f46; }
+.xsec-b b { font-weight: 650; color: #171717; }
+.xsec-b .mono { font-size: 11.5px; color: #171717; }
+.xsec-b .quiet { color: #71717a; }
+.xsec-b .bad { color: #b91c1c; }
+.xsec-b .case { padding-left: 12px; color: #3f3f46; }
+.xsec-b .declared { display: flex; gap: 10px; align-items: baseline; }
+.xsec-b .declared .header-name { flex-shrink: 0; min-width: 62px; color: #71717a; }
+.idlink { border: 0; background: none; padding: 0; font: inherit; font-family: var(--mono); font-size: 11.5px; color: #1d4ed8; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 </style>
 <script type="module" src="./main.js"></script>
 </head>

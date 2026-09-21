@@ -57,6 +57,10 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
     // than left out, since it is a warning and the explanation still stands
     // (FR-029).
     const citedRationale = scopedPrimitive.data.headers.rationale;
+    // What this one primitive declared, beside what its kind says of all of
+    // them: the line above says a sensor runs what it names, and this is where
+    // what it names is read. Its id and description are said on the first line.
+    const declaredHeaders = Object.entries(scopedPrimitive.data.headers).filter(([name]) => name !== "id" && name !== "description");
     return {
       code: EXIT_OK,
       result: [
@@ -64,6 +68,7 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
         `  ${scopedPrimitive.data.file}`,
         `  ${layer(scopedPrimitive.data.scope)}`,
         `  comes up when ${activatesWhen}`,
+        ...declaredHeaders.map(([name, value]) => `  declares ${name}: ${typeof value === "string" ? value : value.join(", ")}`),
         ...useMixins.map(({ data }) => `  uses mixin ${data.identity}`),
         ...(rationale !== undefined
           ? [`  rationale ${rationale.data.identity}`]

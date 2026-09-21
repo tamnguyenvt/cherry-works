@@ -1,5 +1,5 @@
 import { covers } from "../../../utils/globs.js";
-import { KINDS, primitiveOf, type Primitive } from "./primitive/Primitive.js";
+import { KINDS, PRIMITIVE_CLASSES, primitiveOf, type Primitive } from "./primitive/Primitive.js";
 import { CharterRootFault, FaultsByFile, type Fault } from "../Fault.js";
 import type { ForParsingYaml } from "../../../port/zdriven/ForParsingYaml.js";
 
@@ -36,7 +36,23 @@ export class ScopedPrimitive {
     readonly scope: Scope,
     readonly file: string,
     readonly primitive: Primitive,
-  ) {}}
+  ) {}
+
+  /** Whether a word someone searched for is anywhere a reader would look for
+   *  it: the identity, the kind, what it is for, when its kind comes up, its
+   *  file, or any header it declared — ignoring case, since whoever typed it
+   *  did not know how it was written (FR-114). */
+  mentions(word: string): boolean {
+    const activatesWhen = PRIMITIVE_CLASSES.find((one) => one.kind === this.primitive.kind)!.activatesWhen;
+    const headerValues = Object.values(this.primitive.headers).flatMap((value) =>
+      value === undefined ? [] : Array.isArray(value) ? value : [String(value)],
+    );
+    const loweredWord = word.toLowerCase();
+    return [this.identity, this.primitive.kind, activatesWhen, this.file, ...headerValues].some((one) =>
+      one.toLowerCase().includes(loweredWord),
+    );
+  }
+}
 
 /**
  * One charter, read: what the engine brings, what this repository authored,
