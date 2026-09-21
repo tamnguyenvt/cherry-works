@@ -1,0 +1,116 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { Commander } from "../src/driver/cli/Commander.js";
+import { COMMANDS } from "../src/driver/cli/commands/index.js";
+import { EXIT_FAILURE, EXIT_OK, EXIT_USAGE } from "../src/driver/cli/commands/Command.js";
+import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
+import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
+import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
+import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { YamlParser } from "../src/zdriven/YamlParser.js";
+
+const repo = "/repo";
+
+/** A charter nothing here asks about: a context carries every use case, and
+ *  these commands reach for the vendoring one only. */
+const unread = () => {
+  const files = new InMemoryFileReaders({});
+  return new CharterAuthoring(new URL(`file://${repo}/`), files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryVCS());
+};
+
+/** One run of the command line over version control held in memory, and what it
+ *  wrote. The command line writes to the process it runs in, so what a user
+ *  reads is read from there. */
+async function running(argv: readonly string[], vcs: InMemoryVCS = new InMemoryVCS()) {
+  const said: string[] = [];
+  const streams = [process.stdout, process.stderr] as const;
+  const kept = streams.map((stream) => stream.write);
+  for (const stream of streams)
+    stream.write = ((text: string) => {
+      said.push(String(text));
+      return true;
+    }) as typeof stream.write;
+  try {
+    const context = { cwd: repo, charterAuthoringApp: unread(), charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), vcs) };
+    const code = await new Commander(context, COMMANDS).run(argv);
+    return { code, said: said.join(""), vcs };
+  } finally {
+    streams.forEach((stream, index) => (stream.write = kept[index] as typeof stream.write));
+  }
+}
+
+test("a source is installed under the folder its address names", async () => {
+  const { code, said, vcs } = await running(["vendor", "add", "git@github.com:team/charter.git"]);
+
+  assert.equal(code, EXIT_OK);
+  assert.deepEqual(vcs.installed, [
+    {
+      source: "git@github.com:team/charter.git",
+      repo: new URL("file:///repo/"),
+      intoSubFolder: ".cw/vendor/charter",
+    },
+  ]);
+  assert.match(said, /\.cw\/vendor\/charter/);
+  assert.match(said, /cw build/, "what is installed is compiled by the one command that writes");
+});
+
+test("the source is passed on as it was typed, whatever transport it names", async () => {
+  for (const source of [
+    "https://github.com/team/charter.git",
+    "git@github.com:team/charter.git",
+    "ssh://git@git.example.com:2222/team/charter",
+    "/srv/charters/charter",
+  ]) {
+    const { vcs } = await running(["vendor", "add", source]);
+    assert.equal(vcs.installed[0]?.source, source);
+    assert.equal(vcs.installed[0]?.intoSubFolder, ".cw/vendor/charter");
+  }
+});
+
+test("a version is what the source is pinned to", async () => {
+  const { said, vcs } = await running(["vendor", "add", "team/charter", "--ref", "v1.2.0"]);
+
+  assert.equal(vcs.installed[0]?.version, "v1.2.0");
+  assert.match(said, /v1\.2\.0/);
+});
+
+test("a repository with work in hand is refused before anything is fetched", async () => {
+  const { code, said, vcs } = await running(["vendor", "add", "team/charter"], new InMemoryVCS(true, false));
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.deepEqual(vcs.installed, []);
+  assert.match(said, /work in hand/);
+  assert.match(said, /stash/);
+});
+
+test("a folder outside version control is refused, saying the next move", async () => {
+  const { code, said, vcs } = await running(["vendor", "add", "team/charter"], new InMemoryVCS(false));
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.deepEqual(vcs.installed, []);
+  assert.match(said, /git init/);
+});
+
+test("an installed charter is taken away by the folder it was installed as", async () => {
+  const { code, said, vcs } = await running(["vendor", "remove", "charter"]);
+
+  assert.equal(code, EXIT_OK);
+  assert.deepEqual(vcs.removed, [{ repo: new URL("file:///repo/"), subFolder: ".cw/vendor/charter" }]);
+  assert.match(said, /\.cw\/vendor\/charter/);
+});
+
+test("removing while there is work in hand is refused before anything is taken away", async () => {
+  const { code, said, vcs } = await running(["vendor", "remove", "charter"], new InMemoryVCS(true, false));
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.deepEqual(vcs.removed, []);
+  assert.match(said, /work in hand/);
+});
+
+test("a source nobody named is a usage error, not a vendoring one", async () => {
+  const { code, vcs } = await running(["vendor", "add"]);
+
+  assert.equal(code, EXIT_USAGE);
+  assert.deepEqual(vcs.installed, []);
+});

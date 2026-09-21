@@ -1,0 +1,1742 @@
+# Implementation Plan: Cherry Works
+
+**Spec**: [spec.md](./spec.md) · **Data model**: [data-model.md](./data-model.md) · **Tasks**: [001](./tasks/001-charter-engine.md), [002](./tasks/002-charter-portal.md) · **Mockup**: [mockup/portal.html](./mockup/portal.html) · **Status**: Draft
+
+This file says how the product is built: the design, the modules each part lives
+in, and why it is built this way. What the product must do is the spec's, cited
+by its ids; the shape of each piece of data is the data model's, cited by its §.
+
+## 1. Technical context
+
+| Decision | Choice | Why |
+|---|---|---|
+| Runtime | Node.js ≥ 20, ESM only | A standalone runtime with no compiled or native dependency (spec Assumptions). |
+| Language | TypeScript, strict | The per-kind header contracts are the core of the format; the type system carries them. |
+| Package manager | pnpm | Strict by default: a dependency this package does not declare is not importable from it. |
+| Distribution | npm registry package `cherry-works`, `bin: { cw }` | A single install command makes the tool available. Node on the machine is a prerequisite, stated up front. Installed globally, so the user's own repository gains no dependency and no `package.json` of its own — it may be written in any language. |
+| Bundler | `tsup` (esbuild), two entries into `dist/` | One entry is the `cw` binary; the other is the portal's page, `platform: "browser"`, into `dist/portal/`. The page ships inside the same package, so the engine and the interface are one artifact, and it is served from `dist`, so nothing is fetched at run time ([FR-111](spec.md#fr-111)). Nothing is published as a library. |
+| Test runner | `node:test` + `tsx`; `playwright` for the page | No framework: the engine is filesystem-heavy, not framework-heavy. Test files are named for the behaviour they describe, in kebab-case, flat under `test/` — `ls test/` reads as what the system does, not as a mirror of the source tree. The page is tested in a real browser. `pnpm test` runs the dependency rules first ([§2.2](#22-dependency-rules)), then the build, then the tests. |
+| Frontmatter | `yaml` (pure JS), behind `ForParsingYaml` | The only non-trivial parse in the system. The domain splits the block off the body and the port hands back the fields; the YAML adapter is the only module that knows the notation. |
+| Schemas | `zod` | Every kind's headers, the settings, the test format and every DTO are one zod schema each, and the type is inferred off it, so what the type says and what is accepted cannot differ. |
+| Globs | `picomatch` (pure JS) | A guide's `globs` matched against a path, and one glob asked whether it covers another ([§5.2](#52-mixins-fr-006-fr-007)). |
+| Git | shell out to `git` | No central service beyond the git source ([FR-048](spec.md#fr-048)). |
+| Argument parsing | `yargs` | Nested command groups (`cw vendor add`), per-command help with examples, strict rejection of unknown flags, and a "Did you mean" suggestion ([FR-094](spec.md#fr-094), [FR-095](spec.md#fr-095)). |
+| Interactive input | `prompts` | The setup questions and `cw add`'s questions. Lives in the command that asks rather than behind a port: a use case is called with its answers, so whoever drove it is the one that put the questions ([§8](#8-setup-fr-054--fr-058), [§9.3](#93-cw-add-kind-id-prompts-and-header-flags-fr-064--fr-074)). |
+| Server | Hono on `node:http` through `@hono/node-server` | One user, one repository, a dozen routes. The routes are chained into one typed app, so the page calls them through `hc` with every answer typed, and nothing is written twice between the server and the page. |
+| Page calls | `hc` from `hono/client`, typed by `typeof api` from `routes.ts` | The page imports the routes' types only ([§2.2](#22-dependency-rules)); a route renamed or an answer changed is a type error in the page. |
+| Address | `127.0.0.1`, port 9927 by default, the next free one when it is taken | [FR-106](spec.md#fr-106) and the spec's edge case where the port is taken. Never `0.0.0.0`. |
+| Page | Preact, with hooks and JSX; no router, no store | Components rather than the mockup's string templates, so a view re-renders from what the server answered instead of being rebuilt by hand. Preact rather than React for size — a few kilobytes in a package installed globally — and rather than a server framework, whose own server, bundler and tsconfig would fight the composition root and the dependency rules. Seven views and no shared state worth a store: `useState` in the component that owns it. |
+| Page type-checking | `src/driver/portal/page/tsconfig.json` with `lib: ["ES2023", "DOM"]`, `jsx: "react-jsx"`, `jsxImportSource: "preact"`, excluded from the root one | The root config is Node-only (`types: ["node"]`) and stays so: a DOM global in engine code is a mistake the compiler should catch. `typecheck` runs both configs. The page entry in `tsup` sets the same JSX options. |
+| Body editor | CodeMirror 6 (`@codemirror/view`, `state`, `lang-markdown`), bundled | Markdown highlighting offline ([FR-119](spec.md#fr-119)). The mockup loads Monaco from a CDN, which breaks [FR-111](spec.md#fr-111), and Monaco bundled is several megabytes with web workers; CodeMirror is a fraction of that and needs no worker. |
+| Markdown preview | `marked`, bundled | The preview view of [FR-119](spec.md#fr-119). A body is any markdown an author writes, which a hand-written renderer would not cover. |
+| What the engine brings | `src/hexagon/domain/models/charter/builtin/`: one module per primitive, each a class extending its kind's own class, and an `index.ts` exporting the list | A kind that grows, renames or drops a header breaks these modules when the package is type-checked. Anything read at run time — JSON, markdown, a file shipped beside `dist/` — moves that failure to somebody else's `cw` run ([§5.4](#54-what-the-engine-brings-fr-096--fr-103)). |
+
+Explicitly avoided: native modules, a daemon, a lockfile format of our own, any
+network call other than `git`; a client-side router or store, a websocket or a
+file watcher ([FR-110](spec.md#fr-110) is met by reading on every view), any request the page
+makes to a host other than the one serving it, opening a browser on the user's
+behalf ([FR-104](spec.md#fr-104) asks for the address to be printed); a second use case for
+authoring, a `--json` output mode, a template format read at run time, any
+folder, cache or copy of what the engine brings, a way to turn the builtin layer
+off, and any path into the charter that does not go through the one reading
+([§4.1](#41-the-one-read-path-fr-009-sc-010)).
+
+## 2. Architecture — ports and adapters
+
+The charter is the domain. It knows primitives, kinds, layers, validation and
+what the compiled output must contain. It does not know where a file comes from,
+what a terminal or a browser is, or that git exists.
+
+Everything else reaches it through a port: an interface the hexagon declares and
+something outside implements. The filesystem is infrastructure. The command line
+is one driving adapter and the portal is another; neither is the engine.
+
+```
+src/
+  hexagon/                         the engine. Imports nothing outside itself but lodash, picomatch and zod.
+    domain/
+      models/                      Fault, FaultsByFile, Settings, AgentProvider, TestSuite
+        charter/                   CharterRoot, ScopedPrimitive, the three scopes
+          primitive/               Primitive.ts (PRIMITIVE_CLASSES, primitiveOf), one <Kind>Primitive.ts per kind
+          builtin/                 what the engine brings: index.ts, CwAuthorSkill.ts
+        output/                    CharterOutput (Catalogue, CharterMd), ProjectionPolicy, StampedDocument
+          providers/claude/        one component class per claude kind
+      services/                    compileService, projectionService, testService: one model turned into another
+      path.ts                      where everything lives in a repository
+    service/                       charterRepo, settingsRepo, testSuitesRepo, vendorRepo, buildService:
+                                   the domain read from and written to the driven ports
+    application/                   CharterAuthoring, CharterVendoring, dtos.ts
+    port/
+      driver/                      ForManagingCharter, ForVendoringCharters
+        dtos/                      dto.ts, data.ts, outcome.ts, index.ts: every DTO
+      zdriven/                     ForReadingFiles, ForWritingFiles, ForVCS, ForParsingYaml, ForReportingProgress
+    utils/globs.ts                 covers and matches, over picomatch
+  driver/
+    cli/                           Commander (yargs), Command, one class per command
+    portal/
+      routes.ts                    the Hono routes under /api, one per use case; the app hc is typed by
+      server.ts                    startPortal: the routes and the page on node:http, behind the guards of §12.4
+      page/                        runs in the browser; imports the DTOs and the type of routes.ts, nothing else of ours
+  zdriven/                         files, git, YAML, the terminal, and in-memory adapters for tests
+main.ts                            composition root: which adapter fills which port
+test/                              named after the behaviour, kebab-case, flat
+```
+
+### 2.1 Domain (`src/hexagon/domain/`)
+
+The kinds, primitives and identity, mixin lending, validation, the layers,
+compilation and test resolution. It may import nothing but itself and three
+libraries — no `node:*`, no adapter, no driver.
+
+`lodash`, `picomatch` and `zod` are exceptions because of what they are: one
+answers questions about lists and objects, one about whether a glob matches a
+string, and one about the shape of a value, and none of them knows where what it
+is handed came from. So none of them carries a notion of a disk, a network or a
+format into the domain. A library that does — YAML, git — is still a port.
+
+A `Primitive` cannot exist missing a header its kind requires: the kind's class
+reads its headers through its zod schema and hands back an instance or every
+fault the file has, and nothing else builds one ([§4.2](#42-reading-one-primitive-fr-001--fr-004)). The type is
+discriminated on `kind`, so `headers.globs` compiles on a guide and a type error
+is what reading a header another kind holds costs.
+
+Failures are faults, collected: a run names every bad file rather than the
+first. Every fault carries the next move beside what is wrong ([FR-012](spec.md#fr-012)).
+
+Consequence worth stating: every domain test is a function call on data. No
+temporary directory, no repository to set up, no cleanup.
+
+### 2.2 Dependency rules
+
+`dependency-cruiser` holds the architecture in place, run as the first step of
+the test suite over the real dependency graph, so transitive edges, `require`
+and dynamic `import()` all count. The rules live in `.dependency-cruiser.cjs`:
+
+| Rule | Says |
+|---|---|
+| `hexagon-is-sealed` | `src/hexagon` imports nothing outside itself but `lodash-es`, `picomatch` and `zod` |
+| `driver-enters-through-its-port` | a driver reaches the hexagon through `port/driver/` or the application behind it, and nothing else; what it needs from inside is exported by the port |
+| `driven-answers-only-its-port` | a driven adapter knows nothing of the hexagon but the driven port it implements |
+| `dtos-are-zod-only` | `port/driver/dtos/` imports `zod` and nothing else, so nothing more of the hexagon is bundled into the page |
+| `models-know-no-dto` | `domain/` and `service/` import no driver port, so a model knows nothing of what a driver reads; the application makes the DTOs ([§2.5](#25-models-are-classes-and-a-driver-reads-their-dtos)) |
+| `page-is-browser-code` | `src/driver/portal/page` imports only itself, `port/driver/dtos/`, `routes.ts`, `preact`, `@codemirror/*`, `marked`, `zod` and `hono` |
+| `page-knows-routes-only-as-types` | what the page imports from `routes.ts` is types, for `hc`, and nothing that runs |
+| `adapters-do-not-know-each-other` | a driver and a driven adapter meet only at `main.ts` |
+| `no-circular` | a cycle means two modules are one wearing two names |
+| `no-orphans` | a module nothing imports is dead or wired up wrong |
+
+The page cannot reach the hexagon, the filesystem or Node: what it knows is the
+JSON the server answers with. That is [FR-108](spec.md#fr-108) as a build failure rather than a
+promise.
+
+A runtime wrapper would be weaker than these rules — importing the real module
+bypasses it — and a regular expression over import lines weaker again, seeing
+only direct and statically written imports.
+
+### 2.3 Ports (`src/hexagon/port/`)
+
+Named `For…ing` the thing they do, never for the technology behind them:
+`ForReadingFiles`, not `FsReader`. A port says what the hexagon needs done, so
+reading a charter out of a git object database later is a new adapter and no
+change inside. A port stays at the width of what it does: reading files is one
+job whichever use case asks for it, so there is no separate port per caller.
+
+**Driver** — what the hexagon offers. The command line and the portal call the
+same ones.
+
+| Port | Use cases |
+|---|---|
+| `ForManagingCharter` | `doctor`, `list`, `explain`, `build`, `preview`, `test`, `listPrimitiveRequirements`, `kinds`, `add`, `settings`, `ensureRepoReady`, `init`; and, for the portal, `open`, `rewrite`, `remove`, `suites`, `addSuite`, `writeSuite`, `removeSuite` ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079), [§11.3](#113-managing-test-files)) |
+| `ForVendoringCharters` | `add`, `remove`, `installed` ([§7](#7-vendor-sources)) |
+
+Managing a charter is one conversation — authoring and reading one repository's
+charter — so it is one port rather than one per caller. Vendoring is apart
+because it is a different conversation: nothing on it reads a charter, and
+nothing on the other installs anything.
+
+Which repository a port speaks for is what it was constructed with, never what
+each call passes, so no use case can be pointed at another repository halfway
+through.
+
+**Driven** — what the hexagon needs.
+
+| Port | What it promises | Adapter |
+|---|---|---|
+| `ForReadingFiles` | the files under a folder, the folders one level under one, and one file's text if it is there | `FileReaders`, `InMemoryFileReaders` |
+| `ForWritingFiles` | write a file, delete one | `FileOutput`, `InMemoryFileOutput` |
+| `ForVCS` | is this a repository, is it clean, what changed under a folder, add or update a subtree, remove a folder as a commit; and which commit, source and version installed a vendor folder ([§7.2](#72-what-an-install-records-fr-053-fr-122)) | `Git`, `InMemoryVCS` |
+| `ForParsingYaml` | one frontmatter block as named fields | `YamlParser` |
+| `ForReportingProgress` | results, and problems with the next move | `ConsoleReporter` |
+
+Reporting is a driven port like any other, which is why the command line has no
+output type of its own: the terminal is one adapter for it, and a test binds
+another. A port earns its place by having a second plausible implementation or
+by being what a use case must be denied; anything else is called directly.
+
+### 2.4 Application (`src/hexagon/application/`)
+
+One class per driver port — `CharterAuthoring` and `CharterVendoring` — taking
+its driven ports through the constructor and holding them under the port's type,
+so the compiler refuses a reach past the interface. It orchestrates and holds no
+rule of its own: rules live in the domain, on the models or in a domain service
+beside them. Between the two sit the `service/` modules, which read the domain
+off the driven ports and write it back: `loadCharters`, `loadSettings`,
+`loadTestSuites`, `driftedVendors`, and the build's plan ([§6](#6-compiling-and-building)).
+
+The reader/writer split ([FR-093](spec.md#fr-093)) is what each use case is, not what it is
+grouped under. A reading use case — `doctor`, `list`, `explain`, `preview`,
+`test`, `listPrimitiveRequirements`, `kinds`, `settings`, `open`, `suites` —
+calls no writing port, and the hexagon has no filesystem to reach for behind the
+ports ([§2.2](#22-dependency-rules)). Every write comes from a use case whose purpose is to write:
+`build`, `init`, `add`, `rewrite`, `remove`, `addSuite`, `writeSuite`,
+`removeSuite`, and the two vendoring commands.
+
+### 2.5 Models are classes, and a driver reads their DTOs
+
+The hexagon's models and what crosses its driver ports are settled the way the
+hexagon sample settles them with `Task` and `toSnapshot()`. The shapes — the DTO
+envelope, the two sets, what each port method answers — are data-model [§12](data-model.md#12-what-crosses-a-driver-port).
+
+- **Every model a use case answers with is a class.** The catalogue, a scoped
+  primitive, a plan summary, a test run, the settings, the faults under each
+  file: the service that makes one hands back an instance. A model no use case
+  answers with stays an interface or a type until one does (data-model [§12.5](data-model.md#125-not-models)).
+- **The application turns each model into its DTO**, with one function per DTO
+  in `application/dtos.ts`. A model knows nothing of DTOs — the sample's
+  `toSnapshot()` is made here rather than on the entity — and the rule
+  `models-know-no-dto` keeps the domain and its services from importing one.
+- **The application answers DTOs.** A use case calls the services, takes the
+  classes they hand back, and returns the DTO of what it answers with.
+- **A driver knows DTOs and nothing else of the hexagon's**, beside the
+  constants a charter is made of, which the driver port re-exports. The command
+  line switches on `type`, the server sends a DTO as it is, and the page parses
+  it with its schema.
+
+Every DTO is declared once, in `src/hexagon/port/driver/dtos/`: `outcome.ts`
+holds `OutcomeDTOs`, `data.ts` holds `DataDTOs`, and what every DTO is written
+with — `dto`, `byType`, the list of strings — is written once, in `dto.ts`.
+`index.ts` exports them. Since a DTO's `type` is its key, whatever reads one
+untyped — the page, most of all — parses it by looking its schema up by that
+`type`; each set is built by reading each schema's own `type` for its key, so the
+two cannot drift apart. The folder imports `zod` and nothing else, since the
+page bundles it ([§2.2](#22-dependency-rules)).
+
+`DoctorOutcome` is an outcome so that no driver counts or judges what checking a
+repository found again ([§10.1](#101-doctor-fr-013-fr-014-fr-080-fr-081)). An answer that is a collection is made a model
+of its own so that it carries a `type` (data-model [§12.4](data-model.md#124-answers-that-are-collections)).
+
+A use case that cannot run raises a `Fault`: a raise is not an answer, and the
+command line reads it as the usage error it is, while the portal sends it as
+`DataDTOs.Fault` ([§12.2](#122-the-route-table)). What a charter is wrong with is an answer,
+`DataDTOs.FaultsByFile`, given back rather than raised.
+
+### 2.6 Adapters and the composition root
+
+`src/driver/` holds what calls in: the command line under `cli/`, the portal
+under `portal/`. `src/zdriven/` holds everything the hexagon is driven by — files,
+git, YAML, the terminal — and an in-memory adapter for each port a test needs to
+bind. A port gets an in-memory implementation when a test needs one, not before.
+
+The two are named differently because they play opposite roles: a driver calls
+in, a driven adapter is called out to. Splitting them by that, rather than by
+technology, is what makes "this module may not be imported by the hexagon" a
+rule with a single meaning.
+
+An agent's format is modelled in the domain, under
+`domain/models/output/providers/<host>/`: one class per kind that host has, each
+answering for how its own file is written. Which primitives become which of them
+is one arm per host in `compileService`, and where each lands is one arm per
+kind in `projectionService`. Supporting another agent is a folder beside
+`claude/`, an arm in each of the two services, and a member of
+`AGENT_PROVIDERS` — the charter format does not change ([FR-030](spec.md#fr-030), [FR-031](spec.md#fr-031)).
+
+`main.ts` is the composition root — the only module that names a concrete class.
+Each binding is declared as its port, so the compiler confirms that swapping an
+adapter needs no change inside. The command line is the one entry: `cw portal`
+starts the server with the ports its `Context` already holds ([§12.1](#121-shape)).
+
+## 3. On-disk layout
+
+```
+.cw/
+  settings.json          what this repository answered at setup (the agents it compiles for)
+  charter/
+    guide/ sensor/ command/ skill/ playbook/ agent/ posture/ corpus/ mixin/
+  test/<name>.json       self-regression tests, read by cw test (authored)
+  vendor/<name>/         vendored charter content, committed by git subtree
+                         (the same kind folders, one layer per vendor)
+  out/
+    catalog.json         full catalogue                (generated)
+    catalog.min.json     reduced catalogue             (generated)
+    CHARTER.md           agent-neutral orientation     (generated)
+CLAUDE.md                the repository's own file, one generated section in it
+.claude/                 claude projection             (generated, beside the repository's own files there)
+```
+
+One directory holds all three: what the repository configured, what it
+authored, and what that compiles to. `settings.json` is the repository's own —
+it is not part of the charter, and no primitive says anything about it — so it
+sits beside the charter rather than inside it. Everything under `out/` is
+generated, which is what makes a build's deleting there safe ([FR-032](spec.md#fr-032)). The
+paths are named once, in `src/hexagon/domain/path.ts`.
+
+The kind directory names are reserved. A vendor installs into a folder of its
+own under `.cw/vendor/`, beside the charter rather than inside it, so no vendor
+source can land on top of what this repository authored ([FR-044](spec.md#fr-044)). `.cw/vendor/`
+is committed ([FR-046](spec.md#fr-046)), and so is everything under `.cw/out/` and every
+projection, which is what CI gates on ([SC-007](spec.md#sc-007)).
+
+The builtin layer has no place here at all. It is supplied on every read and
+kept nowhere in the repository ([§5.3](#53-the-builtin-layer-supplied-rather-than-stored-fr-017--fr-024)).
+
+## 4. Reading and validating the charter
+
+### 4.1 The one read path (FR-009, SC-010)
+
+`loadCharters(repo, fileReaders, yamlParser)` in `service/charterRepo.ts` is the
+one way a charter is read. It reads the markdown files in the kind folders of
+`.cw/charter/`, the same under each folder of `.cw/vendor/`, and the builtin
+layer written out in memory ([§5.3](#53-the-builtin-layer-supplied-rather-than-stored-fr-017--fr-024)), and hands the three layers apart to
+`charterRootOf` in `domain/models/charter/CharterRoot.ts`, which reads each file
+into a primitive and holds every fault under the file it came from
+(data-model [§4](data-model.md#4-the-charter-read)). Only a kind folder is looked in, and only a markdown file there
+is read, so the catalogues, a README and whatever git keeps beside them are
+never read as primitives ([FR-002](spec.md#fr-002)).
+
+Which layer a file belongs to is settled where the folders are, in the service.
+The charter is handed its layers apart and works nothing out from a path.
+
+Reading each file once is a matter of passing the `CharterRoot` on rather than
+of caching: `doctor` validates, previews and answers from one loaded value. A
+cache across runs would have to live on disk, where it can go stale and answer
+for a charter that has since changed. Each `cw` run is a process that loads,
+works and exits; the read is milliseconds.
+
+### 4.2 Reading one primitive (FR-001 – FR-004)
+
+`primitiveOf` in `domain/models/charter/primitive/Primitive.ts` takes either the
+text of a file plus the YAML parser, or headers and a body a caller already
+holds (what `cw add` and the portal gather). From text it splits the frontmatter
+block off the body, parses the block through `ForParsingYaml`, takes the `kind`
+the headers declare, and hands them to that kind's class. A file that declares
+no kind, or one outside the set, is refused naming the kinds there are ([FR-003](spec.md#fr-003)).
+
+Each kind is one class under `primitive/`, extending `BasePrimitive`, and the
+class is the kind's whole contract (data-model [§1.4](data-model.md#14-the-kinds-contract)): its zod schema, what it
+requires, when it activates and its sample. `headersOf` parses the headers with
+the schema and, when they do not hold, gives one fault showing the kind's own
+sample rather than a list of what is wrong header by header — an author holding
+the two side by side sees the difference. `PRIMITIVE_CLASSES` lists the classes;
+`KINDS` and the `Primitive` union are read back off it. Adding a kind is a class
+beside the others and a line in that list.
+
+`toMarkdown()` on a primitive is the other direction of the reading: its
+headers between the delimiters, `kind` first, and its body under them. A file
+written by it reads back as the same primitive, which is what `cw add`, the
+portal and the builtin layer all rely on.
+
+### 4.3 Validation across files (FR-010 – FR-013)
+
+Reading refuses a file whose own headers do not hold, and says so under that
+file. What is left are the questions no single file answers, asked by
+`compositeFaultsByFiles` on `CharterRoot` over every layer at once:
+
+- a second file claiming an identity already claimed ([§5.1](#51-one-identity-one-primitive-fr-015-fr-016));
+- a mixin named that no layer holds ([FR-007](spec.md#fr-007));
+- a mixin whose files neither cover nor are covered by its host's ([§5.2](#52-mixins-fr-006-fr-007));
+- a `rationale` citing no corpus the charter holds, as a `warn` ([FR-005](spec.md#fr-005));
+- the four warnings of [§4.4](#44-the-four-validation-warnings-fr-014).
+
+`allFaultsByFiles` is the two together, the faults of reading and of reading
+together, under the file that has to change. A fault of severity `error` stops
+a build, a listing, an explanation and a test run, each of which hands the
+errors back rather than acting on a charter that does not hold ([FR-040](spec.md#fr-040)). A
+`warn` is said and stops nothing.
+
+Validation is no command of its own ([FR-013](spec.md#fr-013)). It is a private step of
+`CharterAuthoring`, and `doctor` is where its whole report is read ([§10.1](#101-doctor-fr-013-fr-014-fr-080-fr-081)).
+
+### 4.4 The four validation warnings (FR-014)
+
+The four warnings and the file each is filed under are data-model [§6.2](data-model.md#62-the-four-warnings-fr-014). The
+first three — a corpus nobody cites, a mixin nobody lends from, more than four
+primitives with an `expensive` agent context — are raised in
+`compositeFaultsByFiles`, each a `warn`. Agent context is read off the primitive
+(data-model [§6.1](data-model.md#61-agent-context-fr-113)), never declared.
+
+The fourth, a guide, sensor or posture that no test case names, needs the tests.
+So validation reads `.cw/test/` beside the charter and the settings, and a
+function beside `runSuite` in `testService` answers it. A test file that does
+not read is skipped for this question — `cw test` is where it is named — so a
+broken test file does not also flood validation.
+
+The threshold of four is a constant in the domain with its reason written beside
+it (spec Assumptions).
+
+## 5. Identity and layers
+
+### 5.1 One identity, one primitive (FR-015, FR-016)
+
+Identity is `kind:id`, read from the headers, never from a file's basename.
+
+It names one primitive in the whole charter, whichever layer authored it. The
+layer says where a file came from and who maintains it; it is no part of what
+the primitive is called. What this repository authored and what a vendor
+published are both `guide:no-any`, and two files claiming that are reported as a
+collision naming both — a vendor claiming an id this repository authored
+included.
+
+The alternative was to prefix a vendor's name onto its identities, which would
+make the two never collide. It was not taken: a reader would then have to know
+which layer a primitive came from before they could name it, and the same rule
+would have to be carried into `mixins`, `rationale` and every listing. A
+collision is rare, says exactly what is wrong, and is fixed by whoever authored
+the second file.
+
+There is no cascade, no precedence and nothing to mark absolute. A repository
+takes what it vendors, and what the engine brings, as it stands; to differ from
+such a primitive it authors one under its own identity. This is how a package
+registry works, and it is what the reference design's live path already did
+([§16](#16-read-of-the-reference-design)).
+
+A mixin is named the same way, by its id, and a corpus by `corpus:<id>`,
+whichever layer published it — so a host names a vendored mixin the way it names
+one of its own.
+
+### 5.2 Mixins (FR-006, FR-007)
+
+A mixin lends its body, and nothing else. The host's own headers are the whole
+of its headers, and the mixin's text is written before the host's own body by
+`bodyOf` on `CharterRoot`, the one place a mixin is applied — so there is no
+merge step, no resolution order to hold in mind, and a primitive on disk reads
+as the primitive that compiles ([FR-037](spec.md#fr-037)).
+
+What ties the two together is the files they speak about. A guide's body is
+loaded when a touched file matches its globs, so a mixin lent to it must speak
+about those same files: one side's globs cover the other's, in either
+direction, and neither covering the other is reported. A side naming no files
+at all — a skill, a command, a mixin of plain prose — is asking about nothing in
+particular, and is left alone. Coverage is glob algebra, decided by `covers` in
+`hexagon/utils/globs.ts` over `picomatch`: it knows about glob strings and
+nothing about charters, so it sits beside the domain's vocabulary rather than in
+it.
+
+A mixin is a leaf: its schema takes no `mixins`, so a mixin naming one is
+refused where its headers are read (data-model [§1.5](data-model.md#15-mixin)).
+
+The kind is named for the familiar composition idea rather than the reference
+design's term, `concern`, which was chosen when the kind still meant a
+cross-cutting review lens and no longer describes what it became.
+
+### 5.3 The builtin layer, supplied rather than stored (FR-017 – FR-024)
+
+`CharterRoot.ts` holds three scopes, `repo`, `vendor` and `builtin`
+(data-model [§3.2](data-model.md#32-scope-fr-017--fr-024)), and `charterRootOf` takes `{ repo, vendor, builtin }`.
+
+`loadCharters` turns each primitive of `BUILTIN_PRIMITIVES` ([§5.4](#54-what-the-engine-brings-fr-096--fr-103)) into an
+in-memory file — a path and the text `toMarkdown()` gives — and hands those in
+as the third layer. It reads nothing from disk for them and writes nothing. They
+are then read by `primitiveOf` like every other file: the same zod headers, the
+same collision check, the same mixin and rationale checks. **There is no second
+way into the charter.** A ready-made `Primitive` handed straight to
+`CharterRoot` would be the one primitive nothing validated, which is why the
+third layer is files and not primitives ([FR-020](spec.md#fr-020), data-model [§4.2](data-model.md#42-the-files-a-charter-is-read-from)). Serialising
+and reading back costs one `toMarkdown()` and one parse per shipped primitive,
+per read, and there is one.
+
+**Read order is builtin, then repo, then vendor**, each layer in the order its
+paths sort in. The first claim on an identity is the one `primitiveById` keeps,
+and the second is the file a collision is filed under. Reading the engine's
+layer first means a repository that authors `skill:cw-author` reads the fault
+against its *own* file, with a fix it can act on: the collision's fix says that
+an id the engine claims is the engine's own and the one to rename is yours
+([FR-021](spec.md#fr-021)). The other order would file the fault against something the author
+cannot open.
+
+**The path is a name, not a location.** `BUILTIN_PATH_PREFIX` is
+`(built into cw)`, so a primitive of this layer names its file
+`(built into cw)/skill/cw-author.md` wherever a file is named — in a fault's
+key, in the catalogue, in `cw explain`, in the portal. It stays a plain string,
+so no reader of a file path grows a branch or an optional, and it says which
+layer the primitive came from the way `.cw/vendor/<name>/…` does, so the
+catalogue needs no new field. The generated `CHARTER.md`, where it explains
+identities, names the third layer ([FR-022](spec.md#fr-022)).
+
+Nothing else learns the layer exists. `path.ts`, `init`, `doctor`, the vendor
+commands, `tsup.config.ts` and `package.json` are untouched by it: a layer that
+is never written needs no directory named, no command taught to refresh it, no
+health check asking whether it is current, and nothing added to what the
+package ships ([FR-018](spec.md#fr-018), [FR-023](spec.md#fr-023)). The portal shows a builtin primitive through the
+catalogue like any other, its file naming its layer ([FR-019](spec.md#fr-019)).
+
+### 5.4 What the engine brings (FR-096 – FR-103)
+
+`CwAuthorSkill` in `domain/models/charter/builtin/CwAuthorSkill.ts` extends
+`SkillPrimitive`: its headers typed by the kind's own `SkillHeaders`, its body a
+template literal. `builtin/index.ts` exports `BUILTIN_PRIMITIVES`, one entry
+today, and a list because `loadCharters` iterates, not because a second is
+planned (data-model [§5](data-model.md#5-what-the-engine-brings-fr-096--fr-103)).
+
+A class rather than data read at run time: a kind that grows, renames or drops
+a header stops this module compiling, so the failure lands on whoever changed
+the kind, in `pnpm run typecheck`, rather than on a user's `cw build`.
+
+Its triggers bring it up when what is asked is to write a rule, a standard, a
+skill, a command or any other primitive of the charter ([FR-100](spec.md#fr-100)). Its body names
+no header of any kind ([FR-097](spec.md#fr-097)) and says the procedure ([FR-098](spec.md#fr-098)):
+
+1. `cw kinds` — which kind this belongs to, if it is not already known.
+2. `cw kinds <kind>` — what that kind requires.
+3. `cw add <kind> <id> --header <name>=<value> …` — one flag per header,
+   repeated for a list.
+4. Write the body into the file the command named.
+5. `cw build`, and `cw doctor` when a build refuses.
+
+It also says that it is cw's own and not authored in this repository, that a
+repository wanting something else authors its own primitive ([FR-099](spec.md#fr-099)), that
+changing or removing a primitive is not what it covers ([FR-101](spec.md#fr-101)), and how a
+refusal is read and answered ([FR-102](spec.md#fr-102)). Every command it names is one `cw` has
+([FR-103](spec.md#fr-103)).
+
+## 6. Compiling and building
+
+### 6.1 One pass produces everything (FR-030 – FR-034, SC-004)
+
+`compile(charter, agents)` in `domain/services/compileService.ts` returns a
+`CharterOutput` (data-model [§8](data-model.md#8-compiled-output-fr-030--fr-040)): the catalogue, `CHARTER.md`, and each agent's
+components. The catalogue and `CHARTER.md` are compiled whether an agent is
+chosen or not ([FR-031](spec.md#fr-031)); each agent the repository chose adds its own components,
+one per primitive that host has a kind for. There is no exported path that
+produces the catalogues without the projections, which is the whole of [SC-004](spec.md#sc-004).
+
+`charterOutputProjection` in `projectionService.ts` turns that output into
+projections — a path, the contents and how the file goes down — which is the
+one place an output becomes a file. The build's `plan` in
+`service/buildService.ts` puts two halves side by side: the projection plan,
+what this reading of the charter puts down, each file read with what it holds
+now; and the cleanup plan, everything the last build left that the engine owns —
+everything under `.cw/out/`, and every stamped document under a host's
+directory. `executePlan` writes the first and deletes whatever of the second the
+first does not write again; `previewPlan` compares them and writes nothing
+([§6.4](#64-preview-fr-034)). Both answer the same `PlanSummary`.
+
+The stamp is what makes deleting under a host's directory safe: that directory is
+also where someone may keep a command or a skill of their own, and a path cannot
+tell the two apart. Every compiled document carries one; a hand-written file
+does not, and is left alone. Which agents are compiled for is read from
+`.cw/settings.json`, what the repository answered at setup, never from what is
+installed on the machine ([FR-038](spec.md#fr-038)).
+
+What the charter compiles to for claude: a guide is a rule under
+`.claude/rules/`, its `paths` its globs; a command a command; an agent an agent
+with its tools; a skill and a playbook both a skill, because that host has one
+mechanism for a body loaded when the request calls for it; a posture's
+permissions and a sensor's hooks one settings file. A corpus and a mixin compile
+to nothing of their own. Each document carries its body with the bodies of the
+mixins it pulls in before it ([FR-037](spec.md#fr-037)). A claude file is named by the identity
+with its separators replaced, so `guide:no-any` and `skill:no-any` stay two
+files.
+
+A charter with an error compiles nothing and writes nothing ([FR-040](spec.md#fr-040)): the build
+hands the errors back.
+
+### 6.2 How each file goes down
+
+How one file goes down over what is there is the output's own to say, as its
+`ProjectionPolicy`, and there are three answers:
+
+- `replace`, for a file the charter owns, written whole;
+- `mergeJSON`, for a file the charter shares with the repository — a host's
+  settings — written into by field, every posture and sensor landing beside what
+  the repository set there for itself ([FR-039](spec.md#fr-039)). It carries no stamp and is never
+  deleted;
+- `upsertWithMarker`, for a file that is the repository's, of which the charter
+  has one section ([§6.3](#63-the-hosts-entry-file-fr-035-fr-036)).
+
+### 6.3 The host's entry file (FR-035, FR-036)
+
+A host reads its own entry file unasked, and reads nothing under `.cw/out/`
+until something has sent it there. So each agent the repository compiles for
+gets one more projection: a section of its entry file — `CLAUDE.md` at the root
+for claude — that says where `CHARTER.md` is and carries no charter content. It
+stays the same size for a charter of four hundred guides as for one of four
+([SC-005](spec.md#sc-005)). A repository compiling for no agent has none of it.
+
+The section says where it starts and ends in its own first and last line,
+`<!-- CHERRYWORKS START -->` and `<!-- CHERRYWORKS END -->`. The build reads
+those two lines off the contents it was handed: where the file already carries
+them the section is written between them, once however many times it appeared;
+where it does not the section goes after what is there; and everything else in
+the file is left exactly as it was. So nothing in the build knows what this
+engine's marker looks like, and a second output written this way brings its own.
+
+The file is not generated output: a build never deletes it, and it carries no
+stamp, since the file is somebody else's with a section of the charter's inside
+it. The cleanup plan never sees it, since it looks under `.cw/out/` and a host's
+own directory and this sits at the root.
+
+`CHARTER.md` itself says what governs the repository, sends its reader to
+`catalog.min.json` first, says for each kind when it applies — each line read off
+that kind's own class — and explains identities ([FR-036](spec.md#fr-036), [FR-022](spec.md#fr-022)). It carries no
+primitive body, so it does not grow with the charter.
+
+### 6.4 Preview (FR-034)
+
+`preview` works out the same plan a build acts on and stops short of disk: every
+target is listed as added, edited, deleted or unchanged, a file both halves name
+being one the build writes again rather than deletes. A file already holding
+byte for byte what the build compiles to is unchanged, which is the whole of the
+question a preview asks: a repository where every file is unchanged is one that
+is fully built ([SC-007](spec.md#sc-007)). `cw build --preview` exits with a failure status when
+anything would change.
+
+### 6.5 The builtin layer needs no case of its own (FR-024)
+
+The charter `compile` is given already holds `skill:cw-author`, because
+`loadCharters` supplied it; the projection already knows where a skill compiles
+to for each agent the repository chose; the build already writes what the plan
+lists and deletes the stamped projection of a primitive that is gone. So:
+
+- **`build`** compiles it to `.claude/skills/skill-cw-author/SKILL.md` with no
+  case for it, and an engine that stops bringing it leaves nothing behind.
+- **`preview`** lists that surface like any other target.
+- **`doctor`** gains no line. Nothing is on disk to be stale, hand-edited or
+  behind — the question it would have answered cannot be asked.
+- **`init`** writes what it writes anyway. A repository is governed by this
+  primitive from its first read, not from a file setup left behind.
+- **The vendor commands** do not touch it, because there is nothing under the
+  workspace for them to touch ([FR-023](spec.md#fr-023)).
+
+## 7. Vendor sources
+
+### 7.1 Installing, updating and removing (FR-041 – FR-052)
+
+`CharterVendoring` in `application/` is the use case; `ForVCS` and the `Git`
+adapter behind it are the mechanism. Two questions come first — is this a
+repository, and is there work in hand — since what is installed lands as a
+commit on the branch checked out ([FR-051](spec.md#fr-051)).
+
+The source is handed to `git subtree` as it was typed, whatever transport it
+names, so every transport git supports works and what git says when it refuses
+is what the user reads ([FR-049](spec.md#fr-049)). What lands is committed under
+`.cw/vendor/<name>/`, `<name>` being the end of the address without a trailing
+`.git` ([FR-050](spec.md#fr-050)). `add` is `git subtree add` where the folder is not there and
+`git subtree pull` where it is, so installing and updating are one command
+([FR-047](spec.md#fr-047)). `--squash`, because what is installed is content to read and not a
+history to keep. Any number of sources, each its own folder ([FR-045](spec.md#fr-045)). Nothing is
+compiled ([FR-052](spec.md#fr-052)).
+
+`remove` takes the folder away and commits that it is gone, the way installing
+committed it, named by the folder it was installed as.
+
+The repository's history is the only record of what was installed ([FR-046](spec.md#fr-046)).
+Drift is version control's answer too: `driftedVendors` in `service/vendorRepo.ts`
+asks git what differs under `.cw/vendor/`, and names each vendor folder once
+however many of its files differ ([FR-081](spec.md#fr-081), [§10.1](#101-doctor-fr-013-fr-014-fr-080-fr-081)). A hand-edit to vendored content
+is undone with git, as any other change is.
+
+### 7.2 What an install records (FR-053, FR-122)
+
+`installed()` on `ForVendoringCharters` answers each folder under `.cw/vendor/`
+as data-model [§10.2](data-model.md#102-vendor-install-fr-053-fr-122) says it, and `cw vendor list` prints it.
+
+`git subtree --squash` records the folder and the upstream commit, not the
+address or the version asked for. So the one adapter that writes the install
+commit writes both into it, and is the one that reads them back:
+
+- `Git.subtreeAdd` passes `-m` with the two trailers of data-model [§10.2](data-model.md#102-vendor-install-fr-053-fr-122);
+- `ForVCS.installedFrom(repo, folder)` finds the last commit touching the folder
+  and reads those trailers.
+
+The trailer format is the adapter's own — written and read in one file — so the
+hexagon learns a commit, a source and a version and nothing about how git keeps
+them. A folder installed before the trailers were written has none, and comes
+back with its commit and the other two unknown; adding the same source again
+writes them ([Story 8](spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4), scenario 7).
+
+## 8. Setup (FR-054 – FR-058)
+
+`cw init` asks, and the use case acts. The command gathers every answer — from
+the flag, from what the repository already chose, or from whoever is at the
+terminal — and only then calls `init`, which is handed a decided set of answers
+and puts no question of its own. Every question has a default and a matching
+flag, so the whole run is scriptable ([FR-056](spec.md#fr-056), [SC-011](spec.md#sc-011)); the one without a default
+is the agent in a repository that has chosen none, and a run with nobody to ask
+stops naming `--agent`.
+
+`init` refuses outside a git repository ([FR-054](spec.md#fr-054)), creates the charter root with
+a directory per kind, and writes `.cw/settings.json`. It compiles nothing —
+compiling is the build's, run once there is a charter to compile — and commits
+nothing ([FR-057](spec.md#fr-057)).
+
+The agent is chosen from the list this engine compiles for,
+`AGENT_PROVIDERS`, never from what is installed here: claude chosen is claude
+compiled for, and the build makes `.claude/` if it is missing ([FR-055](spec.md#fr-055)). A second
+run reads the settings and offers what the repository already chose as the
+selected answer, so a return keeps what is there, and nothing authored is
+touched ([FR-058](spec.md#fr-058)).
+
+## 9. Kinds and authoring
+
+### 9.1 What a kind requires (FR-059, FR-062, FR-063)
+
+`listPrimitiveRequirements(kind)` answers `PrimitiveRequirements`
+(data-model [§2.1](data-model.md#21-primitive-requirements-fr-059-fr-062)): every header the kind takes, each with its shape and whether
+the kind refuses a file without it, and the kind's sample written out as a file's
+frontmatter holds it. `primitiveHeadersOf` reads the headers off the kind's zod
+schema — so a header the kind takes without requiring, such as a guide's
+`globs`, has the shape it is read as — and marks as required what the kind's
+`requires` and the common `requires` name. `primitiveSampleOf` writes the
+class's own `sample` out, `kind` first, the same text a refusal quotes as its
+fix.
+
+This is the one declaration of what a kind requires. The prompts of `cw add`,
+the answer of `cw kinds <kind>`, the refusal's fix line and the portal's form
+are it read four times, so no surface restates it ([FR-062](spec.md#fr-062)). No charter is read
+to answer it: what a kind demands is the kind's own contract, the same in a
+repository that has authored nothing.
+
+A header drawn from a closed set — a sensor's `signal` — also carries its
+allowed values, read off the kind's schema, so the portal offers them as a
+choice ([FR-118](spec.md#fr-118), data-model [§2.1](data-model.md#21-primitive-requirements-fr-059-fr-062)). The kind of a new primitive is a closed set
+too: `kinds()`.
+
+`kinds()` answers every kind under the line saying when a primitive of it comes
+up (data-model [§2.2](data-model.md#22-primitive-kinds-fr-060-fr-113)), read off each class's own `activatesWhen` — the same
+declarations `CHARTER.md` compiles its "When each kind applies" section from, so
+a listing and the agent's own orientation cannot come to say different things
+([FR-113](spec.md#fr-113)). It sits beside `listPrimitiveRequirements`: both answer what a kind is,
+and neither reads a charter.
+
+### 9.2 `cw kinds [kind]` (FR-059 – FR-061)
+
+One optional positional. With none, `kinds()`: one line per kind and when it
+comes up. With one, `listPrimitiveRequirements`: that kind's headers, the shape
+of each and whether it is required, and its sample, printed as a primitive's
+headers are written — so what the agent reads is the shape of the file it is
+about to ask for. A word that is no kind raises the fault every unknown kind
+raises, naming every kind there is ([FR-061](spec.md#fr-061)). No use case is added: this is a
+driver surface for what the engine already answers behind its port ([FR-063](spec.md#fr-063)).
+
+### 9.3 `cw add <kind> <id>`: prompts and header flags (FR-064 – FR-074)
+
+`cw add` writes `.cw/charter/<kind>/<id>.md`, the convention, since where a file
+sits decides only that it is looked at ([FR-002](spec.md#fr-002)). `writeCharter` in
+`service/charterRepo.ts` is the other direction of `loadCharters`: it refuses a
+file already there rather than write over it, and writes `toMarkdown()` of the
+primitive `primitiveOf` read from the answers — the same reading a file gets, so
+there is no second reading of a kind's contract to keep in step with the first.
+An identity claimed anywhere in the charter is refused naming the file claiming
+it ([Story 10](spec.md#user-story-10---write-a-primitive-with-no-terminal-to-answer-at-priority-p1), scenario 5). Nothing is compiled and nothing committed ([FR-074](spec.md#fr-074),
+[FR-079](spec.md#fr-079)). `add` takes a body, empty from the command line, typed from the portal
+([FR-117](spec.md#fr-117)).
+
+The asking is the command's, as `cw init`'s is. It asks
+`listPrimitiveRequirements`, and then one of three things happens:
+
+- **Header flags given.** `--header` is a repeatable string option.
+  `parseKVParams` in `driver/cli/commands/helper.ts` reads each into a name and a
+  value, splitting on the first `=`; a flag with no `=` is a fault naming the
+  flag ([FR-068](spec.md#fr-068)). The values are grouped by the shape the kind gives each header:
+  a list header keeps every value in the order given, a line header given twice
+  is a fault naming it ([FR-067](spec.md#fr-067)). Nothing is prompted, whether or not a terminal is
+  attached ([FR-070](spec.md#fr-070)). A required header nobody answered is left out of the record,
+  where the engine's `add` refuses it with the kind's sample ([FR-071](spec.md#fr-071)); a header no
+  kind takes is refused by the engine naming it rather than dropped by the schema
+  ([FR-072](spec.md#fr-072)).
+- **No flag, a terminal.** One question per header the kind requires, in the
+  order the engine named them, each asked as a line or a list ([FR-065](spec.md#fr-065)). A header
+  the kind takes without requiring is not asked ([FR-069](spec.md#fr-069)).
+- **No flag, no terminal.** The command writes nothing and prints the headers it
+  would have asked for, rather than waiting for an answer nobody will type
+  ([FR-065](spec.md#fr-065)).
+
+`k=v` is a command-line shape, and the engine already takes headers as a
+record, so nothing behind the port learns that a flag exists. A prompt and a flag
+produce the same record (data-model [§2.3](data-model.md#23-header-answers-fr-064--fr-074)), so the engine cannot tell which was
+used and refuses both in the same words ([FR-073](spec.md#fr-073), [SC-022](spec.md#sc-022)), and the file written
+from flags is byte for byte the file written from answers ([FR-074](spec.md#fr-074), [SC-023](spec.md#sc-023)).
+
+### 9.4 Opening, rewriting and deleting a primitive (FR-075 – FR-079)
+
+Three use cases on `ForManagingCharter`:
+
+- **`open(identity)`** — the opened primitive of data-model [§15.1](data-model.md#151-opened-primitive-fr-075-fr-078), its revision
+  the file's text as read. It works whenever that primitive's own file reads,
+  whatever else in the charter is wrong: it is asked of the primitives
+  `charterRootOf` read, not of validation.
+- **`rewrite(identity, headers, body, revision)`** — refuses a vendored
+  primitive naming its vendor folder ([FR-077](spec.md#fr-077)); refuses when the file's text is no
+  longer `revision` ([FR-078](spec.md#fr-078)); refuses answers the kind will not take with the
+  faults `add` gives ([FR-075](spec.md#fr-075)). Kind and identity are taken from the identity,
+  never from the headers, so an edit cannot move a file.
+- **`remove(identity)`** — deletes the repository primitive's file and nothing
+  else; refuses a vendored one ([FR-076](spec.md#fr-076), [FR-077](spec.md#fr-077)). Primitives and tests still
+  naming it are reported by the next validation as dangling, not rewritten.
+
+A revision is the text rather than a hash of it: the hexagon imports no
+`node:crypto`, primitive files are small, and comparing two strings needs
+nothing. The hash is the portal's, over HTTP ([§12.2](#122-the-route-table)). A builtin primitive has no
+file for `rewrite` or `remove` to act on, and is refused as a vendored one is
+([Story 12](spec.md#user-story-12---the-instructions-arrive-with-the-engine-not-with-the-repository-priority-p3), scenario 7).
+
+## 10. Health and explanation
+
+### 10.1 `doctor` (FR-013, FR-014, FR-080, FR-081)
+
+`doctor()` asks the four questions in one go — which agents the repository
+chose, what validating its charter finds, which vendors drifted, and how many
+files a build would still change — and answers `OutcomeDTOs.DoctorOutcome`
+(data-model [§14](data-model.md#14-doctor-outcome-fr-080-fr-081)). How many of the four are unwell is worked out behind the port,
+so `cw doctor` and the portal report one repository the same way ([SC-014](spec.md#sc-014)). Each
+question is asked whatever the one before it answered ([FR-081](spec.md#fr-081)): the preview is
+run where the charter holds and left `null` where it does not.
+
+The agents are what the repository chose, never what is installed on this
+machine. Drift is `driftedVendors` ([§7.1](#71-installing-updating-and-removing-fr-041--fr-052)). What validating finds is every fault,
+errors and warnings, under the file that has to change, named from the
+repository. `cw doctor` prints each, errors before warnings, and exits with a
+failure status on any error.
+
+### 10.2 `explain` (FR-029, FR-116)
+
+`explain(identity)` answers `OutcomeDTOs.ExplanationOutcome` (data-model [§13](data-model.md#13-explanation-fr-029)):
+the scoped primitive with its file and layer, the mixins it uses and the corpus
+it cites, the primitives that lend from it or cite it, and the test cases that
+name it. The relations are asked of `CharterRoot` — `mixinsOf`, `rationaleOf`,
+`hostsOf`, `citersOf` — beside `mixins` and `corpora`. The test cases are read by
+`loadTestSuites` and matched by each case's own `activatedIdentity`, each named by
+the situation `cw test` reports it under; a test file that does not read names
+nothing here. When the primitive comes up is read off its kind's
+`activatesWhen`, and its agent context off its headers (data-model [§6.1](data-model.md#61-agent-context-fr-113)).
+`cw explain` prints every relation; the portal opens each identity in it as its
+own explanation.
+
+An identity the charter holds nothing of is raised, not answered. A charter with
+an error explains nothing and hands the errors back, and the collision [SC-006](spec.md#sc-006)
+asks about is among them, naming both files.
+
+## 11. Self-regression tests (FR-082 – FR-092)
+
+### 11.1 The format
+
+A test lives beside the charter rather than in it, at `.cw/test/<name>.json`,
+and is read only when tests run: the charter is what an agent is instructed by,
+and a test is what says the charter still does what it did. It is JSON and not a
+document with frontmatter because a primitive is a document for the sake of the
+body an agent opens, and a test has no body; its one reader is the engine.
+
+`TestSuite.ts` in `domain/models/` holds the format and its reader,
+`testSuiteOf`. The three shapes of data-model [§11.1](data-model.md#111-the-test-file) are the whole of what a
+charter decides without an agent: a glob matched, an event named, a path
+refused. Which skill a request wants and which agent is delegated to is the
+agent reading words, and a test that guessed at it by matching substrings would
+be testing the guess ([FR-084](spec.md#fr-084)).
+
+The shape is a zod union of strict objects, and the type is inferred off it.
+Strictness is what closes the set, so the shapes nothing could ever answer do
+not exist to be handled. A file the schema refuses is shown a sample suite
+rather than told which field of which case went wrong ([FR-086](spec.md#fr-086)): a case is three
+shapes and a handful of fields, so the sample is the correction, and there is no
+second description of the format written down beside the schema. The file is
+read with `JSON.parse`, so the hexagon reads it without a library and without a
+port.
+
+### 11.2 Running them
+
+`loadTestSuites` in `service/testSuitesRepo.ts` reads `.cw/test/` beside
+`loadCharters`, never with the charter: a test is not a primitive, so nothing
+reading a kind's folder goes near it. It hands over one entry per file, a suite
+or the fault naming it. The use case is the two steps every other one is — read
+the charter, then ask it — with resolving in place of compiling. `runSuite` and
+`runCase` in `domain/services/testService.ts` resolve each case: nothing is run,
+nothing fetched and no agent asked, so the result is deterministic and the
+command stays a reader ([FR-084](spec.md#fr-084)).
+
+What each of the three answers when it fails is the point of the report, and it
+answers with a fault like any other: the globs the guide does have and to widen
+them, the event the sensor does name and to raise that one, that no posture
+denies this path and where to add it. Nothing is wrong with the file the case
+was written in, so it is a `TestCaseFault` and not a `TestSuiteFault`: what has
+to change is the charter, or the expectation about it. An expectation naming an
+identity the charter does not hold is unmet ([FR-087](spec.md#fr-087)). A file that does not read
+stops the run ([FR-088](spec.md#fr-088)), and a repository with no test passes, told so ([FR-089](spec.md#fr-089)).
+`cw test` exits with a failure status on any unmet case ([FR-085](spec.md#fr-085)).
+
+### 11.3 Managing test files
+
+Four use cases on `ForManagingCharter`:
+
+- **`suites()`** — every test file as data-model [§11.2](data-model.md#112-test-suites-listed) says it, without running
+  anything. What the test view shows before a run.
+- **`addSuite()`** — writes a new test file, named and filled as data-model [§11.2](data-model.md#112-test-suites-listed)
+  says, and returns its name ([FR-091](spec.md#fr-091)).
+- **`writeSuite(name, text)`** — refuses text `testSuiteOf` refuses, with its
+  sample ([FR-090](spec.md#fr-090)).
+- **`removeSuite(name)`** — deletes one file under `.cw/test/`, and refuses a name
+  that is not one ([FR-092](spec.md#fr-092)).
+
+## 12. The portal (FR-104 – FR-125)
+
+### 12.1 Shape
+
+The portal is a second driving adapter beside the command line. It calls the
+same driver ports the command line calls, and every capability it needs that the
+engine lacks is added to a port first, with its command-line equivalent in the
+same change ([FR-108](spec.md#fr-108), [FR-109](spec.md#fr-109)).
+
+`PortalCommand` calls `ensureRepoReady()`, which stops before anything is served
+outside a git repository or in one never set up, saying which and naming
+`cw init` ([FR-107](spec.md#fr-107)). It then calls `startPortal` of `server.ts` with the ports
+its `Context` holds, prints the address, and waits until interrupted ([FR-104](spec.md#fr-104)).
+Both are drivers, so `adapters-do-not-know-each-other` allows it, and `main.ts`
+stays the one composition root. `startPortal` fails at start naming
+`pnpm build` when the page is not built, rather than serving a blank page.
+
+### 12.2 The route table
+
+The routes are chained on one Hono app in `routes.ts`: a method and a path, the
+use case it calls, and the status its answer goes out with. Routes are resources
+under `/api`, JSON in and out; the page itself is served from `/`. No route holds
+a rule — each reads its arguments, calls one port method, and sends the answer
+on as the port gave it ([§2.5](#25-models-are-classes-and-a-driver-reads-their-dtos)).
+
+The verb says what a route does to the repository: every `GET` only reads, so
+the reader/writer split ([FR-093](spec.md#fr-093)) is visible in the table and [§12.4](#124-security-fr-106) has to guard
+only the other three verbs. A primitive is addressed as `:kind/:id` rather than
+by its identity: `kind:id` holds a colon, and two path segments need no
+encoding.
+
+| Method and path | Port call | Spec |
+|---|---|---|
+| `GET /api/charter/root/faults` | `ForManagingCharter.doctor()`, its `faultsByFile` | [FR-115](spec.md#fr-115) |
+| `GET /api/charter/root/primitives` | `list()` | [FR-112](spec.md#fr-112) – [FR-114](spec.md#fr-114) |
+| `POST /api/charter/root/primitives` | `add(kind, id, headers, body)` | [FR-117](spec.md#fr-117) |
+| `GET /api/charter/root/primitives/:kind/:id` | `open(identity)` | [FR-075](spec.md#fr-075), [FR-078](spec.md#fr-078) |
+| `PUT /api/charter/root/primitives/:kind/:id` | `rewrite(identity, headers, body, revision)` | [FR-075](spec.md#fr-075), [FR-078](spec.md#fr-078) |
+| `DELETE /api/charter/root/primitives/:kind/:id` | `remove(identity)` | [FR-076](spec.md#fr-076) |
+| `GET /api/charter/root/primitives/:kind/:id/explanation` | `explain(identity)` | [FR-029](spec.md#fr-029), [FR-116](spec.md#fr-116) |
+| `GET /api/definitions/kinds` | `kinds()` | [FR-112](spec.md#fr-112), [FR-113](spec.md#fr-113) |
+| `GET /api/definitions/kinds/:kind/requirements` | `listPrimitiveRequirements(kind)` | [FR-117](spec.md#fr-117), [FR-118](spec.md#fr-118) |
+| `GET /api/charter/root/build` | `preview()` | [FR-120](spec.md#fr-120) |
+| `POST /api/charter/root/build` | `build()` | [FR-120](spec.md#fr-120) |
+| `GET /api/charter/root/health` | `doctor()` | [FR-121](spec.md#fr-121) |
+| `GET /api/test-suites` | `suites()` | [FR-124](spec.md#fr-124) |
+| `POST /api/test-suites` | `addSuite()` | [FR-091](spec.md#fr-091) |
+| `PUT /api/test-suites/:name` | `writeSuite(name, text)` | [FR-090](spec.md#fr-090) |
+| `DELETE /api/test-suites/:name` | `removeSuite(name)` | [FR-092](spec.md#fr-092) |
+| `GET /api/test-suites/outcome` | `test()` | [FR-125](spec.md#fr-125) |
+| `GET /api/vendors` | `ForVendoringCharters.installed()` | [FR-122](spec.md#fr-122) |
+| `POST /api/vendors` | `ForVendoringCharters.add(source, version?)` | [FR-123](spec.md#fr-123) |
+| `DELETE /api/vendors/:name` | `ForVendoringCharters.remove(name)` | [FR-123](spec.md#fr-123) |
+
+The kinds and what each requires sit under `/definitions`, not under
+`/charter`: what a kind is and what it demands is the kind's own contract, the
+same answer in every repository, and reading it reaches no charter. Test suites
+and vendors sit beside `/charter` rather than in it: a test file is no primitive
+and nothing compiles it ([FR-082](spec.md#fr-082)), and a vendor is installed through a port of its
+own that reads no charter. Running the tests is a `GET`, since resolving a case
+writes nothing ([FR-084](spec.md#fr-084)). It shares a path segment with a suite's name and does
+not collide: no route `GET`s one suite — the list carries every suite's text — so
+`outcome` under `GET` can only mean the run, and `PUT` or `DELETE` of a suite
+named `outcome` still reaches that file. The listing is always the whole
+charter, never one kind of it: whoever shows it by kind is counting every kind
+too.
+
+**Revisions over HTTP.** `GET` of a primitive answers with an `ETag`, a hash of
+the revision `open` returned; `PUT` sends it back as `If-Match`. The server
+opens the file again, hashes it, and answers `412 Precondition Failed` naming the
+file when the two differ — otherwise it passes the revision it just read on to
+`rewrite`, which checks it once more. Hashing lives here, where `node:crypto` may
+be imported; the hexagon compares text ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079)).
+
+**Statuses.** `200` with the answer; `201` for a `POST` that created something,
+with the new resource's path; `204` for a `DELETE`. Faults given back — a charter
+that does not hold, answers a kind refuses — are `422` with the port's
+`DataDTOs.FaultsByFile` or `DataDTOs.Faults`. A raised `Fault` is `422` with its
+`DataDTOs.Fault`, so the page parses it with the schema it parses every other
+DTO with. `412` is the adapter's own, above. Anything else is a `500` and the
+message, logged to the terminal the portal was started from.
+
+### 12.3 No state on the server (FR-110)
+
+The server holds the port objects, the address and the token ([§12.4](#124-security-fr-106)), and
+nothing about the charter. Every route reads the repository afresh, which is
+[FR-110](spec.md#fr-110) with nothing to invalidate: a change made on disk by an editor, an agent
+or a branch checkout is what the next view shows. The page holds the view it is
+showing, a draft being typed (data-model [§15.2](data-model.md#152-draft)) and the last test outcomes;
+switching views re-asks the server. Two portals on one repository both work,
+and a save through one is caught by the other's revision check.
+
+### 12.4 Security (FR-106)
+
+A page on `127.0.0.1` can still be reached by any other page open in the same
+browser, and this server writes into a repository. So:
+
+- **A token per run.** 32 random bytes, in the printed address
+  (`http://127.0.0.1:9927/?t=…`), required on that address and on every call to
+  `/api`; the page carries it as `Authorization: Bearer` on each call. The
+  bundle the page loads asks for none: its own markup fetches it, and cannot
+  carry one.
+- **The `Host` header is checked** against `127.0.0.1:<port>` and
+  `localhost:<port>`, which is what stops DNS rebinding.
+- **Only `GET` reads, and every other verb writes with
+  `Content-Type: application/json`.** `PUT` and `DELETE` always need a CORS
+  preflight, and a `POST` with that content type does too; the server sends no
+  CORS headers, so a cross-origin page fails every one. A `GET` it can still make
+  changes nothing and is refused without the token anyway.
+
+None of this is a sign-in: the token is what the person who ran the command was
+handed, and it dies with the process.
+
+### 12.5 The page
+
+One document, the layout of [mockup/portal.html](./mockup/portal.html): the
+header (repository, search, Build with its preview menu, Doctor), three tabs
+(Repo Charter, Vendor, Test), a modal for explain, doctor, build and a test
+file's text, and a toast for what was just done.
+
+Each view is a Preact component that asks one route when it is shown and renders
+what comes back. The body editor is CodeMirror mounted into a `ref` by one small
+component that owns it; Preact never renders inside it. What the mockup computes
+in the browser — the faults, a case's outcome, the doctor report, the build plan,
+the explain relations — is exactly what the engine answers, and the page shows
+what comes back. The mockup's seed data is test data for the views, not a model
+of the charter.
+
+The repository view lists every catalogue entry, a chip per kind from `kinds()`
+with its count, so the page names no kind of its own and a kind nothing was
+authored of still has a chip ([Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenarios 1, 2 and 6). A builtin
+primitive appears there like any other, its file `(built into cw)/…` naming its
+layer.
+
+The form for a primitive is built from `listPrimitiveRequirements`: one row per
+header in its shape — a box per entry for a list, a choice for a closed set —
+then the description, the mixins, and the rationale offering the charter's
+corpus ([FR-117](spec.md#fr-117), [FR-118](spec.md#fr-118)). There is no agent-context switch: it follows from the
+headers. Kind and id are chosen on a new primitive, and shown and locked on an
+existing one ([FR-075](spec.md#fr-075)).
+
+## 13. The command line (FR-093 – FR-095, FR-109)
+
+`Commander` is the driving adapter: it parses argv, calls one use case, and
+renders what comes back through `ForReportingProgress`. It decides nothing —
+yargs hands even its own help and error text to a callback rather than the
+console, so everything a user sees leaves through the port. A command appears in
+the list when it is built; there are no placeholders standing in for a surface
+that does not exist yet. Commands sharing a first word (`vendor`, `suite`) are
+registered under it as a group; a positional on a command that stands alone
+(`explain <identity>`) is no group.
+
+| Command | Port call | Spec |
+|---|---|---|
+| `cw init [--agent]` | `settings`, then `init` | [FR-054](spec.md#fr-054) – [FR-058](spec.md#fr-058) |
+| `cw build [--preview]` | `build`, or `preview` | [FR-030](spec.md#fr-030) – [FR-040](spec.md#fr-040), [FR-024](spec.md#fr-024) |
+| `cw list [--kind] [--min]` | `list` | [FR-025](spec.md#fr-025) – [FR-028](spec.md#fr-028) |
+| `cw kinds [kind]` | `kinds`, or `listPrimitiveRequirements` | [FR-059](spec.md#fr-059) – [FR-063](spec.md#fr-063) |
+| `cw add <kind> <id> [--header k=v …]` | `listPrimitiveRequirements`, then `add` | [FR-064](spec.md#fr-064) – [FR-074](spec.md#fr-074) |
+| `cw edit <identity>` | `open`, then the author's editor on its file | [FR-075](spec.md#fr-075), [FR-109](spec.md#fr-109) |
+| `cw remove <identity>` | `remove` | [FR-076](spec.md#fr-076), [FR-077](spec.md#fr-077) |
+| `cw explain <identity>` | `explain` | [FR-029](spec.md#fr-029) |
+| `cw doctor` | `doctor` | [FR-013](spec.md#fr-013), [FR-014](spec.md#fr-014), [FR-080](spec.md#fr-080), [FR-081](spec.md#fr-081) |
+| `cw test` | `test` | [FR-082](spec.md#fr-082) – [FR-089](spec.md#fr-089) |
+| `cw suite add` | `addSuite` | [FR-091](spec.md#fr-091) |
+| `cw suite edit <name>` | the author's editor on the test file | [FR-090](spec.md#fr-090), [FR-109](spec.md#fr-109) |
+| `cw suite remove <name>` | `removeSuite` | [FR-092](spec.md#fr-092) |
+| `cw vendor add <source> [--ref]` | `ForVendoringCharters.add` | [FR-041](spec.md#fr-041) – [FR-052](spec.md#fr-052) |
+| `cw vendor remove <name>` | `ForVendoringCharters.remove` | [FR-047](spec.md#fr-047), [FR-051](spec.md#fr-051) |
+| `cw vendor list` | `ForVendoringCharters.installed` | [FR-053](spec.md#fr-053), [FR-122](spec.md#fr-122) |
+| `cw portal [--port]` | `ensureRepoReady`, then `startPortal` | [FR-104](spec.md#fr-104) – [FR-107](spec.md#fr-107) |
+
+For two capabilities the command line's way is not the port method. Rewriting a
+primitive and rewriting a test file are done in the author's own editor, so
+`rewrite` and `writeSuite` have the portal as their one caller. `cw edit` writes
+nothing: it asks `open` which file declares the identity — refusing, as `open`
+does, one the charter holds nothing of — and hands that file to `$VISUAL`, else
+`$EDITOR`, waiting until the editor exits. Whoever saves in the editor is the one
+who wrote the file; the command only found it. Where neither variable is set it
+refuses and says to set one, rather than guessing an editor. A vendored
+primitive opens like any other, and the next `cw doctor` names the edit as drift,
+as it would any hand-edit there. `cw suite edit` does the same for one file under
+`.cw/test/`.
+
+A terminal has an editor, so the command line does not rebuild in prompts what
+the editor already does: there is no `--body` on `cw add` and no revision to
+check on `cw edit`. A body at the command line is written the way it always was:
+`cw add`, then `cw edit`.
+
+The test-file commands are `suite`, not `test add`: `cw test` already runs the
+tests, and a group named `test` would take the plain command away. A test file
+holds one `TestSuite`, which is what the domain already calls it.
+
+## 14. Risks
+
+- **Projection format churn.** A host's surface is not a stable contract.
+  Mitigation: each host is a folder of component classes and an arm in two
+  services ([§2.6](#26-adapters-and-the-composition-root)); the neutral target always exists ([FR-031](spec.md#fr-031)), so the engine is
+  never blocked on an agent's format.
+- **A vendored identity colliding with one this repository authored.**
+  Mitigation: one identity names one primitive in the whole charter, so the
+  collision is reported at once, naming both files ([§5.1](#51-one-identity-one-primitive-fr-015-fr-016)).
+- **The vendor path never running on real content.** Mitigation: the vendoring
+  use cases are covered end to end against a real git repository.
+- **Ports multiplying into ceremony.** Mitigation: [§2.3](#23-ports-srchexagonport) is the whole list; a
+  row needs a second plausible implementation or a use case that must be denied
+  it.
+- **`ForManagingCharter` growing wide.** It gains the portal's methods. They are
+  one conversation, and splitting them by caller is what [§2.3](#23-ports-srchexagonport) rules out. Revisit
+  if a use case appears that no one caller needs alongside the rest.
+- **The page drifting into a second engine.** The mockup holds rules in the
+  browser because it has no engine behind it. Mitigation: [§2.2](#22-dependency-rules) makes the page
+  unable to import anything of ours but the DTOs and the routes' type, and every
+  rule in the mockup is assigned to an engine use case before its view is built.
+- **`cw portal` run from source needs a built page.** `pnpm cw portal` under
+  `tsx` serves from `dist/portal/`. Mitigation: `startPortal` fails at start
+  naming `pnpm build` ([§12.1](#121-shape)).
+- **Vendors installed before the trailers.** Mitigation: `installed()` returns
+  the commit with source and version unknown, the vendor view says so, and adding
+  the same source again writes the trailers ([§7.2](#72-what-an-install-records-fr-053-fr-122)).
+- **Validation reads the tests.** Every command that validates pays for reading
+  `.cw/test/`. Mitigation: the tests are a handful of small JSON files, read once
+  per run as the charter is ([SC-010](spec.md#sc-010)).
+- **An agent that reads the compiled skill and never runs `cw kinds`.** The body
+  is the only thing telling it to, and a body is instruction rather than
+  enforcement. Mitigation: `cw add` refuses what the kind will not take, with the
+  sample in the refusal — a wrong guess costs one command, not a bad file.
+- **A repository that authored `skill:cw-author` before the builtin layer
+  existed.** Its charter stops building until it renames, and the collision
+  names a file it cannot open as the other claimant. Mitigation: the fix line
+  says the engine brings that identity and the one to rename is the
+  repository's ([§5.3](#53-the-builtin-layer-supplied-rather-than-stored-fr-017--fr-024)).
+- **Three layers in every message that names one.** Every fault, catalogue entry
+  and listing that says "repo" or "vendor" has a third word to say. Caught by the
+  tests over listings and catalogues rather than by reading.
+- **A path nobody can open.** `(built into cw)/…` reads as a path in a fault or a
+  catalogue entry and is not one. Accepted over an optional file, which puts a
+  branch into every reader for the one primitive that has none, and over a bare
+  word, which would leave the catalogue no way to say which layer an entry came
+  from.
+
+## 15. Not built
+
+Recorded so they are not built by accident:
+
+- A server framework, a client-side router or a store ([§1](#1-technical-context)).
+- A file watcher or a push from server to page; [FR-110](spec.md#fr-110) is met by reading on
+  every view.
+- Opening the browser from `cw portal`.
+- Renaming a primitive or a test file, and changing a primitive's kind (spec
+  Out of Scope).
+- A standing build status outside the health check (spec Out of Scope).
+- Editing or deleting a primitive from an agent, or from a header flag.
+- A second builtin source, or a name level for one; a way to disable, remove or
+  pin what the engine brings; any file, folder or cache of it under the
+  workspace.
+- A machine-readable output mode for `cw kinds` or `cw add`.
+- Writing a primitive's body, or judging what it says.
+- A machine-local layer (spec Assumptions).
+
+## 16. Read of the reference design
+
+keystone (github.com/tacoda/keystone, Go, about 21 thousand lines) was read at
+`internal/framework/`. Three findings shaped the decisions above.
+
+- **Its cascade resolver is a defined stub.** `loader/loader.go` resolves
+  `port/name` to an `Origin{Policy, Path}`, but its own comment records that it
+  is "a defined stub with in-memory fixture tests" not yet wired into the
+  runtime. `keystone.json` in that repository carries `"policies": []` — the
+  cascade has never run on its own content.
+- **The live path treats an override as an error.** `primitive.Walk` scans the
+  whole charter root, vendored policy content included, into one flat list;
+  `Lint` then reports two primitives sharing `(kind, id)` as
+  `duplicate (kind=…, id=…)` at error severity. That is what [§5.1](#51-one-identity-one-primitive-fr-015-fr-016) does
+  deliberately.
+- **Its provenance is a single derived string.** `derivProvenance` maps a path to
+  `"project"` or `"policy/<name>"`, consumed at one call site to print a label
+  beside a listing. With one primitive per identity that is all provenance has to
+  be: here it is the scope a primitive carries, and the path it names.
+
+`loader/cascade.go` is a verifier, not a resolver: it hashes vendored files
+against the lockfile for drift and finds strict violations by matching file
+basenames under a port directory. Neither is adopted: version control is the
+record of what was vendored ([FR-046](spec.md#fr-046)).
+
+Size check for [SC-005](spec.md#sc-005) on that repository: 161 primitive bodies total 395 KB,
+`INDEX.lite.json` is 18 KB — 22 times smaller, so the tenfold target is
+achievable. But `INDEX.json` is 44 KB, only 2.4 times smaller, so the saving is
+lost if an agent reads the full catalogue first. That is why `CHARTER.md` sends
+its reader to `catalog.min.json` first ([§6.3](#63-the-hosts-entry-file-fr-035-fr-036)).
+
+## 17. Per-task design notes
+
+What each task settled beyond the sections above: the modules it touched, how it
+is tested, and how it landed. Keyed by task id. The task lists, with what each
+task cites and depends on, are in `specs/tasks/`. Every change is held to the
+size of [SC-026](spec.md#sc-026) and leaves the repository building and green; a change need not
+be user-visible, and the independently testable unit is the story.
+
+### 17.1 Phase 001: the charter, its engine and agent authoring
+
+Everything that has landed, listed in [tasks/001-charter-engine.md](./tasks/001-charter-engine.md):
+the skeleton, the engine standing alone, vendor layers in one identity space,
+explain, the preview gate, doctor and the tests, `cw add`, the groundwork the
+portal stands on (models as classes behind ports answering DTOs, the page
+toolchain, the server, `cw portal`), and agent authoring (`cw kinds <kind>`,
+`cw add --header`, the builtin layer and `skill:cw-author`).
+
+#### 17.1.1 T001 — Package skeleton
+
+`package.json` (ESM, `bin: cw`, Node ≥ 20), a strict `tsconfig.json`,
+`tsup.config.ts`, `.gitignore`, and an entry point that prints usage. A smoke
+test asserts `cw --help` exits 0 ([FR-094](spec.md#fr-094)).
+
+#### 17.1.2 T002 — The command-line adapter
+
+The adapter on `yargs`: a command table, strict parsing, `recommendCommands` for
+a near miss ([FR-095](spec.md#fr-095)), and output leaving through the reporting port rather than
+the console ([§13](#13-the-command-line-fr-093--fr-095-fr-109)).
+
+#### 17.1.3 T003 — Architecture rules
+
+`.dependency-cruiser.cjs` and `lint:deps` as the first step of `pnpm test`
+([§2.2](#22-dependency-rules)). The rules that keep the portal's page and the DTOs apart joined it with
+[T037](tasks/001-charter-engine.md#t037) and [T035](tasks/001-charter-engine.md#t035).
+
+#### 17.1.4 T004 — Driven ports
+
+Each driven port is declared when a use case first needs it, never ahead of it
+([§2.3](#23-ports-srchexagonport)).
+
+#### 17.1.5 T005 — The closed set of kinds
+
+`KINDS` is read off `PRIMITIVE_CLASSES` in `primitive/Primitive.ts`, one class
+per kind ([§4.2](#42-reading-one-primitive-fr-001--fr-004)). A file is read as the kind it declares ([FR-003](spec.md#fr-003)), while where it
+sits decides only that it is looked at ([FR-002](spec.md#fr-002)). When a kind activates is a line
+of prose on the kind's own class, `activatesWhen`, read by `CHARTER.md` and by
+`kinds()` ([§9.1](#91-what-a-kind-requires-fr-059-fr-062-fr-063)).
+
+#### 17.1.6 T006 — Reading one primitive
+
+`primitiveOf` reads frontmatter and body from text the port supplied, takes the
+`kind` the file declares, and hands the headers to that kind's class, which
+reads them through its zod schema. What comes back is a `Primitive`
+discriminated on `kind`, or every fault the file has ([§4.2](#42-reading-one-primitive-fr-001--fr-004)). It takes text and
+never a path it opens; the YAML itself is read through `ForParsingYaml`, since
+the hexagon imports no YAML library.
+
+#### 17.1.7 T007 — The one read path
+
+`loadCharters` over `ForReadingFiles` and `charterRootOf` over the files it hands
+in are the one path a charter is read by ([§4.1](#41-the-one-read-path-fr-009-sc-010)). `path.ts` says where everything
+lives, and loading looks only in the kind folders, so a catalogue beside the
+primitives is never read as one ([FR-002](spec.md#fr-002)). Tested against the in-memory adapter:
+one listing, one read per file. Reading once per run is then a matter of passing
+the `CharterRoot` on; nothing caches.
+
+#### 17.1.8 T008 — Mixins
+
+No merge step: `mixins` is read at projection time, where the mixin's body is
+written before the host's ([§5.2](#52-mixins-fr-006-fr-007), [T016](tasks/001-charter-engine.md#t016)). What is checked instead is reach, by
+`covers` over `picomatch`, as part of validation. A mixin pulling in a mixin is
+refused where a mixin's headers are read; one no layer holds is refused by
+validation ([FR-007](spec.md#fr-007)).
+
+#### 17.1.9 T009 — Validation across files
+
+`compositeFaultsByFiles` on `CharterRoot` answers what no single file can: a
+second claim on one `kind:id`, whether a named mixin is there, and whether it
+reaches as far as its host ([§4.3](#43-validation-across-files-fr-010--fr-013)). Every layer is asked the same questions on one
+walk. Faults arrive under the file they are about, each naming the specific
+problem and the next move ([FR-012](spec.md#fr-012)).
+
+#### 17.1.10 T010 — Per-kind headers
+
+What each kind requires is declared and read in the kind's own class: its zod
+schema extends the common headers, and `requires` names what a file of that kind
+is refused without (data-model [§1.3](data-model.md#13-kinds-and-what-each-requires-fr-001-fr-004)). One place says what a guide requires and
+reads it, so there is no table to drift from.
+
+#### 17.1.11 T011 — The checking service
+
+The application service behind `ForManagingCharter`, and the file adapter behind
+`ForReadingFiles`. It reads a charter and validates it; the reading use cases
+reach for no writing port ([§2.4](#24-application-srchexagonapplication)). Every command that reads a charter goes through
+the same validation, and `cw doctor` is where its report is printed ([FR-013](spec.md#fr-013)).
+
+#### 17.1.12 T012 — Rationale references
+
+On the same walk as [T009](tasks/001-charter-engine.md#t009). A corpus is cited as `corpus:<id>`, whichever layer
+published it ([§5.1](#51-one-identity-one-primitive-fr-015-fr-016)). A citation no corpus answers to is a warning, said and not
+stopped on ([FR-005](spec.md#fr-005)).
+
+#### 17.1.13 T013 — Catalogues
+
+`Catalogue` in `domain/models/output/CharterOutput.ts` holds the full and the
+compact entries, bodies excluded (data-model [§7](data-model.md#7-catalogues-fr-025--fr-028)). The compact one is what
+`CHARTER.md` names and what an agent reads first. A test asserts it is at least
+ten times smaller than the charter it describes ([SC-005](spec.md#sc-005)).
+
+#### 17.1.14 T014 — One compile pass
+
+`compile` returns everything one reading of the charter produces, as one
+`CharterOutput` ([§6.1](#61-one-pass-produces-everything-fr-030--fr-034-sc-004), [SC-004](spec.md#sc-004)).
+
+#### 17.1.15 T015 — The agent-neutral surface
+
+`CharterMd.of(PRIMITIVE_CLASSES)` writes `CHARTER.md`: what governs the
+repository, the compact catalogue first, one line per kind read off its class,
+and identities ([§6.3](#63-the-hosts-entry-file-fr-035-fr-036)). No primitive body is in it. The pointer every agent opens
+on its own is a section inside the entry file each host already reads ([T019](tasks/001-charter-engine.md#t019)), not
+a file of its own, which nothing reads unasked. It follows the reference design,
+whose neutral file carries no bodies either ([§16](#16-read-of-the-reference-design)).
+
+#### 17.1.16 T016 — The claude surface
+
+Command, agent, skill, rule and settings components, one per primitive for the
+documents, each carrying the body with the mixins it pulls in written before it
+([FR-037](spec.md#fr-037)). The body assembly is `bodyOf` on `CharterRoot`, where the mixins it
+needs are already read ([§5.2](#52-mixins-fr-006-fr-007), [§6.1](#61-one-pass-produces-everything-fr-030--fr-034-sc-004)).
+
+#### 17.1.17 T017 — The build
+
+`FileOutput`, `build` on the application service, `buildService.ts` and the
+`cw build` command. It is the first code that writes, through `ForWritingFiles`.
+Which agents are compiled for is read from `.cw/settings.json` ([FR-038](spec.md#fr-038)). A host's
+settings file is the one output written into rather than over ([FR-039](spec.md#fr-039)).
+Everything the engine owns on disk and no longer compiles to is taken away
+([§6.1](#61-one-pass-produces-everything-fr-030--fr-034-sc-004)).
+
+#### 17.1.18 T018 — Listing
+
+`list` on the application service, and `cw list [--kind] [--min]`: the catalogue
+the charter already compiles to, said one primitive to a line ([FR-028](spec.md#fr-028)). It reads
+and says.
+
+#### 17.1.19 T019 — The charter's section in each host's entry file
+
+The orientation was compiled and written, and nothing pointed an agent at it, so
+a built repository read its charter only when somebody mentioned the file by
+name. The section is one more projection per agent the repository compiles for,
+said where every other projection is said, with the third `ProjectionPolicy`,
+`upsertWithMarker` ([§6.2](#62-how-each-file-goes-down), [§6.3](#63-the-hosts-entry-file-fr-035-fr-036)). Tests cover [Story 1](spec.md#user-story-1---author-a-charter-and-put-the-agent-under-it-priority-p1) scenarios 6 and 7 and
+[SC-007](spec.md#sc-007).
+
+#### 17.1.20 T020 — Version control
+
+`ForVCS` and the git adapter behind it; setup refuses to work outside a git
+repository ([FR-054](spec.md#fr-054)). Nothing asks the machine what it has installed ([FR-055](spec.md#fr-055)).
+
+#### 17.1.21 T021 — Asking the setup questions
+
+The asking lives in `cw init` itself: the command gathers every answer and only
+then calls the use case ([§8](#8-setup-fr-054--fr-058)).
+
+#### 17.1.22 T022 — Setup
+
+`cw init` makes the charter root with a directory per kind and writes
+`.cw/settings.json`. Compiling is `cw build`'s, and setup commits nothing
+([FR-057](spec.md#fr-057)).
+
+#### 17.1.23 T023 — Re-running setup
+
+The agent the repository already compiles for is read off its settings and
+arrives as the selected choice, so a second run is rechoosing and a return keeps
+what is there ([FR-058](spec.md#fr-058), [§8](#8-setup-fr-054--fr-058)).
+
+#### 17.1.24 T024 — Installing through git subtree
+
+`subtreeAdd` and `isClean` on `ForVCS`, and the git adapter behind them ([§7.1](#71-installing-updating-and-removing-fr-041--fr-052)).
+The source is handed over as typed, and what lands is committed under
+`.cw/vendor/<name>/` — `add` where the folder is not there and `pull` where it is,
+so installing and updating are one call ([FR-047](spec.md#fr-047), [FR-049](spec.md#fr-049), [FR-050](spec.md#fr-050), [FR-051](spec.md#fr-051)).
+
+#### 17.1.25 T025 — `cw vendor add`
+
+`CharterVendoring.add` and `cw vendor add <source> [--ref]` ([§7.1](#71-installing-updating-and-removing-fr-041--fr-052)). Refused
+outside a repository and with work in hand ([FR-051](spec.md#fr-051)); a source already installed
+is brought up to date; nothing is compiled ([FR-052](spec.md#fr-052)).
+
+#### 17.1.26 T026 — One identity space
+
+The scope a primitive carries says which layer its file arrived in and is no
+part of its name ([§5.1](#51-one-identity-one-primitive-fr-015-fr-016), [FR-015](spec.md#fr-015)).
+
+#### 17.1.27 T027 — Naming mixins and corpora across layers
+
+A mixin is named by its id and a corpus by `corpus:<id>`, whichever layer
+published them ([§5.1](#51-one-identity-one-primitive-fr-015-fr-016)).
+
+#### 17.1.28 T028 — `cw vendor remove`
+
+`cw vendor remove <name>` takes the folder away and commits that it is gone,
+named by the folder it was installed as ([FR-047](spec.md#fr-047), [FR-051](spec.md#fr-051)). The command line
+learns command groups here ([§13](#13-the-command-line-fr-093--fr-095-fr-109)).
+
+#### 17.1.29 T029 — `cw explain`
+
+The command line learns a positional on a command that stands alone: `explain
+<identity>` is one command and not a group ([FR-029](spec.md#fr-029), [§13](#13-the-command-line-fr-093--fr-095-fr-109)). What it names grew with
+[T041](tasks/001-charter-engine.md#t041) and [T2.001](tasks/002-charter-portal.md#t2.001) ([§10.2](#102-explain-fr-029-fr-116)).
+
+#### 17.1.30 T030 — `build --preview`
+
+The preview reuses what a build acts on rather than a second reading of it: the
+projection plan and the cleanup plan, compared and not written ([§6.4](#64-preview-fr-034), [FR-034](spec.md#fr-034)).
+
+#### 17.1.31 T031 — `cw doctor`
+
+The agents reported are those the repository chose ([FR-055](spec.md#fr-055)). Drift is version
+control's answer: `changedUnder` asks git what differs under `.cw/vendor/`
+([§7.1](#71-installing-updating-and-removing-fr-041--fr-052)). It is where every fault is read ([FR-013](spec.md#fr-013), [FR-081](spec.md#fr-081)). The four questions
+moved behind the port with [T2.019](tasks/002-charter-portal.md#t2.019) ([§10.1](#101-doctor-fr-013-fr-014-fr-080-fr-081)).
+
+#### 17.1.32 T032 — The test format
+
+`TestSuite.ts` holds the format and `testSuiteOf` ([§11.1](#111-the-format)). A case carries no
+name, because the situation it puts and the one thing it expects is what a
+report has to say about it anyway, so there is no title to write and none to keep
+unique.
+
+#### 17.1.33 T033 — `cw test`
+
+`loadTestSuites`, `runSuite` and `runCase`, and the command ([§11.2](#112-running-them)). Resolution
+is three matches and lives in `testService.ts` beside the comparing it feeds:
+there is one caller, and a file of its own for it would be a split before
+anything asked for one. A test file that will not read comes back as the fault it
+is rather than raised: the loader hands over one entry per file, and whoever
+asked for the run is the one who reports it ([FR-086](spec.md#fr-086), [FR-088](spec.md#fr-088)).
+
+#### 17.1.34 T034 — `cw add`
+
+`cw add <kind> <id>` writes `<kind>/<id>.md` through `writeCharter` ([§9.3](#93-cw-add-kind-id-prompts-and-header-flags-fr-064--fr-074)). What
+a kind requires is asked of the driver port, the command puts one question per
+header, and the answers go back as they were typed; reading them as the
+primitive they claim to be is the service's, through `primitiveOf`, so there is
+no second reading of a kind's contract. What is written is `toMarkdown()` of the
+primitive itself. The command line knows the questions and none of the answers
+([FR-064](spec.md#fr-064), [FR-065](spec.md#fr-065)). Header flags joined it with [T042](tasks/001-charter-engine.md#t042) – [T044](tasks/001-charter-engine.md#t044).
+
+#### 17.1.35 T035 — Models are classes, and a driver reads their DTOs
+
+Added `port/driver/dtos/`, `application/dtos.ts`, and the rules
+`dtos-are-zod-only` and `models-know-no-dto` ([§2.2](#22-dependency-rules), [§2.5](#25-models-are-classes-and-a-driver-reads-their-dtos)). `FaultsByFile` became
+a class, its DTO naming each file from the repository. `doctor` answers
+`OutcomeDTOs.DoctorOutcome` (data-model [§14](data-model.md#14-doctor-outcome-fr-080-fr-081)): the `CharterRoot` and the settings
+are not in its answer, and the use cases behind it read them through a private
+method instead, validating being one of those. `toText` reads the DTO;
+`DoctorCommand` reads it and counts nothing itself. Every other port method
+answers DTOs too (data-model [§12.3](data-model.md#123-what-each-port-method-answers)), and each command switches on `type`.
+
+#### 17.1.36 T036 — The page toolchain
+
+`preact`, `@codemirror/view`, `@codemirror/state`, `@codemirror/lang-markdown`
+and `marked` became dependencies. `src/driver/portal/page/tsconfig.json` was
+added, the root one excluding `page/**`; a second `tsup` entry builds into
+`dist/portal/`; `typecheck` runs both configs ([§1](#1-technical-context)). A `main.tsx` renders the
+brand and nothing else.
+
+#### 17.1.37 T037 — The page kept browser code
+
+The rule `page-is-browser-code` ([§2.2](#22-dependency-rules)). It is proved by a test importing
+`node:fs` from `page/`, which fails `lint:deps`.
+
+#### 17.1.38 T038 — The server
+
+`startPortal` in `server.ts`: Hono at `127.0.0.1`, the default port and the next
+free one when it is taken, the index and `dist/portal/` served from `/`.
+`routes.ts` exports the app under `/api` with no route yet, and the page is
+allowed its type alone, for `hc`. It refuses to start, naming `pnpm build`, when
+the page is not built ([§12.1](#121-shape)).
+
+#### 17.1.39 T039 — The token and the host check
+
+The token, the host check, the `Content-Type` requirement on every verb but
+`GET`, and no CORS headers ([§12.4](#124-security-fr-106)). Tested against the server in-process.
+
+#### 17.1.40 T040 — `cw portal`
+
+`PortalCommand` builds the server from its `Context`, prints the address, and
+waits until interrupted. It stops before serving outside a git repository or in
+one never set up, saying which and naming `cw init` ([§12.1](#121-shape), [FR-107](spec.md#fr-107)).
+
+#### 17.1.41 T041 — What a primitive pulls in and what names it
+
+The relations the charter answers ([§10.2](#102-explain-fr-029-fr-116)): `mixinsOf`, `rationaleOf`, `hostsOf`
+and `citersOf` on `CharterRoot`, beside `mixins` and `corpora`, and
+`ExplanationOutcome` carrying them.
+
+#### 17.1.42 T042 — `--header` on `cw add`
+
+A repeatable string option in `AddCommand.ts`, read into a record by
+`parseKVParams` in `helper.ts`: the value is everything after the first `=`, and
+a flag with no `=` is a fault naming the flag. The record is passed to the
+engine's `add` as the answers a prompt would have given ([§9.3](#93-cw-add-kind-id-prompts-and-header-flags-fr-064--fr-074)).
+
+#### 17.1.43 T043 — The shapes
+
+`AddCommand` groups the flags by what `listPrimitiveRequirements` says each header
+takes: a list header keeps every value in the order given, a line header given
+twice is a fault naming it. The adapter holds no list of its own of which headers
+those are ([§9.3](#93-cw-add-kind-id-prompts-and-header-flags-fr-064--fr-074)).
+
+It landed wider than written. The requirements named only the headers a kind
+requires, so a header it takes without requiring — a guide's `globs` — had no
+shape to be typed by, and [Story 10](spec.md#user-story-10---write-a-primitive-with-no-terminal-to-answer-at-priority-p1) scenario 1 could not run. The shape now comes
+off the kind's own zod schema, and each header carries `required`, so the prompt
+path still asks only what the kind refuses a file without ([FR-069](spec.md#fr-069),
+data-model [§2.1](data-model.md#21-primitive-requirements-fr-059-fr-062)).
+
+#### 17.1.44 T044 — The flag path refuses what the prompt path refuses
+
+No prompting when a header flag is given, whether or not a terminal is attached;
+with no flag and no terminal, the command writes nothing and prints the headers it
+would have asked for; a header no kind takes is refused by the engine naming it,
+rather than dropped by the kind's schema. Every other refusal is the engine's,
+unchanged ([§9.3](#93-cw-add-kind-id-prompts-and-header-flags-fr-064--fr-074)). The refusal of an unknown header ([FR-072](spec.md#fr-072)) was found unmet while
+doing [T043](tasks/001-charter-engine.md#t043); whatever refuses it is the engine's, and belongs here, which is why
+the refusal and the tests over it are one change.
+
+**Tests.** `test/scaffolding-a-primitive.test.ts`: the file written from flags is
+byte for byte the file written from answers; a missing required header, an unknown
+header, a repeated line header and a malformed flag each write nothing and name
+what is wrong.
+
+#### 17.1.45 T045 — The kind answers in full, from the model to the terminal
+
+`PrimitiveRequirements` gains `sample` in `primitive/Primitive.ts`, read off the
+kind's class beside its headers; `primitiveRequirementsDTO` carries it in
+`application/dtos.ts`; the DTO schema takes it in `port/driver/dtos/data.ts`
+([§9.1](#91-what-a-kind-requires-fr-059-fr-062-fr-063), data-model [§2.1](data-model.md#21-primitive-requirements-fr-059-fr-062)). Then the optional positional of `cw kinds` ([§9.2](#92-cw-kinds-kind-fr-059--fr-061)). No
+use case is added.
+
+**Tests.** `test/the-kinds.test.ts`: for every kind, what `cw kinds <kind>` names
+is what that kind's contract requires and no more, and the same headers `cw add`
+asks for.
+
+#### 17.1.46 T046 — A third layer, read and named
+
+The charter reads three layers, and the third is handed in by the engine on every
+read, never found on disk. This task laid the layer down with nothing in it.
+
+- `BUILTIN_SCOPE` joins `Scope` in `CharterRoot.ts`, and the DTO's `scope` enum
+  takes it (data-model [§3.2](data-model.md#32-scope-fr-017--fr-024)).
+- `charterRootOf` takes `{ repo, vendor, builtin }` and reads builtin, then repo,
+  then vendor, each in the order its paths sort in ([§5.3](#53-the-builtin-layer-supplied-rather-than-stored-fr-017--fr-024), data-model [§4.2](data-model.md#42-the-files-a-charter-is-read-from)).
+- `BUILTIN_PRIMITIVES` is exported from `builtin/index.ts`. `loadCharters` turns
+  each into an in-memory file at `(built into cw)/<kind>/<id>.md` holding
+  `toMarkdown()`, reads nothing more from disk and writes nothing for it.
+- A builtin file is read by `primitiveOf` like every other: one the kind refuses
+  has its faults filed under its `(built into cw)/…` path ([FR-020](spec.md#fr-020)).
+- The collision's fix line says that an id the engine claims is the engine's own,
+  so the one to rename is the repository's ([FR-021](spec.md#fr-021)).
+- `cw explain` names the layer of a builtin primitive as built into cw, and
+  `CHARTER.md` names the third layer where it explains identities ([FR-019](spec.md#fr-019),
+  [FR-022](spec.md#fr-022)).
+- The portal is left alone: its repository view lists every catalogue entry with
+  its file, so a builtin primitive already shows as `(built into cw)/…`, which
+  names its layer.
+
+**Tests.** Tests over `charterRootOf` prove the read order, that a refused builtin
+file is filed under its own path, and the collision against the repository's
+file; a test over `loadCharters` proves the layer adds no read from disk.
+
+#### 17.1.47 T047 — What the engine brings, and the build needing no case for it
+
+`CwAuthorSkill` extends `SkillPrimitive`, its headers typed `SkillHeaders`: id
+`cw-author`, a description saying it is for authoring a new primitive of this
+charter, and the triggers of [FR-100](spec.md#fr-100). `BUILTIN_PRIMITIVES` holds one of it
+([§5.4](#54-what-the-engine-brings-fr-096--fr-103)). A fresh repository's charter holds `skill:cw-author` under
+`BUILTIN_SCOPE` with no fault. Nothing in `compile`, `build`, `preview`,
+`doctor`, `init` or the vendor commands changed ([§6.5](#65-the-builtin-layer-needs-no-case-of-its-own-fr-024)). This repository's own
+`.claude/skills/skill-cw-author/` was rebuilt.
+
+**Tests.** A build of a fresh repository compiling for claude writes the skill to
+`.claude/skills/skill-cw-author/SKILL.md` and nothing under `.cw/` beyond
+`.cw/out/` ([FR-024](spec.md#fr-024), [Story 12](spec.md#user-story-12---the-instructions-arrive-with-the-engine-not-with-the-repository-priority-p3) scenario 2). A primitive no longer shipped is proved
+deleted by seeding the stamped `SKILL.md` a previous engine would have left under
+another id, then building: the build deletes it ([FR-024](spec.md#fr-024)). `cw init` writes
+nothing under `.cw/charter/` or `.cw/vendor/` for the layer ([FR-018](spec.md#fr-018)). Every test
+that lists what a build, a catalogue, a listing or a preview holds includes
+`skill:cw-author`.
+
+#### 17.1.48 T048 — The body, written against the commands that answer it
+
+The body is the procedure of [§5.4](#54-what-the-engine-brings-fr-096--fr-103), told in terms of what `cw` answers rather than
+of what any kind holds, so it stays right when a kind changes. It is held in
+`CwAuthorSkill.ts`, and nothing else in the class changed. Not in it: teaching
+how to write a good body, and editing or deleting.
+
+**Tests.** `test/the-authoring-skill.test.ts` takes every key of every kind's
+schema and asserts none appears in the body as a header is written — followed by
+`:` or `=`, or alone in backticks ([FR-097](spec.md#fr-097), [SC-020](spec.md#sc-020)); that every command the body
+names is one `cw` has ([FR-103](spec.md#fr-103)); that the procedure comes in order ([FR-098](spec.md#fr-098)); and
+that it says whose it is and what it does not cover ([FR-099](spec.md#fr-099), [FR-101](spec.md#fr-101)).
+
+### 17.2 Phase 002: the charter portal
+
+The list is [tasks/002-charter-portal.md](./tasks/002-charter-portal.md). The
+stories go in spec order: [Story 5](spec.md#user-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), [Story 6](spec.md#user-story-6---author-edit-and-delete-a-primitive-without-looking-anything-up-priority-p2), [Story 7](spec.md#user-story-7---build-preview-and-check-the-repositorys-health-priority-p3), [Story 8](spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4) and [Story 9](spec.md#user-story-9---write-run-and-correct-the-self-regression-tests-priority-p5). Within
+a story the engine half lands before the page half, so every change that touches
+the page has a port answer to show. Each change is held to [SC-026](spec.md#sc-026).
+
+#### 17.2.1 T2.001 — The test cases naming an identity
+
+The cases naming the identity, matched by each case's `activatedIdentity` and
+named by its situation; `ExplainCommand` prints every relation ([§10.2](#102-explain-fr-029-fr-116)).
+
+#### 17.2.2 T2.002 — The first routes
+
+`GET /api/charter/root/faults`, sending the `faultsByFile` of
+`OutcomeDTOs.DoctorOutcome`, and `GET /api/charter/root/primitives`, sending
+`DataDTOs.Catalogue` as it is, with the statuses of [§12.2](#122-the-route-table).
+
+#### 17.2.3 T2.003 — The page shell
+
+The page shell from the mockup ([§12.5](#125-the-page)) — the header with the repository, the
+search, Build and Doctor; the three tabs; the modal and the toast — as components
+with no data. Tested in a real browser.
+
+#### 17.2.4 T2.004 — The repository view
+
+Kind chips with counts, the line saying when that kind comes up, the table of
+identity, description, path, and the headers the kind is pinned down by, and the
+empty state per kind. `kinds()`, `GET /api/definitions/kinds` and `cw kinds`
+answer every kind under its `activatesWhen`, so the page names no kind of its own
+([§9.1](#91-what-a-kind-requires-fr-059-fr-062-fr-063), [§12.5](#125-the-page)). The view asks afresh each time the tab is shown. There is no
+layer filter or label of its own: every catalogue entry is listed with its file,
+and the file names its layer ([§5.3](#53-the-builtin-layer-supplied-rather-than-stored-fr-017--fr-024)).
+
+#### 17.2.5 T2.005 — The faults view
+
+Shown in place of the listing when the charter holds an error ([FR-115](spec.md#fr-115)).
+
+#### 17.2.6 T2.006 — The vendor layer's primitives
+
+The Vendor tab lists the vendor layer's primitives read-only, with the
+repository view's table. The sources panel waits for [T2.026](tasks/002-charter-portal.md#t2.026).
+
+#### 17.2.7 T2.007 — Search
+
+The search box in the header replaces the tabs with the matching primitives of
+every layer; Clear returns to the tab ([FR-114](spec.md#fr-114)).
+
+#### 17.2.8 T2.008 — The explanation route and modal
+
+`GET …/:kind/:id/explanation` and the Explain modal, each identity in it opening
+its own explanation ([FR-116](spec.md#fr-116)).
+
+#### 17.2.9 T2.009 — Adding carries a body
+
+`add(kind, id, headers, body = "")`, the body written by `toMarkdown` ([§9.3](#93-cw-add-kind-id-prompts-and-header-flags-fr-064--fr-074)).
+`primitiveOf` already takes a draft with a body.
+
+#### 17.2.10 T2.010 — Opening a primitive
+
+`open(identity)` with its revision ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079), data-model [§15.1](data-model.md#151-opened-primitive-fr-075-fr-078)).
+
+#### 17.2.11 T2.011 — Rewriting a primitive
+
+`rewrite`, refused for a vendored primitive, a stale revision, or answers the
+kind will not take ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079)).
+
+#### 17.2.12 T2.012 — Deleting a primitive
+
+`remove`, and `cw remove <identity>` with it ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079), [§13](#13-the-command-line-fr-093--fr-095-fr-109)).
+
+#### 17.2.13 T2.013 — `cw edit`
+
+As [§13](#13-the-command-line-fr-093--fr-095-fr-109) says: `open`, then `$VISUAL` or `$EDITOR` on the file, writing nothing
+itself.
+
+#### 17.2.14 T2.014 — A closed header's allowed values
+
+A header's allowed values are read off the kind's class and carried by the
+requirements ([§9.1](#91-what-a-kind-requires-fr-059-fr-062-fr-063), data-model [§2.1](data-model.md#21-primitive-requirements-fr-059-fr-062)).
+
+#### 17.2.15 T2.015 — The primitive routes
+
+The primitive routes of [§12.2](#122-the-route-table), with the `ETag`, `If-Match` and `412` of its
+"Revisions over HTTP", and the requirements route under `/definitions`.
+
+#### 17.2.16 T2.016 — The form
+
+The form of [§12.5](#125-the-page), built from the requirements; kind and id chosen on a new
+primitive and locked on an existing one (data-model [§15.2](data-model.md#152-draft)).
+
+#### 17.2.17 T2.017 — The body editor
+
+CodeMirror mounted into a `ref` with markdown highlighting, and a Preview view
+rendered by `marked` ([§1](#1-technical-context), [FR-119](spec.md#fr-119)).
+
+#### 17.2.18 T2.018 — Save, create and delete
+
+Wired to the routes: refusals shown in the engine's words, and the `412` said as
+"the file changed on disk" ([Story 6](spec.md#user-story-6---author-edit-and-delete-a-primitive-without-looking-anything-up-priority-p2), scenario 9).
+
+#### 17.2.19 T2.019 — The health check behind the port
+
+`doctor()` behind `ForManagingCharter`, asked once; `DoctorCommand` is its
+reader, printing what it printed before. It landed with [T035](tasks/001-charter-engine.md#t035): how many of the
+four answers are unwell is worked out behind the port, and vendor drift is asked
+of `service/vendorRepo.ts` rather than of `ForVendoringCharters` ([§10.1](#101-doctor-fr-013-fr-014-fr-080-fr-081)).
+
+#### 17.2.20 T2.020 — The three warnings the charter alone answers
+
+The first three warnings of [§4.4](#44-the-four-validation-warnings-fr-014), the threshold a named constant with its reason.
+
+#### 17.2.21 T2.021 — The warning for a primitive no case names
+
+The fourth warning of [§4.4](#44-the-four-validation-warnings-fr-014), with validation reading `.cw/test/`.
+
+#### 17.2.22 T2.022 — Preview and build from the header
+
+`GET` and `POST /api/charter/root/build`; the Build button and its Preview menu;
+the modal listing the plan, and Build for real from the preview ([FR-120](spec.md#fr-120)).
+
+#### 17.2.23 T2.023 — The health route and the Doctor modal
+
+`GET /api/charter/root/health` and the Doctor modal: the four answers, errors
+listed before warnings, and a build button when the output is behind ([FR-121](spec.md#fr-121)).
+
+#### 17.2.24 T2.024 — The install commit records its source and version
+
+The trailers and `ForVCS.installedFrom` of [§7.2](#72-what-an-install-records-fr-053-fr-122), both in the one adapter. Tested
+against a real repository, as vendoring is.
+
+#### 17.2.25 T2.025 — Listing the installed vendors
+
+`ForVendoringCharters.installed()` and `cw vendor list` ([§7.2](#72-what-an-install-records-fr-053-fr-122), [§13](#13-the-command-line-fr-093--fr-095-fr-109)).
+
+#### 17.2.26 T2.026 — The vendor routes and the sources panel
+
+The three vendor routes of [§12.2](#122-the-route-table); the sources panel showing each source's folder,
+source, version, commit and primitives by kind; its empty state; the add modal
+listing the reserved directories; and Remove — each refusal in the engine's words
+([Story 8](spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4)).
+
+#### 17.2.27 T2.027 — Listing the test files
+
+`suites()` ([§11.3](#113-managing-test-files)).
+
+#### 17.2.28 T2.028 — Creating and deleting a test file
+
+`addSuite()`, `removeSuite(name)`, `cw suite add` and `cw suite remove <name>`
+([§11.3](#113-managing-test-files), [§13](#13-the-command-line-fr-093--fr-095-fr-109)).
+
+#### 17.2.29 T2.029 — Rewriting a test file
+
+`writeSuite(name, text)`, refused with `testSuiteOf`'s refusal and sample;
+`cw suite edit <name>` opens the author's editor as `cw edit` does ([§13](#13-the-command-line-fr-093--fr-095-fr-109)).
+
+#### 17.2.30 T2.030 — The test view
+
+`GET /api/test-suites` and `GET /api/test-suites/outcome`; the test view lists
+the files, opens the cases per file, runs all tests, and opens the first failing
+file ([Story 9](spec.md#user-story-9---write-run-and-correct-the-self-regression-tests-priority-p5), scenarios 1, 2, 5 and 8).
+
+#### 17.2.31 T2.031 — Create, save and delete a test file from the portal
+
+`POST`, `PUT` and `DELETE /api/test-suites[/:name]`; New test file opens the new
+file's text, Save shows the refusal and sample, Delete file removes it. The page
+clears earlier outcomes on every write, the creation of a new file included
+([Story 9](spec.md#user-story-9---write-run-and-correct-the-self-regression-tests-priority-p5), scenarios 3, 4, 6 and 7).

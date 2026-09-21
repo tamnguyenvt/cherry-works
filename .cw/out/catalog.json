@@ -1,0 +1,86 @@
+[
+  {
+    "identity": "command:implement-new-task",
+    "kind": "command",
+    "id": "implement-new-task",
+    "description": "find task in specs folder and implement",
+    "file": ".cw/charter/command/implement-new-task.md"
+  },
+  {
+    "identity": "command:learn",
+    "kind": "command",
+    "id": "learn",
+    "description": "Learn from the conversation",
+    "file": ".cw/charter/command/learn.md"
+  },
+  {
+    "identity": "command:merge",
+    "kind": "command",
+    "id": "merge",
+    "description": "merge branch",
+    "file": ".cw/charter/command/merge.md"
+  },
+  {
+    "identity": "command:plan-task",
+    "kind": "command",
+    "id": "plan-task",
+    "description": "clarify spec and planning",
+    "file": ".cw/charter/command/plan-task.md"
+  },
+  {
+    "identity": "command:review",
+    "kind": "command",
+    "id": "review",
+    "description": "review implementation",
+    "file": ".cw/charter/command/review.md"
+  },
+  {
+    "identity": "command:verify",
+    "kind": "command",
+    "id": "verify",
+    "description": "verify changes",
+    "file": ".cw/charter/command/verify.md"
+  },
+  {
+    "identity": "guide:no-abirtrary-function-split",
+    "kind": "guide",
+    "id": "no-abirtrary-function-split",
+    "description": "read when you are about to create a helper function or split into smaller function",
+    "file": ".cw/charter/guide/no-abirtrary-function-split.md"
+  },
+  {
+    "identity": "guide:no-single-word-naming",
+    "kind": "guide",
+    "id": "no-single-word-naming",
+    "description": "rule for name a function or variable",
+    "file": ".cw/charter/guide/no-single-word-naming.md"
+  },
+  {
+    "identity": "playbook:implement-task",
+    "kind": "playbook",
+    "id": "implement-task",
+    "description": "Instruction for implement new task",
+    "file": ".cw/charter/playbook/implement-task.md"
+  },
+  {
+    "identity": "playbook:plan-task",
+    "kind": "playbook",
+    "id": "plan-task",
+    "description": "Instruction for creating spec and plan",
+    "file": ".cw/charter/playbook/plan-task.md"
+  },
+  {
+    "identity": "sensor:link-specs-on-stop",
+    "kind": "sensor",
+    "id": "link-specs-on-stop",
+    "description": "Link every id the specs cite to where it is defined, and refuse to stop while a citation dangles.",
+    "file": ".cw/charter/sensor/link-specs-on-stop.md"
+  },
+  {
+    "identity": "skill:cw-author",
+    "kind": "skill",
+    "id": "cw-author",
+    "description": "Author a new primitive of this repository's charter, asking cw what its kind requires.",
+    "file": "(built into cw)/skill/cw-author.md"
+  }
+]

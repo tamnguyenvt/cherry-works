@@ -1,0 +1,11 @@
+---
+kind: guide
+id: no-abirtrary-function-split
+description: read when you are about to create a helper function or split into smaller function
+---
+
+Don't name a function with just a verb or the past tense of a verb. When you want to do that, most of the time you can make it inline in parent function. 
+
+Never split a function into too many smaller functions if you dont actually reuse it. normally, you will reuse the big function, smaller pieces are only the logic inside that function.
+
+When you name a function, it must tight to a business logic, if not, try to write it inline or use library or if must do, write in closest helper.ts

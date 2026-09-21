@@ -1,0 +1,205 @@
+import { z } from "zod";
+import { AgentPrimitive } from "./AgentPrimitive.js";
+import { CommandPrimitive } from "./CommandPrimitive.js";
+import { CorpusPrimitive } from "./CorpusPrimitive.js";
+import { GuidePrimitive } from "./GuidePrimitive.js";
+import { MixinPrimitive } from "./MixinPrimitive.js";
+import { PlaybookPrimitive } from "./PlaybookPrimitive.js";
+import { PosturePrimitive } from "./PosturePrimitive.js";
+import { SensorPrimitive } from "./SensorPrimitive.js";
+import { SkillPrimitive } from "./SkillPrimitive.js";
+import { BasePrimitive, DELIMITER } from "./BasePrimitive.js";
+import { CharterPrimitiveFault, throwAggregateError } from "../../Fault.js";
+import { formatFrontmatterValue } from "../../helper.js";
+import type { ForParsingYaml } from "../../../../port/zdriven/ForParsingYaml.js";
+
+/** The classes, one per kind. Adding a kind is a file beside them and a line here; what
+ *  the kinds are is read back off this list rather than written down twice. */
+export const PRIMITIVE_CLASSES = [
+  GuidePrimitive,
+  SensorPrimitive,
+  CommandPrimitive,
+  SkillPrimitive,
+  PlaybookPrimitive,
+  AgentPrimitive,
+  PosturePrimitive,
+  CorpusPrimitive,
+  MixinPrimitive,
+] as const;
+
+/**
+ * A primitive of any kind, discriminated on `kind`: reading
+ * `headers.globs` compiles on a guide and nowhere else.
+ *
+ * Each kind is a class of its own, holding what it requires of a file and
+ * refusing one that does not hold it, so having a `Primitive` is the promise
+ * that the kind's contract holds (FR-004). Read off what those classes return
+ * rather than listed again: a constructor is protected, so `of` is the only way
+ * one comes into being, and what it hands back is what a primitive is.
+ */
+export type Primitive = ReturnType<(typeof PRIMITIVE_CLASSES)[number]["of"]>;
+
+/** The primitive kinds, each read off the class that reads it. The set is
+ *  closed: any other value is a fault naming the file and the offending kind
+ *  (FR-001). */
+export const KINDS = Object.freeze(PRIMITIVE_CLASSES.map((one) => one.kind));
+
+export type Kind = (typeof KINDS)[number];
+
+/** What the whole charter names one primitive by: its kind and its id joined by
+ *  a colon, `guide:no-any` (FR-014). Written as the shape rather than as plain
+ *  text, so a bare word cannot be passed where an identity is asked for. */
+export type PrimitiveIdentity = `${string}:${string}`;
+
+/** One identity as an author typed it: the two words and the colon between
+ *  them. What it names is not asked here — whether this charter holds anything
+ *  of that name takes the whole charter (FR-014). */
+export const PRIMITIVE_IDENTITY_SCHEMA = z
+  .string()
+  .regex(/^[a-z0-9-]+:[a-z0-9-]+$/)
+  .transform((identity) => identity as PrimitiveIdentity);
+
+export function isKind(value: unknown): value is Kind {
+  return typeof value === "string" && (KINDS as readonly string[]).includes(value);
+}
+
+/** Which class reads each kind. */
+const CLASS_OF = new Map<Kind, (typeof PRIMITIVE_CLASSES)[number]>(
+  PRIMITIVE_CLASSES.map((one) => [one.kind, one]),
+);
+
+/** One header a kind's author may answer for: the shape the answer takes, and
+ *  whether a file written without it is refused. What is asked before a file of
+ *  this kind can be written, and what is refused where a file was written
+ *  without it — one declaration, read twice. */
+export class PrimitiveHeader {
+  constructor(
+    readonly field: string,
+    readonly shape: "line" | "list",
+    readonly required: boolean,
+  ) {}}
+
+/** Everything one kind takes of whoever authors it: every header in the order
+ *  they are asked, and one primitive of that kind written out, so an author
+ *  reading what is wanted also reads what it looks like answered (FR-001,
+ *  FR-039). */
+export class PrimitiveRequirements {
+  constructor(
+    readonly headers: readonly PrimitiveHeader[],
+    readonly sample: string,
+  ) {}}
+
+/**
+ * Every header one kind takes: what every primitive declares, and what this
+ * kind's own contract adds on top of it — each with the shape it holds and
+ * whether the kind refuses a file without it (FR-004, FR-039).
+ *
+ * Read off the kind's own class rather than listed again here, so a kind that
+ * grows a header is asked for it without anything else being told. The shape
+ * comes off the schema a file is refused against, so a header a kind takes
+ * without requiring — a guide's globs — is written the shape it is read as, and
+ * whoever answers one reads the same contract that refuses it.
+ *
+ * `kind` and `id` are not among them: the first is what is being asked about
+ * and the second is what the primitive is to be called, so both are known
+ * before there is anything to ask.
+ */
+export function primitiveHeadersOf(kind: Kind): readonly PrimitiveHeader[] {
+  const kindClass = CLASS_OF.get(kind)!;
+  const required = { ...BasePrimitive.requires, ...kindClass.requires };
+
+  return Object.entries(kindClass.schema.shape)
+    .filter(([field]) => field !== "id")
+    .map(([field, type]) => new PrimitiveHeader(field, shapeOf(type), field in required));
+}
+
+/** One primitive of this kind as its own class declares one, written out the
+ *  way a file holds it — the kind first, since it is what decides how the rest
+ *  is read. What an author is shown beside the headers they are to answer, and
+ *  the same sample a refused file is held up against (FR-001). */
+export function primitiveSampleOf(kind: Kind): string {
+  return Object.entries({ kind, ...CLASS_OF.get(kind)!.sample })
+    .map(([field, value]) => `${field}: ${formatFrontmatterValue(value)}`)
+    .join("\n");
+}
+
+/** What one header holds, read off the schema it is parsed by: a list where the
+ *  schema takes an array of lines, and one line otherwise. Optional and
+ *  readonly are wrappers around what is being held rather than part of it, so
+ *  they are taken off before the question is asked. */
+function shapeOf(type: unknown): "line" | "list" {
+  let held = type;
+  while (!(held instanceof z.ZodArray) && typeof (held as { unwrap?: unknown })?.unwrap === "function")
+    held = (held as { unwrap: () => unknown }).unwrap();
+
+  return held instanceof z.ZodArray ? "list" : "line";
+}
+
+/** Headers and body as a caller already holds them, for a primitive nobody has
+ *  written a file for yet: what `cw add` gathers from whoever is authoring it. */
+export interface PrimitiveDraft {
+  readonly headers: Readonly<Record<string, unknown>>;
+  readonly body: string;
+}
+
+/**
+ * A primitive from the text a port supplied, or from headers and a body a
+ * caller already holds.
+ *
+ * Returns one, or throws an `AggregateError` carrying what is wrong with it, so
+ * a caller reading a whole charter collects it under the file (FR-009).
+ * What is checked is the same either way: a primitive gathered at the command
+ * line holds what its kind requires, or it is refused before any file is
+ * written, and there is no second reading of what a kind demands to keep in
+ * step with the first (FR-039).
+ *
+ * The kind is the one the headers declare, and it must be one the charter
+ * knows. Where a primitive sits says nothing about what it is: a file is read as
+ * what it says it is (FR-003).
+ */
+export function primitiveOf(draft: PrimitiveDraft): Primitive;
+export function primitiveOf(text: string, parser: ForParsingYaml): Primitive;
+export function primitiveOf(input: string | PrimitiveDraft, parser?: ForParsingYaml): Primitive {
+  let headers: Readonly<Record<string, unknown>>;
+  let body: string;
+
+  if (typeof input === "string") {
+    // The frontmatter block and the body around it: the opening delimiter is
+    // the first line, and the block ends at the next delimiter on its own line.
+    const lines = input.replace(/^﻿/, "").split(/\r?\n/);
+    if (lines[0]?.trim() !== DELIMITER)
+      throwAggregateError([
+        new CharterPrimitiveFault(
+          `This file opens with no "${DELIMITER}" frontmatter block.`,
+          `Add one at the top declaring at least "id" and "description".`,
+        ),
+      ]);
+    const end = lines.findIndex((line, index) => index > 0 && line.trim() === DELIMITER);
+    if (end === -1)
+      throwAggregateError([
+        new CharterPrimitiveFault(
+          `The frontmatter block is never closed.`,
+          `Add a "${DELIMITER}" line after the headers.`,
+        ),
+      ]);
+    headers = parser!.parse(lines.slice(1, end).join("\n"));
+    body = lines.slice(end + 1).join("\n").trim();
+  } else {
+    headers = input.headers;
+    body = input.body;
+  }
+
+  if (!isKind(headers.kind))
+    throwAggregateError([
+      headers.kind === undefined
+        ? new CharterPrimitiveFault(
+            `This file declares no "kind", so nothing knows what to read it as.`,
+            `Add "kind: <one the charter knows>" to the frontmatter.`,
+          )
+        : new CharterPrimitiveFault(
+            `"${String(headers.kind)}" is not a kind the charter knows.`,
+            `Declare a kind the charter knows: ${KINDS.join(", ")}.`,
+          ),
+    ]);
+  return CLASS_OF.get(headers.kind)!.of(headers, body);
+}
