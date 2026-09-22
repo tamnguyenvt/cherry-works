@@ -14,7 +14,7 @@ triggers: ["implement task XXX or implement next task"]
 The agent walks through each phase below in order. After each phase, **pause for the user's acceptance** before proceeding to the next. Do not race ahead.
 
 1. Find the task in <root>/specs/tasks/[phase].md, and what it cites in <root>/specs/spec.md, plan.md and data-model.md. Start new branch from phase branch.
-2. **spec** — read spec, Author the spec, restate intent, list acceptance criteria, list non-goals, flag uncertainty. Edit spec file with above information and save. **Gate:** explicit user acceptance.
+2. **spec** — read spec, Author the spec, restate intent, list acceptance criteria, list non-goals, flag uncertainty. Edit spec file with above information and save. Print one sentence to brief what will do. **Gate:** explicit user acceptance.
 3. **implementation** — Implement with /superpowers:execute-plan. Iron law: surgical edits only — touch what the spec requires.
 4. **check-drift**. check diff and go through guides to see any violations before running heavy sensors.
 5. **verify** — run /verify command. Iron law: no completion claims without fresh evidence.
