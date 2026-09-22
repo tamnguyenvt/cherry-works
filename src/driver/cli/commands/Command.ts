@@ -1,6 +1,7 @@
 import { pathToFileURL } from "node:url";
 import type { ForManagingCharter } from "#hexagon/port/driver/ForManagingCharter.js";
 import type { ForVendoringCharters } from "#hexagon/port/driver/ForVendoringCharters.js";
+import type { ForAuthoringTests } from "#hexagon/port/driver/ForAuthoringTests.js";
 
 /** What every command is run with: where it runs, and the use cases the hexagon
  *  offers. Held by the command line and handed over at execution, so a command
@@ -13,6 +14,9 @@ export interface Context {
    *  one is a different conversation from reading one, and a command reaches for
    *  whichever it is having. */
   readonly charterVendoringApp: ForVendoringCharters;
+  /** What it offers for the test files written beside the charter: listing,
+   *  writing and removing them reads no charter. */
+  readonly testAuthoringApp: ForAuthoringTests;
 }
 
 /** What a command did: the exit status, and what the user reads.

@@ -6,6 +6,7 @@ import { COMMANDS } from "../src/driver/cli/commands/index.js";
 import { EXIT_FAILURE } from "../src/driver/cli/commands/Command.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import {
   primitiveOf,
   primitiveHeadersOf,
@@ -23,6 +24,11 @@ const repoPath = new URL("file:///repo/");
 /** What vendoring is driven through: a context always carries every use case,
  *  and nothing here asks this one for anything. */
 const charterVendoringApp = new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS());
+
+/** What the test files are driven through, over an empty repository: nothing
+ *  here asks it for anything. */
+const noTestFiles = new InMemoryFileReaders({});
+const testAuthoringApp = new TestAuthoring(repoPath, noTestFiles, new InMemoryFileOutput(noTestFiles));
 
 /** The command line as a user meets it, over a repository held in memory: the
  *  real `cw add`, the real service behind it, and the answers whoever is at the
@@ -44,7 +50,7 @@ const adding = async (
   process.stdin.isTTY = answers !== undefined;
   if (answers !== undefined) prompts.inject(answers);
   try {
-    const code = await new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp }, COMMANDS).run(argv);
+    const code = await new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;

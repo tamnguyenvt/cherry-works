@@ -5,6 +5,7 @@ import { COMMANDS } from "../src/driver/cli/commands/index.js";
 import { EXIT_OK } from "../src/driver/cli/commands/Command.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -36,7 +37,8 @@ async function listing(held: InMemoryFileReaders) {
     const vcs = new InMemoryVCS();
     const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs);
     const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
-    const code = await new Commander({ cwd: "/repo", charterAuthoringApp, charterVendoringApp }, COMMANDS).run(["vendor", "list"]);
+    const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
+    const code = await new Commander({ cwd: "/repo", charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS).run(["vendor", "list"]);
     return { code, said: said.join("") };
   } finally {
     process.stdout.write = kept;

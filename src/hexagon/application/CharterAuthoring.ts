@@ -1,9 +1,10 @@
-import { loadCharters, writeCharter } from "../service/charterRepo.js";
+import { loadCharterRoot, writeCharter } from "../service/charterRepo.js";
 import { loadSettings } from "../service/settingsRepo.js";
-import { loadTestSuites } from "../service/testSuitesRepo.js";
+import { loadTestRoot } from "../service/testSuitesRepo.js";
 import { driftedVendors } from "../service/vendorRepo.js";
 import { runSuite, TestRunReport, findUntestedPrimitives } from "../domain/services/testService.js";
 import { Fault, Faults, FaultsByFile } from "../domain/models/Fault.js";
+import { testSuiteNameOf } from "../domain/models/test/TestRoot.js";
 import { REPO_SCOPE, ScopedPrimitive, type CharterRoot } from "../domain/models/charter/CharterRoot.js";
 import { RepoScopedPrimitive } from "../domain/specifications/RepoScopedPrimitive.js";
 import type { DataDTOs, OutcomeDTOs } from "../port/driver/dtos/index.js";
@@ -27,7 +28,7 @@ import { compile } from "../domain/services/compileService.js";
 import { executePlan, plan, previewPlan } from "../service/buildService.js";
 import type { WorkspaceSettings } from "../domain/models/Settings.js";
 import { AGENT_PROVIDERS } from "../domain/models/AgentProvider.js";
-import { CHARTER_DIRECTORY, settingsFileIn, testFolderIn } from "../domain/path.js";
+import { CHARTER_DIRECTORY, settingsFileIn } from "../domain/path.js";
 import type { UnparsedHeaders, ForManagingCharter, SettingsOptions } from "../port/driver/ForManagingCharter.js";
 import type { ForVCS } from "../port/zdriven/ForVCS.js";
 import {
@@ -100,19 +101,18 @@ export class CharterAuthoring implements ForManagingCharter {
    * Where it does not hold, nothing is previewed (FR-005, FR-009).
    */
   async doctor(): Promise<OutcomeDTOs.DoctorOutcome> {
-    const [settings, [charter, , faultsByFiles], drifted, testSuitesByFile] = await Promise.all([
+    const [settings, [charter, , faultsByFiles], drifted, testRoot] = await Promise.all([
       loadSettings(this.#repoPath, this.#fileReader),
       this.#read(),
       driftedVendors(this.#repoPath, this.#vcs),
-      loadTestSuites(this.#repoPath, this.#fileReader),
+      loadTestRoot(this.#repoPath, this.#fileReader),
     ]);
     if (charter === undefined) return doctorOutcomeDTO(settings, faultsByFiles, undefined, drifted, this.#repoPath);
 
-    const testSuites = testSuitesByFile.flatMap((one) => ("suite" in one ? [one.suite] : []));
     const { cleanupPlan, projectionPlan } = await plan(this.#repoPath, charter, settings.agents, this.#fileReader);
     return doctorOutcomeDTO(
       settings,
-      faultsByFiles.with(findUntestedPrimitives(charter, testSuites)),
+      faultsByFiles.with(findUntestedPrimitives(charter, Object.values(testRoot.suitesByFile))),
       previewPlan(cleanupPlan, projectionPlan),
       drifted,
       this.#repoPath,
@@ -133,7 +133,7 @@ export class CharterAuthoring implements ForManagingCharter {
     // against a guess, so reading them is what refuses the run and sends the user
     // back to `cw init` (FR-037). A build is handed what this read.
     const [charter, settings] = await Promise.all([
-      loadCharters(this.#repoPath, this.#fileReader, this.#yamlParser),
+      loadCharterRoot(this.#repoPath, this.#fileReader, this.#yamlParser),
       loadSettings(this.#repoPath, this.#fileReader),
     ]);
 
@@ -220,7 +220,7 @@ export class CharterAuthoring implements ForManagingCharter {
     // holds nothing of has nothing to name, and a test file that will not read
     // names nothing either — there are no cases in it to match, and `cw test` is
     // the command that refuses it (plan §3.3).
-    const read = await loadTestSuites(this.#repoPath, this.#fileReader);
+    const testRoot = await loadTestRoot(this.#repoPath, this.#fileReader);
     // Which primitive a case activates and how its situation reads are the
     // case's own to say, so both are asked of it: the situation is the same line
     // a run reports it under, and whoever read `cw test` and then asks what pins
@@ -229,17 +229,11 @@ export class CharterAuthoring implements ForManagingCharter {
     // empty list, the way a file nothing is wrong with is left out of the
     // faults.
     const testCasesByFile = Object.fromEntries(
-      read
-        .flatMap((one) =>
-          "suite" in one
-            ? [
-                [
-                  one.file,
-                  one.suite.cases.filter((each) => each.activatedIdentity === primitiveIdentity).map((each) => each.describe()),
-                ] as const,
-              ]
-            : [],
-        )
+      Object.entries(testRoot.suitesByFile)
+        .map(([file, suite]) => [
+          file,
+          suite.cases.filter((each) => each.activatedIdentity === primitiveIdentity).map((each) => each.describe()),
+        ] as const)
         .filter(([, situations]) => situations.length > 0),
     );
 
@@ -326,16 +320,17 @@ export class CharterAuthoring implements ForManagingCharter {
     const [charter, , faultsByFiles] = await this.#read();
     if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
 
-    const read = await loadTestSuites(this.#repoPath, this.#fileReader);
+    const testRoot = await loadTestRoot(this.#repoPath, this.#fileReader);
 
     // One bad file stops the run: the cases beside it would report a pass that
     // does not cover what the bad one was written to cover (FR-009). Every one
     // of them is named, not the first.
-    const faults = read.flatMap((one) => ("fault" in one ? [one.fault] : []));
-    if (faults.length > 0) return faultsByFileDTO(new FaultsByFile({ [testFolderIn(this.#repoPath).href]: faults }), this.#repoPath);
+    if (!testRoot.faultsByFiles.isEmpty) return faultsByFileDTO(testRoot.faultsByFiles, this.#repoPath);
 
     return testRunReportDTO(
-      new TestRunReport(read.flatMap((one) => ("suite" in one ? runSuite(charter, one.suite) : []))),
+      new TestRunReport(
+        Object.entries(testRoot.suitesByFile).flatMap(([file, suite]) => runSuite(charter, testSuiteNameOf(file), suite)),
+      ),
     );
   }
 
@@ -395,7 +390,7 @@ export class CharterAuthoring implements ForManagingCharter {
       return faultsDTO(new Faults(raised.errors as readonly Fault[]));
     }
 
-    const charter = await loadCharters(this.#repoPath, this.#fileReader, this.#yamlParser);
+    const charter = await loadCharterRoot(this.#repoPath, this.#fileReader, this.#yamlParser);
     const claimingPrimitive = charter.primitiveById.get(identityOf({ kind, id }));
     if (claimingPrimitive !== undefined)
       throw new Fault(
@@ -495,7 +490,7 @@ export class CharterAuthoring implements ForManagingCharter {
    *  raises it: there is no file it is wrong with. */
   async #scopedPrimitiveOf(identity: string): Promise<ScopedPrimitive> {
     const primitiveIdentity = identityOf(identity);
-    const charter = await loadCharters(this.#repoPath, this.#fileReader, this.#yamlParser);
+    const charter = await loadCharterRoot(this.#repoPath, this.#fileReader, this.#yamlParser);
     const scopedPrimitive = charter.primitiveById.get(primitiveIdentity);
     if (scopedPrimitive === undefined)
       throw new Fault(

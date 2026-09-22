@@ -1,11 +1,12 @@
 import type { CharterRoot } from "../models/charter/CharterRoot.js";
 import { FaultsByFile, TestCaseFault, type Fault } from "../models/Fault.js";
-import type { TestCase, TestSuite } from "../models/TestSuite.js";
+import type { TestCase } from "../models/test/TestCase.js";
+import type { TestSuite } from "../models/test/TestSuite.js";
 import { matches } from "../../utils/globs.js";
 
 /**
- * How one case came out: the situation it put, said as a line, and why the
- * charter did not answer it where it did not (FR-048).
+ * How one case came out: the test file it is in, the situation it put, said as
+ * a line, and why the charter did not answer it where it did not (FR-048).
  *
  * A case passes when there is nothing unmet, so it is asked of the outcome
  * rather than worked out again by whoever reports it. There is one fault and not
@@ -15,6 +16,7 @@ import { matches } from "../../utils/globs.js";
  */
 export class TestCaseReport {
   constructor(
+    readonly suiteName: string,
     readonly situation: string,
     readonly unmet?: TestCaseFault,
   ) {}
@@ -30,14 +32,15 @@ export class TestRunReport {
 }
 
 /**
- * Every case of one suite, resolved against this charter (FR-048).
+ * Every case of one suite, resolved against this charter, each under the name
+ * of the file it is in (FR-048).
  *
  * Nothing is run, nothing is fetched and no agent is asked: each of the three
  * questions a case may put is decided by matching what an author declared
  * against what the situation holds (FR-049).
  */
-export function runSuite(charter: CharterRoot, suite: TestSuite): readonly TestCaseReport[] {
-  return suite.cases.map((one) => runCase(charter, one));
+export function runSuite(charter: CharterRoot, suiteName: string, suite: TestSuite): readonly TestCaseReport[] {
+  return suite.cases.map((one) => runCase(charter, suiteName, one));
 }
 
 /**
@@ -72,19 +75,19 @@ export function findUntestedPrimitives(charter: CharterRoot, testSuites: readonl
  *  it. Which of the three it is falls out of what it holds — a touched file or
  *  a raised event, an activation or a permission — which is what the file it
  *  was written in holds too. */
-export function runCase(charter: CharterRoot, one: TestCase): TestCaseReport {
+export function runCase(charter: CharterRoot, suiteName: string, one: TestCase): TestCaseReport {
   const written = one.written;
   if ("when" in written) {
-    return new TestCaseReport(one.describe(), assertScriptRun(charter, written.when, written.expect.run));
+    return new TestCaseReport(suiteName, one.describe(), assertScriptRun(charter, written.when, written.expect.run));
   }
 
   if ("do" in written) {
     const { touchFile } = written.do;
     if ("activate" in written.expect) {
-      return new TestCaseReport(one.describe(), assertPrimitiveActivated(charter, touchFile, written.expect.activate));
+      return new TestCaseReport(suiteName, one.describe(), assertPrimitiveActivated(charter, touchFile, written.expect.activate));
     }
     if ("allow" in written.expect) {
-      return new TestCaseReport(one.describe(), assertAllowed(charter, touchFile, written.expect.allow));
+      return new TestCaseReport(suiteName, one.describe(), assertAllowed(charter, touchFile, written.expect.allow));
     }
   }
 

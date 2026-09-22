@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { api } from "../src/driver/portal/routes.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
@@ -18,7 +19,11 @@ const guide = (id: string) => ["---", "kind: guide", `id: ${id}`, `description: 
 const portal = (files: Readonly<Record<string, string>> = {}, vcs = new InMemoryVCS()) => {
   const held = new InMemoryFileReaders(files);
   const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
-  const portalRoutes = api(new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs), charterVendoringApp);
+  const portalRoutes = api(
+    new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs),
+    charterVendoringApp,
+    new TestAuthoring(repoPath, held, new InMemoryFileOutput(held)),
+  );
   return { portalRoutes, charterVendoringApp, vcs };
 };
 

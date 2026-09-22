@@ -7,6 +7,7 @@ import { serve, type ServerType } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Fault, type ForManagingCharter } from "#hexagon/port/driver/ForManagingCharter.js";
 import type { ForVendoringCharters } from "#hexagon/port/driver/ForVendoringCharters.js";
+import type { ForAuthoringTests } from "#hexagon/port/driver/ForAuthoringTests.js";
 import { api } from "./routes.js";
 
 export const DEFAULT_PORT = 9927;
@@ -27,6 +28,7 @@ export async function startPortal(
   page: URL,
   charterAuthoringApp: ForManagingCharter,
   charterVendoringApp: ForVendoringCharters,
+  testAuthoringApp: ForAuthoringTests,
   port = DEFAULT_PORT,
 ): Promise<{ address: URL; server: ServerType }> {
   await access(new URL("index.html", page)).catch(() => {
@@ -37,7 +39,7 @@ export async function startPortal(
   for (let next = port; ; next++) {
     try {
       const address = new URL(`http://127.0.0.1:${next}/?t=${token}`);
-      return { address, server: await listen(portal(page, charterAuthoringApp, charterVendoringApp, token, next), next) };
+      return { address, server: await listen(portal(page, charterAuthoringApp, charterVendoringApp, testAuthoringApp, token, next), next) };
     } catch (raised) {
       if ((raised as NodeJS.ErrnoException).code !== "EADDRINUSE" || next === 65535) throw raised;
     }
@@ -56,6 +58,7 @@ function portal(
   page: URL,
   charterAuthoringApp: ForManagingCharter,
   charterVendoringApp: ForVendoringCharters,
+  testAuthoringApp: ForAuthoringTests,
   token: string,
   port: number,
 ): Hono {
@@ -75,7 +78,7 @@ function portal(
       await next();
     })
     .use("/api/*", bearerAuth({ token }))
-    .route("/api", api(charterAuthoringApp, charterVendoringApp))
+    .route("/api", api(charterAuthoringApp, charterVendoringApp, testAuthoringApp))
     .use("/*", serveStatic({ root: fileURLToPath(page) }));
 }
 

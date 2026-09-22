@@ -27,14 +27,6 @@ test("the three tabs are shown, the repository charter first, and the one clicke
   });
 });
 
-test("the test sheet holds nothing yet, since no view is mounted in it", async () => {
-  await inTheBrowser({}, async (page) => {
-    await page.getByRole("tab", { name: "Test" }).click();
-
-    assert.equal(await page.getByRole("tabpanel").innerHTML(), "");
-  });
-});
-
 test("nothing is shown over the page until a view opens it", async () => {
   await inTheBrowser({}, async (page) => {
     await page.getByRole("tab").first().waitFor();

@@ -1,5 +1,5 @@
-import { spawn } from "node:child_process";
 import { BUILTIN_SCOPE, Fault } from "#hexagon/port/driver/ForManagingCharter.js";
+import { editInEditor } from "./helper.js";
 import {
   EXIT_FAILURE,
   EXIT_OK,
@@ -28,10 +28,7 @@ const OPTIONS = {
  * `cw doctor` names an edit there as drift. What the engine brings has no file,
  * and is refused.
  *
- * The editor is `$VISUAL`, else `$EDITOR`, run the way git runs it — through
- * the shell, so a value such as `code --wait` carries its own arguments — with
- * the terminal handed over until it exits. Neither set is refused rather than
- * guessed at.
+ * The editor is `$VISUAL`, else `$EDITOR`, as `editInEditor` runs it.
  */
 export class EditCommand implements Command<typeof OPTIONS> {
   readonly name = "edit <identity>";
@@ -46,19 +43,8 @@ export class EditCommand implements Command<typeof OPTIONS> {
         `To differ from it, run "cw add" for a primitive of your own under an identity of its own.`,
       );
 
-    const editorCommand = process.env.VISUAL || process.env.EDITOR;
-    if (!editorCommand)
-      throw new Fault("Neither $VISUAL nor $EDITOR is set, so there is no editor to open it in.", 'Set one, as in "export EDITOR=vim".');
-
-    // The file is handed over as "$1" rather than written into the command, so
-    // a path with a space in it is one argument.
-    const exitCode = await new Promise<number | null>((resolve, reject) =>
-      spawn("sh", ["-c", `${editorCommand} "$1"`, editorCommand, `${cwd}/${scopedPrimitive.data.file}`], { stdio: "inherit" })
-        .once("error", reject)
-        .once("exit", resolve),
-    );
-    if (exitCode !== 0)
-      return { code: EXIT_FAILURE, problem: `${editorCommand} exited with ${exitCode} on ${scopedPrimitive.data.file}.\n` };
+    const problem = await editInEditor(cwd, scopedPrimitive.data.file);
+    if (problem !== undefined) return { code: EXIT_FAILURE, problem };
 
     return {
       code: EXIT_OK,

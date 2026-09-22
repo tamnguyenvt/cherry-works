@@ -5,6 +5,7 @@ import { COMMANDS } from "../src/driver/cli/commands/index.js";
 import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import {
   KINDS,
   isKind,
@@ -24,6 +25,11 @@ const repoPath = new URL("file:///repo/");
  *  and nothing here asks this one for anything. */
 const charterVendoringApp = new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS());
 
+/** What the test files are driven through, over an empty repository: nothing
+ *  here asks it for anything. */
+const noTestFiles = new InMemoryFileReaders({});
+const testAuthoringApp = new TestAuthoring(repoPath, noTestFiles, new InMemoryFileOutput(noTestFiles));
+
 /** The command line as an author meets it, over a repository held in memory:
  *  the real command, the real service behind it, and what the terminal read. */
 const asking = async (argv: readonly string[]) => {
@@ -35,7 +41,7 @@ const asking = async (argv: readonly string[]) => {
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
-    const code = await new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp }, COMMANDS).run(argv);
+    const code = await new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;

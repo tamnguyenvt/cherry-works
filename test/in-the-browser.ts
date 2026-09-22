@@ -2,6 +2,7 @@ import { chromium, type Page } from "playwright";
 import { startPortal } from "../src/driver/portal/server.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -37,7 +38,14 @@ export async function inTheBrowser(
   const repoPath = new URL("file:///repo/");
   const engine = new CharterAuthoring(repoPath, files, new YamlParser(), new InMemoryFileOutput(files), vcs);
   const charterVendoringApp = new CharterVendoring(repoPath, files, vcs);
-  const { address, server } = await startPortal(new URL("../dist/portal/", import.meta.url), engine, charterVendoringApp, PORT);
+  const testAuthoringApp = new TestAuthoring(repoPath, files, new InMemoryFileOutput(files));
+  const { address, server } = await startPortal(
+    new URL("../dist/portal/", import.meta.url),
+    engine,
+    charterVendoringApp,
+    testAuthoringApp,
+    PORT,
+  );
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();

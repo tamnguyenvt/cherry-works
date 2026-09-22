@@ -18,12 +18,18 @@ import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 
 const repo = "/repo";
 
 /** What installing a vendor is driven through: a context always carries every
  *  use case, and nothing here asks this one for anything. */
 const charterVendoringApp = new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), new InMemoryVCS());
+
+/** What the test files are driven through, over an empty repository: nothing
+ *  here asks it for anything. */
+const noTestFiles = new InMemoryFileReaders({});
+const testAuthoringApp = new TestAuthoring(new URL(`file://${repo}/`), noTestFiles, new InMemoryFileOutput(noTestFiles));
 
 
 /** Whose home the command line runs in: what is installed on this machine is
@@ -94,7 +100,7 @@ const writing = async (work: () => Promise<number>): Promise<{ code: number; wri
  *  wrong with it — there is no second command saying the same thing. */
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[] = ["doctor"]) => {
   const charterAuthoringApp = charterAuthoringAppOver(new InMemoryFileReaders(files));
-  const cli = new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp }, COMMANDS);
+  const cli = new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS);
   return writing(() => cli.run(argv));
 };
 
@@ -201,7 +207,7 @@ class CountingCommand implements Command<Count> {
 }
 
 test("a command reads the options it declared, under the types it declared", async () => {
-  const cli = new Commander({ cwd: repo, charterAuthoringApp: unread, charterVendoringApp }, [new CountingCommand()]);
+  const cli = new Commander({ cwd: repo, charterAuthoringApp: unread, charterVendoringApp, testAuthoringApp }, [new CountingCommand()]);
 
   const { code, written } = await writing(() => cli.run(["count", "--times", "3"]));
 
@@ -210,7 +216,7 @@ test("a command reads the options it declared, under the types it declared", asy
 });
 
 test("an option a command declared a default for arrives without being typed", async () => {
-  const cli = new Commander({ cwd: repo, charterAuthoringApp: unread, charterVendoringApp }, [new CountingCommand()]);
+  const cli = new Commander({ cwd: repo, charterAuthoringApp: unread, charterVendoringApp, testAuthoringApp }, [new CountingCommand()]);
 
   const { written } = await writing(() => cli.run(["count"]));
 

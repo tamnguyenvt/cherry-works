@@ -5,6 +5,7 @@ import { COMMANDS } from "../src/driver/cli/commands/index.js";
 import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -71,7 +72,15 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS();
   const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), vcs);
-  const cli = new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs) }, COMMANDS);
+  const cli = new Commander(
+    {
+      cwd: repo,
+      charterAuthoringApp,
+      charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs),
+      testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), held, new InMemoryFileOutput(held)),
+    },
+    COMMANDS,
+  );
   return { held, vcs, run: (argv: readonly string[]) => writing(() => cli.run(argv)) };
 };
 

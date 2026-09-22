@@ -11,6 +11,7 @@ import { RemoveCommand } from "../src/driver/cli/commands/RemoveCommand.js";
 import { EXIT_OK } from "../src/driver/cli/commands/Command.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
@@ -42,6 +43,7 @@ const contextOver = (charterAuthoringApp: CharterAuthoring) => ({
   cwd: "/repo",
   charterAuthoringApp,
   charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS()),
+  testAuthoringApp: new TestAuthoring(repoPath, new InMemoryFileReaders({}), new InMemoryFileOutput(new InMemoryFileReaders({}))),
 });
 
 test("a primitive added with a body is the file cw add writes, with the body under its headers (FR-117)", async () => {

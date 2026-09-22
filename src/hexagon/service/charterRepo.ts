@@ -31,7 +31,7 @@ import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
  * is one markdown file, so what a kind's folder keeps of the filesystem's or
  * git's own is not read as one.
  */
-export async function loadCharters(
+export async function loadCharterRoot(
   repo: URL,
   fileReaders: ForReadingFiles,
   yamlParser: ForParsingYaml,
@@ -72,7 +72,7 @@ export async function loadCharters(
 /**
  * One primitive put where its kind's primitives are authored (FR-039).
  *
- * Beside `loadCharters`, and the other direction of it: where a primitive of
+ * Beside `loadCharterRoot`, and the other direction of it: where a primitive of
  * this kind is read from is where one is written to, so the convention — a
  * directory per kind, since nothing reads the directory (FR-002) — is settled
  * in the two modules that act on it and nowhere else.

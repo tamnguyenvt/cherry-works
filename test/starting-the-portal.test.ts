@@ -5,6 +5,7 @@ import { COMMANDS } from "../src/driver/cli/commands/index.js";
 import { EXIT_FAILURE } from "../src/driver/cli/commands/Command.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -21,13 +22,14 @@ const portal = async (files: Readonly<Record<string, string>>, versioned: boolea
   const vcs = new InMemoryVCS(versioned);
   const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs);
   const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
+  const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
-    const code = await new Commander({ cwd: "/repo", charterAuthoringApp, charterVendoringApp }, COMMANDS).run(["portal"]);
+    const code = await new Commander({ cwd: "/repo", charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS).run(["portal"]);
     return { code, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;

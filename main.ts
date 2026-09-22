@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { Commander } from "./src/driver/cli/Commander.js";
 import { CharterAuthoring } from "./src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "./src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "./src/hexagon/application/TestAuthoring.js";
 import { FileReaders } from "./src/zdriven/FileReaders.js";
 import { YamlParser } from "./src/zdriven/YamlParser.js";
 import { FileOutput } from "./src/zdriven/FileOutput.js";
@@ -13,6 +14,7 @@ import type { ForWritingFiles } from "./src/hexagon/port/zdriven/ForWritingFiles
 import type { ForVCS } from "./src/hexagon/port/zdriven/ForVCS.js";
 import type { ForManagingCharter } from "./src/hexagon/port/driver/ForManagingCharter.js";
 import type { ForVendoringCharters } from "./src/hexagon/port/driver/ForVendoringCharters.js";
+import type { ForAuthoringTests } from "./src/hexagon/port/driver/ForAuthoringTests.js";
 
 /**
  * COMPOSITION ROOT — the one place that knows every concrete class.
@@ -33,6 +35,8 @@ const charterAuthoringApp: ForManagingCharter = new CharterAuthoring(repoPath, f
 
 const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath, fileReader, vcs);
 
-const cli = new Commander({ cwd: process.cwd(), charterAuthoringApp, charterVendoringApp });
+const testAuthoringApp: ForAuthoringTests = new TestAuthoring(repoPath, fileReader, fileWriter);
+
+const cli = new Commander({ cwd: process.cwd(), charterAuthoringApp, charterVendoringApp, testAuthoringApp });
 
 process.exitCode = await cli.run(process.argv.slice(2));

@@ -9,6 +9,7 @@ import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { KINDS } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
 import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
 import { CwAuthorSkill } from "../src/hexagon/domain/models/charter/builtin/CwAuthorSkill.js";
@@ -18,6 +19,11 @@ const repo = "/repo";
 /** What installing a vendor is driven through: a context always carries every
  *  use case, and nothing here asks this one for anything. */
 const charterVendoringApp = new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), new InMemoryVCS());
+
+/** What the test files are driven through, over an empty repository: nothing
+ *  here asks it for anything. */
+const noTestFiles = new InMemoryFileReaders({});
+const testAuthoringApp = new TestAuthoring(new URL(`file://${repo}/`), noTestFiles, new InMemoryFileOutput(noTestFiles));
 
 
 /** Whose home the command line runs in: what is installed on this machine is
@@ -66,7 +72,7 @@ const writing = async (work: () => Promise<number>) => {
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[] = ["list"]) => {
   const readers = new InMemoryFileReaders(files);
   const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryVCS());
-  const cli = new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp }, COMMANDS);
+  const cli = new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS);
   return writing(() => cli.run(argv));
 };
 

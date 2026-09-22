@@ -5,6 +5,7 @@ import { COMMANDS } from "../src/driver/cli/commands/index.js";
 import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
@@ -58,7 +59,15 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS();
   const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), vcs);
-  const cli = new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs) }, COMMANDS);
+  const cli = new Commander(
+    {
+      cwd: repo,
+      charterAuthoringApp,
+      charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs),
+      testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), held, new InMemoryFileOutput(held)),
+    },
+    COMMANDS,
+  );
   return (argv: readonly string[] = ["test"]) => writing(() => cli.run([...argv]));
 };
 
@@ -215,7 +224,7 @@ test("a test file that will not read is refused, naming it, and nothing is resol
 
   assert.equal(code, EXIT_FAILURE);
   assert.equal(result, "");
-  assert.match(problem, /error: \.cw\/test\/broken\.json: This file is not JSON/);
+  assert.match(problem, /\.cw\/test\/broken\.json\n  error: This file is not JSON/);
 });
 
 test("a repository that wrote no test is told so and passes", async () => {

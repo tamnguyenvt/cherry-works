@@ -5,6 +5,7 @@ import { Commander } from "../src/driver/cli/Commander.js";
 import { COMMANDS } from "../src/driver/cli/commands/index.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { DataDTOs, OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
@@ -34,8 +35,9 @@ const surfaces = (files: Readonly<Record<string, string>>) => {
   const vcs = new InMemoryVCS();
   const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs);
   const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
-  const cli = new Commander({ cwd: "/repo", charterAuthoringApp, charterVendoringApp }, COMMANDS);
-  return { portalRoutes: api(charterAuthoringApp, charterVendoringApp), held, cli };
+  const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
+  const cli = new Commander({ cwd: "/repo", charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS);
+  return { portalRoutes: api(charterAuthoringApp, charterVendoringApp, testAuthoringApp), held, cli };
 };
 
 /** What one command printed, and its exit status. */

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadCharters } from "../src/hexagon/service/charterRepo.js";
+import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
 import { putDownBy } from "./put-down-by.js";
 import { folderURL } from "../src/hexagon/domain/path.js";
 import { compile } from "../src/hexagon/domain/services/compileService.js";
@@ -46,7 +46,7 @@ const oneGuide = { [new URL("guide/no-any.md", root).href]: primitive("guide", "
  *  (SC-004). */
 const built = async (authored: Readonly<Record<string, string>>, agents: readonly AgentProvider[] = [CLAUDE]) => {
   const held = new InMemoryFileReaders(authored);
-  const charter = await loadCharters(repo, held, new YamlParser());
+  const charter = await loadCharterRoot(repo, held, new YamlParser());
   const written = await putDownBy(repo, compile(charter, agents), agents, held);
 
   return {

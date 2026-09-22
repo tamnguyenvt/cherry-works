@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadCharters } from "../src/hexagon/service/charterRepo.js";
+import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
 import { folderURL } from "../src/hexagon/domain/path.js";
 import { putDownBy } from "./put-down-by.js";
 import { compile } from "../src/hexagon/domain/services/compileService.js";
@@ -34,7 +34,7 @@ const primitive = (kind: string, id: string, body: string, headers: readonly str
 const at = (path: string) => new URL(path, root).href;
 
 const load = (files: Readonly<Record<string, string>>, held = new InMemoryFileReaders(files)) =>
-  loadCharters(repo, held, new YamlParser());
+  loadCharterRoot(repo, held, new YamlParser());
 
 /** What one of the files every reader shares holds, once this charter is put
  *  down. */

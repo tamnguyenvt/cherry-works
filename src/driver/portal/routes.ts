@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { Fault, type ForManagingCharter } from "#hexagon/port/driver/ForManagingCharter.js";
 import type { ForVendoringCharters } from "#hexagon/port/driver/ForVendoringCharters.js";
+import type { ForAuthoringTests } from "#hexagon/port/driver/ForAuthoringTests.js";
 import { DataDTOs, OutcomeDTOs } from "#hexagon/port/driver/dtos/index.js";
 import { faultDTO } from "#hexagon/application/dtos.js";
 
@@ -32,7 +33,11 @@ const json = <Schema extends z.ZodType>(schema: Schema, description: string) => 
  *  The port arrives here rather than being reached for: the command line built
  *  it over the repository it was run in, and `main.ts` stays the one
  *  composition root. */
-export function api(charterAuthoringApp: ForManagingCharter, charterVendoringApp: ForVendoringCharters) {
+export function api(
+  charterAuthoringApp: ForManagingCharter,
+  charterVendoringApp: ForVendoringCharters,
+  testAuthoringApp: ForAuthoringTests,
+) {
   const app = new OpenAPIHono();
   app.onError((raised, c) => {
     // What no file is wrong with — a word that is no kind, an identity the
@@ -257,6 +262,74 @@ export function api(charterAuthoringApp: ForManagingCharter, charterVendoringApp
         responses: { 200: json(OutcomeDTOs.DoctorOutcome, "The four answers cw doctor gives, and every fault") },
       }),
       async (c) => c.json(await charterAuthoringApp.doctor(), 200),
+    )
+    .openapi(
+      createRoute({
+        method: "get",
+        path: "/test-suites",
+        responses: { 200: json(DataDTOs.TestSuites, "Every test file, its text, and its cases or why it does not read") },
+      }),
+      async (c) => c.json(await testAuthoringApp.suites(), 200),
+    )
+    .openapi(
+      createRoute({
+        method: "post",
+        path: "/test-suites",
+        responses: {
+          201: {
+            ...json(z.string(), "The name of the test file written"),
+            headers: z.object({ Location: z.string() }),
+          },
+        },
+      }),
+      async (c) => {
+        const name = await testAuthoringApp.addSuite();
+        return c.json(name, 201, { Location: `/api/test-suites/${name}` });
+      },
+    )
+    .openapi(
+      createRoute({
+        method: "put",
+        path: "/test-suites/{name}",
+        request: {
+          params: z.object({ name: z.string() }),
+          body: json(z.object({ text: z.string() }), "The whole text the test file is written over with"),
+        },
+        responses: {
+          200: json(z.string(), "The name of the test file written"),
+          422: json(DataDTOs.Fault, "Text that is not a suite, with its sample, or a name that is no test file"),
+        },
+      }),
+      async (c) => c.json(await testAuthoringApp.writeSuite(c.req.valid("param").name, c.req.valid("json").text), 200),
+    )
+    .openapi(
+      createRoute({
+        method: "delete",
+        path: "/test-suites/{name}",
+        request: { params: z.object({ name: z.string() }) },
+        responses: {
+          204: { description: "The test file is gone" },
+          422: json(DataDTOs.Fault, "A name that is no test file"),
+        },
+      }),
+      async (c) => {
+        await testAuthoringApp.removeSuite(c.req.valid("param").name);
+        return c.body(null, 204);
+      },
+    )
+    .openapi(
+      createRoute({
+        method: "get",
+        path: "/test-suites/outcome",
+        responses: {
+          200: json(DataDTOs.TestRunReport, "How every case came out"),
+          422: json(DataDTOs.FaultsByFile, "The charter does not hold, or a test file does not read"),
+        },
+      }),
+      async (c) => {
+        const testRunReportDTO = await charterAuthoringApp.test();
+        return testRunReportDTO.type === "FaultsByFile" ? c.json(testRunReportDTO, 422) : c.json(testRunReportDTO, 200);
+      },
     )
     .openapi(
       createRoute({

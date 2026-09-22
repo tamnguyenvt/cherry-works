@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { testSuiteOf, type TestSuite } from "../src/hexagon/domain/models/TestSuite.js";
+import { testSuiteOf, type TestSuite } from "../src/hexagon/domain/models/test/TestSuite.js";
 import { Fault } from "../src/hexagon/domain/models/Fault.js";
 
 /** One test file, written the way an author writes it. */

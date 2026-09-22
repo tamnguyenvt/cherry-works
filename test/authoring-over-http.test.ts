@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { api } from "../src/driver/portal/routes.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { SIGNALS } from "../src/hexagon/domain/models/charter/primitive/SensorPrimitive.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
@@ -24,6 +25,7 @@ const portal = (files: Readonly<Record<string, string>> = {}) => {
   const portalRoutes = api(
     new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs),
     new CharterVendoring(repoPath, held, vcs),
+    new TestAuthoring(repoPath, held, new InMemoryFileOutput(held)),
   );
   return { portalRoutes, fileAt: (path: string) => held.readIfThere(new URL(path, repoPath)), held };
 };

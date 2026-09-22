@@ -455,22 +455,25 @@ its `run`.
 
 ### 11.2 Test suites, listed
 
-What `suites()` answers: one entry per file under `.cw/test/`, run or not.
+What `suites()` answers: one entry per file under `.cw/test/`, run or not, in
+the order their names sort in.
 
 | Field | Holds |
 |---|---|
-| name | the file's name |
-| description | the suite's description |
-| cases | each case's situation (a file touched or an event raised) and expectation (what must come up) |
-| text | the file's whole text, as the editor shows it |
+| name | the file's path under `.cw/test/`, as in `untitled-1.json` |
+| text | the body of a file that reads, as the editor shows it; none for one that does not |
+| description | the suite's description, where it has one |
+| cases | each case's situation (`touching src/one.ts`, `firing event Stop`), expectation (`activates guide:no-any`, `is denied`, `runs sensor:test`) and the identity it names, where it names one |
+| fault | for a file that does not read, why — in place of the description and cases |
 
 A new test file is named `untitled-<n>.json` for the first free `n`, and holds
-the one sample case `TestSuite` keeps.
+the description and the first case of the sample `TestSuite` refuses with.
 
 ### 11.3 Test run
 
 ```ts
 TestCaseReport = {
+  suiteName: string,    // the name of the file the case is in, as §11.2 names it
   situation: string,    // the case as a sentence: "touching src/one.ts activates guide:no-any"
   passed:    boolean,
   unmet?:    Fault,     // why the charter did not answer it as expected

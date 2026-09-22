@@ -9,12 +9,18 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 
 const repo = "/repo";
 
 /** What installing a vendor is driven through: a context always carries every
  *  use case, and nothing here asks this one for anything. */
 const charterVendoringApp = new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), new InMemoryVCS());
+
+/** What the test files are driven through, over an empty repository: nothing
+ *  here asks it for anything. */
+const noTestFiles = new InMemoryFileReaders({});
+const testAuthoringApp = new TestAuthoring(new URL(`file://${repo}/`), noTestFiles, new InMemoryFileOutput(noTestFiles));
 
 
 const repoPath = new URL("file:///repo/");
@@ -35,7 +41,7 @@ const setUp = async (
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
-    const code = await new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp }, COMMANDS).run(argv);
+    const code = await new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;

@@ -5,6 +5,7 @@ import { DoctorReport } from "./DoctorReport.js";
 import { PrimitiveExplanation } from "./PrimitiveExplanation.js";
 import { PrimitiveForm } from "./PrimitiveForm.js";
 import { AddVendorSource } from "./AddVendorSource.js";
+import { TestSuiteEditor } from "./TestSuiteEditor.js";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog.js";
 
 /** What a dialog is rendered with besides its own params, and what
@@ -77,6 +78,15 @@ const DIALOGS = {
     context: () => "",
     holdsDraft: true,
     render: (_params: Record<string, never>, { close }: DialogHelpers) => <AddVendorSource onDone={toastWritten(close)} onClose={close} />,
+  },
+  /** One test file's text, to save or delete (FR-090, FR-092). */
+  testSuite: {
+    title: ({ name }: { name: string }) => `.cw/test/${name}`,
+    context: () => "",
+    holdsDraft: true,
+    render: ({ name }: { name: string }, { close }: DialogHelpers) => (
+      <TestSuiteEditor key={name} name={name} onDone={toastWritten(close)} onClose={close} />
+    ),
   },
   /** The health check `cw doctor` gives, with a build where the output is
    *  behind (FR-121). */

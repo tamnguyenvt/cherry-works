@@ -6,6 +6,7 @@ import type { PrimitiveHeader, PrimitiveRequirements } from "../domain/models/ch
 import type { TestCaseReport, TestRunReport } from "../domain/services/testService.js";
 import type { WorkspaceSettings } from "../domain/models/Settings.js";
 import type { PlanSummary } from "../service/buildService.js";
+import { testSuiteNameOf, type TestRoot } from "../domain/models/test/TestRoot.js";
 
 /**
  * What the application answers a driver with, made of what the domain and its
@@ -183,18 +184,47 @@ export function scopedPrimitivesDTO(scopedPrimitives: readonly ScopedPrimitive[]
   };
 }
 
-/** One test case: the situation it put, whether it passed, and where it did
- *  not, the fault that says why. */
-export function testCaseReportDTO({ situation, passed, unmet }: TestCaseReport): DataDTOs.TestCaseReport {
+/** One test case: the test file it is in, the situation it put, whether it
+ *  passed, and where it did not, the fault that says why. */
+export function testCaseReportDTO({ suiteName, situation, passed, unmet }: TestCaseReport): DataDTOs.TestCaseReport {
   return {
     type: "TestCaseReport",
-    data: { situation, passed, ...(unmet === undefined ? {} : { unmet: faultDTO(unmet) }) },
+    data: { suiteName, situation, passed, ...(unmet === undefined ? {} : { unmet: faultDTO(unmet) }) },
   };
 }
 
 /** How every case came out. */
 export function testRunReportDTO({ testCaseReports }: TestRunReport): DataDTOs.TestRunReport {
   return { type: "TestRunReport", data: { testCaseReports: testCaseReports.map(testCaseReportDTO) } };
+}
+
+/** Every test file, in the order their paths sort in: one that reads with its
+ *  name, body, description and each case said; one that does not with its name
+ *  and the fault that says why (FR-124). */
+export function testSuitesDTO({ suitesByFile, faultsByFiles }: TestRoot): DataDTOs.TestSuites {
+  const paths = [...Object.keys(suitesByFile), ...Object.keys(faultsByFiles.files)].sort((one, another) => one.localeCompare(another));
+  return {
+    type: "TestSuites",
+    data: {
+      testSuites: paths.map((path) => {
+        const suite = suitesByFile[path];
+        const [fault] = faultsByFiles.files[path] ?? [];
+        return {
+          type: "TestSuite",
+          data: {
+            name: testSuiteNameOf(path),
+            ...(suite === undefined ? {} : { text: suite.body }),
+            ...(suite?.description === undefined ? {} : { description: suite.description }),
+            cases: (suite?.cases ?? []).map(({ situation, expectation, activatedIdentity }) => ({
+              type: "TestCase",
+              data: { situation, expectation, ...(activatedIdentity === undefined ? {} : { identity: activatedIdentity }) },
+            })),
+            ...(fault === undefined ? {} : { fault: faultDTO(fault) }),
+          },
+        };
+      }),
+    },
+  };
 }
 
 /** What a repository configured itself with. */

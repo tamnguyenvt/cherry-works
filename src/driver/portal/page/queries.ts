@@ -73,10 +73,17 @@ export function usePrimitiveRequirements(kind: string) {
 }
 
 /** Marks what a write changed as stale: every listing, and the primitive and
- *  explanation of the one written. */
+ *  explanation of the one written. The last test outcome is cleared rather
+ *  than asked again: it says how the cases came out before the write, and only
+ *  Run all tests asks for another (Story 9 scenarios 3, 7). */
 function useWritten() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ predicate: ({ queryKey }) => queryKey[0] !== "kinds" && queryKey[0] !== "requirements" });
+  return async () => {
+    await queryClient.resetQueries({ queryKey: ["testOutcome"] });
+    await queryClient.invalidateQueries({
+      predicate: ({ queryKey }) => queryKey[0] !== "kinds" && queryKey[0] !== "requirements" && queryKey[0] !== "testOutcome",
+    });
+  };
 }
 
 /** A new primitive written (FR-117): the primitive, or what refused it. */
@@ -179,6 +186,62 @@ export function useRemoveVendor() {
     mutationFn: async (name: string) => {
       // Sent as JSON though it carries none, as a delete is (plan §12.4).
       const response = await client.vendors[":name"].$delete({ param: { name } }, { headers: { "Content-Type": "application/json" } });
+      return response.status === 422 ? response.json() : null;
+    },
+    onSuccess: written,
+  });
+}
+
+/** Every test file, its text, and its cases or why it does not read (FR-124). */
+export function useTestSuites() {
+  return useQuery({
+    queryKey: ["testSuites"],
+    queryFn: async () => (await client["test-suites"].$get()).json(),
+  });
+}
+
+/** How every case came out, or the faults that stopped the run (FR-125). Asked
+ *  only by Run all tests, and kept until a write clears it. */
+export function useTestOutcome() {
+  return useQuery({
+    queryKey: ["testOutcome"],
+    enabled: false,
+    queryFn: async () => (await client["test-suites"].outcome.$get()).json(),
+  });
+}
+
+/** A new test file written (FR-091): its name. */
+export function useAddTestSuite() {
+  const written = useWritten();
+  return useMutation({
+    // Sent as JSON though it carries none, as a delete is (plan §12.4).
+    mutationFn: async () => (await client["test-suites"].$post({}, { headers: { "Content-Type": "application/json" } })).json(),
+    onSuccess: written,
+  });
+}
+
+/** One test file written over (FR-090): its name, or the fault that refused
+ *  the text with nothing written. */
+export function useWriteTestSuite() {
+  const written = useWritten();
+  return useMutation({
+    mutationFn: async ({ name, text }: { name: string; text: string }) =>
+      (await client["test-suites"][":name"].$put({ param: { name }, json: { text } })).json(),
+    // A refused text wrote nothing, so the outcome still says how the cases
+    // on disk come out.
+    onSuccess: async (nameOrFaultDTO) => {
+      if (typeof nameOrFaultDTO === "string") await written();
+    },
+  });
+}
+
+/** One test file taken away (FR-092): nothing, or the fault that refused it. */
+export function useRemoveTestSuite() {
+  const written = useWritten();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      // Sent as JSON though it carries none, as a delete is (plan §12.4).
+      const response = await client["test-suites"][":name"].$delete({ param: { name } }, { headers: { "Content-Type": "application/json" } });
       return response.status === 422 ? response.json() : null;
     },
     onSuccess: written,

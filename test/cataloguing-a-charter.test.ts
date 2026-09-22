@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadCharters } from "../src/hexagon/service/charterRepo.js";
+import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
 import { folderURL } from "../src/hexagon/domain/path.js";
 import { compile } from "../src/hexagon/domain/services/compileService.js";
 import { Catalogue } from "../src/hexagon/domain/models/output/CharterOutput.js";
@@ -49,7 +49,7 @@ const builtinEntry = {
   description: new CwAuthorSkill().headers.description,
 };
 
-const load = (files: InMemoryFileReaders) => loadCharters(repo, files, new YamlParser());
+const load = (files: InMemoryFileReaders) => loadCharterRoot(repo, files, new YamlParser());
 
 /** The listing this charter compiles to. Read off what compiling produces, since
  *  a listing is one of the things a charter is compiled into and there is no way

@@ -7,7 +7,7 @@ import type { ForVCS } from "../port/zdriven/ForVCS.js";
 /** Every folder a vendor was installed as, under the repository, sorted: read
  *  the way the charter finds its vendor layers, so what is listed is what the
  *  charter reads (FR-053). */
-export async function loadVendors(repo: URL, fileReaders: ForReadingFiles): Promise<readonly string[]> {
+export async function loadVendorNames(repo: URL, fileReaders: ForReadingFiles): Promise<readonly string[]> {
   return (await fileReaders.listFolders(vendorFolderIn(repo)))
     .map((folder) => `${VENDOR_DIRECTORY}/${decodeURIComponent(folder.href.split("/").at(-2) ?? "")}`)
     .sort();

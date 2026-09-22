@@ -8,6 +8,9 @@ import { KindsCommand } from "./KindsCommand.js";
 import { ListCommand } from "./ListCommand.js";
 import { PortalCommand } from "./PortalCommand.js";
 import { RemoveCommand } from "./RemoveCommand.js";
+import { SuiteAddCommand } from "./SuiteAddCommand.js";
+import { SuiteEditCommand } from "./SuiteEditCommand.js";
+import { SuiteRemoveCommand } from "./SuiteRemoveCommand.js";
 import { TestCommand } from "./TestCommand.js";
 import { VendorAddCommand } from "./VendorAddCommand.js";
 import { VendorListCommand } from "./VendorListCommand.js";
@@ -28,6 +31,9 @@ export const COMMANDS: readonly AnyCommand[] = [
   new ExplainCommand(),
   new DoctorCommand(),
   new TestCommand(),
+  new SuiteAddCommand(),
+  new SuiteEditCommand(),
+  new SuiteRemoveCommand(),
   new VendorAddCommand(),
   new VendorRemoveCommand(),
   new VendorListCommand(),

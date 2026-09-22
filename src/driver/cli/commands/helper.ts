@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { Fault } from "#hexagon/port/driver/ForManagingCharter.js";
 import type { DataDTOs } from "#hexagon/port/driver/dtos/index.js";
 
@@ -56,4 +57,30 @@ export function toText({ data: { files } }: DataDTOs.FaultsByFile): string {
 /** One fault: what is wrong, and under it the next move. */
 function lines({ data: { severity, message, fix } }: DataDTOs.Fault): readonly string[] {
   return [`  ${severity}: ${message}`, ...(fix ? [`         ${fix}`] : [])];
+}
+
+/**
+ * The author's own editor on one file of the repository, waited for until it
+ * exits (plan §13): what `cw edit` and `cw suite edit` open, since a terminal
+ * has an editor and the command line does not rebuild it in prompts.
+ *
+ * The editor is `$VISUAL`, else `$EDITOR`, run the way git runs it — through
+ * the shell, so a value such as `code --wait` carries its own arguments — with
+ * the terminal handed over until it exits. Neither set is refused rather than
+ * guessed at. What comes back is nothing, or what to report where the editor
+ * exited with a failure.
+ */
+export async function editInEditor(cwd: string, file: string): Promise<string | undefined> {
+  const editorCommand = process.env.VISUAL || process.env.EDITOR;
+  if (!editorCommand)
+    throw new Fault("Neither $VISUAL nor $EDITOR is set, so there is no editor to open it in.", 'Set one, as in "export EDITOR=vim".');
+
+  // The file is handed over as "$1" rather than written into the command, so
+  // a path with a space in it is one argument.
+  const exitCode = await new Promise<number | null>((resolve, reject) =>
+    spawn("sh", ["-c", `${editorCommand} "$1"`, editorCommand, `${cwd}/${file}`], { stdio: "inherit" })
+      .once("error", reject)
+      .once("exit", resolve),
+  );
+  return exitCode === 0 ? undefined : `${editorCommand} exited with ${exitCode} on ${file}.\n`;
 }

@@ -5,6 +5,7 @@ import { COMMANDS } from "../src/driver/cli/commands/index.js";
 import { EXIT_FAILURE, EXIT_OK, EXIT_USAGE } from "../src/driver/cli/commands/Command.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -32,7 +33,13 @@ async function running(argv: readonly string[], vcs: InMemoryVCS = new InMemoryV
       return true;
     }) as typeof stream.write;
   try {
-    const context = { cwd: repo, charterAuthoringApp: unread(), charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), vcs) };
+    const noTestFiles = new InMemoryFileReaders({});
+    const context = {
+      cwd: repo,
+      charterAuthoringApp: unread(),
+      charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), vcs),
+      testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), noTestFiles, new InMemoryFileOutput(noTestFiles)),
+    };
     const code = await new Commander(context, COMMANDS).run(argv);
     return { code, said: said.join(""), vcs };
   } finally {

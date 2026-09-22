@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 import { startPortal } from "../src/driver/portal/server.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
+import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -39,6 +40,11 @@ function engine(): CharterAuthoring {
  *  empty repository: no test here reaches a vendor route. */
 const charterVendoringApp = new CharterVendoring(new URL("file:///repo/"), new InMemoryFileReaders({}), new InMemoryVCS());
 
+/** What the test files are driven through, over an empty repository: nothing
+ *  here asks it for anything. */
+const noTestFiles = new InMemoryFileReaders({});
+const testAuthoringApp = new TestAuthoring(new URL("file:///repo/"), noTestFiles, new InMemoryFileOutput(noTestFiles));
+
 /** One request with its path and `Host` as written: `fetch` would tidy a `..`
  *  away and set the `Host` itself. Each on a connection of its own, since a
  *  socket kept alive would still reach the portal an earlier test closed, on
@@ -65,7 +71,7 @@ function bearer(address: URL): http.OutgoingHttpHeaders {
 }
 
 test("the page is served from / on this machine's own address, and nothing beside it", async () => {
-  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, PORT);
+  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
   try {
     assert.equal(address.hostname, "127.0.0.1");
     const index = await fetch(address);
@@ -80,8 +86,8 @@ test("the page is served from / on this machine's own address, and nothing besid
 });
 
 test("the token of the run is asked for on the page's address and on every call to /api", async () => {
-  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, PORT);
-  const other = await startPortal(await builtPage(), engine(), charterVendoringApp, PORT);
+  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
+  const other = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
   try {
     assert.equal(address.searchParams.get("t")?.length, 43);
     assert.notEqual(address.searchParams.get("t"), other.address.searchParams.get("t"));
@@ -96,7 +102,7 @@ test("the token of the run is asked for on the page's address and on every call 
 });
 
 test("a Host other than this machine's address and port is refused", async () => {
-  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, PORT);
+  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
   const path = `/${address.search}`;
   try {
     assert.equal((await send(address, path, { headers: { host: `localhost:${address.port}` } })).statusCode, 200);
@@ -108,7 +114,7 @@ test("a Host other than this machine's address and port is refused", async () =>
 });
 
 test("every verb but GET is sent as JSON, and no CORS header answers another origin", async () => {
-  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, PORT);
+  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
   const path = "/api/charter/root/primitives";
   try {
     const json = { ...bearer(address), "content-type": "application/json; charset=utf-8" };
@@ -132,7 +138,7 @@ test("a port that is taken gives way to the next free one", async () => {
   const taken = http.createServer();
   await new Promise<void>((resolve) => taken.listen(PORT, "127.0.0.1", resolve));
   try {
-    const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, PORT);
+    const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
     assert.equal(address.port, String(PORT + 1));
     server.close();
   } finally {
@@ -142,5 +148,5 @@ test("a port that is taken gives way to the next free one", async () => {
 
 test("a page never built refuses to start, naming pnpm build", async () => {
   const unbuilt = pathToFileURL(`${await mkdtemp(join(tmpdir(), "cw-portal-"))}/`);
-  await assert.rejects(startPortal(unbuilt, engine(), charterVendoringApp, PORT), { fix: /pnpm build/ });
+  await assert.rejects(startPortal(unbuilt, engine(), charterVendoringApp, testAuthoringApp, PORT), { fix: /pnpm build/ });
 });

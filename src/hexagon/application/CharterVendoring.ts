@@ -1,4 +1,4 @@
-import { addVendor, loadVendors, removeVendor } from "../service/vendorRepo.js";
+import { addVendor, loadVendorNames, removeVendor } from "../service/vendorRepo.js";
 import type { ForVendoringCharters } from "../port/driver/ForVendoringCharters.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import type { ForVCS } from "../port/zdriven/ForVCS.js";
@@ -39,6 +39,6 @@ export class CharterVendoring implements ForVendoringCharters {
   }
 
   async installed(): Promise<readonly string[]> {
-    return loadVendors(this.#repoPath, this.#fileReader);
+    return loadVendorNames(this.#repoPath, this.#fileReader);
   }
 }

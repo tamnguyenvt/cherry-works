@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadCharters } from "../src/hexagon/service/charterRepo.js";
+import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
 import { folderURL } from "../src/hexagon/domain/path.js";
 import {
   BUILTIN_SCOPE,
@@ -41,7 +41,7 @@ const charterHolding = () =>
 
 const parser = new YamlParser();
 
-const load = (files: InMemoryFileReaders) => loadCharters(repo, files, parser);
+const load = (files: InMemoryFileReaders) => loadCharterRoot(repo, files, parser);
 
 /** What one layer of a charter declares, by identity. */
 const identities = (scope: Scope, charter: CharterRoot) =>
@@ -138,7 +138,7 @@ test("what the engine brings is no folder: it adds no read, and is read without 
   assert.deepEqual(files.calls, [`files under ${root.href}`, `folders under ${vendorRoot.href}`]);
 });
 
-/** One primitive the engine brings, named the way `loadCharters` names it. */
+/** One primitive the engine brings, named the way `loadCharterRoot` names it. */
 const builtinFile = (kind: string, id: string, contents = primitive(kind, id)) => ({
   path: `(built into cw)/${kind}/${id}.md`,
   contents,
@@ -196,7 +196,7 @@ test("a repository is read through the charter it keeps, and no other", async ()
   const elsewhere = new URL("file:///other/");
   files.write(new URL(".cw/charter/skill/naming.md", elsewhere), primitive("skill", "naming"));
 
-  const charter = await loadCharters(elsewhere, files, parser);
+  const charter = await loadCharterRoot(elsewhere, files, parser);
 
   assert.deepEqual(identities(REPO_SCOPE, charter), ["skill:naming"]);
 });

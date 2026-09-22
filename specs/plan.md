@@ -68,9 +68,9 @@ src/
       path.ts                      where everything lives in a repository
     service/                       charterRepo, settingsRepo, testSuitesRepo, vendorRepo, buildService:
                                    the domain read from and written to the driven ports
-    application/                   CharterAuthoring, CharterVendoring, dtos.ts
+    application/                   CharterAuthoring, CharterVendoring, TestAuthoring, dtos.ts
     port/
-      driver/                      ForManagingCharter, ForVendoringCharters
+      driver/                      ForManagingCharter, ForVendoringCharters, ForAuthoringTests
         dtos/                      dto.ts, data.ts, outcome.ts, index.ts: every DTO
       zdriven/                     ForReadingFiles, ForWritingFiles, ForVCS, ForParsingYaml, ForReportingProgress
     utils/globs.ts                 covers and matches, over picomatch
@@ -149,8 +149,9 @@ same ones.
 
 | Port | Use cases |
 |---|---|
-| `ForManagingCharter` | `doctor`, `list`, `explain`, `build`, `preview`, `test`, `listPrimitiveRequirements`, `kinds`, `add`, `settings`, `ensureRepoReady`, `init`; and, for the portal, `open`, `rewrite`, `remove`, `suites`, `addSuite`, `writeSuite`, `removeSuite` ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079), [§11.3](#113-managing-test-files)) |
+| `ForManagingCharter` | `doctor`, `list`, `explain`, `build`, `preview`, `test`, `listPrimitiveRequirements`, `kinds`, `add`, `settings`, `ensureRepoReady`, `init`; and, for the portal, `open`, `rewrite`, `remove` ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079)) |
 | `ForVendoringCharters` | `add`, `remove`, `installed` ([§7](#7-vendor-sources)) |
+| `ForAuthoringTests` | `suites`, `addSuite`, `writeSuite`, `removeSuite` ([§11.3](#113-managing-test-files)) |
 
 Managing a charter is one conversation — authoring and reading one repository's
 charter — so it is one port rather than one per caller. Vendoring is apart
@@ -178,13 +179,14 @@ by being what a use case must be denied; anything else is called directly.
 
 ### 2.4 Application (`src/hexagon/application/`)
 
-One class per driver port — `CharterAuthoring` and `CharterVendoring` — taking
+One class per driver port — `CharterAuthoring`, `CharterVendoring` and
+`TestAuthoring` — taking
 its driven ports through the constructor and holding them under the port's type,
 so the compiler refuses a reach past the interface. It orchestrates and holds no
 rule of its own: rules live in the domain, on the models or in a domain service
 beside them. Between the two sit the `service/` modules, which read the domain
-off the driven ports and write it back: `loadCharters`, `loadSettings`,
-`loadTestSuites`, `driftedVendors`, and the build's plan ([§6](#6-compiling-and-building)).
+off the driven ports and write it back: `loadCharterRoot`, `loadSettings`,
+`loadTestRoot`, `driftedVendors`, and the build's plan ([§6](#6-compiling-and-building)).
 
 The reader/writer split ([FR-093](spec.md#fr-093)) is what each use case is, not what it is
 grouped under. A reading use case — `doctor`, `list`, `explain`, `preview`,
@@ -296,7 +298,7 @@ kept nowhere in the repository ([§5.3](#53-the-builtin-layer-supplied-rather-th
 
 ### 4.1 The one read path (FR-009, SC-010)
 
-`loadCharters(repo, fileReaders, yamlParser)` in `service/charterRepo.ts` is the
+`loadCharterRoot(repo, fileReaders, yamlParser)` in `service/charterRepo.ts` is the
 one way a charter is read. It reads the markdown files in the kind folders of
 `.cw/charter/`, the same under each folder of `.cw/vendor/`, and the builtin
 layer written out in memory ([§5.3](#53-the-builtin-layer-supplied-rather-than-stored-fr-017--fr-024)), and hands the three layers apart to
@@ -431,7 +433,7 @@ cross-cutting review lens and no longer describes what it became.
 `CharterRoot.ts` holds three scopes, `repo`, `vendor` and `builtin`
 (data-model [§3.2](data-model.md#32-scope-fr-017--fr-024)), and `charterRootOf` takes `{ repo, vendor, builtin }`.
 
-`loadCharters` turns each primitive of `BUILTIN_PRIMITIVES` ([§5.4](#54-what-the-engine-brings-fr-096--fr-103)) into an
+`loadCharterRoot` turns each primitive of `BUILTIN_PRIMITIVES` ([§5.4](#54-what-the-engine-brings-fr-096--fr-103)) into an
 in-memory file — a path and the text `toMarkdown()` gives — and hands those in
 as the third layer. It reads nothing from disk for them and writes nothing. They
 are then read by `primitiveOf` like every other file: the same zod headers, the
@@ -472,7 +474,7 @@ catalogue like any other, its file naming its layer ([FR-019](spec.md#fr-019)).
 `CwAuthorSkill` in `domain/models/charter/builtin/CwAuthorSkill.ts` extends
 `SkillPrimitive`: its headers typed by the kind's own `SkillHeaders`, its body a
 template literal. `builtin/index.ts` exports `BUILTIN_PRIMITIVES`, one entry
-today, and a list because `loadCharters` iterates, not because a second is
+today, and a list because `loadCharterRoot` iterates, not because a second is
 planned (data-model [§5](data-model.md#5-what-the-engine-brings-fr-096--fr-103)).
 
 A class rather than data read at run time: a kind that grows, renames or drops
@@ -591,7 +593,7 @@ anything would change.
 ### 6.5 The builtin layer needs no case of its own (FR-024)
 
 The charter `compile` is given already holds `skill:cw-author`, because
-`loadCharters` supplied it; the projection already knows where a skill compiles
+`loadCharterRoot` supplied it; the projection already knows where a skill compiles
 to for each agent the repository chose; the build already writes what the plan
 lists and deletes the stamped projection of a primitive that is gone. So:
 
@@ -717,7 +719,7 @@ driver surface for what the engine already answers behind its port ([FR-063](spe
 
 `cw add` writes `.cw/charter/<kind>/<id>.md`, the convention, since where a file
 sits decides only that it is looked at ([FR-002](spec.md#fr-002)). `writeCharter` in
-`service/charterRepo.ts` is the other direction of `loadCharters`: it refuses a
+`service/charterRepo.ts` is the other direction of `loadCharterRoot`: it refuses a
 file already there rather than write over it, and writes `toMarkdown()` of the
 primitive `primitiveOf` read from the answers — the same reading a file gets, so
 there is no second reading of a kind's contract to keep in step with the first.
@@ -810,7 +812,7 @@ the scoped primitive with its file and layer, the mixins it uses and the corpus
 it cites, the primitives that lend from it or cite it, and the test cases that
 name it. The relations are asked of `CharterRoot` — `mixinsOf`, `rationaleOf`,
 `hostsOf`, `citersOf` — beside `mixins` and `corpora`. The test cases are read by
-`loadTestSuites` and matched by each case's own `activatedIdentity`, each named by
+`loadTestRoot` and matched by each case's own `activatedIdentity`, each named by
 the situation `cw test` reports it under; a test file that does not read names
 nothing here. When the primitive comes up is read off its kind's
 `activatesWhen`.
@@ -831,8 +833,9 @@ and a test is what says the charter still does what it did. It is JSON and not a
 document with frontmatter because a primitive is a document for the sake of the
 body an agent opens, and a test has no body; its one reader is the engine.
 
-`TestSuite.ts` in `domain/models/` holds the format and its reader,
-`testSuiteOf`. The three shapes of data-model [§11.1](data-model.md#111-the-test-file) are the whole of what a
+`TestSuite.ts` in `domain/models/test/` holds the format and its reader,
+`testSuiteOf`; `TestCase.ts` beside it holds the three shapes a case takes and
+`TestCase`. The three shapes of data-model [§11.1](data-model.md#111-the-test-file) are the whole of what a
 charter decides without an agent: a glob matched, an event named, a path
 refused. Which skill a request wants and which agent is delegated to is the
 agent reading words, and a test that guessed at it by matching substrings would
@@ -849,10 +852,17 @@ port.
 
 ### 11.2 Running them
 
-`loadTestSuites` in `service/testSuitesRepo.ts` reads `.cw/test/` beside
-`loadCharters`, never with the charter: a test is not a primitive, so nothing
-reading a kind's folder goes near it. It hands over one entry per file, a suite
-or the fault naming it. The use case is the two steps every other one is — read
+`loadTestRoot` in `service/testSuitesRepo.ts` reads `.cw/test/` beside
+`loadCharterRoot`, never with the charter: a test is not a primitive, so nothing
+reading a kind's folder goes near it. It finds the files —
+each a `TestSuiteFile`, its path and contents, as a charter file is an
+`AuthoredFile` — and `testRootOf` in `domain/models/test/TestRoot.ts` reads
+them, as `charterRootOf` reads a charter's: a `TestRoot` holds `suitesByFile`,
+every suite that reads under its path — each `TestSuite` keeping the body it was
+read from — and `faultsByFiles`, why each one that does not read does not.
+Whether a name is taken and which name a
+new file takes are asked of it; a file's name is its path under `.cw/test/`
+(`testSuiteNameOf`). The use case is the two steps every other one is — read
 the charter, then ask it — with resolving in place of compiling. `runSuite` and
 `runCase` in `domain/services/testService.ts` resolve each case: nothing is run,
 nothing fetched and no agent asked, so the result is deterministic and the
@@ -870,7 +880,10 @@ stops the run ([FR-088](spec.md#fr-088)), and a repository with no test passes, 
 
 ### 11.3 Managing test files
 
-Four use cases on `ForManagingCharter`:
+Four use cases on `ForAuthoringTests`, which `TestAuthoring` answers. A port of
+their own rather than more of `ForManagingCharter`: listing, writing and
+removing a test file reads no charter, as installing a vendor reads none.
+Resolving the cases against the charter stays `ForManagingCharter.test()`:
 
 - **`suites()`** — every test file as data-model [§11.2](data-model.md#112-test-suites-listed) says it, without running
   anything. What the test view shows before a run.
@@ -928,10 +941,10 @@ it on as it came; one not written `<kind>:<id>` is refused by the engine, a
 | `GET /api/charter/root/build` | `preview()` | [FR-120](spec.md#fr-120) |
 | `POST /api/charter/root/build` | `build()` | [FR-120](spec.md#fr-120) |
 | `GET /api/charter/root/health` | `doctor()` | [FR-121](spec.md#fr-121) |
-| `GET /api/test-suites` | `suites()` | [FR-124](spec.md#fr-124) |
-| `POST /api/test-suites` | `addSuite()` | [FR-091](spec.md#fr-091) |
-| `PUT /api/test-suites/:name` | `writeSuite(name, text)` | [FR-090](spec.md#fr-090) |
-| `DELETE /api/test-suites/:name` | `removeSuite(name)` | [FR-092](spec.md#fr-092) |
+| `GET /api/test-suites` | `ForAuthoringTests.suites()` | [FR-124](spec.md#fr-124) |
+| `POST /api/test-suites` | `ForAuthoringTests.addSuite()` | [FR-091](spec.md#fr-091) |
+| `PUT /api/test-suites/:name` | `ForAuthoringTests.writeSuite(name, text)` | [FR-090](spec.md#fr-090) |
+| `DELETE /api/test-suites/:name` | `ForAuthoringTests.removeSuite(name)` | [FR-092](spec.md#fr-092) |
 | `GET /api/test-suites/outcome` | `test()` | [FR-125](spec.md#fr-125) |
 | `GET /api/vendors` | `ForVendoringCharters.installed()` | [FR-122](spec.md#fr-122) |
 | `POST /api/vendors` | `ForVendoringCharters.add(source, version?)` | [FR-123](spec.md#fr-123) |
@@ -1055,9 +1068,9 @@ registered under it as a group; a positional on a command that stands alone
 | `cw explain <identity>` | `explain` | [FR-029](spec.md#fr-029) |
 | `cw doctor` | `doctor` | [FR-013](spec.md#fr-013), [FR-014](spec.md#fr-014), [FR-080](spec.md#fr-080), [FR-081](spec.md#fr-081) |
 | `cw test` | `test` | [FR-082](spec.md#fr-082) – [FR-089](spec.md#fr-089) |
-| `cw suite add` | `addSuite` | [FR-091](spec.md#fr-091) |
+| `cw suite add` | `ForAuthoringTests.addSuite` | [FR-091](spec.md#fr-091) |
 | `cw suite edit <name>` | the author's editor on the test file | [FR-090](spec.md#fr-090), [FR-109](spec.md#fr-109) |
-| `cw suite remove <name>` | `removeSuite` | [FR-092](spec.md#fr-092) |
+| `cw suite remove <name>` | `ForAuthoringTests.removeSuite` | [FR-092](spec.md#fr-092) |
 | `cw vendor add <source> [--ref]` | `ForVendoringCharters.add` | [FR-041](spec.md#fr-041) – [FR-052](spec.md#fr-052) |
 | `cw vendor remove <name>` | `ForVendoringCharters.remove` | [FR-047](spec.md#fr-047), [FR-051](spec.md#fr-051) |
 | `cw vendor list` | `ForVendoringCharters.installed` | [FR-053](spec.md#fr-053), [FR-122](spec.md#fr-122) |
@@ -1238,7 +1251,7 @@ the hexagon imports no YAML library.
 
 #### 17.1.7 T007 — The one read path
 
-`loadCharters` over `ForReadingFiles` and `charterRootOf` over the files it hands
+`loadCharterRoot` over `ForReadingFiles` and `charterRootOf` over the files it hands
 in are the one path a charter is read by ([§4.1](#41-the-one-read-path-fr-009-sc-010)). `path.ts` says where everything
 lives, and loading looks only in the kind folders, so a catalogue beside the
 primitives is never read as one ([FR-002](spec.md#fr-002)). Tested against the in-memory adapter:
@@ -1534,7 +1547,7 @@ read, never found on disk. This task laid the layer down with nothing in it.
   takes it (data-model [§3.2](data-model.md#32-scope-fr-017--fr-024)).
 - `charterRootOf` takes `{ repo, vendor, builtin }` and reads builtin, then repo,
   then vendor, each in the order its paths sort in ([§5.3](#53-the-builtin-layer-supplied-rather-than-stored-fr-017--fr-024), data-model [§4.2](data-model.md#42-the-files-a-charter-is-read-from)).
-- `BUILTIN_PRIMITIVES` is exported from `builtin/index.ts`. `loadCharters` turns
+- `BUILTIN_PRIMITIVES` is exported from `builtin/index.ts`. `loadCharterRoot` turns
   each into an in-memory file at `(built into cw)/<kind>/<id>.md` holding
   `toMarkdown()`, reads nothing more from disk and writes nothing for it.
 - A builtin file is read by `primitiveOf` like every other: one the kind refuses
@@ -1550,7 +1563,7 @@ read, never found on disk. This task laid the layer down with nothing in it.
 
 **Tests.** Tests over `charterRootOf` prove the read order, that a refused builtin
 file is filed under its own path, and the collision against the repository's
-file; a test over `loadCharters` proves the layer adds no read from disk.
+file; a test over `loadCharterRoot` proves the layer adds no read from disk.
 
 #### 17.1.47 T047 — What the engine brings, and the build needing no case for it
 
@@ -1813,14 +1826,14 @@ row and no way to open a primitive; `@codemirror/*` and `marked` declared and
 not yet imported.
 
 **An identity is refused wherever it is claimed.** `add` reads the charter's
-files with `loadCharters` — not `#read`, so a charter holding an error elsewhere
+files with `loadCharterRoot` — not `#read`, so a charter holding an error elsewhere
 can still be added to — and refuses an identity `primitiveById` already holds,
 raised naming the file claiming it, whichever layer that is ([Story 6](spec.md#user-story-6---author-edit-and-delete-a-primitive-without-looking-anything-up-priority-p2)
 scenario 3, [Story 10](spec.md#user-story-10---write-a-primitive-with-no-terminal-to-answer-at-priority-p1) scenario 5). `writeCharter` keeps its own refusal for a
 file standing at the path under another identity.
 
 **Open, rewrite and remove read the files, not the validation.** All three ask
-`loadCharters` which file declares the identity, so each works on a charter
+`loadCharterRoot` which file declares the identity, so each works on a charter
 holding an error — which is when an author most needs to open a file and fix
 it. `open` answers the primitive as that reading holds it, with the content
 hash of its `toMarkdown()` as the revision; `rewrite` reads the charter again
@@ -2147,6 +2160,99 @@ listing the reserved directories; and Remove — each refusal in the engine's wo
 #### 17.2.27 T2.027 — Listing the test files
 
 `suites()` ([§11.3](#113-managing-test-files)).
+
+[Story 9](spec.md#user-story-9---write-run-and-correct-the-self-regression-tests-priority-p5) lands as one change, [T2.027](tasks/002-charter-portal.md#t2.027) – [T2.031](tasks/002-charter-portal.md#t2.031) its steps ([SC-026](spec.md#sc-026)). What
+was already there when it opened: `test()` behind the port and `cw test` its
+reader; `loadTestSuites` in `service/testSuitesRepo.ts`, one entry per file, a
+suite or its fault; `TestCase.describe()` and `activatedIdentity`; a
+`DataDTOs.TestSuite` nothing answered with; the Test tab, drawn and empty.
+
+**Listing.** `suites()` answers `DataDTOs.TestSuites`: one `TestSuite` per file
+under `.cw/test/`, sorted, as data-model [§11.2](data-model.md#112-test-suites-listed) says it — its name (the path under
+`.cw/test/`, `untitled-1.json`), and either its body, description and cases or,
+for a file that does not read, the fault `testSuiteOf` raised. A file that does
+not read is listed all the same, with no text: it is in `faultsByFiles`, and
+opens empty in the editor. No charter is read. A case is said, not handed over as written: its
+situation (`touching src/one.ts`, `firing event Stop`), its expectation
+(`activates guide:no-any`, `is denied`, `runs sensor:test`) and the identity it
+names, where it names one. `TestCase` says the first two, and `describe()` is
+the two joined, so a run and a listing say a case the same way.
+
+**Reading.** `loadTestSuites` became `loadTestRoot`, and what it read became a
+`TestRoot` ([§11.2](#112-running-them)), the way the charter is a `CharterRoot`. A file that does not
+read is filed under its own path, so `cw test` names it the way `cw doctor`
+names a charter file, rather than under `.cw/test/` with the path in the
+message.
+
+**A run names its file.** Each `TestCaseReport` carries `suiteName`, the name of the file it
+came from, so the page marks each case under its file and opens the first file
+holding a failure; `cw test` prints what it printed before.
+
+**Writing.** `addSuite()`, `writeSuite(name, text)` and `removeSuite(name)` each
+answer the name they wrote or removed; the logic is in `testSuitesRepo`, the
+use case delegates. The four test-file use cases are `ForAuthoringTests`,
+answered by `TestAuthoring` ([§11.3](#113-managing-test-files)); `api()`, `startPortal()` and the command line's
+`Context` take it beside the other two. A new file is `untitled-<n>.json` for the first free `n`,
+holding the description and the first case of the sample `testSuiteOf` refuses
+with — one sample, not two. `writeSuite` refuses text `testSuiteOf` refuses,
+raising its `TestSuiteFault` with the sample, and writes nothing. A name that
+is no listed test file is refused by both `writeSuite` and `removeSuite`, so a
+name reaching outside `.cw/test/` names nothing. The sample `testSuiteOf` shows
+had its event case expecting `activate`, which no suite reads; it expects
+`run`.
+
+**The command line.** `cw suite add` writes a new file and says how to edit it;
+`cw suite remove <name>` removes one, asking nothing — a test file is small and
+committed; `cw suite edit <name>` opens `.cw/test/<name>` in `$VISUAL`, else
+`$EDITOR`, as `cw edit` does — the spawning is one helper both call — refusing a
+name `suites()` does not list.
+
+**The routes** are the five test-suite rows of [§12.2](#122-the-route-table). `GET /api/test-suites`
+answers `suites()`, `200`. `POST` answers `201`, the name, with its path as
+`Location`. `PUT /api/test-suites/:name` takes `{ text }` and answers `200`
+with the name. `DELETE` answers `204`. A refusal is the `Fault` raised, `422`.
+`GET /api/test-suites/outcome` answers `test()`, `200` with the
+`TestRunReport`, `422` with the `FaultsByFile`.
+
+**The page.** The Test tab: a bar saying how many cases in how many files, or
+after a run how many of how many pass, with New test file and Run all tests;
+under it one panel per file — its name, description, case count and, after a
+run, how many fail; opened, each case's situation, its expectation, and pass,
+fail or not run; a failing case says the unmet fault's message and fix in place
+of its expectation. The identity an expectation names opens that primitive; one
+the listing does not hold is marked "not in the charter". A file that does not
+read shows its fault. Run all tests asks the outcome route and opens the first
+file holding a failure; a run refused shows the faults. Edit opens the file's
+text in a dialog with Save, Cancel and Delete file; a refused save stays in the
+dialog with the engine's message and sample. New test file writes one and opens
+its text. Every write — a suite saved, created or removed, a primitive written,
+a build — clears the last outcome, which is only asked for by Run all tests.
+
+Acceptance:
+- `suites()` lists each file with its name, text, description and cases said as
+  situation, expectation and identity; a file that does not read is listed with
+  its fault; none for a repository without `.cw/test/` (scenario 1).
+- `test()` names each case's suite.
+- `addSuite()` writes `untitled-1.json`, then `untitled-2.json`, each holding one
+  case that reads as a suite; `writeSuite` writes text that reads and refuses
+  text that is not JSON or not a suite with the sample, writing nothing;
+  `removeSuite` deletes one file; both refuse a name that is not a test file.
+- `cw suite add`, `cw suite remove <name>` and `cw suite edit <name>` do the
+  same; `cw suite edit` with no editor set is refused.
+- The five routes answer as above (scenarios 2, 3, 4, 6, 7 over HTTP).
+- In the browser: the Test tab lists files and, opened, their cases (scenario
+  1); Run all tests says how many of how many pass, marks each case, says what
+  came up for a failing one and opens its file (scenarios 2, 8); an expected
+  identity opens its primitive, an unknown one is marked (scenario 5); a save
+  that reads is written and clears the outcome, one that does not is refused in
+  the dialog (scenarios 3, 4); New test file opens the new file's text (scenario
+  6); Delete file removes it (scenario 7).
+
+Not in this story: a structured case editor — the text is the file, and the
+refusal's sample is the correction ([FR-086](spec.md#fr-086)); running one file's cases alone —
+`cw test` runs all, and so does the portal; renaming a test file — delete and
+create, or rename it on disk; a confirmation before Delete file or
+`cw suite remove` — the file is committed, and git undoes it.
 
 #### 17.2.28 T2.028 — Creating and deleting a test file
 

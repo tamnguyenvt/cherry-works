@@ -149,11 +149,12 @@ const primitiveRequirements = dto(
  *  answers. */
 const testCasesByFile = dto("TestCasesByFile", z.record(z.string(), strings));
 
-/** One test case, resolved: the situation it put, and where the charter did
- *  not answer it as expected, why. */
+/** One test case, resolved: the test file it is in, the situation it put, and
+ *  where the charter did not answer it as expected, why. */
 const testCaseReport = dto(
   "TestCaseReport",
   z.object({
+    suiteName: z.string(),
     situation: z.string(),
     passed: z.boolean(),
     unmet: fault.optional(),
@@ -168,27 +169,37 @@ const testRunReport = dto(
   }),
 );
 
-/** One situation a test pins down, and what the charter is expected to make of
- *  it: a touched file and the primitive or permission it meets, or a raised
- *  event and the sensor it runs. Not a model of its own yet, so written as it
- *  was read rather than as a DTO. */
-const testCase = z.union([
+/** One situation a test pins down, said rather than handed over as written:
+ *  the file it touches or the event it raises, what it expects of it, and the
+ *  identity it names where it names one. */
+const testCase = dto(
+  "TestCase",
   z.object({
-    do: z.object({ touchFile: z.string() }),
-    expect: z.union([z.object({ activate: z.string() }), z.object({ allow: z.boolean() })]),
+    situation: z.string(),
+    expectation: z.string(),
+    identity: z.string().optional(),
   }),
-  z.object({
-    when: z.string(),
-    expect: z.object({ run: z.string() }),
-  }),
-]);
+);
 
-/** One test file: what it is about, and the cases it pins down. */
+/** One test file, by its name under `.cw/test/`: the text it holds, what it is
+ *  about and the cases it pins down, or — for a file that does not read — why
+ *  not (FR-124). */
 const testSuite = dto(
   "TestSuite",
   z.object({
+    name: z.string(),
+    text: z.string().optional(),
     description: z.string().optional(),
     cases: z.array(testCase).readonly(),
+    fault: fault.optional(),
+  }),
+);
+
+/** Every test file, in the order their names sort in. */
+const testSuites = dto(
+  "TestSuites",
+  z.object({
+    testSuites: z.array(testSuite).readonly(),
   }),
 );
 
@@ -215,10 +226,12 @@ export const DataDTOs = byType(
   primitiveSnapshot,
   scopedPrimitive,
   scopedPrimitives,
+  testCase,
   testCaseReport,
   testCasesByFile,
   testRunReport,
   testSuite,
+  testSuites,
   workspaceSettings,
 );
 
@@ -236,9 +249,11 @@ export namespace DataDTOs {
   export type PrimitiveSnapshot = z.infer<typeof DataDTOs.PrimitiveSnapshot>;
   export type ScopedPrimitive = z.infer<typeof DataDTOs.ScopedPrimitive>;
   export type ScopedPrimitives = z.infer<typeof DataDTOs.ScopedPrimitives>;
+  export type TestCase = z.infer<typeof DataDTOs.TestCase>;
   export type TestCaseReport = z.infer<typeof DataDTOs.TestCaseReport>;
   export type TestCasesByFile = z.infer<typeof DataDTOs.TestCasesByFile>;
   export type TestRunReport = z.infer<typeof DataDTOs.TestRunReport>;
   export type TestSuite = z.infer<typeof DataDTOs.TestSuite>;
+  export type TestSuites = z.infer<typeof DataDTOs.TestSuites>;
   export type WorkspaceSettings = z.infer<typeof DataDTOs.WorkspaceSettings>;
 }

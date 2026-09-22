@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CharterListing } from "./components/CharterListing.js";
 import { CharterSearch } from "./components/CharterSearch.js";
 import { DialogProvider, useDialog } from "./components/Dialogs.js";
+import { TestSuites } from "./components/TestSuites.js";
 import { VendorSources } from "./components/VendorSources.js";
 import { Button } from "./components/ui/button.js";
 import { Toaster } from "./components/ui/sonner.js";
@@ -83,7 +84,9 @@ function Portal() {
             <VendorSources />
             <CharterListing scopes={["vendor"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
-          <TabsContent value="test" className="mt-4" />
+          <TabsContent value="test" className="mt-4">
+            <TestSuites />
+          </TabsContent>
         </Tabs>
       </main>
 
