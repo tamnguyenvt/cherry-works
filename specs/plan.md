@@ -2301,7 +2301,7 @@ Acceptance: a test runs `dist/cw.js` under a preload that reports Node 18, and i
 
 #### 17.3.3 T3.003 — What the package holds
 
-`package.json` gains `license: "MIT"`, `repository`, `homepage`, `bugs`, `keywords` and `author`; `LICENSE` is added at the root, the MIT text under `Copyright (c) 2026 Cherry Softwares`. `files` stays `["dist"]`, and npm adds the README, the license and `package.json` by itself. The same test file asserts `npm pack --dry-run --json` lists exactly those and what `dist/` holds, and no path under `src/`, `specs/`, `test/` or `.cw/`.
+`package.json` gains `license: "MIT"`, `repository`, `homepage`, `bugs`, `keywords` and `author`; `LICENSE` is added at the root, the MIT text under `Copyright (c) 2026 Tam Nguyen`. `files` stays `["dist"]`, and npm adds the README, the license and `package.json` by itself. The same test file asserts `npm pack --dry-run --json` lists exactly those and what `dist/` holds, and no path under `src/`, `specs/`, `test/` or `.cw/`.
 
 Acceptance: the file list is the one [FR-130](spec.md#fr-130) names; the license field and file agree.
 

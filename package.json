@@ -10,13 +10,13 @@
     "cli",
     "guardrails"
   ],
-  "homepage": "https://github.com/cherry-softwares/cherry-works#readme",
+  "homepage": "https://github.com/tamnguyenvt/cherry-works#readme",
   "bugs": {
-    "url": "https://github.com/cherry-softwares/cherry-works/issues"
+    "url": "https://github.com/tamnguyenvt/cherry-works/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cherry-softwares/cherry-works.git"
+    "url": "git+https://github.com/tamnguyenvt/cherry-works.git"
   },
   "license": "MIT",
   "author": "Tam Nguyen",
@@ -43,7 +43,9 @@
     "cw": "node --import tsx main.ts",
     "lint:deps": "depcruise src main.ts",
     "specs:link": "node --import tsx scripts/link-specs.ts",
-    "specs:check": "node --import tsx scripts/link-specs.ts --check"
+    "specs:check": "node --import tsx scripts/link-specs.ts --check",
+    "release": "node --import tsx scripts/release.ts",
+    "prepublishOnly": "node -e \"console.error('Publish with \\\"pnpm release <version>\\\", which checks the package first.'); process.exit(1)\""
   },
   "devDependencies": {
     "@codemirror/commands": "^6.11.1",

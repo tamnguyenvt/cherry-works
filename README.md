@@ -33,19 +33,37 @@ date. Cherry Works handles them the way you handle code:
 
 ## Requirements
 
-- Node.js 20 or later
-- pnpm 10 or later
+- Node.js 22 or later
 - git
 - A supported agent. Today that is [Claude Code](https://claude.com/claude-code).
   `cw` always writes a neutral output under `.cw/out/` as well.
 
 ## Install
 
-`cw` is not published to a registry yet. Build it from this repository and link
-it globally:
+```bash
+npm install -g cherry-works
+cw --help
+```
+
+To run it once without installing anything, use `npx cherry-works <command>`.
+To pin one version to a repository, so that its scripts and its CI run that
+version whatever is installed globally, add it as a development dependency:
 
 ```bash
-git clone https://github.com/cherry-softwares/cherry-works.git
+npm install -D cherry-works
+npx cw --version
+```
+
+`cw --version` prints the version you are running. Upgrade with
+`npm install -g cherry-works@latest`.
+
+## Install from source
+
+To run `cw` from a checkout of this repository, you also need pnpm 10 or later.
+Build it and link it globally:
+
+```bash
+git clone https://github.com/tamnguyenvt/cherry-works.git
 cd cherry-works
 pnpm install
 pnpm build
@@ -219,6 +237,12 @@ pnpm test                               # dependency rules, build, then every te
 pnpm typecheck
 pnpm cw <command>                       # run the CLI from source, without building
 ```
+
+A release is `pnpm release <version>`, run from a clean `develop` level with
+`origin/develop`. It runs the tests, installs the exact package it would publish
+into a fresh repository and builds it there, and only then commits, tags
+`v<version>`, publishes and pushes. `pnpm release <version> --dry-run` runs
+every check and changes nothing. A plain `npm publish` is refused.
 
 The engine follows a hexagonal layout. `src/hexagon/` holds the domain, the
 application use cases and their ports. `src/driver/` holds the CLI and the
