@@ -2,11 +2,11 @@
 
 **Created**: 2026-08-30
 
-**Updated**: 2026-09-21
+**Updated**: 2026-09-22
 
 **Status**: Draft
 
-**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand."
+**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm."
 
 ## Overview
 
@@ -17,6 +17,8 @@ The **charter** is everything a team authors to specify how the agent must behav
 - **The charter and its engine, on the command line.** A repository authors its charter as small markdown files, installs other teams' charters as vendor sources, and runs `cw` to validate it, list it, explain it, compile it into what its agent reads, test it and check its health. The command line is the whole of the engine's surface: nothing can be done elsewhere that cannot be done there.
 - **The portal.** A developer starts it from the command line inside a governed repository and gets a page that shows everything the charter holds — what each primitive says, when it comes up, which file it lives in and which layer it arrived from — and lets them author, edit and delete primitives, install and remove vendor sources, write and run the self-regression tests, build, and ask the health check, without remembering a single command or field name. The portal drives the same engine the command line drives and adds no behaviour of its own: what it shows is what the engine said, and everything it does has a command-line equivalent.
 - **Agent authoring.** The coding agent running in a governed repository is the third author, and the one that never sits at a terminal. A kind says what it requires to whoever asks (`cw kinds <kind>`), a primitive can be written with no terminal to answer at (`cw add <kind> <id> --header k=v`), and every governed repository gets the instructions: a skill, `skill:cw-author`, arrives in a layer of the charter that `cw` itself owns and compiles to whatever skill surface the repository's agent reads. The skill's body copies no rule out of the engine. It says to ask `cw kinds` and it says how to answer; which headers a kind requires stays where its contract is ([FR-004](#fr-004), [FR-064](#fr-064)). A surface compiled by an older `cw` would otherwise hand the agent a header table that a later `cw` has moved on from, and an agent reading a stale table writes files the engine refuses. Nothing here teaches the agent what to *write*: what a guide should say is the repository's business.
+
+Every surface above reaches a user the same way: **one install from the public package registry**. A developer who has never seen this repository installs `cw` with the command their package manager already knows and has the whole product — the command line, the portal and the builtin layer — with nothing to clone and nothing to build. Building from source is a contributor's path, not a user's.
 
 A single charter covering design, planning and implementation at once has to be wide enough to fit all three — which is another way of saying it narrows nothing. Cherry Works therefore splits work into flows, and gives each flow its own charter. That split is a **convention, not a mechanism**: a flow is one branch holding one charter, so the separation falls out of git. Each flow's checkout has its own charter, and the engine never needs to know flows exist. Flows belong to the product and to a later application; the engine, the command line and the portal are unaware of them. The portal shows one checkout's charter and never groups, filters or colours anything by flow.
 
@@ -29,9 +31,15 @@ A single charter covering design, planning and implementation at once has to be 
 - Q: The mockup reports a guide with no globs as an error and writes its own "when it comes up" text; which is right? → A: The engine. The mockup's activation text is a placeholder: the portal always shows the kind's own `activatesWhen`, and a guide with no globs is valid and comes up every turn.
 - Q: The assumptions still say a primitive declares `always` to be carried in every session; is that still a concept? → A: No. The header is gone from the code, and the assumption is removed.
 
+### Session 2026-09-22
+
+- Q: Which name do users install the package by? → A: `cherry-works`, unscoped, the name the package already has ([FR-126](#fr-126)). The command it puts on the path is `cw`.
+- Q: Which license is the project opened under? → A: MIT ([FR-133](#fr-133)).
+- Q: How is a release started — by the maintainer on their own machine, or by CI when a version tag is pushed? → A: By the maintainer running one command on their own machine ([FR-137](#fr-137)). There is no CI publishing path, so the package carries no registry provenance.
+
 ## User Scenarios & Testing *(mandatory)*
 
-Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, and Stories 10 to 12 agent authoring. A story's priority ranks it among the stories of its own part of the product.
+Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, Stories 10 to 12 agent authoring, and Stories 13 to 15 distribution. A story's priority ranks it among the stories of its own part of the product.
 
 ### User Story 1 - Author a charter and put the agent under it (Priority: P1)
 
@@ -262,6 +270,60 @@ A repository is set up under `cw`. Without anyone installing, copying or writing
 
 ---
 
+### User Story 13 - Install `cw` with one command and use it in any repository (Priority: P1)
+
+A developer reads about Cherry Works and wants to try it on their own repository. They install it from the public package registry with the one command their package manager already knows, and `cw` is on their path. They never clone this repository, never build anything and never install a browser or a compiler: `cw init`, `cw build` and `cw portal` work for them exactly as they work for someone who built from source.
+
+**Why this priority**: Until this, the only way in is to clone and build, which is a contributor's path, not a user's. Everything the product does sits behind it.
+
+**Independent Test**: On a machine holding only the supported runtime and git, install the published package, set a fresh repository up, author one rule, build it, and open the portal.
+
+**Acceptance Scenarios**:
+
+1. **Given** a machine with the supported runtime and git, **When** the developer installs the package globally, **Then** `cw` is on their path and `cw --help` lists every command.
+2. **Given** the installed `cw`, **When** it is run in any git repository, **Then** every command behaves as it does from a source build, the portal's page included, and nothing of this repository's source is needed.
+3. **Given** a developer who does not want a global install, **When** they run `cw` once through their package manager's run-without-installing command, **Then** that run works and nothing is left installed.
+4. **Given** a runtime older than the one supported, **When** the developer runs `cw`, **Then** they are told which version it needs and nothing is done.
+5. **Given** the installed `cw` and no network, **When** any command but adding or updating a vendor source is run, **Then** it works, as it does from a source build.
+6. **Given** the install, **When** what it put on the machine is looked at, **Then** it holds only what `cw` runs on: nothing that exists only to build, bundle or test it.
+
+---
+
+### User Story 14 - Know which `cw` is running, and move to another (Priority: P2)
+
+A developer is asked which version they are on when they report a problem, and a team wants every member and its CI to run the same version. They can ask `cw` its version, upgrade it with their package manager, and pin one version to a repository so that the repository's own scripts always run that one, whatever is installed globally.
+
+**Why this priority**: [Story 13](#user-story-13---install-cw-with-one-command-and-use-it-in-any-repository-priority-p1) gets `cw` onto a machine once. This one keeps it there across releases: without a version to name, a bug report cannot be matched to a release, and a team cannot agree on one.
+
+**Independent Test**: Install one published version globally and another as a development dependency of a repository; confirm `cw --version` names each where it runs; upgrade the global one and confirm the next run is the new version, with the builtin layer the new version's.
+
+**Acceptance Scenarios**:
+
+1. **Given** the installed `cw`, **When** the developer runs `cw --version`, **Then** it prints the version it was published as, and nothing else, and exits successfully.
+2. **Given** a newer version published, **When** the developer upgrades with their package manager, **Then** the next run is the new version, and what the builtin layer brings is the new version's with nothing to migrate ([SC-021](#sc-021)).
+3. **Given** a repository that declares one version of the package as a development dependency, **When** `cw` is run through that repository's own scripts, **Then** it is that version, whatever version is installed globally.
+4. **Given** any repository, **When** the health check runs, from the command line or from the portal, **Then** its report names the version of `cw` that produced it.
+
+---
+
+### User Story 15 - Publish a release that users can trust (Priority: P3)
+
+A maintainer wants to put a new version in users' hands. They ask for a release of one version, and it is published only if what would be published is known to work: the tests pass, the working tree holds nothing uncommitted, the version is new, and the exact package about to be published has been installed apart from the repository and seen to set a repository up and build it. Each published version can be traced back to the commit it was built from.
+
+**Why this priority**: Stories 13 and 14 are what a user sees. This one is how the maintainer gets there without publishing something broken, and it can be done carefully by hand until it exists.
+
+**Independent Test**: Ask for a release with a failing test, then with an uncommitted change, then of a version already published, and confirm each is refused with nothing published; ask for a release from a clean, green tree and confirm the version is published, installable, and tagged at the commit it came from.
+
+**Acceptance Scenarios**:
+
+1. **Given** a clean working tree whose tests pass, **When** the maintainer releases a new version, **Then** that version is published and the repository records the commit it was built from under a tag named after it.
+2. **Given** a failing test, or a change not committed, **When** a release is asked for, **Then** it is refused, saying which, and nothing is published.
+3. **Given** a version already published, **When** a release of it is asked for, **Then** it is refused, and nothing is published.
+4. **Given** the package a release would publish, **When** it is installed apart from the repository and fails to set a fresh repository up and build it, **Then** the release is refused, and nothing is published.
+5. **Given** a published package, **When** its contents are listed, **Then** they are the runnable program, the portal's page, the README and the license, and nothing else of the development repository — no specs, tests, sources or its own charter.
+
+---
+
 ### Edge Cases
 
 **The charter and its engine**
@@ -295,6 +357,14 @@ A repository is set up under `cw`. Without anyone installing, copying or writing
 - No network is available — everything but adding or updating a vendor source works, the body editor included.
 - The repository has no test files — the test view says what a test is for and offers to create one; the health check warns about every guide and sensor that no case pins down.
 - A vendored file was hand-edited — the health check names its source and says how to undo it, as `cw doctor` does.
+
+**Distribution**
+
+- `cw` installed globally and another version installed as a repository's development dependency — the repository's scripts run the repository's version; `cw --version` says which one is running wherever it is asked.
+- Another program called `cw` already on the path — the developer is told, by the package name in the README, which package this is; `cw --version` on this one names Cherry Works.
+- A package published without the portal's page — cannot happen: the release installs what it would publish and runs it first ([FR-135](#fr-135)).
+- The registry is unreachable at install time — the package manager fails as it does for any package; nothing of `cw` has run.
+- A user upgrades `cw` in a repository whose compiled output an older `cw` wrote — the health check says the output is behind wherever the new version would write something different, as it does after any charter change ([FR-080](#fr-080)).
 
 **Agent authoring**
 
@@ -496,6 +566,22 @@ A repository is set up under `cw`. Without anyone installing, copying or writing
 - <a id="fr-122"></a>**FR-122**: The portal MUST list every installed vendor source with the folder it landed in and its primitives counted by kind.
 - <a id="fr-123"></a>**FR-123**: The portal MUST offer adding a source by its short git form and an optional version, and removing an installed one by its folder, through the engine's vendoring, and MUST show the engine's refusal whenever one is refused.
 
+**Distribution**
+
+- <a id="fr-126"></a>**FR-126**: The engine MUST be published to the public npm registry as one package named `cherry-works`, whose install puts one command, `cw`, on the path.
+- <a id="fr-127"></a>**FR-127**: The installed package MUST run every command, the portal and its page included, with no build step, no source checkout, and no compiler, native toolchain or browser download on the user's machine.
+- <a id="fr-128"></a>**FR-128**: The package MUST declare the oldest runtime version it supports, and `cw` run on an older one MUST name the version it needs and exit with a failure status before doing anything else.
+- <a id="fr-129"></a>**FR-129**: Installing the package MUST install only what `cw` needs at run time. What exists only to build, bundle or test it — including everything the portal's page was built from — MUST NOT be installed.
+- <a id="fr-130"></a>**FR-130**: The package MUST hold only what a user needs: the runnable program, the portal's page, the README and the license. The specs, the tests, the sources, the repository's own charter and anything else of the development repository MUST NOT be in it.
+- <a id="fr-131"></a>**FR-131**: `cw --version` MUST print the version the package was published as, and nothing else, and exit successfully.
+- <a id="fr-132"></a>**FR-132**: The health check MUST name the version of `cw` that produced it, on the command line and in the portal alike ([FR-121](#fr-121)).
+- <a id="fr-133"></a>**FR-133**: The repository MUST carry the MIT license, declared in the package and shipped in it.
+- <a id="fr-134"></a>**FR-134**: A release MUST be refused, publishing nothing, unless the working tree holds no uncommitted change, every test passes, and the version has never been published.
+- <a id="fr-135"></a>**FR-135**: Before a release publishes, the exact package it would publish MUST be installed apart from the repository and used to set a fresh repository up and build it; the release MUST be refused if either fails.
+- <a id="fr-136"></a>**FR-136**: Every published version MUST be traceable to the commit it was built from, recorded in the repository as a tag named after the version.
+- <a id="fr-137"></a>**FR-137**: A release MUST be started by the maintainer running one command on their own machine, and every check of [FR-134](#fr-134) and [FR-135](#fr-135) MUST run on that path.
+- <a id="fr-138"></a>**FR-138**: The README MUST give the install from the registry as the way to get `cw`, and building from source as the contributor's way.
+
 **The portal: tests**
 
 - <a id="fr-124"></a>**FR-124**: The portal MUST list every test file with its name, description and case count, and each case's situation and expectation.
@@ -522,6 +608,8 @@ The shape of each is in the data model.
 - **Portal**: The graphical interface over one repository's charter, served on the developer's own machine for as long as its command runs. Holds no state about the charter of its own.
 - **View**: One of the portal's pages — the repository layer, the vendor layer, the tests, a search, an explanation, a health report, a build result. Each is read from the engine when it is shown.
 - **Draft**: The answers and body an author has typed for a primitive not yet saved. The only thing the portal holds that the engine has not been told, and gone when it is saved or cancelled (data-model).
+- **Package**: What one release publishes to the registry: the runnable program, the portal's page, the README and the license, under one version.
+- **Release**: One version of the package, published once, never replaced, and tagged at the commit it was built from.
 - **Flow**: One branch holding one charter. A convention of the product and of a later application; carries no meaning inside the engine, the command line or the portal.
 
 ## Success Criteria *(mandatory)*
@@ -554,6 +642,12 @@ The shape of each is in the data model.
 - <a id="sc-024"></a>**SC-024**: A repository set up and built from scratch has the authoring skill on its agent's surface with no command run beyond set-up and build, and with nothing added under its workspace to put it there.
 - <a id="sc-025"></a>**SC-025**: 100% of what the agent can do here can also be done from the command line by a person, and the reverse: the flags answer exactly the prompts.
 - <a id="sc-026"></a>**SC-026**: Every user story is delivered as one reviewable change, leaving the repository building and passing its tests. No cap is set on how many lines that change touches.
+- <a id="sc-027"></a>**SC-027**: A developer with only the supported runtime and git goes from nothing installed to `cw --help` with one command, in under one minute on an ordinary connection.
+- <a id="sc-028"></a>**SC-028**: For the same repository, 100% of commands answer the same from the published package as from a source build.
+- <a id="sc-029"></a>**SC-029**: Installing `cw` adds under 20 MB to the machine.
+- <a id="sc-030"></a>**SC-030**: No version is ever published whose tests failed, or whose package failed to set a fresh repository up and build it.
+- <a id="sc-031"></a>**SC-031**: Any published version is traced to the one commit it was built from in one step, and any running `cw` names its version in one command.
+- <a id="sc-032"></a>**SC-032**: A maintainer publishes a release with one action, and a refused release leaves the registry and the repository as they were.
 
 ## Assumptions
 
@@ -582,6 +676,12 @@ The shape of each is in the data model.
 - **A repository that wants to differ authors its own primitive.** As with a vendored primitive ([Story 6](#user-story-6---author-edit-and-delete-a-primitive-without-looking-anything-up-priority-p2)): it does not edit what it does not own, it writes something under an identity of its own.
 - **The identity `skill:cw-author` is spoken for**, in every repository, the way any installed identity is. A repository that had authored a primitive under it will see the collision the engine always reports, and renames its own.
 - **Only creating is covered for the agent.** Changing a primitive that exists, and deleting one, are left to the person and the portal. An agent that rewrites a rule it did not author is a larger question than the shape of a file.
+- **Versions follow semantic versioning, starting at 0.1.0.** A version below 1.0 says the charter format and the commands may still change between minor versions. A published version is never replaced or taken back; a fix is a new version.
+- **The command is `cw` whatever the package is called.** An unrelated package already holds the name `cw` on the registry, so users install this one by its package name, and the command it puts on the path is still `cw`.
+- **Any package manager that reads the public registry installs it.** npm, pnpm and yarn all read the same registry, so no manager is favoured and none is required; the README shows npm, which every runtime install brings.
+- **The supported runtime is the one the engine already requires**, and the supported platforms are macOS and Linux, where the engine is built and tested. Windows is not promised until it is tested.
+- **The browser the portal's tests drive is a contributor's tool.** A user needs only their own browser to open the portal; nothing downloads one for them.
+- **The maintainer's registry account, its second factor and the rights to the package name are held outside the product.** A release uses them; it does not create or manage them.
 - **The engine already knows what a kind requires.** Asking a kind and answering with flags add no capability to the engine: what a kind requires is answered at `cw add`'s prompts, and `cw add` writes the file. Agent authoring is two new ways of asking and one primitive.
 
 ## Dependencies
@@ -590,6 +690,7 @@ The shape of each is in the data model.
 - A network path to the vendor source's git host when installing or updating vendored content. Everything else works offline.
 - An installed coding agent for the compiled output to be consumed. Authoring, validation, cataloguing and the agent-neutral compilation all work without one.
 - A web browser on the developer's machine, for the portal.
+- The public npm registry, reachable when `cw` is installed or upgraded, and a maintainer account holding publish rights for the package name, for a release.
 
 ## Out of Scope
 
@@ -610,3 +711,8 @@ The shape of each is in the data model.
 - Keeping any of the builtin layer on disk: no folder, no cache, no copy to refresh.
 - Teaching the agent which kind something ought to be. It is told what each kind is for, and chooses.
 - Running the build, the health check or the tests on the agent's behalf.
+- Publishing anywhere but the public npm registry: no private registry, no standalone binary, no operating-system package manager such as Homebrew.
+- `cw` updating itself, or telling a user that a newer version exists. Upgrading is the package manager's.
+- Taking a published version back or publishing over it.
+- Writing release notes or a changelog for a release.
+- Publishing from CI, and the registry provenance that only a CI publish can attach.

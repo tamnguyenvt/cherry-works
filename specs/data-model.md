@@ -631,3 +631,30 @@ only in the page and is gone when saved or cancelled.
 | rationale | the corpus it cites, chosen from the charter's corpus |
 | body | markdown, possibly empty |
 | revision | for an existing primitive, the revision it was opened at ([§15.1](#151-primitive-snapshot-fr-075-fr-078)) |
+
+## 16. Distribution (FR-126 – FR-138)
+
+### 16.1 Package
+
+What one release publishes to the registry. Its fields are `package.json`'s.
+
+| Field | Holds |
+|---|---|
+| name | `cherry-works` ([FR-126](spec.md#fr-126)) |
+| version | semantic, from `0.1.0`; one published version is never replaced |
+| bin | `cw`, the one command it puts on the path |
+| engines | the oldest Node it runs on, `>=22` ([FR-128](spec.md#fr-128)) |
+| dependencies | exactly what the engine imports at run time ([FR-129](spec.md#fr-129)) |
+| files | the engine's bundle, the portal's page, the README, the license ([FR-130](spec.md#fr-130)) |
+| license | `MIT` ([FR-133](spec.md#fr-133)) |
+
+### 16.2 Release
+
+One version, published once.
+
+| Field | Holds |
+|---|---|
+| version | the package's version it published |
+| tag | `v<version>`, at the commit it was built from ([FR-136](spec.md#fr-136)) |
+| tarball | the one file installed by the install check and then published, unchanged ([FR-135](spec.md#fr-135)) |
+

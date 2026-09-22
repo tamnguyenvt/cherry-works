@@ -1,6 +1,6 @@
 # Implementation Plan: Cherry Works
 
-**Spec**: [spec.md](./spec.md) · **Data model**: [data-model.md](./data-model.md) · **Tasks**: [001](./tasks/001-charter-engine.md), [002](./tasks/002-charter-portal.md) · **Mockup**: [mockup/portal.html](./mockup/portal.html) · **Status**: Draft
+**Spec**: [spec.md](./spec.md) · **Data model**: [data-model.md](./data-model.md) · **Tasks**: [001](./tasks/001-charter-engine.md), [002](./tasks/002-charter-portal.md), [003](./tasks/003-npm-publish.md) · **Mockup**: [mockup/portal.html](./mockup/portal.html) · **Status**: Draft
 
 This file says how the product is built: the design, the modules each part lives
 in, and why it is built this way. What the product must do is the spec's, cited
@@ -10,10 +10,10 @@ by its ids; the shape of each piece of data is the data model's, cited by its §
 
 | Decision | Choice | Why |
 |---|---|---|
-| Runtime | Node.js ≥ 20, ESM only | A standalone runtime with no compiled or native dependency (spec Assumptions). |
+| Runtime | Node.js ≥ 22, ESM only | A standalone runtime with no compiled or native dependency (spec Assumptions). 22 rather than 20: Node 20 reached its end of life on 2026-04-30, so the oldest line still receiving fixes is the oldest one promised ([§18.2](#182-the-runtime-it-needs-fr-128)). |
 | Language | TypeScript, strict | The per-kind header contracts are the core of the format; the type system carries them. |
 | Package manager | pnpm | Strict by default: a dependency this package does not declare is not importable from it. |
-| Distribution | npm registry package `cherry-works`, `bin: { cw }` | A single install command makes the tool available. Node on the machine is a prerequisite, stated up front. Installed globally, so the user's own repository gains no dependency and no `package.json` of its own — it may be written in any language. |
+| Distribution | npm registry package `cherry-works`, `bin: { cw }`, MIT | A single install command makes the tool available. Node on the machine is a prerequisite, stated up front. Installed globally, so the user's own repository gains no dependency and no `package.json` of its own — it may be written in any language; a repository that has one may pin a version as a development dependency. What the package holds, depends on and how a release is made is [§18](#18-distribution-fr-126--fr-138). |
 | Bundler | `tsup` (esbuild), two entries into `dist/` | One entry is the `cw` binary; the other is the portal's page, `platform: "browser"`, into `dist/portal/`. The page ships inside the same package, so the engine and the interface are one artifact, and it is served from `dist`, so nothing is fetched at run time ([FR-111](spec.md#fr-111)). Nothing is published as a library. |
 | Test runner | `node:test` + `tsx`; `playwright` for the page | No framework: the engine is filesystem-heavy, not framework-heavy. Test files are named for the behaviour they describe, in kebab-case, flat under `test/` — `ls test/` reads as what the system does, not as a mirror of the source tree. The page is tested in a real browser. `pnpm test` runs the dependency rules first ([§2.2](#22-dependency-rules)), then the build, then the tests. |
 | Frontmatter | `yaml` (pure JS), behind `ForParsingYaml` | The only non-trivial parse in the system. The domain splits the block off the body and the port hands back the fields; the YAML adapter is the only module that knows the notation. |
@@ -1136,6 +1136,9 @@ holds one `TestSuite`, which is what the domain already calls it.
 - **Three layers in every message that names one.** Every fault, catalogue entry
   and listing that says "repo" or "vendor" has a third word to say. Caught by the
   tests over listings and catalogues rather than by reading.
+- **A release published from one maintainer's machine.** Its checks are only as good as that machine's state. Mitigation: the release refuses a dirty tree and runs the full suite, then installs the exact tarball it will publish somewhere else and uses it; what is published is that tarball, not a second pack ([§18.4](#184-releasing-fr-134--fr-137)).
+- **A dependency the bundle expects but the package does not declare.** It works in this repository, where every development dependency is installed, and fails only in a user's install. Mitigation: a test compares the bare imports of `dist/main.js` with `dependencies`, both ways ([§18.1](#181-what-the-package-holds-fr-126-fr-127-fr-129-fr-130-fr-133)).
+- **A published version cannot be taken back.** A broken one stays installable. Mitigation: nothing is published that failed the install check; a fix is the next patch version (spec Assumptions).
 - **A path nobody can open.** `(built into cw)/…` reads as a path in a fault or a
   catalogue entry and is not one. Accepted over an optional file, which puts a
   branch into every reader for the one primitive that has none, and over a bare
@@ -1160,6 +1163,8 @@ Recorded so they are not built by accident:
 - A machine-readable output mode for `cw kinds` or `cw add`.
 - Writing a primitive's body, or judging what it says.
 - A machine-local layer (spec Assumptions).
+- Bundling the runtime dependencies into `dist/main.js` ([§18.1](#181-what-the-package-holds-fr-126-fr-127-fr-129-fr-130-fr-133)).
+- A release from CI, a changelog, and an update check inside `cw` (spec Out of Scope).
 
 ## 16. Read of the reference design
 
@@ -2276,3 +2281,101 @@ file ([Story 9](spec.md#user-story-9---write-run-and-correct-the-self-regression
 file's text, Save shows the refusal and sample, Delete file removes it. The page
 clears earlier outcomes on every write, the creation of a new file included
 ([Story 9](spec.md#user-story-9---write-run-and-correct-the-self-regression-tests-priority-p5), scenarios 3, 4, 6 and 7).
+
+### 17.3 Phase 003: publishing to npm
+
+The list is [tasks/003-npm-publish.md](./tasks/003-npm-publish.md). The stories go in spec order:
+[Story 13](spec.md#user-story-13---install-cw-with-one-command-and-use-it-in-any-repository-priority-p1), [Story 14](spec.md#user-story-14---know-which-cw-is-running-and-move-to-another-priority-p2) and [Story 15](spec.md#user-story-15---publish-a-release-that-users-can-trust-priority-p3), each one change ([SC-026](spec.md#sc-026)), cut from `003-npm-publish`. The first version reaches the registry at the end of [Story 15](spec.md#user-story-15---publish-a-release-that-users-can-trust-priority-p3), so nothing before it says the package can be installed from there.
+
+#### 17.3.1 T3.001 — Runtime dependencies only
+
+`dependencies` keeps the eight packages `dist/main.js` imports; everything the page is built from moves to `devDependencies` ([§18.1](#181-what-the-package-holds-fr-126-fr-127-fr-129-fr-130-fr-133)). `test/packaging-the-engine.test.ts` reads every bare import of the built `dist/main.js` — `node:` built-ins aside, a subpath counted as its package — and asserts that set equals `dependencies`.
+
+Acceptance: `pnpm test` green with the page's libraries under `devDependencies`; a runtime import missing from `dependencies`, or a dependency nothing imports, fails the test.
+
+#### 17.3.2 T3.002 — The runtime guard
+
+`bin.ts` beside `main.ts`, built by `tsup` as its own entry to `dist/cw.js` at `target: "es2017"`, so it parses on any Node still in use. It compares `process.versions.node` with the major the package's `engines` names, and either prints what it needs and exits `1`, or imports `./main.js`. `bin` points at `dist/cw.js`; `engines.node` becomes `>=22`.
+
+Acceptance: a test runs `dist/cw.js` under a preload that reports Node 18, and it prints the version needed and exits `1` having written nothing; on the running Node it prints the usage.
+
+#### 17.3.3 T3.003 — What the package holds
+
+`package.json` gains `license: "MIT"`, `repository`, `homepage`, `bugs`, `keywords` and `author`; `LICENSE` is added at the root, the MIT text under `Copyright (c) 2026 Cherry Softwares`. `files` stays `["dist"]`, and npm adds the README, the license and `package.json` by itself. The same test file asserts `npm pack --dry-run --json` lists exactly those and what `dist/` holds, and no path under `src/`, `specs/`, `test/` or `.cw/`.
+
+Acceptance: the file list is the one [FR-130](spec.md#fr-130) names; the license field and file agree.
+
+#### 17.3.4 T3.004 — `cw --version`
+
+`Commander` takes the version from the composition root, which reads it from `package.json` through a JSON import ([§18.3](#183-the-version-it-names-fr-131-fr-132)), and hands it to yargs' `.version()` in place of `.version(false)`.
+
+Acceptance: `cw --version` prints the version from `package.json` and a newline, exit 0; `cw --help` lists `--version`.
+
+#### 17.3.5 T3.005 — The health check names its version
+
+`Context` carries the version; `DoctorCommand` prints `cw <version>` as the report's first line. The page reads the same version from its own build and the Doctor modal shows it beside its title.
+
+Acceptance: `cw doctor` starts with `cw <version>`; the portal's Doctor modal shows the same version.
+
+#### 17.3.6 T3.006 — The release's checks
+
+`scripts/release.ts`, run as `pnpm release <version> [--dry-run]`. In order, refusing at the first that fails and leaving everything as it was: the version is valid semver and above `package.json`'s; the registry has never published it; the working tree is clean and on `develop`, level with `origin/develop`. Then it writes the version into `package.json` and runs `pnpm test`, restoring `package.json` if the tests fail.
+
+Acceptance: each refusal, tried by hand with `--dry-run`, says which check failed and leaves `git status` clean.
+
+#### 17.3.7 T3.007 — The install check
+
+`npm pack` into a temporary folder; that tarball is installed into another with `npm install --prefix`, and its `cw` is run in a fresh `git init` folder: `cw --version` must print the version being released, then `cw init --agent claude`, `cw build` and `cw doctor` must exit 0. Installed size above 20 MB refuses as well ([SC-029](spec.md#sc-029)).
+
+Acceptance: `pnpm release <next> --dry-run` runs every check through this one and stops before committing, with nothing changed.
+
+#### 17.3.8 T3.008 — Commit, tag, publish, push
+
+Without `--dry-run`: commit `package.json` as `Release <version>`, tag `v<version>`, `npm publish <tarball>` — the tarball the install check used — then `git push origin develop v<version>`. A publish that fails deletes the tag and undoes the commit. `prepublishOnly` refuses a bare `npm publish` from the repository, naming `pnpm release`; publishing a tarball runs no lifecycle script, so the release is not stopped by it.
+
+Acceptance: a bare `npm publish` is refused; the release's own publish path is reached only after every check.
+
+#### 17.3.9 T3.009 — The README, then 0.1.0
+
+The README's Install section leads with `npm install -g cherry-works`, then `npx cherry-works` for one run and `npm install -D cherry-works` for a pinned version, and moves building from source under Development ([FR-138](spec.md#fr-138)). Then the maintainer runs `pnpm release 0.1.0`.
+
+Acceptance: `npm install -g cherry-works` on a machine with nothing else installed gives a `cw` that sets a repository up, builds it and opens the portal ([Story 13](spec.md#user-story-13---install-cw-with-one-command-and-use-it-in-any-repository-priority-p1)); `git tag` shows `v0.1.0` at the release commit.
+
+## 18. Distribution (FR-126 – FR-138)
+
+### 18.1 What the package holds (FR-126, FR-127, FR-129, FR-130, FR-133)
+
+The package is `cherry-works` ([§1](#1-technical-context)). It holds `dist/` — the engine's bundle and the portal's page, both built by `pnpm build` — with the README, the MIT `LICENSE` and `package.json`, and nothing else: `files: ["dist"]` is the whole list, and npm adds the other three. What `dist/` needs at run time resolves inside the package: the page through the `#portal/*` import ([§12.1](#121-shape)), which points into `dist/portal/` wherever the package is installed.
+
+`dependencies` is what `dist/main.js` imports and nothing more: `@hono/node-server`, `@hono/zod-openapi`, `hono`, `picomatch`, `prompts`, `yaml`, `yargs` and `zod`. The page's libraries — React, Radix, CodeMirror, TanStack Query, `marked`, the rest — are already inside `dist/portal/main.js`, so they are development dependencies: installing them for a user would put 90 MB on the machine for code that is never loaded. Measured on 2026-09-22, the eight runtime dependencies install at about 15 MB, and the package itself at 1.3 MB, under [SC-029](spec.md#sc-029)'s 20 MB.
+
+The alternative, bundling the eight into `dist/main.js` so the package depends on nothing, was not taken. A security fix in any of them would then need a release of `cw` to reach a user, rather than arriving through the version range, and every bundled package's license notice would have to be carried by hand.
+
+### 18.2 The runtime it needs (FR-128)
+
+`engines.node` says `>=22`, but npm only warns on it and pnpm only refuses under `engine-strict`, so the check that counts is in `cw` itself. It cannot be the first line of `main.ts`: an ES module's static imports load before any of its code runs, and a dependency using syntax an old Node cannot parse fails first with an error that names neither `cw` nor a version. So `bin` points at `dist/cw.js`, a launcher built for old syntax that checks the version and only then imports `main.js`. The launcher reads the major it needs from the `engines` field, so the two cannot disagree.
+
+### 18.3 The version it names (FR-131, FR-132)
+
+The version is `package.json`'s, read at build time. The composition root imports it (`import packageJson from "./package.json" with { type: "json" }`); esbuild inlines it into `dist/main.js`, and `tsx` reads it the same way when `cw` runs from source, so both print the same version. `Commander` gets it with the ports and passes it to every command in `Context`, so `cw --version` and `cw doctor` say it the same way. The engine is not told: which version is running is a fact about the program the driver is part of, not about a charter, so no port and no DTO carries it.
+
+The page, which `page-is-browser-code` keeps from importing anything of the package's own ([§2.2](#22-dependency-rules)), is given the version by `tsup`'s `define`, from the same `package.json`, as a constant the Doctor modal shows. Both halves are built by the one `pnpm build`, so they cannot name different versions.
+
+### 18.4 Releasing (FR-134 – FR-137)
+
+A release is `pnpm release <version>`, run by the maintainer on their own machine ([FR-137](spec.md#fr-137)), from `scripts/release.ts` beside the other maintainer scripts. It is not part of the product and is not in the package. Its order is chosen so that nothing reaches the registry or the remote until everything that can fail has run ([SC-032](spec.md#sc-032)):
+
+1. **Refusals that change nothing** ([FR-134](spec.md#fr-134)): the version is valid semver and above the current one; the registry does not have it; the tree is clean, on `develop`, and level with `origin/develop`.
+2. **The version written, and the suite run.** The version goes into `package.json`, and `pnpm test` runs, which builds. If it fails, `package.json` is restored.
+3. **The install check** ([FR-135](spec.md#fr-135)). `npm pack` writes the tarball once. It is installed apart from the repository and used on a fresh repository: `--version`, `init`, `build`, `doctor`, and the installed size ([SC-029](spec.md#sc-029)).
+4. **Recorded** ([FR-136](spec.md#fr-136)). The version bump is committed and tagged `v<version>`.
+5. **Published.** `npm publish` of that same tarball, so what was checked is byte for byte what users get; npm asks for the account's second factor. If it fails, the tag is deleted and the commit undone.
+6. **Pushed.** The commit and the tag go to `origin`.
+
+`--dry-run` stops after step 3 and restores `package.json`. `prepublishOnly` refuses a plain `npm publish` in the repository, naming `pnpm release`, so the checks cannot be skipped by habit.
+
+Semantic versioning from `0.1.0` (spec Assumptions). There is no provenance: npm attaches it only to a publish made from CI, which is out of scope.
+
+### 18.5 The README (FR-138)
+
+The README tells a user to install from the registry, with `npx cherry-works` for one run and a development dependency for a pinned version, and moves building from source under Development, since that is the contributor's way. It changes in the same story as the first release, so it never promises a package the registry does not yet have.

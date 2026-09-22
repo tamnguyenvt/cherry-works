@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [x] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain — phase 003's three were answered on 2026-09-22: the package is `cherry-works` ([FR-126](../spec.md#fr-126)), the license is MIT ([FR-133](../spec.md#fr-133)), and a release is one command on the maintainer's machine ([FR-137](../spec.md#fr-137))
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -46,6 +46,8 @@
 - **No flows.** The portal shows one checkout's charter and knows nothing of flows.
 - **No standing build status.** Whether the compiled output is behind is the health check's answer ([FR-080](../spec.md#fr-080)).
 - **Three decisions for agent authoring were taken as informed defaults**, each recorded in Assumptions: one header flag makes the whole run non-interactive; the engine-owned layer is supplied on every read and kept nowhere in the repository; the identity the shipped skill claims collides like any other.
+
+- **Phase 003, distribution, was specified on 2026-09-22** as Stories 13 to 15, [FR-126](../spec.md#fr-126) – [FR-138](../spec.md#fr-138) and [SC-027](../spec.md#sc-027) – [SC-032](../spec.md#sc-032). Taken as informed defaults, each in Assumptions: semantic versioning from 0.1.0; the command stays `cw` whatever the package is called; macOS and Linux are the platforms promised; no release notes, no self-update, no registry but npm.
 
 ### Notes on judgement calls
 
