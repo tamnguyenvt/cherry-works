@@ -50,7 +50,7 @@ const adding = async (
   process.stdin.isTTY = answers !== undefined;
   if (answers !== undefined) prompts.inject(answers);
   try {
-    const code = await new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS).run(argv);
+    const code = await new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;

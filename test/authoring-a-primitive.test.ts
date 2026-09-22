@@ -41,6 +41,7 @@ const authoring = (files: Readonly<Record<string, string>> = {}) => {
  *  a captured stdout, which the test runner reports through too. */
 const contextOver = (charterAuthoringApp: CharterAuthoring) => ({
   cwd: "/repo",
+  version: "0.0.0",
   charterAuthoringApp,
   charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS()),
   testAuthoringApp: new TestAuthoring(repoPath, new InMemoryFileReaders({}), new InMemoryFileOutput(new InMemoryFileReaders({}))),

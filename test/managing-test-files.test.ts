@@ -54,6 +54,7 @@ const authoring = (files: Readonly<Record<string, string>> = {}) => {
 
 const contextOver = ({ charterAuthoringApp, testAuthoringApp }: ReturnType<typeof authoring>) => ({
   cwd: "/repo",
+  version: "0.0.0",
   charterAuthoringApp,
   charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS()),
   testAuthoringApp,

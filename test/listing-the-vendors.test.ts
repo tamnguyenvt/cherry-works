@@ -38,7 +38,7 @@ async function listing(held: InMemoryFileReaders) {
     const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs);
     const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
     const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
-    const code = await new Commander({ cwd: "/repo", charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS).run(["vendor", "list"]);
+    const code = await new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS).run(["vendor", "list"]);
     return { code, said: said.join("") };
   } finally {
     process.stdout.write = kept;

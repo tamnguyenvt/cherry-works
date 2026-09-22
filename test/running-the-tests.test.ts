@@ -62,6 +62,7 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
   const cli = new Commander(
     {
       cwd: repo,
+      version: "0.0.0",
       charterAuthoringApp,
       charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs),
       testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), held, new InMemoryFileOutput(held)),

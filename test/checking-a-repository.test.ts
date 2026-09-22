@@ -75,6 +75,7 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
   const cli = new Commander(
     {
       cwd: repo,
+      version: "1.2.3",
       charterAuthoringApp,
       charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs),
       testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), held, new InMemoryFileOutput(held)),
@@ -100,6 +101,14 @@ test("a repository with nothing wrong passes, and says so of each thing it looke
   assert.match(written.everything, /Vendors: {2}none edited here\./);
   assert.match(written.everything, /Built: {4}up to date\./);
   assert.match(written.everything, /Nothing to fix\./);
+});
+
+test("the report starts with the version of cw that wrote it (FR-132)", async () => {
+  const { run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+
+  const { written } = await run(["doctor"]);
+
+  assert.match(written.results.join(""), /^cw 1\.2\.3\n/);
 });
 
 test("a repository that has never been built is out of date, and fails (FR-040)", async () => {

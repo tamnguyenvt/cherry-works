@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { pathToFileURL } from "node:url";
+import packageJson from "./package.json" with { type: "json" };
 import { Commander } from "./src/driver/cli/Commander.js";
 import { CharterAuthoring } from "./src/hexagon/application/CharterAuthoring.js";
 import { CharterVendoring } from "./src/hexagon/application/CharterVendoring.js";
@@ -37,6 +38,6 @@ const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath,
 
 const testAuthoringApp: ForAuthoringTests = new TestAuthoring(repoPath, fileReader, fileWriter);
 
-const cli = new Commander({ cwd: process.cwd(), charterAuthoringApp, charterVendoringApp, testAuthoringApp });
+const cli = new Commander({ cwd: process.cwd(), version: packageJson.version, charterAuthoringApp, charterVendoringApp, testAuthoringApp });
 
 process.exitCode = await cli.run(process.argv.slice(2));

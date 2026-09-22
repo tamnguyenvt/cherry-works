@@ -70,3 +70,16 @@ test("on the Node it needs, the launcher hands over to cw", () => {
   assert.equal(launcherRun.status, 0, launcherRun.stderr);
   assert.match(launcherRun.stdout, /^Usage: cw <command> \[options\]/);
 });
+
+test("cw --version prints the version it was published as, and nothing else (FR-131)", () => {
+  const versionRun = spawnSync(process.execPath, ["dist/cw.js", "--version"], { cwd: root, encoding: "utf8" });
+
+  assert.equal(versionRun.status, 0, versionRun.stderr);
+  assert.equal(versionRun.stdout, `${packageJson.version}\n`);
+});
+
+test("cw --help offers --version (FR-131)", () => {
+  const helpRun = spawnSync(process.execPath, ["dist/cw.js", "--help"], { cwd: root, encoding: "utf8" });
+
+  assert.match(helpRun.stdout, /--version\s+Show version number/);
+});

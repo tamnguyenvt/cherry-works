@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { Page } from "playwright";
 import { inTheBrowser } from "./in-the-browser.js";
+import packageJson from "../package.json" with { type: "json" };
 
 const at = (path: string) => new URL(path, "file:///repo/").href;
 
@@ -62,6 +63,8 @@ test("Doctor shows the four answers and every warning, and builds when the outpu
 
     const health = page.getByLabel("Health");
     await health.waitFor();
+    // The version the report is from, as `cw doctor` starts with it (FR-132).
+    assert.equal(await page.getByRole("dialog").getByText(`cw ${packageJson.version}`, { exact: true }).count(), 1);
     const answers = await health.innerText();
     assert.match(answers, /Agents\s+none chosen/i);
     assert.match(answers, /Charter\s+holds, with 1 warning\./i);

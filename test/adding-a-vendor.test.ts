@@ -36,6 +36,7 @@ async function running(argv: readonly string[], vcs: InMemoryVCS = new InMemoryV
     const noTestFiles = new InMemoryFileReaders({});
     const context = {
       cwd: repo,
+      version: "0.0.0",
       charterAuthoringApp: unread(),
       charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), vcs),
       testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), noTestFiles, new InMemoryFileOutput(noTestFiles)),

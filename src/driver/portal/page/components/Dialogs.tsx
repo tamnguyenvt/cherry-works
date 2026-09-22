@@ -8,6 +8,9 @@ import { AddVendorSource } from "./AddVendorSource.js";
 import { TestSuiteEditor } from "./TestSuiteEditor.js";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog.js";
 
+/** The version of the cw serving this page, written in by the build. */
+declare const CW_VERSION: string;
+
 /** What a dialog is rendered with besides its own params, and what
  *  `useDialog` hands out: the one way to open a dialog — by its name, with the
  *  params that dialog is rendered by — and to close it. */
@@ -92,7 +95,8 @@ const DIALOGS = {
    *  behind (FR-121). */
   doctor: {
     title: () => "Doctor",
-    context: () => "agents, charter, vendors and compiled output",
+    // The version the report is from, as `cw doctor` starts with it (FR-132).
+    context: () => `cw ${CW_VERSION}`,
     holdsDraft: false,
     render: (_params: Record<string, never>, { open }: DialogHelpers) => (
       <DoctorReport onBuilt={(buildAnswer) => open("buildOutcome", { buildAnswer })} />

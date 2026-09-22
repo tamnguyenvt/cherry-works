@@ -22,8 +22,8 @@ Independent test: see spec [Story 13](../spec.md#user-story-13---install-cw-with
 
 Independent test: see spec [Story 14](../spec.md#user-story-14---know-which-cw-is-running-and-move-to-another-priority-p2).
 
-- [ ] <a id="t3.004"></a>**T3.004** `cw --version`. *([FR-131](../spec.md#fr-131); [Story 14](../spec.md#user-story-14---know-which-cw-is-running-and-move-to-another-priority-p2) scenario 1; plan [§18.3](../plan.md#183-the-version-it-names-fr-131-fr-132), [§17.3.4](../plan.md#1734-t3004--cw---version))*
-- [ ] <a id="t3.005"></a>**T3.005** The health check names its version, on the command line and in the portal. *([FR-132](../spec.md#fr-132), [FR-121](../spec.md#fr-121); [Story 14](../spec.md#user-story-14---know-which-cw-is-running-and-move-to-another-priority-p2) scenario 4; plan [§18.3](../plan.md#183-the-version-it-names-fr-131-fr-132), [§17.3.5](../plan.md#1735-t3005--the-health-check-names-its-version))* Depends on [T3.004](#t3.004).
+- [x] <a id="t3.004"></a>**T3.004** `cw --version`. *([FR-131](../spec.md#fr-131); [Story 14](../spec.md#user-story-14---know-which-cw-is-running-and-move-to-another-priority-p2) scenario 1; plan [§18.3](../plan.md#183-the-version-it-names-fr-131-fr-132), [§17.3.4](../plan.md#1734-t3004--cw---version))*
+- [x] <a id="t3.005"></a>**T3.005** The health check names its version, on the command line and in the portal. *([FR-132](../spec.md#fr-132), [FR-121](../spec.md#fr-121); [Story 14](../spec.md#user-story-14---know-which-cw-is-running-and-move-to-another-priority-p2) scenario 4; plan [§18.3](../plan.md#183-the-version-it-names-fr-131-fr-132), [§17.3.5](../plan.md#1735-t3005--the-health-check-names-its-version))* Depends on [T3.004](#t3.004).
 
 ---
 

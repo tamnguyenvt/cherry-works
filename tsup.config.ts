@@ -1,5 +1,6 @@
 import { copyFile } from "node:fs/promises";
 import { defineConfig } from "tsup";
+import packageJson from "./package.json" with { type: "json" };
 
 const page = "src/driver/portal/page";
 
@@ -32,7 +33,9 @@ export default defineConfig([
     // A browser reads no node_modules: react and the rest are bundled in, the
     // production build of each.
     noExternal: [/./],
-    define: { "process.env.NODE_ENV": '"production"' },
+    // The page imports nothing of the package's own, so the version cw names
+    // is written into it here, from the package.json main.ts reads (FR-132).
+    define: { "process.env.NODE_ENV": '"production"', CW_VERSION: JSON.stringify(packageJson.version) },
     minify: true,
     outDir: "dist/portal",
     clean: true,

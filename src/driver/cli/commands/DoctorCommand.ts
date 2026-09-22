@@ -36,7 +36,7 @@ export class DoctorCommand implements Command {
   readonly name = "doctor";
   readonly summary = "Check this repository: agents, charter, vendors, and what is built";
 
-  async run({ charterAuthoringApp }: Context, _options: Options): Promise<Outcome> {
+  async run({ version, charterAuthoringApp }: Context, _options: Options): Promise<Outcome> {
     const {
       agents,
       errorCount: errors,
@@ -50,6 +50,9 @@ export class DoctorCommand implements Command {
     return {
       code: problemCount === 0 ? EXIT_OK : EXIT_FAILURE,
       result: [
+        // Which cw wrote the report, so one pasted into a bug report names
+        // the release it came from (FR-132).
+        `cw ${version}`,
         // A repository that compiles for none is set up and building: the
         // neutral surface is compiled for everybody (FR-019).
         agents.length === 0 ? "Agents:   none chosen, so only the neutral surface is compiled." : `Agents:   ${agents.join(", ")}.`,

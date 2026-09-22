@@ -8,6 +8,9 @@ import type { ForAuthoringTests } from "#hexagon/port/driver/ForAuthoringTests.j
  *  is a declaration and nothing it has to be constructed with. */
 export interface Context {
   readonly cwd: string;
+  /** The version this `cw` was published as. A fact about the program the
+   *  command line is part of, not about a charter, so no use case is told it. */
+  readonly version: string;
   /** What the engine offers, whichever use case a command reaches for. */
   readonly charterAuthoringApp: ForManagingCharter;
   /** What it offers for the charters this repository did not author: installing

@@ -61,7 +61,7 @@ export class Commander {
       .recommendCommands()
       .help("help")
       .alias("h", "help")
-      .version(false)
+      .version(this.#context.version)
       .wrap(80)
       .exitProcess(false);
 
