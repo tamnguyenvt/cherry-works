@@ -166,7 +166,7 @@ Before committing, the developer wants to know what a build would change and whe
 
 ### User Story 8 - Install, see and remove vendor sources (Priority: P4)
 
-The developer opens the vendor view and sees each source the repository installed: the folder it landed in, the source it came from, the version it is pinned to, the commit that installed it, and how many primitives of each kind it brought. They add a baseline by its short git form and a version, and its primitives appear read-only. They remove one they no longer want.
+The developer opens the vendor view and sees each source the repository installed: the folder it landed in, and how many primitives of each kind it brought. They add a baseline by its short git form and a version, and its primitives appear read-only. They remove one they no longer want.
 
 **Why this priority**: Vendoring is done rarely — once per repository per baseline, then an occasional bump — and it is already one command. The portal makes it visible more than it makes it easier.
 
@@ -177,10 +177,10 @@ The developer opens the vendor view and sees each source the repository installe
 1. **Given** a repository with no vendor source, **When** the developer opens the vendor view, **Then** it says none is installed and offers to add one, and adding one lists the directory names reserved at a source's root.
 2. **Given** a source in short git form and an optional version, **When** the developer adds it, **Then** it is installed the way `cw vendor add` installs it, and the portal lists the folder and the primitives it brought.
 3. **Given** staged or uncommitted work, or no version control, **When** the developer adds or removes a source, **Then** nothing is installed or removed and the portal shows why, in the engine's words.
-4. **Given** installed sources, **When** the vendor view is shown, **Then** each is listed with its folder, the source and version it was installed from, the commit that installed it, and its primitives counted by kind.
+4. **Given** installed sources, **When** the vendor view is shown, **Then** each is listed with its folder and its primitives counted by kind.
 5. **Given** an installed source, **When** the developer removes it, **Then** its folder is taken away as `cw vendor remove` takes it, and its primitives leave the listing.
 6. **Given** a source whose folder would land on a reserved directory name, or a source that cannot be reached, **When** the developer adds it, **Then** nothing already installed is touched and the reason is shown.
-7. **Given** a source installed before the engine recorded the source and version of an install, **When** the vendor view is shown, **Then** it names the commit that installed it and says its source and version are unknown; adding the same source again records them.
+7. **Given** a folder under the vendor directory that git put there by hand rather than through the engine, **When** the vendor view is shown, **Then** it is listed as any other source is: the folder is all the view names of a source.
 
 ---
 
@@ -382,7 +382,7 @@ A repository is set up under `cw`. Without anyone installing, copying or writing
 - <a id="fr-050"></a>**FR-050**: An installed source MUST land in a folder of its own under the vendor directory, named by the end of its address without a trailing `.git`.
 - <a id="fr-051"></a>**FR-051**: Installing, updating and removing a vendor source MUST each land as a commit on the branch checked out, and MUST therefore be refused while the repository has uncommitted work in hand.
 - <a id="fr-052"></a>**FR-052**: Installing a vendor source MUST compile nothing: the build is the one command that writes what an agent reads.
-- <a id="fr-053"></a>**FR-053**: The engine MUST be able to say, for each installed vendor folder, the commit that installed it and the source and version it was installed from, reading them from that commit rather than from a record kept beside it ([FR-046](#fr-046)).
+- <a id="fr-053"></a>**FR-053**: The engine MUST be able to list every installed vendor folder. It MUST NOT record where a folder came from or at which version: version control keeps no such record of a subtree, and a record kept beside it is one the repository's history does not hold ([FR-046](#fr-046)). Bringing a source up to date is installing it again with its source, as it was first typed.
 
 **Setup**
 
@@ -493,7 +493,7 @@ A repository is set up under `cw`. Without anyone installing, copying or writing
 
 **The portal: vendor sources**
 
-- <a id="fr-122"></a>**FR-122**: The portal MUST list every installed vendor source with the folder it landed in, the source and version it was installed from, the commit that installed it, and its primitives counted by kind.
+- <a id="fr-122"></a>**FR-122**: The portal MUST list every installed vendor source with the folder it landed in and its primitives counted by kind.
 - <a id="fr-123"></a>**FR-123**: The portal MUST offer adding a source by its short git form and an optional version, and removing an installed one by its folder, through the engine's vendoring, and MUST show the engine's refusal whenever one is refused.
 
 **The portal: tests**
@@ -586,7 +586,7 @@ The shape of each is in the data model.
 
 ## Dependencies
 
-- A git repository, and git available on the machine, for setup, for installing vendored content, for drift detection, and for reading which commit, source and version installed a vendor folder.
+- A git repository, and git available on the machine, for setup, for installing vendored content, and for drift detection.
 - A network path to the vendor source's git host when installing or updating vendored content. Everything else works offline.
 - An installed coding agent for the compiled output to be consumed. Authoring, validation, cataloguing and the agent-neutral compilation all work without one.
 - A web browser on the developer's machine, for the portal.

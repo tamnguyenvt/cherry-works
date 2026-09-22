@@ -31,7 +31,7 @@ const repoPath = pathToFileURL(`${process.cwd()}/`);
 
 const charterAuthoringApp: ForManagingCharter = new CharterAuthoring(repoPath, fileReader, yamlParser, fileWriter, vcs);
 
-const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath, vcs);
+const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath, fileReader, vcs);
 
 const cli = new Commander({ cwd: process.cwd(), charterAuthoringApp, charterVendoringApp });
 

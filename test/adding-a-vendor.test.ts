@@ -32,7 +32,7 @@ async function running(argv: readonly string[], vcs: InMemoryVCS = new InMemoryV
       return true;
     }) as typeof stream.write;
   try {
-    const context = { cwd: repo, charterAuthoringApp: unread(), charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), vcs) };
+    const context = { cwd: repo, charterAuthoringApp: unread(), charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), vcs) };
     const code = await new Commander(context, COMMANDS).run(argv);
     return { code, said: said.join(""), vcs };
   } finally {
@@ -113,4 +113,28 @@ test("a source nobody named is a usage error, not a vendoring one", async () => 
 
   assert.equal(code, EXIT_USAGE);
   assert.deepEqual(vcs.installed, []);
+});
+
+test("a name that is no folder is refused, and nothing is taken away (FR-044)", async () => {
+  for (const name of ["..", ".", "team/.."]) {
+    const { code, said, vcs } = await running(["vendor", "remove", name]);
+
+    assert.equal(code, EXIT_FAILURE, name);
+    assert.deepEqual(vcs.removed, [], name);
+    assert.match(said, /Invalid path/, name);
+  }
+});
+
+test("a name that climbs out of the vendor folder is read as its last folder, and stays under it (FR-044)", async () => {
+  const { vcs } = await running(["vendor", "remove", "../../src"]);
+
+  assert.deepEqual(vcs.removed, [{ repo: new URL("file:///repo/"), subFolder: ".cw/vendor/src" }]);
+});
+
+test("a source whose address ends in no folder is refused, and nothing is installed (FR-044)", async () => {
+  const { code, said, vcs } = await running(["vendor", "add", "https://example.com/team/.."]);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.deepEqual(vcs.installed, []);
+  assert.match(said, /Invalid path/);
 });

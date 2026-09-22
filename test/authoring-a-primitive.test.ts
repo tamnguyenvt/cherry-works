@@ -41,7 +41,7 @@ const authoring = (files: Readonly<Record<string, string>> = {}) => {
 const contextOver = (charterAuthoringApp: CharterAuthoring) => ({
   cwd: "/repo",
   charterAuthoringApp,
-  charterVendoringApp: new CharterVendoring(repoPath, new InMemoryVCS()),
+  charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS()),
 });
 
 test("a primitive added with a body is the file cw add writes, with the body under its headers (FR-117)", async () => {

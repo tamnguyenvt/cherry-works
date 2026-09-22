@@ -71,7 +71,7 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS();
   const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), vcs);
-  const cli = new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), vcs) }, COMMANDS);
+  const cli = new Commander({ cwd: repo, charterAuthoringApp, charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs) }, COMMANDS);
   return { held, vcs, run: (argv: readonly string[]) => writing(() => cli.run(argv)) };
 };
 

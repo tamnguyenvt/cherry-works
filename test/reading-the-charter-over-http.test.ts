@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { api } from "../src/driver/portal/routes.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
+import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
 import { DataDTOs, OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
@@ -22,8 +23,9 @@ const guide = (id: string, headers: readonly string[] = []) => primitive("guide"
  *  them: the app's own `request`, so what is tested is the route and its status
  *  rather than the guards the server wraps it in (plan §6, tested there). */
 const portal = (files: Readonly<Record<string, string>>, held = new InMemoryFileReaders(files)) => {
-  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS());
-  return api(charterAuthoringApp);
+  const vcs = new InMemoryVCS();
+  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), vcs);
+  return api(charterAuthoringApp, new CharterVendoring(repo, held, vcs));
 };
 
 test("the listing is sent as every primitive the charter read, each under its layer (FR-112)", async () => {

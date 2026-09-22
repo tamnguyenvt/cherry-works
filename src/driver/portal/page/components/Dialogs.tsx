@@ -4,6 +4,7 @@ import { BuildOutcome, BuildPreview, type BuildAnswer } from "./CharterBuild.js"
 import { DoctorReport } from "./DoctorReport.js";
 import { PrimitiveExplanation } from "./PrimitiveExplanation.js";
 import { PrimitiveForm } from "./PrimitiveForm.js";
+import { AddVendorSource } from "./AddVendorSource.js";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog.js";
 
 /** What a dialog is rendered with besides its own params, and what
@@ -68,6 +69,14 @@ const DIALOGS = {
     context: () => "",
     holdsDraft: false,
     render: ({ buildAnswer }: { buildAnswer: BuildAnswer }) => <BuildOutcome buildAnswer={buildAnswer} />,
+  },
+  /** A vendor source to install, above the directories reserved at its root
+   *  (FR-123). */
+  addVendor: {
+    title: () => "Add vendor source",
+    context: () => "",
+    holdsDraft: true,
+    render: (_params: Record<string, never>, { close }: DialogHelpers) => <AddVendorSource onDone={toastWritten(close)} onClose={close} />,
   },
   /** The health check `cw doctor` gives, with a build where the output is
    *  behind (FR-121). */

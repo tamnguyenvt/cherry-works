@@ -80,6 +80,9 @@ export class TestSuiteFault extends Fault {}
  */
 export class TestCaseFault extends Fault {}
 
+/** A vendor source whose address names no folder to land in (FR-044). */
+export class VendorFault extends Fault {}
+
 /** Throws every fault at once: what is wrong is said once and in full rather
  *  than one exception at a time, so a caller reading a whole charter can name
  *  them all (FR-009). `AggregateError` is what the language already has for

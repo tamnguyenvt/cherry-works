@@ -1,6 +1,7 @@
 import { chromium, type Page } from "playwright";
 import { startPortal } from "../src/driver/portal/server.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
+import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -22,14 +23,21 @@ const PORT = 47420;
  *
  *  The files are handed over beside the page, so a test that wants to know a
  *  view read the charter again can change what is on disk between two showings
- *  of it. */
+ *  of it.
+ *
+ *  Version control is held in memory too, and a test about vendoring hands
+ *  over its own to say what each install commit records and to read what the
+ *  page asked it to install or remove. */
 export async function inTheBrowser(
   held: Record<string, string>,
   read: (page: Page, files: InMemoryFileReaders) => Promise<void>,
+  vcs: InMemoryVCS = new InMemoryVCS(),
 ): Promise<void> {
   const files = new InMemoryFileReaders(held);
-  const engine = new CharterAuthoring(new URL("file:///repo/"), files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryVCS());
-  const { address, server } = await startPortal(new URL("../dist/portal/", import.meta.url), engine, PORT);
+  const repoPath = new URL("file:///repo/");
+  const engine = new CharterAuthoring(repoPath, files, new YamlParser(), new InMemoryFileOutput(files), vcs);
+  const charterVendoringApp = new CharterVendoring(repoPath, files, vcs);
+  const { address, server } = await startPortal(new URL("../dist/portal/", import.meta.url), engine, charterVendoringApp, PORT);
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();

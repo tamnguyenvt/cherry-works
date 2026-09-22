@@ -149,3 +149,38 @@ export function useBuild() {
     onSuccess: written,
   });
 }
+
+/** Every folder a vendor source was installed as (FR-122). */
+export function useVendorFolders() {
+  return useQuery({
+    queryKey: ["vendors"],
+    queryFn: async () => (await client.vendors.$get()).json(),
+  });
+}
+
+/** A source installed through the engine's vendoring (FR-123): nothing, or the
+ *  fault that refused it with nothing installed. */
+export function useAddVendor() {
+  const written = useWritten();
+  return useMutation({
+    mutationFn: async (request: InferRequestType<typeof client.vendors.$post>["json"]) => {
+      const response = await client.vendors.$post({ json: request });
+      return response.status === 422 ? response.json() : null;
+    },
+    onSuccess: written,
+  });
+}
+
+/** An installed source taken away by its folder name (FR-123): nothing, or the
+ *  fault that refused it with nothing removed. */
+export function useRemoveVendor() {
+  const written = useWritten();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      // Sent as JSON though it carries none, as a delete is (plan §12.4).
+      const response = await client.vendors[":name"].$delete({ param: { name } }, { headers: { "Content-Type": "application/json" } });
+      return response.status === 422 ? response.json() : null;
+    },
+    onSuccess: written,
+  });
+}

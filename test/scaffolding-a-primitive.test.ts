@@ -22,7 +22,7 @@ const repoPath = new URL("file:///repo/");
 
 /** What vendoring is driven through: a context always carries every use case,
  *  and nothing here asks this one for anything. */
-const charterVendoringApp = new CharterVendoring(repoPath, new InMemoryVCS());
+const charterVendoringApp = new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS());
 
 /** The command line as a user meets it, over a repository held in memory: the
  *  real `cw add`, the real service behind it, and the answers whoever is at the

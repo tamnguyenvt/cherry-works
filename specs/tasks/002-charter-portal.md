@@ -68,11 +68,11 @@ Independent test: see spec [Story 7](../spec.md#user-story-7---build-preview-and
 Independent test: see spec [Story 8](../spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4).
 
 ### Engine
-- [ ] <a id="t2.024"></a>**T2.024** The install commit records its source and version. *([FR-053](../spec.md#fr-053); plan [§7.2](../plan.md#72-what-an-install-records-fr-053-fr-122), [§17.2.24](../plan.md#17224-t2024--the-install-commit-records-its-source-and-version); data-model [§10.2](../data-model.md#102-vendor-install-fr-053-fr-122))*
-- [ ] <a id="t2.025"></a>**T2.025** Listing the installed vendor sources, and `cw vendor list`. *([FR-053](../spec.md#fr-053), [FR-122](../spec.md#fr-122); [Story 8](../spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4) scenario 7; plan [§7.2](../plan.md#72-what-an-install-records-fr-053-fr-122), [§13](../plan.md#13-the-command-line-fr-093--fr-095-fr-109), [§17.2.25](../plan.md#17225-t2025--listing-the-installed-vendors); data-model [§10.2](../data-model.md#102-vendor-install-fr-053-fr-122))* Depends on [T2.024](#t2.024).
+- [x] <a id="t2.024"></a>**T2.024** ~~The install commit records its source and version.~~ Dropped: nothing is recorded of an install. *([FR-053](../spec.md#fr-053); plan [§7.2](../plan.md#72-listing-what-is-installed-fr-053-fr-122), [§17.2.24](../plan.md#17224-t2024--dropped-nothing-is-recorded-of-an-install))*
+- [x] <a id="t2.025"></a>**T2.025** Listing the installed vendor sources, and `cw vendor list`. *([FR-053](../spec.md#fr-053), [FR-122](../spec.md#fr-122); [Story 8](../spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4) scenario 7; plan [§7.2](../plan.md#72-listing-what-is-installed-fr-053-fr-122), [§13](../plan.md#13-the-command-line-fr-093--fr-095-fr-109), [§17.2.25](../plan.md#17225-t2025--listing-the-installed-vendors); data-model [§10.2](../data-model.md#102-vendor-folders-fr-053-fr-122))*
 
 ### Portal
-- [ ] <a id="t2.026"></a>**T2.026** The vendor routes and the sources panel. *([FR-122](../spec.md#fr-122), [FR-123](../spec.md#fr-123); [Story 8](../spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4) scenarios 1 – 7; plan [§12.2](../plan.md#122-the-route-table), [§17.2.26](../plan.md#17226-t2026--the-vendor-routes-and-the-sources-panel))* Depends on [T2.025](#t2.025), [T2.006](#t2.006).
+- [x] <a id="t2.026"></a>**T2.026** The vendor routes and the sources panel. *([FR-122](../spec.md#fr-122), [FR-123](../spec.md#fr-123); [Story 8](../spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4) scenarios 1 – 7; plan [§12.2](../plan.md#122-the-route-table), [§17.2.26](../plan.md#17226-t2026--the-vendor-routes-and-the-sources-panel))* Depends on [T2.025](#t2.025), [T2.006](#t2.006).
 
 ---
 

@@ -23,7 +23,7 @@ const repo = "/repo";
 
 /** What installing a vendor is driven through: a context always carries every
  *  use case, and nothing here asks this one for anything. */
-const charterVendoringApp = new CharterVendoring(new URL(`file://${repo}/`), new InMemoryVCS());
+const charterVendoringApp = new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), new InMemoryVCS());
 
 
 /** Whose home the command line runs in: what is installed on this machine is

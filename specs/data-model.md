@@ -407,26 +407,13 @@ A vendor source's content is committed under `.cw/vendor/<name>/`, and the
 repository's history is its only record ([FR-046](spec.md#fr-046)). The primitives in it are the
 `vendor` layer, each `VendoredFile` carrying `name` as its `vendor`.
 
-### 10.2 Vendor install (FR-053, FR-122)
+### 10.2 Vendor folders (FR-053, FR-122)
 
-What `installed()` answers: one entry per folder under `.cw/vendor/`.
-
-| Field | Holds |
-|---|---|
-| folder | the folder the source landed in |
-| commit | the last commit touching the folder |
-| source | the source it was installed from, or unknown |
-| version | the version asked for, or unknown |
-
-Source and version are read from the install commit, which carries them as the
-trailers
-
-    Cw-Vendor-Source: <source>
-    Cw-Vendor-Version: <version>
-
-A folder whose install commit carries no trailers has its commit and the other
-two unknown. The primitives a source brought, counted by kind, are the vendor
-layer of the catalogue under that folder.
+What `installed()` answers: every folder under `.cw/vendor/`, named as it sits
+under the repository (`.cw/vendor/<name>`), sorted. Nothing else is known of
+one: `git subtree` records neither the address nor the version, and nothing is
+kept beside it ([FR-053](spec.md#fr-053)). The primitives a source brought, counted by kind, are
+the vendor layer of the catalogue under that folder.
 
 ## 11. Self-regression tests (FR-082 – FR-092)
 
@@ -546,7 +533,7 @@ type is.
 | `ensureRepoReady` | nothing, or a raised fault |
 | `init` | `true`: it compiles nothing |
 | `ForVendoringCharters.add`, `remove` | the folder the vendor landed in or left, a string: a name is already plain JSON and no model stands behind it |
-| `ForVendoringCharters.installed` | one vendor install per folder ([§10.2](#102-vendor-install-fr-053-fr-122)) |
+| `ForVendoringCharters.installed` | every vendor folder, a list of strings ([§10.2](#102-vendor-folders-fr-053-fr-122)) |
 
 `suites`, `addSuite`, `writeSuite`, `removeSuite` and `installed` have not
 landed; the DTO each answers beyond what this table

@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { CharterListing } from "./components/CharterListing.js";
 import { CharterSearch } from "./components/CharterSearch.js";
 import { DialogProvider, useDialog } from "./components/Dialogs.js";
+import { VendorSources } from "./components/VendorSources.js";
 import { useBuild } from "./queries.js";
 import { Button } from "./components/ui/button.js";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./components/ui/dropdown-menu.js";
@@ -96,11 +97,13 @@ function Portal() {
           {/* A tab's view is mounted when the tab is shown and gone when
               another is, so each asks for the charter again when it comes back
               (FR-110). The repository's tab holds what the engine brings beside
-              what was authored here; the vendor's is read-only (FR-112). */}
+              what was authored here; the vendor's is read-only (FR-112), under
+              the sources it was installed from (FR-122). */}
           <TabsContent value="repo" className="mt-4">
             <CharterListing scopes={["repo", "builtin"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
-          <TabsContent value="vendor" className="mt-4">
+          <TabsContent value="vendor" className="mt-4 space-y-6">
+            <VendorSources />
             <CharterListing scopes={["vendor"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
           <TabsContent value="test" className="mt-4" />

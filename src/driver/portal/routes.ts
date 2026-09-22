@@ -2,6 +2,7 @@ import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { Fault, type ForManagingCharter } from "#hexagon/port/driver/ForManagingCharter.js";
+import type { ForVendoringCharters } from "#hexagon/port/driver/ForVendoringCharters.js";
 import { DataDTOs, OutcomeDTOs } from "#hexagon/port/driver/dtos/index.js";
 import { faultDTO } from "#hexagon/application/dtos.js";
 
@@ -31,7 +32,7 @@ const json = <Schema extends z.ZodType>(schema: Schema, description: string) => 
  *  The port arrives here rather than being reached for: the command line built
  *  it over the repository it was run in, and `main.ts` stays the one
  *  composition root. */
-export function api(charterAuthoringApp: ForManagingCharter) {
+export function api(charterAuthoringApp: ForManagingCharter, charterVendoringApp: ForVendoringCharters) {
   const app = new OpenAPIHono();
   app.onError((raised, c) => {
     // What no file is wrong with — a word that is no kind, an identity the
@@ -256,6 +257,50 @@ export function api(charterAuthoringApp: ForManagingCharter) {
         responses: { 200: json(OutcomeDTOs.DoctorOutcome, "The four answers cw doctor gives, and every fault") },
       }),
       async (c) => c.json(await charterAuthoringApp.doctor(), 200),
+    )
+    .openapi(
+      createRoute({
+        method: "get",
+        path: "/vendors",
+        responses: { 200: json(z.array(z.string()).readonly(), "Every folder a vendor source was installed as") },
+      }),
+      async (c) => c.json(await charterVendoringApp.installed(), 200),
+    )
+    .openapi(
+      createRoute({
+        method: "post",
+        path: "/vendors",
+        request: {
+          body: json(
+            z.object({ source: z.string(), version: z.string().optional() }),
+            "A source as git fetches it, and the version to pin it to where one is named",
+          ),
+        },
+        responses: {
+          204: { description: "The source is installed, and committed" },
+          422: json(DataDTOs.Fault, "No repository, work in hand, or what git refused"),
+        },
+      }),
+      async (c) => {
+        const { source, version } = c.req.valid("json");
+        await charterVendoringApp.add(source, version);
+        return c.body(null, 204);
+      },
+    )
+    .openapi(
+      createRoute({
+        method: "delete",
+        path: "/vendors/{name}",
+        request: { params: z.object({ name: z.string() }) },
+        responses: {
+          204: { description: "The folder is gone, and that it is gone is committed" },
+          422: json(DataDTOs.Fault, "No repository, work in hand, or what git refused"),
+        },
+      }),
+      async (c) => {
+        await charterVendoringApp.remove(c.req.valid("param").name);
+        return c.body(null, 204);
+      },
     );
 }
 

@@ -29,11 +29,12 @@ export class PortalCommand implements Command<typeof OPTIONS> {
   readonly summary = "Serve this repository's charter to a browser on this machine";
   readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { port }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async run({ charterAuthoringApp, charterVendoringApp }: Context, { port }: Options<typeof OPTIONS>): Promise<Outcome> {
     await charterAuthoringApp.ensureRepoReady();
     const { address } = await startPortal(
       new URL("./", import.meta.resolve("#portal/index.html")),
       charterAuthoringApp,
+      charterVendoringApp,
       port,
     );
     return { code: EXIT_OK, result: `The portal is at ${address}\nPress Ctrl+C to stop it.\n` };

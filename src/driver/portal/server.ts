@@ -6,6 +6,7 @@ import { bearerAuth } from "hono/bearer-auth";
 import { serve, type ServerType } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Fault, type ForManagingCharter } from "#hexagon/port/driver/ForManagingCharter.js";
+import type { ForVendoringCharters } from "#hexagon/port/driver/ForVendoringCharters.js";
 import { api } from "./routes.js";
 
 export const DEFAULT_PORT = 9927;
@@ -15,8 +16,8 @@ export const DEFAULT_PORT = 9927;
  * (FR-003), from `port` or the next free one when it is taken. The address
  * answered carries the token of this run (plan §6).
  *
- * The routes are driven by the port this was handed, over the repository the
- * caller built it for: the portal is a second driving adapter and composes
+ * The routes are driven by the ports this was handed, over the repository the
+ * caller built them for: the portal is a second driving adapter and composes
  * nothing of its own.
  *
  * Refused when the page was never built: a blank page says less than a portal
@@ -25,6 +26,7 @@ export const DEFAULT_PORT = 9927;
 export async function startPortal(
   page: URL,
   charterAuthoringApp: ForManagingCharter,
+  charterVendoringApp: ForVendoringCharters,
   port = DEFAULT_PORT,
 ): Promise<{ address: URL; server: ServerType }> {
   await access(new URL("index.html", page)).catch(() => {
@@ -35,7 +37,7 @@ export async function startPortal(
   for (let next = port; ; next++) {
     try {
       const address = new URL(`http://127.0.0.1:${next}/?t=${token}`);
-      return { address, server: await listen(portal(page, charterAuthoringApp, token, next), next) };
+      return { address, server: await listen(portal(page, charterAuthoringApp, charterVendoringApp, token, next), next) };
     } catch (raised) {
       if ((raised as NodeJS.ErrnoException).code !== "EADDRINUSE" || next === 65535) throw raised;
     }
@@ -50,7 +52,13 @@ export async function startPortal(
  * markup, which cannot carry one. No CORS header is sent, so a page of another
  * origin fails the preflight of every write.
  */
-function portal(page: URL, charterAuthoringApp: ForManagingCharter, token: string, port: number): Hono {
+function portal(
+  page: URL,
+  charterAuthoringApp: ForManagingCharter,
+  charterVendoringApp: ForVendoringCharters,
+  token: string,
+  port: number,
+): Hono {
   const hosts = [`127.0.0.1:${port}`, `localhost:${port}`];
   return new Hono()
     .use(async (c, next) => {
@@ -67,7 +75,7 @@ function portal(page: URL, charterAuthoringApp: ForManagingCharter, token: strin
       await next();
     })
     .use("/api/*", bearerAuth({ token }))
-    .route("/api", api(charterAuthoringApp))
+    .route("/api", api(charterAuthoringApp, charterVendoringApp))
     .use("/*", serveStatic({ root: fileURLToPath(page) }));
 }
 

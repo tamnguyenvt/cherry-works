@@ -10,7 +10,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "types": [],
-    "baseUrl": ".",
     "paths": {
       "@/page/*": [
         "./*"

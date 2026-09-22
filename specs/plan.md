@@ -167,7 +167,7 @@ through.
 |---|---|---|
 | `ForReadingFiles` | the files under a folder, the folders one level under one, and one file's text if it is there | `FileReaders`, `InMemoryFileReaders` |
 | `ForWritingFiles` | write a file, delete one | `FileOutput`, `InMemoryFileOutput` |
-| `ForVCS` | is this a repository, is it clean, what changed under a folder, add or update a subtree, remove a folder as a commit; and which commit, source and version installed a vendor folder ([§7.2](#72-what-an-install-records-fr-053-fr-122)) | `Git`, `InMemoryVCS` |
+| `ForVCS` | is this a repository, is it clean, what changed under a folder, add or update a subtree, remove a folder as a commit | `Git`, `InMemoryVCS` |
 | `ForParsingYaml` | one frontmatter block as named fields | `YamlParser` |
 | `ForReportingProgress` | results, and problems with the next move | `ConsoleReporter` |
 
@@ -633,24 +633,21 @@ asks git what differs under `.cw/vendor/`, and names each vendor folder once
 however many of its files differ ([FR-081](spec.md#fr-081), [§10.1](#101-doctor-fr-013-fr-014-fr-080-fr-081)). A hand-edit to vendored content
 is undone with git, as any other change is.
 
-### 7.2 What an install records (FR-053, FR-122)
+### 7.2 Listing what is installed (FR-053, FR-122)
 
-`installed()` on `ForVendoringCharters` answers each folder under `.cw/vendor/`
-as data-model [§10.2](data-model.md#102-vendor-install-fr-053-fr-122) says it, and `cw vendor list` prints it.
+`installed()` on `ForVendoringCharters` answers every folder under
+`.cw/vendor/`, as data-model [§10.2](data-model.md#102-vendor-folders-fr-053-fr-122) says it, and `cw vendor list` prints it.
+The folders are read with `ForReadingFiles.listFolders`, the way the charter
+finds its vendor layers, so what is listed is what the charter reads.
 
-`git subtree --squash` records the folder and the upstream commit, not the
-address or the version asked for. So the one adapter that writes the install
-commit writes both into it, and is the one that reads them back:
-
-- `Git.subtreeAdd` passes `-m` with the two trailers of data-model [§10.2](data-model.md#102-vendor-install-fr-053-fr-122);
-- `ForVCS.installedFrom(repo, folder)` finds the last commit touching the folder
-  and reads those trailers.
-
-The trailer format is the adapter's own — written and read in one file — so the
-hexagon learns a commit, a source and a version and nothing about how git keeps
-them. A folder installed before the trailers were written has none, and comes
-back with its commit and the other two unknown; adding the same source again
-writes them ([Story 8](spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4), scenario 7).
+Nothing more is said of a folder. `git subtree --squash` records the folder and
+the upstream commit, not the address or the version asked for; git itself
+keeps no record of a subtree beyond those lines in a commit message. Writing
+them into the commit ourselves, or into a lock file beside the vendor folder,
+was weighed and dropped: either is a record the engine keeps and has to keep
+true ([FR-046](spec.md#fr-046)), for an answer the person who installed a source already has.
+A submodule would have git answer the address, and was not taken either: its
+content is not committed, so a checkout would not carry the whole charter.
 
 ## 8. Setup (FR-054 – FR-058)
 
@@ -1111,9 +1108,6 @@ holds one `TestSuite`, which is what the domain already calls it.
 - **`cw portal` run from source needs a built page.** `pnpm cw portal` under
   `tsx` serves from `dist/portal/`. Mitigation: `startPortal` fails at start
   naming `pnpm build` ([§12.1](#121-shape)).
-- **Vendors installed before the trailers.** Mitigation: `installed()` returns
-  the commit with source and version unknown, the vendor view says so, and adding
-  the same source again writes the trailers ([§7.2](#72-what-an-install-records-fr-053-fr-122)).
 - **Validation reads the tests.** Every command that validates pays for reading
   `.cw/test/`. Mitigation: the tests are a handful of small JSON files, read once
   per run as the charter is ([SC-010](spec.md#sc-010)).
@@ -2077,14 +2071,71 @@ the modal listing the plan, and Build for real from the preview ([FR-120](spec.m
 `GET /api/charter/root/health` and the Doctor modal: the four answers, errors
 listed before warnings, and a build button when the output is behind ([FR-121](spec.md#fr-121)).
 
-#### 17.2.24 T2.024 — The install commit records its source and version
+#### 17.2.24 T2.024 — Dropped: nothing is recorded of an install
 
-The trailers and `ForVCS.installedFrom` of [§7.2](#72-what-an-install-records-fr-053-fr-122), both in the one adapter. Tested
-against a real repository, as vendoring is.
+Planned as the install commit carrying the source and version as trailers, read
+back by the adapter. Dropped: git keeps no record of a subtree's address or
+version, and the engine keeps none of its own ([FR-053](spec.md#fr-053), [§7.2](#72-listing-what-is-installed-fr-053-fr-122)).
+
+[Story 8](spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4) lands as one change, [T2.025](tasks/002-charter-portal.md#t2.025) – [T2.026](tasks/002-charter-portal.md#t2.026) its steps ([SC-026](spec.md#sc-026)). What
+was already there when it opened: `CharterVendoring.add` and `remove` behind
+`ForVendoringCharters`, `cw vendor add` and `cw vendor remove` their readers,
+`Git.subtreeAdd` and `Git.removeSubFolder` tested against real repositories,
+and the Vendor tab listing the vendor layer read-only ([T2.006](tasks/002-charter-portal.md#t2.006)). The portal
+was handed `ForManagingCharter` alone.
+
+**Listing.** `ForVendoringCharters.installed()` answers every folder under
+`.cw/vendor/`, sorted, as `add` answers one (`.cw/vendor/<name>`): a list of
+strings, as `add` and `remove` answer a string ([§7.2](#72-listing-what-is-installed-fr-053-fr-122)). `CharterVendoring` is
+handed `ForReadingFiles` for `listFolders`; it still writes nothing itself.
+`cw vendor list` prints one folder a line, or says none is installed and how
+to install one.
+
+**The routes** are the three vendor rows of [§12.2](#122-the-route-table). `GET /api/vendors` answers
+`installed()`, `200`. `POST /api/vendors` takes `{ source, version? }` and
+`DELETE /api/vendors/:name` a folder name; both answer `204`, and a refusal —
+no repository, work in hand, git's own words — is the `Fault` raised, `422` by
+the handler every route shares. `api()` and `startPortal()` take the vendoring
+port beside the authoring one; `cw portal` passes the one its context holds.
+
+**The page.** The Vendor tab shows the sources panel above the listing it
+already had. No source installed: "No vendor source installed" and an "Add
+vendor source" button. Sources installed: each with its folder name and path,
+its primitives counted by kind — counted off the vendor layer of the listing
+under that folder, as data-model [§10.2](data-model.md#102-vendor-folders-fr-053-fr-122) says — and a Remove button; an
+"Add source" button below. The add dialog asks the source and an optional
+version and lists the reserved directories at a source's root: the kind
+folders, off `GET /api/definitions/kinds`. A refusal is shown in the dialog in
+the engine's words, message and fix, and nothing closes; a removal refused is a
+toast in the same words. After either, every query is asked again, so the
+listing gains or loses the vendor's primitives.
+
+Acceptance:
+- `installed()` lists each folder under `.cw/vendor/`, sorted, and nothing for
+  a repository with none; a folder git put there by hand is listed like any
+  other (scenario 7).
+- `cw vendor list` prints each folder, and "none installed" for none.
+- `GET /api/vendors` answers `installed()`; `POST` installs as `cw vendor add`
+  does and answers `204`; `DELETE` removes as `cw vendor remove` does; with
+  work in hand or no repository both answer `422` in the engine's words and
+  touch nothing (scenarios 2, 3, 5).
+- The Vendor tab with none installed says so and offers to add one; the add
+  dialog lists every kind folder as reserved (scenario 1).
+- With sources installed, each shows its folder and its primitives by kind
+  (scenario 4).
+- Adding from the dialog calls the route and closes; a refusal stays in the
+  dialog in the engine's words (scenario 6). Remove calls the route.
+
+Not in this story: resolving a short git form such as `team/charter` to an
+address — the source is handed to git as typed ([FR-049](spec.md#fr-049)), and git decides
+what it reaches; refusing a folder name that matches a kind — the folder lands
+under `.cw/vendor/`, so no name lands on a kind folder ([FR-044](spec.md#fr-044)), and scenario
+6's "reserved directory" is met by the dialog listing them; a confirmation
+before Remove — it lands as a commit, and git undoes it.
 
 #### 17.2.25 T2.025 — Listing the installed vendors
 
-`ForVendoringCharters.installed()` and `cw vendor list` ([§7.2](#72-what-an-install-records-fr-053-fr-122), [§13](#13-the-command-line-fr-093--fr-095-fr-109)).
+`ForVendoringCharters.installed()` and `cw vendor list` ([§7.2](#72-listing-what-is-installed-fr-053-fr-122), [§13](#13-the-command-line-fr-093--fr-095-fr-109)).
 
 #### 17.2.26 T2.026 — The vendor routes and the sources panel
 

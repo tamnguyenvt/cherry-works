@@ -33,8 +33,9 @@ const surfaces = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS();
   const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs);
-  const cli = new Commander({ cwd: "/repo", charterAuthoringApp, charterVendoringApp: new CharterVendoring(repoPath, vcs) }, COMMANDS);
-  return { portalRoutes: api(charterAuthoringApp), held, cli };
+  const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
+  const cli = new Commander({ cwd: "/repo", charterAuthoringApp, charterVendoringApp }, COMMANDS);
+  return { portalRoutes: api(charterAuthoringApp, charterVendoringApp), held, cli };
 };
 
 /** What one command printed, and its exit status. */

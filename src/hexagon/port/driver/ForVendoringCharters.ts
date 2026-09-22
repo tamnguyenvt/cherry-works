@@ -42,4 +42,14 @@ export interface ForVendoringCharters {
    * there is work in hand, since what leaves does so as a commit.
    */
   remove(name: string): Promise<string>;
+
+  /**
+   * Every folder a source was installed as, under this repository's vendor
+   * folder, sorted (FR-053, FR-122).
+   *
+   * The folder is all there is to say: nothing is recorded of where one came
+   * from or at which version, since version control keeps no such record
+   * either and a record kept beside it is one more thing to drift (FR-046).
+   */
+  installed(): Promise<readonly string[]>;
 }

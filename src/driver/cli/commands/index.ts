@@ -10,6 +10,7 @@ import { PortalCommand } from "./PortalCommand.js";
 import { RemoveCommand } from "./RemoveCommand.js";
 import { TestCommand } from "./TestCommand.js";
 import { VendorAddCommand } from "./VendorAddCommand.js";
+import { VendorListCommand } from "./VendorListCommand.js";
 import { VendorRemoveCommand } from "./VendorRemoveCommand.js";
 import type { AnyCommand } from "./Command.js";
 
@@ -29,5 +30,6 @@ export const COMMANDS: readonly AnyCommand[] = [
   new TestCommand(),
   new VendorAddCommand(),
   new VendorRemoveCommand(),
+  new VendorListCommand(),
   new PortalCommand(),
 ];
