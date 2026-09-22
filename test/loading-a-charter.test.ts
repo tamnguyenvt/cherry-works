@@ -254,6 +254,7 @@ test("what only shows when files are read together is kept apart from what one f
   const charter = await load(files);
 
   assert.deepEqual(Object.keys(charter.faultsByFiles.files), [".cw/charter/guide/broken.md"]);
-  // The second of the two to be read, which is the second in path order.
-  assert.deepEqual(Object.keys(charter.compositeFaultsByFiles.files), [".cw/charter/guide/no-any.md"]);
+  // The second of the two to be read, which is the second in path order. The
+  // corpus nobody cites is only a warning, and not what is asked here.
+  assert.deepEqual(Object.keys(charter.compositeFaultsByFiles.errors().files), [".cw/charter/guide/no-any.md"]);
 });

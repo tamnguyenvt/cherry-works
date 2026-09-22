@@ -1,5 +1,5 @@
 import type { CharterRoot } from "../models/charter/CharterRoot.js";
-import { TestCaseFault } from "../models/Fault.js";
+import { FaultsByFile, TestCaseFault, type Fault } from "../models/Fault.js";
 import type { TestCase, TestSuite } from "../models/TestSuite.js";
 import { matches } from "../../utils/globs.js";
 
@@ -38,6 +38,34 @@ export class TestRunReport {
  */
 export function runSuite(charter: CharterRoot, suite: TestSuite): readonly TestCaseReport[] {
   return suite.cases.map((one) => runCase(charter, one));
+}
+
+/**
+ * Every guide and sensor no case names, each a warning under its own file
+ * (FR-014): a rule nothing pins down is one that can stop doing what it did
+ * without a run noticing.
+ *
+ * Named is what a case's `activatedIdentity` says, whichever layer the
+ * primitive came from. A posture is not asked about: a case putting whether a
+ * file is allowed names none, and a `deny` may name a command no case can
+ * touch.
+ */
+export function findUntestedPrimitives(charter: CharterRoot, testSuites: readonly TestSuite[]): FaultsByFile {
+  const testedIdentities = new Set<string | undefined>(testSuites.flatMap((testSuite) => testSuite.cases.map((one) => one.activatedIdentity)));
+  const faultsByFiles: Record<string, readonly Fault[]> = {};
+  for (const { identity, file, primitive } of charter.primitives) {
+    if ((primitive.kind !== "guide" && primitive.kind !== "sensor") || testedIdentities.has(identity)) continue;
+    faultsByFiles[file] = [
+      new TestCaseFault(
+        `No test case names "${identity}", so nothing notices when it stops coming up where it should.`,
+        primitive.kind === "guide"
+          ? `Add a case to a file under .cw/test/: { "do": { "touchFile": "<a file it speaks about>" }, "expect": { "activate": "${identity}" } }.`
+          : `Add a case to a file under .cw/test/: { "when": "${primitive.headers.signal}", "expect": { "run": "${identity}" } }.`,
+        "warn",
+      ),
+    ];
+  }
+  return new FaultsByFile(faultsByFiles);
 }
 
 /** One case, resolved: the situation put to the charter, and what it made of

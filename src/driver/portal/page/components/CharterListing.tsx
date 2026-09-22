@@ -2,6 +2,7 @@ import { CircleHelp } from "lucide-react";
 import type { DataDTOs } from "#hexagon/port/driver/dtos/index.js";
 import { useKinds, usePrimitives } from "../queries.js";
 import { useDialog } from "./Dialogs.js";
+import { FaultsByFileTable } from "./FaultsByFileTable.js";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert.js";
 import { Badge } from "./ui/badge.js";
 import { Button } from "./ui/button.js";
@@ -114,22 +115,7 @@ function CharterFaults({ faultsByFile }: { faultsByFile: DataDTOs.FaultsByFile }
           {files.length === 1 ? " it" : " them"} and the charter comes back.
         </AlertDescription>
       </Alert>
-      <Table aria-label="Refused files">
-        <TableBody>
-          {files.map(([file, faults]) => (
-            <TableRow key={file}>
-              <TableCell className="align-top font-mono text-xs font-semibold text-destructive">{file}</TableCell>
-              <TableCell className="whitespace-normal">
-                {faults.map(({ data: { message, fix } }) => (
-                  <p key={message}>
-                    {message} <span className="text-muted-foreground">{fix}</span>
-                  </p>
-                ))}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <FaultsByFileTable faultsByFile={faultsByFile} label="Refused files" />
     </div>
   );
 }

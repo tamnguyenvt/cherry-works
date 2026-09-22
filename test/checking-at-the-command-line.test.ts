@@ -38,6 +38,14 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 const guide = (id: string, headers: readonly string[] = []) =>
   primitive("guide", id, ['globs: ["src/**/*.ts"]', ...headers]);
 
+/** A test file naming one guide, so no warning says nothing pins it down
+ *  (FR-014). */
+const pinningDown = (identity: string) => ({
+  [`file:///repo/.cw/test/${identity.replace(":", "-")}.json`]: JSON.stringify({
+    cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: identity } }],
+  }),
+});
+
 /** The service the command line is driven through, over files held in memory.
  *  Given a writing port like the real one is, and validating never reaches for
  *  it — which is the point of the split (FR-041). */
@@ -92,8 +100,9 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
 
 test("a charter with nothing wrong passes, and says so", async () => {
   const { written } = await run({
-    [new URL("guide/no-any.md", root).href]: guide("no-any"),
+    [new URL("guide/no-any.md", root).href]: guide("no-any", ['mixins: ["ts-defaults"]']),
     [new URL("mixin/ts-defaults.md", root).href]: primitive("mixin", "ts-defaults"),
+    ...pinningDown("guide:no-any"),
   });
 
   // Whether this repository is built is a question of its own, and not this
@@ -155,6 +164,7 @@ test("every bad file is named in one run, not the first one found", async () => 
 test("a warning is said and lets the run through", async () => {
   const { written } = await run({
     [new URL("guide/no-any.md", root).href]: guide("no-any", ["rationale: corpus:absent"]),
+    ...pinningDown("guide:no-any"),
   });
 
   // Said, and the charter still holds: a warning is worth saying and not worth

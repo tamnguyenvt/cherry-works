@@ -60,7 +60,7 @@ const messages = (faultsByFiles: FaultsByFile["files"]) =>
     .join("\n");
 
 test("a charter whose files each hold their own contract has nothing left to answer", () => {
-  assert.deepEqual(faultsByFilesOf(guide("no-any"), mixin("ts-defaults")), {});
+  assert.deepEqual(faultsByFilesOf(guide("no-any", "guide/no-any.md", { mixins: ["ts-defaults"] }), mixin("ts-defaults")), {});
 });
 
 test("one identity declared twice in a layer is a collision naming both files", () => {
@@ -71,11 +71,11 @@ test("one identity declared twice in a layer is a collision naming both files", 
 });
 
 test("one id under two kinds is two identities, not a collision", () => {
-  assert.deepEqual(faultsByFilesOf(guide("naming"), mixin("naming")), {});
+  assert.deepEqual(faultsByFilesOf(guide("naming", "guide/naming.md", { mixins: ["naming"] }), mixin("naming")), {});
 });
 
 test("an identity compares as kind:id, never as a file basename", () => {
-  assert.deepEqual(faultsByFilesOf(guide("reject-any", "guide/no-any.md"), mixin("no-any")), {});
+  assert.deepEqual(faultsByFilesOf(guide("reject-any", "guide/no-any.md", { mixins: ["no-any"] }), mixin("no-any")), {});
 });
 
 test("a mixin no primitive in this layer holds is refused, naming it", () => {
@@ -153,6 +153,35 @@ test("a primitive cites a vendored corpus the way it cites one of its own", () =
       corpus("type-safety", "team"),
       guide("no-any", "guide/no-any.md", { rationale: "corpus:type-safety" }),
     ),
+    {},
+  );
+});
+
+test("a corpus no primitive cites is said under its own file, and does not fail the charter (FR-014)", () => {
+  const faultsByFiles = faultsByFilesOf(corpus("type-safety"), guide("no-any"));
+
+  assert.deepEqual(Object.keys(faultsByFiles), [at("corpus/type-safety.md")]);
+  assert.deepEqual(faultsIn(faultsByFiles).map((one) => one.severity), ["warn"]);
+  assert.match(messages(faultsByFiles), /No primitive cites "corpus:type-safety"/);
+});
+
+test("a mixin no primitive pulls in is said under its own file, and does not fail the charter (FR-014)", () => {
+  const faultsByFiles = faultsByFilesOf(mixin("ts-defaults"), guide("no-any"));
+
+  assert.deepEqual(Object.keys(faultsByFiles), [at("mixin/ts-defaults.md")]);
+  assert.deepEqual(faultsIn(faultsByFiles).map((one) => one.severity), ["warn"]);
+  assert.match(messages(faultsByFiles), /No primitive pulls in the mixin "ts-defaults"/);
+});
+
+test("a vendored corpus and mixin nobody uses are said too, so the vendor can be taken out (FR-014)", () => {
+  const faultsByFiles = faultsByFilesOf(corpus("type-safety", "team"), mixin("ts-defaults", "team"));
+
+  assert.deepEqual(Object.keys(faultsByFiles).sort(), [at("corpus/type-safety.md"), at("mixin/ts-defaults.md")]);
+});
+
+test("a corpus cited only by a vendored primitive is cited", () => {
+  assert.deepEqual(
+    faultsByFilesOf(corpus("type-safety"), guide("no-any", "guide/no-any.md", { rationale: "corpus:type-safety" }, "team")),
     {},
   );
 });

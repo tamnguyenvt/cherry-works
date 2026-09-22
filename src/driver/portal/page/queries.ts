@@ -118,3 +118,34 @@ export function useRemovePrimitive() {
     onSuccess: written,
   });
 }
+
+/** What a build would do to every file, nothing written (FR-120); or the
+ *  faults of a charter that does not hold. Asked again whenever the preview is
+ *  opened, so it is the charter on disk now. */
+export function useBuildPreview() {
+  return useQuery({
+    queryKey: ["build"],
+    gcTime: 0,
+    queryFn: async () => (await client.charter.root.build.$get()).json(),
+  });
+}
+
+/** The four answers `cw doctor` gives, and every fault (FR-121). */
+export function useHealth() {
+  return useQuery({
+    queryKey: ["health"],
+    gcTime: 0,
+    queryFn: async () => (await client.charter.root.health.$get()).json(),
+  });
+}
+
+/** The charter built (FR-120): what was written and deleted, or the faults
+ *  that refused it with nothing written. */
+export function useBuild() {
+  const written = useWritten();
+  return useMutation({
+    // Sent as JSON though it carries none, as a delete is (plan §12.4).
+    mutationFn: async () => (await client.charter.root.build.$post({}, { headers: { "Content-Type": "application/json" } })).json(),
+    onSuccess: written,
+  });
+}

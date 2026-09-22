@@ -200,7 +200,8 @@ export class CharterRoot {
    * together is the files they both apply to (FR-006, FR-014). One cites a
    * rationale no corpus answers to, which is a warning rather than an error:
    * the rule holds without its reasoning, and the author is told the reasoning
-   * is gone (FR-005).
+   * is gone (FR-005). A corpus nobody cites and a mixin nobody pulls in are
+   * warnings too: nothing breaks, and nothing reads them either (FR-014).
    */
   get compositeFaultsByFiles(): FaultsByFile {
     const everyPrimitive = this.primitives;
@@ -264,6 +265,28 @@ export class CharterRoot {
           ),
         );
       }
+
+      // Reasoning nobody cites and text nobody lends are dead weight in every
+      // layer, a vendor's included: its author is told, and can remove what
+      // brought them (FR-014).
+      if (primitive.kind === "corpus" && this.citersOf(one).length === 0)
+        addFault(
+          file,
+          new CharterRootFault(
+            `No primitive cites "${identity}" as its rationale, so nothing an agent reads leads to it.`,
+            `Cite it from the rules it explains with "rationale: ${identity}", or delete it.`,
+            "warn",
+          ),
+        );
+      if (primitive.kind === "mixin" && this.hostsOf(one).length === 0)
+        addFault(
+          file,
+          new CharterRootFault(
+            `No primitive pulls in the mixin "${primitive.headers.id}", so its body is never written anywhere.`,
+            `Name "${primitive.headers.id}" under "mixins" of the primitives it was written for, or delete it.`,
+            "warn",
+          ),
+        );
     }
 
     return new FaultsByFile(faultsByFiles);

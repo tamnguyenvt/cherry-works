@@ -2,7 +2,7 @@ import { loadCharters, writeCharter } from "../service/charterRepo.js";
 import { loadSettings } from "../service/settingsRepo.js";
 import { loadTestSuites } from "../service/testSuitesRepo.js";
 import { driftedVendors } from "../service/vendorRepo.js";
-import { runSuite, TestRunReport } from "../domain/services/testService.js";
+import { runSuite, TestRunReport, findUntestedPrimitives } from "../domain/services/testService.js";
 import { Fault, Faults, FaultsByFile } from "../domain/models/Fault.js";
 import { REPO_SCOPE, ScopedPrimitive, type CharterRoot } from "../domain/models/charter/CharterRoot.js";
 import { RepoScopedPrimitive } from "../domain/specifications/RepoScopedPrimitive.js";
@@ -24,7 +24,7 @@ import {
 } from "./dtos.js";
 import { contentHashOf } from "./helper.js";
 import { compile } from "../domain/services/compileService.js";
-import { executePlan, plan, previewPlan, type PlanSummary } from "../service/buildService.js";
+import { executePlan, plan, previewPlan } from "../service/buildService.js";
 import type { WorkspaceSettings } from "../domain/models/Settings.js";
 import { AGENT_PROVIDERS } from "../domain/models/AgentProvider.js";
 import { CHARTER_DIRECTORY, settingsFileIn, testFolderIn } from "../domain/path.js";
@@ -82,33 +82,41 @@ export class CharterAuthoring implements ForManagingCharter {
     this.#vcs = vcs;
   }
 
-  /** Everything wrong with this repository's charter under the file that has to
-   *  change, and what a build would still change — the preview run for it where
-   *  the charter holds, and nothing where it does not (FR-005, FR-009,
-   *  FR-040). */
-  async #validate(): Promise<readonly [FaultsByFile, PlanSummary | undefined]> {
-    const [charter, settings, faultsByFiles] = await this.#read();
-    const planSummary = charter === undefined ? undefined : await this.#preview(charter, settings);
-    return [faultsByFiles, planSummary];
-  }
-
   /**
    * The four questions about this repository, asked in one go (FR-040): which
    * agents it compiles for, what validating its charter finds, which installed
    * charters are edited here, and how many of those are unwell.
    *
-   * Each is asked of whoever already answers it — the settings, `#validate`,
-   * version control — and whether each is well is worked out here, so what
-   * `cw doctor` says and what the portal's health check says are one answer
-   * said twice (SC-003). Reads and says: nothing here writes (FR-041).
+   * Each is asked of whoever already answers it — the settings, the charter's
+   * validation, version control — and whether each is well is worked out here,
+   * so what `cw doctor` says and what the portal's health check says are one
+   * answer said twice (SC-003). Reads and says: nothing here writes (FR-041).
+   *
+   * Where the charter holds, what a build would still change is the preview run
+   * for it, and every guide and sensor no test case names is a warning too, so
+   * the test files are read here: a file that will not read names no case, and
+   * `cw test` is what refuses it (FR-014). Nothing else reads them for this — a
+   * warning stops nothing, and every other use case asks only for the errors.
+   * Where it does not hold, nothing is previewed (FR-005, FR-009).
    */
   async doctor(): Promise<OutcomeDTOs.DoctorOutcome> {
-    const [settings, [faultsByFile, planSummary], drifted] = await Promise.all([
+    const [settings, [charter, , faultsByFiles], drifted, testSuitesByFile] = await Promise.all([
       loadSettings(this.#repoPath, this.#fileReader),
-      this.#validate(),
+      this.#read(),
       driftedVendors(this.#repoPath, this.#vcs),
+      loadTestSuites(this.#repoPath, this.#fileReader),
     ]);
-    return doctorOutcomeDTO(settings, faultsByFile, planSummary, drifted, this.#repoPath);
+    if (charter === undefined) return doctorOutcomeDTO(settings, faultsByFiles, undefined, drifted, this.#repoPath);
+
+    const testSuites = testSuitesByFile.flatMap((one) => ("suite" in one ? [one.suite] : []));
+    const { cleanupPlan, projectionPlan } = await plan(this.#repoPath, charter, settings.agents, this.#fileReader);
+    return doctorOutcomeDTO(
+      settings,
+      faultsByFiles.with(findUntestedPrimitives(charter, testSuites)),
+      previewPlan(cleanupPlan, projectionPlan),
+      drifted,
+      this.#repoPath,
+    );
   }
 
   /** Everything wrong with this repository's charter under the file that has to
@@ -293,14 +301,8 @@ export class CharterAuthoring implements ForManagingCharter {
     const [charter, settings, faultsByFiles] = await this.#read();
     if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
 
-    return planSummaryDTO(await this.#preview(charter, settings));
-  }
-
-  /** The build worked out and stopped short of disk: what `preview` says, and
-   *  what `#validate` counts. */
-  async #preview(charter: CharterRoot, settings: WorkspaceSettings): Promise<PlanSummary> {
     const { cleanupPlan, projectionPlan } = await plan(this.#repoPath, charter, settings.agents, this.#fileReader);
-    return previewPlan(cleanupPlan, projectionPlan);
+    return planSummaryDTO(previewPlan(cleanupPlan, projectionPlan));
   }
 
   /**

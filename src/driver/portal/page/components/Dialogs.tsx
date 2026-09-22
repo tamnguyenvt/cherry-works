@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { BuildOutcome, BuildPreview, type BuildAnswer } from "./CharterBuild.js";
+import { DoctorReport } from "./DoctorReport.js";
 import { PrimitiveExplanation } from "./PrimitiveExplanation.js";
 import { PrimitiveForm } from "./PrimitiveForm.js";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog.js";
@@ -49,6 +51,32 @@ const DIALOGS = {
     holdsDraft: true,
     render: ({ kind }: { kind: string }, { close }: DialogHelpers) => (
       <PrimitiveForm key={`new ${kind}`} newKind={kind} onDone={toastWritten(close)} onClose={close} />
+    ),
+  },
+  /** What a build would do, with the build itself from it (FR-120). */
+  buildPreview: {
+    title: () => "Build preview",
+    context: () => "writes nothing — reports what the build would change",
+    holdsDraft: false,
+    render: (_params: Record<string, never>, { open }: DialogHelpers) => (
+      <BuildPreview onBuilt={(buildAnswer) => open("buildOutcome", { buildAnswer })} />
+    ),
+  },
+  /** What a build wrote and deleted, or why it wrote nothing (FR-120). */
+  buildOutcome: {
+    title: () => "Build",
+    context: () => "",
+    holdsDraft: false,
+    render: ({ buildAnswer }: { buildAnswer: BuildAnswer }) => <BuildOutcome buildAnswer={buildAnswer} />,
+  },
+  /** The health check `cw doctor` gives, with a build where the output is
+   *  behind (FR-121). */
+  doctor: {
+    title: () => "Doctor",
+    context: () => "agents, charter, vendors and compiled output",
+    holdsDraft: false,
+    render: (_params: Record<string, never>, { open }: DialogHelpers) => (
+      <DoctorReport onBuilt={(buildAnswer) => open("buildOutcome", { buildAnswer })} />
     ),
   },
 };

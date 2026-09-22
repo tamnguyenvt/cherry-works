@@ -365,7 +365,7 @@ The three warnings and the file each is filed under are data-model [§6.1](data-
 first two — a corpus nobody cites, a mixin nobody lends from — are raised in
 `compositeFaultsByFiles`, each a `warn`.
 
-The third, a guide, sensor or posture that no test case names, needs the tests.
+The third, a guide or sensor that no test case names, needs the tests.
 So validation reads `.cw/test/` beside the charter and the settings, and a
 function beside `runSuite` in `testService` answers it. A test file that does
 not read is skipped for this question — `cw test` is where it is named — so a
@@ -1990,6 +1990,74 @@ Wired to the routes: refusals shown in the engine's words, and the `412` said as
 reader, printing what it printed before. It landed with [T035](tasks/001-charter-engine.md#t035): how many of the
 four answers are unwell is worked out behind the port, and vendor drift is asked
 of `service/vendorRepo.ts` rather than of `ForVendoringCharters` ([§10.1](#101-doctor-fr-013-fr-014-fr-080-fr-081)).
+
+[Story 7](spec.md#user-story-7---build-preview-and-check-the-repositorys-health-priority-p3) lands as one change, [T2.019](tasks/002-charter-portal.md#t2.019) – [T2.023](tasks/002-charter-portal.md#t2.023) its steps ([SC-026](spec.md#sc-026)). What
+was already there when it opened: `doctor()`, `preview()` and `build()` behind
+the port, `cw doctor` and `cw build [--preview]` their readers; one warning, a
+rationale citing a corpus the charter does not hold; `GET
+/api/charter/root/faults` reading `doctor()`; the header's Build button, its
+Preview menu and the Doctor button, drawn and wired to nothing. So [T2.019](tasks/002-charter-portal.md#t2.019) adds
+no code: it is checked by the acceptance below.
+
+**The two warnings the charter alone answers.** `compositeFaultsByFiles` adds,
+each a `CharterRootFault` of severity `warn`, filed under the primitive's own
+file: a corpus `citersOf` finds nobody citing, and a mixin `hostsOf` finds
+nobody lending from. Citers and hosts are counted across every layer, and a
+primitive of any layer is warned about: a vendored one nobody uses is a reason
+to remove that vendor, and the warning is how its author learns it.
+
+**The warning for a primitive no case names.** `findUntestedPrimitives(charter,
+suites)` beside `runSuite` in `testService`: each guide and sensor no case's
+`activatedIdentity` names, of any layer, a `TestCaseFault` of severity `warn`
+under that primitive's file. A posture is not warned about ([FR-014](spec.md#fr-014)): a case
+asking whether a file is allowed names no posture, and a `deny` may name a
+command no case can touch. `doctor()` reads the test files with
+`loadTestSuites` and adds these to what the charter found; a test
+file that does not read is skipped here, `cw test` names it. A primitive can be
+warned about by both, so `FaultsByFile.with` joins the faults of a file both
+sides name rather than keeping the other's alone. Nothing else
+reads them: a warning stops nothing, and `build`, `list` and the rest only ask
+for the errors.
+
+**The routes** are the rows of [§12.2](#122-the-route-table) marked [FR-120](spec.md#fr-120) and [FR-121](spec.md#fr-121). `GET
+/api/charter/root/build` answers `preview()`, `POST` answers `build()`, each
+`200` with the `PlanSummary` and `422` with the `FaultsByFile`; `GET
+/api/charter/root/health` answers `doctor()`, always `200`.
+
+**The page.** Build runs the build; Preview in its menu opens the Build dialog
+with the plan: every target under create, update, delete or unchanged, the
+count of each, and a "Build for real" button. A build's answer is shown in the
+same dialog: what it wrote and what it deleted. A charter with an error shows
+its faults under each file and nothing was written. Doctor opens the Doctor
+dialog: the four answers in the words `cw doctor` prints them, then every
+fault under its file, errors before warnings, and a Build button when the
+compiled output is behind. After a build every query is asked again.
+
+Acceptance:
+- `GET /api/charter/root/build` lists the same targets `cw build --preview`
+  prints for the same repository, and writes nothing ([SC-014](spec.md#sc-014), scenario 1).
+- `POST /api/charter/root/build` writes; the answer lists what was written and
+  deleted, and the health check then says the output is up to date (scenario 2).
+- A charter with an error: `POST` answers `422` with its faults and nothing
+  under `.cw/out/` changed (scenario 3).
+- `GET /api/charter/root/health` answers what `doctor()` answers, the same
+  faults `cw doctor` prints; the dialog offers Build when `pendingCount > 0`
+  (scenario 4).
+- An uncited corpus, a mixin nobody lends from, and a guide or sensor no case
+  names are each a warning naming the primitive, under its file, in `cw doctor`
+  and the health route; each still builds, and `cw doctor` still exits 0 for
+  them alone (scenario 5).
+- A vendored primitive is warned about the way a repository one is; a corpus
+  cited only by a vendored primitive is cited.
+- A posture no case touches raises no warning.
+- A test file that does not read raises no warning of its own in `doctor`.
+- A guide citing a corpus the charter does not hold, and named by no case,
+  shows both warnings under its file.
+
+Not in this story: a warning for more than four primitives whose long content
+goes into the main agent's context — the story names it and [FR-014](spec.md#fr-014) and the
+tasks do not; the vendor sources panel ([Story 8](spec.md#user-story-8---install-see-and-remove-vendor-sources-priority-p4)); running tests from the
+portal ([Story 9](spec.md#user-story-9---write-run-and-correct-the-self-regression-tests-priority-p5)); naming the repository in the header.
 
 #### 17.2.20 T2.020 — The two warnings the charter alone answers
 

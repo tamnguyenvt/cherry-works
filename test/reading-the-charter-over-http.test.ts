@@ -106,7 +106,11 @@ test("a charter with an error lists nothing and hands back what is wrong under i
 });
 
 test("what validating found is sent as it stands, a charter that holds having nothing wrong (FR-013)", async () => {
-  const holds = await portal({ [at("guide/no-any.md")]: guide("no-any") }).request("/charter/root/faults");
+  const holds = await portal({
+    [at("guide/no-any.md")]: guide("no-any"),
+    // A guide no test case names is a warning (FR-014); this one is named.
+    "file:///repo/.cw/test/no-any.json": JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
+  }).request("/charter/root/faults");
 
   assert.equal(holds.status, 200);
   assert.deepEqual(DataDTOs.FaultsByFile.parse(await holds.json()).data.files, {});

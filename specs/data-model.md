@@ -306,7 +306,7 @@ Three faults of severity `warn`, each filed under a file of the charter:
 |---|---|
 | a corpus no primitive cites | the corpus |
 | a mixin no primitive names | the mixin |
-| a guide, sensor or posture no test case names | that primitive |
+| a guide or sensor no test case names | that primitive |
 
 ## 7. Catalogues (FR-025 – FR-028)
 

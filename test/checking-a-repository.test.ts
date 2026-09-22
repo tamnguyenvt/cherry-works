@@ -21,6 +21,14 @@ const primitive = (kind: string, id: string, headers: readonly string[] = [], bo
 
 const guide = (id: string, body?: string) => primitive("guide", id, ['globs: ["src/**/*.ts"]'], body);
 
+/** A test file naming one guide, so no warning says nothing pins it down
+ *  (FR-014). */
+const pinningDown = (identity: string) => ({
+  [inRepo(`.cw/test/${identity.replace(":", "-")}.json`)]: JSON.stringify({
+    cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: identity } }],
+  }),
+});
+
 const compilingFor = (...agents: readonly string[]) => ({
   [inRepo(".cw/settings.json")]: `${JSON.stringify({ agents }, undefined, 2)}\n`,
 });
@@ -68,7 +76,11 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
 };
 
 test("a repository with nothing wrong passes, and says so of each thing it looked at (FR-040)", async () => {
-  const { run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+  const { run } = commandLine({
+    ...compilingFor("claude"),
+    [at("guide/no-any.md")]: guide("no-any"),
+    ...pinningDown("guide:no-any"),
+  });
   await run(["build"]);
 
   const { code, written } = await run(["doctor"]);
@@ -182,4 +194,76 @@ test("what doctor reports is a result, never a problem", async () => {
   // Nothing here went wrong: the report is what was asked for, and the exit
   // status is what a pipeline gates on.
   assert.deepEqual(written.problems, []);
+});
+
+/** What `doctor()` answers over these files, read back as the portal reads it. */
+const doctorOf = async (files: Readonly<Record<string, string>>) => {
+  const held = new InMemoryFileReaders({ ...compilingFor("claude"), ...files });
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS());
+  return OutcomeDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterAuthoringApp.doctor()))).data;
+};
+
+const messagesUnder = (faultsByFile: OutcomeDTOs.DoctorOutcome["data"]["faultsByFile"], file: string) =>
+  (faultsByFile.data.files[file] ?? []).map(({ data: { severity, message } }) => `${severity}: ${message}`);
+
+test("a guide and a sensor no test case names are each a warning under their own file, and a posture is none (FR-014)", async () => {
+  const { errorCount, warnCount, faultsByFile } = await doctorOf({
+    [at("guide/no-any.md")]: guide("no-any"),
+    [at("sensor/lint.md")]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
+    [at("posture/no-env.md")]: primitive("posture", "no-env", ['allow: ["src/**"]', 'deny: [".env"]']),
+  });
+
+  assert.deepEqual([errorCount, warnCount], [0, 2]);
+  assert.deepEqual(Object.keys(faultsByFile.data.files).sort(), [".cw/charter/guide/no-any.md", ".cw/charter/sensor/lint.md"]);
+  assert.match(messagesUnder(faultsByFile, ".cw/charter/guide/no-any.md").join(), /warn: No test case names "guide:no-any"/);
+  assert.match(messagesUnder(faultsByFile, ".cw/charter/sensor/lint.md").join(), /warn: No test case names "sensor:lint"/);
+});
+
+test("a guide and a sensor a test case names raise no warning (FR-014)", async () => {
+  const { warnCount } = await doctorOf({
+    [at("guide/no-any.md")]: guide("no-any"),
+    [at("sensor/lint.md")]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
+    ...pinningDown("guide:no-any"),
+    [inRepo(".cw/test/lint.json")]: JSON.stringify({ cases: [{ when: "PostToolUse", expect: { run: "sensor:lint" } }] }),
+  });
+
+  assert.equal(warnCount, 0);
+});
+
+test("a vendored guide no test case names is warned about like one of the repository's own (FR-014)", async () => {
+  const { faultsByFile } = await doctorOf({ [inRepo(".cw/vendor/team/guide/no-any.md")]: guide("no-any") });
+
+  assert.match(messagesUnder(faultsByFile, ".cw/vendor/team/guide/no-any.md").join(), /No test case names "guide:no-any"/);
+});
+
+test("a guide warned about twice keeps both warnings under its file", async () => {
+  const { warnCount, faultsByFile } = await doctorOf({
+    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:absent"]),
+  });
+
+  assert.equal(warnCount, 2);
+  const messages = messagesUnder(faultsByFile, ".cw/charter/guide/no-any.md").join("\n");
+  assert.match(messages, /corpus:absent/);
+  assert.match(messages, /No test case names "guide:no-any"/);
+});
+
+test("a test file that does not read raises no warning of its own; cw test names it", async () => {
+  const { faultsByFile } = await doctorOf({ [at("guide/no-any.md")]: guide("no-any"), [inRepo(".cw/test/broken.json")]: "not json" });
+
+  assert.deepEqual(Object.keys(faultsByFile.data.files), [".cw/charter/guide/no-any.md"]);
+});
+
+test("warnings alone let the build through, and doctor passes once it is built (FR-014)", async () => {
+  const { run } = commandLine({
+    ...compilingFor("claude"),
+    [at("guide/no-any.md")]: guide("no-any"),
+    [at("corpus/why.md")]: primitive("corpus", "why"),
+    [at("mixin/ts.md")]: primitive("mixin", "ts"),
+  });
+  assert.equal((await run(["build"])).code, EXIT_OK);
+
+  const { code, written } = await run(["doctor"]);
+
+  assert.equal(code, EXIT_OK);
+  assert.match(written.everything, /Charter: {2}holds, with 3 warnings\./);
 });

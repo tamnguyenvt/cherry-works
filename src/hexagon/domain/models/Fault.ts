@@ -115,10 +115,12 @@ export class FaultsByFile {
     return Object.keys(this.#files).length === 0;
   }
 
-  /** These and the other's together, the other's kept where both name one
-   *  file. */
+  /** These and the other's together, a file both name holding the faults of
+   *  both. */
   with(other: FaultsByFile): FaultsByFile {
-    return new FaultsByFile({ ...this.#files, ...other.#files });
+    const files: Record<string, readonly Fault[]> = { ...this.#files };
+    for (const [file, faults] of Object.entries(other.#files)) files[file] = [...(files[file] ?? []), ...faults];
+    return new FaultsByFile(files);
   }
 
   /** What is wrong badly enough to stop a build, under the file that has to

@@ -220,6 +220,42 @@ export function api(charterAuthoringApp: ForManagingCharter) {
         },
       }),
       async (c) => c.json(await charterAuthoringApp.listPrimitiveRequirements(c.req.valid("param").kind), 200),
+    )
+    .openapi(
+      createRoute({
+        method: "get",
+        path: "/charter/root/build",
+        responses: {
+          200: json(DataDTOs.PlanSummary, "What a build would do to every file, nothing written"),
+          422: json(DataDTOs.FaultsByFile, "The charter does not hold"),
+        },
+      }),
+      async (c) => {
+        const planSummaryDTO = await charterAuthoringApp.preview();
+        return planSummaryDTO.type === "FaultsByFile" ? c.json(planSummaryDTO, 422) : c.json(planSummaryDTO, 200);
+      },
+    )
+    .openapi(
+      createRoute({
+        method: "post",
+        path: "/charter/root/build",
+        responses: {
+          200: json(DataDTOs.PlanSummary, "What the build wrote and deleted"),
+          422: json(DataDTOs.FaultsByFile, "The charter does not hold, and nothing was written"),
+        },
+      }),
+      async (c) => {
+        const planSummaryDTO = await charterAuthoringApp.build();
+        return planSummaryDTO.type === "FaultsByFile" ? c.json(planSummaryDTO, 422) : c.json(planSummaryDTO, 200);
+      },
+    )
+    .openapi(
+      createRoute({
+        method: "get",
+        path: "/charter/root/health",
+        responses: { 200: json(OutcomeDTOs.DoctorOutcome, "The four answers cw doctor gives, and every fault") },
+      }),
+      async (c) => c.json(await charterAuthoringApp.doctor(), 200),
     );
 }
 

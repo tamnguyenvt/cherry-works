@@ -148,7 +148,7 @@ A developer picks a kind and asks for a new one. The portal asks exactly the hea
 
 ### User Story 7 - Build, preview and check the repository's health (Priority: P3)
 
-Before committing, the developer wants to know what a build would change and whether anything is wrong. From the portal's header they preview the build and see every file it would create, update or delete, then build for real. They ask for the health check and read the same four answers `cw doctor` gives — agents, charter, vendors, compiled output — together with every error and warning under its file, including the warnings the engine raises about corpus nobody cites, mixins nobody lends from, more than four primitives whose long content is put into the main agent's context, and guides, sensors and postures no test case pins down.
+Before committing, the developer wants to know what a build would change and whether anything is wrong. From the portal's header they preview the build and see every file it would create, update or delete, then build for real. They ask for the health check and read the same four answers `cw doctor` gives — agents, charter, vendors, compiled output — together with every error and warning under its file, including the warnings the engine raises about corpus nobody cites, mixins nobody lends from, more than four primitives whose long content is put into the main agent's context, and guides and sensors no test case pins down.
 
 **Why this priority**: Stories 5 and 6 change the charter; this one gets the change to the agent and confirms nothing is broken. A team can still build from the command line without it.
 
@@ -160,7 +160,7 @@ Before committing, the developer wants to know what a build would change and whe
 2. **Given** a preview, **When** the developer builds for real from it, **Then** the build runs and the portal lists what it wrote and deleted.
 3. **Given** a charter with an error, **When** the developer builds, **Then** nothing is written and the faults are shown under their files.
 4. **Given** any repository, **When** the developer asks for the health check, **Then** the portal shows the four answers and every fault that `cw doctor` reports for the same repository, with nothing added and nothing left out, and offers to build when the compiled output is behind.
-5. **Given** a corpus no primitive cites, a mixin no primitive lends from, or a guide, sensor or posture that no test case names, **When** the charter is validated from either surface, **Then** each is reported as a warning naming the primitive, and none of them stops a build.
+5. **Given** a corpus no primitive cites, a mixin no primitive lends from, or a guide or sensor that no test case names, **When** the charter is validated from either surface, **Then** each is reported as a warning naming the primitive, and none of them stops a build.
 
 ---
 
@@ -293,7 +293,7 @@ A repository is set up under `cw`. Without anyone installing, copying or writing
 - A primitive's body is empty — it is saved as empty; whether that is acceptable is the kind's business, reported by validation.
 - A deleted primitive is still named by a mixin list, a rationale or a test case — validation reports the dangling reference; the portal does not rewrite the primitives or tests that name it.
 - No network is available — everything but adding or updating a vendor source works, the body editor included.
-- The repository has no test files — the test view says what a test is for and offers to create one; the health check warns about every guide, sensor and posture that no case pins down.
+- The repository has no test files — the test view says what a test is for and offers to create one; the health check warns about every guide and sensor that no case pins down.
 - A vendored file was hand-edited — the health check names its source and says how to undo it, as `cw doctor` does.
 
 **Agent authoring**
@@ -328,7 +328,7 @@ A repository is set up under `cw`. Without anyone installing, copying or writing
 - <a id="fr-011"></a>**FR-011**: Validation MUST write nothing and MUST signal failure through its exit status so an automated pipeline can gate on it.
 - <a id="fr-012"></a>**FR-012**: Every fault the system reports MUST say, beside what is wrong, the next move that fixes it, wherever there is one.
 - <a id="fr-013"></a>**FR-013**: Validation MUST NOT be a command of its own. What is wrong with the charter MUST be reported, in full, by the health check ([FR-080](#fr-080)), so that no two commands read one charter and answer differently.
-- <a id="fr-014"></a>**FR-014**: Validation MUST raise a warning for each corpus no primitive cites, each mixin no primitive lends from, and each guide, sensor and posture that no test case names. None of them MUST stop a build or a listing ([FR-010](#fr-010)). The command line and the portal both show them, because both read validation.
+- <a id="fr-014"></a>**FR-014**: Validation MUST raise a warning for each corpus no primitive cites, each mixin no primitive lends from, and each guide and sensor that no test case names. A posture is not warned about: a case asking whether a file is allowed names no posture, and a posture's `deny` may name commands no case can touch. None of them MUST stop a build or a listing ([FR-010](#fr-010)). The command line and the portal both show them, because both read validation.
 
 **Identity and layers**
 
@@ -565,7 +565,7 @@ The shape of each is in the data model.
 - **One developer, one machine.** The portal is not shared over a network and has no accounts, as the product has none.
 - **The reference design is keystone** (github.com/tacoda/keystone) for the primitive kinds, their field contracts and the vendored-content installation flow, and *Harness Engineering* by Ian Johnson for the concentric layers and the reliability levers. Neither is a runtime or build dependency; this is an independent implementation. Where keystone splits catalogue generation and compilation into two commands that repeat the same work, this product deliberately merges them.
 - **Three kinds in the reference design are deliberately not adopted**: the external-callable declaration, the governed-output-document kind, and the reusable-documentation-pattern kind. The reference's own charter never exercises the document graph — no primitive in it declares a producing or consuming relationship — so nothing proven is lost. For this product specifically, the lifecycle of a work item (its state, its gates, its board) belongs to a later application, and expressing it a second time in the charter would duplicate it. The producing and consuming relationships on a unit of work are dropped alongside the document kind, since their referent is gone, and so are the lifecycle phase and the explicit done-condition: the reference declares neither, and a command reaches an agent as a slash command whose description is all that host reads before loading it — a phase it has no field for is a header nothing carries.
-- **The three warnings are validation warnings, not portal features.** A primitive no case pins down is limited to guides, sensors and postures because those are the only kinds a case can assert ([FR-082](#fr-082)). All three are warnings and never errors.
+- **The three warnings are validation warnings, not portal features.** A primitive no case pins down is limited to guides and sensors because those are the only kinds a case names ([FR-082](#fr-082)); a posture is asserted only through whether a file is allowed, which names none. All three are warnings and never errors.
 - **Self-regression tests assert activation, not behaviour.** A test pins which rules apply to a described situation, which is what catches the common failure of a rule quietly going dead after a glob or cascade change. It deliberately does not run a check's command or ask an agent for a judgement: the first needs a live environment and would break the reader/writer split, and the second is non-deterministic, so a suite built on it becomes flaky and then gets ignored. Both may be added later once there are real checks to exercise.
 - **Sensors are run by the agent's own harness, not by this system.** A check that runs a command and a check that asks an agent for a judgement are both declared in the charter and compiled into the agent's activation surface; firing them is the agent's job. This system declares and compiles; it does not execute agent work.
 - **Two files defining the same identity are reported as a collision**, in whichever layers they sit, rather than resolved by an implicit rule, because any silent winner would be arbitrary.
