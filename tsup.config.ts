@@ -3,15 +3,25 @@ import { defineConfig } from "tsup";
 
 const page = "src/driver/portal/page";
 
-// Two entries in one package: the cw binary, and the portal's page it serves.
+// Three entries in one package: the launcher that checks the Node it runs on,
+// the cw binary it hands over to, and the portal's page that binary serves.
 export default defineConfig([
+  {
+    entry: { cw: "bin.ts" },
+    format: ["esm"],
+    // Old syntax, so the launcher parses on the Node it is there to refuse.
+    target: "es2017",
+    outDir: "dist",
+    clean: false,
+  },
   {
     entry: { main: "main.ts" },
     format: ["esm"],
-    target: "node20",
+    target: "node22",
     outDir: "dist",
-    // The page entry writes dist/portal/ alongside; cleaning it here would race it.
-    clean: ["!portal/**"],
+    // The page and the launcher write dist/ alongside; cleaning them here
+    // would race them.
+    clean: ["!portal/**", "!cw.js"],
   },
   {
     entry: { main: `${page}/main.tsx` },

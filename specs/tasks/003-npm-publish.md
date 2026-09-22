@@ -12,9 +12,9 @@ Legend: `[P]` = parallelisable with its siblings. "Depends on" names what must l
 
 Independent test: see spec [Story 13](../spec.md#user-story-13---install-cw-with-one-command-and-use-it-in-any-repository-priority-p1).
 
-- [ ] <a id="t3.001"></a>**T3.001** Runtime dependencies only, checked against what the engine imports. *([FR-127](../spec.md#fr-127), [FR-129](../spec.md#fr-129), [SC-029](../spec.md#sc-029); plan [§18.1](../plan.md#181-what-the-package-holds-fr-126-fr-127-fr-129-fr-130-fr-133), [§17.3.1](../plan.md#1731-t3001--runtime-dependencies-only))*
-- [ ] <a id="t3.002"></a>**T3.002** [P] The runtime guard before anything loads. *([FR-128](../spec.md#fr-128); [Story 13](../spec.md#user-story-13---install-cw-with-one-command-and-use-it-in-any-repository-priority-p1) scenario 4; plan [§18.2](../plan.md#182-the-runtime-it-needs-fr-128), [§17.3.2](../plan.md#1732-t3002--the-runtime-guard))*
-- [ ] <a id="t3.003"></a>**T3.003** [P] What the package holds: metadata, the MIT license, the file list. *([FR-126](../spec.md#fr-126), [FR-130](../spec.md#fr-130), [FR-133](../spec.md#fr-133); plan [§18.1](../plan.md#181-what-the-package-holds-fr-126-fr-127-fr-129-fr-130-fr-133), [§17.3.3](../plan.md#1733-t3003--what-the-package-holds); data-model [§16.1](../data-model.md#161-package))*
+- [x] <a id="t3.001"></a>**T3.001** Runtime dependencies only, checked against what the engine imports. *([FR-127](../spec.md#fr-127), [FR-129](../spec.md#fr-129), [SC-029](../spec.md#sc-029); plan [§18.1](../plan.md#181-what-the-package-holds-fr-126-fr-127-fr-129-fr-130-fr-133), [§17.3.1](../plan.md#1731-t3001--runtime-dependencies-only))*
+- [x] <a id="t3.002"></a>**T3.002** [P] The runtime guard before anything loads. *([FR-128](../spec.md#fr-128); [Story 13](../spec.md#user-story-13---install-cw-with-one-command-and-use-it-in-any-repository-priority-p1) scenario 4; plan [§18.2](../plan.md#182-the-runtime-it-needs-fr-128), [§17.3.2](../plan.md#1732-t3002--the-runtime-guard))*
+- [x] <a id="t3.003"></a>**T3.003** [P] What the package holds: metadata, the MIT license, the file list. *([FR-126](../spec.md#fr-126), [FR-130](../spec.md#fr-130), [FR-133](../spec.md#fr-133); plan [§18.1](../plan.md#181-what-the-package-holds-fr-126-fr-127-fr-129-fr-130-fr-133), [§17.3.3](../plan.md#1733-t3003--what-the-package-holds); data-model [§16.1](../data-model.md#161-package))*
 
 ---
 
