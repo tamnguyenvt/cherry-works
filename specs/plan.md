@@ -999,7 +999,7 @@ handed, and it dies with the process.
 ### 12.5 The page
 
 One document, the layout of [mockup/portal.html](./mockup/portal.html): the
-header (repository, search, Build with its preview menu, Doctor), three tabs
+header (repository, search, Build, Doctor), three tabs
 (Repo Charter, Vendor, Test), a modal for explain, doctor, build and a test
 file's text, and a toast for what was just done.
 
@@ -2018,9 +2018,9 @@ for the errors.
 `200` with the `PlanSummary` and `422` with the `FaultsByFile`; `GET
 /api/charter/root/health` answers `doctor()`, always `200`.
 
-**The page.** Build runs the build; Preview in its menu opens the Build dialog
-with the plan: every target under create, update, delete or unchanged, the
-count of each, and a "Build for real" button. A build's answer is shown in the
+**The page.** Build opens the Build dialog with the plan, writing nothing:
+every target under create, update, delete or unchanged, the count of each,
+and a Build button, the only way the page builds from its header. A build's answer is shown in the
 same dialog: what it wrote and what it deleted. A charter with an error shows
 its faults under each file and nothing was written. Doctor opens the Doctor
 dialog: the four answers in the words `cw doctor` prints them, then every
@@ -2063,8 +2063,8 @@ The third warning of [§4.4](#44-the-three-validation-warnings-fr-014), with val
 
 #### 17.2.22 T2.022 — Preview and build from the header
 
-`GET` and `POST /api/charter/root/build`; the Build button and its Preview menu;
-the modal listing the plan, and Build for real from the preview ([FR-120](spec.md#fr-120)).
+`GET` and `POST /api/charter/root/build`; the Build button opening the preview;
+the modal listing the plan, and the build from the preview ([FR-120](spec.md#fr-120)).
 
 #### 17.2.23 T2.023 — The health route and the Doctor modal
 

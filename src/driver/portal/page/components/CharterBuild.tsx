@@ -49,7 +49,7 @@ export function BuildPreview({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
       </Table>
       <div className="flex justify-end">
         <Button disabled={buildMutation.isPending} onClick={() => buildMutation.mutate(undefined, { onSuccess: onBuilt })}>
-          Build for real
+          Build
         </Button>
       </div>
     </div>

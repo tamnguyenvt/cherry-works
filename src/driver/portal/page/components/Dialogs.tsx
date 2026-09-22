@@ -56,8 +56,8 @@ const DIALOGS = {
   },
   /** What a build would do, with the build itself from it (FR-120). */
   buildPreview: {
-    title: () => "Build preview",
-    context: () => "writes nothing — reports what the build would change",
+    title: () => "cw build",
+    context: () => "nothing written yet",
     holdsDraft: false,
     render: (_params: Record<string, never>, { open }: DialogHelpers) => (
       <BuildPreview onBuilt={(buildAnswer) => open("buildOutcome", { buildAnswer })} />
@@ -65,7 +65,7 @@ const DIALOGS = {
   },
   /** What a build wrote and deleted, or why it wrote nothing (FR-120). */
   buildOutcome: {
-    title: () => "Build",
+    title: () => "cw build",
     context: () => "",
     holdsDraft: false,
     render: ({ buildAnswer }: { buildAnswer: BuildAnswer }) => <BuildOutcome buildAnswer={buildAnswer} />,

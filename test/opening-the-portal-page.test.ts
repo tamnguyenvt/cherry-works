@@ -2,21 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { inTheBrowser } from "./in-the-browser.js";
 
-test("the header carries the search box, Build with its two ways to build, and Doctor", async () => {
-  await inTheBrowser({}, async (page) => {
-    await assert.doesNotReject(page.getByPlaceholder("Search everything").waitFor());
-    await assert.doesNotReject(page.getByRole("button", { name: "Doctor" }).waitFor());
-    assert.equal(await page.getByRole("menu").count(), 0);
-
-    await page.getByLabel("More build options").click();
-
-    assert.deepEqual(
-      (await page.getByRole("menuitem").allInnerTexts()).map((item) => item.split("\n")[0]),
-      ["Preview", "Build"],
-    );
-  });
-});
-
 test("the header reads as the mockup draws it: the brand, the search, Build and Doctor", async () => {
   await inTheBrowser({}, async (page) => {
     const header = page.locator("header");
@@ -25,29 +10,8 @@ test("the header reads as the mockup draws it: the brand, the search, Build and 
     assert.equal(await header.getByPlaceholder("Search everything").count(), 1);
     assert.deepEqual(
       await header.getByRole("button").evaluateAll((buttons) => buttons.map((one) => one.getAttribute("aria-label") ?? one.textContent)),
-      ["Build", "More build options", "Doctor"],
+      ["Build", "Doctor"],
     );
-  });
-});
-
-test("the build menu closes on the next click anywhere", async () => {
-  await inTheBrowser({}, async (page) => {
-    await page.getByLabel("More build options").click();
-    await page.getByRole("menu").waitFor();
-    await page.mouse.click(5, 400);
-
-    await page.getByRole("menu").waitFor({ state: "detached" });
-    assert.equal(await page.getByRole("menu").count(), 0);
-  });
-});
-
-test("the build menu closes on the click that chose from it", async () => {
-  await inTheBrowser({}, async (page) => {
-    await page.getByLabel("More build options").click();
-    await page.getByRole("menuitem", { name: /Preview/ }).click();
-
-    await page.getByRole("menu").waitFor({ state: "detached" });
-    assert.equal(await page.getByRole("menu").count(), 0);
   });
 });
 

@@ -148,7 +148,7 @@ A developer picks a kind and asks for a new one. The portal asks exactly the hea
 
 ### User Story 7 - Build, preview and check the repository's health (Priority: P3)
 
-Before committing, the developer wants to know what a build would change and whether anything is wrong. From the portal's header they preview the build and see every file it would create, update or delete, then build for real. They ask for the health check and read the same four answers `cw doctor` gives — agents, charter, vendors, compiled output — together with every error and warning under its file, including the warnings the engine raises about corpus nobody cites, mixins nobody lends from, more than four primitives whose long content is put into the main agent's context, and guides and sensors no test case pins down.
+Before committing, the developer wants to know what a build would change and whether anything is wrong. From the portal's header they preview the build and see every file it would create, update or delete, then build from that preview. They ask for the health check and read the same four answers `cw doctor` gives — agents, charter, vendors, compiled output — together with every error and warning under its file, including the warnings the engine raises about corpus nobody cites, mixins nobody lends from, more than four primitives whose long content is put into the main agent's context, and guides and sensors no test case pins down.
 
 **Why this priority**: Stories 5 and 6 change the charter; this one gets the change to the agent and confirms nothing is broken. A team can still build from the command line without it.
 
@@ -157,7 +157,7 @@ Before committing, the developer wants to know what a build would change and whe
 **Acceptance Scenarios**:
 
 1. **Given** a charter with pending changes, **When** the developer previews the build, **Then** nothing is written and every target is listed as create, update, delete or unchanged, with a count, as the engine's preview says it.
-2. **Given** a preview, **When** the developer builds for real from it, **Then** the build runs and the portal lists what it wrote and deleted.
+2. **Given** a preview, **When** the developer builds from it, **Then** the build runs and the portal lists what it wrote and deleted.
 3. **Given** a charter with an error, **When** the developer builds, **Then** nothing is written and the faults are shown under their files.
 4. **Given** any repository, **When** the developer asks for the health check, **Then** the portal shows the four answers and every fault that `cw doctor` reports for the same repository, with nothing added and nothing left out, and offers to build when the compiled output is behind.
 5. **Given** a corpus no primitive cites, a mixin no primitive lends from, or a guide or sensor that no test case names, **When** the charter is validated from either surface, **Then** each is reported as a warning naming the primitive, and none of them stops a build.

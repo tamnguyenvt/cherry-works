@@ -1,14 +1,11 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
 import { CharterListing } from "./components/CharterListing.js";
 import { CharterSearch } from "./components/CharterSearch.js";
 import { DialogProvider, useDialog } from "./components/Dialogs.js";
 import { VendorSources } from "./components/VendorSources.js";
-import { useBuild } from "./queries.js";
 import { Button } from "./components/ui/button.js";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./components/ui/dropdown-menu.js";
 import { Toaster } from "./components/ui/sonner.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs.js";
 
@@ -22,8 +19,9 @@ const TABS = [
 /** The page's shell: the header, the tabs, the sheet each view is rendered
  *  into, and the dialog and the toasts every view speaks through (plan §12.5).
  *
- *  It holds no charter, and the one route it calls is the build its Build
- *  button asks for; every dialog is opened through `useDialog`. Which tab is on, and which kind its
+ *  It holds no charter and calls no route: Build opens the preview, and a
+ *  build is only ever asked for from there; every dialog is opened through
+ *  `useDialog`. Which tab is on, and which kind its
  *  listing shows, are state here rather than the tab's own: a primitive chosen
  *  from the search is shown where it is listed — its layer's tab, its kind — as
  *  well as opened (FR-114). */
@@ -33,8 +31,6 @@ function Portal() {
   // shown afresh starts from nothing again.
   const [shownKind, setShownKind] = useState<string | null>(null);
   const { open } = useDialog();
-  const buildMutation = useBuild();
-  const buildAndShowOutcome = () => buildMutation.mutate(undefined, { onSuccess: (buildAnswer) => open("buildOutcome", { buildAnswer }) });
 
   return (
     <>
@@ -52,28 +48,9 @@ function Portal() {
             }}
           />
         </div>
-        <div className="flex">
-          <Button variant="outline" className="rounded-r-none" disabled={buildMutation.isPending} onClick={buildAndShowOutcome}>
-            Build
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="rounded-l-none border-l-0" aria-label="More build options">
-                <ChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem className="flex-col items-start" onSelect={() => open("buildPreview", {})}>
-                <span className="font-medium">Preview</span>
-                <span className="text-xs text-muted-foreground">writes nothing — reports what the build would change</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex-col items-start" onSelect={buildAndShowOutcome}>
-                <span className="font-medium">Build</span>
-                <span className="text-xs text-muted-foreground">regenerates the compiled output wholesale</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <Button variant="outline" onClick={() => open("buildPreview", {})}>
+          Build
+        </Button>
         <Button variant="outline" onClick={() => open("doctor", {})}>
           Doctor
         </Button>

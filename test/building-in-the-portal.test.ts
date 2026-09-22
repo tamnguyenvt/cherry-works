@@ -17,10 +17,9 @@ const holding = (extra: Record<string, string> = {}) => ({
   ...extra,
 });
 
-/** Preview, from the Build button's menu. */
+/** Preview, from the Build button. */
 const previewing = async (page: Page) => {
-  await page.getByRole("button", { name: "More build options" }).click();
-  await page.getByRole("menuitem", { name: /Preview/ }).click();
+  await page.getByRole("button", { name: "Build", exact: true }).click();
   await page.getByRole("table", { name: "Build plan" }).waitFor();
 };
 
@@ -35,10 +34,10 @@ test("the preview lists every target with its change and a count, and writes not
   });
 });
 
-test("building for real from the preview writes, and lists what it wrote (FR-120)", async () => {
+test("building from the preview writes, and lists what it wrote (FR-120)", async () => {
   await inTheBrowser(holding(), async (page, files) => {
     await previewing(page);
-    await page.getByRole("button", { name: "Build for real" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Build", exact: true }).click();
 
     await page.getByRole("table", { name: "Build written" }).waitFor();
     assert.match(await page.getByLabel("Build counts").innerText(), /^Built \d+ files: \d+ added, 0 changed, 0 deleted\.$/);
@@ -78,7 +77,8 @@ test("Doctor shows the four answers and every warning, and builds when the outpu
 
 test("Doctor offers no build once the output is up to date (FR-121)", async () => {
   await inTheBrowser(holding(), async (page) => {
-    await page.getByRole("button", { name: "Build", exact: true }).click();
+    await previewing(page);
+    await page.getByRole("dialog").getByRole("button", { name: "Build", exact: true }).click();
     await page.getByRole("table", { name: "Build written" }).waitFor();
     await page.keyboard.press("Escape");
 
