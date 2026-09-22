@@ -6,16 +6,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* shadcn's zinc theme, as its CLI writes it. */
+/* shadcn's zinc theme, as its CLI writes it, with the ink, the primary and
+   the red the mockup draws in. */
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
+  --foreground: #171717;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
+  --primary: #171717;
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
@@ -23,13 +24,14 @@
   --muted-foreground: oklch(0.552 0.016 285.938);
   --accent: oklch(0.967 0.001 286.375);
   --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: #b91c1c;
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
   --ring: oklch(0.705 0.015 286.067);
 }
 
 @theme inline {
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -58,8 +60,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* The page is grey, and what sits on it is white: the header, the sheet a
+     tab is drawn in, and the dialog. */
   body {
-    @apply bg-background text-foreground;
+    @apply bg-zinc-100 text-[13px] text-foreground antialiased;
   }
 }
 
@@ -72,5 +76,5 @@
   outline: none;
 }
 .cm-scroller {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: var(--font-mono);
 }

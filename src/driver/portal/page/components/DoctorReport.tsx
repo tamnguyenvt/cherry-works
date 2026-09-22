@@ -2,6 +2,7 @@ import { useBuild, useHealth } from "../queries.js";
 import type { BuildAnswer } from "./CharterBuild.js";
 import { FaultsByFileTable } from "./FaultsByFileTable.js";
 import { Button } from "./ui/button.js";
+import { DIALOG_FOOTER } from "../lib/utils.js";
 
 /**
  * The health check, as `cw doctor` gives it (FR-121): the four answers —
@@ -46,27 +47,34 @@ export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
     ],
   ] as const;
 
+  // The strip is tinted by the worst of what the engine found: red for an
+  // error, amber for a warning, green for neither.
+  const [stripTint, dotTint] = errorCount > 0 ? ["bg-[#fef6f6]", "bg-[#b91c1c]"] : warnCount > 0 ? ["bg-[#fffbeb]", "bg-[#b45309]"] : ["bg-[#f5fbf7]", "bg-[#16a34a]"];
+
   return (
-    <div className="space-y-4">
-      <dl className="grid grid-cols-[6rem_1fr] gap-x-3 gap-y-1 text-sm" aria-label="Health">
+    <div className="-mt-[18px] space-y-4">
+      <div className={`-mx-5 flex items-center gap-2.5 border-b border-[#f0f0f0] px-4 py-3.5 ${stripTint}`}>
+        <i className={`size-2 shrink-0 rounded-full ${dotTint}`} />
+        <span className="text-[12.5px] font-bold">
+          {problemCount === 0 ? "Nothing to fix." : `${problemCount} thing${problemCount === 1 ? "" : "s"} to fix.`}
+        </span>
+      </div>
+      <dl className="overflow-hidden rounded-[11px] border border-[#f0f0f0]" aria-label="Health">
         {healthAnswers.map(([question, answer]) => (
-          <div key={question} className="contents">
-            <dt className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{question}</dt>
-            <dd>{answer}</dd>
+          <div key={question} className="flex items-baseline gap-3 border-b border-zinc-100 px-[13px] py-2.5 last:border-b-0">
+            <dt className="w-[118px] shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">{question}</dt>
+            <dd className="text-xs">{answer}</dd>
           </div>
         ))}
       </dl>
       {Object.keys(faultsByFile.data.files).length > 0 && <FaultsByFileTable faultsByFile={faultsByFile} label="Faults" />}
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">
-          {problemCount === 0 ? "Nothing to fix." : `${problemCount} thing${problemCount === 1 ? "" : "s"} to fix.`}
-        </span>
-        {pendingCount !== null && pendingCount > 0 && (
+      {pendingCount !== null && pendingCount > 0 && (
+        <div className={DIALOG_FOOTER}>
           <Button disabled={buildMutation.isPending} onClick={() => buildMutation.mutate(undefined, { onSuccess: onBuilt })}>
             Build
           </Button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

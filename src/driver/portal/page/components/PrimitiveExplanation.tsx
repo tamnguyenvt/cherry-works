@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import type { DataDTOs } from "#hexagon/port/driver/dtos/index.js";
 import { useExplanation } from "../queries.js";
 import { Button } from "./ui/button.js";
-import { Separator } from "./ui/separator.js";
 
 /**
  * Everything the engine says about one primitive, the answer `cw explain`
@@ -29,7 +28,12 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
   const { scopedPrimitive, activatesWhen, useMixins, rationale, hosts, citers, testCasesByFile } = answered.data;
   const { kind, description, file, scope, headers } = scopedPrimitive.data;
   const linkTo = ({ data }: DataDTOs.ScopedPrimitive) => (
-    <Button key={data.identity} variant="link" className="h-auto p-0 font-mono text-xs" onClick={() => onExplain(data.identity)}>
+    <Button
+      key={data.identity}
+      variant="link"
+      className="h-auto rounded-none p-0 font-mono text-[11.5px] font-normal text-[#1d4ed8] underline underline-offset-2"
+      onClick={() => onExplain(data.identity)}
+    >
       {data.identity}
     </Button>
   );
@@ -43,17 +47,17 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
   const declaredHeaders = Object.entries(headers).filter(([name]) => name !== "id" && name !== "description");
 
   return (
-    <div className="space-y-3">
+    <div className="-mx-5 -my-[18px]">
       <ExplanationSection title="What it is">
-        <b>{kind}</b> — {description}
+        <b className="font-semibold text-foreground capitalize">{kind}</b> — {description}
       </ExplanationSection>
       <ExplanationSection title="When it comes up">{activatesWhen}</ExplanationSection>
       {declaredHeaders.length > 0 && (
         <ExplanationSection title="What it declares">
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-mono text-xs">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-mono text-[11.5px]">
             {declaredHeaders.map(([name, value]) => (
               <div key={name} className="contents">
-                <dt className="text-muted-foreground">{name}</dt>
+                <dt className="text-zinc-400">{name}</dt>
                 <dd>{typeof value === "string" ? value : value.join(", ")}</dd>
               </div>
             ))}
@@ -64,12 +68,12 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
         <ExplanationSection title="What it pulls in">
           {useMixins.map((one) => (
             <div key={one.data.identity}>
-              {linkTo(one)} <span className="text-muted-foreground">lends its body</span>
+              {linkTo(one)} <span className="text-zinc-500">lends its body</span>
             </div>
           ))}
           {rationale !== undefined && (
             <div>
-              {linkTo(rationale)} <span className="text-muted-foreground">the reasoning it cites</span>
+              {linkTo(rationale)} <span className="text-zinc-500">the reasoning it cites</span>
             </div>
           )}
           {unresolvedRationale !== undefined && (
@@ -95,13 +99,13 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
       )}
       <ExplanationSection title="Tested by">
         {testCases.length === 0 ? (
-          <span className="text-muted-foreground">No test case names it.</span>
+          <span className="text-zinc-400">No test case names it.</span>
         ) : (
           testCases.map(([testFile, situations]) => (
             <div key={testFile}>
-              <span className="font-mono text-xs">{testFile}</span>
+              <span className="font-mono text-[11px] text-foreground">{testFile}</span>
               {situations.map((situation) => (
-                <div key={situation} className="pl-3 font-mono text-xs">
+                <div key={situation} className="py-0.5 pl-3 font-mono text-[11px]">
                   {situation}
                 </div>
               ))}
@@ -110,7 +114,7 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
         )}
       </ExplanationSection>
       <ExplanationSection title="File">
-        <span className="font-mono text-xs">{file}</span> <span className="text-muted-foreground">in the {scope} layer</span>
+        <span className="font-mono text-[11.5px] text-foreground">{file}</span> <span className="text-zinc-500">in the {scope} layer</span>
       </ExplanationSection>
     </div>
   );
@@ -119,10 +123,9 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
 /** One titled part of the explanation, a region named by its title. */
 function ExplanationSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section aria-label={title} className="space-y-1">
-      <Separator />
-      <h3 className="pt-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">{title}</h3>
-      <div className="text-sm">{children}</div>
+    <section aria-label={title} className="border-b border-zinc-100 px-4 py-3.5 last:border-b-0">
+      <h3 className="mb-[7px] text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">{title}</h3>
+      <div className="text-[12.5px] leading-[1.65] text-zinc-700">{children}</div>
     </section>
   );
 }

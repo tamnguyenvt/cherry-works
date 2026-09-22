@@ -26,6 +26,9 @@ export default defineConfig([
     minify: true,
     outDir: "dist/portal",
     clean: true,
-    onSuccess: () => copyFile(`${page}/index.html`, "dist/portal/index.html"),
+    onSuccess: async () => {
+      await copyFile(`${page}/index.html`, "dist/portal/index.html");
+      await copyFile(`${page}/logo.png`, "dist/portal/logo.png");
+    },
   },
 ]);

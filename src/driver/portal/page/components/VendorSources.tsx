@@ -30,8 +30,8 @@ export function VendorSources() {
 
   if (folders.length === 0)
     return (
-      <div className="flex items-center gap-3 rounded-lg border border-dashed px-4 py-3" aria-label="Vendor sources">
-        <span className="text-sm font-semibold">No vendor source installed</span>
+      <div className="flex items-center gap-[9px] rounded-xl border border-dashed px-[15px] py-3.5" aria-label="Vendor sources">
+        <span className="text-xs font-semibold">No vendor source installed</span>
         <Button size="sm" className="ml-auto" onClick={() => open("addVendor", {})}>
           Add vendor source
         </Button>
@@ -39,36 +39,36 @@ export function VendorSources() {
     );
 
   return (
-    <section className="divide-y rounded-lg border" aria-label="Vendor sources">
-      <h2 className="px-4 py-2.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">Vendor sources</h2>
+    <section className="divide-y divide-[#f0f0f0] overflow-hidden rounded-[13px] border bg-background" aria-label="Vendor sources">
+      <h2 className="px-3.5 py-[11px] text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">Vendor sources</h2>
       {folders.map((folder) => {
         const primitivesOfFolder = vendoredPrimitives.filter(({ data }) => data.file.startsWith(`${folder}/`));
         const countsByKind = [...new Set(primitivesOfFolder.map(({ data }) => data.kind))].map(
           (kind) => [kind, primitivesOfFolder.filter(({ data }) => data.kind === kind).length] as const,
         );
         return (
-          <div key={folder} className="flex flex-wrap items-start gap-x-6 gap-y-2 px-4 py-3" aria-label={folder}>
-            <div className="min-w-0 space-y-1">
-              <div className="text-sm font-semibold">{folder.split("/").at(-1)}</div>
-              <div className="text-xs text-muted-foreground">
+          <div key={folder} className="flex flex-col gap-2.5 bg-[#f6f2ff] px-3.5 py-3" aria-label={folder}>
+            <div className="min-w-0 space-y-0.5">
+              <div className="text-[12.5px] font-semibold">{folder.split("/").at(-1)}</div>
+              <div className="text-[11px] text-zinc-500">
                 <span className="font-mono">{folder}/</span> · read-only
               </div>
             </div>
-            <dl className="grid grid-cols-[auto_auto] gap-x-3 text-xs text-muted-foreground" aria-label="Primitives by kind">
+            <dl className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1.5 text-[11.5px] text-zinc-500" aria-label="Primitives by kind">
               {countsByKind.map(([kind, count]) => (
                 <div key={kind} className="contents">
                   <dt>{kind}</dt>
-                  <dd className="font-mono">{count}</dd>
+                  <dd className="font-mono text-[10.5px] text-zinc-400">{count}</dd>
                 </div>
               ))}
             </dl>
-            <Button size="sm" variant="outline" className="ml-auto" disabled={removeVendor.isPending} onClick={() => void removeInstall(folder)}>
+            <Button size="sm" variant="outline" className="self-start" disabled={removeVendor.isPending} onClick={() => void removeInstall(folder)}>
               Remove
             </Button>
           </div>
         );
       })}
-      <div className="px-4 py-2.5">
+      <div className="px-3.5 py-[11px]">
         <Button size="sm" variant="outline" onClick={() => open("addVendor", {})}>
           Add source
         </Button>

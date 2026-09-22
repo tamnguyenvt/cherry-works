@@ -17,6 +17,9 @@ const TABS = [
   ["test", "Test"],
 ] as const;
 
+/** The white sheet a tab's view is drawn in, over the grey of the page. */
+const SHEET = "rounded-2xl border bg-background px-[22px] py-5";
+
 /** The page's shell: the header, the tabs, the sheet each view is rendered
  *  into, and the dialog and the toasts every view speaks through (plan §12.5).
  *
@@ -35,12 +38,15 @@ function Portal() {
 
   return (
     <>
-      <header className="flex items-center gap-3 border-b bg-background px-6 py-3">
-        <span className="font-semibold">Cherry Works</span>
+      <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background px-[26px]">
+        <span className="flex items-center gap-[9px] text-[13.5px] font-bold tracking-[-0.01em]">
+          <img src="./logo.png" alt="" className="size-[22px] object-contain" />
+          Cherry Works
+        </span>
         {/* The repository this portal was started over. It is named once a
             route answers with it. */}
-        <span className="text-sm text-muted-foreground" />
-        <div className="ml-auto">
+        <span className="font-mono text-[11.5px] text-zinc-400" />
+        <div className="ml-auto flex w-full max-w-[460px]">
           <CharterSearch
             onPick={({ data: { identity, kind, scope } }) => {
               setTab(scope === "vendor" ? "vendor" : "repo");
@@ -57,7 +63,7 @@ function Portal() {
         </Button>
       </header>
 
-      <main className="mx-auto max-w-6xl p-6">
+      <main className="mx-auto max-w-[1120px] px-[26px] pt-[22px] pb-[60px]">
         <Tabs
           value={tab}
           onValueChange={(value) => {
@@ -65,9 +71,13 @@ function Portal() {
             setShownKind(null);
           }}
         >
-          <TabsList className="w-full">
+          <TabsList className="mb-4 h-auto w-full gap-1 rounded-[11px] bg-[#e9e9ec] p-1">
             {TABS.map(([which, name]) => (
-              <TabsTrigger key={which} value={which}>
+              <TabsTrigger
+                key={which}
+                value={which}
+                className="h-auto rounded-lg py-[9px] text-[12.5px] font-semibold text-zinc-500 data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.09)]"
+              >
                 {name}
               </TabsTrigger>
             ))}
@@ -75,16 +85,16 @@ function Portal() {
           {/* A tab's view is mounted when the tab is shown and gone when
               another is, so each asks for the charter again when it comes back
               (FR-110). The repository's tab holds what the engine brings beside
-              what was authored here; the vendor's is read-only (FR-112), under
+              what was authored here; the vendor's is read-only (FR-112), beside
               the sources it was installed from (FR-122). */}
-          <TabsContent value="repo" className="mt-4">
+          <TabsContent value="repo" className={SHEET}>
             <CharterListing scopes={["repo", "builtin"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
-          <TabsContent value="vendor" className="mt-4 space-y-6">
+          <TabsContent value="vendor" className={`${SHEET} grid items-start gap-4 md:has-[>section]:grid-cols-[210px_minmax(0,1fr)]`}>
             <VendorSources />
             <CharterListing scopes={["vendor"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
-          <TabsContent value="test" className="mt-4">
+          <TabsContent value="test" className={SHEET}>
             <TestSuites />
           </TabsContent>
         </Tabs>

@@ -57,10 +57,10 @@ export function CharterListing({
   const listed = primitives.filter(({ data }) => data.kind === shown);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-baseline gap-2">
-        <h2 className="font-semibold">Charter primitives</h2>
-        <span className="text-sm text-muted-foreground">{primitives.length} in this charter</span>
+    <div className="min-w-0">
+      <div className="mb-3 flex items-baseline gap-[9px]">
+        <h2 className="text-[12.5px] font-bold">Charter primitives</h2>
+        <span className="text-[11.5px] text-zinc-400">{primitives.length} in this charter</span>
         {/* A new primitive is written in this repository's own layer, so only
             the tab listing it offers one. */}
         {scopes.includes("repo") && (
@@ -72,29 +72,35 @@ export function CharterListing({
 
       <ToggleGroup
         type="single"
-        variant="outline"
-        size="sm"
+        spacing={1.5}
         aria-label="Kinds"
-        className="flex-wrap"
+        className="mb-3 flex-wrap"
         value={shown}
         // A chip clicked again stays on: some kind is always shown.
         onValueChange={(value) => value !== "" && onKindChange(value)}
       >
         {[...counts].map(([one, count]) => (
-          <ToggleGroupItem key={one} value={one} aria-label={one} className="gap-2 px-3">
+          <ToggleGroupItem
+            key={one}
+            value={one}
+            aria-label={one}
+            className={`group/chip h-auto cursor-pointer gap-1.5 rounded-[9px] border bg-background px-2.5 py-1.5 text-[11.5px] font-medium text-zinc-700 capitalize hover:bg-background hover:text-zinc-700 data-[state=on]:border-foreground data-[state=on]:bg-foreground data-[state=on]:font-semibold data-[state=on]:text-white ${count === 0 && one !== shown ? "opacity-50" : ""}`}
+          >
             {one}
-            <Badge variant="secondary">{count}</Badge>
+            <Badge className="rounded-none bg-transparent p-0 font-mono text-[10px] font-normal text-zinc-400 group-data-[state=on]/chip:text-white/70">{count}</Badge>
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
 
-      <p className="text-sm">
-        <span className="mr-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">Activates when</span>
-        <span aria-label="Activates when">{kinds[shown]}</span>
+      <p className="mb-2.5 flex items-baseline gap-2 px-0.5">
+        <span className="shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">Activates when</span>
+        <span className="text-xs leading-normal text-zinc-700" aria-label="Activates when">
+          {kinds[shown]}
+        </span>
       </p>
 
       {listed.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">No {shown} in this charter yet.</p>
+        <p className="rounded-[14px] border p-[22px] text-center text-[12.5px] text-zinc-400">No {shown} in this charter yet.</p>
       ) : (
         <Rows kind={shown} listed={listed} />
       )}
@@ -107,9 +113,9 @@ export function CharterListing({
 function CharterFaults({ faultsByFile }: { faultsByFile: DataDTOs.FaultsByFile }) {
   const files = Object.entries(faultsByFile.data.files);
   return (
-    <div className="space-y-4">
-      <Alert variant="destructive">
-        <AlertTitle>The engine will not read this charter</AlertTitle>
+    <div className="space-y-3.5">
+      <Alert variant="destructive" className="rounded-xl border-[#f6d9d9] bg-[#fef6f6]">
+        <AlertTitle className="text-[12.5px] font-bold text-foreground">The engine will not read this charter</AlertTitle>
         <AlertDescription>
           {files.length} file{files.length === 1 ? " is" : "s are"} refused, so there is no listing to show. Fix
           {files.length === 1 ? " it" : " them"} and the charter comes back.
@@ -124,8 +130,8 @@ function CharterFaults({ faultsByFile }: { faultsByFile: DataDTOs.FaultsByFile }
  *  listed — said as the engine said it. */
 function RaisedFault({ fault }: { fault: DataDTOs.Fault }) {
   return (
-    <Alert variant="destructive">
-      <AlertTitle>{fault.data.message}</AlertTitle>
+    <Alert variant="destructive" className="rounded-xl border-[#f6d9d9] bg-[#fef6f6]">
+      <AlertTitle className="text-[12.5px] font-bold text-foreground">{fault.data.message}</AlertTitle>
       <AlertDescription>{fault.data.fix}</AlertDescription>
     </Alert>
   );
@@ -154,55 +160,68 @@ function Rows({ kind, listed }: { kind: string; listed: DataDTOs.ScopedPrimitive
   const mixing = kind !== "mixin";
 
   return (
-    <Table aria-label={`${kind} primitives`}>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Id</TableHead>
-          <TableHead>Description</TableHead>
-          {guide && (
-            <>
-              <TableHead className="text-right">Matching globs</TableHead>
-              <TableHead className="text-right">Rationale</TableHead>
-            </>
-          )}
-          {mixing && <TableHead className="text-right">Mixins</TableHead>}
-          <TableHead />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {listed.map(({ data: { identity, description, file, headers } }) => {
-          const globs = namedIn(headers.globs);
-          return (
-            <TableRow key={identity}>
-              <TableCell>
-                <Button variant="link" className="h-auto p-0 font-mono font-semibold" title={`Open ${file}`} onClick={() => open("primitive", { identity })}>
-                  {String(headers.id)}
-                </Button>
-              </TableCell>
-              <TableCell className="whitespace-normal">
-                <div className="font-medium">{description}</div>
-                <div className="font-mono text-xs text-muted-foreground">{file}</div>
-              </TableCell>
-              {guide && (
-                <>
-                  {/* A guide declaring no globs is carried on every turn, as if
-                      it matched every file, which is worth reading as something
-                      rather than as a blank. */}
-                  <Chips named={globs} none="all patterns" said={globs === undefined} label="Matching globs" />
-                  <Chips named={namedIn(headers.rationale)} none="none" said={false} label="Rationale" />
-                </>
-              )}
-              {mixing && <Chips named={namedIn(headers.mixins)} none="none" said={false} label="Mixins" />}
-              <TableCell className="w-8">
-                <Button variant="ghost" size="icon" className="size-7" aria-label={`Explain ${identity}`} onClick={() => open("explanation", { identity })}>
-                  <CircleHelp />
-                </Button>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <div className="overflow-hidden rounded-[14px] border bg-background">
+      <Table aria-label={`${kind} primitives`} className="table-fixed">
+        <TableHeader>
+          <TableRow className="border-[#ececef] bg-zinc-50 hover:bg-zinc-50 [&>th]:h-auto [&>th]:px-[15px] [&>th]:py-[9px] [&>th]:text-[9.5px] [&>th]:font-bold [&>th]:tracking-[0.07em] [&>th]:text-zinc-400 [&>th]:uppercase">
+            <TableHead className="w-[170px]">Id</TableHead>
+            <TableHead>Description</TableHead>
+            {guide && (
+              <>
+                <TableHead className="w-[170px] text-right">Matching globs</TableHead>
+                <TableHead className="w-[120px] text-right">Rationale</TableHead>
+              </>
+            )}
+            {mixing && <TableHead className="w-[120px] text-right">Mixins</TableHead>}
+            <TableHead className="w-[50px]" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {listed.map(({ data: { identity, description, file, headers } }) => {
+            const globs = namedIn(headers.globs);
+            return (
+              <TableRow key={identity} className="group/row border-[#f7f7f8] align-top hover:bg-zinc-50 [&>td]:px-[15px] [&>td]:py-3">
+                <TableCell className="truncate">
+                  <Button
+                    variant="link"
+                    className="block h-auto max-w-full truncate rounded-none p-0 text-left font-mono text-[11.5px] font-bold text-foreground"
+                    title={`Open ${file}`}
+                    onClick={() => open("primitive", { identity })}
+                  >
+                    {String(headers.id)}
+                  </Button>
+                </TableCell>
+                <TableCell className="whitespace-normal">
+                  <div className="text-[12.5px] font-semibold">{description}</div>
+                  <div className="mt-[3px] truncate font-mono text-[10.5px] text-zinc-400">{file}</div>
+                </TableCell>
+                {guide && (
+                  <>
+                    {/* A guide declaring no globs is carried on every turn, as if
+                        it matched every file, which is worth reading as something
+                        rather than as a blank. */}
+                    <Chips named={globs} none="all patterns" said={globs === undefined} label="Matching globs" />
+                    <Chips named={namedIn(headers.rationale)} none="none" said={false} label="Rationale" />
+                  </>
+                )}
+                {mixing && <Chips named={namedIn(headers.mixins)} none="none" said={false} label="Mixins" />}
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-auto size-6 rounded-[7px] border border-transparent text-zinc-300 group-hover/row:border-zinc-200 group-hover/row:bg-background group-hover/row:text-zinc-400 hover:!border-foreground hover:bg-background hover:!text-foreground [&_svg:not([class*='size-'])]:size-[13px]"
+                    aria-label={`Explain ${identity}`}
+                    onClick={() => open("explanation", { identity })}
+                  >
+                    <CircleHelp />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -212,12 +231,12 @@ function Rows({ kind, listed }: { kind: string; listed: DataDTOs.ScopedPrimitive
 function Chips({ named, none, said, label }: { named: readonly string[] | undefined; none: string; said: boolean; label: string }) {
   return (
     <TableCell aria-label={label}>
-      <div className="flex flex-wrap justify-end gap-1">
+      <div className="flex min-w-0 flex-wrap content-start justify-end gap-1">
         {named === undefined || named.length === 0 ? (
-          <span className={said ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>{none}</span>
+          <span className={`text-[10.5px] ${said ? "text-destructive" : "text-zinc-300"}`}>{none}</span>
         ) : (
           named.map((one) => (
-            <Badge key={one} variant="secondary" className="font-mono">
+            <Badge key={one} title={one} className="block max-w-full truncate rounded-[5px] bg-zinc-100 px-1.5 py-0.5 font-mono text-[10px] font-normal text-zinc-700">
               {one}
             </Badge>
           ))

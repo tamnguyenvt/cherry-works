@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "./ui/alert.js";
 import { Button } from "./ui/button.js";
 import { Input } from "./ui/input.js";
 import { Label } from "./ui/label.js";
+import { DIALOG_FOOTER } from "../lib/utils.js";
 
 /**
  * A source to install, by the address git fetches and an optional version
@@ -27,35 +28,35 @@ export function AddVendorSource({ onDone, onClose }: { onDone: (did: string, det
   };
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">A vendor source is a repository of primitives laid out by kind.</p>
-      <div className="divide-y rounded-lg border">
-        <div className="grid grid-cols-[7rem_1fr] items-center gap-x-3 px-3 py-2.5">
-          <Label htmlFor="vendor-source" className="text-xs tracking-wider text-muted-foreground uppercase">
+    <div className="space-y-3.5">
+      <p className="text-[13px] leading-[1.65] text-zinc-700">A vendor source is a repository of primitives laid out by kind.</p>
+      <div className="divide-y divide-zinc-100 overflow-hidden rounded-[11px] border border-[#f0f0f0]">
+        <div className="flex items-center gap-3 px-[13px] py-2.5">
+          <Label htmlFor="vendor-source" className="w-[118px] shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">
             source
           </Label>
           <Input id="vendor-source" value={source} spellCheck={false} onChange={(event) => setSource(event.target.value)} />
         </div>
-        <div className="grid grid-cols-[7rem_1fr] items-center gap-x-3 gap-y-1 px-3 py-2.5">
-          <Label htmlFor="vendor-version" className="text-xs tracking-wider text-muted-foreground uppercase">
+        <div className="flex items-center gap-3 px-[13px] py-2.5">
+          <Label htmlFor="vendor-version" className="w-[118px] shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">
             version
           </Label>
           <Input id="vendor-version" value={version} spellCheck={false} onChange={(event) => setVersion(event.target.value)} />
-          <span className="col-start-2 text-xs text-muted-foreground">a tag, branch or commit; left empty, the source's default</span>
+          <span className="max-w-[45%] shrink text-right text-[11.5px] text-zinc-400">a tag, branch or commit; left empty, the source's default</span>
         </div>
       </div>
-      <div className="rounded-lg border bg-muted/40 px-3 py-2.5" aria-label="Reserved directories">
-        <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Reserved directories at its root</div>
+      <div className="rounded-[11px] border bg-zinc-50 px-3.5 py-3" aria-label="Reserved directories">
+        <div className="mb-1 text-[11px] font-bold tracking-[0.07em] text-zinc-400 uppercase">Reserved directories at its root</div>
         {Object.entries(kindsQuery.data?.data ?? {}).map(([kind, activatesWhen]) => (
-          <div key={kind} className="flex items-baseline gap-3 border-t py-1.5">
-            <span className="min-w-28 font-mono text-xs">{kind}/</span>
-            <span className="text-xs text-muted-foreground">{activatesWhen}</span>
+          <div key={kind} className="flex items-baseline gap-[9px] border-t border-zinc-100 py-[7px]">
+            <span className="min-w-[150px] font-mono text-[11.5px]">{kind}/</span>
+            <span className="text-[11.5px] text-zinc-500">{activatesWhen}</span>
           </div>
         ))}
       </div>
       {refusal !== null && (
-        <Alert variant="destructive">
-          <AlertTitle>Refused, and nothing was installed</AlertTitle>
+        <Alert variant="destructive" className="rounded-xl border-[#f6d9d9] bg-[#fef6f6]">
+          <AlertTitle className="text-[12.5px] font-bold text-foreground">Refused, and nothing was installed</AlertTitle>
           <AlertDescription>
             <p className="whitespace-pre-line">
               {refusal.data.message} <span className="text-muted-foreground">{refusal.data.fix}</span>
@@ -63,7 +64,7 @@ export function AddVendorSource({ onDone, onClose }: { onDone: (did: string, det
           </AlertDescription>
         </Alert>
       )}
-      <div className="flex gap-2">
+      <div className={DIALOG_FOOTER}>
         <Button disabled={addVendor.isPending || source.trim() === ""} onClick={() => void addSource()}>
           Add source
         </Button>

@@ -143,15 +143,18 @@ export function DialogProvider({ children }: { children: ReactNode }) {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         {shown !== null && dialog !== null && (
           <DialogContent
-            className="max-h-[85vh] overflow-y-auto sm:max-w-3xl"
+            className="flex max-h-[88vh] w-[920px] max-w-[calc(100%-48px)] flex-col gap-0 overflow-hidden rounded-[15px] border-0 p-0 shadow-[0_34px_80px_-22px_rgba(0,0,0,0.4)] sm:max-w-[calc(100%-48px)]"
             onInteractOutside={(event) => dialog.holdsDraft && event.preventDefault()}
             onEscapeKeyDown={(event) => dialog.holdsDraft && event.preventDefault()}
           >
-            <DialogHeader>
-              <DialogTitle>{dialog.title(shown.params)}</DialogTitle>
-              <DialogDescription className="font-mono text-xs">{dialog.context(shown.params)}</DialogDescription>
+            <DialogHeader className="flex-row items-baseline gap-2.5 border-b border-[#f0f0f0] py-[15px] pr-12 pl-[18px]">
+              <DialogTitle className="text-[14.5px] font-bold tracking-[-0.01em]">{dialog.title(shown.params)}</DialogTitle>
+              <DialogDescription className="font-mono text-[11px] text-zinc-400">{dialog.context(shown.params)}</DialogDescription>
             </DialogHeader>
-            {dialog.render(shown.params, helpers)}
+            {/* What a dialog renders scrolls under its header; a row of buttons
+                it ends on is drawn as its footer (`DIALOG_FOOTER`), and a strip or
+                a list of rows is drawn from edge to edge by `-mx-5`. */}
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-[18px]">{dialog.render(shown.params, helpers)}</div>
           </DialogContent>
         )}
       </Dialog>

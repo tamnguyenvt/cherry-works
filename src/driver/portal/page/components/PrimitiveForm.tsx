@@ -18,6 +18,7 @@ import { Button } from "./ui/button.js";
 import { Input } from "./ui/input.js";
 import { Label } from "./ui/label.js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select.js";
+import { DIALOG_FOOTER } from "../lib/utils.js";
 
 /**
  * One primitive, new or opened, in the shape its kind takes (FR-117, FR-118).
@@ -142,8 +143,8 @@ function PrimitiveEditor({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="divide-y rounded-lg border">
+    <div className="space-y-3.5">
+      <div className={FORM_ROWS}>
         {primitiveSnapshot === null ? (
           <>
             <FormRow label="kind" htmlFor="primitive-kind">
@@ -167,10 +168,10 @@ function PrimitiveEditor({
         ) : (
           <>
             <FormRow label="kind" hint="the identity is the file — rename by creating a new primitive and deleting this one">
-              <span className="font-mono text-sm">{kind}</span>
+              <span className="font-mono text-[11.5px]">{kind}</span>
             </FormRow>
             <FormRow label="id">
-              <span className="font-mono text-sm">{id}</span>
+              <span className="font-mono text-[11.5px]">{id}</span>
             </FormRow>
           </>
         )}
@@ -203,7 +204,6 @@ function PrimitiveEditor({
                 id={`header-${field}`}
                 spellCheck={false}
                 autoComplete="off"
-                className="font-mono"
                 value={typeof answers[field] === "string" ? answers[field] : ""}
                 list={field === "rationale" ? "corpus-identities" : undefined}
                 onChange={(event) => setAnswers({ ...answers, [field]: event.currentTarget.value })}
@@ -222,7 +222,7 @@ function PrimitiveEditor({
 
       {faults.length > 0 && <Refusals faults={faults} />}
 
-      <div className="flex gap-2">
+      <div className={DIALOG_FOOTER}>
         <Button onClick={() => void savePrimitive()}>{primitiveSnapshot === null ? "Create primitive" : "Save"}</Button>
         <Button variant="outline" onClick={onClose}>
           Cancel
@@ -243,26 +243,26 @@ function PrimitiveEditor({
 function ReadOnlyPrimitive({ primitiveSnapshot }: { primitiveSnapshot: DataDTOs.PrimitiveSnapshot }) {
   const { kind, description, file, scope, headers } = primitiveSnapshot.data.scopedPrimitive.data;
   return (
-    <div className="space-y-4">
-      <Alert>
-        <AlertTitle>{scope === "vendor" ? "Installed from a vendor, and read-only here." : "Built into cw, and read-only here."}</AlertTitle>
-        <AlertDescription>To differ from it, author a primitive of your own under an identity of its own.</AlertDescription>
+    <div className="space-y-3.5">
+      <Alert className="rounded-xl border-[#7c3aed33] bg-[#f6f2ff]">
+        <AlertTitle className="text-[12.5px] font-bold">{scope === "vendor" ? "Installed from a vendor, and read-only here." : "Built into cw, and read-only here."}</AlertTitle>
+        <AlertDescription className="text-[11.5px] text-zinc-600">To differ from it, author a primitive of your own under an identity of its own.</AlertDescription>
       </Alert>
-      <div className="divide-y rounded-lg border">
+      <div className={FORM_ROWS}>
         <FormRow label="kind">
-          <span className="font-mono text-sm">{kind}</span>
+          <span className="font-mono text-[11.5px]">{kind}</span>
         </FormRow>
         <FormRow label="file">
-          <span className="font-mono text-sm">{file}</span>
+          <span className="font-mono text-[11.5px]">{file}</span>
         </FormRow>
         <FormRow label="description">
-          <span className="text-sm">{description}</span>
+          <span className="text-xs">{description}</span>
         </FormRow>
         {Object.entries(headers)
           .filter(([field]) => field !== "id" && field !== "description")
           .map(([field, value]) => (
             <FormRow key={field} label={field}>
-              <span className="font-mono text-sm">{typeof value === "string" ? value : value.join(", ")}</span>
+              <span className="font-mono text-[11.5px]">{typeof value === "string" ? value : value.join(", ")}</span>
             </FormRow>
           ))}
       </div>
@@ -271,15 +271,18 @@ function ReadOnlyPrimitive({ primitiveSnapshot }: { primitiveSnapshot: DataDTOs.
   );
 }
 
+/** The box the form's rows are drawn in, a rule between each. */
+const FORM_ROWS = "overflow-hidden rounded-[11px] border border-[#f0f0f0] bg-background divide-y divide-zinc-100";
+
 /** One row of the form: the header's name, what answers it, and a hint. */
 function FormRow({ label, htmlFor, hint, children }: { label: string; htmlFor?: string; hint?: string | undefined; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[7rem_1fr] items-center gap-x-3 gap-y-1 px-3 py-2.5">
-      <Label htmlFor={htmlFor} className="text-xs tracking-wider text-muted-foreground uppercase">
+    <div className="flex items-center gap-3 px-[13px] py-2.5">
+      <Label htmlFor={htmlFor} className="w-[118px] shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">
         {label}
       </Label>
-      <div className="min-w-0">{children}</div>
-      {hint !== undefined && <span className="col-start-2 text-xs text-muted-foreground">{hint}</span>}
+      <div className="min-w-0 flex-1">{children}</div>
+      {hint !== undefined && <span className="max-w-[45%] shrink text-right text-[11.5px] text-zinc-400">{hint}</span>}
     </div>
   );
 }
@@ -296,7 +299,6 @@ function ListAnswer({ field, entries, onChange }: { field: string; entries: read
             id={index === 0 ? `header-${field}` : undefined}
             aria-label={`${field} ${index + 1}`}
             spellCheck={false}
-            className="font-mono"
             value={entry}
             onChange={(event) => onChange(shownEntries.map((one, at) => (at === index ? event.currentTarget.value : one)))}
           />
@@ -304,7 +306,7 @@ function ListAnswer({ field, entries, onChange }: { field: string; entries: read
             <Button
               variant="outline"
               size="icon"
-              className="size-8 shrink-0"
+              className="size-[26px] shrink-0 rounded-[7px] text-zinc-400 [&_svg:not([class*='size-'])]:size-[11px]"
               aria-label={`Remove this ${field} entry`}
               onClick={() => onChange(shownEntries.filter((_, at) => at !== index))}
             >
@@ -313,7 +315,12 @@ function ListAnswer({ field, entries, onChange }: { field: string; entries: read
           )}
         </div>
       ))}
-      <Button variant="outline" size="sm" className="self-start border-dashed" onClick={() => onChange([...shownEntries, ""])}>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-auto self-start rounded-[7px] border-dashed border-zinc-300 px-2.5 py-[5px] text-[11px] font-normal text-zinc-500"
+        onClick={() => onChange([...shownEntries, ""])}
+      >
         Add {field}
       </Button>
     </div>
@@ -323,8 +330,8 @@ function ListAnswer({ field, entries, onChange }: { field: string; entries: read
 /** What the engine refused, in its words (Story 6 scenario 2). */
 function Refusals({ faults }: { faults: readonly DataDTOs.Fault[] }) {
   return (
-    <Alert variant="destructive">
-      <AlertTitle>Refused, and nothing was written</AlertTitle>
+    <Alert variant="destructive" className="rounded-xl border-[#f6d9d9] bg-[#fef6f6]">
+      <AlertTitle className="text-[12.5px] font-bold text-foreground">Refused, and nothing was written</AlertTitle>
       <AlertDescription>
         {faults.map(({ data: { message, fix } }) => (
           <p key={message} className="whitespace-pre-line">

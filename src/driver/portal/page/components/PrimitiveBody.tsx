@@ -22,6 +22,9 @@ const bodyMarkdown = new Marked({
   },
 });
 
+/** One of Source and Preview, drawn as a segment of the switch between them. */
+const SEGMENT = "h-auto flex-none cursor-pointer rounded-md px-[11px] py-[5px] text-[11.5px] font-semibold text-zinc-500 data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.08)]";
+
 /**
  * One primitive's body, as its source or as it reads rendered (FR-119).
  *
@@ -32,21 +35,25 @@ const bodyMarkdown = new Marked({
  */
 export function PrimitiveBody({ body, onChange }: { body: string; onChange?: (body: string) => void }) {
   return (
-    <Tabs defaultValue={onChange === undefined ? "preview" : "source"} className="rounded-lg border">
-      <div className="flex items-center gap-3 border-b px-3 py-2">
-        <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Body</span>
-        <span className="font-mono text-xs text-muted-foreground">markdown</span>
-        <TabsList className="ml-auto">
-          <TabsTrigger value="source">Source</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
+    <Tabs defaultValue={onChange === undefined ? "preview" : "source"} className="gap-0 overflow-hidden rounded-xl border bg-background">
+      <div className="flex items-center gap-2.5 border-b border-[#f0f0f0] px-[13px] py-[9px]">
+        <span className="text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">Body</span>
+        <span className="font-mono text-[10.5px] text-zinc-400">markdown</span>
+        <TabsList className="ml-auto h-auto gap-0.5 rounded-lg bg-[#f0f0f2] p-[3px]">
+          <TabsTrigger value="source" className={SEGMENT}>
+            Source
+          </TabsTrigger>
+          <TabsTrigger value="preview" className={SEGMENT}>
+            Preview
+          </TabsTrigger>
         </TabsList>
       </div>
-      <TabsContent value="source" className="h-72">
+      <TabsContent value="source" className="h-[300px] flex-none">
         <BodySource body={body} onChange={onChange} />
       </TabsContent>
       <TabsContent value="preview">
         <div
-          className="min-h-32 px-4 py-3 text-sm leading-relaxed [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:font-mono [&_code]:text-xs [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h2]:font-semibold [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_ul]:list-disc"
+          className="min-h-32 px-[18px] py-4 text-[12.5px] leading-[1.65] text-zinc-700 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:font-mono [&_code]:text-xs [&_h1]:mb-[7px] [&_h1]:text-[15px] [&_h1]:font-bold [&_h1]:text-foreground [&_h2]:mt-4 [&_h2]:mb-[7px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:text-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_ul]:list-disc"
           dangerouslySetInnerHTML={{ __html: bodyMarkdown.parse(body, { async: false }) }}
         />
       </TabsContent>
