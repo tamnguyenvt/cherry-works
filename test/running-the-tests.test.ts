@@ -249,3 +249,18 @@ test("a charter with an error resolves nothing and says where to read what is wr
   assert.match(problem, /Nothing was resolved\./);
   assert.match(problem, /\.cw\/charter\/guide\/broken\.md/);
 });
+
+test("a guide naming an mcp no layer holds resolves nothing, naming the guide (FR-143)", async () => {
+  const run = commandLine({
+    ...charter,
+    [at("guide/billing.md")]: primitive("guide", "billing", ['globs: ["src/**/*.ts"]', 'mcps: ["mcp:missing"]']),
+    ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
+  });
+
+  const { code, result, problem } = await run();
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.equal(result, "");
+  assert.match(problem, /Nothing was resolved\./);
+  assert.match(problem, /\.cw\/charter\/guide\/billing\.md/);
+});

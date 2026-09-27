@@ -285,3 +285,14 @@ test("warnings alone let the build through, and doctor passes once it is built (
   assert.equal(code, EXIT_OK);
   assert.match(written.everything, /Charter: {2}holds, with 3 warnings\./);
 });
+
+test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-144)", async () => {
+  const { errorCount, warnCount, faultsByFile } = await doctorOf({
+    ...pinningDown("guide:no-any"),
+    [at("guide/no-any.md")]: guide("no-any"),
+    [at("mcp/mfbs/billing.md")]: primitive("mcp", "mfbs/billing", ["endpoint: https://mcp.example.com/", "auth: [oauth]", "tools: [search_code]"]),
+  });
+
+  assert.deepEqual([errorCount, warnCount], [0, 1]);
+  assert.match(messagesUnder(faultsByFile, ".cw/charter/mcp/mfbs/billing.md").join(), /warn: No primitive names "mcp:mfbs\/billing" under "mcps"/);
+});

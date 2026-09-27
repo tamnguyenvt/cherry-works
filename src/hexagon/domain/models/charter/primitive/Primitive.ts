@@ -3,6 +3,7 @@ import { AgentPrimitive } from "./AgentPrimitive.js";
 import { CommandPrimitive } from "./CommandPrimitive.js";
 import { CorpusPrimitive } from "./CorpusPrimitive.js";
 import { GuidePrimitive } from "./GuidePrimitive.js";
+import { McpPrimitive } from "./McpPrimitive.js";
 import { MixinPrimitive } from "./MixinPrimitive.js";
 import { PlaybookPrimitive } from "./PlaybookPrimitive.js";
 import { PosturePrimitive } from "./PosturePrimitive.js";
@@ -25,6 +26,7 @@ export const PRIMITIVE_CLASSES = [
   PosturePrimitive,
   CorpusPrimitive,
   MixinPrimitive,
+  McpPrimitive,
 ] as const;
 
 /**

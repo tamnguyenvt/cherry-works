@@ -96,8 +96,13 @@ test("what a kind says a header holds is what its schema reads it as (FR-004)", 
       assert.equal(primitiveHeadersOf(one.kind).find((taken) => taken.field === field)?.shape, shape);
 });
 
+/** Every kind a terminal can answer whole. An mcp needs `endpoint` or
+ *  `command` beside what it requires, which of the two being its author's
+ *  choice, so it is written from flags alone (plan §19.1). */
+const answerableKinds = KINDS.filter((kind) => kind !== "mcp");
+
 test("what is answered is what the file holds, read back as the same primitive (FR-039)", async () => {
-  for (const kind of KINDS) {
+  for (const kind of answerableKinds) {
     const { code, held: files } = await adding(["add", kind, "something"], answering(kind));
     const written = (await held(files, `.cw/charter/${kind}/something.md`)) ?? "";
 
@@ -190,7 +195,7 @@ test("a file that is already there is never written over (FR-039)", async () => 
 });
 
 test("what is typed as flags is the file that is written from answers, word for word (FR-014, SC-005)", async () => {
-  for (const kind of KINDS) {
+  for (const kind of answerableKinds) {
     const typed = await adding(["add", kind, "something", ...flagging(kind)]);
     const answered = await adding(["add", kind, "something"], answering(kind));
 

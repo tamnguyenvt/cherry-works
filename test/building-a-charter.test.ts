@@ -269,6 +269,18 @@ test("a charter with an error builds nothing at all, and says which files (FR-00
   await assert.rejects(() => contentsOf(held, ".cw/out/CHARTER.md"));
 });
 
+test("a guide naming an mcp no layer holds builds nothing, the error under the guide (FR-143)", async () => {
+  const { held, build } = building({
+    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mcps: ["mcp:missing"]']),
+  });
+
+  const planSummaryDTO = await build();
+
+  assert.ok(planSummaryDTO.type === "FaultsByFile");
+  assert.deepEqual(Object.keys(planSummaryDTO.data.files), [".cw/charter/guide/no-any.md"]);
+  await assert.rejects(() => contentsOf(held, ".cw/out/CHARTER.md"));
+});
+
 test("a warning is not an error: a charter that only warns still builds (FR-005)", async () => {
   const { build } = building({
     [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:gone"]),

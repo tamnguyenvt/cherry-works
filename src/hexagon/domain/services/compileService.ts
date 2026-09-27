@@ -75,7 +75,7 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
 export function catalogueOf(charter: CharterRoot, fileOf: (one: ScopedPrimitive) => string): Catalogue {
   return Catalogue.of(
     charter.primitives.map((one) => {
-      const { id, description, tags, globs, rationale, mixins } = one.primitive.headers;
+      const { id, description, tags, globs, rationale, mixins, mcps } = one.primitive.headers;
       return {
         identity: one.identity,
         kind: one.primitive.kind,
@@ -86,6 +86,7 @@ export function catalogueOf(charter: CharterRoot, fileOf: (one: ScopedPrimitive)
         ...(globs === undefined ? {} : { globs }),
         ...(rationale === undefined ? {} : { rationale }),
         ...(mixins === undefined ? {} : { mixins }),
+        ...(mcps === undefined ? {} : { mcps }),
       };
     }),
   );
@@ -115,9 +116,10 @@ function forAgent(agent: AgentProvider, charter: CharterRoot): readonly ClaudeCo
  * files it names or carried on every turn where it names none. What the charter kept apart, the listing
  * keeps apart (FR-011); what the host cannot tell apart, it is not told.
  *
- * Two kinds project nothing. A `corpus` is cited rather than loaded, and a
+ * Three kinds project nothing. A `corpus` is cited rather than loaded, a
  * `mixin` has no life of its own — its body is written into each host that pulls it in, which
- * `bodyOf` does and this is the only caller of.
+ * `bodyOf` does and this is the only caller of — and an `mcp` is reached through
+ * `cw mcp serve` rather than read.
  */
 export function compileClaude(charter: CharterRoot): readonly ClaudeComponent[] {
   const asSettings = charter.primitives.filter(isSettingComponent);

@@ -33,6 +33,9 @@ export const CommonHeaders = z.object({
   /** `corpus:<id>`, the reasoning this primitive cites (FR-005). */
   rationale: goodLine.optional(),
   mixins: z.array(goodLine).readonly().optional(),
+  /** `mcp:<id>` each, the places this primitive's reasons are kept outside the
+   *  repository (FR-143). */
+  mcps: z.array(goodLine).readonly().optional(),
 });
 export type CommonHeaders = Readonly<z.infer<typeof CommonHeaders>>;
 
@@ -135,6 +138,8 @@ export type RequiredHeaders = Readonly<Record<string, "line" | "list">>;
  *
  * The fault does not list what is wrong, header by header: it shows the kind's
  * own sample, and an author holding the two side by side sees the difference.
+ * Where the schema said what is wrong in its own words — a rule spanning two
+ * headers, which no sample shows at a glance — those words are the message.
  */
 export function headersOf<Schema extends z.ZodType>(
   sampledKind: {
@@ -148,10 +153,11 @@ export function headersOf<Schema extends z.ZodType>(
   if (parsed.success) return parsed.data;
 
   const { kind, sample } = sampledKind;
+  const refinementMessages = parsed.error.issues.filter((issue) => issue.code === "custom").map((issue) => issue.message);
   const sampleLines = Object.entries({ kind, ...sample }).map(([field, value]) => `${field}: ${formatFrontmatterValue(value)}`);
   return throwAggregateError([
     new CharterPrimitiveFault(
-      `These headers are not what a ${kind} holds.`,
+      refinementMessages.length > 0 ? refinementMessages.join(" ") : `These headers are not what a ${kind} holds.`,
       `Write them the way this ${kind} does:\n${sampleLines.join("\n")}`,
     ),
   ]);

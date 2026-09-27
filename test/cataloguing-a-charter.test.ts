@@ -64,7 +64,7 @@ test("the full catalogue records every descriptive header and where the body is"
   const catalogue = await catalogueOf(
     new InMemoryFileReaders({
       [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", {
-        headers: ["tags: [types]", "rationale: corpus:type-safety", "mixins: [house-style]"],
+        headers: ["tags: [types]", "rationale: corpus:type-safety", "mixins: [house-style]", 'mcps: ["mcp:mfbs/billing"]'],
       }),
     }),
   );
@@ -80,6 +80,7 @@ test("the full catalogue records every descriptive header and where the body is"
       globs: ["src/**/*.ts"],
       rationale: "corpus:type-safety",
       mixins: ["house-style"],
+      mcps: ["mcp:mfbs/billing"],
     },
     { ...builtinEntry, file: ".cw/out/skill/cw-author.md" },
   ]);

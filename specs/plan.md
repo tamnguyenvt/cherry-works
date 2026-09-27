@@ -2411,6 +2411,17 @@ Acceptance: `cw add guide mfbs/no-any` writes `.cw/charter/guide/mfbs/no-any.md`
 
 Acceptance: `cw kinds mcp` answers its headers and sample; a file with both `endpoint` and `command`, with neither, or with `command` and `auth: [token]` but no `tokenEnv` is refused with the sample; a guide naming `mcp:missing` stops `cw build` and `cw test` with the error under the guide; an unnamed mcp is a warning in `cw doctor` and stops nothing.
 
+Intent: an author can write an `mcp` primitive in either shape and name it from any primitive's `mcps`; the charter refuses a malformed one, stops on a name nothing holds, and warns about one nothing names.
+
+Criteria, beside the acceptance above:
+
+- `mcp` is the tenth kind in `PRIMITIVE_CLASSES`, with `activatesWhen` and a sample; its schema stays one object refined, so `primitiveHeadersOf` still reads its headers off `shape`. `requires` is `tools` alone, as [§19.1](#191-the-kind-and-the-header-fr-142--fr-144) says: which of `endpoint` or `command` a file needs is the refinement's to say.
+- Refused: `endpoint` that is not `https://`, or `http://` to other than `127.0.0.1`/`localhost`; `auth` outside `oauth`, `token`; `auth` other than `[token]` under `command`; `tokenEnv` without `command` and `auth: [token]`, and missing under them; `args` without `command`. The sample shown is the `command` one where the file declared `command`, the `endpoint` one otherwise.
+- `mcps` is a list of `mcp:<id>` on every kind; the unresolved entry is an `error` under the citing file, so everything that stops on an error stops on it.
+- The catalogue entry, its DTO and `cw list --full` carry `mcps` where declared.
+
+Non-goals: the list of places and `.cw/out/mcps.json` ([T5.003](tasks/005-mcp-knowledge.md#t5.003)); anything the host is given ([T5.004](tasks/005-mcp-knowledge.md#t5.004)); reaching a place or checking its `tools` exist ([FR-153](spec.md#fr-153)); the portal showing `mcps` as links or `cw explain` listing who names an mcp.
+
 #### 17.5.3 T5.003 — The list of places
 
 `Places` in `domain/models/output/`, made by `compile` from every layer's mcp primitives: grouped by `endpoint` and `path`, prefix, the union of `auth`, the union of `tools`, `declaredBy` ([§19.3](#193-the-list-of-places-fr-145-fr-157)). It projects to `.cw/out/mcps.json`, `replace`. Two `tokenEnv`s for one command and the too-long served name are composite `error`s.

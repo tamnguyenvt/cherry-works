@@ -26,7 +26,7 @@ test("every kind the charter knows has a chip, carrying how many primitives of i
 
     assert.deepEqual(
       await chipsOf(page),
-      KINDS.map((kind, index) => [kind, ["1", "0", "0", "1", "0", "0", "0", "1", "1"][index]]),
+      KINDS.map((kind, index) => [kind, ["1", "0", "0", "1", "0", "0", "0", "1", "1", "0"][index]]),
     );
   });
 });

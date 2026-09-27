@@ -6,6 +6,7 @@ import { FaultsByFile } from "../src/hexagon/domain/models/Fault.js";
 import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
 import { MixinPrimitive } from "../src/hexagon/domain/models/charter/primitive/MixinPrimitive.js";
 import { CorpusPrimitive } from "../src/hexagon/domain/models/charter/primitive/CorpusPrimitive.js";
+import { McpPrimitive } from "../src/hexagon/domain/models/charter/primitive/McpPrimitive.js";
 import type { Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
 
 const root = folderURL("file:///repo/.cw/charter/");
@@ -48,6 +49,13 @@ const mixin = (id: string, vendor?: string): Authored =>
 
 const corpus = (id: string, vendor?: string): Authored =>
   scoped(vendor, at(`corpus/${id}.md`), CorpusPrimitive.of({ id, description: `Why ${id}.` }, "Body."));
+
+const mcp = (id: string, vendor?: string): Authored =>
+  scoped(
+    vendor,
+    at(`mcp/${id}.md`),
+    McpPrimitive.of({ id, description: `The ${id} place.`, endpoint: "https://mcp.example.com/", auth: ["oauth"], tools: ["search"] }, "Body."),
+  );
 
 const faultsByFilesOf = (...primitives: Authored[]): FaultsByFile["files"] =>
   new CharterRoot(primitives, FaultsByFile.none).compositeFaultsByFiles.files;
@@ -190,4 +198,24 @@ test("a corpus cited only by a vendored primitive is cited", () => {
     faultsByFilesOf(corpus("type-safety"), guide("no-any", "guide/no-any.md", { rationale: "corpus:type-safety" }, "team")),
     {},
   );
+});
+
+test("an mcp a primitive names is nothing to report, whichever layer authored it (FR-143)", () => {
+  assert.deepEqual(faultsByFilesOf(guide("no-any", "guide/no-any.md", { mcps: ["mcp:mfbs/billing"] }), mcp("mfbs/billing", "team")), {});
+});
+
+test("an mcp no layer holds is an error under the file naming it (FR-143)", () => {
+  const faultsByFiles = faultsByFilesOf(guide("no-any", "guide/no-any.md", { mcps: ["mcp:missing"] }));
+
+  assert.deepEqual(Object.keys(faultsByFiles), [at("guide/no-any.md")]);
+  assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["error"]);
+  assert.match(messages(faultsByFiles), /names "mcp:missing" under "mcps", and this charter holds no mcp of that identity/);
+});
+
+test("an mcp no primitive names is a warning under its own file (FR-144)", () => {
+  const faultsByFiles = faultsByFilesOf(mcp("mfbs/billing"));
+
+  assert.deepEqual(Object.keys(faultsByFiles), [at("mcp/mfbs/billing.md")]);
+  assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["warn"]);
+  assert.match(messages(faultsByFiles), /No primitive names "mcp:mfbs\/billing" under "mcps"/);
 });

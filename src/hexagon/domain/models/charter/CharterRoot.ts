@@ -201,12 +201,17 @@ export class CharterRoot {
    * rationale no corpus answers to, which is a warning rather than an error:
    * the rule holds without its reasoning, and the author is told the reasoning
    * is gone (FR-005). A corpus nobody cites and a mixin nobody pulls in are
-   * warnings too: nothing breaks, and nothing reads them either (FR-014).
+   * warnings too: nothing breaks, and nothing reads them either (FR-014). An
+   * mcp is held the other way round: one named and missing is an error, since
+   * it is a place the agent is told about and cannot reach (FR-143), and one
+   * nobody names only a warning (FR-144).
    */
   get compositeFaultsByFiles(): FaultsByFile {
     const everyPrimitive = this.primitives;
     const mixinsByIdentity = this.mixins;
     const corpusIdentities = this.corpora;
+    const mcpIdentities = new Set(everyPrimitive.filter(({ primitive }) => primitive.kind === "mcp").map((one) => one.identity));
+    const namedMcps = new Set(everyPrimitive.flatMap(({ primitive }) => primitive.headers.mcps ?? []));
 
     const fileByIdentity = new Map<string, string>();
     const identityByNormalizedIdentity = new Map<NormalizedIdentity, string>();
@@ -282,6 +287,16 @@ export class CharterRoot {
         );
       }
 
+      for (const namedMcp of primitive.headers.mcps ?? [])
+        if (!mcpIdentities.has(namedMcp))
+          addFault(
+            file,
+            new CharterRootFault(
+              `This names "${namedMcp}" under "mcps", and this charter holds no mcp of that identity. The agent would be told of a place it cannot reach.`,
+              `Author that mcp, correct the name, or drop it from "mcps". An mcp is named as "mcp:<id>", whichever layer authored it.`,
+            ),
+          );
+
       // Reasoning nobody cites and text nobody lends are dead weight in every
       // layer, a vendor's included: its author is told, and can remove what
       // brought them (FR-014).
@@ -300,6 +315,15 @@ export class CharterRoot {
           new CharterRootFault(
             `No primitive pulls in the mixin "${primitive.headers.id}", so its body is never written anywhere.`,
             `Name "${primitive.headers.id}" under "mixins" of the primitives it was written for, or delete it.`,
+            "warn",
+          ),
+        );
+      if (primitive.kind === "mcp" && !namedMcps.has(identity))
+        addFault(
+          file,
+          new CharterRootFault(
+            `No primitive names "${identity}" under "mcps", so nothing an agent reads leads to it.`,
+            `Name it from the primitives whose reasons are kept there with "mcps: [${identity}]", or delete it.`,
             "warn",
           ),
         );

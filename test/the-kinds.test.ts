@@ -70,6 +70,7 @@ test("the set is exactly the kinds the charter format defines", () => {
     "command",
     "corpus",
     "guide",
+    "mcp",
     "mixin",
     "playbook",
     "posture",
@@ -125,7 +126,10 @@ test("the headers it names are the ones cw add takes, one flag apiece (FR-004, s
       "--header",
       `${field}=${field === "signal" ? "SessionStart" : `what ${field} holds`}`,
     ]);
-    const { code, held: files, problems } = await asking(["add", kind, "something", ...flags]);
+    // An mcp is told which server it is beside what it requires: which shape
+    // it takes is its author's choice, so neither is required (plan §19.1).
+    const shapeFlags = kind === "mcp" ? ["--header", "endpoint=https://mcp.example.com/", "--header", "auth=oauth"] : [];
+    const { code, held: files, problems } = await asking(["add", kind, "something", ...flags, ...shapeFlags]);
 
     assert.equal(code, EXIT_OK, `${kind}: ${problems}`);
     assert.notEqual(await files.readIfThere(new URL(`.cw/charter/${kind}/something.md`, repoPath)), undefined, kind);
@@ -148,4 +152,62 @@ test("a word that is no kind is answered with every kind there is (FR-003)", asy
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"rule" is not a kind/);
   for (const kind of KINDS) assert.match(problems, new RegExp(kind));
+});
+
+/** One mcp file with these headers beside its id, description and tools, read
+ *  the way a file of the charter is. */
+const mcpOf = (...headers: readonly string[]) =>
+  primitiveOf(
+    ["---", "kind: mcp", "id: mfbs/billing", "description: Billing.", "tools: [search_code]", ...headers, "---", ""].join("\n"),
+    new YamlParser(),
+  );
+
+/** The one fault a refused file raised: what is wrong, and the sample it is
+ *  fixed with. */
+const refusalOf = (read: () => unknown) => {
+  try {
+    read();
+  } catch (raised) {
+    assert.ok(raised instanceof AggregateError);
+    const [fault] = raised.errors as Error[];
+    return { message: fault!.message, fix: (fault as Error & { fix: string }).fix };
+  }
+  return assert.fail("the file was read");
+};
+
+test("an mcp is read in either shape the data model writes (FR-142)", () => {
+  assert.equal(mcpOf("endpoint: https://api.githubcopilot.com/mcp/", "auth: [oauth, token]", "path: moneyforward/billing").kind, "mcp");
+  assert.equal(mcpOf("command: npx", 'args: ["-y", "@modelcontextprotocol/server-github"]', "tokenEnv: GITHUB_TOKEN", "auth: [token]").kind, "mcp");
+  assert.equal(mcpOf("command: ./local-server").kind, "mcp");
+  assert.equal(mcpOf("endpoint: http://127.0.0.1:8080/mcp", "auth: [token]").kind, "mcp");
+});
+
+test("an mcp declaring both shapes, or neither, is refused with the sample of the one it was nearer (FR-142)", () => {
+  const bothShapesRefusal = refusalOf(() => mcpOf("endpoint: https://mcp.example.com/", "command: npx", "auth: [token]"));
+  assert.match(bothShapesRefusal.message, /both "endpoint" and "command"/);
+  assert.match(bothShapesRefusal.fix, /command: npx/);
+
+  const noShapeRefusal = refusalOf(() => mcpOf());
+  assert.match(noShapeRefusal.message, /neither "endpoint" nor "command"/);
+  assert.match(noShapeRefusal.fix, /endpoint: https:\/\/api\.githubcopilot\.com\/mcp\//);
+});
+
+test("a command taking a token without naming where it reads it is refused with the command's sample (FR-142)", () => {
+  const tokenEnvRefusal = refusalOf(() => mcpOf("command: npx", "auth: [token]"));
+
+  assert.match(tokenEnvRefusal.message, /"tokenEnv"/);
+  assert.match(tokenEnvRefusal.fix, /tokenEnv: GITHUB_PERSONAL_ACCESS_TOKEN/);
+});
+
+test("an mcp is refused a way of signing in its shape does not take (FR-142)", () => {
+  assert.match(refusalOf(() => mcpOf("command: npx", "auth: [oauth]", "tokenEnv: TOKEN")).message, /by token alone/);
+  assert.match(refusalOf(() => mcpOf("endpoint: https://mcp.example.com/")).message, /"auth"/);
+  assert.match(refusalOf(() => mcpOf("endpoint: https://mcp.example.com/", "auth: [password]")).message, /not what a mcp holds/);
+});
+
+test("an endpoint in the clear is refused unless it is this machine (FR-142)", () => {
+  assert.match(refusalOf(() => mcpOf("endpoint: http://mcp.example.com/", "auth: [oauth]")).message, /https:\/\/ URL/);
+  // What is reached is the host the URL names, not the text it opens with.
+  assert.match(refusalOf(() => mcpOf('endpoint: "http://localhost:1@mcp.example.com/"', "auth: [oauth]")).message, /https:\/\/ URL/);
+  assert.match(refusalOf(() => mcpOf("endpoint: not a url", "auth: [oauth]")).message, /https:\/\/ URL/);
 });
