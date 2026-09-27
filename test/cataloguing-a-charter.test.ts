@@ -75,13 +75,13 @@ test("the full catalogue records every descriptive header and where the body is"
       kind: "guide",
       id: "no-any",
       description: "What no-any is for, in one line.",
-      file: ".cw/charter/guide/no-any.md",
+      file: ".cw/out/guide/no-any.md",
       tags: ["types"],
       globs: ["src/**/*.ts"],
       rationale: "corpus:type-safety",
       mixins: ["house-style"],
     },
-    { ...builtinEntry, file: "(built into cw)/skill/cw-author.md" },
+    { ...builtinEntry, file: ".cw/out/skill/cw-author.md" },
   ]);
 });
 
@@ -95,14 +95,14 @@ test("a header the author left out is left out, not recorded as nothing", async 
   assert.deepEqual(Object.keys(entry!).sort(), ["description", "file", "globs", "id", "identity", "kind"]);
 });
 
-test("a vendored primitive is named as it was authored, at the path it was installed to", async () => {
+test("a vendored primitive is catalogued at its compiled file, as every layer's is (FR-140)", async () => {
   const vendored = new URL("team/guide/no-any.md", vendorRoot);
   const catalogue = await catalogueOf(new InMemoryFileReaders({ [vendored.href]: primitive("guide", "no-any") }));
 
   const [entry] = catalogue.full;
 
   assert.equal(entry!.identity, "guide:no-any");
-  assert.equal(entry!.file, ".cw/vendor/team/guide/no-any.md");
+  assert.equal(entry!.file, ".cw/out/guide/no-any.md");
 });
 
 test("the compact catalogue carries what an agent surveys by, and nothing else", async () => {

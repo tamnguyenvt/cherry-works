@@ -63,6 +63,8 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
     ".cw/out/catalog.json",
     ".cw/out/catalog.min.json",
     ".cw/out/CHARTER.md",
+    ".cw/out/guide/no-any.md",
+    ".cw/out/skill/cw-author.md",
     "CLAUDE.md",
     ".claude/skills/skill-cw-author/SKILL.md",
     ".claude/rules/guide-no-any.md",
@@ -109,7 +111,9 @@ test("a projection whose primitive is gone is taken away by the next build (FR-0
 
   const built = filesOf(await build());
 
-  assert.deepEqual(built.deleted, [".claude/commands/ship.md"]);
+  // Its compiled document goes with it, as every projection of it does (FR-139).
+  assert.deepEqual(built.deleted, [".cw/out/command/ship.md", ".claude/commands/ship.md"]);
+  await assert.rejects(() => contentsOf(held, ".cw/out/command/ship.md"));
   await assert.rejects(() => contentsOf(held, ".claude/commands/ship.md"));
 });
 
@@ -282,7 +286,13 @@ test("a charter naming no agent still gets the surface every reader shares (FR-0
 
   const built = filesOf(await build());
 
-  assert.deepEqual(built.added, [".cw/out/catalog.json", ".cw/out/catalog.min.json", ".cw/out/CHARTER.md"]);
+  assert.deepEqual(built.added, [
+    ".cw/out/catalog.json",
+    ".cw/out/catalog.min.json",
+    ".cw/out/CHARTER.md",
+    ".cw/out/guide/no-any.md",
+    ".cw/out/skill/cw-author.md",
+  ]);
 });
 
 test("an agent this engine cannot compile for stops the build before it reads a charter (FR-033)", async () => {
@@ -321,7 +331,9 @@ test("a host's settings file is never taken away, however little the charter say
 
   const built = filesOf(await build());
 
-  assert.deepEqual(built.deleted, []);
+  // The posture's compiled document is the charter's and goes; the settings it
+  // wrote into are the repository's too, and stay.
+  assert.deepEqual(built.deleted, [".cw/out/posture/sandboxed.md"]);
   assert.ok(await contentsOf(held, ".claude/settings.json"));
 });
 

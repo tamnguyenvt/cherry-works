@@ -158,7 +158,8 @@ test("a skill says its triggers in the description, which is what decides it is 
 
   assert.ok(
     files[".claude/skills/skill-refactoring/SKILL.md"]?.includes(
-      "description: What refactoring is for, in one line. Use when: a refactor is asked for; a file is split.",
+      // Quoted, because `: ` inside a plain value is a second mapping to YAML.
+      'description: "What refactoring is for, in one line. Use when: a refactor is asked for; a file is split."',
     ),
   );
 });
@@ -186,7 +187,7 @@ test("a playbook is loaded the way a skill is, since this host has one kind for 
 
   assert.ok(
     files[".claude/skills/playbook-release/SKILL.md"]?.includes(
-      "description: What release is for, in one line. Use when: a release is cut.",
+      'description: "What release is for, in one line. Use when: a release is cut."',
     ),
   );
 });
@@ -242,7 +243,13 @@ test("a mixin's body is written before its host's, which is the one place a mixi
 test("nothing is compiled for an agent that was not named as installed", async () => {
   const files = await putDown(aCommand, []);
 
-  assert.deepEqual(Object.keys(files), [".cw/out/catalog.json", ".cw/out/catalog.min.json", ".cw/out/CHARTER.md"]);
+  assert.deepEqual(Object.keys(files), [
+    ".cw/out/catalog.json",
+    ".cw/out/catalog.min.json",
+    ".cw/out/CHARTER.md",
+    ".cw/out/command/ship.md",
+    ".cw/out/skill/cw-author.md",
+  ]);
 });
 
 test("a guide's rule has the mixins it pulls in already written into it (FR-006)", async () => {

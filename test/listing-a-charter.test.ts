@@ -99,11 +99,21 @@ test("every primitive is listed, ordered by identity, with what it is for", asyn
   );
 });
 
-test("the full listing says where the body is and what else was declared about it", async () => {
+test("the full listing names the file each primitive was authored in, and what else was declared about it (FR-140)", async () => {
   const { results } = await run(charter);
 
   assert.match(results, /^ {2}\.cw\/charter\/guide\/no-any\.md$/m);
   assert.match(results, /^ {2}globs: src\/\*\*\/\*\.ts, tags: types$/m);
+});
+
+test("a listing is read off the charter, so every layer is named where it was authored, not where it compiled (FR-140)", async () => {
+  const { results } = await run({
+    "file:///repo/.cw/vendor/team/guide/no-console.md": primitive("guide", "no-console"),
+  });
+
+  assert.match(results, /^ {2}\.cw\/vendor\/team\/guide\/no-console\.md$/m);
+  assert.match(results, /^ {2}\(built into cw\)\/skill\/cw-author\.md$/m);
+  assert.doesNotMatch(results, /\.cw\/out\//);
 });
 
 test("--min says what an agent surveys by, and nothing else", async () => {

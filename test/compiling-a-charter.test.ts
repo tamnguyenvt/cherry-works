@@ -10,6 +10,7 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CwAuthorSkill } from "../src/hexagon/domain/models/charter/builtin/CwAuthorSkill.js";
+import { isStamped } from "../src/hexagon/domain/models/output/StampedDocument.js";
 
 const CLAUDE: AgentProvider = "claude";
 const repo = new URL("file:///repo");
@@ -65,6 +66,10 @@ test("compiling produces both listings, the charter file, and what the installed
     ".cw/out/catalog.json",
     ".cw/out/catalog.min.json",
     ".cw/out/CHARTER.md",
+    // Every primitive as it compiled, in the catalogue's order, since the
+    // catalogue is what names each file (FR-139, FR-140).
+    ".cw/out/guide/no-any.md",
+    ".cw/out/skill/cw-author.md",
     // The file that agent reads unasked, which is what sends it to the
     // orientation above.
     "CLAUDE.md",
@@ -88,13 +93,19 @@ test("no listing and no projection can be produced without the others (SC-004)",
   // list, and no argument that narrows it to a single file. The second argument
   // says which agents are installed, never which file is wanted.
   assert.equal(compile.length, 2);
-  assert.equal((await built(oneGuide)).written.length, 6);
+  assert.equal((await built(oneGuide)).written.length, 8);
 });
 
 test("a repository with no agent installed still compiles the whole neutral half (FR-019)", async () => {
   const { written } = await built(oneGuide, []);
 
-  assert.deepEqual(written, [".cw/out/catalog.json", ".cw/out/catalog.min.json", ".cw/out/CHARTER.md"]);
+  assert.deepEqual(written, [
+    ".cw/out/catalog.json",
+    ".cw/out/catalog.min.json",
+    ".cw/out/CHARTER.md",
+    ".cw/out/guide/no-any.md",
+    ".cw/out/skill/cw-author.md",
+  ]);
 });
 
 test("the full catalogue is written as the catalogue says it, one entry per line", async () => {
@@ -107,12 +118,46 @@ test("the full catalogue is written as the catalogue says it, one entry per line
       kind: "guide",
       id: "no-any",
       description: "What no-any is for, in one line.",
-      file: ".cw/charter/guide/no-any.md",
+      file: ".cw/out/guide/no-any.md",
       globs: ["src/**/*.ts"],
     },
-    { ...builtinEntry, file: "(built into cw)/skill/cw-author.md" },
+    { ...builtinEntry, file: ".cw/out/skill/cw-author.md" },
   ]);
   assert.ok(contents.includes("\n  {\n"));
+});
+
+test("every primitive compiles to one document holding its headers, then its mixins' bodies, then its own (FR-139)", async () => {
+  const { files } = await built({
+    [new URL("mixin/house-style.md", root).href]: [
+      "---",
+      "kind: mixin",
+      "id: house-style",
+      "description: What every rule here shares.",
+      "---",
+      "",
+      "LENT BODY",
+      "",
+    ].join("\n"),
+    [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", "OWN BODY").replace(
+      "---\n\nOWN BODY",
+      "mixins: [house-style]\n---\n\nOWN BODY",
+    ),
+  });
+
+  const document = files[".cw/out/guide/no-any.md"] ?? "";
+
+  assert.match(document, /^---\nkind: guide\nid: no-any\n/);
+  assert.match(document, /mixins: \["house-style"\]\n---\n\nLENT BODY\n\nOWN BODY\n/);
+  assert.ok(isStamped(document));
+});
+
+test("what the engine brings compiles to a file on disk like any other primitive (SC-033)", async () => {
+  const { files } = await built(oneGuide);
+
+  const catalogue: readonly { identity: string; file: string }[] = JSON.parse(files[".cw/out/catalog.json"] ?? "");
+
+  for (const { identity, file } of catalogue) assert.ok(files[file], `${identity} names ${file}, which was not written`);
+  assert.match(files[".cw/out/skill/cw-author.md"] ?? "", /^---\nkind: skill\nid: cw-author\n/);
 });
 
 test("the compact catalogue spends no bytes on whitespace", async () => {
@@ -164,4 +209,25 @@ test("a charter with a broken file still compiles what the readable files hold",
     JSON.parse(files[".cw/out/catalog.min.json"] ?? "").map((one: { identity: string }) => one.identity),
     ["guide:no-any", "skill:cw-author"],
   );
+});
+
+test("a header YAML would read as something else is quoted in the compiled document, so it reads back as written", async () => {
+  const run = '[ -z "$(git status --porcelain)" ] || exit 2';
+  const { files } = await built({
+    [new URL("sensor/on-stop.md", root).href]: [
+      "---",
+      "kind: sensor",
+      "id: on-stop",
+      "description: Refuse to stop with work unsaved.",
+      "signal: Stop",
+      `run: '${run}'`,
+      "---",
+      "",
+    ].join("\n"),
+  });
+
+  const document = files[".cw/out/sensor/on-stop.md"] ?? "";
+  const [, headers = ""] = document.split("---\n");
+
+  assert.deepEqual(new YamlParser().parse(headers).run, run);
 });

@@ -2,11 +2,11 @@
 
 **Created**: 2026-08-30
 
-**Updated**: 2026-09-22
+**Updated**: 2026-09-27
 
 **Status**: Draft
 
-**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm."
+**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there."
 
 ## Overview
 
@@ -39,7 +39,7 @@ A single charter covering design, planning and implementation at once has to be 
 
 ## User Scenarios & Testing *(mandatory)*
 
-Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, Stories 10 to 12 agent authoring, and Stories 13 to 15 distribution. A story's priority ranks it among the stories of its own part of the product.
+Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, Stories 10 to 12 agent authoring, Stories 13 to 15 distribution, and [Story 16](#user-story-16---open-every-primitive-as-it-was-compiled-priority-p1) the charter compiled for an agent to open. A story's priority ranks it among the stories of its own part of the product.
 
 ### User Story 1 - Author a charter and put the agent under it (Priority: P1)
 
@@ -324,6 +324,25 @@ A maintainer wants to put a new version in users' hands. They ask for a release 
 
 ---
 
+### User Story 16 - Open every primitive as it was compiled (Priority: P1)
+
+An agent surveying the charter finds a primitive in the catalogue and opens the file the catalogue names. Today that file is the one its author wrote: it lacks the mixins the primitive pulls in, it sits in whichever layer brought it, and for what the engine itself brings it is a name no one can open. After this, a build writes every primitive, from every layer, as one compiled document in the output folder — its headers, then the bodies of its mixins, then its own — and the catalogue names that document. What the agent opens is the whole of what the primitive says, in one place, whoever authored it. A person listing the charter is still shown the file they would edit.
+
+**Why this priority**: The catalogue is the agent's way into every body the charter holds, and today it sends the agent to partial text and, for one layer, to nothing.
+
+**Independent Test**: In a repository with one guide pulling in one mixin, one vendored primitive and the builtin skill, build; confirm `.cw/out/<kind>/<id>.md` exists for each, holds the mixin's body before the guide's, and is what `catalog.json` names; confirm `cw list` still names `.cw/charter/…`, `.cw/vendor/…` and `(built into cw)/…`; delete the guide and build; confirm its compiled document is gone.
+
+**Acceptance Scenarios**:
+
+1. **Given** a charter, **When** it is built, **Then** every primitive of every layer has one document at `.cw/out/<kind>/<id>.md`, holding its headers and, below them, the bodies of the mixins it pulls in, in the order it names them, before its own body.
+2. **Given** that build, **When** `catalog.json` is read, **Then** each entry's `file` is that primitive's compiled document, and no entry names a file under `.cw/charter/`, `.cw/vendor/` or the engine.
+3. **Given** the builtin skill, **When** the catalogue's `file` for it is opened, **Then** it is a file on disk holding the skill.
+4. **Given** a primitive deleted from the charter, **When** the charter is built again, **Then** its compiled document is gone.
+5. **Given** a compiled document hand-edited, or a primitive changed since the last build, **When** the build is previewed, **Then** the document is listed as one the build would write.
+6. **Given** any charter, **When** it is listed from the command line or the portal, **Then** each primitive is shown with the file it was authored in, as before.
+
+---
+
 ### Edge Cases
 
 **The charter and its engine**
@@ -342,6 +361,7 @@ A maintainer wants to put a new version in users' hands. They ask for a release 
 - Setup runs with nobody to ask in a repository that has chosen no agent yet — it stops and names the flag that answers it, since the agent has no default there.
 - Two commands run back to back over an unchanged charter — the charter is read once, not twice.
 - The engine stops shipping a primitive it once shipped — the next build deletes the surface it compiled to, the way a build deletes the projection of any primitive that is gone.
+- A catalogue built before compiled documents existed — the next build names the compiled documents in it, and `cw build --preview` lists every one as added.
 - A repository set up before the engine brought any primitive of its own — its charter holds what the engine brings from the first read, with nothing to migrate.
 
 **The portal**
@@ -582,6 +602,11 @@ A maintainer wants to put a new version in users' hands. They ask for a release 
 - <a id="fr-137"></a>**FR-137**: A release MUST be started by the maintainer running one command on their own machine, and every check of [FR-134](#fr-134) and [FR-135](#fr-135) MUST run on that path.
 - <a id="fr-138"></a>**FR-138**: The README MUST give the install from the registry as the way to get `cw`, and building from source as the contributor's way.
 
+**The compiled charter**
+
+- <a id="fr-139"></a>**FR-139**: A build MUST write every primitive of every layer as one compiled document at `.cw/out/<kind>/<id>.md`: its headers, and below them the bodies of the mixins it pulls in, in the order it names them, before its own. A compiled document MUST carry the mark of generated output, and MUST be deleted by the build that no longer compiles it.
+- <a id="fr-140"></a>**FR-140**: The full catalogue MUST name, as each primitive's file, its compiled document. A listing of the charter — on the command line and in the portal — MUST name the file each primitive was authored in, read off the charter rather than off the catalogue.
+
 **The portal: tests**
 
 - <a id="fr-124"></a>**FR-124**: The portal MUST list every test file with its name, description and case count, and each case's situation and expectation.
@@ -603,6 +628,7 @@ The shape of each is in the data model.
 - **Vendor source**: Charter content installed whole from a pinned git source (data-model).
 - **Catalogue**: The full and reduced listings of every primitive's descriptive fields (data-model).
 - **Compiled output**: The instruction surfaces generated from the charter for the agent to read (data-model).
+- **Compiled primitive**: One primitive as an agent opens it: its headers and the whole of its body, its mixins' included, written into the output folder whichever layer it came from (data-model).
 - **Explanation**: What the engine says about one identity: its file and layer, when it comes up, what it pulls in, what names it, and which cases pin it down (data-model).
 - **Warning**: A fault that is worth saying and not worth stopping on. Validation raises three of them ([FR-014](#fr-014)); shape in the data-model.
 - **Portal**: The graphical interface over one repository's charter, served on the developer's own machine for as long as its command runs. Holds no state about the charter of its own.
@@ -648,6 +674,7 @@ The shape of each is in the data model.
 - <a id="sc-030"></a>**SC-030**: No version is ever published whose tests failed, or whose package failed to set a fresh repository up and build it.
 - <a id="sc-031"></a>**SC-031**: Any published version is traced to the one commit it was built from in one step, and any running `cw` names its version in one command.
 - <a id="sc-032"></a>**SC-032**: A maintainer publishes a release with one action, and a refused release leaves the registry and the repository as they were.
+- <a id="sc-033"></a>**SC-033**: Every file the full catalogue names opens, and holds everything its primitive says with its mixins, for 100% of primitives, the engine's own included.
 
 ## Assumptions
 

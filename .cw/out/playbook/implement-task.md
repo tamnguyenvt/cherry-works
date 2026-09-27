@@ -1,6 +1,8 @@
 ---
-name: playbook-implement-task
-description: "Instruction for implement new task Use when: implement task XXX or implement next task."
+kind: playbook
+id: implement-task
+description: Instruction for implement new task
+triggers: ["implement task XXX or implement next task"]
 ---
 
 # task

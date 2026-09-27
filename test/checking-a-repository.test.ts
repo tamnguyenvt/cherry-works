@@ -117,7 +117,7 @@ test("a repository that has never been built is out of date, and fails (FR-040)"
   const { code, written } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /Built: {4}6 files out of date\. Run "cw build"\./);
+  assert.match(written.everything, /Built: {4}8 files out of date\. Run "cw build"\./);
 });
 
 test("staleness is the preview run, not a record kept of the last build (FR-040)", async () => {
@@ -128,7 +128,7 @@ test("staleness is the preview run, not a record kept of the last build (FR-040)
   const { code, written } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /Built: {4}1 file out of date/);
+  assert.match(written.everything, /Built: {4}2 files out of date/);
 });
 
 test("a charter with an error is counted, and read where every fault is (FR-040, SC-003)", async () => {

@@ -1,6 +1,8 @@
 ---
-name: skill-cw-author
-description: "Author a new primitive of this repository's charter, asking cw what its kind requires. Use when: write a rule; add a standard; write a skill; add a command; author a primitive of the charter."
+kind: skill
+id: cw-author
+description: Author a new primitive of this repository's charter, asking cw what its kind requires.
+triggers: ["write a rule", "add a standard", "write a skill", "add a command", "author a primitive of the charter"]
 ---
 
 # Authoring a primitive of this charter

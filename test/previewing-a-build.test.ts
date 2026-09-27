@@ -70,6 +70,8 @@ test("a repository that has never been built would have every file created (FR-0
     ".cw/out/catalog.json": "create",
     ".cw/out/catalog.min.json": "create",
     ".cw/out/CHARTER.md": "create",
+    ".cw/out/skill/cw-author.md": "create",
+    ".cw/out/guide/no-any.md": "create",
     "CLAUDE.md": "create",
     ".claude/rules/guide-no-any.md": "create",
     ".claude/skills/skill-cw-author/SKILL.md": "create",
@@ -102,6 +104,10 @@ test("a rule edited since the last build would be updated, and its listings with
     ".cw/out/catalog.json": "unchanged",
     ".cw/out/catalog.min.json": "unchanged",
     ".cw/out/CHARTER.md": "unchanged",
+    // The compiled document holds the body, so it changes with it; the engine's
+    // own skill does not.
+    ".cw/out/guide/no-any.md": "update",
+    ".cw/out/skill/cw-author.md": "unchanged",
     // The section in the entry file is a pointer and says nothing of any
     // primitive, so no edit to a body reaches it.
     "CLAUDE.md": "unchanged",

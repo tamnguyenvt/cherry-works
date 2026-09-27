@@ -24,7 +24,7 @@ import {
   workspaceSettingsDTO,
 } from "./dtos.js";
 import { contentHashOf } from "./helper.js";
-import { compile } from "../domain/services/compileService.js";
+import { catalogueOf } from "../domain/services/compileService.js";
 import { executePlan, plan, previewPlan } from "../service/buildService.js";
 import type { WorkspaceSettings } from "../domain/models/Settings.js";
 import { AGENT_PROVIDERS } from "../domain/models/AgentProvider.js";
@@ -147,11 +147,10 @@ export class CharterAuthoring implements ForManagingCharter {
    * What the charter holds, listed, narrowed to one kind where one is named
    * (FR-011, FR-012).
    *
-   * The listing is the one the charter compiles to, asked for the way everything
-   * else is: `compile` hands back everything one reading produces, and this
-   * takes the listing out of it (SC-004). No agent is named, since what an agent
-   * reads is not what is being asked for here — a repository that compiles for
-   * none still lists what it holds.
+   * Read off the charter, not off what it compiles to: a person is shown the
+   * file each primitive was authored in, which is the one they would edit and
+   * what says which layer it came from, where the catalogue a build writes sends
+   * an agent to the compiled one (FR-140).
    *
    * Whether the word narrowing it is a kind at all is asked here, of the
    * domain that holds the set. A caller passes on what was typed and knows
@@ -170,7 +169,7 @@ export class CharterAuthoring implements ForManagingCharter {
     const [charter, , faultsByFiles] = await this.#read();
     if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
 
-    const { catalogue } = compile(charter, []);
+    const catalogue = catalogueOf(charter, (one) => one.file);
     return catalogueDTO(kind === undefined ? catalogue : catalogue.filterByKind(kind));
   }
 

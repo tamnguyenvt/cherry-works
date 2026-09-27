@@ -1,6 +1,7 @@
 import type { AgentProvider } from "../models/AgentProvider.js";
 import { PRIMITIVE_CLASSES } from "../models/charter/primitive/Primitive.js";
-import { Catalogue, CharterMd, type CharterOutput } from "../models/output/CharterOutput.js";
+import { Catalogue, CharterMd, CompiledPrimitive, type CharterOutput } from "../models/output/CharterOutput.js";
+import { OUT_DIRECTORY } from "../path.js";
 import type { CharterRoot, ScopedPrimitive } from "../models/charter/CharterRoot.js";
 import { AgentPrimitive } from "../models/charter/primitive/AgentPrimitive.js";
 import { CommandPrimitive } from "../models/charter/primitive/CommandPrimitive.js";
@@ -46,29 +47,48 @@ import { ClaudeSkillComponent } from "../models/output/providers/claude/document
  */
 export function compile(charter: CharterRoot, agents: readonly AgentProvider[]): CharterOutput {
   return {
-    // A header nobody wrote is left out rather than listed as nothing: a
-    // listing says what the author declared. `file` is where the body sits
-    // inside the workspace — a vendored primitive reads as
-    // `.cw/vendor/<name>/...`, which is where it is.
-    catalogue: Catalogue.of(
-      charter.primitives.map((one) => {
-        const { id, description, tags, globs, rationale, mixins } = one.primitive.headers;
-        return {
-          identity: one.identity,
-          kind: one.primitive.kind,
-          id,
-          description,
-          file: one.file,
-          ...(tags === undefined ? {} : { tags }),
-          ...(globs === undefined ? {} : { globs }),
-          ...(rationale === undefined ? {} : { rationale }),
-          ...(mixins === undefined ? {} : { mixins }),
-        };
-      }),
-    ),
+    // What an agent opens from the catalogue is the primitive as it compiled,
+    // not the file its author wrote: the whole body in one place, under the
+    // output folder whichever layer brought it (FR-140). The catalogue is where
+    // this path is said; the projection reads it from there.
+    catalogue: catalogueOf(charter, (one) => `${OUT_DIRECTORY}/${one.primitive.kind}/${one.primitive.headers.id}.md`),
     charterMd: CharterMd.of(PRIMITIVE_CLASSES),
+    compiledPrimitives: charter.primitives.map((one) =>
+      CompiledPrimitive.of(one.identity, one.primitive.toMarkdown(charter.bodyOf(one))),
+    ),
     providerComponents: agents.flatMap((agent) => forAgent(agent, charter)),
   };
+}
+
+/**
+ * Every primitive of the charter, listed under the file a reader is sent to for
+ * its body (FR-011).
+ *
+ * Two readers, two files. The catalogue a build writes sends an agent to the
+ * compiled primitive; the listing a person asks for sends them to the file they
+ * would edit, which is also what says which layer it came from (FR-140). Which
+ * is the caller's to say, and everything else an entry holds is the same.
+ *
+ * A header nobody wrote is left out rather than listed as nothing: a listing
+ * says what the author declared.
+ */
+export function catalogueOf(charter: CharterRoot, fileOf: (one: ScopedPrimitive) => string): Catalogue {
+  return Catalogue.of(
+    charter.primitives.map((one) => {
+      const { id, description, tags, globs, rationale, mixins } = one.primitive.headers;
+      return {
+        identity: one.identity,
+        kind: one.primitive.kind,
+        id,
+        description,
+        file: fileOf(one),
+        ...(tags === undefined ? {} : { tags }),
+        ...(globs === undefined ? {} : { globs }),
+        ...(rationale === undefined ? {} : { rationale }),
+        ...(mixins === undefined ? {} : { mixins }),
+      };
+    }),
+  );
 }
 
 /** Every file one agent this engine compiles for reads (FR-018). One arm per

@@ -313,7 +313,7 @@ Three faults of severity `warn`, each filed under a file of the charter:
 ```ts
 CatalogueCompact = { identity, kind, id, description }
 CatalogueFull    = CatalogueCompact & {
-  file:       string,
+  file:       string,        // the compiled primitive, .cw/out/<kind>/<id>.md (§8.1)
   tags?:      string[],
   globs?:     string[],
   rationale?: string,
@@ -327,7 +327,13 @@ CatalogueFull    = CatalogueCompact & {
   ten times smaller than the charter it describes ([SC-005](spec.md#sc-005)).
 
 Neither carries a body ([FR-027](spec.md#fr-027)); the `file` each full entry records is where the
-body is. A primitive's layer is read off its `file`.
+body is: the compiled primitive, whichever layer the primitive came from
+([FR-140](spec.md#fr-140)). The catalogue is output, so it says nothing of layers.
+
+A listing of the charter — what `cw list` and the portal show — has the same
+fields, read off the charter root rather than off the catalogue: its `file` is
+the one the primitive was authored in, `ScopedPrimitive.file`, from which its
+layer is read.
 
 ## 8. Compiled output (FR-030 – FR-040)
 
@@ -335,6 +341,7 @@ body is. A primitive's layer is read off its `file`.
 CharterOutput = {
   catalogue:          Catalogue,          // both catalogues of §7
   charterMd:          CharterMd,          // .cw/out/CHARTER.md
+  compiledPrimitives: CompiledPrimitive[],// §8.1, one per primitive of every layer
   providerComponents: ClaudeComponent[],  // one host's files, for each agent chosen
 }
 
@@ -347,7 +354,7 @@ Projection = {
 }
 ```
 
-The catalogue and `CHARTER.md` are what every reader of the charter gets,
+The catalogue, `CHARTER.md` and the compiled primitives are what every reader of the charter gets,
 whichever agent it is ([FR-031](spec.md#fr-031)). Each agent the repository chose adds components
 of its own, one per primitive that host has a kind for. Charter kinds and host
 kinds are not one for one:
@@ -373,6 +380,20 @@ its entry file, `CLAUDE.md` for claude, between `<!-- CHERRYWORKS START -->` and
 | `upsertWithMarker` | the host's entry file, the repository's own | never |
 
 Compiled output is generated, never authored ([FR-032](spec.md#fr-032)).
+
+### 8.1 Compiled primitive (FR-139)
+
+```ts
+CompiledPrimitive = {
+  identity: PrimitiveIdentity,   // what its catalogue entry is found by
+  document: string,              // the headers as authored, then charterRoot.bodyOf(it): mixins' bodies, then its own
+}
+```
+
+Lands at the `file` its catalogue entry names, `.cw/out/<kind>/<id>.md`, `replace`, stamped as generated. One per
+primitive of every layer, mixins and corpora included, so every entry of the
+catalogue names a file that is there. The headers are the author's, `mixins`
+among them, so a reader sees which bodies were lent above the primitive's own.
 
 **Plan summary.** What a build did, or a preview would do, to each file:
 

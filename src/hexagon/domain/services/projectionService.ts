@@ -60,6 +60,14 @@ export function charterOutputProjection(
       contents: output.charterMd.toStampedDocument(),
       projectionPolicy: output.charterMd.projection,
     },
+    // Each primitive lands where the catalogue sends an agent for it, so the
+    // file named and the file written are one (FR-140).
+    ...output.catalogue.full.flatMap(({ identity, file }) => {
+      const compiledPrimitive = output.compiledPrimitives.find((one) => one.identity === identity);
+      return compiledPrimitive === undefined
+        ? []
+        : [{ path: file, contents: compiledPrimitive.toStampedDocument(), projectionPolicy: compiledPrimitive.projection }];
+    }),
     ...agentProviders.map(entryFileProjection),
     ...output.providerComponents.map(componentProjection),
   ];

@@ -1,6 +1,8 @@
 ---
-name: playbook-plan-task
-description: "Instruction for creating spec and plan Use when: clarfify requirement."
+kind: playbook
+id: plan-task
+description: Instruction for creating spec and plan
+triggers: ["clarfify requirement"]
 ---
 
 use /speckit-clarify to clarify requirements 

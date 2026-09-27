@@ -82,14 +82,17 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    * The kind leads, since it is what decides how the rest is read (FR-003). A
    * list is written the way the parser gives it back, so an author opening the
    * file finds what they declared rather than a second spelling of it.
+   *
+   * The body is this primitive's own unless another is handed in: compiled, it
+   * is the body with its mixins' written in (FR-139).
    */
-  toMarkdown(): string {
+  toMarkdown(body: string = this.body): string {
     return [
       DELIMITER,
       ...Object.entries({ kind: this.kind, ...this.headers }).map(([field, value]) => `${field}: ${formatFrontmatterValue(value)}`),
       DELIMITER,
       "",
-      this.body,
+      body,
     ]
       .join("\n")
       // One newline at the end and no blank line before it, whether or not

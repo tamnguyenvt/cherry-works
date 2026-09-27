@@ -1,6 +1,6 @@
 # Implementation Plan: Cherry Works
 
-**Spec**: [spec.md](./spec.md) · **Data model**: [data-model.md](./data-model.md) · **Tasks**: [001](./tasks/001-charter-engine.md), [002](./tasks/002-charter-portal.md), [003](./tasks/003-npm-publish.md) · **Mockup**: [mockup/portal.html](./mockup/portal.html) · **Status**: Draft
+**Spec**: [spec.md](./spec.md) · **Data model**: [data-model.md](./data-model.md) · **Tasks**: [001](./tasks/001-charter-engine.md), [002](./tasks/002-charter-portal.md), [003](./tasks/003-npm-publish.md), [004](./tasks/004-compiled-charter.md) · **Mockup**: [mockup/portal.html](./mockup/portal.html) · **Status**: Draft
 
 This file says how the product is built: the design, the modules each part lives
 in, and why it is built this way. What the product must do is the spec's, cited
@@ -503,9 +503,9 @@ refusal is read and answered ([FR-102](spec.md#fr-102)). Every command it names 
 ### 6.1 One pass produces everything (FR-030 – FR-034, SC-004)
 
 `compile(charter, agents)` in `domain/services/compileService.ts` returns a
-`CharterOutput` (data-model [§8](data-model.md#8-compiled-output-fr-030--fr-040)): the catalogue, `CHARTER.md`, and each agent's
-components. The catalogue and `CHARTER.md` are compiled whether an agent is
-chosen or not ([FR-031](spec.md#fr-031)); each agent the repository chose adds its own components,
+`CharterOutput` (data-model [§8](data-model.md#8-compiled-output-fr-030--fr-040)): the catalogue, `CHARTER.md`, every compiled
+primitive, and each agent's components. The catalogue, `CHARTER.md` and the
+compiled primitives are compiled whether an agent is chosen or not ([FR-031](spec.md#fr-031)); each agent the repository chose adds its own components,
 one per primitive that host has a kind for. There is no exported path that
 produces the catalogues without the projections, which is the whole of [SC-004](spec.md#sc-004).
 
@@ -536,6 +536,21 @@ to nothing of their own. Each document carries its body with the bodies of the
 mixins it pulls in before it ([FR-037](spec.md#fr-037)). A claude file is named by the identity
 with its separators replaced, so `guide:no-any` and `skill:no-any` stay two
 files.
+
+Every primitive of every layer is also written as it compiles, to
+`.cw/out/<kind>/<id>.md`: its headers, then `bodyOf` — its mixins' bodies before
+its own ([FR-139](spec.md#fr-139)). That is the file the catalogue names ([FR-140](spec.md#fr-140)), so an agent that
+opens an entry reads the whole primitive, from one folder, whichever layer
+brought it, the engine's own included. The path is said once, by `compile`, as
+the catalogue entry's `file`; the projection walks the catalogue and puts each
+compiled primitive at the file its entry names, found by identity, so the two
+cannot name different files. Nothing new is needed to delete one: the cleanup plan
+already reads everything under `.cw/out/`.
+
+The catalogue is output for an agent, and says nothing of layers. `cw list` and
+the portal list the charter, not the catalogue: `list` reads the charter root's
+scoped primitives, whose `file` is where each was authored, so a person is still
+shown the file to edit and the layer it came from.
 
 A charter with an error compiles nothing and writes nothing ([FR-040](spec.md#fr-040)): the build
 hands the errors back.
@@ -1140,7 +1155,8 @@ holds one `TestSuite`, which is what the domain already calls it.
 - **A dependency the bundle expects but the package does not declare.** It works in this repository, where every development dependency is installed, and fails only in a user's install. Mitigation: a test compares the bare imports of `dist/main.js` with `dependencies`, both ways ([§18.1](#181-what-the-package-holds-fr-126-fr-127-fr-129-fr-130-fr-133)).
 - **A published version cannot be taken back.** A broken one stays installable. Mitigation: nothing is published that failed the install check; a fix is the next patch version (spec Assumptions).
 - **A path nobody can open.** `(built into cw)/…` reads as a path in a fault or a
-  catalogue entry and is not one. Accepted over an optional file, which puts a
+  listing and is not one. The catalogue no longer names it: an agent is sent to
+  the compiled primitive, which is on disk for every layer ([§6.1](#61-one-pass-produces-everything-fr-030--fr-034-sc-004)). Accepted over an optional file, which puts a
   branch into every reader for the one primitive that has none, and over a bare
   word, which would leave the catalogue no way to say which layer an entry came
   from.
@@ -2340,6 +2356,22 @@ Acceptance: a bare `npm publish` is refused; the release's own publish path is r
 The README's Install section leads with `npm install -g cherry-works`, then `npx cherry-works` for one run and `npm install -D cherry-works` for a pinned version, and moves building from source under Development ([FR-138](spec.md#fr-138)). Then the maintainer runs `pnpm release 0.1.0`.
 
 Acceptance: `npm install -g cherry-works` on a machine with nothing else installed gives a `cw` that sets a repository up, builds it and opens the portal ([Story 13](spec.md#user-story-13---install-cw-with-one-command-and-use-it-in-any-repository-priority-p1)); `git tag` shows `v0.1.0` at the release commit.
+
+### 17.4 Phase 004: the compiled charter
+
+The list is [tasks/004-compiled-charter.md](./tasks/004-compiled-charter.md): [Story 16](spec.md#user-story-16---open-every-primitive-as-it-was-compiled-priority-p1), one change ([SC-026](spec.md#sc-026)), cut from `develop` as `task/story-20-compiled-charter`.
+
+#### 17.4.1 T4.001 — Listing reads the charter
+
+`CharterAuthoring.list` stops compiling: it reads the charter root and answers one entry per scoped primitive, with the catalogue's fields and `file` as authored, through the function that makes a catalogue entry, handed the file. `filterByKind` and the ordering by identity come with it, so the DTO and what `cw list` and the portal show are unchanged.
+
+Acceptance: `cw list` prints the same lines before and after; the portal's vendor sources still count their primitives by folder.
+
+#### 17.4.2 T4.002 — Every primitive compiled into the output folder
+
+`CompiledPrimitive` beside `Catalogue` in `CharterOutput.ts`; `compile` makes one per scoped primitive, its document the primitive's `toMarkdown` over `charter.bodyOf(it)`; `compile` writes its path, `.cw/out/<kind>/<id>.md`, into the catalogue entry, and the projection walks the catalogue, putting each compiled primitive, found by identity, at its entry's `file`, stamped. Writing headers back out showed that `formatFrontmatterValue` wrote a value YAML reads as something else — a sensor's `run` starting with `[`, a description holding `: ` — bare; such a value is now written in double quotes, for every document written with it.
+
+Acceptance: after `cw build`, every `file` in `catalog.json` exists under `.cw/out/`, a guide's holds its mixin's body before its own, and the builtin skill's is on disk; a primitive removed leaves no compiled document after the next build; `cw build --preview` over a hand-edited one lists it.
 
 ## 18. Distribution (FR-126 – FR-138)
 

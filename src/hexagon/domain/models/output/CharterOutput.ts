@@ -15,6 +15,7 @@ import type { ClaudeComponent } from "./providers/claude/ClaudeComponent.js";
 export interface CharterOutput {
   readonly catalogue: Catalogue;
   readonly charterMd: CharterMd;
+  readonly compiledPrimitives: readonly CompiledPrimitive[];
   readonly providerComponents: readonly ClaudeComponent[];
 }
 
@@ -98,7 +99,9 @@ export interface CatalogueCompact {
  */
 export interface CatalogueFull extends CatalogueCompact {
   /** Where the body is, from the repository holding the charter — the one path
-   *  that reads the same on every machine that checks it out. */
+   *  that reads the same on every machine that checks it out. The compiled
+   *  primitive, in what a build writes; the authored file, in what a person is
+   *  listed (FR-140). */
   readonly file: string;
   readonly tags?: readonly string[];
   readonly globs?: readonly string[];
@@ -164,5 +167,38 @@ export class CharterMd {
 
   private constructor(
     readonly body: string,
+  ) {}
+}
+
+/**
+ * One primitive as an agent opens it: the headers its author wrote, and below
+ * them the whole of what it says — the bodies of the mixins it pulls in, then its
+ * own (FR-139).
+ *
+ * Every layer's primitive compiles to one of these, so what the catalogue sends
+ * an agent to is a file in the output folder for all of them, the engine's own
+ * included. The document is handed in whole: reading a primitive into it is the
+ * compiler's, and where it lands is the file the catalogue names for it.
+ */
+export class CompiledPrimitive {
+  static of(identity: string, document: string): CompiledPrimitive {
+    return new CompiledPrimitive(identity, document);
+  }
+
+  /** Generated, and the charter's alone: written whole over whatever is there,
+   *  and gone with the primitive it was compiled from. */
+  readonly projection: ProjectionPolicy = "replace";
+
+  /** This document as a reader opens it, with the stamp saying where to change
+   *  it instead. */
+  toStampedDocument(): StampedDocument {
+    return stamp(this.document);
+  }
+
+  private constructor(
+    /** Which primitive this is: what the catalogue entry naming its file is
+     *  found by. */
+    readonly identity: string,
+    readonly document: string,
   ) {}
 }
