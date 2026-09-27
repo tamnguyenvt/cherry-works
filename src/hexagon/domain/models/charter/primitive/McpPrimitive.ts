@@ -104,6 +104,15 @@ export class McpPrimitive extends BasePrimitive<McpHeaders> {
     tools: ["get_file_contents", "search_code", "list_pull_requests"],
   };
 
+  /** What a developer signs in to, and what places are told apart by beside
+   *  their `path`: the endpoint, or the command followed by each of its
+   *  arguments. The refinement has already held that one of the two is here
+   *  (FR-142). */
+  get address(): string {
+    const { endpoint, command, args = [] } = this.headers;
+    return endpoint ?? [command, ...args].join(" ");
+  }
+
   /** One mcp, or every fault its headers have, shown the sample of the shape
    *  it declared (FR-004, FR-142). */
   static of(record: Readonly<Record<string, unknown>>, body: string): McpPrimitive {

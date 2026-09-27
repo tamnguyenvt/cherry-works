@@ -2,6 +2,8 @@ import { covers } from "../../../utils/globs.js";
 import { identityOf, normalizedIdentityOf, KINDS, PRIMITIVE_CLASSES, primitiveOf, type NormalizedIdentity, type Primitive } from "./primitive/Primitive.js";
 import { CharterRootFault, FaultsByFile, type Fault } from "../Fault.js";
 import type { ForParsingYaml } from "../../../port/zdriven/ForParsingYaml.js";
+import { McpPrimitive } from "./primitive/McpPrimitive.js";
+import { AGENT_PROVIDERS, HOST_TOOL_NAMINGS } from "../AgentProvider.js";
 
 /** What this repository authored itself. */
 export const REPO_SCOPE = "repo";
@@ -327,6 +329,62 @@ export class CharterRoot {
             "warn",
           ),
         );
+    }
+
+    // Every mcp with the file it was authored in, read together: the faults
+    // below take every layer to see.
+    const mcpPrimitives = everyPrimitive
+      .flatMap(({ identity, scope, file, primitive }) =>
+        primitive.kind === McpPrimitive.kind ? [{ identity, scope, file, primitive }] : [],
+      )
+      .sort((one, another) => (one.identity < another.identity ? -1 : 1));
+
+    // One command is one process, and a process reads its token from one
+    // variable: two named for one address leave it unsaid which (FR-145).
+    for (const { file, primitive } of mcpPrimitives) {
+      const { tokenEnv } = primitive.headers;
+      const conflictingMcp = mcpPrimitives.find(
+        (other) =>
+          other.primitive.address === primitive.address &&
+          other.primitive.headers.tokenEnv !== undefined &&
+          other.primitive.headers.tokenEnv !== tokenEnv,
+      );
+      if (tokenEnv !== undefined && conflictingMcp !== undefined)
+        addFault(
+          file,
+          new CharterRootFault(
+            `This hands "${primitive.address}" its token in "${tokenEnv}", and "${conflictingMcp.identity}" in "${conflictingMcp.primitive.headers.tokenEnv}". One process reads its token from one variable.`,
+            `Name the variable that command reads in both, or drop "tokenEnv" and "auth" from one of them.`,
+          ),
+        );
+    }
+
+    // A name the host would refuse is a tool the agent is told of and cannot
+    // call, so it stops the build like a place nothing holds (FR-157). Every mcp
+    // at one address and path is served under one prefix: the repository's id,
+    // else the first in sorted order (FR-145). Asked of every
+    // host this engine compiles for: the charter is read before anything says
+    // which of them this repository chose.
+    for (const { file, primitive } of mcpPrimitives) {
+      const mcpsAtOrigin = mcpPrimitives.filter(
+        (other) => other.primitive.address === primitive.address && other.primitive.headers.path === primitive.headers.path,
+      );
+      const namingMcp = mcpsAtOrigin.find((other) => other.scope === REPO_SCOPE) ?? mcpsAtOrigin[0]!;
+      const prefix = namingMcp.primitive.headers.id.replace(/\//g, "-");
+
+      for (const tool of primitive.headers.tools)
+        for (const provider of AGENT_PROVIDERS) {
+          const { hostToolNameOf, longest } = HOST_TOOL_NAMINGS[provider];
+          const hostToolName = hostToolNameOf(`${prefix}__${tool}`);
+          if (hostToolName.length > longest)
+            addFault(
+              file,
+              new CharterRootFault(
+                `The tool "${tool}" is served to ${provider} as "${hostToolName}", ${hostToolName.length} characters, and ${provider} takes at most ${longest}.`,
+                `Shorten the id of the mcp this place is served under, or leave "${tool}" out of "tools".`,
+              ),
+            );
+        }
     }
 
     return new FaultsByFile(faultsByFiles);

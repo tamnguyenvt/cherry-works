@@ -256,6 +256,7 @@ test("nothing is compiled for an agent that was not named as installed", async (
   assert.deepEqual(Object.keys(files), [
     ".cw/out/catalog.json",
     ".cw/out/catalog.min.json",
+    ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
     ".cw/out/command/ship.md",
     ".cw/out/skill/cw-author.md",

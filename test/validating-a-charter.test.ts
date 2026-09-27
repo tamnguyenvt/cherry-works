@@ -8,6 +8,7 @@ import { MixinPrimitive } from "../src/hexagon/domain/models/charter/primitive/M
 import { CorpusPrimitive } from "../src/hexagon/domain/models/charter/primitive/CorpusPrimitive.js";
 import { McpPrimitive } from "../src/hexagon/domain/models/charter/primitive/McpPrimitive.js";
 import type { Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
+import { compile } from "../src/hexagon/domain/services/compileService.js";
 
 const root = folderURL("file:///repo/.cw/charter/");
 
@@ -50,12 +51,24 @@ const mixin = (id: string, vendor?: string): Authored =>
 const corpus = (id: string, vendor?: string): Authored =>
   scoped(vendor, at(`corpus/${id}.md`), CorpusPrimitive.of({ id, description: `Why ${id}.` }, "Body."));
 
-const mcp = (id: string, vendor?: string): Authored =>
+const mcp = (id: string, vendor?: string, headers: Record<string, unknown> = {}): Authored =>
   scoped(
     vendor,
-    at(`mcp/${id}.md`),
-    McpPrimitive.of({ id, description: `The ${id} place.`, endpoint: "https://mcp.example.com/", auth: ["oauth"], tools: ["search"] }, "Body."),
+    at(vendor === undefined ? `mcp/${id}.md` : `../vendor/${vendor}/mcp/${id}.md`),
+    McpPrimitive.of(
+      { id, description: `The ${id} place.`, endpoint: "https://mcp.example.com/", auth: ["oauth"], tools: ["search"], ...headers },
+      "Body.",
+    ),
   );
+
+/** Every place a charter's mcps reach, as a build writes them (FR-145). */
+const mcpOriginsOf = (charter: CharterRoot) => compile(charter, []).mcpOrigins;
+
+/** Every mcp of these, named from a guide so none is reported as unnamed. */
+const namedMcps = (...mcps: Authored[]): Authored[] => [
+  guide("no-any", "guide/no-any.md", { mcps: mcps.map((one) => one.identity) }),
+  ...mcps,
+];
 
 const faultsByFilesOf = (...primitives: Authored[]): FaultsByFile["files"] =>
   new CharterRoot(primitives, FaultsByFile.none).compositeFaultsByFiles.files;
@@ -218,4 +231,108 @@ test("an mcp no primitive names is a warning under its own file (FR-144)", () =>
   assert.deepEqual(Object.keys(faultsByFiles), [at("mcp/mfbs/billing.md")]);
   assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["warn"]);
   assert.match(messages(faultsByFiles), /No primitive names "mcp:mfbs\/billing" under "mcps"/);
+});
+
+test("a repository mcp and a vendor mcp at one endpoint and path are one place, under both, signed in to either way (FR-145)", () => {
+  const charter = new CharterRoot(
+    namedMcps(
+      mcp("billing", undefined, { path: "acme/billing", auth: ["oauth"], tools: ["search_code"] }),
+      mcp("acme/code", "acme", { path: "acme/billing", auth: ["token"], tools: ["get_file_contents", "search_code"] }),
+    ),
+    FaultsByFile.none,
+  );
+
+  assert.deepEqual(mcpOriginsOf(charter), [
+    {
+      identities: ["mcp:acme/code", "mcp:billing"],
+      address: "https://mcp.example.com/",
+      endpoint: "https://mcp.example.com/",
+      path: "acme/billing",
+      auth: ["oauth", "token"],
+    },
+  ]);
+  assert.deepEqual(charter.compositeFaultsByFiles.files, {});
+});
+
+test("the same two at different paths are two places (FR-145)", () => {
+  const charter = new CharterRoot(
+    namedMcps(mcp("billing", undefined, { path: "acme/billing" }), mcp("acme/code", "acme", { path: "acme/code" })),
+    FaultsByFile.none,
+  );
+
+  assert.deepEqual(
+    mcpOriginsOf(charter).map(({ path, identities }) => ({ path, identities })),
+    [
+      { path: "acme/billing", identities: ["mcp:billing"] },
+      { path: "acme/code", identities: ["mcp:acme/code"] },
+    ],
+  );
+});
+
+test("a command's place carries its arguments and the variable its token is read from (FR-145)", () => {
+  const command = { endpoint: undefined, command: "npx", args: ["-y", "server-github"], auth: ["token"], tokenEnv: "GITHUB_TOKEN" };
+  const charter = new CharterRoot(namedMcps(mcp("github", undefined, command)), FaultsByFile.none);
+
+  const [mcpOrigin] = mcpOriginsOf(charter);
+  assert.equal(mcpOrigin?.address, "npx -y server-github");
+  assert.deepEqual(mcpOrigin?.command, { command: "npx", args: ["-y", "server-github"], tokenEnv: "GITHUB_TOKEN" });
+  assert.equal(mcpOrigin?.endpoint, undefined);
+});
+
+test("one command handed its token in two variables is an error under both files (FR-145)", () => {
+  const command = (tokenEnv: string, path: string) => ({
+    endpoint: undefined,
+    command: "npx",
+    args: ["server-github"],
+    auth: ["token"],
+    tokenEnv,
+    path,
+  });
+  const faultsByFiles = faultsByFilesOf(
+    ...namedMcps(mcp("one", undefined, command("GITHUB_TOKEN", "a")), mcp("two", undefined, command("GH_TOKEN", "b"))),
+  );
+
+  assert.deepEqual(Object.keys(faultsByFiles).sort(), [at("mcp/one.md"), at("mcp/two.md")]);
+  assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["error", "error"]);
+  assert.match(messages(faultsByFiles), /One process reads its token from one variable/);
+});
+
+test("a command taking no token beside one naming a variable is no conflict (FR-145)", () => {
+  const command = { endpoint: undefined, auth: undefined, command: "npx", args: ["server-github"] };
+  const faultsByFiles = faultsByFilesOf(
+    ...namedMcps(mcp("one", undefined, command), mcp("two", undefined, { ...command, auth: ["token"], tokenEnv: "GITHUB_TOKEN" })),
+  );
+
+  assert.deepEqual(faultsByFiles, {});
+});
+
+test("a tool served under a name longer than claude takes is an error under the mcp declaring it (FR-157)", () => {
+  // `mcp__cw__` and `__` are 11 characters, so a 26-character prefix leaves 27
+  // for the tool before 64 is passed.
+  const prefix = "a".repeat(26);
+  const faultsByFiles = faultsByFilesOf(
+    ...namedMcps(mcp(prefix, undefined, { tools: ["b".repeat(27), "c".repeat(28)] }), mcp("other", "acme", { tools: ["search"] })),
+  );
+
+  assert.deepEqual(Object.keys(faultsByFiles), [at(`mcp/${prefix}.md`)]);
+  assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["error"]);
+  assert.match(messages(faultsByFiles), new RegExp(`"${"c".repeat(28)}" is served to claude as "mcp__cw__${prefix}__${"c".repeat(28)}", 65 characters`));
+});
+
+test("a place no repository mcp names is served under the first identity in sorted order (FR-145, FR-157)", () => {
+  // `mcp__cw__` and `__` leave 53 characters for the prefix and a 40-character
+  // tool before 64 is passed: "alpha" fits, a 30-character id does not.
+  const faultsByFiles = faultsByFilesOf(
+    ...namedMcps(mcp("alpha", "acme", { tools: ["t".repeat(40)] }), mcp("z".repeat(30), "other", { tools: ["t".repeat(40)] })),
+  );
+
+  assert.deepEqual(faultsByFiles, {});
+});
+
+test("a vendor mcp's long id is no fault where the repository's names the place (FR-145, FR-157)", () => {
+  const faultsByFiles = faultsByFilesOf(
+    ...namedMcps(mcp("billing", undefined, { tools: ["t".repeat(40)] }), mcp("a".repeat(30), "acme", { tools: ["t".repeat(40)] })),
+  );
+
+  assert.deepEqual(faultsByFiles, {});
 });

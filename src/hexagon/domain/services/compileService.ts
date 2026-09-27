@@ -1,6 +1,6 @@
 import type { AgentProvider } from "../models/AgentProvider.js";
 import { normalizedIdentityOf, PRIMITIVE_CLASSES } from "../models/charter/primitive/Primitive.js";
-import { Catalogue, CharterMd, CompiledPrimitive, type CharterOutput } from "../models/output/CharterOutput.js";
+import { Catalogue, CharterMd, CompiledPrimitive, type CharterOutput, type McpOrigin } from "../models/output/CharterOutput.js";
 import { OUT_DIRECTORY } from "../path.js";
 import type { CharterRoot, ScopedPrimitive } from "../models/charter/CharterRoot.js";
 import { AgentPrimitive } from "../models/charter/primitive/AgentPrimitive.js";
@@ -10,6 +10,7 @@ import { PlaybookPrimitive } from "../models/charter/primitive/PlaybookPrimitive
 import { PosturePrimitive } from "../models/charter/primitive/PosturePrimitive.js";
 import { SensorPrimitive } from "../models/charter/primitive/SensorPrimitive.js";
 import { SkillPrimitive } from "../models/charter/primitive/SkillPrimitive.js";
+import { MCP_AUTHS, McpPrimitive } from "../models/charter/primitive/McpPrimitive.js";
 import type { ClaudeComponent } from "../models/output/providers/claude/ClaudeComponent.js";
 import {
   ClaudeSettingsComponent,
@@ -56,6 +57,7 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
     compiledPrimitives: charter.primitives.map((one) =>
       CompiledPrimitive.of(one.identity, one.primitive.toMarkdown(charter.bodyOf(one))),
     ),
+    mcpOrigins: mcpOriginsOf(charter),
     providerComponents: agents.flatMap((agent) => forAgent(agent, charter)),
   };
 }
@@ -90,6 +92,44 @@ export function catalogueOf(charter: CharterRoot, fileOf: (one: ScopedPrimitive)
       };
     }),
   );
+}
+
+/**
+ * Every place the charter's mcps reach, each once, whichever layer declared it
+ * (FR-145).
+ *
+ * One per address and `path`: the repository and a vendor may call one place
+ * by two names, and it is one place under both. What is held is where it is and
+ * how it is signed in to — every way any identity there allows — and nothing
+ * an mcp's own file already says.
+ */
+function mcpOriginsOf(charter: CharterRoot): readonly McpOrigin[] {
+  const mcpsByKey = new Map<string, { identity: string; primitive: McpPrimitive }[]>();
+  for (const { identity, primitive } of [...charter.primitives].sort((one, another) => (one.identity < another.identity ? -1 : 1))) {
+    if (primitive.kind !== McpPrimitive.kind) continue;
+    // Joined by a character neither side can hold: a path is one line, and an
+    // address is an endpoint or a command line.
+    const key = `${primitive.address}\n${primitive.headers.path ?? ""}`;
+    mcpsByKey.set(key, [...(mcpsByKey.get(key) ?? []), { identity, primitive }]);
+  }
+
+  return [...mcpsByKey.entries()]
+    .sort(([oneKey], [anotherKey]) => (oneKey < anotherKey ? -1 : 1))
+    .map(([, mcpsAtOrigin]) => {
+      const [firstMcp] = mcpsAtOrigin as [(typeof mcpsAtOrigin)[number], ...typeof mcpsAtOrigin];
+      const { endpoint, command, args = [], path } = firstMcp.primitive.headers;
+      const tokenEnv = mcpsAtOrigin.find((one) => one.primitive.headers.tokenEnv !== undefined)?.primitive.headers.tokenEnv;
+      const auths = new Set(mcpsAtOrigin.flatMap((one) => one.primitive.headers.auth ?? []));
+
+      return {
+        identities: mcpsAtOrigin.map((one) => one.identity),
+        address: firstMcp.primitive.address,
+        ...(endpoint === undefined ? {} : { endpoint }),
+        ...(command === undefined ? {} : { command: { command, args, ...(tokenEnv === undefined ? {} : { tokenEnv }) } }),
+        ...(path === undefined ? {} : { path }),
+        auth: MCP_AUTHS.filter((auth) => auths.has(auth)),
+      };
+    });
 }
 
 /** Every file one agent this engine compiles for reads (FR-018). One arm per

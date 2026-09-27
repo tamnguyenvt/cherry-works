@@ -22,3 +22,17 @@ export type AgentProvider = (typeof AGENT_PROVIDERS)[number];
 export function isAgentProvider(name: unknown): name is AgentProvider {
   return typeof name === "string" && (AGENT_PROVIDERS as readonly string[]).includes(name);
 }
+
+/**
+ * What each host calls a tool `cw mcp serve` serves as `<prefix>__<tool>`, and
+ * the longest name it takes (FR-157).
+ *
+ * Declared per host because the name is the host's: claude puts the server's
+ * name and its own separators in front of it. A second host brings its own
+ * here, and a served name is checked against each.
+ */
+export const HOST_TOOL_NAMINGS: Readonly<
+  Record<AgentProvider, { readonly hostToolNameOf: (servedName: string) => string; readonly longest: number }>
+> = {
+  claude: { hostToolNameOf: (servedName) => `mcp__cw__${servedName}`, longest: 64 },
+};

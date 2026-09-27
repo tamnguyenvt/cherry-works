@@ -2420,13 +2420,25 @@ Criteria, beside the acceptance above:
 - `mcps` is a list of `mcp:<id>` on every kind; the unresolved entry is an `error` under the citing file, so everything that stops on an error stops on it.
 - The catalogue entry, its DTO and `cw list --full` carry `mcps` where declared.
 
-Non-goals: the list of places and `.cw/out/mcps.json` ([T5.003](tasks/005-mcp-knowledge.md#t5.003)); anything the host is given ([T5.004](tasks/005-mcp-knowledge.md#t5.004)); reaching a place or checking its `tools` exist ([FR-153](spec.md#fr-153)); the portal showing `mcps` as links or `cw explain` listing who names an mcp.
+Non-goals: the list of places and `.cw/out/mcp-origins.json` ([T5.003](tasks/005-mcp-knowledge.md#t5.003)); anything the host is given ([T5.004](tasks/005-mcp-knowledge.md#t5.004)); reaching a place or checking its `tools` exist ([FR-153](spec.md#fr-153)); the portal showing `mcps` as links or `cw explain` listing who names an mcp.
 
 #### 17.5.3 T5.003 — The list of places
 
-`Places` in `domain/models/output/`, made by `compile` from every layer's mcp primitives: grouped by `endpoint` and `path`, prefix, the union of `auth`, the union of `tools`, `declaredBy` ([§19.3](#193-the-list-of-places-fr-145-fr-157)). It projects to `.cw/out/mcps.json`, `replace`. Two `tokenEnv`s for one command and the too-long served name are composite `error`s.
+`McpOrigin[]` beside the catalogue in `CharterOutput`, made by `compile` from every layer's mcp primitives: grouped by `endpoint` and `path`, each with its identities and the union of `auth` ([§19.3](#193-the-list-of-places-fr-145-fr-157)). It projects to `.cw/out/mcp-origins.json`, `replace`. Two `tokenEnv`s for one command and the too-long served name are composite `error`s.
 
-Acceptance: a repository mcp and a vendor mcp at one endpoint and path are one place under both identities, prefixed by the repository's, with the union of their tools and of their `auth`; the same two at different paths are two places; one command with two `tokenEnv`s is an error under both files; a tool name that makes `mcp__cw__<prefix>__<tool>` longer than 64 characters is an error under its mcp.
+Acceptance: a repository mcp and a vendor mcp at one endpoint and path are one place under both identities, with the union of their `auth`; the same two at different paths are two places; one command with two `tokenEnv`s is an error under both files; a tool name that makes `mcp__cw__<prefix>__<tool>` longer than 64 characters is an error under its mcp.
+
+Intent: every build writes `.cw/out/mcp-origins.json`, the one list of places the server will read, keyed by address and path whoever declared them; a charter whose places could not be served is refused before anything is written.
+
+Criteria, beside the acceptance above:
+
+- An mcp's address is asked of the primitive: `endpoint`, or `command` and each of `args` joined by spaces (data-model [§17.1](data-model.md#171-mcp-primitive-fr-142)).
+- `mcpOrigins` holds one `McpOrigin` per place, as data-model [§17.2](data-model.md#172-place-fr-145) says: `identities` sorted; `address`; `endpoint`, or `command` carrying `args` (empty where none) and `tokenEnv` where one is named; `path`; `auth` the union in the order `oauth`, `token`. Nothing an mcp's own file and the catalogue already hold — no tools, no prefix. Origins are ordered by address, then path.
+- `compile` makes it from every layer's mcps and puts it into `CharterOutput` as `mcpOrigins`; the projection writes it indented as `{ "origins": [...] }`, `replace`. A charter with no mcp writes `{ "origins": [] }`, so a built repository always has the list [FR-152](spec.md#fr-152) looks for. The charter does not hold the list: the two composite faults below read the mcps together in `compositeFaultsByFiles`, taking the prefix — the `id` the `repo` scope declared at a place, else the first sorted, `/` written as `-` — as the server will.
+- Two identities at one address naming two different `tokenEnv`s: an `error` under each of their files. One naming none beside one naming a variable is no conflict.
+- The served-name limit is declared per host beside `AGENT_PROVIDERS`: claude names a served tool `mcp__cw__<prefix>__<tool>` and takes 64 characters. Checked against every host the engine compiles for, since the charter is read before it is known which hosts a repository chose; an `error` under every mcp at that place declaring the tool.
+
+Non-goals: `.mcp.json` and each document naming its places ([T5.004](tasks/005-mcp-knowledge.md#t5.004)); signing in; the server reading the list; `cw explain` or the portal showing places.
 
 #### 17.5.4 T5.004 — What the host is given
 
@@ -2442,7 +2454,7 @@ Acceptance: on the maintainer's machine, a secret written is read back and remov
 
 #### 17.5.6 T5.006 — `cw mcp auth`, by token
 
-`ForReachingMcps` and `McpReaching`; `signInStatus` reads `.cw/out/mcps.json` and the store; `signInWithToken` writes one credential. `McpAuthCommand` asks at a terminal only: per address not signed in, which way (the intersection), then a hidden token prompt. `--status` and `<identity>` as [FR-150](spec.md#fr-150) says.
+`ForReachingMcps` and `McpReaching`; `signInStatus` reads `.cw/out/mcp-origins.json` and the store; `signInWithToken` writes one credential. `McpAuthCommand` asks at a terminal only: per address not signed in, which way (the intersection), then a hidden token prompt. `--status` and `<identity>` as [FR-150](spec.md#fr-150) says.
 
 Acceptance: at a terminal two addresses are asked about and signed in; the next run asks nothing; without a terminal it names both and exits `1`; `--status` changes nothing; no file under the repository changes throughout.
 
@@ -2454,9 +2466,9 @@ Acceptance: against a local OAuth test server, a sign-in ends with a credential 
 
 #### 17.5.8 T5.008 — `cw mcp serve`
 
-`startMcpServer` in `src/driver/mcp/server.ts`: the SDK's `Server` on stdio, answering `tools/list` with `ForReachingMcps.served([])` and `tools/call` with `call`. `McpReaching.served` reads `mcps.json`, connects to every place at once with a ten-second limit through `ForCallingMcpServers`, and keeps what each lists that its entry declares ([§19.6](#196-the-server-fr-152--fr-154)).
+`startMcpServer` in `src/driver/mcp/server.ts`: the SDK's `Server` on stdio, answering `tools/list` with `ForReachingMcps.served([])` and `tools/call` with `call`. `McpReaching.served` reads `mcp-origins.json`, connects to every place at once with a ten-second limit through `ForCallingMcpServers`, and keeps what each lists that its entry declares ([§19.6](#196-the-server-fr-152--fr-154)).
 
-Acceptance: against two in-memory places, the listed tools are exactly the declared ones under their prefixes; an undeclared name is refused and reaches nothing; a missing `mcps.json` stops the server saying to build.
+Acceptance: against two in-memory places, the listed tools are exactly the declared ones under their prefixes; an undeclared name is refused and reaches nothing; a missing `mcp-origins.json` stops the server saying to build.
 
 #### 17.5.9 T5.009 — Forwarding, and one place failing alone
 
@@ -2472,7 +2484,7 @@ Acceptance: a place declared by a command running a test MCP server over stdio i
 
 #### 17.5.11 T5.011 — `--enable`
 
-`served(enable)` resolves each name against `catalog.json` and `mcps.json`: a primitive identity to its `mcps`, an mcp identity to its place, a served name to one tool; the union of them is served ([§19.7](#197-holding-a-run-fr-155-fr-156)). A name neither holds stops the server before it answers.
+`served(enable)` resolves each name against `catalog.json` and `mcp-origins.json`: a primitive identity to its `mcps`, an mcp identity to its place, a served name to one tool; the union of them is served ([§19.7](#197-holding-a-run-fr-155-fr-156)). A name neither holds stops the server before it answers.
 
 Acceptance: `--enable playbook:x` serves the tools of the places `x` names; `--enable mcp:y` serves `y`'s; `--enable y__one` serves one; `--enable nothing:here` exits `1` naming it.
 
@@ -2575,14 +2587,16 @@ claim on the derived name, filed under the second file.
 
 ### 19.3 The list of places (FR-145, FR-157)
 
-`compile` builds `Places` from every layer's mcp primitives and projects it to
-`.cw/out/mcps.json` (data-model [§17.2](data-model.md#172-place-fr-145)). It is part of `CharterOutput`, so
+`compile` builds one `McpOrigin` per place from every layer's mcp primitives and projects it to
+`.cw/out/mcp-origins.json` (data-model [§17.2](data-model.md#172-place-fr-145)). It is part of `CharterOutput`, so
 it is never written without the catalogue beside it ([SC-004](spec.md#sc-004)), and its
 staleness is what `cw build --preview` already reports.
 
 A place is keyed by its address and `path`, not by identity, because the
-repository and a vendor may call one place by two names; tools are the union
-across them (spec Clarifications, 2026-09-26). The prefix is taken from the
+repository and a vendor may call one place by two names. It holds where the
+place is and how it is signed in to; its tools are the union of what its
+identities declare (spec Clarifications, 2026-09-26), read from their own
+files rather than copied here. The prefix is taken from the
 repository's own identity first, so what the repository calls a place is what
 its agent sees; then sorted order, so every build names it the same.
 
@@ -2611,7 +2625,7 @@ For claude, three things, each in the provider's classes:
 
 ### 19.5 Signing in (FR-148 – FR-151)
 
-`cw mcp auth` reads `.cw/out/mcps.json`, not the charter: what it signs in to is
+`cw mcp auth` reads `.cw/out/mcp-origins.json`, not the charter: what it signs in to is
 what the last build said the places are, the same list the server serves. It
 groups places by address, since one address is one account at one service. A
 local command that takes no token is not asked about.
@@ -2642,7 +2656,7 @@ else. It is started by the agent's host for a session and ends with it; it is no
 a daemon. Standard output is the protocol's, so everything `cw` says while
 serving goes to standard error.
 
-At start `served` reads `mcps.json`, and reaches every place at once through
+At start `served` reads `mcp-origins.json`, and reaches every place at once through
 `ForCallingMcpServers`, each with its credential and a ten-second limit. A local
 command is started then, through the SDK's stdio client, with the environment
 `cw` runs in and its token under the one variable its primitive names; it is
@@ -2672,7 +2686,7 @@ Four ways a charter narrows what an agent reaches, from wide to narrow:
 | `cw mcp serve --enable` | one run, as a scheduled job or CI | `cw mcp serve` |
 
 `--enable` names are resolved against `catalog.json`, which already holds every
-primitive's `mcps`, and `mcps.json`; the server reads no charter. A job that must
+primitive's `mcps`, and `mcp-origins.json`; the server reads no charter. A job that must
 reach nothing else also runs its agent with the host's own built-in tools
 restricted, which is the host's flag, not `cw`'s; the README shows both together.
 Nothing here is a posture: a posture decides whether a call needs approval, and

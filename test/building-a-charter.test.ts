@@ -62,6 +62,7 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
   assert.deepEqual(built.added, [
     ".cw/out/catalog.json",
     ".cw/out/catalog.min.json",
+    ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
     ".cw/out/guide/no-any.md",
     ".cw/out/skill/cw-author.md",
@@ -281,6 +282,53 @@ test("a guide naming an mcp no layer holds builds nothing, the error under the g
   await assert.rejects(() => contentsOf(held, ".cw/out/CHARTER.md"));
 });
 
+test("a build writes every place the charter's mcps reach to mcp-origins.json (FR-145)", async () => {
+  const { held, build } = building({
+    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mcps: ["mcp:mfbs/billing"]']),
+    [at("mcp/mfbs/billing.md")]: primitive("mcp", "mfbs/billing", [
+      "endpoint: https://api.githubcopilot.com/mcp/",
+      "path: acme/billing",
+      "auth: [oauth, token]",
+      "tools: [search_code, get_file_contents]",
+    ]),
+  });
+
+  filesOf(await build());
+
+  assert.deepEqual(JSON.parse(await contentsOf(held, ".cw/out/mcp-origins.json")), {
+    origins: [
+      {
+        identities: ["mcp:mfbs/billing"],
+        address: "https://api.githubcopilot.com/mcp/",
+        endpoint: "https://api.githubcopilot.com/mcp/",
+        path: "acme/billing",
+        auth: ["oauth", "token"],
+      },
+    ],
+  });
+});
+
+test("a charter with no mcp still writes the list, empty, for the server to find (FR-145, FR-152)", async () => {
+  const { held, build } = building({ [at("guide/no-any.md")]: guide("no-any") });
+
+  filesOf(await build());
+
+  assert.equal(await contentsOf(held, ".cw/out/mcp-origins.json"), '{\n  "origins": []\n}\n');
+});
+
+test("a tool served under a name the host refuses builds nothing, the error under its mcp (FR-157)", async () => {
+  const { held, build } = building({
+    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mcps: ["mcp:billing"]']),
+    [at("mcp/billing.md")]: primitive("mcp", "billing", ["endpoint: https://mcp.example.com/", "auth: [oauth]", `tools: [${"t".repeat(60)}]`]),
+  });
+
+  const planSummaryDTO = await build();
+
+  assert.ok(planSummaryDTO.type === "FaultsByFile");
+  assert.deepEqual(Object.keys(planSummaryDTO.data.files), [".cw/charter/mcp/billing.md"]);
+  await assert.rejects(() => contentsOf(held, ".cw/out/mcp-origins.json"));
+});
+
 test("a warning is not an error: a charter that only warns still builds (FR-005)", async () => {
   const { build } = building({
     [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:gone"]),
@@ -312,6 +360,7 @@ test("a charter naming no agent still gets the surface every reader shares (FR-0
   assert.deepEqual(built.added, [
     ".cw/out/catalog.json",
     ".cw/out/catalog.min.json",
+    ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
     ".cw/out/guide/no-any.md",
     ".cw/out/skill/cw-author.md",

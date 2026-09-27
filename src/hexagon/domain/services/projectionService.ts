@@ -55,6 +55,13 @@ export function charterOutputProjection(
       contents: `${JSON.stringify(output.catalogue.compact)}\n`,
       projectionPolicy: output.catalogue.projection,
     },
+    // Indented for the reason the full listing is: committed, and read in
+    // diffs when a place moves (SC-038).
+    {
+      path: `${OUT_DIRECTORY}/mcp-origins.json`,
+      contents: `${JSON.stringify({ origins: output.mcpOrigins }, undefined, 2)}\n`,
+      projectionPolicy: "replace",
+    },
     {
       path: `${OUT_DIRECTORY}/CHARTER.md`,
       contents: output.charterMd.toStampedDocument(),

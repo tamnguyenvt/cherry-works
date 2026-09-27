@@ -350,7 +350,7 @@ CharterOutput = {
   catalogue:          Catalogue,          // both catalogues of §7
   charterMd:          CharterMd,          // .cw/out/CHARTER.md
   compiledPrimitives: CompiledPrimitive[],// §8.1, one per primitive of every layer
-  places:             Places,             // .cw/out/mcps.json (§17.2)
+  mcpOrigins:         McpOrigin[],        // .cw/out/mcp-origins.json (§17.2)
   providerComponents: ClaudeComponent[],  // one host's files, for each agent chosen
 }
 
@@ -744,37 +744,35 @@ which nothing forbids and nothing needs.
 
 ### 17.2 Place (FR-145)
 
-One entry of `.cw/out/mcps.json`: one address and `path`, as every layer
-declared it.
+One entry of `.cw/out/mcp-origins.json`, `McpOrigin` in code: one place — one
+address and `path` — once, however many mcps declare it. Where it is and how it
+is signed in to, and nothing else: what each mcp lets the agent use there is in
+its own file, and the catalogue lists every mcp.
 
 ```ts
-Place = {
+McpOrigin = {
   identities: PrimitiveIdentity[],   // every mcp at this address and path, sorted
-  prefix:     string,                // the served tools' prefix (below)
   address:    string,                // §17.1
   endpoint?:  string,                // one of these two
   command?:   { command: string, args: string[], tokenEnv?: string },
   path?:      string,
   auth:       ("oauth" | "token")[], // the union of what each identity here allows
-  tools:      string[],              // the union of what each identity declares, sorted
-  declaredBy: { identity: PrimitiveIdentity, scope: Scope, tools: string[] }[],
 }
 
-McpsJson = { places: Place[] }       // ordered by prefix
+McpOriginsJson = { origins: McpOrigin[] }       // ordered by address, then path
 ```
 
 - **Key**: address and `path` together. Two identities with the same pair are
   one place; one identity is one file, so an identity is never in two places
   ([FR-015](spec.md#fr-015)).
-- **`prefix`**: the `id` of the identity the `repo` scope declared, else the
-  first `id` in sorted order, with `/` replaced by `-`. Served tool names are
-  `<prefix>__<tool>` ([FR-153](spec.md#fr-153)).
+- **Prefix**, not held here: the `id` of the identity at a place the `repo`
+  scope declared, else the first `id` in sorted order, with `/` replaced by
+  `-`. Served tool names are `<prefix>__<tool>`, the tools being the union of
+  what the place's identities declare ([FR-153](spec.md#fr-153)).
 - **`auth`** is the union of what every identity here allows, from every
-  layer, as `tools` is: one identity's narrower list takes no way away. Two
+  layer: one identity's narrower list takes no way away. Two
   identities of one local command naming two `tokenEnv`s are
   an error too: one process takes its token one way.
-- **`declaredBy`** keeps which identity opened which tool, so a union that a
-  vendor widened can be read back.
 
 ### 17.3 Credential (FR-148 – FR-151)
 
