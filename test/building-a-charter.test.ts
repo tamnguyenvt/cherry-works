@@ -73,6 +73,17 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
   assert.ok((await contentsOf(held, ".claude/rules/guide-no-any.md")).includes("The body of no-any."));
 });
 
+test("an id holding / is built into the folders it names, and into a host file named without it (FR-141)", async () => {
+  const { held, build } = building({ ...compilingFor("claude"), [at("guide/mfbs/no-any.md")]: guide("mfbs/no-any") });
+
+  const built = filesOf(await build());
+  const catalogue = JSON.parse(await contentsOf(held, ".cw/out/catalog.json")) as readonly { identity: string; file: string }[];
+
+  assert.ok(built.added.includes(".cw/out/guide/mfbs/no-any.md"));
+  assert.ok(built.added.includes(".claude/rules/guide-mfbs-no-any.md"));
+  assert.equal(catalogue.find((entry) => entry.identity === "guide:mfbs/no-any")?.file, ".cw/out/guide/mfbs/no-any.md");
+});
+
 test("what the engine brings is compiled to the agent's skill surface, and nothing is written for it under the workspace (FR-021, FR-022)", async () => {
   const { held, build } = building(compilingFor("claude"));
 

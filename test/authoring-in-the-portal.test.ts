@@ -119,6 +119,22 @@ test("an existing primitive opens locked to its identity, saves over its file an
   });
 });
 
+test("a primitive whose id holds / opens, saves and deletes like any other (FR-141)", async () => {
+  await inTheBrowser({ [at(".cw/charter/guide/mfbs/no-any.md")]: guide("mfbs/no-any") }, async (page, files) => {
+    await opening(page, "mfbs/no-any");
+    await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Never any.");
+    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByText("Primitive saved").waitFor();
+    assert.match((await fileIn(files, ".cw/charter/guide/mfbs/no-any.md")) ?? "", /description: Never any\./);
+
+    await page.getByRole("dialog").waitFor({ state: "detached" });
+    await opening(page, "mfbs/no-any");
+    await page.getByRole("button", { name: "Delete" }).click();
+    await page.getByText("Primitive deleted").waitFor();
+    assert.equal(await fileIn(files, ".cw/charter/guide/mfbs/no-any.md"), undefined);
+  });
+});
+
 test("a save over a file changed on disk is refused naming it, and the other change stays (Story 6 scenario 9)", async () => {
   await inTheBrowser({ [at(".cw/charter/guide/no-any.md")]: guide("no-any") }, async (page, files) => {
     await opening(page, "no-any");

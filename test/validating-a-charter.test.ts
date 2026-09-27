@@ -70,6 +70,12 @@ test("one identity declared twice in a layer is a collision naming both files", 
   assert.match(messages(faultsByFiles), /guide\/no-any\.md/);
 });
 
+test("two identities one host name would be given are a collision under the second file (FR-141)", () => {
+  const faultsByFiles = faultsByFilesOf(guide("a/b"), guide("a-b"));
+  assert.deepEqual(Object.keys(faultsByFiles), [at("guide/a-b.md")]);
+  assert.match(messages(faultsByFiles), /"guide:a-b" and "guide:a\/b" are both named "guide-a-b"/);
+});
+
 test("one id under two kinds is two identities, not a collision", () => {
   assert.deepEqual(faultsByFilesOf(guide("naming", "guide/naming.md", { mixins: ["naming"] }), mixin("naming")), {});
 });

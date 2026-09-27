@@ -19,7 +19,10 @@ export const goodArray = z.array(goodLine).min(1).readonly();
  *  (data-model §1). Each kind's own headers extend these, so what every
  *  primitive holds is written once. */
 export const CommonHeaders = z.object({
-  id: z.string().regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/),
+  /** Slugs joined by `/`, so identities can be grouped by team or domain
+   *  (FR-141). The `/` puts the file in folders and nothing else: nothing is
+   *  read from where a file sits. */
+  id: z.string().regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\/[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/),
   /** All an agent reads of a primitive before opening its body. */
   description: goodLine,
   tags: z.array(goodLine).readonly().optional(),

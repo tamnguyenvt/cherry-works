@@ -46,9 +46,18 @@ test("a new primitive is created with its body, answered 201 with where it lives
   );
 
   assert.equal(answer.status, 201);
-  assert.equal(answer.headers.get("Location"), "/api/charter/root/primitives/guide:no-any");
+  assert.equal(answer.headers.get("Location"), "/api/charter/root/primitives/guide%3Ano-any");
   assert.equal(DataDTOs.ScopedPrimitive.parse(await answer.json()).data.file, ".cw/charter/guide/no-any.md");
   assert.match((await fileAt(".cw/charter/guide/no-any.md")) ?? "", /---\n\nNever any\.\n$/);
+});
+
+test("an identity holding / is reached encoded, as the page sends it (FR-141)", async () => {
+  const { portalRoutes } = portal({ [at(".cw/charter/guide/mfbs/no-any.md")]: guide("mfbs/no-any") });
+
+  const answer = await portalRoutes.request(`/charter/root/primitives/${encodeURIComponent("guide:mfbs/no-any")}`);
+
+  assert.equal(answer.status, 200);
+  assert.equal(DataDTOs.PrimitiveSnapshot.parse(await answer.json()).data.scopedPrimitive.data.identity, "guide:mfbs/no-any");
 });
 
 test("answers the kind refuses are 422 and every fault, and an identity already claimed is 422 and one fault", async () => {

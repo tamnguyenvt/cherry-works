@@ -124,7 +124,7 @@ export function api(
         const { kind, id, headers, body } = c.req.valid("json");
         const scopedPrimitiveDTO = await charterAuthoringApp.add(kind, id, headers, body);
         if (scopedPrimitiveDTO.type === "Faults") return c.json(scopedPrimitiveDTO, 422);
-        return c.json(scopedPrimitiveDTO, 201, { Location: `/api/charter/root/primitives/${scopedPrimitiveDTO.data.identity}` });
+        return c.json(scopedPrimitiveDTO, 201, { Location: `/api/charter/root/primitives/${encodeURIComponent(scopedPrimitiveDTO.data.identity)}` });
       },
     )
     .openapi(

@@ -34,11 +34,15 @@ export function usePrimitives(matching?: string) {
   });
 }
 
-/** What the engine says of one primitive (FR-029, FR-116). */
+/** What the engine says of one primitive (FR-029, FR-116).
+ *
+ *  An identity is sent encoded wherever it is part of a path, here and in the
+ *  hooks below: the client puts a parameter in as it is, and an id may hold
+ *  `/` (FR-141). */
 export function useExplanation(identity: string) {
   return useQuery({
     queryKey: ["explanation", identity],
-    queryFn: async () => (await client.charter.root.primitives[":identity"].explanation.$get({ param: { identity } })).json(),
+    queryFn: async () => (await client.charter.root.primitives[":identity"].explanation.$get({ param: { identity: encodeURIComponent(identity) } })).json(),
   });
 }
 
@@ -57,7 +61,7 @@ export function usePrimitiveSnapshot(identity: string | undefined) {
     gcTime: 0,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const response = await client.charter.root.primitives[":identity"].$get({ param: { identity: identity ?? "" } });
+      const response = await client.charter.root.primitives[":identity"].$get({ param: { identity: encodeURIComponent(identity ?? "") } });
       return { answer: await response.json(), entityTag: response.headers.get("ETag") ?? "" };
     },
   });
@@ -103,7 +107,7 @@ export function useRewritePrimitive() {
   const written = useWritten();
   return useMutation({
     mutationFn: async (request: InferRequestType<(typeof client.charter.root.primitives)[":identity"]["$put"]>) =>
-      (await client.charter.root.primitives[":identity"].$put(request)).json(),
+      (await client.charter.root.primitives[":identity"].$put({ ...request, param: { identity: encodeURIComponent(request.param.identity) } })).json(),
     onSuccess: written,
   });
 }
@@ -117,7 +121,7 @@ export function useRemovePrimitive() {
       // Sent as JSON though it carries none: every verb but GET is, so a page
       // of another origin cannot make it without a preflight (plan §12.4).
       const response = await client.charter.root.primitives[":identity"].$delete(
-        { param: { identity } },
+        { param: { identity: encodeURIComponent(identity) } },
         { headers: { "Content-Type": "application/json" } },
       );
       return response.status === 422 ? response.json() : null;

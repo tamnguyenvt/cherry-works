@@ -114,6 +114,16 @@ test("a guide and a skill of the same id stay two files", async () => {
   ]);
 });
 
+test("an id holding / names a host file with it written as -, a command's too (FR-141)", async () => {
+  const files = await projected({
+    [at("command/release/ship.md")]: primitive("command", "release/ship", "Run the build, then push."),
+    [at("skill/mfbs/refactoring.md")]: primitive("skill", "mfbs/refactoring", "How this team refactors.", ['triggers: ["a refactor"]']),
+  });
+
+  assert.ok(".claude/commands/release-ship.md" in files);
+  assert.ok(".claude/skills/skill-mfbs-refactoring/SKILL.md" in files);
+});
+
 test("the kinds this host has no kind for project nothing: they are read from the charter", async () => {
   const files = await projected({
     [at("corpus/type-safety.md")]: primitive("corpus", "type-safety", "Why types are kept tight."),

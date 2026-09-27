@@ -109,6 +109,24 @@ test("what is answered is what the file holds, read back as the same primitive (
   }
 });
 
+test("an id holding / is written in the folders its segments name (FR-141)", async () => {
+  const { code, held: files } = await adding(["add", "guide", "mfbs/no-any"], ["what description holds"]);
+  const read = primitiveOf((await held(files, ".cw/charter/guide/mfbs/no-any.md")) ?? "", new YamlParser());
+
+  assert.equal(code, 0);
+  assert.equal(read.headers.id, "mfbs/no-any");
+});
+
+test("an id with an empty segment is refused with the kind's sample, and nothing is written (FR-141)", async () => {
+  for (const id of ["a//b", "/a", "a/"]) {
+    const { code, problems, held: files } = await adding(["add", "guide", id], ["what description holds"]);
+
+    assert.equal(code, EXIT_FAILURE, id);
+    assert.match(problems, /not what a guide holds/, id);
+    assert.equal(await held(files, `.cw/charter/guide/${id}.md`), undefined, id);
+  }
+});
+
 test("a word that is no kind is refused, naming every kind there is (FR-001, FR-039)", async () => {
   const { code, problems } = await adding(["add", "rule", "no-any"], []);
 

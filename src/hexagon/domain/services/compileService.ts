@@ -1,5 +1,5 @@
 import type { AgentProvider } from "../models/AgentProvider.js";
-import { PRIMITIVE_CLASSES } from "../models/charter/primitive/Primitive.js";
+import { normalizedIdentityOf, PRIMITIVE_CLASSES } from "../models/charter/primitive/Primitive.js";
 import { Catalogue, CharterMd, CompiledPrimitive, type CharterOutput } from "../models/output/CharterOutput.js";
 import { OUT_DIRECTORY } from "../path.js";
 import type { CharterRoot, ScopedPrimitive } from "../models/charter/CharterRoot.js";
@@ -180,7 +180,10 @@ function claudeSettingsOf(ones: readonly ScopedPrimitive[]): ClaudeSettings {
  * host has no kind for it.
  */
 function claudeDocumentComponentOf(charter: CharterRoot, sc: ScopedPrimitive): ClaudeComponent | undefined {
-  const name = claudeNameOf(sc);
+  // The kind stays in the name, because two charter kinds can land in one
+  // directory there — `guide:no-any` and `skill:no-any` are two primitives and
+  // must stay two files (FR-014).
+  const name = normalizedIdentityOf(sc.identity);
   const body = charter.bodyOf(sc);
 
   switch (sc.primitive.kind) {
@@ -197,11 +200,9 @@ function claudeDocumentComponentOf(charter: CharterRoot, sc: ScopedPrimitive): C
         `${[`## ${sc.identity}`, body].join("\n\n")}\n`,
       );
     }
-    // Named by the identifier alone, because the filename is what someone types
-    // after the slash: this host keeps commands in a directory of their own, so
-    // no other kind can land beside one and the kind would only be typed twice.
+    // for command, remove kind prefix so user just types /do-something instead of /command-do-something
     case CommandPrimitive.kind:
-      return ClaudeCommandComponent.of(sc.primitive.headers.id, { description: sc.primitive.description() }, body);
+      return ClaudeCommandComponent.of(name.replace(`${CommandPrimitive.kind}-`, ""), { description: sc.primitive.description() }, body);
     case AgentPrimitive.kind: {
       const { tools } = sc.primitive.headers;
       return ClaudeAgentComponent.of(name, { description: sc.primitive.description(), tools: tools.join(", ") }, body);
@@ -218,10 +219,3 @@ function claudeDocumentComponentOf(charter: CharterRoot, sc: ScopedPrimitive): C
   }
 }
 
-/** What claude calls a primitive in its own files: the identity with the
- *  separators a filename does not carry replaced. The kind stays in the name,
- *  because two charter kinds can land in one directory there — `guide:no-any`
- *  and `skill:no-any` are two primitives and must stay two files (FR-014). */
-function claudeNameOf(one: ScopedPrimitive): string {
-  return one.identity.replace(/[:/]/g, "-");
-}

@@ -1,5 +1,5 @@
 import { covers } from "../../../utils/globs.js";
-import { identityOf, KINDS, PRIMITIVE_CLASSES, primitiveOf, type Primitive } from "./primitive/Primitive.js";
+import { identityOf, normalizedIdentityOf, KINDS, PRIMITIVE_CLASSES, primitiveOf, type NormalizedIdentity, type Primitive } from "./primitive/Primitive.js";
 import { CharterRootFault, FaultsByFile, type Fault } from "../Fault.js";
 import type { ForParsingYaml } from "../../../port/zdriven/ForParsingYaml.js";
 
@@ -209,6 +209,7 @@ export class CharterRoot {
     const corpusIdentities = this.corpora;
 
     const fileByIdentity = new Map<string, string>();
+    const identityByNormalizedIdentity = new Map<NormalizedIdentity, string>();
     const faultsByFiles: Record<string, Fault[]> = {};
     const addFault = (file: string, found: Fault) => {
       faultsByFiles[file] = [...(faultsByFiles[file] ?? []), found];
@@ -225,6 +226,21 @@ export class CharterRoot {
           new CharterRootFault(
             `"${identity}" is already declared by ${declaredIn}. One identity names one primitive in a charter, whichever layer it was authored in.`,
             `Give this one an id of its own, or delete it if the other says the same thing. A vendor claiming an id you authored is one to raise with whoever publishes it. An id ${BUILTIN_PATH_PREFIX} claims is the engine's own and nobody can change it, so the one to rename is yours.`,
+          ),
+        );
+
+      // `/` is replaced where `:` is in a name given to a host, so two
+      // identities can come to one file there: `guide:a/b` and `guide:a-b`.
+      // Caught where the name is made, as a second claim on it (FR-141).
+      const normalizedIdentity = normalizedIdentityOf(identity);
+      const normalizedIdentityClaimedBy = identityByNormalizedIdentity.get(normalizedIdentity);
+      if (normalizedIdentityClaimedBy === undefined) identityByNormalizedIdentity.set(normalizedIdentity, identity);
+      else if (normalizedIdentityClaimedBy !== identity)
+        addFault(
+          file,
+          new CharterRootFault(
+            `"${identity}" and "${normalizedIdentityClaimedBy}" are both named "${normalizedIdentity}" in an agent's files, where "/" is written as "-". Only one of them would be written there.`,
+            `Give this one an id that stays its own once "/" is written as "-".`,
           ),
         );
 

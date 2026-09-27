@@ -56,7 +56,7 @@ export type PrimitiveIdentity = `${string}:${string}`;
  *  of that name takes the whole charter (FR-014). */
 export const PRIMITIVE_IDENTITY_SCHEMA = z
   .string()
-  .regex(/^[a-z0-9-]+:[a-z0-9-]+$/)
+  .regex(/^[a-z0-9-]+:[a-z0-9-]+(\/[a-z0-9-]+)*$/)
   .transform((identity) => identity as PrimitiveIdentity);
 
 /** One identity: the one a kind and an id make together, or one as it was
@@ -72,6 +72,20 @@ export function identityOf(kindAndId: { readonly kind: string; readonly id: stri
       'Write it as <kind>:<id>, as in "guide:no-any".',
     );
   return parsed.data;
+}
+
+declare const normalized: unique symbol;
+
+/** An identity as a host is given it in its own files: the
+ *  separators a filename does not carry replaced — the kind's `:` and the `/`
+ *  that groups an id alike (FR-141). A type of its own, so a name written into
+ *  a host's files is one `normalizedIdentityOf` made. */
+export type NormalizedIdentity = string & { readonly [normalized]: true };
+
+/** One spelling, so a name given to a host and the check that no two
+ *  identities share one cannot drift. */
+export function normalizedIdentityOf(identity: string): NormalizedIdentity {
+  return identity.replace(/[:/]/g, "-") as NormalizedIdentity;
 }
 
 export function isKind(value: unknown): value is Kind {
