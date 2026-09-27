@@ -1,6 +1,6 @@
 # Implementation Plan: Cherry Works
 
-**Spec**: [spec.md](./spec.md) · **Data model**: [data-model.md](./data-model.md) · **Tasks**: [001](./tasks/001-charter-engine.md), [002](./tasks/002-charter-portal.md), [003](./tasks/003-npm-publish.md), [004](./tasks/004-compiled-charter.md) · **Mockup**: [mockup/portal.html](./mockup/portal.html) · **Status**: Draft
+**Spec**: [spec.md](./spec.md) · **Data model**: [data-model.md](./data-model.md) · **Tasks**: [001](./tasks/001-charter-engine.md), [002](./tasks/002-charter-portal.md), [003](./tasks/003-npm-publish.md), [004](./tasks/004-compiled-charter.md), [005](./tasks/005-mcp-knowledge.md) · **Mockup**: [mockup/portal.html](./mockup/portal.html) · **Status**: Draft
 
 This file says how the product is built: the design, the modules each part lives
 in, and why it is built this way. What the product must do is the spec's, cited
@@ -32,10 +32,13 @@ by its ids; the shape of each piece of data is the data model's, cited by its §
 | Page type-checking | `src/driver/portal/page/tsconfig.json` with `lib: ["ES2023", "DOM"]`, `jsx: "react-jsx"`, `jsxImportSource: "react"`, excluded from the root one | The root config is Node-only (`types: ["node"]`) and stays so: a DOM global in engine code is a mistake the compiler should catch. `typecheck` runs both configs. The page entry in `tsup` sets the same JSX options. |
 | Body editor | CodeMirror 6 (`@codemirror/view`, `state`, `lang-markdown`, `language` for the highlighting, `commands` for the keymap and undo), bundled | Markdown highlighting offline ([FR-119](spec.md#fr-119)). The mockup loads Monaco from a CDN, which breaks [FR-111](spec.md#fr-111), and Monaco bundled is several megabytes with web workers; CodeMirror is a fraction of that and needs no worker. |
 | Markdown preview | `marked`, bundled | The preview view of [FR-119](spec.md#fr-119). A body is any markdown an author writes, which a hand-written renderer would not cover. |
+| MCP | `@modelcontextprotocol/sdk`: its `Server` over stdio for `cw mcp serve`, its `Client` over Streamable HTTP for each place, and its OAuth client for signing in | The protocol, its transports and its authorization flow — discovery, dynamic client registration, PKCE, refresh — are the SDK's, kept current with the specification by its maintainers. Written by hand they would be the largest part of phase 005 and the part most likely to be wrong ([§19](#19-knowledge-reached-through-mcp-fr-141--fr-157)). |
+| Credential store | shell out to `security` on macOS and `secret-tool` on Linux | The operating system's own store, with no native module, the way git is reached ([§19.5](#195-signing-in-fr-148--fr-151)). |
 | What the engine brings | `src/hexagon/domain/models/charter/builtin/`: one module per primitive, each a class extending its kind's own class, and an `index.ts` exporting the list | A kind that grows, renames or drops a header breaks these modules when the package is type-checked. Anything read at run time — JSON, markdown, a file shipped beside `dist/` — moves that failure to somebody else's `cw` run ([§5.4](#54-what-the-engine-brings-fr-096--fr-103)). |
 
 Explicitly avoided: native modules, a daemon, a lockfile format of our own, any
-network call other than `git`; a client-side router or store, a websocket or a
+network call other than `git` and, for [§19](#19-knowledge-reached-through-mcp-fr-141--fr-157), the MCP places a developer signs in to and
+serves; a client-side router or store, a websocket or a
 file watcher ([FR-110](spec.md#fr-110) is met by reading on every view), any request the page
 makes to a host other than the one serving it, opening a browser on the user's
 behalf ([FR-104](spec.md#fr-104) asks for the address to be printed); a second use case for
@@ -68,11 +71,12 @@ src/
       path.ts                      where everything lives in a repository
     service/                       charterRepo, settingsRepo, testSuitesRepo, vendorRepo, buildService:
                                    the domain read from and written to the driven ports
-    application/                   CharterAuthoring, CharterVendoring, TestAuthoring, dtos.ts
+    application/                   CharterAuthoring, CharterVendoring, TestAuthoring, McpReaching, dtos.ts
     port/
-      driver/                      ForManagingCharter, ForVendoringCharters, ForAuthoringTests
+      driver/                      ForManagingCharter, ForVendoringCharters, ForAuthoringTests, ForReachingMcps
         dtos/                      dto.ts, data.ts, outcome.ts, index.ts: every DTO
-      zdriven/                     ForReadingFiles, ForWritingFiles, ForVCS, ForParsingYaml, ForReportingProgress
+      zdriven/                     ForReadingFiles, ForWritingFiles, ForVCS, ForParsingYaml, ForReportingProgress,
+                                   ForKeepingSecrets, ForCallingMcpServers, ForAuthorizing
     utils/globs.ts                 covers and matches, over picomatch
   driver/
     cli/                           Commander (yargs), Command, one class per command
@@ -80,7 +84,9 @@ src/
       routes.ts                    the Hono routes under /api, one per use case; the app hc is typed by
       server.ts                    startPortal: the routes and the page on node:http, behind the guards of §12.4
       page/                        runs in the browser; imports the DTOs and the type of routes.ts, nothing else of ours
-  zdriven/                         files, git, YAML, the terminal, and in-memory adapters for tests
+    mcp/server.ts                  startMcpServer: the SDK's Server over stdio, answering through ForReachingMcps
+  zdriven/                         files, git, YAML, the terminal, the credential store, MCP clients, OAuth,
+                                   and in-memory adapters for tests
 main.ts                            composition root: which adapter fills which port
 test/                              named after the behaviour, kebab-case, flat
 ```
@@ -152,6 +158,7 @@ same ones.
 | `ForManagingCharter` | `doctor`, `list`, `explain`, `build`, `preview`, `test`, `listPrimitiveRequirements`, `kinds`, `add`, `settings`, `ensureRepoReady`, `init`; and, for the portal, `open`, `rewrite`, `remove` ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079)) |
 | `ForVendoringCharters` | `add`, `remove`, `installed` ([§7](#7-vendor-sources)) |
 | `ForAuthoringTests` | `suites`, `addSuite`, `writeSuite`, `removeSuite` ([§11.3](#113-managing-test-files)) |
+| `ForReachingMcps` | `signInStatus`, `signInWithToken`, `signInWithOAuth`, `served`, `call` ([§19](#19-knowledge-reached-through-mcp-fr-141--fr-157)) |
 
 Managing a charter is one conversation — authoring and reading one repository's
 charter — so it is one port rather than one per caller. Vendoring is apart
@@ -171,6 +178,9 @@ through.
 | `ForVCS` | is this a repository, is it clean, what changed under a folder, add or update a subtree, remove a folder as a commit | `Git`, `InMemoryVCS` |
 | `ForParsingYaml` | one frontmatter block as named fields | `YamlParser` |
 | `ForReportingProgress` | results, and problems with the next move | `ConsoleReporter` |
+| `ForKeepingSecrets` | one secret under a key: read, write, remove | `OsSecrets` (`security`, `secret-tool`), `InMemorySecrets` |
+| `ForCallingMcpServers` | the tools one server lists, and one call to one of them: a server reached over HTTP under a bearer credential, or a local process started with its token in its environment and stopped on close | `McpClients` (the SDK's Streamable HTTP and stdio clients), `InMemoryMcpServers` |
+| `ForAuthorizing` | an OAuth sign-in to one server, and a renewal: the credential it ends with | `OAuthFlow` (the SDK's OAuth client, a callback on `127.0.0.1`), `InMemoryAuthorizing` |
 
 Reporting is a driven port like any other, which is why the command line has no
 output type of its own: the terminal is one adapter for it, and a test binds
@@ -350,7 +360,10 @@ file. What is left are the questions no single file answers, asked by
 - a mixin named that no layer holds ([FR-007](spec.md#fr-007));
 - a mixin whose files neither cover nor are covered by its host's ([§5.2](#52-mixins-fr-006-fr-007));
 - a `rationale` citing no corpus the charter holds, as a `warn` ([FR-005](spec.md#fr-005));
-- the three warnings of [§4.4](#44-the-three-validation-warnings-fr-014).
+- an `mcps` entry naming no `mcp` the charter holds, as an `error` ([FR-143](spec.md#fr-143));
+- a local command declared with two `tokenEnv`s, and the served tool names too
+  long for a host, each an `error` ([§19.3](#193-the-list-of-places-fr-145-fr-157));
+- the four warnings of [§4.4](#44-the-four-validation-warnings-fr-014).
 
 `allFaultsByFiles` is the two together, the faults of reading and of reading
 together, under the file that has to change. A fault of severity `error` stops
@@ -361,13 +374,13 @@ errors back rather than acting on a charter that does not hold ([FR-040](spec.md
 Validation is no command of its own ([FR-013](spec.md#fr-013)). It is a private step of
 `CharterAuthoring`, and `doctor` is where its whole report is read ([§10.1](#101-doctor-fr-013-fr-014-fr-080-fr-081)).
 
-### 4.4 The three validation warnings (FR-014)
+### 4.4 The four validation warnings (FR-014)
 
-The three warnings and the file each is filed under are data-model [§6.1](data-model.md#61-the-three-warnings-fr-014). The
-first two — a corpus nobody cites, a mixin nobody lends from — are raised in
-`compositeFaultsByFiles`, each a `warn`.
+The four warnings and the file each is filed under are data-model [§6.1](data-model.md#61-the-four-warnings-fr-014). The
+first three — a corpus nobody cites, a mixin nobody lends from, an mcp nobody
+names — are raised in `compositeFaultsByFiles`, each a `warn`.
 
-The third, a guide or sensor that no test case names, needs the tests.
+The fourth, a guide or sensor that no test case names, needs the tests.
 So validation reads `.cw/test/` beside the charter and the settings, and a
 function beside `runSuite` in `testService` answers it. A test file that does
 not read is skipped for this question — `cw test` is where it is named — so a
@@ -531,8 +544,8 @@ What the charter compiles to for claude: a guide is a rule under
 `.claude/rules/`, its `paths` its globs; a command a command; an agent an agent
 with its tools; a skill and a playbook both a skill, because that host has one
 mechanism for a body loaded when the request calls for it; a posture's
-permissions and a sensor's hooks one settings file. A corpus and a mixin compile
-to nothing of their own. Each document carries its body with the bodies of the
+permissions and a sensor's hooks one settings file; every mcp together one entry
+of `.mcp.json` ([§19.4](#194-what-the-agents-host-is-given-fr-146-fr-147-fr-156)). A corpus and a mixin compile to nothing of their own. Each document carries its body with the bodies of the
 mixins it pulls in before it ([FR-037](spec.md#fr-037)). A claude file is named by the identity
 with its separators replaced, so `guide:no-any` and `skill:no-any` stay two
 files.
@@ -1090,6 +1103,8 @@ registered under it as a group; a positional on a command that stands alone
 | `cw vendor remove <name>` | `ForVendoringCharters.remove` | [FR-047](spec.md#fr-047), [FR-051](spec.md#fr-051) |
 | `cw vendor list` | `ForVendoringCharters.installed` | [FR-053](spec.md#fr-053), [FR-122](spec.md#fr-122) |
 | `cw portal [--port]` | `ensureRepoReady`, then `startPortal` | [FR-104](spec.md#fr-104) – [FR-107](spec.md#fr-107) |
+| `cw mcp auth [identity] [--status]` | `ForReachingMcps.signInStatus`, then `signIn` per address | [FR-148](spec.md#fr-148) – [FR-151](spec.md#fr-151) |
+| `cw mcp serve [--enable …]` | `ForReachingMcps.served`, then `startMcpServer` | [FR-152](spec.md#fr-152) – [FR-155](spec.md#fr-155) |
 
 For two capabilities the command line's way is not the port method. Rewriting a
 primitive and rewriting a test file are done in the author's own editor, so
@@ -1154,6 +1169,11 @@ holds one `TestSuite`, which is what the domain already calls it.
 - **A release published from one maintainer's machine.** Its checks are only as good as that machine's state. Mitigation: the release refuses a dirty tree and runs the full suite, then installs the exact tarball it will publish somewhere else and uses it; what is published is that tarball, not a second pack ([§18.4](#184-releasing-fr-134--fr-137)).
 - **A dependency the bundle expects but the package does not declare.** It works in this repository, where every development dependency is installed, and fails only in a user's install. Mitigation: a test compares the bare imports of `dist/main.js` with `dependencies`, both ways ([§18.1](#181-what-the-package-holds-fr-126-fr-127-fr-129-fr-130-fr-133)).
 - **A published version cannot be taken back.** A broken one stays installable. Mitigation: nothing is published that failed the install check; a fix is the next patch version (spec Assumptions).
+- **The MCP SDK's weight.** It brings an HTTP framework and a JSON Schema validator with it, against [SC-029](spec.md#sc-029)'s 20 MB. Mitigation: the install check measures the installed size on every release ([§18.4](#184-releasing-fr-134--fr-137)); measured before [T5.008](tasks/005-mcp-knowledge.md#t5.008) lands, and if it would pass the limit, only its client and stdio server entry points are imported and the rest is left to tree-shaking.
+- **A place's own tools changing under a declared name.** A server that renames or drops a tool leaves the `mcp` primitive naming one it does not have. Mitigation: the server says so at start, naming the primitive and the tool, and serves the rest ([FR-153](spec.md#fr-153)).
+- **OAuth servers that do not register clients dynamically.** Some places require an application registered by hand. Mitigation: `token` is always offered where the primitive allows it, and a place allowing only `oauth` that refuses registration answers with the fix of adding `token` to its `auth`.
+- **A local process sees more than its token.** It runs as the developer and inherits the environment `cw` runs in, as it would under any host. Mitigation: `cw` adds the one variable its primitive names and nothing else; a place's command is reviewed with the charter like any other change.
+- **A credential readable by the agent.** The agent runs as the developer, and the credential store answers the developer. This is the exposure of every MCP server configured on a machine, not one `cw` adds; `cw` writes no credential anywhere else ([FR-149](spec.md#fr-149)).
 - **A path nobody can open.** `(built into cw)/…` reads as a path in a fault or a
   listing and is not one. The catalogue no longer names it: an agent is sent to
   the compiled primitive, which is on disk for every layer ([§6.1](#61-one-pass-produces-everything-fr-030--fr-034-sc-004)). Accepted over an optional file, which puts a
@@ -1181,6 +1201,8 @@ Recorded so they are not built by accident:
 - A machine-local layer (spec Assumptions).
 - Bundling the runtime dependencies into `dist/main.js` ([§18.1](#181-what-the-package-holds-fr-126-fr-127-fr-129-fr-130-fr-133)).
 - A release from CI, a changelog, and an update check inside `cw` (spec Out of Scope).
+- A gateway holding one credential for many developers; resources, prompts and sampling through `cw mcp serve`; installing a local server's command; a concept layer and a tool to look it up; tools changing while the server runs (spec Out of Scope).
+- Opening the browser for an OAuth sign-in: the address is printed, as `cw portal` prints its own.
 
 ## 16. Read of the reference design
 
@@ -2089,11 +2111,11 @@ portal ([Story 9](spec.md#user-story-9---write-run-and-correct-the-self-regressi
 
 #### 17.2.20 T2.020 — The two warnings the charter alone answers
 
-The first two warnings of [§4.4](#44-the-three-validation-warnings-fr-014).
+The first two warnings of [§4.4](#44-the-four-validation-warnings-fr-014).
 
 #### 17.2.21 T2.021 — The warning for a primitive no case names
 
-The third warning of [§4.4](#44-the-three-validation-warnings-fr-014), with validation reading `.cw/test/`.
+The third warning of [§4.4](#44-the-four-validation-warnings-fr-014), with validation reading `.cw/test/`.
 
 #### 17.2.22 T2.022 — Preview and build from the header
 
@@ -2373,6 +2395,88 @@ Acceptance: `cw list` prints the same lines before and after; the portal's vendo
 
 Acceptance: after `cw build`, every `file` in `catalog.json` exists under `.cw/out/`, a guide's holds its mixin's body before its own, and the builtin skill's is on disk; a primitive removed leaves no compiled document after the next build; `cw build --preview` over a hand-edited one lists it.
 
+### 17.5 Phase 005: knowledge reached through MCP
+
+The list is [tasks/005-mcp-knowledge.md](./tasks/005-mcp-knowledge.md). The stories go in spec order: [Story 17](spec.md#user-story-17---declare-where-knowledge-lives-once-and-point-any-primitive-at-it-priority-p1), [Story 18](spec.md#user-story-18---sign-in-to-every-place-as-yourself-priority-p1), [Story 19](spec.md#user-story-19---give-the-agent-one-server-that-reaches-every-place-priority-p1) and [Story 20](spec.md#user-story-20---hold-a-run-to-the-places-it-needs-priority-p2), each one change ([SC-026](spec.md#sc-026)), cut from `005-mcp-knowledge`. [Story 17](spec.md#user-story-17---declare-where-knowledge-lives-once-and-point-any-primitive-at-it-priority-p1) needs no network: it is the charter and the build. The network arrives with [Story 18](spec.md#user-story-18---sign-in-to-every-place-as-yourself-priority-p1).
+
+#### 17.5.1 T5.001 — Identities joined by `/`
+
+`CommonHeaders.id` becomes segments joined by `/`, each the slug it was. `path.ts` writes `<kind>/<id>.md` with the folders the segments name; reading is already recursive ([§2.3](#23-ports-srchexagonport)). Every name made from an identity — a claude file, a component, `<name>` of data-model [§8](data-model.md#8-compiled-output-fr-030--fr-040) — replaces `/` where it replaces `:`, in one helper.
+
+Acceptance: `cw add guide mfbs/no-any` writes `.cw/charter/guide/mfbs/no-any.md`; the build compiles it to `.cw/out/guide/mfbs/no-any.md`, which `catalog.json` names, and to `.claude/rules/guide-mfbs-no-any.md`; `a//b`, `/a` and `a/` are refused with the kind's sample.
+
+#### 17.5.2 T5.002 — The `mcp` kind and the `mcps` header
+
+`McpPrimitive` beside the other kinds, requiring `endpoint`, `auth` and `tools`, taking `path` ([§19.1](#191-the-kind-and-the-header-fr-142--fr-144)); `mcps` joins `CommonHeaders`. `compositeFaultsByFiles` gains an unresolved `mcps` entry as an `error` under the citing file, and an mcp nobody names as a `warn` under its own. `CatalogueFull` gains `mcps`.
+
+Acceptance: `cw kinds mcp` answers its headers and sample; a file with both `endpoint` and `command`, with neither, or with `command` and `auth: [token]` but no `tokenEnv` is refused with the sample; a guide naming `mcp:missing` stops `cw build` and `cw test` with the error under the guide; an unnamed mcp is a warning in `cw doctor` and stops nothing.
+
+#### 17.5.3 T5.003 — The list of places
+
+`Places` in `domain/models/output/`, made by `compile` from every layer's mcp primitives: grouped by `endpoint` and `path`, prefix, the union of `auth`, the union of `tools`, `declaredBy` ([§19.3](#193-the-list-of-places-fr-145-fr-157)). It projects to `.cw/out/mcps.json`, `replace`. Two `tokenEnv`s for one command and the too-long served name are composite `error`s.
+
+Acceptance: a repository mcp and a vendor mcp at one endpoint and path are one place under both identities, prefixed by the repository's, with the union of their tools and of their `auth`; the same two at different paths are two places; one command with two `tokenEnv`s is an error under both files; a tool name that makes `mcp__cw__<prefix>__<tool>` longer than 64 characters is an error under its mcp.
+
+#### 17.5.4 T5.004 — What the host is given
+
+The claude arm of `compile` gains an `McpConfig` component: `.mcp.json`, `mergeJSON`, writing `mcpServers.cw` alone, and only when the charter holds an mcp ([§19.4](#194-what-the-agents-host-is-given-fr-146-fr-147-fr-156)). The compiled document of a primitive with `mcps`, and every claude document of it, ends with a section naming each place, its path and its served tool names.
+
+Acceptance: a charter with one mcp builds `.mcp.json` holding `cw` beside an entry the repository wrote itself, which is left untouched; a charter with none leaves `.mcp.json` as it was; a guide naming a place has its section in `.cw/out/guide/<id>.md` and in its rule.
+
+#### 17.5.5 T5.005 — The credential store
+
+`ForKeepingSecrets` and `OsSecrets`: `security add-generic-password -U`, `find-generic-password -w` and `delete-generic-password` on macOS, `secret-tool store`, `lookup` and `clear` on Linux, the secret passed on standard input, never as an argument ([§19.5](#195-signing-in-fr-148--fr-151)). Any other platform refuses, naming the two it supports. `InMemorySecrets` for the tests.
+
+Acceptance: on the maintainer's machine, a secret written is read back and removed; no secret appears in the process list while it is written.
+
+#### 17.5.6 T5.006 — `cw mcp auth`, by token
+
+`ForReachingMcps` and `McpReaching`; `signInStatus` reads `.cw/out/mcps.json` and the store; `signInWithToken` writes one credential. `McpAuthCommand` asks at a terminal only: per address not signed in, which way (the intersection), then a hidden token prompt. `--status` and `<identity>` as [FR-150](spec.md#fr-150) says.
+
+Acceptance: at a terminal two addresses are asked about and signed in; the next run asks nothing; without a terminal it names both and exits `1`; `--status` changes nothing; no file under the repository changes throughout.
+
+#### 17.5.7 T5.007 — `cw mcp auth`, by OAuth, and renewal
+
+`ForAuthorizing` and `OAuthFlow` over the SDK's OAuth client: discovery, dynamic registration, PKCE, a one-shot callback on `127.0.0.1` at a free port, the address printed for the developer to open. The registered client is kept with the credential so renewal needs no second registration ([§19.5](#195-signing-in-fr-148--fr-151)).
+
+Acceptance: against a local OAuth test server, a sign-in ends with a credential in the store holding a refresh token; an expired credential is renewed on use with nothing asked; a renewal the server refuses answers to sign in again.
+
+#### 17.5.8 T5.008 — `cw mcp serve`
+
+`startMcpServer` in `src/driver/mcp/server.ts`: the SDK's `Server` on stdio, answering `tools/list` with `ForReachingMcps.served([])` and `tools/call` with `call`. `McpReaching.served` reads `mcps.json`, connects to every place at once with a ten-second limit through `ForCallingMcpServers`, and keeps what each lists that its entry declares ([§19.6](#196-the-server-fr-152--fr-154)).
+
+Acceptance: against two in-memory places, the listed tools are exactly the declared ones under their prefixes; an undeclared name is refused and reaches nothing; a missing `mcps.json` stops the server saying to build.
+
+#### 17.5.9 T5.009 — Forwarding, and one place failing alone
+
+`call` finds the place by prefix, takes the credential under its endpoint, renews it if it has expired, and forwards the call; the answer is returned as it came. A place unreachable at start is left out of the listing with its reason on standard error; a place not signed in answers each call with `cw mcp auth <identity>`.
+
+Acceptance: a call reaches its place with the stored credential in its `Authorization` header; with one place down, the other's tools are listed and answer.
+
+#### 17.5.10 T5.010 — Places started as a local process
+
+`McpClients` gains the SDK's stdio client for a place with `command`: started when the server starts, with `cw`'s environment and the token under `tokenEnv`, closed when the server stops ([§19.6](#196-the-server-fr-152--fr-154)). A command that is not found, or exits before it answers, fails that place alone.
+
+Acceptance: a place declared by a command running a test MCP server over stdio is listed and answers, and the server reads its token from the variable named; a place whose command does not exist is left out with its reason, and the others are served; no process is left running after the server stops.
+
+#### 17.5.11 T5.011 — `--enable`
+
+`served(enable)` resolves each name against `catalog.json` and `mcps.json`: a primitive identity to its `mcps`, an mcp identity to its place, a served name to one tool; the union of them is served ([§19.7](#197-holding-a-run-fr-155-fr-156)). A name neither holds stops the server before it answers.
+
+Acceptance: `--enable playbook:x` serves the tools of the places `x` names; `--enable mcp:y` serves `y`'s; `--enable y__one` serves one; `--enable nothing:here` exits `1` naming it.
+
+#### 17.5.12 T5.012 — An agent held to its places
+
+The claude `Agent` component adds `mcp__cw__<served name>` for every tool of every place its `mcps` names ([FR-156](spec.md#fr-156)).
+
+Acceptance: an agent naming one place compiles with that place's tools beside its own and none of another's.
+
+#### 17.5.13 T5.013 — The README
+
+A section on declaring a place, signing in, and serving it, with the scheduled-run example of [Story 20](spec.md#user-story-20---hold-a-run-to-the-places-it-needs-priority-p2): `cw mcp serve --enable` beside the host's own flag restricting its built-in tools.
+
+Acceptance: a developer following it from a fresh clone reaches one place from Claude Code.
+
 ## 18. Distribution (FR-126 – FR-138)
 
 ### 18.1 What the package holds (FR-126, FR-127, FR-129, FR-130, FR-133)
@@ -2411,3 +2515,154 @@ Semantic versioning from `0.1.0` (spec Assumptions). There is no provenance: npm
 ### 18.5 The README (FR-138)
 
 The README tells a user to install from the registry, with `npx cherry-works` for one run and a development dependency for a pinned version, and moves building from source under Development, since that is the contributor's way. It changes in the same story as the first release, so it never promises a package the registry does not yet have.
+
+## 19. Knowledge reached through MCP (FR-141 – FR-157)
+
+A rule's reasons are partly in the repository — a corpus — and partly elsewhere:
+other repositories, a wiki, a chat channel. This part lets the charter say where
+the rest is, and lets each developer's agent reach it as that developer. It adds
+no concept layer: a guide says the rule, a corpus and the places it names say
+why (spec Assumptions).
+
+Two alternatives were weighed and not taken. A **gateway** holding one
+credential for everyone makes every call look like the gateway's at the place,
+and leaves access to be taken away in two places; signing in per developer keeps
+the place's own record and revocation whole. **One MCP entry per place** in the
+host's configuration would need every host's configuration written per place,
+per developer, and would show the agent every tool each place has; one `cw`
+server shows the declared ones.
+
+### 19.1 The kind and the header (FR-142 – FR-144)
+
+`McpPrimitive` is a kind like the other nine: a class with its schema,
+`requires`, `activatesWhen` and `sample`, in `PRIMITIVE_CLASSES` (data-model [§17.1](data-model.md#171-mcp-primitive-fr-142)).
+Its schema is a union of two shapes — `endpoint`, or `command` with `args` and
+`tokenEnv` — refined so that exactly one is declared, `auth` is `token` alone or
+left out under `command`, and `tokenEnv` is there exactly when `command` takes a
+token. `endpoint` is refused unless it is an `https://` URL, or
+`http://127.0.0.1`/`localhost` for a server under test. `auth` takes `oauth`
+and `token` only. `requires` names `tools` alone, since which of the other two a
+file needs depends on which shape it is; the refinement says so in the fault's
+own words, with the sample of the shape it was nearer. `tools` names the place's own tool names; whether the place
+has them is known only when it is reached, so it is said by the server, not by
+validation ([FR-153](spec.md#fr-153)).
+
+`mcps` is a common header because any kind can have reasons elsewhere, as any
+kind can cite a corpus. Unlike `rationale`, one that does not resolve is an
+`error`: a corpus that is missing costs a reader an explanation; an mcp that is
+missing is a place the agent is told about and cannot reach.
+
+### 19.2 Identities joined by `/` (FR-141)
+
+An identity's `id` may hold `/` so that places — and anything else — can be
+grouped by team or domain. Nothing is read from where a file sits
+([§5.1](#51-one-identity-one-primitive-fr-015-fr-016)); `/` only puts the file in folders — the authored one and
+the compiled one alike ([§6.1](#61-one-pass-produces-everything-fr-030--fr-034-sc-004)) — and names a host is given for an
+identity replace it as they replace `:`. The replacement makes `guide:a/b` and
+`guide:a-b` one file name; the collision is caught where it is made, as a second
+claim on the derived name, filed under the second file.
+
+### 19.3 The list of places (FR-145, FR-157)
+
+`compile` builds `Places` from every layer's mcp primitives and projects it to
+`.cw/out/mcps.json` (data-model [§17.2](data-model.md#172-place-fr-145)). It is part of `CharterOutput`, so
+it is never written without the catalogue beside it ([SC-004](spec.md#sc-004)), and its
+staleness is what `cw build --preview` already reports.
+
+A place is keyed by its address and `path`, not by identity, because the
+repository and a vendor may call one place by two names; tools are the union
+across them (spec Clarifications, 2026-09-26). The prefix is taken from the
+repository's own identity first, so what the repository calls a place is what
+its agent sees; then sorted order, so every build names it the same.
+
+Two faults need the whole list and are composite: a local command whose mcps
+name two `tokenEnv`s, and a served name longer than the host takes. The ways to
+sign in never conflict: they are the union across every identity, as the tools
+are, so a narrower list takes nothing away. The
+limit is the claude provider's, 64 characters for `mcp__cw__<prefix>__<tool>`,
+declared on the provider so that a second host brings its own.
+
+### 19.4 What the agent's host is given (FR-146, FR-147, FR-156)
+
+For claude, three things, each in the provider's classes:
+
+- **`.mcp.json`**, merged ([§6.2](#62-how-each-file-goes-down)): `mcpServers.cw` is
+  `{ "command": "cw", "args": ["mcp", "serve"] }`. The entry is written only when
+  the charter holds an mcp, and the rest of the file is the repository's. It is
+  never deleted, like the settings.
+- **A section at the end of each document of a primitive with `mcps`** — its
+  compiled document under `.cw/out/` as well as the host's — naming each place's
+  identity, its path and its served tool names as the host calls them. The body says the rule; this says where to look further, in the words the
+  agent needs to call.
+- **An agent's tool list** gains the served names of its places' tools. That is
+  the host holding a subagent to its places, which is enforcement rather than
+  instruction ([§19.7](#197-holding-a-run-fr-155-fr-156)).
+
+### 19.5 Signing in (FR-148 – FR-151)
+
+`cw mcp auth` reads `.cw/out/mcps.json`, not the charter: what it signs in to is
+what the last build said the places are, the same list the server serves. It
+groups places by address, since one address is one account at one service. A
+local command that takes no token is not asked about.
+
+The prompts are the command's own, as `cw add`'s are ([§1](#1-technical-context)): the use cases
+are called with the answers. Without a terminal nothing is asked, which is also
+what keeps a token out of an agent's conversation when an agent runs the command.
+
+A token is stored as it was typed; it is the only way for a local command, whose
+server has no sign-in of its own to discover. An OAuth sign-in goes through the SDK's
+client: discovery of the server's authorization metadata, dynamic registration
+of `cw` as a client, PKCE, and a callback on `127.0.0.1` at a free port, closed
+after one request. The address to open is printed, not opened ([§15](#15-not-built)). What
+the server registered is kept with the credential, so a renewal needs no second
+registration.
+
+The credential store is the operating system's, reached by shelling out, with
+the secret on standard input so it never shows in a process listing
+(data-model [§17.3](data-model.md#173-credential-fr-148--fr-151)). The hexagon sees it through `ForKeepingSecrets` as a
+string under a key; what a credential holds is the application's to parse. No
+DTO carries one, so no driver — the portal least of all — can show it.
+
+### 19.6 The server (FR-152 – FR-154)
+
+`startMcpServer` is a driver, beside the portal: the SDK's `Server` on stdio,
+answering `tools/list` and `tools/call` through `ForReachingMcps` and nothing
+else. It is started by the agent's host for a session and ends with it; it is not
+a daemon. Standard output is the protocol's, so everything `cw` says while
+serving goes to standard error.
+
+At start `served` reads `mcps.json`, and reaches every place at once through
+`ForCallingMcpServers`, each with its credential and a ten-second limit. A local
+command is started then, through the SDK's stdio client, with the environment
+`cw` runs in and its token under the one variable its primitive names; it is
+stopped when the server stops, and a command that is not installed fails like a
+server that cannot be reached. What a
+place lists is kept where its entry declares it, renamed `<prefix>__<tool>`, its
+description led by `[<identity> — <path>]`, its input schema passed as it came.
+A declared tool the place lacks is said and left out; a place that fails is said
+and left out; the rest are served ([SC-039](spec.md#sc-039)).
+
+`call` strips the prefix, finds the place, and forwards. A local command's token
+does not expire as far as `cw` knows; the process's own error is returned as it
+came. A credential past `expiresAt` is renewed first through `ForAuthorizing`; a `401` from the place is
+tried once more after a renewal, and otherwise answered as a tool error naming
+`cw mcp auth <identity>`. The place's answer is returned unchanged, errors
+included: the server decides what may be called, not what an answer means.
+
+### 19.7 Holding a run (FR-155, FR-156)
+
+Four ways a charter narrows what an agent reaches, from wide to narrow:
+
+| Mechanism | Holds | Enforced by |
+|---|---|---|
+| an mcp's `tools` | every session: no undeclared tool is ever served | `cw mcp serve` |
+| a primitive's `mcps` | where that primitive tells the agent to look | the agent reading it |
+| an agent's `mcps` | a subagent's tools | the host |
+| `cw mcp serve --enable` | one run, as a scheduled job or CI | `cw mcp serve` |
+
+`--enable` names are resolved against `catalog.json`, which already holds every
+primitive's `mcps`, and `mcps.json`; the server reads no charter. A job that must
+reach nothing else also runs its agent with the host's own built-in tools
+restricted, which is the host's flag, not `cw`'s; the README shows both together.
+Nothing here is a posture: a posture decides whether a call needs approval, and
+the tools that exist are decided before any call is made.

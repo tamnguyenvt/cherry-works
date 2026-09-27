@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there."
+**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server."
 
 ## Overview
 
@@ -17,6 +17,8 @@ The **charter** is everything a team authors to specify how the agent must behav
 - **The charter and its engine, on the command line.** A repository authors its charter as small markdown files, installs other teams' charters as vendor sources, and runs `cw` to validate it, list it, explain it, compile it into what its agent reads, test it and check its health. The command line is the whole of the engine's surface: nothing can be done elsewhere that cannot be done there.
 - **The portal.** A developer starts it from the command line inside a governed repository and gets a page that shows everything the charter holds — what each primitive says, when it comes up, which file it lives in and which layer it arrived from — and lets them author, edit and delete primitives, install and remove vendor sources, write and run the self-regression tests, build, and ask the health check, without remembering a single command or field name. The portal drives the same engine the command line drives and adds no behaviour of its own: what it shows is what the engine said, and everything it does has a command-line equivalent.
 - **Agent authoring.** The coding agent running in a governed repository is the third author, and the one that never sits at a terminal. A kind says what it requires to whoever asks (`cw kinds <kind>`), a primitive can be written with no terminal to answer at (`cw add <kind> <id> --header k=v`), and every governed repository gets the instructions: a skill, `skill:cw-author`, arrives in a layer of the charter that `cw` itself owns and compiles to whatever skill surface the repository's agent reads. The skill's body copies no rule out of the engine. It says to ask `cw kinds` and it says how to answer; which headers a kind requires stays where its contract is ([FR-004](#fr-004), [FR-064](#fr-064)). A surface compiled by an older `cw` would otherwise hand the agent a header table that a later `cw` has moved on from, and an agent reading a stale table writes files the engine refuses. Nothing here teaches the agent what to *write*: what a guide should say is the repository's business.
+
+- **Knowledge outside the repository.** A rule's reasoning does not all live beside it. A corpus holds what the repository wrote down; the rest sits in other repositories, in Notion, in Slack, each reached through an MCP server. An `mcp` primitive declares one such place once, under an identity of its own, with the tools the agent may use there. Any primitive names the places it draws on, the way it names the corpus it cites. `cw mcp auth` signs each developer in to each place as themselves, and `cw mcp serve` is the one MCP server the agent is given: it forwards each call to the right place with that developer's own credential, and shows the agent only the tools the charter declared. There is no shared credential and no gateway: every call reaches the place under the name of the person whose agent made it, and taking someone's access away at the place is the whole of taking it away.
 
 Every surface above reaches a user the same way: **one install from the public package registry**. A developer who has never seen this repository installs `cw` with the command their package manager already knows and has the whole product — the command line, the portal and the builtin layer — with nothing to clone and nothing to build. Building from source is a contributor's path, not a user's.
 
@@ -37,9 +39,22 @@ A single charter covering design, planning and implementation at once has to be 
 - Q: Which license is the project opened under? → A: MIT ([FR-133](#fr-133)).
 - Q: How is a release started — by the maintainer on their own machine, or by CI when a version tag is pushed? → A: By the maintainer running one command on their own machine ([FR-137](#fr-137)). There is no CI publishing path, so the package carries no registry provenance.
 
+### Session 2026-09-26
+
+- Q: Is the knowledge an agent should reach modelled as an ontology of its own — concepts, labels, relations? → A: No. It is what a rationale already is: a corpus is the reasoning kept in the repository, and an `mcp` primitive is where the rest of it is kept. Every primitive gains one header naming the places it draws on ([FR-143](#fr-143)). A concept layer is added only if a pilot shows the agent finding the wrong place without one.
+- Q: Does `cw` run a gateway holding one credential for everyone? → A: No. A shared credential hides who made a call from the place it reached, and leaves two places to revoke access in. Every developer signs in to every place as themselves ([FR-148](#fr-148)).
+- Q: Who holds the credentials — the agent's host, or `cw`? → A: `cw`, for every place and every host ([FR-148](#fr-148), [FR-149](#fr-149)).
+- Q: Does the agent's configuration list one MCP server per place, or one? → A: One: `cw mcp serve`, which forwards each call to the place it belongs to ([FR-152](#fr-152)).
+- Q: Where is what the agent may use in a place decided — in the posture, or in the `mcp` primitive? → A: In the `mcp` primitive, as its tool list. A posture decides whether a call needs approval; it does not decide which tools exist ([FR-153](#fr-153)).
+- Q: Is the name of an `mcp` primitive its address? → A: No. It is an identity like any other, so an address can change without anything naming it changing. Any identity may now hold `/` to be grouped, as `mcp:mfbs/billing` ([FR-141](#fr-141)).
+- Q: The repository and a vendor declare the same place under two identities, with different tool lists — which tools are shown? → A: Every tool either declares. The place is one entry under both identities ([FR-145](#fr-145)).
+- Q: Is a place only an MCP server on the network, or also one started on the developer's machine? → A: Both. A place is either an address reached over HTTP or a command `cw mcp serve` starts as a local process; the second is signed in to by token only, handed to the process in the environment variable the `mcp` primitive names ([FR-142](#fr-142)).
+- Q: The repository allows `oauth` and `token` at an address where a vendor allows only `token` — which is offered? → A: Both. The ways offered are every way any identity at the address allows, from any layer, as its tools are ([FR-148](#fr-148)).
+- Q: Can a run be held to fewer places than the charter declares? → A: Yes. `cw mcp serve --enable` names what that run may reach, for an agent run on a schedule or in CI; with nothing named, every declared tool is shown ([FR-155](#fr-155)).
+
 ## User Scenarios & Testing *(mandatory)*
 
-Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, Stories 10 to 12 agent authoring, Stories 13 to 15 distribution, and [Story 16](#user-story-16---open-every-primitive-as-it-was-compiled-priority-p1) the charter compiled for an agent to open. A story's priority ranks it among the stories of its own part of the product.
+Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, Stories 10 to 12 agent authoring, Stories 13 to 15 distribution, [Story 16](#user-story-16---open-every-primitive-as-it-was-compiled-priority-p1) the charter compiled for an agent to open, and Stories 17 to 20 knowledge reached through MCP. A story's priority ranks it among the stories of its own part of the product.
 
 ### User Story 1 - Author a charter and put the agent under it (Priority: P1)
 
@@ -343,6 +358,87 @@ An agent surveying the charter finds a primitive in the catalogue and opens the 
 
 ---
 
+### User Story 17 - Declare where knowledge lives once, and point any primitive at it (Priority: P1)
+
+A team's rule about rounding tax on an invoice has reasons that live outside the repository: the service's code in another repository, the tax specification in Notion, the decisions taken in a Slack channel. The author declares each of those places once, as an `mcp` primitive with an identity of the team's choosing, its address and the tools the agent may use there. Then the rule names the places it draws on, the way it names the corpus it cites. The build gathers every declared place into one list, and gives the agent one MCP server to reach them all.
+
+**Why this priority**: Every other story here reaches a place this one declares. Without it an agent is told the rule and not where its reasons are.
+
+**Independent Test**: Author two `mcp` primitives and one guide naming both; build; confirm the list of places holds both, the agent's MCP configuration holds one entry, and the guide's compiled surface names both places. Rename nothing and change one address; build; confirm the guide is unchanged.
+
+**Acceptance Scenarios**:
+
+1. **Given** a repository set up under `cw`, **When** the author runs `cw add mcp mfbs/billing` and answers its address, the ways to sign in it allows and the tools it opens, **Then** `.cw/charter/mcp/mfbs/billing.md` is written and `mcp:mfbs/billing` is an identity of the charter.
+8. **Given** an `mcp` primitive declaring both an endpoint and a command, or neither, or a command taking a token with no variable named for it, **When** the charter is checked, **Then** it is refused under that file with the kind's sample.
+2. **Given** that primitive, **When** a guide declares `mcps: [mcp:mfbs/billing]` and the charter is built, **Then** the guide's compiled document, and its rule on the agent's host, say which places its reasons are in and which tools reach each.
+3. **Given** a primitive naming an `mcp` identity no layer holds, **When** the charter is checked, built or tested, **Then** it fails with an error under that primitive's file naming the identity, and nothing is built.
+4. **Given** an `mcp` primitive no primitive names, **When** the health check runs, **Then** it warns under that primitive's file, and the build still runs.
+5. **Given** the repository and a vendor each declaring the same address under a different identity, **When** the charter is built, **Then** the list of places holds that address once, under both identities, with every tool either declares.
+6. **Given** a charter declaring at least one `mcp` primitive, **When** it is built for Claude Code, **Then** the repository's MCP configuration holds one entry that starts `cw mcp serve`, and nothing of the repository's own entries is changed.
+7. **Given** a place whose address changes, **When** only its `mcp` primitive is edited and the charter built, **Then** every primitive naming it reaches the new address, with no other file changed.
+
+---
+
+### User Story 18 - Sign in to every place as yourself (Priority: P1)
+
+A developer clones a repository whose charter declares four places. They run one command, and are taken through each address the charter holds that they have not signed in to yet: a browser sign-in where the place offers one, a token pasted at a hidden prompt where it does not. What they are signed in as is theirs, kept on their machine outside the repository, and used for every call their agent makes. Nobody else's access is lent to them, and when a place takes their access away, their agent loses it with them.
+
+**Why this priority**: Without a credential no call reaches a place. Signing in as oneself is also what keeps every call attributable and every revocation whole — the reason there is no gateway.
+
+**Independent Test**: In a repository declaring two addresses, run the sign-in and complete it for both; confirm the status lists both as signed in, no file under the repository changed, and a second run asks for nothing. Revoke one credential at its place and confirm the next call there says to sign in again.
+
+**Acceptance Scenarios**:
+
+1. **Given** a charter declaring places at two addresses, **When** the developer runs `cw mcp auth` at a terminal, **Then** they are asked about each address in turn, offered every way to sign in that any `mcp` primitive at that address allows,, and signed in to each.
+2. **Given** two `mcp` primitives at one address, **When** the developer has signed in to that address once, **Then** both are signed in.
+3. **Given** a developer signed in to every address, **When** they run `cw mcp auth` again, **Then** nothing is asked, and they are told every address is signed in.
+4. **Given** no terminal to ask at, as when an agent runs the command, **When** `cw mcp auth` runs, **Then** nothing is asked, the addresses not signed in are named, and the command fails, saying to run it at a terminal.
+5. **Given** a token typed at the prompt, **When** it is entered, **Then** it is not shown, and after sign-in it appears in no file under the repository and in nothing `cw` prints.
+6. **Given** `cw mcp auth --status`, **When** it runs, **Then** it lists each address with the identities at it and whether the developer is signed in there, and changes nothing.
+7. **Given** `cw mcp auth mcp:mfbs/billing`, **When** it runs, **Then** the developer is signed in again to that primitive's address alone, whatever they were signed in as before.
+
+---
+
+### User Story 19 - Give the agent one server that reaches every place (Priority: P1)
+
+The developer's agent is given one MCP server, `cw mcp serve`. It shows the agent the tools the charter declared for each place, each under a name that says which place it belongs to, and nothing else the place has. A call goes to its place with the developer's own credential. A place that is down, or not signed in to, answers each call with why and what to do; every other place works as before.
+
+**Why this priority**: This is where the agent actually reaches the knowledge Stories 17 and 18 declared and unlocked.
+
+**Independent Test**: With two places declared and signed in, start the server from the agent; list its tools and confirm exactly the declared ones, each under its place's name; call one of each; stop one place and confirm its calls answer why while the other's still work.
+
+**Acceptance Scenarios**:
+
+1. **Given** a built charter and a developer signed in, **When** the agent starts `cw mcp serve`, **Then** the tools it lists are exactly the declared tools of every place, each named after its place, and the place's own tools not declared are not listed.
+2. **Given** a tool it did not list, **When** the agent calls it, **Then** the call is refused and nothing reaches any place.
+3. **Given** a listed tool, **When** the agent calls it, **Then** the call reaches that tool's place under the developer's own credential and the place's answer is returned as it came.
+4. **Given** a place not signed in to, **When** a tool of it is called, **Then** the call answers that the developer must sign in, naming the command, and other places are unaffected.
+5. **Given** a place unreachable when the server starts, or a local command that fails to start, **When** the agent lists tools, **Then** that place's tools are missing, the reason is logged, and every other place's tools are listed.
+8. **Given** a place declared by a command that takes a token, **When** the server starts, **Then** it starts that command with the developer's token in the variable the primitive names, and stops it when the server stops.
+6. **Given** a tool declared in an `mcp` primitive that its place does not have, **When** the server starts, **Then** it says so, naming the primitive and the tool, and lists the rest.
+7. **Given** a charter never built, **When** `cw mcp serve` starts, **Then** it stops, saying the charter must be built first.
+
+---
+
+### User Story 20 - Hold a run to the places it needs (Priority: P2)
+
+A team runs an agent every night to look for fraud in payments. That run needs two tools of one place and nothing else. The job starts the server with those named, and the agent is shown exactly those; any other tool, of that place or another, does not exist for it. Inside an interactive session, a subagent can be held the same way: its `mcp` places become the only such tools it holds.
+
+**Why this priority**: The default — every declared tool — is right for a developer at work. A job nobody watches is where a narrower set matters, and it can wait until the default works.
+
+**Independent Test**: Start the server with one playbook named, and confirm only the tools of the places that playbook names are listed and callable; start it with one tool named and confirm only that one; start it with an identity nothing holds and confirm it refuses to start.
+
+**Acceptance Scenarios**:
+
+1. **Given** `cw mcp serve --enable playbook:fraud-scan`, **When** the agent lists tools, **Then** it is shown the declared tools of the places that playbook names, and no other.
+2. **Given** `--enable mcp:mfbs/payments`, **When** the agent lists tools, **Then** it is shown every declared tool of that place, and no other.
+3. **Given** `--enable` naming one tool of one place, **When** the agent lists tools, **Then** it is shown that tool alone.
+4. **Given** `--enable` repeated, **When** the server starts, **Then** it shows what any of them names.
+5. **Given** `--enable` naming an identity or tool the charter does not hold, **When** the server starts, **Then** it refuses to start, naming it, and shows nothing.
+6. **Given** an `agent` primitive naming `mcps`, **When** the charter is built for Claude Code, **Then** the subagent's tool list holds the declared tools of those places beside the tools it lists itself, and no tool of any other place.
+
+---
+
 ### Edge Cases
 
 **The charter and its engine**
@@ -386,6 +482,20 @@ An agent surveying the charter finds a primitive in the catalogue and opens the 
 - The registry is unreachable at install time — the package manager fails as it does for any package; nothing of `cw` has run.
 - A user upgrades `cw` in a repository whose compiled output an older `cw` wrote — the health check says the output is behind wherever the new version would write something different, as it does after any charter change ([FR-080](#fr-080)).
 
+**Knowledge reached through MCP**
+
+- Two `mcp` primitives at one address with different paths — two places, both signed in to by one sign-in to the address.
+- A place declared by a command that is not installed on the developer's machine — that place fails to start and is left out, as an unreachable one is; the rest are served.
+- The same command declared with different arguments — two addresses, each signed in to on its own.
+- One identity claimed by two `mcp` primitives at two addresses — the usual collision, naming both files ([FR-015](#fr-015)).
+- A vendor opens a tool on a place the repository also declares — the tool is shown: tools are the union of what every identity at a place declares ([FR-145](#fr-145)). The list of places says which identity declared which tool, and a run that must not have it names what it may use with `--enable`.
+- A tool's name, once prefixed with its place and by the agent's host, runs past what the host accepts — an error under the `mcp` primitive, before anything is built ([FR-157](#fr-157)).
+- A credential expires while the server runs — it is renewed where the place allows; where it cannot be, the call answers to sign in again.
+- The developer runs `cw mcp auth` by asking their agent to — the agent has no terminal to be asked at, so nothing is asked and no token passes through the conversation ([FR-150](#fr-150)).
+- The repository's MCP configuration already has entries of its own — they are kept; the build writes only the `cw` entry ([FR-146](#fr-146)).
+- A charter that declares no `mcp` primitive — no MCP configuration is written and none of the repository's is touched.
+- An identity holding `/` — its file sits in a folder named after the part before it, and every surface that names it by file or by host name replaces `/` the way it replaces `:` ([FR-141](#fr-141)).
+
 **Agent authoring**
 
 - A `--header` value that itself contains `=` — everything after the first `=` is the value.
@@ -402,10 +512,10 @@ An agent surveying the charter finds a primitive in the catalogue and opens the 
 
 **The charter format**
 
-- <a id="fr-001"></a>**FR-001**: The system MUST recognise exactly these primitive kinds — guide, sensor, command, skill, playbook, agent, posture, corpus and mixin — and MUST treat any other kind as a validation error. The set is closed.
+- <a id="fr-001"></a>**FR-001**: The system MUST recognise exactly these primitive kinds — guide, sensor, command, skill, playbook, agent, posture, corpus, mixin and mcp — and MUST treat any other kind as a validation error. The set is closed.
 - <a id="fr-002"></a>**FR-002**: Every primitive MUST be a single markdown file kept in the directory of its kind within the charter root, and MUST carry at minimum a kind, an identity and a description. The system MUST look for primitives in those directories and nowhere else, so that the catalogues, the lockfile and every other generated file beside them are never read as primitives.
 - <a id="fr-003"></a>**FR-003**: Every primitive MUST declare its own kind, and the system MUST read it as that kind wherever the file sits. A file that declares no kind, or one outside the set, MUST be reported.
-- <a id="fr-004"></a>**FR-004**: The system MUST enforce, per kind, the additional fields that kind requires: a triggering signal and the command it runs, for a sensor; activation triggers for a skill and for a playbook; a tool list for an agent; and permission lists for a posture. A mixin MUST NOT pull in mixins of its own.
+- <a id="fr-004"></a>**FR-004**: The system MUST enforce, per kind, the additional fields that kind requires: a triggering signal and the command it runs, for a sensor; activation triggers for a skill and for a playbook; a tool list for an agent; permission lists for a posture; and an address, the ways to sign in, and a tool list for an mcp ([FR-142](#fr-142)). A mixin MUST NOT pull in mixins of its own.
 - <a id="fr-005"></a>**FR-005**: The system MUST let any primitive cite the reasoning behind it, and MUST treat that reasoning as loaded only on demand rather than always present.
 - <a id="fr-006"></a>**FR-006**: The system MUST let a primitive pull in one or more mixins, each lending its body to the host at projection time. No field is merged: a mixin lends text, not fields. Where both the host and the mixin name the files they apply to, one side's globs MUST cover the other's, in either direction, and a pair that covers neither way MUST be reported. A mixin MUST NOT itself pull in another mixin.
 - <a id="fr-007"></a>**FR-007**: A primitive that names a mixin no layer holds MUST be reported.
@@ -418,7 +528,7 @@ An agent surveying the charter finds a primitive in the catalogue and opens the 
 - <a id="fr-011"></a>**FR-011**: Validation MUST write nothing and MUST signal failure through its exit status so an automated pipeline can gate on it.
 - <a id="fr-012"></a>**FR-012**: Every fault the system reports MUST say, beside what is wrong, the next move that fixes it, wherever there is one.
 - <a id="fr-013"></a>**FR-013**: Validation MUST NOT be a command of its own. What is wrong with the charter MUST be reported, in full, by the health check ([FR-080](#fr-080)), so that no two commands read one charter and answer differently.
-- <a id="fr-014"></a>**FR-014**: Validation MUST raise a warning for each corpus no primitive cites, each mixin no primitive lends from, and each guide and sensor that no test case names. A posture is not warned about: a case asking whether a file is allowed names no posture, and a posture's `deny` may name commands no case can touch. None of them MUST stop a build or a listing ([FR-010](#fr-010)). The command line and the portal both show them, because both read validation.
+- <a id="fr-014"></a>**FR-014**: Validation MUST raise a warning for each corpus no primitive cites, each mixin no primitive lends from, each mcp no primitive names ([FR-144](#fr-144)), and each guide and sensor that no test case names. A posture is not warned about: a case asking whether a file is allowed names no posture, and a posture's `deny` may name commands no case can touch. None of them MUST stop a build or a listing ([FR-010](#fr-010)). The command line and the portal both show them, because both read validation.
 
 **Identity and layers**
 
@@ -607,6 +717,26 @@ An agent surveying the charter finds a primitive in the catalogue and opens the 
 - <a id="fr-139"></a>**FR-139**: A build MUST write every primitive of every layer as one compiled document at `.cw/out/<kind>/<id>.md`: its headers, and below them the bodies of the mixins it pulls in, in the order it names them, before its own. A compiled document MUST carry the mark of generated output, and MUST be deleted by the build that no longer compiles it.
 - <a id="fr-140"></a>**FR-140**: The full catalogue MUST name, as each primitive's file, its compiled document. A listing of the charter — on the command line and in the portal — MUST name the file each primitive was authored in, read off the charter rather than off the catalogue.
 
+**Knowledge reached through MCP**
+
+- <a id="fr-141"></a>**FR-141**: An identity MUST be one or more segments joined by `/`, each segment lowercase letters, digits and inner hyphens, so that identities can be grouped (`mcp:mfbs/billing`). A primitive MUST be kept at `<kind>/<id>.md` under its layer, and compiled to `.cw/out/<kind>/<id>.md` ([FR-139](#fr-139)), in the folders its segments name; every name a host is given for it — a host's component, a tool's prefix — MUST replace `/` as it replaces the kind's separator.
+- <a id="fr-142"></a>**FR-142**: An `mcp` primitive MUST declare one MCP server, in exactly one of two ways: an endpoint reached over HTTP, or a command with its arguments, started as a local process. Its address is the endpoint, or the command with its arguments. It MUST declare the tools of that server the agent may use. For an endpoint it MUST declare the ways a developer may sign in — `oauth`, `token`, or both. For a command, `token` is the only way, and a primitive declaring it MUST name the environment variable the process reads its token from; a command declaring no way needs no sign-in. It MAY declare a path: the place inside that server it is about, such as one repository of a code host, told to the agent beside each of its tools. Its body, where it has one, says what is kept there and when to look.
+- <a id="fr-143"></a>**FR-143**: Every kind MUST take an `mcps` header listing `mcp` identities: the places the primitive's reasons are kept outside the repository. A name no layer holds MUST be an error under the file that names it, stopping a build, a listing, an explanation and a test run.
+- <a id="fr-144"></a>**FR-144**: An `mcp` primitive no primitive names MUST be a warning under its own file, stopping nothing ([FR-014](#fr-014)).
+- <a id="fr-145"></a>**FR-145**: The build MUST write the list of places, `.cw/out/mcps.json`: one entry per address and path, holding every identity declaring it, from every layer, which layer declared each, and the union of the tools each declares. Each entry's tools MUST be named under one prefix: the identity the repository declared, else the first of the others in sorted order.
+- <a id="fr-146"></a>**FR-146**: For a charter declaring at least one `mcp` primitive, the build MUST write, into each chosen agent's MCP configuration, one entry starting `cw mcp serve`, and MUST leave every other entry of that configuration as it was. A charter declaring none MUST write none.
+- <a id="fr-147"></a>**FR-147**: A primitive's compiled document ([FR-139](#fr-139)) and every host document compiled from it MUST name, for each place in its `mcps`, the place's identity, its path where it has one, and the names its tools are served under.
+- <a id="fr-148"></a>**FR-148**: `cw mcp auth` MUST sign the developer in, as themselves, to every address the charter holds that they are not signed in to, one address at a time, offering every way any `mcp` primitive at that address allows, whichever layer declared it. One sign-in MUST serve every primitive at that address. No credential MUST be shared between developers, or held for them.
+- <a id="fr-149"></a>**FR-149**: A credential MUST be kept in the operating system's own credential store, under its address, and MUST NOT be written to any file under the repository, to the compiled output, or to anything `cw` prints. A token typed at a prompt MUST NOT be shown.
+- <a id="fr-150"></a>**FR-150**: `cw mcp auth` MUST ask only at a terminal. With none, it MUST ask nothing, name each address not signed in to, and exit with a failure status. `cw mcp auth --status` MUST list each address, the identities at it, and whether the developer is signed in there, and change nothing. `cw mcp auth <mcp identity>` MUST sign in again to that primitive's address alone.
+- <a id="fr-151"></a>**FR-151**: A credential that expires MUST be renewed without asking, where the place allows it. Where it cannot be, a call to that place MUST answer that the developer must sign in again, naming the command.
+- <a id="fr-152"></a>**FR-152**: `cw mcp serve` MUST be one MCP server, spoken to over standard input and output, serving the list of places the last build wrote. With no list, it MUST stop, saying the charter must be built. A place declared by a command MUST be started by the server as a local process, its token — where it takes one — given in the variable its primitive names and in no other way, and MUST be stopped when the server stops.
+- <a id="fr-153"></a>**FR-153**: The server MUST list, for each place, exactly the tools its entry holds, each named `<prefix>__<tool>`, and MUST refuse a call to any tool it did not list, reaching no place. A declared tool its place does not have MUST be said when the server starts, naming the primitive and the tool, and left out.
+- <a id="fr-154"></a>**FR-154**: A call MUST reach its place under the credential of the developer running the server, and its answer MUST be returned as the place gave it. A place that cannot be reached, or is not signed in to, MUST affect only its own tools: listing leaves them out and says why; a call to one answers why and the next move.
+- <a id="fr-155"></a>**FR-155**: `cw mcp serve --enable <name>`, repeatable, MUST show only what the names reach: the places a primitive's `mcps` names, for a primitive identity; one place, for an `mcp` identity; one tool, for a served tool name. Without it, every tool of every place is shown. A name the charter does not hold MUST stop the server before it shows anything, naming it.
+- <a id="fr-156"></a>**FR-156**: An `agent` primitive's compiled tool list MUST hold, beside the tools it lists, the served names of the tools of every place its `mcps` names, and of no other place.
+- <a id="fr-157"></a>**FR-157**: A served tool name that, as the agent's host names it, is longer than that host accepts MUST be an error under the `mcp` primitive declaring the tool.
+
 **The portal: tests**
 
 - <a id="fr-124"></a>**FR-124**: The portal MUST list every test file with its name, description and case count, and each case's situation and expectation.
@@ -630,12 +760,15 @@ The shape of each is in the data model.
 - **Compiled output**: The instruction surfaces generated from the charter for the agent to read (data-model).
 - **Compiled primitive**: One primitive as an agent opens it: its headers and the whole of its body, its mixins' included, written into the output folder whichever layer it came from (data-model).
 - **Explanation**: What the engine says about one identity: its file and layer, when it comes up, what it pulls in, what names it, and which cases pin it down (data-model).
-- **Warning**: A fault that is worth saying and not worth stopping on. Validation raises three of them ([FR-014](#fr-014)); shape in the data-model.
+- **Warning**: A fault that is worth saying and not worth stopping on. Validation raises four of them ([FR-014](#fr-014)); shape in the data-model.
 - **Portal**: The graphical interface over one repository's charter, served on the developer's own machine for as long as its command runs. Holds no state about the charter of its own.
 - **View**: One of the portal's pages — the repository layer, the vendor layer, the tests, a search, an explanation, a health report, a build result. Each is read from the engine when it is shown.
 - **Draft**: The answers and body an author has typed for a primitive not yet saved. The only thing the portal holds that the engine has not been told, and gone when it is saved or cancelled (data-model).
 - **Package**: What one release publishes to the registry: the runnable program, the portal's page, the README and the license, under one version.
 - **Release**: One version of the package, published once, never replaced, and tagged at the commit it was built from.
+- **MCP primitive**: One place knowledge is kept outside the repository — an MCP server's address, the path inside it, the ways to sign in and the tools the agent may use — under an identity that does not change when the address does (data-model).
+- **Place**: One address and path, as the list of places holds it: every identity declaring it, from every layer, and the tools they declare between them (data-model).
+- **Credential**: What one developer signed in to one address with. Theirs alone, kept by their operating system, never in the repository (data-model).
 - **Flow**: One branch holding one charter. A convention of the product and of a later application; carries no meaning inside the engine, the command line or the portal.
 
 ## Success Criteria *(mandatory)*
@@ -675,6 +808,12 @@ The shape of each is in the data model.
 - <a id="sc-031"></a>**SC-031**: Any published version is traced to the one commit it was built from in one step, and any running `cw` names its version in one command.
 - <a id="sc-032"></a>**SC-032**: A maintainer publishes a release with one action, and a refused release leaves the registry and the repository as they were.
 - <a id="sc-033"></a>**SC-033**: Every file the full catalogue names opens, and holds everything its primitive says with its mixins, for 100% of primitives, the engine's own included.
+- <a id="sc-034"></a>**SC-034**: A developer cloning a repository whose charter declares places at N addresses reaches all of them from their agent after one command and at most N sign-ins, with one MCP entry in their agent's configuration.
+- <a id="sc-035"></a>**SC-035**: 100% of calls reaching a place are made under the credential of the developer whose agent made them; none is made under a credential shared between developers.
+- <a id="sc-036"></a>**SC-036**: No credential appears in any file under the repository, in the compiled output, or in anything `cw` prints.
+- <a id="sc-037"></a>**SC-037**: An agent is shown zero tools its charter did not declare, and under `--enable` zero tools beyond what was named.
+- <a id="sc-038"></a>**SC-038**: Moving a place to a new address changes one file of the charter; no primitive naming the place changes.
+- <a id="sc-039"></a>**SC-039**: A place that is down or not signed in to leaves 100% of other places' tools listed and answering.
 
 ## Assumptions
 
@@ -686,7 +825,7 @@ The shape of each is in the data model.
 - **One developer, one machine.** The portal is not shared over a network and has no accounts, as the product has none.
 - **The reference design is keystone** (github.com/tacoda/keystone) for the primitive kinds, their field contracts and the vendored-content installation flow, and *Harness Engineering* by Ian Johnson for the concentric layers and the reliability levers. Neither is a runtime or build dependency; this is an independent implementation. Where keystone splits catalogue generation and compilation into two commands that repeat the same work, this product deliberately merges them.
 - **Three kinds in the reference design are deliberately not adopted**: the external-callable declaration, the governed-output-document kind, and the reusable-documentation-pattern kind. The reference's own charter never exercises the document graph — no primitive in it declares a producing or consuming relationship — so nothing proven is lost. For this product specifically, the lifecycle of a work item (its state, its gates, its board) belongs to a later application, and expressing it a second time in the charter would duplicate it. The producing and consuming relationships on a unit of work are dropped alongside the document kind, since their referent is gone, and so are the lifecycle phase and the explicit done-condition: the reference declares neither, and a command reaches an agent as a slash command whose description is all that host reads before loading it — a phase it has no field for is a header nothing carries.
-- **The three warnings are validation warnings, not portal features.** A primitive no case pins down is limited to guides and sensors because those are the only kinds a case names ([FR-082](#fr-082)); a posture is asserted only through whether a file is allowed, which names none. All three are warnings and never errors.
+- **The four warnings are validation warnings, not portal features.** A primitive no case pins down is limited to guides and sensors because those are the only kinds a case names ([FR-082](#fr-082)); a posture is asserted only through whether a file is allowed, which names none. All four are warnings and never errors.
 - **Self-regression tests assert activation, not behaviour.** A test pins which rules apply to a described situation, which is what catches the common failure of a rule quietly going dead after a glob or cascade change. It deliberately does not run a check's command or ask an agent for a judgement: the first needs a live environment and would break the reader/writer split, and the second is non-deterministic, so a suite built on it becomes flaky and then gets ignored. Both may be added later once there are real checks to exercise.
 - **Sensors are run by the agent's own harness, not by this system.** A check that runs a command and a check that asks an agent for a judgement are both declared in the charter and compiled into the agent's activation surface; firing them is the agent's job. This system declares and compiles; it does not execute agent work.
 - **Two files defining the same identity are reported as a collision**, in whichever layers they sit, rather than resolved by an implicit rule, because any silent winner would be arbitrary.
@@ -709,6 +848,13 @@ The shape of each is in the data model.
 - **The supported runtime is the one the engine already requires**, and the supported platforms are macOS and Linux, where the engine is built and tested. Windows is not promised until it is tested.
 - **The browser the portal's tests drive is a contributor's tool.** A user needs only their own browser to open the portal; nothing downloads one for them.
 - **The maintainer's registry account, its second factor and the rights to the package name are held outside the product.** A release uses them; it does not create or manage them.
+- **A rationale is where the knowledge model stops.** A guide says the rule, a corpus says why in the repository, and an `mcp` primitive says where the rest of why is kept. No concept layer — labels, synonyms, broader and related terms — is added until a pilot shows an agent looking in the wrong place without one.
+- **A place is a server on the network or a process on the developer's machine.** A server on the network is signed in to the way the protocol says, by OAuth or a bearer token. A local process has no such way: each reads its token from an environment variable of its own naming, so the primitive names it, and `token` is the only way to sign in. The process runs as the developer, with the command installed by them.
+- **Signing in is to an address, not to an identity.** One address is one account at one service, so one sign-in serves every place declared there. Which of that service's repositories or pages the agent reaches is decided by the service, under the developer's own access; a path narrows what the agent is told to look at, not what the service lets it read.
+- **Signing in to a place is not an account of `cw`.** `cw` still has no accounts and no sign-in of its own; it keeps what the developer signed in to someone else's service with, on their machine, for their agent.
+- **A credential is the developer's machine's, and is not a layer.** It is kept outside the repository in the operating system's store, so no file of the repository differs between developers — the reason there is no machine-local layer still holds.
+- **The server forwards; it does not run an agent.** `cw mcp serve` is started by the agent's own harness and answers its calls. Deciding what to call stays the agent's.
+- **A job run with nobody watching signs in as itself.** A scheduled run uses an account made for it at each place — a bot or an app — signed in once on the machine that runs it, so the place still records who called.
 - **The engine already knows what a kind requires.** Asking a kind and answering with flags add no capability to the engine: what a kind requires is answered at `cw add`'s prompts, and `cw add` writes the file. Agent authoring is two new ways of asking and one primitive.
 
 ## Dependencies
@@ -718,12 +864,13 @@ The shape of each is in the data model.
 - An installed coding agent for the compiled output to be consumed. Authoring, validation, cataloguing and the agent-neutral compilation all work without one.
 - A web browser on the developer's machine, for the portal.
 - The public npm registry, reachable when `cw` is installed or upgraded, and a maintainer account holding publish rights for the package name, for a release.
+- For knowledge reached through MCP: each place's MCP server reachable over the network, or its command installed on the developer's machine; an account of the developer's own at each; and the operating system's credential store — the macOS keychain, or a Secret Service store on Linux.
 
 ## Out of Scope
 
 - A later application beyond the portal: agent sessions, a terminal, a work-item board, and anything such an application stores for itself.
 - Flows in any form: any representation of them inside the system, a view per flow, a flow per branch, colours or grouping by flow. A flow is a branch holding a charter; the system never learns the mapping.
-- Any account system, sign-in, licensing or payment. There is no login and no cost; users bring their own agent subscription.
+- Any account system, sign-in, licensing or payment of `cw`'s own. There is no login to `cw` and no cost; users bring their own agent subscription, and sign in to other services with their own accounts ([FR-148](#fr-148)).
 - Installing one directory of a vendor source rather than the whole of it.
 - Running agent sessions, managing worktrees, or executing the work loop. The product declares and compiles the standards; the agent's own harness applies them.
 - More than one repository in one portal, and reaching the portal from another machine.
@@ -743,3 +890,10 @@ The shape of each is in the data model.
 - Taking a published version back or publishing over it.
 - Writing release notes or a changelog for a release.
 - Publishing from CI, and the registry provenance that only a CI publish can attach.
+- A gateway: a server holding one credential that many developers' agents reach places through.
+- Forwarding anything of an MCP server but its tools: its resources, prompts and requests back to the agent.
+- Installing a local server's command for the developer, or handing a local process anything but its one token variable beyond the environment `cw` runs in.
+- A concept layer over the charter: labels, synonyms, broader and related terms, and a tool to look them up.
+- Changing which tools are shown while the server runs, as a session moves from one primitive to another.
+- A posture deciding which tools exist. A posture still decides whether a call needs approval.
+- Signing in from the portal, or showing who is signed in there.

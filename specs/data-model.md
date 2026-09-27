@@ -31,7 +31,8 @@ Body. Loaded only when the primitive activates.
 ```
 
 A repository's primitive lives at `.cw/charter/<kind>/<id>.md`, a vendored one
-at `.cw/vendor/<name>/<kind>/<id>.md`. Where a file sits decides only that it is
+at `.cw/vendor/<name>/<kind>/<id>.md`. An `id` holding `/` sits in the folders it
+names: `mcp:mfbs/billing` is `.cw/charter/mcp/mfbs/billing.md` ([FR-141](spec.md#fr-141)). Where a file sits decides only that it is
 looked at; what it is is what it declares ([FR-002](spec.md#fr-002), [FR-003](spec.md#fr-003)).
 
 ### 1.2 Common headers (FR-002, FR-005, FR-006, FR-008)
@@ -41,19 +42,20 @@ Every kind's headers extend these.
 | Header | Type | Required | Notes |
 |---|---|---|---|
 | `kind` | one of the kinds of [§1.3](#13-kinds-and-what-each-requires-fr-001-fr-004) | yes | Declared by the file ([FR-003](spec.md#fr-003)). |
-| `id` | slug `[a-z0-9]([a-z0-9-]*[a-z0-9])?` | yes | Identity is `kind:id`, unique across the whole charter ([§3.1](#31-identity-fr-015-fr-016)). |
+| `id` | slugs `[a-z0-9]([a-z0-9-]*[a-z0-9])?` joined by `/` ([FR-141](spec.md#fr-141)) | yes | Identity is `kind:id`, unique across the whole charter ([§3.1](#31-identity-fr-015-fr-016)). |
 | `description` | one line with something on it | yes | The only body-free text in the compact catalogue. |
 | `tags` | list of lines | no | Orthogonal to kind and directory ([FR-008](spec.md#fr-008)). |
 | `globs` | list of lines | no | The files it speaks about. A guide's are what bring it up; a mixin may name them so its reach can be compared with its host's ([FR-006](spec.md#fr-006)). |
 | `rationale` | `corpus:<id>` | no | Loaded on demand; one that does not resolve is a warning, not an error ([FR-005](spec.md#fr-005)). |
 | `mixins` | list of mixin ids | no | Each lends its body and no header ([§1.5](#15-mixin)). |
+| `mcps` | list of `mcp:<id>` | no | Where the primitive's reasons are kept outside the repository ([FR-143](spec.md#fr-143)). One that does not resolve is an error, not a warning: the server would reach nothing for it. |
 
 A list is refused when it holds an empty line. A list a kind *requires* is
 refused when it is empty too.
 
 ### 1.3 Kinds and what each requires (FR-001, FR-004)
 
-A closed set of nine. Any other value is a fault naming the file and the
+A closed set of ten. Any other value is a fault naming the file and the
 offending kind.
 
 | Kind | Requires beyond `description` | Takes | Activates when |
@@ -66,6 +68,7 @@ offending kind.
 | `agent` | `tools` (list) | the common headers | it is spawned by identity, holding the `tools` it lists and nothing else |
 | `posture` | `allow`, `deny` (lists) | the common headers | always, wherever the host can be told what to `allow` and what to `deny` |
 | `corpus` | — | the common headers | a primitive's `rationale` cites it — the reasoning, read when someone asks why |
+| `mcp` | `tools` (list), and `endpoint` or `command` (line) | `args`, `auth` (lists), `tokenEnv`, `path` (lines); `auth` is from `oauth`, `token` | a primitive's `mcps` names it — where the rest of the reasoning is kept, reached through `cw mcp serve` ([§17](#17-knowledge-reached-through-mcp-fr-141--fr-157)) |
 | `mixin` | — | the common headers but `mixins`, which it must not declare | never on its own: its body is lent to the primitives that pull it in |
 
 The "Activates when" column is each kind's `activatesWhen`, as its class declares it.
@@ -168,13 +171,14 @@ and refuses both the same way ([FR-073](spec.md#fr-073)).
 ### 3.1 Identity (FR-015, FR-016)
 
 ```ts
-PrimitiveIdentity = `${kind}:${id}`     // guide:no-any
+PrimitiveIdentity = `${kind}:${id}`     // guide:no-any, mcp:mfbs/billing
 ```
 
 An identity names one primitive in the whole charter, whichever layer authored
 it. A layer says who maintains a file and who may write to it, not who wins: two
 files claiming one identity are a collision naming both. A mixin is named by its
-`id` and a corpus by its identity, `corpus:<id>`, whichever layer published it.
+`id`, and a corpus and an mcp by their identity, `corpus:<id>` and `mcp:<id>`,
+whichever layer published them.
 
 ### 3.2 Scope (FR-017 – FR-024)
 
@@ -227,7 +231,8 @@ Asked of it, and derived rather than held: `allFaultsByFiles`, every fault under
 the file that has to change — the faults of reading, and `compositeFaultsByFiles`,
 what is wrong only once the files are read together (a second claim on an
 identity, a mixin nothing answers to, a mixin that does not reach its host, a
-rationale no corpus answers to, the warnings of [§6.1](#61-the-three-warnings-fr-014)). Also `primitiveById`,
+rationale no corpus answers to, an `mcps` entry no mcp answers to, the warnings
+of [§6.1](#61-the-four-warnings-fr-014)). Also `primitiveById`,
 `mixins`, `corpora`, and the relations `mixinsOf`, `rationaleOf`, `hostsOf` and
 `citersOf` ([§13](#13-explanation-fr-029)). The first claim on an identity is the one `primitiveById`
 keeps; the second is the file a collision is filed under.
@@ -274,7 +279,8 @@ Faults       = Fault[]                 // an author's answers refused, under no 
 A fault is one of `CharterRootFault`, `CharterPrimitiveFault`, `SettingsFault`,
 `TestSuiteFault` or `TestCaseFault`, named for what has to change. An `error`
 stops a build, a listing, an explanation and a test run; a `warn` is said and
-stops nothing. A rationale that does not resolve is a `warn`.
+stops nothing. A rationale that does not resolve is a `warn`; an `mcps` entry
+that does not resolve is an `error`.
 
 ## 5. What the engine brings (FR-096 – FR-103)
 
@@ -298,14 +304,15 @@ requirements ([FR-097](spec.md#fr-097)). What it says instead is which command t
 
 ## 6. Validation warnings
 
-### 6.1 The three warnings (FR-014)
+### 6.1 The four warnings (FR-014)
 
-Three faults of severity `warn`, each filed under a file of the charter:
+Four faults of severity `warn`, each filed under a file of the charter:
 
 | Warning | Filed under |
 |---|---|
 | a corpus no primitive cites | the corpus |
 | a mixin no primitive names | the mixin |
+| an mcp no primitive names in its `mcps` | the mcp |
 | a guide or sensor no test case names | that primitive |
 
 ## 7. Catalogues (FR-025 – FR-028)
@@ -318,6 +325,7 @@ CatalogueFull    = CatalogueCompact & {
   globs?:     string[],
   rationale?: string,
   mixins?:    string[],
+  mcps?:      string[],
 }
 ```
 
@@ -342,6 +350,7 @@ CharterOutput = {
   catalogue:          Catalogue,          // both catalogues of §7
   charterMd:          CharterMd,          // .cw/out/CHARTER.md
   compiledPrimitives: CompiledPrimitive[],// §8.1, one per primitive of every layer
+  places:             Places,             // .cw/out/mcps.json (§17.2)
   providerComponents: ClaudeComponent[],  // one host's files, for each agent chosen
 }
 
@@ -363,20 +372,22 @@ kinds are not one for one:
 |---|---|---|
 | guide | rule, its `paths` its `globs` | `.claude/rules/<name>.md` |
 | command | command | `.claude/commands/<id>.md` |
-| agent | agent, with its `tools` | `.claude/agents/<name>.md` |
+| agent | agent, with its `tools` and the served tools of its `mcps` ([FR-156](spec.md#fr-156)) | `.claude/agents/<name>.md` |
 | skill, playbook | skill | `.claude/skills/<name>/SKILL.md` |
 | posture, sensor | settings: permissions and hooks | `.claude/settings.json`, one for all of them |
+| mcp, all of them | one MCP server entry, `cw`, starting `cw mcp serve` ([FR-146](spec.md#fr-146)) | `.mcp.json`, merged |
 | corpus, mixin | — | — |
 
-`<name>` is the identity with its separators replaced, so `skill:cw-author` is
-`skill-cw-author`. Beside the components, each agent chosen gets one section of
+`<name>` is the identity with its separators — `:` and `/` — replaced, so
+`skill:cw-author` is `skill-cw-author` and `agent:mfbs/fraud` is
+`agent-mfbs-fraud`. Beside the components, each agent chosen gets one section of
 its entry file, `CLAUDE.md` for claude, between `<!-- CHERRYWORKS START -->` and
 `<!-- CHERRYWORKS END -->`.
 
 | Policy | Used for | Deleted by a build |
 |---|---|---|
 | `replace` | a file the charter owns, written whole and stamped as generated | yes, when its primitive is gone |
-| `mergeJSON` | a host's settings, shared with the repository | never |
+| `mergeJSON` | a host's settings, and its MCP configuration, shared with the repository | never |
 | `upsertWithMarker` | the host's entry file, the repository's own | never |
 
 Compiled output is generated, never authored ([FR-032](spec.md#fr-032)).
@@ -679,3 +690,137 @@ One version, published once.
 | tag | `v<version>`, at the commit it was built from ([FR-136](spec.md#fr-136)) |
 | tarball | the one file installed by the install check and then published, unchanged ([FR-135](spec.md#fr-135)) |
 
+
+## 17. Knowledge reached through MCP (FR-141 – FR-157)
+
+### 17.1 MCP primitive (FR-142)
+
+```md
+---
+kind: mcp
+id: mfbs/billing
+description: Billing service code and pull requests.
+endpoint: https://api.githubcopilot.com/mcp/
+path: moneyforward/billing-service
+auth: [oauth, token]
+tools: [get_file_contents, search_code, list_pull_requests]
+---
+
+The service that computes invoices. Look here for how tax is rounded today.
+```
+
+The same place, as a local process:
+
+```md
+---
+kind: mcp
+id: mfbs/billing
+description: Billing service code and pull requests.
+command: npx
+args: [-y, "@modelcontextprotocol/server-github"]
+tokenEnv: GITHUB_PERSONAL_ACCESS_TOKEN
+auth: [token]
+path: moneyforward/billing-service
+tools: [get_file_contents, search_code, list_pull_requests]
+---
+```
+
+| Header | Type | Required | Notes |
+|---|---|---|---|
+| `endpoint` | an `https://` URL | one of `endpoint`, `command` | One MCP server reached over HTTP. |
+| `command` | line | one of `endpoint`, `command` | One MCP server started as a local process, spoken to over its standard input and output. |
+| `args` | list | no; with `command` only | The command's arguments, in order. |
+| `auth` | list from `oauth`, `token` | with `endpoint` | The ways a developer may sign in. With `command`, only `token`, and left out for a process that takes none. |
+| `tokenEnv` | an environment variable's name | with `command` and `auth: [token]` | Where the process reads its token from. |
+| `path` | line | no | The place inside that server: a repository, a database, a channel. Told to the agent beside each tool; it narrows what the agent is told to look at, not what the server lets it read. |
+| `tools` | list | yes | The server's tools the agent may use there, by the server's own names. |
+
+**Address**: `endpoint`, or `command` followed by each of `args`, joined by
+spaces. It is what a developer signs in to ([§17.3](#173-credential-fr-148--fr-151)).
+
+Its body, where it has one, says what is kept there and when to look. The
+common headers hold as for every kind; `mcps` on an mcp names other places,
+which nothing forbids and nothing needs.
+
+### 17.2 Place (FR-145)
+
+One entry of `.cw/out/mcps.json`: one address and `path`, as every layer
+declared it.
+
+```ts
+Place = {
+  identities: PrimitiveIdentity[],   // every mcp at this address and path, sorted
+  prefix:     string,                // the served tools' prefix (below)
+  address:    string,                // §17.1
+  endpoint?:  string,                // one of these two
+  command?:   { command: string, args: string[], tokenEnv?: string },
+  path?:      string,
+  auth:       ("oauth" | "token")[], // the union of what each identity here allows
+  tools:      string[],              // the union of what each identity declares, sorted
+  declaredBy: { identity: PrimitiveIdentity, scope: Scope, tools: string[] }[],
+}
+
+McpsJson = { places: Place[] }       // ordered by prefix
+```
+
+- **Key**: address and `path` together. Two identities with the same pair are
+  one place; one identity is one file, so an identity is never in two places
+  ([FR-015](spec.md#fr-015)).
+- **`prefix`**: the `id` of the identity the `repo` scope declared, else the
+  first `id` in sorted order, with `/` replaced by `-`. Served tool names are
+  `<prefix>__<tool>` ([FR-153](spec.md#fr-153)).
+- **`auth`** is the union of what every identity here allows, from every
+  layer, as `tools` is: one identity's narrower list takes no way away. Two
+  identities of one local command naming two `tokenEnv`s are
+  an error too: one process takes its token one way.
+- **`declaredBy`** keeps which identity opened which tool, so a union that a
+  vendor widened can be read back.
+
+### 17.3 Credential (FR-148 – FR-151)
+
+Kept in the operating system's credential store, never in the repository.
+
+```ts
+Credential = {
+  address:       string,             // the key: one per address, for every place at it
+  method:        "oauth" | "token",   // "token" alone for a local command
+  accessToken:   string,
+  refreshToken?: string,             // oauth only
+  expiresAt?:    string,             // ISO 8601, oauth only
+  client?:       { clientId: string, clientSecret?: string },   // oauth: what the server registered cw as
+}
+```
+
+Stored under service `cherry-works`, account `<address>`, as one JSON value. It
+is not a domain type: no port carries it into the hexagon, and no DTO holds it.
+
+### 17.4 Sign-in status (FR-150)
+
+What `cw mcp auth --status` answers, one row per address that takes a sign-in:
+
+```ts
+SignInStatus = {
+  address:    string,
+  identities: PrimitiveIdentity[],   // every mcp at this address, whatever its path
+  signedIn:   boolean,
+  method?:    "oauth" | "token",
+}
+```
+
+### 17.5 What a run serves (FR-152 – FR-155)
+
+```ts
+Enable = PrimitiveIdentity | ServedToolName   // repeatable
+ServedToolName = `${prefix}__${tool}`
+
+ServedTool = {
+  name:        ServedToolName,
+  place:       Place,
+  upstream:    string,               // the tool's name at its place
+  description: string,               // the place's own, after `[<identity> — <path>]`
+}
+```
+
+With no `Enable`, every tool of every place is served. With some, what is served
+is the union of what each reaches: a primitive's `mcps` places, an mcp's place,
+or one served tool.

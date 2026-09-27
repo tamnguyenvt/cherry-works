@@ -49,6 +49,10 @@
 
 - **Phase 003, distribution, was specified on 2026-09-22** as Stories 13 to 15, [FR-126](../spec.md#fr-126) – [FR-138](../spec.md#fr-138) and [SC-027](../spec.md#sc-027) – [SC-032](../spec.md#sc-032). Taken as informed defaults, each in Assumptions: semantic versioning from 0.1.0; the command stays `cw` whatever the package is called; macOS and Linux are the platforms promised; no release notes, no self-update, no registry but npm.
 
+- **Phase 004, the compiled charter, was specified on 2026-09-27** as [Story 16](../spec.md#user-story-16---open-every-primitive-as-it-was-compiled-priority-p1), [FR-139](../spec.md#fr-139) – [FR-140](../spec.md#fr-140) and [SC-033](../spec.md#sc-033), and landed in the same change: the catalogue sends an agent to `.cw/out/<kind>/<id>.md`, and a listing of the charter still names the authored file.
+
+- **Phase 005, knowledge reached through MCP, was specified on 2026-09-26** as Stories 17 to 20, [FR-141](../spec.md#fr-141) – [FR-157](../spec.md#fr-157) and [SC-034](../spec.md#sc-034) – [SC-039](../spec.md#sc-039), from a design session recorded under Clarifications. Taken as informed defaults, each in Assumptions: a local process is signed in to by token alone, in the variable its primitive names; signing in is to an address, not to an identity; a scheduled job signs in as an account of its own; no concept layer until a pilot asks for one.
+
 ### Notes on judgement calls
 
 - **"No implementation details"** is read as excluding languages, frameworks and library choices from the requirements. The command-line surface (`cw add`, `cw kinds`, `cw build`, `cw init` …), the layer names and the local page are the product's user-facing surface, not implementation detail: they are what an author and an agent both touch. How the page is served is the plan's business.

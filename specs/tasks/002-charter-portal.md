@@ -54,8 +54,8 @@ Independent test: see spec [Story 7](../spec.md#user-story-7---build-preview-and
 
 ### Engine
 - [x] <a id="t2.019"></a>**T2.019** The health check behind the port, `cw doctor` its reader. *([FR-121](../spec.md#fr-121); [SC-014](../spec.md#sc-014); plan [§12.2](../plan.md#122-the-route-table), [§17.2.19](../plan.md#17219-t2019--the-health-check-behind-the-port); data-model [§14](../data-model.md#14-doctor-outcome-fr-080-fr-081))*
-- [x] <a id="t2.020"></a>**T2.020** [P] The two warnings the charter alone answers. *([FR-014](../spec.md#fr-014); plan [§4.4](../plan.md#44-the-three-validation-warnings-fr-014), [§17.2.20](../plan.md#17220-t2020--the-two-warnings-the-charter-alone-answers); data-model [§6.1](../data-model.md#61-the-three-warnings-fr-014))*
-- [x] <a id="t2.021"></a>**T2.021** The warning for a primitive no test case names. *([FR-014](../spec.md#fr-014); plan [§4.4](../plan.md#44-the-three-validation-warnings-fr-014), [§17.2.21](../plan.md#17221-t2021--the-warning-for-a-primitive-no-case-names); data-model [§6.1](../data-model.md#61-the-three-warnings-fr-014))* Depends on [T2.020](#t2.020).
+- [x] <a id="t2.020"></a>**T2.020** [P] The two warnings the charter alone answers. *([FR-014](../spec.md#fr-014); plan [§4.4](../plan.md#44-the-four-validation-warnings-fr-014), [§17.2.20](../plan.md#17220-t2020--the-two-warnings-the-charter-alone-answers); data-model [§6.1](../data-model.md#61-the-four-warnings-fr-014))*
+- [x] <a id="t2.021"></a>**T2.021** The warning for a primitive no test case names. *([FR-014](../spec.md#fr-014); plan [§4.4](../plan.md#44-the-four-validation-warnings-fr-014), [§17.2.21](../plan.md#17221-t2021--the-warning-for-a-primitive-no-case-names); data-model [§6.1](../data-model.md#61-the-four-warnings-fr-014))* Depends on [T2.020](#t2.020).
 
 ### Portal
 - [x] <a id="t2.022"></a>**T2.022** Preview and build from the header. *([FR-120](../spec.md#fr-120); [Story 7](../spec.md#user-story-7---build-preview-and-check-the-repositorys-health-priority-p3) scenarios 1 – 3; plan [§12.2](../plan.md#122-the-route-table), [§17.2.22](../plan.md#17222-t2022--preview-and-build-from-the-header))* Depends on [T2.003](#t2.003).
