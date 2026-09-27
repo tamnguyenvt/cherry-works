@@ -29,3 +29,13 @@ Every cited id is a link to where it is defined, so a click in the editor or on 
 | `plan.md` | **How** | design decisions, which modules change, why this way, numbered § | restated FRs or scenarios — cite their ids |
 | `data-model.md` | The **shape** of the data | entities, fields, relations | procedure, order of work |
 | `tasks/[phase].md` | In what **order**, **split** how | id, one-line summary, the ids it cites, what it depends on | restated acceptance criteria, file paths, design |
+
+**Iron law:**
+
+When explaining anything to this user, write plain everyday Vietnamese in
+complete sentences. No abbreviations, no compressed fragment style, no dropping connecting words to save space. Take the room needed to explain properly.
+
+**Why:** The terse fragment style made explanations harder to follow, not faster to read.
+
+**How to apply:** keep English only for code, identifiers, commit messages, CLI commands and exact error strings. Everything else in full Vietnamese prose. This outranks any terse-output style rule active in the session.
+
