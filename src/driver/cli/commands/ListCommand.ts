@@ -82,13 +82,12 @@ function surveyed({ data: { identity, description } }: DataDTOs.CatalogueEntry):
  *  is, and whatever else its author declared about it (FR-011). A header nobody
  *  wrote is not said, the way the listing does not record it. */
 function inFull(entry: DataDTOs.CatalogueEntry): string {
-  const { file, tags, globs, rationale, mixins, mcps } = entry.data;
+  const { file, tags, globs, rationale, mixins } = entry.data;
   const declared = [
     ...(globs === undefined ? [] : [`globs: ${globs.join(", ")}`]),
     ...(tags === undefined ? [] : [`tags: ${tags.join(", ")}`]),
     ...(mixins === undefined ? [] : [`mixins: ${mixins.join(", ")}`]),
     ...(rationale === undefined ? [] : [`rationale: ${rationale}`]),
-    ...(mcps === undefined ? [] : [`mcps: ${mcps.join(", ")}`]),
   ];
   return [surveyed(entry), `  ${file}`, ...(declared.length === 0 ? [] : [`  ${declared.join(", ")}`])].join("\n");
 }

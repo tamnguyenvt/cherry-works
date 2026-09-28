@@ -1,9 +1,8 @@
 import { covers } from "../../../utils/globs.js";
-import { identityOf, normalizedIdentityOf, KINDS, PRIMITIVE_CLASSES, primitiveOf, type NormalizedIdentity, type Primitive } from "./primitive/Primitive.js";
+import { identityOf, KINDS, PRIMITIVE_CLASSES, primitiveOf, type NormalizedIdentity, type Primitive } from "./primitive/Primitive.js";
 import { CharterRootFault, FaultsByFile, type Fault } from "../Fault.js";
 import type { ForParsingYaml } from "../../../port/zdriven/ForParsingYaml.js";
-import { McpPrimitive } from "./primitive/McpPrimitive.js";
-import { AGENT_PROVIDERS, HOST_TOOL_NAMINGS } from "../AgentProvider.js";
+import { MCP_MENTION, McpPrimitive } from "./primitive/McpPrimitive.js";
 
 /** What this repository authored itself. */
 export const REPO_SCOPE = "repo";
@@ -38,7 +37,14 @@ export class ScopedPrimitive {
     readonly scope: Scope,
     readonly file: string,
     readonly primitive: Primitive,
-  ) {}
+  ) {
+    this.normIdentity = identity.replace(/[:/]/g, "-") as NormalizedIdentity;
+  }
+
+  /** The identity as every name given to a host writes it, `:` and `/` as `-`:
+   *  `guide-mfbs-no-any` for `guide:mfbs/no-any` (FR-141). Made here, once, so
+   *  nothing that names a host's file or a place's tools spells it again. */
+  readonly normIdentity: NormalizedIdentity;
 
   /** Whether a word someone searched for is anywhere a reader would look for
    *  it: the identity, the kind, what it is for, when its kind comes up, its
@@ -203,17 +209,18 @@ export class CharterRoot {
    * rationale no corpus answers to, which is a warning rather than an error:
    * the rule holds without its reasoning, and the author is told the reasoning
    * is gone (FR-005). A corpus nobody cites and a mixin nobody pulls in are
-   * warnings too: nothing breaks, and nothing reads them either (FR-014). An
-   * mcp is held the other way round: one named and missing is an error, since
-   * it is a place the agent is told about and cannot reach (FR-143), and one
-   * nobody names only a warning (FR-144).
+   * warnings too: nothing breaks, and nothing reads them either (FR-014). So
+   * are a body naming an mcp nothing holds (FR-143) and an mcp no body names
+   * (FR-144).
    */
   get compositeFaultsByFiles(): FaultsByFile {
     const everyPrimitive = this.primitives;
     const mixinsByIdentity = this.mixins;
     const corpusIdentities = this.corpora;
     const mcpIdentities = new Set(everyPrimitive.filter(({ primitive }) => primitive.kind === "mcp").map((one) => one.identity));
-    const namedMcps = new Set(everyPrimitive.flatMap(({ primitive }) => primitive.headers.mcps ?? []));
+    // A place is named in a body, as its author would write it (FR-143).
+    const mcpsNamedBy = (one: ScopedPrimitive) => [...one.primitive.body.matchAll(MCP_MENTION)].map(([, id]) => `mcp:${id}`);
+    const namedMcps = new Set(everyPrimitive.flatMap(mcpsNamedBy));
 
     const fileByIdentity = new Map<string, string>();
     const identityByNormalizedIdentity = new Map<NormalizedIdentity, string>();
@@ -224,7 +231,7 @@ export class CharterRoot {
 
     for (const one of everyPrimitive) {
       const { file, primitive } = one;
-      const { identity } = one;
+      const { identity, normIdentity } = one;
       const declaredIn = fileByIdentity.get(identity);
       if (declaredIn === undefined) fileByIdentity.set(identity, file);
       else
@@ -239,14 +246,13 @@ export class CharterRoot {
       // `/` is replaced where `:` is in a name given to a host, so two
       // identities can come to one file there: `guide:a/b` and `guide:a-b`.
       // Caught where the name is made, as a second claim on it (FR-141).
-      const normalizedIdentity = normalizedIdentityOf(identity);
-      const normalizedIdentityClaimedBy = identityByNormalizedIdentity.get(normalizedIdentity);
-      if (normalizedIdentityClaimedBy === undefined) identityByNormalizedIdentity.set(normalizedIdentity, identity);
+      const normalizedIdentityClaimedBy = identityByNormalizedIdentity.get(normIdentity);
+      if (normalizedIdentityClaimedBy === undefined) identityByNormalizedIdentity.set(normIdentity, identity);
       else if (normalizedIdentityClaimedBy !== identity)
         addFault(
           file,
           new CharterRootFault(
-            `"${identity}" and "${normalizedIdentityClaimedBy}" are both named "${normalizedIdentity}" in an agent's files, where "/" is written as "-". Only one of them would be written there.`,
+            `"${identity}" and "${normalizedIdentityClaimedBy}" are both named "${normIdentity}" in an agent's files, where "/" is written as "-". Only one of them would be written there.`,
             `Give this one an id that stays its own once "/" is written as "-".`,
           ),
         );
@@ -289,13 +295,17 @@ export class CharterRoot {
         );
       }
 
-      for (const namedMcp of primitive.headers.mcps ?? [])
+      // A place nothing holds is worth saying and not worth stopping on: the
+      // words are still the author's, and the agent is left to read them as
+      // written (FR-143).
+      for (const namedMcp of new Set(mcpsNamedBy(one)))
         if (!mcpIdentities.has(namedMcp))
           addFault(
             file,
             new CharterRootFault(
-              `This names "${namedMcp}" under "mcps", and this charter holds no mcp of that identity. The agent would be told of a place it cannot reach.`,
-              `Author that mcp, correct the name, or drop it from "mcps". An mcp is named as "mcp:<id>", whichever layer authored it.`,
+              `This names "${namedMcp}", and this charter holds no mcp of that identity. The agent would be told of a place it cannot reach.`,
+              `Author that mcp, or correct the name. An mcp is named as "mcp:<id>", whichever layer authored it.`,
+              "warn",
             ),
           );
 
@@ -324,18 +334,18 @@ export class CharterRoot {
         addFault(
           file,
           new CharterRootFault(
-            `No primitive names "${identity}" under "mcps", so nothing an agent reads leads to it.`,
-            `Name it from the primitives whose reasons are kept there with "mcps: [${identity}]", or delete it.`,
+            `No primitive names "${identity}" in its body, so nothing an agent reads leads to it.`,
+            `Name it where it is used, as "${identity}", or delete it.`,
             "warn",
           ),
         );
     }
 
-    // Every mcp with the file it was authored in, read together: the faults
-    // below take every layer to see.
+    // Every mcp with the file it was authored in, read together: the fault
+    // below takes every layer to see.
     const mcpPrimitives = everyPrimitive
-      .flatMap(({ identity, scope, file, primitive }) =>
-        primitive.kind === McpPrimitive.kind ? [{ identity, scope, file, primitive }] : [],
+      .flatMap(({ identity, file, primitive }) =>
+        primitive.kind === McpPrimitive.kind ? [{ identity, file, primitive }] : [],
       )
       .sort((one, another) => (one.identity < another.identity ? -1 : 1));
 
@@ -357,34 +367,6 @@ export class CharterRoot {
             `Name the variable that command reads in both, or drop "tokenEnv" and "auth" from one of them.`,
           ),
         );
-    }
-
-    // A name the host would refuse is a tool the agent is told of and cannot
-    // call, so it stops the build like a place nothing holds (FR-157). Every mcp
-    // at one address and path is served under one prefix: the repository's id,
-    // else the first in sorted order (FR-145). Asked of every
-    // host this engine compiles for: the charter is read before anything says
-    // which of them this repository chose.
-    for (const { file, primitive } of mcpPrimitives) {
-      const mcpsAtOrigin = mcpPrimitives.filter(
-        (other) => other.primitive.address === primitive.address && other.primitive.headers.path === primitive.headers.path,
-      );
-      const namingMcp = mcpsAtOrigin.find((other) => other.scope === REPO_SCOPE) ?? mcpsAtOrigin[0]!;
-      const prefix = namingMcp.primitive.headers.id.replace(/\//g, "-");
-
-      for (const tool of primitive.headers.tools)
-        for (const provider of AGENT_PROVIDERS) {
-          const { hostToolNameOf, longest } = HOST_TOOL_NAMINGS[provider];
-          const hostToolName = hostToolNameOf(`${prefix}__${tool}`);
-          if (hostToolName.length > longest)
-            addFault(
-              file,
-              new CharterRootFault(
-                `The tool "${tool}" is served to ${provider} as "${hostToolName}", ${hostToolName.length} characters, and ${provider} takes at most ${longest}.`,
-                `Shorten the id of the mcp this place is served under, or leave "${tool}" out of "tools".`,
-              ),
-            );
-        }
     }
 
     return new FaultsByFile(faultsByFiles);

@@ -74,6 +74,8 @@ test("compiling produces both listings, the charter file, and what the installed
     // The file that agent reads unasked, which is what sends it to the
     // orientation above.
     "CLAUDE.md",
+    // The one server that reaches every place the charter declares.
+    ".mcp.json",
     // The skill the engine brings, which every charter holds and reads first.
     ".claude/skills/skill-cw-author/SKILL.md",
     // The one guide as the installed agent's own kinds have it.
@@ -94,7 +96,7 @@ test("no listing and no projection can be produced without the others (SC-004)",
   // list, and no argument that narrows it to a single file. The second argument
   // says which agents are installed, never which file is wanted.
   assert.equal(compile.length, 2);
-  assert.equal((await built(oneGuide)).written.length, 9);
+  assert.equal((await built(oneGuide)).written.length, 10);
 });
 
 test("a repository with no agent installed still compiles the whole neutral half (FR-019)", async () => {

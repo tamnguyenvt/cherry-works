@@ -130,7 +130,6 @@ export interface CatalogueFull extends CatalogueCompact {
   readonly globs?: readonly string[];
   readonly rationale?: string;
   readonly mixins?: readonly string[];
-  readonly mcps?: readonly string[];
 }
 
 /**

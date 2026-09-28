@@ -21,8 +21,13 @@ export const goodArray = z.array(goodLine).min(1).readonly();
 export const CommonHeaders = z.object({
   /** Slugs joined by `/`, so identities can be grouped by team or domain
    *  (FR-141). The `/` puts the file in folders and nothing else: nothing is
-   *  read from where a file sits. */
-  id: z.string().regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\/[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/),
+   *  read from where a file sits. At most 50 characters, so every name a host
+   *  is given for it — an mcp's tools among them — stays within what the host
+   *  takes (FR-157). */
+  id: z
+    .string()
+    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\/[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/)
+    .refine((id) => id.length <= 50, { message: `"id" is at most 50 characters.` }),
   /** All an agent reads of a primitive before opening its body. */
   description: goodLine,
   tags: z.array(goodLine).readonly().optional(),
@@ -33,9 +38,6 @@ export const CommonHeaders = z.object({
   /** `corpus:<id>`, the reasoning this primitive cites (FR-005). */
   rationale: goodLine.optional(),
   mixins: z.array(goodLine).readonly().optional(),
-  /** `mcp:<id>` each, the places this primitive's reasons are kept outside the
-   *  repository (FR-143). */
-  mcps: z.array(goodLine).readonly().optional(),
 });
 export type CommonHeaders = Readonly<z.infer<typeof CommonHeaders>>;
 

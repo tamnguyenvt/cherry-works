@@ -360,9 +360,8 @@ file. What is left are the questions no single file answers, asked by
 - a mixin named that no layer holds ([FR-007](spec.md#fr-007));
 - a mixin whose files neither cover nor are covered by its host's ([§5.2](#52-mixins-fr-006-fr-007));
 - a `rationale` citing no corpus the charter holds, as a `warn` ([FR-005](spec.md#fr-005));
-- an `mcps` entry naming no `mcp` the charter holds, as an `error` ([FR-143](spec.md#fr-143));
-- a local command declared with two `tokenEnv`s, and the served tool names too
-  long for a host, each an `error` ([§19.3](#193-the-list-of-places-fr-145-fr-157));
+- a body naming an `mcp:<id>` the charter holds no mcp of, as a `warn` ([FR-143](spec.md#fr-143));
+- a local command declared with two `tokenEnv`s, an `error` ([§19.3](#193-the-list-of-places-fr-145-fr-157));
 - the four warnings of [§4.4](#44-the-four-validation-warnings-fr-014).
 
 `allFaultsByFiles` is the two together, the faults of reading and of reading
@@ -2422,11 +2421,13 @@ Criteria, beside the acceptance above:
 
 Non-goals: the list of places and `.cw/out/mcp-origins.json` ([T5.003](tasks/005-mcp-knowledge.md#t5.003)); anything the host is given ([T5.004](tasks/005-mcp-knowledge.md#t5.004)); reaching a place or checking its `tools` exist ([FR-153](spec.md#fr-153)); the portal showing `mcps` as links or `cw explain` listing who names an mcp.
 
+Superseded in [T5.004](tasks/005-mcp-knowledge.md#t5.004): the `mcps` header went; a body names a place as `mcp:<id>`, and one nothing holds is a `warn`.
+
 #### 17.5.3 T5.003 — The list of places
 
 `McpOrigin[]` beside the catalogue in `CharterOutput`, made by `compile` from every layer's mcp primitives: grouped by `endpoint` and `path`, each with its identities and the union of `auth` ([§19.3](#193-the-list-of-places-fr-145-fr-157)). It projects to `.cw/out/mcp-origins.json`, `replace`. Two `tokenEnv`s for one command and the too-long served name are composite `error`s.
 
-Acceptance: a repository mcp and a vendor mcp at one endpoint and path are one place under both identities, with the union of their `auth`; the same two at different paths are two places; one command with two `tokenEnv`s is an error under both files; a tool name that makes `mcp__cw__<prefix>__<tool>` longer than 64 characters is an error under its mcp.
+Acceptance: a repository mcp and a vendor mcp at one endpoint and path are one place under both identities, with the union of their `auth`; the same two at different paths are two places; one command with two `tokenEnv`s is an error under both files; a tool name that makes `mcp__cw__<prefix>__<tool>` longer than 64 characters is an error under its mcp (since [T5.004](tasks/005-mcp-knowledge.md#t5.004), replaced by an `id` of at most 50 characters).
 
 Intent: every build writes `.cw/out/mcp-origins.json`, the one list of places the server will read, keyed by address and path whoever declared them; a charter whose places could not be served is refused before anything is written.
 
@@ -2434,17 +2435,31 @@ Criteria, beside the acceptance above:
 
 - An mcp's address is asked of the primitive: `endpoint`, or `command` and each of `args` joined by spaces (data-model [§17.1](data-model.md#171-mcp-primitive-fr-142)).
 - `mcpOrigins` holds one `McpOrigin` per place, as data-model [§17.2](data-model.md#172-place-fr-145) says: `identities` sorted; `address`; `endpoint`, or `command` carrying `args` (empty where none) and `tokenEnv` where one is named; `path`; `auth` the union in the order `oauth`, `token`. Nothing an mcp's own file and the catalogue already hold — no tools, no prefix. Origins are ordered by address, then path.
-- `compile` makes it from every layer's mcps and puts it into `CharterOutput` as `mcpOrigins`; the projection writes it indented as `{ "origins": [...] }`, `replace`. A charter with no mcp writes `{ "origins": [] }`, so a built repository always has the list [FR-152](spec.md#fr-152) looks for. The charter does not hold the list: the two composite faults below read the mcps together in `compositeFaultsByFiles`, taking the prefix — the `id` the `repo` scope declared at a place, else the first sorted, `/` written as `-` — as the server will.
+- `compile` makes it from every layer's mcps and puts it into `CharterOutput` as `mcpOrigins`; the projection writes it indented as `{ "origins": [...] }`, `replace`. A charter with no mcp writes `{ "origins": [] }`, so a built repository always has the list [FR-152](spec.md#fr-152) looks for. The charter does not hold the list: the composite fault below reads the mcps together in `compositeFaultsByFiles`.
 - Two identities at one address naming two different `tokenEnv`s: an `error` under each of their files. One naming none beside one naming a variable is no conflict.
-- The served-name limit is declared per host beside `AGENT_PROVIDERS`: claude names a served tool `mcp__cw__<prefix>__<tool>` and takes 64 characters. Checked against every host the engine compiles for, since the charter is read before it is known which hosts a repository chose; an `error` under every mcp at that place declaring the tool.
+- The served-name limit: claude names a served tool `mcp__cw__<prefix>__<tool>` and takes 64 characters. The prefix is the mcp's own `id`, so [T5.004](tasks/005-mcp-knowledge.md#t5.004) replaced this check with a limit on every `id`, 50 characters, in `CommonHeaders`.
 
 Non-goals: `.mcp.json` and each document naming its places ([T5.004](tasks/005-mcp-knowledge.md#t5.004)); signing in; the server reading the list; `cw explain` or the portal showing places.
 
 #### 17.5.4 T5.004 — What the host is given
 
-The claude arm of `compile` gains an `McpConfig` component: `.mcp.json`, `mergeJSON`, writing `mcpServers.cw` alone, and only when the charter holds an mcp ([§19.4](#194-what-the-agents-host-is-given-fr-146-fr-147-fr-156)). The compiled document of a primitive with `mcps`, and every claude document of it, ends with a section naming each place, its path and its served tool names.
+The claude arm of `compile` gains an `McpConfig` component: `.mcp.json`, `mergeJSON`, writing `mcpServers.cw` alone, whatever the charter holds ([§19.4](#194-what-the-agents-host-is-given-fr-146-fr-147-fr-156)). A primitive reaches a place by naming it in its body, `mcp:<id>`, as a person would write it; the `mcps` header goes.
 
-Acceptance: a charter with one mcp builds `.mcp.json` holding `cw` beside an entry the repository wrote itself, which is left untouched; a charter with none leaves `.mcp.json` as it was; a guide naming a place has its section in `.cw/out/guide/<id>.md` and in its rule.
+Acceptance: a charter with one mcp builds `.mcp.json` holding `cw` beside an entry the repository wrote itself, which is left untouched; a charter with none still has `cw` written, so a place added later needs no setup; a repository compiling for no agent has no `.mcp.json` written; a guide whose body says "read the requirements in mcp:github/billing" has it written `mcp__cw__mcp-github-billing` in `.cw/out/guide/<id>.md` and in its rule; a body naming an mcp no layer holds is a warning under that file, and the build runs.
+
+Intent: an agent working under a charter that declares places is given one MCP server to reach them. A primitive using a place says so in its own words, and the charter only checks that the place it names exists. What a name looks like on a host is the host's output to write; the charter knows ids and identities and nothing else.
+
+Criteria, beside the acceptance above:
+
+- `ClaudeMcpConfigComponent`, kind `mcp-config`, `mergeJSON`, holding `{ "mcpServers": { "cw": { "command": "cw", "args": ["mcp", "serve"] } } }`; the claude projection puts it at `.mcp.json` in the repository root. One for the whole charter, whether it holds an mcp or not: the server reads which places there are when it starts. Never deleted by a build, like the settings.
+- `mergeJSON` merges by field at every depth: where what is there and what the build writes are both plain objects, their fields are merged; anything else — an array, a string — is the build's. So `mcpServers` keeps every entry the repository wrote, and a host's settings keep what the repository set beside the charter's.
+- The `mcps` header is gone from `CommonHeaders`, the catalogue entry, its DTO and `cw list --full`. A file still declaring it is read as before any header this engine does not know.
+- The charter reads every primitive's body for `mcp:<id>`, `<id>` as [FR-141](spec.md#fr-141) writes one. One no layer holds is a `warn` under the file whose body names it. An mcp no body names is the `warn` of [FR-144](spec.md#fr-144), read off the bodies instead of the header. A mixin's body counts under the mixin's own file.
+- The charter holds nothing of a host's names: `HOST_TOOL_NAMINGS` goes, the served-name check of [T5.003](tasks/005-mcp-knowledge.md#t5.003) leaves `compositeFaultsByFiles`, and `bodyOf` is unchanged. The `mcp:<id>` a body names is found by one pattern, `MCP_MENTION`, beside `McpPrimitive`, which the charter and the output both read.
+- Once compiled, a name is the host's: the compiled document under `.cw/out/` and every claude document — rule, command, agent, skill — have each `mcp:<id>` written `mcp__cw__mcp-<id>`, `/` as `-`, `mcp__cw__mcp-github-billing`: the prefix of that place's tools as claude calls them, claude naming every tool of the `cw` server `mcp__cw__<tool>` and `cw mcp serve` serving a place's under its normalized identity. `ScopedPrimitive` holds `normIdentity`, made once in its constructor (`normalizedIdentityOf` goes), and every host file's name reads it. `cwMCPPrefix(body)` does it by the pattern alone, `mcp:<id>` to `mcp__cw__mcp-<id>`, asking the charter nothing: one no layer holds is written the same way, and the charter has warned about it.
+- No check of a host's name lengths: an `id` is at most 50 characters in `CommonHeaders`, refused with the kind's sample like any header, which keeps `mcp__cw__<id>__<tool>` within claude's 64 for any tool name a place is likely to have ([FR-157](spec.md#fr-157)).
+
+Non-goals: an agent's tool list gaining the served names ([T5.012](tasks/005-mcp-knowledge.md#t5.012)); a portal button to insert an mcp into a body; signing in; `cw mcp serve` itself; hosts other than claude.
 
 #### 17.5.5 T5.005 — The credential store
 
@@ -2484,13 +2499,13 @@ Acceptance: a place declared by a command running a test MCP server over stdio i
 
 #### 17.5.11 T5.011 — `--enable`
 
-`served(enable)` resolves each name against `catalog.json` and `mcp-origins.json`: a primitive identity to its `mcps`, an mcp identity to its place, a served name to one tool; the union of them is served ([§19.7](#197-holding-a-run-fr-155-fr-156)). A name neither holds stops the server before it answers.
+`served(enable)` resolves each name against `catalog.json` and `mcp-origins.json`: a primitive identity to the places its compiled body names, an mcp identity to its place, a served name to one tool; the union of them is served ([§19.7](#197-holding-a-run-fr-155-fr-156)). A name neither holds stops the server before it answers.
 
 Acceptance: `--enable playbook:x` serves the tools of the places `x` names; `--enable mcp:y` serves `y`'s; `--enable y__one` serves one; `--enable nothing:here` exits `1` naming it.
 
 #### 17.5.12 T5.012 — An agent held to its places
 
-The claude `Agent` component adds `mcp__cw__<served name>` for every tool of every place its `mcps` names ([FR-156](spec.md#fr-156)).
+The claude `Agent` component adds `mcp__cw__<served name>` for every tool of every place its body names ([FR-156](spec.md#fr-156)).
 
 Acceptance: an agent naming one place compiles with that place's tools beside its own and none of another's.
 
@@ -2570,10 +2585,11 @@ own words, with the sample of the shape it was nearer. `tools` names the place's
 has them is known only when it is reached, so it is said by the server, not by
 validation ([FR-153](spec.md#fr-153)).
 
-`mcps` is a common header because any kind can have reasons elsewhere, as any
-kind can cite a corpus. Unlike `rationale`, one that does not resolve is an
-`error`: a corpus that is missing costs a reader an explanation; an mcp that is
-missing is a place the agent is told about and cannot reach.
+A primitive of any kind names a place in its body, `mcp:<id>`, in the words it
+uses the place with; there is no header for it ([T5.004](tasks/005-mcp-knowledge.md#t5.004)). A place named
+does not say the primitive's reasons are kept there, only that it uses it, and a
+header would say the same thing twice. One nothing holds is a `warn`, as a
+`rationale` is: the words stay the author's.
 
 ### 19.2 Identities joined by `/` (FR-141)
 
@@ -2596,29 +2612,29 @@ A place is keyed by its address and `path`, not by identity, because the
 repository and a vendor may call one place by two names. It holds where the
 place is and how it is signed in to; its tools are the union of what its
 identities declare (spec Clarifications, 2026-09-26), read from their own
-files rather than copied here. The prefix is taken from the
-repository's own identity first, so what the repository calls a place is what
-its agent sees; then sorted order, so every build names it the same.
+files rather than copied here. Each identity's tools are served under its
+normalized identity, `mcp-<id>` with `/` as `-`: identities are one per charter, so no two
+share a prefix, and a tool's name is known from its mcp's file alone.
 
-Two faults need the whole list and are composite: a local command whose mcps
-name two `tokenEnv`s, and a served name longer than the host takes. The ways to
-sign in never conflict: they are the union across every identity, as the tools
-are, so a narrower list takes nothing away. The
-limit is the claude provider's, 64 characters for `mcp__cw__<prefix>__<tool>`,
-declared on the provider so that a second host brings its own.
+One fault needs the whole list and is composite: a local command whose mcps
+name two `tokenEnv`s. The ways to sign in never conflict: they are the union
+across every identity, as the tools are, so a narrower list takes nothing away.
+A served name is kept within what the host takes — claude's 64 characters for
+`mcp__cw__<prefix>__<tool>` — by the limit on every `id`, 50 characters, rather
+than by a check of its own ([FR-157](spec.md#fr-157)).
 
 ### 19.4 What the agent's host is given (FR-146, FR-147, FR-156)
 
 For claude, three things, each in the provider's classes:
 
 - **`.mcp.json`**, merged ([§6.2](#62-how-each-file-goes-down)): `mcpServers.cw` is
-  `{ "command": "cw", "args": ["mcp", "serve"] }`. The entry is written only when
-  the charter holds an mcp, and the rest of the file is the repository's. It is
+  `{ "command": "cw", "args": ["mcp", "serve"] }`. The entry is written whatever
+  the charter holds, and the rest of the file is the repository's. It is
   never deleted, like the settings.
-- **A section at the end of each document of a primitive with `mcps`** — its
-  compiled document under `.cw/out/` as well as the host's — naming each place's
-  identity, its path and its served tool names as the host calls them. The body says the rule; this says where to look further, in the words the
-  agent needs to call.
+- **Each `mcp:<id>` a body names, written as the host calls it** — in its
+  compiled document under `.cw/out/` as well as the host's: `mcp__cw__mcp-<id>`,
+  `/` as `-`. The charter knows ids and identities; a host's names are its
+  output's.
 - **An agent's tool list** gains the served names of its places' tools. That is
   the host holding a subagent to its places, which is enforcement rather than
   instruction ([§19.7](#197-holding-a-run-fr-155-fr-156)).
@@ -2681,12 +2697,12 @@ Four ways a charter narrows what an agent reaches, from wide to narrow:
 | Mechanism | Holds | Enforced by |
 |---|---|---|
 | an mcp's `tools` | every session: no undeclared tool is ever served | `cw mcp serve` |
-| a primitive's `mcps` | where that primitive tells the agent to look | the agent reading it |
-| an agent's `mcps` | a subagent's tools | the host |
+| a place a primitive's body names | where that primitive tells the agent to look | the agent reading it |
+| a place an agent's body names | a subagent's tools | the host |
 | `cw mcp serve --enable` | one run, as a scheduled job or CI | `cw mcp serve` |
 
-`--enable` names are resolved against `catalog.json`, which already holds every
-primitive's `mcps`, and `mcp-origins.json`; the server reads no charter. A job that must
+`--enable` names are resolved against the compiled primitives under `.cw/out/`,
+whose bodies name their places as `mcp__cw__mcp-<id>`, and `mcp-origins.json`; the server reads no charter. A job that must
 reach nothing else also runs its agent with the host's own built-in tools
 restricted, which is the host's flag, not `cw`'s; the README shows both together.
 Nothing here is a posture: a posture decides whether a call needs approval, and

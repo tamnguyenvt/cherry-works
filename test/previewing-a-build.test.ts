@@ -74,6 +74,7 @@ test("a repository that has never been built would have every file created (FR-0
     ".cw/out/skill/cw-author.md": "create",
     ".cw/out/guide/no-any.md": "create",
     "CLAUDE.md": "create",
+    ".mcp.json": "create",
     ".claude/rules/guide-no-any.md": "create",
     ".claude/skills/skill-cw-author/SKILL.md": "create",
   });
@@ -113,6 +114,7 @@ test("a rule edited since the last build would be updated, and its listings with
     // The section in the entry file is a pointer and says nothing of any
     // primitive, so no edit to a body reaches it.
     "CLAUDE.md": "unchanged",
+    ".mcp.json": "unchanged",
     ".claude/rules/guide-no-any.md": "update",
     ".claude/skills/skill-cw-author/SKILL.md": "unchanged",
   });

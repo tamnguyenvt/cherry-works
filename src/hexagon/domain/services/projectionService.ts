@@ -1,13 +1,14 @@
 import type { CharterOutput } from "../models/output/CharterOutput.js";
 import type { ProjectionPolicy } from "../models/output/ProjectionPolicy.js";
 import type { ClaudeComponent } from "../models/output/providers/claude/ClaudeComponent.js";
+import { ClaudeMcpConfigComponent } from "../models/output/providers/claude/ClaudeMcpConfigComponent.js";
 import { ClaudeSettingsComponent } from "../models/output/providers/claude/ClaudeSettingsComponent.js";
 import { ClaudeAgentComponent } from "../models/output/providers/claude/document-based-components/ClaudeAgentComponent.js";
 import { ClaudeCommandComponent } from "../models/output/providers/claude/document-based-components/ClaudeCommandComponent.js";
 import { ClaudeRuleComponent } from "../models/output/providers/claude/document-based-components/ClaudeRuleComponent.js";
 import { ClaudeSkillComponent } from "../models/output/providers/claude/document-based-components/ClaudeSkillComponent.js";
 import type { AgentProvider } from "../models/AgentProvider.js";
-import { CLAUDE_DIRECTORY, CLAUDE_ENTRY_FILE, OUT_DIRECTORY } from "../path.js";
+import { CLAUDE_DIRECTORY, CLAUDE_ENTRY_FILE, CLAUDE_MCP_CONFIG_FILE, OUT_DIRECTORY } from "../path.js";
 
 /**
  * One file this build puts down: where it goes, what it holds, and how it goes
@@ -163,6 +164,14 @@ function componentProjection(one: ClaudeComponent): Projection {
       return {
         path: `${CLAUDE_DIRECTORY}/settings.json`,
         contents: `${JSON.stringify(one.settings, undefined, 2)}\n`,
+        projectionPolicy,
+      };
+    // The one server reaching every place, in the file this host starts a
+    // project's servers from (FR-146).
+    case ClaudeMcpConfigComponent.kind:
+      return {
+        path: CLAUDE_MCP_CONFIG_FILE,
+        contents: `${JSON.stringify({ mcpServers: one.mcpServers }, undefined, 2)}\n`,
         projectionPolicy,
       };
   }

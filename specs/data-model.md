@@ -42,13 +42,12 @@ Every kind's headers extend these.
 | Header | Type | Required | Notes |
 |---|---|---|---|
 | `kind` | one of the kinds of [§1.3](#13-kinds-and-what-each-requires-fr-001-fr-004) | yes | Declared by the file ([FR-003](spec.md#fr-003)). |
-| `id` | slugs `[a-z0-9]([a-z0-9-]*[a-z0-9])?` joined by `/` ([FR-141](spec.md#fr-141)) | yes | Identity is `kind:id`, unique across the whole charter ([§3.1](#31-identity-fr-015-fr-016)). |
+| `id` | slugs `[a-z0-9]([a-z0-9-]*[a-z0-9])?` joined by `/` ([FR-141](spec.md#fr-141)), at most 50 characters ([FR-157](spec.md#fr-157)) | yes | Identity is `kind:id`, unique across the whole charter ([§3.1](#31-identity-fr-015-fr-016)). |
 | `description` | one line with something on it | yes | The only body-free text in the compact catalogue. |
 | `tags` | list of lines | no | Orthogonal to kind and directory ([FR-008](spec.md#fr-008)). |
 | `globs` | list of lines | no | The files it speaks about. A guide's are what bring it up; a mixin may name them so its reach can be compared with its host's ([FR-006](spec.md#fr-006)). |
 | `rationale` | `corpus:<id>` | no | Loaded on demand; one that does not resolve is a warning, not an error ([FR-005](spec.md#fr-005)). |
 | `mixins` | list of mixin ids | no | Each lends its body and no header ([§1.5](#15-mixin)). |
-| `mcps` | list of `mcp:<id>` | no | Where the primitive's reasons are kept outside the repository ([FR-143](spec.md#fr-143)). One that does not resolve is an error, not a warning: the server would reach nothing for it. |
 
 A list is refused when it holds an empty line. A list a kind *requires* is
 refused when it is empty too.
@@ -68,7 +67,7 @@ offending kind.
 | `agent` | `tools` (list) | the common headers | it is spawned by identity, holding the `tools` it lists and nothing else |
 | `posture` | `allow`, `deny` (lists) | the common headers | always, wherever the host can be told what to `allow` and what to `deny` |
 | `corpus` | — | the common headers | a primitive's `rationale` cites it — the reasoning, read when someone asks why |
-| `mcp` | `tools` (list), and `endpoint` or `command` (line) | `args`, `auth` (lists), `tokenEnv`, `path` (lines); `auth` is from `oauth`, `token` | a primitive's `mcps` names it — where the rest of the reasoning is kept, reached through `cw mcp serve` ([§17](#17-knowledge-reached-through-mcp-fr-141--fr-157)) |
+| `mcp` | `tools` (list), and `endpoint` or `command` (line) | `args`, `auth` (lists), `tokenEnv`, `path` (lines); `auth` is from `oauth`, `token` | a primitive's body names it as `mcp:<id>` — a place outside the repository, reached through `cw mcp serve` ([§17](#17-knowledge-reached-through-mcp-fr-141--fr-157)) |
 | `mixin` | — | the common headers but `mixins`, which it must not declare | never on its own: its body is lent to the primitives that pull it in |
 
 The "Activates when" column is each kind's `activatesWhen`, as its class declares it.
@@ -231,7 +230,7 @@ Asked of it, and derived rather than held: `allFaultsByFiles`, every fault under
 the file that has to change — the faults of reading, and `compositeFaultsByFiles`,
 what is wrong only once the files are read together (a second claim on an
 identity, a mixin nothing answers to, a mixin that does not reach its host, a
-rationale no corpus answers to, an `mcps` entry no mcp answers to, the warnings
+rationale no corpus answers to, a body naming an mcp nothing holds, the warnings
 of [§6.1](#61-the-four-warnings-fr-014)). Also `primitiveById`,
 `mixins`, `corpora`, and the relations `mixinsOf`, `rationaleOf`, `hostsOf` and
 `citersOf` ([§13](#13-explanation-fr-029)). The first claim on an identity is the one `primitiveById`
@@ -279,8 +278,8 @@ Faults       = Fault[]                 // an author's answers refused, under no 
 A fault is one of `CharterRootFault`, `CharterPrimitiveFault`, `SettingsFault`,
 `TestSuiteFault` or `TestCaseFault`, named for what has to change. An `error`
 stops a build, a listing, an explanation and a test run; a `warn` is said and
-stops nothing. A rationale that does not resolve is a `warn`; an `mcps` entry
-that does not resolve is an `error`.
+stops nothing. A rationale that does not resolve is a `warn`, and so is an
+`mcp:<id>` in a body that does not.
 
 ## 5. What the engine brings (FR-096 – FR-103)
 
@@ -312,7 +311,8 @@ Four faults of severity `warn`, each filed under a file of the charter:
 |---|---|
 | a corpus no primitive cites | the corpus |
 | a mixin no primitive names | the mixin |
-| an mcp no primitive names in its `mcps` | the mcp |
+| a body naming an mcp no layer holds | that primitive |
+| an mcp no primitive's body names | the mcp |
 | a guide or sensor no test case names | that primitive |
 
 ## 7. Catalogues (FR-025 – FR-028)
@@ -325,7 +325,6 @@ CatalogueFull    = CatalogueCompact & {
   globs?:     string[],
   rationale?: string,
   mixins?:    string[],
-  mcps?:      string[],
 }
 ```
 
@@ -372,7 +371,7 @@ kinds are not one for one:
 |---|---|---|
 | guide | rule, its `paths` its `globs` | `.claude/rules/<name>.md` |
 | command | command | `.claude/commands/<id>.md` |
-| agent | agent, with its `tools` and the served tools of its `mcps` ([FR-156](spec.md#fr-156)) | `.claude/agents/<name>.md` |
+| agent | agent, with its `tools` and the served tools of the places its body names ([FR-156](spec.md#fr-156)) | `.claude/agents/<name>.md` |
 | skill, playbook | skill | `.claude/skills/<name>/SKILL.md` |
 | posture, sensor | settings: permissions and hooks | `.claude/settings.json`, one for all of them |
 | mcp, all of them | one MCP server entry, `cw`, starting `cw mcp serve` ([FR-146](spec.md#fr-146)) | `.mcp.json`, merged |
@@ -739,7 +738,7 @@ tools: [get_file_contents, search_code, list_pull_requests]
 spaces. It is what a developer signs in to ([§17.3](#173-credential-fr-148--fr-151)).
 
 Its body, where it has one, says what is kept there and when to look. The
-common headers hold as for every kind; `mcps` on an mcp names other places,
+common headers hold as for every kind; its body may name other places,
 which nothing forbids and nothing needs.
 
 ### 17.2 Place (FR-145)
@@ -765,10 +764,10 @@ McpOriginsJson = { origins: McpOrigin[] }       // ordered by address, then path
 - **Key**: address and `path` together. Two identities with the same pair are
   one place; one identity is one file, so an identity is never in two places
   ([FR-015](spec.md#fr-015)).
-- **Prefix**, not held here: the `id` of the identity at a place the `repo`
-  scope declared, else the first `id` in sorted order, with `/` replaced by
-  `-`. Served tool names are `<prefix>__<tool>`, the tools being the union of
-  what the place's identities declare ([FR-153](spec.md#fr-153)).
+- **Prefix**, not held here: each identity normalized, `:` and `/` replaced by
+  `-` (`mcp-mfbs-billing`), known from its file alone. Served tool names are `<prefix>__<tool>`,
+  each identity's tools under its own prefix; claude calls one
+  `mcp__cw__<prefix>__<tool>` ([FR-153](spec.md#fr-153), [FR-157](spec.md#fr-157)).
 - **`auth`** is the union of what every identity here allows, from every
   layer: one identity's narrower list takes no way away. Two
   identities of one local command naming two `tokenEnv`s are
@@ -820,5 +819,5 @@ ServedTool = {
 ```
 
 With no `Enable`, every tool of every place is served. With some, what is served
-is the union of what each reaches: a primitive's `mcps` places, an mcp's place,
+is the union of what each reaches: the places a primitive's body names, an mcp's place,
 or one served tool.

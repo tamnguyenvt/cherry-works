@@ -16,8 +16,8 @@ const root = new URL("file:///repo/.cw/charter/");
 const at = (path: string) => new URL(path, root).href;
 const inRepo = (path: string) => new URL(path, "file:///repo/").href;
 
-const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
+const primitive = (kind: string, id: string, headers: readonly string[] = [], body = `The body of ${id}.`) =>
+  ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", body, ""].join("\n");
 
 const guide = (id: string, globs: readonly string[]) => primitive("guide", id, [`globs: ${JSON.stringify(globs)}`]);
 const sensor = (id: string, signal: string) =>
@@ -250,17 +250,14 @@ test("a charter with an error resolves nothing and says where to read what is wr
   assert.match(problem, /\.cw\/charter\/guide\/broken\.md/);
 });
 
-test("a guide naming an mcp no layer holds resolves nothing, naming the guide (FR-143)", async () => {
+test("a body naming an mcp no layer holds is only a warning, and the tests still run (FR-143)", async () => {
   const run = commandLine({
     ...charter,
-    [at("guide/billing.md")]: primitive("guide", "billing", ['globs: ["src/**/*.ts"]', 'mcps: ["mcp:missing"]']),
+    [at("guide/billing.md")]: primitive("guide", "billing", ['globs: ["src/**/*.ts"]'], "Take the requirements from mcp:missing."),
     ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
   });
 
-  const { code, result, problem } = await run();
+  const { code } = await run();
 
-  assert.equal(code, EXIT_FAILURE);
-  assert.equal(result, "");
-  assert.match(problem, /Nothing was resolved\./);
-  assert.match(problem, /\.cw\/charter\/guide\/billing\.md/);
+  assert.equal(code, EXIT_OK);
 });

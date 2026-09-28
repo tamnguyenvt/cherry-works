@@ -29,6 +29,7 @@ const guide = (
   file = `guide/${id}.md`,
   headers: Record<string, unknown> = {},
   vendor?: string,
+  body = "Body.",
 ): Authored =>
   scoped(
     vendor,
@@ -41,7 +42,7 @@ const guide = (
         severity: "normal",
         ...headers,
       },
-      "Body.",
+      body,
     ),
   );
 
@@ -64,9 +65,9 @@ const mcp = (id: string, vendor?: string, headers: Record<string, unknown> = {})
 /** Every place a charter's mcps reach, as a build writes them (FR-145). */
 const mcpOriginsOf = (charter: CharterRoot) => compile(charter, []).mcpOrigins;
 
-/** Every mcp of these, named from a guide so none is reported as unnamed. */
+/** Every mcp of these, named in a guide's body so none is reported as unnamed. */
 const namedMcps = (...mcps: Authored[]): Authored[] => [
-  guide("no-any", "guide/no-any.md", { mcps: mcps.map((one) => one.identity) }),
+  guide("no-any", "guide/no-any.md", {}, undefined, `Read the reasons in ${mcps.map((one) => one.identity).join(" and ")}.`),
   ...mcps,
 ];
 
@@ -213,16 +214,19 @@ test("a corpus cited only by a vendored primitive is cited", () => {
   );
 });
 
-test("an mcp a primitive names is nothing to report, whichever layer authored it (FR-143)", () => {
-  assert.deepEqual(faultsByFilesOf(guide("no-any", "guide/no-any.md", { mcps: ["mcp:mfbs/billing"] }), mcp("mfbs/billing", "team")), {});
+test("an mcp a body names is nothing to report, whichever layer authored it (FR-143)", () => {
+  const namingGuide = guide("no-any", "guide/no-any.md", {}, undefined, "Take the requirements from mcp:mfbs/billing.");
+  assert.deepEqual(faultsByFilesOf(namingGuide, mcp("mfbs/billing", "team")), {});
 });
 
-test("an mcp no layer holds is an error under the file naming it (FR-143)", () => {
-  const faultsByFiles = faultsByFilesOf(guide("no-any", "guide/no-any.md", { mcps: ["mcp:missing"] }));
+test("a body naming an mcp no layer holds is a warning under its file, once however often it names it (FR-143)", () => {
+  const faultsByFiles = faultsByFilesOf(
+    guide("no-any", "guide/no-any.md", {}, undefined, "Ask mcp:missing, and then mcp:missing again."),
+  );
 
   assert.deepEqual(Object.keys(faultsByFiles), [at("guide/no-any.md")]);
-  assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["error"]);
-  assert.match(messages(faultsByFiles), /names "mcp:missing" under "mcps", and this charter holds no mcp of that identity/);
+  assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["warn"]);
+  assert.match(messages(faultsByFiles), /names "mcp:missing", and this charter holds no mcp of that identity/);
 });
 
 test("an mcp no primitive names is a warning under its own file (FR-144)", () => {
@@ -230,7 +234,7 @@ test("an mcp no primitive names is a warning under its own file (FR-144)", () =>
 
   assert.deepEqual(Object.keys(faultsByFiles), [at("mcp/mfbs/billing.md")]);
   assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["warn"]);
-  assert.match(messages(faultsByFiles), /No primitive names "mcp:mfbs\/billing" under "mcps"/);
+  assert.match(messages(faultsByFiles), /No primitive names "mcp:mfbs\/billing" in its body/);
 });
 
 test("a repository mcp and a vendor mcp at one endpoint and path are one place, under both, signed in to either way (FR-145)", () => {
@@ -306,33 +310,3 @@ test("a command taking no token beside one naming a variable is no conflict (FR-
   assert.deepEqual(faultsByFiles, {});
 });
 
-test("a tool served under a name longer than claude takes is an error under the mcp declaring it (FR-157)", () => {
-  // `mcp__cw__` and `__` are 11 characters, so a 26-character prefix leaves 27
-  // for the tool before 64 is passed.
-  const prefix = "a".repeat(26);
-  const faultsByFiles = faultsByFilesOf(
-    ...namedMcps(mcp(prefix, undefined, { tools: ["b".repeat(27), "c".repeat(28)] }), mcp("other", "acme", { tools: ["search"] })),
-  );
-
-  assert.deepEqual(Object.keys(faultsByFiles), [at(`mcp/${prefix}.md`)]);
-  assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["error"]);
-  assert.match(messages(faultsByFiles), new RegExp(`"${"c".repeat(28)}" is served to claude as "mcp__cw__${prefix}__${"c".repeat(28)}", 65 characters`));
-});
-
-test("a place no repository mcp names is served under the first identity in sorted order (FR-145, FR-157)", () => {
-  // `mcp__cw__` and `__` leave 53 characters for the prefix and a 40-character
-  // tool before 64 is passed: "alpha" fits, a 30-character id does not.
-  const faultsByFiles = faultsByFilesOf(
-    ...namedMcps(mcp("alpha", "acme", { tools: ["t".repeat(40)] }), mcp("z".repeat(30), "other", { tools: ["t".repeat(40)] })),
-  );
-
-  assert.deepEqual(faultsByFiles, {});
-});
-
-test("a vendor mcp's long id is no fault where the repository's names the place (FR-145, FR-157)", () => {
-  const faultsByFiles = faultsByFilesOf(
-    ...namedMcps(mcp("billing", undefined, { tools: ["t".repeat(40)] }), mcp("a".repeat(30), "acme", { tools: ["t".repeat(40)] })),
-  );
-
-  assert.deepEqual(faultsByFiles, {});
-});

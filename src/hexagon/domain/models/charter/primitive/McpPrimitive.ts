@@ -5,6 +5,15 @@ import { BasePrimitive, CommonHeaders, headersOf, goodArray, goodLine, type Requ
 export const MCP_AUTHS = ["oauth", "token"] as const;
 
 /**
+ * Where a body names a place: `mcp:<id>`, the id as FR-141 writes one (FR-143).
+ *
+ * A primitive using a place says so in its own words — "read the requirements
+ * in mcp:github/billing" — rather than in a header, so this is how the charter
+ * and a host's output find the names. The id is the first group.
+ */
+export const MCP_MENTION = /\bmcp:([a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*)/g;
+
+/**
  * One MCP server, a place where a primitive's reasons are kept outside the
  * repository: reached at an `endpoint`, or started as a `command` (FR-142).
  *
@@ -78,7 +87,7 @@ export class McpPrimitive extends BasePrimitive<McpHeaders> {
    *  where the kind's contract is: the neutral surface lists one
    *  line per kind and none of them is written down twice (FR-002). */
   static readonly activatesWhen =
-    "a primitive's `mcps` names it — where the rest of the reasoning is kept, reached through `cw mcp serve`";
+    "a primitive's body names it as `mcp:<id>` — a place outside the repository, reached through `cw mcp serve`";
 
   /** An mcp reached at an endpoint, as an author writes one: what a refused
    *  header is fixed with. */

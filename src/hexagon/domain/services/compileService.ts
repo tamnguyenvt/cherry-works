@@ -1,5 +1,5 @@
 import type { AgentProvider } from "../models/AgentProvider.js";
-import { normalizedIdentityOf, PRIMITIVE_CLASSES } from "../models/charter/primitive/Primitive.js";
+import { PRIMITIVE_CLASSES } from "../models/charter/primitive/Primitive.js";
 import { Catalogue, CharterMd, CompiledPrimitive, type CharterOutput, type McpOrigin } from "../models/output/CharterOutput.js";
 import { OUT_DIRECTORY } from "../path.js";
 import type { CharterRoot, ScopedPrimitive } from "../models/charter/CharterRoot.js";
@@ -10,8 +10,9 @@ import { PlaybookPrimitive } from "../models/charter/primitive/PlaybookPrimitive
 import { PosturePrimitive } from "../models/charter/primitive/PosturePrimitive.js";
 import { SensorPrimitive } from "../models/charter/primitive/SensorPrimitive.js";
 import { SkillPrimitive } from "../models/charter/primitive/SkillPrimitive.js";
-import { MCP_AUTHS, McpPrimitive } from "../models/charter/primitive/McpPrimitive.js";
+import { MCP_AUTHS, MCP_MENTION, McpPrimitive } from "../models/charter/primitive/McpPrimitive.js";
 import type { ClaudeComponent } from "../models/output/providers/claude/ClaudeComponent.js";
+import { ClaudeMcpConfigComponent } from "../models/output/providers/claude/ClaudeMcpConfigComponent.js";
 import {
   ClaudeSettingsComponent,
   isClaudeHookEvent,
@@ -55,11 +56,21 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
     catalogue: catalogueOf(charter, (one) => `${OUT_DIRECTORY}/${one.primitive.kind}/${one.primitive.headers.id}.md`),
     charterMd: CharterMd.of(PRIMITIVE_CLASSES),
     compiledPrimitives: charter.primitives.map((one) =>
-      CompiledPrimitive.of(one.identity, one.primitive.toMarkdown(charter.bodyOf(one))),
+      CompiledPrimitive.of(one.identity, one.primitive.toMarkdown(cwMCPPrefix(charter.bodyOf(one)))),
     ),
     mcpOrigins: mcpOriginsOf(charter),
     providerComponents: agents.flatMap((agent) => forAgent(agent, charter)),
   };
+}
+
+/**
+ * A body with every place it names as `mcp:<id>` written as the prefix of that
+ * place's tools as claude calls them, `mcp__cw__mcp-<id>` with `/` as `-`:
+ * claude names every tool of the `cw` server `mcp__cw__<tool>`, and
+ * `cw mcp serve` serves a place's under its identity written that way (FR-147).
+ */
+function cwMCPPrefix(body: string): string {
+  return body.replace(MCP_MENTION, (mention) => `mcp__cw__${mention.replace(/[:/]/g, "-")}`);
 }
 
 /**
@@ -77,7 +88,7 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
 export function catalogueOf(charter: CharterRoot, fileOf: (one: ScopedPrimitive) => string): Catalogue {
   return Catalogue.of(
     charter.primitives.map((one) => {
-      const { id, description, tags, globs, rationale, mixins, mcps } = one.primitive.headers;
+      const { id, description, tags, globs, rationale, mixins } = one.primitive.headers;
       return {
         identity: one.identity,
         kind: one.primitive.kind,
@@ -88,7 +99,6 @@ export function catalogueOf(charter: CharterRoot, fileOf: (one: ScopedPrimitive)
         ...(globs === undefined ? {} : { globs }),
         ...(rationale === undefined ? {} : { rationale }),
         ...(mixins === undefined ? {} : { mixins }),
-        ...(mcps === undefined ? {} : { mcps }),
       };
     }),
   );
@@ -156,10 +166,12 @@ function forAgent(agent: AgentProvider, charter: CharterRoot): readonly ClaudeCo
  * files it names or carried on every turn where it names none. What the charter kept apart, the listing
  * keeps apart (FR-011); what the host cannot tell apart, it is not told.
  *
- * Three kinds project nothing. A `corpus` is cited rather than loaded, a
- * `mixin` has no life of its own — its body is written into each host that pulls it in, which
- * `bodyOf` does and this is the only caller of — and an `mcp` is reached through
- * `cw mcp serve` rather than read.
+ * Three kinds project nothing of their own. A `corpus` is cited rather than
+ * loaded, a `mixin` has no life of its own — its body is written into each host
+ * that pulls it in, which `bodyOf` does — and an `mcp` is reached through
+ * `cw mcp serve` rather than read: the one entry of the host's MCP
+ * configuration that starts it, written whether the charter holds a place yet or
+ * not, since the server reads which places there are when it starts (FR-146).
  */
 export function compileClaude(charter: CharterRoot): readonly ClaudeComponent[] {
   const asSettings = charter.primitives.filter(isSettingComponent);
@@ -167,6 +179,7 @@ export function compileClaude(charter: CharterRoot): readonly ClaudeComponent[] 
 
   return [
     ...(asSettings.length === 0 ? [] : [ClaudeSettingsComponent.of(claudeSettingsOf(asSettings))]),
+    ClaudeMcpConfigComponent.of(),
     ...asDocuments.flatMap((one) => claudeDocumentComponentOf(charter, one) ?? []),
   ];
 }
@@ -225,8 +238,8 @@ function claudeDocumentComponentOf(charter: CharterRoot, sc: ScopedPrimitive): C
   // The kind stays in the name, because two charter kinds can land in one
   // directory there — `guide:no-any` and `skill:no-any` are two primitives and
   // must stay two files (FR-014).
-  const name = normalizedIdentityOf(sc.identity);
-  const body = charter.bodyOf(sc);
+  const name = sc.normIdentity;
+  const body = cwMCPPrefix(charter.bodyOf(sc));
 
   switch (sc.primitive.kind) {
     // A guide is a rule this host loads into context whole: when a file it names

@@ -117,7 +117,7 @@ test("a repository that has never been built is out of date, and fails (FR-040)"
   const { code, written } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /Built: {4}9 files out of date\. Run "cw build"\./);
+  assert.match(written.everything, /Built: {4}10 files out of date\. Run "cw build"\./);
 });
 
 test("staleness is the preview run, not a record kept of the last build (FR-040)", async () => {
@@ -294,5 +294,5 @@ test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-14
   });
 
   assert.deepEqual([errorCount, warnCount], [0, 1]);
-  assert.match(messagesUnder(faultsByFile, ".cw/charter/mcp/mfbs/billing.md").join(), /warn: No primitive names "mcp:mfbs\/billing" under "mcps"/);
+  assert.match(messagesUnder(faultsByFile, ".cw/charter/mcp/mfbs/billing.md").join(), /warn: No primitive names "mcp:mfbs\/billing" in its body/);
 });

@@ -67,6 +67,7 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
     ".cw/out/guide/no-any.md",
     ".cw/out/skill/cw-author.md",
     "CLAUDE.md",
+    ".mcp.json",
     ".claude/skills/skill-cw-author/SKILL.md",
     ".claude/rules/guide-no-any.md",
   ]);
@@ -270,21 +271,21 @@ test("a charter with an error builds nothing at all, and says which files (FR-00
   await assert.rejects(() => contentsOf(held, ".cw/out/CHARTER.md"));
 });
 
-test("a guide naming an mcp no layer holds builds nothing, the error under the guide (FR-143)", async () => {
+test("a body naming an mcp no layer holds still builds, the name written as any other (FR-143, FR-147)", async () => {
   const { held, build } = building({
-    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mcps: ["mcp:missing"]']),
+    ...compilingFor("claude"),
+    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Take the requirements from mcp:missing."),
   });
 
-  const planSummaryDTO = await build();
+  filesOf(await build());
 
-  assert.ok(planSummaryDTO.type === "FaultsByFile");
-  assert.deepEqual(Object.keys(planSummaryDTO.data.files), [".cw/charter/guide/no-any.md"]);
-  await assert.rejects(() => contentsOf(held, ".cw/out/CHARTER.md"));
+  assert.match(await contentsOf(held, ".cw/out/guide/no-any.md"), /Take the requirements from mcp__cw__mcp-missing\./);
+  assert.match(await contentsOf(held, ".claude/rules/guide-no-any.md"), /Take the requirements from mcp__cw__mcp-missing\./);
 });
 
 test("a build writes every place the charter's mcps reach to mcp-origins.json (FR-145)", async () => {
   const { held, build } = building({
-    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mcps: ["mcp:mfbs/billing"]']),
+    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Read mcp:mfbs/billing."),
     [at("mcp/mfbs/billing.md")]: primitive("mcp", "mfbs/billing", [
       "endpoint: https://api.githubcopilot.com/mcp/",
       "path: acme/billing",
@@ -316,17 +317,73 @@ test("a charter with no mcp still writes the list, empty, for the server to find
   assert.equal(await contentsOf(held, ".cw/out/mcp-origins.json"), '{\n  "origins": []\n}\n');
 });
 
-test("a tool served under a name the host refuses builds nothing, the error under its mcp (FR-157)", async () => {
+test("a charter with an mcp gives the host one cw entry, beside the repository's own left untouched (FR-146)", async () => {
   const { held, build } = building({
-    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mcps: ["mcp:billing"]']),
-    [at("mcp/billing.md")]: primitive("mcp", "billing", ["endpoint: https://mcp.example.com/", "auth: [oauth]", `tools: [${"t".repeat(60)}]`]),
+    ...compilingFor("claude"),
+    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Read mcp:billing."),
+    [at("mcp/billing.md")]: primitive("mcp", "billing", ["endpoint: https://mcp.example.com/", "auth: [oauth]", "tools: [search]"]),
+    [inRepo(".mcp.json")]: `${JSON.stringify({ mcpServers: { mine: { command: "my-server", args: ["--stdio"] } } }, undefined, 2)}\n`,
   });
 
-  const planSummaryDTO = await build();
+  filesOf(await build());
 
-  assert.ok(planSummaryDTO.type === "FaultsByFile");
-  assert.deepEqual(Object.keys(planSummaryDTO.data.files), [".cw/charter/mcp/billing.md"]);
-  await assert.rejects(() => contentsOf(held, ".cw/out/mcp-origins.json"));
+  assert.deepEqual(JSON.parse(await contentsOf(held, ".mcp.json")), {
+    mcpServers: {
+      mine: { command: "my-server", args: ["--stdio"] },
+      cw: { command: "cw", args: ["mcp", "serve"] },
+    },
+  });
+});
+
+test("the cw entry is written before the charter holds any mcp, so a place added later needs no setup (FR-146)", async () => {
+  const { held, build } = building({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+
+  filesOf(await build());
+
+  assert.deepEqual(JSON.parse(await contentsOf(held, ".mcp.json")), { mcpServers: { cw: { command: "cw", args: ["mcp", "serve"] } } });
+});
+
+test("a repository compiling for no agent has no MCP configuration written for it (FR-146)", async () => {
+  const { held, build } = building({ [at("guide/no-any.md")]: guide("no-any") });
+
+  filesOf(await build());
+
+  await assert.rejects(() => contentsOf(held, ".mcp.json"));
+});
+
+test("what the repository set in the host's settings is kept beside the charter's, at every depth (FR-018)", async () => {
+  const { held, build } = building({
+    ...compilingFor("claude"),
+    [at("posture/sandboxed.md")]: posture("sandboxed", "Read(**)", "Bash(rm:*)"),
+    [inRepo(".claude/settings.json")]: `${JSON.stringify({ model: "opus", permissions: { additionalDirectories: ["../shared"] } })}\n`,
+  });
+
+  filesOf(await build());
+
+  assert.deepEqual(JSON.parse(await contentsOf(held, ".claude/settings.json")), {
+    model: "opus",
+    permissions: { additionalDirectories: ["../shared"], allow: ["Read(**)"], deny: ["Bash(rm:*)"] },
+  });
+});
+
+test("once compiled, a place a body names is what claude calls it, in every document of it (FR-147)", async () => {
+  const { held, build } = building({
+    ...compilingFor("claude"),
+    [at("guide/no-any.md")]: primitive(
+      "guide",
+      "no-any",
+      ['globs: ["src/**/*.ts"]'],
+      "Take the requirements from mcp:github/billing, and the decisions from mcp:notion.",
+    ),
+    [at("mcp/github/billing.md")]: primitive("mcp", "github/billing", ["endpoint: https://api.githubcopilot.com/mcp/", "auth: [oauth]", "tools: [search_code]"]),
+    [at("mcp/notion.md")]: primitive("mcp", "notion", ["endpoint: https://mcp.notion.com/", "auth: [oauth]", "tools: [search]"]),
+  });
+
+  filesOf(await build());
+
+  const hostBody = "Take the requirements from mcp__cw__mcp-github-billing, and the decisions from mcp__cw__mcp-notion.";
+  assert.ok((await contentsOf(held, ".cw/out/guide/no-any.md")).includes(hostBody));
+  assert.ok((await contentsOf(held, ".claude/rules/guide-no-any.md")).includes(hostBody));
 });
 
 test("a warning is not an error: a charter that only warns still builds (FR-005)", async () => {

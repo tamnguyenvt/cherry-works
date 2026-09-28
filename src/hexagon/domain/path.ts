@@ -85,6 +85,11 @@ export const CLAUDE_DIRECTORY = ".claude";
  *  rest of the file is the repository's (FR-051). */
 export const CLAUDE_ENTRY_FILE = "CLAUDE.md";
 
+/** The servers claude starts for a project, at the root of the repository
+ *  beside its entry file. The charter keeps one entry in it, and the rest of the
+ *  file is the repository's (FR-146). */
+export const CLAUDE_MCP_CONFIG_FILE = ".mcp.json";
+
 /**
  * The folder one agent this engine compiles for reads everything of its own
  * from (FR-018).

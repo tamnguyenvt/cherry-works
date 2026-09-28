@@ -101,10 +101,23 @@ export async function planForProjection(
         break;
       // What the repository set for itself is read and written back: the fields
       // this charter speaks for are put over the top of it, and every other one
-      // is theirs and comes through untouched (FR-018).
+      // is theirs and comes through untouched (FR-018). Field by field at every
+      // depth, so an entry of the repository's beside the charter's under one
+      // key — a server of its own under `mcpServers` — stays (FR-146); a list
+      // or a value is the charter's whole, so what it no longer asks for goes.
       case "mergeJSON": {
-        const already: object = JSON.parse(held?.trim() || "{}");
-        contents = `${JSON.stringify({ ...already, ...JSON.parse(one.contents) }, undefined, 2)}\n`;
+        const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+          typeof value === "object" && value !== null && !Array.isArray(value);
+        const mergedJSON = (already: unknown, written: unknown): unknown =>
+          isPlainObject(already) && isPlainObject(written)
+            ? Object.fromEntries(
+                [...new Set([...Object.keys(already), ...Object.keys(written)])].map((field) => [
+                  field,
+                  field in written ? mergedJSON(already[field], written[field]) : already[field],
+                ]),
+              )
+            : written;
+        contents = `${JSON.stringify(mergedJSON(JSON.parse(held?.trim() || "{}"), JSON.parse(one.contents)), undefined, 2)}\n`;
         break;
       }
       // A section says where it starts and ends itself — its first line and its

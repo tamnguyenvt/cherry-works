@@ -59,7 +59,6 @@ const catalogueEntry = dto(
     globs: strings.optional(),
     rationale: z.string().optional(),
     mixins: strings.optional(),
-    mcps: strings.optional(),
   }),
 );
 

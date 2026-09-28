@@ -1,6 +1,7 @@
 import { ClaudeAgentComponent } from "./document-based-components/ClaudeAgentComponent.js";
 import { ClaudeCommandComponent } from "./document-based-components/ClaudeCommandComponent.js";
 import { ClaudeRuleComponent } from "./document-based-components/ClaudeRuleComponent.js";
+import { ClaudeMcpConfigComponent } from "./ClaudeMcpConfigComponent.js";
 import { ClaudeSettingsComponent } from "./ClaudeSettingsComponent.js";
 import { ClaudeSkillComponent } from "./document-based-components/ClaudeSkillComponent.js";
 
@@ -12,6 +13,7 @@ export const CLAUDE_COMPONENT_CLASSES = [
   ClaudeAgentComponent,
   ClaudeSkillComponent,
   ClaudeSettingsComponent,
+  ClaudeMcpConfigComponent,
   ClaudeRuleComponent,
 ] as const;
 
@@ -24,7 +26,7 @@ export const CLAUDE_COMPONENT_CLASSES = [
  */
 export type ClaudeComponent = ReturnType<(typeof CLAUDE_COMPONENT_CLASSES)[number]["of"]>;
 
-/** The four kinds, each read off the class that writes it. The set is closed:
+/** The kinds, each read off the class that writes it. The set is closed:
  *  the compiler reads it to know where a file of that kind goes, and a kind
  *  with nowhere to go is a compile error. */
 export const CLAUDE_COMPONENT_KINDS = Object.freeze(CLAUDE_COMPONENT_CLASSES.map((one) => one.kind));
