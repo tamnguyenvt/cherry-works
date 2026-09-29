@@ -41,6 +41,24 @@ try {
     throw new ReleaseError(`${version} is not above ${currentVersion}, the version package.json holds.`);
   }
 
+  // Signed in to the registry, as an account that may publish this package:
+  // without it, npm publish answers a misleading E404 only after the release
+  // commit and tag are made. At a terminal, the maintainer is signed in here.
+  let npmAccount = spawnSync("npm", ["whoami"], inRoot).stdout.trim();
+  if (npmAccount === "" && !isDryRun && process.stdin.isTTY) {
+    console.log("Not signed in to npm. Signing in now.");
+    spawnSync("npm", ["login"], { cwd: ROOT, stdio: "inherit" });
+    npmAccount = spawnSync("npm", ["whoami"], inRoot).stdout.trim();
+  }
+  if (npmAccount === "") throw new ReleaseError('npm has no account signed in. Run "npm login", then release again.');
+  const maintainersView = spawnSync("npm", ["view", packageName, "maintainers", "--json"], inRoot);
+  if (maintainersView.status === 0) {
+    const maintainers = [JSON.parse(maintainersView.stdout) as string | string[]].flat();
+    if (!maintainers.some((maintainer) => maintainer.split(" ")[0] === npmAccount)) {
+      throw new ReleaseError(`npm is signed in as ${npmAccount}, who does not maintain ${packageName}: ${maintainers.join(", ")}. Run "npm login" as one of them.`);
+    }
+  }
+
   // A package never published answers E404; a published one without this
   // version answers nothing.
   const registryView = spawnSync("npm", ["view", `${packageName}@${version}`, "version"], inRoot);
