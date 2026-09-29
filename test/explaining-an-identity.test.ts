@@ -11,6 +11,7 @@ import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
+import { noPlacesReached } from "./no-places.js";
 
 const repo = "/repo";
 
@@ -68,7 +69,7 @@ const writing = async (work: () => Promise<number>) => {
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[]) => {
   const readers = new InMemoryFileReaders(files);
   const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryVCS());
-  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS);
+  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noPlacesReached }, COMMANDS);
   return writing(() => cli.run(argv));
 };
 

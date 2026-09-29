@@ -71,9 +71,9 @@ src/
       path.ts                      where everything lives in a repository
     service/                       charterRepo, settingsRepo, testSuitesRepo, vendorRepo, buildService:
                                    the domain read from and written to the driven ports
-    application/                   CharterAuthoring, CharterVendoring, TestAuthoring, McpReaching, dtos.ts
+    application/                   CharterAuthoring, CharterVendoring, TestAuthoring, McpConnecting, dtos.ts
     port/
-      driver/                      ForManagingCharter, ForVendoringCharters, ForAuthoringTests, ForReachingMcps
+      driver/                      ForManagingCharter, ForVendoringCharters, ForAuthoringTests, ForConnectingMcps
         dtos/                      dto.ts, data.ts, outcome.ts, index.ts: every DTO
       zdriven/                     ForReadingFiles, ForWritingFiles, ForVCS, ForParsingYaml, ForReportingProgress,
                                    ForKeepingSecrets, ForCallingMcpServers, ForAuthorizing,
@@ -85,7 +85,7 @@ src/
       routes.ts                    the Hono routes under /api, one per use case; the app hc is typed by
       server.ts                    startPortal: the routes and the page on node:http, behind the guards of §12.4
       page/                        runs in the browser; imports the DTOs and the type of routes.ts, nothing else of ours
-    mcp/server.ts                  startMcpServer: the SDK's Server over stdio, answering through ForReachingMcps
+    mcp/server.ts                  startMcpServer: the SDK's Server over stdio, answering through ForConnectingMcps
   zdriven/                         files, git, YAML, the terminal, the credential store, MCP clients, OAuth,
                                    and in-memory adapters for tests
 main.ts                            composition root: which adapter fills which port
@@ -159,7 +159,7 @@ same ones.
 | `ForManagingCharter` | `doctor`, `list`, `explain`, `build`, `preview`, `test`, `listPrimitiveRequirements`, `kinds`, `add`, `settings`, `ensureRepoReady`, `init`; and, for the portal, `open`, `rewrite`, `remove` ([§9.4](#94-opening-rewriting-and-deleting-a-primitive-fr-075--fr-079)) |
 | `ForVendoringCharters` | `add`, `remove`, `installed` ([§7](#7-vendor-sources)) |
 | `ForAuthoringTests` | `suites`, `addSuite`, `writeSuite`, `removeSuite` ([§11.3](#113-managing-test-files)) |
-| `ForReachingMcps` | `signInStatus`, `signInWithToken`, `signInWithOAuth`, `served`, `call` ([§19](#19-knowledge-reached-through-mcp-fr-141--fr-157)) |
+| `ForConnectingMcps` | `signInStatus`, `signInWithToken`, `signInWithOAuth`, `served`, `call` ([§19](#19-knowledge-reached-through-mcp-fr-141--fr-157)) |
 
 Managing a charter is one conversation — authoring and reading one repository's
 charter — so it is one port rather than one per caller. Vendoring is apart
@@ -181,7 +181,7 @@ through.
 | `ForReportingProgress` | results, and problems with the next move | `ConsoleReporter` |
 | `ForKeepingSecrets` | one secret under a key: read, write, remove | `OsSecrets` (`security`, `secret-tool`), `InMemorySecrets` |
 | `ForCallingMcpServers` | the tools one server lists, and one call to one of them: a server reached over HTTP under a bearer credential, or a local process started with its token in its environment and stopped on close | `McpClients` (the SDK's Streamable HTTP and stdio clients), `InMemoryMcpServers` |
-| `ForAuthorizing` | an OAuth sign-in to one server, and a renewal: the credential it ends with | `OAuthFlow` (the SDK's OAuth client, a callback on `127.0.0.1`), `InMemoryAuthorizing` |
+| `ForAuthorizing` | an OAuth sign-in to one server, and a renewal: the credential it ends with | `OAuth` (the SDK's OAuth client, a callback on `127.0.0.1`), `InMemoryAuthorizing` |
 
 Reporting is a driven port like any other, which is why the command line has no
 output type of its own: the terminal is one adapter for it, and a test binds
@@ -1103,8 +1103,8 @@ registered under it as a group; a positional on a command that stands alone
 | `cw vendor remove <name>` | `ForVendoringCharters.remove` | [FR-047](spec.md#fr-047), [FR-051](spec.md#fr-051) |
 | `cw vendor list` | `ForVendoringCharters.installed` | [FR-053](spec.md#fr-053), [FR-122](spec.md#fr-122) |
 | `cw portal [--port]` | `ensureRepoReady`, then `startPortal` | [FR-104](spec.md#fr-104) – [FR-107](spec.md#fr-107) |
-| `cw mcp auth [identity] [--status]` | `ForReachingMcps.signInStatus`, then `signIn` per address | [FR-148](spec.md#fr-148) – [FR-151](spec.md#fr-151) |
-| `cw mcp serve [--enable …]` | `ForReachingMcps.served`, then `startMcpServer` | [FR-152](spec.md#fr-152) – [FR-155](spec.md#fr-155) |
+| `cw mcp auth [identity] [--status]` | `ForConnectingMcps.signInStatus`, then `signIn` per address | [FR-148](spec.md#fr-148) – [FR-151](spec.md#fr-151) |
+| `cw mcp serve [--enable …]` | `ForConnectingMcps.served`, then `startMcpServer` | [FR-152](spec.md#fr-152) – [FR-155](spec.md#fr-155) |
 
 For two capabilities the command line's way is not the port method. Rewriting a
 primitive and rewriting a test file are done in the author's own editor, so
@@ -2483,19 +2483,55 @@ Non-goals: what a `Credential` holds and its parsing ([T5.006](tasks/005-mcp-kno
 
 #### 17.5.6 T5.006 — `cw mcp auth`, by token
 
-`ForReachingMcps` and `McpReaching`; `signInStatus` reads `.cw/out/mcp-origins.json` and the store; `signInWithToken` writes one credential. `McpAuthCommand` asks at a terminal only: per address not signed in, which way (the intersection), then a hidden token prompt. `--status` and `<identity>` as [FR-150](spec.md#fr-150) says.
+`ForConnectingMcps` and `McpConnecting`; `signInStatus` reads `.cw/out/mcp-origins.json` and the store; `signInWithToken` writes one credential. `McpAuthCommand` asks at a terminal only: per address not signed in, which way (the intersection), then a hidden token prompt. `--status` and `<identity>` as [FR-150](spec.md#fr-150) says.
 
 Acceptance: at a terminal two addresses are asked about and signed in; the next run asks nothing; without a terminal it names both and exits `1`; `--status` changes nothing; no file under the repository changes throughout.
 
+Intent: a developer signs in to every address the last build listed, as themselves, once per address, and the credential goes to the store and nowhere else ([FR-148](spec.md#fr-148), [FR-150](spec.md#fr-150), [SC-034](spec.md#sc-034)).
+
+Criteria, beside the acceptance above:
+
+- `ForConnectingMcps` in `port/driver/`, `McpConnecting` in `application/`, constructed with the repository, `ForReadingFiles`, `ForKeepingSecrets` and `ForAuthorizing` ([T5.007](tasks/005-mcp-knowledge.md#t5.007)); no writing port, so nothing it does can touch a file of the repository.
+- `.cw/out/mcp-origins.json` is read by `loadMcpOrigins` in `service/mcpOriginsRepo.ts`, which [T5.008](tasks/005-mcp-knowledge.md#t5.008) reads too. Missing, it is a `DomainFault` saying to run `cw build`; unreadable, one saying to build again.
+- `signInStatus()` answers one `SignInStatus` DTO per address that takes a sign-in (data-model [§17.4](data-model.md#174-sign-in-status-fr-150)), ordered by address: the identities of every place at it, whatever its path, sorted; the union of their `auth`; whether a credential is kept under it, and its `method`. A local command with no `auth` has no row.
+- `signInWithToken(address, token)` keeps `{ address, method: "token", accessToken }` under the address, replacing what was there. Refused, writing nothing: an address no row holds, one whose `auth` has no `token`, an empty token.
+- An endpoint at plain `http` to anything but `127.0.0.1` or `localhost` is signed in to by no way, and `credentialFor` hands out nothing for it, whatever `mcp-origins.json` says: the list is a committed file, and the check is `isSecureEndpoint`, the one validation holds `endpoint` to ([FR-142](spec.md#fr-142)).
+- `cw mcp auth [identity] [--status]`, `McpAuthCommand`, registered as the `mcp` group. `--status` prints each row — the address, its identities, signed in and how, or not — and asks nothing. Without `--status` and at a terminal: each address not signed in, in order, is asked about; where it allows two ways the developer chooses, `oauth` first; a token is asked at a hidden prompt. With an identity, that identity's address alone is asked about, signed in or not; an identity no row holds is refused, saying to build. Every address signed in: nothing is asked and that is said, exit `0`.
+- Without a terminal nothing is asked: each address that would have been, named, and exit `1`, saying to run `cw mcp auth` at a terminal. Every address signed in without a terminal is still exit `0`.
+- A prompt left unanswered stops the command having kept what was signed in before it.
+- No token appears in anything the command prints ([SC-036](spec.md#sc-036)).
+- `main.ts` wires `McpConnecting` with `OsSecrets` and `OAuth`; `Context` gains `mcpConnectingApp`.
+
+Non-goals: renewal and the OAuth flow ([T5.007](tasks/005-mcp-knowledge.md#t5.007)); removing a credential (signing out); a local command's token being handed to its process ([T5.010](tasks/005-mcp-knowledge.md#t5.010)); the portal showing sign-in status.
+
+Uncertain: the terminal is `process.stdin.isTTY`, as `cw add` reads it; a test sets it and answers the prompts with `prompts.inject`.
+
 #### 17.5.7 T5.007 — `cw mcp auth`, by OAuth, and renewal
 
-`ForAuthorizing` and `OAuthFlow` over the SDK's OAuth client: discovery, dynamic registration, PKCE, a one-shot callback on `127.0.0.1` at a free port, the address printed for the developer to open. The registered client is kept with the credential so renewal needs no second registration ([§19.5](#195-signing-in-fr-148--fr-151)).
+`ForAuthorizing` and `OAuth` over the SDK's OAuth client: discovery, dynamic registration, PKCE, a one-shot callback on `127.0.0.1` at a free port, the address printed for the developer to open. The registered client is kept with the credential so renewal needs no second registration ([§19.5](#195-signing-in-fr-148--fr-151)).
 
 Acceptance: against a local OAuth test server, a sign-in ends with a credential in the store holding a refresh token; an expired credential is renewed on use with nothing asked; a renewal the server refuses answers to sign in again.
 
+Intent: a place offering OAuth is signed in to in the browser, and stays signed in for as long as the place lets its credential be renewed ([FR-148](spec.md#fr-148), [FR-151](spec.md#fr-151)).
+
+Criteria, beside the acceptance above:
+
+- `@modelcontextprotocol/sdk` becomes a dependency; only `src/zdriven/` imports it.
+- `ForAuthorizing` in `port/zdriven/`: `authorize(endpoint, showAuthorizationUrl)` answers an `OAuthGrant` — `accessToken`, `refreshToken?`, `expiresAt?` (ISO 8601), `client` — calling `showAuthorizationUrl` with the address to open; `renew(endpoint, grant)` answers the renewed grant, or `undefined` where the server refuses it. A grant is not a domain type and no DTO carries one.
+- `OAuth` in `src/zdriven/`, over the SDK's `auth` and `refreshAuthorization`: discovery, dynamic registration of `cw` (`client_name` `cherry-works`, no client secret asked for), PKCE, and a callback on `127.0.0.1` at a port the system picks, closed after the one request it waits for, answering the browser a line saying to go back to the terminal. A callback with an `error`, or none within five minutes, is a `DrivenFault`, and nothing is kept.
+- `InMemoryAuthorizing` answers grants a test sets and records what it was asked.
+- `signInWithOAuth(address, showAuthorizationUrl)` on `ForConnectingMcps`: refused, writing nothing, for an address no row holds or whose `auth` has no `oauth`; otherwise keeps `{ address, method: "oauth", accessToken, refreshToken, expiresAt, client }`.
+- `credentialFor(secrets, authorizing, origin)` in `service/credentialRepo.ts`, what [T5.009](tasks/005-mcp-knowledge.md#t5.009) forwards with: the kept credential's access token; one past `expiresAt` with a refresh token is renewed first and the renewal kept, asking nothing; one the server refuses to renew, or with nothing to renew with, is a `DomainFault` naming `cw mcp auth <identity>`. Nothing kept is the same fault. `signInStatus` renews nothing: an expired credential is still signed in, since it is renewed on use.
+- `McpAuthCommand` prints the address to open, on standard error, and never opens it ([§15](#15-not-built)).
+- The test's OAuth server is a `node:http` server in `test/`, answering the protected-resource and authorization-server metadata, registration, an authorization that redirects at once, and a token endpoint checking PKCE and renewing.
+
+Non-goals: a call reaching a place ([T5.009](tasks/005-mcp-knowledge.md#t5.009)); the `401` retry; opening a browser; an OAuth client registered ahead of time rather than dynamically; token revocation.
+
+Uncertain: renewal has no caller until [T5.009](tasks/005-mcp-knowledge.md#t5.009), so its acceptance is tested on `credentialFor` directly.
+
 #### 17.5.8 T5.008 — `cw mcp serve`
 
-`startMcpServer` in `src/driver/mcp/server.ts`: the SDK's `Server` on stdio, answering `tools/list` with `ForReachingMcps.served([])` and `tools/call` with `call`. `McpReaching.served` reads `mcp-origins.json`, connects to every place at once with a ten-second limit through `ForCallingMcpServers`, and keeps what each lists that its entry declares ([§19.6](#196-the-server-fr-152--fr-154)).
+`startMcpServer` in `src/driver/mcp/server.ts`: the SDK's `Server` on stdio, answering `tools/list` with `ForConnectingMcps.served([])` and `tools/call` with `call`. `McpConnecting.served` reads `mcp-origins.json`, connects to every place at once with a ten-second limit through `ForCallingMcpServers`, and keeps what each lists that its entry declares ([§19.6](#196-the-server-fr-152--fr-154)).
 
 Acceptance: against two in-memory places, the listed tools are exactly the declared ones under their prefixes; an undeclared name is refused and reaches nothing; a missing `mcp-origins.json` stops the server saying to build.
 
@@ -2703,7 +2739,7 @@ DTO carries one, so no driver — the portal least of all — can show it.
 ### 19.6 The server (FR-152 – FR-154)
 
 `startMcpServer` is a driver, beside the portal: the SDK's `Server` on stdio,
-answering `tools/list` and `tools/call` through `ForReachingMcps` and nothing
+answering `tools/list` and `tools/call` through `ForConnectingMcps` and nothing
 else. It is started by the agent's host for a session and ends with it; it is not
 a daemon. Standard output is the protocol's, so everything `cw` says while
 serving goes to standard error.

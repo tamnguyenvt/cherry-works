@@ -18,6 +18,7 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { contentHashOf } from "../src/hexagon/application/helper.js";
+import { noPlacesReached } from "./no-places.js";
 
 const repoPath = new URL("file:///repo/");
 const at = (path: string) => new URL(path, repoPath).href;
@@ -45,6 +46,7 @@ const contextOver = (charterAuthoringApp: CharterAuthoring) => ({
   charterAuthoringApp,
   charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS()),
   testAuthoringApp: new TestAuthoring(repoPath, new InMemoryFileReaders({}), new InMemoryFileOutput(new InMemoryFileReaders({}))),
+  mcpConnectingApp: noPlacesReached,
 });
 
 test("a primitive added with a body is the file cw add writes, with the body under its headers (FR-117)", async () => {

@@ -5,6 +5,20 @@ import { BasePrimitive, CommonHeaders, headersOf, goodArray, goodLine, type Requ
 export const MCP_AUTHS = ["oauth", "token"] as const;
 
 /**
+ * Whether a developer's credential may be sent to this endpoint: `https`, or
+ * plain `http` only to this machine, for a server under test. Anything else
+ * would send it in the clear.
+ *
+ * Read as a URL rather than matched as text, so the host checked is the host
+ * reached: `http://localhost:1@elsewhere/` is `elsewhere`.
+ */
+export function isSecureEndpoint(endpoint: string): boolean {
+  if (!URL.canParse(endpoint)) return false;
+  const endpointURL = new URL(endpoint);
+  return endpointURL.protocol === "https:" || (endpointURL.protocol === "http:" && ["127.0.0.1", "localhost"].includes(endpointURL.hostname));
+}
+
+/**
  * Where a body names a place: `mcp:<id>`, the id as FR-141 writes one (FR-143).
  *
  * A primitive using a place says so in its own words — "read the requirements
@@ -25,13 +39,7 @@ export const McpHeaders = CommonHeaders.extend({
   /** Reached over HTTP. Plain `http` only to this machine, for a server under
    *  test: anything else would send a developer's credential in the clear. */
   endpoint: goodLine
-    // Read as a URL rather than matched as text, so the host checked is the
-    // host reached: `http://localhost:1@elsewhere/` is `elsewhere`.
-    .refine((endpoint) => {
-      if (!URL.canParse(endpoint)) return false;
-      const endpointURL = new URL(endpoint);
-      return endpointURL.protocol === "https:" || (endpointURL.protocol === "http:" && ["127.0.0.1", "localhost"].includes(endpointURL.hostname));
-    }, {
+    .refine(isSecureEndpoint, {
       message: `"endpoint" is an https:// URL, or http:// to 127.0.0.1 or localhost for a server under test.`,
     })
     .optional(),

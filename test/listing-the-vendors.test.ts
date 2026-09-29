@@ -10,6 +10,7 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
+import { noPlacesReached } from "./no-places.js";
 
 const repoPath = new URL("file:///repo/");
 const vendoredAt = (vendor: string, path: string) => new URL(`.cw/vendor/${vendor}/${path}`, repoPath).href;
@@ -38,7 +39,7 @@ async function listing(held: InMemoryFileReaders) {
     const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs);
     const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
     const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
-    const code = await new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp }, COMMANDS).run(["vendor", "list"]);
+    const code = await new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noPlacesReached }, COMMANDS).run(["vendor", "list"]);
     return { code, said: said.join("") };
   } finally {
     process.stdout.write = kept;

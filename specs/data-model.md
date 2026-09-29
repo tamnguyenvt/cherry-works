@@ -787,7 +787,7 @@ Credential = {
   accessToken:   string,
   refreshToken?: string,             // oauth only
   expiresAt?:    string,             // ISO 8601, oauth only
-  client?:       { clientId: string, clientSecret?: string },   // oauth: what the server registered cw as
+  client?:       { clientId: string, clientSecret?: string, issuer: string },   // oauth: what the server registered cw as, and which authorization server did
 }
 ```
 
@@ -802,6 +802,7 @@ What `cw mcp auth --status` answers, one row per address that takes a sign-in:
 SignInStatus = {
   address:    string,
   identities: PrimitiveIdentity[],   // every mcp at this address, whatever its path
+  auth:       ("oauth" | "token")[], // every way any of them allows, oauth first
   signedIn:   boolean,
   method?:    "oauth" | "token",
 }

@@ -10,6 +10,7 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
+import { noPlacesReached } from "./no-places.js";
 
 const repo = "/repo";
 
@@ -40,6 +41,7 @@ async function running(argv: readonly string[], vcs: InMemoryVCS = new InMemoryV
       charterAuthoringApp: unread(),
       charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), vcs),
       testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), noTestFiles, new InMemoryFileOutput(noTestFiles)),
+      mcpConnectingApp: noPlacesReached,
     };
     const code = await new Commander(context, COMMANDS).run(argv);
     return { code, said: said.join(""), vcs };

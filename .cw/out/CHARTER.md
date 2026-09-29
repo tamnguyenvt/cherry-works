@@ -17,6 +17,7 @@ This repository is governed by a charter — the standards it authored under `.c
 - **posture** — always, wherever the host can be told what to `allow` and what to `deny`.
 - **corpus** — a primitive's `rationale` cites it — the reasoning, read when someone asks why.
 - **mixin** — never on its own: its body is lent to the primitives that pull it in.
+- **mcp** — a primitive's body names it as `mcp:<id>` — a place outside the repository, reached through `cw mcp serve`.
 
 ## One identity, one primitive
 

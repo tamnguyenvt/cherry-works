@@ -203,6 +203,20 @@ const testSuites = dto(
   }),
 );
 
+/** One address a developer signs in to, and whether they have (FR-150): every
+ *  mcp at it whatever its path, the ways any of them allows, and how the
+ *  developer signed in there. Never the credential itself (SC-036). */
+const signInStatus = dto(
+  "SignInStatus",
+  z.object({
+    address: z.string(),
+    identities: strings,
+    auth: z.array(z.enum(["oauth", "token"])).readonly(),
+    signedIn: z.boolean(),
+    method: z.enum(["oauth", "token"]).optional(),
+  }),
+);
+
 /** What a repository configured itself with. */
 const workspaceSettings = dto(
   "WorkspaceSettings",
@@ -226,6 +240,7 @@ export const DataDTOs = byType(
   primitiveSnapshot,
   scopedPrimitive,
   scopedPrimitives,
+  signInStatus,
   testCase,
   testCaseReport,
   testCasesByFile,
@@ -249,6 +264,7 @@ export namespace DataDTOs {
   export type PrimitiveSnapshot = z.infer<typeof DataDTOs.PrimitiveSnapshot>;
   export type ScopedPrimitive = z.infer<typeof DataDTOs.ScopedPrimitive>;
   export type ScopedPrimitives = z.infer<typeof DataDTOs.ScopedPrimitives>;
+  export type SignInStatus = z.infer<typeof DataDTOs.SignInStatus>;
   export type TestCase = z.infer<typeof DataDTOs.TestCase>;
   export type TestCaseReport = z.infer<typeof DataDTOs.TestCaseReport>;
   export type TestCasesByFile = z.infer<typeof DataDTOs.TestCasesByFile>;
