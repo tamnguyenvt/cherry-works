@@ -115,7 +115,9 @@ test("a rule edited since the last build would be updated, and its listings with
     // primitive, so no edit to a body reaches it.
     "CLAUDE.md": "unchanged",
     ".mcp.json": "unchanged",
-    ".claude/rules/guide-no-any.md": "update",
+    // The rule points to the compiled document, so it says the same whatever
+    // the body holds.
+    ".claude/rules/guide-no-any.md": "unchanged",
     ".claude/skills/skill-cw-author/SKILL.md": "unchanged",
   });
 });

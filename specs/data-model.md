@@ -42,7 +42,7 @@ Every kind's headers extend these.
 | Header | Type | Required | Notes |
 |---|---|---|---|
 | `kind` | one of the kinds of [§1.3](#13-kinds-and-what-each-requires-fr-001-fr-004) | yes | Declared by the file ([FR-003](spec.md#fr-003)). |
-| `id` | slugs `[a-z0-9]([a-z0-9-]*[a-z0-9])?` joined by `/` ([FR-141](spec.md#fr-141)), at most 50 characters ([FR-157](spec.md#fr-157)) | yes | Identity is `kind:id`, unique across the whole charter ([§3.1](#31-identity-fr-015-fr-016)). |
+| `id` | slugs `[a-z0-9]([a-z0-9-]*[a-z0-9])?` joined by `/` ([FR-141](spec.md#fr-141)), at most 40 characters ([FR-157](spec.md#fr-157)) | yes | Identity is `kind:id`, unique across the whole charter ([§3.1](#31-identity-fr-015-fr-016)). |
 | `description` | one line with something on it | yes | The only body-free text in the compact catalogue. |
 | `tags` | list of lines | no | Orthogonal to kind and directory ([FR-008](spec.md#fr-008)). |
 | `globs` | list of lines | no | The files it speaks about. A guide's are what bring it up; a mixin may name them so its reach can be compared with its host's ([FR-006](spec.md#fr-006)). |
@@ -764,8 +764,11 @@ McpOriginsJson = { origins: McpOrigin[] }       // ordered by address, then path
 - **Key**: address and `path` together. Two identities with the same pair are
   one place; one identity is one file, so an identity is never in two places
   ([FR-015](spec.md#fr-015)).
-- **Prefix**, not held here: each identity normalized, `:` and `/` replaced by
-  `-` (`mcp-mfbs-billing`), known from its file alone. Served tool names are `<prefix>__<tool>`,
+- **Prefix**, not held here: the first segment of each identity's id and four
+  hex characters hashed from the identity (FNV-1a), `moneyforward_a518` for
+  `mcp:moneyforward/billing-service`, made from the identities alone
+  (`shortenStringsOf`); two that hash alike are told apart by `_2` onward,
+  in the order the identities sort in. Served tool names are `<prefix>__<tool>`,
   each identity's tools under its own prefix; claude calls one
   `mcp__cw__<prefix>__<tool>` ([FR-153](spec.md#fr-153), [FR-157](spec.md#fr-157)).
 - **`auth`** is the union of what every identity here allows, from every

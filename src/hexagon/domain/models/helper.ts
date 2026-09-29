@@ -17,3 +17,35 @@ export function formatFrontmatterValue(value: unknown): string {
  *  number. */
 const YAML_READS_OTHERWISE =
   /^[-?:,[\]{}#&*!|>'"%@`]|: | #|:$|^\s|\s$|^$|^(true|false|yes|no|on|off|null|~)$|^[-+]?(\d[\d_]*)?\.?\d+([eE][-+]?\d+)?$/i;
+
+/** Each string, shortened to a name of its own: what `shortenStringsOf`
+ *  answers, keyed by the string it was handed. */
+export type ShortStrings = Readonly<Record<string, string>>;
+
+/**
+ * Each string shortened to its first segment and four hex characters hashed
+ * from the whole: `moneyforward_a518` for `mcp:moneyforward/billing-service`,
+ * the first segment being what follows `:` up to the first `/`.
+ *
+ * Short whatever the string's length, and the same whatever other strings are
+ * handed in with it, since the hash is of this string alone. FNV-1a over 32
+ * bits, the first four hex characters kept: a name to tell strings apart by,
+ * not a secret. Two that hash alike are told apart by a number, `_2` onward, in
+ * the order the strings sort in.
+ */
+export function shortenStringsOf(strings: readonly string[]): ShortStrings {
+  const shortStrings: Record<string, string> = {};
+  const takenShortStrings = new Set<string>();
+  for (const string of [...new Set(strings)].sort()) {
+    const firstSegment = string.slice(string.indexOf(":") + 1).split("/")[0];
+    let hash = 0x811c9dc5;
+    for (const char of string) hash = Math.imul(hash ^ char.charCodeAt(0), 0x01000193);
+    const hashedString = `${firstSegment}_${(hash >>> 0).toString(16).padStart(8, "0").slice(0, 4)}`;
+
+    let shortString = hashedString;
+    for (let count = 2; takenShortStrings.has(shortString); count++) shortString = `${hashedString}_${count}`;
+    takenShortStrings.add(shortString);
+    shortStrings[string] = shortString;
+  }
+  return shortStrings;
+}

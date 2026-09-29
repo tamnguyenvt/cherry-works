@@ -72,7 +72,8 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
     ".claude/rules/guide-no-any.md",
   ]);
   assert.deepEqual(built.deleted, []);
-  assert.ok((await contentsOf(held, ".claude/rules/guide-no-any.md")).includes("The body of no-any."));
+  assert.ok((await contentsOf(held, ".cw/out/guide/no-any.md")).includes("The body of no-any."));
+  assert.ok((await contentsOf(held, ".claude/rules/guide-no-any.md")).includes("@../../.cw/out/guide/no-any.md"));
 });
 
 test("an id holding / is built into the folders it names, and into a host file named without it (FR-141)", async () => {
@@ -140,7 +141,7 @@ test("a compiled file someone edited by hand is written back over (FR-020)", asy
 
   await build();
 
-  assert.ok((await contentsOf(held, ".claude/rules/guide-no-any.md")).includes("Never write `any`."));
+  assert.ok((await contentsOf(held, ".claude/rules/guide-no-any.md")).includes("@../../.cw/out/guide/no-any.md"));
 });
 
 test("a file the charter never wrote is left alone, wherever it sits", async () => {
@@ -271,7 +272,7 @@ test("a charter with an error builds nothing at all, and says which files (FR-00
   await assert.rejects(() => contentsOf(held, ".cw/out/CHARTER.md"));
 });
 
-test("a body naming an mcp no layer holds still builds, the name written as any other (FR-143, FR-147)", async () => {
+test("a body naming an mcp no layer holds still builds, the name left as the author wrote it (FR-143)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Take the requirements from mcp:missing."),
@@ -279,8 +280,7 @@ test("a body naming an mcp no layer holds still builds, the name written as any 
 
   filesOf(await build());
 
-  assert.match(await contentsOf(held, ".cw/out/guide/no-any.md"), /Take the requirements from mcp__cw__mcp-missing\./);
-  assert.match(await contentsOf(held, ".claude/rules/guide-no-any.md"), /Take the requirements from mcp__cw__mcp-missing\./);
+  assert.match(await contentsOf(held, ".cw/out/guide/no-any.md"), /Take the requirements from mcp:missing\./);
 });
 
 test("a build writes every place the charter's mcps reach to mcp-origins.json (FR-145)", async () => {
@@ -366,7 +366,7 @@ test("what the repository set in the host's settings is kept beside the charter'
   });
 });
 
-test("once compiled, a place a body names is what claude calls it, in every document of it (FR-147)", async () => {
+test("once compiled, a place a body names is what claude calls it, in the document the host points to (FR-147)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/no-any.md")]: primitive(
@@ -381,9 +381,8 @@ test("once compiled, a place a body names is what claude calls it, in every docu
 
   filesOf(await build());
 
-  const hostBody = "Take the requirements from mcp__cw__mcp-github-billing, and the decisions from mcp__cw__mcp-notion.";
+  const hostBody = "Take the requirements from mcp__cw__github_ae69, and the decisions from mcp__cw__notion_f3cb.";
   assert.ok((await contentsOf(held, ".cw/out/guide/no-any.md")).includes(hostBody));
-  assert.ok((await contentsOf(held, ".claude/rules/guide-no-any.md")).includes(hostBody));
 });
 
 test("a warning is not an error: a charter that only warns still builds (FR-005)", async () => {

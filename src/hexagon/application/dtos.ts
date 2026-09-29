@@ -1,6 +1,6 @@
 import type { DataDTOs, OutcomeDTOs } from "../port/driver/dtos/index.js";
 import type { Fault, Faults, FaultsByFile } from "../domain/models/Fault.js";
-import type { Catalogue } from "../domain/models/output/CharterOutput.js";
+import type { Catalogue } from "../domain/models/output/common/Catalogue.js";
 import type { ScopedPrimitive } from "../domain/models/charter/CharterRoot.js";
 import type { PrimitiveHeader, PrimitiveRequirements } from "../domain/models/charter/primitive/Primitive.js";
 import type { TestCaseReport, TestRunReport } from "../domain/services/testService.js";

@@ -2445,7 +2445,7 @@ Non-goals: `.mcp.json` and each document naming its places ([T5.004](tasks/005-m
 
 The claude arm of `compile` gains an `McpConfig` component: `.mcp.json`, `mergeJSON`, writing `mcpServers.cw` alone, whatever the charter holds ([§19.4](#194-what-the-agents-host-is-given-fr-146-fr-147-fr-156)). A primitive reaches a place by naming it in its body, `mcp:<id>`, as a person would write it; the `mcps` header goes.
 
-Acceptance: a charter with one mcp builds `.mcp.json` holding `cw` beside an entry the repository wrote itself, which is left untouched; a charter with none still has `cw` written, so a place added later needs no setup; a repository compiling for no agent has no `.mcp.json` written; a guide whose body says "read the requirements in mcp:github/billing" has it written `mcp__cw__mcp-github-billing` in `.cw/out/guide/<id>.md` and in its rule; a body naming an mcp no layer holds is a warning under that file, and the build runs.
+Acceptance: a charter with one mcp builds `.mcp.json` holding `cw` beside an entry the repository wrote itself, which is left untouched; a charter with none still has `cw` written, so a place added later needs no setup; a repository compiling for no agent has no `.mcp.json` written; a guide whose body says "read the requirements in mcp:github/billing" has it written `mcp__cw__` and its served prefix in `.cw/out/guide/<id>.md` and in its rule; a body naming an mcp no layer holds is a warning under that file, and the build runs.
 
 Intent: an agent working under a charter that declares places is given one MCP server to reach them. A primitive using a place says so in its own words, and the charter only checks that the place it names exists. What a name looks like on a host is the host's output to write; the charter knows ids and identities and nothing else.
 
@@ -2456,7 +2456,7 @@ Criteria, beside the acceptance above:
 - The `mcps` header is gone from `CommonHeaders`, the catalogue entry, its DTO and `cw list --full`. A file still declaring it is read as before any header this engine does not know.
 - The charter reads every primitive's body for `mcp:<id>`, `<id>` as [FR-141](spec.md#fr-141) writes one. One no layer holds is a `warn` under the file whose body names it. An mcp no body names is the `warn` of [FR-144](spec.md#fr-144), read off the bodies instead of the header. A mixin's body counts under the mixin's own file.
 - The charter holds nothing of a host's names: `HOST_TOOL_NAMINGS` goes, the served-name check of [T5.003](tasks/005-mcp-knowledge.md#t5.003) leaves `compositeFaultsByFiles`, and `bodyOf` is unchanged. The `mcp:<id>` a body names is found by one pattern, `MCP_MENTION`, beside `McpPrimitive`, which the charter and the output both read.
-- Once compiled, a name is the host's: the compiled document under `.cw/out/` and every claude document — rule, command, agent, skill — have each `mcp:<id>` written `mcp__cw__mcp-<id>`, `/` as `-`, `mcp__cw__mcp-github-billing`: the prefix of that place's tools as claude calls them, claude naming every tool of the `cw` server `mcp__cw__<tool>` and `cw mcp serve` serving a place's under its normalized identity. `ScopedPrimitive` holds `normIdentity`, made once in its constructor (`normalizedIdentityOf` goes), and every host file's name reads it. `cwMCPPrefix(body)` does it by the pattern alone, `mcp:<id>` to `mcp__cw__mcp-<id>`, asking the charter nothing: one no layer holds is written the same way, and the charter has warned about it.
+- Once compiled, a name is the host's: the compiled document under `.cw/out/` and every claude document — rule, command, agent, skill — have each `mcp:<id>` written `mcp__cw__mcp-<id>`, `/` as `-`, `mcp__cw__mcp-github-billing`: the prefix of that place's tools as claude calls them, claude naming every tool of the `cw` server `mcp__cw__<tool>` and `cw mcp serve` serving a place's under its normalized identity. `ScopedPrimitive` holds `normIdentity`, made once in its constructor (`normalizedIdentityOf` goes), and every host file's name reads it. `cwMCPPrefix(body)` does it by the pattern alone, `mcp:<id>` to `mcp__cw__` and its served prefix (since [T5.014](tasks/005-mcp-knowledge.md#t5.014), `shortenStringsOf`), asking the charter nothing: one no layer holds is written the same way, and the charter has warned about it.
 - No check of a host's name lengths: an `id` is at most 50 characters in `CommonHeaders`, refused with the kind's sample like any header, which keeps `mcp__cw__<id>__<tool>` within claude's 64 for any tool name a place is likely to have ([FR-157](spec.md#fr-157)).
 
 Non-goals: an agent's tool list gaining the served names ([T5.012](tasks/005-mcp-knowledge.md#t5.012)); a portal button to insert an mcp into a body; signing in; `cw mcp serve` itself; hosts other than claude.
@@ -2514,6 +2514,27 @@ Acceptance: an agent naming one place compiles with that place's tools beside it
 A section on declaring a place, signing in, and serving it, with the scheduled-run example of [Story 20](spec.md#user-story-20---hold-a-run-to-the-places-it-needs-priority-p2): `cw mcp serve --enable` beside the host's own flag restricting its built-in tools.
 
 Acceptance: a developer following it from a fresh clone reaches one place from Claude Code.
+
+#### 17.5.14 T5.014 — A host's documents point to the compiled ones
+
+Every claude document a primitive compiles to — rule, command, agent, skill — keeps the frontmatter its host reads before it opens a body (`paths`, `description`, `tools`), and its body becomes one line pointing to the primitive's compiled document under `.cw/out/`, which already holds the whole of it ([FR-139](spec.md#fr-139)). An `id` is at most 40 characters.
+
+Acceptance: after `cw build`, `.claude/rules/guide-no-any.md` holds its `paths` and the line `@../../.cw/out/guide/no-any.md`, and nothing of the guide's body; a skill, a command and an agent each hold their frontmatter and a line naming their compiled document; `.cw/out/guide/no-any.md` holds the body as before, `mcp:moneyforward/billing-service` written as `mcp__cw__moneyforward_a518`; an id of 41 characters is refused with the kind's sample.
+
+Intent: what the agent reads of a primitive is kept once, in the compiled document, so a host's files cost their frontmatter and one line, and nothing can say two different things about one primitive.
+
+Criteria, beside the acceptance above:
+
+- The pointer is `@<path>`, the path from the host document to the compiled one: claude expands `@` in a rule when the rule loads (memory imports, relative to the importing file). For a command, an agent and a skill, where claude documents no such expansion, the line reads "Read and follow @<path>." so an agent that is shown it as text opens the file itself.
+- The frontmatter of each host document is what it is now; only the body changes. A guide's rule no longer carries the `## <identity>` heading: the compiled document has the identity in its own frontmatter.
+- The `mcp:<id>` replacement is applied once, to the compiled document, as the `idReplacer` `compile` hands `toMarkdown`; host documents hold no body to apply it to.
+- `CompiledPrimitive.of(one, document)` says where it lands, `.cw/out/<kind>/<id>.md`, as its `file`: the catalogue entry and a host document's pointer both read it, so the path is made in one place.
+- `CharterRoot.bodyOf` goes: every output decision is `compileService`'s. A primitive's `toMarkdown({ mixins, idReplacer })` writes the mixins' bodies before its own and passes the body through `idReplacer`; `compile` hands it `charter.mixinsOf(one)` and the `mcp:<id>` replacement, written inline. Called with neither, it writes the file as its author wrote it, which is what authoring and `cw add` write.
+- `CommonHeaders.id` is at most 40 characters (was 50), which every id of this repository's own charter fits ([FR-157](spec.md#fr-157)).
+- A place is served under the prefix `shortenStringsOf(identities)` gives it, a helper in `domain/models/helper.ts` answering `ShortStrings`, a `Record` from each string to its short form — the output's naming, nothing the charter holds: the first segment of its id, `_`, and the first four hex characters of the identity's FNV-1a hash — `moneyforward_a518` for `mcp:moneyforward/billing-service`. Short whatever the id's length, and the same on every build whatever other mcps come and go; two that hash alike get `_2` onward, in the order the identities sort in. It takes identities, not a charter, so `cw mcp serve` ([T5.008](tasks/005-mcp-knowledge.md#t5.008)) makes the same prefixes from `mcp-origins.json`. The `idReplacer` writes each `mcp:<id>` the charter holds as `mcp__cw__` and its prefix, and leaves one it does not hold as written.
+- The compiled document is written as it is now, stamp included; whether claude drops its frontmatter when importing it is not relied on.
+
+Non-goals: hosts other than claude; changing what the compiled document holds; `CLAUDE.md`'s section ([FR-051](spec.md#fr-051)), which already points to `CHARTER.md`.
 
 ## 18. Distribution (FR-126 – FR-138)
 
@@ -2613,14 +2634,15 @@ repository and a vendor may call one place by two names. It holds where the
 place is and how it is signed in to; its tools are the union of what its
 identities declare (spec Clarifications, 2026-09-26), read from their own
 files rather than copied here. Each identity's tools are served under its
-normalized identity, `mcp-<id>` with `/` as `-`: identities are one per charter, so no two
-share a prefix, and a tool's name is known from its mcp's file alone.
+own prefix, the first segment of its id and four hex characters hashed from the
+identity: short whatever the id's length, the same whatever other mcps come and
+go, and known from the identity alone.
 
 One fault needs the whole list and is composite: a local command whose mcps
 name two `tokenEnv`s. The ways to sign in never conflict: they are the union
 across every identity, as the tools are, so a narrower list takes nothing away.
 A served name is kept within what the host takes — claude's 64 characters for
-`mcp__cw__<prefix>__<tool>` — by the limit on every `id`, 50 characters, rather
+`mcp__cw__<prefix>__<tool>` — by the limit on every `id`, 40 characters, rather
 than by a check of its own ([FR-157](spec.md#fr-157)).
 
 ### 19.4 What the agent's host is given (FR-146, FR-147, FR-156)
@@ -2632,8 +2654,8 @@ For claude, three things, each in the provider's classes:
   the charter holds, and the rest of the file is the repository's. It is
   never deleted, like the settings.
 - **Each `mcp:<id>` a body names, written as the host calls it** — in its
-  compiled document under `.cw/out/` as well as the host's: `mcp__cw__mcp-<id>`,
-  `/` as `-`. The charter knows ids and identities; a host's names are its
+  compiled document under `.cw/out/` as well as the host's: `mcp__cw__` and
+  its served prefix. The charter knows ids and identities; a host's names are its
   output's.
 - **An agent's tool list** gains the served names of its places' tools. That is
   the host holding a subagent to its places, which is enforcement rather than
@@ -2702,7 +2724,7 @@ Four ways a charter narrows what an agent reaches, from wide to narrow:
 | `cw mcp serve --enable` | one run, as a scheduled job or CI | `cw mcp serve` |
 
 `--enable` names are resolved against the compiled primitives under `.cw/out/`,
-whose bodies name their places as `mcp__cw__mcp-<id>`, and `mcp-origins.json`; the server reads no charter. A job that must
+whose bodies name their places as `mcp__cw__<served prefix>`, and `mcp-origins.json`; the server reads no charter. A job that must
 reach nothing else also runs its agent with the host's own built-in tools
 restricted, which is the host's flag, not `cw`'s; the README shows both together.
 Nothing here is a posture: a posture decides whether a call needs approval, and

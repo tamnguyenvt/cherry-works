@@ -205,12 +205,12 @@ test("an mcp is refused a way of signing in its shape does not take (FR-142)", (
   assert.match(refusalOf(() => mcpOf("endpoint: https://mcp.example.com/", "auth: [password]")).message, /not what a mcp holds/);
 });
 
-test("an id longer than 50 characters is refused, so a host's names for it stay within what it takes (FR-157)", () => {
+test("an id longer than 40 characters is refused, so a host's names for it stay within what it takes (FR-157)", () => {
   const guideWithId = (id: string) =>
     primitiveOf(["---", "kind: guide", `id: ${id}`, "description: About it.", "---", ""].join("\n"), new YamlParser());
 
-  assert.equal(guideWithId(`team/${"a".repeat(45)}`).kind, "guide");
-  assert.match(refusalOf(() => guideWithId(`team/${"a".repeat(46)}`)).message, /"id" is at most 50 characters/);
+  assert.equal(guideWithId(`team/${"a".repeat(35)}`).kind, "guide");
+  assert.match(refusalOf(() => guideWithId(`team/${"a".repeat(36)}`)).message, /"id" is at most 40 characters/);
 });
 
 test("an endpoint in the clear is refused unless it is this machine (FR-142)", () => {

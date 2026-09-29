@@ -4,6 +4,7 @@ import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
 import { putDownBy } from "./put-down-by.js";
 import { folderURL } from "../src/hexagon/domain/path.js";
 import { compile } from "../src/hexagon/domain/services/compileService.js";
+import { shortenStringsOf } from "../src/hexagon/domain/models/helper.js";
 import type { AgentProvider } from "../src/hexagon/domain/models/AgentProvider.js";
 
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
@@ -234,4 +235,26 @@ test("a header YAML would read as something else is quoted in the compiled docum
   const [, headers = ""] = document.split("---\n");
 
   assert.deepEqual(new YamlParser().parse(headers).run, run);
+});
+
+test("a place is served under the first segment of its id and a hash of its identity, the same on every build (FR-145)", () => {
+  assert.deepEqual(
+    shortenStringsOf(["mcp:notion", "mcp:moneyforward/tax", "mcp:moneyforward/billing-service"]),
+    {
+      "mcp:moneyforward/billing-service": "moneyforward_a518",
+      "mcp:moneyforward/tax": "moneyforward_923f",
+      "mcp:notion": "notion_f3cb",
+    },
+  );
+});
+
+test("two places whose prefixes hash alike are told apart by a number, in the order they sort in (FR-145)", () => {
+  // Both hash to `acme_b34a`; `place-1032` sorts before `place-838`.
+  assert.deepEqual(
+    shortenStringsOf(["mcp:acme/place-838", "mcp:acme/place-1032"]),
+    {
+      "mcp:acme/place-1032": "acme_b34a",
+      "mcp:acme/place-838": "acme_b34a_2",
+    },
+  );
 });

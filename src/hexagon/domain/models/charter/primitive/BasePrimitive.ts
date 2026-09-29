@@ -21,13 +21,13 @@ export const goodArray = z.array(goodLine).min(1).readonly();
 export const CommonHeaders = z.object({
   /** Slugs joined by `/`, so identities can be grouped by team or domain
    *  (FR-141). The `/` puts the file in folders and nothing else: nothing is
-   *  read from where a file sits. At most 50 characters, so every name a host
-   *  is given for it — an mcp's tools among them — stays within what the host
-   *  takes (FR-157). */
+   *  read from where a file sits. At most 40 characters, so every name a host
+   *  is given for it — an mcp's tools among them, `mcp__cw__mcp-<id>__<tool>` —
+   *  stays within what the host takes (FR-157). */
   id: z
     .string()
     .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\/[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/)
-    .refine((id) => id.length <= 50, { message: `"id" is at most 50 characters.` }),
+    .refine((id) => id.length <= 40, { message: `"id" is at most 40 characters.` }),
   /** All an agent reads of a primitive before opening its body. */
   description: goodLine,
   tags: z.array(goodLine).readonly().optional(),
@@ -91,16 +91,28 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    * list is written the way the parser gives it back, so an author opening the
    * file finds what they declared rather than a second spelling of it.
    *
-   * The body is this primitive's own unless another is handed in: compiled, it
-   * is the body with its mixins' written in (FR-139).
+   * Written as its author wrote it unless the compiler says otherwise (FR-139):
+   * `mixins` lend their bodies, before this one's own so it reads as the point
+   * and theirs as the setting — nothing is merged and no header moves (FR-006);
+   * and `idReplacer` rewrites the body as a host reads it, a place named as
+   * `mcp:<id>` as the host calls its tools (FR-147).
    */
-  toMarkdown(body: string = this.body): string {
+  toMarkdown({
+    mixins = [],
+    idReplacer = (body) => body,
+  }: {
+    /** The mixin primitives it pulls in, in the order it named them: all a
+     *  mixin lends is its body. */
+    readonly mixins?: readonly { readonly body: string }[];
+    readonly idReplacer?: (body: string) => string;
+  } = {}): string {
+    const body = [...mixins.map((mixin) => mixin.body), this.body].filter((one) => one.trim() !== "").join("\n\n");
     return [
       DELIMITER,
       ...Object.entries({ kind: this.kind, ...this.headers }).map(([field, value]) => `${field}: ${formatFrontmatterValue(value)}`),
       DELIMITER,
       "",
-      body,
+      idReplacer(body),
     ]
       .join("\n")
       // One newline at the end and no blank line before it, whether or not

@@ -1,28 +1,16 @@
 import type { AgentProvider } from "../models/AgentProvider.js";
 import { PRIMITIVE_CLASSES } from "../models/charter/primitive/Primitive.js";
-import { Catalogue, CharterMd, CompiledPrimitive, type CharterOutput, type McpOrigin } from "../models/output/CharterOutput.js";
-import { OUT_DIRECTORY } from "../path.js";
+import type { CharterOutput } from "../models/output/CharterOutput.js";
+import { Catalogue } from "../models/output/common/Catalogue.js";
+import { CharterMd } from "../models/output/common/CharterMd.js";
+import { CompiledPrimitive } from "../models/output/common/CompiledPrimitive.js";
+import type { McpOrigin } from "../models/output/common/McpOrigin.js";
+import { shortenStringsOf } from "../models/helper.js";
 import type { CharterRoot, ScopedPrimitive } from "../models/charter/CharterRoot.js";
-import { AgentPrimitive } from "../models/charter/primitive/AgentPrimitive.js";
-import { CommandPrimitive } from "../models/charter/primitive/CommandPrimitive.js";
-import { GuidePrimitive } from "../models/charter/primitive/GuidePrimitive.js";
-import { PlaybookPrimitive } from "../models/charter/primitive/PlaybookPrimitive.js";
-import { PosturePrimitive } from "../models/charter/primitive/PosturePrimitive.js";
-import { SensorPrimitive } from "../models/charter/primitive/SensorPrimitive.js";
-import { SkillPrimitive } from "../models/charter/primitive/SkillPrimitive.js";
+import { MixinPrimitive } from "../models/charter/primitive/MixinPrimitive.js";
 import { MCP_AUTHS, MCP_MENTION, McpPrimitive } from "../models/charter/primitive/McpPrimitive.js";
 import type { ClaudeComponent } from "../models/output/providers/claude/ClaudeComponent.js";
-import { ClaudeMcpConfigComponent } from "../models/output/providers/claude/ClaudeMcpConfigComponent.js";
-import {
-  ClaudeSettingsComponent,
-  isClaudeHookEvent,
-  type ClaudeHookEvent,
-  type ClaudeSettings,
-} from "../models/output/providers/claude/ClaudeSettingsComponent.js";
-import { ClaudeAgentComponent } from "../models/output/providers/claude/document-based-components/ClaudeAgentComponent.js";
-import { ClaudeCommandComponent } from "../models/output/providers/claude/document-based-components/ClaudeCommandComponent.js";
-import { ClaudeRuleComponent } from "../models/output/providers/claude/document-based-components/ClaudeRuleComponent.js";
-import { ClaudeSkillComponent } from "../models/output/providers/claude/document-based-components/ClaudeSkillComponent.js";
+import { compileForClaude } from "./providers/claude.js";
 
 /**
  * Everything one reading of a charter compiles to (FR-021).
@@ -48,29 +36,45 @@ import { ClaudeSkillComponent } from "../models/output/providers/claude/document
  * `everythingWrong` answered by whoever is about to write (FR-009).
  */
 export function compile(charter: CharterRoot, agents: readonly AgentProvider[]): CharterOutput {
+  // What `cw mcp serve` serves each place's tools under, `<prefix>__<tool>`:
+  // short whatever the id's length, and the same on every build whatever other
+  // mcps come and go (FR-145). Made from the identities alone, so the server,
+  // which reads `mcp-origins.json` and no charter, makes the same ones.
+  const shortStrings = shortenStringsOf(
+    charter.primitives.filter(({ primitive }) => primitive.kind === McpPrimitive.kind).map((one) => one.identity),
+  );
+  const compiledPrimitives = charter.primitives.map((one) =>
+    CompiledPrimitive.of(
+      one,
+      one.primitive.toMarkdown({
+        // A mixin nothing answers to is left out: the charter already names
+        // that file as an error, and a build refused for it never reaches
+        // here (FR-009).
+        mixins: charter.mixinsOf(one).flatMap(({ primitive }) => (primitive.kind === MixinPrimitive.kind ? [primitive] : [])),
+        // Each place the body names as `mcp:<id>` written as the prefix of its
+        // tools as claude calls them: claude names every tool of the `cw`
+        // server `mcp__cw__<tool>`, and `cw mcp serve` serves a place's under
+        // its served prefix (FR-147). A name no mcp answers to has no prefix
+        // and is left as written; the charter has warned about it (FR-143).
+        idReplacer: (body) =>
+          body.replace(MCP_MENTION, (identity) => {
+            const found = shortStrings[identity];
+            return found === undefined ? identity : `mcp__cw__${found}`;
+          }),
+      }),
+    ),
+  );
   return {
     // What an agent opens from the catalogue is the primitive as it compiled,
     // not the file its author wrote: the whole body in one place, under the
     // output folder whichever layer brought it (FR-140). The catalogue is where
     // this path is said; the projection reads it from there.
-    catalogue: catalogueOf(charter, (one) => `${OUT_DIRECTORY}/${one.primitive.kind}/${one.primitive.headers.id}.md`),
+    catalogue: catalogueOf(charter, (one) => compiledPrimitives.find((compiled) => compiled.identity === one.identity)!.file),
     charterMd: CharterMd.of(PRIMITIVE_CLASSES),
-    compiledPrimitives: charter.primitives.map((one) =>
-      CompiledPrimitive.of(one.identity, one.primitive.toMarkdown(cwMCPPrefix(charter.bodyOf(one)))),
-    ),
+    compiledPrimitives,
     mcpOrigins: mcpOriginsOf(charter),
-    providerComponents: agents.flatMap((agent) => forAgent(agent, charter)),
+    providerComponents: agents.flatMap((agent) => compileForAgent(agent, charter, compiledPrimitives)),
   };
-}
-
-/**
- * A body with every place it names as `mcp:<id>` written as the prefix of that
- * place's tools as claude calls them, `mcp__cw__mcp-<id>` with `/` as `-`:
- * claude names every tool of the `cw` server `mcp__cw__<tool>`, and
- * `cw mcp serve` serves a place's under its identity written that way (FR-147).
- */
-function cwMCPPrefix(body: string): string {
-  return body.replace(MCP_MENTION, (mention) => `mcp__cw__${mention.replace(/[:/]/g, "-")}`);
 }
 
 /**
@@ -145,132 +149,13 @@ function mcpOriginsOf(charter: CharterRoot): readonly McpOrigin[] {
 /** Every file one agent this engine compiles for reads (FR-018). One arm per
  *  host, so a second host is a case here, a compiler beside this and a folder of
  *  its own under `output/providers/` (plan §2.6). */
-function forAgent(agent: AgentProvider, charter: CharterRoot): readonly ClaudeComponent[] {
+function compileForAgent(
+  agent: AgentProvider,
+  charter: CharterRoot,
+  compiledPrimitives: readonly CompiledPrimitive[],
+): readonly ClaudeComponent[] {
   switch (agent) {
     case "claude":
-      return compileClaude(charter);
+      return compileForClaude(charter, compiledPrimitives);
   }
 }
-
-/**
- * Every file claude reads of this charter (FR-018).
- *
- * Two passes, because this host reads two kinds of file. What lands in its
- * settings lands in one file whatever asked for it, so every primitive that asks
- * is read together and compiles to one fragment; everything else is a document
- * of its own, one per primitive.
- *
- * Not one for one, either way. A `skill` and a `playbook` are two things in a
- * charter and one thing here, because this host has one mechanism for a body
- * loaded when the request calls for it; a `guide` is a rule, brought up by the
- * files it names or carried on every turn where it names none. What the charter kept apart, the listing
- * keeps apart (FR-011); what the host cannot tell apart, it is not told.
- *
- * Three kinds project nothing of their own. A `corpus` is cited rather than
- * loaded, a `mixin` has no life of its own — its body is written into each host
- * that pulls it in, which `bodyOf` does — and an `mcp` is reached through
- * `cw mcp serve` rather than read: the one entry of the host's MCP
- * configuration that starts it, written whether the charter holds a place yet or
- * not, since the server reads which places there are when it starts (FR-146).
- */
-export function compileClaude(charter: CharterRoot): readonly ClaudeComponent[] {
-  const asSettings = charter.primitives.filter(isSettingComponent);
-  const asDocuments = charter.primitives.filter((one) => !isSettingComponent(one));
-
-  return [
-    ...(asSettings.length === 0 ? [] : [ClaudeSettingsComponent.of(claudeSettingsOf(asSettings))]),
-    ClaudeMcpConfigComponent.of(),
-    ...asDocuments.flatMap((one) => claudeDocumentComponentOf(charter, one) ?? []),
-  ];
-}
-
-/** Does this primitive ask something of the settings this host runs on, rather
- *  than compile to a file of its own? A posture says what may be run, a sensor
- *  what runs when an event fires, and this host reads both out of one file. */
-function isSettingComponent(one: ScopedPrimitive): boolean {
-  return one.primitive.kind === PosturePrimitive.kind || one.primitive.kind === SensorPrimitive.kind;
-}
-
-/**
- * Everything this charter asks of the settings this host runs on, read together
- * (FR-018).
- *
- * One fragment for the whole charter, because the host keeps one such file: every
- * posture's permissions are the permissions, each thing once, and every sensor's
- * command is a hook under the event that fires it. Two sensors on one event are
- * two commands under it, in the order their files sort in (SC-007).
- *
- * What the repository set for itself is not here at all: that is on disk, and
- * reading it together with this is the projection's (FR-020).
- */
-function claudeSettingsOf(ones: readonly ScopedPrimitive[]): ClaudeSettings {
-  const allow = new Set<string>();
-  const deny = new Set<string>();
-  const hooks: Partial<Record<ClaudeHookEvent, { hooks: { type: "command"; command: string }[] }[]>> = {};
-
-  for (const one of ones) {
-    if (one.primitive.kind === PosturePrimitive.kind) {
-      const headers = one.primitive.headers;
-      for (const permission of headers.allow) allow.add(permission);
-      for (const permission of headers.deny) deny.add(permission);
-    }
-    if (one.primitive.kind === SensorPrimitive.kind) {
-      const { signal, run } = one.primitive.headers;
-      // A signal this host raises nothing for compiles to nothing: writing it
-      // would be a hook that never fires, and the charter still names the event
-      // for whichever host does raise it.
-      if (isClaudeHookEvent(signal))
-        hooks[signal] = [...(hooks[signal] ?? []), { hooks: [{ type: "command", command: run }] }];
-    }
-  }
-
-  return {
-    ...(allow.size === 0 && deny.size === 0 ? {} : { permissions: { allow: [...allow], deny: [...deny] } }),
-    ...(Object.keys(hooks).length === 0 ? {} : { hooks }),
-  };
-}
-
-/**
- * Which document of this host a charter primitive becomes, or nothing where this
- * host has no kind for it.
- */
-function claudeDocumentComponentOf(charter: CharterRoot, sc: ScopedPrimitive): ClaudeComponent | undefined {
-  // The kind stays in the name, because two charter kinds can land in one
-  // directory there — `guide:no-any` and `skill:no-any` are two primitives and
-  // must stay two files (FR-014).
-  const name = sc.normIdentity;
-  const body = cwMCPPrefix(charter.bodyOf(sc));
-
-  switch (sc.primitive.kind) {
-    // A guide is a rule this host loads into context whole: when a file it names
-    // is touched, which is what `paths` on a rule does, and at the start of every
-    // session where it names none (FR-013). Under the identity it is changed by,
-    // so a reader who wants it changed is sent to the primitive rather than
-    // editing what the next build overwrites (FR-017, FR-020).
-    case GuidePrimitive.kind: {
-      const { globs = [] } = sc.primitive.headers;
-      return ClaudeRuleComponent.of(
-        name,
-        globs.length === 0 ? {} : { paths: globs },
-        `${[`## ${sc.identity}`, body].join("\n\n")}\n`,
-      );
-    }
-    // for command, remove kind prefix so user just types /do-something instead of /command-do-something
-    case CommandPrimitive.kind:
-      return ClaudeCommandComponent.of(name.replace(`${CommandPrimitive.kind}-`, ""), { description: sc.primitive.description() }, body);
-    case AgentPrimitive.kind: {
-      const { tools } = sc.primitive.headers;
-      return ClaudeAgentComponent.of(name, { description: sc.primitive.description(), tools: tools.join(", ") }, body);
-    }
-    // One kind of this host for the two the charter loads when the request calls
-    // for them: what decides that the body is worth opening is the description,
-    // because that line is all this host reads before deciding (FR-013), and
-    // composing it is the primitive's.
-    case SkillPrimitive.kind:
-    case PlaybookPrimitive.kind:
-      return ClaudeSkillComponent.of(name, { description: sc.primitive.description() }, body);
-    default:
-      return undefined;
-  }
-}
-

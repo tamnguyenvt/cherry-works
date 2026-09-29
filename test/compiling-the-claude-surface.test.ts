@@ -86,8 +86,7 @@ test("a guide becomes a rule, and the files it speaks about are the paths that l
 
   const contents = files[".claude/rules/guide-no-any.md"] ?? "";
   assert.ok(contents.includes('---\npaths: ["src/**/*.ts", "test/**/*.ts"]\n---'), contents);
-  assert.ok(contents.includes("## guide:no-any"));
-  assert.ok(contents.includes("Never write `any`."));
+  assert.ok(contents.includes("@../../.cw/out/guide/no-any.md\n"), contents);
 });
 
 test("a guide that names no files is a rule with no paths, loaded every session (FR-013)", async () => {
@@ -96,8 +95,7 @@ test("a guide that names no files is a rule with no paths, loaded every session 
   });
 
   const carried = files[".claude/rules/guide-small-diffs.md"] ?? "";
-  assert.ok(carried.includes("## guide:small-diffs"));
-  assert.ok(carried.includes("Keep each change small."));
+  assert.ok(carried.includes("@../../.cw/out/guide/small-diffs.md\n"), carried);
   assert.ok(!carried.includes("paths:"));
 });
 
@@ -133,10 +131,21 @@ test("the kinds this host has no kind for project nothing: they are read from th
   assert.deepEqual(Object.keys(files), [builtinSkill]);
 });
 
-test("a compiled file carries the body, which is what the catalogues do not (FR-018)", async () => {
-  const files = await projected(aCommand);
+test("a host's document points to the compiled one, which alone carries the body (FR-018, FR-139)", async () => {
+  const files = await putDown(aCommand);
 
-  assert.ok(files[".claude/commands/ship.md"]?.includes("Run the build, then push."));
+  const command = files[".claude/commands/ship.md"] ?? "";
+  assert.ok(command.includes("Read and follow @../../.cw/out/command/ship.md.\n"), command);
+  assert.ok(!command.includes("Run the build, then push."));
+  assert.ok(files[".cw/out/command/ship.md"]?.includes("Run the build, then push."));
+});
+
+test("a skill points three folders up, from inside the folder its SKILL.md sits in (FR-139)", async () => {
+  const files = await projected({
+    [at("skill/review.md")]: primitive("skill", "review", "Review the diff.", ["triggers: [review this]"]),
+  });
+
+  assert.ok(files[".claude/skills/skill-review/SKILL.md"]?.includes("Read and follow @../../../.cw/out/skill/review.md.\n"));
 });
 
 test("a compiled file says this engine wrote it, so an edit goes to the charter (FR-020)", async () => {
@@ -237,7 +246,7 @@ test("every posture lands in the one file this host reads its settings from", as
 });
 
 test("a mixin's body is written before its host's, which is the one place a mixin applies (FR-006)", async () => {
-  const files = await projected({
+  const files = await putDown({
     [at("mixin/house-style.md")]: primitive("mixin", "house-style", "Write plainly."),
     [at("mixin/no-jargon.md")]: primitive("mixin", "no-jargon", "No jargon."),
     [at("command/ship.md")]: primitive("command", "ship", "Run the build, then push.", [
@@ -245,7 +254,8 @@ test("a mixin's body is written before its host's, which is the one place a mixi
     ]),
   });
 
-  const contents = files[".claude/commands/ship.md"] ?? "";
+  const contents = files[".cw/out/command/ship.md"] ?? "";
+  assert.ok(contents.indexOf("Write plainly.") > -1);
   assert.ok(contents.indexOf("Write plainly.") < contents.indexOf("No jargon."));
   assert.ok(contents.indexOf("No jargon.") < contents.indexOf("Run the build, then push."));
 });
@@ -263,8 +273,8 @@ test("nothing is compiled for an agent that was not named as installed", async (
   ]);
 });
 
-test("a guide's rule has the mixins it pulls in already written into it (FR-006)", async () => {
-  const files = await projected({
+test("a guide's compiled document has the mixins it pulls in already written into it (FR-006)", async () => {
+  const files = await putDown({
     [at("mixin/house-style.md")]: primitive("mixin", "house-style", "Write plainly."),
     [at("guide/no-any.md")]: primitive("guide", "no-any", "Never write `any`.", [
       'globs: ["src/**/*.ts"]',
@@ -272,7 +282,8 @@ test("a guide's rule has the mixins it pulls in already written into it (FR-006)
     ]),
   });
 
-  const carried = files[".claude/rules/guide-no-any.md"] ?? "";
+  const carried = files[".cw/out/guide/no-any.md"] ?? "";
+  assert.ok(carried.indexOf("Write plainly.") > -1);
   assert.ok(carried.indexOf("Write plainly.") < carried.indexOf("Never write `any`."));
 });
 

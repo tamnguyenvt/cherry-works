@@ -106,29 +106,6 @@ export class CharterRoot {
   }
 
   /**
-   * What one primitive says once its mixins are in it: the body of every mixin
-   * it pulls in, in the order it named them, and then its own (FR-006).
-   *
-   * The one place a mixin is applied at all. Nothing is merged and no header
-   * moves — a mixin lends text, so what comes back is text, and the host's own
-   * words come last so they read as the point and the lent ones as the setting.
-   *
-   * Asked of the charter because the charter is what already read the mixins
-   * and knows which identity a name means across layers. A mixin nothing
-   * answers to is left out rather than raised: `allFaultsByFiles` already names
-   * that file, and a build refused for it never reaches here (FR-009).
-   */
-  bodyOf(one: ScopedPrimitive): string {
-    const mixins = this.mixins;
-    return [
-      ...(one.primitive.headers.mixins ?? []).map((named) => mixins.get(named)?.body),
-      one.primitive.body,
-    ]
-      .filter((body): body is string => body !== undefined && body.trim() !== "")
-      .join("\n\n");
-  }
-
-  /**
    * Every primitive under the identity the whole charter names it by (FR-017).
    *
    * Held here for the reason `mixins` is: one identity space covers every

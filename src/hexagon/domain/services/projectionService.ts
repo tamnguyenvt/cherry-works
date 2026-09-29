@@ -1,26 +1,10 @@
 import type { CharterOutput } from "../models/output/CharterOutput.js";
-import type { ProjectionPolicy } from "../models/output/ProjectionPolicy.js";
+import type { Projection } from "../models/output/ProjectionPolicy.js";
+import { claudeComponentProjection } from "./providers/claude.js";
 import type { ClaudeComponent } from "../models/output/providers/claude/ClaudeComponent.js";
-import { ClaudeMcpConfigComponent } from "../models/output/providers/claude/ClaudeMcpConfigComponent.js";
-import { ClaudeSettingsComponent } from "../models/output/providers/claude/ClaudeSettingsComponent.js";
-import { ClaudeAgentComponent } from "../models/output/providers/claude/document-based-components/ClaudeAgentComponent.js";
-import { ClaudeCommandComponent } from "../models/output/providers/claude/document-based-components/ClaudeCommandComponent.js";
-import { ClaudeRuleComponent } from "../models/output/providers/claude/document-based-components/ClaudeRuleComponent.js";
-import { ClaudeSkillComponent } from "../models/output/providers/claude/document-based-components/ClaudeSkillComponent.js";
-import type { AgentProvider } from "../models/AgentProvider.js";
-import { CLAUDE_DIRECTORY, CLAUDE_ENTRY_FILE, CLAUDE_MCP_CONFIG_FILE, OUT_DIRECTORY } from "../path.js";
 
-/**
- * One file this build puts down: where it goes, what it holds, and how it goes
- * down over whatever is there.
- *
- * An output says what it holds and how it is applied; this is where that lands.
- */
-export interface Projection {
-  readonly path: string;
-  readonly contents: string;
-  readonly projectionPolicy: ProjectionPolicy;
-}
+import type { AgentProvider } from "../models/AgentProvider.js";
+import { CLAUDE_ENTRY_FILE, OUT_DIRECTORY } from "../path.js";
 
 /**
  * Every file one reading of a charter is put down as (FR-020, FR-021).
@@ -77,7 +61,7 @@ export function charterOutputProjection(
         : [{ path: file, contents: compiledPrimitive.toStampedDocument(), projectionPolicy: compiledPrimitive.projection }];
     }),
     ...agentProviders.map(entryFileProjection),
-    ...output.providerComponents.map(componentProjection),
+    ...output.providerComponents.map(claudeComponentProjection),
   ];
 }
 
@@ -129,50 +113,4 @@ function entryFileProjection(provider: AgentProvider): Projection {
   }
 
   return { path, contents, projectionPolicy: "upsertWithMarker" };
-}
-
-/**
- * Where one of a host's own kinds lands, and what that file holds.
- *
- * One arm per kind, and the set is closed: a kind with nowhere to go is a
- * compile error, which is what keeps this and the kinds in step (FR-018).
- */
-function componentProjection(one: ClaudeComponent): Projection {
-  const projectionPolicy = one.projection;
-
-  switch (one.kind) {
-    case ClaudeCommandComponent.kind:
-      return { path: `${CLAUDE_DIRECTORY}/commands/${one.name}.md`, contents: one.toStampedDocument(), projectionPolicy };
-    case ClaudeAgentComponent.kind:
-      return { path: `${CLAUDE_DIRECTORY}/agents/${one.name}.md`, contents: one.toStampedDocument(), projectionPolicy };
-    // A skill is a directory holding one file of that name, which is where this
-    // host looks for it.
-    case ClaudeSkillComponent.kind:
-      return {
-        path: `${CLAUDE_DIRECTORY}/skills/${one.name}/SKILL.md`,
-        contents: one.toStampedDocument(),
-        projectionPolicy,
-      };
-    // A rule of its own file, under the directory this host loads every one of:
-    // at the start of a session where it declares no `paths`, and when one of
-    // them is touched where it does.
-    case ClaudeRuleComponent.kind:
-      return { path: `${CLAUDE_DIRECTORY}/rules/${one.name}.md`, contents: one.toStampedDocument(), projectionPolicy };
-    // Every posture and every sensor of the charter lands in the one file this
-    // host reads its settings from.
-    case ClaudeSettingsComponent.kind:
-      return {
-        path: `${CLAUDE_DIRECTORY}/settings.json`,
-        contents: `${JSON.stringify(one.settings, undefined, 2)}\n`,
-        projectionPolicy,
-      };
-    // The one server reaching every place, in the file this host starts a
-    // project's servers from (FR-146).
-    case ClaudeMcpConfigComponent.kind:
-      return {
-        path: CLAUDE_MCP_CONFIG_FILE,
-        contents: `${JSON.stringify({ mcpServers: one.mcpServers }, undefined, 2)}\n`,
-        projectionPolicy,
-      };
-  }
 }

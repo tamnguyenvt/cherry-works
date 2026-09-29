@@ -18,3 +18,15 @@
  * know one kind of output from another.
  */
 export type ProjectionPolicy = "replace" | "mergeJSON" | "upsertWithMarker";
+
+/**
+ * One file this build puts down: where it goes, what it holds, and how it goes
+ * down over whatever is there.
+ *
+ * An output says what it holds and how it is applied; this is where that lands.
+ */
+export interface Projection {
+  readonly path: string;
+  readonly contents: string;
+  readonly projectionPolicy: ProjectionPolicy;
+}
