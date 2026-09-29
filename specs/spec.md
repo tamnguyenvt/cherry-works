@@ -925,7 +925,6 @@ The shape of each is in the data model.
 - Publishing anywhere but the public npm registry: no private registry, no standalone binary, no operating-system package manager such as Homebrew.
 - `cw` updating itself, or telling a user that a newer version exists. Upgrading is the package manager's.
 - Taking a published version back or publishing over it.
-- Writing release notes or a changelog for a release.
 - Publishing from CI, and the registry provenance that only a CI publish can attach.
 - A gateway: a server holding one credential that many developers' agents reach places through.
 - Forwarding anything of an MCP server but its tools: its resources, prompts and requests back to the agent.

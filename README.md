@@ -9,6 +9,7 @@ files your coding agent actually reads.
 .cw/charter/sensor/lint.md                    .claude/rules/…
 .cw/charter/posture/secrets.md                .claude/settings.json (hooks, permissions)
 …                                             .claude/skills/…, .claude/agents/…
+                                              .mcp.json (cw mcp serve)
 ```
 
 ## Why
@@ -119,10 +120,18 @@ Each kind comes up at a different time:
 | `posture` | always, wherever the host can be told what to `allow` and `deny` |
 | `corpus` | a primitive's `rationale` cites it, to give the reasoning behind a rule |
 | `mixin` | never on its own; its body is lent to the primitives that pull it in |
+| `mcp` | a primitive's body names it as `mcp:<id>`: a place outside the repository, reached through `cw mcp serve` |
 
 `cw kinds <kind>` gives the exact fields each kind takes. An identity is
 `kind:id`, and it names exactly one primitive across the whole charter. If two
 files claim the same identity, the build is refused and both files are named.
+An id is at most 40 characters, and may be grouped with `/`: `mcp:mfbs/billing`
+is kept at `.cw/charter/mcp/mfbs/billing.md`.
+
+`cw build` compiles every primitive to `.cw/out/<kind>/<id>.md`: its headers,
+then the bodies of the mixins it pulls in, then its own. What your agent's host
+is given points to that document, so you can open any primitive exactly as the
+agent reads it.
 
 ## Commands
 
@@ -141,6 +150,8 @@ files claim the same identity, the build is refused and both files are named.
 | `cw suite add \| edit \| remove` | Manage test files |
 | `cw vendor add <source> [--ref] \| remove \| list` | Install, update, remove or list vendor sources |
 | `cw portal [--port]` | Open the charter in a browser on this machine |
+| `cw mcp auth [identity] [--status]` | Sign in, as yourself, to every place the charter reaches, or to one again |
+| `cw mcp serve` | Serve every place the charter reaches to your agent, over stdio |
 
 `cw doctor` exits with a failure status when the charter has an error, when a
 vendored file was edited in this repository, or when the compiled output no
@@ -220,6 +231,48 @@ A vendor source is a git repository with primitives laid out in folders by kind.
 It is installed under `.cw/vendor/<name>/`, pinned to the ref you chose and
 committed. Vendored primitives are read-only. To differ from one, write your own
 primitive under a new identity.
+
+## Places outside the repository
+
+Much of what an agent needs to know is kept elsewhere: another service's code,
+an issue tracker, a wiki. An `mcp` primitive declares one such place, an MCP
+server, and the tools of it your agent may use:
+
+```markdown
+---
+kind: mcp
+id: mfbs/billing
+description: Billing service code and pull requests.
+endpoint: https://api.githubcopilot.com/mcp/
+path: moneyforward/billing-service
+auth: ["oauth", "token"]
+tools: ["get_file_contents", "search_code", "list_pull_requests"]
+---
+
+The billing service. Look here before changing anything that charges a customer.
+```
+
+A place is either an `endpoint` reached over HTTP, or a `command` with its
+`args` that `cw` starts as a local process; a local one takes a token only, in
+the environment variable its `tokenEnv` names. Any primitive points the agent
+at a place by naming it in its body as `mcp:mfbs/billing`.
+
+```bash
+cw build            # adds one entry, cw mcp serve, to your agent's .mcp.json
+cw mcp auth         # sign in to every place you are not signed in to yet
+cw mcp auth --status
+```
+
+Every developer signs in as themselves, by browser where the place offers OAuth
+or with a token typed at a hidden prompt. Credentials are kept in the operating
+system's credential store, never in the repository, and renewed without asking
+where the place allows it. `cw mcp serve` is the one MCP server your agent is
+given: it serves the tools each place declares and forwards every call under
+your own credential. A place that is down or not signed in to loses only its own
+tools.
+
+A subagent reaches only the places it lists under `tools`: `mcp:<id>` for every
+tool of a place, or `mcp:<id>:<tool>` for one of them.
 
 ## Your agent can write rules too
 
