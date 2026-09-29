@@ -7,6 +7,7 @@ import { InitCommand } from "./InitCommand.js";
 import { KindsCommand } from "./KindsCommand.js";
 import { ListCommand } from "./ListCommand.js";
 import { McpAuthCommand } from "./McpAuthCommand.js";
+import { McpServeCommand } from "./McpServeCommand.js";
 import { PortalCommand } from "./PortalCommand.js";
 import { RemoveCommand } from "./RemoveCommand.js";
 import { SuiteAddCommand } from "./SuiteAddCommand.js";
@@ -40,4 +41,5 @@ export const COMMANDS: readonly AnyCommand[] = [
   new VendorListCommand(),
   new PortalCommand(),
   new McpAuthCommand(),
+  new McpServeCommand(),
 ];

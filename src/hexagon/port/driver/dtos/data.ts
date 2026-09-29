@@ -217,6 +217,33 @@ const signInStatus = dto(
   }),
 );
 
+/** One tool `cw mcp serve` shows the agent: named `<prefix>__<tool>` after the
+ *  identity declaring it, its description led by that identity and its path,
+ *  its input schema the place's own (FR-153). */
+const servedTool = dto(
+  "ServedTool",
+  z.object({
+    name: z.string(),
+    description: z.string(),
+    inputSchema: z.record(z.string(), z.unknown()),
+  }),
+);
+
+/** What one run serves, ordered by name, and what was left out and why: a
+ *  place down or not signed in to, a declared tool its place lacks (FR-153,
+ *  FR-154). */
+const servedTools = dto(
+  "ServedTools",
+  z.object({
+    tools: z.array(servedTool).readonly(),
+    problems: strings,
+  }),
+);
+
+/** What a call answered: the place's answer as it came, or an error answer
+ *  saying why no place was reached (FR-154). */
+const toolAnswer = dto("ToolAnswer", z.record(z.string(), z.unknown()));
+
 /** What a repository configured itself with. */
 const workspaceSettings = dto(
   "WorkspaceSettings",
@@ -240,6 +267,8 @@ export const DataDTOs = byType(
   primitiveSnapshot,
   scopedPrimitive,
   scopedPrimitives,
+  servedTool,
+  servedTools,
   signInStatus,
   testCase,
   testCaseReport,
@@ -247,6 +276,7 @@ export const DataDTOs = byType(
   testRunReport,
   testSuite,
   testSuites,
+  toolAnswer,
   workspaceSettings,
 );
 
@@ -264,6 +294,8 @@ export namespace DataDTOs {
   export type PrimitiveSnapshot = z.infer<typeof DataDTOs.PrimitiveSnapshot>;
   export type ScopedPrimitive = z.infer<typeof DataDTOs.ScopedPrimitive>;
   export type ScopedPrimitives = z.infer<typeof DataDTOs.ScopedPrimitives>;
+  export type ServedTool = z.infer<typeof DataDTOs.ServedTool>;
+  export type ServedTools = z.infer<typeof DataDTOs.ServedTools>;
   export type SignInStatus = z.infer<typeof DataDTOs.SignInStatus>;
   export type TestCase = z.infer<typeof DataDTOs.TestCase>;
   export type TestCaseReport = z.infer<typeof DataDTOs.TestCaseReport>;
@@ -271,5 +303,6 @@ export namespace DataDTOs {
   export type TestRunReport = z.infer<typeof DataDTOs.TestRunReport>;
   export type TestSuite = z.infer<typeof DataDTOs.TestSuite>;
   export type TestSuites = z.infer<typeof DataDTOs.TestSuites>;
+  export type ToolAnswer = z.infer<typeof DataDTOs.ToolAnswer>;
   export type WorkspaceSettings = z.infer<typeof DataDTOs.WorkspaceSettings>;
 }

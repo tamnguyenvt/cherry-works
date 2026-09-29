@@ -5,12 +5,14 @@ import type { McpOrigin } from "../src/hexagon/domain/models/output/common/McpOr
 import { credentialFor } from "../src/hexagon/service/credentialRepo.js";
 import { InMemoryAuthorizing } from "../src/zdriven/InMemoryAuthorizing.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
+import { InMemoryMcpServers } from "../src/zdriven/InMemoryMcpServers.js";
 import { InMemorySecrets } from "../src/zdriven/InMemorySecrets.js";
 import { OAuth } from "../src/zdriven/OAuth.js";
+import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { anOAuthServer } from "./an-oauth-server.js";
 
 /** One place at the test server's endpoint, signed in to by OAuth. */
-const placeAt = (endpoint: string): McpOrigin => ({ identities: ["mcp:billing"], address: endpoint, endpoint, auth: ["oauth"] });
+const placeAt = (endpoint: string): McpOrigin => ({ identities: ["mcp:billing"], names: { "mcp:billing": "billing_0000" }, address: endpoint, endpoint, auth: ["oauth"] });
 
 /** The developer opening the address they were shown: the test server agrees
  *  at once and sends the browser back to the callback. */
@@ -30,7 +32,7 @@ test("an OAuth sign-in against a place ends with a credential in the store holdi
   const held = new InMemoryFileReaders({ "file:///repo/.cw/out/mcp-origins.json": JSON.stringify({ origins: [origin] }) });
   const shown: string[] = [];
 
-  await new McpConnecting(new URL("file:///repo/"), held, secrets, new OAuth()).signInWithOAuth(origin.address, (authorizationUrl) => {
+  await new McpConnecting(new URL("file:///repo/"), held, secrets, new OAuth(), new YamlParser(), new InMemoryMcpServers()).signInWithOAuth(origin.address, (authorizationUrl) => {
     shown.push(authorizationUrl);
     openInBrowser(authorizationUrl);
   });
@@ -52,7 +54,7 @@ test("an expired credential is renewed on use, asking nothing, and the renewal k
   const oauth = new OAuth();
   const origin = placeAt(oauthTestServer.endpoint);
   const held = new InMemoryFileReaders({ "file:///repo/.cw/out/mcp-origins.json": JSON.stringify({ origins: [origin] }) });
-  await new McpConnecting(new URL("file:///repo/"), held, secrets, oauth).signInWithOAuth(origin.address, openInBrowser);
+  await new McpConnecting(new URL("file:///repo/"), held, secrets, oauth, new YamlParser(), new InMemoryMcpServers()).signInWithOAuth(origin.address, openInBrowser);
 
   assert.equal(await credentialFor(secrets, oauth, origin), "access-1");
   assert.equal(oauthTestServer.issued.refresh_token, 0);
@@ -80,7 +82,7 @@ test("a place nobody signed in to is refused naming the command that signs in th
 
 test("a token credential never expires as far as cw knows, and is used as kept", async () => {
   const secrets = new InMemorySecrets();
-  const origin: McpOrigin = { identities: ["mcp:linear"], address: "https://mcp.linear.app/mcp", endpoint: "https://mcp.linear.app/mcp", auth: ["token"] };
+  const origin: McpOrigin = { identities: ["mcp:linear"], names: { "mcp:linear": "linear_0000" }, address: "https://mcp.linear.app/mcp", endpoint: "https://mcp.linear.app/mcp", auth: ["token"] };
   await secrets.writeSecret(origin.address, JSON.stringify({ address: origin.address, method: "token", accessToken: "lin" }));
   assert.equal(await credentialFor(secrets, new InMemoryAuthorizing(), origin), "lin");
 });
@@ -101,7 +103,7 @@ test("a sign-in the developer refuses in the browser keeps nothing, and says so"
 
 test("a credential kept for a place now at plain http on another machine is not handed out (FR-149)", async () => {
   const secrets = new InMemorySecrets();
-  const origin: McpOrigin = { identities: ["mcp:cleartext"], address: "http://mcp.example/mcp", endpoint: "http://mcp.example/mcp", auth: ["token"] };
+  const origin: McpOrigin = { identities: ["mcp:cleartext"], names: { "mcp:cleartext": "cleartext_0000" }, address: "http://mcp.example/mcp", endpoint: "http://mcp.example/mcp", auth: ["token"] };
   await secrets.writeSecret(origin.address, JSON.stringify({ address: origin.address, method: "token", accessToken: "t" }));
   await assert.rejects(credentialFor(secrets, new InMemoryAuthorizing(), origin), /plain http/);
 });

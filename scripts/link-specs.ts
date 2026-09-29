@@ -1,6 +1,6 @@
 /**
- * Turns every id the specs cite — FR-xxx, SC-xxx, a task id, "Story n", a plan
- * or data-model § — into a link to where it is defined, so a click in the editor
+ * Turns every id the spec cites — FR-xxx, SC-xxx, "Story n" — into a link to
+ * where it is defined, so a click in the editor
  * or on GitHub lands on it. Idempotent: the links and anchors it wrote last time
  * are taken off and written again, so a renumbered id follows its definition.
  *
@@ -9,17 +9,12 @@
  *                                                     file is stale or an id is
  *                                                     cited that nothing defines
  */
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
 const SPECS = join(import.meta.dirname, "..", "specs");
 const SPEC = join(SPECS, "spec.md");
-const PLAN = join(SPECS, "plan.md");
-const DATA_MODEL = join(SPECS, "data-model.md");
-const TASK_FILES = readdirSync(join(SPECS, "tasks"))
-  .filter((name) => name.endsWith(".md"))
-  .map((name) => join(SPECS, "tasks", name));
-const LINKED_FILES = [SPEC, PLAN, DATA_MODEL, ...TASK_FILES, join(SPECS, "checklists", "requirements.md")];
+const LINKED_FILES = [SPEC];
 
 type Target = { file: string; fragment: string };
 
@@ -40,8 +35,8 @@ function headingSlugsOf(text: string): Map<string, string> {
 }
 
 const ANCHOR = /<a id="[^"]*"><\/a>/g;
-const GENERATED_LINK = /\[((?:FR|SC)-\d+|T\d+(?:\.\d+)?|Story \d+|§\d+(?:\.\d+)*)\]\([^)\s]*\)/g;
-const ITEM_DEFINITION = /^(- (?:\[[ x]\] )?)\*\*((?:FR|SC)-\d+|T\d+(?:\.\d+)?)\*\*/;
+const GENERATED_LINK = /\[((?:FR|SC)-\d+|Story \d+)\]\([^)\s]*\)/g;
+const ITEM_DEFINITION = /^(- )\*\*((?:FR|SC)-\d+)\*\*/;
 
 const originalTextByFile = new Map(LINKED_FILES.map((file) => [file, readFileSync(file, "utf8")]));
 const plainTextByFile = new Map(
@@ -49,7 +44,7 @@ const plainTextByFile = new Map(
 );
 
 // Where each id is defined: an item carries an anchor of its own id; a story
-// and a numbered § are headings, reached by their slug.
+// is a heading, reached by its slug.
 const targetsById = new Map<string, Target>();
 for (const [file, text] of plainTextByFile) {
   for (const line of text.split("\n")) {
@@ -57,33 +52,25 @@ for (const [file, text] of plainTextByFile) {
     if (itemId) targetsById.set(itemId, { file, fragment: itemId.toLowerCase() });
   }
 }
-for (const [file, prefix] of [[SPEC, "Story"], [PLAN, "plan §"], [DATA_MODEL, "data-model §"]] as const) {
-  for (const [heading, slug] of headingSlugsOf(plainTextByFile.get(file)!)) {
+for (const [file, text] of plainTextByFile) {
+  for (const [heading, slug] of headingSlugsOf(text)) {
     const storyNumber = /^User Story (\d+)\b/.exec(heading)?.[1];
-    const sectionNumber = /^(\d+(?:\.\d+)*)\.? /.exec(heading)?.[1];
-    if (prefix === "Story" && storyNumber) targetsById.set(`Story ${storyNumber}`, { file, fragment: slug });
-    if (prefix !== "Story" && sectionNumber) targetsById.set(`${prefix}${sectionNumber}`, { file, fragment: slug });
+    if (storyNumber) targetsById.set(`Story ${storyNumber}`, { file, fragment: slug });
   }
 }
 
 const unresolvedCitations: string[] = [];
-const CITATION = /(?<![\w.[-])((?:FR|SC)-\d{3}|T\d{3}|T\d\.\d{3}|Story \d+|(?:(plan|data-model) )?§(\d+(?:\.\d+)*))(?![\w-]|\.\d)/g;
+const CITATION = /(?<![\w.[-])((?:FR|SC)-\d{3}|Story \d+)(?![\w-]|\.\d)/g;
 
 function linkedLineOf(line: string, file: string, lineNumber: number): string {
-  // A bare § belongs to whichever of plan or data-model the line last named,
-  // else to the file it is written in.
-  let sectionOwner = file === PLAN ? "plan" : file === DATA_MODEL ? "data-model" : undefined;
-  return line.replace(CITATION, (citation, id: string, namedOwner: string | undefined, section: string | undefined) => {
-    if (section) sectionOwner = namedOwner ?? sectionOwner;
-    const key = section ? `${sectionOwner} §${section}` : id;
-    const target = targetsById.get(key);
+  return line.replace(CITATION, (citation, id: string) => {
+    const target = targetsById.get(id);
     if (!target) {
       unresolvedCitations.push(`${relative(SPECS, file)}:${lineNumber}: ${citation}`);
       return citation;
     }
     const href = `${target.file === file ? "" : relative(dirname(file), target.file)}#${target.fragment}`;
-    const label = section ? `§${section}` : id;
-    return `${section && namedOwner ? `${namedOwner} ` : ""}[${label}](${href})`;
+    return `[${id}](${href})`;
   });
 }
 

@@ -73,7 +73,7 @@
     "identity": "playbook:plan-task",
     "kind": "playbook",
     "id": "plan-task",
-    "description": "Instruction for creating spec and plan",
+    "description": "Instruction for writing a phase's stories into the spec",
     "file": ".cw/out/playbook/plan-task.md"
   },
   {

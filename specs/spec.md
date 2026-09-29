@@ -58,6 +58,8 @@ Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, Storie
 
 ### User Story 1 - Author a charter and put the agent under it (Priority: P1)
 
+**Status**: Done
+
 A developer has a repository and a coding agent, and wants the agent to work under written standards instead of ad-hoc prompting. They run the setup command, answer a couple of prompts, and get a charter directory scaffolded in their working tree. They author their first rule as a small markdown file, run the build, and their agent immediately reads it — the rule is now in force for every session in that repository.
 
 **Why this priority**: This is the whole product in miniature. Without it there is nothing to share, nothing to inspect, and nothing for the portal to sit on top of. Everything else refines or distributes what this story produces.
@@ -78,6 +80,8 @@ A developer has a repository and a coding agent, and wants the agent to work und
 
 ### User Story 2 - Adopt shared governance without copying files (Priority: P2)
 
+**Status**: Done
+
 A team keeps its baselines — security rules, review roles, permissions — in one shared repository, and wants every project to inherit them without anyone copy-pasting. A developer points their repository at that vendor source, and the content arrives committed, pinned to a version. Their own rules keep working beside it: an identity names one primitive in the whole charter, so a repository that redefines a vendored one is told at once and renames its own rather than shadowing someone else's.
 
 **Why this priority**: A charter that lives in one repository helps one team. Distribution is what makes it governance. It depends on [Story 1](#user-story-1---author-a-charter-and-put-the-agent-under-it-priority-p1) having produced something to distribute.
@@ -93,6 +97,8 @@ A team keeps its baselines — security rules, review roles, permissions — in 
 ---
 
 ### User Story 3 - Trust the charter, and prove it in CI (Priority: P3)
+
+**Status**: Done
 
 Before relying on a charter, a developer wants to know what the agent will actually see: which file declares each rule, and whether anything is stale or broken. In CI, the team wants a hard gate proving that the committed projections still match the authored charter, so nobody merges a rule change that never reached the agent.
 
@@ -113,6 +119,8 @@ Before relying on a charter, a developer wants to know what the agent will actua
 
 ### User Story 4 - Create a correctly-shaped primitive without looking anything up (Priority: P5)
 
+**Status**: Done
+
 Nine kinds each demand their own fields, and nobody remembers which. A developer names the kind and the id, and is asked for exactly the mandatory fields, and gets a file at the right path holding the answers — nothing invented, nothing missing.
 
 **Why this priority**: Pure convenience. Every kind can be authored by hand in a text editor, and validation already names anything left out, so nothing is blocked without this. It removes a lookup, not an obstacle.
@@ -128,6 +136,8 @@ Nine kinds each demand their own fields, and nobody remembers which. A developer
 ---
 
 ### User Story 5 - See what the charter holds and why each rule comes up (Priority: P1)
+
+**Status**: Done
 
 A developer opens the portal in a governed repository and sees the charter laid out by layer and by kind: the repository's own primitives, then what each vendor source installed. Each row says the primitive's identity, its description, the file it lives in, and what makes it come up. They search for a word and see every primitive that mentions it. They pick one and ask the portal to explain it: what it is, when it activates, what it pulls in, what cites it, and which test cases pin it down.
 
@@ -148,6 +158,8 @@ A developer opens the portal in a governed repository and sees the charter laid 
 ---
 
 ### User Story 6 - Author, edit and delete a primitive without looking anything up (Priority: P2)
+
+**Status**: Done
 
 A developer picks a kind and asks for a new one. The portal asks exactly the headers that kind requires, in the shape each takes — one box per glob for a guide, a closed choice of signal for a sensor — and offers the repository's corpus entries when they fill in a rationale. They write the body in a markdown editor with a source and a preview view, and save. One file appears where that kind is authored. Later they open the same primitive, change its globs and body, and save again; or they delete it. A vendored primitive opens read-only and says how to differ from it.
 
@@ -171,6 +183,8 @@ A developer picks a kind and asks for a new one. The portal asks exactly the hea
 
 ### User Story 7 - Build, preview and check the repository's health (Priority: P3)
 
+**Status**: Done
+
 Before committing, the developer wants to know what a build would change and whether anything is wrong. From the portal's header they preview the build and see every file it would create, update or delete, then build from that preview. They ask for the health check and read the same four answers `cw doctor` gives — agents, charter, vendors, compiled output — together with every error and warning under its file, including the warnings the engine raises about corpus nobody cites, mixins nobody lends from, more than four primitives whose long content is put into the main agent's context, and guides and sensors no test case pins down.
 
 **Why this priority**: Stories 5 and 6 change the charter; this one gets the change to the agent and confirms nothing is broken. A team can still build from the command line without it.
@@ -188,6 +202,8 @@ Before committing, the developer wants to know what a build would change and whe
 ---
 
 ### User Story 8 - Install, see and remove vendor sources (Priority: P4)
+
+**Status**: Done
 
 The developer opens the vendor view and sees each source the repository installed: the folder it landed in, and how many primitives of each kind it brought. They add a baseline by its short git form and a version, and its primitives appear read-only. They remove one they no longer want.
 
@@ -208,6 +224,8 @@ The developer opens the vendor view and sees each source the repository installe
 ---
 
 ### User Story 9 - Write, run and correct the self-regression tests (Priority: P5)
+
+**Status**: Done
 
 The developer opens the test view and sees every test file the repository wrote, with its description and how many cases it holds. They open one to read its cases — the file touched or the event raised, and what must come up — and run all the tests. The portal says how many cases pass, marks each case pass or fail, says for a failing case what came up instead, and opens the first failing file. They correct a case in the file's text and save it; a file that does not read as a suite is refused with the engine's sample of one that does. They start a new test file, which opens holding one sample case to edit, and delete a file they no longer need.
 
@@ -230,6 +248,8 @@ The developer opens the test view and sees every test file the repository wrote,
 
 ### User Story 10 - Write a primitive with no terminal to answer at (Priority: P1)
 
+**Status**: Done
+
 A coding agent has decided this repository needs a guide about how its tests are named. It runs one command with the identity, the description and the globs as flags, and the file lands where that kind is authored, shaped the way the kind requires, with the body left for it to write. Nothing waited for a keystroke.
 
 **Why this priority**: This is the whole gap. Without it an agent cannot author at all except by guessing at a file format, and everything else in agent authoring only points at this command. It delivers value on its own: a repository whose agent knows the flags can author correctly, told by hand.
@@ -250,6 +270,8 @@ A coding agent has decided this repository needs a guide about how its tests are
 
 ### User Story 11 - Ask a kind what it requires, rather than being told (Priority: P2)
 
+**Status**: Done
+
 Before writing anything the agent asks the engine which kind it should be writing and what that kind wants. One command per kind answers: the headers it requires, the shape each takes, and one complete example of that kind. The agent turns that answer into the flags of [Story 10](#user-story-10---write-a-primitive-with-no-terminal-to-answer-at-priority-p1).
 
 **Why this priority**: [Story 10](#user-story-10---write-a-primitive-with-no-terminal-to-answer-at-priority-p1) works when someone already knows the headers. This is what keeps that knowledge out of every surface that would otherwise go stale — the skill body of [Story 12](#user-story-12---the-instructions-arrive-with-the-engine-not-with-the-repository-priority-p3) above all. It is independently useful: a person choosing a kind reads the same answer.
@@ -266,6 +288,8 @@ Before writing anything the agent asks the engine which kind it should be writin
 ---
 
 ### User Story 12 - The instructions arrive with the engine, not with the repository (Priority: P3)
+
+**Status**: Done
 
 A repository is set up under `cw`. Without anyone installing, copying or writing anything, its agent already reads a skill that tells it how to author a primitive here: ask the kind, answer with flags, write the body, build. Nothing was added to the repository for it. The charter it is governed by is what the repository authored, what it installed, and what the engine itself brings — and a listing says which of the three each primitive came from.
 
@@ -287,6 +311,8 @@ A repository is set up under `cw`. Without anyone installing, copying or writing
 
 ### User Story 13 - Install `cw` with one command and use it in any repository (Priority: P1)
 
+**Status**: Done
+
 A developer reads about Cherry Works and wants to try it on their own repository. They install it from the public package registry with the one command their package manager already knows, and `cw` is on their path. They never clone this repository, never build anything and never install a browser or a compiler: `cw init`, `cw build` and `cw portal` work for them exactly as they work for someone who built from source.
 
 **Why this priority**: Until this, the only way in is to clone and build, which is a contributor's path, not a user's. Everything the product does sits behind it.
@@ -306,6 +332,8 @@ A developer reads about Cherry Works and wants to try it on their own repository
 
 ### User Story 14 - Know which `cw` is running, and move to another (Priority: P2)
 
+**Status**: Done
+
 A developer is asked which version they are on when they report a problem, and a team wants every member and its CI to run the same version. They can ask `cw` its version, upgrade it with their package manager, and pin one version to a repository so that the repository's own scripts always run that one, whatever is installed globally.
 
 **Why this priority**: [Story 13](#user-story-13---install-cw-with-one-command-and-use-it-in-any-repository-priority-p1) gets `cw` onto a machine once. This one keeps it there across releases: without a version to name, a bug report cannot be matched to a release, and a team cannot agree on one.
@@ -322,6 +350,8 @@ A developer is asked which version they are on when they report a problem, and a
 ---
 
 ### User Story 15 - Publish a release that users can trust (Priority: P3)
+
+**Status**: Todo
 
 A maintainer wants to put a new version in users' hands. They ask for a release of one version, and it is published only if what would be published is known to work: the tests pass, the working tree holds nothing uncommitted, the version is new, and the exact package about to be published has been installed apart from the repository and seen to set a repository up and build it. Each published version can be traced back to the commit it was built from.
 
@@ -340,6 +370,8 @@ A maintainer wants to put a new version in users' hands. They ask for a release 
 ---
 
 ### User Story 16 - Open every primitive as it was compiled (Priority: P1)
+
+**Status**: Done
 
 An agent surveying the charter finds a primitive in the catalogue and opens the file the catalogue names. Today that file is the one its author wrote: it lacks the mixins the primitive pulls in, it sits in whichever layer brought it, and for what the engine itself brings it is a name no one can open. After this, a build writes every primitive, from every layer, as one compiled document in the output folder — its headers, then the bodies of its mixins, then its own — and the catalogue names that document. What the agent opens is the whole of what the primitive says, in one place, whoever authored it. A person listing the charter is still shown the file they would edit.
 
@@ -360,6 +392,8 @@ An agent surveying the charter finds a primitive in the catalogue and opens the 
 
 ### User Story 17 - Declare where knowledge lives once, and point any primitive at it (Priority: P1)
 
+**Status**: Done
+
 A team's rule about rounding tax on an invoice has reasons that live outside the repository: the service's code in another repository, the tax specification in Notion, the decisions taken in a Slack channel. The author declares each of those places once, as an `mcp` primitive with an identity of the team's choosing, its address and the tools the agent may use there. Then the rule names the places it draws on, the way it names the corpus it cites. The build gathers every declared place into one list, and gives the agent one MCP server to reach them all.
 
 **Why this priority**: Every other story here reaches a place this one declares. Without it an agent is told the rule and not where its reasons are.
@@ -370,7 +404,7 @@ A team's rule about rounding tax on an invoice has reasons that live outside the
 
 1. **Given** a repository set up under `cw`, **When** the author runs `cw add mcp mfbs/billing` and answers its address, the ways to sign in it allows and the tools it opens, **Then** `.cw/charter/mcp/mfbs/billing.md` is written and `mcp:mfbs/billing` is an identity of the charter.
 8. **Given** an `mcp` primitive declaring both an endpoint and a command, or neither, or a command taking a token with no variable named for it, **When** the charter is checked, **Then** it is refused under that file with the kind's sample.
-2. **Given** that primitive, **When** a guide's body says "take the requirements from mcp:mfbs/billing" and the charter is built, **Then** the guide's compiled document, and its rule on the agent's host, name that place as the prefix of its tools on that host, `mcp__cw__` and its served prefix ([FR-145](#fr-145)).
+2. **Given** that primitive, **When** a guide's body says "take the requirements from mcp:mfbs/billing" and the charter is built, **Then** the guide's compiled document, and its rule on the agent's host, name that place by the name its tools are served under ([FR-145](#fr-145)).
 3. **Given** a primitive whose body names an `mcp` identity no layer holds, **When** the charter is checked, built or tested, **Then** it warns under that primitive's file naming the identity, and the build still runs.
 4. **Given** an `mcp` primitive no primitive names, **When** the health check runs, **Then** it warns under that primitive's file, and the build still runs.
 5. **Given** the repository and a vendor each declaring the same address under a different identity, **When** the charter is built, **Then** the list of places holds that address once, under both identities, and every tool either declares is served there.
@@ -380,6 +414,8 @@ A team's rule about rounding tax on an invoice has reasons that live outside the
 ---
 
 ### User Story 18 - Sign in to every place as yourself (Priority: P1)
+
+**Status**: Done
 
 A developer clones a repository whose charter declares four places. They run one command, and are taken through each address the charter holds that they have not signed in to yet: a browser sign-in where the place offers one, a token pasted at a hidden prompt where it does not. What they are signed in as is theirs, kept on their machine outside the repository, and used for every call their agent makes. Nobody else's access is lent to them, and when a place takes their access away, their agent loses it with them.
 
@@ -401,6 +437,8 @@ A developer clones a repository whose charter declares four places. They run one
 
 ### User Story 19 - Give the agent one server that reaches every place (Priority: P1)
 
+**Status**: Done
+
 The developer's agent is given one MCP server, `cw mcp serve`. It shows the agent the tools the charter declared for each place, each under a name that says which place it belongs to, and nothing else the place has. A call goes to its place with the developer's own credential. A place that is down, or not signed in to, answers each call with why and what to do; every other place works as before.
 
 **Why this priority**: This is where the agent actually reaches the knowledge Stories 17 and 18 declared and unlocked.
@@ -421,6 +459,8 @@ The developer's agent is given one MCP server, `cw mcp serve`. It shows the agen
 ---
 
 ### User Story 20 - Hold a run to the places it needs (Priority: P2)
+
+**Status**: Todo
 
 A team runs an agent every night to look for fraud in payments. That run needs two tools of one place and nothing else. The job starts the server with those named, and the agent is shown exactly those; any other tool, of that place or another, does not exist for it. Inside an interactive session, a subagent can be held the same way: its `mcp` places become the only such tools it holds.
 
@@ -723,9 +763,9 @@ A team runs an agent every night to look for fraud in payments. That run needs t
 - <a id="fr-142"></a>**FR-142**: An `mcp` primitive MUST declare one MCP server, in exactly one of two ways: an endpoint reached over HTTP, or a command with its arguments, started as a local process. Its address is the endpoint, or the command with its arguments. It MUST declare the tools of that server the agent may use. For an endpoint it MUST declare the ways a developer may sign in — `oauth`, `token`, or both. For a command, `token` is the only way, and a primitive declaring it MUST name the environment variable the process reads its token from; a command declaring no way needs no sign-in. It MAY declare a path: the place inside that server it is about, such as one repository of a code host, told to the agent beside each of its tools. Its body, where it has one, says what is kept there and when to look.
 - <a id="fr-143"></a>**FR-143**: A primitive of any kind MUST name a place it uses in its body, as `mcp:<id>`, in the author's own words; there is no header for it. A name no layer holds MUST be a warning under the file whose body names it, and stops nothing.
 - <a id="fr-144"></a>**FR-144**: An `mcp` primitive no primitive names MUST be a warning under its own file, stopping nothing ([FR-014](#fr-014)).
-- <a id="fr-145"></a>**FR-145**: The build MUST write the list of places, `.cw/out/mcp-origins.json`: one entry per address and path, holding every identity declaring it, from every layer, and the union of the ways each allows signing in — where the place is and how it is signed in to, and nothing an mcp's own file and the catalogue already say. A place's tools are the union of what its identities declare, each identity's served under its own prefix: the first segment of its id and four hex characters hashed from its identity (FNV-1a), `mfbs_xxxx` for `mcp:mfbs/billing`, short whatever the id's length and the same on every build whatever other mcps come and go; two that hash alike are told apart by `_2` onward, in the order the identities sort in. Two identities at one place are two prefixes, never one chosen between them.
+- <a id="fr-145"></a>**FR-145**: The build MUST write the list of places, `.cw/out/mcp-origins.json`: one entry per address and path, holding every identity declaring it, from every layer, the name each identity is served under, and the union of the ways each allows signing in — where the place is, how it is signed in to and what its tools are served under, and nothing an mcp's own file and the catalogue already say. A place's tools are the union of what its identities declare, each identity's served under its own prefix: the first segment of its id and four hex characters hashed from its identity (FNV-1a), `mfbs_xxxx` for `mcp:mfbs/billing`, short whatever the id's length and the same on every build whatever other mcps come and go; two that hash alike are told apart by `_2` onward, in the order the identities sort in. Two identities at one place are two prefixes, never one chosen between them.
 - <a id="fr-146"></a>**FR-146**: The build MUST write, into each chosen agent's MCP configuration, one entry starting `cw mcp serve`, whether or not the charter declares an `mcp` primitive yet, and MUST leave every other entry of that configuration as it was.
-- <a id="fr-147"></a>**FR-147**: A primitive's compiled document ([FR-139](#fr-139)) and every host document compiled from it MUST write each `mcp:<id>` its body names, of an mcp the charter holds, as the prefix the host calls that place's tools by: for Claude Code `mcp__cw__` and the identity's served prefix ([FR-145](#fr-145)). A name no layer holds MUST be left as written; the charter has already warned about it. The charter itself knows no host's names.
+- <a id="fr-147"></a>**FR-147**: A primitive's compiled document ([FR-139](#fr-139)) and every host document compiled from it MUST write each `mcp:<id>` its body names, of an mcp the charter holds, as the name that identity's tools are served under ([FR-145](#fr-145)), with no host's prefix before it. A name no layer holds MUST be left as written; the charter has already warned about it. The charter itself knows no host's names.
 - <a id="fr-148"></a>**FR-148**: `cw mcp auth` MUST sign the developer in, as themselves, to every address the charter holds that they are not signed in to, one address at a time, offering every way any `mcp` primitive at that address allows, whichever layer declared it. One sign-in MUST serve every primitive at that address. No credential MUST be shared between developers, or held for them.
 - <a id="fr-149"></a>**FR-149**: A credential MUST be kept in the operating system's own credential store, under its address, and MUST NOT be written to any file under the repository, to the compiled output, or to anything `cw` prints. A token typed at a prompt MUST NOT be shown.
 - <a id="fr-150"></a>**FR-150**: `cw mcp auth` MUST ask only at a terminal. With none, it MUST ask nothing, name each address not signed in to, and exit with a failure status. `cw mcp auth --status` MUST list each address, the identities at it, and whether the developer is signed in there, and change nothing. `cw mcp auth <mcp identity>` MUST sign in again to that primitive's address alone.

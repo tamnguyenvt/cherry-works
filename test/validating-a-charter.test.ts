@@ -249,6 +249,7 @@ test("a repository mcp and a vendor mcp at one endpoint and path are one place, 
   assert.deepEqual(mcpOriginsOf(charter), [
     {
       identities: ["mcp:acme/code", "mcp:billing"],
+      names: { "mcp:acme/code": "acme_bc84", "mcp:billing": "billing_aec3" },
       address: "https://mcp.example.com/",
       endpoint: "https://mcp.example.com/",
       path: "acme/billing",

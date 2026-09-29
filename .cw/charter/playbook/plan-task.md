@@ -1,34 +1,26 @@
 ---
 kind: playbook
 id: plan-task
-description: Instruction for creating spec and plan
+description: Instruction for writing a phase's stories into the spec
 triggers: ["clarfify requirement"]
 ---
 
-use /speckit-clarify to clarify requirements 
+One job: write the stories of a phase into the spec. Nothing else is written: no plan, no task list, no decision records. How a story is built is decided when it is implemented (playbook implement-task).
+
+Use /speckit-clarify to clarify requirements, and write them into `specs/spec.md`.
+
 The output must be:
 - specs
-  - checklists
-    - requirements.md
-  - mockup (optional)
-  - data-model.md
-  - plan.md
   - spec.md
-  - tasks
-    - [phase].md
+  - mockup (optional)
 
-There is one spec, one plan, one data model and one checklist for the whole product: a new phase extends them in place, writing what the product is now rather than an amendment beside what it was. Only tasks are split by phase, one file per phase under `specs/tasks/`. FR, SC and story ids are numbered once across the whole spec, and the per-task design notes of `plan.md` have one section per phase.
+`spec.md` answers **what** and **why**: user stories, Given/When/Then scenarios, FR-xxx, SC-xxx, out of scope, and each story's status. A story's scenarios are its acceptance criteria. It never holds file names, class names or how anything is built.
 
-Each fact lives in one file; the others cite it by its id (FR-012, plan §4.2, Story 1 scenario 3) rather than restating it.
+There is one spec for the whole product: a new phase extends it in place, writing what the product is now rather than an amendment beside what it was. FR, SC and story ids are numbered once across the whole spec.
 
-Every cited id is a link to where it is defined, so a click in the editor or on GitHub lands on it: `[FR-012](../spec.md#fr-012)`, `plan [§4.2](../plan.md#42-…)`, `[T2.001](tasks/002-charter-portal.md#t2.001)`. Write ids as plain text and run `pnpm run specs:link`: it anchors every FR, SC and task item, links every citation to it (a story or a § to its heading), and names any id cited that nothing defines. `pnpm run specs:check` changes nothing and fails while a file is stale or a citation dangles. Never hand-edit a generated link or `<a id>` anchor; the next run rewrites them.
+**Stories.** Numbered in the order they will be implemented; that order is the schedule. Each carries a status line right under its heading — `**Status**: Todo` or `**Status**: Done` — never inside the heading, so the heading's anchor never changes. A story too big for one reviewable change is split into smaller stories here.
 
-| File | Answers | Holds | Never holds |
-|---|---|---|---|
-| `spec.md` | **What** and **why** | user stories, Given/When/Then scenarios, FR-xxx, SC-xxx, out of scope | file names, class names, how it is built |
-| `plan.md` | **How** | design decisions, which modules change, why this way, numbered § | restated FRs or scenarios — cite their ids |
-| `data-model.md` | The **shape** of the data | entities, fields, relations | procedure, order of work |
-| `tasks/[phase].md` | In what **order**, **split** how | id, one-line summary, the ids it cites, what it depends on | restated acceptance criteria, file paths, design |
+Cite by id (FR-012, SC-004, Story 1 scenario 3) rather than restating. Write ids as plain text and run `pnpm run specs:link`, which links each to where it is defined; `pnpm run specs:check` fails while a citation dangles. Never hand-edit a generated link or `<a id>` anchor.
 
 **Iron law:**
 

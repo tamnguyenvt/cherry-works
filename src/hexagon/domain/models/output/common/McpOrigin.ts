@@ -11,6 +11,10 @@ import type { MCP_AUTHS } from "../../charter/primitive/McpPrimitive.js";
 export interface McpOrigin {
   /** Every mcp at this address and path, sorted. */
   readonly identities: readonly string[];
+  /** The name each of those identities is served under, its tools as
+   *  `<name>__<tool>`: made once, by the build that wrote the bodies naming
+   *  it, so the server reads it rather than making it again (FR-145). */
+  readonly names: Readonly<Record<string, string>>;
   readonly address: string;
   readonly endpoint?: string;
   readonly command?: { readonly command: string; readonly args: readonly string[]; readonly tokenEnv?: string };

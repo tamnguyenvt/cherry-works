@@ -283,7 +283,7 @@ test("a body naming an mcp no layer holds still builds, the name left as the aut
   assert.match(await contentsOf(held, ".cw/out/guide/no-any.md"), /Take the requirements from mcp:missing\./);
 });
 
-test("a build writes every place the charter's mcps reach to mcp-origins.json (FR-145)", async () => {
+test("a build writes every place the charter's mcps reach to mcp-origins.json, with the name each identity is served under (FR-145)", async () => {
   const { held, build } = building({
     [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Read mcp:mfbs/billing."),
     [at("mcp/mfbs/billing.md")]: primitive("mcp", "mfbs/billing", [
@@ -300,6 +300,7 @@ test("a build writes every place the charter's mcps reach to mcp-origins.json (F
     origins: [
       {
         identities: ["mcp:mfbs/billing"],
+        names: { "mcp:mfbs/billing": "mfbs_19e4" },
         address: "https://api.githubcopilot.com/mcp/",
         endpoint: "https://api.githubcopilot.com/mcp/",
         path: "acme/billing",
@@ -366,7 +367,7 @@ test("what the repository set in the host's settings is kept beside the charter'
   });
 });
 
-test("once compiled, a place a body names is what claude calls it, in the document the host points to (FR-147)", async () => {
+test("once compiled, a place a body names is the name its tools are served under, in the document the host points to (FR-147)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/no-any.md")]: primitive(
@@ -381,7 +382,7 @@ test("once compiled, a place a body names is what claude calls it, in the docume
 
   filesOf(await build());
 
-  const hostBody = "Take the requirements from mcp__cw__github_ae69, and the decisions from mcp__cw__notion_f3cb.";
+  const hostBody = "Take the requirements from github_ae69, and the decisions from notion_f3cb.";
   assert.ok((await contentsOf(held, ".cw/out/guide/no-any.md")).includes(hostBody));
 });
 

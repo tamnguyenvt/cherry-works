@@ -1,6 +1,9 @@
 import { DomainFault } from "../domain/models/DomainFault.js";
+import { McpPrimitive } from "../domain/models/charter/primitive/McpPrimitive.js";
+import { primitiveOf } from "../domain/models/charter/primitive/Primitive.js";
 import type { McpOrigin } from "../domain/models/output/common/McpOrigin.js";
 import { OUT_DIRECTORY, outFolderIn } from "../domain/path.js";
+import type { ForParsingYaml } from "../port/zdriven/ForParsingYaml.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 
 /**
@@ -25,4 +28,42 @@ export async function loadMcpOrigins(repo: URL, fileReader: ForReadingFiles): Pr
     // Said below, as any list that does not read is.
   }
   throw new DomainFault(`${file} does not hold a list of places.`, 'Run "cw build" to write it again.');
+}
+
+/**
+ * The tools each mcp the last build compiled declares, under its identity: read
+ * from its compiled document, found through `.cw/out/catalog.json`, since the
+ * list of places holds where a place is and nothing an mcp's own file says
+ * (FR-145). The server reads these and no charter.
+ *
+ * An mcp whose compiled document is missing or does not read is left out: the
+ * caller says so, naming it, and serves the rest.
+ */
+export async function loadMcpTools(
+  repo: URL,
+  fileReader: ForReadingFiles,
+  yamlParser: ForParsingYaml,
+): Promise<ReadonlyMap<string, readonly string[]>> {
+  const contents = await fileReader.readIfThere(new URL("catalog.json", outFolderIn(repo)));
+  let catalogEntries: readonly { identity?: unknown; kind?: unknown; file?: unknown }[] = [];
+  try {
+    const catalogJson: unknown = JSON.parse(contents ?? "[]");
+    if (Array.isArray(catalogJson)) catalogEntries = catalogJson;
+  } catch {
+    // No mcp is read from a catalogue that does not read; each is said missing.
+  }
+
+  const toolsByIdentity = new Map<string, readonly string[]>();
+  for (const { identity, kind, file } of catalogEntries) {
+    if (kind !== McpPrimitive.kind || typeof identity !== "string" || typeof file !== "string") continue;
+    const compiledDocument = await fileReader.readIfThere(new URL(file, repo));
+    if (compiledDocument === undefined) continue;
+    try {
+      const primitive = primitiveOf(compiledDocument, yamlParser);
+      if (primitive instanceof McpPrimitive) toolsByIdentity.set(identity, primitive.headers.tools);
+    } catch {
+      // Said by the caller, as a missing one is.
+    }
+  }
+  return toolsByIdentity;
 }

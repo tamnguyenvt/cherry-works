@@ -12,12 +12,14 @@ import { FileOutput } from "./src/zdriven/FileOutput.js";
 import { Git } from "./src/zdriven/Git.js";
 import { OsSecrets } from "./src/zdriven/OsSecrets.js";
 import { OAuth } from "./src/zdriven/OAuth.js";
+import { McpClients } from "./src/zdriven/McpClients.js";
 import type { ForReadingFiles } from "./src/hexagon/port/zdriven/ForReadingFiles.js";
 import type { ForParsingYaml } from "./src/hexagon/port/zdriven/ForParsingYaml.js";
 import type { ForWritingFiles } from "./src/hexagon/port/zdriven/ForWritingFiles.js";
 import type { ForVCS } from "./src/hexagon/port/zdriven/ForVCS.js";
 import type { ForKeepingSecrets } from "./src/hexagon/port/zdriven/ForKeepingSecrets.js";
 import type { ForAuthorizing } from "./src/hexagon/port/zdriven/ForAuthorizing.js";
+import type { ForCallingMcpServers } from "./src/hexagon/port/zdriven/ForCallingMcpServers.js";
 import type { ForManagingCharter } from "./src/hexagon/port/driver/ForManagingCharter.js";
 import type { ForVendoringCharters } from "./src/hexagon/port/driver/ForVendoringCharters.js";
 import type { ForAuthoringTests } from "./src/hexagon/port/driver/ForAuthoringTests.js";
@@ -35,6 +37,7 @@ const fileWriter: ForWritingFiles = new FileOutput();
 const vcs: ForVCS = new Git(fileReader);
 const secrets: ForKeepingSecrets = new OsSecrets();
 const authorizing: ForAuthorizing = new OAuth();
+const mcpServers: ForCallingMcpServers = new McpClients();
 
 /** Where this was run, as the hexagon takes a repository: a directory, so it
  *  ends in a separator. */
@@ -46,7 +49,7 @@ const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath,
 
 const testAuthoringApp: ForAuthoringTests = new TestAuthoring(repoPath, fileReader, fileWriter);
 
-const mcpConnectingApp: ForConnectingMcps = new McpConnecting(repoPath, fileReader, secrets, authorizing);
+const mcpConnectingApp: ForConnectingMcps = new McpConnecting(repoPath, fileReader, secrets, authorizing, yamlParser, mcpServers);
 
 const cli = new Commander({ cwd: process.cwd(), version: packageJson.version, charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp });
 

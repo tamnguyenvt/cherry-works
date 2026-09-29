@@ -12,6 +12,7 @@ import type { McpOrigin } from "../src/hexagon/domain/models/output/common/McpOr
 import { InMemoryAuthorizing } from "../src/zdriven/InMemoryAuthorizing.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
+import { InMemoryMcpServers } from "../src/zdriven/InMemoryMcpServers.js";
 import { InMemorySecrets } from "../src/zdriven/InMemorySecrets.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
@@ -25,10 +26,10 @@ const LINEAR = "https://mcp.linear.app/mcp";
  *  signed in to by token alone, and a local command taking no token, which
  *  signs in to nothing. */
 const ORIGINS: readonly McpOrigin[] = [
-  { identities: ["mcp:github/billing"], address: GITHUB, endpoint: GITHUB, path: "acme/billing", auth: ["oauth", "token"] },
-  { identities: ["mcp:github/web"], address: GITHUB, endpoint: GITHUB, path: "acme/web", auth: ["token"] },
-  { identities: ["mcp:linear"], address: LINEAR, endpoint: LINEAR, auth: ["token"] },
-  { identities: ["mcp:local"], address: "npx -y some-server", command: { command: "npx", args: ["-y", "some-server"] }, auth: [] },
+  { identities: ["mcp:github/billing"], names: { "mcp:github/billing": "github_0000" }, address: GITHUB, endpoint: GITHUB, path: "acme/billing", auth: ["oauth", "token"] },
+  { identities: ["mcp:github/web"], names: { "mcp:github/web": "github_0000" }, address: GITHUB, endpoint: GITHUB, path: "acme/web", auth: ["token"] },
+  { identities: ["mcp:linear"], names: { "mcp:linear": "linear_0000" }, address: LINEAR, endpoint: LINEAR, auth: ["token"] },
+  { identities: ["mcp:local"], names: { "mcp:local": "local_0000" }, address: "npx -y some-server", command: { command: "npx", args: ["-y", "some-server"] }, auth: [] },
 ];
 
 /** Every place the command line is driven through over one list of places, the
@@ -37,7 +38,7 @@ const placesOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
   const held = new InMemoryFileReaders(origins === null ? {} : { [ORIGINS_FILE]: JSON.stringify({ origins }) });
   const secrets = new InMemorySecrets();
   const authorizing = new InMemoryAuthorizing();
-  const mcpConnectingApp = new McpConnecting(repoPath, held, secrets, authorizing);
+  const mcpConnectingApp = new McpConnecting(repoPath, held, secrets, authorizing, new YamlParser(), new InMemoryMcpServers());
   const noFiles = new InMemoryFileReaders({});
   const cli = new Commander({
     cwd: "/repo",
@@ -184,7 +185,7 @@ test("cw mcp auth <identity> signs in again at that identity's address alone, wh
 
 test("a place at plain http on another machine is signed in to by no way, and keeps nothing, whatever the list says (FR-149)", async () => {
   const CLEARTEXT = "http://mcp.example/mcp";
-  const { mcpConnectingApp, secrets } = placesOver([{ identities: ["mcp:cleartext"], address: CLEARTEXT, endpoint: CLEARTEXT, auth: ["oauth", "token"] }]);
+  const { mcpConnectingApp, secrets } = placesOver([{ identities: ["mcp:cleartext"], names: { "mcp:cleartext": "cleartext_0000" }, address: CLEARTEXT, endpoint: CLEARTEXT, auth: ["oauth", "token"] }]);
 
   await assert.rejects(mcpConnectingApp.signInWithToken(CLEARTEXT, "t"), { message: /plain http/, fix: /https:\/\// });
   await assert.rejects(mcpConnectingApp.signInWithOAuth(CLEARTEXT, () => undefined), /plain http/);

@@ -48,15 +48,25 @@ export async function writeCredential(secrets: ForKeepingSecrets, credential: Cr
  * is kept, so the next call uses it rather than renewing again. A place at
  * plain `http` on another machine is refused before anything is read: the
  * credential would travel in the clear.
+ *
+ * `refused` says the place has just refused this credential, so it is renewed
+ * whatever its expiry says.
  */
-export async function credentialFor(secrets: ForKeepingSecrets, authorizing: ForAuthorizing, origin: McpOrigin): Promise<string> {
+export async function credentialFor(
+  secrets: ForKeepingSecrets,
+  authorizing: ForAuthorizing,
+  origin: McpOrigin,
+  { refused = false }: { readonly refused?: boolean } = {},
+): Promise<string> {
   if (origin.endpoint !== undefined && !isSecureEndpoint(origin.endpoint))
     throw new DomainFault(`${origin.address} is plain http to another machine, so no credential is sent there.`, 'Declare its endpoint as https://, then run "cw build".');
   const signInAgain = `Run "cw mcp auth ${origin.identities[0] ?? ""}" at a terminal to sign in there.`;
   const credential = await readCredential(secrets, origin.address);
   if (credential === undefined) throw new DomainFault(`You are not signed in to ${origin.address}.`, signInAgain);
 
-  const expired = credential.expiresAt !== undefined && Date.parse(credential.expiresAt) <= Date.now();
+  // A credential the place has just refused is renewed as an expired one is:
+  // the place knows better than `expiresAt` (FR-151).
+  const expired = refused || (credential.expiresAt !== undefined && Date.parse(credential.expiresAt) <= Date.now());
   if (!expired) return credential.accessToken;
 
   const { address, method, client, ...tokens } = credential;

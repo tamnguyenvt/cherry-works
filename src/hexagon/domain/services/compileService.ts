@@ -5,7 +5,7 @@ import { Catalogue } from "../models/output/common/Catalogue.js";
 import { CharterMd } from "../models/output/common/CharterMd.js";
 import { CompiledPrimitive } from "../models/output/common/CompiledPrimitive.js";
 import type { McpOrigin } from "../models/output/common/McpOrigin.js";
-import { shortenStringsOf } from "../models/helper.js";
+import { shortenStringsOf, type ShortStrings } from "../models/helper.js";
 import type { CharterRoot, ScopedPrimitive } from "../models/charter/CharterRoot.js";
 import { MixinPrimitive } from "../models/charter/primitive/MixinPrimitive.js";
 import { MCP_AUTHS, MCP_MENTION, McpPrimitive } from "../models/charter/primitive/McpPrimitive.js";
@@ -38,8 +38,8 @@ import { compileForClaude } from "./providers/claude.js";
 export function compile(charter: CharterRoot, agents: readonly AgentProvider[]): CharterOutput {
   // What `cw mcp serve` serves each place's tools under, `<prefix>__<tool>`:
   // short whatever the id's length, and the same on every build whatever other
-  // mcps come and go (FR-145). Made from the identities alone, so the server,
-  // which reads `mcp-origins.json` and no charter, makes the same ones.
+  // mcps come and go (FR-145). Written into `mcp-origins.json` beside each
+  // place, so the server, which reads no charter, serves under these.
   const shortStrings = shortenStringsOf(
     charter.primitives.filter(({ primitive }) => primitive.kind === McpPrimitive.kind).map((one) => one.identity),
   );
@@ -51,16 +51,13 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
         // that file as an error, and a build refused for it never reaches
         // here (FR-009).
         mixins: charter.mixinsOf(one).flatMap(({ primitive }) => (primitive.kind === MixinPrimitive.kind ? [primitive] : [])),
-        // Each place the body names as `mcp:<id>` written as the prefix of its
-        // tools as claude calls them: claude names every tool of the `cw`
-        // server `mcp__cw__<tool>`, and `cw mcp serve` serves a place's under
-        // its served prefix (FR-147). A name no mcp answers to has no prefix
-        // and is left as written; the charter has warned about it (FR-143).
+        // Each place the body names as `mcp:<id>` written as the name its
+        // tools are served under, `<name>__<tool>`, which every host's name for
+        // them holds whatever it puts before it (FR-147). A name no mcp
+        // answers to has none and is left as written; the charter has warned
+        // about it (FR-143).
         idReplacer: (body) =>
-          body.replace(MCP_MENTION, (identity) => {
-            const found = shortStrings[identity];
-            return found === undefined ? identity : `mcp__cw__${found}`;
-          }),
+          body.replace(MCP_MENTION, (identity) => shortStrings[identity] ?? identity),
       }),
     ),
   );
@@ -72,7 +69,7 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
     catalogue: catalogueOf(charter, (one) => compiledPrimitives.find((compiled) => compiled.identity === one.identity)!.file),
     charterMd: CharterMd.of(PRIMITIVE_CLASSES),
     compiledPrimitives,
-    mcpOrigins: mcpOriginsOf(charter),
+    mcpOrigins: mcpOriginsOf(charter, shortStrings),
     providerComponents: agents.flatMap((agent) => compileForAgent(agent, charter, compiledPrimitives)),
   };
 }
@@ -114,10 +111,10 @@ export function catalogueOf(charter: CharterRoot, fileOf: (one: ScopedPrimitive)
  *
  * One per address and `path`: the repository and a vendor may call one place
  * by two names, and it is one place under both. What is held is where it is and
- * how it is signed in to — every way any identity there allows — and nothing
- * an mcp's own file already says.
+ * how it is signed in to — every way any identity there allows — the name
+ * each identity is served under, and nothing an mcp's own file already says.
  */
-function mcpOriginsOf(charter: CharterRoot): readonly McpOrigin[] {
+function mcpOriginsOf(charter: CharterRoot, shortStrings: ShortStrings): readonly McpOrigin[] {
   const mcpsByKey = new Map<string, { identity: string; primitive: McpPrimitive }[]>();
   for (const { identity, primitive } of [...charter.primitives].sort((one, another) => (one.identity < another.identity ? -1 : 1))) {
     if (primitive.kind !== McpPrimitive.kind) continue;
@@ -137,6 +134,7 @@ function mcpOriginsOf(charter: CharterRoot): readonly McpOrigin[] {
 
       return {
         identities: mcpsAtOrigin.map((one) => one.identity),
+        names: Object.fromEntries(mcpsAtOrigin.map((one) => [one.identity, shortStrings[one.identity] as string])),
         address: firstMcp.primitive.address,
         ...(endpoint === undefined ? {} : { endpoint }),
         ...(command === undefined ? {} : { command: { command, args, ...(tokenEnv === undefined ? {} : { tokenEnv }) } }),

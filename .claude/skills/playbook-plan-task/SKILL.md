@@ -1,6 +1,6 @@
 ---
 name: playbook-plan-task
-description: "Instruction for creating spec and plan Use when: clarfify requirement."
+description: "Instruction for writing a phase's stories into the spec Use when: clarfify requirement."
 ---
 
 Read and follow @../../../.cw/out/playbook/plan-task.md.

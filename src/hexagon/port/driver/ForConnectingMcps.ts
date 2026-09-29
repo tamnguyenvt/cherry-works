@@ -34,4 +34,24 @@ export interface ForConnectingMcps {
    * no OAuth sign-in.
    */
   signInWithOAuth(address: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<void>;
+
+  /**
+   * Every tool the places declare, as the agent is shown them, and what was
+   * left out and why (FR-153, FR-154). Every place is reached at once the first
+   * time this or `call` is asked, and never again in this run.
+   *
+   * Refused where the last build wrote no list of places, saying to build.
+   */
+  served(): Promise<DataDTOs.ServedTools>;
+
+  /**
+   * Forward one call by its served name to its place, under the developer's
+   * own credential, and answer what the place answered as it came (FR-154). A
+   * name that was not served, or whose place is down or not signed in to, is
+   * answered as an error saying why, and reaches no place.
+   */
+  call(name: string, args: Readonly<Record<string, unknown>>): Promise<DataDTOs.ToolAnswer>;
+
+  /** Let go of every place reached, stopping every local command started. */
+  stopServing(): Promise<void>;
 }

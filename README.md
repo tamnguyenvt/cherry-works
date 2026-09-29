@@ -247,7 +247,6 @@ every check and changes nothing. A plain `npm publish` is refused.
 The engine follows a hexagonal layout. `src/hexagon/` holds the domain, the
 application use cases and their ports. `src/driver/` holds the CLI and the
 portal that drive it. `src/zdriven/` holds the adapters for files, git and YAML.
-The design is written in [specs/spec.md](specs/spec.md) and
-[specs/plan.md](specs/plan.md).
+What it must do is written in [specs/spec.md](specs/spec.md).
 
 This repository is governed by its own charter under [.cw/charter/](.cw/charter/).
