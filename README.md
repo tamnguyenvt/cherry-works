@@ -80,7 +80,7 @@ The link points at your checkout. After you change the sources, run
 Inside the git repository you want to govern:
 
 ```bash
-cw init                       # asks which agent to compile for, then scaffolds .cw/charter/
+cw init                       # asks which agent to compile for (claude, selected), scaffolds .cw/charter/ and builds
 cw kinds guide                # what a guide requires
 cw add guide no-any --header description="No any in TypeScript." --header globs="src/**/*.ts"
 cw edit guide:no-any          # write the body in $VISUAL or $EDITOR
@@ -137,7 +137,7 @@ agent reads it.
 
 | Command | What it does |
 |---|---|
-| `cw init [--agent]` | Set the repository up under a charter |
+| `cw init [--agent]` | Set the repository up under a charter, and build it |
 | `cw build [--preview]` | Compile the charter, or show what a build would write |
 | `cw list [--kind] [--min]` | List what the charter holds |
 | `cw kinds [kind]` | List the kinds, or the fields one of them requires |
@@ -276,7 +276,8 @@ tool of a place, or `mcp:<id>:<tool>` for one of them.
 
 ## Your agent can write rules too
 
-Every governed repository gets a built-in skill, `skill:cw-author`. It teaches
+Every governed repository gets a built-in skill, `skill:cw-author`, in the
+agent's hands from the moment `cw init` finishes. It teaches
 the agent to ask `cw kinds` what a kind requires and to write primitives with
 `cw add`, instead of copying fields from memory.
 

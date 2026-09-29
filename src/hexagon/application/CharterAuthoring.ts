@@ -543,10 +543,10 @@ export class CharterAuthoring implements ForManagingCharter {
    * agent it runs reads (FR-033).
    *
    * Then the two things setup owns — what the repository configured itself
-   * with, and a directory per kind for a charter to be authored in — and
-   * nothing more: compiling is `build`'s, run once there is a charter to
-   * compile (FR-037). What comes back is that it is set up; what stops it is
-   * raised.
+   * with, and a directory per kind for a charter to be authored in — and a
+   * build over them, so the skill the engine brings is in the agent's hands
+   * before anything is authored (FR-057, FR-096). What comes back is what that
+   * build did, or what refused it; what stops setup itself is raised.
    *
    * Nothing is written into an ignore file: everything under the workspace is
    * committed, what a vendor installed included, so a checkout of this
@@ -557,7 +557,7 @@ export class CharterAuthoring implements ForManagingCharter {
    * so running this again reconfigures the repository and discards nothing
    * anybody wrote (FR-038).
    */
-  async init({ agents }: SettingsOptions): Promise<boolean> {
+  async init({ agents }: SettingsOptions): Promise<DataDTOs.PlanSummary | DataDTOs.FaultsByFile> {
     if (!(await this.#vcs.isInstalled(this.#repoPath)))
       throw new DomainFault(
         "This folder is not inside a git repository, and a charter is authored inside one.",
@@ -578,6 +578,6 @@ export class CharterAuthoring implements ForManagingCharter {
     const kindFolders = KINDS.map((kind) => `${CHARTER_DIRECTORY}/${kind}/.gitkeep`);
     for (const path of kindFolders) await this.#fileWriter.write(new URL(path, this.#repoPath), "");
 
-    return true;
+    return this.build();
   }
 }

@@ -6,7 +6,7 @@ import {
   type AgentProvider,
   type ForManagingCharter,
 } from "#hexagon/port/driver/ForManagingCharter.js";
-import { EXIT_OK, type Command, type Context, type Options, type Outcome } from "./Command.js";
+import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type Outcome } from "./Command.js";
 
 const OPTIONS = {
   agent: {
@@ -25,7 +25,7 @@ const OPTIONS = {
  *
  * Which agent is one such answer, and it is asked of the list this engine
  * compiles for rather than of the machine: whether claude is installed here is
- * no business of a charter's. Choose claude and the next build compiles
+ * no business of a charter's. Choose claude and the build setup runs compiles
  * everything for claude, `.claude/` created if it was not there.
  *
  * A repository already set up answers with what it is already running under, so
@@ -42,14 +42,28 @@ export class InitCommand implements Command<typeof OPTIONS> {
 
   async run({ charterAuthoringApp }: Context, { agent }: Options<typeof OPTIONS>): Promise<Outcome> {
     const agents = await whichAgents(charterAuthoringApp, agent);
-    await charterAuthoringApp.init({ agents });
+    const planSummaryDTO = await charterAuthoringApp.init({ agents });
+    const setUp = ["Set up this repository under a charter.", `Compiling for: ${agents.join(", ")}.`];
 
+    // Set up either way; a charter already here that does not hold is not
+    // built, and is said in the build's own words (FR-057).
+    if (planSummaryDTO.type === "FaultsByFile") {
+      const noOfFiles = Object.keys(planSummaryDTO.data.files).length;
+      return {
+        code: EXIT_FAILURE,
+        result: [...setUp, ""].join("\n"),
+        problem: `Nothing was built: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+      };
+    }
+
+    const { added, edited } = planSummaryDTO.data;
+    const wrote = added.length + edited.length;
     return {
       code: EXIT_OK,
       result: [
-        "Set up this repository under a charter.",
-        `Compiling for: ${agents.join(", ")}.`,
-        'Author your first rule under .cw/charter/guide/, then run "cw build".',
+        ...setUp,
+        `Built ${wrote} file${wrote === 1 ? "" : "s"}: ${added.length} added, ${edited.length} changed.`,
+        'Author your first rule under .cw/charter/guide/, or ask your agent to write one, then run "cw build".',
         "",
       ].join("\n"),
     };
@@ -86,18 +100,22 @@ async function whichAgents(
   }
 
   const agentsInSettings = (await charterAuthoringApp.settings()).data.agents.filter(isAgentProvider);
+  // What the repository already chose, or — where this engine compiles for one
+  // agent only — that one, selected before anybody is asked (FR-055).
+  const defaultAgents: readonly AgentProvider[] =
+    agentsInSettings.length > 0 ? agentsInSettings : AGENT_PROVIDERS.length === 1 ? AGENT_PROVIDERS : [];
 
   // Nobody at the terminal is answered with what the settings already name,
   // which is what the prompt below would hand back on a return: a pipeline
   // finishes rather than waits on an answer that is never coming (FR-035,
   // SC-012).
   if (!process.stdin.isTTY) {
-    if (agentsInSettings.length === 0)
+    if (defaultAgents.length === 0)
       throw new DomainFault(
         "Nobody is at the terminal to choose an agent, and this repository has none chosen yet.",
         `Run "cw init --agent <name>", naming one of: ${AGENT_PROVIDERS.join(", ")}.`,
       );
-    return agentsInSettings;
+    return defaultAgents;
   }
 
   const { chosen } = await prompts({
@@ -107,8 +125,9 @@ async function whichAgents(
     // What the settings already name arrives ticked, so a return keeps what this
     // repository is already running under and a second run is rechoosing rather
     // than starting over (FR-038). Nothing named yet — a repository being set up
-    // for the first time — arrives with nothing ticked.
-    choices: AGENT_PROVIDERS.map((one) => ({ title: one, value: one, selected: agentsInSettings.includes(one) })),
+    // for the first time — arrives with the one agent ticked where this engine
+    // compiles for one, and with nothing ticked otherwise (FR-055).
+    choices: AGENT_PROVIDERS.map((one) => ({ title: one, value: one, selected: defaultAgents.includes(one) })),
     // Ticking none of them is not an answer: a charter compiles for at least one
     // agent, so the prompt holds the submit until one is ticked (FR-033).
     min: 1,

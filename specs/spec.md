@@ -68,7 +68,7 @@ A developer has a repository and a coding agent, and wants the agent to work und
 
 **Acceptance Scenarios**:
 
-1. **Given** a git repository with no charter, **When** the developer runs setup, **Then** the charter root, with a directory per kind, and the agents the repository chose are written, nothing is compiled, and all of it is left in the working tree for the developer to read over and commit.
+1. **Given** a git repository with no charter, **When** the developer runs setup, **Then** the charter root, with a directory per kind, and the agents the repository chose are written, the charter is built so the agent can already author with the skill the engine brings, and all of it is left in the working tree for the developer to read over and commit.
 2. **Given** a charter containing a rule, **When** the developer runs the build, **Then** the indexes and every projected file are regenerated from one pass over the charter, and a projection whose source primitive was deleted is removed.
 3. **Given** a primitive missing a field its kind requires, **When** the developer runs the health check, **Then** the file and the missing field are named and the command exits with a failure status.
 4. **Given** a primitive whose file sits in a kind's directory without declaring its kind, **When** the charter is read, **Then** the kind is taken from the directory and the primitive is treated as valid.
@@ -492,7 +492,7 @@ A team keeps a subagent that looks for fraud in payments. Beside `Read`, its `to
 - The host's entry file already carries the section — the build writes that section again and leaves the rest of the file, whoever wrote it, untouched.
 - The host's entry file exists with no section, or does not exist at all — the build puts the section after what the file holds, or writes the file holding only the section.
 - Setup runs outside a git repository — it stops and says so rather than scaffolding into an untracked directory.
-- Setup runs with nobody to ask in a repository that has chosen no agent yet — it stops and names the flag that answers it, since the agent has no default there.
+- Setup runs with nobody to ask in a repository that has chosen no agent yet, and the engine compiles for more than one — it stops and names the flag that answers it, since the agent has no default there. Where the engine compiles for one, that one is the default, and is taken.
 - Two commands run back to back over an unchanged charter — the charter is read once, not twice.
 - The engine stops shipping a primitive it once shipped — the next build deletes the surface it compiled to, the way a build deletes the projection of any primitive that is gone.
 - A catalogue built before compiled documents existed — the next build names the compiled documents in it, and `cw build --preview` lists every one as added.
@@ -625,9 +625,9 @@ A team keeps a subagent that looks for fraud in payments. Beside `Read`, its `to
 **Setup**
 
 - <a id="fr-054"></a>**FR-054**: Setup MUST run inside a git repository, and MUST stop with an explanation when there is none.
-- <a id="fr-055"></a>**FR-055**: Setup MUST ask which agent the charter compiles for, offering the agents this engine compiles for and defaulting to the one the repository already chose, and MUST refuse to finish until at least one is chosen: a charter is authored to instruct an agent. It MUST NOT detect what is installed on the machine: choosing an agent compiles everything that agent reads, and the build creates the directory it reads from whether it was there or not.
-- <a id="fr-056"></a>**FR-056**: Every setup prompt MUST have a default acceptable without typing and an equivalent that can be supplied non-interactively, so the whole run is scriptable. The one exception is the agent in a repository that has chosen none yet: it has no default, so a run with nobody to ask MUST stop and name the flag that answers it.
-- <a id="fr-057"></a>**FR-057**: Setup MUST create the charter root with a directory per kind and record the agents the repository chose, and MUST compile nothing: compiling the charter is the build's, run once there is a charter to compile. It MUST NOT commit the result: what it wrote is left in the working tree for whoever ran it to read over and commit themselves.
+- <a id="fr-055"></a>**FR-055**: Setup MUST ask which agent the charter compiles for, offering the agents this engine compiles for and defaulting to the one the repository already chose, and MUST refuse to finish until at least one is chosen: a charter is authored to instruct an agent. Where the engine compiles for one agent only, a repository that has chosen none yet MUST be offered that one already selected, as its default. It MUST NOT detect what is installed on the machine: choosing an agent compiles everything that agent reads, and the build creates the directory it reads from whether it was there or not.
+- <a id="fr-056"></a>**FR-056**: Every setup prompt MUST have a default acceptable without typing and an equivalent that can be supplied non-interactively, so the whole run is scriptable. The one exception is the agent in a repository that has chosen none yet, where the engine compiles for more than one: it has no default, so a run with nobody to ask MUST stop and name the flag that answers it.
+- <a id="fr-057"></a>**FR-057**: Setup MUST create the charter root with a directory per kind and record the agents the repository chose, and then build the charter, as `cw build` does, so the skill the engine brings ([FR-096](#fr-096)) is in the agent's hands before anything is authored. A charter that does not hold is not built, and setup MUST say so as the build does, keeping what it configured. It MUST NOT commit the result: what it wrote is left in the working tree for whoever ran it to read over and commit themselves.
 - <a id="fr-058"></a>**FR-058**: Re-running setup in an initialized repository MUST reconfigure it — offering current answers as defaults — and MUST NOT discard authored content.
 
 **Asking a kind what it requires**

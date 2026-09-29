@@ -4,6 +4,7 @@ import { Commander } from "../src/driver/cli/Commander.js";
 import { COMMANDS } from "../src/driver/cli/commands/index.js";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { KINDS } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
+import { AGENT_PROVIDERS } from "../src/hexagon/domain/models/AgentProvider.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -74,12 +75,12 @@ test("an agent this engine does not compile for is refused, naming the ones it d
   assert.match(problems, /no agent called "cursor"/);
 });
 
-test("with nobody to ask and nothing chosen yet, setup is refused, naming the flag, and writes nothing (FR-033, FR-035)", async () => {
-  const { code, held: files, problems } = await setUp();
+test("with nobody to ask, the one agent this engine compiles for is the default, and is taken (FR-055)", async () => {
+  const { code, held: files, results } = await setUp();
 
-  assert.equal(code, 1);
-  assert.match(problems, /cw init --agent <name>/);
-  assert.equal(await held(files, ".cw/settings.json"), undefined);
+  assert.equal(code, 0);
+  assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: AGENT_PROVIDERS });
+  assert.match(results, new RegExp(`Compiling for: ${AGENT_PROVIDERS[0]}\\.`));
 });
 
 test("setup given no agent is refused by the engine, whatever drives it (FR-033)", async () => {
@@ -98,7 +99,16 @@ test("what this repository already chose is the default the next run keeps (FR-0
   assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["claude"] });
 });
 
-test("setting up compiles nothing: a build is what compiles the charter, and it says to run one (FR-037)", async () => {
+test("setting up builds the charter, so the agent can author with the skill the engine brings (FR-057)", async () => {
+  const { code, held: files, results } = await setUp({}, ["init", "--agent", "claude"]);
+
+  assert.equal(code, 0);
+  assert.notEqual(await held(files, ".claude/skills/skill-cw-author/SKILL.md"), undefined);
+  assert.notEqual(await held(files, ".cw/out/CHARTER.md"), undefined);
+  assert.match(results, /Built \d+ files/);
+});
+
+test("setting up again builds what is already authored (FR-057, FR-058)", async () => {
   const { code, held: files, results } = await setUp(
     {
       [new URL(".cw/charter/guide/no-any.md", repoPath).href]:
@@ -108,16 +118,28 @@ test("setting up compiles nothing: a build is what compiles the charter, and it 
   );
 
   assert.equal(code, 0);
-  assert.equal(await held(files, ".claude/rules/guide-no-any.md"), undefined);
-  assert.equal(await held(files, ".cw/out/CHARTER.md"), undefined);
-  assert.match(results, /run "cw build"/);
+  assert.notEqual(await held(files, ".claude/rules/guide-no-any.md"), undefined);
+  assert.match(results, /Built \d+ files/);
 });
 
-test("setting up writes nothing for what the engine brings: it is supplied on every read (FR-016, FR-020)", async () => {
+test("setting up over a charter that does not hold keeps what it configured, builds nothing and says so (FR-057)", async () => {
+  const { code, held: files, problems } = await setUp(
+    { [new URL(".cw/charter/guide/broken.md", repoPath).href]: "---\nkind: guide\nid: broken\n---\n\nNo description.\n" },
+    ["init", "--agent", "claude"],
+  );
+
+  assert.equal(code, 1);
+  assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["claude"] });
+  assert.equal(await held(files, ".cw/out/CHARTER.md"), undefined);
+  assert.match(problems, /Nothing was built/);
+  assert.match(problems, /cw doctor/);
+});
+
+test("setting up authors nothing for what the engine brings: it is supplied on every read (FR-016, FR-020)", async () => {
   const { code, held: files } = await setUp({}, ["init", "--agent", "claude"]);
 
   assert.equal(code, 0);
-  const repositoryFiles = await files.readFilesRecursively(repoPath);
+  const repositoryFiles = await files.readFilesRecursively(new URL(".cw/charter/", repoPath));
   assert.deepEqual(
     repositoryFiles.map(({ file }) => file.href).filter((href) => href.includes("cw-author")),
     [],

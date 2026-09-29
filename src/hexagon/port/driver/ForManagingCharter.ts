@@ -286,18 +286,20 @@ export interface ForManagingCharter {
 
   /**
    * Set this repository up under a charter: the workspace, a directory per
-   * kind, and what it configured itself with (FR-037). Nothing is compiled —
-   * a build is what compiles a charter, run once there is one to compile.
+   * kind, and what it configured itself with (FR-037) — then the charter built,
+   * so the skill the engine brings reaches the agent before anything is
+   * authored (FR-057, FR-096).
    *
    * Takes every answer it acts on. It puts no question of its own: whoever
    * drove it had a person to ask and this has not, so what arrives here is
-   * decided and what comes back is `true`, the repository set up, or a fault
-   * raised saying why it is not (FR-032, FR-035).
+   * decided and what comes back is what the build did, or the faults it was
+   * refused by — the repository set up either way — or a fault raised saying
+   * why it is not (FR-032, FR-035).
    *
    * Re-running it is reconfiguring it: what setup writes is what setup owns,
    * and nothing authored is touched (FR-038).
    */
-  init(settingsOptions: SettingsOptions): Promise<boolean>;
+  init(settingsOptions: SettingsOptions): Promise<DataDTOs.PlanSummary | DataDTOs.FaultsByFile>;
 }
 
 /** What setup was answered, as one thing rather than a growing list of
