@@ -156,7 +156,7 @@ test("a word that is no kind is refused, naming it and the kinds it could have b
   assert.equal(code, EXIT_FAILURE);
   assert.equal(results, "");
   assert.match(problems, /"rule" is not a kind the charter knows/);
-  assert.match(problems, /guide, sensor, command/);
+  assert.match(problems, /guide, sensor, skill/);
 });
 
 test("a charter with an error lists nothing and sends the user to doctor", async () => {

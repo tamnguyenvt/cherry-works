@@ -10,9 +10,8 @@ This repository is governed by a charter — the standards it authored under `.c
 
 - **guide** — a touched file matches one of its `globs`, or every turn where globs are not specified.
 - **sensor** — the `signal` it names is raised, and the harness runs what it says to `run`.
-- **command** — it is asked for by name, or a request matches what it describes itself as being for.
 - **skill** — one of its `triggers` matches what is being asked.
-- **playbook** — one of its `triggers` matches; the body is a sequence of commands.
+- **playbook** — one of its `triggers` matches; the body is a sequence of skills.
 - **agent** — it is spawned by identity, holding the `tools` it lists and nothing else — a place as `mcp:<id>`, or one of its tools as `mcp:<id>:<tool>`.
 - **posture** — always, wherever the host can be told what to `allow` and what to `deny`.
 - **corpus** — a primitive's `rationale` cites it — the reasoning, read when someone asks why.

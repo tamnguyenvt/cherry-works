@@ -10,7 +10,7 @@ const at = (path: string) => new URL(path, "file:///repo/.cw/charter/").href;
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
 
-/** A charter with something of three kinds and nothing of the six others: what
+/** A charter with something of three kinds and nothing of the five others: what
  *  a reader meets, and what a chip with no primitives behind it has to survive. */
 const charter = {
   [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:why", 'mixins: ["voice"]']),
@@ -26,7 +26,7 @@ test("every kind the charter knows has a chip, carrying how many primitives of i
 
     assert.deepEqual(
       await chipsOf(page),
-      KINDS.map((kind, index) => [kind, ["1", "0", "0", "1", "0", "0", "0", "1", "1", "0"][index]]),
+      KINDS.map((kind, index) => [kind, ["1", "0", "1", "0", "0", "0", "1", "1", "0"][index]]),
     );
   });
 });

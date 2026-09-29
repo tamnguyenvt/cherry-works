@@ -1,11 +1,9 @@
 import type { ScopedPrimitive } from "../../../charter/CharterRoot.js";
 import { AgentPrimitive } from "../../../charter/primitive/AgentPrimitive.js";
-import { CommandPrimitive } from "../../../charter/primitive/CommandPrimitive.js";
 import { GuidePrimitive } from "../../../charter/primitive/GuidePrimitive.js";
 import { PlaybookPrimitive } from "../../../charter/primitive/PlaybookPrimitive.js";
 import { SkillPrimitive } from "../../../charter/primitive/SkillPrimitive.js";
 import { ClaudeAgentComponent } from "./document-based-components/ClaudeAgentComponent.js";
-import { ClaudeCommandComponent } from "./document-based-components/ClaudeCommandComponent.js";
 import { ClaudeRuleComponent } from "./document-based-components/ClaudeRuleComponent.js";
 import { ClaudeMcpConfigComponent } from "./ClaudeMcpConfigComponent.js";
 import { ClaudeSettingsComponent } from "./ClaudeSettingsComponent.js";
@@ -15,7 +13,6 @@ import { ClaudeSkillComponent } from "./document-based-components/ClaudeSkillCom
  *  and a line here; what the kinds are is read back off this list rather than
  *  written down twice. */
 export const CLAUDE_COMPONENT_CLASSES = [
-  ClaudeCommandComponent,
   ClaudeAgentComponent,
   ClaudeSkillComponent,
   ClaudeSettingsComponent,
@@ -72,9 +69,6 @@ export function claudeDocumentComponentOf(sc: ScopedPrimitive, compiledFile: str
       const { globs = [] } = sc.primitive.headers;
       return ClaudeRuleComponent.of(name, globs.length === 0 ? {} : { paths: globs }, `@${compiledFromClaudeFolder}\n`);
     }
-    // for command, remove kind prefix so user just types /do-something instead of /command-do-something
-    case CommandPrimitive.kind:
-      return ClaudeCommandComponent.of(name.replace(`${CommandPrimitive.kind}-`, ""), { description: sc.primitive.description() }, pointerTo(compiledFromClaudeFolder));
     case AgentPrimitive.kind: {
       const { tools } = sc.primitive.headers;
       return ClaudeAgentComponent.of(name, { description: sc.primitive.description(), tools: (agentTools ?? tools).join(", ") }, pointerTo(compiledFromClaudeFolder));

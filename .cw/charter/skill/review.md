@@ -1,7 +1,8 @@
 ---
-kind: command
+kind: skill
 id: review
 description: review implementation 
+triggers: ["review implementation"]
 ---
 Review code and ensure implementation matches Success Criteria (SC), Functional requirement(FR).
 Implementation must not implement out of requrements, if yes, mark as failed implementation.

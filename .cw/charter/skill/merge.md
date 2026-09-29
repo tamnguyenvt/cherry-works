@@ -1,7 +1,8 @@
 ---
-kind: command
+kind: skill
 id: merge
 description: merge branch
+triggers: ["merge branch"]
 ---
 
 if you are standing on feature branch, squash merge into phase branch and squash merge commit will be task title.

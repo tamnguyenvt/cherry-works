@@ -2,7 +2,7 @@
 
 **Created**: 2026-08-30
 
-**Updated**: 2026-09-27
+**Updated**: 2026-09-29
 
 **Status**: Draft
 
@@ -550,7 +550,7 @@ A team keeps a subagent that looks for fraud in payments. Beside `Read`, its `to
 
 **The charter format**
 
-- <a id="fr-001"></a>**FR-001**: The system MUST recognise exactly these primitive kinds — guide, sensor, command, skill, playbook, agent, posture, corpus, mixin and mcp — and MUST treat any other kind as a validation error. The set is closed.
+- <a id="fr-001"></a>**FR-001**: The system MUST recognise exactly these primitive kinds — guide, sensor, skill, playbook, agent, posture, corpus, mixin and mcp — and MUST treat any other kind as a validation error. The set is closed.
 - <a id="fr-002"></a>**FR-002**: Every primitive MUST be a single markdown file kept in the directory of its kind within the charter root, and MUST carry at minimum a kind, an identity and a description. The system MUST look for primitives in those directories and nowhere else, so that the catalogues, the lockfile and every other generated file beside them are never read as primitives.
 - <a id="fr-003"></a>**FR-003**: Every primitive MUST declare its own kind, and the system MUST read it as that kind wherever the file sits. A file that declares no kind, or one outside the set, MUST be reported.
 - <a id="fr-004"></a>**FR-004**: The system MUST enforce, per kind, the additional fields that kind requires: a triggering signal and the command it runs, for a sensor; activation triggers for a skill and for a playbook; a tool list for an agent; permission lists for a posture; and an address, the ways to sign in, and a tool list for an mcp ([FR-142](#fr-142)). A mixin MUST NOT pull in mixins of its own.
@@ -594,7 +594,7 @@ A team keeps a subagent that looks for fraud in payments. Beside `Read`, its `to
 
 **Applying the charter**
 
-- <a id="fr-030"></a>**FR-030**: The system MUST compile the charter into the instruction surface the agent actually reads, including an agent-neutral instruction file and, when an agent is chosen, that agent's own command, role, capability and permission surfaces.
+- <a id="fr-030"></a>**FR-030**: The system MUST compile the charter into the instruction surface the agent actually reads, including an agent-neutral instruction file and, when an agent is chosen, that agent's own role, capability and permission surfaces.
 - <a id="fr-031"></a>**FR-031**: An agent-neutral target MUST always exist, so that applying the charter is possible even when no agent is installed.
 - <a id="fr-032"></a>**FR-032**: Compiled output MUST be treated as generated: regenerated wholesale on every build, never hand-edited, and deleted when the primitive it came from is removed.
 - <a id="fr-033"></a>**FR-033**: The system MUST regenerate the catalogues and the compiled output together from one reading of the charter, so the two cannot fall out of step. There MUST NOT be a way to produce one without the other.
@@ -691,7 +691,7 @@ A team keeps a subagent that looks for fraud in payments. Beside `Read`, its `to
 - <a id="fr-097"></a>**FR-097**: Its body MUST name no kind's headers and MUST restate no kind's requirements. It MUST say to ask the engine instead.
 - <a id="fr-098"></a>**FR-098**: Its body MUST say the procedure: ask the kind what it requires, write the primitive with one flag per header, write the body, build.
 - <a id="fr-099"></a>**FR-099**: Its body MUST say that it is the engine's own and is not authored in this repository, and that a repository wanting something else authors its own primitive.
-- <a id="fr-100"></a>**FR-100**: Its triggers MUST bring it up when what is being asked is to write a rule, a standard, a skill, a command or any other primitive of this charter.
+- <a id="fr-100"></a>**FR-100**: Its triggers MUST bring it up when what is being asked is to write a rule, a standard, a skill or any other primitive of this charter.
 - <a id="fr-101"></a>**FR-101**: It MUST say that changing or removing a primitive that already exists is not what it covers.
 - <a id="fr-102"></a>**FR-102**: Its body MUST say that a refusal from `cw add` or `cw build` is read and answered, and MUST send a refused build to `cw doctor`.
 - <a id="fr-103"></a>**FR-103**: Every `cw` command its body names MUST be a command `cw` has, so it describes nothing that does not answer.
@@ -861,7 +861,7 @@ The shape of each is in the data model.
 - **The portal is a second way into the engine beside the command line.** That is why every engine capability it needs is added to the engine first, and why the command line gets it in the same change.
 - **One developer, one machine.** The portal is not shared over a network and has no accounts, as the product has none.
 - **The reference design is keystone** (github.com/tacoda/keystone) for the primitive kinds, their field contracts and the vendored-content installation flow, and *Harness Engineering* by Ian Johnson for the concentric layers and the reliability levers. Neither is a runtime or build dependency; this is an independent implementation. Where keystone splits catalogue generation and compilation into two commands that repeat the same work, this product deliberately merges them.
-- **Three kinds in the reference design are deliberately not adopted**: the external-callable declaration, the governed-output-document kind, and the reusable-documentation-pattern kind. The reference's own charter never exercises the document graph — no primitive in it declares a producing or consuming relationship — so nothing proven is lost. For this product specifically, the lifecycle of a work item (its state, its gates, its board) belongs to a later application, and expressing it a second time in the charter would duplicate it. The producing and consuming relationships on a unit of work are dropped alongside the document kind, since their referent is gone, and so are the lifecycle phase and the explicit done-condition: the reference declares neither, and a command reaches an agent as a slash command whose description is all that host reads before loading it — a phase it has no field for is a header nothing carries.
+- **Three kinds in the reference design are deliberately not adopted**: the external-callable declaration, the governed-output-document kind, and the reusable-documentation-pattern kind. The reference's own charter never exercises the document graph — no primitive in it declares a producing or consuming relationship — so nothing proven is lost. For this product specifically, the lifecycle of a work item (its state, its gates, its board) belongs to a later application, and expressing it a second time in the charter would duplicate it. The producing and consuming relationships on a unit of work are dropped alongside the document kind, since their referent is gone, and so are the lifecycle phase and the explicit done-condition: the reference declares neither, and a skill reaches an agent through the one line it describes itself with, which is all that host reads before loading it — a phase it has no field for is a header nothing carries.
 - **The four warnings are validation warnings, not portal features.** A primitive no case pins down is limited to guides and sensors because those are the only kinds a case names ([FR-082](#fr-082)); a posture is asserted only through whether a file is allowed, which names none. All four are warnings and never errors.
 - **Self-regression tests assert activation, not behaviour.** A test pins which rules apply to a described situation, which is what catches the common failure of a rule quietly going dead after a glob or cascade change. It deliberately does not run a check's command or ask an agent for a judgement: the first needs a live environment and would break the reader/writer split, and the second is non-deterministic, so a suite built on it becomes flaky and then gets ignored. Both may be added later once there are real checks to exercise.
 - **Sensors are run by the agent's own harness, not by this system.** A check that runs a command and a check that asks an agent for a judgement are both declared in the charter and compiled into the agent's activation surface; firing them is the agent's job. This system declares and compiles; it does not execute agent work.

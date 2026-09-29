@@ -17,9 +17,9 @@ The agent walks through each phase below in order. After each phase, **pause for
 2. **spec** — restate the story to the user: its intent, its acceptance criteria (its scenarios and the FR/SC it cites), and what is out of scope. Then list the technical decisions the story needs — libraries, modules, the shape of new data — each with the choice proposed. Print one sentence (in vietnamese) saying what will be done. Nothing under specs/ is edited at this step. **Gate:** explicit user acceptance.
 3. **implementation** — Implement the story test first, with /superpowers:test-driven-development. Iron law: surgical edits only — touch what the spec requires.
 4. **check-drift**. check diff and go through guides to see any violations before running heavy sensors.
-5. **verify** — run /verify command. Iron law: no completion claims without fresh evidence.
-6. **review** — run /review command.
-7. **learn** *(conditional)* — if something surprising came up during the task, run /learn command. Otherwise skip.
+5. **verify** — run /skill-verify. Iron law: no completion claims without fresh evidence.
+6. **review** — run /skill-review.
+7. **learn** *(conditional)* — if something surprising came up during the task, run /skill-learn. Otherwise skip.
 8. **mark the story as done**: set its `**Status**:` line in <root>/specs/spec.md to `Done`.
 
 ## Iron laws (carry across every phase)

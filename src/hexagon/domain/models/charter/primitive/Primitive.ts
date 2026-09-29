@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { AgentPrimitive } from "./AgentPrimitive.js";
-import { CommandPrimitive } from "./CommandPrimitive.js";
 import { CorpusPrimitive } from "./CorpusPrimitive.js";
 import { GuidePrimitive } from "./GuidePrimitive.js";
 import { McpPrimitive } from "./McpPrimitive.js";
@@ -19,7 +18,6 @@ import type { ForParsingYaml } from "../../../../port/zdriven/ForParsingYaml.js"
 export const PRIMITIVE_CLASSES = [
   GuidePrimitive,
   SensorPrimitive,
-  CommandPrimitive,
   SkillPrimitive,
   PlaybookPrimitive,
   AgentPrimitive,

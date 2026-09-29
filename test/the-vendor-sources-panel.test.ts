@@ -27,7 +27,7 @@ test("with no vendor installed, the vendor tab says so, and adding one lists the
     await page.getByRole("button", { name: "Add vendor source" }).click();
     const reserved = page.getByLabel("Reserved directories");
     await reserved.getByText("guide/").waitFor();
-    for (const kind of ["sensor", "command", "skill", "playbook", "agent", "posture", "corpus", "mixin"])
+    for (const kind of ["sensor", "skill", "playbook", "agent", "posture", "corpus", "mixin"])
       assert.equal(await reserved.getByText(`${kind}/`, { exact: true }).count(), 1, kind);
   });
 });

@@ -126,16 +126,16 @@ test("a projection whose primitive is gone would be deleted, and is not (FR-020,
   const { held, build, preview } = previewing({
     ...compilingFor("claude"),
     [at("guide/no-any.md")]: guide("no-any"),
-    [at("command/ship.md")]: primitive("command", "ship"),
+    [at("agent/ship.md")]: primitive("agent", "ship", ['tools: ["Bash"]']),
   });
   await build();
-  held.remove(new URL("command/ship.md", root));
+  held.remove(new URL("agent/ship.md", root));
 
   const previewed = planOf(await preview());
 
-  assert.equal(changed(previewed ?? nothing)[".claude/commands/ship.md"], "delete");
+  assert.equal(changed(previewed ?? nothing)[".claude/agents/agent-ship.md"], "delete");
   // Said, and still there: nothing is taken away until a build takes it.
-  assert.ok(await held.read(new URL(".claude/commands/ship.md", repo)));
+  assert.ok(await held.read(new URL(".claude/agents/agent-ship.md", repo)));
 });
 
 test("a host's settings file the charter has nothing more to say to is unchanged (FR-018)", async () => {

@@ -15,7 +15,6 @@ import {
   type ClaudeSettings,
 } from "../../models/output/providers/claude/ClaudeSettingsComponent.js";
 import { ClaudeAgentComponent } from "../../models/output/providers/claude/document-based-components/ClaudeAgentComponent.js";
-import { ClaudeCommandComponent } from "../../models/output/providers/claude/document-based-components/ClaudeCommandComponent.js";
 import { ClaudeRuleComponent } from "../../models/output/providers/claude/document-based-components/ClaudeRuleComponent.js";
 import { ClaudeSkillComponent } from "../../models/output/providers/claude/document-based-components/ClaudeSkillComponent.js";
 import { CLAUDE_DIRECTORY, CLAUDE_MCP_CONFIG_FILE } from "../../path.js";
@@ -133,8 +132,6 @@ export function claudeComponentProjection(one: ClaudeComponent): Projection {
   const projectionPolicy = one.projection;
 
   switch (one.kind) {
-    case ClaudeCommandComponent.kind:
-      return { path: `${CLAUDE_DIRECTORY}/commands/${one.name}.md`, contents: one.toStampedDocument(), projectionPolicy };
     case ClaudeAgentComponent.kind:
       return { path: `${CLAUDE_DIRECTORY}/agents/${one.name}.md`, contents: one.toStampedDocument(), projectionPolicy };
     // A skill is a directory holding one file of that name, which is where this

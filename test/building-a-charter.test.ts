@@ -118,17 +118,17 @@ test("a projection whose primitive is gone is taken away by the next build (FR-0
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/no-any.md")]: guide("no-any"),
-    [at("command/ship.md")]: primitive("command", "ship"),
+    [at("agent/ship.md")]: primitive("agent", "ship", ['tools: ["Bash"]']),
   });
   await build();
-  held.remove(new URL("command/ship.md", root));
+  held.remove(new URL("agent/ship.md", root));
 
   const built = filesOf(await build());
 
   // Its compiled document goes with it, as every projection of it does (FR-139).
-  assert.deepEqual(built.deleted, [".cw/out/command/ship.md", ".claude/commands/ship.md"]);
-  await assert.rejects(() => contentsOf(held, ".cw/out/command/ship.md"));
-  await assert.rejects(() => contentsOf(held, ".claude/commands/ship.md"));
+  assert.deepEqual(built.deleted, [".cw/out/agent/ship.md", ".claude/agents/agent-ship.md"]);
+  await assert.rejects(() => contentsOf(held, ".cw/out/agent/ship.md"));
+  await assert.rejects(() => contentsOf(held, ".claude/agents/agent-ship.md"));
 });
 
 test("a compiled file someone edited by hand is written back over (FR-020)", async () => {

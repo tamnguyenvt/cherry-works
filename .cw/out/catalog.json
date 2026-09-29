@@ -1,47 +1,5 @@
 [
   {
-    "identity": "command:implement-new-task",
-    "kind": "command",
-    "id": "implement-new-task",
-    "description": "find task in specs folder and implement",
-    "file": ".cw/out/command/implement-new-task.md"
-  },
-  {
-    "identity": "command:learn",
-    "kind": "command",
-    "id": "learn",
-    "description": "Learn from the conversation",
-    "file": ".cw/out/command/learn.md"
-  },
-  {
-    "identity": "command:merge",
-    "kind": "command",
-    "id": "merge",
-    "description": "merge branch",
-    "file": ".cw/out/command/merge.md"
-  },
-  {
-    "identity": "command:plan-task",
-    "kind": "command",
-    "id": "plan-task",
-    "description": "clarify spec and planning",
-    "file": ".cw/out/command/plan-task.md"
-  },
-  {
-    "identity": "command:review",
-    "kind": "command",
-    "id": "review",
-    "description": "review implementation",
-    "file": ".cw/out/command/review.md"
-  },
-  {
-    "identity": "command:verify",
-    "kind": "command",
-    "id": "verify",
-    "description": "verify changes",
-    "file": ".cw/out/command/verify.md"
-  },
-  {
     "identity": "guide:no-abirtrary-function-split",
     "kind": "guide",
     "id": "no-abirtrary-function-split",
@@ -89,5 +47,47 @@
     "id": "cw-author",
     "description": "Author a new primitive of this repository's charter, asking cw what its kind requires.",
     "file": ".cw/out/skill/cw-author.md"
+  },
+  {
+    "identity": "skill:implement-new-task",
+    "kind": "skill",
+    "id": "implement-new-task",
+    "description": "find task in specs folder and implement",
+    "file": ".cw/out/skill/implement-new-task.md"
+  },
+  {
+    "identity": "skill:learn",
+    "kind": "skill",
+    "id": "learn",
+    "description": "Learn from the conversation",
+    "file": ".cw/out/skill/learn.md"
+  },
+  {
+    "identity": "skill:merge",
+    "kind": "skill",
+    "id": "merge",
+    "description": "merge branch",
+    "file": ".cw/out/skill/merge.md"
+  },
+  {
+    "identity": "skill:plan-task",
+    "kind": "skill",
+    "id": "plan-task",
+    "description": "clarify spec and planning",
+    "file": ".cw/out/skill/plan-task.md"
+  },
+  {
+    "identity": "skill:review",
+    "kind": "skill",
+    "id": "review",
+    "description": "review implementation",
+    "file": ".cw/out/skill/review.md"
+  },
+  {
+    "identity": "skill:verify",
+    "kind": "skill",
+    "id": "verify",
+    "description": "verify changes",
+    "file": ".cw/out/skill/verify.md"
   }
 ]

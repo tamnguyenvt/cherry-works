@@ -177,7 +177,7 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
 test("a vendored file edited here is named by its vendor, once (FR-040, SC-008)", async () => {
   const { vcs, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
   await run(["build"]);
-  vcs.changed.push(".cw/vendor/house-rules/guide/no-any.md", ".cw/vendor/house-rules/command/ship.md");
+  vcs.changed.push(".cw/vendor/house-rules/guide/no-any.md", ".cw/vendor/house-rules/agent/ship.md");
 
   const { code, written } = await run(["doctor"]);
 

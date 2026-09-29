@@ -68,7 +68,6 @@ const sampleShownIn = (answer: string) => answer.slice(answer.indexOf("kind: "))
 test("the set is exactly the kinds the charter format defines", () => {
   assert.deepEqual([...KINDS].sort(), [
     "agent",
-    "command",
     "corpus",
     "guide",
     "mcp",
@@ -78,6 +77,13 @@ test("the set is exactly the kinds the charter format defines", () => {
     "sensor",
     "skill",
   ]);
+});
+
+test("a command is refused as a kind the charter does not have: a skill is what is asked for by name (FR-001)", () => {
+  assert.throws(
+    () => primitiveOf(["---", "kind: command", "id: release", "description: Cut a release.", "---", "", "Cut it."].join("\n"), new YamlParser()),
+    (raised: AggregateError) => /"command" is not a kind the charter knows/.test(String(raised.errors[0]?.message)),
+  );
 });
 
 test("isKind accepts only the closed set", () => {

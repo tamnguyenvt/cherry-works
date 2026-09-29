@@ -24,7 +24,7 @@ export class PlaybookPrimitive extends BasePrimitive<PlaybookHeaders> {
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
    *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen = "one of its `triggers` matches; the body is a sequence of commands";
+  static readonly activatesWhen = "one of its `triggers` matches; the body is a sequence of skills";
 
   /** A playbook as an author writes one: what a refused header is fixed with. */
   static readonly sample: PlaybookHeaders = {

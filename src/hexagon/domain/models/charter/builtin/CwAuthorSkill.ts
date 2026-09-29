@@ -13,7 +13,6 @@ export class CwAuthorSkill extends SkillPrimitive {
           "write a rule",
           "add a standard",
           "write a skill",
-          "add a command",
           "author a primitive of the charter",
         ],
       },

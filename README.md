@@ -8,7 +8,7 @@ files your coding agent actually reads.
 .cw/charter/guide/no-any.md   ──cw build──▶   CLAUDE.md
 .cw/charter/sensor/lint.md                    .claude/rules/…
 .cw/charter/posture/secrets.md                .claude/settings.json (hooks, permissions)
-…                                             .claude/skills/…, .claude/commands/…
+…                                             .claude/skills/…, .claude/agents/…
 ```
 
 ## Why
@@ -113,9 +113,8 @@ Each kind comes up at a different time:
 |---|---|
 | `guide` | a touched file matches one of its `globs`, or on every turn when it has no globs |
 | `sensor` | the `signal` it names is raised, and the harness runs its `run` command |
-| `command` | it is asked for by name, or a request matches its description |
-| `skill` | one of its `triggers` matches the request |
-| `playbook` | one of its `triggers` matches; its body is a sequence of commands |
+| `skill` | one of its `triggers` matches the request, or it is called by name as `/skill-<id>` |
+| `playbook` | one of its `triggers` matches; its body is a sequence of skills |
 | `agent` | it is spawned by identity, with only the `tools` it lists |
 | `posture` | always, wherever the host can be told what to `allow` and `deny` |
 | `corpus` | a primitive's `rationale` cites it, to give the reasoning behind a rule |

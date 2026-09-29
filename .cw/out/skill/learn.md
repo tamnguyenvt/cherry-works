@@ -1,7 +1,8 @@
 ---
-kind: command
+kind: skill
 id: learn
 description: Learn from the conversation
+triggers: ["learn from the conversation"]
 ---
 
 Learn from the conversation and store in learning/inbox
