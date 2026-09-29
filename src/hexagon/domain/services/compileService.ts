@@ -70,7 +70,7 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
     charterMd: CharterMd.of(PRIMITIVE_CLASSES),
     compiledPrimitives,
     mcpOrigins: mcpOriginsOf(charter, shortStrings),
-    providerComponents: agents.flatMap((agent) => compileForAgent(agent, charter, compiledPrimitives)),
+    providerComponents: agents.flatMap((agent) => compileForAgent(agent, charter, compiledPrimitives, shortStrings)),
   };
 }
 
@@ -151,9 +151,10 @@ function compileForAgent(
   agent: AgentProvider,
   charter: CharterRoot,
   compiledPrimitives: readonly CompiledPrimitive[],
+  shortStrings: ShortStrings,
 ): readonly ClaudeComponent[] {
   switch (agent) {
     case "claude":
-      return compileForClaude(charter, compiledPrimitives);
+      return compileForClaude(charter, compiledPrimitives, shortStrings);
   }
 }

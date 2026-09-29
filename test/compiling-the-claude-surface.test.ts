@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
 import { folderURL } from "../src/hexagon/domain/path.js";
 import { compile } from "../src/hexagon/domain/services/compileService.js";
+import { shortenStringsOf } from "../src/hexagon/domain/models/helper.js";
 import { putDownBy } from "./put-down-by.js";
 import type { AgentProvider } from "../src/hexagon/domain/models/AgentProvider.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
@@ -166,6 +167,27 @@ test("a role carries the tools it may use, on the one line claude reads them fro
   const contents = files[".claude/agents/agent-reviewer.md"] ?? "";
   assert.ok(contents.includes("\ntools: Read, Grep, Bash\n"));
   assert.ok(contents.includes("\nname: agent-reviewer\n"));
+});
+
+test("a role holds each mcp it lists, whole or one tool, under the name this host is given it by, and no place its body only names (FR-156)", async () => {
+  const files = await projected({
+    [at("mcp/linear.md")]: primitive("mcp", "linear", "Issues.", ["endpoint: https://mcp.linear.app/mcp", "auth: [token]", "tools: [list_issues, create_issue]"]),
+    [at("mcp/github/billing.md")]: primitive("mcp", "github/billing", "Code.", ["endpoint: https://api.githubcopilot.com/mcp/", "auth: [oauth]", "tools: [search_code, get_file_contents]"]),
+    [at("mcp/sentry.md")]: primitive("mcp", "sentry", "Errors.", ["endpoint: https://mcp.sentry.dev/mcp", "auth: [oauth]", "tools: [list_errors]"]),
+    [at("agent/fraud-scanner.md")]: primitive("agent", "fraud-scanner", "Read the issues, and the errors in mcp:sentry.", [
+      'tools: ["Read", "mcp:linear", "mcp:github/billing:search_code"]',
+    ]),
+  });
+
+  const servedNames = shortenStringsOf(["mcp:linear", "mcp:github/billing", "mcp:sentry"]);
+  const contents = files[".claude/agents/agent-fraud-scanner.md"] ?? "";
+  assert.ok(
+    contents.includes(
+      `\ntools: Read, mcp__cw__${servedNames["mcp:linear"]}__list_issues, mcp__cw__${servedNames["mcp:linear"]}__create_issue, mcp__cw__${servedNames["mcp:github/billing"]}__search_code\n`,
+    ),
+    contents,
+  );
+  assert.ok(!contents.includes(`${servedNames["mcp:sentry"]}__`));
 });
 
 test("a skill says its triggers in the description, which is what decides it is loaded", async () => {

@@ -48,9 +48,11 @@ export type ClaudeComponentKind = (typeof CLAUDE_COMPONENT_CLASSES)[number]["kin
  * (FR-139). The path is from this document's own folder, as claude resolves an
  * `@` import: `.claude/<kind>/` two folders down, a skill's `SKILL.md` three.
  * A rule's `@` is expanded when the rule loads; for the other kinds claude
- * documents no such expansion, so the line says to read the file.
+ * documents no such expansion, so the line says to read the file. A subagent
+ * is handed `agentTools`: its tools as this host names them, each place it
+ * holds written as that place's tools (FR-156).
  */
-export function claudeDocumentComponentOf(sc: ScopedPrimitive, compiledFile: string): ClaudeComponent | undefined {
+export function claudeDocumentComponentOf(sc: ScopedPrimitive, compiledFile: string, agentTools?: readonly string[]): ClaudeComponent | undefined {
   // The kind stays in the name, because two charter kinds can land in one
   // directory there — `guide:no-any` and `skill:no-any` are two primitives and
   // must stay two files (FR-014).
@@ -75,7 +77,7 @@ export function claudeDocumentComponentOf(sc: ScopedPrimitive, compiledFile: str
       return ClaudeCommandComponent.of(name.replace(`${CommandPrimitive.kind}-`, ""), { description: sc.primitive.description() }, pointerTo(compiledFromClaudeFolder));
     case AgentPrimitive.kind: {
       const { tools } = sc.primitive.headers;
-      return ClaudeAgentComponent.of(name, { description: sc.primitive.description(), tools: tools.join(", ") }, pointerTo(compiledFromClaudeFolder));
+      return ClaudeAgentComponent.of(name, { description: sc.primitive.description(), tools: (agentTools ?? tools).join(", ") }, pointerTo(compiledFromClaudeFolder));
     }
     // One kind of this host for the two the charter loads when the request calls
     // for them: what decides that the body is worth opening is the description,

@@ -19,13 +19,17 @@ export class ClaudeMcpConfigComponent {
   static readonly kind = "mcp-config" as const;
   readonly kind = ClaudeMcpConfigComponent.kind;
 
+  /** What this host names the server, and so what it puts before each tool it
+   *  serves: `mcp__cw__<tool>`. */
+  static readonly cwMcpName = "cw";
+
   /** That file is the repository's too — every server it wrote itself is
    *  there — so the charter's one entry is written into it, and it is never
    *  taken away, as the settings are not (FR-146). */
   readonly projection: ProjectionPolicy = "mergeJSON";
 
   /** The one entry the charter speaks for, under `mcpServers`. */
-  readonly mcpServers: Readonly<Record<string, ClaudeMcpServer>> = { cw: { command: "cw", args: ["mcp", "serve"] } };
+  readonly mcpServers: Readonly<Record<string, ClaudeMcpServer>> = { [ClaudeMcpConfigComponent.cwMcpName]: { command: "cw", args: ["mcp", "serve"] } };
 
   static of(): ClaudeMcpConfigComponent {
     return new ClaudeMcpConfigComponent();

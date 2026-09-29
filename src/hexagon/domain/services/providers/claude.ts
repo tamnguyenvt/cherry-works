@@ -1,5 +1,8 @@
 import type { CharterRoot, ScopedPrimitive } from "../../models/charter/CharterRoot.js";
+import { AgentPrimitive } from "../../models/charter/primitive/AgentPrimitive.js";
+import { MCP_TOOL_REFERENCE, McpPrimitive } from "../../models/charter/primitive/McpPrimitive.js";
 import { PosturePrimitive } from "../../models/charter/primitive/PosturePrimitive.js";
+import type { ShortStrings } from "../../models/helper.js";
 import { SensorPrimitive } from "../../models/charter/primitive/SensorPrimitive.js";
 import type { CompiledPrimitive } from "../../models/output/common/CompiledPrimitive.js";
 import type { Projection } from "../../models/output/ProjectionPolicy.js";
@@ -38,7 +41,11 @@ import { CLAUDE_DIRECTORY, CLAUDE_MCP_CONFIG_FILE } from "../../path.js";
  * configuration that starts it, written whether the charter holds a place yet or
  * not, since the server reads which places there are when it starts (FR-146).
  */
-export function compileForClaude(charter: CharterRoot, compiledPrimitives: readonly CompiledPrimitive[]): readonly ClaudeComponent[] {
+export function compileForClaude(
+  charter: CharterRoot,
+  compiledPrimitives: readonly CompiledPrimitive[],
+  shortStrings: ShortStrings,
+): readonly ClaudeComponent[] {
   // Does this primitive ask something of the settings this host runs on, rather
   // than compile to a file of its own? A posture says what may be run, a sensor
   // what runs when an event fires, and this host reads both out of one file.
@@ -47,11 +54,32 @@ export function compileForClaude(charter: CharterRoot, compiledPrimitives: reado
   const asSettings = charter.primitives.filter(isSettingComponent);
   const asDocuments = charter.primitives.filter((one) => !isSettingComponent(one));
 
+  // A subagent holds the tools it lists and nothing else. A place it lists,
+  // `mcp:<id>` whole or `mcp:<id>:<tool>` one tool, is written as this host is
+  // given each of its tools, `mcp__cw__<served name>__<tool>` (FR-156); the
+  // charter has refused a place or tool it does not hold.
+  const toolsByMcpIdentity = new Map(
+    charter.primitives.flatMap(({ identity, primitive }) => (primitive instanceof McpPrimitive ? [[identity, primitive.headers.tools] as const] : [])),
+  );
+  const agentToolsOf = (agent: AgentPrimitive) =>
+    agent.headers.tools.flatMap((tool) => {
+      const [, mcpIdentity, mcpTool] = tool.match(MCP_TOOL_REFERENCE) ?? [];
+      if (mcpIdentity === undefined) return [tool];
+      return (mcpTool === undefined ? (toolsByMcpIdentity.get(mcpIdentity) ?? []) : [mcpTool]).map(
+        (oneTool) => `mcp__${ClaudeMcpConfigComponent.cwMcpName}__${shortStrings[mcpIdentity]}__${oneTool}`,
+      );
+    });
+
   return [
     ...(asSettings.length === 0 ? [] : [ClaudeSettingsComponent.of(claudeSettingsOf(asSettings))]),
     ClaudeMcpConfigComponent.of(),
     ...asDocuments.flatMap(
-      (one) => claudeDocumentComponentOf(one, compiledPrimitives.find((compiled) => compiled.identity === one.identity)!.file) ?? [],
+      (one) =>
+        claudeDocumentComponentOf(
+          one,
+          compiledPrimitives.find((compiled) => compiled.identity === one.identity)!.file,
+          one.primitive instanceof AgentPrimitive ? agentToolsOf(one.primitive) : undefined,
+        ) ?? [],
     ),
   ];
 }

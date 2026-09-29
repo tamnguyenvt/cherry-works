@@ -50,7 +50,7 @@ A single charter covering design, planning and implementation at once has to be 
 - Q: The repository and a vendor declare the same place under two identities, with different tool lists — which tools are shown? → A: Every tool either declares. The place is one entry under both identities ([FR-145](#fr-145)).
 - Q: Is a place only an MCP server on the network, or also one started on the developer's machine? → A: Both. A place is either an address reached over HTTP or a command `cw mcp serve` starts as a local process; the second is signed in to by token only, handed to the process in the environment variable the `mcp` primitive names ([FR-142](#fr-142)).
 - Q: The repository allows `oauth` and `token` at an address where a vendor allows only `token` — which is offered? → A: Both. The ways offered are every way any identity at the address allows, from any layer, as its tools are ([FR-148](#fr-148)).
-- Q: Can a run be held to fewer places than the charter declares? → A: Yes. `cw mcp serve --enable` names what that run may reach, for an agent run on a schedule or in CI; with nothing named, every declared tool is shown ([FR-155](#fr-155)).
+- Q: Can a run be held to fewer places than the charter declares? → A: No flag for it. `cw mcp serve` always shows every declared tool; a run on a schedule or in CI reaches only the places it was signed in to, since a place not signed in to answers nothing ([FR-154](#fr-154)). A subagent holds a place by listing it under `tools`, in the charter's own words — `mcp:<id>` or `mcp:<id>:<tool>` ([FR-156](#fr-156)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -458,24 +458,22 @@ The developer's agent is given one MCP server, `cw mcp serve`. It shows the agen
 
 ---
 
-### User Story 20 - Hold a run to the places it needs (Priority: P2)
+### User Story 20 - Hold a subagent to the places it lists (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
-A team runs an agent every night to look for fraud in payments. That run needs two tools of one place and nothing else. The job starts the server with those named, and the agent is shown exactly those; any other tool, of that place or another, does not exist for it. Inside an interactive session, a subagent can be held the same way: its `mcp` places become the only such tools it holds.
+A team keeps a subagent that looks for fraud in payments. Beside `Read`, its `tools` lists `mcp:mfbs/payments:list_payments` — one tool of one place — and `mcp:linear` — every tool that place declares. The author writes the charter's names and nothing else: what the agent's host calls those tools is the build's to write. When the charter is built for Claude Code, the subagent holds exactly those; a place its body only mentions, and any other place, does not exist for it. A run nobody watches — a job on a schedule, a check in CI — needs no flag of its own: it reaches only the places it was signed in to, and a place not signed in to answers nothing.
 
-**Why this priority**: The default — every declared tool — is right for a developer at work. A job nobody watches is where a narrower set matters, and it can wait until the default works.
+**Why this priority**: The default — every declared tool — is right for a developer at work. A subagent is where a narrower set matters, and its `tools` already says what it holds.
 
-**Independent Test**: Start the server with one playbook named, and confirm only the tools of the places that playbook names are listed and callable; start it with one tool named and confirm only that one; start it with an identity nothing holds and confirm it refuses to start.
+**Independent Test**: Build a charter whose agent lists one whole place and one tool of another under `tools`, and mentions a third place in its body; confirm the subagent's tool list holds its own tools, every tool of the first place and the one tool of the second, as its host names them, and nothing of the third. List a place the charter does not hold, or a tool it does not declare, and confirm the build is refused under the agent's file.
 
 **Acceptance Scenarios**:
 
-1. **Given** `cw mcp serve --enable playbook:fraud-scan`, **When** the agent lists tools, **Then** it is shown the declared tools of the places that playbook names, and no other.
-2. **Given** `--enable mcp:mfbs/payments`, **When** the agent lists tools, **Then** it is shown every declared tool of that place, and no other.
-3. **Given** `--enable` naming one tool of one place, **When** the agent lists tools, **Then** it is shown that tool alone.
-4. **Given** `--enable` repeated, **When** the server starts, **Then** it shows what any of them names.
-5. **Given** `--enable` naming an identity or tool the charter does not hold, **When** the server starts, **Then** it refuses to start, naming it, and shows nothing.
-6. **Given** an `agent` primitive whose body names places, **When** the charter is built for Claude Code, **Then** the subagent's tool list holds the declared tools of those places beside the tools it lists itself, and no tool of any other place.
+1. **Given** an `agent` whose `tools` lists `mcp:<id>`, **When** the charter is built for Claude Code, **Then** the subagent holds every tool that mcp declares, under the name its host is given it by.
+2. **Given** an `agent` whose `tools` lists `mcp:<id>:<tool>`, **When** the charter is built for Claude Code, **Then** the subagent holds that tool alone of that place.
+3. **Given** an `agent` whose body mentions `mcp:<id>` that its `tools` does not list, **When** the charter is built, **Then** the subagent holds no tool of that place.
+4. **Given** an `agent` whose `tools` lists an mcp the charter does not hold, a tool that mcp does not declare, or an `mcp:` name not written either way, **When** the charter is checked, **Then** it is an error under the agent's file, naming it, and nothing is built.
 
 ---
 
@@ -528,7 +526,7 @@ A team runs an agent every night to look for fraud in payments. That run needs t
 - A place declared by a command that is not installed on the developer's machine — that place fails to start and is left out, as an unreachable one is; the rest are served.
 - The same command declared with different arguments — two addresses, each signed in to on its own.
 - One identity claimed by two `mcp` primitives at two addresses — the usual collision, naming both files ([FR-015](#fr-015)).
-- A vendor opens a tool on a place the repository also declares — the tool is shown: tools are the union of what every identity at a place declares ([FR-145](#fr-145)). Each identity's own file says which tools it declared, and a run that must not have it names what it may use with `--enable`.
+- A vendor opens a tool on a place the repository also declares — the tool is shown: tools are the union of what every identity at a place declares ([FR-145](#fr-145)). Each identity's own file says which tools it declared.
 - An id longer than 40 characters — refused under its file, so a tool's name, once prefixed with its `mcp`'s id and by the agent's host, stays within what the host accepts ([FR-157](#fr-157)).
 - A credential expires while the server runs — it is renewed where the place allows; where it cannot be, the call answers to sign in again.
 - The developer runs `cw mcp auth` by asking their agent to — the agent has no terminal to be asked at, so nothing is asked and no token passes through the conversation ([FR-150](#fr-150)).
@@ -773,8 +771,7 @@ A team runs an agent every night to look for fraud in payments. That run needs t
 - <a id="fr-152"></a>**FR-152**: `cw mcp serve` MUST be one MCP server, spoken to over standard input and output, serving the list of places the last build wrote. With no list, it MUST stop, saying the charter must be built. A place declared by a command MUST be started by the server as a local process, its token — where it takes one — given in the variable its primitive names and in no other way, and MUST be stopped when the server stops.
 - <a id="fr-153"></a>**FR-153**: The server MUST list, for each place, exactly the tools its identities declare, each named `<prefix>__<tool>` under the prefix of the identity declaring it, and MUST refuse a call to any tool it did not list, reaching no place. A declared tool its place does not have MUST be said when the server starts, naming the primitive and the tool, and left out.
 - <a id="fr-154"></a>**FR-154**: A call MUST reach its place under the credential of the developer running the server, and its answer MUST be returned as the place gave it. A place that cannot be reached, or is not signed in to, MUST affect only its own tools: listing leaves them out and says why; a call to one answers why and the next move.
-- <a id="fr-155"></a>**FR-155**: `cw mcp serve --enable <name>`, repeatable, MUST show only what the names reach: the places a primitive's body names, for a primitive identity; one place, for an `mcp` identity; one tool, for a served tool name. Without it, every tool of every place is shown. A name the charter does not hold MUST stop the server before it shows anything, naming it.
-- <a id="fr-156"></a>**FR-156**: An `agent` primitive's compiled tool list MUST hold, beside the tools it lists, the served names of the tools of every place its body names, and of no other place.
+- <a id="fr-156"></a>**FR-156**: An `agent` primitive MAY hold a place by listing it under `tools` in the charter's own words: `mcp:<id>` for every tool that mcp declares, `mcp:<id>:<tool>` for one of them. Its compiled tool list MUST hold each as the name its host is given that tool by, beside the tools it lists otherwise, and no tool of a place it does not list — whatever its body mentions. A listed mcp no layer holds, a tool that mcp does not declare, or an `mcp:` entry written neither way MUST be an error under the agent's file. An agent listing an mcp names it ([FR-144](#fr-144)).
 - <a id="fr-157"></a>**FR-157**: An `id` MUST be at most 40 characters, refused under its file like any header that does not hold, so that every name a host is given for it — an mcp's tools as `mcp__cw__<id>__<tool>` among them — stays within what the host accepts without a check of its own.
 
 **The portal: tests**
@@ -851,7 +848,7 @@ The shape of each is in the data model.
 - <a id="sc-034"></a>**SC-034**: A developer cloning a repository whose charter declares places at N addresses reaches all of them from their agent after one command and at most N sign-ins, with one MCP entry in their agent's configuration.
 - <a id="sc-035"></a>**SC-035**: 100% of calls reaching a place are made under the credential of the developer whose agent made them; none is made under a credential shared between developers.
 - <a id="sc-036"></a>**SC-036**: No credential appears in any file under the repository, in the compiled output, or in anything `cw` prints.
-- <a id="sc-037"></a>**SC-037**: An agent is shown zero tools its charter did not declare, and under `--enable` zero tools beyond what was named.
+- <a id="sc-037"></a>**SC-037**: An agent is shown zero tools its charter did not declare, and a subagent zero tools of a place its `tools` does not list.
 - <a id="sc-038"></a>**SC-038**: Moving a place to a new address changes one file of the charter; no primitive naming the place changes.
 - <a id="sc-039"></a>**SC-039**: A place that is down or not signed in to leaves 100% of other places' tools listed and answering.
 

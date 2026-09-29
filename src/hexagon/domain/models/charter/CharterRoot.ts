@@ -2,7 +2,8 @@ import { covers } from "../../../utils/globs.js";
 import { identityOf, KINDS, PRIMITIVE_CLASSES, primitiveOf, type NormalizedIdentity, type Primitive } from "./primitive/Primitive.js";
 import { CharterRootFault, FaultsByFile, type DomainFault } from "../DomainFault.js";
 import type { ForParsingYaml } from "../../../port/zdriven/ForParsingYaml.js";
-import { MCP_MENTION, McpPrimitive } from "./primitive/McpPrimitive.js";
+import { MCP_MENTION, MCP_TOOL_REFERENCE, McpPrimitive } from "./primitive/McpPrimitive.js";
+import { AgentPrimitive } from "./primitive/AgentPrimitive.js";
 
 /** What this repository authored itself. */
 export const REPO_SCOPE = "repo";
@@ -188,16 +189,27 @@ export class CharterRoot {
    * is gone (FR-005). A corpus nobody cites and a mixin nobody pulls in are
    * warnings too: nothing breaks, and nothing reads them either (FR-014). So
    * are a body naming an mcp nothing holds (FR-143) and an mcp no body names
-   * (FR-144).
+   * (FR-144). An agent holding an mcp nothing holds, or a tool it does not
+   * declare, is an error: the role would be promised a tool it cannot have
+   * (FR-156).
    */
   get compositeFaultsByFiles(): FaultsByFile {
     const everyPrimitive = this.primitives;
     const mixinsByIdentity = this.mixins;
     const corpusIdentities = this.corpora;
-    const mcpIdentities = new Set(everyPrimitive.filter(({ primitive }) => primitive.kind === "mcp").map((one) => one.identity));
-    // A place is named in a body, as its author would write it (FR-143).
+    const toolsByMcpIdentity = new Map(
+      everyPrimitive.flatMap(({ identity, primitive }) => (primitive instanceof McpPrimitive ? [[identity, primitive.headers.tools] as const] : [])),
+    );
+    const mcpIdentities = new Set(toolsByMcpIdentity.keys());
+    // A place is named in a body, as its author would write it (FR-143), and
+    // held by an agent that lists it among its tools (FR-156).
     const mcpsNamedBy = (one: ScopedPrimitive) => [...one.primitive.body.matchAll(MCP_MENTION)].map(([, id]) => `mcp:${id}`);
-    const namedMcps = new Set(everyPrimitive.flatMap(mcpsNamedBy));
+    const namedMcps = new Set(
+      everyPrimitive.flatMap((one) => [
+        ...mcpsNamedBy(one),
+        ...(one.primitive instanceof AgentPrimitive ? one.primitive.headers.tools.flatMap((tool) => tool.match(MCP_TOOL_REFERENCE)?.[1] ?? []) : []),
+      ]),
+    );
 
     const fileByIdentity = new Map<string, string>();
     const identityByNormalizedIdentity = new Map<NormalizedIdentity, string>();
@@ -285,6 +297,39 @@ export class CharterRoot {
               "warn",
             ),
           );
+
+      // A role holds what its tools say and nothing else, so each place it
+      // lists must be one the charter holds, and each tool one it declares
+      // (FR-156).
+      if (primitive instanceof AgentPrimitive)
+        for (const tool of primitive.headers.tools.filter((one) => one.startsWith("mcp:"))) {
+          const [, mcpIdentity, mcpTool] = tool.match(MCP_TOOL_REFERENCE) ?? [];
+          const declaredTools = mcpIdentity === undefined ? undefined : toolsByMcpIdentity.get(mcpIdentity);
+          if (mcpIdentity === undefined)
+            addFault(
+              file,
+              new CharterRootFault(
+                `"${tool}" under "tools" is not a place this role can hold.`,
+                `Write a place as "mcp:<id>" for every tool it declares, or "mcp:<id>:<tool>" for one.`,
+              ),
+            );
+          else if (declaredTools === undefined)
+            addFault(
+              file,
+              new CharterRootFault(
+                `"${tool}" under "tools" names "${mcpIdentity}", and this charter holds no mcp of that identity.`,
+                `Author that mcp, or correct the name. An mcp is named as "mcp:<id>", whichever layer authored it.`,
+              ),
+            );
+          else if (mcpTool !== undefined && !declaredTools.includes(mcpTool))
+            addFault(
+              file,
+              new CharterRootFault(
+                `"${tool}" under "tools" names a tool "${mcpIdentity}" does not declare; it declares ${declaredTools.join(", ")}.`,
+                `Name one of those, or add "${mcpTool}" to the tools of "${mcpIdentity}".`,
+              ),
+            );
+        }
 
       // Reasoning nobody cites and text nobody lends are dead weight in every
       // layer, a vendor's included: its author is told, and can remove what

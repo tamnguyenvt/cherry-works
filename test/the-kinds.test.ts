@@ -120,6 +120,14 @@ test("the sample it shows is a primitive of that kind, as an author writes one (
   }
 });
 
+test("an agent is shown holding a place under its tools, in the charter's own words (FR-156)", async () => {
+  const { results: kindLines } = await asking(["kinds"]);
+  const { results: agentKind } = await asking(["kinds", "agent"]);
+
+  assert.match(kindLines, /agent .*`mcp:<id>`.*`mcp:<id>:<tool>`/);
+  assert.match(sampleShownIn(agentKind), /tools: .*"mcp:mfbs\/billing:search_code"/);
+});
+
 test("the headers it names are the ones cw add takes, one flag apiece (FR-004, spec Story 2 scenario 4)", async () => {
   for (const kind of KINDS) {
     const { results } = await asking(["kinds", kind]);

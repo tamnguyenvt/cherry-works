@@ -7,6 +7,7 @@ import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/G
 import { MixinPrimitive } from "../src/hexagon/domain/models/charter/primitive/MixinPrimitive.js";
 import { CorpusPrimitive } from "../src/hexagon/domain/models/charter/primitive/CorpusPrimitive.js";
 import { McpPrimitive } from "../src/hexagon/domain/models/charter/primitive/McpPrimitive.js";
+import { AgentPrimitive } from "../src/hexagon/domain/models/charter/primitive/AgentPrimitive.js";
 import type { Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
 import { compile } from "../src/hexagon/domain/services/compileService.js";
 
@@ -235,6 +236,33 @@ test("an mcp no primitive names is a warning under its own file (FR-144)", () =>
   assert.deepEqual(Object.keys(faultsByFiles), [at("mcp/mfbs/billing.md")]);
   assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["warn"]);
   assert.match(messages(faultsByFiles), /No primitive names "mcp:mfbs\/billing" in its body/);
+});
+
+const agent = (id: string, tools: readonly string[]): Authored =>
+  scoped(undefined, at(`agent/${id}.md`), AgentPrimitive.of({ id, description: `The ${id} role.`, tools }, "Body."));
+
+test("an agent holding an mcp, whole or one tool it declares, is nothing to report, and names that mcp (FR-144, FR-156)", () => {
+  assert.deepEqual(
+    faultsByFilesOf(
+      agent("scanner", ["Read", "mcp:mfbs/billing", "mcp:linear:list_issues"]),
+      mcp("mfbs/billing"),
+      mcp("linear", undefined, { tools: ["list_issues", "create_issue"] }),
+    ),
+    {},
+  );
+});
+
+test("an agent holding an mcp no layer holds, a tool that mcp does not declare, or a name not written as one, is an error under its file (FR-156)", () => {
+  const faultsByFiles = faultsByFilesOf(
+    agent("scanner", ["mcp:missing", "mcp:linear:delete_team", "mcp:linear:list_issues:again", "mcp:linear:list_issues"]),
+    mcp("linear", undefined, { tools: ["list_issues"] }),
+  );
+
+  assert.deepEqual(Object.keys(faultsByFiles), [at("agent/scanner.md")]);
+  assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["error", "error", "error"]);
+  assert.match(messages(faultsByFiles), /"mcp:missing"/);
+  assert.match(messages(faultsByFiles), /"mcp:linear:delete_team"/);
+  assert.match(messages(faultsByFiles), /"mcp:linear:list_issues:again"/);
 });
 
 test("a repository mcp and a vendor mcp at one endpoint and path are one place, under both, signed in to either way (FR-145)", () => {
