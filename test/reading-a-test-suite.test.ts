@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { testSuiteOf, type TestSuite } from "../src/hexagon/domain/models/test/TestSuite.js";
-import { Fault } from "../src/hexagon/domain/models/Fault.js";
+import { DomainFault } from "../src/hexagon/domain/models/DomainFault.js";
 
 /** One test file, written the way an author writes it. */
 const file = (written: unknown) => JSON.stringify(written, null, 2);
@@ -14,17 +14,17 @@ const written = (suite: TestSuite) => suite.cases.map((each) => each.written);
 
 /** Why a reading refused this text: a suite or nothing, so what comes back is
  *  the one fault raised. */
-const refusing = (text: string): Fault => {
+const refusing = (text: string): DomainFault => {
   try {
     testSuiteOf(text);
   } catch (raised) {
-    assert.ok(raised instanceof Fault);
+    assert.ok(raised instanceof DomainFault);
     return raised;
   }
   return assert.fail("this text was read as a suite");
 };
 
-const said = (fault: Fault) => `${fault.message}\n${fault.fix}`;
+const said = (fault: DomainFault) => `${fault.message}\n${fault.fix}`;
 
 test("a touched file is read with the primitive it is expected to bring up", () => {
   const suite = read(

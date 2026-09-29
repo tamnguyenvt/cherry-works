@@ -1,5 +1,5 @@
 import yargs, { type Argv } from "yargs";
-import { Fault } from "#hexagon/port/driver/ForManagingCharter.js";
+import { DomainFault } from "#hexagon/port/driver/ForManagingCharter.js";
 import { COMMANDS } from "./commands/index.js";
 import {
   EXIT_FAILURE,
@@ -113,7 +113,7 @@ export class Commander {
           // says how to read it.
           collect(await command.run(this.#context, options as Options<OptionSpec>));
         } catch (raised) {
-          if (!(raised instanceof Fault)) throw raised;
+          if (!(raised instanceof DomainFault)) throw raised;
           collect({ code: EXIT_FAILURE, problem: `${raised.message}\n  ${raised.fix}\n` });
         }
       },

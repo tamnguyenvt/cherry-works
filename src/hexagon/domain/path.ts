@@ -1,5 +1,5 @@
 import type { AgentProvider } from "./models/AgentProvider.js";
-import { Fault } from "./models/Fault.js";
+import { DomainFault } from "./models/DomainFault.js";
 
 declare const folder: unique symbol;
 
@@ -21,7 +21,7 @@ export type FolderURL = URL & { readonly [folder]: true };
 export function folderURL(at: URL | string): FolderURL {
   const url = new URL(at);
   if (!url.pathname.endsWith("/"))
-    throw new Fault(
+    throw new DomainFault(
       `"${url.href}" names a file, and a folder is what is wanted here.`,
       `Write it with the separator a folder ends in, as in "${url.href}/".`,
     );

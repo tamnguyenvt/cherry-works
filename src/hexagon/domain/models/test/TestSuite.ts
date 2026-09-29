@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TEST_CASE_SCHEMA, TestCase } from "./TestCase.js";
-import { TestSuiteFault } from "../Fault.js";
+import { TestSuiteFault } from "../DomainFault.js";
 
 /**
  * What a test file may hold, as the one shape everything else reads it through

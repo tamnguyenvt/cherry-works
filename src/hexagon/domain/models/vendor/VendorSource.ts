@@ -1,4 +1,4 @@
-import { VendorFault } from "../Fault.js";
+import { VendorFault } from "../DomainFault.js";
 
 /** A charter this repository installs rather than authors: the source as it
  *  was typed, handed to version control as it is, and the name of the folder

@@ -1,7 +1,7 @@
 import { DEFAULT_TEST_SUITE_BODY, testSuiteOf } from "../domain/models/test/TestSuite.js";
 import { testRootOf, type TestRoot } from "../domain/models/test/TestRoot.js";
 import { TEST_DIRECTORY, testFolderIn } from "../domain/path.js";
-import { TestSuiteFault } from "../domain/models/Fault.js";
+import { TestSuiteFault } from "../domain/models/DomainFault.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
 

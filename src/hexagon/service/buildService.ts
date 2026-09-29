@@ -6,7 +6,7 @@ import { compile } from "../domain/services/compileService.js";
 import { charterOutputProjection } from "../domain/services/projectionService.js";
 import { agentProviderFolderIn, outFolderIn } from "../domain/path.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
-import { Fault } from "../domain/models/Fault.js";
+import { DomainFault } from "../domain/models/DomainFault.js";
 import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
 
 /**
@@ -269,7 +269,7 @@ export async function executePlan(
     // What the disk said, said as a fault with the next move on it: a caller
     // reading a list of paths has nowhere to learn that one of them refused
     // (SC-003).
-    throw new Fault(
+    throw new DomainFault(
       `This build could not be written: ${raised instanceof Error ? raised.message : String(raised)}`,
       "Check that the files this build writes can be written, then build again.",
     );

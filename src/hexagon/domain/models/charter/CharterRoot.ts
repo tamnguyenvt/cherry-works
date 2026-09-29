@@ -1,6 +1,6 @@
 import { covers } from "../../../utils/globs.js";
 import { identityOf, KINDS, PRIMITIVE_CLASSES, primitiveOf, type NormalizedIdentity, type Primitive } from "./primitive/Primitive.js";
-import { CharterRootFault, FaultsByFile, type Fault } from "../Fault.js";
+import { CharterRootFault, FaultsByFile, type DomainFault } from "../DomainFault.js";
 import type { ForParsingYaml } from "../../../port/zdriven/ForParsingYaml.js";
 import { MCP_MENTION, McpPrimitive } from "./primitive/McpPrimitive.js";
 
@@ -201,8 +201,8 @@ export class CharterRoot {
 
     const fileByIdentity = new Map<string, string>();
     const identityByNormalizedIdentity = new Map<NormalizedIdentity, string>();
-    const faultsByFiles: Record<string, Fault[]> = {};
-    const addFault = (file: string, found: Fault) => {
+    const faultsByFiles: Record<string, DomainFault[]> = {};
+    const addFault = (file: string, found: DomainFault) => {
       faultsByFiles[file] = [...(faultsByFiles[file] ?? []), found];
     };
 
@@ -396,7 +396,7 @@ export function charterRootOf(
   yamlParser: ForParsingYaml,
 ): CharterRoot {
   const primitives: ScopedPrimitive[] = [];
-  const faultsByFiles: Record<string, readonly Fault[]> = {};
+  const faultsByFiles: Record<string, readonly DomainFault[]> = {};
 
   const read = (one: AuthoredFile, scope: Scope) => {
     try {
@@ -406,7 +406,7 @@ export function charterRootOf(
       // Every fault one file has arrives together (FR-009); anything else is
       // not this file being wrong and is not ours to swallow.
       if (!(raised instanceof AggregateError)) throw raised;
-      faultsByFiles[one.path] = raised.errors as readonly Fault[];
+      faultsByFiles[one.path] = raised.errors as readonly DomainFault[];
     }
   };
 

@@ -12,7 +12,7 @@
  * for, so none of them can be left out (SC-003). Every error this domain raises
  * extends this and adds no constructor of its own.
  */
-export class Fault extends Error {
+export class DomainFault extends Error {
   constructor(
     /** What is wrong with this file, never that something is wrong. */
     message: string,
@@ -35,7 +35,7 @@ export class Fault extends Error {
  * there. Collected under the file that has to change rather than thrown, so one
  * reading names every one of them (FR-009).
  */
-export class CharterRootFault extends Fault {}
+export class CharterRootFault extends DomainFault {}
 
 /**
  * One thing wrong with what a repository configured itself with: settings that
@@ -45,7 +45,7 @@ export class CharterRootFault extends Fault {}
  * Its own file is the file that has to change, and that file is nobody's
  * primitive — which is what tells it apart from the two below.
  */
-export class SettingsFault extends Fault {}
+export class SettingsFault extends DomainFault {}
 
 /**
  * One thing wrong inside one primitive file: a header its kind requires and did
@@ -57,7 +57,7 @@ export class SettingsFault extends Fault {}
  * them all in one go, so reading throws them together rather than one at a time
  * (FR-009).
  */
-export class CharterPrimitiveFault extends Fault {}
+export class CharterPrimitiveFault extends DomainFault {}
 
 /**
  * One thing wrong with one test file: a case naming no file, a field nothing
@@ -68,7 +68,7 @@ export class CharterPrimitiveFault extends Fault {}
  * is not a primitive: nothing compiles it, and an agent is instructed by none of
  * it.
  */
-export class TestSuiteFault extends Fault {}
+export class TestSuiteFault extends DomainFault {}
 
 /**
  * One expectation the charter did not meet (FR-048).
@@ -78,10 +78,10 @@ export class TestSuiteFault extends Fault {}
  * the charter, or the expectation about it, and the fix says which of the two an
  * author is likelier to have meant.
  */
-export class TestCaseFault extends Fault {}
+export class TestCaseFault extends DomainFault {}
 
 /** A vendor source whose address names no folder to land in (FR-044). */
-export class VendorFault extends Fault {}
+export class VendorFault extends DomainFault {}
 
 /** Throws every fault at once: what is wrong is said once and in full rather
  *  than one exception at a time, so a caller reading a whole charter can name
@@ -90,7 +90,7 @@ export class VendorFault extends Fault {}
  *
  *  It asks for faults and not for a class of them: anything that is a fault can
  *  be thrown this way. */
-export function throwAggregateError(faults: readonly Fault[]): never {
+export function throwAggregateError(faults: readonly DomainFault[]): never {
   throw new AggregateError(faults, faults.map((one) => one.message).join(" "));
 }
 
@@ -102,14 +102,14 @@ export class FaultsByFile {
   /** Nothing wrong with any file. */
   static readonly none = new FaultsByFile({});
 
-  readonly #files: Readonly<Record<string, readonly Fault[]>>;
+  readonly #files: Readonly<Record<string, readonly DomainFault[]>>;
 
-  constructor(files: Readonly<Record<string, readonly Fault[]>>) {
+  constructor(files: Readonly<Record<string, readonly DomainFault[]>>) {
     this.#files = files;
   }
 
   /** Every fault, under the file it is wrong with. */
-  get files(): Readonly<Record<string, readonly Fault[]>> {
+  get files(): Readonly<Record<string, readonly DomainFault[]>> {
     return this.#files;
   }
 
@@ -121,7 +121,7 @@ export class FaultsByFile {
   /** These and the other's together, a file both name holding the faults of
    *  both. */
   with(other: FaultsByFile): FaultsByFile {
-    const files: Record<string, readonly Fault[]> = { ...this.#files };
+    const files: Record<string, readonly DomainFault[]> = { ...this.#files };
     for (const [file, faults] of Object.entries(other.#files)) files[file] = [...(files[file] ?? []), ...faults];
     return new FaultsByFile(files);
   }
@@ -150,7 +150,7 @@ export class FaultsByFile {
  *  anything was written, every one of them rather than the first (FR-004,
  *  FR-009). */
 export class Faults {
-  constructor(readonly faults: readonly Fault[]) {}
+  constructor(readonly faults: readonly DomainFault[]) {}
 }
 
 /** The file as the author would name it: where it sits under the repository

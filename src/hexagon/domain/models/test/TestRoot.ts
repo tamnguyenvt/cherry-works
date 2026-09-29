@@ -1,5 +1,5 @@
 import { TEST_DIRECTORY } from "../../path.js";
-import { Fault, FaultsByFile } from "../Fault.js";
+import { DomainFault, FaultsByFile } from "../DomainFault.js";
 import { testSuiteOf, type TestSuite } from "./TestSuite.js";
 
 /** One file under `.cw/test/`, at the path a user would name it by, and what it
@@ -61,7 +61,7 @@ export class TestRoot {
  */
 export function testRootOf(testSuiteFiles: readonly TestSuiteFile[]): TestRoot {
   const suitesByFile: Record<string, TestSuite> = {};
-  const faultsByFiles: Record<string, readonly Fault[]> = {};
+  const faultsByFiles: Record<string, readonly DomainFault[]> = {};
 
   // Read in the order the paths sort in, whatever order they arrived in, so two
   // runs over one repository report in the same order (SC-007).
@@ -71,7 +71,7 @@ export function testRootOf(testSuiteFiles: readonly TestSuiteFile[]): TestRoot {
     } catch (raised) {
       // A file not reading is this file being wrong; anything else is not ours
       // to swallow.
-      if (!(raised instanceof Fault)) throw raised;
+      if (!(raised instanceof DomainFault)) throw raised;
       faultsByFiles[path] = [raised];
     }
   }

@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
-import { Fault, type ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
+import { DrivenFault, type ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
 import type { ForReadingFiles } from "#hexagon/port/zdriven/ForReadingFiles.js";
 
 const run = promisify(execFile);
@@ -95,7 +95,7 @@ export class Git implements ForVCS {
         { cwd },
       );
     } catch (raised) {
-      throw new Fault(
+      throw new DrivenFault(
         `${raised}`,
         version === undefined
           ? "Check the address, and that you can reach it from here."
@@ -113,7 +113,7 @@ export class Git implements ForVCS {
       await run("git", ["rm", "-r", "--quiet", "--", subFolder], { cwd });
       await run("git", ["commit", "-qm", `Remove ${subFolder}`], { cwd });
     } catch (raised) {
-      throw new Fault(`${raised}`, `Check that "${subFolder}" is a folder this repository holds.`);
+      throw new DrivenFault(`${raised}`, `Check that "${subFolder}" is a folder this repository holds.`);
     }
   }
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CharterPrimitiveFault, throwAggregateError } from "../../Fault.js";
+import { CharterPrimitiveFault, throwAggregateError } from "../../DomainFault.js";
 import { formatFrontmatterValue } from "../../helper.js";
 
 /** The delimiter a primitive's headers are written between. One constant for

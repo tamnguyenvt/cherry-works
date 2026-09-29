@@ -1,5 +1,5 @@
 import prompts from "prompts";
-import { Fault, REPO_SCOPE } from "#hexagon/port/driver/ForManagingCharter.js";
+import { DomainFault, REPO_SCOPE } from "#hexagon/port/driver/ForManagingCharter.js";
 import { EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./Command.js";
 
 /** What `cw remove` takes: the identity whose file goes, and whether the
@@ -41,7 +41,7 @@ export class RemoveCommand implements Command<typeof OPTIONS> {
     // refused by `remove` itself, and a question before a refusal asks nothing.
     if (!yes && scopedPrimitive.data.scope === REPO_SCOPE) {
       if (!process.stdin.isTTY)
-        throw new Fault(
+        throw new DomainFault(
           `Removing ${scopedPrimitive.data.file} is asked first, and nobody is at the terminal to answer.`,
           `Run "cw remove ${scopedPrimitive.data.identity} --yes" to remove it without asking.`,
         );

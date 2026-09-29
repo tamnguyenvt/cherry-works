@@ -1,5 +1,5 @@
 import type { CharterRoot } from "../models/charter/CharterRoot.js";
-import { FaultsByFile, TestCaseFault, type Fault } from "../models/Fault.js";
+import { FaultsByFile, TestCaseFault, type DomainFault } from "../models/DomainFault.js";
 import type { TestCase } from "../models/test/TestCase.js";
 import type { TestSuite } from "../models/test/TestSuite.js";
 import { matches } from "../../utils/globs.js";
@@ -55,7 +55,7 @@ export function runSuite(charter: CharterRoot, suiteName: string, suite: TestSui
  */
 export function findUntestedPrimitives(charter: CharterRoot, testSuites: readonly TestSuite[]): FaultsByFile {
   const testedIdentities = new Set<string | undefined>(testSuites.flatMap((testSuite) => testSuite.cases.map((one) => one.activatedIdentity)));
-  const faultsByFiles: Record<string, readonly Fault[]> = {};
+  const faultsByFiles: Record<string, readonly DomainFault[]> = {};
   for (const { identity, file, primitive } of charter.primitives) {
     if ((primitive.kind !== "guide" && primitive.kind !== "sensor") || testedIdentities.has(identity)) continue;
     faultsByFiles[file] = [

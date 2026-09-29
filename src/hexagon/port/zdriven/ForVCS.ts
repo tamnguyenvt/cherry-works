@@ -1,6 +1,6 @@
 /** What an adapter answering this port raises when git refuses, named again
  *  here so it names this port and nothing behind it. */
-export { Fault } from "../../domain/models/Fault.js";
+export { DrivenFault } from "./DrivenFault.js";
 
 /**
  * DRIVEN PORT — version control. The hexagon asks what is true of a folder it

@@ -1,4 +1,4 @@
-import { Fault, TEST_DIRECTORY } from "#hexagon/port/driver/ForManagingCharter.js";
+import { DomainFault, TEST_DIRECTORY } from "#hexagon/port/driver/ForManagingCharter.js";
 import { editInEditor } from "./helper.js";
 import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./Command.js";
 
@@ -25,7 +25,7 @@ export class SuiteEditCommand implements Command<typeof OPTIONS> {
   async run({ cwd, testAuthoringApp }: Context, { name }: Options<typeof OPTIONS>): Promise<Outcome> {
     const { testSuites } = (await testAuthoringApp.suites()).data;
     if (!testSuites.some((one) => one.data.name === name))
-      throw new Fault(`${TEST_DIRECTORY}/ holds no test file called "${name ?? ""}".`, 'Run "cw suite add" to write a new one.');
+      throw new DomainFault(`${TEST_DIRECTORY}/ holds no test file called "${name ?? ""}".`, 'Run "cw suite add" to write a new one.');
 
     const file = `${TEST_DIRECTORY}/${name}`;
     const problem = await editInEditor(cwd, file);

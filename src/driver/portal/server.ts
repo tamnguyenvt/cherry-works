@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { bearerAuth } from "hono/bearer-auth";
 import { serve, type ServerType } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { Fault, type ForManagingCharter } from "#hexagon/port/driver/ForManagingCharter.js";
+import { DomainFault, type ForManagingCharter } from "#hexagon/port/driver/ForManagingCharter.js";
 import type { ForVendoringCharters } from "#hexagon/port/driver/ForVendoringCharters.js";
 import type { ForAuthoringTests } from "#hexagon/port/driver/ForAuthoringTests.js";
 import { api } from "./routes.js";
@@ -32,7 +32,7 @@ export async function startPortal(
   port = DEFAULT_PORT,
 ): Promise<{ address: URL; server: ServerType }> {
   await access(new URL("index.html", page)).catch(() => {
-    throw new Fault("The portal's page is not built.", 'Run "pnpm build", then start the portal again.');
+    throw new DomainFault("The portal's page is not built.", 'Run "pnpm build", then start the portal again.');
   });
 
   const token = randomBytes(32).toString("base64url");

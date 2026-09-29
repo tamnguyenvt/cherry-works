@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import { Fault, type ForManagingCharter } from "#hexagon/port/driver/ForManagingCharter.js";
+import { DomainFault, type ForManagingCharter } from "#hexagon/port/driver/ForManagingCharter.js";
 import type { ForVendoringCharters } from "#hexagon/port/driver/ForVendoringCharters.js";
 import type { ForAuthoringTests } from "#hexagon/port/driver/ForAuthoringTests.js";
 import { DataDTOs, OutcomeDTOs } from "#hexagon/port/driver/dtos/index.js";
@@ -43,7 +43,7 @@ export function api(
     // What no file is wrong with — a word that is no kind, an identity the
     // charter holds nothing of — is raised rather than given back, and reads
     // at the page as every other fault does (plan §2.2).
-    if (raised instanceof Fault) return c.json(faultDTO(raised), 422);
+    if (raised instanceof DomainFault) return c.json(faultDTO(raised), 422);
     // What hono refused before a route was reached — a body that is not JSON —
     // goes out with the status hono gave it.
     if (raised instanceof HTTPException) return raised.getResponse();
@@ -178,7 +178,7 @@ export function api(
         if (c.req.valid("header")["if-match"] !== `"${revision}"`)
           return c.json(
             faultDTO(
-              new Fault(
+              new DomainFault(
                 `${scopedPrimitive.data.file} changed on disk after it was opened, and saving would write over that change.`,
                 "Open it again to see what changed, then make your edit there.",
               ),

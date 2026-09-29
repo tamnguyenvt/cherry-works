@@ -1,5 +1,5 @@
 import type { DataDTOs, OutcomeDTOs } from "../port/driver/dtos/index.js";
-import type { Fault, Faults, FaultsByFile } from "../domain/models/Fault.js";
+import type { DomainFault, Faults, FaultsByFile } from "../domain/models/DomainFault.js";
 import type { Catalogue } from "../domain/models/output/common/Catalogue.js";
 import type { ScopedPrimitive } from "../domain/models/charter/CharterRoot.js";
 import type { PrimitiveHeader, PrimitiveRequirements } from "../domain/models/charter/primitive/Primitive.js";
@@ -87,7 +87,7 @@ export function explanationOutcomeDTO(
 
 /** One fault: what it says, without the `Error` it was raised as — an `Error`
  *  does not survive being sent, and these three do. */
-export function faultDTO({ message, fix, severity }: Fault): DataDTOs.Fault {
+export function faultDTO({ message, fix, severity }: DomainFault): DataDTOs.Fault {
   return { type: "Fault", data: { message, fix, severity } };
 }
 

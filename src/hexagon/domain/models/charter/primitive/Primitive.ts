@@ -10,7 +10,7 @@ import { PosturePrimitive } from "./PosturePrimitive.js";
 import { SensorPrimitive } from "./SensorPrimitive.js";
 import { SkillPrimitive } from "./SkillPrimitive.js";
 import { BasePrimitive, DELIMITER } from "./BasePrimitive.js";
-import { CharterPrimitiveFault, throwAggregateError, type Fault } from "../../Fault.js";
+import { CharterPrimitiveFault, throwAggregateError, type DomainFault } from "../../DomainFault.js";
 import { formatFrontmatterValue } from "../../helper.js";
 import type { ForParsingYaml } from "../../../../port/zdriven/ForParsingYaml.js";
 
@@ -254,12 +254,12 @@ export function primitiveOf(input: string | UnparsedPrimitive, parser?: ForParsi
         ),
     );
   let primitive: Primitive | undefined;
-  let schemaFaults: readonly Fault[] = [];
+  let schemaFaults: readonly DomainFault[] = [];
   try {
     primitive = CLASS_OF.get(kind)!.of(headers, body);
   } catch (raised) {
     if (!(raised instanceof AggregateError)) throw raised;
-    schemaFaults = raised.errors as readonly Fault[];
+    schemaFaults = raised.errors as readonly DomainFault[];
   }
   if (primitive === undefined || unknownHeaderFaults.length > 0) throwAggregateError([...unknownHeaderFaults, ...schemaFaults]);
   return primitive;

@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { primitiveOf, PRIMITIVE_CLASSES, type Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
-import { CharterPrimitiveFault } from "../src/hexagon/domain/models/Fault.js";
-import type { Fault } from "../src/hexagon/domain/models/Fault.js";
+import { CharterPrimitiveFault } from "../src/hexagon/domain/models/DomainFault.js";
+import type { DomainFault } from "../src/hexagon/domain/models/DomainFault.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 
 const parser = new YamlParser();
@@ -33,17 +33,17 @@ const corpus = [
 const primitive = (text: string): Primitive => primitiveOf(text, parser);
 
 /** Everything a reading refused this text for. */
-const faultsIn = (text: string): readonly Fault[] => {
+const faultsIn = (text: string): readonly DomainFault[] => {
   try {
     primitiveOf(text, parser);
   } catch (raised) {
     assert.ok(raised instanceof AggregateError, String(raised));
-    return raised.errors as readonly Fault[];
+    return raised.errors as readonly DomainFault[];
   }
   return assert.fail("this text was read as a primitive");
 };
 
-const messages = (faults: readonly Fault[]) => faults.map((one) => one.message).join("\n");
+const messages = (faults: readonly DomainFault[]) => faults.map((one) => one.message).join("\n");
 
 test("the headers and the body are read apart", () => {
   const one = primitive(guide);

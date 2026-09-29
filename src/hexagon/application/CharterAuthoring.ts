@@ -3,7 +3,7 @@ import { loadSettings } from "../service/settingsRepo.js";
 import { loadTestRoot } from "../service/testSuitesRepo.js";
 import { driftedVendors } from "../service/vendorRepo.js";
 import { runSuite, TestRunReport, findUntestedPrimitives } from "../domain/services/testService.js";
-import { Fault, Faults, FaultsByFile } from "../domain/models/Fault.js";
+import { DomainFault, Faults, FaultsByFile } from "../domain/models/DomainFault.js";
 import { testSuiteNameOf } from "../domain/models/test/TestRoot.js";
 import { REPO_SCOPE, ScopedPrimitive, type CharterRoot } from "../domain/models/charter/CharterRoot.js";
 import { RepoScopedPrimitive } from "../domain/specifications/RepoScopedPrimitive.js";
@@ -164,7 +164,7 @@ export class CharterAuthoring implements ForManagingCharter {
     // nothing to narrow by, so it is raised rather than reported — there is no
     // file it is wrong with — and a typo costs no reading (FR-001).
     if (kind !== undefined && !isKind(kind))
-      throw new Fault(`"${kind}" is not a kind the charter knows.`, `Ask for one the charter knows: ${KINDS.join(", ")}.`);
+      throw new DomainFault(`"${kind}" is not a kind the charter knows.`, `Ask for one the charter knows: ${KINDS.join(", ")}.`);
 
     const [charter, , faultsByFiles] = await this.#read();
     if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
@@ -210,7 +210,7 @@ export class CharterAuthoring implements ForManagingCharter {
 
     const declared = charter.primitiveById.get(primitiveIdentity);
     if (declared === undefined)
-      throw new Fault(
+      throw new DomainFault(
         `This charter holds no "${identity}".`,
         'Run "cw list --min" to see every identity it does hold.',
       );
@@ -386,13 +386,13 @@ export class CharterAuthoring implements ForManagingCharter {
       // Every fault the answers have, not the first, the way a charter's are
       // read (FR-009).
       if (!(raised instanceof AggregateError)) throw raised;
-      return faultsDTO(new Faults(raised.errors as readonly Fault[]));
+      return faultsDTO(new Faults(raised.errors as readonly DomainFault[]));
     }
 
     const charter = await loadCharterRoot(this.#repoPath, this.#fileReader, this.#yamlParser);
     const claimingPrimitive = charter.primitiveById.get(identityOf({ kind, id }));
     if (claimingPrimitive !== undefined)
-      throw new Fault(
+      throw new DomainFault(
         `"${identityOf({ kind, id })}" is already there, declared by ${claimingPrimitive.file}, and one identity names one primitive in the whole charter.`,
         `Open ${claimingPrimitive.file}, or run this again with an id this charter has not got.`,
       );
@@ -437,14 +437,14 @@ export class CharterAuthoring implements ForManagingCharter {
   ): Promise<DataDTOs.ScopedPrimitive | DataDTOs.Faults> {
     const scopedPrimitive = await this.#scopedPrimitiveOf(identity);
     if (!RepoScopedPrimitive.isSatisfiedBy(scopedPrimitive))
-      throw new Fault(
+      throw new DomainFault(
         `${identity} was not authored in this repository, and ${scopedPrimitive.file} is read-only here.`,
         `To differ from it, author a primitive of your own under an identity of its own.`,
       );
     // Read again now and hashed the way `open` hashed it: the two differ only
     // if the file changed since (FR-078).
     if ((await contentHashOf(scopedPrimitive.primitive.toMarkdown())) !== revision)
-      throw new Fault(
+      throw new DomainFault(
         `${scopedPrimitive.file} changed on disk after it was opened, and saving would write over that change.`,
         `Open it again to see what changed, then make your edit there.`,
       );
@@ -458,7 +458,7 @@ export class CharterAuthoring implements ForManagingCharter {
       });
     } catch (raised) {
       if (!(raised instanceof AggregateError)) throw raised;
-      return faultsDTO(new Faults(raised.errors as readonly Fault[]));
+      return faultsDTO(new Faults(raised.errors as readonly DomainFault[]));
     }
 
     await this.#fileWriter.write(new URL(scopedPrimitive.file, this.#repoPath), primitive.toMarkdown());
@@ -476,7 +476,7 @@ export class CharterAuthoring implements ForManagingCharter {
   async remove(identity: string): Promise<DataDTOs.ScopedPrimitive> {
     const scopedPrimitive = await this.#scopedPrimitiveOf(identity);
     if (!RepoScopedPrimitive.isSatisfiedBy(scopedPrimitive))
-      throw new Fault(
+      throw new DomainFault(
         `${identity} was not authored in this repository, and ${scopedPrimitive.file} is read-only here.`,
         `To differ from it, author a primitive of your own under an identity of its own.`,
       );
@@ -492,7 +492,7 @@ export class CharterAuthoring implements ForManagingCharter {
     const charter = await loadCharterRoot(this.#repoPath, this.#fileReader, this.#yamlParser);
     const scopedPrimitive = charter.primitiveById.get(primitiveIdentity);
     if (scopedPrimitive === undefined)
-      throw new Fault(
+      throw new DomainFault(
         `This charter holds no "${identity}".`,
         'Run "cw list --min" to see every identity it does hold.',
       );
@@ -504,7 +504,7 @@ export class CharterAuthoring implements ForManagingCharter {
    *  every kind there is. */
   #kindOf(kind: string): Kind {
     if (!isKind(kind))
-      throw new Fault(`"${kind}" is not a kind the charter knows.`, `Ask for one the charter knows: ${KINDS.join(", ")}.`);
+      throw new DomainFault(`"${kind}" is not a kind the charter knows.`, `Ask for one the charter knows: ${KINDS.join(", ")}.`);
     return kind;
   }
 
@@ -522,13 +522,13 @@ export class CharterAuthoring implements ForManagingCharter {
    */
   async ensureRepoReady(): Promise<void> {
     if (!(await this.#vcs.isInstalled(this.#repoPath)))
-      throw new Fault(
+      throw new DomainFault(
         "This folder is not inside a git repository, and a charter is authored inside one.",
         'Run "git init" here, then "cw init", or run this again where your repository is.',
       );
 
     if ((await this.#fileReader.readIfThere(settingsFileIn(this.#repoPath))) === undefined)
-      throw new Fault("This repository was never set up under a charter.", 'Run "cw init" first.');
+      throw new DomainFault("This repository was never set up under a charter.", 'Run "cw init" first.');
   }
 
   /**
@@ -559,13 +559,13 @@ export class CharterAuthoring implements ForManagingCharter {
    */
   async init({ agents }: SettingsOptions): Promise<boolean> {
     if (!(await this.#vcs.isInstalled(this.#repoPath)))
-      throw new Fault(
+      throw new DomainFault(
         "This folder is not inside a git repository, and a charter is authored inside one.",
         'Run "git init" here, or run this again where your repository is.',
       );
 
     if (agents.length === 0)
-      throw new Fault(
+      throw new DomainFault(
         "Setup was given no agent to compile for, and a charter compiles for at least one.",
         `Choose at least one of: ${AGENT_PROVIDERS.join(", ")}.`,
       );

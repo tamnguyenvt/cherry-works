@@ -1,5 +1,5 @@
 import prompts from "prompts";
-import { Fault } from "#hexagon/port/driver/ForManagingCharter.js";
+import { DomainFault } from "#hexagon/port/driver/ForManagingCharter.js";
 import type { DataDTOs } from "#hexagon/port/driver/dtos/index.js";
 import {
   EXIT_FAILURE,
@@ -77,7 +77,7 @@ export class AddCommand implements Command<typeof OPTIONS> {
             Object.entries(parseKVParams(header, "header")).map(([field, values]) => {
               if (lists.has(field)) return [field, values];
               if (values.length > 1)
-                throw new Fault(
+                throw new DomainFault(
                   `"${field}" holds one line, and was typed ${values.length} times.`,
                   `Type "--header ${field}=..." once.`,
                 );
@@ -119,7 +119,7 @@ export class AddCommand implements Command<typeof OPTIONS> {
     kind: string,
   ): Promise<Record<string, string | readonly string[]>> {
     if (!process.stdin.isTTY)
-      throw new Fault(
+      throw new DomainFault(
         `A ${kind} requires ${required.map((one) => `"${one.field}"`).join(", ")}, and nobody is at the terminal to answer.`,
         `Run "cw add" where you can answer, or author the file under the charter yourself.`,
       );
@@ -141,7 +141,7 @@ export class AddCommand implements Command<typeof OPTIONS> {
       ),
     );
     if (required.some((one) => answers[one.field] === undefined))
-      throw new Fault("This was stopped before it had its answers, so nothing was written.", 'Run "cw add" again.');
+      throw new DomainFault("This was stopped before it had its answers, so nothing was written.", 'Run "cw add" again.');
 
     return answers;
   }

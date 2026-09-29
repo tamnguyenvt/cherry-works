@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadSettings } from "../src/hexagon/service/settingsRepo.js";
-import { SettingsFault } from "../src/hexagon/domain/models/Fault.js";
+import { SettingsFault } from "../src/hexagon/domain/models/DomainFault.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 
 const repo = new URL("file:///repo/");

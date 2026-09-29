@@ -1,6 +1,6 @@
 /** What `parse` throws, named again here so an adapter answering this port
  *  names this port and nothing behind it. */
-export { CharterPrimitiveFault } from "../../domain/models/Fault.js";
+export { CharterPrimitiveFault } from "../../domain/models/DomainFault.js";
 
 /**
  * DRIVEN PORT — translator. The domain hands over the frontmatter block and

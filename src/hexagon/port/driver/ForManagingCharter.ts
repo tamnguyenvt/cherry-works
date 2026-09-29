@@ -5,7 +5,7 @@ import type { DataDTOs, OutcomeDTOs } from "./dtos/index.js";
  *  case raises, the words a charter is made of — named again here: a driver
  *  names this port and nothing behind it, and dependency-cruiser refuses it
  *  anything else. */
-export { Fault } from "../../domain/models/Fault.js";
+export { DomainFault } from "../../domain/models/DomainFault.js";
 export { AGENT_PROVIDERS, isAgentProvider, type AgentProvider } from "../../domain/models/AgentProvider.js";
 export { BUILTIN_SCOPE, REPO_SCOPE, VENDOR_SCOPE, type Scope } from "../../domain/models/charter/CharterRoot.js";
 export { TEST_DIRECTORY } from "../../domain/path.js";

@@ -1,7 +1,7 @@
 import prompts from "prompts";
 import {
   AGENT_PROVIDERS,
-  Fault,
+  DomainFault,
   isAgentProvider,
   type AgentProvider,
   type ForManagingCharter,
@@ -78,7 +78,7 @@ async function whichAgents(
 ): Promise<readonly AgentProvider[]> {
   if (typed !== undefined) {
     if (!isAgentProvider(typed))
-      throw new Fault(
+      throw new DomainFault(
         `This engine compiles for no agent called "${typed}".`,
         `Name any of: ${AGENT_PROVIDERS.join(", ")}.`,
       );
@@ -93,7 +93,7 @@ async function whichAgents(
   // SC-012).
   if (!process.stdin.isTTY) {
     if (agentsInSettings.length === 0)
-      throw new Fault(
+      throw new DomainFault(
         "Nobody is at the terminal to choose an agent, and this repository has none chosen yet.",
         `Run "cw init --agent <name>", naming one of: ${AGENT_PROVIDERS.join(", ")}.`,
       );
@@ -114,7 +114,7 @@ async function whichAgents(
     min: 1,
   });
   if (chosen === undefined)
-    throw new Fault("Setup was stopped before it had its answers.", 'Run "cw init" again.');
+    throw new DomainFault("Setup was stopped before it had its answers.", 'Run "cw init" again.');
 
   return chosen as readonly AgentProvider[];
 }

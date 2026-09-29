@@ -7,7 +7,7 @@ import {
 } from "../domain/models/charter/CharterRoot.js";
 import { BUILTIN_PRIMITIVES } from "../domain/models/charter/builtin/index.js";
 import { identityOf, KINDS, type Primitive } from "../domain/models/charter/primitive/Primitive.js";
-import { Fault } from "../domain/models/Fault.js";
+import { DomainFault } from "../domain/models/DomainFault.js";
 import { charterFolderIn, CHARTER_DIRECTORY, vendorFolderIn } from "../domain/path.js";
 import type { ForParsingYaml } from "../port/zdriven/ForParsingYaml.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
@@ -102,7 +102,7 @@ export async function writeCharter(
   const file = new URL(under, charterFolderIn(repo));
 
   if ((await fileReader.readIfThere(file)) !== undefined)
-    throw new Fault(
+    throw new DomainFault(
       `${path} is already there, and writing this one would write over what it holds.`,
       `Open it, or run this again with an identity this charter has not got.`,
     );

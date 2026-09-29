@@ -1,5 +1,5 @@
 import { AGENT_PROVIDERS, isAgentProvider } from "../domain/models/AgentProvider.js";
-import { SettingsFault } from "../domain/models/Fault.js";
+import { SettingsFault } from "../domain/models/DomainFault.js";
 import { SETTINGS, WorkspaceSettings } from "../domain/models/Settings.js";
 import { settingsFileIn } from "../domain/path.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";

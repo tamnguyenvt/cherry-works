@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { Fault } from "#hexagon/port/driver/ForManagingCharter.js";
+import { DomainFault } from "#hexagon/port/driver/ForManagingCharter.js";
 import type { DataDTOs } from "#hexagon/port/driver/dtos/index.js";
 
 /**
@@ -30,7 +30,7 @@ export function parseKVParams(typed: readonly string[], paramName: string): Reco
   for (const one of typed) {
     const at = one.indexOf("=");
     if (at <= 0)
-      throw new Fault(
+      throw new DomainFault(
         `"--${paramName} ${one}" names nothing to put a value under.`,
         `Type each one as --${paramName} name=value, once per name.`,
       );
@@ -73,7 +73,7 @@ function lines({ data: { severity, message, fix } }: DataDTOs.Fault): readonly s
 export async function editInEditor(cwd: string, file: string): Promise<string | undefined> {
   const editorCommand = process.env.VISUAL || process.env.EDITOR;
   if (!editorCommand)
-    throw new Fault("Neither $VISUAL nor $EDITOR is set, so there is no editor to open it in.", 'Set one, as in "export EDITOR=vim".');
+    throw new DomainFault("Neither $VISUAL nor $EDITOR is set, so there is no editor to open it in.", 'Set one, as in "export EDITOR=vim".');
 
   // The file is handed over as "$1" rather than written into the command, so
   // a path with a space in it is one argument.

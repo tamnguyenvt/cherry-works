@@ -1,4 +1,4 @@
-import { Fault } from "../domain/models/Fault.js";
+import { DomainFault } from "../domain/models/DomainFault.js";
 import { vendorSourceOf } from "../domain/models/vendor/VendorSource.js";
 import { VENDOR_DIRECTORY, vendorFolderIn } from "../domain/path.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
@@ -23,13 +23,13 @@ export async function loadVendorNames(repo: URL, fileReaders: ForReadingFiles): 
  */
 async function ensureVCSReady(repo: URL, vcs: ForVCS, because: string): Promise<void> {
   if (!(await vcs.isInstalled(repo)))
-    throw new Fault(
+    throw new DomainFault(
       "This folder is not inside a git repository, and a vendor lives in one.",
       'Run "git init" here, or run this again where your repository is.',
     );
 
   if (!(await vcs.isClean(repo)))
-    throw new Fault(
+    throw new DomainFault(
       `This repository has work in hand, and ${because}.`,
       "Commit or stash what you are holding, then run this again.",
     );

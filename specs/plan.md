@@ -61,7 +61,7 @@ is one driving adapter and the portal is another; neither is the engine.
 src/
   hexagon/                         the engine. Imports nothing outside itself but lodash, picomatch and zod.
     domain/
-      models/                      Fault, FaultsByFile, Settings, AgentProvider, TestSuite
+      models/                      DomainFault, FaultsByFile, Settings, AgentProvider, TestSuite
         charter/                   CharterRoot, ScopedPrimitive, the three scopes
           primitive/               Primitive.ts (PRIMITIVE_CLASSES, primitiveOf), one <Kind>Primitive.ts per kind
           builtin/                 what the engine brings: index.ts, CwAuthorSkill.ts
@@ -76,7 +76,8 @@ src/
       driver/                      ForManagingCharter, ForVendoringCharters, ForAuthoringTests, ForReachingMcps
         dtos/                      dto.ts, data.ts, outcome.ts, index.ts: every DTO
       zdriven/                     ForReadingFiles, ForWritingFiles, ForVCS, ForParsingYaml, ForReportingProgress,
-                                   ForKeepingSecrets, ForCallingMcpServers, ForAuthorizing
+                                   ForKeepingSecrets, ForCallingMcpServers, ForAuthorizing,
+                                   DrivenFault: what an adapter raises when the tool behind it refuses
     utils/globs.ts                 covers and matches, over picomatch
   driver/
     cli/                           Commander (yargs), Command, one class per command
@@ -240,7 +241,7 @@ page bundles it ([§2.2](#22-dependency-rules)).
 repository found again ([§10.1](#101-doctor-fr-013-fr-014-fr-080-fr-081)). An answer that is a collection is made a model
 of its own so that it carries a `type` (data-model [§12.4](data-model.md#124-answers-that-are-collections)).
 
-A use case that cannot run raises a `Fault`: a raise is not an answer, and the
+A use case that cannot run raises a `DomainFault`: a raise is not an answer, and the
 command line reads it as the usage error it is, while the portal sends it as
 `DataDTOs.Fault` ([§12.2](#122-the-route-table)). What a charter is wrong with is an answer,
 `DataDTOs.FaultsByFile`, given back rather than raised.
@@ -2466,6 +2467,19 @@ Non-goals: an agent's tool list gaining the served names ([T5.012](tasks/005-mcp
 `ForKeepingSecrets` and `OsSecrets`: `security add-generic-password -U`, `find-generic-password -w` and `delete-generic-password` on macOS, `secret-tool store`, `lookup` and `clear` on Linux, the secret passed on standard input, never as an argument ([§19.5](#195-signing-in-fr-148--fr-151)). Any other platform refuses, naming the two it supports. `InMemorySecrets` for the tests.
 
 Acceptance: on the maintainer's machine, a secret written is read back and removed; no secret appears in the process list while it is written.
+
+Intent: a credential lives where the operating system keeps secrets, reached through one port that knows a secret only as a string under a key, so nothing the hexagon hands a driver can carry one ([FR-149](spec.md#fr-149), [SC-036](spec.md#sc-036)).
+
+Criteria, beside the acceptance above:
+
+- `ForKeepingSecrets` in `port/zdriven/`: `readSecret(key)` answers the string kept under the key, or `undefined` where none is; `writeSecret(key, secret)` keeps it, replacing what was there; `removeSecret(key)` takes it away, and a key with nothing under it is removed without complaint. The key is the address ([data-model [§17.3](#173-phase-003-publishing-to-npm)](data-model.md#173-credential-fr-148--fr-151)); what a secret holds is the caller's to parse.
+- `OsSecrets` in `src/zdriven/` keeps every secret under service `cherry-works`, account the key. On macOS it runs `security -i` and writes the command to its standard input, the secret as hex through `-X`, since `-w` takes it as an argument; reading is `find-generic-password -w`, removing `delete-generic-password`, exit `44` being nothing there. `security -i` reads the key between double quotes it cannot escape out of, so a key holding a quote, a backslash or a line break is refused there; an address holds none. On Linux it runs `secret-tool store --label=… service cherry-works account <key>` with the secret on standard input, `lookup` and `clear` with the same attributes; a `lookup` that fails saying nothing is nothing there.
+- Any other platform refuses every call with a `DrivenFault` naming macOS and Linux. The platform is the constructor's, `process.platform` by default, so a test can name another.
+- A command that fails raises a `DrivenFault` saying which operation on which key failed, and never what the command printed while writing, nor the secret.
+- `InMemorySecrets` holds secrets in a `Map` a test can look into.
+- Neither is wired into `main.ts`: nothing asks for a secret until [T5.006](tasks/005-mcp-knowledge.md#t5.006).
+
+Non-goals: what a `Credential` holds and its parsing ([T5.006](tasks/005-mcp-knowledge.md#t5.006)); Windows; a keychain other than the default one; renewal.
 
 #### 17.5.6 T5.006 — `cw mcp auth`, by token
 
