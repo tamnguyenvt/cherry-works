@@ -2,11 +2,11 @@ import { z } from "zod";
 
 /**
  * What every DTO is written with, data or outcome, written once: the shape of
- * one, how a set of them is keyed, and the list of strings many of them hold.
+ * one, how a set of them is keyed, and the list of StringsSchema many of them hold.
  */
 
 /** A list of names, paths or globs. */
-export const strings = z.array(z.string()).readonly();
+export const StringsSchema = z.array(z.string()).readonly();
 
 /** One DTO: its model's name, and what it holds. Every DTO is written with
  *  this, so each is `{ type, data }` the same way. */

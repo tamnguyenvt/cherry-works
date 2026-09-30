@@ -252,7 +252,7 @@ test("a charter with an error resolves nothing and says where to read what is wr
   assert.match(problem, /\.cw\/charter\/guide\/broken\.md/);
 });
 
-test("a body naming an mcp no layer holds is only a warning, and the tests still run (FR-143)", async () => {
+test("a body naming an mcp no layer holds is an error, and the tests do not run (FR-143)", async () => {
   const run = commandLine({
     ...charter,
     [at("guide/billing.md")]: primitive("guide", "billing", ['globs: ["src/**/*.ts"]'], "Take the requirements from mcp:missing."),
@@ -261,5 +261,5 @@ test("a body naming an mcp no layer holds is only a warning, and the tests still
 
   const { code } = await run();
 
-  assert.equal(code, EXIT_OK);
+  assert.equal(code, EXIT_FAILURE);
 });

@@ -2,7 +2,7 @@ import type { Catalogue } from "./common/Catalogue.js";
 import type { CharterMd } from "./common/CharterMd.js";
 import type { CompiledPrimitive } from "./common/CompiledPrimitive.js";
 import type { McpOrigin } from "./common/McpOrigin.js";
-import type { ClaudeComponent } from "./providers/claude/ClaudeComponent.js";
+import type { ProviderComponent } from "./provider-component/ProviderComponent.js";
 
 /**
  * Everything one reading of a charter compiles to (FR-021).
@@ -20,5 +20,5 @@ export interface CharterOutput {
   /** Every place the charter's mcps reach, each once: what `cw mcp serve` and
    *  `cw mcp auth` read (FR-145). Ordered by address, then path (SC-007). */
   readonly mcpOrigins: readonly McpOrigin[];
-  readonly providerComponents: readonly ClaudeComponent[];
+  readonly providerComponents: readonly ProviderComponent[];
 }

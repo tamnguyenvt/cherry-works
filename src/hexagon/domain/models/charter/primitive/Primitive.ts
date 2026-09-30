@@ -8,6 +8,8 @@ import { PlaybookPrimitive } from "./PlaybookPrimitive.js";
 import { PosturePrimitive } from "./PosturePrimitive.js";
 import { SensorPrimitive } from "./SensorPrimitive.js";
 import { SkillPrimitive } from "./SkillPrimitive.js";
+import { ScriptPrimitive } from "./ScriptPrimitive.js";
+import { TemplatePrimitive } from "./TemplatePrimitive.js";
 import { BasePrimitive, DELIMITER } from "./BasePrimitive.js";
 import { CharterPrimitiveFault, throwAggregateError, type DomainFault } from "../../DomainFault.js";
 import { formatFrontmatterValue } from "../../helper.js";
@@ -25,6 +27,8 @@ export const PRIMITIVE_CLASSES = [
   CorpusPrimitive,
   MixinPrimitive,
   McpPrimitive,
+  ScriptPrimitive,
+  TemplatePrimitive,
 ] as const;
 
 /**
@@ -54,7 +58,7 @@ export type PrimitiveIdentity = `${string}:${string}`;
 /** One identity as an author typed it: the two words and the colon between
  *  them. What it names is not asked here — whether this charter holds anything
  *  of that name takes the whole charter (FR-014). */
-export const PRIMITIVE_IDENTITY_SCHEMA = z
+export const PrimitiveIdentitySchema = z
   .string()
   .regex(/^[a-z0-9-]+:[a-z0-9-]+(\/[a-z0-9-]+)*$/)
   .transform((identity) => identity as PrimitiveIdentity);
@@ -65,7 +69,7 @@ export const PRIMITIVE_IDENTITY_SCHEMA = z
  *  not `<kind>:<id>` is raised: it names nothing to look for (FR-014). */
 export function identityOf(kindAndId: { readonly kind: string; readonly id: string } | string): PrimitiveIdentity {
   if (typeof kindAndId !== "string") return `${kindAndId.kind}:${kindAndId.id}`;
-  const parsed = PRIMITIVE_IDENTITY_SCHEMA.safeParse(kindAndId);
+  const parsed = PrimitiveIdentitySchema.safeParse(kindAndId);
   if (!parsed.success)
     throw new CharterPrimitiveFault(
       `"${kindAndId}" is not an identity: one is a kind and an id with a colon between them.`,
@@ -220,7 +224,10 @@ export function primitiveOf(input: string | UnparsedPrimitive, parser?: ForParsi
         ),
       ]);
     headers = parser!.parse(lines.slice(1, end).join("\n"));
-    body = lines.slice(end + 1).join("\n").trim();
+    // The blank lines between the headers and the body, and the whitespace at
+    // its end, are the file's; the indentation of its first line is the body's,
+    // which a template's built file keeps byte for byte (FR-159).
+    body = lines.slice(end + 1).join("\n").replace(/^(\s*\n)+/, "").trimEnd();
   } else {
     headers = input.headers;
     body = input.body;

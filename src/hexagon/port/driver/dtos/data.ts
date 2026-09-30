@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { byType, dto, strings } from "./dto.js";
+import { byType, dto, StringsSchema } from "./dto.js";
 
 /**
  * Every DTO that is not an outcome: what one model says, reused wherever it
@@ -11,7 +11,7 @@ import { byType, dto, strings } from "./dto.js";
  */
 
 /** One fault: what is wrong, the next move, and whether it stops a build. */
-const fault = dto(
+const FaultSchema = dto(
   "Fault",
   z.object({
     message: z.string(),
@@ -20,21 +20,21 @@ const fault = dto(
   }),
 );
 
-/** Every fault under the file it is wrong with, named from the repository. A
+/** Every FaultSchema under the file it is wrong with, named from the repository. A
  *  file nothing is wrong with is not in here at all. */
-const faultsByFile = dto(
+const FaultsByFileSchema = dto(
   "FaultsByFile",
   z.object({
-    files: z.record(z.string(), z.array(fault).readonly()),
+    files: z.record(z.string(), z.array(FaultSchema).readonly()),
   }),
 );
 
 /** Faults under no file yet: what an author's answers were refused for before
  *  anything was written. */
-const faults = dto(
+const FaultsSchema = dto(
   "Faults",
   z.object({
-    faults: z.array(fault).readonly(),
+    faults: z.array(FaultSchema).readonly(),
   }),
 );
 
@@ -42,12 +42,12 @@ const faults = dto(
  *  the line the kind's own class declares, under the kind it belongs to. Not
  *  one charter's answer but every charter's — what a kind is does not depend on
  *  what was authored (FR-010). */
-const primitiveKinds = dto("PrimitiveKinds", z.record(z.string(), z.string()));
+const PrimitiveKindsSchema = dto("PrimitiveKinds", z.record(z.string(), z.string()));
 
 /** One primitive as the full listing records it: everything its headers
  *  declare about it, and the file its body is in. A header nobody wrote is
  *  left out rather than recorded as nothing. */
-const catalogueEntry = dto(
+const CatalogueEntrySchema = dto(
   "CatalogueEntry",
   z.object({
     identity: z.string(),
@@ -55,25 +55,25 @@ const catalogueEntry = dto(
     id: z.string(),
     description: z.string(),
     file: z.string(),
-    tags: strings.optional(),
-    globs: strings.optional(),
+    tags: StringsSchema.optional(),
+    globs: StringsSchema.optional(),
     rationale: z.string().optional(),
-    mixins: strings.optional(),
+    mixins: StringsSchema.optional(),
   }),
 );
 
 /** What the charter holds, ordered by identity. */
-const catalogue = dto(
+const CatalogueSchema = dto(
   "Catalogue",
   z.object({
-    entries: z.array(catalogueEntry).readonly(),
+    entries: z.array(CatalogueEntrySchema).readonly(),
   }),
 );
 
 /** One primitive as the whole charter sees it: what it is called and what it
  *  is for, the file it was authored in, which layer that file arrived in, and
  *  every header it declared. */
-const scopedPrimitive = dto(
+const ScopedPrimitiveSchema = dto(
   "ScopedPrimitive",
   z.object({
     identity: z.string(),
@@ -81,53 +81,53 @@ const scopedPrimitive = dto(
     description: z.string(),
     file: z.string(),
     scope: z.enum(["repo", "vendor", "builtin"]),
-    headers: z.record(z.string(), z.union([z.string(), strings])),
+    headers: z.record(z.string(), z.union([z.string(), StringsSchema])),
   }),
 );
 
 /** Every primitive the charter holds, each as the whole charter sees it,
  *  ordered by identity. What the portal lists by, since it names the layer and
- *  every header where the catalogue names neither. */
-const scopedPrimitives = dto(
+ *  every header where the CatalogueSchema names neither. */
+const ScopedPrimitivesSchema = dto(
   "ScopedPrimitives",
   z.object({
-    primitives: z.array(scopedPrimitive).readonly(),
+    primitives: z.array(ScopedPrimitiveSchema).readonly(),
   }),
 );
 
 /** One primitive as its file holds it now: the primitive as the whole charter
  *  sees it, its markdown body, and the content hash of it written out — the
  *  revision a save is made over. */
-const primitiveSnapshot = dto(
+const PrimitiveSnapshotSchema = dto(
   "PrimitiveSnapshot",
   z.object({
-    scopedPrimitive,
+    scopedPrimitive: ScopedPrimitiveSchema,
     body: z.string(),
     revision: z.string(),
   }),
 );
 
 /** What a build did, or would do, to each file it touches. */
-const planSummary = dto(
+const PlanSummarySchema = dto(
   "PlanSummary",
   z.object({
-    added: strings,
-    edited: strings,
-    deleted: strings,
-    unchanged: strings,
+    added: StringsSchema,
+    edited: StringsSchema,
+    deleted: StringsSchema,
+    unchanged: StringsSchema,
   }),
 );
 
 /** One header a kind takes: whether it holds a line or a list, whether a file
  *  written without it is refused, and the values it may hold where the kind
  *  reads it from a closed set. */
-const primitiveHeader = dto(
+const PrimitiveHeaderSchema = dto(
   "PrimitiveHeader",
   z.object({
     field: z.string(),
     shape: z.enum(["line", "list"]),
     required: z.boolean(),
-    allowedValues: strings.optional(),
+    allowedValues: StringsSchema.optional(),
   }),
 );
 
@@ -135,10 +135,10 @@ const primitiveHeader = dto(
  *  primitive of that kind written out as its frontmatter holds it — the lines
  *  themselves, so a driver shows an author a sample without holding a second
  *  spelling of how a header is written. */
-const primitiveRequirements = dto(
+const PrimitiveRequirementsSchema = dto(
   "PrimitiveRequirements",
   z.object({
-    headers: z.array(primitiveHeader).readonly(),
+    headers: z.array(PrimitiveHeaderSchema).readonly(),
     sample: z.string(),
   }),
 );
@@ -147,32 +147,32 @@ const primitiveRequirements = dto(
  *  repository. A file putting none of the situations asked about is not in here
  *  at all. Nothing is resolved in them — how a case came out is what a run
  *  answers. */
-const testCasesByFile = dto("TestCasesByFile", z.record(z.string(), strings));
+const TestCasesByFileSchema = dto("TestCasesByFile", z.record(z.string(), StringsSchema));
 
 /** One test case, resolved: the test file it is in, the situation it put, and
  *  where the charter did not answer it as expected, why. */
-const testCaseReport = dto(
+const TestCaseReportSchema = dto(
   "TestCaseReport",
   z.object({
     suiteName: z.string(),
     situation: z.string(),
     passed: z.boolean(),
-    unmet: fault.optional(),
+    unmet: FaultSchema.optional(),
   }),
 );
 
 /** How every case one repository wrote down came out. */
-const testRunReport = dto(
+const TestRunReportSchema = dto(
   "TestRunReport",
   z.object({
-    testCaseReports: z.array(testCaseReport).readonly(),
+    testCaseReports: z.array(TestCaseReportSchema).readonly(),
   }),
 );
 
 /** One situation a test pins down, said rather than handed over as written:
  *  the file it touches or the event it raises, what it expects of it, and the
  *  identity it names where it names one. */
-const testCase = dto(
+const TestCaseSchema = dto(
   "TestCase",
   z.object({
     situation: z.string(),
@@ -184,33 +184,33 @@ const testCase = dto(
 /** One test file, by its name under `.cw/test/`: the text it holds, what it is
  *  about and the cases it pins down, or — for a file that does not read — why
  *  not (FR-124). */
-const testSuite = dto(
+const TestSuiteSchema = dto(
   "TestSuite",
   z.object({
     name: z.string(),
     text: z.string().optional(),
     description: z.string().optional(),
-    cases: z.array(testCase).readonly(),
-    fault: fault.optional(),
+    cases: z.array(TestCaseSchema).readonly(),
+    fault: FaultSchema.optional(),
   }),
 );
 
 /** Every test file, in the order their names sort in. */
-const testSuites = dto(
+const TestSuitesSchema = dto(
   "TestSuites",
   z.object({
-    testSuites: z.array(testSuite).readonly(),
+    testSuites: z.array(TestSuiteSchema).readonly(),
   }),
 );
 
 /** One address a developer signs in to, and whether they have (FR-150): every
  *  mcp at it whatever its path, the ways any of them allows, and how the
  *  developer signed in there. Never the credential itself (SC-036). */
-const signInStatus = dto(
+const SignInStatusSchema = dto(
   "SignInStatus",
   z.object({
     address: z.string(),
-    identities: strings,
+    identities: StringsSchema,
     auth: z.array(z.enum(["oauth", "token"])).readonly(),
     signedIn: z.boolean(),
     method: z.enum(["oauth", "token"]).optional(),
@@ -220,7 +220,7 @@ const signInStatus = dto(
 /** One tool `cw mcp serve` shows the agent: named `<prefix>__<tool>` after the
  *  identity declaring it, its description led by that identity and its path,
  *  its input schema the place's own (FR-153). */
-const servedTool = dto(
+const ServedToolSchema = dto(
   "ServedTool",
   z.object({
     name: z.string(),
@@ -232,52 +232,52 @@ const servedTool = dto(
 /** What one run serves, ordered by name, and what was left out and why: a
  *  place down or not signed in to, a declared tool its place lacks (FR-153,
  *  FR-154). */
-const servedTools = dto(
+const ServedToolsSchema = dto(
   "ServedTools",
   z.object({
-    tools: z.array(servedTool).readonly(),
-    problems: strings,
+    tools: z.array(ServedToolSchema).readonly(),
+    problems: StringsSchema,
   }),
 );
 
 /** What a call answered: the place's answer as it came, or an error answer
  *  saying why no place was reached (FR-154). */
-const toolAnswer = dto("ToolAnswer", z.record(z.string(), z.unknown()));
+const ToolAnswerSchema = dto("ToolAnswer", z.record(z.string(), z.unknown()));
 
 /** What a repository configured itself with. */
-const workspaceSettings = dto(
+const WorkspaceSettingsSchema = dto(
   "WorkspaceSettings",
   z.object({
-    agents: strings,
+    agents: StringsSchema,
   }),
 );
 
 /** Every data DTO's schema, under the model's name — the name its DTO carries
  *  as `type` — in alphabetical order. */
 export const DataDTOs = byType(
-  catalogue,
-  catalogueEntry,
-  fault,
-  faults,
-  faultsByFile,
-  planSummary,
-  primitiveHeader,
-  primitiveKinds,
-  primitiveRequirements,
-  primitiveSnapshot,
-  scopedPrimitive,
-  scopedPrimitives,
-  servedTool,
-  servedTools,
-  signInStatus,
-  testCase,
-  testCaseReport,
-  testCasesByFile,
-  testRunReport,
-  testSuite,
-  testSuites,
-  toolAnswer,
-  workspaceSettings,
+  CatalogueSchema,
+  CatalogueEntrySchema,
+  FaultSchema,
+  FaultsSchema,
+  FaultsByFileSchema,
+  PlanSummarySchema,
+  PrimitiveHeaderSchema,
+  PrimitiveKindsSchema,
+  PrimitiveRequirementsSchema,
+  PrimitiveSnapshotSchema,
+  ScopedPrimitiveSchema,
+  ScopedPrimitivesSchema,
+  ServedToolSchema,
+  ServedToolsSchema,
+  SignInStatusSchema,
+  TestCaseSchema,
+  TestCaseReportSchema,
+  TestCasesByFileSchema,
+  TestRunReportSchema,
+  TestSuiteSchema,
+  TestSuitesSchema,
+  ToolAnswerSchema,
+  WorkspaceSettingsSchema,
 );
 
 /** Every data DTO's type, under the model's name: what its schema infers. */

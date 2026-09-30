@@ -1,10 +1,10 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeaders, headersOf, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders } from "./BasePrimitive.js";
 
 /** A standard the agent is held to. Its body is loaded when a touched file
  *  matches one of its globs, and on every turn where it names none (FR-004). */
-export const GuideHeaders = CommonHeaders.extend({});
-export type GuideHeaders = Readonly<z.infer<typeof GuideHeaders>>;
+export const GuideHeadersSchema = CommonHeadersSchema.extend({});
+export type GuideHeaders = Readonly<z.infer<typeof GuideHeadersSchema>>;
 
 export class GuidePrimitive extends BasePrimitive<GuideHeaders> {
   static readonly kind = "guide" as const;
@@ -17,7 +17,7 @@ export class GuidePrimitive extends BasePrimitive<GuideHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = GuideHeaders;
+  static override readonly schema = GuideHeadersSchema;
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -35,6 +35,6 @@ export class GuidePrimitive extends BasePrimitive<GuideHeaders> {
 
   /** One guide, or every fault its headers have (FR-004). */
   static of(record: Readonly<Record<string, unknown>>, body: string): GuidePrimitive {
-    return new GuidePrimitive(headersOf(GuidePrimitive, GuideHeaders, record), body);
+    return new GuidePrimitive(headersOf(GuidePrimitive, GuideHeadersSchema, record), body);
   }
 }

@@ -21,13 +21,8 @@ import type { ProjectionPolicy } from "../ProjectionPolicy.js";
  * when the thing it applies to comes up and not before (FR-013).
  */
 export class Catalogue {
-  static of(entries: readonly CatalogueFull[]): Catalogue {
-    return new Catalogue(
-      [...entries].sort((one, another) => (one.identity < another.identity ? -1 : one.identity > another.identity ? 1 : 0)),
-    );
-  }
-
-  private constructor(private readonly entries: readonly CatalogueFull[]) {}
+  /** Entries in the order they are to be listed: by identity (SC-007). */
+  constructor(private readonly entries: readonly CatalogueFull[]) {}
 
   /** This listing is the charter's own file: it says what the charter holds now,
    *  and nothing else has anything to say in it. */
@@ -39,7 +34,7 @@ export class Catalogue {
    * A narrowed listing is a listing: what comes back answers `full` and
    * `compact` the way this does, so whoever reads it never has to ask whether it
    * was narrowed. Nothing is re-sorted — the entries keep the order they were
-   * put in, which is the order by identity `of` gave them.
+   * put in, which is the order by identity they were made in.
    */
   filterByKind(kind: string): Catalogue {
     return new Catalogue(this.entries.filter((one) => one.kind === kind));

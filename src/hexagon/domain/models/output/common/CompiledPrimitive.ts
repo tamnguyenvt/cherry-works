@@ -1,7 +1,5 @@
-import { OUT_DIRECTORY } from "../../../path.js";
-import type { ScopedPrimitive } from "../../charter/CharterRoot.js";
 import type { ProjectionPolicy } from "../ProjectionPolicy.js";
-import { stamp, type StampedDocument } from "../StampedDocument.js";
+import type { StampedDocument } from "../StampedDocument.js";
 
 /**
  * One primitive as an agent opens it: the headers its author wrote, and below
@@ -13,28 +11,26 @@ import { stamp, type StampedDocument } from "../StampedDocument.js";
  * included. The document is handed in whole: reading a primitive into it is the
  * compiler's. Where it lands is said here, once: the file the catalogue names
  * for it and a host's document points to (FR-140).
+ *
+ * A script and a template are the file they stand for: their body alone, under
+ * the extension they declare, with no stamp, since a stamp would be a line of
+ * the file (FR-159). A script is run by its path (FR-160).
  */
 export class CompiledPrimitive {
-  static of(one: ScopedPrimitive, document: string): CompiledPrimitive {
-    return new CompiledPrimitive(one.identity, `${OUT_DIRECTORY}/${one.primitive.kind}/${one.primitive.headers.id}.md`, document);
-  }
-
   /** Generated, and the charter's alone: written whole over whatever is there,
    *  and gone with the primitive it was compiled from. */
   readonly projection: ProjectionPolicy = "replace";
 
-  /** This document as a reader opens it, with the stamp saying where to change
-   *  it instead. */
-  toStampedDocument(): StampedDocument {
-    return stamp(this.document);
-  }
-
-  private constructor(
+  constructor(
     /** Which primitive this is: what the catalogue entry naming its file is
      *  found by. */
     readonly identity: string,
-    /** Where it lands, from the repository: `.cw/out/<kind>/<id>.md`. */
+    /** Where it lands, from the repository: `.cw/out/<kind>/<id>.<extension>`. */
     readonly file: string,
-    readonly document: string,
+    /** What the file holds: stamped with where to change it instead, or a
+     *  script's or a template's body alone. */
+    readonly document: StampedDocument | string,
+    /** Run by its path once it is down: a script (FR-160). */
+    readonly executable: boolean,
   ) {}
 }

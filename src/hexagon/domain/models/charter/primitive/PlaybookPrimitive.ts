@@ -1,11 +1,11 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeaders, headersOf, goodArray, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders } from "./BasePrimitive.js";
 
 /** An ordered procedure loaded when a request matches its triggers (FR-004). */
-export const PlaybookHeaders = CommonHeaders.extend({
-  triggers: goodArray,
+export const PlaybookHeadersSchema = CommonHeadersSchema.extend({
+  triggers: GoodArraySchema,
 });
-export type PlaybookHeaders = Readonly<z.infer<typeof PlaybookHeaders>>;
+export type PlaybookHeaders = Readonly<z.infer<typeof PlaybookHeadersSchema>>;
 
 export class PlaybookPrimitive extends BasePrimitive<PlaybookHeaders> {
   static readonly kind = "playbook" as const;
@@ -19,7 +19,7 @@ export class PlaybookPrimitive extends BasePrimitive<PlaybookHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = PlaybookHeaders;
+  static override readonly schema = PlaybookHeadersSchema;
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -41,6 +41,6 @@ export class PlaybookPrimitive extends BasePrimitive<PlaybookHeaders> {
 
   /** One playbook, or every fault its headers have (FR-004). */
   static of(record: Readonly<Record<string, unknown>>, body: string): PlaybookPrimitive {
-    return new PlaybookPrimitive(headersOf(PlaybookPrimitive, PlaybookHeaders, record), body);
+    return new PlaybookPrimitive(headersOf(PlaybookPrimitive, PlaybookHeadersSchema, record), body);
   }
 }

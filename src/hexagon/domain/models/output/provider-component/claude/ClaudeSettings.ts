@@ -1,4 +1,5 @@
-import type { ProjectionPolicy } from "../../ProjectionPolicy.js";
+import { CLAUDE_DIRECTORY } from "../../../../path.js";
+import { SettingBasedComponent } from "../SettingBasedComponent.js";
 
 /** The events this host raises, and the only keys `hooks` takes: a name outside
  *  this set is a hook that never fires, which is a charter naming an event of a
@@ -38,7 +39,7 @@ export interface ClaudeHook {
  * optional and a primitive names the one it asks for: a posture the permissions,
  * a sensor the hooks.
  */
-export interface ClaudeSettings {
+export interface ClaudeSettingsFields {
   readonly permissions?: {
     readonly allow: readonly string[];
     readonly deny: readonly string[];
@@ -65,22 +66,14 @@ export interface ClaudeSettings {
  * compiling, which is also where a settings file the repository already has is
  * merged with rather than overwritten.
  */
-export class ClaudeSettingsComponent {
+export class ClaudeSettings extends SettingBasedComponent<ClaudeSettingsFields> {
   static readonly kind = "settings" as const;
-  readonly kind = ClaudeSettingsComponent.kind;
+  readonly kind = ClaudeSettings.kind;
 
-  /** The settings file this host reads is shared with whatever the repository set
-   *  for itself, so what is put down there is written into what is there rather
-   *  than in place of it (FR-018). */
-  readonly projection: ProjectionPolicy = "mergeJSON";
-
-  static of(settings: ClaudeSettings): ClaudeSettingsComponent {
-    return new ClaudeSettingsComponent(settings);
+  /** Every posture and every sensor of the charter lands in the one file this
+   *  host reads its settings from. */
+  static of(settings: ClaudeSettingsFields): ClaudeSettings {
+    return new ClaudeSettings(`${CLAUDE_DIRECTORY}/settings.json`, settings);
   }
-
-  private constructor(
-    /** The fields this asks of the settings file, as claude reads them. */
-    readonly settings: ClaudeSettings,
-  ) {}
 
 }

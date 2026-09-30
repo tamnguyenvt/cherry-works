@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SIGNALS } from "../charter/primitive/SensorPrimitive.js";
-import { PRIMITIVE_IDENTITY_SCHEMA, type PrimitiveIdentity } from "../charter/primitive/Primitive.js";
+import { PrimitiveIdentitySchema, type PrimitiveIdentity } from "../charter/primitive/Primitive.js";
 
 /**
  * What a case may say (FR-047).
@@ -20,17 +20,17 @@ import { PRIMITIVE_IDENTITY_SCHEMA, type PrimitiveIdentity } from "../charter/pr
  * to allow or refuse. So the shapes nothing could ever answer do not exist to
  * be handled.
  */
-export const TEST_CASE_SCHEMA = z.union([
+export const TestCaseSchema = z.union([
   z.strictObject({
     do: z.strictObject({ touchFile: z.string().min(1) }),
     expect: z.union([
-      z.strictObject({ activate: PRIMITIVE_IDENTITY_SCHEMA }),
+      z.strictObject({ activate: PrimitiveIdentitySchema }),
       z.strictObject({ allow: z.boolean() }),
     ]),
   }),
   z.strictObject({
     when: z.enum(SIGNALS),
-    expect: z.strictObject({ run: PRIMITIVE_IDENTITY_SCHEMA }),
+    expect: z.strictObject({ run: PrimitiveIdentitySchema }),
   }),
 ]);
 
@@ -49,7 +49,7 @@ export const TEST_CASE_SCHEMA = z.union([
  * decides how it resolves, and that is the resolver's question to ask of it.
  */
 export class TestCase {
-  constructor(readonly written: z.infer<typeof TEST_CASE_SCHEMA>) {}
+  constructor(readonly written: z.infer<typeof TestCaseSchema>) {}
 
   /** The situation it puts, said as a line, and what it expects of it: what a
    *  run reports it under, and what an explanation names it by (FR-048,

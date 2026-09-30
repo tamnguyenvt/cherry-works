@@ -10,7 +10,7 @@ import { AGENT_PROVIDERS, type AgentProvider } from "./AgentProvider.js";
  * way of telling that from a host with nothing to build. A field added to setup
  * is a field added here, and every reader gets it typed.
  */
-export const SETTINGS = z.object({
+export const WorkspaceSettingsSchema = z.object({
   agents: z.array(z.enum(AGENT_PROVIDERS)),
 });
 

@@ -24,9 +24,9 @@ import {
   workspaceSettingsDTO,
 } from "./dtos.js";
 import { contentHashOf } from "./helper.js";
-import { catalogueOf } from "../domain/services/compileService.js";
+import { catalogueOf } from "../domain/services/compile/catalogueFactory.js";
 import { executePlan, plan, previewPlan } from "../service/buildService.js";
-import type { WorkspaceSettings } from "../domain/models/Settings.js";
+import type { WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import { AGENT_PROVIDERS } from "../domain/models/AgentProvider.js";
 import { CHARTER_DIRECTORY, settingsFileIn } from "../domain/path.js";
 import type { UnparsedHeaders, ForManagingCharter, SettingsOptions } from "../port/driver/ForManagingCharter.js";

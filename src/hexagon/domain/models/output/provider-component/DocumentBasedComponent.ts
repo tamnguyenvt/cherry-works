@@ -1,13 +1,13 @@
-import type { ProjectionPolicy } from "../../../ProjectionPolicy.js";
-import { stamp, type StampedDocument } from "../../../StampedDocument.js";
-import { formatFrontmatterValue } from "../../../../helper.js";
+import { stamp } from "../StampedDocument.js";
+import { ProviderComponent } from "./ProviderComponent.js";
+import { formatFrontmatterValue } from "../../helper.js";
 
 /** A document this host reads no frontmatter of: the file it loads whole,
  *  whatever is in it. Its whole content is the body. */
 export type NoHeaders = Record<string, never>;
 
 /**
- * One file as claude's own kinds have it (FR-018).
+ * One file a host reads as a document: frontmatter, then a body (FR-018).
  *
  * The other side of the compilation. A charter is what an author wrote — the
  * kinds, in the charter's words; this is what one host reads — its kinds, in
@@ -24,7 +24,7 @@ export type NoHeaders = Record<string, never>;
  * it goes and which primitive it was compiled from is what the compiler knows,
  * and it is the compiler that asks for the text (plan §2.6).
  */
-export abstract class DocumentBasedComponent<Headers extends object = NoHeaders> {
+export abstract class DocumentBasedComponent<Headers extends object = NoHeaders> extends ProviderComponent {
   protected constructor(
     /** What this host calls this one: the charter identity with the separators a
      *  filename does not carry replaced, so `acme/skill:review` is
@@ -33,6 +33,7 @@ export abstract class DocumentBasedComponent<Headers extends object = NoHeaders>
      *  whether or not that host reads it out of the frontmatter: it is what the
      *  file is called. */
     readonly name: string,
+    path: string,
     /** What this host reads before the body, as the kind's own interface has
      *  it. Typed by whichever kind this is, so nothing reads a field of one
      *  kind's frontmatter off another's. */
@@ -40,43 +41,27 @@ export abstract class DocumentBasedComponent<Headers extends object = NoHeaders>
     /** What the primitive says, with the mixins it pulls in already written
      *  into it (FR-006). */
     readonly body: string,
-  ) {}
-
-  /** Which of this host's kinds this is. Each class declares it as a literal,
-   *  and the literals are where `ClaudeComponentKind` comes from — what the
-   *  compiler reads to know where the file goes. */
-  abstract readonly kind: string;
-
-  /** A document is this primitive's alone, so putting it down replaces whatever
-   *  is there (FR-020). */
-  readonly projection: ProjectionPolicy = "replace";
-
-  /**
-   * This document as the file this host reads: its frontmatter, its body, and
-   * the stamp saying this engine wrote it.
-   *
-   * Called where a projection is put on disk. A kind that declares no frontmatter
-   * gets none.
-   *
-   * Every one of them carries the stamp, which is what a reader is told and what
-   * a build reads back before taking a file away — a document without it is
-   * someone's own and is left alone (FR-017, FR-020).
-   */
-  toStampedDocument(): StampedDocument {
-    const headers = Object.entries(this.headers);
-
-    return stamp(
+  ) {
+    // The file this host reads: its frontmatter, its body, and the stamp
+    // saying this engine wrote it. Every one of them carries the stamp, which
+    // is what a reader is told and what a build reads back before taking a
+    // file away — a document without it is someone's own and is left alone
+    // (FR-017, FR-020). A document is this primitive's alone, so putting it
+    // down replaces whatever is there.
+    const headerEntries = Object.entries(headers);
+    const stampedDocument = stamp(
       [
         // A kind whose file this host reads whole declares no frontmatter, and
         // gets none: an empty block would be this engine writing a field for
         // this host to read, and there is none to write.
-        ...(headers.length === 0
+        ...(headerEntries.length === 0
           ? []
-          : [["---", ...headers.map(([field, value]) => `${field}: ${formatFrontmatterValue(value)}`), "---"].join("\n")]),
-        this.body,
+          : [["---", ...headerEntries.map(([field, value]) => `${field}: ${formatFrontmatterValue(value)}`), "---"].join("\n")]),
+        body,
       ]
         .filter((block) => block !== "")
         .join("\n\n"),
     );
+    super(path, stampedDocument, "replace");
   }
 }

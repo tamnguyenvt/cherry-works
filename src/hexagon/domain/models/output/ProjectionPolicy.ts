@@ -29,4 +29,6 @@ export interface Projection {
   readonly path: string;
   readonly contents: string;
   readonly projectionPolicy: ProjectionPolicy;
+  /** Run by its path once it is down: a built script (FR-160). */
+  readonly executable?: boolean;
 }

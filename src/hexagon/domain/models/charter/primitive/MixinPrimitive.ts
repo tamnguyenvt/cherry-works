@@ -1,13 +1,13 @@
 import { z } from "zod";
-import { BasePrimitive, CommonHeaders, headersOf, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders } from "./BasePrimitive.js";
 
 /** Headers and body reused by other primitives. A leaf: it lends its body to
  *  the host that pulls it in, and pulls in none of its own (FR-006). */
-export const MixinHeaders = CommonHeaders.extend({
+export const MixinHeadersSchema = CommonHeadersSchema.extend({
   /** Never: reading refuses a mixin that declares one. */
   mixins: z.undefined().optional(),
 });
-export type MixinHeaders = Readonly<z.infer<typeof MixinHeaders>>;
+export type MixinHeaders = Readonly<z.infer<typeof MixinHeadersSchema>>;
 
 export class MixinPrimitive extends BasePrimitive<MixinHeaders> {
   static readonly kind = "mixin" as const;
@@ -20,7 +20,7 @@ export class MixinPrimitive extends BasePrimitive<MixinHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = MixinHeaders;
+  static override readonly schema = MixinHeadersSchema;
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -36,6 +36,6 @@ export class MixinPrimitive extends BasePrimitive<MixinHeaders> {
 
   /** One mixin, or every fault its headers have (FR-004, FR-006). */
   static of(record: Readonly<Record<string, unknown>>, body: string): MixinPrimitive {
-    return new MixinPrimitive(headersOf(MixinPrimitive, MixinHeaders, record), body);
+    return new MixinPrimitive(headersOf(MixinPrimitive, MixinHeadersSchema, record), body);
   }
 }

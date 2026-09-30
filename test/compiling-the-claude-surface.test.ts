@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
 import { folderURL } from "../src/hexagon/domain/path.js";
-import { compile } from "../src/hexagon/domain/services/compileService.js";
+import { compile } from "../src/hexagon/domain/services/compile/compileService.js";
 import { shortenStringsOf } from "../src/hexagon/domain/models/helper.js";
 import { putDownBy } from "./put-down-by.js";
 import type { AgentProvider } from "../src/hexagon/domain/models/AgentProvider.js";

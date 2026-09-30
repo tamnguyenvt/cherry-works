@@ -1,4 +1,5 @@
-import { DocumentBasedComponent } from "./DocumentBasedComponent.js";
+import { CLAUDE_DIRECTORY } from "../../../../path.js";
+import { DocumentBasedComponent } from "../DocumentBasedComponent.js";
 
 /** A rule's frontmatter: the files that bring it up, where only some do. A rule
  *  declaring no `paths` is loaded at the start of every session. */
@@ -19,11 +20,11 @@ export interface ClaudeRuleHeaders {
  *
  * What the body reads like is the compiler's (plan §2.6).
  */
-export class ClaudeRuleComponent extends DocumentBasedComponent<ClaudeRuleHeaders> {
+export class ClaudeRule extends DocumentBasedComponent<ClaudeRuleHeaders> {
   static readonly kind = "rule" as const;
-  readonly kind = ClaudeRuleComponent.kind;
+  readonly kind = ClaudeRule.kind;
 
-  static of(name: string, headers: ClaudeRuleHeaders, body: string): ClaudeRuleComponent {
-    return new ClaudeRuleComponent(name, headers, body);
+  static of(name: string, headers: ClaudeRuleHeaders, body: string): ClaudeRule {
+    return new ClaudeRule(name, `${CLAUDE_DIRECTORY}/rules/${name}.md`, headers, body);
   }
 }

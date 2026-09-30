@@ -1,11 +1,11 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeaders, headersOf, goodArray, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders } from "./BasePrimitive.js";
 
 /** Know-how loaded when a request matches its triggers (FR-004). */
-export const SkillHeaders = CommonHeaders.extend({
-  triggers: goodArray,
+export const SkillHeadersSchema = CommonHeadersSchema.extend({
+  triggers: GoodArraySchema,
 });
-export type SkillHeaders = Readonly<z.infer<typeof SkillHeaders>>;
+export type SkillHeaders = Readonly<z.infer<typeof SkillHeadersSchema>>;
 
 export class SkillPrimitive extends BasePrimitive<SkillHeaders> {
   static readonly kind = "skill" as const;
@@ -19,7 +19,7 @@ export class SkillPrimitive extends BasePrimitive<SkillHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = SkillHeaders;
+  static override readonly schema = SkillHeadersSchema;
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -41,6 +41,6 @@ export class SkillPrimitive extends BasePrimitive<SkillHeaders> {
 
   /** One skill, or every fault its headers have (FR-004). */
   static of(record: Readonly<Record<string, unknown>>, body: string): SkillPrimitive {
-    return new SkillPrimitive(headersOf(SkillPrimitive, SkillHeaders, record), body);
+    return new SkillPrimitive(headersOf(SkillPrimitive, SkillHeadersSchema, record), body);
   }
 }

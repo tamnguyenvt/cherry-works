@@ -3,6 +3,8 @@ import { identityOf, KINDS, PRIMITIVE_CLASSES, primitiveOf, type NormalizedIdent
 import { CharterRootFault, FaultsByFile, type DomainFault } from "../DomainFault.js";
 import type { ForParsingYaml } from "../../../port/zdriven/ForParsingYaml.js";
 import { MCP_MENTION, MCP_TOOL_REFERENCE, McpPrimitive } from "./primitive/McpPrimitive.js";
+import { SCRIPT_MENTION } from "./primitive/ScriptPrimitive.js";
+import { TEMPLATE_MENTION } from "./primitive/TemplatePrimitive.js";
 import { AgentPrimitive } from "./primitive/AgentPrimitive.js";
 
 /** What this repository authored itself. */
@@ -188,10 +190,10 @@ export class CharterRoot {
    * the rule holds without its reasoning, and the author is told the reasoning
    * is gone (FR-005). A corpus nobody cites and a mixin nobody pulls in are
    * warnings too: nothing breaks, and nothing reads them either (FR-014). So
-   * are a body naming an mcp nothing holds (FR-143) and an mcp no body names
-   * (FR-144). An agent holding an mcp nothing holds, or a tool it does not
-   * declare, is an error: the role would be promised a tool it cannot have
-   * (FR-156).
+   * are a body naming an mcp nothing holds (FR-143), an mcp no body names
+   * (FR-144), and a script or a template no body names (FR-163). An agent
+   * holding an mcp nothing holds, or a tool it does not declare, is an error:
+   * the role would be promised a tool it cannot have (FR-156).
    */
   get compositeFaultsByFiles(): FaultsByFile {
     const everyPrimitive = this.primitives;
@@ -200,13 +202,18 @@ export class CharterRoot {
     const toolsByMcpIdentity = new Map(
       everyPrimitive.flatMap(({ identity, primitive }) => (primitive instanceof McpPrimitive ? [[identity, primitive.headers.tools] as const] : [])),
     );
-    const mcpIdentities = new Set(toolsByMcpIdentity.keys());
-    // A place is named in a body, as its author would write it (FR-143), and
-    // held by an agent that lists it among its tools (FR-156).
-    const mcpsNamedBy = (one: ScopedPrimitive) => [...one.primitive.body.matchAll(MCP_MENTION)].map(([, id]) => `mcp:${id}`);
-    const namedMcps = new Set(
+    const everyIdentity = new Set(everyPrimitive.map(({ identity }) => identity));
+    // A place, a script or a template is named in a body, in the author's own
+    // words (FR-143, FR-161); a place is also held by an agent that lists it
+    // among its tools (FR-156).
+    const identitiesMentionedIn = (one: ScopedPrimitive) => [
+      ...[...one.primitive.body.matchAll(MCP_MENTION)].map(([, id]) => `mcp:${id}`),
+      ...[...one.primitive.body.matchAll(SCRIPT_MENTION)].map(([, id]) => `script:${id}`),
+      ...[...one.primitive.body.matchAll(TEMPLATE_MENTION)].map(([, id]) => `template:${id}`),
+    ];
+    const mentionedIdentities = new Set(
       everyPrimitive.flatMap((one) => [
-        ...mcpsNamedBy(one),
+        ...identitiesMentionedIn(one),
         ...(one.primitive instanceof AgentPrimitive ? one.primitive.headers.tools.flatMap((tool) => tool.match(MCP_TOOL_REFERENCE)?.[1] ?? []) : []),
       ]),
     );
@@ -284,17 +291,16 @@ export class CharterRoot {
         );
       }
 
-      // A place nothing holds is worth saying and not worth stopping on: the
-      // words are still the author's, and the agent is left to read them as
-      // written (FR-143).
-      for (const namedMcp of new Set(mcpsNamedBy(one)))
-        if (!mcpIdentities.has(namedMcp))
+      // A name nothing holds stops the build: an agent sent to a place, a
+      // script or a template that is not there may guess at one, or invent
+      // it, and act on the guess (FR-143, FR-162).
+      for (const mentionedIdentity of new Set(identitiesMentionedIn(one)))
+        if (!everyIdentity.has(mentionedIdentity))
           addFault(
             file,
             new CharterRootFault(
-              `This names "${namedMcp}", and this charter holds no mcp of that identity. The agent would be told of a place it cannot reach.`,
-              `Author that mcp, or correct the name. An mcp is named as "mcp:<id>", whichever layer authored it.`,
-              "warn",
+              `This names "${mentionedIdentity}", and this charter holds no primitive of that identity.`,
+              `Author it, or correct the name. It is named as "<kind>:<id>", whichever layer authored it.`,
             ),
           );
 
@@ -352,7 +358,9 @@ export class CharterRoot {
             "warn",
           ),
         );
-      if (primitive.kind === "mcp" && !namedMcps.has(identity))
+      // A kind reached only by being named — a place, a script, a template —
+      // is dead weight where nothing names it (FR-144, FR-163).
+      if ((primitive.kind === "mcp" || primitive.kind === "script" || primitive.kind === "template") && !mentionedIdentities.has(identity))
         addFault(
           file,
           new CharterRootFault(

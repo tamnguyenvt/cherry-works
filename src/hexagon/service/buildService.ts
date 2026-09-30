@@ -2,8 +2,8 @@ import type { AgentProvider } from "../domain/models/AgentProvider.js";
 import type { CharterRoot } from "../domain/models/charter/CharterRoot.js";
 import type { CharterOutput } from "../domain/models/output/CharterOutput.js";
 import { isStamped } from "../domain/models/output/StampedDocument.js";
-import { compile } from "../domain/services/compileService.js";
-import { charterOutputProjection } from "../domain/services/projectionService.js";
+import { compile } from "../domain/services/compile/compileService.js";
+import { charterOutputProjectionOf } from "../domain/services/projectionService.js";
 import { agentProviderFolderIn, outFolderIn } from "../domain/path.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import { DomainFault } from "../domain/models/DomainFault.js";
@@ -25,6 +25,8 @@ export interface PlannedFile {
   readonly contents?: string | undefined;
   /** What it holds now, or nothing where there is no such file yet. */
   readonly held?: string | undefined;
+  /** Run by its path once it is down: a built script (FR-160). */
+  readonly executable?: boolean;
 }
 
 /**
@@ -87,7 +89,7 @@ export async function planForProjection(
 ): Promise<readonly PlannedFile[]> {
   const planned = new Map<string, PlannedFile>();
 
-  for (const one of charterOutputProjection(output, agentProviders)) {
+  for (const one of charterOutputProjectionOf(output, agentProviders)) {
     const file = new URL(one.path, repo);
     const held = await fileReaders.readIfThere(file);
 
@@ -153,7 +155,7 @@ export async function planForProjection(
       }
     }
 
-    planned.set(one.path, { path: one.path, file, contents, held });
+    planned.set(one.path, { path: one.path, file, contents, held, ...(one.executable === true ? { executable: true } : {}) });
   }
 
   return [...planned.values()];
@@ -264,7 +266,7 @@ export async function executePlan(
 ): Promise<void> {
   try {
     await Promise.all(cleanupPlan.map((one) => fileWriter.delete(one.file)));
-    for (const one of projectionPlan) await fileWriter.write(one.file, one.contents ?? "");
+    for (const one of projectionPlan) await fileWriter.write(one.file, one.contents ?? "", { executable: one.executable === true });
   } catch (raised) {
     // What the disk said, said as a fault with the next move on it: a caller
     // reading a list of paths has nowhere to learn that one of them refused

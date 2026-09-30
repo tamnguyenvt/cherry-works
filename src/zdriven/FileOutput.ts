@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import type { ForWritingFiles } from "#hexagon/port/zdriven/ForWritingFiles.js";
 
 /** DRIVEN ADAPTER: the filesystem, written to. What the charter compiles to,
@@ -8,9 +8,12 @@ import type { ForWritingFiles } from "#hexagon/port/zdriven/ForWritingFiles.js";
  *  whether anything has been built here before or not, and the hexagon names a
  *  path rather than a sequence of directories to create. */
 export class FileOutput implements ForWritingFiles {
-  async write(file: URL, contents: string): Promise<void> {
+  async write(file: URL, contents: string, options: { readonly executable?: boolean } = {}): Promise<void> {
     await mkdir(new URL(".", file), { recursive: true });
     await writeFile(file, contents, "utf8");
+    // Set whether or not the file was there: a mode passed to `writeFile` is
+    // only taken when it creates one.
+    if (options.executable === true) await chmod(file, 0o755);
   }
 
   async delete(file: URL): Promise<void> {

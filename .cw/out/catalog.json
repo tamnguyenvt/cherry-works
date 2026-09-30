@@ -28,6 +28,16 @@
     "file": ".cw/out/corpus/no-single-word-naming.md"
   },
   {
+    "identity": "guide:architecture-map",
+    "kind": "guide",
+    "id": "architecture-map",
+    "description": "Where each part of cw lives, the rules between them, and which existing class to extend before writing a new one.",
+    "file": ".cw/out/guide/architecture-map.md",
+    "globs": [
+      "src/**"
+    ]
+  },
+  {
     "identity": "guide:branch-naming",
     "kind": "guide",
     "id": "branch-naming",

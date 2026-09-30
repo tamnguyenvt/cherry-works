@@ -1,8 +1,6 @@
 import { z } from "zod";
-import { BasePrimitive, CommonHeaders, headersOf, goodArray, goodLine, type RequiredHeaders } from "./BasePrimitive.js";
-
-/** The ways a developer may sign in to a place (FR-142). */
-export const MCP_AUTHS = ["oauth", "token"] as const;
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, GoodLineSchema, type RequiredHeaders } from "./BasePrimitive.js";
+import { MCP_AUTH_METHODS } from "../../McpAuthMethod.js";
 
 /**
  * Whether a developer's credential may be sent to this endpoint: `https`, or
@@ -43,24 +41,24 @@ export const MCP_TOOL_REFERENCE = /^(mcp:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\/[a-
  * takes is still read off its `shape` (FR-039); which of the two a file holds,
  * and what that shape asks for beside it, is the refinement's to say.
  */
-export const McpHeaders = CommonHeaders.extend({
+export const McpHeadersSchema = CommonHeadersSchema.extend({
   /** Reached over HTTP. Plain `http` only to this machine, for a server under
    *  test: anything else would send a developer's credential in the clear. */
-  endpoint: goodLine
+  endpoint: GoodLineSchema
     .refine(isSecureEndpoint, {
       message: `"endpoint" is an https:// URL, or http:// to 127.0.0.1 or localhost for a server under test.`,
     })
     .optional(),
   /** Started as a local process, spoken to over its standard input and output. */
-  command: goodLine.optional(),
-  args: z.array(goodLine).readonly().optional(),
-  auth: z.array(z.enum(MCP_AUTHS)).min(1).readonly().optional(),
+  command: GoodLineSchema.optional(),
+  args: z.array(GoodLineSchema).readonly().optional(),
+  auth: z.array(z.enum(MCP_AUTH_METHODS)).min(1).readonly().optional(),
   /** The environment variable a command reads its token from. */
   tokenEnv: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).optional(),
   /** The place inside that server: a repository, a database, a channel. */
-  path: goodLine.optional(),
+  path: GoodLineSchema.optional(),
   /** The server's tools the agent may use there, by the server's own names. */
-  tools: goodArray,
+  tools: GoodArraySchema,
 }).superRefine((headers, context) => {
   const addFault = (message: string) => context.addIssue({ code: "custom", message });
   const { endpoint, command, args, auth, tokenEnv } = headers;
@@ -83,7 +81,7 @@ export const McpHeaders = CommonHeaders.extend({
   if (takesToken && tokenEnv === undefined) addFault(`A command taking a token names where it reads it: "tokenEnv".`);
   if (!takesToken && tokenEnv !== undefined) addFault(`"tokenEnv" is read only by a command taking a token: add "auth: [token]", or drop it.`);
 });
-export type McpHeaders = Readonly<z.infer<typeof McpHeaders>>;
+export type McpHeaders = Readonly<z.infer<typeof McpHeadersSchema>>;
 
 export class McpPrimitive extends BasePrimitive<McpHeaders> {
   static readonly kind = "mcp" as const;
@@ -97,7 +95,7 @@ export class McpPrimitive extends BasePrimitive<McpHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = McpHeaders;
+  static override readonly schema = McpHeadersSchema;
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -142,6 +140,6 @@ export class McpPrimitive extends BasePrimitive<McpHeaders> {
    *  it declared (FR-004, FR-142). */
   static of(record: Readonly<Record<string, unknown>>, body: string): McpPrimitive {
     const nearerSample = record.command === undefined ? McpPrimitive.sample : McpPrimitive.commandSample;
-    return new McpPrimitive(headersOf({ kind: McpPrimitive.kind, sample: nearerSample }, McpHeaders, record), body);
+    return new McpPrimitive(headersOf({ kind: McpPrimitive.kind, sample: nearerSample }, McpHeadersSchema, record), body);
   }
 }

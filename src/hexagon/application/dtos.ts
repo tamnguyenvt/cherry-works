@@ -4,7 +4,7 @@ import type { Catalogue } from "../domain/models/output/common/Catalogue.js";
 import type { ScopedPrimitive } from "../domain/models/charter/CharterRoot.js";
 import type { PrimitiveHeader, PrimitiveRequirements } from "../domain/models/charter/primitive/Primitive.js";
 import type { TestCaseReport, TestRunReport } from "../domain/services/testService.js";
-import type { WorkspaceSettings } from "../domain/models/Settings.js";
+import type { WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import type { PlanSummary } from "../service/buildService.js";
 import { testSuiteNameOf, type TestRoot } from "../domain/models/test/TestRoot.js";
 

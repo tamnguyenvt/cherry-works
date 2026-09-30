@@ -1,23 +1,24 @@
 import type { CharterRoot, ScopedPrimitive } from "../../models/charter/CharterRoot.js";
 import { AgentPrimitive } from "../../models/charter/primitive/AgentPrimitive.js";
+import { GuidePrimitive } from "../../models/charter/primitive/GuidePrimitive.js";
+import { PlaybookPrimitive } from "../../models/charter/primitive/PlaybookPrimitive.js";
+import { SkillPrimitive } from "../../models/charter/primitive/SkillPrimitive.js";
 import { MCP_TOOL_REFERENCE, McpPrimitive } from "../../models/charter/primitive/McpPrimitive.js";
 import { PosturePrimitive } from "../../models/charter/primitive/PosturePrimitive.js";
 import type { ShortStrings } from "../../models/helper.js";
 import { SensorPrimitive } from "../../models/charter/primitive/SensorPrimitive.js";
 import type { CompiledPrimitive } from "../../models/output/common/CompiledPrimitive.js";
-import type { Projection } from "../../models/output/ProjectionPolicy.js";
-import { claudeDocumentComponentOf, type ClaudeComponent } from "../../models/output/providers/claude/ClaudeComponent.js";
-import { ClaudeMcpConfigComponent } from "../../models/output/providers/claude/ClaudeMcpConfigComponent.js";
+import type { ClaudeComponent } from "../../models/output/provider-component/claude/ClaudeComponent.js";
+import { ClaudeAgent } from "../../models/output/provider-component/claude/ClaudeAgent.js";
+import { ClaudeRule } from "../../models/output/provider-component/claude/ClaudeRule.js";
+import { ClaudeSkill } from "../../models/output/provider-component/claude/ClaudeSkill.js";
+import { ClaudeMcpConfig } from "../../models/output/provider-component/claude/ClaudeMcpConfig.js";
 import {
-  ClaudeSettingsComponent,
+  ClaudeSettings,
   isClaudeHookEvent,
   type ClaudeHookEvent,
-  type ClaudeSettings,
-} from "../../models/output/providers/claude/ClaudeSettingsComponent.js";
-import { ClaudeAgentComponent } from "../../models/output/providers/claude/document-based-components/ClaudeAgentComponent.js";
-import { ClaudeRuleComponent } from "../../models/output/providers/claude/document-based-components/ClaudeRuleComponent.js";
-import { ClaudeSkillComponent } from "../../models/output/providers/claude/document-based-components/ClaudeSkillComponent.js";
-import { CLAUDE_DIRECTORY, CLAUDE_MCP_CONFIG_FILE } from "../../path.js";
+  type ClaudeSettingsFields,
+} from "../../models/output/provider-component/claude/ClaudeSettings.js";
 
 /**
  * Every file claude reads of this charter (FR-018).
@@ -40,7 +41,7 @@ import { CLAUDE_DIRECTORY, CLAUDE_MCP_CONFIG_FILE } from "../../path.js";
  * configuration that starts it, written whether the charter holds a place yet or
  * not, since the server reads which places there are when it starts (FR-146).
  */
-export function compileForClaude(
+export function claudeComponentsOf(
   charter: CharterRoot,
   compiledPrimitives: readonly CompiledPrimitive[],
   shortStrings: ShortStrings,
@@ -65,13 +66,13 @@ export function compileForClaude(
       const [, mcpIdentity, mcpTool] = tool.match(MCP_TOOL_REFERENCE) ?? [];
       if (mcpIdentity === undefined) return [tool];
       return (mcpTool === undefined ? (toolsByMcpIdentity.get(mcpIdentity) ?? []) : [mcpTool]).map(
-        (oneTool) => `mcp__${ClaudeMcpConfigComponent.cwMcpName}__${shortStrings[mcpIdentity]}__${oneTool}`,
+        (oneTool) => `mcp__${ClaudeMcpConfig.cwMcpName}__${shortStrings[mcpIdentity]}__${oneTool}`,
       );
     });
 
   return [
-    ...(asSettings.length === 0 ? [] : [ClaudeSettingsComponent.of(claudeSettingsOf(asSettings))]),
-    ClaudeMcpConfigComponent.of(),
+    ...(asSettings.length === 0 ? [] : [ClaudeSettings.of(claudeSettingsOf(asSettings))]),
+    ClaudeMcpConfig.of(),
     ...asDocuments.flatMap(
       (one) =>
         claudeDocumentComponentOf(
@@ -95,7 +96,7 @@ export function compileForClaude(
  * What the repository set for itself is not here at all: that is on disk, and
  * reading it together with this is the projection's (FR-020).
  */
-function claudeSettingsOf(ones: readonly ScopedPrimitive[]): ClaudeSettings {
+function claudeSettingsOf(ones: readonly ScopedPrimitive[]): ClaudeSettingsFields {
   const allow = new Set<string>();
   const deny = new Set<string>();
   const hooks: Partial<Record<ClaudeHookEvent, { hooks: { type: "command"; command: string }[] }[]>> = {};
@@ -123,45 +124,50 @@ function claudeSettingsOf(ones: readonly ScopedPrimitive[]): ClaudeSettings {
 }
 
 /**
- * Where one of a host's own kinds lands, and what that file holds.
+ * Which document of this host a charter primitive becomes, or nothing where this
+ * host has no kind for it.
  *
- * One arm per kind, and the set is closed: a kind with nowhere to go is a
- * compile error, which is what keeps this and the kinds in step (FR-018).
+ * What the primitive says is kept once, in its compiled document: this holds
+ * what the host reads before it opens a body, and one line pointing there
+ * (FR-139). The path is from this document's own folder, as claude resolves an
+ * `@` import: `.claude/<kind>/` two folders down, a skill's `SKILL.md` three.
+ * A rule's `@` is expanded when the rule loads; for the other kinds claude
+ * documents no such expansion, so the line says to read the file. A subagent
+ * is handed `agentTools`: its tools as this host names them, each place it
+ * holds written as that place's tools (FR-156).
  */
-export function claudeComponentProjection(one: ClaudeComponent): Projection {
-  const projectionPolicy = one.projection;
+function claudeDocumentComponentOf(sc: ScopedPrimitive, compiledFile: string, agentTools?: readonly string[]): ClaudeComponent | undefined {
+  // The kind stays in the name, because two charter kinds can land in one
+  // directory there — `guide:no-any` and `skill:no-any` are two primitives and
+  // must stay two files (FR-014).
+  const name = sc.normIdentity;
+  // From `.claude/<kind>/`, two folders down; a skill's `SKILL.md` sits one
+  // further, in a folder of its own.
+  const compiledFromClaudeFolder = `../../${compiledFile}`;
+  const pointerTo = (path: string) => `Read and follow @${path}.\n`;
 
-  switch (one.kind) {
-    case ClaudeAgentComponent.kind:
-      return { path: `${CLAUDE_DIRECTORY}/agents/${one.name}.md`, contents: one.toStampedDocument(), projectionPolicy };
-    // A skill is a directory holding one file of that name, which is where this
-    // host looks for it.
-    case ClaudeSkillComponent.kind:
-      return {
-        path: `${CLAUDE_DIRECTORY}/skills/${one.name}/SKILL.md`,
-        contents: one.toStampedDocument(),
-        projectionPolicy,
-      };
-    // A rule of its own file, under the directory this host loads every one of:
-    // at the start of a session where it declares no `paths`, and when one of
-    // them is touched where it does.
-    case ClaudeRuleComponent.kind:
-      return { path: `${CLAUDE_DIRECTORY}/rules/${one.name}.md`, contents: one.toStampedDocument(), projectionPolicy };
-    // Every posture and every sensor of the charter lands in the one file this
-    // host reads its settings from.
-    case ClaudeSettingsComponent.kind:
-      return {
-        path: `${CLAUDE_DIRECTORY}/settings.json`,
-        contents: `${JSON.stringify(one.settings, undefined, 2)}\n`,
-        projectionPolicy,
-      };
-    // The one server reaching every place, in the file this host starts a
-    // project's servers from (FR-146).
-    case ClaudeMcpConfigComponent.kind:
-      return {
-        path: CLAUDE_MCP_CONFIG_FILE,
-        contents: `${JSON.stringify({ mcpServers: one.mcpServers }, undefined, 2)}\n`,
-        projectionPolicy,
-      };
+  switch (sc.primitive.kind) {
+    // A guide is a rule this host loads into context whole: when a file it names
+    // is touched, which is what `paths` on a rule does, and at the start of every
+    // session where it names none (FR-013). Under the identity it is changed by,
+    // so a reader who wants it changed is sent to the primitive rather than
+    // editing what the next build overwrites (FR-017, FR-020).
+    case GuidePrimitive.kind: {
+      const { globs = [] } = sc.primitive.headers;
+      return ClaudeRule.of(name, globs.length === 0 ? {} : { paths: globs }, `@${compiledFromClaudeFolder}\n`);
+    }
+    case AgentPrimitive.kind: {
+      const { tools } = sc.primitive.headers;
+      return ClaudeAgent.of(name, { description: sc.primitive.description(), tools: (agentTools ?? tools).join(", ") }, pointerTo(compiledFromClaudeFolder));
+    }
+    // One kind of this host for the two the charter loads when the request calls
+    // for them: what decides that the body is worth opening is the description,
+    // because that line is all this host reads before deciding (FR-013), and
+    // composing it is the primitive's.
+    case SkillPrimitive.kind:
+    case PlaybookPrimitive.kind:
+      return ClaudeSkill.of(name, { description: sc.primitive.description() }, pointerTo(`../${compiledFromClaudeFolder}`));
+    default:
+      return undefined;
   }
 }

@@ -1,4 +1,5 @@
-import { DocumentBasedComponent } from "./DocumentBasedComponent.js";
+import { CLAUDE_DIRECTORY } from "../../../../path.js";
+import { DocumentBasedComponent } from "../DocumentBasedComponent.js";
 
 /** A skill's frontmatter: the name its directory carries, and the description
  *  this host reads on every turn to decide whether to open the body. */
@@ -23,11 +24,11 @@ export type ClaudeSkillDeclared = Omit<ClaudeSkillHeaders, "name">;
  * Whatever decides that the body is worth opening is written into the
  * description, because that line is all this host reads before deciding.
  */
-export class ClaudeSkillComponent extends DocumentBasedComponent<ClaudeSkillHeaders> {
+export class ClaudeSkill extends DocumentBasedComponent<ClaudeSkillHeaders> {
   static readonly kind = "skill" as const;
-  readonly kind = ClaudeSkillComponent.kind;
+  readonly kind = ClaudeSkill.kind;
 
-  static of(name: string, declared: ClaudeSkillDeclared, body: string): ClaudeSkillComponent {
-    return new ClaudeSkillComponent(name, { name, ...declared }, body);
+  static of(name: string, declared: ClaudeSkillDeclared, body: string): ClaudeSkill {
+    return new ClaudeSkill(name, `${CLAUDE_DIRECTORY}/skills/${name}/SKILL.md`, { name, ...declared }, body);
   }
 }

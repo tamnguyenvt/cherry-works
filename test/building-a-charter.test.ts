@@ -272,15 +272,17 @@ test("a charter with an error builds nothing at all, and says which files (FR-00
   await assert.rejects(() => contentsOf(held, ".cw/out/CHARTER.md"));
 });
 
-test("a body naming an mcp no layer holds still builds, the name left as the author wrote it (FR-143)", async () => {
-  const { held, build } = building({
-    ...compilingFor("claude"),
-    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Take the requirements from mcp:missing."),
-  });
+test("a body naming a place, a script or a template no layer holds stops the build (FR-143, FR-162)", async () => {
+  for (const mentionedIdentity of ["mcp:missing", "script:missing", "template:missing"]) {
+    const { build } = building({
+      ...compilingFor("claude"),
+      [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], `Take the requirements from ${mentionedIdentity}.`),
+    });
 
-  filesOf(await build());
+    const planSummaryDTO = await build();
 
-  assert.match(await contentsOf(held, ".cw/out/guide/no-any.md"), /Take the requirements from mcp:missing\./);
+    assert.equal(planSummaryDTO.type, "FaultsByFile", mentionedIdentity);
+  }
 });
 
 test("a build writes every place the charter's mcps reach to mcp-origins.json, with the name each identity is served under (FR-145)", async () => {

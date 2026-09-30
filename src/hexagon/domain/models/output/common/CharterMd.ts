@@ -1,6 +1,5 @@
-import { CHARTER_DIRECTORY } from "../../../path.js";
 import type { ProjectionPolicy } from "../ProjectionPolicy.js";
-import { stamp, type StampedDocument } from "../StampedDocument.js";
+import type { StampedDocument } from "../StampedDocument.js";
 
 /**
  * What an agent has to know before it reads anything else: that this repository
@@ -30,35 +29,13 @@ export class CharterMd {
   static readonly type = "charter-md" as const
   readonly type = CharterMd.type
 
-  static of(
-    kinds: readonly {
-      readonly kind: string;
-      readonly activatesWhen: string;
-    }[],
-  ): CharterMd {
-    return new CharterMd(`${[
-    "# Charter",
-    `This repository is governed by a charter — the standards it authored under \`${CHARTER_DIRECTORY}/\`, which constrain whatever coding agent runs here. Every surface an agent reads, this file included, is generated from that charter: do not edit them, edit the primitive behind them.`,
-    "## Read first",
-    `[catalog.min.json](./catalog.min.json) — the kind, identity and description of every primitive this charter holds. Survey it to find what you need; open [catalog.json](./catalog.json) for that primitive's file, globs and mixins, and open a body only once its activation condition below is met.`,
-    "## When each kind applies",
-    kinds.map((one) => `- **${one.kind}** — ${one.activatesWhen}.`).join("\n"),
-    "## One identity, one primitive",
-    `An identity names one primitive in the whole charter: \`kind:id\`, whether this repository authored it, installed it from a vendor, or the engine brought it. Nothing overrides anything — two files claiming one identity is an error the charter refuses to build with.`,
-  ].join("\n\n")}\n`);
-  }
-
   /** This file is the charter's own: it is written whole over whatever is
    *  there. */
   readonly projection: ProjectionPolicy = "replace";
 
-  /** This file as a reader opens it: the stamp saying this engine wrote it, and
-   *  the orientation itself. */
-  toStampedDocument(): StampedDocument {
-    return stamp(this.body);
-  }
-
-  private constructor(
-    readonly body: string,
+  constructor(
+    /** This file as a reader opens it: the stamp saying this engine wrote it,
+     *  and the orientation itself. */
+    readonly document: StampedDocument,
   ) {}
 }

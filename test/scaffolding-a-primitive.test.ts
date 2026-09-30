@@ -79,7 +79,7 @@ const flagging = (kind: (typeof KINDS)[number]) =>
 
 /** A value the kind will accept wherever the field is one it checks the worth
  *  of, and a plain word everywhere else. */
-const valued = (field: string) => (field === "signal" ? "SessionStart" : `what ${field} holds`);
+const valued = (field: string) => (field === "signal" ? "SessionStart" : field === "extension" ? "sh" : `what ${field} holds`);
 
 test("a kind is asked what it requires, and nothing else (FR-004, FR-039)", () => {
   for (const one of PRIMITIVE_CLASSES)

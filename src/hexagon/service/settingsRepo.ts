@@ -1,6 +1,6 @@
 import { AGENT_PROVIDERS, isAgentProvider } from "../domain/models/AgentProvider.js";
 import { SettingsFault } from "../domain/models/DomainFault.js";
-import { SETTINGS, WorkspaceSettings } from "../domain/models/Settings.js";
+import { WorkspaceSettingsSchema, WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import { settingsFileIn } from "../domain/path.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 
@@ -36,7 +36,7 @@ export async function loadSettings(repo: URL, fileReaders: ForReadingFiles): Pro
     );
   }
 
-  const read = SETTINGS.safeParse(written);
+  const read = WorkspaceSettingsSchema.safeParse(written);
   if (!read.success) throw whatIsWrongWith(written);
 
   return new WorkspaceSettings(read.data.agents);

@@ -1,7 +1,5 @@
 import type { CharterOutput } from "../models/output/CharterOutput.js";
 import type { Projection } from "../models/output/ProjectionPolicy.js";
-import { claudeComponentProjection } from "./providers/claude.js";
-import type { ClaudeComponent } from "../models/output/providers/claude/ClaudeComponent.js";
 
 import type { AgentProvider } from "../models/AgentProvider.js";
 import { CLAUDE_ENTRY_FILE, OUT_DIRECTORY } from "../path.js";
@@ -20,7 +18,7 @@ import { CLAUDE_ENTRY_FILE, OUT_DIRECTORY } from "../path.js";
  * unasked (FR-051). What compiling produces is the charter's, so which hosts this
  * repository answers for stays out of it (FR-033).
  */
-export function charterOutputProjection(
+export function charterOutputProjectionOf(
   output: CharterOutput,
   agentProviders: readonly AgentProvider[],
 ): readonly Projection[] {
@@ -49,7 +47,7 @@ export function charterOutputProjection(
     },
     {
       path: `${OUT_DIRECTORY}/CHARTER.md`,
-      contents: output.charterMd.toStampedDocument(),
+      contents: output.charterMd.document,
       projectionPolicy: output.charterMd.projection,
     },
     // Each primitive lands where the catalogue sends an agent for it, so the
@@ -58,10 +56,11 @@ export function charterOutputProjection(
       const compiledPrimitive = output.compiledPrimitives.find((one) => one.identity === identity);
       return compiledPrimitive === undefined
         ? []
-        : [{ path: file, contents: compiledPrimitive.toStampedDocument(), projectionPolicy: compiledPrimitive.projection }];
+        : [{ path: file, contents: compiledPrimitive.document, projectionPolicy: compiledPrimitive.projection, executable: compiledPrimitive.executable }];
     }),
     ...agentProviders.map(entryFileProjection),
-    ...output.providerComponents.map(claudeComponentProjection),
+    // Each host's own files, each saying where it goes itself.
+    ...output.providerComponents.map(({ path, document, projection }) => ({ path, contents: document, projectionPolicy: projection })),
   ];
 }
 

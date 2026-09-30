@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TEST_CASE_SCHEMA, TestCase } from "./TestCase.js";
+import { TestCaseSchema, TestCase } from "./TestCase.js";
 import { TestSuiteFault } from "../DomainFault.js";
 
 /**
@@ -12,12 +12,12 @@ import { TestSuiteFault } from "../DomainFault.js";
  * That is why it is JSON and not a document with frontmatter: nobody reads it
  * but `cw test`, and there is no body for an agent to open.
  */
-export const TEST_SUITE_SCHEMA = z.strictObject({
+export const TestSuiteSchema = z.strictObject({
   description: z.string().min(1).optional(),
-  cases: z.array(TEST_CASE_SCHEMA.transform((written) => new TestCase(written))).min(1),
+  cases: z.array(TestCaseSchema.transform((written) => new TestCase(written))).min(1),
 });
 
-/** One test file, as `TEST_SUITE_SCHEMA` read it (FR-047): what it is about, the
+/** One test file, as `TestSuiteSchema` read it (FR-047): what it is about, the
  *  cases it pins down, and the body it was read from, as its author wrote it
  *  and the editor shows it (FR-124). Made by `testSuiteOf` and by nothing
  *  else. */
@@ -72,7 +72,7 @@ export function testSuiteOf(text: string): TestSuite {
     );
   }
 
-  const read = TEST_SUITE_SCHEMA.safeParse(written);
+  const read = TestSuiteSchema.safeParse(written);
   if (!read.success) throw new TestSuiteFault(`This file is not written as a suite of cases.`, `Write it as ${SAMPLE}`);
 
   return new TestSuite(read.data.description, read.data.cases, text);

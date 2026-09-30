@@ -1,10 +1,10 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeaders, headersOf, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders } from "./BasePrimitive.js";
 
 /** Reasoning a primitive cites, loaded only on demand. Beyond the common
  *  headers it asks for nothing (FR-004). */
-export const CorpusHeaders = CommonHeaders.extend({});
-export type CorpusHeaders = Readonly<z.infer<typeof CorpusHeaders>>;
+export const CorpusHeadersSchema = CommonHeadersSchema.extend({});
+export type CorpusHeaders = Readonly<z.infer<typeof CorpusHeadersSchema>>;
 
 export class CorpusPrimitive extends BasePrimitive<CorpusHeaders> {
   static readonly kind = "corpus" as const;
@@ -17,7 +17,7 @@ export class CorpusPrimitive extends BasePrimitive<CorpusHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = CorpusHeaders;
+  static override readonly schema = CorpusHeadersSchema;
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -32,6 +32,6 @@ export class CorpusPrimitive extends BasePrimitive<CorpusHeaders> {
 
   /** One corpus, or every fault its headers have (FR-004). */
   static of(record: Readonly<Record<string, unknown>>, body: string): CorpusPrimitive {
-    return new CorpusPrimitive(headersOf(CorpusPrimitive, CorpusHeaders, record), body);
+    return new CorpusPrimitive(headersOf(CorpusPrimitive, CorpusHeadersSchema, record), body);
   }
 }

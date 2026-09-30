@@ -74,8 +74,10 @@ test("the set is exactly the kinds the charter format defines", () => {
     "mixin",
     "playbook",
     "posture",
+    "script",
     "sensor",
     "skill",
+    "template",
   ]);
 });
 
@@ -139,7 +141,7 @@ test("the headers it names are the ones cw add takes, one flag apiece (FR-004, s
     const { results } = await asking(["kinds", kind]);
     const flags = headersNamedIn(results).flatMap(({ field }) => [
       "--header",
-      `${field}=${field === "signal" ? "SessionStart" : `what ${field} holds`}`,
+      `${field}=${field === "signal" ? "SessionStart" : field === "extension" ? "sh" : `what ${field} holds`}`,
     ]);
     // An mcp is told which server it is beside what it requires: which shape
     // it takes is its author's choice, so neither is required (plan §19.1).

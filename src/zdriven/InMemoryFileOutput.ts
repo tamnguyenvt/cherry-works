@@ -11,8 +11,13 @@ import type { InMemoryFileReaders } from "./InMemoryFileReaders.js";
 export class InMemoryFileOutput implements ForWritingFiles {
   constructor(private readonly files: InMemoryFileReaders) {}
 
-  async write(file: URL, contents: string): Promise<void> {
+  /** Every file last written as executable, for a test asking which. */
+  readonly executables = new Set<string>();
+
+  async write(file: URL, contents: string, options: { readonly executable?: boolean } = {}): Promise<void> {
     this.files.write(file, contents);
+    if (options.executable === true) this.executables.add(file.href);
+    else this.executables.delete(file.href);
   }
 
   async delete(file: URL): Promise<void> {

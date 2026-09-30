@@ -11,8 +11,9 @@
  */
 export interface ForWritingFiles {
   /** Put this text at this file, whatever is there now, making whatever
-   *  directories it takes to get to it. */
-  write(file: URL, contents: string): Promise<void>;
+   *  directories it takes to get to it. An executable file is one its owner
+   *  may run by its path. */
+  write(file: URL, contents: string, options?: { readonly executable?: boolean }): Promise<void>;
 
   /** Take this file away. A file that is not there is already gone rather than
    *  a failure: a build that deletes what a previous build wrote is asking for

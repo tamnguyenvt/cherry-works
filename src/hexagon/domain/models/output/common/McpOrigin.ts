@@ -1,4 +1,4 @@
-import type { MCP_AUTHS } from "../../charter/primitive/McpPrimitive.js";
+import type { McpAuthMethod } from "../../McpAuthMethod.js";
 
 /**
  * One address and `path`, once, however many mcps declare it (FR-145).
@@ -20,5 +20,5 @@ export interface McpOrigin {
   readonly command?: { readonly command: string; readonly args: readonly string[]; readonly tokenEnv?: string };
   readonly path?: string;
   /** Every way any identity here lets a developer sign in. */
-  readonly auth: readonly (typeof MCP_AUTHS)[number][];
+  readonly auth: readonly McpAuthMethod[];
 }

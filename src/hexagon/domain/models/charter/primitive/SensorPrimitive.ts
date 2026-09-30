@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BasePrimitive, CommonHeaders, headersOf, goodLine, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodLineSchema, type RequiredHeaders } from "./BasePrimitive.js";
 
 /** The events a charter knows how to be raised by, and the only ones a sensor
  *  may name (FR-004).
@@ -24,14 +24,14 @@ export const SIGNALS = [
 export type Signal = (typeof SIGNALS)[number];
 
 /** A command the agent's own harness runs when a signal fires (FR-004). */
-export const SensorHeaders = CommonHeaders.extend({
+export const SensorHeadersSchema = CommonHeadersSchema.extend({
   /** What raises it: one of the events every host of this engine speaks in. */
   signal: z.enum(SIGNALS),
   /** What is run when it does. A sensor that names no command is a sensor
    *  nothing can fire, so this is required. */
-  run: goodLine,
+  run: GoodLineSchema,
 });
-export type SensorHeaders = Readonly<z.infer<typeof SensorHeaders>>;
+export type SensorHeaders = Readonly<z.infer<typeof SensorHeadersSchema>>;
 
 export class SensorPrimitive extends BasePrimitive<SensorHeaders> {
   static readonly kind = "sensor" as const;
@@ -45,7 +45,7 @@ export class SensorPrimitive extends BasePrimitive<SensorHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = SensorHeaders;
+  static override readonly schema = SensorHeadersSchema;
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -62,6 +62,6 @@ export class SensorPrimitive extends BasePrimitive<SensorHeaders> {
 
   /** One sensor, or every fault its headers have (FR-004). */
   static of(record: Readonly<Record<string, unknown>>, body: string): SensorPrimitive {
-    return new SensorPrimitive(headersOf(SensorPrimitive, SensorHeaders, record), body);
+    return new SensorPrimitive(headersOf(SensorPrimitive, SensorHeadersSchema, record), body);
   }
 }

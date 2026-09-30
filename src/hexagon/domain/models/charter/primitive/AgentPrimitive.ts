@@ -1,11 +1,11 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeaders, headersOf, goodArray, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders } from "./BasePrimitive.js";
 
 /** A role the agent delegates to, with the tools it may use (FR-004). */
-export const AgentHeaders = CommonHeaders.extend({
-  tools: goodArray,
+export const AgentHeadersSchema = CommonHeadersSchema.extend({
+  tools: GoodArraySchema,
 });
-export type AgentHeaders = Readonly<z.infer<typeof AgentHeaders>>;
+export type AgentHeaders = Readonly<z.infer<typeof AgentHeadersSchema>>;
 
 export class AgentPrimitive extends BasePrimitive<AgentHeaders> {
   static readonly kind = "agent" as const;
@@ -19,7 +19,7 @@ export class AgentPrimitive extends BasePrimitive<AgentHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = AgentHeaders;
+  static override readonly schema = AgentHeadersSchema;
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -37,6 +37,6 @@ export class AgentPrimitive extends BasePrimitive<AgentHeaders> {
 
   /** One agent, or every fault its headers have (FR-004). */
   static of(record: Readonly<Record<string, unknown>>, body: string): AgentPrimitive {
-    return new AgentPrimitive(headersOf(AgentPrimitive, AgentHeaders, record), body);
+    return new AgentPrimitive(headersOf(AgentPrimitive, AgentHeadersSchema, record), body);
   }
 }

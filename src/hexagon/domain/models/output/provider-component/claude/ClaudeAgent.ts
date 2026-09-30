@@ -1,4 +1,5 @@
-import { DocumentBasedComponent } from "./DocumentBasedComponent.js";
+import { CLAUDE_DIRECTORY } from "../../../../path.js";
+import { DocumentBasedComponent } from "../DocumentBasedComponent.js";
 
 /** A subagent's frontmatter: the name this host spawns it by, the line it is
  *  described by, and the tools it holds — comma-separated, the way this host
@@ -21,11 +22,11 @@ export type ClaudeAgentDeclared = Omit<ClaudeAgentHeaders, "name">;
  * one line, which is how this host reads them — the one place a charter list
  * stops being a list.
  */
-export class ClaudeAgentComponent extends DocumentBasedComponent<ClaudeAgentHeaders> {
+export class ClaudeAgent extends DocumentBasedComponent<ClaudeAgentHeaders> {
   static readonly kind = "agent" as const;
-  readonly kind = ClaudeAgentComponent.kind;
+  readonly kind = ClaudeAgent.kind;
 
-  static of(name: string, declared: ClaudeAgentDeclared, body: string): ClaudeAgentComponent {
-    return new ClaudeAgentComponent(name, { name, ...declared }, body);
+  static of(name: string, declared: ClaudeAgentDeclared, body: string): ClaudeAgent {
+    return new ClaudeAgent(name, `${CLAUDE_DIRECTORY}/agents/${name}.md`, { name, ...declared }, body);
   }
 }

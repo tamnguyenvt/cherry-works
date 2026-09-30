@@ -8,17 +8,17 @@ export const DELIMITER = "---";
 
 /** One line of text with something on it: a header written down and left
  *  blank is one nothing can read. */
-export const goodLine = z.string().regex(/\S/);
+export const GoodLineSchema = z.string().regex(/\S/);
 
 /** A list of names, paths or globs with at least one in it: a kind that
  *  requires a list reads it entry by entry, and an empty one gives it nothing
  *  to read. */
-export const goodArray = z.array(goodLine).min(1).readonly();
+export const GoodArraySchema = z.array(GoodLineSchema).min(1).readonly();
 
 /** The headers every kind declares, whatever else its own contract asks for
  *  (data-model §1). Each kind's own headers extend these, so what every
  *  primitive holds is written once. */
-export const CommonHeaders = z.object({
+export const CommonHeadersSchema = z.object({
   /** Slugs joined by `/`, so identities can be grouped by team or domain
    *  (FR-141). The `/` puts the file in folders and nothing else: nothing is
    *  read from where a file sits. At most 40 characters, so every name a host
@@ -29,17 +29,17 @@ export const CommonHeaders = z.object({
     .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\/[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/)
     .refine((id) => id.length <= 40, { message: `"id" is at most 40 characters.` }),
   /** All an agent reads of a primitive before opening its body. */
-  description: goodLine,
-  tags: z.array(goodLine).readonly().optional(),
+  description: GoodLineSchema,
+  tags: z.array(GoodLineSchema).readonly().optional(),
   /** The files this primitive speaks about, where it speaks about any. A guide's
    *  are what decide when its body is loaded; a mixin may name them to say how
    *  far what it lends reaches (FR-006). */
-  globs: z.array(goodLine).readonly().optional(),
+  globs: z.array(GoodLineSchema).readonly().optional(),
   /** `corpus:<id>`, the reasoning this primitive cites (FR-005). */
-  rationale: goodLine.optional(),
-  mixins: z.array(goodLine).readonly().optional(),
+  rationale: GoodLineSchema.optional(),
+  mixins: z.array(GoodLineSchema).readonly().optional(),
 });
-export type CommonHeaders = Readonly<z.infer<typeof CommonHeaders>>;
+export type CommonHeaders = Readonly<z.infer<typeof CommonHeadersSchema>>;
 
 /**
  * What every kind of primitive is: the headers its file declared, and the body
@@ -63,7 +63,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    *  each header holds — including the ones a kind takes without requiring, so
    *  whoever is writing a header reads its shape off the same contract a file
    *  is refused against (FR-004). */
-  static readonly schema: z.ZodObject = CommonHeaders;
+  static readonly schema: z.ZodObject = CommonHeadersSchema;
 
   protected constructor(
     /** What this primitive's file declared, read as the contract of its kind:

@@ -1,4 +1,5 @@
-import type { ProjectionPolicy } from "../../ProjectionPolicy.js";
+import { CLAUDE_MCP_CONFIG_FILE } from "../../../../path.js";
+import { SettingBasedComponent } from "../SettingBasedComponent.js";
 
 /** One server this host starts, as its MCP configuration names it. */
 export interface ClaudeMcpServer {
@@ -15,25 +16,21 @@ export interface ClaudeMcpServer {
  * same however many places there are — none included — and shows the agent only
  * the tools the charter declares (plan §19).
  */
-export class ClaudeMcpConfigComponent {
+export class ClaudeMcpConfig extends SettingBasedComponent<{ readonly mcpServers: Readonly<Record<string, ClaudeMcpServer>> }> {
   static readonly kind = "mcp-config" as const;
-  readonly kind = ClaudeMcpConfigComponent.kind;
+  readonly kind = ClaudeMcpConfig.kind;
 
   /** What this host names the server, and so what it puts before each tool it
    *  serves: `mcp__cw__<tool>`. */
   static readonly cwMcpName = "cw";
 
-  /** That file is the repository's too — every server it wrote itself is
-   *  there — so the charter's one entry is written into it, and it is never
-   *  taken away, as the settings are not (FR-146). */
-  readonly projection: ProjectionPolicy = "mergeJSON";
-
-  /** The one entry the charter speaks for, under `mcpServers`. */
-  readonly mcpServers: Readonly<Record<string, ClaudeMcpServer>> = { [ClaudeMcpConfigComponent.cwMcpName]: { command: "cw", args: ["mcp", "serve"] } };
-
-  static of(): ClaudeMcpConfigComponent {
-    return new ClaudeMcpConfigComponent();
+  /** The one entry the charter speaks for, under `mcpServers`, in the file this
+   *  host starts a project's servers from. That file is the repository's too —
+   *  every server it wrote itself is there — so the entry is written into it,
+   *  and it is never taken away (FR-146). */
+  static of(): ClaudeMcpConfig {
+    return new ClaudeMcpConfig(CLAUDE_MCP_CONFIG_FILE, {
+      mcpServers: { [ClaudeMcpConfig.cwMcpName]: { command: "cw", args: ["mcp", "serve"] } },
+    });
   }
-
-  private constructor() {}
 }

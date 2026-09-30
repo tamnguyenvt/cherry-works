@@ -9,7 +9,7 @@ import { CorpusPrimitive } from "../src/hexagon/domain/models/charter/primitive/
 import { McpPrimitive } from "../src/hexagon/domain/models/charter/primitive/McpPrimitive.js";
 import { AgentPrimitive } from "../src/hexagon/domain/models/charter/primitive/AgentPrimitive.js";
 import type { Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
-import { compile } from "../src/hexagon/domain/services/compileService.js";
+import { compile } from "../src/hexagon/domain/services/compile/compileService.js";
 
 const root = folderURL("file:///repo/.cw/charter/");
 
@@ -220,14 +220,14 @@ test("an mcp a body names is nothing to report, whichever layer authored it (FR-
   assert.deepEqual(faultsByFilesOf(namingGuide, mcp("mfbs/billing", "team")), {});
 });
 
-test("a body naming an mcp no layer holds is a warning under its file, once however often it names it (FR-143)", () => {
+test("a body naming an mcp no layer holds is an error under its file, once however often it names it (FR-143)", () => {
   const faultsByFiles = faultsByFilesOf(
     guide("no-any", "guide/no-any.md", {}, undefined, "Ask mcp:missing, and then mcp:missing again."),
   );
 
   assert.deepEqual(Object.keys(faultsByFiles), [at("guide/no-any.md")]);
-  assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["warn"]);
-  assert.match(messages(faultsByFiles), /names "mcp:missing", and this charter holds no mcp of that identity/);
+  assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["error"]);
+  assert.match(messages(faultsByFiles), /names "mcp:missing", and this charter holds no primitive of that identity/);
 });
 
 test("an mcp no primitive names is a warning under its own file (FR-144)", () => {
