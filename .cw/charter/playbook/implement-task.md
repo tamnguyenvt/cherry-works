@@ -25,7 +25,7 @@ The agent walks through each phase below in order. After each phase, **pause for
 ## Iron laws (carry across every phase)
 
 - **No proceeding without explicit acceptance criteria.** The spec gate is real.
-- **The spec is not rewritten per story.** Only a story's status line changes; a technical decision is accepted by the user at the spec gate and lives in the code.
+- **The spec is not rewritten per story.** Only a story's status line changes; a technical decision is accepted by the user at the spec gate and lives in the code. The one exception is a requirement the user reverses during the story: ask whether to update the spec, then update the story, its FR, the clarification, the edge case and the SC together, and run `pnpm specs:check` until it passes.
 - **No completion claims without fresh verification evidence.** Sensors must run this turn.
 - **No commits with failing sensors.** Never `--no-verify`.
 - **No AI attribution** in commits, PRs, or tracker comments.

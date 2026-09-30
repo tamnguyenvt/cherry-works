@@ -1,0 +1,10 @@
+---
+kind: corpus
+id: changelog-short-for-users
+description: Why changelog entries are one short sentence for users, and how a release entry is written.
+---
+**Why:** the changelog is read by users, not by developers or agents. A long,
+detailed first draft was cut down to one-liners on 2026-09-29.
+
+**How to apply:** when adding a release entry, list bullets of one sentence
+each, and keep the file free of explanatory introduction.

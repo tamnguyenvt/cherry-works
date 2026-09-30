@@ -2,6 +2,7 @@
 kind: guide
 id: no-single-word-naming
 description: rule for name a function or variable
+rationale: corpus:no-single-word-naming
 ---
 
 Never name a function or variable with a single vague word or generic verb like `known`, `it`, `a`, or `merged`; use descriptive names that clearly state what it holds or does."
@@ -9,14 +10,7 @@ If you need to do, try to name as returned type of function
 
 Name a local variable after the type of the value it holds: `const planSummary =
 previewPlan(...)` because `previewPlan` returns a `PlanSummary`, never `const
-done = ...`. Tam corrected this on 2026-09-14 in `CharterAuthoring.build`.
-
-**Why:** the type name is what a reader looks up. A situational name such as
-`done`, `result` or `it` makes the reader go and find the function to learn
-what the value is.
-
-**How to apply:** when binding a call's result, take the returned type's name
-in camelCase. Add a qualifier only when two values of one type sit side by side
+done = ...`.
 
 Only rename code you are already touching.
 

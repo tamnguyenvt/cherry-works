@@ -1,0 +1,14 @@
+---
+kind: corpus
+id: driven-port-speaks-its-adapter
+description: Why a driven port carries no domain knowledge.
+---
+**Why:** Tam rejected `VendorInstallCommit` on `ForVCS` during Story 8
+(2026-09-22). A port that names a domain concept ties every adapter behind it to
+that concept, so a second adapter — an in-memory one for tests, another VCS —
+has to learn the domain to fill it. dependency-cruiser checks which files import
+which, but it cannot see what a name means, so this is kept as a rule.
+
+**How to apply:** when adding to a port under `src/hexagon/port/zdriven/`, ask
+whether the adapter would recognise the word. If it would not, rename it after
+what the adapter does, and do the mapping in the service that calls the port.
