@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 — 2026-10-01
+
+- **Breaking:** every primitive is now a folder holding its `index.md`; move `.cw/charter/<kind>/<id>.md` to `.cw/charter/<kind>/<id>/index.md`.
+- Files kept beside a primitive's `index.md` are copied next to it when you build.
+- New `script` kind: keep the files your agent or a sensor runs, and name the one to run with `executionPath`.
+- New `template` kind: keep a file for your agent to fill or copy.
+
 ## 0.2.1 — 2026-09-29
 
 - `cw init` now builds the charter, so the `cw-author` skill is ready at once.
