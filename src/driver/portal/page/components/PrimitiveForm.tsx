@@ -9,7 +9,7 @@ import {
   useKinds,
   usePrimitiveRequirements,
   usePrimitives,
-  usePrimitiveSnapshot,
+  usePrimitive,
   useRemovePrimitive,
   useRewritePrimitive,
 } from "../queries.js";
@@ -41,16 +41,16 @@ export function PrimitiveForm({
   onDone: (did: string, detail: string) => void;
   onClose: () => void;
 }) {
-  const { data: snapshotAnswer } = usePrimitiveSnapshot(identity);
+  const { data: openedAnswer } = usePrimitive(identity);
 
   if (identity === undefined)
-    return <PrimitiveEditor primitiveSnapshot={null} entityTag="" newKind={newKind ?? ""} onDone={onDone} onClose={onClose} />;
-  if (snapshotAnswer === undefined) return null;
+    return <PrimitiveEditor openedPrimitive={null} entityTag="" newKind={newKind ?? ""} onDone={onDone} onClose={onClose} />;
+  if (openedAnswer === undefined) return null;
 
-  const { answer, entityTag } = snapshotAnswer;
+  const { answer, entityTag } = openedAnswer;
   if (answer.type === "Fault") return <Refusals faults={[answer]} />;
-  if (answer.data.scopedPrimitive.data.scope !== "repo") return <ReadOnlyPrimitive primitiveSnapshot={answer} />;
-  return <PrimitiveEditor primitiveSnapshot={answer} entityTag={entityTag} newKind="" onDone={onDone} onClose={onClose} />;
+  if (answer.data.layerName !== "repo") return <ReadOnlyPrimitive openedPrimitive={answer} />;
+  return <PrimitiveEditor openedPrimitive={answer} entityTag={entityTag} newKind="" onDone={onDone} onClose={onClose} />;
 }
 
 /**
@@ -67,31 +67,31 @@ export function PrimitiveForm({
  * here in its words, and nothing is written (Story 6 scenarios 2, 3, 9).
  */
 function PrimitiveEditor({
-  primitiveSnapshot,
+  openedPrimitive,
   entityTag,
   newKind,
   onDone,
   onClose,
 }: {
   /** What the form was opened on, or nothing for a new primitive. */
-  primitiveSnapshot: DataDTOs.PrimitiveSnapshot | null;
+  openedPrimitive: DataDTOs.Primitive | null;
   /** The entity tag a save is sent back with (FR-078). */
   entityTag: string;
   newKind: string;
   onDone: (did: string, detail: string) => void;
   onClose: () => void;
 }) {
-  const scopedPrimitive = primitiveSnapshot?.data.scopedPrimitive.data;
-  const [kind, setKind] = useState(scopedPrimitive?.kind ?? newKind);
-  const [id, setId] = useState(scopedPrimitive === undefined ? "" : String(scopedPrimitive.headers.id));
+  const primitive = openedPrimitive?.data;
+  const [kind, setKind] = useState(primitive?.kind ?? newKind);
+  const [id, setId] = useState(primitive === undefined ? "" : String(primitive.headers.id));
   const [answers, setAnswers] = useState<InferRequestType<typeof client.charter.root.primitives.$post>["json"]["headers"]>(() =>
     Object.fromEntries(
-      Object.entries(scopedPrimitive?.headers ?? {})
+      Object.entries(primitive?.headers ?? {})
         .filter(([field]) => field !== "id")
         .map(([field, value]) => [field, typeof value === "string" ? value : [...value]]),
     ),
   );
-  const [body, setBody] = useState(primitiveSnapshot?.data.body ?? "");
+  const [body, setBody] = useState(openedPrimitive?.data.body ?? "");
   const [faults, setFaults] = useState<readonly DataDTOs.Fault[]>([]);
 
   const { data: kindsAnswer } = useKinds();
@@ -106,7 +106,7 @@ function PrimitiveEditor({
   // The corpus a rationale may cite is whatever the charter holds of it now; a
   // charter the engine will not read offers none.
   const corpusIdentities =
-    listing?.type === "ScopedPrimitives" ? listing.data.primitives.filter(({ data }) => data.kind === "corpus").map(({ data }) => data.identity) : [];
+    listing?.type === "Primitives" ? listing.data.primitives.filter(({ data }) => data.kind === "corpus").map(({ data }) => data.identity) : [];
 
   // Only what the kind takes is sent, and nothing left blank: a header answered
   // with nothing is a header not answered.
@@ -123,29 +123,34 @@ function PrimitiveEditor({
     setFaults(refusedDTO.type === "Faults" ? refusedDTO.data.faults : [refusedDTO]);
 
   const savePrimitive = async () => {
-    const scopedPrimitiveDTO =
-      primitiveSnapshot === null
+    const primitiveDTO =
+      openedPrimitive === null
         ? await addPrimitive.mutateAsync({ kind, id, headers: answeredHeaders, body })
         : await rewritePrimitive.mutateAsync({
-            param: { identity: primitiveSnapshot.data.scopedPrimitive.data.identity },
+            param: { identity: openedPrimitive.data.identity },
             header: { "if-match": entityTag },
             json: { headers: answeredHeaders, body },
           });
-    if (scopedPrimitiveDTO.type !== "ScopedPrimitive") return faultsOf(scopedPrimitiveDTO);
-    onDone(primitiveSnapshot === null ? "Primitive created" : "Primitive saved", `${scopedPrimitiveDTO.data.file} · nothing compiled until the next build`);
+    if (primitiveDTO.type !== "Primitive") return faultsOf(primitiveDTO);
+    const { file, headers: writtenHeaders } = primitiveDTO.data;
+    onDone(
+      openedPrimitive === null ? "Primitive created" : "Primitive saved",
+      // A script just created has its file to run written beside it, empty.
+      `${file} · ${openedPrimitive === null && typeof writtenHeaders.executionPath === "string" ? `${writtenHeaders.executionPath} beside it is the file it runs, write the script there · ` : ""}nothing compiled until the next build`,
+    );
   };
 
   const deletePrimitive = async () => {
-    if (primitiveSnapshot === null) return;
-    const refusedDTO = await removePrimitive.mutateAsync(primitiveSnapshot.data.scopedPrimitive.data.identity);
+    if (openedPrimitive === null) return;
+    const refusedDTO = await removePrimitive.mutateAsync(openedPrimitive.data.identity);
     if (refusedDTO !== null) return faultsOf(refusedDTO);
-    onDone("Primitive deleted", `${primitiveSnapshot.data.scopedPrimitive.data.file} · what still names it is reported by Doctor`);
+    onDone("Primitive deleted", `${openedPrimitive.data.file} · what still names it is reported by Doctor`);
   };
 
   return (
     <div className="space-y-3.5">
       <div className={FORM_ROWS}>
-        {primitiveSnapshot === null ? (
+        {openedPrimitive === null ? (
           <>
             <FormRow label="kind" htmlFor="primitive-kind">
               <Select value={kind} onValueChange={setKind}>
@@ -161,7 +166,7 @@ function PrimitiveEditor({
                 </SelectContent>
               </Select>
             </FormRow>
-            <FormRow label="id" htmlFor="primitive-id" hint={`.cw/charter/${kind}/${id || "<id>"}.md`}>
+            <FormRow label="id" htmlFor="primitive-id">
               <Input id="primitive-id" value={id} placeholder="no-any" spellCheck={false} onChange={(event) => setId(event.currentTarget.value)} />
             </FormRow>
           </>
@@ -223,11 +228,11 @@ function PrimitiveEditor({
       {faults.length > 0 && <Refusals faults={faults} />}
 
       <div className={DIALOG_FOOTER}>
-        <Button onClick={() => void savePrimitive()}>{primitiveSnapshot === null ? "Create primitive" : "Save"}</Button>
+        <Button onClick={() => void savePrimitive()}>{openedPrimitive === null ? "Create primitive" : "Save"}</Button>
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        {primitiveSnapshot !== null && (
+        {openedPrimitive !== null && (
           <Button variant="destructive" className="ml-auto" onClick={() => void deletePrimitive()}>
             Delete
           </Button>
@@ -240,12 +245,12 @@ function PrimitiveEditor({
 /** A vendored or builtin primitive, shown and not offered for change: what it
  *  declares, where it came from, its body, and how to differ from it (Story 6
  *  scenario 7). */
-function ReadOnlyPrimitive({ primitiveSnapshot }: { primitiveSnapshot: DataDTOs.PrimitiveSnapshot }) {
-  const { kind, description, file, scope, headers } = primitiveSnapshot.data.scopedPrimitive.data;
+function ReadOnlyPrimitive({ openedPrimitive }: { openedPrimitive: DataDTOs.Primitive }) {
+  const { kind, description, file, layerName, headers } = openedPrimitive.data;
   return (
     <div className="space-y-3.5">
       <Alert className="rounded-xl border-[#7c3aed33] bg-[#f6f2ff]">
-        <AlertTitle className="text-[12.5px] font-bold">{scope === "vendor" ? "Installed from a vendor, and read-only here." : "Built into cw, and read-only here."}</AlertTitle>
+        <AlertTitle className="text-[12.5px] font-bold">{layerName === "vendor" ? "Installed from a vendor, and read-only here." : "Built into cw, and read-only here."}</AlertTitle>
         <AlertDescription className="text-[11.5px] text-zinc-600">To differ from it, author a primitive of your own under an identity of its own.</AlertDescription>
       </Alert>
       <div className={FORM_ROWS}>
@@ -266,7 +271,7 @@ function ReadOnlyPrimitive({ primitiveSnapshot }: { primitiveSnapshot: DataDTOs.
             </FormRow>
           ))}
       </div>
-      <PrimitiveBody body={primitiveSnapshot.data.body} />
+      <PrimitiveBody body={openedPrimitive.data.body} />
     </div>
   );
 }

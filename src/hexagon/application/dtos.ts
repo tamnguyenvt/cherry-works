@@ -1,7 +1,7 @@
+import type { Primitive } from "../domain/models/charter/primitive/Primitive.js";
 import type { DataDTOs, OutcomeDTOs } from "../port/driver/dtos/index.js";
 import type { DomainFault, Faults, FaultsByFile } from "../domain/models/DomainFault.js";
 import type { Catalogue } from "../domain/models/output/common/Catalogue.js";
-import type { ScopedPrimitive } from "../domain/models/charter/CharterRoot.js";
 import type { PrimitiveHeader, PrimitiveRequirements } from "../domain/models/charter/primitive/Primitive.js";
 import type { TestCaseReport, TestRunReport } from "../domain/services/testService.js";
 import type { WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
@@ -19,7 +19,7 @@ import { testSuiteNameOf, type TestRoot } from "../domain/models/test/TestRoot.j
 /** The full listing, every entry carrying what it is. What the catalogue file
  *  holds is `full`, which stays as agents read it. */
 export function catalogueDTO(catalogue: Catalogue): DataDTOs.Catalogue {
-  return { type: "Catalogue", data: { entries: catalogue.full.map((one) => ({ type: "CatalogueEntry", data: one })) } };
+  return { type: "Catalogue", data: { entries: catalogue.entries.map((one) => ({ type: "CatalogueEntry", data: one })) } };
 }
 
 /**
@@ -64,25 +64,25 @@ export function doctorOutcomeDTO(
  *  what uses, cites or names it, and the test cases that name it (FR-014,
  *  FR-017, FR-163). */
 export function explanationOutcomeDTO(
-  scopedPrimitive: ScopedPrimitive,
+  primitive: Primitive,
   activatesWhen: string,
-  useMixins: readonly ScopedPrimitive[],
-  rationale: ScopedPrimitive | undefined,
-  hosts: readonly ScopedPrimitive[],
-  citers: readonly ScopedPrimitive[],
-  mentioners: readonly ScopedPrimitive[],
+  useMixins: readonly Primitive[],
+  rationale: Primitive | undefined,
+  hosts: readonly Primitive[],
+  citers: readonly Primitive[],
+  mentioners: readonly Primitive[],
   testCasesByFile: Readonly<Record<string, readonly string[]>>,
 ): OutcomeDTOs.ExplanationOutcome {
   return {
     type: "ExplanationOutcome",
     data: {
-      scopedPrimitive: scopedPrimitiveDTO(scopedPrimitive),
+      primitive: primitiveDTO(primitive),
       activatesWhen,
-      useMixins: useMixins.map(scopedPrimitiveDTO),
-      ...(rationale === undefined ? {} : { rationale: scopedPrimitiveDTO(rationale) }),
-      hosts: hosts.map(scopedPrimitiveDTO),
-      citers: citers.map(scopedPrimitiveDTO),
-      mentioners: mentioners.map(scopedPrimitiveDTO),
+      useMixins: useMixins.map(primitiveDTO),
+      ...(rationale === undefined ? {} : { rationale: primitiveDTO(rationale) }),
+      hosts: hosts.map(primitiveDTO),
+      citers: citers.map(primitiveDTO),
+      mentioners: mentioners.map(primitiveDTO),
       testCasesByFile: { type: "TestCasesByFile", data: testCasesByFile },
     },
   };
@@ -110,16 +110,6 @@ export function faultsByFileDTO(faultsByFile: FaultsByFile, repo: URL): DataDTOs
         Object.entries(faultsByFile.namedFrom(repo).files).map(([file, faults]) => [file, faults.map(faultDTO)]),
       ),
     },
-  };
-}
-
-/** One primitive as its file holds it now: the primitive as the whole charter
- *  sees it, its body, and its revision — a content hash — which a save
- *  hands back to say which text it was made over (FR-075, FR-078). */
-export function primitiveSnapshotDTO(scopedPrimitive: ScopedPrimitive, revision: string): DataDTOs.PrimitiveSnapshot {
-  return {
-    type: "PrimitiveSnapshot",
-    data: { scopedPrimitive: scopedPrimitiveDTO(scopedPrimitive), body: scopedPrimitive.primitive.body, revision },
   };
 }
 
@@ -152,17 +142,18 @@ export function primitiveKindsDTO(
 }
 
 /** One primitive as the whole charter sees it: what it is called and what it is
- *  for, the file it was authored in, which layer that file arrived in, and
- *  every header it declared (FR-017). */
-export function scopedPrimitiveDTO({ identity, scope, file, primitive }: ScopedPrimitive): DataDTOs.ScopedPrimitive {
+ *  for, the file it was authored in, which layer that file arrived in, every
+ *  header it declared, its body and its hash (FR-017, FR-078). */
+export function primitiveDTO(primitive: Primitive): DataDTOs.Primitive {
+  const { identity, layerName, file, body, hash } = primitive;
   return {
-    type: "ScopedPrimitive",
+    type: "Primitive",
     data: {
       identity,
       kind: primitive.kind,
       description: primitive.headers.description,
       file,
-      scope,
+      layerName,
       // A header nobody wrote is left out rather than carried as undefined: this
       // says what the file declared.
       headers: Object.fromEntries(
@@ -170,19 +161,21 @@ export function scopedPrimitiveDTO({ identity, scope, file, primitive }: ScopedP
           (entry): entry is [string, string | readonly string[]] => entry[1] !== undefined,
         ),
       ),
+      body,
+      hash,
     },
   };
 }
 
 /** Every primitive given, as the whole charter sees each, ordered by identity
  *  the way the catalogue orders its entries. */
-export function scopedPrimitivesDTO(scopedPrimitives: readonly ScopedPrimitive[]): DataDTOs.ScopedPrimitives {
+export function primitivesDTO(primitives: readonly Primitive[]): DataDTOs.Primitives {
   return {
-    type: "ScopedPrimitives",
+    type: "Primitives",
     data: {
-      primitives: [...scopedPrimitives]
+      primitives: [...primitives]
         .sort((one, another) => (one.identity < another.identity ? -1 : one.identity > another.identity ? 1 : 0))
-        .map(scopedPrimitiveDTO),
+        .map(primitiveDTO),
     },
   };
 }

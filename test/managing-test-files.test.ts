@@ -31,7 +31,7 @@ const suiteText = (written: unknown) => `${JSON.stringify(written, undefined, 2)
 /** One suite putting all three shapes, and one file that does not read. */
 const withTwoFiles = () => ({
   ...settings,
-  [at(".cw/charter/guide/no-any.md")]: guide("no-any", ["src/**/*.ts"]),
+  [at(".cw/charter/guide/no-any/index.md")]: guide("no-any", ["src/**/*.ts"]),
   [at(".cw/test/shapes.json")]: suiteText({
     description: "All three shapes.",
     cases: [
@@ -97,7 +97,7 @@ test("suites() is empty for a repository with no test folder (FR-124)", async ()
 test("a run names the test file each case came from (FR-125)", async () => {
   const { charterAuthoringApp } = authoring({
     ...settings,
-    [at(".cw/charter/guide/no-any.md")]: guide("no-any", ["src/**/*.ts"]),
+    [at(".cw/charter/guide/no-any/index.md")]: guide("no-any", ["src/**/*.ts"]),
     [at(".cw/test/one.json")]: suiteText({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
     [at(".cw/test/two.json")]: suiteText({ cases: [{ do: { touchFile: "docs/a.md" }, expect: { activate: "guide:no-any" } }] }),
   });
@@ -162,11 +162,11 @@ test("writeSuite() and removeSuite() refuse a name that is no test file (FR-090,
   const text = suiteText({ cases: [{ when: "Stop", expect: { run: "sensor:test" } }] });
 
   await assert.rejects(testAuthoringApp.writeSuite("missing.json", text), /holds no test file called "missing.json"/);
-  await assert.rejects(testAuthoringApp.writeSuite("../charter/guide/no-any.md", text), /holds no test file/);
-  await assert.rejects(testAuthoringApp.removeSuite("../charter/guide/no-any.md"), /holds no test file/);
+  await assert.rejects(testAuthoringApp.writeSuite("../charter/guide/no-any/index.md", text), /holds no test file/);
+  await assert.rejects(testAuthoringApp.removeSuite("../charter/guide/no-any/index.md"), /holds no test file/);
 
   assert.equal(await fileAt(".cw/test/missing.json"), undefined);
-  assert.ok(await fileAt(".cw/charter/guide/no-any.md"));
+  assert.ok(await fileAt(".cw/charter/guide/no-any/index.md"));
 });
 
 test("removeSuite() deletes one test file, and nothing else (FR-092)", async () => {

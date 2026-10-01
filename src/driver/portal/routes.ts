@@ -68,7 +68,7 @@ export function api(
         path: "/charter/root/primitives",
         request: { query: z.object({ matching: z.string().optional() }) },
         responses: {
-          200: json(DataDTOs.ScopedPrimitives, "Every primitive of every layer, or those mentioning the word"),
+          200: json(DataDTOs.Primitives, "Every primitive of every layer, or those mentioning the word"),
           422: json(z.union([DataDTOs.FaultsByFile, DataDTOs.Fault]), "The charter does not hold"),
         },
       }),
@@ -77,8 +77,8 @@ export function api(
         // kind as well, so a narrowed answer would be a second call for what the
         // first one already carried. A word searched for narrows it, and an
         // empty box is no word.
-        const scopedPrimitivesDTO = await charterAuthoringApp.fullList(c.req.valid("query").matching || undefined);
-        return scopedPrimitivesDTO.type === "FaultsByFile" ? c.json(scopedPrimitivesDTO, 422) : c.json(scopedPrimitivesDTO, 200);
+        const primitivesDTO = await charterAuthoringApp.fullList(c.req.valid("query").matching || undefined);
+        return primitivesDTO.type === "FaultsByFile" ? c.json(primitivesDTO, 422) : c.json(primitivesDTO, 200);
       },
     )
     .openapi(
@@ -114,7 +114,7 @@ export function api(
         },
         responses: {
           201: {
-            ...json(DataDTOs.ScopedPrimitive, "The primitive written"),
+            ...json(DataDTOs.Primitive, "The primitive written"),
             headers: z.object({ Location: z.string() }),
           },
           422: json(z.union([DataDTOs.Faults, DataDTOs.Fault]), "The answers the kind refused, or an identity already claimed"),
@@ -122,9 +122,9 @@ export function api(
       }),
       async (c) => {
         const { kind, id, headers, body } = c.req.valid("json");
-        const scopedPrimitiveDTO = await charterAuthoringApp.add(kind, id, headers, body);
-        if (scopedPrimitiveDTO.type === "Faults") return c.json(scopedPrimitiveDTO, 422);
-        return c.json(scopedPrimitiveDTO, 201, { Location: `/api/charter/root/primitives/${encodeURIComponent(scopedPrimitiveDTO.data.identity)}` });
+        const primitiveDTO = await charterAuthoringApp.add(kind, id, headers, body);
+        if (primitiveDTO.type === "Faults") return c.json(primitiveDTO, 422);
+        return c.json(primitiveDTO, 201, { Location: `/api/charter/root/primitives/${encodeURIComponent(primitiveDTO.data.identity)}` });
       },
     )
     .openapi(
@@ -134,7 +134,7 @@ export function api(
         request: { params: z.object({ identity: z.string() }) },
         responses: {
           200: {
-            ...json(DataDTOs.PrimitiveSnapshot, "One primitive as the charter read it"),
+            ...json(DataDTOs.Primitive, "One primitive as the charter read it"),
             headers: z.object({ ETag: z.string() }),
           },
           422: json(DataDTOs.Fault, "The charter holds nothing of it"),
@@ -142,9 +142,9 @@ export function api(
       }),
       async (c) => {
         const { identity } = c.req.valid("param");
-        const primitiveSnapshotDTO = await charterAuthoringApp.open(identity);
-        // The revision is a content hash already; an entity tag is quoted.
-        return c.json(primitiveSnapshotDTO, 200, { ETag: `"${primitiveSnapshotDTO.data.revision}"` });
+        const primitiveDTO = await charterAuthoringApp.open(identity);
+        // Its hash is the entity tag, quoted.
+        return c.json(primitiveDTO, 200, { ETag: `"${primitiveDTO.data.hash}"` });
       },
     )
     .openapi(
@@ -163,23 +163,23 @@ export function api(
           ),
         },
         responses: {
-          200: json(DataDTOs.ScopedPrimitive, "The primitive written"),
+          200: json(DataDTOs.Primitive, "The primitive written"),
           412: json(DataDTOs.Fault, "The file changed on disk after it was opened"),
           422: json(z.union([DataDTOs.Faults, DataDTOs.Fault]), "The answers the kind refused, or a primitive this repository did not author"),
         },
       }),
       async (c) => {
         const { identity } = c.req.valid("param");
-        // The primitive is opened again here, and its revision held against the
-        // one the page opened it at, so a stale one is a 412 rather than a
-        // refusal like any other; `rewrite` is handed the revision just opened,
-        // and checks it once more as it writes (FR-078).
-        const { revision, scopedPrimitive } = (await charterAuthoringApp.open(identity)).data;
-        if (c.req.valid("header")["if-match"] !== `"${revision}"`)
+        // The primitive is opened again here, and its hash held against the one
+        // the page opened it at, so a stale one is a 412 rather than a refusal
+        // like any other; `rewrite` is handed the hash just opened, and checks
+        // it once more as it writes (FR-078).
+        const primitive = (await charterAuthoringApp.open(identity)).data;
+        if (c.req.valid("header")["if-match"] !== `"${primitive.hash}"`)
           return c.json(
             faultDTO(
               new DomainFault(
-                `${scopedPrimitive.data.file} changed on disk after it was opened, and saving would write over that change.`,
+                `${primitive.file} changed on disk after it was opened, and saving would write over that change.`,
                 "Open it again to see what changed, then make your edit there.",
               ),
             ),
@@ -187,8 +187,8 @@ export function api(
           );
 
         const { headers, body } = c.req.valid("json");
-        const scopedPrimitiveDTO = await charterAuthoringApp.rewrite(identity, headers, body, revision);
-        return scopedPrimitiveDTO.type === "Faults" ? c.json(scopedPrimitiveDTO, 422) : c.json(scopedPrimitiveDTO, 200);
+        const primitiveDTO = await charterAuthoringApp.rewrite(identity, headers, body, primitive.hash);
+        return primitiveDTO.type === "Faults" ? c.json(primitiveDTO, 422) : c.json(primitiveDTO, 200);
       },
     )
     .openapi(

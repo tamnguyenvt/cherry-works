@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, GoodLineSchema, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, GoodLineSchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 import { MCP_AUTH_METHODS } from "../../McpAuthMethod.js";
 
 /**
@@ -138,8 +139,8 @@ export class McpPrimitive extends BasePrimitive<McpHeaders> {
 
   /** One mcp, or every fault its headers have, shown the sample of the shape
    *  it declared (FR-004, FR-142). */
-  static of(record: Readonly<Record<string, unknown>>, body: string): McpPrimitive {
+  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): McpPrimitive {
     const nearerSample = record.command === undefined ? McpPrimitive.sample : McpPrimitive.commandSample;
-    return new McpPrimitive(headersOf({ kind: McpPrimitive.kind, sample: nearerSample }, McpHeadersSchema, record), body);
+    return new McpPrimitive(headersOf({ kind: McpPrimitive.kind, sample: nearerSample }, McpHeadersSchema, record), body, assetFiles, primitiveLayer);
   }
 }

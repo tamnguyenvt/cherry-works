@@ -10,7 +10,8 @@ import { SensorPrimitive } from "./SensorPrimitive.js";
 import { SkillPrimitive } from "./SkillPrimitive.js";
 import { ScriptPrimitive } from "./ScriptPrimitive.js";
 import { TemplatePrimitive } from "./TemplatePrimitive.js";
-import { BasePrimitive, DELIMITER } from "./BasePrimitive.js";
+import { BasePrimitive, DELIMITER, type AssetFile } from "./BasePrimitive.js";
+import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 import { CharterPrimitiveFault, throwAggregateError, type DomainFault } from "../../DomainFault.js";
 import { formatFrontmatterValue } from "../../helper.js";
 import type { ForParsingYaml } from "../../../../port/zdriven/ForParsingYaml.js";
@@ -77,14 +78,6 @@ export function identityOf(kindAndId: { readonly kind: string; readonly id: stri
     );
   return parsed.data;
 }
-
-declare const normalized: unique symbol;
-
-/** An identity as a host is given it in its own files: the
- *  separators a filename does not carry replaced — the kind's `:` and the `/`
- *  that groups an id alike (FR-141). A type of its own, so a name written into
- *  a host's files is one `ScopedPrimitive.normIdentity` made. */
-export type NormalizedIdentity = string & { readonly [normalized]: true };
 
 export function isKind(value: unknown): value is Kind {
   return typeof value === "string" && (KINDS as readonly string[]).includes(value);
@@ -199,8 +192,13 @@ export interface UnparsedPrimitive {
  * wrong (FR-009). A file is read as it always was.
  */
 export function primitiveOf(unparsedPrimitive: UnparsedPrimitive): Primitive;
-export function primitiveOf(text: string, parser: ForParsingYaml): Primitive;
-export function primitiveOf(input: string | UnparsedPrimitive, parser?: ForParsingYaml): Primitive {
+export function primitiveOf(text: string, parser: ForParsingYaml, assetFiles?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer): Primitive;
+export function primitiveOf(
+  input: string | UnparsedPrimitive,
+  parser?: ForParsingYaml,
+  assetFiles: readonly AssetFile[] = [],
+  primitiveLayer?: PrimitiveLayer,
+): Primitive {
   let headers: Readonly<Record<string, unknown>>;
   let body: string;
 
@@ -226,7 +224,7 @@ export function primitiveOf(input: string | UnparsedPrimitive, parser?: ForParsi
     headers = parser!.parse(lines.slice(1, end).join("\n"));
     // The blank lines between the headers and the body, and the whitespace at
     // its end, are the file's; the indentation of its first line is the body's,
-    // which a template's built file keeps byte for byte (FR-159).
+    // which its compiled document keeps (FR-139).
     body = lines.slice(end + 1).join("\n").replace(/^(\s*\n)+/, "").trimEnd();
   } else {
     headers = input.headers;
@@ -246,7 +244,7 @@ export function primitiveOf(input: string | UnparsedPrimitive, parser?: ForParsi
           ),
     ]);
   const kind = headers.kind;
-  if (typeof input === "string") return CLASS_OF.get(kind)!.of(headers, body);
+  if (typeof input === "string") return CLASS_OF.get(kind)!.of(headers, body, assetFiles, primitiveLayer);
 
   const headerFields = primitiveHeadersOf(kind).map((header) => header.field);
   const unknownHeaderFaults = Object.keys(headers)

@@ -49,7 +49,6 @@ here and extend what is already there.
     factory per output, each `<model>Of()` in `compile/<model>Factory.ts`:
     `compiledPrimitiveOf`, `catalogueOf`, `charterMdOf`, `mcpOriginsOf`, and
     `claudeComponentsOf` in `claudeComponentFactory.ts`;
-    `projectionService.ts` (output → `Projection` path and contents);
     `testService.ts`.
   - `path.ts` — the repository's layout: every folder and file name, and the
     URLs built from them. Not a model.
@@ -65,7 +64,7 @@ here and extend what is already there.
   follow. A kind reached by being named (`mcp:`, `script:`, `template:`) adds
   its mention regex to `identitiesMentionedIn` in `CharterRoot`.
 - A new output of a primitive: extend `compiledPrimitiveOf` (extension,
-  stamp, executable) rather than adding an output model.
+  stamp, built files) rather than adding an output model.
 - A new output of the charter: a declarative model in `models/output/` and a
   `<model>Of()` in `compile/<model>Factory.ts`, called from `compile`.
 - A new file for a host: a class extending `DocumentBasedComponent` or

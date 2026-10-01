@@ -10,8 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group.js";
 
 /**
- * One tab's layers of the charter, by kind: a chip per kind carrying how many
- * primitives of it those layers hold, the line saying when that kind comes up,
+ * One tab's layerNames of the charter, by kind: a chip per kind carrying how many
+ * primitives of it those layerNames hold, the line saying when that kind comes up,
  * and the primitives themselves (FR-112, FR-113).
  *
  * Both answers are asked for when this is mounted, and this is mounted when the
@@ -21,15 +21,15 @@ import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group.js";
  * a charter holding no posture is a charter one can be written in, and the chip
  * is where a reader finds that out. Which kinds those are, and what each line
  * says, is the engine's answer rather than a list kept here (FR-113). Which
- * layer each primitive arrived in is the engine's answer too: `scopes` only
+ * layer each primitive arrived in is the engine's answer too: `layerNames` only
  * says which of them this tab shows.
  */
 export function CharterListing({
-  scopes,
+  layerNames,
   kind,
   onKindChange,
 }: {
-  scopes: readonly DataDTOs.ScopedPrimitive["data"]["scope"][];
+  layerNames: readonly DataDTOs.Primitive["data"]["layerName"][];
   /** The kind whose chip is on, or nothing for the listing's own first choice. */
   kind: string | null;
   onKindChange: (kind: string) => void;
@@ -48,11 +48,11 @@ export function CharterListing({
   // the engine said it.
   if (listing.type === "Fault") return <RaisedFault fault={listing} />;
 
-  const primitives = listing.data.primitives.filter(({ data }) => scopes.includes(data.scope));
+  const primitives = listing.data.primitives.filter(({ data }) => layerNames.includes(data.layerName));
   const counts = new Map(Object.keys(kinds).map((one) => [one, primitives.filter(({ data }) => data.kind === one).length]));
   // What is shown until a chip is picked: the first kind anything was authored
   // of, so a reader lands on a table rather than on an empty state, and the
-  // first kind there is where these layers hold nothing at all.
+  // first kind there is where these layerNames hold nothing at all.
   const shown = kind ?? [...counts].find(([, count]) => count > 0)?.[0] ?? Object.keys(kinds)[0]!;
   const listed = primitives.filter(({ data }) => data.kind === shown);
 
@@ -63,7 +63,7 @@ export function CharterListing({
         <span className="text-[11.5px] text-zinc-400">{primitives.length} in this charter</span>
         {/* A new primitive is written in this repository's own layer, so only
             the tab listing it offers one. */}
-        {scopes.includes("repo") && (
+        {layerNames.includes("repo") && (
           <Button size="sm" variant="outline" className="ml-auto" onClick={() => open("newPrimitive", { kind: shown })}>
             New {shown}
           </Button>
@@ -154,7 +154,7 @@ function namedIn(value: string | readonly string[] | undefined): readonly string
  * a corpus for why; every kind but a mixin may pull mixins in, and a mixin may
  * not, so it has no column for them.
  */
-function Rows({ kind, listed }: { kind: string; listed: DataDTOs.ScopedPrimitives["data"]["primitives"] }) {
+function Rows({ kind, listed }: { kind: string; listed: DataDTOs.Primitives["data"]["primitives"] }) {
   const { open } = useDialog();
   const guide = kind === "guide";
   const mixing = kind !== "mixin";

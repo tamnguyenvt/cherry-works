@@ -34,8 +34,8 @@ async function temporary(t: { after(fn: () => unknown): void }, name: string): P
  *  without a network. */
 async function published(t: { after(fn: () => unknown): void }, body = "Reject any."): Promise<string> {
   const source = join(await temporary(t, "source"), "charter");
-  await mkdir(join(source, "guide"), { recursive: true });
-  await writeFile(join(source, "guide", "no-any.md"), `---\nkind: guide\n---\n\n${body}\n`);
+  await mkdir(join(source, "guide", "no-any"), { recursive: true });
+  await writeFile(join(source, "guide", "no-any", "index.md"), `---\nkind: guide\n---\n\n${body}\n`);
   await run("git", ["init", "-q", "-b", "main"], { cwd: source });
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "one");
@@ -62,7 +62,7 @@ async function repository(t: { after(fn: () => unknown): void }): Promise<string
 const at = (repo: string) => [pathToFileURL(`${repo}/`), ".cw/vendor/charter"] as const;
 
 /** What the vendored guide says in this repository, read off disk. */
-const vendored = (repo: string) => readFile(join(repo, ".cw", "vendor", "charter", "guide", "no-any.md"), "utf8");
+const vendored = (repo: string) => readFile(join(repo, ".cw", "vendor", "charter", "guide", "no-any", "index.md"), "utf8");
 
 test("a source installs under the folder its address names, and is committed there", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
@@ -86,7 +86,7 @@ test("installing a source already there brings it up to date", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   await git.subtreeAdd(source, ...at(repo));
 
-  await writeFile(join(source, "guide", "no-any.md"), "---\nkind: guide\n---\n\nReject it everywhere.\n");
+  await writeFile(join(source, "guide", "no-any", "index.md"), "---\nkind: guide\n---\n\nReject it everywhere.\n");
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "two");
 

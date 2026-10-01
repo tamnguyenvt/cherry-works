@@ -1,5 +1,6 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** What the agent may and may not do, as permission lists (FR-004). */
 export const PostureHeadersSchema = CommonHeadersSchema.extend({
@@ -36,7 +37,7 @@ export class PosturePrimitive extends BasePrimitive<PostureHeaders> {
   };
 
   /** One posture, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string): PosturePrimitive {
-    return new PosturePrimitive(headersOf(PosturePrimitive, PostureHeadersSchema, record), body);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): PosturePrimitive {
+    return new PosturePrimitive(headersOf(PosturePrimitive, PostureHeadersSchema, record), body, assetFiles, primitiveLayer);
   }
 }

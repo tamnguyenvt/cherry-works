@@ -13,9 +13,9 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 /** A charter with something of three kinds and nothing of the five others: what
  *  a reader meets, and what a chip with no primitives behind it has to survive. */
 const charter = {
-  [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:why", 'mixins: ["voice"]']),
-  [at("corpus/why.md")]: primitive("corpus", "why"),
-  [at("mixin/voice.md")]: primitive("mixin", "voice"),
+  [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:why", 'mixins: ["voice"]']),
+  [at("corpus/why/index.md")]: primitive("corpus", "why"),
+  [at("mixin/voice/index.md")]: primitive("mixin", "voice"),
 };
 
 test("every kind the charter knows has a chip, carrying how many primitives of it are held", async () => {
@@ -44,7 +44,7 @@ test("a guide is listed with what it is for, the file it is in, the globs it mat
 
     assert.equal(await row.locator("td").nth(0).innerText(), "no-any");
     assert.equal(await row.locator("td").nth(1).locator("div").nth(0).innerText(), "About no-any.");
-    assert.equal(await row.locator("td").nth(1).locator("div").nth(1).innerText(), ".cw/charter/guide/no-any.md");
+    assert.equal(await row.locator("td").nth(1).locator("div").nth(1).innerText(), ".cw/charter/guide/no-any/index.md");
     assert.equal(await row.getByRole("cell", { name: "Matching globs" }).innerText(), "src/**/*.ts");
     assert.equal(await row.getByRole("cell", { name: "Rationale" }).innerText(), "corpus:why");
     assert.equal(await row.getByRole("cell", { name: "Mixins" }).innerText(), "voice");
@@ -52,7 +52,7 @@ test("a guide is listed with what it is for, the file it is in, the globs it mat
 });
 
 test("a guide declaring no globs is listed as matching all patterns, since it comes up every turn", async () => {
-  await inTheBrowser({ [at("guide/everywhere.md")]: primitive("guide", "everywhere") }, async (page) => {
+  await inTheBrowser({ [at("guide/everywhere/index.md")]: primitive("guide", "everywhere") }, async (page) => {
     assert.equal(await rowsOf(page).getByRole("cell", { name: "Matching globs" }).innerText(), "all patterns");
   });
 });
@@ -80,7 +80,7 @@ test("the charter is read again when the tab is shown again, so a file written m
   await inTheBrowser(charter, async (page, files) => {
     await rowsOf(page).waitFor();
 
-    files.write(new URL(at("guide/no-casts.md")), primitive("guide", "no-casts", ['globs: ["src/**/*.ts"]']));
+    files.write(new URL(at("guide/no-casts/index.md")), primitive("guide", "no-casts", ['globs: ["src/**/*.ts"]']));
     await page.getByRole("tab", { name: "Vendor" }).click();
     await page.getByRole("tab", { name: "Repo Charter" }).click();
     await rowsOf(page).nth(1).waitFor();
@@ -90,25 +90,25 @@ test("the charter is read again when the tab is shown again, so a file written m
 });
 
 test("a charter the engine will not read shows every fault under its file in place of a listing (FR-115)", async () => {
-  await inTheBrowser({ [at("guide/broken.md")]: "not a primitive at all\n" }, async (page) => {
+  await inTheBrowser({ [at("guide/broken/index.md")]: "not a primitive at all\n" }, async (page) => {
     await page.getByRole("alert").waitFor();
 
     assert.match(await page.getByRole("alert").innerText(), /The engine will not read this charter/);
     const refusedFiles = page.getByRole("table", { name: "Refused files" });
-    assert.deepEqual(await refusedFiles.locator("tr td:first-child").allInnerTexts(), [".cw/charter/guide/broken.md"]);
+    assert.deepEqual(await refusedFiles.locator("tr td:first-child").allInnerTexts(), [".cw/charter/guide/broken/index.md"]);
     assert.ok((await refusedFiles.locator("tr td:nth-child(2) p").count()) > 0);
     assert.equal(await page.getByRole("radio").count(), 0);
   });
 });
 
 test("the repository's tab lists what was authored here and what the engine brings, and nothing vendored (FR-112)", async () => {
-  const vendored = new URL("guide/small-diffs.md", "file:///repo/.cw/vendor/acme/").href;
+  const vendored = new URL("guide/small-diffs/index.md", "file:///repo/.cw/vendor/acme/").href;
   await inTheBrowser({ ...charter, [vendored]: primitive("guide", "small-diffs") }, async (page) => {
     await rowsOf(page).waitFor();
 
     assert.deepEqual(await columnOf(page, 1).allInnerTexts(), ["no-any"]);
     await page.getByRole("radio", { name: "skill" }).click();
     await page.getByRole("table", { name: "skill primitives" }).waitFor();
-    assert.deepEqual(await columnOf(page, 2).locator("div:nth-child(2)").allInnerTexts(), ["(built into cw)/skill/cw-author.md"]);
+    assert.deepEqual(await columnOf(page, 2).locator("div:nth-child(2)").allInnerTexts(), ["(built into cw)/skill/cw-author/index.md"]);
   });
 });

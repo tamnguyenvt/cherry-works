@@ -32,7 +32,7 @@ const load = (files: Readonly<Record<string, string>>, held = new InMemoryFileRe
 const putDown = async (files: Readonly<Record<string, string>>, agents: readonly AgentProvider[] = [CLAUDE]) => {
   const held = new InMemoryFileReaders(files);
   const charter = await load(files, held);
-  const written = await putDownBy(repo, compile(charter, agents), agents, held);
+  const written = await putDownBy(repo, compile(charter, agents), held);
 
   return Object.fromEntries(
     await Promise.all(written.map(async (path) => [path, await held.read(new URL(path, repo))] as const)),
@@ -48,20 +48,20 @@ const projected = async (files: Readonly<Record<string, string>>) =>
 const builtinSkill = ".claude/skills/skill-cw-author/SKILL.md";
 
 const aRole = {
-  [at("agent/ship.md")]: primitive("agent", "ship", "Run the build, then push.", ['tools: ["Bash"]']),
+  [at("agent/ship/index.md")]: primitive("agent", "ship", "Run the build, then push.", ['tools: ["Bash"]']),
 };
 
 test("each charter kind this host has a kind for lands where that host reads it (FR-018)", async () => {
   const files = await projected({
     ...aRole,
-    [at("agent/reviewer.md")]: primitive("agent", "reviewer", "Review the diff.", ['tools: ["Read", "Grep"]']),
-    [at("skill/refactoring.md")]: primitive("skill", "refactoring", "How this repository refactors.", [
+    [at("agent/reviewer/index.md")]: primitive("agent", "reviewer", "Review the diff.", ['tools: ["Read", "Grep"]']),
+    [at("skill/refactoring/index.md")]: primitive("skill", "refactoring", "How this repository refactors.", [
       'triggers: ["a refactor is asked for"]',
     ]),
-    [at("guide/no-any.md")]: primitive("guide", "no-any", "Never write `any`.", ['globs: ["src/**/*.ts"]']),
-    [at("playbook/release.md")]: primitive("playbook", "release", "How a release runs.", ['triggers: ["a release"]']),
-    [at("sensor/ci-failed.md")]: primitive("sensor", "ci-failed", "CI went red.", ["signal: PostToolUse", "run: ./bin/report-ci"]),
-    [at("posture/sandboxed.md")]: primitive("posture", "sandboxed", "What may be run unattended.", [
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", "Never write `any`.", ['globs: ["src/**/*.ts"]']),
+    [at("playbook/release/index.md")]: primitive("playbook", "release", "How a release runs.", ['triggers: ["a release"]']),
+    [at("sensor/ci-failed/index.md")]: primitive("sensor", "ci-failed", "CI went red.", ["signal: PostToolUse", "run: ./bin/report-ci"]),
+    [at("posture/sandboxed/index.md")]: primitive("posture", "sandboxed", "What may be run unattended.", [
       'allow: ["Read(**)"]',
       'deny: ["Bash(rm:*)"]',
     ]),
@@ -80,30 +80,30 @@ test("each charter kind this host has a kind for lands where that host reads it 
 
 test("a guide becomes a rule, and the files it speaks about are the paths that load it (FR-013)", async () => {
   const files = await projected({
-    [at("guide/no-any.md")]: primitive("guide", "no-any", "Never write `any`.", [
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", "Never write `any`.", [
       'globs: ["src/**/*.ts", "test/**/*.ts"]',
     ]),
   });
 
   const contents = files[".claude/rules/guide-no-any.md"] ?? "";
   assert.ok(contents.includes('---\npaths: ["src/**/*.ts", "test/**/*.ts"]\n---'), contents);
-  assert.ok(contents.includes("@../../.cw/out/guide/no-any.md\n"), contents);
+  assert.ok(contents.includes("@../../.cw/out/guide/no-any/index.md\n"), contents);
 });
 
 test("a guide that names no files is a rule with no paths, loaded every session (FR-013)", async () => {
   const files = await projected({
-    [at("guide/small-diffs.md")]: primitive("guide", "small-diffs", "Keep each change small."),
+    [at("guide/small-diffs/index.md")]: primitive("guide", "small-diffs", "Keep each change small."),
   });
 
   const carried = files[".claude/rules/guide-small-diffs.md"] ?? "";
-  assert.ok(carried.includes("@../../.cw/out/guide/small-diffs.md\n"), carried);
+  assert.ok(carried.includes("@../../.cw/out/guide/small-diffs/index.md\n"), carried);
   assert.ok(!carried.includes("paths:"));
 });
 
 test("a guide and a skill of the same id stay two files", async () => {
   const files = await projected({
-    [at("guide/review.md")]: primitive("guide", "review", "Ours as a rule.", ['globs: ["src/**/*.ts"]']),
-    [at("skill/review.md")]: primitive("skill", "review", "Ours as know-how.", ['triggers: ["a review"]']),
+    [at("guide/review/index.md")]: primitive("guide", "review", "Ours as a rule.", ['globs: ["src/**/*.ts"]']),
+    [at("skill/review/index.md")]: primitive("skill", "review", "Ours as know-how.", ['triggers: ["a review"]']),
   });
 
   assert.deepEqual(Object.keys(files).sort(), [
@@ -115,8 +115,8 @@ test("a guide and a skill of the same id stay two files", async () => {
 
 test("an id holding / names a host file with it written as -, a role's too (FR-141)", async () => {
   const files = await projected({
-    [at("agent/release/ship.md")]: primitive("agent", "release/ship", "Run the build, then push.", ['tools: ["Bash"]']),
-    [at("skill/mfbs/refactoring.md")]: primitive("skill", "mfbs/refactoring", "How this team refactors.", ['triggers: ["a refactor"]']),
+    [at("agent/release/ship/index.md")]: primitive("agent", "release/ship", "Run the build, then push.", ['tools: ["Bash"]']),
+    [at("skill/mfbs/refactoring/index.md")]: primitive("skill", "mfbs/refactoring", "How this team refactors.", ['triggers: ["a refactor"]']),
   });
 
   assert.ok(".claude/agents/agent-release-ship.md" in files);
@@ -125,8 +125,8 @@ test("an id holding / names a host file with it written as -, a role's too (FR-1
 
 test("the kinds this host has no kind for project nothing: they are read from the charter", async () => {
   const files = await projected({
-    [at("corpus/type-safety.md")]: primitive("corpus", "type-safety", "Why types are kept tight."),
-    [at("mixin/house-style.md")]: primitive("mixin", "house-style", "Write plainly."),
+    [at("corpus/type-safety/index.md")]: primitive("corpus", "type-safety", "Why types are kept tight."),
+    [at("mixin/house-style/index.md")]: primitive("mixin", "house-style", "Write plainly."),
   });
 
   assert.deepEqual(Object.keys(files), [builtinSkill]);
@@ -136,17 +136,17 @@ test("a host's document points to the compiled one, which alone carries the body
   const files = await putDown(aRole);
 
   const role = files[".claude/agents/agent-ship.md"] ?? "";
-  assert.ok(role.includes("Read and follow @../../.cw/out/agent/ship.md.\n"), role);
+  assert.ok(role.includes("Read and follow @../../.cw/out/agent/ship/index.md.\n"), role);
   assert.ok(!role.includes("Run the build, then push."));
-  assert.ok(files[".cw/out/agent/ship.md"]?.includes("Run the build, then push."));
+  assert.ok(files[".cw/out/agent/ship/index.md"]?.includes("Run the build, then push."));
 });
 
 test("a skill points three folders up, from inside the folder its SKILL.md sits in (FR-139)", async () => {
   const files = await projected({
-    [at("skill/review.md")]: primitive("skill", "review", "Review the diff.", ["triggers: [review this]"]),
+    [at("skill/review/index.md")]: primitive("skill", "review", "Review the diff.", ["triggers: [review this]"]),
   });
 
-  assert.ok(files[".claude/skills/skill-review/SKILL.md"]?.includes("Read and follow @../../../.cw/out/skill/review.md.\n"));
+  assert.ok(files[".claude/skills/skill-review/SKILL.md"]?.includes("Read and follow @../../../.cw/out/skill/review/index.md.\n"));
 });
 
 test("a compiled file says this engine wrote it, so an edit goes to the charter (FR-020)", async () => {
@@ -161,7 +161,7 @@ test("a compiled file says this engine wrote it, so an edit goes to the charter 
 
 test("a role carries the tools it may use, on the one line claude reads them from", async () => {
   const files = await projected({
-    [at("agent/reviewer.md")]: primitive("agent", "reviewer", "Review the diff.", ['tools: ["Read", "Grep", "Bash"]']),
+    [at("agent/reviewer/index.md")]: primitive("agent", "reviewer", "Review the diff.", ['tools: ["Read", "Grep", "Bash"]']),
   });
 
   const contents = files[".claude/agents/agent-reviewer.md"] ?? "";
@@ -171,10 +171,10 @@ test("a role carries the tools it may use, on the one line claude reads them fro
 
 test("a role holds each mcp it lists, whole or one tool, under the name this host is given it by, and no place its body only names (FR-156)", async () => {
   const files = await projected({
-    [at("mcp/linear.md")]: primitive("mcp", "linear", "Issues.", ["endpoint: https://mcp.linear.app/mcp", "auth: [token]", "tools: [list_issues, create_issue]"]),
-    [at("mcp/github/billing.md")]: primitive("mcp", "github/billing", "Code.", ["endpoint: https://api.githubcopilot.com/mcp/", "auth: [oauth]", "tools: [search_code, get_file_contents]"]),
-    [at("mcp/sentry.md")]: primitive("mcp", "sentry", "Errors.", ["endpoint: https://mcp.sentry.dev/mcp", "auth: [oauth]", "tools: [list_errors]"]),
-    [at("agent/fraud-scanner.md")]: primitive("agent", "fraud-scanner", "Read the issues, and the errors in mcp:sentry.", [
+    [at("mcp/linear/index.md")]: primitive("mcp", "linear", "Issues.", ["endpoint: https://mcp.linear.app/mcp", "auth: [token]", "tools: [list_issues, create_issue]"]),
+    [at("mcp/github/billing/index.md")]: primitive("mcp", "github/billing", "Code.", ["endpoint: https://api.githubcopilot.com/mcp/", "auth: [oauth]", "tools: [search_code, get_file_contents]"]),
+    [at("mcp/sentry/index.md")]: primitive("mcp", "sentry", "Errors.", ["endpoint: https://mcp.sentry.dev/mcp", "auth: [oauth]", "tools: [list_errors]"]),
+    [at("agent/fraud-scanner/index.md")]: primitive("agent", "fraud-scanner", "Read the issues, and the errors in mcp:sentry.", [
       'tools: ["Read", "mcp:linear", "mcp:github/billing:search_code"]',
     ]),
   });
@@ -192,7 +192,7 @@ test("a role holds each mcp it lists, whole or one tool, under the name this hos
 
 test("a skill says its triggers in the description, which is what decides it is loaded", async () => {
   const files = await projected({
-    [at("skill/refactoring.md")]: primitive("skill", "refactoring", "How this repository refactors.", [
+    [at("skill/refactoring/index.md")]: primitive("skill", "refactoring", "How this repository refactors.", [
       'triggers: ["a refactor is asked for", "a file is split"]',
     ]),
   });
@@ -207,7 +207,7 @@ test("a skill says its triggers in the description, which is what decides it is 
 
 test("a sensor compiles to a hook this host runs: the event, and the command (FR-004)", async () => {
   const files = await projected({
-    [at("sensor/ci-failed.md")]: primitive("sensor", "ci-failed", "Look at the failing job first.", [
+    [at("sensor/ci-failed/index.md")]: primitive("sensor", "ci-failed", "Look at the failing job first.", [
       "signal: PostToolUse",
       "run: ./bin/report-ci",
     ]),
@@ -221,7 +221,7 @@ test("a sensor compiles to a hook this host runs: the event, and the command (FR
 
 test("a playbook is loaded the way a skill is, since this host has one kind for both", async () => {
   const files = await projected({
-    [at("playbook/release.md")]: primitive("playbook", "release", "How a release runs.", [
+    [at("playbook/release/index.md")]: primitive("playbook", "release", "How a release runs.", [
       'triggers: ["a release is cut"]',
     ]),
   });
@@ -235,7 +235,7 @@ test("a playbook is loaded the way a skill is, since this host has one kind for 
 
 test("a posture compiles to the settings this host enforces, as JSON (FR-018)", async () => {
   const files = await projected({
-    [at("posture/sandboxed.md")]: primitive("posture", "sandboxed", "What may be run unattended.", [
+    [at("posture/sandboxed/index.md")]: primitive("posture", "sandboxed", "What may be run unattended.", [
       'allow: ["Read(**)", "Grep(**)"]',
       'deny: ["Bash(rm:*)"]',
     ]),
@@ -248,11 +248,11 @@ test("a posture compiles to the settings this host enforces, as JSON (FR-018)", 
 
 test("every posture lands in the one file this host reads its settings from", async () => {
   const files = await projected({
-    [at("posture/sandboxed.md")]: primitive("posture", "sandboxed", "Unattended.", [
+    [at("posture/sandboxed/index.md")]: primitive("posture", "sandboxed", "Unattended.", [
       'allow: ["Read(**)"]',
       'deny: ["Bash(rm:*)"]',
     ]),
-    [at("posture/no-network.md")]: primitive("posture", "no-network", "Nothing leaves the machine.", [
+    [at("posture/no-network/index.md")]: primitive("posture", "no-network", "Nothing leaves the machine.", [
       'allow: ["Read(**)"]',
       'deny: ["WebFetch"]',
     ]),
@@ -269,15 +269,15 @@ test("every posture lands in the one file this host reads its settings from", as
 
 test("a mixin's body is written before its host's, which is the one place a mixin applies (FR-006)", async () => {
   const files = await putDown({
-    [at("mixin/house-style.md")]: primitive("mixin", "house-style", "Write plainly."),
-    [at("mixin/no-jargon.md")]: primitive("mixin", "no-jargon", "No jargon."),
-    [at("agent/ship.md")]: primitive("agent", "ship", "Run the build, then push.", [
+    [at("mixin/house-style/index.md")]: primitive("mixin", "house-style", "Write plainly."),
+    [at("mixin/no-jargon/index.md")]: primitive("mixin", "no-jargon", "No jargon."),
+    [at("agent/ship/index.md")]: primitive("agent", "ship", "Run the build, then push.", [
       'tools: ["Bash"]',
       'mixins: ["house-style", "no-jargon"]',
     ]),
   });
 
-  const contents = files[".cw/out/agent/ship.md"] ?? "";
+  const contents = files[".cw/out/agent/ship/index.md"] ?? "";
   assert.ok(contents.indexOf("Write plainly.") > -1);
   assert.ok(contents.indexOf("Write plainly.") < contents.indexOf("No jargon."));
   assert.ok(contents.indexOf("No jargon.") < contents.indexOf("Run the build, then push."));
@@ -290,21 +290,21 @@ test("nothing is compiled for an agent that was not named as installed", async (
     ".cw/out/catalog.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
-    ".cw/out/agent/ship.md",
-    ".cw/out/skill/cw-author.md",
+    ".cw/out/agent/ship/index.md",
+    ".cw/out/skill/cw-author/index.md",
   ]);
 });
 
 test("a guide's compiled document has the mixins it pulls in already written into it (FR-006)", async () => {
   const files = await putDown({
-    [at("mixin/house-style.md")]: primitive("mixin", "house-style", "Write plainly."),
-    [at("guide/no-any.md")]: primitive("guide", "no-any", "Never write `any`.", [
+    [at("mixin/house-style/index.md")]: primitive("mixin", "house-style", "Write plainly."),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", "Never write `any`.", [
       'globs: ["src/**/*.ts"]',
       'mixins: ["house-style"]',
     ]),
   });
 
-  const carried = files[".cw/out/guide/no-any.md"] ?? "";
+  const carried = files[".cw/out/guide/no-any/index.md"] ?? "";
   assert.ok(carried.indexOf("Write plainly.") > -1);
   assert.ok(carried.indexOf("Write plainly.") < carried.indexOf("Never write `any`."));
 });

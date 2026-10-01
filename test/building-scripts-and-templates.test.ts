@@ -16,11 +16,16 @@ const inRepo = (path: string) => new URL(path, repo).href;
 const primitive = (kind: string, id: string, headers: readonly string[], body: string) =>
   ["---", `kind: ${kind}`, `id: ${id}`, `description: What ${id} is for, in one line.`, ...headers, "---", "", body, ""].join("\n");
 
-const checkChangelog = ["#!/usr/bin/env bash", "set -euo pipefail", 'grep -q "## $1" CHANGELOG.md'].join("\n");
+const runFile = ["#!/usr/bin/env bash", "set -euo pipefail", 'grep -q "## $1" CHANGELOG.md'].join("\n");
 const releaseNote = ["# Release {{version}}", "", "  - indented on purpose"].join("\n");
 
-const script = (id: string, extension = "sh", body = checkChangelog) => primitive("script", id, [`extension: ${extension}`], body);
-const template = (id: string, extension = "md", body = releaseNote) => primitive("template", id, [`extension: ${extension}`], body);
+/** A script as it is kept: its index.md, and its assets beside it, of which
+ *  `run.sh` is the one that runs. */
+const script = (id: string, assetFiles: Readonly<Record<string, string>> = { "run.sh": runFile }, body = "Takes the version as its one argument.") => ({
+  [at(`script/${id}/index.md`)]: primitive("script", id, ["executionPath: ./run.sh"], body),
+  ...Object.fromEntries(Object.entries(assetFiles).map(([path, contents]) => [at(`script/${id}/${path}`), contents])),
+});
+const template = (id: string, body = releaseNote) => primitive("template", id, [], body);
 const skillNaming = (...names: readonly string[]) =>
   primitive("skill", "release", ['triggers: ["release"]'], `Use ${names.join(" and ")} before tagging.`);
 
@@ -43,87 +48,150 @@ const faultsOf = (planSummaryDTO: DataDTOs.PlanSummary | DataDTOs.FaultsByFile):
   return planSummaryDTO.data;
 };
 
-test("a script and a template are built as their body alone, under the extension they declare (FR-159)", async () => {
+const errorsUnder = (faultsByFile: DataDTOs.FaultsByFile["data"], fileEnding: string) =>
+  (Object.entries(faultsByFile.files).find(([file]) => file.endsWith(fileEnding))?.[1] ?? [])
+    .filter((fault) => fault.data.severity === "error")
+    .map((fault) => fault.data.message);
+
+test("a template is compiled like any other primitive, its headers then its body, as the index.md of its folder (FR-159)", async () => {
   const { held, build } = building({
-    [at("script/release/check-changelog.md")]: script("release/check-changelog"),
-    [at("template/release-note.md")]: template("release-note"),
-    [at("skill/release.md")]: skillNaming("script:release/check-changelog", "template:release-note"),
+    [at("template/release-note/index.md")]: template("release-note"),
+    [at("skill/release/index.md")]: skillNaming("template:release-note"),
   });
 
   const built = filesOf(await build());
 
-  assert.ok(built.added.includes(".cw/out/script/release/check-changelog.sh"));
-  assert.ok(built.added.includes(".cw/out/template/release-note.md"));
-  assert.equal(await held.read(new URL(".cw/out/script/release/check-changelog.sh", repo)), `${checkChangelog}\n`);
+  assert.ok(built.added.includes(".cw/out/template/release-note/index.md"));
+  const compiledDocument = await held.read(new URL(".cw/out/template/release-note/index.md", repo));
+  assert.match(compiledDocument, /^---\nkind: template\nid: release-note\n/);
   // Indentation on a line of the body is the author's, and comes through.
-  assert.equal(await held.read(new URL(".cw/out/template/release-note.md", repo)), `${releaseNote}\n`);
-  assert.ok(!built.added.includes(".cw/out/script/release/check-changelog.md"));
+  assert.ok(compiledDocument.includes(releaseNote));
+});
+test("every asset of a primitive is copied beside its compiled document byte for byte, whatever its kind (FR-168)", async () => {
+  const { held, build } = building({
+    ...script("check-changelog", { "run.sh": runFile, "lib/versions.sh": "latest() { :; }\n", "README.md": "How it is laid out.\n" }),
+    [at("skill/release/index.md")]: skillNaming("script:check-changelog"),
+    [at("skill/release/checklist.md")]: "1. Check the changelog.\n",
+  });
+
+  const built = filesOf(await build());
+
+  assert.equal(await held.read(new URL(".cw/out/script/check-changelog/run.sh", repo)), runFile);
+  assert.equal(await held.read(new URL(".cw/out/script/check-changelog/lib/versions.sh", repo)), "latest() { :; }\n");
+  assert.equal(await held.read(new URL(".cw/out/script/check-changelog/README.md", repo)), "How it is laid out.\n");
+  assert.equal(await held.read(new URL(".cw/out/skill/release/checklist.md", repo)), "1. Check the changelog.\n");
+  assert.ok(built.added.includes(".cw/out/script/check-changelog/index.md"));
+  // The document says how it is called, and the file that runs, as its author
+  // wrote it: the copy sits beside the document as the asset sits beside the
+  // script's index.md.
+  const compiledDocument = await held.read(new URL(".cw/out/script/check-changelog/index.md", repo));
+  assert.match(compiledDocument, /^executionPath: \.\/run\.sh$/m);
+  assert.ok(compiledDocument.includes("Takes the version as its one argument."));
 });
 
-test("a built script is executable, and a built template is not (FR-160)", async () => {
+test("of a built script, the asset it runs is executable and no other; a built template is not (FR-160)", async () => {
   const { fileOutput, build } = building({
-    [at("script/check.md")]: script("check"),
-    [at("template/note.md")]: template("note"),
-    [at("skill/release.md")]: skillNaming("script:check", "template:note"),
+    ...script("check", { "run.sh": runFile, "lib.sh": "true\n" }),
+    [at("template/note/index.md")]: template("note"),
+    [at("skill/release/index.md")]: skillNaming("script:check", "template:note"),
   });
 
   await build();
 
-  assert.ok(fileOutput.executables.has(inRepo(".cw/out/script/check.sh")));
-  assert.ok(!fileOutput.executables.has(inRepo(".cw/out/template/note.md")));
+  assert.ok(fileOutput.executables.has(inRepo(".cw/out/script/check/run.sh")));
+  assert.ok(!fileOutput.executables.has(inRepo(".cw/out/script/check/lib.sh")));
+  assert.ok(!fileOutput.executables.has(inRepo(".cw/out/script/check/index.md")));
+  assert.ok(!fileOutput.executables.has(inRepo(".cw/out/template/note/index.md")));
 });
 
-test("the catalogue names a script's built file, and a listing names the file it was authored in (FR-164, FR-140)", async () => {
+test("the catalogue names each primitive's compiled file, and a listing the index.md it was authored in (FR-164, FR-140)", async () => {
   const { held, charterAuthoringApp, build } = building({
-    [at("script/check.md")]: script("check"),
-    [at("skill/release.md")]: skillNaming("script:check"),
+    ...script("check"),
+    [at("template/note/index.md")]: template("note"),
+    [at("skill/release/index.md")]: skillNaming("script:check", "template:note"),
   });
 
   await build();
 
   const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalog.json", repo))) as { identity: string; file: string }[];
-  assert.equal(catalogue.find((entry) => entry.identity === "script:check")?.file, ".cw/out/script/check.sh");
+  assert.equal(catalogue.find((entry) => entry.identity === "script:check")?.file, ".cw/out/script/check/index.md");
+  assert.equal(catalogue.find((entry) => entry.identity === "template:note")?.file, ".cw/out/template/note/index.md");
   const listing = await charterAuthoringApp.fullList();
-  assert.ok(listing.type === "ScopedPrimitives");
-  assert.match(JSON.stringify(listing.data), /\.cw\/charter\/script\/check\.md/);
+  assert.ok(listing.type === "Primitives");
+  assert.match(JSON.stringify(listing.data), /\.cw\/charter\/script\/check\/index\.md/);
 });
 
-test("changing a script's extension writes the new file and takes the old one away (FR-159)", async () => {
+test("an id holding / is a folder in the charter and in the output alike (FR-141)", async () => {
   const { held, build } = building({
-    [at("script/check.md")]: script("check", "sh"),
-    [at("skill/release.md")]: skillNaming("script:check"),
+    [at("script/release/check/index.md")]: primitive("script", "release/check", ["executionPath: ./run.sh"], ""),
+    [at("script/release/check/run.sh")]: runFile,
+    [at("skill/release/index.md")]: skillNaming("script:release/check"),
+  });
+
+  filesOf(await build());
+
+  assert.equal(await held.read(new URL(".cw/out/script/release/check/run.sh", repo)), runFile);
+  assert.match(await held.read(new URL(".cw/out/script/release/check/index.md", repo)), /^executionPath: \.\/run\.sh$/m);
+});
+
+test("an asset edited and not built leaves its copy as the last build left it, and the preview says what a build would write (FR-166)", async () => {
+  const { held, charterAuthoringApp, build } = building({
+    ...script("check", { "run.sh": runFile, "old.sh": "true\n" }),
+    [at("skill/release/index.md")]: skillNaming("script:check"),
   });
   await build();
 
-  held.write(new URL(at("script/check.md")), script("check", "py", "print('checked')"));
-  const built = filesOf(await build());
+  held.write(new URL(at("script/check/run.sh")), "echo half written\n");
+  held.remove(new URL(at("script/check/old.sh")));
 
-  assert.ok(built.added.includes(".cw/out/script/check.py"));
-  assert.ok(built.deleted.includes(".cw/out/script/check.sh"));
+  assert.equal(await held.read(new URL(".cw/out/script/check/run.sh", repo)), runFile);
+  const previewed = filesOf(await charterAuthoringApp.preview());
+  assert.ok(previewed.edited.includes(".cw/out/script/check/run.sh"));
+  assert.ok(previewed.deleted.includes(".cw/out/script/check/old.sh"));
 });
 
-test("a script or a template with no extension, a bad one, or a mixin is refused, and nothing is built (FR-004, FR-158)", async () => {
-  for (const refusedPrimitive of [
-    primitive("script", "check", [], checkChangelog),
-    primitive("script", "check", ["extension: .sh"], checkChangelog),
-    primitive("script", "check", ["extension: Sh"], checkChangelog),
-    primitive("template", "check", ["extension: md", 'mixins: ["shared"]'], releaseNote),
-  ]) {
-    const { build } = building({ [at("script/check.md")]: refusedPrimitive });
+test("a primitive deleted from the charter has its copies deleted by the next build (FR-168)", async () => {
+  const { held, build } = building({
+    ...script("check"),
+    [at("skill/release/index.md")]: primitive("skill", "release", ['triggers: ["release"]'], "Tag it."),
+  });
+  await build();
 
-    const faultsByFile = faultsOf(await build());
+  held.remove(new URL(at("script/check/index.md")));
+  const built = filesOf(await build());
 
-    const faults = Object.entries(faultsByFile.files).find(([file]) => file.includes("script/check.md"))?.[1] ?? [];
-    assert.ok(faults.some((fault) => fault.data.severity === "error"), `refused: ${refusedPrimitive}`);
+  assert.ok(built.deleted.includes(".cw/out/script/check/run.sh"));
+  assert.ok(built.deleted.includes(".cw/out/script/check/index.md"));
+});
+
+test("a script whose executionPath is missing, not a path from its index.md, leaves its folder, or holds what a shell would read is refused with the kind's sample (FR-165)", async () => {
+  for (const headers of [[], ["executionPath: run.sh"], ["executionPath: ./lib/../run.sh"], ["executionPath: /usr/bin/env"], ["executionPath: ./run.sh;id"]]) {
+    const { build } = building({
+      [at("script/check/index.md")]: primitive("script", "check", headers, ""),
+      [at("script/check/run.sh")]: runFile,
+      // There, so that only its name is what is refused.
+      [at("script/check/run.sh;id")]: runFile,
+    });
+
+    assert.ok(errorsUnder(faultsOf(await build()), "script/check/index.md").length > 0, `refused: ${headers.join()}`);
   }
+});
+
+test("a script whose executionPath names no asset of it is an error under its index.md (FR-165)", async () => {
+  const { build } = building({
+    [at("script/check/index.md")]: primitive("script", "check", ["executionPath: ./run.sh"], ""),
+    [at("script/check/other.sh")]: runFile,
+  });
+
+  assert.match(errorsUnder(faultsOf(await build()), "script/check/index.md").join(), /holds no such file/);
 });
 
 test("a script or a template no primitive names is a warning, and the build still runs (FR-163)", async () => {
   const { charterAuthoringApp, build } = building({
-    [at("script/check.md")]: script("check"),
-    [at("template/note.md")]: template("note"),
-    [at("template/used.md")]: template("used"),
-    [at("skill/release.md")]: skillNaming("template:used"),
+    ...script("check"),
+    [at("template/note/index.md")]: template("note"),
+    [at("template/used/index.md")]: template("used"),
+    [at("skill/release/index.md")]: skillNaming("template:used"),
   });
 
   filesOf(await build());
@@ -132,87 +200,72 @@ test("a script or a template no primitive names is a warning, and the build stil
   const warnedFiles = Object.entries(doctorOutcome.data.faultsByFile.data.files)
     .filter(([, faults]) => faults.some((fault) => fault.data.severity === "warn" && /names/.test(fault.data.message)))
     .map(([file]) => file);
-  assert.ok(warnedFiles.some((file) => file.endsWith("script/check.md")));
-  assert.ok(warnedFiles.some((file) => file.endsWith("template/note.md")));
-  assert.ok(!warnedFiles.some((file) => file.endsWith("template/used.md")));
+  assert.ok(warnedFiles.some((file) => file.endsWith("script/check/index.md")));
+  assert.ok(warnedFiles.some((file) => file.endsWith("template/note/index.md")));
+  assert.ok(!warnedFiles.some((file) => file.endsWith("template/used/index.md")));
 });
 
-test("a vendor's script is built into the repository's output folder like one it authored", async () => {
+test("a vendor's assets are copied into the repository's output folder like ones it authored", async () => {
   const { held, build } = building({
-    [inRepo(".cw/vendor/team/script/check.md")]: script("check"),
-    [at("skill/release.md")]: skillNaming("script:check"),
+    [inRepo(".cw/vendor/team/script/check/index.md")]: primitive("script", "check", ["executionPath: ./run.sh"], ""),
+    [inRepo(".cw/vendor/team/script/check/run.sh")]: runFile,
+    [at("skill/release/index.md")]: skillNaming("script:check"),
   });
 
   filesOf(await build());
 
-  assert.equal(await held.read(new URL(".cw/out/script/check.sh", repo)), `${checkChangelog}\n`);
+  assert.equal(await held.read(new URL(".cw/out/script/check/run.sh", repo)), runFile);
 });
 
-test("an empty script is built as an empty file", async () => {
-  const { held, build } = building({
-    [at("script/check.md")]: script("check", "sh", ""),
-    [at("skill/release.md")]: skillNaming("script:check"),
-  });
-
-  filesOf(await build());
-
-  assert.equal(await held.read(new URL(".cw/out/script/check.sh", repo)), "");
-});
-
-test("asking a script or a template what it requires names its extension (Story 21 scenario 1)", async () => {
+test("asking a script what it requires names its executionPath (Story 24 scenario 1)", async () => {
   const { charterAuthoringApp } = building({});
 
-  for (const kind of ["script", "template"]) {
+  for (const [kind, field] of [["script", "executionPath"]] as const) {
     const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements(kind);
 
-    const extensionHeader = primitiveRequirementsDTO.data.headers.find((header) => header.data.field === "extension");
-    assert.deepEqual(extensionHeader?.data, { field: "extension", shape: "line", required: true });
-    assert.match(primitiveRequirementsDTO.data.sample, /^extension: /m);
+    const requiredHeader = primitiveRequirementsDTO.data.headers.find((header) => header.data.field === field);
+    assert.deepEqual(requiredHeader?.data, { field, shape: "line", required: true });
+    assert.match(primitiveRequirementsDTO.data.sample, new RegExp(`^${field}: `, "m"));
   }
 });
 
-test("a script is added with its extension and an empty body, under the folders its id names (Story 21 scenario 2)", async () => {
+test("a script is added as its index.md and an empty asset at its executionPath (FR-167)", async () => {
   const { held, charterAuthoringApp } = building({});
 
-  const scopedPrimitiveDTO = await charterAuthoringApp.add("script", "release/check-changelog", { description: "Check the changelog.", extension: "sh" });
+  const primitiveDTO = await charterAuthoringApp.add("script", "release/check", { description: "Check the changelog.", executionPath: "./run.sh" });
 
-  assert.equal(scopedPrimitiveDTO.type, "ScopedPrimitive");
-
-  assert.match(await held.read(new URL(at("script/release/check-changelog.md"))), /^kind: script\nid: release\/check-changelog\n/m);
+  assert.equal(primitiveDTO.type, "Primitive");
+  assert.match(await held.read(new URL(at("script/release/check/index.md"))), /^kind: script\nid: release\/check\n/m);
+  assert.equal(await held.read(new URL(at("script/release/check/run.sh"))), "");
 });
 
-test("a script and a template a skill names stay identities in its compiled document, and the catalogue names the file each is built to (FR-161, FR-164)", async () => {
-  const { held, build } = building({
-    [at("script/release/check-changelog.md")]: script("release/check-changelog", "sh", "#!/usr/bin/env bash\ncat template:release-note"),
-    [at("template/release-note.md")]: template("release-note"),
-    [at("skill/release.md")]: skillNaming("script:release/check-changelog", "template:release-note"),
-  });
+test("a primitive added inside another's folder, or around one, is refused and nothing is written (FR-167)", async () => {
+  const { held, charterAuthoringApp } = building({ [at("skill/team/review/index.md")]: primitive("skill", "team/review", ['triggers: ["review"]'], "") });
 
-  filesOf(await build());
-
-  assert.ok(
-    (await held.read(new URL(".cw/out/skill/release.md", repo))).includes("Use script:release/check-changelog and template:release-note before tagging."),
-  );
-  // A script's body is the file, byte for byte, names included.
-  assert.equal(await held.read(new URL(".cw/out/script/release/check-changelog.sh", repo)), "#!/usr/bin/env bash\ncat template:release-note\n");
-  const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalog.json", repo))) as { identity: string; file: string }[];
-  const fileOf = (identity: string) => catalogue.find((entry) => entry.identity === identity)?.file;
-  assert.equal(fileOf("script:release/check-changelog"), ".cw/out/script/release/check-changelog.sh");
-  assert.equal(fileOf("template:release-note"), ".cw/out/template/release-note.md");
+  for (const id of ["team/review/strict", "team"])
+    await assert.rejects(charterAuthoringApp.add("skill", id, { description: "Mine.", triggers: ["mine"] }), /skill\/team\/review\/index\.md is a primitive/);
+  assert.equal(await held.readIfThere(new URL(at("skill/team/review/strict/index.md"))), undefined);
+  assert.equal(await held.readIfThere(new URL(at("skill/team/index.md"))), undefined);
 });
 
-test("a script whose extension changes is found at its new file by the same identity, with only its own file edited (Story 22 scenario 2)", async () => {
-  const { held, build } = building({
-    [at("script/check.md")]: script("check", "sh"),
-    [at("skill/release.md")]: skillNaming("script:check"),
+test("deleting a primitive takes every asset of it with it (FR-167)", async () => {
+  const { held, charterAuthoringApp } = building({
+    ...script("check", { "run.sh": runFile, "lib/versions.sh": "true\n" }),
+    ...script("other"),
   });
-  await build();
 
-  held.write(new URL(at("script/check.md")), script("check", "py", "print('checked')"));
-  const built = filesOf(await build());
+  await charterAuthoringApp.remove("script:check");
 
-  const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalog.json", repo))) as { identity: string; file: string }[];
-  assert.equal(catalogue.find((entry) => entry.identity === "script:check")?.file, ".cw/out/script/check.py");
-  // The skill names an identity, and an identity did not change.
-  assert.ok(built.unchanged.includes(".cw/out/skill/release.md"));
+  assert.equal(await held.readIfThere(new URL(at("script/check/index.md"))), undefined);
+  assert.equal(await held.readIfThere(new URL(at("script/check/run.sh"))), undefined);
+  assert.equal(await held.readIfThere(new URL(at("script/check/lib/versions.sh"))), undefined);
+  assert.equal(await held.readIfThere(new URL(at("script/other/run.sh"))), runFile);
+});
+
+test("a template asks for nothing beyond what every primitive does (FR-158)", async () => {
+  const { charterAuthoringApp } = building({});
+
+  const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements("template");
+
+  assert.deepEqual(primitiveRequirementsDTO.data.headers.filter((header) => header.data.required).map((header) => header.data.field), ["description"]);
 });

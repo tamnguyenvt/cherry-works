@@ -54,7 +54,7 @@ export function useExplanation(identity: string) {
  *  again while the form is open would move the revision the author is editing
  *  from, and the save would write over what changed on disk instead of being
  *  refused for it. */
-export function usePrimitiveSnapshot(identity: string | undefined) {
+export function usePrimitive(identity: string | undefined) {
   return useQuery({
     queryKey: ["primitive", identity],
     enabled: identity !== undefined,

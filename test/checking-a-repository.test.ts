@@ -90,7 +90,7 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
 test("a repository with nothing wrong passes, and says so of each thing it looked at (FR-040)", async () => {
   const { run } = commandLine({
     ...compilingFor("claude"),
-    [at("guide/no-any.md")]: guide("no-any"),
+    [at("guide/no-any/index.md")]: guide("no-any"),
     ...pinningDown("guide:no-any"),
   });
   await run(["build"]);
@@ -106,7 +106,7 @@ test("a repository with nothing wrong passes, and says so of each thing it looke
 });
 
 test("the report starts with the version of cw that wrote it (FR-132)", async () => {
-  const { run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+  const { run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
 
   const { written } = await run(["doctor"]);
 
@@ -114,7 +114,7 @@ test("the report starts with the version of cw that wrote it (FR-132)", async ()
 });
 
 test("a repository that has never been built is out of date, and fails (FR-040)", async () => {
-  const { run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+  const { run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
 
   const { code, written } = await run(["doctor"]);
 
@@ -123,9 +123,9 @@ test("a repository that has never been built is out of date, and fails (FR-040)"
 });
 
 test("staleness is the preview run, not a record kept of the last build (FR-040)", async () => {
-  const { held, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+  const { held, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
   await run(["build"]);
-  held.write(new URL("guide/no-any.md", root), guide("no-any", "Never write `any`."));
+  held.write(new URL("guide/no-any/index.md", root), guide("no-any", "Never write `any`."));
 
   const { code, written } = await run(["doctor"]);
 
@@ -136,7 +136,7 @@ test("staleness is the preview run, not a record kept of the last build (FR-040)
 test("a charter with an error is counted, and read where every fault is (FR-040, SC-003)", async () => {
   const { run } = commandLine({
     ...compilingFor("claude"),
-    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
   });
 
   const { code, written } = await run(["doctor"]);
@@ -145,7 +145,7 @@ test("a charter with an error is counted, and read where every fault is (FR-040,
   assert.match(written.everything, /Charter: {2}1 error\./);
   // Counted above, and written out below: the file that has to change, and what
   // is wrong with it (FR-009, SC-003).
-  assert.match(written.everything, /\.cw\/charter\/guide\/no-any\.md/);
+  assert.match(written.everything, /\.cw\/charter\/guide\/no-any\/index\.md/);
   assert.match(written.everything, /error: This pulls in the mixin "nowhere"/);
   // A charter that does not hold previews nothing, so what is built cannot be
   // answered.
@@ -156,7 +156,7 @@ test("a charter with an error is counted, and read where every fault is (FR-040,
 test("what validating finds reaches a driver as its DTO: counted, and every fault named from the repository (FR-009, FR-040)", async () => {
   const held = new InMemoryFileReaders({
     ...compilingFor("claude"),
-    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
   });
   const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS());
 
@@ -170,14 +170,14 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
   // One error, no warning, and nothing previewed: a charter that does not hold
   // has no build to count what it would still change.
   assert.deepEqual([errorCount, warnCount, pendingCount], [1, 0, null]);
-  assert.deepEqual(Object.keys(faultsByFile.data.files), [".cw/charter/guide/no-any.md"]);
-  assert.ok(faultsByFile.data.files[".cw/charter/guide/no-any.md"]?.some(({ data: { message } }) => /This pulls in the mixin "nowhere"/.test(message)));
+  assert.deepEqual(Object.keys(faultsByFile.data.files), [".cw/charter/guide/no-any/index.md"]);
+  assert.ok(faultsByFile.data.files[".cw/charter/guide/no-any/index.md"]?.some(({ data: { message } }) => /This pulls in the mixin "nowhere"/.test(message)));
 });
 
 test("a vendored file edited here is named by its vendor, once (FR-040, SC-008)", async () => {
-  const { vcs, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+  const { vcs, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
   await run(["build"]);
-  vcs.changed.push(".cw/vendor/house-rules/guide/no-any.md", ".cw/vendor/house-rules/agent/ship.md");
+  vcs.changed.push(".cw/vendor/house-rules/guide/no-any/index.md", ".cw/vendor/house-rules/agent/ship/index.md");
 
   const { code, written } = await run(["doctor"]);
 
@@ -186,9 +186,9 @@ test("a vendored file edited here is named by its vendor, once (FR-040, SC-008)"
 });
 
 test("work in hand outside the vendor folder is no business of doctor's (FR-040)", async () => {
-  const { vcs, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+  const { vcs, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
   await run(["build"]);
-  vcs.changed.push("src/main.ts", ".cw/charter/guide/no-any.md");
+  vcs.changed.push("src/main.ts", ".cw/charter/guide/no-any/index.md");
 
   const { code, written } = await run(["doctor"]);
 
@@ -197,7 +197,7 @@ test("work in hand outside the vendor folder is no business of doctor's (FR-040)
 });
 
 test("a repository compiling for no agent is told what that means, and passes (FR-019, FR-040)", async () => {
-  const { run } = commandLine({ ...compilingFor(), [at("guide/no-any.md")]: guide("no-any") });
+  const { run } = commandLine({ ...compilingFor(), [at("guide/no-any/index.md")]: guide("no-any") });
   await run(["build"]);
 
   const { code, written } = await run(["doctor"]);
@@ -207,7 +207,7 @@ test("a repository compiling for no agent is told what that means, and passes (F
 });
 
 test("what doctor reports is a result, never a problem", async () => {
-  const { run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+  const { run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
 
   const { written } = await run(["doctor"]);
 
@@ -228,21 +228,21 @@ const messagesUnder = (faultsByFile: OutcomeDTOs.DoctorOutcome["data"]["faultsBy
 
 test("a guide and a sensor no test case names are each a warning under their own file, and a posture is none (FR-014)", async () => {
   const { errorCount, warnCount, faultsByFile } = await doctorOf({
-    [at("guide/no-any.md")]: guide("no-any"),
-    [at("sensor/lint.md")]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
-    [at("posture/no-env.md")]: primitive("posture", "no-env", ['allow: ["src/**"]', 'deny: [".env"]']),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    [at("sensor/lint/index.md")]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
+    [at("posture/no-env/index.md")]: primitive("posture", "no-env", ['allow: ["src/**"]', 'deny: [".env"]']),
   });
 
   assert.deepEqual([errorCount, warnCount], [0, 2]);
-  assert.deepEqual(Object.keys(faultsByFile.data.files).sort(), [".cw/charter/guide/no-any.md", ".cw/charter/sensor/lint.md"]);
-  assert.match(messagesUnder(faultsByFile, ".cw/charter/guide/no-any.md").join(), /warn: No test case names "guide:no-any"/);
-  assert.match(messagesUnder(faultsByFile, ".cw/charter/sensor/lint.md").join(), /warn: No test case names "sensor:lint"/);
+  assert.deepEqual(Object.keys(faultsByFile.data.files).sort(), [".cw/charter/guide/no-any/index.md", ".cw/charter/sensor/lint/index.md"]);
+  assert.match(messagesUnder(faultsByFile, ".cw/charter/guide/no-any/index.md").join(), /warn: No test case names "guide:no-any"/);
+  assert.match(messagesUnder(faultsByFile, ".cw/charter/sensor/lint/index.md").join(), /warn: No test case names "sensor:lint"/);
 });
 
 test("a guide and a sensor a test case names raise no warning (FR-014)", async () => {
   const { warnCount } = await doctorOf({
-    [at("guide/no-any.md")]: guide("no-any"),
-    [at("sensor/lint.md")]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    [at("sensor/lint/index.md")]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
     ...pinningDown("guide:no-any"),
     [inRepo(".cw/test/lint.json")]: JSON.stringify({ cases: [{ when: "PostToolUse", expect: { run: "sensor:lint" } }] }),
   });
@@ -251,34 +251,34 @@ test("a guide and a sensor a test case names raise no warning (FR-014)", async (
 });
 
 test("a vendored guide no test case names is warned about like one of the repository's own (FR-014)", async () => {
-  const { faultsByFile } = await doctorOf({ [inRepo(".cw/vendor/team/guide/no-any.md")]: guide("no-any") });
+  const { faultsByFile } = await doctorOf({ [inRepo(".cw/vendor/team/guide/no-any/index.md")]: guide("no-any") });
 
-  assert.match(messagesUnder(faultsByFile, ".cw/vendor/team/guide/no-any.md").join(), /No test case names "guide:no-any"/);
+  assert.match(messagesUnder(faultsByFile, ".cw/vendor/team/guide/no-any/index.md").join(), /No test case names "guide:no-any"/);
 });
 
 test("a guide warned about twice keeps both warnings under its file", async () => {
   const { warnCount, faultsByFile } = await doctorOf({
-    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:absent"]),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:absent"]),
   });
 
   assert.equal(warnCount, 2);
-  const messages = messagesUnder(faultsByFile, ".cw/charter/guide/no-any.md").join("\n");
+  const messages = messagesUnder(faultsByFile, ".cw/charter/guide/no-any/index.md").join("\n");
   assert.match(messages, /corpus:absent/);
   assert.match(messages, /No test case names "guide:no-any"/);
 });
 
 test("a test file that does not read raises no warning of its own; cw test names it", async () => {
-  const { faultsByFile } = await doctorOf({ [at("guide/no-any.md")]: guide("no-any"), [inRepo(".cw/test/broken.json")]: "not json" });
+  const { faultsByFile } = await doctorOf({ [at("guide/no-any/index.md")]: guide("no-any"), [inRepo(".cw/test/broken.json")]: "not json" });
 
-  assert.deepEqual(Object.keys(faultsByFile.data.files), [".cw/charter/guide/no-any.md"]);
+  assert.deepEqual(Object.keys(faultsByFile.data.files), [".cw/charter/guide/no-any/index.md"]);
 });
 
 test("warnings alone let the build through, and doctor passes once it is built (FR-014)", async () => {
   const { run } = commandLine({
     ...compilingFor("claude"),
-    [at("guide/no-any.md")]: guide("no-any"),
-    [at("corpus/why.md")]: primitive("corpus", "why"),
-    [at("mixin/ts.md")]: primitive("mixin", "ts"),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    [at("corpus/why/index.md")]: primitive("corpus", "why"),
+    [at("mixin/ts/index.md")]: primitive("mixin", "ts"),
   });
   assert.equal((await run(["build"])).code, EXIT_OK);
 
@@ -291,10 +291,10 @@ test("warnings alone let the build through, and doctor passes once it is built (
 test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-144)", async () => {
   const { errorCount, warnCount, faultsByFile } = await doctorOf({
     ...pinningDown("guide:no-any"),
-    [at("guide/no-any.md")]: guide("no-any"),
-    [at("mcp/mfbs/billing.md")]: primitive("mcp", "mfbs/billing", ["endpoint: https://mcp.example.com/", "auth: [oauth]", "tools: [search_code]"]),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    [at("mcp/mfbs/billing/index.md")]: primitive("mcp", "mfbs/billing", ["endpoint: https://mcp.example.com/", "auth: [oauth]", "tools: [search_code]"]),
   });
 
   assert.deepEqual([errorCount, warnCount], [0, 1]);
-  assert.match(messagesUnder(faultsByFile, ".cw/charter/mcp/mfbs/billing.md").join(), /warn: No primitive names "mcp:mfbs\/billing" in its body/);
+  assert.match(messagesUnder(faultsByFile, ".cw/charter/mcp/mfbs/billing/index.md").join(), /warn: No primitive names "mcp:mfbs\/billing" in its body/);
 });

@@ -49,3 +49,13 @@ export function shortenStringsOf(strings: readonly string[]): ShortStrings {
   }
   return shortStrings;
 }
+
+/** The hash of one text, in hex: what tells two readings of a primitive apart,
+ *  as a short string that crosses HTTP as it is (FR-078). FNV-1a over 64 bits:
+ *  read synchronously wherever a primitive is, and a mark of change, not a
+ *  secret. */
+export function contentHashOf(content: string): string {
+  let hash = 0xcbf29ce484222325n;
+  for (const char of content) hash = BigInt.asUintN(64, (hash ^ BigInt(char.codePointAt(0)!)) * 0x100000001b3n);
+  return hash.toString(16).padStart(16, "0");
+}

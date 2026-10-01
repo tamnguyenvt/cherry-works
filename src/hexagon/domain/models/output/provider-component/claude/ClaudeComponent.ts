@@ -1,4 +1,5 @@
 import { ClaudeAgent } from "./ClaudeAgent.js";
+import { ClaudeEntryFile } from "./ClaudeEntryFile.js";
 import { ClaudeRule } from "./ClaudeRule.js";
 import { ClaudeMcpConfig } from "./ClaudeMcpConfig.js";
 import { ClaudeSettings } from "./ClaudeSettings.js";
@@ -13,6 +14,7 @@ export const CLAUDE_COMPONENT_CLASSES = [
   ClaudeSettings,
   ClaudeMcpConfig,
   ClaudeRule,
+  ClaudeEntryFile,
 ] as const;
 
 /**

@@ -21,8 +21,8 @@ const ORIGINS: readonly McpOrigin[] = [
 
 /** What each mcp declares, as its compiled document under `.cw/out/` holds it. */
 const COMPILED_MCPS = {
-  "mcp:github/billing": { file: ".cw/out/mcp/github/billing.md", headers: `endpoint: ${GITHUB}\npath: acme/billing\nauth: [oauth, token]\ntools: [get_file_contents, search_code]` },
-  "mcp:linear": { file: ".cw/out/mcp/linear.md", headers: `endpoint: ${LINEAR}\nauth: [token]\ntools: [list_issues, create_issue]` },
+  "mcp:github/billing": { file: ".cw/out/mcp/github/billing/index.md", headers: `endpoint: ${GITHUB}\npath: acme/billing\nauth: [oauth, token]\ntools: [get_file_contents, search_code]` },
+  "mcp:linear": { file: ".cw/out/mcp/linear/index.md", headers: `endpoint: ${LINEAR}\nauth: [token]\ntools: [list_issues, create_issue]` },
 } as const;
 
 /** The names the build wrote into the list of places, which the server

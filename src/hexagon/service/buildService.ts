@@ -3,7 +3,6 @@ import type { CharterRoot } from "../domain/models/charter/CharterRoot.js";
 import type { CharterOutput } from "../domain/models/output/CharterOutput.js";
 import { isStamped } from "../domain/models/output/StampedDocument.js";
 import { compile } from "../domain/services/compile/compileService.js";
-import { charterOutputProjectionOf } from "../domain/services/projectionService.js";
 import { agentProviderFolderIn, outFolderIn } from "../domain/path.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import { DomainFault } from "../domain/models/DomainFault.js";
@@ -50,7 +49,7 @@ export async function plan(
 ): Promise<Plan> {
   const [cleanupPlan, projectionPlan] = await Promise.all([
     planForCleanup(repo, agentProviders, fileReaders),
-    planForProjection(repo, compile(charter, agentProviders), agentProviders, fileReaders),
+    planForProjection(repo, compile(charter, agentProviders), fileReaders),
   ]);
 
   return { cleanupPlan, projectionPlan };
@@ -75,22 +74,18 @@ export interface Plan {
  *
  * One entry to a path — more than one output may name one file, every posture
  * and every sensor naming the host's settings — and what is there now is read
- * with it, so nothing after this has to go and look.
- *
- * Which agents this repository compiles for is read here the way the cleanup
- * reads it, from what the repository answered at setup: one of the files is a
- * host's own and no primitive of the charter's (FR-033, FR-051).
+ * with it, so nothing after this has to go and look. Which files those are is
+ * the output's own to say (`CharterOutput.projections`).
  */
 export async function planForProjection(
   repo: URL,
   output: CharterOutput,
-  agentProviders: readonly AgentProvider[],
   fileReaders: ForReadingFiles,
 ): Promise<readonly PlannedFile[]> {
   const planned = new Map<string, PlannedFile>();
 
-  for (const one of charterOutputProjectionOf(output, agentProviders)) {
-    const file = new URL(one.path, repo);
+  for (const one of output.projections) {
+    const file = new URL(one.file, repo);
     const held = await fileReaders.readIfThere(file);
 
     // One arm per way a file goes down, and the set is closed: a file the
@@ -155,7 +150,7 @@ export async function planForProjection(
       }
     }
 
-    planned.set(one.path, { path: one.path, file, contents, held, ...(one.executable === true ? { executable: true } : {}) });
+    planned.set(one.file, { path: one.file, file, contents, held, ...(one.executable === true ? { executable: true } : {}) });
   }
 
   return [...planned.values()];

@@ -26,9 +26,9 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
   if (answered.type === "FaultsByFile")
     return <ExplanationSection title="Not read">The engine will not read this charter, so there is nothing to explain.</ExplanationSection>;
 
-  const { scopedPrimitive, activatesWhen, useMixins, rationale, hosts, citers, mentioners, testCasesByFile } = answered.data;
-  const { kind, description, file, scope, headers } = scopedPrimitive.data;
-  const linkTo = ({ data }: DataDTOs.ScopedPrimitive) => (
+  const { primitive, activatesWhen, useMixins, rationale, hosts, citers, mentioners, testCasesByFile } = answered.data;
+  const { kind, description, file, layerName, headers } = primitive.data;
+  const linkTo = ({ data }: DataDTOs.Primitive) => (
     <Button
       key={data.identity}
       variant="link"
@@ -122,7 +122,7 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
         )}
       </ExplanationSection>
       <ExplanationSection title="File">
-        <span className="font-mono text-[11.5px] text-foreground">{file}</span> <span className="text-zinc-500">in the {scope} layer</span>
+        <span className="font-mono text-[11.5px] text-foreground">{file}</span> <span className="text-zinc-500">in the {layerName} layer</span>
       </ExplanationSection>
     </div>
   );

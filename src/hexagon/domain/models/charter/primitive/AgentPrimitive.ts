@@ -1,5 +1,6 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** A role the agent delegates to, with the tools it may use (FR-004). */
 export const AgentHeadersSchema = CommonHeadersSchema.extend({
@@ -36,7 +37,7 @@ export class AgentPrimitive extends BasePrimitive<AgentHeaders> {
   };
 
   /** One agent, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string): AgentPrimitive {
-    return new AgentPrimitive(headersOf(AgentPrimitive, AgentHeadersSchema, record), body);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): AgentPrimitive {
+    return new AgentPrimitive(headersOf(AgentPrimitive, AgentHeadersSchema, record), body, assetFiles, primitiveLayer);
   }
 }

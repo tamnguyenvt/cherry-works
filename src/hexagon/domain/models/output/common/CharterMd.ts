@@ -1,4 +1,5 @@
-import type { ProjectionPolicy } from "../ProjectionPolicy.js";
+import { OUT_DIRECTORY } from "../../../path.js";
+import type { Projection } from "../ProjectionPolicy.js";
 import type { StampedDocument } from "../StampedDocument.js";
 
 /**
@@ -16,10 +17,9 @@ import type { StampedDocument } from "../StampedDocument.js";
  * its own beside the headers it requires, so what a kind is and when it is
  * opened is said in one place (FR-001).
  *
- * A type and a body, and no file: what it is called and where it lands is for
- * whoever puts it down (plan §2.6). The listing it sends a reader to is named
- * beside it, since it lands in the same folder as this does. No charter either — it is handed the lines
- * it writes, so what a kind is is asked of the charter once, by the caller.
+ * It lands in the output folder, beside the listing it sends a reader to by
+ * name. No charter here — it is handed the lines it writes, so what a kind is
+ * is asked of the charter once, by the caller.
  *
  * No primitive's body reaches here, not even a guide's: this file is
  * orientation and the listings it sends a reader to. What every turn is to carry
@@ -29,13 +29,16 @@ export class CharterMd {
   static readonly type = "charter-md" as const
   readonly type = CharterMd.type
 
-  /** This file is the charter's own: it is written whole over whatever is
-   *  there. */
-  readonly projection: ProjectionPolicy = "replace";
-
   constructor(
     /** This file as a reader opens it: the stamp saying this engine wrote it,
      *  and the orientation itself. */
-    readonly document: StampedDocument,
+    private readonly stampedContents: StampedDocument,
   ) {}
+
+  /** The file it is put down as: the one every host's entry file sends its
+   *  agent to (FR-019, FR-051), the charter's own, written whole over whatever
+   *  is there. */
+  get projections(): readonly Projection[] {
+    return [{ file: `${OUT_DIRECTORY}/CHARTER.md`, contents: this.stampedContents, projectionPolicy: "replace", executable: false }];
+  }
 }

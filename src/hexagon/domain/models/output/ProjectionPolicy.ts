@@ -26,9 +26,10 @@ export type ProjectionPolicy = "replace" | "mergeJSON" | "upsertWithMarker";
  * An output says what it holds and how it is applied; this is where that lands.
  */
 export interface Projection {
-  readonly path: string;
+  /** Where it lands, from the repository. */
+  readonly file: string;
   readonly contents: string;
   readonly projectionPolicy: ProjectionPolicy;
-  /** Run by its path once it is down: a built script (FR-160). */
-  readonly executable?: boolean;
+  /** Run by its path once it is down: the file a script runs (FR-160). */
+  readonly executable: boolean;
 }

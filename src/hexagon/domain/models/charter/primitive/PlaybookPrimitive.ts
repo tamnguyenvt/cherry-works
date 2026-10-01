@@ -1,5 +1,6 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** An ordered procedure loaded when a request matches its triggers (FR-004). */
 export const PlaybookHeadersSchema = CommonHeadersSchema.extend({
@@ -40,7 +41,7 @@ export class PlaybookPrimitive extends BasePrimitive<PlaybookHeaders> {
   }
 
   /** One playbook, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string): PlaybookPrimitive {
-    return new PlaybookPrimitive(headersOf(PlaybookPrimitive, PlaybookHeadersSchema, record), body);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): PlaybookPrimitive {
+    return new PlaybookPrimitive(headersOf(PlaybookPrimitive, PlaybookHeadersSchema, record), body, assetFiles, primitiveLayer);
   }
 }

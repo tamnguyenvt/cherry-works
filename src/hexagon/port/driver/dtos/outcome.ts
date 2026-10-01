@@ -38,13 +38,13 @@ const DoctorOutcomeSchema = dto(
 const ExplanationOutcomeSchema = dto(
   "ExplanationOutcome",
   z.object({
-    scopedPrimitive: DataDTOs.ScopedPrimitive,
+    primitive: DataDTOs.Primitive,
     activatesWhen: z.string(),
-    useMixins: z.array(DataDTOs.ScopedPrimitive).readonly(),
-    rationale: DataDTOs.ScopedPrimitive.optional(),
-    hosts: z.array(DataDTOs.ScopedPrimitive).readonly(),
-    citers: z.array(DataDTOs.ScopedPrimitive).readonly(),
-    mentioners: z.array(DataDTOs.ScopedPrimitive).readonly(),
+    useMixins: z.array(DataDTOs.Primitive).readonly(),
+    rationale: DataDTOs.Primitive.optional(),
+    hosts: z.array(DataDTOs.Primitive).readonly(),
+    citers: z.array(DataDTOs.Primitive).readonly(),
+    mentioners: z.array(DataDTOs.Primitive).readonly(),
     testCasesByFile: DataDTOs.TestCasesByFile,
   }),
 );

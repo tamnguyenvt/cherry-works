@@ -21,9 +21,9 @@ const guide = (id: string) => ["---", "kind: guide", `id: ${id}`, `description: 
  *  here. */
 const twoVendors = () =>
   new InMemoryFileReaders({
-    [vendoredAt("legacy", "guide/old.md")]: guide("old"),
-    [vendoredAt("acme", "guide/small-diffs.md")]: guide("small-diffs"),
-    [new URL(".cw/charter/guide/no-any.md", repoPath).href]: guide("no-any"),
+    [vendoredAt("legacy", "guide/old/index.md")]: guide("old"),
+    [vendoredAt("acme", "guide/small-diffs/index.md")]: guide("small-diffs"),
+    [new URL(".cw/charter/guide/no-any/index.md", repoPath).href]: guide("no-any"),
   });
 
 /** What `cw vendor list` printed, over one repository held in memory. */

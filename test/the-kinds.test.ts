@@ -141,7 +141,7 @@ test("the headers it names are the ones cw add takes, one flag apiece (FR-004, s
     const { results } = await asking(["kinds", kind]);
     const flags = headersNamedIn(results).flatMap(({ field }) => [
       "--header",
-      `${field}=${field === "signal" ? "SessionStart" : field === "extension" ? "sh" : `what ${field} holds`}`,
+      `${field}=${field === "signal" ? "SessionStart" : field === "extension" ? "sh" : field === "executionPath" ? "./something/run.sh" : `what ${field} holds`}`,
     ]);
     // An mcp is told which server it is beside what it requires: which shape
     // it takes is its author's choice, so neither is required (plan §19.1).
@@ -149,7 +149,7 @@ test("the headers it names are the ones cw add takes, one flag apiece (FR-004, s
     const { code, held: files, problems } = await asking(["add", kind, "something", ...flags, ...shapeFlags]);
 
     assert.equal(code, EXIT_OK, `${kind}: ${problems}`);
-    assert.notEqual(await files.readIfThere(new URL(`.cw/charter/${kind}/something.md`, repoPath)), undefined, kind);
+    assert.notEqual(await files.readIfThere(new URL(`.cw/charter/${kind}/something/index.md`, repoPath)), undefined, kind);
   }
 });
 

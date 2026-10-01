@@ -13,7 +13,7 @@ const guide = (id: string, headers: readonly string[] = []) => primitive("guide"
 
 /** One guide, and the case naming it. */
 const holding = (extra: Record<string, string> = {}) => ({
-  [at(".cw/charter/guide/no-any.md")]: guide("no-any"),
+  [at(".cw/charter/guide/no-any/index.md")]: guide("no-any"),
   [at(".cw/test/no-any.json")]: JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
   ...extra,
 });
@@ -47,18 +47,18 @@ test("building from the preview writes, and lists what it wrote (FR-120)", async
 });
 
 test("a charter with an error builds nothing, and its faults are shown under their files (FR-120)", async () => {
-  await inTheBrowser(holding({ [at(".cw/charter/guide/no-any.md")]: guide("no-any", ['mixins: ["nowhere"]']) }), async (page, files) => {
+  await inTheBrowser(holding({ [at(".cw/charter/guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }), async (page, files) => {
     await page.getByRole("button", { name: "Build", exact: true }).click();
 
     const refused = page.getByRole("dialog").getByRole("table", { name: "Refused files" });
     await refused.waitFor();
-    assert.match(await refused.innerText(), /\.cw\/charter\/guide\/no-any\.md[\s\S]*the mixin "nowhere"/);
+    assert.match(await refused.innerText(), /\.cw\/charter\/guide\/no-any\/index\.md[\s\S]*the mixin "nowhere"/);
     assert.equal(await files.readIfThere(new URL(at(".cw/out/catalog.json"))), undefined);
   });
 });
 
 test("Doctor shows the four answers and every warning, and builds when the output is behind (FR-121)", async () => {
-  await inTheBrowser(holding({ [at(".cw/charter/corpus/why.md")]: primitive("corpus", "why") }), async (page, files) => {
+  await inTheBrowser(holding({ [at(".cw/charter/corpus/why/index.md")]: primitive("corpus", "why") }), async (page, files) => {
     await page.getByRole("button", { name: "Doctor" }).click();
 
     const health = page.getByLabel("Health");
@@ -70,7 +70,7 @@ test("Doctor shows the four answers and every warning, and builds when the outpu
     assert.match(answers, /Charter\s+holds, with 1 warning\./i);
     assert.match(answers, /Vendors\s+none edited here\./i);
     assert.match(answers, /Built\s+\d+ files out of date\./i);
-    assert.match(await page.getByRole("table", { name: "Faults" }).innerText(), /\.cw\/charter\/corpus\/why\.md[\s\S]*warn[\s\S]*No primitive cites "corpus:why"/);
+    assert.match(await page.getByRole("table", { name: "Faults" }).innerText(), /\.cw\/charter\/corpus\/why\/index\.md[\s\S]*warn[\s\S]*No primitive cites "corpus:why"/);
 
     await page.getByRole("dialog").getByRole("button", { name: "Build", exact: true }).click();
     await page.getByRole("table", { name: "Build written" }).waitFor();

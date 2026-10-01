@@ -61,14 +61,14 @@ const aBuiltRepository = async () => {
   const repo = await mkdtemp(join(tmpdir(), "cw-serve-"));
   const command = { command: process.execPath, args: ["--import", TSX, STDIO_SERVER] };
   const address = [command.command, ...command.args].join(" ");
-  await mkdir(join(repo, ".cw", "out", "mcp"), { recursive: true });
+  await mkdir(join(repo, ".cw", "out", "mcp", "local"), { recursive: true });
   await writeFile(join(repo, ".cw", "out", "mcp-origins.json"), JSON.stringify({ origins: [{ identities: ["mcp:local"], names: { "mcp:local": "local_0a1b" }, address, command, auth: [] }] }));
   await writeFile(
     join(repo, ".cw", "out", "catalog.json"),
-    JSON.stringify([{ identity: "mcp:local", kind: "mcp", id: "local", description: "A local place.", file: ".cw/out/mcp/local.md" }]),
+    JSON.stringify([{ identity: "mcp:local", kind: "mcp", id: "local", description: "A local place.", file: ".cw/out/mcp/local/index.md" }]),
   );
   await writeFile(
-    join(repo, ".cw", "out", "mcp", "local.md"),
+    join(repo, ".cw", "out", "mcp", "local", "index.md"),
     `---\nkind: mcp\nid: local\ndescription: A local place.\ncommand: ${process.execPath}\ntools: [echo, missing_tool]\n---\n`,
   );
   return repo;

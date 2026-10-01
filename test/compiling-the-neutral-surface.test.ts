@@ -42,13 +42,13 @@ const written = async (files: Readonly<Record<string, string>>, path: string) =>
   const held = new InMemoryFileReaders(files);
   const charter = await load(files, held);
 
-  const put = await putDownBy(repo, compile(charter, [CLAUDE]), [CLAUDE], held);
+  const put = await putDownBy(repo, compile(charter, [CLAUDE]), held);
   assert.ok(put.includes(path), `${path} is not among the files this charter was put down as`);
 
   return held.read(new URL(path, repo));
 };
 
-const oneGuide = { [at("guide/no-any.md")]: primitive("guide", "no-any", "Never write `any`.") };
+const oneGuide = { [at("guide/no-any/index.md")]: primitive("guide", "no-any", "Never write `any`.") };
 
 test("the charter file is among what a charter is put down as, whatever it holds", async () => {
   assert.ok((await written(oneGuide, CHARTER_MD)).startsWith("# Charter\n"));
@@ -76,9 +76,9 @@ test("the charter file says, for every kind, when it applies (FR-001)", async ()
 
 test("the charter file carries no body: a body is opened when it activates (FR-013)", async () => {
   const files = {
-    [at("guide/no-any.md")]: primitive("guide", "no-any", "SECRET BODY TEXT"),
-    [at("mixin/house-style.md")]: primitive("mixin", "house-style", "SECRET MIXIN TEXT"),
-    [at("corpus/type-safety.md")]: primitive("corpus", "type-safety", "SECRET CORPUS TEXT"),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", "SECRET BODY TEXT"),
+    [at("mixin/house-style/index.md")]: primitive("mixin", "house-style", "SECRET MIXIN TEXT"),
+    [at("corpus/type-safety/index.md")]: primitive("corpus", "type-safety", "SECRET CORPUS TEXT"),
   };
 
   const contents = await written(files, CHARTER_MD);
@@ -93,7 +93,7 @@ test("the charter file carries no body: a body is opened when it activates (FR-0
 test("the charter file does not grow with the charter: what grows is the listing (SC-005)", async () => {
   const forty = Object.fromEntries(
     Array.from({ length: 40 }, (_, at) => [
-      new URL(`guide/rule-${at}.md`, root).href,
+      new URL(`guide/rule-${at}/index.md`, root).href,
       primitive("guide", `rule-${at}`, "A paragraph of rule."),
     ]),
   );

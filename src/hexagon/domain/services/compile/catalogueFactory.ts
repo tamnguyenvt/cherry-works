@@ -1,4 +1,5 @@
-import type { CharterRoot, ScopedPrimitive } from "../../models/charter/CharterRoot.js";
+import type { Primitive } from "../../models/charter/primitive/Primitive.js";
+import type { CharterRoot } from "../../models/charter/CharterRoot.js";
 import { Catalogue } from "../../models/output/common/Catalogue.js";
 
 /**
@@ -13,15 +14,15 @@ import { Catalogue } from "../../models/output/common/Catalogue.js";
  * Globs nobody wrote are left out rather than listed as nothing. Every other
  * header is read from the file the entry names.
  */
-export function catalogueOf(charter: CharterRoot, fileOf: (one: ScopedPrimitive) => string): Catalogue {
+export function catalogueOf(charter: CharterRoot, fileOf: (one: Primitive) => string): Catalogue {
   return new Catalogue(
     // Ordered by identity rather than by the order the files happened to be
     // read, so the same charter catalogues byte for byte the same (SC-007).
     [...charter.primitives].sort((one, another) => (one.identity < another.identity ? -1 : one.identity > another.identity ? 1 : 0)).map((one) => {
-      const { description, globs } = one.primitive.headers;
+      const { description, globs } = one.headers;
       return {
         identity: one.identity,
-        kind: one.primitive.kind,
+        kind: one.kind,
         description,
         file: fileOf(one),
         ...(globs === undefined ? {} : { globs }),

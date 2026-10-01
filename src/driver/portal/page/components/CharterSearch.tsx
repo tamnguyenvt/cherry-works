@@ -14,7 +14,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
  * own: nothing else on the page reads it, and it is cleared once a primitive is
  * chosen or Escape is pressed.
  */
-export function CharterSearch({ onPick }: { onPick: (scopedPrimitive: DataDTOs.ScopedPrimitive) => void }) {
+export function CharterSearch({ onPick }: { onPick: (primitive: DataDTOs.Primitive) => void }) {
   const [word, setWord] = useState("");
   const [listShown, setListShown] = useState(false);
   const { data: listing } = usePrimitives(word);
@@ -48,13 +48,13 @@ export function CharterSearch({ onPick }: { onPick: (scopedPrimitive: DataDTOs.S
               {listing.data.message} {listing.data.fix}
             </p>
           )}
-          {listing?.type === "ScopedPrimitives" && (
+          {listing?.type === "Primitives" && (
             <>
               <CommandEmpty className="px-3 py-3.5 text-xs text-zinc-400">Nothing in the charter says that.</CommandEmpty>
               {listing.data.primitives.length > 0 && (
                 <CommandGroup heading={`${listing.data.primitives.length} primitive${listing.data.primitives.length === 1 ? "" : "s"}`}>
-                  {listing.data.primitives.map((scopedPrimitive) => {
-                    const { identity, kind, description, scope, headers } = scopedPrimitive.data;
+                  {listing.data.primitives.map((primitive) => {
+                    const { identity, kind, description, layerName, headers } = primitive.data;
                     return (
                       <CommandItem
                         key={identity}
@@ -63,7 +63,7 @@ export function CharterSearch({ onPick }: { onPick: (scopedPrimitive: DataDTOs.S
                         onSelect={() => {
                           setWord("");
                           setListShown(false);
-                          onPick(scopedPrimitive);
+                          onPick(primitive);
                         }}
                       >
                         <span className="font-mono text-[9.5px] font-bold tracking-[0.03em] text-zinc-500 uppercase">{kind}</span>
@@ -75,7 +75,7 @@ export function CharterSearch({ onPick }: { onPick: (scopedPrimitive: DataDTOs.S
                             <Highlighted text={description} word={word} />
                           </span>
                         </span>
-                        <Badge className={`rounded-[5px] px-1.5 py-0.5 font-mono text-[9.5px] font-bold tracking-[0.03em] ${SCOPE_COLORS[scope]}`}>{scope}</Badge>
+                        <Badge className={`rounded-[5px] px-1.5 py-0.5 font-mono text-[9.5px] font-bold tracking-[0.03em] ${LAYER_COLORS[layerName]}`}>{layerName}</Badge>
                       </CommandItem>
                     );
                   })}
@@ -90,7 +90,7 @@ export function CharterSearch({ onPick }: { onPick: (scopedPrimitive: DataDTOs.S
 }
 
 /** The colours a layer is tagged in, as the mockup tags them. */
-const SCOPE_COLORS: Record<DataDTOs.ScopedPrimitive["data"]["scope"], string> = {
+const LAYER_COLORS: Record<DataDTOs.Primitive["data"]["layerName"], string> = {
   repo: "bg-[#eff6ff] text-[#1d4ed8]",
   vendor: "bg-[#f6f2ff] text-[#7c3aed]",
   builtin: "bg-zinc-100 text-zinc-700",

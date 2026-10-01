@@ -17,8 +17,8 @@ This repository is governed by a charter — the standards it authored under `.c
 - **corpus** — a primitive's `rationale` cites it — the reasoning, read when someone asks why.
 - **mixin** — never on its own: its body is lent to the primitives that pull it in.
 - **mcp** — a primitive's body names it as `mcp:<id>` — a place outside the repository, reached through `cw mcp serve`.
-- **script** — a primitive names it as `script:<id>` — a file the agent runs, built to `.cw/out/script/<id>.<extension>`.
-- **template** — a primitive names it as `template:<id>` — a file the agent fills or copies, built to `.cw/out/template/<id>.<extension>`.
+- **script** — a primitive names it as `script:<id>`, or a sensor runs it — its assets, copied to `.cw/out/script/<id>/`, of which its `executionPath` names the one to run.
+- **template** — a primitive names it as `template:<id>` — a file the agent fills or copies, written as its body.
 
 ## One identity, one primitive
 

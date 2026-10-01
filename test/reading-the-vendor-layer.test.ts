@@ -11,21 +11,21 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 
 test("the vendor tab lists what vendors installed, and nothing authored here (FR-112)", async () => {
   const charter = {
-    [at("guide/no-any.md")]: primitive("guide", "no-any"),
-    [vendoredAt("guide/small-diffs.md")]: primitive("guide", "small-diffs", ['globs: ["**/*.md"]']),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any"),
+    [vendoredAt("guide/small-diffs/index.md")]: primitive("guide", "small-diffs", ['globs: ["**/*.md"]']),
   };
   await inTheBrowser(charter, async (page) => {
     await page.getByRole("tab", { name: "Vendor" }).click();
     await rowsOf(page).waitFor();
 
     assert.deepEqual(await columnOf(page, 1).allInnerTexts(), ["small-diffs"]);
-    assert.equal(await columnOf(page, 2).locator("div").nth(1).innerText(), ".cw/vendor/acme/guide/small-diffs.md");
+    assert.equal(await columnOf(page, 2).locator("div").nth(1).innerText(), ".cw/vendor/acme/guide/small-diffs/index.md");
     assert.deepEqual((await chipsOf(page))[0], ["guide", "1"]);
   });
 });
 
 test("a repository with no vendor still has every kind's chip on the vendor tab, each empty", async () => {
-  await inTheBrowser({ [at("guide/no-any.md")]: primitive("guide", "no-any") }, async (page) => {
+  await inTheBrowser({ [at("guide/no-any/index.md")]: primitive("guide", "no-any") }, async (page) => {
     await page.getByRole("tab", { name: "Vendor" }).click();
     await page.getByText("No guide in this charter yet.").waitFor();
 

@@ -1,4 +1,4 @@
-import { BUILTIN_SCOPE, DomainFault } from "#hexagon/port/driver/ForManagingCharter.js";
+import { BUILTIN_LAYER, DomainFault } from "#hexagon/port/driver/ForManagingCharter.js";
 import { editInEditor } from "./helper.js";
 import {
   EXIT_FAILURE,
@@ -36,19 +36,19 @@ export class EditCommand implements Command<typeof OPTIONS> {
   readonly options = OPTIONS;
 
   async run({ cwd, charterAuthoringApp }: Context, { identity }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const { scopedPrimitive } = (await charterAuthoringApp.open(identity ?? "")).data;
-    if (scopedPrimitive.data.scope === BUILTIN_SCOPE)
+    const primitive = (await charterAuthoringApp.open(identity ?? "")).data;
+    if (primitive.layerName === BUILTIN_LAYER)
       throw new DomainFault(
-        `${scopedPrimitive.data.identity} is built into cw, and there is no file of it in this repository to edit.`,
+        `${primitive.identity} is built into cw, and there is no file of it in this repository to edit.`,
         `To differ from it, run "cw add" for a primitive of your own under an identity of its own.`,
       );
 
-    const problem = await editInEditor(cwd, scopedPrimitive.data.file);
+    const problem = await editInEditor(cwd, primitive.file);
     if (problem !== undefined) return { code: EXIT_FAILURE, problem };
 
     return {
       code: EXIT_OK,
-      result: [`Closed ${scopedPrimitive.data.file}.`, 'Run "cw doctor" to see that the charter still holds, then "cw build".', ""].join("\n"),
+      result: [`Closed ${primitive.file}.`, 'Run "cw doctor" to see that the charter still holds, then "cw build".', ""].join("\n"),
     };
   }
 }

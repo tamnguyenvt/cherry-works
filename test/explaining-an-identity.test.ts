@@ -74,8 +74,8 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
 };
 
 const charter = {
-  [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", ["tags: [types]"]),
-  [new URL("guide/small-diffs.md", vendored).href]: primitive("guide", "small-diffs"),
+  [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["tags: [types]"]),
+  [new URL("guide/small-diffs/index.md", vendored).href]: primitive("guide", "small-diffs"),
 };
 
 test("an identity is traced in one command to the file that declares it", async () => {
@@ -84,7 +84,7 @@ test("an identity is traced in one command to the file that declares it", async 
   assert.equal(code, EXIT_OK);
   assert.deepEqual(results, [
     "guide:no-any  What no-any is for.",
-    "  .cw/charter/guide/no-any.md",
+    "  .cw/charter/guide/no-any/index.md",
     "  authored in this repository",
     "  comes up when a touched file matches one of its `globs`, or every turn where globs are not specified",
     "  declares tags: types",
@@ -96,7 +96,7 @@ test("an identity is traced in one command to the file that declares it", async 
 test("an explanation says when the primitive comes up, in the words its kind says it in", async () => {
   const kinds = await run(charter, ["kinds"]);
   const sensor = await run(
-    { [new URL("sensor/no-secrets.md", root).href]: primitive("sensor", "no-secrets", ["signal: PreToolUse", 'run: "pnpm test"']) },
+    { [new URL("sensor/no-secrets/index.md", root).href]: primitive("sensor", "no-secrets", ["signal: PreToolUse", 'run: "pnpm test"']) },
     ["explain", "sensor:no-secrets"],
   );
 
@@ -107,7 +107,7 @@ test("an explanation says when the primitive comes up, in the words its kind say
 
 test("an explanation says what the primitive itself declared, so a sensor names the signal and the command it runs", async () => {
   const { results } = await run(
-    { [new URL("sensor/no-secrets.md", root).href]: primitive("sensor", "no-secrets", ["signal: PreToolUse", 'run: "pnpm test"']) },
+    { [new URL("sensor/no-secrets/index.md", root).href]: primitive("sensor", "no-secrets", ["signal: PreToolUse", 'run: "pnpm test"']) },
     ["explain", "sensor:no-secrets"],
   );
 
@@ -118,7 +118,7 @@ test("an explanation says what the primitive itself declared, so a sensor names 
 
 test("what explaining finds reaches a driver as its DTO, saying when the primitive comes up and the rationale it cites", async () => {
   const readers = new InMemoryFileReaders({
-    [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", ["rationale: corpus:gone"]),
+    [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["rationale: corpus:gone"]),
   });
   const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryVCS());
 
@@ -129,14 +129,14 @@ test("what explaining finds reaches a driver as its DTO, saying when the primiti
 
   assert.equal(explanationOutcomeDTO.data.activatesWhen, "a touched file matches one of its `globs`, or every turn where globs are not specified");
   assert.equal(explanationOutcomeDTO.data.rationale, undefined);
-  assert.equal(explanationOutcomeDTO.data.scopedPrimitive.data.headers.rationale, "corpus:gone");
+  assert.equal(explanationOutcomeDTO.data.primitive.data.headers.rationale, "corpus:gone");
 });
 
 test("a vendored identity is named the same way, and says which layer it came from", async () => {
   const { code, results } = await run(charter, ["explain", "guide:small-diffs"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^ {2}\.cw\/vendor\/acme\/guide\/small-diffs\.md$/m);
+  assert.match(results, /^ {2}\.cw\/vendor\/acme\/guide\/small-diffs\/index\.md$/m);
   assert.match(results, /installed from a vendor/);
 });
 
@@ -147,9 +147,9 @@ test("what is explained carries no body", async () => {
 });
 
 const related = {
-  [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", ["mixins: [typed]", "rationale: corpus:why-types"]),
-  [new URL("mixin/typed.md", root).href]: primitive("mixin", "typed"),
-  [new URL("corpus/why-types.md", vendored).href]: primitive("corpus", "why-types"),
+  [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["mixins: [typed]", "rationale: corpus:why-types"]),
+  [new URL("mixin/typed/index.md", root).href]: primitive("mixin", "typed"),
+  [new URL("corpus/why-types/index.md", vendored).href]: primitive("corpus", "why-types"),
 };
 
 test("an explanation says which mixins a primitive uses and which corpus it cites", async () => {
@@ -173,13 +173,14 @@ const saying = (kind: string, id: string, headers: readonly string[], body: stri
   ["---", `kind: ${kind}`, `id: ${id}`, `description: What ${id} is for.`, ...headers, "---", "", body, ""].join("\n");
 
 const naming = {
-  [new URL("script/check.md", root).href]: saying("script", "check", ["extension: sh"], "cat template:note"),
-  [new URL("template/note.md", root).href]: saying("template", "note", ["extension: md"], "# Release"),
-  [new URL("skill/release.md", root).href]: saying("skill", "release", ['triggers: ["release"]'], "Run script:check, then script:check again."),
-  [new URL("guide/release.md", vendored).href]: saying("guide", "release", [], "Run script:check."),
-  [new URL("mcp/linear.md", root).href]: saying("mcp", "linear", ["endpoint: https://mcp.linear.app/mcp", "auth: [oauth]", "tools: [list_issues]"], ""),
-  [new URL("agent/triager.md", root).href]: saying("agent", "triager", ['tools: ["Read", "mcp:linear:list_issues"]'], "Triage."),
-  [new URL("playbook/triage.md", root).href]: saying("playbook", "triage", ['triggers: ["triage"]'], "Read mcp:linear."),
+  [new URL("script/check/index.md", root).href]: saying("script", "check", ["executionPath: ./run.sh"], "Fills template:note."),
+  [new URL("script/check/run.sh", root).href]: "true\n",
+  [new URL("template/note/index.md", root).href]: saying("template", "note", [], "# Release"),
+  [new URL("skill/release/index.md", root).href]: saying("skill", "release", ['triggers: ["release"]'], "Run script:check, then script:check again."),
+  [new URL("guide/release/index.md", vendored).href]: saying("guide", "release", [], "Run script:check."),
+  [new URL("mcp/linear/index.md", root).href]: saying("mcp", "linear", ["endpoint: https://mcp.linear.app/mcp", "auth: [oauth]", "tools: [list_issues]"], ""),
+  [new URL("agent/triager/index.md", root).href]: saying("agent", "triager", ['tools: ["Read", "mcp:linear:list_issues"]'], "Triage."),
+  [new URL("playbook/triage/index.md", root).href]: saying("playbook", "triage", ['triggers: ["triage"]'], "Read mcp:linear."),
 };
 
 test("an explanation says which primitives name a script or a template in their body (FR-163)", async () => {
@@ -203,6 +204,21 @@ test("an explanation says which primitives name a place, in a body or among an a
   ]);
 });
 
+test("a script only a sensor runs is mentioned in that sensor, and is not warned about as one nothing names (FR-163)", async () => {
+  const onlySensor = {
+    [new URL("script/check/index.md", root).href]: saying("script", "check", ["executionPath: ./run.sh"], ""),
+    [new URL("script/check/run.sh", root).href]: "true\n",
+    [new URL("sensor/check-on-stop/index.md", root).href]: saying("sensor", "check-on-stop", ["signal: Stop", "run: script:check"], ""),
+    ...suite({ cases: [{ when: "Stop", expect: { run: "sensor:check-on-stop" } }] }),
+  };
+
+  const explained = await run(onlySensor, ["explain", "script:check"]);
+  assert.deepEqual(explained.results.split("\n").filter((line) => line.startsWith("  mentioned in ")), ["  mentioned in sensor:check-on-stop"]);
+
+  const checked = await run(onlySensor, ["doctor"]);
+  assert.doesNotMatch(checked.results, /No primitive names "script:check"/);
+});
+
 test("a primitive nothing names is explained with no mention under it", async () => {
   const { results } = await run(naming, ["explain", "skill:release"]);
 
@@ -211,7 +227,7 @@ test("a primitive nothing names is explained with no mention under it", async ()
 
 test("a rationale citing a corpus the charter does not hold is named, and marked as not resolving", async () => {
   const { code, results } = await run(
-    { [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", ["rationale: corpus:gone"]) },
+    { [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["rationale: corpus:gone"]) },
     ["explain", "guide:no-any"],
   );
 
@@ -226,8 +242,8 @@ const suite = (written: unknown, name = "activation") => ({
 });
 
 const pinnedDown = {
-  [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any"),
-  [new URL("sensor/no-secrets.md", root).href]: primitive("sensor", "no-secrets", ["signal: PreToolUse", 'run: "pnpm test"']),
+  [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any"),
+  [new URL("sensor/no-secrets/index.md", root).href]: primitive("sensor", "no-secrets", ["signal: PreToolUse", 'run: "pnpm test"']),
   ...suite({
     cases: [
       { do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } },
@@ -283,7 +299,7 @@ test("an identity the charter holds nothing of is refused, and sends the user to
 
 test("a charter with an error explains nothing and sends the user to doctor", async () => {
   const { code, results, problems } = await run(
-    { [new URL("guide/no-any.md", root).href]: ["---", "kind: guide", "id: no-any", "---", "", "Body.", ""].join("\n") },
+    { [new URL("guide/no-any/index.md", root).href]: ["---", "kind: guide", "id: no-any", "---", "", "Body.", ""].join("\n") },
     ["explain", "guide:no-any"],
   );
 
@@ -295,12 +311,12 @@ test("a charter with an error explains nothing and sends the user to doctor", as
 test("a collision is the answer doctor gives, naming both files that claim the identity", async () => {
   const { results } = await run(
     {
-      [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any"),
-      [new URL("guide/no-any.md", vendored).href]: primitive("guide", "no-any"),
+      [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any"),
+      [new URL("guide/no-any/index.md", vendored).href]: primitive("guide", "no-any"),
     },
     ["doctor"],
   );
 
-  assert.match(results, /\.cw\/charter\/guide\/no-any\.md/);
-  assert.match(results, /\.cw\/vendor\/acme\/guide\/no-any\.md/);
+  assert.match(results, /\.cw\/charter\/guide\/no-any\/index\.md/);
+  assert.match(results, /\.cw\/vendor\/acme\/guide\/no-any\/index\.md/);
 });

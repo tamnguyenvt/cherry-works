@@ -29,7 +29,7 @@ export function TestSuites() {
   if (testSuitesQuery.data === undefined) return null;
   const { testSuites } = testSuitesQuery.data.data;
   const heldIdentities = new Set(
-    primitivesQuery.data?.type === "ScopedPrimitives" ? primitivesQuery.data.data.primitives.map(({ data }) => data.identity) : [],
+    primitivesQuery.data?.type === "Primitives" ? primitivesQuery.data.data.primitives.map(({ data }) => data.identity) : [],
   );
   const testRunReport = testOutcomeQuery.data?.type === "TestRunReport" ? testOutcomeQuery.data : undefined;
   const reportsOf = (name: string) => testRunReport?.data.testCaseReports.filter(({ data }) => data.suiteName === name) ?? [];

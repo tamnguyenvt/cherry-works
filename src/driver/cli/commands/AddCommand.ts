@@ -88,17 +88,26 @@ export class AddCommand implements Command<typeof OPTIONS> {
             taken.filter((one) => one.required),
             kind ?? "",
           );
-    const scopedPrimitiveDTO = await charterAuthoringApp.add(kind ?? "", id ?? "", answers);
+    const primitiveDTO = await charterAuthoringApp.add(kind ?? "", id ?? "", answers);
 
-    if (scopedPrimitiveDTO.type === "Faults")
+    if (primitiveDTO.type === "Faults")
       return {
         code: EXIT_FAILURE,
-        problem: scopedPrimitiveDTO.data.faults.map(({ data: { message, fix } }) => `${message}\n  ${fix}\n`).join(""),
+        problem: primitiveDTO.data.faults.map(({ data: { message, fix } }) => `${message}\n  ${fix}\n`).join(""),
       };
 
     return {
       code: EXIT_OK,
-      result: [`Wrote ${scopedPrimitiveDTO.data.file}.`, 'Write what it has to say in the body, then run "cw build".', ""].join("\n"),
+      result: [
+        `Wrote ${primitiveDTO.data.file}.`,
+        // A script's author is sent to the file that runs, which was written
+        // empty beside it (FR-167).
+        ...(typeof primitiveDTO.data.headers.executionPath === "string"
+          ? [`Wrote ${primitiveDTO.data.headers.executionPath} beside it, the file it runs: write the script there.`]
+          : []),
+        'Write what it has to say in the body, then run "cw build".',
+        "",
+      ].join("\n"),
     };
   }
 

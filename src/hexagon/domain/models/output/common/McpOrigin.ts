@@ -1,3 +1,5 @@
+import { OUT_DIRECTORY } from "../../../path.js";
+import type { Projection } from "../ProjectionPolicy.js";
 import type { McpAuthMethod } from "../../McpAuthMethod.js";
 
 /**
@@ -21,4 +23,25 @@ export interface McpOrigin {
   readonly path?: string;
   /** Every way any identity here lets a developer sign in. */
   readonly auth: readonly McpAuthMethod[];
+}
+
+/** Every place the charter's mcps reach, each once: what `cw mcp serve` and
+ *  `cw mcp auth` read, since neither reads a charter (FR-145). Ordered by
+ *  address, then path (SC-007). */
+export class McpOrigins {
+  constructor(readonly origins: readonly McpOrigin[]) {}
+
+  /** The file it is put down as, in the output folder: generated, and the
+   *  charter's alone. Indented, since it is committed and read in diffs when a
+   *  place moves (SC-038). */
+  get projections(): readonly Projection[] {
+    return [
+      {
+        file: `${OUT_DIRECTORY}/mcp-origins.json`,
+        contents: `${JSON.stringify({ origins: this.origins }, undefined, 2)}\n`,
+        projectionPolicy: "replace",
+        executable: false,
+      },
+    ];
+  }
 }

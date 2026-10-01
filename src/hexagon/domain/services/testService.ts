@@ -56,7 +56,8 @@ export function runSuite(charter: CharterRoot, suiteName: string, suite: TestSui
 export function findUntestedPrimitives(charter: CharterRoot, testSuites: readonly TestSuite[]): FaultsByFile {
   const testedIdentities = new Set<string | undefined>(testSuites.flatMap((testSuite) => testSuite.cases.map((one) => one.activatedIdentity)));
   const faultsByFiles: Record<string, readonly DomainFault[]> = {};
-  for (const { identity, file, primitive } of charter.primitives) {
+  for (const primitive of charter.primitives) {
+    const { identity, file } = primitive;
     if ((primitive.kind !== "guide" && primitive.kind !== "sensor") || testedIdentities.has(identity)) continue;
     faultsByFiles[file] = [
       new TestCaseFault(
@@ -102,13 +103,13 @@ export function runCase(charter: CharterRoot, suiteName: string, one: TestCase):
 function assertPrimitiveActivated(charter: CharterRoot, file: string, identity: string): TestCaseFault | undefined {
   const declared = charter.primitiveById.get(identity);
   if (declared === undefined) return primitiveNotFound(identity);
-  if (declared.primitive.kind !== "guide")
+  if (declared.kind !== "guide")
     return new TestCaseFault(
-      `Coming up when a file is touched is a guide's rule, and "${identity}" is a ${declared.primitive.kind}.`,
+      `Coming up when a file is touched is a guide's rule, and "${identity}" is a ${declared.kind}.`,
       `Expect a guide here, or put the situation that kind answers.`,
     );
 
-  const { globs = [] } = declared.primitive.headers;
+  const { globs = [] } = declared.headers;
   if (globs.length === 0)
     return new TestCaseFault(
       `"${identity}" names no files, so touching one never brings it up.`,
@@ -135,7 +136,7 @@ function assertPrimitiveActivated(charter: CharterRoot, file: string, identity: 
  */
 function assertAllowed(charter: CharterRoot, file: string, expected: boolean): TestCaseFault | undefined {
   const denying = charter.primitives.filter(
-    ({ primitive }) => primitive.kind === "posture" && primitive.headers.deny.some((glob) => matches(glob, file)),
+    (primitive) => primitive.kind === "posture" && primitive.headers.deny.some((glob) => matches(glob, file)),
   );
   if (expected)
     return denying.length === 0
@@ -145,7 +146,7 @@ function assertAllowed(charter: CharterRoot, file: string, expected: boolean): T
           `Drop it from that posture's "deny", or expect "allow": false.`,
         );
 
-  const postures = charter.primitives.filter(({ primitive }) => primitive.kind === "posture");
+  const postures = charter.primitives.filter((primitive) => primitive.kind === "posture");
   if (postures.length === 0)
     return new TestCaseFault(
       `This charter holds no posture, so it refuses nothing.`,
@@ -163,13 +164,13 @@ function assertAllowed(charter: CharterRoot, file: string, expected: boolean): T
 function assertScriptRun(charter: CharterRoot, event: string, identity: string): TestCaseFault | undefined {
   const declared = charter.primitiveById.get(identity);
   if (declared === undefined) return primitiveNotFound(identity);
-  if (declared.primitive.kind !== "sensor")
+  if (declared.kind !== "sensor")
     return new TestCaseFault(
-      `Running when an event is raised is a sensor's rule, and "${identity}" is a ${declared.primitive.kind}.`,
+      `Running when an event is raised is a sensor's rule, and "${identity}" is a ${declared.kind}.`,
       `Expect a sensor here, or put the situation that kind answers.`,
     );
 
-  const { signal } = declared.primitive.headers;
+  const { signal } = declared.headers;
   return signal === event
     ? undefined
     : new TestCaseFault(

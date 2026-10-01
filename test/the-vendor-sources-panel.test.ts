@@ -12,15 +12,15 @@ const primitive = (kind: string, id: string) =>
 /** A repository authoring one guide, and two vendors: `acme`, bringing two
  *  guides and a corpus, and `legacy`, bringing one guide. */
 const withTwoVendors = () => ({
-  [at("guide/no-any.md")]: primitive("guide", "no-any"),
-  [vendoredAt("acme", "guide/small-diffs.md")]: primitive("guide", "small-diffs"),
-  [vendoredAt("acme", "guide/one-question.md")]: primitive("guide", "one-question"),
-  [vendoredAt("acme", "corpus/why.md")]: primitive("corpus", "why"),
-  [vendoredAt("legacy", "guide/old.md")]: primitive("guide", "old"),
+  [at("guide/no-any/index.md")]: primitive("guide", "no-any"),
+  [vendoredAt("acme", "guide/small-diffs/index.md")]: primitive("guide", "small-diffs"),
+  [vendoredAt("acme", "guide/one-question/index.md")]: primitive("guide", "one-question"),
+  [vendoredAt("acme", "corpus/why/index.md")]: primitive("corpus", "why"),
+  [vendoredAt("legacy", "guide/old/index.md")]: primitive("guide", "old"),
 });
 
 test("with no vendor installed, the vendor tab says so, and adding one lists the reserved directories (Story 8 scenario 1)", async () => {
-  await inTheBrowser({ [at("guide/no-any.md")]: primitive("guide", "no-any") }, async (page) => {
+  await inTheBrowser({ [at("guide/no-any/index.md")]: primitive("guide", "no-any") }, async (page) => {
     await page.getByRole("tab", { name: "Vendor" }).click();
     await page.getByText("No vendor source installed").waitFor();
 

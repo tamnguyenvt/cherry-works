@@ -24,7 +24,7 @@ const guide = (id: string, headers: readonly string[] = []) => primitive("guide"
 /** A repository compiling for claude, one guide, and the case naming it. */
 const holding = (extra: Readonly<Record<string, string>> = {}) => ({
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
-  [at(".cw/charter/guide/no-any.md")]: guide("no-any"),
+  [at(".cw/charter/guide/no-any/index.md")]: guide("no-any"),
   [at(".cw/test/no-any.json")]: JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
   ...extra,
 });
@@ -91,18 +91,18 @@ test("building writes, says what it wrote, and the health check then says the ou
 });
 
 test("a charter with an error builds nothing, and its faults are sent under their files (FR-120)", async () => {
-  const { portalRoutes, held } = surfaces(holding({ [at(".cw/charter/guide/no-any.md")]: guide("no-any", ['mixins: ["nowhere"]']) }));
+  const { portalRoutes, held } = surfaces(holding({ [at(".cw/charter/guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }));
 
   const answer = await portalRoutes.request("/charter/root/build", buildRequest);
 
   assert.equal(answer.status, 422);
-  assert.deepEqual(Object.keys(DataDTOs.FaultsByFile.parse(await answer.json()).data.files), [".cw/charter/guide/no-any.md"]);
+  assert.deepEqual(Object.keys(DataDTOs.FaultsByFile.parse(await answer.json()).data.files), [".cw/charter/guide/no-any/index.md"]);
   assert.equal(await held.readIfThere(new URL(".cw/out/catalog.json", repoPath)), undefined);
 });
 
 test("the health check is what doctor answers, and names the faults cw doctor prints (FR-121, SC-014)", async () => {
   const { portalRoutes, cli } = surfaces(
-    holding({ [at(".cw/charter/corpus/why.md")]: primitive("corpus", "why"), [at(".cw/charter/mixin/ts.md")]: primitive("mixin", "ts") }),
+    holding({ [at(".cw/charter/corpus/why/index.md")]: primitive("corpus", "why"), [at(".cw/charter/mixin/ts/index.md")]: primitive("mixin", "ts") }),
   );
 
   const answer = await portalRoutes.request("/charter/root/health");

@@ -48,8 +48,8 @@ function Portal() {
         <span className="font-mono text-[11.5px] text-zinc-400" />
         <div className="ml-auto flex w-full max-w-[460px]">
           <CharterSearch
-            onPick={({ data: { identity, kind, scope } }) => {
-              setTab(scope === "vendor" ? "vendor" : "repo");
+            onPick={({ data: { identity, kind, layerName } }) => {
+              setTab(layerName === "vendor" ? "vendor" : "repo");
               setShownKind(kind);
               open("primitive", { identity });
             }}
@@ -88,11 +88,11 @@ function Portal() {
               what was authored here; the vendor's is read-only (FR-112), beside
               the sources it was installed from (FR-122). */}
           <TabsContent value="repo" className={SHEET}>
-            <CharterListing scopes={["repo", "builtin"]} kind={shownKind} onKindChange={setShownKind} />
+            <CharterListing layerNames={["repo", "builtin"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
           <TabsContent value="vendor" className={`${SHEET} grid items-start gap-4 md:has-[>section]:grid-cols-[210px_minmax(0,1fr)]`}>
             <VendorSources />
-            <CharterListing scopes={["vendor"]} kind={shownKind} onKindChange={setShownKind} />
+            <CharterListing layerNames={["vendor"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
           <TabsContent value="test" className={SHEET}>
             <TestSuites />

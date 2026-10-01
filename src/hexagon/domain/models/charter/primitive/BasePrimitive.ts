@@ -1,6 +1,22 @@
 import { z } from "zod";
 import { CharterPrimitiveFault, throwAggregateError } from "../../DomainFault.js";
-import { formatFrontmatterValue } from "../../helper.js";
+import { contentHashOf, formatFrontmatterValue } from "../../helper.js";
+import { REPO_PRIMITIVE_LAYER, type PrimitiveLayer, type LayerName } from "../PrimitiveLayer.js";
+
+/** One file of a primitive's folder beside its `index.md`: the path it has in
+ *  that folder, and what it holds (FR-168). */
+export interface AssetFile {
+  readonly file: string;
+  readonly contents: string;
+}
+
+declare const normalized: unique symbol;
+
+/** An identity as a host is given it in its own files: the separators a
+ *  filename does not carry replaced — the kind's `:` and the `/` that groups an
+ *  id alike (FR-141). A type of its own, so a name written into a host's files
+ *  is one `normIdentity` made. */
+export type NormalizedIdentity = string & { readonly [normalized]: true };
 
 /** The delimiter a primitive's headers are written between. One constant for
  *  the writing here and the reading in `primitiveOf`, so the two cannot drift. */
@@ -20,8 +36,8 @@ export const GoodArraySchema = z.array(GoodLineSchema).min(1).readonly();
  *  primitive holds is written once. */
 export const CommonHeadersSchema = z.object({
   /** Slugs joined by `/`, so identities can be grouped by team or domain
-   *  (FR-141). The `/` puts the file in folders and nothing else: nothing is
-   *  read from where a file sits. At most 40 characters, so every name a host
+   *  (FR-141). The `/` is written `-` in the file's name and nothing else:
+   *  nothing is read from what a file is called. At most 40 characters, so every name a host
    *  is given for it — an mcp's tools among them, `mcp__cw__mcp-<id>__<tool>` —
    *  stays within what the host takes (FR-157). */
   id: z
@@ -58,6 +74,11 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    *  answered for, so what is left to ask about is what it is for. */
   static readonly requires: RequiredHeaders = { description: "line" };
 
+  /** The file a primitive's folder is read from, and compiled to (FR-141):
+   *  said here for whoever reads a folder before any primitive is read off it,
+   *  and by `index` on every primitive. */
+  static readonly index = "index.md";
+
   /** The schema every kind's headers are read by, its own standing in place of
    *  this. What a file is refused against, and the one place saying what shape
    *  each header holds — including the ones a kind takes without requiring, so
@@ -71,11 +92,83 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
      *  and nowhere else. */
     readonly headers: Headers,
     readonly body: string,
-  ) {}
+    /** Every file of its folder beside its `index.md`, at any depth (FR-168). */
+    readonly assets: readonly AssetFile[] = [],
+    /** The layer it was read in; a primitive authored here is in this
+     *  repository's. */
+    primitiveLayer: PrimitiveLayer = REPO_PRIMITIVE_LAYER,
+  ) {
+    this.layerName = primitiveLayer.name;
+    this.charterFolder = primitiveLayer.charterFolder;
+  }
+
+  /** Whose layer it came from. It says where it was written, never what it is
+   *  called (FR-014, FR-019). */
+  readonly layerName: LayerName;
+
+  /** Its layer's charter folder, from the repository: `.cw/charter`,
+   *  `.cw/vendor/<name>`, or the engine's own name for its layer. */
+  readonly charterFolder: string;
+
+  /** The `index.md` it was authored in, from the repository (FR-141). */
+  get file(): string {
+    return `${this.charterFolder}/${this.primitiveFolder}/${this.index}`;
+  }
+
+  /** Whether a word someone searched for is anywhere a reader would look for
+   *  it: the identity, the kind, what it is for, when its kind comes up, its
+   *  file, or any header it declared — ignoring case, since whoever typed it
+   *  did not know how it was written (FR-114). */
+  search(word: string): boolean {
+    const headerValues = Object.values(this.headers).flatMap((value) =>
+      value === undefined ? [] : Array.isArray(value) ? value : [String(value)],
+    );
+    const loweredWord = word.toLowerCase();
+    return [this.identity, this.kind, this.activatesWhen, this.file, ...headerValues].some((one) => one.toLowerCase().includes(loweredWord));
+  }
 
   /** Which kind this is. Each class declares it as a literal, and those
    *  literals are where `Kind` comes from. */
   abstract readonly kind: string;
+
+  /** Its folder, from its charter folder: its kind, then each segment of its
+   *  id (FR-141). */
+  get primitiveFolder(): string {
+    return `${this.kind}/${this.headers.id}`;
+  }
+
+  /** The file of that folder it is read from (FR-141). */
+  get index(): string {
+    return BasePrimitive.index;
+  }
+
+
+  /** When a reader of this charter is to open a primitive of its kind at all:
+   *  the line its kind's class declares, in the words `cw kinds` says it in
+   *  (FR-002, FR-029). */
+  get activatesWhen(): string {
+    return (this.constructor as unknown as { readonly activatesWhen: string }).activatesWhen;
+  }
+
+  /** The hash of it written out, which is what a save writes: what a save is
+   *  checked against, so an edit made on disk since it was opened is not
+   *  written over (FR-078). */
+  get hash(): string {
+    return contentHashOf(this.toMarkdown());
+  }
+
+  /** What the whole charter names it by: `guide:no-any` (FR-014). */
+  get identity(): string {
+    return `${this.kind}:${this.headers.id}`;
+  }
+
+  /** Its identity as every name given to a host writes it, `:` and `/` as
+   *  `-`: `guide-mfbs-no-any` for `guide:mfbs/no-any` (FR-141). Made here,
+   *  once, so nothing that names a host's file or a place's tools spells it
+   *  again. */
+  get normIdentity(): NormalizedIdentity {
+    return this.identity.replace(/[:/]/g, "-") as NormalizedIdentity;
+  }
 
   /**
    * This primitive as the file it is authored in: its headers between the
@@ -94,8 +187,8 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    * Written as its author wrote it unless the compiler says otherwise (FR-139):
    * `mixins` lend their bodies, before this one's own so it reads as the point
    * and theirs as the setting — nothing is merged and no header moves (FR-006);
-   * and `idReplacer` rewrites the body as a host reads it, a place named as
-   * `mcp:<id>` as the host calls its tools (FR-147).
+   * and `idReplacer` rewrites the body as its reader uses it, each place,
+   * script and template it names as a link to its file (FR-147).
    */
   toMarkdown({
     mixins = [],

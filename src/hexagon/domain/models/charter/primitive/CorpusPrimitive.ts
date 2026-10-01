@@ -1,5 +1,6 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** Reasoning a primitive cites, loaded only on demand. Beyond the common
  *  headers it asks for nothing (FR-004). */
@@ -31,7 +32,7 @@ export class CorpusPrimitive extends BasePrimitive<CorpusHeaders> {
   };
 
   /** One corpus, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string): CorpusPrimitive {
-    return new CorpusPrimitive(headersOf(CorpusPrimitive, CorpusHeadersSchema, record), body);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): CorpusPrimitive {
+    return new CorpusPrimitive(headersOf(CorpusPrimitive, CorpusHeadersSchema, record), body, assetFiles, primitiveLayer);
   }
 }

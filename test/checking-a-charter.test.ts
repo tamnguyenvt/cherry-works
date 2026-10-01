@@ -1,26 +1,25 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { folderURL } from "../src/hexagon/domain/path.js";
-import { CharterRoot, REPO_SCOPE, VENDOR_SCOPE, ScopedPrimitive } from "../src/hexagon/domain/models/charter/CharterRoot.js";
+import { CharterRoot } from "../src/hexagon/domain/models/charter/CharterRoot.js";
+import { REPO_LAYER, VENDOR_LAYER } from "../src/hexagon/domain/models/charter/PrimitiveLayer.js";
 import { FaultsByFile } from "../src/hexagon/domain/models/DomainFault.js";
 import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
 import { MixinPrimitive } from "../src/hexagon/domain/models/charter/primitive/MixinPrimitive.js";
 import { SkillPrimitive } from "../src/hexagon/domain/models/charter/primitive/SkillPrimitive.js";
-import type { Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
+import { PRIMITIVE_CLASSES, type Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
 
 const root = folderURL("file:///repo/.cw/charter/");
 
-type Authored = ScopedPrimitive;
+type Authored = Primitive;
 
 /** One authored primitive as the charter holds it: under the identity its layer
  *  gives it, which is what reading a charter works out. */
-const scoped = (vendor: string | undefined, file: string, primitive: Primitive): Authored =>
-  new ScopedPrimitive(
-    `${vendor === undefined ? "" : `${vendor}/`}${primitive.kind}:${primitive.headers.id}`,
-    vendor === undefined ? REPO_SCOPE : VENDOR_SCOPE,
-    file,
-    primitive,
-  );
+const layered = (vendor: string | undefined, file: string, primitive: Primitive): Authored =>
+  PRIMITIVE_CLASSES.find((one) => one.kind === primitive.kind)!.of(primitive.headers, primitive.body, [], {
+    name: vendor === undefined ? REPO_LAYER : VENDOR_LAYER,
+    charterFolder: file.slice(0, -`/${primitive.primitiveFolder}/index.md`.length),
+  });
 
 /** One primitive of the kind its class reads, under the file it was authored
  *  in. */
@@ -29,9 +28,9 @@ const primitive = (
   id: string,
   headers: Record<string, unknown> = {},
 ): Authored =>
-  scoped(
+  layered(
     undefined,
-    new URL(`${Kind.kind}/${id}.md`, root).href,
+    new URL(`${Kind.kind}/${id}/index.md`, root).href,
     Kind.of(
       {
         id,
@@ -78,7 +77,7 @@ test("globs that speak about different files are refused, naming the host", () =
     primitive(MixinPrimitive, "docs-tone", { globs: ["docs/**/*.md"] }),
     primitive(GuidePrimitive, "no-any", { globs: ["src/**/*.ts"], mixins: ["docs-tone"] }),
   );
-  assert.deepEqual(Object.keys(faultsByFiles), [new URL("guide/no-any.md", root).href]);
+  assert.deepEqual(Object.keys(faultsByFiles), [new URL("guide/no-any/index.md", root).href]);
   assert.match(
     Object.values(faultsByFiles).flatMap((one) => one.map((fault) => fault.message)).join("\n"),
     /docs-tone/,
@@ -120,7 +119,7 @@ test("what the domain finds on its own is reported too", () => {
   assert.match(
     messages([
       primitive(GuidePrimitive, "no-any"),
-      scoped(undefined, "file:///repo/.cw/charter/guide/copied.md", primitive(GuidePrimitive, "no-any").primitive),
+      layered("acme", "file:///repo/.cw/vendor/acme/guide/no-any/index.md", primitive(GuidePrimitive, "no-any")),
     ]),
     /already declared/,
   );

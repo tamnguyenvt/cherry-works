@@ -7,7 +7,7 @@ import type { DataDTOs, OutcomeDTOs } from "./dtos/index.js";
  *  anything else. */
 export { DomainFault } from "../../domain/models/DomainFault.js";
 export { AGENT_PROVIDERS, isAgentProvider, type AgentProvider } from "../../domain/models/AgentProvider.js";
-export { BUILTIN_SCOPE, REPO_SCOPE, VENDOR_SCOPE, type Scope } from "../../domain/models/charter/CharterRoot.js";
+export { BUILTIN_LAYER, REPO_LAYER, VENDOR_LAYER, type LayerName } from "../../domain/models/charter/PrimitiveLayer.js";
 export { TEST_DIRECTORY } from "../../domain/path.js";
 
 /**
@@ -81,7 +81,7 @@ export interface ForManagingCharter {
    * A charter with an error is refused with nothing listed and the errors given
    * back, as `list` refuses it.
    */
-  fullList(matching?: string): Promise<DataDTOs.ScopedPrimitives | DataDTOs.FaultsByFile>;
+  fullList(matching?: string): Promise<DataDTOs.Primitives | DataDTOs.FaultsByFile>;
 
   /**
    * Which file declares one identity, and which layer that file arrived in
@@ -222,19 +222,19 @@ export interface ForManagingCharter {
     id: string,
     headers: UnparsedHeaders,
     body?: string,
-  ): Promise<DataDTOs.ScopedPrimitive | DataDTOs.Faults>;
+  ): Promise<DataDTOs.Primitive | DataDTOs.Faults>;
 
   /**
    * One primitive as the charter read it — its headers, its body, the file
-   * and the layer — and the content hash of it written out, the revision a
-   * save is made over (FR-075, FR-078).
+   * and the layer — and the hash of it written out, what a save is made over
+   * (FR-075, FR-078).
    *
    * Reads and says: there is no way through this to write anything (FR-041).
    * Asked of the files as read rather than of the validation, so a primitive
    * opens whatever else in the charter is wrong. An identity the charter holds
    * nothing of is raised, as `explain` raises it.
    */
-  open(identity: string): Promise<DataDTOs.PrimitiveSnapshot>;
+  open(identity: string): Promise<DataDTOs.Primitive>;
 
   /**
    * One repository primitive's headers and body written over, its kind, id and
@@ -242,16 +242,17 @@ export interface ForManagingCharter {
    *
    * Raised with nothing written for a vendored or builtin primitive, naming
    * where it came from (FR-077), and for a primitive that, read again, no
-   * longer writes out as `revision`, naming the file (FR-078). Answers the kind will not take come
-   * back as the faults `add` gives for them. Nothing is compiled or committed
+   * longer has the hash it was opened at, `openedHash`, naming the file
+   * (FR-078). Answers the kind will not take come back as the faults `add`
+   * gives for them. Nothing is compiled or committed
    * (FR-079).
    */
   rewrite(
     identity: string,
     headers: UnparsedHeaders,
     body: string,
-    revision: string,
-  ): Promise<DataDTOs.ScopedPrimitive | DataDTOs.Faults>;
+    openedHash: string,
+  ): Promise<DataDTOs.Primitive | DataDTOs.Faults>;
 
   /**
    * One repository primitive's file taken away, and nothing else (FR-076):
@@ -260,7 +261,7 @@ export interface ForManagingCharter {
    * is the primitive that was removed. Nothing is compiled or committed
    * (FR-079).
    */
-  remove(identity: string): Promise<DataDTOs.ScopedPrimitive>;
+  remove(identity: string): Promise<DataDTOs.Primitive>;
 
   /**
    * What this repository configured itself with, on its own — no charter read

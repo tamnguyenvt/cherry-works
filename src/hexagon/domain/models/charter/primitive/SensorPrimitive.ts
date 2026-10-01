@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, GoodLineSchema, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodLineSchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** The events a charter knows how to be raised by, and the only ones a sensor
  *  may name (FR-004).
@@ -61,7 +62,7 @@ export class SensorPrimitive extends BasePrimitive<SensorHeaders> {
   };
 
   /** One sensor, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string): SensorPrimitive {
-    return new SensorPrimitive(headersOf(SensorPrimitive, SensorHeadersSchema, record), body);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): SensorPrimitive {
+    return new SensorPrimitive(headersOf(SensorPrimitive, SensorHeadersSchema, record), body, assetFiles, primitiveLayer);
   }
 }

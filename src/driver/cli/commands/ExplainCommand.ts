@@ -1,4 +1,4 @@
-import { BUILTIN_SCOPE, REPO_SCOPE, VENDOR_SCOPE, type Scope } from "#hexagon/port/driver/ForManagingCharter.js";
+import { BUILTIN_LAYER, REPO_LAYER, VENDOR_LAYER, type LayerName } from "#hexagon/port/driver/ForManagingCharter.js";
 import {
   EXIT_FAILURE,
   EXIT_OK,
@@ -51,22 +51,22 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
       };
     }
 
-    const { scopedPrimitive, activatesWhen, useMixins, rationale, hosts, citers, mentioners, testCasesByFile } = explanationOutcomeDTO.data;
+    const { primitive, activatesWhen, useMixins, rationale, hosts, citers, mentioners, testCasesByFile } = explanationOutcomeDTO.data;
     // A corpus the charter does not hold is not in `rationale`: what was cited
     // is read off the primitive's own header, and said as not resolving rather
     // than left out, since it is a warning and the explanation still stands
     // (FR-029).
-    const citedRationale = scopedPrimitive.data.headers.rationale;
+    const citedRationale = primitive.data.headers.rationale;
     // What this one primitive declared, beside what its kind says of all of
     // them: the line above says a sensor runs what it names, and this is where
     // what it names is read. Its id and description are said on the first line.
-    const declaredHeaders = Object.entries(scopedPrimitive.data.headers).filter(([name]) => name !== "id" && name !== "description");
+    const declaredHeaders = Object.entries(primitive.data.headers).filter(([name]) => name !== "id" && name !== "description");
     return {
       code: EXIT_OK,
       result: [
-        `${scopedPrimitive.data.identity}  ${scopedPrimitive.data.description}`,
-        `  ${scopedPrimitive.data.file}`,
-        `  ${layer(scopedPrimitive.data.scope)}`,
+        `${primitive.data.identity}  ${primitive.data.description}`,
+        `  ${primitive.data.file}`,
+        `  ${layer(primitive.data.layerName)}`,
         `  comes up when ${activatesWhen}`,
         ...declaredHeaders.map(([name, value]) => `  declares ${name}: ${typeof value === "string" ? value : value.join(", ")}`),
         ...useMixins.map(({ data }) => `  uses mixin ${data.identity}`),
@@ -90,11 +90,11 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
 /** Which layer a file arrived in, said rather than spelled: the three are what
  *  a charter is made of, and the path above already names the vendor it was
  *  installed as (FR-023, FR-017). */
-function layer(scope: Scope): string {
-  const saidByScope: Record<Scope, string> = {
-    [REPO_SCOPE]: "authored in this repository",
-    [VENDOR_SCOPE]: "installed from a vendor",
-    [BUILTIN_SCOPE]: "built into cw, and not authored in this repository",
+function layer(layerName: LayerName): string {
+  const saidByLayer: Record<LayerName, string> = {
+    [REPO_LAYER]: "authored in this repository",
+    [VENDOR_LAYER]: "installed from a vendor",
+    [BUILTIN_LAYER]: "built into cw, and not authored in this repository",
   };
-  return saidByScope[scope];
+  return saidByLayer[layerName];
 }

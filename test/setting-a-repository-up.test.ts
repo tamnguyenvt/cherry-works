@@ -111,7 +111,7 @@ test("setting up builds the charter, so the agent can author with the skill the 
 test("setting up again builds what is already authored (FR-057, FR-058)", async () => {
   const { code, held: files, results } = await setUp(
     {
-      [new URL(".cw/charter/guide/no-any.md", repoPath).href]:
+      [new URL(".cw/charter/guide/no-any/index.md", repoPath).href]:
         '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nBody.\n',
     },
     ["init", "--agent", "claude"],
@@ -124,7 +124,7 @@ test("setting up again builds what is already authored (FR-057, FR-058)", async 
 
 test("setting up over a charter that does not hold keeps what it configured, builds nothing and says so (FR-057)", async () => {
   const { code, held: files, problems } = await setUp(
-    { [new URL(".cw/charter/guide/broken.md", repoPath).href]: "---\nkind: guide\nid: broken\n---\n\nNo description.\n" },
+    { [new URL(".cw/charter/guide/broken/index.md", repoPath).href]: "---\nkind: guide\nid: broken\n---\n\nNo description.\n" },
     ["init", "--agent", "claude"],
   );
 
@@ -147,7 +147,7 @@ test("setting up authors nothing for what the engine brings: it is supplied on e
 });
 
 test("setting up again discards nothing authored (FR-038)", async () => {
-  const authored = new URL(".cw/charter/guide/no-any.md", repoPath).href;
+  const authored = new URL(".cw/charter/guide/no-any/index.md", repoPath).href;
   const { code, held: files } = await setUp(
     { [authored]: "---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: [\"src/**/*.ts\"]\n---\n\nBody.\n" },
     ["init", "--agent", "claude"],

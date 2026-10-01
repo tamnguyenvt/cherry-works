@@ -1,9 +1,10 @@
 import type { AgentProvider } from "../../models/AgentProvider.js";
 import type { CharterRoot } from "../../models/charter/CharterRoot.js";
 import { McpPrimitive } from "../../models/charter/primitive/McpPrimitive.js";
-import { PRIMITIVE_CLASSES } from "../../models/charter/primitive/Primitive.js";
+import { PRIMITIVE_CLASSES, type Primitive } from "../../models/charter/primitive/Primitive.js";
 import { shortenStringsOf, type ShortStrings } from "../../models/helper.js";
-import type { CharterOutput } from "../../models/output/CharterOutput.js";
+import { CharterOutput } from "../../models/output/CharterOutput.js";
+import { McpOrigins } from "../../models/output/common/McpOrigin.js";
 import type { CompiledPrimitive } from "../../models/output/common/CompiledPrimitive.js";
 import type { ProviderComponent } from "../../models/output/provider-component/ProviderComponent.js";
 import { catalogueOf } from "./catalogueFactory.js";
@@ -41,20 +42,26 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
   // mcps come and go (FR-145). Written into `mcp-origins.json` beside each
   // place, so the server, which reads no charter, serves under these.
   const shortenMcpIdentities = shortenStringsOf(
-    charter.primitives.filter(({ primitive }) => primitive.kind === McpPrimitive.kind).map((one) => one.identity),
+    charter.primitives.filter((primitive) => primitive.kind === McpPrimitive.kind).map((one) => one.identity),
   );
-  const compiledPrimitives = charter.primitives.map((one) => compiledPrimitiveOf(charter, one, shortenMcpIdentities));
-  return {
+  // In the order identities sort in, as the catalogue lists them, so the same
+  // charter is put down in the same order however its files were read (SC-007).
+  const compiledPrimitiveByPrimitive = new Map(
+    [...charter.primitives]
+      .sort((one, another) => (one.identity < another.identity ? -1 : one.identity > another.identity ? 1 : 0))
+      .map((primitive) => [primitive, compiledPrimitiveOf(charter, primitive)] as const),
+  );
+  return new CharterOutput(
     // What an agent opens from the catalogue is the primitive as it compiled,
     // not the file its author wrote: the whole body in one place, under the
-    // output folder whichever layer brought it (FR-140). The catalogue is where
-    // this path is said; the projection reads it from there.
-    catalogue: catalogueOf(charter, (one) => compiledPrimitives.find((compiled) => compiled.identity === one.identity)!.file),
-    charterMd: charterMdOf(PRIMITIVE_CLASSES),
-    compiledPrimitives,
-    mcpOrigins: mcpOriginsOf(charter, shortenMcpIdentities),
-    providerComponents: agents.flatMap((agent) => providerComponentsOf(agent, charter, compiledPrimitives, shortenMcpIdentities)),
-  };
+    // output folder whichever layer brought it (FR-140). Its document is the
+    // first file it puts down.
+    catalogueOf(charter, (one) => compiledPrimitiveByPrimitive.get(one)!.projections[0]!.file),
+    charterMdOf(PRIMITIVE_CLASSES),
+    [...compiledPrimitiveByPrimitive.values()],
+    new McpOrigins(mcpOriginsOf(charter, shortenMcpIdentities)),
+    agents.flatMap((agent) => providerComponentsOf(agent, charter, compiledPrimitiveByPrimitive, shortenMcpIdentities)),
+  );
 }
 
 /** Every file one agent this engine compiles for reads (FR-018). One arm per
@@ -63,11 +70,11 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
 function providerComponentsOf(
   agent: AgentProvider,
   charter: CharterRoot,
-  compiledPrimitives: readonly CompiledPrimitive[],
+  compiledPrimitiveByPrimitive: ReadonlyMap<Primitive, CompiledPrimitive>,
   shortenMcpIdentities: ShortStrings,
 ): readonly ProviderComponent[] {
   switch (agent) {
     case "claude":
-      return claudeComponentsOf(charter, compiledPrimitives, shortenMcpIdentities);
+      return claudeComponentsOf(charter, compiledPrimitiveByPrimitive, shortenMcpIdentities);
   }
 }

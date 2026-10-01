@@ -5,11 +5,11 @@ markdown files, and `cw` checks them, tests them and compiles them into the
 files your coding agent actually reads.
 
 ```text
-.cw/charter/guide/no-any.md   ──cw build──▶   CLAUDE.md
-.cw/charter/sensor/lint.md                    .claude/rules/…
-.cw/charter/posture/secrets.md                .claude/settings.json (hooks, permissions)
-…                                             .claude/skills/…, .claude/agents/…
-                                              .mcp.json (cw mcp serve)
+.cw/charter/guide/no-any/index.md   ──cw build──▶   CLAUDE.md
+.cw/charter/sensor/lint/index.md                    .claude/rules/…
+.cw/charter/posture/secrets/index.md                .claude/settings.json (hooks, permissions)
+…                                                   .claude/skills/…, .claude/agents/…
+                                                    .mcp.json (cw mcp serve)
 ```
 
 ## Why
@@ -125,10 +125,13 @@ Each kind comes up at a different time:
 `cw kinds <kind>` gives the exact fields each kind takes. An identity is
 `kind:id`, and it names exactly one primitive across the whole charter. If two
 files claim the same identity, the build is refused and both files are named.
-An id is at most 40 characters, and may be grouped with `/`: `mcp:mfbs/billing`
-is kept at `.cw/charter/mcp/mfbs/billing.md`.
+Every primitive is a folder holding its `index.md`, and any other file in that
+folder is one of its assets, reached from the body as `./<file>`. An id is at
+most 40 characters, and may be grouped with `/`: `mcp:mfbs/billing` is kept at
+`.cw/charter/mcp/mfbs/billing/index.md`.
 
-`cw build` compiles every primitive to `.cw/out/<kind>/<id>.md`: its headers,
+`cw build` compiles every primitive to `.cw/out/<kind>/<id>/index.md`, with its
+assets copied beside it: its headers,
 then the bodies of the mixins it pulls in, then its own. What your agent's host
 is given points to that document, so you can open any primitive exactly as the
 agent reads it.

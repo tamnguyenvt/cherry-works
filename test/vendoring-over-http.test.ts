@@ -35,7 +35,7 @@ const sending = (method: string, json: unknown) => ({
 });
 
 test("the vendors are sent as the folders installed() answers (FR-122)", async () => {
-  const { portalRoutes, charterVendoringApp } = portal({ [new URL(".cw/vendor/acme/guide/one.md", repoPath).href]: guide("one") });
+  const { portalRoutes, charterVendoringApp } = portal({ [new URL(".cw/vendor/acme/guide/one/index.md", repoPath).href]: guide("one") });
 
   const answer = await portalRoutes.request("/vendors");
 

@@ -39,7 +39,7 @@ const builtinEntry = {
   description: new CwAuthorSkill().headers.description,
 };
 
-const oneGuide = { [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any") };
+const oneGuide = { [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any") };
 
 /** What one charter compiles to, put down: the paths it wrote, and what each of
  *  them holds. Compiling and projecting are asked together because neither is
@@ -48,7 +48,7 @@ const oneGuide = { [new URL("guide/no-any.md", root).href]: primitive("guide", "
 const built = async (authored: Readonly<Record<string, string>>, agents: readonly AgentProvider[] = [CLAUDE]) => {
   const held = new InMemoryFileReaders(authored);
   const charter = await loadCharterRoot(repo, held, new YamlParser());
-  const written = await putDownBy(repo, compile(charter, agents), agents, held);
+  const written = await putDownBy(repo, compile(charter, agents), held);
 
   return {
     charter,
@@ -68,8 +68,8 @@ test("compiling produces the listing, the charter file, and what the installed a
     ".cw/out/CHARTER.md",
     // Every primitive as it compiled, in the catalogue's order, since the
     // catalogue is what names each file (FR-139, FR-140).
-    ".cw/out/guide/no-any.md",
-    ".cw/out/skill/cw-author.md",
+    ".cw/out/guide/no-any/index.md",
+    ".cw/out/skill/cw-author/index.md",
     // The file that agent reads unasked, which is what sends it to the
     // orientation above.
     "CLAUDE.md",
@@ -105,8 +105,8 @@ test("a repository with no agent installed still compiles the whole neutral half
     ".cw/out/catalog.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
-    ".cw/out/guide/no-any.md",
-    ".cw/out/skill/cw-author.md",
+    ".cw/out/guide/no-any/index.md",
+    ".cw/out/skill/cw-author/index.md",
   ]);
 });
 
@@ -119,17 +119,17 @@ test("the full catalogue is written as the catalogue says it, one entry per line
       identity: "guide:no-any",
       kind: "guide",
       description: "What no-any is for, in one line.",
-      file: ".cw/out/guide/no-any.md",
+      file: ".cw/out/guide/no-any/index.md",
       globs: ["src/**/*.ts"],
     },
-    { ...builtinEntry, file: ".cw/out/skill/cw-author.md" },
+    { ...builtinEntry, file: ".cw/out/skill/cw-author/index.md" },
   ]);
   assert.ok(contents.includes("\n  {\n"));
 });
 
 test("every primitive compiles to one document holding its headers, then its mixins' bodies, then its own (FR-139)", async () => {
   const { files } = await built({
-    [new URL("mixin/house-style.md", root).href]: [
+    [new URL("mixin/house-style/index.md", root).href]: [
       "---",
       "kind: mixin",
       "id: house-style",
@@ -139,13 +139,13 @@ test("every primitive compiles to one document holding its headers, then its mix
       "LENT BODY",
       "",
     ].join("\n"),
-    [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", "OWN BODY").replace(
+    [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", "OWN BODY").replace(
       "---\n\nOWN BODY",
       "mixins: [house-style]\n---\n\nOWN BODY",
     ),
   });
 
-  const document = files[".cw/out/guide/no-any.md"] ?? "";
+  const document = files[".cw/out/guide/no-any/index.md"] ?? "";
 
   assert.match(document, /^---\nkind: guide\nid: no-any\n/);
   assert.match(document, /mixins: \["house-style"\]\n---\n\nLENT BODY\n\nOWN BODY\n/);
@@ -158,7 +158,7 @@ test("what the engine brings compiles to a file on disk like any other primitive
   const catalogue: readonly { identity: string; file: string }[] = JSON.parse(files[".cw/out/catalog.json"] ?? "");
 
   for (const { identity, file } of catalogue) assert.ok(files[file], `${identity} names ${file}, which was not written`);
-  assert.match(files[".cw/out/skill/cw-author.md"] ?? "", /^---\nkind: skill\nid: cw-author\n/);
+  assert.match(files[".cw/out/skill/cw-author/index.md"] ?? "", /^---\nkind: skill\nid: cw-author\n/);
 });
 
 test("one listing is compiled, and no reduced copy of it", async () => {
@@ -177,9 +177,9 @@ test("every compiled file ends with a newline, as a text file does", async () =>
 
 test("the same charter compiles byte for byte the same however its files were read", async () => {
   const authored = {
-    [new URL("skill/writing-tests.md", root).href]: primitive("skill", "writing-tests"),
-    [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any"),
-    [new URL("corpus/type-safety.md", root).href]: primitive("corpus", "type-safety"),
+    [new URL("skill/writing-tests/index.md", root).href]: primitive("skill", "writing-tests"),
+    [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any"),
+    [new URL("corpus/type-safety/index.md", root).href]: primitive("corpus", "type-safety"),
   };
   const reversed = Object.fromEntries(Object.entries(authored).reverse());
 
@@ -188,7 +188,7 @@ test("the same charter compiles byte for byte the same however its files were re
 
 test("a body reaches no listing: what carries a body is what an agent opens (FR-013)", async () => {
   const { files } = await built({
-    [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", "SECRET BODY TEXT"),
+    [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", "SECRET BODY TEXT"),
   });
 
   assert.ok(!(files[".cw/out/catalog.json"] ?? "").includes("SECRET BODY TEXT"));
@@ -196,8 +196,8 @@ test("a body reaches no listing: what carries a body is what an agent opens (FR-
 
 test("a charter with a broken file still compiles what the readable files hold", async () => {
   const { charter, files } = await built({
-    [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any"),
-    [new URL("guide/broken.md", root).href]: "---\nkind: guide\n---\n\nNo id, no description.\n",
+    [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any"),
+    [new URL("guide/broken/index.md", root).href]: "---\nkind: guide\n---\n\nNo id, no description.\n",
   });
 
   assert.equal(Object.keys(charter.allFaultsByFiles.files).length, 1);
@@ -210,7 +210,7 @@ test("a charter with a broken file still compiles what the readable files hold",
 test("a header YAML would read as something else is quoted in the compiled document, so it reads back as written", async () => {
   const run = '[ -z "$(git status --porcelain)" ] || exit 2';
   const { files } = await built({
-    [new URL("sensor/on-stop.md", root).href]: [
+    [new URL("sensor/on-stop/index.md", root).href]: [
       "---",
       "kind: sensor",
       "id: on-stop",
@@ -222,7 +222,7 @@ test("a header YAML would read as something else is quoted in the compiled docum
     ].join("\n"),
   });
 
-  const document = files[".cw/out/sensor/on-stop.md"] ?? "";
+  const document = files[".cw/out/sensor/on-stop/index.md"] ?? "";
   const [, headers = ""] = document.split("---\n");
 
   assert.deepEqual(new YamlParser().parse(headers).run, run);

@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** Headers and body reused by other primitives. A leaf: it lends its body to
  *  the host that pulls it in, and pulls in none of its own (FR-006). */
@@ -35,7 +36,7 @@ export class MixinPrimitive extends BasePrimitive<MixinHeaders> {
   };
 
   /** One mixin, or every fault its headers have (FR-004, FR-006). */
-  static of(record: Readonly<Record<string, unknown>>, body: string): MixinPrimitive {
-    return new MixinPrimitive(headersOf(MixinPrimitive, MixinHeadersSchema, record), body);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): MixinPrimitive {
+    return new MixinPrimitive(headersOf(MixinPrimitive, MixinHeadersSchema, record), body, assetFiles, primitiveLayer);
   }
 }

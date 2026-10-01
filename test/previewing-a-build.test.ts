@@ -59,7 +59,7 @@ const changed = ({ added, edited, deleted, unchanged }: DataDTOs.PlanSummary["da
   ]);
 
 test("a repository that has never been built would have every file created (FR-022)", async () => {
-  const { held, preview } = previewing({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+  const { held, preview } = previewing({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
   const before = await everything(held);
 
   const planSummaryDTO = await preview();
@@ -70,8 +70,8 @@ test("a repository that has never been built would have every file created (FR-0
     ".cw/out/catalog.json": "create",
     ".cw/out/mcp-origins.json": "create",
     ".cw/out/CHARTER.md": "create",
-    ".cw/out/skill/cw-author.md": "create",
-    ".cw/out/guide/no-any.md": "create",
+    ".cw/out/skill/cw-author/index.md": "create",
+    ".cw/out/guide/no-any/index.md": "create",
     "CLAUDE.md": "create",
     ".mcp.json": "create",
     ".claude/rules/guide-no-any.md": "create",
@@ -82,7 +82,7 @@ test("a repository that has never been built would have every file created (FR-0
 });
 
 test("a repository built from the charter as it stands has every file unchanged (SC-007)", async () => {
-  const { held, build, preview } = previewing({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+  const { held, build, preview } = previewing({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
   await build();
   const before = await everything(held);
 
@@ -93,9 +93,9 @@ test("a repository built from the charter as it stands has every file unchanged 
 });
 
 test("a rule edited since the last build would be updated, and its listings with it (FR-022)", async () => {
-  const { held, build, preview } = previewing({ ...compilingFor("claude"), [at("guide/no-any.md")]: guide("no-any") });
+  const { held, build, preview } = previewing({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
   await build();
-  held.write(new URL("guide/no-any.md", root), guide("no-any", "Never write `any`."));
+  held.write(new URL("guide/no-any/index.md", root), guide("no-any", "Never write `any`."));
 
   const previewed = planOf(await preview());
 
@@ -107,8 +107,8 @@ test("a rule edited since the last build would be updated, and its listings with
     ".cw/out/CHARTER.md": "unchanged",
     // The compiled document holds the body, so it changes with it; the engine's
     // own skill does not.
-    ".cw/out/guide/no-any.md": "update",
-    ".cw/out/skill/cw-author.md": "unchanged",
+    ".cw/out/guide/no-any/index.md": "update",
+    ".cw/out/skill/cw-author/index.md": "unchanged",
     // The section in the entry file is a pointer and says nothing of any
     // primitive, so no edit to a body reaches it.
     "CLAUDE.md": "unchanged",
@@ -123,11 +123,11 @@ test("a rule edited since the last build would be updated, and its listings with
 test("a projection whose primitive is gone would be deleted, and is not (FR-020, FR-022)", async () => {
   const { held, build, preview } = previewing({
     ...compilingFor("claude"),
-    [at("guide/no-any.md")]: guide("no-any"),
-    [at("agent/ship.md")]: primitive("agent", "ship", ['tools: ["Bash"]']),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    [at("agent/ship/index.md")]: primitive("agent", "ship", ['tools: ["Bash"]']),
   });
   await build();
-  held.remove(new URL("agent/ship.md", root));
+  held.remove(new URL("agent/ship/index.md", root));
 
   const previewed = planOf(await preview());
 
@@ -139,7 +139,7 @@ test("a projection whose primitive is gone would be deleted, and is not (FR-020,
 test("a host's settings file the charter has nothing more to say to is unchanged (FR-018)", async () => {
   const { held, build, preview } = previewing({
     ...compilingFor("claude"),
-    [at("posture/sandboxed.md")]: primitive("posture", "sandboxed", ['allow: ["Read(**)"]', 'deny: ["Bash(rm:*)"]']),
+    [at("posture/sandboxed/index.md")]: primitive("posture", "sandboxed", ['allow: ["Read(**)"]', 'deny: ["Bash(rm:*)"]']),
     [inRepo(".claude/settings.json")]: `${JSON.stringify({ model: "opus" })}\n`,
   });
   await build();
@@ -155,12 +155,12 @@ test("a host's settings file the charter has nothing more to say to is unchanged
 
 test("a charter with an error previews nothing, and says which files (FR-009)", async () => {
   const { preview } = previewing({
-    [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
   });
 
   const planSummaryDTO = await preview();
   const [previewed, faultsByFiles] = [planOf(planSummaryDTO), faultsOf(planSummaryDTO)];
 
   assert.deepEqual(changed(previewed ?? nothing), {});
-  assert.deepEqual(Object.keys(faultsByFiles?.files ?? {}), [".cw/charter/guide/no-any.md"]);
+  assert.deepEqual(Object.keys(faultsByFiles?.files ?? {}), [".cw/charter/guide/no-any/index.md"]);
 });

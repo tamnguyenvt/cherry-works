@@ -11,9 +11,9 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 
 /** A primitive of each layer that mentions "lint", and one that does not. */
 const charter = {
-  [at("sensor/check.md")]: primitive("sensor", "check", ["signal: PostToolUse", "run: pnpm lint"]),
-  [vendoredAt("guide/lint-clean.md")]: primitive("guide", "lint-clean"),
-  [at("guide/no-any.md")]: primitive("guide", "no-any"),
+  [at("sensor/check/index.md")]: primitive("sensor", "check", ["signal: PostToolUse", "run: pnpm lint"]),
+  [vendoredAt("guide/lint-clean/index.md")]: primitive("guide", "lint-clean"),
+  [at("guide/no-any/index.md")]: primitive("guide", "no-any"),
 };
 
 test("a word typed in the search lists what mentions it in every layer under the box, a header value included (FR-114)", async () => {

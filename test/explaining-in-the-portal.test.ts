@@ -10,9 +10,9 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 
 /** A guide pulling in a mixin and citing a corpus, and a test case naming it. */
 const charter = {
-  [at("guide/no-any.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:why", 'mixins: ["voice"]']),
-  [at("corpus/why.md")]: primitive("corpus", "why"),
-  [at("mixin/voice.md")]: primitive("mixin", "voice"),
+  [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:why", 'mixins: ["voice"]']),
+  [at("corpus/why/index.md")]: primitive("corpus", "why"),
+  [at("mixin/voice/index.md")]: primitive("mixin", "voice"),
   "file:///repo/.cw/test/activation.json": `${JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] })}\n`,
 };
 
@@ -36,12 +36,12 @@ test("a row's Explain opens what the engine says of it: when it comes up, what i
     assert.match(sections["What it pulls in"], /mixin:voice/);
     assert.match(sections["What it pulls in"], /corpus:why/);
     assert.match(sections["Tested by"], /\.cw\/test\/activation\.jsontouching src\/one\.ts activates guide:no-any/);
-    assert.match(sections["File"], /\.cw\/charter\/guide\/no-any\.md in the repo layer/);
+    assert.match(sections["File"], /\.cw\/charter\/guide\/no-any\/index\.md in the repo layer/);
   });
 });
 
 test("a sensor's explanation shows the signal it answers to and the command it runs", async () => {
-  await inTheBrowser({ [at("sensor/check.md")]: primitive("sensor", "check", ["signal: Stop", "run: pnpm lint"]) }, async (page) => {
+  await inTheBrowser({ [at("sensor/check/index.md")]: primitive("sensor", "check", ["signal: Stop", "run: pnpm lint"]) }, async (page) => {
     await page.getByRole("radio", { name: "sensor" }).click();
     await page.getByLabel("Explain sensor:check").click();
     await page.getByRole("dialog").getByRole("region").first().waitFor();
@@ -70,8 +70,9 @@ test("every identity in an explanation opens its own (FR-116)", async () => {
 
 test("a script's explanation names the primitives whose body names it (FR-163)", async () => {
   const naming = {
-    [at("script/check.md")]: primitive("script", "check", ["extension: sh"]),
-    [at("skill/release.md")]: ["---", "kind: skill", "id: release", "description: About release.", 'triggers: ["release"]', "---", "", "Run script:check.", ""].join("\n"),
+    [at("script/check/index.md")]: primitive("script", "check", ["executionPath: ./run.sh"]),
+    [at("script/check/run.sh")]: "true\n",
+    [at("skill/release/index.md")]: ["---", "kind: skill", "id: release", "description: About release.", 'triggers: ["release"]', "---", "", "Run script:check.", ""].join("\n"),
   };
   await inTheBrowser(naming, async (page) => {
     await page.getByRole("radio", { name: "script" }).click();
@@ -83,7 +84,7 @@ test("a script's explanation names the primitives whose body names it (FR-163)",
 });
 
 test("a rationale no corpus answers to is said not to resolve", async () => {
-  await inTheBrowser({ [at("guide/no-any.md")]: primitive("guide", "no-any", ["rationale: corpus:gone"]) }, async (page) => {
+  await inTheBrowser({ [at("guide/no-any/index.md")]: primitive("guide", "no-any", ["rationale: corpus:gone"]) }, async (page) => {
     await page.getByLabel("Explain guide:no-any").click();
     await page.getByRole("dialog").getByRole("region").first().waitFor();
 

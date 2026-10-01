@@ -1,4 +1,4 @@
-import type { ProjectionPolicy } from "../ProjectionPolicy.js";
+import type { Projection, ProjectionPolicy } from "../ProjectionPolicy.js";
 
 /**
  * One file a host reads, whichever host: where it goes, what it holds, and how
@@ -15,8 +15,13 @@ export abstract class ProviderComponent {
     readonly path: string,
     /** The whole of what the file holds, or of this engine's part of it. */
     readonly document: string,
-    readonly projection: ProjectionPolicy,
+    readonly projectionPolicy: ProjectionPolicy,
   ) {}
+
+  /** The file it is put down as, and how it goes down over what is there. */
+  get projections(): readonly Projection[] {
+    return [{ file: this.path, contents: this.document, projectionPolicy: this.projectionPolicy, executable: false }];
+  }
 
   /** Which of its host's kinds this is. Each class declares it as a literal. */
   abstract readonly kind: string;

@@ -1,14 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { folderURL } from "../src/hexagon/domain/path.js";
-import { CharterRoot, REPO_SCOPE, VENDOR_SCOPE, ScopedPrimitive } from "../src/hexagon/domain/models/charter/CharterRoot.js";
+import { CharterRoot } from "../src/hexagon/domain/models/charter/CharterRoot.js";
+import { REPO_LAYER, VENDOR_LAYER } from "../src/hexagon/domain/models/charter/PrimitiveLayer.js";
 import { FaultsByFile } from "../src/hexagon/domain/models/DomainFault.js";
 import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
 import { MixinPrimitive } from "../src/hexagon/domain/models/charter/primitive/MixinPrimitive.js";
 import { CorpusPrimitive } from "../src/hexagon/domain/models/charter/primitive/CorpusPrimitive.js";
 import { McpPrimitive } from "../src/hexagon/domain/models/charter/primitive/McpPrimitive.js";
 import { AgentPrimitive } from "../src/hexagon/domain/models/charter/primitive/AgentPrimitive.js";
-import type { Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
+import { PRIMITIVE_CLASSES, type Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
 import { compile } from "../src/hexagon/domain/services/compile/compileService.js";
 
 const root = folderURL("file:///repo/.cw/charter/");
@@ -16,23 +17,26 @@ const root = folderURL("file:///repo/.cw/charter/");
 /** One primitive that has already been read, under the file it was read from:
  *  what validate is given, and what a file that came through reading clean
  *  amounts to. */
-type Authored = ScopedPrimitive;
+type Authored = Primitive;
 
 /** One authored primitive as the charter holds it: named as it was authored,
  *  whichever layer the file arrived in. */
-const scoped = (vendor: string | undefined, file: string, primitive: Primitive): Authored =>
-  new ScopedPrimitive(`${primitive.kind}:${primitive.headers.id}`, vendor === undefined ? REPO_SCOPE : VENDOR_SCOPE, file, primitive);
+const layered = (vendor: string | undefined, file: string, primitive: Primitive): Authored =>
+  PRIMITIVE_CLASSES.find((one) => one.kind === primitive.kind)!.of(primitive.headers, primitive.body, [], {
+    name: vendor === undefined ? REPO_LAYER : VENDOR_LAYER,
+    charterFolder: file.slice(0, -`/${primitive.primitiveFolder}/index.md`.length),
+  });
 
 const at = (file: string) => new URL(file, root).href;
 
 const guide = (
   id: string,
-  file = `guide/${id}.md`,
+  file = `guide/${id}/index.md`,
   headers: Record<string, unknown> = {},
   vendor?: string,
   body = "Body.",
 ): Authored =>
-  scoped(
+  layered(
     vendor,
     at(file),
     GuidePrimitive.of(
@@ -48,15 +52,15 @@ const guide = (
   );
 
 const mixin = (id: string, vendor?: string): Authored =>
-  scoped(vendor, at(`mixin/${id}.md`), MixinPrimitive.of({ id, description: `The ${id} mixin.` }, "Body."));
+  layered(vendor, at(`mixin/${id}/index.md`), MixinPrimitive.of({ id, description: `The ${id} mixin.` }, "Body."));
 
 const corpus = (id: string, vendor?: string): Authored =>
-  scoped(vendor, at(`corpus/${id}.md`), CorpusPrimitive.of({ id, description: `Why ${id}.` }, "Body."));
+  layered(vendor, at(`corpus/${id}/index.md`), CorpusPrimitive.of({ id, description: `Why ${id}.` }, "Body."));
 
 const mcp = (id: string, vendor?: string, headers: Record<string, unknown> = {}): Authored =>
-  scoped(
+  layered(
     vendor,
-    at(vendor === undefined ? `mcp/${id}.md` : `../vendor/${vendor}/mcp/${id}.md`),
+    at(vendor === undefined ? `mcp/${id.replace(/\//g, "-")}/index.md` : `../vendor/${vendor}/mcp/${id.replace(/\//g, "-")}/index.md`),
     McpPrimitive.of(
       { id, description: `The ${id} place.`, endpoint: "https://mcp.example.com/", auth: ["oauth"], tools: ["search"], ...headers },
       "Body.",
@@ -64,11 +68,11 @@ const mcp = (id: string, vendor?: string, headers: Record<string, unknown> = {})
   );
 
 /** Every place a charter's mcps reach, as a build writes them (FR-145). */
-const mcpOriginsOf = (charter: CharterRoot) => compile(charter, []).mcpOrigins;
+const mcpOriginsOf = (charter: CharterRoot) => compile(charter, []).mcpOrigins.origins;
 
 /** Every mcp of these, named in a guide's body so none is reported as unnamed. */
 const namedMcps = (...mcps: Authored[]): Authored[] => [
-  guide("no-any", "guide/no-any.md", {}, undefined, `Read the reasons in ${mcps.map((one) => one.identity).join(" and ")}.`),
+  guide("no-any", "guide/no-any/index.md", {}, undefined, `Read the reasons in ${mcps.map((one) => one.identity).join(" and ")}.`),
   ...mcps,
 ];
 
@@ -83,67 +87,67 @@ const messages = (faultsByFiles: FaultsByFile["files"]) =>
     .join("\n");
 
 test("a charter whose files each hold their own contract has nothing left to answer", () => {
-  assert.deepEqual(faultsByFilesOf(guide("no-any", "guide/no-any.md", { mixins: ["ts-defaults"] }), mixin("ts-defaults")), {});
+  assert.deepEqual(faultsByFilesOf(guide("no-any", "guide/no-any/index.md", { mixins: ["ts-defaults"] }), mixin("ts-defaults")), {});
 });
 
-test("one identity declared twice in a layer is a collision naming both files", () => {
-  const faultsByFiles = faultsByFilesOf(guide("no-any"), guide("no-any", "guide/copied.md"));
-  assert.deepEqual(Object.keys(faultsByFiles), [at("guide/copied.md")]);
+test("one identity declared in two layers is a collision naming both files", () => {
+  const faultsByFiles = faultsByFilesOf(guide("no-any"), guide("no-any", "../vendor/acme/guide/no-any/index.md"));
+  assert.deepEqual(Object.keys(faultsByFiles), [at("../vendor/acme/guide/no-any/index.md")]);
   assert.match(messages(faultsByFiles), /guide:no-any/);
-  assert.match(messages(faultsByFiles), /guide\/no-any\.md/);
+  assert.match(messages(faultsByFiles), /guide\/no-any\/index\.md/);
 });
 
 test("two identities one host name would be given are a collision under the second file (FR-141)", () => {
   const faultsByFiles = faultsByFilesOf(guide("a/b"), guide("a-b"));
-  assert.deepEqual(Object.keys(faultsByFiles), [at("guide/a-b.md")]);
+  assert.deepEqual(Object.keys(faultsByFiles), [at("guide/a-b/index.md")]);
   assert.match(messages(faultsByFiles), /"guide:a-b" and "guide:a\/b" are both named "guide-a-b"/);
 });
 
 test("one id under two kinds is two identities, not a collision", () => {
-  assert.deepEqual(faultsByFilesOf(guide("naming", "guide/naming.md", { mixins: ["naming"] }), mixin("naming")), {});
+  assert.deepEqual(faultsByFilesOf(guide("naming", "guide/naming/index.md", { mixins: ["naming"] }), mixin("naming")), {});
 });
 
 test("an identity compares as kind:id, never as a file basename", () => {
-  assert.deepEqual(faultsByFilesOf(guide("reject-any", "guide/no-any.md", { mixins: ["no-any"] }), mixin("no-any")), {});
+  assert.deepEqual(faultsByFilesOf(guide("reject-any", "guide/no-any/index.md", { mixins: ["no-any"] }), mixin("no-any")), {});
 });
 
 test("a mixin no primitive in this layer holds is refused, naming it", () => {
-  const faultsByFiles = faultsByFilesOf(guide("no-any", "guide/no-any.md", { mixins: ["absent"] }));
-  assert.deepEqual(Object.keys(faultsByFiles), [at("guide/no-any.md")]);
+  const faultsByFiles = faultsByFilesOf(guide("no-any", "guide/no-any/index.md", { mixins: ["absent"] }));
+  assert.deepEqual(Object.keys(faultsByFiles), [at("guide/no-any/index.md")]);
   assert.match(messages(faultsByFiles), /absent/);
 });
 
 test("a mixin this layer does hold is nothing to report", () => {
-  assert.deepEqual(faultsByFilesOf(mixin("ts-defaults"), guide("no-any", "guide/no-any.md", { mixins: ["ts-defaults"] })), {});
+  assert.deepEqual(faultsByFilesOf(mixin("ts-defaults"), guide("no-any", "guide/no-any/index.md", { mixins: ["ts-defaults"] })), {});
 });
 
 test("every problem in a run is reported, not only the first", () => {
   const faultsByFiles = faultsByFilesOf(
     guide("no-any"),
-    guide("no-any", "guide/copied.md"),
-    guide("other", "guide/other.md", { mixins: ["absent"] }),
+    guide("no-any", "guide/copied/index.md"),
+    guide("other", "guide/other/index.md", { mixins: ["absent"] }),
   );
   assert.equal(Object.keys(faultsByFiles).length, 2);
 });
 
 test("a vendored layer is asked the same questions the repository's own is", () => {
-  const copied = guide("no-any", "vendor/team/guide/copied.md", {}, "team");
-  const faultsByFiles = faultsByFilesOf(guide("no-any", "vendor/team/guide/no-any.md", {}, "team"), copied);
+  const copied = guide("no-any", "vendor/team/guide/copied/index.md", {}, "team");
+  const faultsByFiles = faultsByFilesOf(guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team"), copied);
 
   assert.deepEqual(Object.keys(faultsByFiles), [copied.file]);
 });
 
 test("a vendor claiming an identity this repository authored is a collision, naming both files", () => {
-  const copied = guide("no-any", "vendor/team/guide/no-any.md", {}, "team");
+  const copied = guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team");
   const faultsByFiles = faultsByFilesOf(guide("no-any"), copied);
 
   assert.deepEqual(Object.keys(faultsByFiles), [copied.file]);
-  assert.match(messages(faultsByFiles), /"guide:no-any" is already declared by .*guide\/no-any\.md/);
+  assert.match(messages(faultsByFiles), /"guide:no-any" is already declared by .*guide\/no-any\/index\.md/);
 });
 
 test("two files claiming one identity collide, wherever they were authored", () => {
-  const copied = guide("no-any", "vendor/team/guide/copied.md", {}, "team");
-  const faultsByFiles = faultsByFilesOf(guide("no-any", "vendor/team/guide/no-any.md", {}, "team"), copied);
+  const copied = guide("no-any", "vendor/team/guide/copied/index.md", {}, "team");
+  const faultsByFiles = faultsByFilesOf(guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team"), copied);
 
   assert.deepEqual(Object.keys(faultsByFiles), [copied.file]);
   assert.match(messages(faultsByFiles), /"guide:no-any"/);
@@ -151,7 +155,7 @@ test("two files claiming one identity collide, wherever they were authored", () 
 
 test("a host names a vendored mixin the way it names one of its own", () => {
   const faultsByFiles = faultsByFilesOf(
-    guide("no-any", "guide/no-any.md", { mixins: ["ts-defaults"] }),
+    guide("no-any", "guide/no-any/index.md", { mixins: ["ts-defaults"] }),
     mixin("ts-defaults", "team"),
   );
 
@@ -160,15 +164,15 @@ test("a host names a vendored mixin the way it names one of its own", () => {
 
 test("a rationale the charter holds a corpus for is nothing to report", () => {
   assert.deepEqual(
-    faultsByFilesOf(corpus("type-safety"), guide("no-any", "guide/no-any.md", { rationale: "corpus:type-safety" })),
+    faultsByFilesOf(corpus("type-safety"), guide("no-any", "guide/no-any/index.md", { rationale: "corpus:type-safety" })),
     {},
   );
 });
 
 test("a rationale no corpus answers to is said, and does not fail the charter", () => {
-  const faultsByFiles = faultsByFilesOf(guide("no-any", "guide/no-any.md", { rationale: "corpus:absent" }));
+  const faultsByFiles = faultsByFilesOf(guide("no-any", "guide/no-any/index.md", { rationale: "corpus:absent" }));
 
-  assert.deepEqual(Object.keys(faultsByFiles), [at("guide/no-any.md")]);
+  assert.deepEqual(Object.keys(faultsByFiles), [at("guide/no-any/index.md")]);
   assert.deepEqual(
     faultsIn(faultsByFiles).map((one) => one.severity),
     ["warn"],
@@ -180,7 +184,7 @@ test("a primitive cites a vendored corpus the way it cites one of its own", () =
   assert.deepEqual(
     faultsByFilesOf(
       corpus("type-safety", "team"),
-      guide("no-any", "guide/no-any.md", { rationale: "corpus:type-safety" }),
+      guide("no-any", "guide/no-any/index.md", { rationale: "corpus:type-safety" }),
     ),
     {},
   );
@@ -189,7 +193,7 @@ test("a primitive cites a vendored corpus the way it cites one of its own", () =
 test("a corpus no primitive cites is said under its own file, and does not fail the charter (FR-014)", () => {
   const faultsByFiles = faultsByFilesOf(corpus("type-safety"), guide("no-any"));
 
-  assert.deepEqual(Object.keys(faultsByFiles), [at("corpus/type-safety.md")]);
+  assert.deepEqual(Object.keys(faultsByFiles), [at("corpus/type-safety/index.md")]);
   assert.deepEqual(faultsIn(faultsByFiles).map((one) => one.severity), ["warn"]);
   assert.match(messages(faultsByFiles), /No primitive cites "corpus:type-safety"/);
 });
@@ -197,7 +201,7 @@ test("a corpus no primitive cites is said under its own file, and does not fail 
 test("a mixin no primitive pulls in is said under its own file, and does not fail the charter (FR-014)", () => {
   const faultsByFiles = faultsByFilesOf(mixin("ts-defaults"), guide("no-any"));
 
-  assert.deepEqual(Object.keys(faultsByFiles), [at("mixin/ts-defaults.md")]);
+  assert.deepEqual(Object.keys(faultsByFiles), [at("mixin/ts-defaults/index.md")]);
   assert.deepEqual(faultsIn(faultsByFiles).map((one) => one.severity), ["warn"]);
   assert.match(messages(faultsByFiles), /No primitive pulls in the mixin "ts-defaults"/);
 });
@@ -205,27 +209,27 @@ test("a mixin no primitive pulls in is said under its own file, and does not fai
 test("a vendored corpus and mixin nobody uses are said too, so the vendor can be taken out (FR-014)", () => {
   const faultsByFiles = faultsByFilesOf(corpus("type-safety", "team"), mixin("ts-defaults", "team"));
 
-  assert.deepEqual(Object.keys(faultsByFiles).sort(), [at("corpus/type-safety.md"), at("mixin/ts-defaults.md")]);
+  assert.deepEqual(Object.keys(faultsByFiles).sort(), [at("corpus/type-safety/index.md"), at("mixin/ts-defaults/index.md")]);
 });
 
 test("a corpus cited only by a vendored primitive is cited", () => {
   assert.deepEqual(
-    faultsByFilesOf(corpus("type-safety"), guide("no-any", "guide/no-any.md", { rationale: "corpus:type-safety" }, "team")),
+    faultsByFilesOf(corpus("type-safety"), guide("no-any", "guide/no-any/index.md", { rationale: "corpus:type-safety" }, "team")),
     {},
   );
 });
 
 test("an mcp a body names is nothing to report, whichever layer authored it (FR-143)", () => {
-  const namingGuide = guide("no-any", "guide/no-any.md", {}, undefined, "Take the requirements from mcp:mfbs/billing.");
+  const namingGuide = guide("no-any", "guide/no-any/index.md", {}, undefined, "Take the requirements from mcp:mfbs/billing.");
   assert.deepEqual(faultsByFilesOf(namingGuide, mcp("mfbs/billing", "team")), {});
 });
 
 test("a body naming an mcp no layer holds is an error under its file, once however often it names it (FR-143)", () => {
   const faultsByFiles = faultsByFilesOf(
-    guide("no-any", "guide/no-any.md", {}, undefined, "Ask mcp:missing, and then mcp:missing again."),
+    guide("no-any", "guide/no-any/index.md", {}, undefined, "Ask mcp:missing, and then mcp:missing again."),
   );
 
-  assert.deepEqual(Object.keys(faultsByFiles), [at("guide/no-any.md")]);
+  assert.deepEqual(Object.keys(faultsByFiles), [at("guide/no-any/index.md")]);
   assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["error"]);
   assert.match(messages(faultsByFiles), /names "mcp:missing", and this charter holds no primitive of that identity/);
 });
@@ -233,13 +237,13 @@ test("a body naming an mcp no layer holds is an error under its file, once howev
 test("an mcp no primitive names is a warning under its own file (FR-144)", () => {
   const faultsByFiles = faultsByFilesOf(mcp("mfbs/billing"));
 
-  assert.deepEqual(Object.keys(faultsByFiles), [at("mcp/mfbs/billing.md")]);
+  assert.deepEqual(Object.keys(faultsByFiles), [at("mcp/mfbs/billing/index.md")]);
   assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["warn"]);
   assert.match(messages(faultsByFiles), /No primitive names "mcp:mfbs\/billing" in its body/);
 });
 
 const agent = (id: string, tools: readonly string[]): Authored =>
-  scoped(undefined, at(`agent/${id}.md`), AgentPrimitive.of({ id, description: `The ${id} role.`, tools }, "Body."));
+  layered(undefined, at(`agent/${id}/index.md`), AgentPrimitive.of({ id, description: `The ${id} role.`, tools }, "Body."));
 
 test("an agent holding an mcp, whole or one tool it declares, is nothing to report, and names that mcp (FR-144, FR-156)", () => {
   assert.deepEqual(
@@ -258,7 +262,7 @@ test("an agent holding an mcp no layer holds, a tool that mcp does not declare, 
     mcp("linear", undefined, { tools: ["list_issues"] }),
   );
 
-  assert.deepEqual(Object.keys(faultsByFiles), [at("agent/scanner.md")]);
+  assert.deepEqual(Object.keys(faultsByFiles), [at("agent/scanner/index.md")]);
   assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["error", "error", "error"]);
   assert.match(messages(faultsByFiles), /"mcp:missing"/);
   assert.match(messages(faultsByFiles), /"mcp:linear:delete_team"/);
@@ -325,7 +329,7 @@ test("one command handed its token in two variables is an error under both files
     ...namedMcps(mcp("one", undefined, command("GITHUB_TOKEN", "a")), mcp("two", undefined, command("GH_TOKEN", "b"))),
   );
 
-  assert.deepEqual(Object.keys(faultsByFiles).sort(), [at("mcp/one.md"), at("mcp/two.md")]);
+  assert.deepEqual(Object.keys(faultsByFiles).sort(), [at("mcp/one/index.md"), at("mcp/two/index.md")]);
   assert.deepEqual(faultsIn(faultsByFiles).map((fault) => fault.severity), ["error", "error"]);
   assert.match(messages(faultsByFiles), /One process reads its token from one variable/);
 });

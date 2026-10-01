@@ -16,9 +16,9 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 /** One primitive of each layer, and a sensor whose signal and command are
  *  headers the catalogue does not record. */
 const charter = {
-  [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
-  [new URL("sensor/lint.md", root).href]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
-  [new URL("guide/small-diffs.md", vendored).href]: primitive("guide", "small-diffs"),
+  [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
+  [new URL("sensor/lint/index.md", root).href]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
+  [new URL("guide/small-diffs/index.md", vendored).href]: primitive("guide", "small-diffs"),
 };
 
 const fullListOf = async (files: Readonly<Record<string, string>>, matching?: string) => {
@@ -27,16 +27,16 @@ const fullListOf = async (files: Readonly<Record<string, string>>, matching?: st
   return charterAuthoringApp.fullList(matching);
 };
 
-const identitiesIn = (answer: DataDTOs.ScopedPrimitives | DataDTOs.FaultsByFile) => {
-  assert.equal(answer.type, "ScopedPrimitives");
-  return DataDTOs.ScopedPrimitives.parse(answer).data.primitives.map(({ data }) => data.identity);
+const identitiesIn = (answer: DataDTOs.Primitives | DataDTOs.FaultsByFile) => {
+  assert.equal(answer.type, "Primitives");
+  return DataDTOs.Primitives.parse(answer).data.primitives.map(({ data }) => data.identity);
 };
 
 test("every primitive of every layer is listed by identity, each under the layer it arrived in (FR-112)", async () => {
-  const answer = DataDTOs.ScopedPrimitives.parse(await fullListOf(charter));
+  const answer = DataDTOs.Primitives.parse(await fullListOf(charter));
 
   assert.deepEqual(
-    answer.data.primitives.map(({ data: { identity, scope } }) => [identity, scope]),
+    answer.data.primitives.map(({ data: { identity, layerName } }) => [identity, layerName]),
     [
       ["guide:no-any", "repo"],
       ["guide:small-diffs", "vendor"],
@@ -47,10 +47,10 @@ test("every primitive of every layer is listed by identity, each under the layer
 });
 
 test("each primitive carries every header it declared, the ones the catalogue does not record included", async () => {
-  const answer = DataDTOs.ScopedPrimitives.parse(await fullListOf(charter));
+  const answer = DataDTOs.Primitives.parse(await fullListOf(charter));
   const sensor = answer.data.primitives.find(({ data }) => data.identity === "sensor:lint")!;
 
-  assert.equal(sensor.data.file, ".cw/charter/sensor/lint.md");
+  assert.equal(sensor.data.file, ".cw/charter/sensor/lint/index.md");
   assert.equal(sensor.data.headers.signal, "PostToolUse");
   assert.equal(sensor.data.headers.run, "pnpm lint");
 });
@@ -71,8 +71,8 @@ test("a word nothing mentions lists nothing, and is no fault", async () => {
 });
 
 test("a charter with an error lists nothing and hands back what is wrong under its file", async () => {
-  const answer = await fullListOf({ [new URL("guide/broken.md", root).href]: "not a primitive at all\n" });
+  const answer = await fullListOf({ [new URL("guide/broken/index.md", root).href]: "not a primitive at all\n" });
 
   assert.equal(answer.type, "FaultsByFile");
-  assert.deepEqual(Object.keys(DataDTOs.FaultsByFile.parse(answer).data.files), [".cw/charter/guide/broken.md"]);
+  assert.deepEqual(Object.keys(DataDTOs.FaultsByFile.parse(answer).data.files), [".cw/charter/guide/broken/index.md"]);
 });

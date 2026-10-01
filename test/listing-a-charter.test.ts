@@ -78,9 +78,9 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
 };
 
 const charter = {
-  [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", ["tags: [types]"]),
-  [new URL("skill/writing-tests.md", root).href]: primitive("skill", "writing-tests"),
-  [new URL("corpus/type-safety.md", root).href]: primitive("corpus", "type-safety"),
+  [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["tags: [types]"]),
+  [new URL("skill/writing-tests/index.md", root).href]: primitive("skill", "writing-tests"),
+  [new URL("corpus/type-safety/index.md", root).href]: primitive("corpus", "type-safety"),
 };
 
 test("every primitive is listed, ordered by identity, with what it is for", async () => {
@@ -103,7 +103,7 @@ test("every primitive is listed, ordered by identity, with what it is for", asyn
 test("the full listing names the file each primitive was authored in, and the files it applies to (FR-140)", async () => {
   const { results } = await run(charter);
 
-  assert.match(results, /^ {2}\.cw\/charter\/guide\/no-any\.md$/m);
+  assert.match(results, /^ {2}\.cw\/charter\/guide\/no-any\/index\.md$/m);
   assert.match(results, /^ {2}globs: src\/\*\*\/\*\.ts$/m);
   // Every other header is read from the file the line above names.
   assert.doesNotMatch(results, /tags:/);
@@ -111,11 +111,11 @@ test("the full listing names the file each primitive was authored in, and the fi
 
 test("a listing is read off the charter, so every layer is named where it was authored, not where it compiled (FR-140)", async () => {
   const { results } = await run({
-    "file:///repo/.cw/vendor/team/guide/no-console.md": primitive("guide", "no-console"),
+    "file:///repo/.cw/vendor/team/guide/no-console/index.md": primitive("guide", "no-console"),
   });
 
-  assert.match(results, /^ {2}\.cw\/vendor\/team\/guide\/no-console\.md$/m);
-  assert.match(results, /^ {2}\(built into cw\)\/skill\/cw-author\.md$/m);
+  assert.match(results, /^ {2}\.cw\/vendor\/team\/guide\/no-console\/index\.md$/m);
+  assert.match(results, /^ {2}\(built into cw\)\/skill\/cw-author\/index\.md$/m);
   assert.doesNotMatch(results, /\.cw\/out\//);
 });
 
@@ -163,7 +163,7 @@ test("a word that is no kind is refused, naming it and the kinds it could have b
 
 test("a charter with an error lists nothing and sends the user to doctor", async () => {
   const { code, results, problems } = await run({
-    [new URL("guide/no-any.md", root).href]: ["---", "kind: guide", "id: no-any", "---", "", "Body.", ""].join("\n"),
+    [new URL("guide/no-any/index.md", root).href]: ["---", "kind: guide", "id: no-any", "---", "", "Body.", ""].join("\n"),
   });
 
   assert.equal(code, EXIT_FAILURE);

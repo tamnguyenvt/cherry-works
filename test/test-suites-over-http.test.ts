@@ -21,7 +21,7 @@ const suiteText = (written: unknown) => `${JSON.stringify(written, undefined, 2)
 /** A repository with one guide, one passing case and one failing one. */
 const withOnePassingOneFailing = () => ({
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: [] })}\n`,
-  [at(".cw/charter/guide/no-any.md")]: guide("no-any"),
+  [at(".cw/charter/guide/no-any/index.md")]: guide("no-any"),
   [at(".cw/test/guides.json")]: suiteText({
     cases: [
       { do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } },

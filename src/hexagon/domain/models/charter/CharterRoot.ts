@@ -1,69 +1,15 @@
 import { covers } from "../../../utils/globs.js";
-import { identityOf, KINDS, PRIMITIVE_CLASSES, primitiveOf, type NormalizedIdentity, type Primitive } from "./primitive/Primitive.js";
+import { primitiveOf, type Primitive } from "./primitive/Primitive.js";
 import { CharterRootFault, FaultsByFile, type DomainFault } from "../DomainFault.js";
 import type { ForParsingYaml } from "../../../port/zdriven/ForParsingYaml.js";
 import { MCP_MENTION, MCP_TOOL_REFERENCE, McpPrimitive } from "./primitive/McpPrimitive.js";
-import { SCRIPT_MENTION } from "./primitive/ScriptPrimitive.js";
+import { SCRIPT_MENTION, ScriptPrimitive } from "./primitive/ScriptPrimitive.js";
+import { BasePrimitive, type NormalizedIdentity, type AssetFile } from "./primitive/BasePrimitive.js";
+import { BUILTIN_LAYER, BUILTIN_PRIMITIVE_LAYER, REPO_LAYER, VENDOR_LAYER, type LayerName } from "./PrimitiveLayer.js";
 import { TEMPLATE_MENTION } from "./primitive/TemplatePrimitive.js";
 import { AgentPrimitive } from "./primitive/AgentPrimitive.js";
+import { SensorPrimitive } from "./primitive/SensorPrimitive.js";
 
-/** What this repository authored itself. */
-export const REPO_SCOPE = "repo";
-
-/** What it installed from someone else, under `vendor/<name>/` (FR-023). */
-export const VENDOR_SCOPE = "vendor";
-
-/** What the running engine brings itself: supplied on every read and kept
- *  nowhere in the repository, so nothing can refresh, edit or remove it
- *  (FR-015, FR-016). */
-export const BUILTIN_SCOPE = "builtin";
-
-/** What a primitive of the engine's layer names its file by. It is a name and
- *  not a location — there is no file to open — and it says which layer the
- *  primitive came from the way `.cw/vendor/<name>/` does (plan §3.1). */
-export const BUILTIN_PATH_PREFIX = "(built into cw)";
-
-/** Whose layer a primitive came from, and there are only the three. It says
- *  where a primitive was written, never what it is called: one charter has one
- *  identity space, whichever layer a file arrived in (FR-014, FR-019). */
-export type Scope = typeof REPO_SCOPE | typeof VENDOR_SCOPE | typeof BUILTIN_SCOPE;
-
-/** One primitive as the whole charter sees it: what it is called, the file it
- *  was authored in, and which layer that file arrived in. */
-export class ScopedPrimitive {
-  constructor(
-    /** What the whole charter names this primitive by: `guide:no-any`, whoever
-     *  authored it. A vendor's primitive is named the way this repository's is,
-     *  and two files claiming one identity are a fault rather than two primitives
-     *  (FR-014, FR-015). */
-    readonly identity: string,
-    readonly scope: Scope,
-    readonly file: string,
-    readonly primitive: Primitive,
-  ) {
-    this.normIdentity = identity.replace(/[:/]/g, "-") as NormalizedIdentity;
-  }
-
-  /** The identity as every name given to a host writes it, `:` and `/` as `-`:
-   *  `guide-mfbs-no-any` for `guide:mfbs/no-any` (FR-141). Made here, once, so
-   *  nothing that names a host's file or a place's tools spells it again. */
-  readonly normIdentity: NormalizedIdentity;
-
-  /** Whether a word someone searched for is anywhere a reader would look for
-   *  it: the identity, the kind, what it is for, when its kind comes up, its
-   *  file, or any header it declared — ignoring case, since whoever typed it
-   *  did not know how it was written (FR-114). */
-  mentions(word: string): boolean {
-    const activatesWhen = PRIMITIVE_CLASSES.find((one) => one.kind === this.primitive.kind)!.activatesWhen;
-    const headerValues = Object.values(this.primitive.headers).flatMap((value) =>
-      value === undefined ? [] : Array.isArray(value) ? value : [String(value)],
-    );
-    const loweredWord = word.toLowerCase();
-    return [this.identity, this.primitive.kind, activatesWhen, this.file, ...headerValues].some((one) =>
-      one.toLowerCase().includes(loweredWord),
-    );
-  }
-}
 
 /**
  * One charter, read: what the engine brings, what this repository authored,
@@ -78,11 +24,11 @@ export class CharterRoot {
   constructor(
     /** Every primitive this charter holds, whichever layer authored it: what
      *  the engine brings, what this repository wrote and what it installed
-     *  under `vendor/`, each under the file it was authored in and the scope
+     *  under `vendor/`, each under the file it was authored in and the layer
      *  its layer gives it. What a primitive says is its own; where it was
      *  written is what a fault is filed under (SC-003) and what the catalogue
      *  records (FR-011). */
-    readonly primitives: readonly ScopedPrimitive[],
+    readonly primitives: readonly Primitive[],
     /** The files that were meant to be primitives and could not be read as one,
      *  and why, wherever they were. Held rather than raised: a charter is worth
      *  having with one file broken, and the broken one is worth naming
@@ -103,8 +49,8 @@ export class CharterRoot {
   get mixins(): ReadonlyMap<string, Primitive> {
     return new Map(
       this.primitives
-        .filter(({ primitive }) => primitive.kind === "mixin")
-        .map((one) => [one.primitive.headers.id, one.primitive]),
+        .filter((primitive) => primitive.kind === "mixin")
+        .map((one) => [one.headers.id, one]),
     );
   }
 
@@ -119,8 +65,8 @@ export class CharterRoot {
    * A collision is what `compositeFaultsByFiles` is for, and it names both files
    * there; nothing is asked to explain a charter that has one (SC-006).
    */
-  get primitiveById(): ReadonlyMap<string, ScopedPrimitive> {
-    const byIdentity = new Map<string, ScopedPrimitive>();
+  get primitiveById(): ReadonlyMap<string, Primitive> {
+    const byIdentity = new Map<string, Primitive>();
     for (const one of this.primitives) if (!byIdentity.has(one.identity)) byIdentity.set(one.identity, one);
     return byIdentity;
   }
@@ -129,55 +75,56 @@ export class CharterRoot {
    *  authored: `corpus:<id>`. */
   get corpora(): ReadonlySet<string> {
     return new Set(
-      this.primitives.filter(({ primitive }) => primitive.kind === "corpus").map((one) => one.identity),
+      this.primitives.filter((primitive) => primitive.kind === "corpus").map((one) => one.identity),
     );
   }
 
   /** Every mixin one primitive uses, in the order it named them (FR-014). A
    *  name nothing answers to is left out: `compositeFaultsByFiles` already
    *  names that file as an error. */
-  mixinsOf(one: ScopedPrimitive): readonly ScopedPrimitive[] {
+  mixinsOf(one: Primitive): readonly Primitive[] {
     const byIdentity = this.primitiveById;
-    return (one.primitive.headers.mixins ?? []).flatMap((id) => byIdentity.get(`mixin:${id}`) ?? []);
+    return (one.headers.mixins ?? []).flatMap((id) => byIdentity.get(`mixin:${id}`) ?? []);
   }
 
   /** The corpus one primitive cites as its rationale, or nothing where it cites
    *  none or cites one this charter does not hold — the second is a warning
    *  `compositeFaultsByFiles` already names (FR-005, FR-014). */
-  rationaleOf(one: ScopedPrimitive): ScopedPrimitive | undefined {
-    const { rationale } = one.primitive.headers;
+  rationaleOf(one: Primitive): Primitive | undefined {
+    const { rationale } = one.headers;
     return rationale !== undefined && this.corpora.has(rationale) ? this.primitiveById.get(rationale) : undefined;
   }
 
   /** Every primitive using one mixin; nothing for any other kind (FR-014). */
-  hostsOf(mixin: ScopedPrimitive): readonly ScopedPrimitive[] {
-    if (mixin.primitive.kind !== "mixin") return [];
-    return this.primitives.filter((host) => (host.primitive.headers.mixins ?? []).includes(mixin.primitive.headers.id));
+  hostsOf(mixin: Primitive): readonly Primitive[] {
+    if (mixin.kind !== "mixin") return [];
+    return this.primitives.filter((host) => (host.headers.mixins ?? []).includes(mixin.headers.id));
   }
 
   /** Every primitive citing one corpus as its rationale; nothing for any other
    *  kind (FR-014). */
-  citersOf(corpus: ScopedPrimitive): readonly ScopedPrimitive[] {
-    if (corpus.primitive.kind !== "corpus") return [];
-    return this.primitives.filter((citer) => citer.primitive.headers.rationale === corpus.identity);
+  citersOf(corpus: Primitive): readonly Primitive[] {
+    if (corpus.kind !== "corpus") return [];
+    return this.primitives.filter((citer) => citer.headers.rationale === corpus.identity);
   }
 
   /** Every primitive naming one place, script or template; nothing for any
    *  other kind, since no other is reached by being named (FR-144, FR-163). */
-  mentionersOf(named: ScopedPrimitive): readonly ScopedPrimitive[] {
+  mentionersOf(named: Primitive): readonly Primitive[] {
     return this.primitives.filter((mentioner) => this.identitiesMentionedIn(mentioner).includes(named.identity));
   }
 
   /** The places, scripts and templates one primitive mentions, whether the
    *  charter holds them or not: in its body, in the author's own words (FR-143,
-   *  FR-161), and, for an agent, each place it holds by listing it among its
-   *  tools (FR-156). */
-  private identitiesMentionedIn(one: ScopedPrimitive): readonly string[] {
+   *  FR-161); for an agent, each place it holds by listing it among its tools
+   *  (FR-156); and for a sensor, each script its `run` names (FR-161). */
+  private identitiesMentionedIn(one: Primitive): readonly string[] {
     return [
-      ...[...one.primitive.body.matchAll(MCP_MENTION)].map(([, id]) => `mcp:${id}`),
-      ...[...one.primitive.body.matchAll(SCRIPT_MENTION)].map(([, id]) => `script:${id}`),
-      ...[...one.primitive.body.matchAll(TEMPLATE_MENTION)].map(([, id]) => `template:${id}`),
-      ...(one.primitive instanceof AgentPrimitive ? one.primitive.headers.tools.flatMap((tool) => tool.match(MCP_TOOL_REFERENCE)?.[1] ?? []) : []),
+      ...[...one.body.matchAll(MCP_MENTION)].map(([, id]) => `mcp:${id}`),
+      ...[...one.body.matchAll(SCRIPT_MENTION)].map(([, id]) => `script:${id}`),
+      ...[...one.body.matchAll(TEMPLATE_MENTION)].map(([, id]) => `template:${id}`),
+      ...(one instanceof AgentPrimitive ? one.headers.tools.flatMap((tool) => tool.match(MCP_TOOL_REFERENCE)?.[1] ?? []) : []),
+      ...(one instanceof SensorPrimitive ? [...one.headers.run.matchAll(SCRIPT_MENTION)].map(([mentionedIdentity]) => mentionedIdentity) : []),
     ];
   }
 
@@ -208,17 +155,18 @@ export class CharterRoot {
    * the rule holds without its reasoning, and the author is told the reasoning
    * is gone (FR-005). A corpus nobody cites and a mixin nobody pulls in are
    * warnings too: nothing breaks, and nothing reads them either (FR-014). So
-   * are a body naming an mcp nothing holds (FR-143), an mcp no body names
-   * (FR-144), and a script or a template no body names (FR-163). An agent
-   * holding an mcp nothing holds, or a tool it does not declare, is an error:
-   * the role would be promised a tool it cannot have (FR-156).
+   * are an mcp nothing names (FR-144) and a script or a template nothing names
+   * (FR-163). A name no layer holds is an error (FR-162), and so are an agent
+   * holding a tool its mcp does not declare — the role would be promised a
+   * tool it cannot have (FR-156) — and a script whose `executionPath` names
+   * no asset of it (FR-165).
    */
   get compositeFaultsByFiles(): FaultsByFile {
     const everyPrimitive = this.primitives;
     const mixinsByIdentity = this.mixins;
     const corpusIdentities = this.corpora;
     const toolsByMcpIdentity = new Map(
-      everyPrimitive.flatMap(({ identity, primitive }) => (primitive instanceof McpPrimitive ? [[identity, primitive.headers.tools] as const] : [])),
+      everyPrimitive.flatMap((primitive) => (primitive instanceof McpPrimitive ? [[primitive.identity, primitive.headers.tools] as const] : [])),
     );
     const everyIdentity = new Set(everyPrimitive.map(({ identity }) => identity));
     const mentionedIdentities = new Set(everyPrimitive.flatMap((one) => this.identitiesMentionedIn(one)));
@@ -231,8 +179,10 @@ export class CharterRoot {
     };
 
     for (const one of everyPrimitive) {
-      const { file, primitive } = one;
-      const { identity, normIdentity } = one;
+      const { file } = one;
+      const primitive = one;
+      const { identity } = one;
+      const { normIdentity } = primitive;
       const declaredIn = fileByIdentity.get(identity);
       if (declaredIn === undefined) fileByIdentity.set(identity, file);
       else
@@ -240,7 +190,7 @@ export class CharterRoot {
           file,
           new CharterRootFault(
             `"${identity}" is already declared by ${declaredIn}. One identity names one primitive in a charter, whichever layer it was authored in.`,
-            `Give this one an id of its own, or delete it if the other says the same thing. A vendor claiming an id you authored is one to raise with whoever publishes it. An id ${BUILTIN_PATH_PREFIX} claims is the engine's own and nobody can change it, so the one to rename is yours.`,
+            `Give this one an id of its own, or delete it if the other says the same thing. A vendor claiming an id you authored is one to raise with whoever publishes it. An id ${BUILTIN_PRIMITIVE_LAYER.charterFolder} claims is the engine's own and nobody can change it, so the one to rename is yours.`,
           ),
         );
 
@@ -309,6 +259,17 @@ export class CharterRoot {
             ),
           );
 
+      // What a script runs is one of its own assets, and nothing anywhere
+      // else: a build copies those and no other (FR-165).
+      if (primitive instanceof ScriptPrimitive && !primitive.assets.some((assetFile) => primitive.isExecutionFile(assetFile.file)))
+        addFault(
+          file,
+          new CharterRootFault(
+            `"executionPath" names "${primitive.headers.executionPath}", and the folder of this index.md holds no such file.`,
+            `Write that file beside this index.md, or name one that is there.`,
+          ),
+        );
+
       // A role holds what its tools say and nothing else, so each place it
       // lists must be one the charter holds, and each tool one it declares
       // (FR-156).
@@ -373,26 +334,25 @@ export class CharterRoot {
     // Every mcp with the file it was authored in, read together: the fault
     // below takes every layer to see.
     const mcpPrimitives = everyPrimitive
-      .flatMap(({ identity, file, primitive }) =>
-        primitive.kind === McpPrimitive.kind ? [{ identity, file, primitive }] : [],
-      )
+      .flatMap((primitive) => (primitive instanceof McpPrimitive ? [primitive] : []))
       .sort((one, another) => (one.identity < another.identity ? -1 : 1));
 
     // One command is one process, and a process reads its token from one
     // variable: two named for one address leave it unsaid which (FR-145).
-    for (const { file, primitive } of mcpPrimitives) {
+    for (const primitive of mcpPrimitives) {
+      const { file } = primitive;
       const { tokenEnv } = primitive.headers;
       const conflictingMcp = mcpPrimitives.find(
         (other) =>
-          other.primitive.address === primitive.address &&
-          other.primitive.headers.tokenEnv !== undefined &&
-          other.primitive.headers.tokenEnv !== tokenEnv,
+          other.address === primitive.address &&
+          other.headers.tokenEnv !== undefined &&
+          other.headers.tokenEnv !== tokenEnv,
       );
       if (tokenEnv !== undefined && conflictingMcp !== undefined)
         addFault(
           file,
           new CharterRootFault(
-            `This hands "${primitive.address}" its token in "${tokenEnv}", and "${conflictingMcp.identity}" in "${conflictingMcp.primitive.headers.tokenEnv}". One process reads its token from one variable.`,
+            `This hands "${primitive.address}" its token in "${tokenEnv}", and "${conflictingMcp.identity}" in "${conflictingMcp.headers.tokenEnv}". One process reads its token from one variable.`,
             `Name the variable that command reads in both, or drop "tokenEnv" and "auth" from one of them.`,
           ),
         );
@@ -409,6 +369,12 @@ export class CharterRoot {
 export interface AuthoredFile {
   readonly path: string;
   readonly contents: string;
+  /** Where it sits in its layer, from the layer's folder:
+   *  `mcp/billing/index.md` (FR-141). */
+  readonly pathInLayer: string;
+  /** Every other file of the folder it sits in, at any depth: its assets
+   *  (FR-168). */
+  readonly assetFiles?: readonly AssetFile[];
 }
 
 /** One file a vendor published, under the name this repository installed it as.
@@ -447,13 +413,38 @@ export function charterRootOf(
   },
   yamlParser: ForParsingYaml,
 ): CharterRoot {
-  const primitives: ScopedPrimitive[] = [];
+  const primitives: Primitive[] = [];
   const faultsByFiles: Record<string, readonly DomainFault[]> = {};
 
-  const read = (one: AuthoredFile, scope: Scope) => {
+  const read = (one: AuthoredFile, layerName: LayerName) => {
+    // This file's charter folder: its path, less where it sits in its layer.
+    const charterFolder = one.path.slice(0, -one.pathInLayer.length - 1);
+    // A primitive is a folder holding its index.md; a markdown file of its own
+    // is how an earlier version kept one, and is sent where it belongs now
+    // (FR-141).
+    if (!one.pathInLayer.endsWith(`/${BasePrimitive.index}`)) {
+      faultsByFiles[one.path] = [
+        new CharterRootFault(
+          `This is a markdown file of its own, and a primitive is a folder holding its ${BasePrimitive.index}.`,
+          `Move it to "${charterFolder}/${one.pathInLayer.replace(/\.md$/, "")}/${BasePrimitive.index}".`,
+        ),
+      ];
+      return;
+    }
     try {
-      const primitive = primitiveOf(one.contents, yamlParser);
-      primitives.push(new ScopedPrimitive(identityOf({ kind: primitive.kind, id: primitive.headers.id }), scope, one.path, primitive));
+      const primitive = primitiveOf(one.contents, yamlParser, one.assetFiles ?? [], { name: layerName, charterFolder });
+      // Its folder is its kind and id: what it declares is where it is kept
+      // (FR-003, FR-141).
+      if (one.pathInLayer !== `${primitive.primitiveFolder}/${primitive.index}`) {
+        faultsByFiles[one.path] = [
+          new CharterRootFault(
+            `This declares "${primitive.identity}", and it is kept at "${one.pathInLayer}"; a primitive is kept at "<kind>/<id>/${BasePrimitive.index}".`,
+            `Move its folder to "${charterFolder}/${primitive.primitiveFolder}/", or declare the kind and id its folder says.`,
+          ),
+        ];
+        return;
+      }
+      primitives.push(primitive);
     } catch (raised) {
       // Every fault one file has arrives together (FR-009); anything else is
       // not this file being wrong and is not ours to swallow.
@@ -471,9 +462,9 @@ export function charterRootOf(
   // The engine's layer first: the first claim on an identity is the one kept,
   // so a collision with it is filed against the file its author can rename
   // (plan §3.1).
-  for (const one of sorted(builtin)) read(one, BUILTIN_SCOPE);
-  for (const one of sorted(repo)) read(one, REPO_SCOPE);
-  for (const one of sorted(vendor)) read(one, VENDOR_SCOPE);
+  for (const one of sorted(builtin)) read(one, BUILTIN_LAYER);
+  for (const one of sorted(repo)) read(one, REPO_LAYER);
+  for (const one of sorted(vendor)) read(one, VENDOR_LAYER);
 
   return new CharterRoot(primitives, new FaultsByFile(faultsByFiles));
 }

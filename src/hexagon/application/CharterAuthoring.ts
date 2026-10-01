@@ -5,8 +5,9 @@ import { driftedVendors } from "../service/vendorRepo.js";
 import { runSuite, TestRunReport, findUntestedPrimitives } from "../domain/services/testService.js";
 import { DomainFault, Faults, FaultsByFile } from "../domain/models/DomainFault.js";
 import { testSuiteNameOf } from "../domain/models/test/TestRoot.js";
-import { REPO_SCOPE, ScopedPrimitive, type CharterRoot } from "../domain/models/charter/CharterRoot.js";
-import { RepoScopedPrimitive } from "../domain/specifications/RepoScopedPrimitive.js";
+import type { CharterRoot } from "../domain/models/charter/CharterRoot.js";
+import { REPO_LAYER } from "../domain/models/charter/PrimitiveLayer.js";
+import { RepoLayerPrimitive } from "../domain/specifications/RepoLayerPrimitive.js";
 import type { DataDTOs, OutcomeDTOs } from "../port/driver/dtos/index.js";
 import {
   catalogueDTO,
@@ -14,16 +15,14 @@ import {
   explanationOutcomeDTO,
   faultsByFileDTO,
   faultsDTO,
-  primitiveSnapshotDTO,
   planSummaryDTO,
   primitiveKindsDTO,
   primitiveRequirementsDTO,
-  scopedPrimitiveDTO,
-  scopedPrimitivesDTO,
+  primitiveDTO,
+  primitivesDTO,
   testRunReportDTO,
   workspaceSettingsDTO,
 } from "./dtos.js";
-import { contentHashOf } from "./helper.js";
 import { catalogueOf } from "../domain/services/compile/catalogueFactory.js";
 import { executePlan, plan, previewPlan } from "../service/buildService.js";
 import type { WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
@@ -176,12 +175,12 @@ export class CharterAuthoring implements ForManagingCharter {
   /** Every primitive the charter read, or those mentioning a word, each as the
    *  whole charter sees it (FR-112, FR-114). Whether one mentions the word is
    *  the primitive's own to say. */
-  async fullList(matching?: string): Promise<DataDTOs.ScopedPrimitives | DataDTOs.FaultsByFile> {
+  async fullList(matching?: string): Promise<DataDTOs.Primitives | DataDTOs.FaultsByFile> {
     const [charter, , faultsByFiles] = await this.#read();
     if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
 
-    return scopedPrimitivesDTO(
-      matching === undefined ? charter.primitives : charter.primitives.filter((one) => one.mentions(matching)),
+    return primitivesDTO(
+      matching === undefined ? charter.primitives : charter.primitives.filter((one) => one.search(matching)),
     );
   }
 
@@ -241,7 +240,7 @@ export class CharterAuthoring implements ForManagingCharter {
       declared,
       // When it comes up is its kind's to say, in the words `cw kinds` says it
       // in, so it is read off the class that reads the kind (FR-029).
-      PRIMITIVE_CLASSES.find((one) => one.kind === declared.primitive.kind)!.activatesWhen,
+      declared.activatesWhen,
       charter.mixinsOf(declared),
       charter.rationaleOf(declared),
       charter.hostsOf(declared),
@@ -378,7 +377,7 @@ export class CharterAuthoring implements ForManagingCharter {
     id: string,
     headers: UnparsedHeaders,
     body = "",
-  ): Promise<DataDTOs.ScopedPrimitive | DataDTOs.Faults> {
+  ): Promise<DataDTOs.Primitive | DataDTOs.Faults> {
     const kind = this.#kindOf(kindWord);
 
     let primitive: Primitive;
@@ -399,22 +398,20 @@ export class CharterAuthoring implements ForManagingCharter {
         `Open ${claimingPrimitive.file}, or run this again with an id this charter has not got.`,
       );
 
-    return scopedPrimitiveDTO(await writeCharter(this.#repoPath, primitive, this.#fileReader, this.#fileWriter));
+    return primitiveDTO(await writeCharter(this.#repoPath, primitive, this.#fileReader, this.#fileWriter));
   }
 
   /**
    * One primitive as the charter read it: its headers, its body, the file and
-   * layer it is in, and its revision (FR-075, FR-078).
+   * layer it is in, and its hash (FR-075, FR-078).
    *
    * Asked of the files as read rather than of the validation, so a primitive
    * opens whatever else in the charter is wrong — which is when its author most
-   * needs to open it. The revision is the content hash of `toMarkdown()`, the
-   * text a save writes, so a save made over it is checked against the primitive
-   * read again then.
+   * needs to open it. A save made over its hash is checked against the
+   * primitive read again then.
    */
-  async open(identity: string): Promise<DataDTOs.PrimitiveSnapshot> {
-    const scopedPrimitive = await this.#scopedPrimitiveOf(identity);
-    return primitiveSnapshotDTO(scopedPrimitive, await contentHashOf(scopedPrimitive.primitive.toMarkdown()));
+  async open(identity: string): Promise<DataDTOs.Primitive> {
+    return primitiveDTO(await this.#primitiveByIdentity(identity));
   }
 
   /**
@@ -422,8 +419,8 @@ export class CharterAuthoring implements ForManagingCharter {
    * body, keeping its kind, its id and the file it is in (FR-075).
    *
    * Refused — raised, with nothing written — for a primitive this repository
-   * did not author (FR-077), and for one whose revision is no longer the one
-   * its author opened, so an edit made on disk since is not lost under
+   * did not author (FR-077), and for one whose hash is no longer the one its
+   * author opened it at, so an edit made on disk since is not lost under
    * this one (FR-078). Answers the kind will not take come back as the faults
    * `add` gives for them, since both read answers the one way.
    *
@@ -435,19 +432,19 @@ export class CharterAuthoring implements ForManagingCharter {
     identity: string,
     headers: UnparsedHeaders,
     body: string,
-    revision: string,
-  ): Promise<DataDTOs.ScopedPrimitive | DataDTOs.Faults> {
-    const scopedPrimitive = await this.#scopedPrimitiveOf(identity);
-    if (!RepoScopedPrimitive.isSatisfiedBy(scopedPrimitive))
+    openedHash: string,
+  ): Promise<DataDTOs.Primitive | DataDTOs.Faults> {
+    const authoredPrimitive = await this.#primitiveByIdentity(identity);
+    if (!RepoLayerPrimitive.isSatisfiedBy(authoredPrimitive))
       throw new DomainFault(
-        `${identity} was not authored in this repository, and ${scopedPrimitive.file} is read-only here.`,
+        `${identity} was not authored in this repository, and ${authoredPrimitive.file} is read-only here.`,
         `To differ from it, author a primitive of your own under an identity of its own.`,
       );
     // Read again now and hashed the way `open` hashed it: the two differ only
     // if the file changed since (FR-078).
-    if ((await contentHashOf(scopedPrimitive.primitive.toMarkdown())) !== revision)
+    if (authoredPrimitive.hash !== openedHash)
       throw new DomainFault(
-        `${scopedPrimitive.file} changed on disk after it was opened, and saving would write over that change.`,
+        `${authoredPrimitive.file} changed on disk after it was opened, and saving would write over that change.`,
         `Open it again to see what changed, then make your edit there.`,
       );
 
@@ -455,7 +452,7 @@ export class CharterAuthoring implements ForManagingCharter {
     let primitive: Primitive;
     try {
       primitive = primitiveOf({
-        headers: { ...headers, kind: scopedPrimitive.primitive.kind, id: scopedPrimitive.primitive.headers.id },
+        headers: { ...headers, kind: authoredPrimitive.kind, id: authoredPrimitive.headers.id },
         body,
       });
     } catch (raised) {
@@ -463,42 +460,46 @@ export class CharterAuthoring implements ForManagingCharter {
       return faultsDTO(new Faults(raised.errors as readonly DomainFault[]));
     }
 
-    await this.#fileWriter.write(new URL(scopedPrimitive.file, this.#repoPath), primitive.toMarkdown());
-    return scopedPrimitiveDTO(new ScopedPrimitive(identity, REPO_SCOPE, scopedPrimitive.file, primitive));
+    await this.#fileWriter.write(new URL(authoredPrimitive.file, this.#repoPath), primitive.toMarkdown());
+    return primitiveDTO(primitive);
   }
 
   /**
-   * One repository primitive's file taken away, and nothing else (FR-076).
+   * One repository primitive's index.md taken away, with its assets, and
+   * nothing else (FR-076, FR-167).
    *
    * Refused for a primitive this repository did not author, as a rewrite is
    * (FR-077). What still names it is left as it is: the next validation reports
    * each as dangling, and what to do about them is its author's call. Nothing is
    * compiled and nothing committed (FR-079).
    */
-  async remove(identity: string): Promise<DataDTOs.ScopedPrimitive> {
-    const scopedPrimitive = await this.#scopedPrimitiveOf(identity);
-    if (!RepoScopedPrimitive.isSatisfiedBy(scopedPrimitive))
+  async remove(identity: string): Promise<DataDTOs.Primitive> {
+    const primitive = await this.#primitiveByIdentity(identity);
+    if (!RepoLayerPrimitive.isSatisfiedBy(primitive))
       throw new DomainFault(
-        `${identity} was not authored in this repository, and ${scopedPrimitive.file} is read-only here.`,
+        `${identity} was not authored in this repository, and ${primitive.file} is read-only here.`,
         `To differ from it, author a primitive of your own under an identity of its own.`,
       );
-    await this.#fileWriter.delete(new URL(scopedPrimitive.file, this.#repoPath));
-    return scopedPrimitiveDTO(scopedPrimitive);
+    const file = new URL(primitive.file, this.#repoPath);
+    await this.#fileWriter.delete(file);
+    // Its assets go with it: nothing else names them (FR-167).
+    for (const assetFile of primitive.assets) await this.#fileWriter.delete(new URL(assetFile.file, file));
+    return primitiveDTO(primitive);
   }
 
   /** The primitive one identity names, off the files as read and not the
    *  validation. Raised when the charter holds nothing of it, the way `explain`
    *  raises it: there is no file it is wrong with. */
-  async #scopedPrimitiveOf(identity: string): Promise<ScopedPrimitive> {
+  async #primitiveByIdentity(identity: string): Promise<Primitive> {
     const primitiveIdentity = identityOf(identity);
     const charter = await loadCharterRoot(this.#repoPath, this.#fileReader, this.#yamlParser);
-    const scopedPrimitive = charter.primitiveById.get(primitiveIdentity);
-    if (scopedPrimitive === undefined)
+    const primitive = charter.primitiveById.get(primitiveIdentity);
+    if (primitive === undefined)
       throw new DomainFault(
         `This charter holds no "${identity}".`,
         'Run "cw list --min" to see every identity it does hold.',
       );
-    return scopedPrimitive;
+    return primitive;
   }
 
   /** One word read as the kind it names. Raised rather than reported, the way a

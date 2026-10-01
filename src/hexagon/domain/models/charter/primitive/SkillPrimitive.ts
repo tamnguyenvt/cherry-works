@@ -1,5 +1,6 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** Know-how loaded when a request matches its triggers (FR-004). */
 export const SkillHeadersSchema = CommonHeadersSchema.extend({
@@ -40,7 +41,7 @@ export class SkillPrimitive extends BasePrimitive<SkillHeaders> {
   }
 
   /** One skill, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string): SkillPrimitive {
-    return new SkillPrimitive(headersOf(SkillPrimitive, SkillHeadersSchema, record), body);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): SkillPrimitive {
+    return new SkillPrimitive(headersOf(SkillPrimitive, SkillHeadersSchema, record), body, assetFiles, primitiveLayer);
   }
 }

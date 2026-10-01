@@ -41,3 +41,10 @@ test("the body says whose it is, and what it does not cover (FR-025, FR-027)", (
   assert.match(skillBody, /writes a primitive of its own/);
   assert.match(skillBody, /Changing or removing one that already exists\s+is not what it covers/);
 });
+
+test("the skill the engine brings is of the engine's layer, at the name that layer gives its files (FR-015, FR-018)", () => {
+  const cwAuthorSkill = new CwAuthorSkill();
+
+  assert.equal(cwAuthorSkill.layerName, "builtin");
+  assert.equal(cwAuthorSkill.file, "(built into cw)/skill/cw-author/index.md");
+});

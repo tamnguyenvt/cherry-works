@@ -20,7 +20,7 @@ export function VendorSources() {
   if (vendorFoldersQuery.data === undefined) return null;
   const folders = vendorFoldersQuery.data;
   const vendoredPrimitives =
-    primitivesQuery.data?.type === "ScopedPrimitives" ? primitivesQuery.data.data.primitives.filter(({ data }) => data.scope === "vendor") : [];
+    primitivesQuery.data?.type === "Primitives" ? primitivesQuery.data.data.primitives.filter(({ data }) => data.layerName === "vendor") : [];
 
   const removeInstall = async (folder: string) => {
     const refusedDTO = await removeVendor.mutateAsync(folder.split("/").at(-1) ?? "");

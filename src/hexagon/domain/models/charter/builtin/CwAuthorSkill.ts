@@ -1,4 +1,5 @@
 import { SkillPrimitive } from "../primitive/SkillPrimitive.js";
+import { BUILTIN_PRIMITIVE_LAYER } from "../PrimitiveLayer.js";
 
 /** How a primitive of this charter is authored, brought by the engine to every
  *  repository it governs (FR-022). Its triggers are the requests to write one
@@ -45,6 +46,8 @@ refused against.
    comes up; the body is what an agent reads once it has.
 5. Run \`cw build\`. If it refuses, \`cw doctor\` names each file with a problem
    and how to fix it.`,
+      [],
+      BUILTIN_PRIMITIVE_LAYER,
     );
   }
 }

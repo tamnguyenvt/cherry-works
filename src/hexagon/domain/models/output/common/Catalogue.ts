@@ -1,4 +1,5 @@
-import type { ProjectionPolicy } from "../ProjectionPolicy.js";
+import { OUT_DIRECTORY } from "../../../path.js";
+import type { Projection } from "../ProjectionPolicy.js";
 
 /**
  * What a charter holds, listed for whoever reads it (FR-011, FR-013).
@@ -7,7 +8,7 @@ import type { ProjectionPolicy } from "../ProjectionPolicy.js";
  * and nothing here knows what a primitive is — reading one into an entry is the
  * service's, and this is handed the list (plan §2.6).
  *
- * What it is written as, and into which file, is the projector's.
+ * It says itself which file it lands in and what that file holds.
  *
  * Ordered by identity rather than by the order the files happened to be read, so
  * the same charter catalogues byte for byte the same and a committed catalogue
@@ -18,26 +19,33 @@ import type { ProjectionPolicy } from "../ProjectionPolicy.js";
  */
 export class Catalogue {
   /** Entries in the order they are to be listed: by identity (SC-007). */
-  constructor(private readonly entries: readonly CatalogueEntry[]) {}
+  constructor(readonly entries: readonly CatalogueEntry[]) {}
 
-  /** This listing is the charter's own file: it says what the charter holds now,
-   *  and nothing else has anything to say in it. */
-  readonly projection: ProjectionPolicy = "replace";
+  /** The file it is put down as: beside `CHARTER.md`, which sends a reader to
+   *  it by name (FR-011), and the charter's own, written whole over whatever is
+   *  there. Indented, since it is committed and read in diffs, and a listing
+   *  whose entries land one per line says what changed in the charter rather
+   *  than that the listing changed. */
+  get projections(): readonly Projection[] {
+    return [
+      {
+        file: `${OUT_DIRECTORY}/catalog.json`,
+        contents: `${JSON.stringify(this.entries, undefined, 2)}\n`,
+        projectionPolicy: "replace",
+        executable: false,
+      },
+    ];
+  }
 
   /**
    * The same listing, narrowed to the primitives of one kind (FR-011).
    *
-   * A narrowed listing is a listing: what comes back answers `full` the way
+   * A narrowed listing is a listing: what comes back answers `entries` the way
    * this does, so whoever reads it never has to ask whether it was narrowed. Nothing is re-sorted — the entries keep the order they were
    * put in, which is the order by identity they were made in.
    */
   filterByKind(kind: string): Catalogue {
     return new Catalogue(this.entries.filter((one) => one.kind === kind));
-  }
-
-  /** Every primitive, with the file its body is in (FR-011). */
-  get full(): readonly CatalogueEntry[] {
-    return this.entries;
   }
 }
 

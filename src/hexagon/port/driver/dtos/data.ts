@@ -67,39 +67,30 @@ const CatalogueSchema = dto(
 );
 
 /** One primitive as the whole charter sees it: what it is called and what it
- *  is for, the file it was authored in, which layer that file arrived in, and
- *  every header it declared. */
-const ScopedPrimitiveSchema = dto(
-  "ScopedPrimitive",
+ *  is for, the file it was authored in, which layer that file arrived in, every
+ *  header it declared, its body, and the hash of it written out — what a save
+ *  is made over. */
+const PrimitiveSchema = dto(
+  "Primitive",
   z.object({
     identity: z.string(),
     kind: z.string(),
     description: z.string(),
     file: z.string(),
-    scope: z.enum(["repo", "vendor", "builtin"]),
+    layerName: z.enum(["repo", "vendor", "builtin"]),
     headers: z.record(z.string(), z.union([z.string(), StringsSchema])),
+    body: z.string(),
+    hash: z.string(),
   }),
 );
 
 /** Every primitive the charter holds, each as the whole charter sees it,
  *  ordered by identity. What the portal lists by, since it names the layer and
  *  every header where the CatalogueSchema names neither. */
-const ScopedPrimitivesSchema = dto(
-  "ScopedPrimitives",
+const PrimitivesSchema = dto(
+  "Primitives",
   z.object({
-    primitives: z.array(ScopedPrimitiveSchema).readonly(),
-  }),
-);
-
-/** One primitive as its file holds it now: the primitive as the whole charter
- *  sees it, its markdown body, and the content hash of it written out — the
- *  revision a save is made over. */
-const PrimitiveSnapshotSchema = dto(
-  "PrimitiveSnapshot",
-  z.object({
-    scopedPrimitive: ScopedPrimitiveSchema,
-    body: z.string(),
-    revision: z.string(),
+    primitives: z.array(PrimitiveSchema).readonly(),
   }),
 );
 
@@ -260,9 +251,8 @@ export const DataDTOs = byType(
   PrimitiveHeaderSchema,
   PrimitiveKindsSchema,
   PrimitiveRequirementsSchema,
-  PrimitiveSnapshotSchema,
-  ScopedPrimitiveSchema,
-  ScopedPrimitivesSchema,
+  PrimitiveSchema,
+  PrimitivesSchema,
   ServedToolSchema,
   ServedToolsSchema,
   SignInStatusSchema,
@@ -287,9 +277,8 @@ export namespace DataDTOs {
   export type PrimitiveKinds = z.infer<typeof DataDTOs.PrimitiveKinds>;
   export type PrimitiveHeader = z.infer<typeof DataDTOs.PrimitiveHeader>;
   export type PrimitiveRequirements = z.infer<typeof DataDTOs.PrimitiveRequirements>;
-  export type PrimitiveSnapshot = z.infer<typeof DataDTOs.PrimitiveSnapshot>;
-  export type ScopedPrimitive = z.infer<typeof DataDTOs.ScopedPrimitive>;
-  export type ScopedPrimitives = z.infer<typeof DataDTOs.ScopedPrimitives>;
+  export type Primitive = z.infer<typeof DataDTOs.Primitive>;
+  export type Primitives = z.infer<typeof DataDTOs.Primitives>;
   export type ServedTool = z.infer<typeof DataDTOs.ServedTool>;
   export type ServedTools = z.infer<typeof DataDTOs.ServedTools>;
   export type SignInStatus = z.infer<typeof DataDTOs.SignInStatus>;

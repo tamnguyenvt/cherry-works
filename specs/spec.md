@@ -20,7 +20,7 @@ The **charter** is everything a team authors to specify how the agent must behav
 
 - **Knowledge outside the repository.** A rule's reasoning does not all live beside it. A corpus holds what the repository wrote down; the rest sits in other repositories, in Notion, in Slack, each reached through an MCP server. An `mcp` primitive declares one such place once, under an identity of its own, with the tools the agent may use there. Any primitive names the places it draws on, the way it names the corpus it cites. `cw mcp auth` signs each developer in to each place as themselves, and `cw mcp serve` is the one MCP server the agent is given: it forwards each call to the right place with that developer's own credential, and shows the agent only the tools the charter declared. There is no shared credential and no gateway: every call reaches the place under the name of the person whose agent made it, and taking someone's access away at the place is the whole of taking it away.
 
-- **Files the agent uses.** A skill often needs more than prose: a script to run, a template to fill. A `script` or a `template` is a primitive like any other, authored as markdown with headers and an identity, and its body is the file's whole content. A build writes that body alone, under the extension the primitive names, into the output folder. Any primitive names one by its identity, `script:<id>` or `template:<id>`, and the build writes the name as the path the agent opens or runs.
+- **Files the agent uses.** A skill often needs more than prose: a script to run, a template to fill. A `script` or a `template` is a primitive like any other, authored as markdown with headers and an identity, and compiled like one. A template's body is the file to fill, and the agent reads what kind of file it is off the body; a script's files are copied beside it. Any primitive names one by its identity, `script:<id>` or `template:<id>`, and the build writes the name as the path the agent opens or runs.
 
 Every surface above reaches a user the same way: **one install from the public package registry**. A developer who has never seen this repository installs `cw` with the command their package manager already knows and has the whole product — the command line, the portal and the builtin layer — with nothing to clone and nothing to build. Building from source is a contributor's path, not a user's.
 
@@ -57,15 +57,18 @@ A single charter covering design, planning and implementation at once has to be 
 ### Session 2026-09-30
 
 - Q: Does a skill become a folder holding its `SKILL.md` and the files it uses? → A: No. A script and a template are kinds of their own ([FR-001](#fr-001)), so each has an identity, is listed, checked and explained like any primitive, and can be used by more than one skill.
-- Q: Which file does the build write for a script or a template? → A: Its body alone, with no header, under the extension its `extension` header names ([FR-159](#fr-159)).
-- Q: What does `script:<id>` become in a compiled document — a path, or the identity as written? → A: The identity, as written ([FR-161](#fr-161)). The agent finds the built file by that identity in the catalogue, whose `file` is the path from the repository's root, `.cw/out/script/<id>.<extension>` ([FR-164](#fr-164)); an agent reads an identity as well as a path, and a name rewritten in every body would be a second place saying where a file is.
+- Q: Which file does the build write for a template? → A: Its compiled document, as for every kind: its headers, then its body, as the `index.md` of its folder in the output ([FR-159](#fr-159)). It declares no extension; the agent reads what kind of file it is off the body. A script's files are copied beside its document ([FR-165](#fr-165)).
+- Q: What does a name become where it is read? → A: What its reader can use. In a body compiled to a document, `mcp:<id>`, `script:<id>` and `template:<id>` become a markdown link whose text is the identity and whose target is the file the catalogue names for it, written from the document holding it, so a person opens it with a click and an agent with a read ([FR-147](#fr-147)). In a sensor's `run`, which a harness executes and nothing reads, `script:<id>` becomes the built file's path from the repository's root ([FR-169](#fr-169)). Among an agent's `tools`, `mcp:<id>` becomes the names its host calls those tools by ([FR-156](#fr-156)).
 - Q: A body names `script:<id>` the charter does not hold — warning or error? → A: An error, and nothing is built ([FR-162](#fr-162)). The build fails. An agent told to run a file that is not there does not always stop: it may invent the script, or find one with a similar name and take it for the one meant, and run it. Running code nobody meant is too dangerous to leave to a warning.
 - Q: A body names `mcp:<id>` the charter does not hold — still only a warning? → A: No, an error as well, reversing what [FR-143](#fr-143) said before. An agent told of a place that is not there guesses at another the same way. One rule covers the three kinds a body names: a name no layer holds stops the build ([FR-162](#fr-162)); a place, script or template nothing names is a warning ([FR-144](#fr-144), [FR-163](#fr-163)).
-- Q: Which bodies are rewritten? → A: None, for a script or a template ([FR-161](#fr-161)). A script that uses a template names its built file by path in its own body, since nothing reads the catalogue for a running script.
-- Q: May a script or a template pull in mixins? → A: No ([FR-004](#fr-004)). A mixin's body placed before a script's would break its first line, and the built file is exactly what its author wrote.
+- Q: Which bodies are rewritten? → A: Every body compiled to a document, a template's included. A file of a script's folder is copied as it is, and no name in it is touched ([FR-166](#fr-166)).
+- Q: May a script or a template pull in mixins? → A: Yes, both: each is compiled to a document like any other kind, and a mixin's body lands before its own.
 - Q: Does an agent still survey a reduced catalogue first? → A: No. There is one catalogue, `catalog.json`, and no `catalog.min.json` ([FR-026](#fr-026)). The orientation sends its reader there ([FR-036](#fr-036)), and the build that no longer writes the reduced one deletes it.
 - Q: What does a catalogue entry hold? → A: Kind, identity, description, file, and globs where the primitive names any ([FR-025](#fr-025)). No id, since the identity says it; no tags, rationale or mixins, which are read from the file the entry names or asked of `cw explain`. `cw list` says the same fields ([FR-028](#fr-028)).
 - Q: How does an explanation say what names a place, a script or a template? → A: As "mentioned in", one line per primitive: a name in a body, and for a place an agent listing it among its tools, are both mentions ([FR-029](#fr-029), [FR-163](#fr-163)).
+- Q: Is a script's body the file that runs? → A: No. A script is a primitive like any other, a folder holding its `index.md` and, beside it, real files: its assets. Its `executionPath` header names the one that runs, from `index.md`: `./run.sh` ([FR-165](#fr-165)). The author types it; nothing is guessed. Real files are edited, checked and run by every tool that knows their language; a script kept as the body of a markdown file is known to none. The body says how the script is called.
+- Q: Does an agent or a sensor run the script's file in the charter, or a copy? → A: A copy. A build copies the script's assets to `.cw/out/script/<id>/` and every command names the copy ([FR-166](#fr-166)), so a change not yet built never reaches what runs.
+- Q: Where is a primitive kept? → A: As a folder: `<kind>/<id>/index.md` under its layer, the `/` of an id a folder like any other ([FR-141](#fr-141)). Every other file in that folder, at any depth, is one of its assets, and a build copies it beside the compiled document ([FR-168](#fr-168)). Going down from a kind's folder, the first `index.md` found is a primitive, and everything under its folder is its assets, another `index.md` included; so `cw add` refuses a primitive whose folder would sit inside another's, or hold one ([FR-167](#fr-167)). A markdown file kept as `<kind>/<id>.md` by an earlier version is an error saying where to move it.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -392,11 +395,11 @@ An agent surveying the charter finds a primitive in the catalogue and opens the 
 
 **Why this priority**: The catalogue is the agent's way into every body the charter holds, and today it sends the agent to partial text and, for one layer, to nothing.
 
-**Independent Test**: In a repository with one guide pulling in one mixin, one vendored primitive and the builtin skill, build; confirm `.cw/out/<kind>/<id>.md` exists for each, holds the mixin's body before the guide's, and is what `catalog.json` names; confirm `cw list` still names `.cw/charter/…`, `.cw/vendor/…` and `(built into cw)/…`; delete the guide and build; confirm its compiled document is gone.
+**Independent Test**: In a repository with one guide pulling in one mixin, one vendored primitive and the builtin skill, build; confirm `.cw/out/<kind>/<id>/index.md` exists for each, holds the mixin's body before the guide's, and is what `catalog.json` names; confirm `cw list` still names `.cw/charter/…`, `.cw/vendor/…` and `(built into cw)/…`; delete the guide and build; confirm its compiled document is gone.
 
 **Acceptance Scenarios**:
 
-1. **Given** a charter, **When** it is built, **Then** every primitive of every layer has one document at `.cw/out/<kind>/<id>.md`, holding its headers and, below them, the bodies of the mixins it pulls in, in the order it names them, before its own body.
+1. **Given** a charter, **When** it is built, **Then** every primitive of every layer has one document at `.cw/out/<kind>/<id>/index.md`, holding its headers and, below them, the bodies of the mixins it pulls in, in the order it names them, before its own body.
 2. **Given** that build, **When** `catalog.json` is read, **Then** each entry's `file` is that primitive's compiled document, and no entry names a file under `.cw/charter/`, `.cw/vendor/` or the engine.
 3. **Given** the builtin skill, **When** the catalogue's `file` for it is opened, **Then** it is a file on disk holding the skill.
 4. **Given** a primitive deleted from the charter, **When** the charter is built again, **Then** its compiled document is gone.
@@ -417,7 +420,7 @@ A team's rule about rounding tax on an invoice has reasons that live outside the
 
 **Acceptance Scenarios**:
 
-1. **Given** a repository set up under `cw`, **When** the author runs `cw add mcp mfbs/billing` and answers its address, the ways to sign in it allows and the tools it opens, **Then** `.cw/charter/mcp/mfbs/billing.md` is written and `mcp:mfbs/billing` is an identity of the charter.
+1. **Given** a repository set up under `cw`, **When** the author runs `cw add mcp mfbs/billing` and answers its address, the ways to sign in it allows and the tools it opens, **Then** `.cw/charter/mcp/mfbs/billing/index.md` is written and `mcp:mfbs/billing` is an identity of the charter.
 8. **Given** an `mcp` primitive declaring both an endpoint and a command, or neither, or a command taking a token with no variable named for it, **When** the charter is checked, **Then** it is refused under that file with the kind's sample.
 2. **Given** that primitive, **When** a guide's body says "take the requirements from mcp:mfbs/billing" and the charter is built, **Then** the guide's compiled document, and its rule on the agent's host, name that place by the name its tools are served under ([FR-145](#fr-145)).
 3. **Given** a primitive whose body names an `mcp` identity no layer holds, **When** the charter is checked, built or tested, **Then** it is an error under that primitive's file naming the identity, and nothing is built ([FR-162](#fr-162)).
@@ -496,23 +499,23 @@ A team keeps a subagent that looks for fraud in payments. Beside `Read`, its `to
 
 **Status**: Done
 
-A team's release skill tells the agent to check the changelog before tagging. The check is fifteen lines of shell, and the release note always follows one shape. Today the skill can only describe both in prose, and the agent rewrites the check each time. After this, the author writes the check as a `script` primitive and the note's shape as a `template` primitive: each a markdown file with its headers, an identity, and an `extension` header, whose body is the file's whole content. A build writes each body alone, with no header, as `.cw/out/script/<id>.<extension>` or `.cw/out/template/<id>.<extension>`, a script ready to run. The two are listed, searched, explained and checked like every other primitive.
+A team's release skill tells the agent to check the changelog before tagging. The check is fifteen lines of shell, and the release note always follows one shape. Before this, the skill could only describe both in prose, and the agent rewrote the check each time. After this, the author keeps the note's shape as a `template` primitive: a markdown file with its headers and an identity, whose body is the file to fill. A build compiles it like any other primitive, as `.cw/out/template/<id>/index.md`, and the agent reads what kind of file it is off the body. The check is kept as a `script` primitive, whose files are real files beside its `index.md` ([Story 24](#user-story-24---keep-a-script-as-real-files-and-say-which-one-runs-priority-p1)). Both are listed, searched, explained and checked like every other primitive.
 
 **Why this priority**: Without a file to run or fill, a skill can only describe what should happen. [Story 22](#user-story-22---point-any-primitive-at-a-script-or-a-template-by-its-identity-priority-p2) depends on the files this story builds.
 
-**Independent Test**: Author `script:release/check-changelog` with `extension: sh` and a body beginning `#!/usr/bin/env bash`, and `template:release-note` with `extension: md`; build; confirm `.cw/out/script/release/check-changelog.sh` holds exactly the script's body, runs when invoked by its path, and that `.cw/out/template/release-note.md` holds exactly the template's body; confirm `catalog.json` names both files; delete the script and build; confirm its file is gone.
+**Independent Test**: Author `template:release-note`; build; confirm `.cw/out/template/release-note/index.md` holds its headers and its body; confirm `catalog.json` names it; delete the template and build; confirm its file is gone.
 
 **Acceptance Scenarios**:
 
-1. **Given** a repository set up under `cw`, **When** the author runs `cw kinds script` or `cw kinds template`, **Then** the answer names the `extension` header, its shape and the kind's sample.
-2. **Given** `cw add script release/check-changelog --header extension=sh`, **When** it runs, **Then** `.cw/charter/script/release/check-changelog.md` is written with that header and an empty body, and `script:release/check-changelog` is an identity of the charter.
-3. **Given** a script or a template with a body, **When** the charter is built, **Then** `.cw/out/<kind>/<id>.<extension>` holds the body byte for byte, with no header, no mark of generated output and nothing of any mixin, and no `.cw/out/<kind>/<id>.md` is written for it.
-4. **Given** a built script, **When** it is invoked by its path, **Then** it runs: the file is executable. A built template is not.
-5. **Given** a script or a template with no `extension`, with an extension that does not hold, or pulling in a mixin, **When** the charter is checked, **Then** it is refused under that file with the kind's sample, and nothing is built.
-6. **Given** a script whose `extension` changes from `sh` to `py`, **When** the charter is built, **Then** the `.py` file is written and the `.sh` file is gone.
-7. **Given** a built charter, **When** `catalog.json` is read, **Then** each script's and template's `file` is its built file; **When** it is listed from the command line or the portal, **Then** it is shown with the file it was authored in.
+1. **Given** a repository set up under `cw`, **When** the author runs `cw kinds template`, **Then** the answer names no header beyond those every kind takes, and the kind's sample; `cw kinds script` names `executionPath` ([FR-165](#fr-165)).
+2. **Given** `cw add template release-note`, **When** it runs, **Then** `.cw/charter/template/release-note/index.md` is written with an empty body, and `template:release-note` is an identity of the charter.
+3. **Given** a template with a body, **When** the charter is built, **Then** `.cw/out/template/<id>/index.md` is its compiled document: its headers, then the bodies of the mixins it pulls in and its own, stamped like any other.
+4. **Given** a built template, **When** it is looked at, **Then** it is not executable.
+5. **Given** a template declaring a header no kind takes, **When** it is added, **Then** it is refused naming that header, as for any kind.
+6. **Given** a template whose body changes, **When** the charter is built, **Then** its compiled document holds the new body.
+7. **Given** a built charter, **When** `catalog.json` is read, **Then** each template's `file` is its compiled document; **When** it is listed from the command line or the portal, **Then** it is shown with the file it was authored in.
 8. **Given** a script or a template no primitive names, **When** the health check runs, **Then** it warns under that primitive's file, and the build still runs.
-9. **Given** a vendor source holding a script, **When** the repository builds, **Then** the script is built into the repository's output folder like one the repository authored.
+9. **Given** a vendor source holding a template, **When** the repository builds, **Then** the template is built into the repository's output folder like one the repository authored.
 10. **Given** a body naming `mcp:<id>`, `script:<id>` or `template:<id>` that no layer holds, **When** the charter is checked, built or tested, **Then** it is an error under the file whose body names it, naming the identity, and nothing is built ([FR-162](#fr-162)).
 
 ---
@@ -521,17 +524,81 @@ A team's release skill tells the agent to check the changelog before tagging. Th
 
 **Status**: Done
 
-The release skill's body says "run `script:release/check-changelog` before tagging, and write the note from `template:release-note`". The author writes identities, not paths, and the built skill says the same two identities. The agent finds each in the catalogue, whose `file` is `.cw/out/script/release/check-changelog.sh` and `.cw/out/template/release-note.md`: paths from the repository's root, which is where the agent runs its commands. If the script is renamed or its identity is mistyped, the author learns it at the build, not when the agent reaches for a file that is not there; if it moves to another extension, the catalogue follows and no other file changes.
+The release skill's body says "run `script:release/check-changelog` before tagging, and write the note from `template:release-note`". The author writes identities, not paths, and no path is kept in the charter. The agent finds each in the catalogue, whose `file` names what to open for that identity. If the script is renamed or its identity is mistyped, the author learns it at the build, not when the agent reaches for a file that is not there; and when a template's body changes, only its built file does.
 
 **Why this priority**: [Story 21](#user-story-21---keep-a-script-or-a-template-in-the-charter-and-get-the-file-it-is-priority-p1) puts the files where the agent can reach them. This story means no author ever writes, or keeps up to date, the path to one.
 
-**Independent Test**: Build a charter holding the script and the template of [Story 21](#user-story-21---keep-a-script-or-a-template-in-the-charter-and-get-the-file-it-is-priority-p1) and a skill naming both; confirm the skill's compiled document holds both identities as written, and that the catalogue's `file` for each opens from the repository's root; change the script's extension, build, and confirm the catalogue follows and the skill's compiled document did not change; run `cw explain` on the script and confirm it names the skill.
+**Independent Test**: Build a charter holding a script, a template and a skill naming both; confirm the catalogue's `file` for each opens from the repository's root; change the template's body, build, and confirm only its built file changed; run `cw explain` on the script and confirm it names the skill.
 
 **Acceptance Scenarios**:
 
-1. **Given** a primitive of any kind whose body names `script:<id>` or `template:<id>` of a primitive the charter holds, **When** the charter is built, **Then** its built output holds the name as written, and the catalogue's entry of that identity names `.cw/out/<kind>/<id>.<extension>`.
-2. **Given** a script whose extension changes, **When** only its file is edited and the charter is built, **Then** the catalogue names the new file for the same identity, and no primitive naming it changes.
+1. **Given** a primitive of any kind whose body names `script:<id>` or `template:<id>` of a primitive the charter holds, **When** the charter is built, **Then** the catalogue's entry of that identity names the file an agent opens for it ([FR-164](#fr-164)), and the name is written in the built output as [Story 25](#user-story-25---write-each-name-as-what-its-reader-can-use-priority-p2) says.
+2. **Given** a template whose body changes, **When** only its file is edited and the charter is built, **Then** the catalogue names the same file for that identity, and no primitive naming it changes.
 3. **Given** `cw explain script:<id>`, **When** it runs, **Then** it says every primitive that mentions that script, as it names the primitives that cite a corpus; the portal says the same.
+
+---
+
+### User Story 23 - Keep every primitive as a folder, with its index.md and its assets (Priority: P1)
+
+**Status**: Done
+
+Until now a primitive was one markdown file, and a skill that needed a checklist, a sample or a helper beside it had nowhere to keep one. After this, every primitive is a folder: `<kind>/<id>/index.md` under its layer, the `/` of an id a folder like any other, as in `mcp/team/billing/index.md`. Every other file in that folder is one of its assets; the body reaches each as `./<file>`. A build compiles `index.md` to `.cw/out/<kind>/<id>/index.md` and copies the assets beside it, so the same `./<file>` opens there too. Going down from a kind's folder, the first `index.md` found is a primitive and everything under it belongs to it, so `cw add` refuses a primitive that would sit inside another, or hold one.
+
+**Why this priority**: A script is nothing but a primitive with files to run ([Story 24](#user-story-24---keep-a-script-as-real-files-and-say-which-one-runs-priority-p1)); with assets for every kind, a script needs no layout of its own.
+
+**Independent Test**: Run `cw add skill team/review` and confirm `.cw/charter/skill/team/review/index.md` is written; put `checklist.md` beside it and name `./checklist.md` in the body; build; confirm `.cw/out/skill/team/review/index.md` is what the catalogue names and that `checklist.md` sits beside it byte for byte; run `cw add skill team/review/strict` and `cw add skill team` and confirm both are refused; keep a primitive as `skill/old.md` and confirm the check names where to move it.
+
+**Acceptance Scenarios**:
+
+1. **Given** `cw add skill team/review` with its headers, **When** it runs, **Then** `.cw/charter/skill/team/review/index.md` is written, and `skill:team/review` is an identity of the charter; the portal writes the same file.
+2. **Given** a primitive of any kind and any layer with files beside its `index.md`, at any depth, **When** the charter is built, **Then** its compiled document is `.cw/out/<kind>/<id>/index.md`, the catalogue names that file, and every other file of its folder is copied beside it at the path it has there, byte for byte.
+3. **Given** a primitive at `skill/team/index.md` and another `index.md` at `skill/team/review/index.md`, **When** the charter is read, **Then** the second is one of the first one's assets, and no primitive.
+4. **Given** a primitive at `skill/team/review/index.md`, **When** the author adds `skill:team/review/strict` or `skill:team`, **Then** it is refused, naming the primitive whose folder it would sit inside or hold, and nothing is written.
+5. **Given** an `index.md` whose folder is not `<kind>/<id>` of the kind and id it declares, or a markdown file kept as `<kind>/<id>.md` by an earlier version, **When** the charter is checked, built or listed, **Then** it is an error under that file saying where to move it, and nothing is built.
+6. **Given** a primitive deleted from the portal or the command line, **When** it is done, **Then** its `index.md` and every asset are gone from the charter; the next build deletes their copies.
+7. **Given** a primitive whose id holds `/`, **When** a host is compiled for, **Then** every name that host is given for it is what it was: `/` written as the kind's separator is ([FR-141](#fr-141)).
+
+---
+
+### User Story 24 - Keep a script as real files, and say which one runs (Priority: P1)
+
+**Status**: Done
+
+The changelog check is a shell file. Kept as the body of a markdown file, no editor colours it, no linter reads it, and it cannot be run to try it. After this, a script is a primitive like any other, and its real files are its assets: `script/check-changelog/index.md` beside `script/check-changelog/run.sh`. Its `executionPath` header names the one that runs, from `index.md`: `./run.sh`, typed by its author. Its body says how the script is called: its arguments, and when to run it. A build compiles it and copies its assets to `.cw/out/script/check-changelog/`; what an agent or a sensor runs is the copy, so a change that has not been built yet never reaches what runs.
+
+**Why this priority**: A script nobody can lint or try is a script nobody trusts, and running the charter's own file would let a half-written edit run.
+
+**Independent Test**: Run `cw add script check-changelog --header executionPath=./run.sh` and confirm `index.md` and an empty `run.sh` beside it are written, and that `cw add` says so; write the script, a helper beside it and a body saying its arguments; build; confirm `.cw/out/script/check-changelog/` holds both files byte for byte, that `run.sh` runs by its path and the helper is not executable; edit `run.sh` without building and confirm the copy is unchanged and the preview says it would be written.
+
+**Acceptance Scenarios**:
+
+1. **Given** a repository set up under `cw`, **When** the author runs `cw kinds script`, **Then** the answer names the `executionPath` header, its shape and the kind's sample.
+2. **Given** `cw add script check-changelog --header executionPath=./run.sh`, **When** it runs, **Then** `.cw/charter/script/check-changelog/index.md` is written with that header and an empty `run.sh` beside it, and both are said; the portal writes the same two files and says the same.
+3. **Given** a built script, **When** its copy is looked at, **Then** the file its `executionPath` names is executable and no other asset is.
+4. **Given** a script whose `executionPath` is missing, is not written as `./<path>`, leaves its folder, holds what a shell would read, or names no asset of it, **When** the charter is checked, **Then** it is an error under the script's `index.md`, and nothing is built.
+5. **Given** a built script, **When** one of its assets is edited, added or deleted and no build runs, **Then** the copy is as the last build left it, the preview lists what the build would write and delete, and the health check says the output is out of date.
+6. **Given** a vendor source holding a script, **When** the repository builds, **Then** its assets are copied into the repository's output folder like one the repository authored.
+
+---
+
+### User Story 25 - Write each name as what its reader can use (Priority: P2)
+
+**Status**: Done
+
+The charter holds identities: `script:check-changelog` in a sensor's `run`, `mcp:linear` among an agent's tools, `template:release-note` in a skill's body. Three readers meet them. A harness executes a sensor's command and looks nothing up, so it needs a path. A host calls a tool by the host's own name for it. A person or an agent reading a compiled document can follow a link. After this, a build writes each name as what its reader can use: a sensor's `run` names the built script's file, an agent's tools are its host's names as before, and a name in a body is a markdown link to the file the catalogue names for it, which opens with a click.
+
+**Why this priority**: Stories 23 and 24 put the files in place. Without this a sensor cannot run a charter script at all, and a reader of a compiled document has to look every name up.
+
+**Independent Test**: Author a script, a template, an mcp, a sensor whose `run` is `script:<id> --strict`, and a skill whose body names all three; build for a host; confirm the host's hook command starts with `.cw/out/script/<id>/` and runs, that each name in the skill's compiled document is a link whose target opens from that document, and that `cw explain` on the script names the sensor and the skill.
+
+**Acceptance Scenarios**:
+
+1. **Given** a sensor whose `run` names `script:<id>` of a script the charter holds, **When** the charter is built for a host, **Then** the command that host is given holds the built file's path from the repository's root in its place, with the rest of the command as written.
+2. **Given** a sensor whose `run` names a script no layer holds, **When** the charter is checked, **Then** it is an error under the sensor's file, as a body naming one is ([FR-162](#fr-162)); a script only a sensor names is not warned about, and `cw explain` on it names the sensor.
+3. **Given** a primitive of any kind whose body names `mcp:<id>`, `script:<id>` or `template:<id>` of a primitive the charter holds, **When** the charter is built, **Then** its compiled document holds a markdown link in its place: the identity as its text, and the file the catalogue names for it as its target, written from that document.
+4. **Given** a name written alone inside a code span, **When** the charter is built, **Then** the link's text is that code span; **Given** a name inside a longer code span or a fenced block, **Then** it is left as written.
+5. **Given** a template whose body names a script, **When** the charter is built, **Then** its compiled document holds a link in its place, as any compiled document does.
+6. **Given** an agent listing `mcp:<id>` among its tools, **When** the charter is built for a host, **Then** its tool list holds the names that host calls them by, as before ([FR-156](#fr-156)).
 
 ---
 
@@ -590,17 +657,21 @@ The release skill's body says "run `script:release/check-changelog` before taggi
 - The developer runs `cw mcp auth` by asking their agent to — the agent has no terminal to be asked at, so nothing is asked and no token passes through the conversation ([FR-150](#fr-150)).
 - The repository's MCP configuration already has entries of its own — they are kept; the build writes only the `cw` entry ([FR-146](#fr-146)).
 - A charter that declares no `mcp` primitive — no MCP configuration is written and none of the repository's is touched.
-- An identity holding `/` — its file sits in a folder named after the part before it, and every surface that names it by file or by host name replaces `/` the way it replaces `:` ([FR-141](#fr-141)).
+- An identity holding `/` — its folder sits in a folder named after the part before it, and every name a host is given for it replaces `/` the way it replaces `:` ([FR-141](#fr-141)).
 
 **Scripts and templates**
 
 - A body mentions `script:` followed by something that is no identity, such as `script:<id>` written as a placeholder — it is left as written and is not a reference; only a name shaped as an identity ([FR-141](#fr-141)) is.
-- A script whose body is empty — it is built as an empty file; whether that is useful is the author's business.
-- A script with no first line naming how it runs — it is built as written; the agent runs it the way its skill says to, for instance `bash .cw/out/script/<id>.sh`.
-- A script and a template sharing one id, such as `script:release` and `template:release` — two identities, two files in two folders, no collision.
-- A built script or template hand-edited — the next build writes it again, and the preview lists it as one the build would write, as for any compiled document.
+- A script whose body is empty — its compiled document holds its headers alone, and the script runs as any other.
+- A script whose file has no first line naming how it runs — it is copied as written; the agent runs it the way the script's body says to, for instance `bash .cw/out/script/<id>/run.sh`.
+- A script and a template sharing one id, such as `script:release` and `template:release` — two identities, two folders, no collision.
+- A copied asset or a built template hand-edited — the next build writes it again, and the preview lists it as one the build would write, as for any compiled document.
+- A script's assets edited and not built — what runs is the last build's copy; nothing of the edit is run until a build.
+- A primitive's folder holding a markdown file, or a folder with an `index.md` of its own — it is one of its assets, copied like the rest, and never read as a primitive.
+- A primitive kept as `<kind>/<id>.md` by an earlier version — an error under that file saying to move it to `<kind>/<id>/index.md` ([FR-141](#fr-141)).
 - A script names itself — it is a mention like any other; nothing loops, since a build never runs anything.
-- A skill whose host document is only a pointer to its compiled document — the name reads the same, as the identity, whichever the agent opens.
+- A name inside a fenced block or a longer code span — left as written: it is an example there, and a link inside it would be read as text.
+- A skill whose host document is only a pointer to its compiled document — the links are in the compiled document the pointer names.
 
 **Agent authoring**
 
@@ -619,9 +690,9 @@ The release skill's body says "run `script:release/check-changelog` before taggi
 **The charter format**
 
 - <a id="fr-001"></a>**FR-001**: The system MUST recognise exactly these primitive kinds — guide, sensor, skill, playbook, agent, posture, corpus, mixin, mcp, script and template — and MUST treat any other kind as a validation error. The set is closed.
-- <a id="fr-002"></a>**FR-002**: Every primitive MUST be a single markdown file kept in the directory of its kind within the charter root, and MUST carry at minimum a kind, an identity and a description. The system MUST look for primitives in those directories and nowhere else, so that the catalogue, the lockfile and every other generated file beside them are never read as primitives.
-- <a id="fr-003"></a>**FR-003**: Every primitive MUST declare its own kind, and the system MUST read it as that kind wherever the file sits. A file that declares no kind, or one outside the set, MUST be reported.
-- <a id="fr-004"></a>**FR-004**: The system MUST enforce, per kind, the additional fields that kind requires: a triggering signal and the command it runs, for a sensor; activation triggers for a skill and for a playbook; a tool list for an agent; permission lists for a posture; an address, the ways to sign in, and a tool list for an mcp ([FR-142](#fr-142)); and an extension for a script and for a template ([FR-158](#fr-158)). A mixin MUST NOT pull in mixins of its own, and a script or a template MUST NOT pull in any mixin.
+- <a id="fr-002"></a>**FR-002**: Every primitive MUST be a folder in the directory of its kind within the charter root, holding its `index.md`, and its `index.md` MUST carry at minimum a kind, an identity and a description ([FR-141](#fr-141)). The system MUST look for primitives in those directories and nowhere else, so that the catalogue, the lockfile and every other generated file beside them are never read as primitives.
+- <a id="fr-003"></a>**FR-003**: Every primitive MUST declare its own kind, and the system MUST read it as that kind. A file that declares no kind, or one outside the set, MUST be reported, and so MUST an `index.md` whose folder is not `<kind>/<id>` of the kind and id it declares ([FR-141](#fr-141)).
+- <a id="fr-004"></a>**FR-004**: The system MUST enforce, per kind, the additional fields that kind requires: a triggering signal and the command it runs, for a sensor; activation triggers for a skill and for a playbook; a tool list for an agent; permission lists for a posture; an address, the ways to sign in, and a tool list for an mcp ([FR-142](#fr-142)); and the file it runs, for a script ([FR-165](#fr-165)). A mixin MUST NOT pull in mixins of its own.
 - <a id="fr-005"></a>**FR-005**: The system MUST let any primitive cite the reasoning behind it, and MUST treat that reasoning as loaded only on demand rather than always present.
 - <a id="fr-006"></a>**FR-006**: The system MUST let a primitive pull in one or more mixins, each lending its body to the host at projection time. No field is merged: a mixin lends text, not fields. Where both the host and the mixin name the files they apply to, one side's globs MUST cover the other's, in either direction, and a pair that covers neither way MUST be reported. A mixin MUST NOT itself pull in another mixin.
 - <a id="fr-007"></a>**FR-007**: A primitive that names a mixin no layer holds MUST be reported.
@@ -723,7 +794,7 @@ The release skill's body says "run `script:release/check-changelog` before taggi
 **Changing and deleting a primitive**
 
 - <a id="fr-075"></a>**FR-075**: The engine MUST be able to rewrite an existing repository primitive's headers and body, keeping its kind and identity, and MUST refuse it with the same faults creating one gives for answers the kind refuses. The portal MUST show an existing primitive's kind and identity without letting them be changed.
-- <a id="fr-076"></a>**FR-076**: The engine MUST be able to delete an existing repository primitive's file, and nothing else.
+- <a id="fr-076"></a>**FR-076**: The engine MUST be able to delete an existing repository primitive's `index.md` and its assets ([FR-167](#fr-167)), and nothing else.
 - <a id="fr-077"></a>**FR-077**: The engine MUST refuse to rewrite or delete a vendored primitive, naming the vendor folder it belongs to.
 - <a id="fr-078"></a>**FR-078**: Rewriting a primitive MUST be refused, with the file named, when the file changed on disk after the author opened it.
 - <a id="fr-079"></a>**FR-079**: Neither creating, rewriting nor deleting a primitive MUST compile or commit anything: what it writes is left in the working tree, and a build is the command that compiles ([FR-032](#fr-032)).
@@ -820,18 +891,18 @@ The release skill's body says "run `script:release/check-changelog` before taggi
 
 **The compiled charter**
 
-- <a id="fr-139"></a>**FR-139**: A build MUST write every primitive of every layer but a script and a template ([FR-159](#fr-159)) as one compiled document at `.cw/out/<kind>/<id>.md`: its headers, and below them the bodies of the mixins it pulls in, in the order it names them, before its own. A compiled document MUST carry the mark of generated output, and MUST be deleted by the build that no longer compiles it.
+- <a id="fr-139"></a>**FR-139**: A build MUST write every primitive of every layer as one compiled document at `.cw/out/<kind>/<id>/index.md`, with its assets beside it ([FR-168](#fr-168)): its headers, and below them the bodies of the mixins it pulls in, in the order it names them, before its own. A compiled document MUST carry the mark of generated output, and MUST be deleted by the build that no longer compiles it.
 - <a id="fr-140"></a>**FR-140**: The catalogue MUST name, as each primitive's file, its compiled document. A listing of the charter — on the command line and in the portal — MUST name the file each primitive was authored in, read off the charter rather than off the catalogue.
 
 **Knowledge reached through MCP**
 
-- <a id="fr-141"></a>**FR-141**: An identity MUST be one or more segments joined by `/`, each segment lowercase letters, digits and inner hyphens, so that identities can be grouped (`mcp:mfbs/billing`). A primitive MUST be kept at `<kind>/<id>.md` under its layer, and compiled to `.cw/out/<kind>/<id>.md` ([FR-139](#fr-139)), in the folders its segments name; every name a host is given for it — a host's component, a tool's prefix — MUST replace `/` as it replaces the kind's separator.
+- <a id="fr-141"></a>**FR-141**: An identity MUST be one or more segments joined by `/`, each segment lowercase letters, digits and inner hyphens, so that identities can be grouped (`mcp:mfbs/billing`). A primitive MUST be kept as `<kind>/<id>/index.md` under its layer, each segment of its id a folder, and compiled under the same path in `.cw/out/` ([FR-139](#fr-139)). Going down from a kind's folder, the first `index.md` found is a primitive, and everything else under its folder is its own. An `index.md` kept anywhere else than its kind and id say, and a markdown file kept as `<kind>/<id>.md`, MUST be an error under that file saying where to move it, and nothing is built. Every name a host is given for a primitive — a host's component, a tool's prefix — MUST replace `/` as it replaces the kind's separator.
 - <a id="fr-142"></a>**FR-142**: An `mcp` primitive MUST declare one MCP server, in exactly one of two ways: an endpoint reached over HTTP, or a command with its arguments, started as a local process. Its address is the endpoint, or the command with its arguments. It MUST declare the tools of that server the agent may use. For an endpoint it MUST declare the ways a developer may sign in — `oauth`, `token`, or both. For a command, `token` is the only way, and a primitive declaring it MUST name the environment variable the process reads its token from; a command declaring no way needs no sign-in. It MAY declare a path: the place inside that server it is about, such as one repository of a code host, told to the agent beside each of its tools. Its body, where it has one, says what is kept there and when to look.
 - <a id="fr-143"></a>**FR-143**: A primitive of any kind MUST name a place it uses in its body, as `mcp:<id>`, in the author's own words; there is no header for it. A name no layer holds MUST be an error under the file whose body names it ([FR-162](#fr-162)).
 - <a id="fr-144"></a>**FR-144**: An `mcp` primitive no primitive names MUST be a warning under its own file, stopping nothing ([FR-014](#fr-014)).
 - <a id="fr-145"></a>**FR-145**: The build MUST write the list of places, `.cw/out/mcp-origins.json`: one entry per address and path, holding every identity declaring it, from every layer, the name each identity is served under, and the union of the ways each allows signing in — where the place is, how it is signed in to and what its tools are served under, and nothing an mcp's own file and the catalogue already say. A place's tools are the union of what its identities declare, each identity's served under its own prefix: the first segment of its id and four hex characters hashed from its identity (FNV-1a), `mfbs_xxxx` for `mcp:mfbs/billing`, short whatever the id's length and the same on every build whatever other mcps come and go; two that hash alike are told apart by `_2` onward, in the order the identities sort in. Two identities at one place are two prefixes, never one chosen between them.
 - <a id="fr-146"></a>**FR-146**: The build MUST write, into each chosen agent's MCP configuration, one entry starting `cw mcp serve`, whether or not the charter declares an `mcp` primitive yet, and MUST leave every other entry of that configuration as it was.
-- <a id="fr-147"></a>**FR-147**: A primitive's compiled document ([FR-139](#fr-139)) and every host document compiled from it MUST write each `mcp:<id>` its body names, of an mcp the charter holds, as the name that identity's tools are served under ([FR-145](#fr-145)), with no host's prefix before it. A name no layer holds never reaches a build: the charter refuses it ([FR-162](#fr-162)). The charter itself knows no host's names.
+- <a id="fr-147"></a>**FR-147**: A primitive's compiled document ([FR-139](#fr-139)) MUST write each `mcp:<id>`, `script:<id>` and `template:<id>` its body names, of a primitive the charter holds, as a markdown link: the identity as its text, and as its target the file the catalogue names for that identity ([FR-140](#fr-140), [FR-164](#fr-164)), written as the path from the document holding the link, so it opens where it is read. A name written alone inside a code span keeps that span as the link's text; a name inside a longer code span or a fenced block MUST be left as written. A name no layer holds never reaches a build: the charter refuses it ([FR-162](#fr-162)). The charter itself knows no host's names and holds no path.
 - <a id="fr-148"></a>**FR-148**: `cw mcp auth` MUST sign the developer in, as themselves, to every address the charter holds that they are not signed in to, one address at a time, offering every way any `mcp` primitive at that address allows, whichever layer declared it. One sign-in MUST serve every primitive at that address. No credential MUST be shared between developers, or held for them.
 - <a id="fr-149"></a>**FR-149**: A credential MUST be kept in the operating system's own credential store, under its address, and MUST NOT be written to any file under the repository, to the compiled output, or to anything `cw` prints. A token typed at a prompt MUST NOT be shown.
 - <a id="fr-150"></a>**FR-150**: `cw mcp auth` MUST ask only at a terminal. With none, it MUST ask nothing, name each address not signed in to, and exit with a failure status. `cw mcp auth --status` MUST list each address, the identities at it, and whether the developer is signed in there, and change nothing. `cw mcp auth <mcp identity>` MUST sign in again to that primitive's address alone.
@@ -844,13 +915,18 @@ The release skill's body says "run `script:release/check-changelog` before taggi
 
 **Scripts and templates**
 
-- <a id="fr-158"></a>**FR-158**: A `script` and a `template` MUST each declare an `extension`: one or more segments of lowercase letters and digits joined by `.`, with no leading `.` (`sh`, `py`, `md`, `tar.gz`). Their body is the whole content of the file they stand for.
-- <a id="fr-159"></a>**FR-159**: A build MUST write each script and template of every layer as `.cw/out/<kind>/<id>.<extension>`, in the folders its identity's segments name ([FR-141](#fr-141)), holding its body byte for byte and nothing else: no header, no mark of generated output. It MUST NOT write a compiled document at `.cw/out/<kind>/<id>.md` for it. The build that no longer writes a file, because its primitive is gone or its extension changed, MUST delete it.
-- <a id="fr-160"></a>**FR-160**: A built script MUST be executable by the developer who built it. A built template MUST NOT be made executable.
-- <a id="fr-161"></a>**FR-161**: A primitive of any kind names a script or a template in its body by identity, `script:<id>` or `template:<id>`, and its built output MUST hold that name as written. The agent finds the built file by that identity in the catalogue ([FR-164](#fr-164)). Only a name shaped as an identity is a reference. The charter itself holds identities, never paths.
-- <a id="fr-162"></a>**FR-162**: A body naming `mcp:<id>`, `script:<id>` or `template:<id>` that no layer holds MUST be an error under the file whose body names it, naming the identity, in one wording for the three; the charter is not built while it stands, and `cw build` MUST exit with a failure status, as for any other error. A warning would not do: an agent sent to a place or a script that is not there may invent one, or use another it takes for it.
-- <a id="fr-163"></a>**FR-163**: A script or a template no primitive names MUST be a warning under its own file, stopping nothing ([FR-014](#fr-014)). A primitive naming a script or a template in its body names it, for this warning and for the explanation ([FR-029](#fr-029)).
-- <a id="fr-164"></a>**FR-164**: The catalogue MUST name, as each script's and template's file, its built file ([FR-140](#fr-140)).
+- <a id="fr-158"></a>**FR-158**: A `template` MUST declare nothing beyond the headers every kind takes. Its body is the file the agent fills or copies, and the agent reads what kind of file it is off the body.
+- <a id="fr-159"></a>**FR-159**: A build MUST compile each template of every layer as it does every other kind ([FR-139](#fr-139)), at `.cw/out/template/<id>/index.md`.
+- <a id="fr-160"></a>**FR-160**: Of a built script, the file it runs MUST be executable by the developer who built it, and no other file of it. A built template MUST NOT be made executable.
+- <a id="fr-161"></a>**FR-161**: A primitive of any kind names a script or a template in its body by identity, `script:<id>` or `template:<id>`, and a sensor MAY name a script in its `run` the same way. Only a name shaped as an identity is a reference. The charter itself holds identities, never paths; what each is written as where it is read is [FR-147](#fr-147) and [FR-169](#fr-169).
+- <a id="fr-162"></a>**FR-162**: A body naming `mcp:<id>`, `script:<id>` or `template:<id>` that no layer holds, and a sensor's `run` naming such a `script:<id>`, MUST be an error under the file that names it, naming the identity, in one wording for the three; the charter is not built while it stands, and `cw build` MUST exit with a failure status, as for any other error. A warning would not do: an agent sent to a place or a script that is not there may invent one, or use another it takes for it.
+- <a id="fr-163"></a>**FR-163**: A script or a template no primitive names MUST be a warning under its own file, stopping nothing ([FR-014](#fr-014)). A primitive naming a script or a template in its body, and a sensor naming a script in its `run`, names it, for this warning and for the explanation ([FR-029](#fr-029)).
+- <a id="fr-164"></a>**FR-164**: The catalogue MUST name, as each template's and each script's file, its compiled document, a script's saying the file it runs ([FR-140](#fr-140), [FR-166](#fr-166)).
+- <a id="fr-165"></a>**FR-165**: A `script` MUST declare `executionPath`: the path from its `index.md` to the one asset that is run, written `./<path>` in letters, digits, `.`, `_` and `-`, since it is written into commands a shell reads ([FR-169](#fr-169)). Its author types it; nothing is guessed. An `executionPath` not written so, leaving its folder, or naming no asset of the script MUST be an error under its `index.md`, and nothing is built. Its body says how the script is called — its arguments, and when to run it — and MAY be empty.
+- <a id="fr-166"></a>**FR-166**: What runs is the copy of a script's assets in `.cw/out/script/<id>/` ([FR-168](#fr-168)): every command and every path written for a script names it, so a change to a script's assets reaches what runs at the next build and not before.
+- <a id="fr-167"></a>**FR-167**: Creating a primitive, from `cw add` and from the portal, MUST be refused, naming the primitive in the way and writing nothing, where its folder would sit inside another primitive's folder of its layer, or hold one. Creating a script MUST also write an empty asset at the `executionPath` answered, and both MUST say it was written, so its author knows where the script goes. Deleting a primitive ([FR-076](#fr-076)) MUST take every asset of it with it.
+- <a id="fr-168"></a>**FR-168**: Every file in a primitive's folder but its `index.md`, at any depth, MUST be one of its assets, a file named `index.md` deeper in it included, and MUST NOT be read as a primitive. A build MUST copy every asset of every primitive, of every layer, beside its compiled document, at the path it has in the folder, byte for byte: no name rewritten. The build that no longer copies a file, because the primitive or the file is gone, MUST delete it.
+- <a id="fr-169"></a>**FR-169**: A sensor's `run` naming `script:<id>` of a script the charter holds MUST be written, in every command a host is given for that sensor, as that script's built file's path from the repository's root, with the rest of the command as written.
 
 **The portal: tests**
 
@@ -884,9 +960,10 @@ The shape of each is in the data model.
 - **MCP primitive**: One place knowledge is kept outside the repository — an MCP server's address, the path inside it, the ways to sign in and the tools the agent may use — under an identity that does not change when the address does (data-model).
 - **Place**: One address and path, as the list of places holds it: every identity declaring it, from every layer, and the ways it is signed in to; its tools are what those identities declare between them (data-model).
 - **Credential**: What one developer signed in to one address with. Theirs alone, kept by their operating system, never in the repository (data-model).
-- **Script**: A file the agent runs, kept in the charter as a primitive: its body is the file, and its `extension` says what the built file is called (data-model).
-- **Template**: A file the agent fills or copies, kept the same way as a script, and built the same way, but never made executable (data-model).
-- **Built file**: What a build writes for a script or a template: its body alone, under its extension, in the output folder, at the path the catalogue names for its identity (data-model).
+- **Script**: Files the agent or a sensor runs, kept in the charter as a primitive whose assets they are; its `index.md` says which one runs and how it is called (data-model).
+- **Template**: A file the agent fills or copies, kept in the charter as a primitive and compiled like one: its body is the file (data-model).
+- **Asset**: A file kept in a primitive's folder beside its `index.md`, at any depth, reached from its body as `./<file>`, and copied beside its compiled document by a build (data-model).
+- **Built file**: What a build writes for each asset of a primitive: a copy beside its compiled document, in the output folder, where everything that names it points (data-model).
 - **Flow**: One branch holding one charter. A convention of the product and of a later application; carries no meaning inside the engine, the command line or the portal.
 
 ## Success Criteria *(mandatory)*
@@ -932,8 +1009,10 @@ The shape of each is in the data model.
 - <a id="sc-037"></a>**SC-037**: An agent is shown zero tools its charter did not declare, and a subagent zero tools of a place its `tools` does not list.
 - <a id="sc-038"></a>**SC-038**: Moving a place to a new address changes one file of the charter; no primitive naming the place changes.
 - <a id="sc-039"></a>**SC-039**: A place that is down or not signed in to leaves 100% of other places' tools listed and answering.
-- <a id="sc-040"></a>**SC-040**: No author writes a path to a script or a template in a primitive an agent reads: it is named by identity, and the catalogue names its built file, for 100% of them.
-- <a id="sc-041"></a>**SC-041**: Every built file the catalogue names for a script or a template opens from the repository's root, for 100% of them, after any rename or change of extension and one build.
+- <a id="sc-040"></a>**SC-040**: No author writes a path to a script or a template in a primitive: it is named by identity, and every link and command the built output holds for it is written by the build, for 100% of them.
+- <a id="sc-041"></a>**SC-041**: Every link a compiled document holds to a place, a script or a template opens from that document, and every command written for a script runs from the repository's root, for 100% of them, after any rename and one build.
+- <a id="sc-042"></a>**SC-042**: A change to a script's files never runs before a build: 100% of commands and paths written for a script name its copy in the output folder.
+- <a id="sc-043"></a>**SC-043**: Every primitive of every layer is a folder holding its `index.md` at `<kind>/<id>/`, and every `./<file>` its body names opens from its compiled document as it does from its `index.md`, for 100% of them.
 
 ## Assumptions
 
@@ -977,11 +1056,12 @@ The shape of each is in the data model.
 - **A job run with nobody watching signs in as itself.** A scheduled run uses an account made for it at each place — a bot or an app — signed in once on the machine that runs it, so the place still records who called.
 - **The engine already knows what a kind requires.** Asking a kind and answering with flags add no capability to the engine: what a kind requires is answered at `cw add`'s prompts, and `cw add` writes the file. Agent authoring is two new ways of asking and one primitive.
 - **A script or a template is a primitive, not a file inside a skill.** Giving each an identity puts it under everything the charter already does — listing, search, explanation, collisions, vendoring, warnings — and lets two skills share one. A skill kept as a folder of files would have needed all of that again for what it holds.
-- **Its content stays in a markdown file with headers.** Every primitive is read by one reading ([FR-009](#fr-009)) against its kind's contract; a script kept as a bare `.sh` file would need a second reading and a second place to keep its identity and description. The body of such a file is the content, untouched.
-- **The extension is declared, not guessed.** A first line does not always say what a file is, and a template's never does.
-- **A path from the repository's root reads one way everywhere.** The agent's commands run from the root, and a host that loads a skill names the host's own folder as that skill's base; a path relative to one file or the other would be read against whichever the agent assumed.
+- **A primitive is a markdown file with headers; a script's files are real files beside it.** Every primitive is read by one reading ([FR-009](#fr-009)) against its kind's contract, so a script keeps its identity, description and the file it runs in a markdown file like any other. What runs is kept as files of their own language, which every editor, linter and shell already knows how to read; a template's body is the file to fill, compiled like any body.
+- **A command is written from the repository's root, a link from the document holding it.** A harness and an agent run commands from the root, so a path there reads one way everywhere. A link is followed by whoever is reading the document, and only a path from that document opens for them.
 - **A name nothing holds stops the build, for a place as for a script or a template.** An agent sent to a file that does not exist may write the script itself, or find one with a similar name and assume it is the one meant, then run it; sent to a place that does not exist, it looks for the knowledge somewhere else. Nobody reviewed what it runs, and nothing in the output says it guessed. Refusing the build at the name that does not resolve is the only point where the mistake is caught before anything runs.
 - **`cw` builds scripts and never runs them.** Running one is the agent's, when its skill says to, as firing a sensor is ([FR-030](#fr-030)).
+- **What runs is a copy.** A script's files are copied into the output folder by a build, and every command names the copy. An edit in progress in the charter is therefore never what a sensor fires, and what runs is what the last preview showed.
+- **A primitive is a folder.** What a primitive says lives in its `index.md`, and what it needs beside it — a checklist, a sample, the files a script runs — lives beside it, reached as `./<file>` from the charter and from the output alike. Stopping at the first `index.md` going down keeps one reading of any folder.
 
 ## Dependencies
 
@@ -1023,7 +1103,7 @@ The shape of each is in the data model.
 - A posture deciding which tools exist. A posture still decides whether a call needs approval.
 - Signing in from the portal, or showing who is signed in there.
 - A skill kept as a folder holding its own files. A skill uses scripts and templates by their identities.
-- Running a script, or filling a template, on the agent's behalf. A template is written out as authored; no placeholder or name in it is replaced.
-- A file that is not text, such as an image or an archive, kept as a script or a template.
-- Copying a script or a template into a host's own skill folder. There is one built file, in the output folder, and the catalogue names it.
-- Highlighting a script's or a template's body in the portal by its language.
+- Running a script, or filling a template, on the agent's behalf. No placeholder in a template is filled by the build.
+- A file that is not text, such as an image or an archive, kept as a template or among a script's files.
+- Copying a script or a template into a host's own skill folder. There is one built copy, in the output folder, and every name of it points there.
+- Highlighting a template's body in the portal by its language, and editing the files of a script's folder in the portal: they are written in an editor.

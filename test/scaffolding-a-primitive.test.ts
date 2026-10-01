@@ -79,7 +79,8 @@ const flagging = (kind: (typeof KINDS)[number]) =>
 
 /** A value the kind will accept wherever the field is one it checks the worth
  *  of, and a plain word everywhere else. */
-const valued = (field: string) => (field === "signal" ? "SessionStart" : field === "extension" ? "sh" : `what ${field} holds`);
+const valued = (field: string) =>
+  field === "signal" ? "SessionStart" : field === "extension" ? "sh" : field === "executionPath" ? "./something/run.sh" : `what ${field} holds`;
 
 test("a kind is asked what it requires, and nothing else (FR-004, FR-039)", () => {
   for (const one of PRIMITIVE_CLASSES)
@@ -105,7 +106,7 @@ const answerableKinds = KINDS.filter((kind) => kind !== "mcp");
 test("what is answered is what the file holds, read back as the same primitive (FR-039)", async () => {
   for (const kind of answerableKinds) {
     const { code, held: files } = await adding(["add", kind, "something"], answering(kind));
-    const written = (await held(files, `.cw/charter/${kind}/something.md`)) ?? "";
+    const written = (await held(files, `.cw/charter/${kind}/something/index.md`)) ?? "";
 
     assert.equal(code, 0);
     const read = primitiveOf(written, new YamlParser());
@@ -115,9 +116,9 @@ test("what is answered is what the file holds, read back as the same primitive (
   }
 });
 
-test("an id holding / is written in the folders its segments name (FR-141)", async () => {
+test("an id holding / is written as one file in its kind's folder, each / as - (FR-141)", async () => {
   const { code, held: files } = await adding(["add", "guide", "mfbs/no-any"], ["what description holds"]);
-  const read = primitiveOf((await held(files, ".cw/charter/guide/mfbs/no-any.md")) ?? "", new YamlParser());
+  const read = primitiveOf((await held(files, ".cw/charter/guide/mfbs/no-any/index.md")) ?? "", new YamlParser());
 
   assert.equal(code, 0);
   assert.equal(read.headers.id, "mfbs/no-any");
@@ -129,7 +130,7 @@ test("an id with an empty segment is refused with the kind's sample, and nothing
 
     assert.equal(code, EXIT_FAILURE, id);
     assert.match(problems, /not what a guide holds/, id);
-    assert.equal(await held(files, `.cw/charter/guide/${id}.md`), undefined, id);
+    assert.equal(await held(files, `.cw/charter/guide/${id}/index.md`), undefined, id);
   }
 });
 
@@ -151,7 +152,7 @@ test("an answer its kind refuses is said before any file is written (FR-004, FR-
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /not what a sensor holds/);
   assert.match(problems, /signal: Stop/);
-  assert.equal(await held(files, ".cw/charter/sensor/on-stop.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/sensor/on-stop/index.md"), undefined);
 });
 
 test("a list answer holds the names typed, each trimmed and a blank one dropped (FR-039)", async () => {
@@ -159,7 +160,7 @@ test("a list answer holds the names typed, each trimmed and a blank one dropped 
     "what description holds",
     [" refactor ", "", "  "],
   ]);
-  const read = primitiveOf((await held(files, ".cw/charter/skill/refactoring.md")) ?? "", new YamlParser());
+  const read = primitiveOf((await held(files, ".cw/charter/skill/refactoring/index.md")) ?? "", new YamlParser());
 
   assert.equal(code, 0);
   assert.deepEqual("triggers" in read.headers ? read.headers.triggers : undefined, ["refactor"]);
@@ -170,7 +171,7 @@ test("a list answer left empty is refused once, as the list it should hold (FR-0
 
   assert.equal(code, EXIT_FAILURE);
   assert.equal(problems.match(/not what a skill holds/g)?.length, 1);
-  assert.equal(await held(files, ".cw/charter/skill/refactoring.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/skill/refactoring/index.md"), undefined);
 });
 
 test("nobody at the terminal is told what the kind requires, and nothing is written (FR-039)", async () => {
@@ -178,7 +179,7 @@ test("nobody at the terminal is told what the kind requires, and nothing is writ
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"description".*"triggers"/);
-  assert.equal(await held(files, ".cw/charter/skill/refactoring.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/skill/refactoring/index.md"), undefined);
 });
 
 test("a file that is already there is never written over (FR-039)", async () => {
@@ -187,12 +188,12 @@ test("a file that is already there is never written over (FR-039)", async () => 
     body: "BODY",
   }).toMarkdown();
   const { code, problems, held: files } = await adding(["add", "guide", "no-any"], answering("guide"), {
-    "file:///repo/.cw/charter/guide/no-any.md": authored,
+    "file:///repo/.cw/charter/guide/no-any/index.md": authored,
   });
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /already there/);
-  assert.equal(await held(files, ".cw/charter/guide/no-any.md"), authored);
+  assert.equal(await held(files, ".cw/charter/guide/no-any/index.md"), authored);
 });
 
 test("what is typed as flags is the file that is written from answers, word for word (FR-014, SC-005)", async () => {
@@ -201,7 +202,7 @@ test("what is typed as flags is the file that is written from answers, word for 
     const answered = await adding(["add", kind, "something"], answering(kind));
 
     assert.equal(typed.code, 0);
-    assert.equal(await held(typed.held, `.cw/charter/${kind}/something.md`), await held(answered.held, `.cw/charter/${kind}/something.md`));
+    assert.equal(await held(typed.held, `.cw/charter/${kind}/something/index.md`), await held(answered.held, `.cw/charter/${kind}/something/index.md`));
   }
 });
 
@@ -212,7 +213,7 @@ test("a header typed as a flag is an answer, so nothing is asked at a terminal e
   const { code, held: files } = await adding(["add", "skill", "refactoring", ...flagging("skill")], []);
 
   assert.equal(code, 0);
-  assert.match((await held(files, ".cw/charter/skill/refactoring.md")) ?? "", /triggers:/);
+  assert.match((await held(files, ".cw/charter/skill/refactoring/index.md")) ?? "", /triggers:/);
 });
 
 test("a list header typed twice holds both, in the order they were typed (FR-007)", async () => {
@@ -222,7 +223,7 @@ test("a list header typed twice holds both, in the order they were typed (FR-007
     "--header", "triggers=extract",
     "--header", "triggers=inline",
   ]);
-  const read = primitiveOf((await held(files, ".cw/charter/skill/refactoring.md")) ?? "", new YamlParser());
+  const read = primitiveOf((await held(files, ".cw/charter/skill/refactoring/index.md")) ?? "", new YamlParser());
 
   assert.equal(code, 0);
   assert.deepEqual("triggers" in read.headers ? read.headers.triggers : undefined, ["extract", "inline"]);
@@ -237,7 +238,7 @@ test("a header holding one line is refused where it was typed twice, naming it (
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"description" holds one line, and was typed 2 times/);
-  assert.equal(await held(files, ".cw/charter/guide/no-any.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/guide/no-any/index.md"), undefined);
 });
 
 test("a flag naming nothing to put a value under is refused, quoting it (FR-008)", async () => {
@@ -245,7 +246,7 @@ test("a flag naming nothing to put a value under is refused, quoting it (FR-008)
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"--header description" names nothing to put a value under/);
-  assert.equal(await held(files, ".cw/charter/guide/no-any.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/guide/no-any/index.md"), undefined);
 });
 
 test("a value holding an = is kept whole, everything after the first one (FR-008)", async () => {
@@ -253,7 +254,7 @@ test("a value holding an = is kept whole, everything after the first one (FR-008
     "add", "guide", "no-any",
     "--header", "description=Reject a = where an == was meant.",
   ]);
-  const read = primitiveOf((await held(files, ".cw/charter/guide/no-any.md")) ?? "", new YamlParser());
+  const read = primitiveOf((await held(files, ".cw/charter/guide/no-any/index.md")) ?? "", new YamlParser());
 
   assert.equal(code, 0);
   assert.equal(read.headers.description, "Reject a = where an == was meant.");
@@ -268,7 +269,7 @@ test("a header the kind does not take is named, and nothing is written (FR-011)"
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /A guide holds no "signal"/);
-  assert.equal(await held(files, ".cw/charter/guide/no-any.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/guide/no-any/index.md"), undefined);
 });
 
 test("a header the kind requires and nobody answered is refused in the same words either way (FR-010, FR-012, SC-004)", async () => {
@@ -279,5 +280,15 @@ test("a header the kind requires and nobody answered is refused in the same word
   assert.equal(answered.code, EXIT_FAILURE);
   assert.equal(typed.problems, answered.problems);
   assert.match(typed.problems, /not what a skill holds/);
-  assert.equal(await held(typed.held, ".cw/charter/skill/refactoring.md"), undefined);
+  assert.equal(await held(typed.held, ".cw/charter/skill/refactoring/index.md"), undefined);
+});
+
+test("adding a script says the file it runs was written too, so its author knows where to write it (FR-167)", async () => {
+  const { code, results } = await adding(["add", "script", "release/check", "--header", "description=Check the changelog.", "--header", "executionPath=./run.sh"]);
+
+  assert.equal(code, 0);
+  assert.deepEqual(results.split("\n").slice(0, 2), [
+    "Wrote .cw/charter/script/release/check/index.md.",
+    "Wrote ./run.sh beside it, the file it runs: write the script there.",
+  ]);
 });

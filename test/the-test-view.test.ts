@@ -13,7 +13,7 @@ const suiteText = (written: unknown) => `${JSON.stringify(written, undefined, 2)
  *  an identity the charter does not hold; and `posture.json`, all passing. */
 const withTwoFiles = () => ({
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: [] })}\n`,
-  [at(".cw/charter/guide/no-any.md")]: guide("no-any"),
+  [at(".cw/charter/guide/no-any/index.md")]: guide("no-any"),
   [at(".cw/test/guides.json")]: suiteText({
     description: "The guides come up on code.",
     cases: [

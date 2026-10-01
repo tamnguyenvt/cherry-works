@@ -1,5 +1,6 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** A standard the agent is held to. Its body is loaded when a touched file
  *  matches one of its globs, and on every turn where it names none (FR-004). */
@@ -34,7 +35,7 @@ export class GuidePrimitive extends BasePrimitive<GuideHeaders> {
   };
 
   /** One guide, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string): GuidePrimitive {
-    return new GuidePrimitive(headersOf(GuidePrimitive, GuideHeadersSchema, record), body);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): GuidePrimitive {
+    return new GuidePrimitive(headersOf(GuidePrimitive, GuideHeadersSchema, record), body, assetFiles, primitiveLayer);
   }
 }

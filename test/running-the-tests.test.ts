@@ -76,10 +76,10 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
 
 const charter = {
   ...settings,
-  [at("guide/no-any.md")]: guide("no-any", ["src/**/*.ts"]),
-  [at("guide/docs-tone.md")]: guide("docs-tone", ["docs/**/*.md"]),
-  [at("sensor/tests.md")]: sensor("tests", "Stop"),
-  [at("posture/secrets.md")]: posture("secrets", [".env", "**/*.pem"]),
+  [at("guide/no-any/index.md")]: guide("no-any", ["src/**/*.ts"]),
+  [at("guide/docs-tone/index.md")]: guide("docs-tone", ["docs/**/*.md"]),
+  [at("sensor/tests/index.md")]: sensor("tests", "Stop"),
+  [at("posture/secrets/index.md")]: posture("secrets", [".env", "**/*.pem"]),
 };
 
 test("a touched file that matches a guide's globs brings it up, and the case passes (FR-048)", async () => {
@@ -240,7 +240,7 @@ test("a repository that wrote no test is told so and passes", async () => {
 test("a charter with an error resolves nothing and says where to read what is wrong (FR-009)", async () => {
   const run = commandLine({
     ...charter,
-    [at("guide/broken.md")]: "no frontmatter here",
+    [at("guide/broken/index.md")]: "no frontmatter here",
     ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
   });
 
@@ -249,13 +249,13 @@ test("a charter with an error resolves nothing and says where to read what is wr
   assert.equal(code, EXIT_FAILURE);
   assert.equal(result, "");
   assert.match(problem, /Nothing was resolved\./);
-  assert.match(problem, /\.cw\/charter\/guide\/broken\.md/);
+  assert.match(problem, /\.cw\/charter\/guide\/broken\/index\.md/);
 });
 
 test("a body naming an mcp no layer holds is an error, and the tests do not run (FR-143)", async () => {
   const run = commandLine({
     ...charter,
-    [at("guide/billing.md")]: primitive("guide", "billing", ['globs: ["src/**/*.ts"]'], "Take the requirements from mcp:missing."),
+    [at("guide/billing/index.md")]: primitive("guide", "billing", ['globs: ["src/**/*.ts"]'], "Take the requirements from mcp:missing."),
     ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
   });
 

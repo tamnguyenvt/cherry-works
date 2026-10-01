@@ -107,8 +107,8 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
 
 test("a charter with nothing wrong passes, and says so", async () => {
   const { written } = await run({
-    [new URL("guide/no-any.md", root).href]: guide("no-any", ['mixins: ["ts-defaults"]']),
-    [new URL("mixin/ts-defaults.md", root).href]: primitive("mixin", "ts-defaults"),
+    [new URL("guide/no-any/index.md", root).href]: guide("no-any", ['mixins: ["ts-defaults"]']),
+    [new URL("mixin/ts-defaults/index.md", root).href]: primitive("mixin", "ts-defaults"),
     ...pinningDown("guide:no-any"),
   });
 
@@ -120,17 +120,17 @@ test("a charter with nothing wrong passes, and says so", async () => {
 
 test("a file that is no primitive at all is named, with the problem and the next move", async () => {
   const { code, written } = await run({
-    [new URL("skill/refactoring.md", root).href]: primitive("skill", "refactoring"),
+    [new URL("skill/refactoring/index.md", root).href]: primitive("skill", "refactoring"),
   });
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /skill\/refactoring\.md/);
+  assert.match(written.everything, /skill\/refactoring\/index\.md/);
   assert.match(written.everything, /triggers/);
 });
 
 test("what is wrong is part of the report, not the command going wrong", async () => {
   const { written } = await run({
-    [new URL("skill/refactoring.md", root).href]: primitive("skill", "refactoring"),
+    [new URL("skill/refactoring/index.md", root).href]: primitive("skill", "refactoring"),
   });
 
   // The command ran and this is what it found, so all of it is the result: a
@@ -141,16 +141,16 @@ test("what is wrong is part of the report, not the command going wrong", async (
 
 test("a file is named as the user would type it, under the repository they ran in", async () => {
   const { written } = await run({
-    [new URL("guide/no-any.md", root).href]: guide("no-any", ['mixins: ["absent"]']),
+    [new URL("guide/no-any/index.md", root).href]: guide("no-any", ['mixins: ["absent"]']),
   });
 
-  assert.match(written.everything, /^\.cw\/charter\/guide\/no-any\.md$/m);
+  assert.match(written.everything, /^\.cw\/charter\/guide\/no-any\/index\.md$/m);
 });
 
 test("what is wrong with the charter as a whole fails the run too", async () => {
   const { code, written } = await run({
-    [new URL("guide/no-any.md", root).href]: guide("no-any"),
-    [new URL("guide/copied.md", root).href]: guide("no-any"),
+    [new URL("guide/no-any/index.md", root).href]: guide("no-any"),
+    [new URL("file:///repo/.cw/vendor/acme/guide/no-any/index.md").href]: guide("no-any"),
   });
 
   assert.equal(code, EXIT_FAILURE);
@@ -159,18 +159,18 @@ test("what is wrong with the charter as a whole fails the run too", async () => 
 
 test("every bad file is named in one run, not the first one found", async () => {
   const { written } = await run({
-    [new URL("guide/no-any.md", root).href]: guide("no-any"),
-    [new URL("guide/copied.md", root).href]: guide("no-any"),
-    [new URL("guide/other.md", root).href]: guide("other", ['mixins: ["absent"]']),
+    [new URL("guide/no-any/index.md", root).href]: guide("no-any"),
+    [new URL("guide/copied/index.md", root).href]: guide("no-any"),
+    [new URL("guide/other/index.md", root).href]: guide("other", ['mixins: ["absent"]']),
   });
 
-  assert.match(written.everything, /guide\/copied\.md/);
-  assert.match(written.everything, /guide\/other\.md/);
+  assert.match(written.everything, /guide\/copied\/index\.md/);
+  assert.match(written.everything, /guide\/other\/index\.md/);
 });
 
 test("a warning is said and lets the run through", async () => {
   const { written } = await run({
-    [new URL("guide/no-any.md", root).href]: guide("no-any", ["rationale: corpus:absent"]),
+    [new URL("guide/no-any/index.md", root).href]: guide("no-any", ["rationale: corpus:absent"]),
     ...pinningDown("guide:no-any"),
   });
 
