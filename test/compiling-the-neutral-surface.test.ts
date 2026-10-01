@@ -58,13 +58,12 @@ test("a charter with no primitive at all still compiles it (FR-019)", async () =
   assert.ok((await written({}, CHARTER_MD)).startsWith("# Charter\n"));
 });
 
-test("the charter file sends an agent to the compact listing first (FR-012, SC-005)", async () => {
+test("the charter file sends an agent to the catalogue first, and to no reduced copy of it", async () => {
   const contents = await written(oneGuide, CHARTER_MD);
 
-  // Named beside it, since the two listings land in the same folder it does.
-  assert.ok(contents.includes("(./catalog.min.json)"));
+  // Named beside it, since the listing lands in the same folder it does.
   assert.ok(contents.includes("(./catalog.json)"));
-  assert.ok(contents.indexOf("catalog.min.json") < contents.indexOf("(./catalog.json)"));
+  assert.ok(!contents.includes("catalog.min.json"));
 });
 
 test("the charter file says, for every kind, when it applies (FR-001)", async () => {

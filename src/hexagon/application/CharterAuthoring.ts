@@ -187,8 +187,9 @@ export class CharterAuthoring implements ForManagingCharter {
 
   /**
    * Which file declares one identity, which layer it arrived in, when it comes
-   * up, the mixins it uses and the corpus it cites, what uses or cites it, and
-   * the situations this repository wrote down about it (FR-014, FR-017).
+   * up, the mixins it uses and the corpus it cites, what uses, cites or names
+   * it, and the situations this repository wrote down about it (FR-014, FR-017,
+   * FR-163).
    *
    * The charter is asked, not searched here: one identity space covers every
    * layer, and which file answers to a name, and which names one primitive
@@ -245,6 +246,7 @@ export class CharterAuthoring implements ForManagingCharter {
       charter.rationaleOf(declared),
       charter.hostsOf(declared),
       charter.citersOf(declared),
+      charter.mentionersOf(declared),
       testCasesByFile,
     );
   }

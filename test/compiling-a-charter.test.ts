@@ -31,12 +31,11 @@ const primitive = (kind: string, id: string, body = `The body of ${id}.`) =>
     "",
   ].join("\n");
 
-/** The skill the engine brings, as the compact catalogue carries it: every
- *  charter holds it, so every catalogue lists it (FR-017). */
+/** The skill the engine brings, as the catalogue carries it before the file it
+ *  is opened at: every charter holds it, so every catalogue lists it (FR-017). */
 const builtinEntry = {
   identity: "skill:cw-author",
   kind: "skill",
-  id: "cw-author",
   description: new CwAuthorSkill().headers.description,
 };
 
@@ -60,12 +59,11 @@ const built = async (authored: Readonly<Record<string, string>>, agents: readonl
   };
 };
 
-test("compiling produces both listings, the charter file, and what the installed agent reads", async () => {
+test("compiling produces the listing, the charter file, and what the installed agent reads", async () => {
   const { written } = await built(oneGuide);
 
   assert.deepEqual(written, [
     ".cw/out/catalog.json",
-    ".cw/out/catalog.min.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
     // Every primitive as it compiled, in the catalogue's order, since the
@@ -97,7 +95,7 @@ test("no listing and no projection can be produced without the others (SC-004)",
   // list, and no argument that narrows it to a single file. The second argument
   // says which agents are installed, never which file is wanted.
   assert.equal(compile.length, 2);
-  assert.equal((await built(oneGuide)).written.length, 10);
+  assert.equal((await built(oneGuide)).written.length, 9);
 });
 
 test("a repository with no agent installed still compiles the whole neutral half (FR-019)", async () => {
@@ -105,7 +103,6 @@ test("a repository with no agent installed still compiles the whole neutral half
 
   assert.deepEqual(written, [
     ".cw/out/catalog.json",
-    ".cw/out/catalog.min.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
     ".cw/out/guide/no-any.md",
@@ -121,7 +118,6 @@ test("the full catalogue is written as the catalogue says it, one entry per line
     {
       identity: "guide:no-any",
       kind: "guide",
-      id: "no-any",
       description: "What no-any is for, in one line.",
       file: ".cw/out/guide/no-any.md",
       globs: ["src/**/*.ts"],
@@ -165,15 +161,11 @@ test("what the engine brings compiles to a file on disk like any other primitive
   assert.match(files[".cw/out/skill/cw-author.md"] ?? "", /^---\nkind: skill\nid: cw-author\n/);
 });
 
-test("the compact catalogue spends no bytes on whitespace", async () => {
+test("one listing is compiled, and no reduced copy of it", async () => {
   const { files } = await built(oneGuide);
 
-  const contents = files[".cw/out/catalog.min.json"] ?? "";
-  assert.deepEqual(JSON.parse(contents), [
-    { identity: "guide:no-any", kind: "guide", id: "no-any", description: "What no-any is for, in one line." },
-    builtinEntry,
-  ]);
-  assert.equal(contents, `${JSON.stringify(JSON.parse(contents))}\n`);
+  assert.ok(files[".cw/out/catalog.json"]);
+  assert.equal(files[".cw/out/catalog.min.json"], undefined);
 });
 
 test("every compiled file ends with a newline, as a text file does", async () => {
@@ -199,8 +191,7 @@ test("a body reaches no listing: what carries a body is what an agent opens (FR-
     [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", "SECRET BODY TEXT"),
   });
 
-  for (const path of [".cw/out/catalog.json", ".cw/out/catalog.min.json"])
-    assert.ok(!(files[path] ?? "").includes("SECRET BODY TEXT"), `${path} carries the body`);
+  assert.ok(!(files[".cw/out/catalog.json"] ?? "").includes("SECRET BODY TEXT"));
 });
 
 test("a charter with a broken file still compiles what the readable files hold", async () => {
@@ -211,7 +202,7 @@ test("a charter with a broken file still compiles what the readable files hold",
 
   assert.equal(Object.keys(charter.allFaultsByFiles.files).length, 1);
   assert.deepEqual(
-    JSON.parse(files[".cw/out/catalog.min.json"] ?? "").map((one: { identity: string }) => one.identity),
+    JSON.parse(files[".cw/out/catalog.json"] ?? "").map((one: { identity: string }) => one.identity),
     ["guide:no-any", "skill:cw-author"],
   );
 });

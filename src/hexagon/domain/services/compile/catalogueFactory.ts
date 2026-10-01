@@ -10,25 +10,21 @@ import { Catalogue } from "../../models/output/common/Catalogue.js";
  * would edit, which is also what says which layer it came from (FR-140). Which
  * is the caller's to say, and everything else an entry holds is the same.
  *
- * A header nobody wrote is left out rather than listed as nothing: a listing
- * says what the author declared.
+ * Globs nobody wrote are left out rather than listed as nothing. Every other
+ * header is read from the file the entry names.
  */
 export function catalogueOf(charter: CharterRoot, fileOf: (one: ScopedPrimitive) => string): Catalogue {
   return new Catalogue(
     // Ordered by identity rather than by the order the files happened to be
     // read, so the same charter catalogues byte for byte the same (SC-007).
     [...charter.primitives].sort((one, another) => (one.identity < another.identity ? -1 : one.identity > another.identity ? 1 : 0)).map((one) => {
-      const { id, description, tags, globs, rationale, mixins } = one.primitive.headers;
+      const { description, globs } = one.primitive.headers;
       return {
         identity: one.identity,
         kind: one.primitive.kind,
-        id,
         description,
         file: fileOf(one),
-        ...(tags === undefined ? {} : { tags }),
         ...(globs === undefined ? {} : { globs }),
-        ...(rationale === undefined ? {} : { rationale }),
-        ...(mixins === undefined ? {} : { mixins }),
       };
     }),
   );

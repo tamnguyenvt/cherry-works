@@ -68,6 +68,20 @@ test("every identity in an explanation opens its own (FR-116)", async () => {
   });
 });
 
+test("a script's explanation names the primitives whose body names it (FR-163)", async () => {
+  const naming = {
+    [at("script/check.md")]: primitive("script", "check", ["extension: sh"]),
+    [at("skill/release.md")]: ["---", "kind: skill", "id: release", "description: About release.", 'triggers: ["release"]', "---", "", "Run script:check.", ""].join("\n"),
+  };
+  await inTheBrowser(naming, async (page) => {
+    await page.getByRole("radio", { name: "script" }).click();
+    await page.getByLabel("Explain script:check").click();
+    await page.getByRole("dialog").getByRole("region").first().waitFor();
+
+    assert.equal((await sectionsOf(page))["Mentioned in"], "skill:release");
+  });
+});
+
 test("a rationale no corpus answers to is said not to resolve", async () => {
   await inTheBrowser({ [at("guide/no-any.md")]: primitive("guide", "no-any", ["rationale: corpus:gone"]) }, async (page) => {
     await page.getByLabel("Explain guide:no-any").click();

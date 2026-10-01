@@ -180,3 +180,39 @@ test("a script is added with its extension and an empty body, under the folders 
 
   assert.match(await held.read(new URL(at("script/release/check-changelog.md"))), /^kind: script\nid: release\/check-changelog\n/m);
 });
+
+test("a script and a template a skill names stay identities in its compiled document, and the catalogue names the file each is built to (FR-161, FR-164)", async () => {
+  const { held, build } = building({
+    [at("script/release/check-changelog.md")]: script("release/check-changelog", "sh", "#!/usr/bin/env bash\ncat template:release-note"),
+    [at("template/release-note.md")]: template("release-note"),
+    [at("skill/release.md")]: skillNaming("script:release/check-changelog", "template:release-note"),
+  });
+
+  filesOf(await build());
+
+  assert.ok(
+    (await held.read(new URL(".cw/out/skill/release.md", repo))).includes("Use script:release/check-changelog and template:release-note before tagging."),
+  );
+  // A script's body is the file, byte for byte, names included.
+  assert.equal(await held.read(new URL(".cw/out/script/release/check-changelog.sh", repo)), "#!/usr/bin/env bash\ncat template:release-note\n");
+  const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalog.json", repo))) as { identity: string; file: string }[];
+  const fileOf = (identity: string) => catalogue.find((entry) => entry.identity === identity)?.file;
+  assert.equal(fileOf("script:release/check-changelog"), ".cw/out/script/release/check-changelog.sh");
+  assert.equal(fileOf("template:release-note"), ".cw/out/template/release-note.md");
+});
+
+test("a script whose extension changes is found at its new file by the same identity, with only its own file edited (Story 22 scenario 2)", async () => {
+  const { held, build } = building({
+    [at("script/check.md")]: script("check", "sh"),
+    [at("skill/release.md")]: skillNaming("script:check"),
+  });
+  await build();
+
+  held.write(new URL(at("script/check.md")), script("check", "py", "print('checked')"));
+  const built = filesOf(await build());
+
+  const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalog.json", repo))) as { identity: string; file: string }[];
+  assert.equal(catalogue.find((entry) => entry.identity === "script:check")?.file, ".cw/out/script/check.py");
+  // The skill names an identity, and an identity did not change.
+  assert.ok(built.unchanged.includes(".cw/out/skill/release.md"));
+});

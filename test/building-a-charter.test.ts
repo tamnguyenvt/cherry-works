@@ -61,7 +61,6 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
 
   assert.deepEqual(built.added, [
     ".cw/out/catalog.json",
-    ".cw/out/catalog.min.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
     ".cw/out/guide/no-any.md",
@@ -418,7 +417,6 @@ test("a charter naming no agent still gets the surface every reader shares (FR-0
 
   assert.deepEqual(built.added, [
     ".cw/out/catalog.json",
-    ".cw/out/catalog.min.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
     ".cw/out/guide/no-any.md",

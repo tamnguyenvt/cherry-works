@@ -162,6 +162,24 @@ export class CharterRoot {
     return this.primitives.filter((citer) => citer.primitive.headers.rationale === corpus.identity);
   }
 
+  /** Every primitive naming one place, script or template; nothing for any
+   *  other kind, since no other is reached by being named (FR-144, FR-163). */
+  mentionersOf(named: ScopedPrimitive): readonly ScopedPrimitive[] {
+    return this.primitives.filter((mentioner) => this.identitiesMentionedIn(mentioner).includes(named.identity));
+  }
+
+  /** The places, scripts and templates one primitive mentions, whether the
+   *  charter holds them or not: in its body, in the author's own words (FR-143,
+   *  FR-161), and, for an agent, each place it holds by listing it among its
+   *  tools (FR-156). */
+  private identitiesMentionedIn(one: ScopedPrimitive): readonly string[] {
+    return [
+      ...[...one.primitive.body.matchAll(MCP_MENTION)].map(([, id]) => `mcp:${id}`),
+      ...[...one.primitive.body.matchAll(SCRIPT_MENTION)].map(([, id]) => `script:${id}`),
+      ...[...one.primitive.body.matchAll(TEMPLATE_MENTION)].map(([, id]) => `template:${id}`),
+      ...(one.primitive instanceof AgentPrimitive ? one.primitive.headers.tools.flatMap((tool) => tool.match(MCP_TOOL_REFERENCE)?.[1] ?? []) : []),
+    ];
+  }
 
   /** Does what a mixin lends reach as far as the host pulling it in, or the host
    *  no further than the mixin? A side that names no files is asking about
@@ -203,20 +221,7 @@ export class CharterRoot {
       everyPrimitive.flatMap(({ identity, primitive }) => (primitive instanceof McpPrimitive ? [[identity, primitive.headers.tools] as const] : [])),
     );
     const everyIdentity = new Set(everyPrimitive.map(({ identity }) => identity));
-    // A place, a script or a template is named in a body, in the author's own
-    // words (FR-143, FR-161); a place is also held by an agent that lists it
-    // among its tools (FR-156).
-    const identitiesMentionedIn = (one: ScopedPrimitive) => [
-      ...[...one.primitive.body.matchAll(MCP_MENTION)].map(([, id]) => `mcp:${id}`),
-      ...[...one.primitive.body.matchAll(SCRIPT_MENTION)].map(([, id]) => `script:${id}`),
-      ...[...one.primitive.body.matchAll(TEMPLATE_MENTION)].map(([, id]) => `template:${id}`),
-    ];
-    const mentionedIdentities = new Set(
-      everyPrimitive.flatMap((one) => [
-        ...identitiesMentionedIn(one),
-        ...(one.primitive instanceof AgentPrimitive ? one.primitive.headers.tools.flatMap((tool) => tool.match(MCP_TOOL_REFERENCE)?.[1] ?? []) : []),
-      ]),
-    );
+    const mentionedIdentities = new Set(everyPrimitive.flatMap((one) => this.identitiesMentionedIn(one)));
 
     const fileByIdentity = new Map<string, string>();
     const identityByNormalizedIdentity = new Map<NormalizedIdentity, string>();
@@ -294,7 +299,7 @@ export class CharterRoot {
       // A name nothing holds stops the build: an agent sent to a place, a
       // script or a template that is not there may guess at one, or invent
       // it, and act on the guess (FR-143, FR-162).
-      for (const mentionedIdentity of new Set(identitiesMentionedIn(one)))
+      for (const mentionedIdentity of new Set(this.identitiesMentionedIn(one)))
         if (!everyIdentity.has(mentionedIdentity))
           addFault(
             file,
@@ -319,15 +324,9 @@ export class CharterRoot {
                 `Write a place as "mcp:<id>" for every tool it declares, or "mcp:<id>:<tool>" for one.`,
               ),
             );
-          else if (declaredTools === undefined)
-            addFault(
-              file,
-              new CharterRootFault(
-                `"${tool}" under "tools" names "${mcpIdentity}", and this charter holds no mcp of that identity.`,
-                `Author that mcp, or correct the name. An mcp is named as "mcp:<id>", whichever layer authored it.`,
-              ),
-            );
-          else if (mcpTool !== undefined && !declaredTools.includes(mcpTool))
+          // A place no layer holds is already said above, as any name nothing
+          // holds is.
+          else if (declaredTools !== undefined && mcpTool !== undefined && !declaredTools.includes(mcpTool))
             addFault(
               file,
               new CharterRootFault(

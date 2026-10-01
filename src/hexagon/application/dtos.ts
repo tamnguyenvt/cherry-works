@@ -16,8 +16,8 @@ import { testSuiteNameOf, type TestRoot } from "../domain/models/test/TestRoot.j
  * it so.
  */
 
-/** The full listing, every entry carrying what it is. What the catalogue files
- *  hold is `full` and `compact`, which stay as agents read them. */
+/** The full listing, every entry carrying what it is. What the catalogue file
+ *  holds is `full`, which stays as agents read it. */
 export function catalogueDTO(catalogue: Catalogue): DataDTOs.Catalogue {
   return { type: "Catalogue", data: { entries: catalogue.full.map((one) => ({ type: "CatalogueEntry", data: one })) } };
 }
@@ -61,7 +61,8 @@ export function doctorOutcomeDTO(
 
 /** What explaining a primitive found: the primitive as the whole charter sees
  *  it, when its kind comes up, the mixins it uses and the corpus it cites,
- *  what uses or cites it, and the test cases that name it (FR-014, FR-017). */
+ *  what uses, cites or names it, and the test cases that name it (FR-014,
+ *  FR-017, FR-163). */
 export function explanationOutcomeDTO(
   scopedPrimitive: ScopedPrimitive,
   activatesWhen: string,
@@ -69,6 +70,7 @@ export function explanationOutcomeDTO(
   rationale: ScopedPrimitive | undefined,
   hosts: readonly ScopedPrimitive[],
   citers: readonly ScopedPrimitive[],
+  mentioners: readonly ScopedPrimitive[],
   testCasesByFile: Readonly<Record<string, readonly string[]>>,
 ): OutcomeDTOs.ExplanationOutcome {
   return {
@@ -80,6 +82,7 @@ export function explanationOutcomeDTO(
       ...(rationale === undefined ? {} : { rationale: scopedPrimitiveDTO(rationale) }),
       hosts: hosts.map(scopedPrimitiveDTO),
       citers: citers.map(scopedPrimitiveDTO),
+      mentioners: mentioners.map(scopedPrimitiveDTO),
       testCasesByFile: { type: "TestCasesByFile", data: testCasesByFile },
     },
   };

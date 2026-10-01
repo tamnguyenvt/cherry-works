@@ -100,11 +100,13 @@ test("every primitive is listed, ordered by identity, with what it is for", asyn
   );
 });
 
-test("the full listing names the file each primitive was authored in, and what else was declared about it (FR-140)", async () => {
+test("the full listing names the file each primitive was authored in, and the files it applies to (FR-140)", async () => {
   const { results } = await run(charter);
 
   assert.match(results, /^ {2}\.cw\/charter\/guide\/no-any\.md$/m);
-  assert.match(results, /^ {2}globs: src\/\*\*\/\*\.ts, tags: types$/m);
+  assert.match(results, /^ {2}globs: src\/\*\*\/\*\.ts$/m);
+  // Every other header is read from the file the line above names.
+  assert.doesNotMatch(results, /tags:/);
 });
 
 test("a listing is read off the charter, so every layer is named where it was authored, not where it compiled (FR-140)", async () => {

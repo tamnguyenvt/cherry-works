@@ -31,9 +31,10 @@ const DoctorOutcomeSchema = dto(
 );
 
 /** What explaining one primitive found (FR-014, FR-017): the primitive, when
- *  it comes up, the mixins it uses and the corpus it cites, what uses or cites
- *  it, and the test cases that name it. A rationale it cites and this charter
- *  does not hold is left out here and read off the primitive's own headers. */
+ *  it comes up, the mixins it uses and the corpus it cites, what uses, cites or
+ *  names it, and the test cases that name it. A rationale it cites and this
+ *  charter does not hold is left out here and read off the primitive's own
+ *  headers. */
 const ExplanationOutcomeSchema = dto(
   "ExplanationOutcome",
   z.object({
@@ -43,6 +44,7 @@ const ExplanationOutcomeSchema = dto(
     rationale: DataDTOs.ScopedPrimitive.optional(),
     hosts: z.array(DataDTOs.ScopedPrimitive).readonly(),
     citers: z.array(DataDTOs.ScopedPrimitive).readonly(),
+    mentioners: z.array(DataDTOs.ScopedPrimitive).readonly(),
     testCasesByFile: DataDTOs.TestCasesByFile,
   }),
 );

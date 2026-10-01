@@ -18,7 +18,7 @@ import { OUT_DIRECTORY } from "../../path.js";
  * its headers and the whole of what it says — the bodies of its mixins, then
  * its own — stamped with where to change it instead.
  */
-export function compiledPrimitiveOf(charter: CharterRoot, one: ScopedPrimitive, shortStrings: ShortStrings): CompiledPrimitive {
+export function compiledPrimitiveOf(charter: CharterRoot, one: ScopedPrimitive, shortenMcpIdentities: ShortStrings): CompiledPrimitive {
   const { identity, primitive } = one;
   const { id } = primitive.headers;
   if (primitive instanceof ScriptPrimitive || primitive instanceof TemplatePrimitive)
@@ -37,7 +37,7 @@ export function compiledPrimitiveOf(charter: CharterRoot, one: ScopedPrimitive, 
     // Each place the body names as `mcp:<id>` written as the name its tools are
     // served under, `<name>__<tool>`, which every host's name for them holds
     // whatever it puts before it (FR-147).
-    idReplacer: (body) => body.replace(MCP_MENTION, (mentionedIdentity) => shortStrings[mentionedIdentity] ?? mentionedIdentity),
+    idReplacer: (body) => body.replace(MCP_MENTION, (mentionedIdentity) => shortenMcpIdentities[mentionedIdentity] ?? mentionedIdentity),
   });
   return new CompiledPrimitive(identity, `${OUT_DIRECTORY}/${primitive.kind}/${id}.md`, stamp(markdown), false);
 }

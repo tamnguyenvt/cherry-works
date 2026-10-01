@@ -24,9 +24,9 @@ const OPTIONS = {
  *
  * One command and one answer: what the primitive is for, the file it was
  * authored in, which layer that file arrived in, when it comes up, the mixins
- * it uses and the corpus it cites, what uses or cites it, and the situations
- * this repository wrote down about it (FR-014). The identity is passed on
- * as it was typed — which names this charter answers to is the charter's
+ * it uses and the corpus it cites, what uses, cites or names it, and the
+ * situations this repository wrote down about it (FR-014, FR-163). The identity
+ * is passed on as it was typed — which names this charter answers to is the charter's
  * business, and one it does not comes back as a fault the command line reports
  * the way it reports any other.
  *
@@ -51,7 +51,7 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
       };
     }
 
-    const { scopedPrimitive, activatesWhen, useMixins, rationale, hosts, citers, testCasesByFile } = explanationOutcomeDTO.data;
+    const { scopedPrimitive, activatesWhen, useMixins, rationale, hosts, citers, mentioners, testCasesByFile } = explanationOutcomeDTO.data;
     // A corpus the charter does not hold is not in `rationale`: what was cited
     // is read off the primitive's own header, and said as not resolving rather
     // than left out, since it is a warning and the explanation still stands
@@ -77,6 +77,7 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
             : []),
         ...hosts.map(({ data }) => `  mixin of ${data.identity}`),
         ...citers.map(({ data }) => `  rationale of ${data.identity}`),
+        ...mentioners.map(({ data }) => `  mentioned in ${data.identity}`),
         ...Object.entries(testCasesByFile.data).flatMap(([file, situations]) =>
           situations.map((situation) => `  pinned down by ${file}: ${situation}`),
         ),

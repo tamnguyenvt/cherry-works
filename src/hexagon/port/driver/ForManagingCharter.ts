@@ -85,8 +85,8 @@ export interface ForManagingCharter {
 
   /**
    * Which file declares one identity, and which layer that file arrived in
-   * (FR-017, SC-006); the mixins it uses and the corpus it cites, and what uses
-   * or cites it (FR-014).
+   * (FR-017, SC-006); the mixins it uses and the corpus it cites, and what
+   * uses, cites or names it (FR-014, FR-163).
    *
    * Reads and says, as `doctor` and `list` do: there is no way through this to
    * write anything (FR-041).

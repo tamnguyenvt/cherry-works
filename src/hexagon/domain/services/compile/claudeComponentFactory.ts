@@ -44,7 +44,7 @@ import {
 export function claudeComponentsOf(
   charter: CharterRoot,
   compiledPrimitives: readonly CompiledPrimitive[],
-  shortStrings: ShortStrings,
+  shortenMcpIdentities: ShortStrings,
 ): readonly ClaudeComponent[] {
   // Does this primitive ask something of the settings this host runs on, rather
   // than compile to a file of its own? A posture says what may be run, a sensor
@@ -66,7 +66,7 @@ export function claudeComponentsOf(
       const [, mcpIdentity, mcpTool] = tool.match(MCP_TOOL_REFERENCE) ?? [];
       if (mcpIdentity === undefined) return [tool];
       return (mcpTool === undefined ? (toolsByMcpIdentity.get(mcpIdentity) ?? []) : [mcpTool]).map(
-        (oneTool) => `mcp__${ClaudeMcpConfig.cwMcpName}__${shortStrings[mcpIdentity]}__${oneTool}`,
+        (oneTool) => `mcp__${ClaudeMcpConfig.cwMcpName}__${shortenMcpIdentities[mcpIdentity]}__${oneTool}`,
       );
     });
 

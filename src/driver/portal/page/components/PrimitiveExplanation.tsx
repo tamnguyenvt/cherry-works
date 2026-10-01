@@ -5,8 +5,9 @@ import { Button } from "./ui/button.js";
 
 /**
  * Everything the engine says about one primitive, the answer `cw explain`
- * prints: what it is, when it comes up, what it pulls in, what lends from it
- * or cites it, the test cases naming it, and its file and layer (FR-029).
+ * prints: what it is, when it comes up, what it pulls in, what lends from it,
+ * cites it or names it, the test cases naming it, and its file and layer
+ * (FR-029).
  *
  * Every identity in it opens that primitive's own explanation (FR-116): which
  * primitives those are is the engine's answer, so nothing here works a
@@ -25,7 +26,7 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
   if (answered.type === "FaultsByFile")
     return <ExplanationSection title="Not read">The engine will not read this charter, so there is nothing to explain.</ExplanationSection>;
 
-  const { scopedPrimitive, activatesWhen, useMixins, rationale, hosts, citers, testCasesByFile } = answered.data;
+  const { scopedPrimitive, activatesWhen, useMixins, rationale, hosts, citers, mentioners, testCasesByFile } = answered.data;
   const { kind, description, file, scope, headers } = scopedPrimitive.data;
   const linkTo = ({ data }: DataDTOs.ScopedPrimitive) => (
     <Button
@@ -93,6 +94,13 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
       {citers.length > 0 && (
         <ExplanationSection title="Cited by">
           {citers.map((one) => (
+            <div key={one.data.identity}>{linkTo(one)}</div>
+          ))}
+        </ExplanationSection>
+      )}
+      {mentioners.length > 0 && (
+        <ExplanationSection title="Mentioned in">
+          {mentioners.map((one) => (
             <div key={one.data.identity}>{linkTo(one)}</div>
           ))}
         </ExplanationSection>

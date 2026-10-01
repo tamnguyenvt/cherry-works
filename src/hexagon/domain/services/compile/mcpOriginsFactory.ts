@@ -13,7 +13,7 @@ import type { McpOrigin } from "../../models/output/common/McpOrigin.js";
  * how it is signed in to — every way any identity there allows — the name
  * each identity is served under, and nothing an mcp's own file already says.
  */
-export function mcpOriginsOf(charter: CharterRoot, shortStrings: ShortStrings): readonly McpOrigin[] {
+export function mcpOriginsOf(charter: CharterRoot, shortenMcpIdentities: ShortStrings): readonly McpOrigin[] {
   const mcpsByKey = new Map<string, { identity: string; primitive: McpPrimitive }[]>();
   for (const { identity, primitive } of [...charter.primitives].sort((one, another) => (one.identity < another.identity ? -1 : 1))) {
     if (primitive.kind !== McpPrimitive.kind) continue;
@@ -33,7 +33,7 @@ export function mcpOriginsOf(charter: CharterRoot, shortStrings: ShortStrings): 
 
       return {
         identities: mcpsAtOrigin.map((one) => one.identity),
-        names: Object.fromEntries(mcpsAtOrigin.map((one) => [one.identity, shortStrings[one.identity] as string])),
+        names: Object.fromEntries(mcpsAtOrigin.map((one) => [one.identity, shortenMcpIdentities[one.identity] as string])),
         address: firstMcp.primitive.address,
         ...(endpoint === undefined ? {} : { endpoint }),
         ...(command === undefined ? {} : { command: { command, args, ...(tokenEnv === undefined ? {} : { tokenEnv }) } }),

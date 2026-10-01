@@ -7,11 +7,9 @@ import { CLAUDE_ENTRY_FILE, OUT_DIRECTORY } from "../path.js";
 /**
  * Every file one reading of a charter is put down as (FR-020, FR-021).
  *
- * The one place an output becomes a path and the text of a file. The listing is
- * two files, because it is read twice over by different readers for different
- * reasons (FR-011, FR-012); everything else is one. The three that every reader
- * shares land in the workspace's own output folder, beside one another — which
- * is why `CHARTER.md` can send a reader to the listings by name.
+ * The one place an output becomes a path and the text of a file. What every
+ * reader shares lands in the workspace's own output folder, beside one another
+ * — which is why `CHARTER.md` can send a reader to the listing by name (FR-011).
  *
  * The agents are asked of the caller rather than read off the output, because one
  * file is a host's own and no primitive of the charter's: the file that host reads
@@ -29,13 +27,6 @@ export function charterOutputProjectionOf(
     {
       path: `${OUT_DIRECTORY}/catalog.json`,
       contents: `${JSON.stringify(output.catalogue.full, undefined, 2)}\n`,
-      projectionPolicy: output.catalogue.projection,
-    },
-    // Not indented: this one is read to be surveyed cheaply, and the whitespace
-    // is bytes an agent pays for and no one reads (SC-005).
-    {
-      path: `${OUT_DIRECTORY}/catalog.min.json`,
-      contents: `${JSON.stringify(output.catalogue.compact)}\n`,
       projectionPolicy: output.catalogue.projection,
     },
     // Indented for the reason the full listing is: committed, and read in

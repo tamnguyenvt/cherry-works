@@ -44,21 +44,17 @@ const FaultsSchema = dto(
  *  what was authored (FR-010). */
 const PrimitiveKindsSchema = dto("PrimitiveKinds", z.record(z.string(), z.string()));
 
-/** One primitive as the full listing records it: everything its headers
- *  declare about it, and the file its body is in. A header nobody wrote is
- *  left out rather than recorded as nothing. */
+/** One primitive as the listing records it: what it is called, what it is
+ *  for, the files it applies to, and the file its body is in. Globs nobody
+ *  wrote are left out rather than recorded as nothing. */
 const CatalogueEntrySchema = dto(
   "CatalogueEntry",
   z.object({
     identity: z.string(),
     kind: z.string(),
-    id: z.string(),
     description: z.string(),
     file: z.string(),
-    tags: StringsSchema.optional(),
     globs: StringsSchema.optional(),
-    rationale: z.string().optional(),
-    mixins: StringsSchema.optional(),
   }),
 );
 

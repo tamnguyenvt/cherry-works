@@ -30,7 +30,7 @@ type Listing = typeof LISTING;
  * this command runs can write a file (FR-041). What it adds is presentation —
  * one primitive to a line, ordered by identity as the listing already is, with
  * `--min` saying what an agent surveys by and the default adding where the body
- * is and what the author declared about it. The kind is passed on as it was
+ * is and the files it applies to. The kind is passed on as it was
  * typed: which words are kinds is the charter's business and not this command's,
  * and a word that is none comes back from the use case as a fault the command
  * line reports the way it reports any other.
@@ -79,15 +79,9 @@ function surveyed({ data: { identity, description } }: DataDTOs.CatalogueEntry):
 }
 
 /** One primitive in full: what it is called and what it is for, where its body
- *  is, and whatever else its author declared about it (FR-011). A header nobody
- *  wrote is not said, the way the listing does not record it. */
+ *  is, and the files it applies to (FR-011). Globs nobody wrote are not said,
+ *  the way the listing does not record them. */
 function inFull(entry: DataDTOs.CatalogueEntry): string {
-  const { file, tags, globs, rationale, mixins } = entry.data;
-  const declared = [
-    ...(globs === undefined ? [] : [`globs: ${globs.join(", ")}`]),
-    ...(tags === undefined ? [] : [`tags: ${tags.join(", ")}`]),
-    ...(mixins === undefined ? [] : [`mixins: ${mixins.join(", ")}`]),
-    ...(rationale === undefined ? [] : [`rationale: ${rationale}`]),
-  ];
-  return [surveyed(entry), `  ${file}`, ...(declared.length === 0 ? [] : [`  ${declared.join(", ")}`])].join("\n");
+  const { file, globs } = entry.data;
+  return [surveyed(entry), `  ${file}`, ...(globs === undefined ? [] : [`  globs: ${globs.join(", ")}`])].join("\n");
 }

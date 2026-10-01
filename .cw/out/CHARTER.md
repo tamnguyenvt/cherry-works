@@ -4,7 +4,7 @@ This repository is governed by a charter — the standards it authored under `.c
 
 ## Read first
 
-[catalog.min.json](./catalog.min.json) — the kind, identity and description of every primitive this charter holds. Survey it to find what you need; open [catalog.json](./catalog.json) for that primitive's file, globs and mixins, and open a body only once its activation condition below is met.
+[catalog.json](./catalog.json) — the kind, identity, description and file of every primitive this charter holds, with its globs. Survey it to find what you need, and open a file only once its activation condition below is met.
 
 ## When each kind applies
 

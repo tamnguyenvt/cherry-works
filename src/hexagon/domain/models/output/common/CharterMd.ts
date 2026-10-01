@@ -8,7 +8,7 @@ import type { StampedDocument } from "../StampedDocument.js";
  *
  * Orientation, and the few rules that are not worth the risk of being missed. A
  * primitive's body is opened when its activation condition is met and not
- * before, which is what the two catalogues are for (FR-012, FR-013, SC-005) —
+ * before, which is what the catalogue is for (FR-013) —
  * so a charter of four hundred guides compiles to the same few paragraphs as a
  * charter of four.
  *
@@ -17,8 +17,8 @@ import type { StampedDocument } from "../StampedDocument.js";
  * opened is said in one place (FR-001).
  *
  * A type and a body, and no file: what it is called and where it lands is for
- * whoever puts it down (plan §2.6). The two listings it sends a reader to are
- * named beside it, since they land in the same folder as this does. No charter either — it is handed the lines
+ * whoever puts it down (plan §2.6). The listing it sends a reader to is named
+ * beside it, since it lands in the same folder as this does. No charter either — it is handed the lines
  * it writes, so what a kind is is asked of the charter once, by the caller.
  *
  * No primitive's body reaches here, not even a guide's: this file is

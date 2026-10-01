@@ -40,10 +40,10 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
   // short whatever the id's length, and the same on every build whatever other
   // mcps come and go (FR-145). Written into `mcp-origins.json` beside each
   // place, so the server, which reads no charter, serves under these.
-  const shortStrings = shortenStringsOf(
+  const shortenMcpIdentities = shortenStringsOf(
     charter.primitives.filter(({ primitive }) => primitive.kind === McpPrimitive.kind).map((one) => one.identity),
   );
-  const compiledPrimitives = charter.primitives.map((one) => compiledPrimitiveOf(charter, one, shortStrings));
+  const compiledPrimitives = charter.primitives.map((one) => compiledPrimitiveOf(charter, one, shortenMcpIdentities));
   return {
     // What an agent opens from the catalogue is the primitive as it compiled,
     // not the file its author wrote: the whole body in one place, under the
@@ -52,8 +52,8 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
     catalogue: catalogueOf(charter, (one) => compiledPrimitives.find((compiled) => compiled.identity === one.identity)!.file),
     charterMd: charterMdOf(PRIMITIVE_CLASSES),
     compiledPrimitives,
-    mcpOrigins: mcpOriginsOf(charter, shortStrings),
-    providerComponents: agents.flatMap((agent) => providerComponentsOf(agent, charter, compiledPrimitives, shortStrings)),
+    mcpOrigins: mcpOriginsOf(charter, shortenMcpIdentities),
+    providerComponents: agents.flatMap((agent) => providerComponentsOf(agent, charter, compiledPrimitives, shortenMcpIdentities)),
   };
 }
 
@@ -64,10 +64,10 @@ function providerComponentsOf(
   agent: AgentProvider,
   charter: CharterRoot,
   compiledPrimitives: readonly CompiledPrimitive[],
-  shortStrings: ShortStrings,
+  shortenMcpIdentities: ShortStrings,
 ): readonly ProviderComponent[] {
   switch (agent) {
     case "claude":
-      return claudeComponentsOf(charter, compiledPrimitives, shortStrings);
+      return claudeComponentsOf(charter, compiledPrimitives, shortenMcpIdentities);
   }
 }

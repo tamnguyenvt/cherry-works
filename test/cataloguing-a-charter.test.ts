@@ -40,12 +40,11 @@ const paragraphs = (id: string) =>
     "\n\n",
   );
 
-/** The skill the engine brings, as the compact catalogue carries it: every
- *  charter holds it, so every catalogue lists it (FR-017). */
+/** The skill the engine brings, as the catalogue carries it before the file it
+ *  is opened at: every charter holds it, so every catalogue lists it (FR-017). */
 const builtinEntry = {
   identity: "skill:cw-author",
   kind: "skill",
-  id: "cw-author",
   description: new CwAuthorSkill().headers.description,
 };
 
@@ -60,7 +59,7 @@ const catalogueOf = async (files: InMemoryFileReaders): Promise<Catalogue> => co
  *  (SC-005). */
 const written = (entries: readonly unknown[]) => JSON.stringify(entries);
 
-test("the full catalogue records every descriptive header and where the body is", async () => {
+test("the catalogue records what a primitive is called, what it is for, the files it applies to and where its body is, and no other header", async () => {
   const catalogue = await catalogueOf(
     new InMemoryFileReaders({
       [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", {
@@ -73,13 +72,9 @@ test("the full catalogue records every descriptive header and where the body is"
     {
       identity: "guide:no-any",
       kind: "guide",
-      id: "no-any",
       description: "What no-any is for, in one line.",
       file: ".cw/out/guide/no-any.md",
-      tags: ["types"],
       globs: ["src/**/*.ts"],
-      rationale: "corpus:type-safety",
-      mixins: ["house-style"],
     },
     { ...builtinEntry, file: ".cw/out/skill/cw-author.md" },
   ]);
@@ -92,7 +87,7 @@ test("a header the author left out is left out, not recorded as nothing", async 
 
   const [entry] = catalogue.full;
 
-  assert.deepEqual(Object.keys(entry!).sort(), ["description", "file", "globs", "id", "identity", "kind"]);
+  assert.deepEqual(Object.keys(entry!).sort(), ["description", "file", "globs", "identity", "kind"]);
 });
 
 test("a vendored primitive is catalogued at its compiled file, as every layer's is (FR-140)", async () => {
@@ -103,22 +98,6 @@ test("a vendored primitive is catalogued at its compiled file, as every layer's 
 
   assert.equal(entry!.identity, "guide:no-any");
   assert.equal(entry!.file, ".cw/out/guide/no-any.md");
-});
-
-test("the compact catalogue carries what an agent surveys by, and nothing else", async () => {
-  const catalogue = await catalogueOf(
-    new InMemoryFileReaders({ [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any") }),
-  );
-
-  assert.deepEqual(catalogue.compact, [
-    {
-      identity: "guide:no-any",
-      kind: "guide",
-      id: "no-any",
-      description: "What no-any is for, in one line.",
-    },
-    builtinEntry,
-  ]);
 });
 
 test("the same charter catalogues in the same order however its files were read", async () => {
@@ -133,35 +112,12 @@ test("the same charter catalogues in the same order however its files were read"
   assert.deepEqual(identities, ["corpus:type-safety", "guide:no-any", "skill:cw-author", "skill:writing-tests"]);
 });
 
-test("neither catalogue carries a body", async () => {
+test("the catalogue carries no body", async () => {
   const files = new InMemoryFileReaders({
     [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", { body: "SECRET BODY TEXT" }),
   });
 
   const catalogue = await catalogueOf(files);
 
-  assert.ok(!`${written(catalogue.full)}${written(catalogue.compact)}`.includes("SECRET BODY TEXT"));
-});
-
-test("the compact catalogue is at least ten times smaller than the charter it describes (SC-005)", async () => {
-  const authored = Object.fromEntries(
-    Array.from({ length: 40 }, (_, at) => [
-      new URL(`guide/rule-${at}.md`, root).href,
-      primitive("guide", `rule-${at}`),
-    ]),
-  );
-  // What the engine brings is part of the charter the catalogue describes.
-  const charterBytes = [...Object.values(authored), new CwAuthorSkill().toMarkdown()].reduce(
-    (all, text) => all + Buffer.byteLength(text),
-    0,
-  );
-
-  const catalogue = await catalogueOf(new InMemoryFileReaders(authored));
-  const compact = written(catalogue.compact);
-
-  assert.equal(catalogue.compact.length, 41);
-  assert.ok(
-    Buffer.byteLength(compact) * 10 <= charterBytes,
-    `compact catalogue is ${Buffer.byteLength(compact)} bytes of a ${charterBytes}-byte charter`,
-  );
+  assert.ok(!written(catalogue.full).includes("SECRET BODY TEXT"));
 });

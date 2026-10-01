@@ -168,6 +168,47 @@ test("an explanation says what uses a mixin and what cites a corpus", async () =
   assert.match(corpus.results, /^ {2}rationale of guide:no-any$/m);
 });
 
+/** One authored file with a body of its own, which is where a name is read. */
+const saying = (kind: string, id: string, headers: readonly string[], body: string) =>
+  ["---", `kind: ${kind}`, `id: ${id}`, `description: What ${id} is for.`, ...headers, "---", "", body, ""].join("\n");
+
+const naming = {
+  [new URL("script/check.md", root).href]: saying("script", "check", ["extension: sh"], "cat template:note"),
+  [new URL("template/note.md", root).href]: saying("template", "note", ["extension: md"], "# Release"),
+  [new URL("skill/release.md", root).href]: saying("skill", "release", ['triggers: ["release"]'], "Run script:check, then script:check again."),
+  [new URL("guide/release.md", vendored).href]: saying("guide", "release", [], "Run script:check."),
+  [new URL("mcp/linear.md", root).href]: saying("mcp", "linear", ["endpoint: https://mcp.linear.app/mcp", "auth: [oauth]", "tools: [list_issues]"], ""),
+  [new URL("agent/triager.md", root).href]: saying("agent", "triager", ['tools: ["Read", "mcp:linear:list_issues"]'], "Triage."),
+  [new URL("playbook/triage.md", root).href]: saying("playbook", "triage", ['triggers: ["triage"]'], "Read mcp:linear."),
+};
+
+test("an explanation says which primitives name a script or a template in their body (FR-163)", async () => {
+  const script = await run(naming, ["explain", "script:check"]);
+  assert.equal(script.code, EXIT_OK);
+  assert.deepEqual(script.results.split("\n").filter((line) => line.startsWith("  mentioned in ")), [
+    "  mentioned in skill:release",
+    "  mentioned in guide:release",
+  ]);
+
+  const template = await run(naming, ["explain", "template:note"]);
+  assert.deepEqual(template.results.split("\n").filter((line) => line.startsWith("  mentioned in ")), ["  mentioned in script:check"]);
+});
+
+test("an explanation says which primitives name a place, in a body or among an agent's tools (FR-144)", async () => {
+  const { results } = await run(naming, ["explain", "mcp:linear"]);
+
+  assert.deepEqual(results.split("\n").filter((line) => line.startsWith("  mentioned in ")), [
+    "  mentioned in agent:triager",
+    "  mentioned in playbook:triage",
+  ]);
+});
+
+test("a primitive nothing names is explained with no mention under it", async () => {
+  const { results } = await run(naming, ["explain", "skill:release"]);
+
+  assert.doesNotMatch(results, /mentioned in/);
+});
+
 test("a rationale citing a corpus the charter does not hold is named, and marked as not resolving", async () => {
   const { code, results } = await run(
     { [new URL("guide/no-any.md", root).href]: primitive("guide", "no-any", ["rationale: corpus:gone"]) },
