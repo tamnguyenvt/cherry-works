@@ -2,8 +2,8 @@
 
 ## 0.5.0 — 2026-10-02
 
-- Small enhancement to naming for Claude: a skill is invoked as `/<id>`, not `/skill-<id>`, and an agent is spawned by its id. Run `cw build` to apply it.
-- **Breaking:** big refactoring that removes the identity (`kind:id`) and names every primitive by its id only; write `<id>` in headers and tests and `[[<id>]]` in bodies (see `specs/ADR.md`).
+- **Breaking:** primitives are named by their id alone — `<id>` in headers and tests, `[[<id>]]` in bodies — and a skill is invoked as `/<id>`; rewrite each `kind:<id>` in your charter, then run `cw build`.
+- Works with [sdd-charter](https://github.com/tamnguyenvt/sdd-charter) for spec-driven development and [hexagonal-architecture-charter](https://github.com/tamnguyenvt/hexagonal-architecture-charter), both installed with `cw vendor add`.
 
 ## 0.4.0 — 2026-10-02
 
