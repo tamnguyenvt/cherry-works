@@ -1,0 +1,24 @@
+---
+kind: corpus
+id: hexagonal-architecture
+description: Why the code is split into driver, hexagon and zdriven, and why the arrows between them point inward.
+---
+
+**Why:** the business rules are the part of a program that lasts and the part
+that is hardest to test; databases, frameworks and transports change around
+them. Putting the rules in a hexagon that imports nothing from outside, and
+making everything outside reach in through ports, keeps the rules testable
+with plain values and lets any adapter be swapped — a second database, a
+test's in-memory store, a new entry point — without touching them. The arrows
+point inward only: a driver depends on the hexagon, a driven adapter depends
+on the hexagon, the hexagon depends on neither.
+
+The layout and rules come from cherry-works, where they are enforced by
+dependency-cruiser on the real import graph rather than by review: a rule a
+tool checks is a rule that holds. The `zdriven` folder sorts after `hexagon`
+on purpose, so folders read in the order a call travels: in, decide, out.
+
+**How to apply:** when a change does not fit a layer, the change is wrong, not
+the layer. Ask which role the code plays — calling in, deciding, or being
+called out to — and put it there. When dependency-cruiser refuses an import,
+export what is needed from the port, or move the code; never widen the rule.
