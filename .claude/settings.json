@@ -1,1 +1,14 @@
-{}
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".cw/out/script/sdd-specs/specs.mjs\" link --if-changed && node \".cw/out/script/sdd-specs/specs.mjs\" check --if-changed || exit 2"
+          }
+        ]
+      }
+    ]
+  }
+}

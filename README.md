@@ -246,6 +246,7 @@ Run `cw vendor add` again with a new `--ref` to update a source, and
 
 | Charter | What it gives your agent | Install |
 | --- | --- | --- |
+| [sdd-charter](https://github.com/tamnguyenvt/sdd-charter) | Spec-driven development: a spec set with a status per story and a roadmap of their dependencies, and skills (`/sdd-init`, `/sdd-plan`, `/sdd-implement`, `/sdd-finish`, `/sdd-report`…) that take each story from request to merge, stopping for your yes at each step. | `cw vendor add git@github.com:tamnguyenvt/sdd-charter.git --ref v0.1.0` |
 | [hexagonal-architecture-charter](https://github.com/tamnguyenvt/hexagonal-architecture-charter) | Sets up a hexagonal (ports and adapters) architecture in a folder you choose, then keeps the agent following it. | `cw vendor add git@github.com:tamnguyenvt/hexagonal-architecture-charter.git --ref v0.1.0` |
 
 ## Places outside the repository

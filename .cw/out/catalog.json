@@ -83,6 +83,127 @@
     "file": ".cw/out/script/scaffold-hexagon/index.md"
   },
   {
+    "kind": "skill",
+    "id": "sdd-analyze",
+    "description": "Check the spec set for gaps, contradictions and format faults, and report each by id with its fix; changes nothing.",
+    "file": ".cw/out/skill/sdd-analyze/index.md"
+  },
+  {
+    "kind": "corpus",
+    "id": "sdd-concept",
+    "description": "Why specs are split by part with a status per story, why a roadmap sits beside them, why they hold no how, and why every phase stops at a gate.",
+    "file": ".cw/out/corpus/sdd-concept/index.md"
+  },
+  {
+    "kind": "skill",
+    "id": "sdd-finish",
+    "description": "Finish the story or phase you stand on exactly as manifest.md says — merge, squash-merge or pull request, into the branch it names — then clean its worktree up.",
+    "file": ".cw/out/skill/sdd-finish/index.md"
+  },
+  {
+    "kind": "playbook",
+    "id": "sdd-implement",
+    "description": "Implement a ready story of the spec set — pick it, spec gate, test first, verify, review — the way manifest.md says, and mark it Done.",
+    "file": ".cw/out/playbook/sdd-implement/index.md"
+  },
+  {
+    "kind": "skill",
+    "id": "sdd-init",
+    "description": "Set a repository up for spec-driven development — find the specs it already has and offer to refactor them into a spec set, ask how work is carried out and finished, then write .sdd/settings.json, the spec folder and its manifest.md.",
+    "file": ".cw/out/skill/sdd-init/index.md"
+  },
+  {
+    "kind": "skill",
+    "id": "sdd-learn",
+    "description": "Write what this conversation taught — a correction, a preference, a constraint — as a note in learning/inbox.",
+    "file": ".cw/out/skill/sdd-learn/index.md"
+  },
+  {
+    "kind": "guide",
+    "id": "sdd-learnings-go-to-the-inbox",
+    "description": "Never save to the agent's own memory; write what was learned into learning/inbox, where repeated lessons become rules.",
+    "file": ".cw/out/guide/sdd-learnings-go-to-the-inbox/index.md"
+  },
+  {
+    "kind": "template",
+    "id": "sdd-manifest",
+    "description": "The skeleton of manifest.md — how work is carried out and finished in a repository, as /sdd-init asked the user.",
+    "file": ".cw/out/template/sdd-manifest/index.md"
+  },
+  {
+    "kind": "playbook",
+    "id": "sdd-plan",
+    "description": "Write a phase's stories, FR and SC into the right spec-<key>.md and plan.json, clarifying what is unclear first; no plan of how, no task list.",
+    "file": ".cw/out/playbook/sdd-plan/index.md"
+  },
+  {
+    "kind": "skill",
+    "id": "sdd-report",
+    "description": "Draw the roadmap — every story of plan.json, where it stands and what it waits on — into report.html in the spec folder, and say what it shows.",
+    "file": ".cw/out/skill/sdd-report/index.md"
+  },
+  {
+    "kind": "skill",
+    "id": "sdd-review",
+    "description": "Review the change against the story's scenarios, FR and SC — nothing missing, nothing beyond them — and for security issues.",
+    "file": ".cw/out/skill/sdd-review/index.md"
+  },
+  {
+    "kind": "template",
+    "id": "sdd-spec",
+    "description": "The skeleton of one spec-<key>.md, its ids under the prefix its key makes — copied when a spec set gains a part.",
+    "file": ".cw/out/template/sdd-spec/index.md"
+  },
+  {
+    "kind": "guide",
+    "id": "sdd-spec-format",
+    "description": "The shape of a spec set — spec.md as index, spec-<key>.md with prefixed ids, plan.json, manifest.md, ADR.md — what and why, never how.",
+    "file": ".cw/out/guide/sdd-spec-format/index.md",
+    "globs": [
+      "**/spec.md",
+      "**/spec-*.md",
+      "**/plan.json",
+      "**/manifest.md",
+      "**/ADR.md"
+    ]
+  },
+  {
+    "kind": "template",
+    "id": "sdd-spec-index",
+    "description": "The skeleton of spec.md, the index of a spec set — copied by /sdd-init.",
+    "file": ".cw/out/template/sdd-spec-index/index.md"
+  },
+  {
+    "kind": "script",
+    "id": "sdd-specs",
+    "description": "Link every id the specs cite, check the specs against plan.json, and list the stories that can start now.",
+    "file": ".cw/out/script/sdd-specs/index.md"
+  },
+  {
+    "kind": "sensor",
+    "id": "sdd-specs-on-stop",
+    "description": "Link every id the specs cite and check them against plan.json, and refuse to stop while either fails.",
+    "file": ".cw/out/sensor/sdd-specs-on-stop/index.md"
+  },
+  {
+    "kind": "skill",
+    "id": "sdd-status",
+    "description": "List every story of the spec set with its status, and the stories that can be built now.",
+    "file": ".cw/out/skill/sdd-status/index.md"
+  },
+  {
+    "kind": "skill",
+    "id": "sdd-verify",
+    "description": "Prove the change works with evidence produced this turn — tests, static checks, and a manual run of what the story describes.",
+    "file": ".cw/out/skill/sdd-verify/index.md"
+  },
+  {
+    "kind": "corpus",
+    "id": "sdd-why-learnings-go-to-the-inbox",
+    "description": "Why lessons go to learning/inbox rather than an agent's memory, and how a note there is written.",
+    "file": ".cw/out/corpus/sdd-why-learnings-go-to-the-inbox/index.md"
+  },
+  {
     "kind": "corpus",
     "id": "why-driven-port-speaks-its-adapter",
     "description": "Why a driven port carries no domain knowledge.",

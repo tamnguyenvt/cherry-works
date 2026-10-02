@@ -1,0 +1,194 @@
+{
+  "stories": [
+    {
+      "id": "CORE Story 1",
+      "title": "Author a charter and put the agent under it",
+      "dependsOn": []
+    },
+    {
+      "id": "CORE Story 2",
+      "title": "Adopt shared governance without copying files",
+      "dependsOn": [
+        "CORE Story 1"
+      ]
+    },
+    {
+      "id": "CORE Story 3",
+      "title": "Trust the charter, and prove it in CI",
+      "dependsOn": [
+        "CORE Story 1"
+      ]
+    },
+    {
+      "id": "CORE Story 4",
+      "title": "Create a correctly-shaped primitive without looking anything up",
+      "dependsOn": [
+        "CORE Story 1"
+      ]
+    },
+    {
+      "id": "CORE Story 5",
+      "title": "See what the charter holds and why each rule comes up",
+      "dependsOn": [
+        "CORE Story 1"
+      ]
+    },
+    {
+      "id": "CORE Story 6",
+      "title": "Author, edit and delete a primitive without looking anything up",
+      "dependsOn": [
+        "CORE Story 5"
+      ]
+    },
+    {
+      "id": "CORE Story 7",
+      "title": "Build, preview and check the repository's health",
+      "dependsOn": [
+        "CORE Story 5"
+      ]
+    },
+    {
+      "id": "CORE Story 8",
+      "title": "Install, see and remove vendor sources",
+      "dependsOn": [
+        "CORE Story 5",
+        "CORE Story 2"
+      ]
+    },
+    {
+      "id": "CORE Story 9",
+      "title": "Write, run and correct the self-regression tests",
+      "dependsOn": [
+        "CORE Story 5",
+        "CORE Story 3"
+      ]
+    },
+    {
+      "id": "CORE Story 10",
+      "title": "Write a primitive with no terminal to answer at",
+      "dependsOn": [
+        "CORE Story 4"
+      ]
+    },
+    {
+      "id": "CORE Story 11",
+      "title": "Ask a kind what it requires, rather than being told",
+      "dependsOn": [
+        "CORE Story 10"
+      ]
+    },
+    {
+      "id": "CORE Story 12",
+      "title": "The instructions arrive with the engine, not with the repository",
+      "dependsOn": [
+        "CORE Story 10"
+      ]
+    },
+    {
+      "id": "CORE Story 13",
+      "title": "Install `cw` with one command and use it in any repository",
+      "dependsOn": [
+        "CORE Story 1"
+      ]
+    },
+    {
+      "id": "CORE Story 14",
+      "title": "Know which `cw` is running, and move to another",
+      "dependsOn": [
+        "CORE Story 13"
+      ]
+    },
+    {
+      "id": "CORE Story 15",
+      "title": "Publish a release that users can trust",
+      "dependsOn": [
+        "CORE Story 13"
+      ]
+    },
+    {
+      "id": "CORE Story 16",
+      "title": "Open every primitive as it was compiled",
+      "dependsOn": [
+        "CORE Story 1"
+      ]
+    },
+    {
+      "id": "CORE Story 17",
+      "title": "Declare where knowledge lives once, and point any primitive at it",
+      "dependsOn": [
+        "CORE Story 16"
+      ]
+    },
+    {
+      "id": "CORE Story 18",
+      "title": "Sign in to every place as yourself",
+      "dependsOn": [
+        "CORE Story 17"
+      ]
+    },
+    {
+      "id": "CORE Story 19",
+      "title": "Give the agent one server that reaches every place",
+      "dependsOn": [
+        "CORE Story 17"
+      ]
+    },
+    {
+      "id": "CORE Story 20",
+      "title": "Hold a subagent to the places it lists",
+      "dependsOn": [
+        "CORE Story 19"
+      ]
+    },
+    {
+      "id": "CORE Story 21",
+      "title": "Keep a script or a template in the charter, and get the file it is",
+      "dependsOn": [
+        "CORE Story 16"
+      ]
+    },
+    {
+      "id": "CORE Story 22",
+      "title": "Point any primitive at a script or a template by its id",
+      "dependsOn": [
+        "CORE Story 21"
+      ]
+    },
+    {
+      "id": "CORE Story 23",
+      "title": "Keep every primitive as a folder, with its index.md and its assets",
+      "dependsOn": [
+        "CORE Story 21"
+      ]
+    },
+    {
+      "id": "CORE Story 24",
+      "title": "Keep a script as real files, and say which one runs",
+      "dependsOn": [
+        "CORE Story 23"
+      ]
+    },
+    {
+      "id": "CORE Story 25",
+      "title": "Write each name as what its reader can use",
+      "dependsOn": [
+        "CORE Story 22",
+        "CORE Story 24"
+      ]
+    },
+    {
+      "id": "CORE Story 26",
+      "title": "Invoke a skill by its id alone",
+      "dependsOn": [
+        "CORE Story 16"
+      ]
+    },
+    {
+      "id": "CORE Story 27",
+      "title": "Name every primitive by its id alone",
+      "dependsOn": [
+        "CORE Story 26"
+      ]
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 ## ADR-001: A primitive is named by its id alone
 
-**Date**: 2026-10-02 · **Status**: Accepted · **Story**: [Story 27](spec.md#user-story-27---name-every-primitive-by-its-id-alone-priority-p1) ([FR-015](spec.md#fr-015), [FR-171](spec.md#fr-171), [FR-172](spec.md#fr-172))
+**Date**: 2026-10-02 · **Status**: Accepted · **Story**: [CORE Story 27](spec-core.md#core-story-27---name-every-primitive-by-its-id-alone-priority-p1) ([CORE-FR-015](spec-core.md#core-fr-015), [CORE-FR-171](spec-core.md#core-fr-171), [CORE-FR-172](spec-core.md#core-fr-172))
 
 ### Decision
 

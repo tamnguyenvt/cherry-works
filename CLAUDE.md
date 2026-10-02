@@ -1,6 +1,4 @@
-<!-- SPECKIT START -->
-What the product must do is in specs/spec.md; each story carries its status.
-<!-- SPECKIT END -->
+What the product must do is in the spec set under specs/: spec.md indexes it, each story in spec-core.md carries its status, plan.json is the roadmap, and manifest.md says how work is carried out and finished.
 
 <!-- CHERRYWORKS START -->
 ## Charter
