@@ -1,4 +1,4 @@
-import type { ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
+import { DrivenFault, type ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
 
 /** Version control held in memory: a test says whether the folder it is setting
  *  up is inside a repository, and nothing shells out. The second implementation
@@ -11,7 +11,15 @@ export class InMemoryVCS implements ForVCS {
 
   /** Every source it was asked to install, in the order it was asked: what a
    *  test about vendoring looks at, since nothing was fetched. */
-  readonly installed: { source: string; repo: URL; intoSubFolder: string; version?: string }[] = [];
+  readonly installed: { source: string; sourceSubFolder: string; repo: URL; intoSubFolder: string; version?: string }[] = [];
+
+  /** Every source a test says holds no folder of the name asked for: what
+   *  `subtreeAdd` raises for, copying nothing. */
+  readonly sourcesWithoutSubFolder: string[] = [];
+
+  /** Every source a test says holds the folder `subtreeAdd` is told to refuse:
+   *  what it raises for, copying nothing. */
+  readonly sourcesHoldingRefusedFolder: string[] = [];
 
   async isInstalled(_folder: URL): Promise<boolean> {
     return this.versioned;
@@ -35,8 +43,20 @@ export class InMemoryVCS implements ForVCS {
     return this.changed.filter((path) => path.startsWith(folder));
   }
 
-  async subtreeAdd(source: string, repo: URL, intoSubFolder: string, version?: string): Promise<void> {
-    this.installed.push({ source, repo, intoSubFolder, ...(version === undefined ? {} : { version }) });
+  async subtreeAdd(
+    source: string,
+    sourceSubFolder: string,
+    repo: URL,
+    intoSubFolder: string,
+    version?: string,
+    refusedIfSourceHolds?: string,
+  ): Promise<string> {
+    if (this.sourcesWithoutSubFolder.includes(source))
+      throw new DrivenFault(`${source} has no folder "${sourceSubFolder}".`, `Check that the source holds "${sourceSubFolder}".`);
+    if (refusedIfSourceHolds !== undefined && this.sourcesHoldingRefusedFolder.includes(source))
+      throw new DrivenFault(`${source} holds "${refusedIfSourceHolds}".`, `Remove "${refusedIfSourceHolds}" from the source.`);
+    this.installed.push({ source, sourceSubFolder, repo, intoSubFolder, ...(version === undefined ? {} : { version }) });
+    return intoSubFolder;
   }
 
   async removeSubFolder(repo: URL, subFolder: string): Promise<void> {

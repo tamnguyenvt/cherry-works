@@ -2,7 +2,6 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { DrivenFault, type ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
-import type { ForReadingFiles } from "#hexagon/port/zdriven/ForReadingFiles.js";
 
 const run = promisify(execFile);
 
@@ -17,10 +16,6 @@ const run = promisify(execFile);
  * to tell apart.
  */
 export class Git implements ForVCS {
-  /** How it looks at a folder. Reading files is somebody else's port, and this
-   *  asks it rather than reaching for the filesystem itself. */
-  constructor(private readonly fileReader: ForReadingFiles) {}
-
   async isInstalled(folder: URL): Promise<boolean> {
     try {
       await run("git", ["rev-parse", "--git-dir"], { cwd: fileURLToPath(folder) });
@@ -69,31 +64,35 @@ export class Git implements ForVCS {
   }
 
   /**
-   * `git subtree`, handed the source exactly as it was written: `add` where the
-   * folder is not there yet and `pull` where it is, so installing a source and
-   * bringing it up to date are one call (FR-023, FR-030).
+   * `git fetch`, handed the source exactly as it was written, then
+   * `git read-tree` of the one folder asked for into the folder given, and a
+   * commit: a folder already there is removed in the same commit, so
+   * installing a source and bringing it up to date are one call (FR-023,
+   * FR-030, FR-042).
    *
    * Which transport it is, whether the credentials are there, whether the
    * version exists: git answers all three, and what it says is what the user
-   * reads (FR-031).
-   *
-   * `--squash` because what is installed is content to read and not a history
-   * to walk: one commit lands, holding the source's files under the folder
-   * given (FR-028). `HEAD` where no version is named, which is what the source
+   * reads (FR-031). `HEAD` where no version is named, which is what the source
    * calls its own default.
+   *
+   * `git subtree` takes a source whole and cannot take one folder of it, so
+   * the tree is read straight off what was fetched. Whether that folder is
+   * there, and whether the refused one is, is asked of git before anything is
+   * touched. One commit lands, holding the folder's files and no history to
+   * walk (FR-028); none lands where the copy is what was already there.
    */
-  async subtreeAdd(source: string, repo: URL, intoSubFolder: string, version?: string): Promise<void> {
+  async subtreeAdd(
+    source: string,
+    sourceSubFolder: string,
+    repo: URL,
+    intoSubFolder: string,
+    version?: string,
+    refusedIfSourceHolds?: string,
+  ): Promise<string> {
     const cwd = fileURLToPath(repo);
-    // A folder with files in it is one a subtree was already added to, and
-    // `pull` is what brings it up to date.
-    const targetFolder = new URL(`${intoSubFolder}/`, repo);
-    const targetFolderExist = (await this.fileReader.readFilesRecursively(targetFolder)).length > 0;
+    const ref = version ?? "HEAD";
     try {
-      await run(
-        "git",
-        ["subtree", targetFolderExist ? "pull" : "add", `--prefix=${intoSubFolder}`, "--squash", "--", source, version ?? "HEAD"],
-        { cwd },
-      );
+      await run("git", ["fetch", "--quiet", "--no-tags", "--", source, ref], { cwd });
     } catch (raised) {
       throw new DrivenFault(
         `${raised}`,
@@ -101,6 +100,41 @@ export class Git implements ForVCS {
           ? "Check the address, and that you can reach it from here."
           : `Check the address, and that "${version}" is a tag or branch it has.`,
       );
+    }
+    // The commit fetched is pinned now, before anything else can move FETCH_HEAD.
+    const { stdout: fetchedCommit } = await run("git", ["rev-parse", "FETCH_HEAD"], { cwd });
+    const isTreeAt = (folder: string) =>
+      run("git", ["cat-file", "-t", `${fetchedCommit.trim()}:${folder}`], { cwd }).then(
+        ({ stdout }) => stdout.trim() === "tree",
+        () => false,
+      );
+    const atVersion = version === undefined ? "" : ` at ${version}`;
+    if (!(await isTreeAt(sourceSubFolder)))
+      throw new DrivenFault(
+        `${source} has no folder "${sourceSubFolder}"${atVersion}.`,
+        `Check that the source holds "${sourceSubFolder}" at the version asked for.`,
+      );
+    if (refusedIfSourceHolds !== undefined && (await isTreeAt(refusedIfSourceHolds)))
+      throw new DrivenFault(
+        `${source} holds "${refusedIfSourceHolds}"${atVersion}, which this copy refuses.`,
+        `Remove "${refusedIfSourceHolds}" from the source, or copy a version without it.`,
+      );
+    const sourceTree = `${fetchedCommit.trim()}:${sourceSubFolder}`;
+
+    try {
+      await run("git", ["rm", "-r", "--quiet", "--ignore-unmatch", "--", intoSubFolder], { cwd });
+      await run("git", ["read-tree", `--prefix=${intoSubFolder}/`, "-u", sourceTree], { cwd });
+      const unchanged = await run("git", ["diff", "--cached", "--quiet"], { cwd }).then(
+        () => true,
+        () => false,
+      );
+      if (!unchanged)
+        await run("git", ["commit", "-qm", `Install ${source}${atVersion} into ${intoSubFolder}`], { cwd });
+      return intoSubFolder;
+    } catch (raised) {
+      // Whatever was half done to that folder goes back to what was committed.
+      await run("git", ["restore", "--source=HEAD", "--staged", "--worktree", "--", intoSubFolder], { cwd }).catch(() => undefined);
+      throw new DrivenFault(`${raised}`, `Check that "${intoSubFolder}" holds nothing of your own in hand, and run this again.`);
     }
   }
 

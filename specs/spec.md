@@ -231,7 +231,7 @@ The developer opens the vendor view and sees each source the repository installe
 
 **Acceptance Scenarios**:
 
-1. **Given** a repository with no vendor source, **When** the developer opens the vendor view, **Then** it says none is installed and offers to add one, and adding one lists the directory names reserved at a source's root.
+1. **Given** a repository with no vendor source, **When** the developer opens the vendor view, **Then** it says none is installed and offers to add one, and adding one lists the directory names reserved under a source's charter folder.
 2. **Given** a source in short git form and an optional version, **When** the developer adds it, **Then** it is installed the way `cw vendor add` installs it, and the portal lists the folder and the primitives it brought.
 3. **Given** staged or uncommitted work, or no version control, **When** the developer adds or removes a source, **Then** nothing is installed or removed and the portal shows why, in the engine's words.
 4. **Given** installed sources, **When** the vendor view is shown, **Then** each is listed with its folder and its primitives counted by kind.
@@ -612,6 +612,8 @@ The charter holds identities: `script:check-changelog` in a sensor's `run`, `mcp
 - A mixin and its host both set the same single-valued field — the host wins; both set the same list-valued field — the values merge with the host's last.
 - A primitive cites reasoning that does not exist — validation reports a dangling reference.
 - The vendor source is unreachable, or the pinned version does not exist — the command fails without touching what is already installed.
+- The vendor source holds no `.cw/charter/` folder at the version asked for — it is refused as no charter, saying to run `cw init` there, and nothing is installed ([FR-042](#fr-042)).
+- The vendor source installed vendors of its own — it is refused, saying to install those here directly, and nothing is installed ([FR-170](#fr-170)).
 - A projected file was hand-edited — the next build overwrites it, and the preview build reports it as an update.
 - A projection exists whose source primitive was deleted — the build deletes the projection.
 - The host's entry file already carries the section — the build writes that section again and leaves the rest of the file, whoever wrote it, untouched.
@@ -748,7 +750,8 @@ The charter holds identities: `script:check-changelog` in a sensor's `run`, `mcp
 **Vendor sources**
 
 - <a id="fr-041"></a>**FR-041**: The system MUST install vendored charter content from a git source identified by a short form carrying optional host, owner, repository and version, pinned to that version.
-- <a id="fr-042"></a>**FR-042**: The system MUST install a source repository whole.
+- <a id="fr-042"></a>**FR-042**: The system MUST install a source repository's charter folder — the one `cw init` sets up in it — and nothing else of it, so a source is authored and tested as any governed repository is and pushed as it stands. A source holding no charter folder at the version asked for MUST be refused as no charter, installing nothing.
+- <a id="fr-170"></a>**FR-170**: Vendoring MUST be one level deep: a source that holds vendored content of its own at the version asked for MUST be refused, installing nothing, since its charter may lean on primitives that would not be installed with it.
 - <a id="fr-043"></a>**FR-043**: The system MUST attach no meaning to a vendored directory's name. Any grouping such a name implies belongs to the people using it, not to the system.
 - <a id="fr-044"></a>**FR-044**: The system MUST install vendored content only under the vendor directory, beside the charter rather than inside it, so no vendor source can land on a kind directory or on what this repository authored.
 - <a id="fr-045"></a>**FR-045**: The system MUST allow more than one vendor source per repository.
@@ -759,7 +762,7 @@ The charter holds identities: `script:check-changelog` in a sensor's `run`, `mcp
 - <a id="fr-050"></a>**FR-050**: An installed source MUST land in a folder of its own under the vendor directory, named by the end of its address without a trailing `.git`.
 - <a id="fr-051"></a>**FR-051**: Installing, updating and removing a vendor source MUST each land as a commit on the branch checked out, and MUST therefore be refused while the repository has uncommitted work in hand.
 - <a id="fr-052"></a>**FR-052**: Installing a vendor source MUST compile nothing: the build is the one command that writes what an agent reads.
-- <a id="fr-053"></a>**FR-053**: The engine MUST be able to list every installed vendor folder. It MUST NOT record where a folder came from or at which version: version control keeps no such record of a subtree, and a record kept beside it is one the repository's history does not hold ([FR-046](#fr-046)). Bringing a source up to date is installing it again with its source, as it was first typed.
+- <a id="fr-053"></a>**FR-053**: The engine MUST be able to list every installed vendor folder. It MUST NOT record where a folder came from or at which version: version control keeps no such record of a folder it copied, and a record kept beside it is one the repository's history does not hold ([FR-046](#fr-046)). Bringing a source up to date is installing it again with its source, as it was first typed.
 
 **Setup**
 

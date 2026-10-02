@@ -40,8 +40,9 @@ export interface ForVCS {
   changedUnder(repo: URL, subFolder: string): Promise<readonly string[]>;
 
   /**
-   * Add this source under this folder of this repository, pinned to this
-   * version where one is named (FR-023).
+   * Copy one folder of this source, at this version where one is named, into
+   * this folder of this repository, replacing what that folder held, and commit
+   * it (FR-023, FR-042).
    *
    * The source is whatever version control fetches — an address over any
    * transport, a path on disk — and is passed along as it was written. Reading
@@ -49,15 +50,27 @@ export interface ForVCS {
    * behalf is nobody's: the credentials a private source needs are the
    * configuration of whoever runs this (FR-031).
    *
-   * The folder is named as it sits under the repository given, which is what
-   * says where a vendor goes. What lands is the source's files there, committed: a checkout of this repository holds the whole
-   * charter it is governed by, with nothing left to fetch (FR-028).
+   * Both folders are named as they sit under their own repository: which one
+   * is taken from the source, and where it goes here, is the caller's to say.
+   * What lands is that folder's files alone, committed: a checkout of this
+   * repository holds the whole charter it is governed by, with nothing left to
+   * fetch (FR-028). Copying it again is how what was copied is brought up to
+   * date. Answers the folder it copied into.
    *
-   * A source that cannot be reached, a version that is not there, a folder
-   * already taken, a repository with work in hand: each raises, saying what
-   * version control said. Nothing is installed when it does (Edge Cases).
+   * A source that holds no such folder at that version, one that holds a file
+   * under `refusedIfSourceHolds`, a source that cannot be reached, a version
+   * that is not there, a repository with work in hand: each raises a
+   * `DrivenFault`, saying what version control found. Nothing is installed
+   * when it does (Edge Cases).
    */
-  subtreeAdd(source: string, repo: URL, intoSubFolder: string, version?: string): Promise<void>;
+  subtreeAdd(
+    source: string,
+    sourceSubFolder: string,
+    repo: URL,
+    intoSubFolder: string,
+    version?: string,
+    refusedIfSourceHolds?: string,
+  ): Promise<string>;
 
   /**
    * Take this folder of this repository away, and commit that it is gone

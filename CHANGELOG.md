@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 — 2026-10-02
+
+- `cw vendor` is ready: `cw vendor add <source>` installs another repository's charter, from its `.cw/charter/` folder, under `.cw/vendor/<name>/`.
+- A vendor source is any repository set up with `cw init`; one that has vendors of its own is refused.
+
 ## 0.3.0 — 2026-10-01
 
 - **Breaking:** every primitive is now a folder holding its `index.md`; move `.cw/charter/<kind>/<id>.md` to `.cw/charter/<kind>/<id>/index.md`.
@@ -27,4 +32,3 @@
 
 - First release: write your team's rules as small markdown files, and `cw` checks, tests and compiles them for Claude Code.
 - `cw portal` shows and edits the charter in your browser.
-- `cw vendor` shares a charter between repositories.

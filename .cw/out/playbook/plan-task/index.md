@@ -2,7 +2,7 @@
 kind: playbook
 id: plan-task
 description: Instruction for writing a phase's stories into the spec
-triggers: ["clarfify requirement"]
+triggers: ["clarify requirement", "plan a feature"]
 ---
 
 One job: write the stories of a phase into the spec. Nothing else is written: no plan, no task list, no decision records. How a story is built is decided when it is implemented (playbook implement-task).

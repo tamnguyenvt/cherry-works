@@ -1,6 +1,6 @@
 ---
 name: playbook-implement-task
-description: "Instruction for implement new task Use when: implement task XXX or implement next task."
+description: "Instruction for implement new task Use when: implement task; implement next task."
 ---
 
 Read and follow @../../../.cw/out/playbook/implement-task/index.md.

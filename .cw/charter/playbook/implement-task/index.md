@@ -2,7 +2,7 @@
 kind: playbook
 id: implement-task
 description: Instruction for implement new task
-triggers: ["implement task XXX or implement next task"]
+triggers: ["implement task", "implement next task"]
 ---
 
 # task

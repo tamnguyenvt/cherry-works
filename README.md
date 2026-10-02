@@ -230,10 +230,21 @@ longer hold.
 cw vendor add git@github.com:your-org/charter-baseline.git --ref v1.2.0
 ```
 
-A vendor source is a git repository with primitives laid out in folders by kind.
-It is installed under `.cw/vendor/<name>/`, pinned to the ref you chose and
-committed. Vendored primitives are read-only. To differ from one, write your own
-primitive under a new identity.
+A vendor source is a git repository set up with `cw init`: author its charter
+there, test it, and push. Only its `.cw/charter/` folder is installed, under
+`.cw/vendor/<name>/`, pinned to the ref you chose and committed. A repository
+without that folder is refused, and so is one that has vendors of its own:
+vendoring is one level deep. Vendored primitives are read-only. To differ from
+one, write your own primitive under a new identity.
+
+Run `cw vendor add` again with a new `--ref` to update a source, and
+`cw vendor remove <name>` to take it away. Run `cw build` after either.
+
+### Recommended charter vendors
+
+| Charter | What it gives your agent | Install |
+| --- | --- | --- |
+| [hexagonal-architecture-charter](https://github.com/tamnguyenvt/hexagonal-architecture-charter) | Sets up a hexagonal (ports and adapters) architecture in a folder you choose, then keeps the agent following it. | `cw vendor add git@github.com:tamnguyenvt/hexagonal-architecture-charter.git --ref v0.1.0` |
 
 ## Places outside the repository
 

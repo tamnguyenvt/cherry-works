@@ -1,6 +1,6 @@
 ---
 name: playbook-plan-task
-description: "Instruction for writing a phase's stories into the spec Use when: clarfify requirement."
+description: "Instruction for writing a phase's stories into the spec Use when: clarify requirement; plan a feature."
 ---
 
 Read and follow @../../../.cw/out/playbook/plan-task/index.md.

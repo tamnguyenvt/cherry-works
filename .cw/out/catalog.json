@@ -1,5 +1,17 @@
 [
   {
+    "identity": "agent:hexagon-initializer",
+    "kind": "agent",
+    "description": "Initialise a hexagonal architecture in the folder whose path it is given, then fit it to that project.",
+    "file": ".cw/out/agent/hexagon-initializer/index.md"
+  },
+  {
+    "identity": "agent:hexagon-reviewer",
+    "kind": "agent",
+    "description": "Check the files a hexagonal init wrote against every guide that applies to them, and name each breach with its fix; changes nothing.",
+    "file": ".cw/out/agent/hexagon-reviewer/index.md"
+  },
+  {
     "identity": "corpus:changelog-short-for-users",
     "kind": "corpus",
     "description": "Why changelog entries are one short sentence for users, and how a release entry is written.",
@@ -10,6 +22,12 @@
     "kind": "corpus",
     "description": "Why a driven port carries no domain knowledge.",
     "file": ".cw/out/corpus/driven-port-speaks-its-adapter/index.md"
+  },
+  {
+    "identity": "corpus:hexagonal-architecture",
+    "kind": "corpus",
+    "description": "Why the code is split into driver, hexagon and zdriven, and why the arrows between them point inward.",
+    "file": ".cw/out/corpus/hexagonal-architecture/index.md"
   },
   {
     "identity": "corpus:learnings-go-to-the-inbox",
@@ -57,6 +75,17 @@
     ]
   },
   {
+    "identity": "guide:hexagonal-architecture",
+    "kind": "guide",
+    "description": "The layers of a hexagonal codebase, what each may import, and where a new file belongs.",
+    "file": ".cw/out/guide/hexagonal-architecture/index.md",
+    "globs": [
+      "src/**",
+      "main.ts",
+      "main.js"
+    ]
+  },
+  {
     "identity": "guide:learnings-go-to-the-inbox",
     "kind": "guide",
     "description": "Never save to the agent's own memory; write what was learned into learning/inbox, where repeated lessons become rules.",
@@ -93,6 +122,12 @@
     "file": ".cw/out/playbook/plan-task/index.md"
   },
   {
+    "identity": "script:init-hexagon",
+    "kind": "script",
+    "description": "Scaffold a hexagonal architecture (driver / hexagon / zdriven), in TypeScript or JavaScript, into the folder it is given.",
+    "file": ".cw/out/script/init-hexagon/index.md"
+  },
+  {
     "identity": "sensor:link-specs-on-stop",
     "kind": "sensor",
     "description": "Link every id the specs cite to where it is defined, and refuse to stop while a citation dangles.",
@@ -105,10 +140,10 @@
     "file": ".cw/out/skill/cw-author/index.md"
   },
   {
-    "identity": "skill:implement-new-task",
+    "identity": "skill:init-hexagon",
     "kind": "skill",
-    "description": "find task in specs folder and implement",
-    "file": ".cw/out/skill/implement-new-task/index.md"
+    "description": "Ask the user what a hexagonal setup needs — folder, language (TypeScript or JavaScript only), dependency-cruiser, example, overwrite — show the plan, and start only once they confirm.",
+    "file": ".cw/out/skill/init-hexagon/index.md"
   },
   {
     "identity": "skill:learn",
@@ -121,12 +156,6 @@
     "kind": "skill",
     "description": "merge branch",
     "file": ".cw/out/skill/merge/index.md"
-  },
-  {
-    "identity": "skill:plan-task",
-    "kind": "skill",
-    "description": "clarify spec and planning",
-    "file": ".cw/out/skill/plan-task/index.md"
   },
   {
     "identity": "skill:review",

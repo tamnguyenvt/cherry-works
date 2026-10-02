@@ -1,6 +1,6 @@
 import { DomainFault } from "../domain/models/DomainFault.js";
 import { vendorSourceOf } from "../domain/models/vendor/VendorSource.js";
-import { VENDOR_DIRECTORY, vendorFolderIn } from "../domain/path.js";
+import { CHARTER_DIRECTORY, VENDOR_DIRECTORY, vendorFolderIn } from "../domain/path.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import type { ForVCS } from "../port/zdriven/ForVCS.js";
 
@@ -35,14 +35,21 @@ async function ensureVCSReady(repo: URL, vcs: ForVCS, because: string): Promise<
     );
 }
 
-/** Install one source under the folder its address names, pinned to this
- *  version where one is named, as a commit version control makes; and answer
- *  that folder (FR-047, FR-050). */
+/**
+ * Install the charter of one source under the folder its address names, pinned
+ * to this version where one is named, as a commit version control makes; and
+ * answer that folder (FR-042, FR-047, FR-050).
+ *
+ * What is taken is the source's own charter folder, where `cw init` put it,
+ * and nothing else: a repository without one is not a charter, and is refused
+ * rather than installed whole. Vendoring is one level deep: a source that
+ * installed vendors of its own is refused too, since its charter may lean on
+ * what they hold and that is not installed with it.
+ */
 export async function addVendor(repo: URL, vcs: ForVCS, source: string, version?: string): Promise<string> {
   await ensureVCSReady(repo, vcs, "installing a vendor commits what it installs");
   const folder = `${VENDOR_DIRECTORY}/${vendorSourceOf(source).name}`;
-  await vcs.subtreeAdd(source, repo, folder, version);
-  return folder;
+  return vcs.subtreeAdd(source, CHARTER_DIRECTORY, repo, folder, version, VENDOR_DIRECTORY);
 }
 
 /** Take the folder one vendor was installed as away, as a commit version

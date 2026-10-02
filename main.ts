@@ -34,7 +34,7 @@ import type { ForConnectingMcps } from "./src/hexagon/port/driver/ForConnectingM
 const fileReader: ForReadingFiles = new FileReaders();
 const yamlParser: ForParsingYaml = new YamlParser();
 const fileWriter: ForWritingFiles = new FileOutput();
-const vcs: ForVCS = new Git(fileReader);
+const vcs: ForVCS = new Git();
 const secrets: ForKeepingSecrets = new OsSecrets();
 const authorizing: ForAuthorizing = new OAuth();
 const mcpServers: ForCallingMcpServers = new McpClients();

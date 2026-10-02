@@ -74,7 +74,7 @@ const DIALOGS = {
     holdsDraft: false,
     render: ({ buildAnswer }: { buildAnswer: BuildAnswer }) => <BuildOutcome buildAnswer={buildAnswer} />,
   },
-  /** A vendor source to install, above the directories reserved at its root
+  /** A vendor source to install, above the directories reserved under its charter folder
    *  (FR-123). */
   addVendor: {
     title: () => "Add vendor source",

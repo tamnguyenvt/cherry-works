@@ -51,7 +51,7 @@ test("a source posted is installed as cw vendor add installs it (Story 8 scenari
 
   assert.equal(answer.status, 204);
   assert.deepEqual(vcs.installed, [
-    { source: "git@github.com:team/charter.git", repo: repoPath, intoSubFolder: ".cw/vendor/charter", version: "v1.2.0" },
+    { source: "git@github.com:team/charter.git", sourceSubFolder: ".cw/charter", repo: repoPath, intoSubFolder: ".cw/vendor/charter", version: "v1.2.0" },
   ]);
 });
 
@@ -61,6 +61,19 @@ test("a source posted with no version is installed at its default", async () => 
   await portalRoutes.request("/vendors", sending("POST", { source: "/srv/charters/charter" }));
 
   assert.equal(vcs.installed[0]?.version, undefined);
+});
+
+test("a source holding no charter folder is refused, saying how to make it one", async () => {
+  const vcs = new InMemoryVCS();
+  vcs.sourcesWithoutSubFolder.push("team/notes");
+  const { portalRoutes } = portal({}, vcs);
+
+  const answer = await portalRoutes.request("/vendors", sending("POST", { source: "team/notes" }));
+
+  assert.equal(answer.status, 422);
+  const faultDTO = DataDTOs.Fault.parse(await answer.json());
+  assert.match(faultDTO.data.message, /no folder "\.cw\/charter"/);
+  assert.deepEqual(vcs.installed, []);
 });
 
 test("a vendor deleted is taken away by its folder name (Story 8 scenario 5)", async () => {

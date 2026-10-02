@@ -50,13 +50,14 @@ async function running(argv: readonly string[], vcs: InMemoryVCS = new InMemoryV
   }
 }
 
-test("a source is installed under the folder its address names", async () => {
+test("a source's charter folder is installed under the folder its address names", async () => {
   const { code, said, vcs } = await running(["vendor", "add", "git@github.com:team/charter.git"]);
 
   assert.equal(code, EXIT_OK);
   assert.deepEqual(vcs.installed, [
     {
       source: "git@github.com:team/charter.git",
+      sourceSubFolder: ".cw/charter",
       repo: new URL("file:///repo/"),
       intoSubFolder: ".cw/vendor/charter",
     },
@@ -83,6 +84,28 @@ test("a version is what the source is pinned to", async () => {
 
   assert.equal(vcs.installed[0]?.version, "v1.2.0");
   assert.match(said, /v1\.2\.0/);
+});
+
+test("a source holding no charter folder is refused, saying how to make it one", async () => {
+  const vcs = new InMemoryVCS();
+  vcs.sourcesWithoutSubFolder.push("team/notes");
+
+  const { code, said } = await running(["vendor", "add", "team/notes"], vcs);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.deepEqual(vcs.installed, []);
+  assert.match(said, /no folder "\.cw\/charter"/);
+});
+
+test("a source that installs vendors of its own is refused: vendoring is one level deep", async () => {
+  const vcs = new InMemoryVCS();
+  vcs.sourcesHoldingRefusedFolder.push("team/stacked");
+
+  const { code, said } = await running(["vendor", "add", "team/stacked"], vcs);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.deepEqual(vcs.installed, []);
+  assert.match(said, /holds "\.cw\/vendor"/);
 });
 
 test("a repository with work in hand is refused before anything is fetched", async () => {

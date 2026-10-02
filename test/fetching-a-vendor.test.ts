@@ -7,11 +7,10 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 import { Git } from "../src/zdriven/Git.js";
-import { FileReaders } from "../src/zdriven/FileReaders.js";
 import { DrivenFault } from "../src/hexagon/port/zdriven/DrivenFault.js";
 
 const run = promisify(execFile);
-const git = new Git(new FileReaders());
+const git = new Git();
 
 /** Git as a test runs it: an author of its own, nothing signed, so what is
  *  committed here does not depend on whose machine this is. */
@@ -29,13 +28,14 @@ async function temporary(t: { after(fn: () => unknown): void }, name: string): P
   return at;
 }
 
-/** A repository to install from: one guide, one commit, one tag. A path on disk
- *  is a source git fetches like any other, so the adapter is exercised whole
- *  without a network. */
+/** A repository to install from: one guide under its charter folder, a README
+ *  beside it, one commit, one tag. A path on disk is a source git fetches like
+ *  any other, so the adapter is exercised whole without a network. */
 async function published(t: { after(fn: () => unknown): void }, body = "Reject any."): Promise<string> {
   const source = join(await temporary(t, "source"), "charter");
-  await mkdir(join(source, "guide", "no-any"), { recursive: true });
-  await writeFile(join(source, "guide", "no-any", "index.md"), `---\nkind: guide\n---\n\n${body}\n`);
+  await mkdir(join(source, ".cw", "charter", "guide", "no-any"), { recursive: true });
+  await writeFile(join(source, ".cw", "charter", "guide", "no-any", "index.md"), `---\nkind: guide\n---\n\n${body}\n`);
+  await writeFile(join(source, "README.md"), "Not part of the charter.\n");
   await run("git", ["init", "-q", "-b", "main"], { cwd: source });
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "one");
@@ -59,17 +59,18 @@ async function repository(t: { after(fn: () => unknown): void }): Promise<string
 /** One repository, and where a vendor installs under it, as the adapter is
  *  handed the two. Which folder that is is the hexagon's to decide; the adapter
  *  is told. */
-const at = (repo: string) => [pathToFileURL(`${repo}/`), ".cw/vendor/charter"] as const;
+const at = (repo: string) => [".cw/charter", pathToFileURL(`${repo}/`), ".cw/vendor/charter"] as const;
 
 /** What the vendored guide says in this repository, read off disk. */
 const vendored = (repo: string) => readFile(join(repo, ".cw", "vendor", "charter", "guide", "no-any", "index.md"), "utf8");
 
-test("a source installs under the folder its address names, and is committed there", async (t) => {
+test("a source's charter folder installs under the folder its address names, and is committed there", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
 
-  await git.subtreeAdd(source, ...at(repo));
+  assert.equal(await git.subtreeAdd(source, ...at(repo)), ".cw/vendor/charter");
 
   assert.match(await vendored(repo), /Reject any\./);
+  await assert.rejects(readFile(join(repo, ".cw", "vendor", "charter", "README.md")), "what lies outside the charter folder stays behind");
   const { stdout } = await run("git", ["status", "--porcelain"], { cwd: repo });
   assert.equal(stdout.trim(), "", "what was installed is committed, not left in hand");
 });
@@ -86,13 +87,59 @@ test("installing a source already there brings it up to date", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   await git.subtreeAdd(source, ...at(repo));
 
-  await writeFile(join(source, "guide", "no-any", "index.md"), "---\nkind: guide\n---\n\nReject it everywhere.\n");
+  await writeFile(join(source, ".cw", "charter", "guide", "no-any", "index.md"), "---\nkind: guide\n---\n\nReject it everywhere.\n");
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "two");
 
   await git.subtreeAdd(source, ...at(repo));
 
   assert.match(await vendored(repo), /Reject it everywhere\./);
+});
+
+test("installing again what is already there commits nothing new, and leaves nothing in hand", async (t) => {
+  const [source, repo] = [await published(t), await repository(t)];
+  await git.subtreeAdd(source, ...at(repo));
+  const { stdout: before } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
+
+  await git.subtreeAdd(source, ...at(repo));
+
+  const { stdout: after } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
+  assert.equal(after, before);
+  assert.equal(await git.isClean(pathToFileURL(`${repo}/`)), true);
+});
+
+test("a source without the folder asked for says so, installing nothing", async (t) => {
+  const [source, repo] = [await published(t), await repository(t)];
+
+  const raised = await git.subtreeAdd(source, "not-there", pathToFileURL(`${repo}/`), ".cw/vendor/charter").catch((one: unknown) => one);
+
+  assert.ok(raised instanceof DrivenFault, String(raised));
+  assert.match(raised.message, /no folder "not-there"/);
+
+  await assert.rejects(readFile(join(repo, ".cw", "vendor", "charter", "README.md")));
+  assert.equal(await git.isClean(pathToFileURL(`${repo}/`)), true);
+});
+
+test("a source holding the folder it is refused for says so, installing nothing", async (t) => {
+  const [source, repo] = [await published(t), await repository(t)];
+  await mkdir(join(source, ".cw", "vendor", "other", "guide", "x"), { recursive: true });
+  await writeFile(join(source, ".cw", "vendor", "other", "guide", "x", "index.md"), "---\nkind: guide\n---\n\nX.\n");
+  await run("git", ["add", "."], { cwd: source });
+  await commit(source, "vendored");
+
+  const raised = await git.subtreeAdd(source, ...at(repo), undefined, ".cw/vendor").catch((one: unknown) => one);
+
+  assert.ok(raised instanceof DrivenFault, String(raised));
+  assert.match(raised.message, /holds "\.cw\/vendor"/);
+
+  await assert.rejects(vendored(repo));
+  assert.equal(await git.isClean(pathToFileURL(`${repo}/`)), true);
+});
+
+test("a source without the folder it is refused for installs as any other", async (t) => {
+  const [source, repo] = [await published(t), await repository(t)];
+
+  assert.equal(await git.subtreeAdd(source, ...at(repo), undefined, ".cw/vendor"), ".cw/vendor/charter");
 });
 
 test("a version the source has not got is refused in git's own words, installing nothing", async (t) => {
