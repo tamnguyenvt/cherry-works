@@ -1,0 +1,14 @@
+---
+kind: corpus
+id: sdd-why-learnings-go-to-the-inbox
+description: Why lessons go to learning/inbox rather than an agent's memory, and how a note there is written.
+---
+
+**Why:** agent memory is private to one machine and one agent, and nobody
+reviews it. The inbox is in the repository: when a problem or a constraint comes
+up again and again there, it is turned into a rule of the charter, which every
+agent and every developer is then held to.
+
+**How to apply:** when a host's instructions say to save a memory, write the
+note to `learning/inbox/` instead. Say what the lesson is, why, and how to
+apply it.

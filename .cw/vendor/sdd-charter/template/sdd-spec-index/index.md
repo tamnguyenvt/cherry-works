@@ -1,0 +1,19 @@
+---
+kind: template
+id: sdd-spec-index
+description: The skeleton of spec.md, the index of a spec set — copied by /sdd-init.
+---
+
+# [PRODUCT NAME] — specs
+
+What the product must do and why, one spec per part of it. Each spec numbers
+its own stories, FR and SC under its prefix: `spec-core.md` holds
+`CORE Story 1`, `CORE-FR-001`, `CORE-SC-001`.
+
+| Spec | Prefix | What it covers |
+|---|---|---|
+| [Core](spec-core.md) | CORE | [One sentence: the part of the product this spec holds.] |
+
+- [plan.json](plan.json) — every story and the stories it depends on: the roadmap.
+- [manifest.md](manifest.md) — how work on a story is carried out and finished here.
+- [ADR.md](ADR.md) — the decisions that shape every later story.
