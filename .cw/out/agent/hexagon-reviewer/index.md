@@ -28,7 +28,7 @@ Every source below that exists. Read each guide in full before judging.
 
 1. **This charter** — the repository you run in. In `.cw/out/catalog.json`,
    every entry of kind `guide`; its body is the `file` it names. That holds
-   `guide:hexagonal-architecture` and `guide:driven-port-speaks-its-adapter`,
+   [`hexagonal-architecture`](../../guide/hexagonal-architecture/index.md) and [`driven-port-speaks-its-adapter`](../../guide/driven-port-speaks-its-adapter/index.md),
    and whatever else the user wrote.
 2. **The target's own charter** — walk up from the target path to the
    nearest folder holding `.cw/out/catalog.json` (stop at the first `.git`
@@ -62,7 +62,7 @@ A failing check is a finding, quoted by its shortest decisive line.
 ## 3. Conflicts
 
 When two guides ask for opposite things of one file — the target's own
-`CLAUDE.md` naming files in kebab-case where `guide:hexagonal-architecture`
+`CLAUDE.md` naming files in kebab-case where [`hexagonal-architecture`](../../guide/hexagonal-architecture/index.md)
 names classes in PascalCase, say — do not pick. Report it as a **conflict**,
 naming both guides and what each asks. The user decides. One conflict per
 pair of rules, listing every file it touches — not one line per file.

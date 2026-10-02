@@ -43,7 +43,7 @@ const paragraphs = (id: string) =>
 /** The skill the engine brings, as the catalogue carries it before the file it
  *  is opened at: every charter holds it, so every catalogue lists it (FR-017). */
 const builtinEntry = {
-  identity: "skill:cw-author",
+  id: "cw-author",
   kind: "skill",
   description: new CwAuthorSkill().headers.description,
 };
@@ -63,20 +63,20 @@ test("the catalogue records what a primitive is called, what it is for, the file
   const catalogue = await catalogueOf(
     new InMemoryFileReaders({
       [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", {
-        headers: ["tags: [types]", "rationale: corpus:type-safety", "mixins: [house-style]"],
+        headers: ["tags: [types]", "rationale: type-safety", "mixins: [house-style]"],
       }),
     }),
   );
 
   assert.deepEqual(catalogue.entries, [
+    { ...builtinEntry, file: ".cw/out/skill/cw-author/index.md" },
     {
-      identity: "guide:no-any",
+      id: "no-any",
       kind: "guide",
       description: "What no-any is for, in one line.",
       file: ".cw/out/guide/no-any/index.md",
       globs: ["src/**/*.ts"],
     },
-    { ...builtinEntry, file: ".cw/out/skill/cw-author/index.md" },
   ]);
 });
 
@@ -85,18 +85,18 @@ test("a header the author left out is left out, not recorded as nothing", async 
     new InMemoryFileReaders({ [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any") }),
   );
 
-  const [entry] = catalogue.entries;
+  const entry = catalogue.entries.find((one) => one.id === "no-any");
 
-  assert.deepEqual(Object.keys(entry!).sort(), ["description", "file", "globs", "identity", "kind"]);
+  assert.deepEqual(Object.keys(entry!).sort(), ["description", "file", "globs", "id", "kind"]);
 });
 
 test("a vendored primitive is catalogued at its compiled file, as every layer's is (FR-140)", async () => {
   const vendored = new URL("team/guide/no-any/index.md", vendorRoot);
   const catalogue = await catalogueOf(new InMemoryFileReaders({ [vendored.href]: primitive("guide", "no-any") }));
 
-  const [entry] = catalogue.entries;
+  const entry = catalogue.entries.find((one) => one.kind === "guide");
 
-  assert.equal(entry!.identity, "guide:no-any");
+  assert.equal(entry!.id, "no-any");
   assert.equal(entry!.file, ".cw/out/guide/no-any/index.md");
 });
 
@@ -107,9 +107,9 @@ test("the same charter catalogues in the same order however its files were read"
     [new URL("corpus/type-safety/index.md", root).href]: primitive("corpus", "type-safety"),
   });
 
-  const identities = (await catalogueOf(files)).entries.map((one) => one.identity);
+  const ids = (await catalogueOf(files)).entries.map((one) => one.id);
 
-  assert.deepEqual(identities, ["corpus:type-safety", "guide:no-any", "skill:cw-author", "skill:writing-tests"]);
+  assert.deepEqual(ids, ["cw-author", "no-any", "type-safety", "writing-tests"]);
 });
 
 test("the catalogue carries no body", async () => {

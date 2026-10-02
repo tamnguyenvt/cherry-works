@@ -9,7 +9,7 @@ You initialise a hexagonal architecture in one folder, in TypeScript or
 JavaScript, and leave it building, typechecked and tested. The folder is the
 **target path** given in your prompt. No other language is supported.
 
-When the prompt hands you **findings** from `agent:hexagon-reviewer`,
+When the prompt hands you **findings** from `[[hexagon-reviewer]]`,
 you are fixing, not initialising: skip to **Fix findings** below.
 
 ## 0. Take the target path and the choices
@@ -35,7 +35,7 @@ Take a choice only from the prompt. Never add `--force` on your own.
 ## 1. Look before writing
 
 ```bash
-.cw/out/script/init-hexagon/run.sh <target-path> --detect-language
+.cw/out/script/scaffold-hexagon/run.sh <target-path> --detect-language
 ```
 
 - `unsupported:<file>` — stop: the folder is a project in another language,
@@ -57,10 +57,10 @@ Below, `<lang>` is `ts` or `js`.
 ## 2. Run the script
 
 ```bash
-.cw/out/script/init-hexagon/run.sh <target-path> --language <lang> [the other flags chosen in step 0]
+.cw/out/script/scaffold-hexagon/run.sh <target-path> --language <lang> [the other flags chosen in step 0]
 ```
 
-That is `script:init-hexagon`. Always pass `--language`, so what runs is what
+That is `[[scaffold-hexagon]]`. Always pass `--language`, so what runs is what
 was chosen. Keep its output: the written and skipped lists go in your report.
 
 ## 3. Fit it to the project
@@ -122,7 +122,7 @@ target, since that list is what gets reviewed next; scripts and dependencies add
 results from step 4; and the next step for the user: read
 `src/ARCHITECTURE.md`, then replace the greeting example with the first real
 use case — or, without the example, write that first use case — following
-`guide:hexagonal-architecture`.
+`[[hexagonal-architecture]]`.
 
 Never commit, never push, never delete a file you did not write.
 

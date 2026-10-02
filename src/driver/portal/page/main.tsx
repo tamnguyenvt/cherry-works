@@ -48,10 +48,10 @@ function Portal() {
         <span className="font-mono text-[11.5px] text-zinc-400" />
         <div className="ml-auto flex w-full max-w-[460px]">
           <CharterSearch
-            onPick={({ data: { identity, kind, layerName } }) => {
+            onPick={({ data: { id, kind, layerName } }) => {
               setTab(layerName === "vendor" ? "vendor" : "repo");
               setShownKind(kind);
-              open("primitive", { identity });
+              open("primitive", { id });
             }}
           />
         </div>

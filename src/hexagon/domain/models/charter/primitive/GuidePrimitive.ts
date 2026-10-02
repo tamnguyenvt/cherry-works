@@ -31,7 +31,7 @@ export class GuidePrimitive extends BasePrimitive<GuideHeaders> {
     description: "Reject the any type in application code.",
     globs: ["src/**/*.ts"],
     tags: ["typescript"],
-    rationale: "corpus:type-safety",
+    rationale: "type-safety",
   };
 
   /** One guide, or every fault its headers have (FR-004). */

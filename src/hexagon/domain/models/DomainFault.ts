@@ -31,7 +31,7 @@ export class DomainFault extends Error {
  * One thing wrong with a charter taken as a whole.
  *
  * What it says needs more than one file to be seen: two files claiming one
- * identity, a mixin nothing answers to, a rationale citing a corpus that is not
+ * id, a mixin nothing answers to, a rationale citing a corpus that is not
  * there. Collected under the file that has to change rather than thrown, so one
  * reading names every one of them (FR-009).
  */
@@ -61,7 +61,7 @@ export class CharterPrimitiveFault extends DomainFault {}
 
 /**
  * One thing wrong with one test file: a case naming no file, a field nothing
- * reads, an expectation that is not an identity (FR-047).
+ * reads, an expectation that is not an id (FR-047).
  *
  * Its own file is the file that has to change, which is what tells it apart from
  * a `CharterRootFault` — and it is no primitive's fault either, because a test

@@ -29,21 +29,21 @@ import { DIALOG_FOOTER } from "../lib/utils.js";
  * its own (FR-077).
  */
 export function PrimitiveForm({
-  identity,
+  id,
   newKind,
   onDone,
   onClose,
 }: {
   /** The primitive to open, or nothing for a new one. */
-  identity?: string;
+  id?: string;
   /** The kind a new one starts as: the one the listing was showing. */
   newKind?: string;
   onDone: (did: string, detail: string) => void;
   onClose: () => void;
 }) {
-  const { data: openedAnswer } = usePrimitive(identity);
+  const { data: openedAnswer } = usePrimitive(id);
 
-  if (identity === undefined)
+  if (id === undefined)
     return <PrimitiveEditor openedPrimitive={null} entityTag="" newKind={newKind ?? ""} onDone={onDone} onClose={onClose} />;
   if (openedAnswer === undefined) return null;
 
@@ -60,7 +60,7 @@ export function PrimitiveForm({
  * order: a box per entry for a list, a choice for a header with allowed
  * values, one line otherwise, and the rationale offering every corpus the
  * charter holds. A new primitive chooses its kind from `kinds()` and types its
- * id; an opened one shows both and changes neither, since the identity is the
+ * id; an opened one shows both and changes neither, since the id is the
  * file (FR-075).
  *
  * Whether the answers hold is the engine's to say. What it refuses is shown
@@ -105,8 +105,8 @@ function PrimitiveEditor({
   const headers = requirementsAnswer?.type === "PrimitiveRequirements" ? requirementsAnswer.data.headers : [];
   // The corpus a rationale may cite is whatever the charter holds of it now; a
   // charter the engine will not read offers none.
-  const corpusIdentities =
-    listing?.type === "Primitives" ? listing.data.primitives.filter(({ data }) => data.kind === "corpus").map(({ data }) => data.identity) : [];
+  const corpusIds =
+    listing?.type === "Primitives" ? listing.data.primitives.filter(({ data }) => data.kind === "corpus").map(({ data }) => data.id) : [];
 
   // Only what the kind takes is sent, and nothing left blank: a header answered
   // with nothing is a header not answered.
@@ -127,7 +127,7 @@ function PrimitiveEditor({
       openedPrimitive === null
         ? await addPrimitive.mutateAsync({ kind, id, headers: answeredHeaders, body })
         : await rewritePrimitive.mutateAsync({
-            param: { identity: openedPrimitive.data.identity },
+            param: { id: openedPrimitive.data.id },
             header: { "if-match": entityTag },
             json: { headers: answeredHeaders, body },
           });
@@ -142,7 +142,7 @@ function PrimitiveEditor({
 
   const deletePrimitive = async () => {
     if (openedPrimitive === null) return;
-    const refusedDTO = await removePrimitive.mutateAsync(openedPrimitive.data.identity);
+    const refusedDTO = await removePrimitive.mutateAsync(openedPrimitive.data.id);
     if (refusedDTO !== null) return faultsOf(refusedDTO);
     onDone("Primitive deleted", `${openedPrimitive.data.file} · what still names it is reported by Doctor`);
   };
@@ -172,7 +172,7 @@ function PrimitiveEditor({
           </>
         ) : (
           <>
-            <FormRow label="kind" hint="the identity is the file — rename by creating a new primitive and deleting this one">
+            <FormRow label="kind" hint="the id is the file — rename by creating a new primitive and deleting this one">
               <span className="font-mono text-[11.5px]">{kind}</span>
             </FormRow>
             <FormRow label="id">
@@ -210,15 +210,15 @@ function PrimitiveEditor({
                 spellCheck={false}
                 autoComplete="off"
                 value={typeof answers[field] === "string" ? answers[field] : ""}
-                list={field === "rationale" ? "corpus-identities" : undefined}
+                list={field === "rationale" ? "corpus-ids" : undefined}
                 onChange={(event) => setAnswers({ ...answers, [field]: event.currentTarget.value })}
               />
             )}
           </FormRow>
         ))}
       </div>
-      <datalist id="corpus-identities">
-        {corpusIdentities.map((one) => (
+      <datalist id="corpus-ids">
+        {corpusIds.map((one) => (
           <option key={one} value={one} />
         ))}
       </datalist>
@@ -251,7 +251,7 @@ function ReadOnlyPrimitive({ openedPrimitive }: { openedPrimitive: DataDTOs.Prim
     <div className="space-y-3.5">
       <Alert className="rounded-xl border-[#7c3aed33] bg-[#f6f2ff]">
         <AlertTitle className="text-[12.5px] font-bold">{layerName === "vendor" ? "Installed from a vendor, and read-only here." : "Built into cw, and read-only here."}</AlertTitle>
-        <AlertDescription className="text-[11.5px] text-zinc-600">To differ from it, author a primitive of your own under an identity of its own.</AlertDescription>
+        <AlertDescription className="text-[11.5px] text-zinc-600">To differ from it, author a primitive of your own under an id of its own.</AlertDescription>
       </Alert>
       <div className={FORM_ROWS}>
         <FormRow label="kind">

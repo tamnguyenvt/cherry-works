@@ -63,27 +63,27 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
     ".cw/out/catalog.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
-    ".cw/out/guide/no-any/index.md",
     ".cw/out/skill/cw-author/index.md",
+    ".cw/out/guide/no-any/index.md",
     "CLAUDE.md",
     ".mcp.json",
-    ".claude/skills/skill-cw-author/SKILL.md",
-    ".claude/rules/guide-no-any.md",
+    ".claude/skills/cw-author/SKILL.md",
+    ".claude/rules/no-any.md",
   ]);
   assert.deepEqual(built.deleted, []);
   assert.ok((await contentsOf(held, ".cw/out/guide/no-any/index.md")).includes("The body of no-any."));
-  assert.ok((await contentsOf(held, ".claude/rules/guide-no-any.md")).includes("@../../.cw/out/guide/no-any/index.md"));
+  assert.ok((await contentsOf(held, ".claude/rules/no-any.md")).includes("@../../.cw/out/guide/no-any/index.md"));
 });
 
 test("an id holding / is built as one file in its kind's folder, each / as -, and into a host file named the same way (FR-141)", async () => {
   const { held, build } = building({ ...compilingFor("claude"), [at("guide/mfbs/no-any/index.md")]: guide("mfbs/no-any") });
 
   const built = filesOf(await build());
-  const catalogue = JSON.parse(await contentsOf(held, ".cw/out/catalog.json")) as readonly { identity: string; file: string }[];
+  const catalogue = JSON.parse(await contentsOf(held, ".cw/out/catalog.json")) as readonly { id: string; file: string }[];
 
   assert.ok(built.added.includes(".cw/out/guide/mfbs/no-any/index.md"));
-  assert.ok(built.added.includes(".claude/rules/guide-mfbs-no-any.md"));
-  assert.equal(catalogue.find((entry) => entry.identity === "guide:mfbs/no-any")?.file, ".cw/out/guide/mfbs/no-any/index.md");
+  assert.ok(built.added.includes(".claude/rules/mfbs-no-any.md"));
+  assert.equal(catalogue.find((entry) => entry.id === "mfbs/no-any")?.file, ".cw/out/guide/mfbs/no-any/index.md");
 });
 
 test("what the engine brings is compiled to the agent's skill surface, and nothing is written for it under the workspace (FR-021, FR-022)", async () => {
@@ -91,8 +91,8 @@ test("what the engine brings is compiled to the agent's skill surface, and nothi
 
   const built = filesOf(await build());
 
-  assert.ok(built.added.includes(".claude/skills/skill-cw-author/SKILL.md"));
-  assert.ok((await contentsOf(held, ".claude/skills/skill-cw-author/SKILL.md")).includes("name: skill-cw-author"));
+  assert.ok(built.added.includes(".claude/skills/cw-author/SKILL.md"));
+  assert.ok((await contentsOf(held, ".claude/skills/cw-author/SKILL.md")).includes("name: cw-author"));
   assert.deepEqual(
     wrote(built).filter((path) => path.startsWith(".cw/") && !path.startsWith(".cw/out/")),
     [],
@@ -104,13 +104,13 @@ test("a skill an earlier engine brought and this one does not is taken away by t
   await build();
   // What an engine that once shipped another skill left behind: compiled and
   // stamped the way this one compiles its own.
-  const builtinSkillFile = await contentsOf(held, ".claude/skills/skill-cw-author/SKILL.md");
-  held.write(new URL(".claude/skills/skill-cw-retired/SKILL.md", repo), builtinSkillFile.replaceAll("cw-author", "cw-retired"));
+  const builtinSkillFile = await contentsOf(held, ".claude/skills/cw-author/SKILL.md");
+  held.write(new URL(".claude/skills/cw-retired/SKILL.md", repo), builtinSkillFile.replaceAll("cw-author", "cw-retired"));
 
   const built = filesOf(await build());
 
-  assert.deepEqual(built.deleted, [".claude/skills/skill-cw-retired/SKILL.md"]);
-  await assert.rejects(() => contentsOf(held, ".claude/skills/skill-cw-retired/SKILL.md"));
+  assert.deepEqual(built.deleted, [".claude/skills/cw-retired/SKILL.md"]);
+  await assert.rejects(() => contentsOf(held, ".claude/skills/cw-retired/SKILL.md"));
 });
 
 test("a projection whose primitive is gone is taken away by the next build (FR-020)", async () => {
@@ -125,9 +125,9 @@ test("a projection whose primitive is gone is taken away by the next build (FR-0
   const built = filesOf(await build());
 
   // Its compiled document goes with it, as every projection of it does (FR-139).
-  assert.deepEqual(built.deleted, [".cw/out/agent/ship/index.md", ".claude/agents/agent-ship.md"]);
+  assert.deepEqual(built.deleted, [".cw/out/agent/ship/index.md", ".claude/agents/ship.md"]);
   await assert.rejects(() => contentsOf(held, ".cw/out/agent/ship/index.md"));
-  await assert.rejects(() => contentsOf(held, ".claude/agents/agent-ship.md"));
+  await assert.rejects(() => contentsOf(held, ".claude/agents/ship.md"));
 });
 
 test("a compiled file someone edited by hand is written back over (FR-020)", async () => {
@@ -136,11 +136,11 @@ test("a compiled file someone edited by hand is written back over (FR-020)", asy
     [at("guide/no-any/index.md")]: guide("no-any", "Never write `any`."),
   });
   await build();
-  held.write(new URL(".claude/rules/guide-no-any.md", repo), "Whatever someone typed in here.");
+  held.write(new URL(".claude/rules/no-any.md", repo), "Whatever someone typed in here.");
 
   await build();
 
-  assert.ok((await contentsOf(held, ".claude/rules/guide-no-any.md")).includes("@../../.cw/out/guide/no-any/index.md"));
+  assert.ok((await contentsOf(held, ".claude/rules/no-any.md")).includes("@../../.cw/out/guide/no-any/index.md"));
 });
 
 test("a file the charter never wrote is left alone, wherever it sits", async () => {
@@ -271,22 +271,22 @@ test("a charter with an error builds nothing at all, and says which files (FR-00
   await assert.rejects(() => contentsOf(held, ".cw/out/CHARTER.md"));
 });
 
-test("a body naming a place, a script or a template no layer holds stops the build (FR-143, FR-162)", async () => {
-  for (const mentionedIdentity of ["mcp:missing", "script:missing", "template:missing"]) {
+test("a body naming [[<id>]] no layer holds stops the build (FR-143, FR-162)", async () => {
+  for (const mentionedReference of ["[[missing]]", "[[team/missing]]"]) {
     const { build } = building({
       ...compilingFor("claude"),
-      [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], `Take the requirements from ${mentionedIdentity}.`),
+      [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], `Take the requirements from ${mentionedReference}.`),
     });
 
     const planSummaryDTO = await build();
 
-    assert.equal(planSummaryDTO.type, "FaultsByFile", mentionedIdentity);
+    assert.equal(planSummaryDTO.type, "FaultsByFile", mentionedReference);
   }
 });
 
-test("a build writes every place the charter's mcps reach to mcp-origins.json, with the name each identity is served under (FR-145)", async () => {
+test("a build writes every place the charter's mcps reach to mcp-origins.json, with the name each id is served under (FR-145)", async () => {
   const { held, build } = building({
-    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Read mcp:mfbs/billing."),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Read [[mfbs/billing]]."),
     [at("mcp/mfbs/billing/index.md")]: primitive("mcp", "mfbs/billing", [
       "endpoint: https://api.githubcopilot.com/mcp/",
       "path: acme/billing",
@@ -300,8 +300,8 @@ test("a build writes every place the charter's mcps reach to mcp-origins.json, w
   assert.deepEqual(JSON.parse(await contentsOf(held, ".cw/out/mcp-origins.json")), {
     origins: [
       {
-        identities: ["mcp:mfbs/billing"],
-        names: { "mcp:mfbs/billing": "mfbs_19e4" },
+        ids: ["mfbs/billing"],
+        names: { "mfbs/billing": "mfbs_05a0" },
         address: "https://api.githubcopilot.com/mcp/",
         endpoint: "https://api.githubcopilot.com/mcp/",
         path: "acme/billing",
@@ -322,7 +322,7 @@ test("a charter with no mcp still writes the list, empty, for the server to find
 test("a charter with an mcp gives the host one cw entry, beside the repository's own left untouched (FR-146)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
-    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Read mcp:billing."),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Read [[billing]]."),
     [at("mcp/billing/index.md")]: primitive("mcp", "billing", ["endpoint: https://mcp.example.com/", "auth: [oauth]", "tools: [search]"]),
     [inRepo(".mcp.json")]: `${JSON.stringify({ mcpServers: { mine: { command: "my-server", args: ["--stdio"] } } }, undefined, 2)}\n`,
   });
@@ -381,7 +381,7 @@ test("once compiled, a place, a script or a template a body names is a link to t
       "guide",
       "no-any",
       ['globs: ["src/**/*.ts"]'],
-      "Take the requirements from mcp:github/billing, run script:check, and fill template:note.",
+      "Take the requirements from [[github/billing]], run [[check]], and fill [[note]].",
     ),
     [at("mcp/github/billing/index.md")]: primitive("mcp", "github/billing", ["endpoint: https://api.githubcopilot.com/mcp/", "auth: [oauth]", "tools: [search_code]"]),
     ...script("check"),
@@ -393,7 +393,7 @@ test("once compiled, a place, a script or a template a body names is a link to t
   const compiledDocument = await contentsOf(held, ".cw/out/guide/no-any/index.md");
   assert.ok(
     compiledDocument.includes(
-      "Take the requirements from [mcp:github/billing](../../mcp/github/billing/index.md), run [script:check](../../script/check/index.md), and fill [template:note](../../template/note/index.md).",
+      "Take the requirements from [github/billing](../../mcp/github/billing/index.md), run [check](../../script/check/index.md), and fill [note](../../template/note/index.md).",
     ),
   );
   // Each link opens from the document holding it.
@@ -403,15 +403,15 @@ test("once compiled, a place, a script or a template a body names is a link to t
 
 test("a name alone in a code span keeps the span as the link's text; one inside a longer span, a fenced block or a link is left as written (FR-147)", async () => {
   const body = [
-    "Run `script:check` first.",
-    "Try `cw explain script:check` when unsure.",
-    "See [script:check](https://example.com/why).",
+    "Run `[[check]]` first.",
+    "Try `cw explain [[check]]` when unsure.",
+    "See [why](https://example.com/why).",
     "",
     "```sh",
-    "cw explain script:check",
+    "cw explain [[check]]",
     "```",
     "",
-    "Then script:check again.",
+    "Then [[check]] again.",
   ].join("\n");
   const { held, build } = building({ [at("skill/release/index.md")]: primitive("skill", "release", ['triggers: ["release"]'], body), ...script("check") });
 
@@ -420,15 +420,15 @@ test("a name alone in a code span keeps the span as the link's text; one inside 
   assert.ok(
     (await contentsOf(held, ".cw/out/skill/release/index.md")).includes(
       [
-        "Run [`script:check`](../../script/check/index.md) first.",
-        "Try `cw explain script:check` when unsure.",
-        "See [script:check](https://example.com/why).",
+        "Run [`check`](../../script/check/index.md) first.",
+        "Try `cw explain [[check]]` when unsure.",
+        "See [why](https://example.com/why).",
         "",
         "```sh",
-        "cw explain script:check",
+        "cw explain [[check]]",
         "```",
         "",
-        "Then [script:check](../../script/check/index.md) again.",
+        "Then [check](../../script/check/index.md) again.",
       ].join("\n"),
     ),
   );
@@ -436,31 +436,31 @@ test("a name alone in a code span keeps the span as the link's text; one inside 
 
 test("a mixin's body lent to a primitive holds its links as that primitive's document reads them, and a placeholder is left as written (FR-147)", async () => {
   const { held, build } = building({
-    [at("mixin/checked/index.md")]: primitive("mixin", "checked", [], "Always run script:check, never script:<id>."),
+    [at("mixin/checked/index.md")]: primitive("mixin", "checked", [], "Always run [[check]], never [[<id>]]."),
     [at("skill/release/index.md")]: primitive("skill", "release", ['triggers: ["release"]', 'mixins: ["checked"]'], "Tag it."),
     ...script("check"),
   });
 
   filesOf(await build());
 
-  assert.ok((await contentsOf(held, ".cw/out/skill/release/index.md")).includes("Always run [script:check](../../script/check/index.md), never script:<id>."));
+  assert.ok((await contentsOf(held, ".cw/out/skill/release/index.md")).includes("Always run [check](../../script/check/index.md), never [[<id>]]."));
 });
 
 test("a template's body names a script as a link, as any compiled document does (FR-147)", async () => {
   const { held, build } = building({
-    [at("template/note/index.md")]: primitive("template", "note", [], "Checked by script:check."),
-    [at("skill/release/index.md")]: primitive("skill", "release", ['triggers: ["release"]'], "Fill template:note."),
+    [at("template/note/index.md")]: primitive("template", "note", [], "Checked by [[check]]."),
+    [at("skill/release/index.md")]: primitive("skill", "release", ['triggers: ["release"]'], "Fill [[note]]."),
     ...script("check"),
   });
 
   filesOf(await build());
 
-  assert.ok((await contentsOf(held, ".cw/out/template/note/index.md")).includes("Checked by [script:check](../../script/check/index.md)."));
+  assert.ok((await contentsOf(held, ".cw/out/template/note/index.md")).includes("Checked by [check](../../script/check/index.md)."));
 });
 test("a sensor's run naming a script is, in the command its host runs, the built file's path from the repository's root (FR-169)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
-    [at("sensor/check-on-stop/index.md")]: primitive("sensor", "check-on-stop", ["signal: Stop", 'run: "script:release/check --strict"']),
+    [at("sensor/check-on-stop/index.md")]: primitive("sensor", "check-on-stop", ["signal: Stop", 'run: "[[release/check]] --strict"']),
     [at("script/release/check/index.md")]: primitive("script", "release/check", ["executionPath: ./bin/run.sh"], ""),
     [at("script/release/check/bin/run.sh")]: "#!/usr/bin/env bash\n",
   });
@@ -474,19 +474,19 @@ test("a sensor's run naming a script is, in the command its host runs, the built
 });
 
 test("a sensor's run naming a script no layer holds stops the build, under the sensor's file (FR-162)", async () => {
-  const { build } = building({ [at("sensor/check-on-stop/index.md")]: primitive("sensor", "check-on-stop", ["signal: Stop", "run: script:missing"]) });
+  const { build } = building({ [at("sensor/check-on-stop/index.md")]: primitive("sensor", "check-on-stop", ["signal: Stop", 'run: "[[missing]]"']) });
 
   const planSummaryDTO = await build();
 
   assert.ok(planSummaryDTO.type === "FaultsByFile");
   const [file, faults] = Object.entries(planSummaryDTO.data.files)[0] ?? [];
   assert.equal(file, ".cw/charter/sensor/check-on-stop/index.md");
-  assert.match(faults?.[0]?.data.message ?? "", /names "script:missing"/);
+  assert.match(faults?.[0]?.data.message ?? "", /names "missing"/);
 });
 
 test("a warning is not an error: a charter that only warns still builds (FR-005)", async () => {
   const { build } = building({
-    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:gone"]),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: gone"]),
   });
 
   const built = filesOf(await build());
@@ -516,8 +516,8 @@ test("a charter naming no agent still gets the surface every reader shares (FR-0
     ".cw/out/catalog.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
-    ".cw/out/guide/no-any/index.md",
     ".cw/out/skill/cw-author/index.md",
+    ".cw/out/guide/no-any/index.md",
   ]);
 });
 

@@ -48,23 +48,24 @@ export function runSuite(charter: CharterRoot, suiteName: string, suite: TestSui
  * (FR-014): a rule nothing pins down is one that can stop doing what it did
  * without a run noticing.
  *
- * Named is what a case's `activatedIdentity` says, whichever layer the
+ * Named is what a case's `activatedId` says, whichever layer the
  * primitive came from. A posture is not asked about: a case putting whether a
  * file is allowed names none, and a `deny` may name a command no case can
  * touch.
  */
 export function findUntestedPrimitives(charter: CharterRoot, testSuites: readonly TestSuite[]): FaultsByFile {
-  const testedIdentities = new Set<string | undefined>(testSuites.flatMap((testSuite) => testSuite.cases.map((one) => one.activatedIdentity)));
+  const testedIds = new Set<string | undefined>(testSuites.flatMap((testSuite) => testSuite.cases.map((one) => one.activatedId)));
   const faultsByFiles: Record<string, readonly DomainFault[]> = {};
   for (const primitive of charter.primitives) {
-    const { identity, file } = primitive;
-    if ((primitive.kind !== "guide" && primitive.kind !== "sensor") || testedIdentities.has(identity)) continue;
+    const { file } = primitive;
+    const { id } = primitive.headers;
+    if ((primitive.kind !== "guide" && primitive.kind !== "sensor") || testedIds.has(id)) continue;
     faultsByFiles[file] = [
       new TestCaseFault(
-        `No test case names "${identity}", so nothing notices when it stops coming up where it should.`,
+        `No test case names "${id}", so nothing notices when it stops coming up where it should.`,
         primitive.kind === "guide"
-          ? `Add a case to a file under .cw/test/: { "do": { "touchFile": "<a file it speaks about>" }, "expect": { "activate": "${identity}" } }.`
-          : `Add a case to a file under .cw/test/: { "when": "${primitive.headers.signal}", "expect": { "run": "${identity}" } }.`,
+          ? `Add a case to a file under .cw/test/: { "do": { "touchFile": "<a file it speaks about>" }, "expect": { "activate": "${id}" } }.`
+          : `Add a case to a file under .cw/test/: { "when": "${primitive.headers.signal}", "expect": { "run": "${id}" } }.`,
         "warn",
       ),
     ];
@@ -97,28 +98,28 @@ export function runCase(charter: CharterRoot, suiteName: string, one: TestCase):
 
 /** Why a touched file did not bring this guide up, or nothing where it did.
  *
- *  Activating on a touched file is a guide's own rule, so an identity of any
+ *  Activating on a touched file is a guide's own rule, so an id of any
  *  other kind is the case asking the charter for something that kind never
  *  does — said as that rather than as a glob that did not match (FR-004). */
-function assertPrimitiveActivated(charter: CharterRoot, file: string, identity: string): TestCaseFault | undefined {
-  const declared = charter.primitiveById.get(identity);
-  if (declared === undefined) return primitiveNotFound(identity);
+function assertPrimitiveActivated(charter: CharterRoot, file: string, id: string): TestCaseFault | undefined {
+  const declared = charter.primitiveById.get(id);
+  if (declared === undefined) return primitiveNotFound(id);
   if (declared.kind !== "guide")
     return new TestCaseFault(
-      `Coming up when a file is touched is a guide's rule, and "${identity}" is a ${declared.kind}.`,
+      `Coming up when a file is touched is a guide's rule, and "${id}" is a ${declared.kind}.`,
       `Expect a guide here, or put the situation that kind answers.`,
     );
 
   const { globs = [] } = declared.headers;
   if (globs.length === 0)
     return new TestCaseFault(
-      `"${identity}" names no files, so touching one never brings it up.`,
+      `"${id}" names no files, so touching one never brings it up.`,
       `Give that guide "globs", or expect nothing of it here.`,
     );
   return globs.some((glob) => matches(glob, file))
     ? undefined
     : new TestCaseFault(
-        `This file matches none of the globs "${identity}" speaks about: ${globs.join(", ")}.`,
+        `This file matches none of the globs "${id}" speaks about: ${globs.join(", ")}.`,
         `Widen that guide's "globs", or touch a file it already speaks about.`,
       );
 }
@@ -142,7 +143,7 @@ function assertAllowed(charter: CharterRoot, file: string, expected: boolean): T
     return denying.length === 0
       ? undefined
       : new TestCaseFault(
-          `${denying.map((one) => `"${one.identity}"`).join(", ")} denies this file.`,
+          `${denying.map((one) => `"${one.headers.id}"`).join(", ")} denies this file.`,
           `Drop it from that posture's "deny", or expect "allow": false.`,
         );
 
@@ -161,12 +162,12 @@ function assertAllowed(charter: CharterRoot, file: string, expected: boolean): T
 }
 
 /** Why a raised event did not run this sensor, or nothing where it did. */
-function assertScriptRun(charter: CharterRoot, event: string, identity: string): TestCaseFault | undefined {
-  const declared = charter.primitiveById.get(identity);
-  if (declared === undefined) return primitiveNotFound(identity);
+function assertScriptRun(charter: CharterRoot, event: string, id: string): TestCaseFault | undefined {
+  const declared = charter.primitiveById.get(id);
+  if (declared === undefined) return primitiveNotFound(id);
   if (declared.kind !== "sensor")
     return new TestCaseFault(
-      `Running when an event is raised is a sensor's rule, and "${identity}" is a ${declared.kind}.`,
+      `Running when an event is raised is a sensor's rule, and "${id}" is a ${declared.kind}.`,
       `Expect a sensor here, or put the situation that kind answers.`,
     );
 
@@ -174,13 +175,13 @@ function assertScriptRun(charter: CharterRoot, event: string, identity: string):
   return signal === event
     ? undefined
     : new TestCaseFault(
-        `"${identity}" fires on ${signal}, not on ${event}.`,
+        `"${id}" fires on ${signal}, not on ${event}.`,
         `Raise the event it names, or declare the "signal" this case raises.`,
       );
 }
 
 /**
- * An identity the charter holds nothing of, which is unmet rather than passed
+ * An id the charter holds nothing of, which is unmet rather than passed
  * over.
  *
  * The half of a case's correctness the format left open (FR-047): whether a
@@ -190,10 +191,10 @@ function assertScriptRun(charter: CharterRoot, event: string, identity: string):
  * which is the one way a test goes quiet exactly when the charter changed under
  * it.
  */
-function primitiveNotFound(identity: string): TestCaseFault {
+function primitiveNotFound(id: string): TestCaseFault {
   return new TestCaseFault(
-    `This charter holds no primitive called "${identity}".`,
-    `Author it, or correct the name. "cw list --min" says every identity this charter does hold.`,
+    `This charter holds no primitive called "${id}".`,
+    `Author it, or correct the name. "cw list --min" says every id this charter does hold.`,
   );
 }
 

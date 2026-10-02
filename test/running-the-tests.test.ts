@@ -86,14 +86,14 @@ test("a touched file that matches a guide's globs brings it up, and the case pas
   const run = commandLine({
     ...charter,
     ...suite({
-      cases: [{ do: { touchFile: "src/services/user.ts" }, expect: { activate: "guide:no-any" } }],
+      cases: [{ do: { touchFile: "src/services/user.ts" }, expect: { activate: "no-any" } }],
     }),
   });
 
   const { code, result } = await run();
 
   assert.equal(code, EXIT_OK);
-  assert.match(result, /pass {2}touching src\/services\/user\.ts activates guide:no-any/);
+  assert.match(result, /pass {2}touching src\/services\/user\.ts activates no-any/);
   assert.match(result, /1 case passed\./);
 });
 
@@ -101,15 +101,15 @@ test("a touched file that matches none of the guide's globs fails, naming the gl
   const run = commandLine({
     ...charter,
     ...suite({
-      cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:docs-tone" } }],
+      cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "docs-tone" } }],
     }),
   });
 
   const { code, result } = await run();
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(result, /FAIL {2}touching src\/one\.ts activates guide:docs-tone/);
-  assert.match(result, /This file matches none of the globs "guide:docs-tone" speaks about: docs\/\*\*\/\*\.md\./);
+  assert.match(result, /FAIL {2}touching src\/one\.ts activates docs-tone/);
+  assert.match(result, /This file matches none of the globs "docs-tone" speaks about: docs\/\*\*\/\*\.md\./);
   assert.match(result, /1 of 1 case failed\./);
 });
 
@@ -118,8 +118,8 @@ test("a raised event runs the sensor that names it, and fails naming the event i
     ...charter,
     ...suite({
       cases: [
-        { when: "Stop", expect: { run: "sensor:tests" } },
-        { when: "PreToolUse", expect: { run: "sensor:tests" } },
+        { when: "Stop", expect: { run: "tests" } },
+        { when: "PreToolUse", expect: { run: "tests" } },
       ],
     }),
   });
@@ -127,9 +127,9 @@ test("a raised event runs the sensor that names it, and fails naming the event i
   const { code, result } = await run();
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(result, /pass {2}firing event Stop runs sensor:tests/);
-  assert.match(result, /FAIL {2}firing event PreToolUse runs sensor:tests/);
-  assert.match(result, /"sensor:tests" fires on Stop, not on PreToolUse\./);
+  assert.match(result, /pass {2}firing event Stop runs tests/);
+  assert.match(result, /FAIL {2}firing event PreToolUse runs tests/);
+  assert.match(result, /"tests" fires on Stop, not on PreToolUse\./);
 });
 
 test("a touched file a posture denies is refused, and one no posture denies fails saying so", async () => {
@@ -167,35 +167,35 @@ test("a touched file no posture denies is allowed, and one a posture denies fail
   assert.equal(code, EXIT_FAILURE);
   assert.match(result, /pass {2}touching src\/one\.ts is allowed/);
   assert.match(result, /FAIL {2}touching key\.pem is allowed/);
-  assert.match(result, /"posture:secrets" denies this file\./);
+  assert.match(result, /"secrets" denies this file\./);
 });
 
-test("an identity of the wrong kind fails saying whose rule the case asked for", async () => {
+test("an id of the wrong kind fails saying whose rule the case asked for", async () => {
   const run = commandLine({
     ...charter,
     ...suite({
-      cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "sensor:tests" } }],
+      cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "tests" } }],
     }),
   });
 
   const { code, result } = await run();
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(result, /Coming up when a file is touched is a guide's rule, and "sensor:tests" is a sensor\./);
+  assert.match(result, /Coming up when a file is touched is a guide's rule, and "tests" is a sensor\./);
 });
 
-test("a case naming an identity the charter holds nothing of fails rather than passing about nothing", async () => {
+test("a case naming an id the charter holds nothing of fails rather than passing about nothing", async () => {
   const run = commandLine({
     ...charter,
     ...suite({
-      cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:renamed-away" } }],
+      cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "renamed-away" } }],
     }),
   });
 
   const { code, result } = await run();
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(result, /This charter holds no primitive called "guide:renamed-away"\./);
+  assert.match(result, /This charter holds no primitive called "renamed-away"\./);
 });
 
 test("every case in the file is run, and the count is of all of them", async () => {
@@ -203,9 +203,9 @@ test("every case in the file is run, and the count is of all of them", async () 
     ...charter,
     ...suite({
       cases: [
-        { do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } },
-        { when: "Stop", expect: { run: "sensor:tests" } },
-        { do: { touchFile: "docs/one.md" }, expect: { activate: "guide:no-any" } },
+        { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
+        { when: "Stop", expect: { run: "tests" } },
+        { do: { touchFile: "docs/one.md" }, expect: { activate: "no-any" } },
       ],
     }),
   });
@@ -220,7 +220,7 @@ test("a test file that will not read is refused, naming it, and nothing is resol
   const run = commandLine({
     ...charter,
     [inRepo(".cw/test/broken.json")]: "{ not json",
-    ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
+    ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
   });
 
   const { code, result, problem } = await run();
@@ -241,7 +241,7 @@ test("a charter with an error resolves nothing and says where to read what is wr
   const run = commandLine({
     ...charter,
     [at("guide/broken/index.md")]: "no frontmatter here",
-    ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
+    ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
   });
 
   const { code, result, problem } = await run();
@@ -255,8 +255,8 @@ test("a charter with an error resolves nothing and says where to read what is wr
 test("a body naming an mcp no layer holds is an error, and the tests do not run (FR-143)", async () => {
   const run = commandLine({
     ...charter,
-    [at("guide/billing/index.md")]: primitive("guide", "billing", ['globs: ["src/**/*.ts"]'], "Take the requirements from mcp:missing."),
-    ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
+    [at("guide/billing/index.md")]: primitive("guide", "billing", ['globs: ["src/**/*.ts"]'], "Take the requirements from [[missing]]."),
+    ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
   });
 
   const { code } = await run();

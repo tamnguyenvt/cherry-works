@@ -54,11 +54,11 @@ export function CharterSearch({ onPick }: { onPick: (primitive: DataDTOs.Primiti
               {listing.data.primitives.length > 0 && (
                 <CommandGroup heading={`${listing.data.primitives.length} primitive${listing.data.primitives.length === 1 ? "" : "s"}`}>
                   {listing.data.primitives.map((primitive) => {
-                    const { identity, kind, description, layerName, headers } = primitive.data;
+                    const { id, kind, description, layerName, headers } = primitive.data;
                     return (
                       <CommandItem
-                        key={identity}
-                        value={identity}
+                        key={id}
+                        value={id}
                         className="grid cursor-pointer grid-cols-[74px_minmax(0,1fr)_max-content] items-baseline gap-2.5 rounded-lg px-[11px] py-2 data-[selected=true]:bg-zinc-50 data-[selected=true]:outline data-[selected=true]:outline-zinc-200"
                         onSelect={() => {
                           setWord("");

@@ -24,8 +24,8 @@ const withOnePassingOneFailing = () => ({
   [at(".cw/charter/guide/no-any/index.md")]: guide("no-any"),
   [at(".cw/test/guides.json")]: suiteText({
     cases: [
-      { do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } },
-      { do: { touchFile: "docs/a.md" }, expect: { activate: "guide:no-any" } },
+      { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
+      { do: { touchFile: "docs/a.md" }, expect: { activate: "no-any" } },
     ],
   }),
 });
@@ -95,7 +95,7 @@ test("a test file posted is written under a free name, and answered with its pat
 
 test("text put that reads as a suite is written (Story 9 scenario 3)", async () => {
   const { portalRoutes, fileAt } = portal(withOnePassingOneFailing());
-  const text = suiteText({ cases: [{ do: { touchFile: "src/two.ts" }, expect: { activate: "guide:no-any" } }] });
+  const text = suiteText({ cases: [{ do: { touchFile: "src/two.ts" }, expect: { activate: "no-any" } }] });
 
   const answer = await portalRoutes.request("/test-suites/guides.json", sending("PUT", { text }));
 

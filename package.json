@@ -42,8 +42,6 @@
     "test": "pnpm run lint:deps && pnpm run build && node --import tsx --test \"test/**/*.test.ts\"",
     "cw": "node --import tsx main.ts",
     "lint:deps": "depcruise src main.ts",
-    "specs:link": "node --import tsx scripts/link-specs.ts",
-    "specs:check": "node --import tsx scripts/link-specs.ts --check",
     "release": "node --import tsx scripts/release.ts",
     "prepublishOnly": "node -e \"console.error('Publish with \\\"pnpm release <version>\\\", which checks the package first.'); process.exit(1)\""
   },

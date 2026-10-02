@@ -103,7 +103,7 @@ test("setting up builds the charter, so the agent can author with the skill the 
   const { code, held: files, results } = await setUp({}, ["init", "--agent", "claude"]);
 
   assert.equal(code, 0);
-  assert.notEqual(await held(files, ".claude/skills/skill-cw-author/SKILL.md"), undefined);
+  assert.notEqual(await held(files, ".claude/skills/cw-author/SKILL.md"), undefined);
   assert.notEqual(await held(files, ".cw/out/CHARTER.md"), undefined);
   assert.match(results, /Built \d+ files/);
 });
@@ -118,7 +118,7 @@ test("setting up again builds what is already authored (FR-057, FR-058)", async 
   );
 
   assert.equal(code, 0);
-  assert.notEqual(await held(files, ".claude/rules/guide-no-any.md"), undefined);
+  assert.notEqual(await held(files, ".claude/rules/no-any.md"), undefined);
   assert.match(results, /Built \d+ files/);
 });
 

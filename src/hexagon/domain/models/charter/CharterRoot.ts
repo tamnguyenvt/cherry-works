@@ -2,11 +2,10 @@ import { covers } from "../../../utils/globs.js";
 import { primitiveOf, type Primitive } from "./primitive/Primitive.js";
 import { CharterRootFault, FaultsByFile, type DomainFault } from "../DomainFault.js";
 import type { ForParsingYaml } from "../../../port/zdriven/ForParsingYaml.js";
-import { MCP_MENTION, MCP_TOOL_REFERENCE, McpPrimitive } from "./primitive/McpPrimitive.js";
-import { SCRIPT_MENTION, ScriptPrimitive } from "./primitive/ScriptPrimitive.js";
-import { BasePrimitive, type NormalizedIdentity, type AssetFile } from "./primitive/BasePrimitive.js";
+import { McpPrimitive } from "./primitive/McpPrimitive.js";
+import { ScriptPrimitive } from "./primitive/ScriptPrimitive.js";
+import { BasePrimitive, REFERENCE, TOOL_REFERENCE, type AssetFile } from "./primitive/BasePrimitive.js";
 import { BUILTIN_LAYER, BUILTIN_PRIMITIVE_LAYER, REPO_LAYER, VENDOR_LAYER, type LayerName } from "./PrimitiveLayer.js";
-import { TEMPLATE_MENTION } from "./primitive/TemplatePrimitive.js";
 import { AgentPrimitive } from "./primitive/AgentPrimitive.js";
 import { SensorPrimitive } from "./primitive/SensorPrimitive.js";
 
@@ -45,54 +44,40 @@ export class CharterRoot {
     return this.faultsByFiles.with(this.compositeFaultsByFiles);
   }
 
-  /** Every mixin, under the id a host names it by, wherever it was authored. */
-  get mixins(): ReadonlyMap<string, Primitive> {
-    return new Map(
-      this.primitives
-        .filter((primitive) => primitive.kind === "mixin")
-        .map((one) => [one.headers.id, one]),
-    );
-  }
-
   /**
-   * Every primitive under the identity the whole charter names it by (FR-017).
+   * Every primitive under the id the whole charter names it by (FR-015,
+   * FR-017).
    *
-   * Held here for the reason `mixins` is: one identity space covers every
-   * layer, so which file declares a name is a question about the whole charter
-   * and not about either layer on its own (FR-014).
-   *
-   * The first claim on an identity is the one in here where two files claim it.
-   * A collision is what `compositeFaultsByFiles` is for, and it names both files
+   * One id space covers every layer and every kind, so which file declares a
+   * name is a question about the whole charter and not about any one layer.
+   * The first claim on an id is the one in here where two files claim it: a
+   * collision is what `compositeFaultsByFiles` is for, and it names both files
    * there; nothing is asked to explain a charter that has one (SC-006).
    */
   get primitiveById(): ReadonlyMap<string, Primitive> {
-    const byIdentity = new Map<string, Primitive>();
-    for (const one of this.primitives) if (!byIdentity.has(one.identity)) byIdentity.set(one.identity, one);
-    return byIdentity;
-  }
-
-  /** Every corpus, under the identity a primitive cites it by, wherever it was
-   *  authored: `corpus:<id>`. */
-  get corpora(): ReadonlySet<string> {
-    return new Set(
-      this.primitives.filter((primitive) => primitive.kind === "corpus").map((one) => one.identity),
-    );
+    const primitiveById = new Map<string, Primitive>();
+    for (const one of this.primitives) if (!primitiveById.has(one.headers.id)) primitiveById.set(one.headers.id, one);
+    return primitiveById;
   }
 
   /** Every mixin one primitive uses, in the order it named them (FR-014). A
-   *  name nothing answers to is left out: `compositeFaultsByFiles` already
-   *  names that file as an error. */
+   *  name nothing answers to, or that answers with another kind, is left out:
+   *  `compositeFaultsByFiles` already names that file as an error. */
   mixinsOf(one: Primitive): readonly Primitive[] {
-    const byIdentity = this.primitiveById;
-    return (one.headers.mixins ?? []).flatMap((id) => byIdentity.get(`mixin:${id}`) ?? []);
+    const primitiveById = this.primitiveById;
+    return (one.headers.mixins ?? []).flatMap((id) => {
+      const mixin = primitiveById.get(id);
+      return mixin?.kind === "mixin" ? [mixin] : [];
+    });
   }
 
   /** The corpus one primitive cites as its rationale, or nothing where it cites
-   *  none or cites one this charter does not hold — the second is a warning
+   *  none or cites one this charter does not hold as a corpus — which
    *  `compositeFaultsByFiles` already names (FR-005, FR-014). */
   rationaleOf(one: Primitive): Primitive | undefined {
     const { rationale } = one.headers;
-    return rationale !== undefined && this.corpora.has(rationale) ? this.primitiveById.get(rationale) : undefined;
+    const corpusPrimitive = rationale === undefined ? undefined : this.primitiveById.get(rationale);
+    return corpusPrimitive?.kind === "corpus" ? corpusPrimitive : undefined;
   }
 
   /** Every primitive using one mixin; nothing for any other kind (FR-014). */
@@ -105,26 +90,23 @@ export class CharterRoot {
    *  kind (FR-014). */
   citersOf(corpus: Primitive): readonly Primitive[] {
     if (corpus.kind !== "corpus") return [];
-    return this.primitives.filter((citer) => citer.headers.rationale === corpus.identity);
+    return this.primitives.filter((citer) => citer.headers.rationale === corpus.headers.id);
   }
 
-  /** Every primitive naming one place, script or template; nothing for any
-   *  other kind, since no other is reached by being named (FR-144, FR-163). */
-  mentionersOf(named: Primitive): readonly Primitive[] {
-    return this.primitives.filter((mentioner) => this.identitiesMentionedIn(mentioner).includes(named.identity));
+  /** Every primitive naming one, as `[[<id>]]` (FR-144, FR-163, FR-172). */
+  mentionersOf(referencedPrimitive: Primitive): readonly Primitive[] {
+    return this.primitives.filter((mentioner) => this.idsMentionedIn(mentioner).includes(referencedPrimitive.headers.id));
   }
 
-  /** The places, scripts and templates one primitive mentions, whether the
-   *  charter holds them or not: in its body, in the author's own words (FR-143,
-   *  FR-161); for an agent, each place it holds by listing it among its tools
-   *  (FR-156); and for a sensor, each script its `run` names (FR-161). */
-  private identitiesMentionedIn(one: Primitive): readonly string[] {
+  /** The ids one primitive names as `[[<id>]]`, whether the charter holds them
+   *  or not: in its body (FR-143, FR-172); for an agent, each place it holds by
+   *  listing it among its tools (FR-156); and for a sensor, each script its
+   *  `run` names (FR-161). */
+  private idsMentionedIn(one: Primitive): readonly string[] {
     return [
-      ...[...one.body.matchAll(MCP_MENTION)].map(([, id]) => `mcp:${id}`),
-      ...[...one.body.matchAll(SCRIPT_MENTION)].map(([, id]) => `script:${id}`),
-      ...[...one.body.matchAll(TEMPLATE_MENTION)].map(([, id]) => `template:${id}`),
-      ...(one instanceof AgentPrimitive ? one.headers.tools.flatMap((tool) => tool.match(MCP_TOOL_REFERENCE)?.[1] ?? []) : []),
-      ...(one instanceof SensorPrimitive ? [...one.headers.run.matchAll(SCRIPT_MENTION)].map(([mentionedIdentity]) => mentionedIdentity) : []),
+      ...[...one.body.matchAll(REFERENCE)].map(([, id]) => id!),
+      ...(one instanceof AgentPrimitive ? one.headers.tools.flatMap((tool) => tool.match(TOOL_REFERENCE)?.[1] ?? []) : []),
+      ...(one instanceof SensorPrimitive ? [...one.headers.run.matchAll(REFERENCE)].map(([, id]) => id!) : []),
     ];
   }
 
@@ -146,8 +128,8 @@ export class CharterRoot {
    *
    * Reading refused the files whose own headers do not hold, and said so where
    * it read them; what is left are the questions no single file answers. Every
-   * layer is read into one identity space, the way one registry holds one name
-   * per package: two files claim one identity; one names a mixin nothing
+   * layer is read into one id space, the way one registry holds one name
+   * per package: two files claim one id; one names a mixin nothing
    * answers to; one pulls in a mixin that speaks about other files than it does
    * — a mixin lends its body at projection time, so what makes the two belong
    * together is the files they both apply to (FR-006, FR-014). One cites a
@@ -163,59 +145,54 @@ export class CharterRoot {
    */
   get compositeFaultsByFiles(): FaultsByFile {
     const everyPrimitive = this.primitives;
-    const mixinsByIdentity = this.mixins;
-    const corpusIdentities = this.corpora;
-    const toolsByMcpIdentity = new Map(
-      everyPrimitive.flatMap((primitive) => (primitive instanceof McpPrimitive ? [[primitive.identity, primitive.headers.tools] as const] : [])),
-    );
-    const everyIdentity = new Set(everyPrimitive.map(({ identity }) => identity));
-    const mentionedIdentities = new Set(everyPrimitive.flatMap((one) => this.identitiesMentionedIn(one)));
+    const primitiveById = this.primitiveById;
+    const referencedIds = new Set(everyPrimitive.flatMap((one) => this.idsMentionedIn(one)));
 
-    const fileByIdentity = new Map<string, string>();
-    const identityByNormalizedIdentity = new Map<NormalizedIdentity, string>();
+    const fileById = new Map<string, string>();
+    const idByNormId = new Map<string, string>();
     const faultsByFiles: Record<string, DomainFault[]> = {};
     const addFault = (file: string, found: DomainFault) => {
       faultsByFiles[file] = [...(faultsByFiles[file] ?? []), found];
     };
-
-    for (const one of everyPrimitive) {
-      const { file } = one;
-      const primitive = one;
-      const { identity } = one;
-      const { normIdentity } = primitive;
-      const declaredIn = fileByIdentity.get(identity);
-      if (declaredIn === undefined) fileByIdentity.set(identity, file);
+    for (const primitive of everyPrimitive) {
+      const { file } = primitive;
+      const { id } = primitive.headers;
+      const declaringFile = fileById.get(id);
+      if (declaringFile === undefined) fileById.set(id, file);
       else
         addFault(
           file,
           new CharterRootFault(
-            `"${identity}" is already declared by ${declaredIn}. One identity names one primitive in a charter, whichever layer it was authored in.`,
+            `"${id}" is already declared by ${declaringFile}. One id names one primitive in a charter, whatever its kind and whichever layer it was authored in.`,
             `Give this one an id of its own, or delete it if the other says the same thing. A vendor claiming an id you authored is one to raise with whoever publishes it. An id ${BUILTIN_PRIMITIVE_LAYER.charterFolder} claims is the engine's own and nobody can change it, so the one to rename is yours.`,
           ),
         );
 
-      // `/` is replaced where `:` is in a name given to a host, so two
-      // identities can come to one file there: `guide:a/b` and `guide:a-b`.
-      // Caught where the name is made, as a second claim on it (FR-141).
-      const normalizedIdentityClaimedBy = identityByNormalizedIdentity.get(normIdentity);
-      if (normalizedIdentityClaimedBy === undefined) identityByNormalizedIdentity.set(normIdentity, identity);
-      else if (normalizedIdentityClaimedBy !== identity)
+      // `/` is written `-` in a name given to a host, so two ids can come to
+      // one file there: `a/b` and `a-b`. Caught where the name is made, as a
+      // second claim on it (FR-141).
+      const { normId } = primitive;
+      const claimingId = idByNormId.get(normId);
+      if (claimingId === undefined) idByNormId.set(normId, id);
+      else if (claimingId !== id)
         addFault(
           file,
           new CharterRootFault(
-            `"${identity}" and "${normalizedIdentityClaimedBy}" are both named "${normIdentity}" in an agent's files, where "/" is written as "-". Only one of them would be written there.`,
+            `"${id}" and "${claimingId}" are both named "${normId}" in an agent's files, where "/" is written as "-". Only one of them would be written there.`,
             `Give this one an id that stays its own once "/" is written as "-".`,
           ),
         );
 
-      for (const namedMixin of primitive.headers.mixins ?? []) {
-        const mixin = mixinsByIdentity.get(namedMixin);
-        if (mixin === undefined) {
+      for (const mixinId of primitive.headers.mixins ?? []) {
+        // An id of another kind is no mixin, and is said as one nothing
+        // answers to.
+        const mixin = primitiveById.get(mixinId);
+        if (mixin?.kind !== "mixin") {
           addFault(
             file,
             new CharterRootFault(
-              `This pulls in the mixin "${namedMixin}", and this charter holds no mixin of that id.`,
-              `Author it, or drop "${namedMixin}" from "mixins". A mixin is named by its id, whichever layer authored it.`,
+              `This pulls in the mixin "${mixinId}", and this charter holds no mixin of that id.`,
+              `Author it, or drop "${mixinId}" from "mixins". A mixin is named by its id, whichever layer authored it.`,
             ),
           );
           continue;
@@ -224,7 +201,7 @@ export class CharterRoot {
           addFault(
             file,
             new CharterRootFault(
-              `This pulls in the mixin "${namedMixin}", and neither one's "globs" covers the other's. The mixin's body would be written into a primitive that applies to different files.`,
+              `This pulls in the mixin "${mixinId}", and neither one's "globs" covers the other's. The mixin's body would be written into a primitive that applies to different files.`,
               `Widen one side's "globs" until it covers the other's, or move the shared text into a corpus and cite it with "rationale".`,
             ),
           );
@@ -234,28 +211,27 @@ export class CharterRoot {
       // A rationale nobody can follow is worth saying and not worth stopping
       // on: the rule still holds, and the reasoning behind it is what went
       // missing (FR-005).
-      const cited = primitive.headers.rationale;
-      if (cited !== undefined && !corpusIdentities.has(cited)) {
+      const rationaleId = primitive.headers.rationale;
+      if (rationaleId !== undefined && primitiveById.get(rationaleId)?.kind !== "corpus")
         addFault(
           file,
           new CharterRootFault(
-            `This cites "${cited}" as its rationale, and this charter holds no corpus of that identity.`,
-            `Author that corpus, correct the reference, or drop "rationale". A corpus is cited as "corpus:<id>", whichever layer authored it.`,
+            `This cites "${rationaleId}" as its rationale, and this charter holds no corpus of that id.`,
+            `Author that corpus, correct the reference, or drop "rationale". A corpus is cited by its id, whichever layer authored it.`,
             "warn",
           ),
         );
-      }
 
-      // A name nothing holds stops the build: an agent sent to a place, a
-      // script or a template that is not there may guess at one, or invent
-      // it, and act on the guess (FR-143, FR-162).
-      for (const mentionedIdentity of new Set(this.identitiesMentionedIn(one)))
-        if (!everyIdentity.has(mentionedIdentity))
+      // A name nothing holds stops the build: an agent sent to something that
+      // is not there may guess at one, or invent it, and act on the guess
+      // (FR-143, FR-162).
+      for (const referencedId of new Set(this.idsMentionedIn(primitive)))
+        if (!primitiveById.has(referencedId))
           addFault(
             file,
             new CharterRootFault(
-              `This names "${mentionedIdentity}", and this charter holds no primitive of that identity.`,
-              `Author it, or correct the name. It is named as "<kind>:<id>", whichever layer authored it.`,
+              `This names "${referencedId}", and this charter holds no primitive of that id.`,
+              `Author it, or correct the name. It is named as "[[<id>]]", whichever layer authored it.`,
             ),
           );
 
@@ -271,28 +247,28 @@ export class CharterRoot {
         );
 
       // A role holds what its tools say and nothing else, so each place it
-      // lists must be one the charter holds, and each tool one it declares
+      // lists must be an mcp the charter holds, and each tool one it declares
       // (FR-156).
       if (primitive instanceof AgentPrimitive)
-        for (const tool of primitive.headers.tools.filter((one) => one.startsWith("mcp:"))) {
-          const [, mcpIdentity, mcpTool] = tool.match(MCP_TOOL_REFERENCE) ?? [];
-          const declaredTools = mcpIdentity === undefined ? undefined : toolsByMcpIdentity.get(mcpIdentity);
-          if (mcpIdentity === undefined)
+        for (const tool of primitive.headers.tools.filter((one) => one.startsWith("[["))) {
+          const [, mcpId, mcpTool] = tool.match(TOOL_REFERENCE) ?? [];
+          const mcpPrimitive = mcpId === undefined ? undefined : primitiveById.get(mcpId);
+          if (mcpId === undefined)
             addFault(
               file,
               new CharterRootFault(
                 `"${tool}" under "tools" is not a place this role can hold.`,
-                `Write a place as "mcp:<id>" for every tool it declares, or "mcp:<id>:<tool>" for one.`,
+                `Write a place as "[[<id>]]" for every tool it declares, or "[[<id>]]:<tool>" for one.`,
               ),
             );
           // A place no layer holds is already said above, as any name nothing
           // holds is.
-          else if (declaredTools !== undefined && mcpTool !== undefined && !declaredTools.includes(mcpTool))
+          else if (mcpPrimitive instanceof McpPrimitive && mcpTool !== undefined && !mcpPrimitive.headers.tools.includes(mcpTool))
             addFault(
               file,
               new CharterRootFault(
-                `"${tool}" under "tools" names a tool "${mcpIdentity}" does not declare; it declares ${declaredTools.join(", ")}.`,
-                `Name one of those, or add "${mcpTool}" to the tools of "${mcpIdentity}".`,
+                `"${tool}" under "tools" names a tool "${mcpId}" does not declare; it declares ${mcpPrimitive.headers.tools.join(", ")}.`,
+                `Name one of those, or add "${mcpTool}" to the tools of "${mcpId}".`,
               ),
             );
         }
@@ -300,32 +276,32 @@ export class CharterRoot {
       // Reasoning nobody cites and text nobody lends are dead weight in every
       // layer, a vendor's included: its author is told, and can remove what
       // brought them (FR-014).
-      if (primitive.kind === "corpus" && this.citersOf(one).length === 0)
+      if (primitive.kind === "corpus" && this.citersOf(primitive).length === 0)
         addFault(
           file,
           new CharterRootFault(
-            `No primitive cites "${identity}" as its rationale, so nothing an agent reads leads to it.`,
-            `Cite it from the rules it explains with "rationale: ${identity}", or delete it.`,
+            `No primitive cites "${id}" as its rationale, so nothing an agent reads leads to it.`,
+            `Cite it from the rules it explains with "rationale: ${id}", or delete it.`,
             "warn",
           ),
         );
-      if (primitive.kind === "mixin" && this.hostsOf(one).length === 0)
+      if (primitive.kind === "mixin" && this.hostsOf(primitive).length === 0)
         addFault(
           file,
           new CharterRootFault(
-            `No primitive pulls in the mixin "${primitive.headers.id}", so its body is never written anywhere.`,
-            `Name "${primitive.headers.id}" under "mixins" of the primitives it was written for, or delete it.`,
+            `No primitive pulls in the mixin "${id}", so its body is never written anywhere.`,
+            `Name "${id}" under "mixins" of the primitives it was written for, or delete it.`,
             "warn",
           ),
         );
       // A kind reached only by being named — a place, a script, a template —
       // is dead weight where nothing names it (FR-144, FR-163).
-      if ((primitive.kind === "mcp" || primitive.kind === "script" || primitive.kind === "template") && !mentionedIdentities.has(identity))
+      if ((primitive.kind === "mcp" || primitive.kind === "script" || primitive.kind === "template") && !referencedIds.has(id))
         addFault(
           file,
           new CharterRootFault(
-            `No primitive names "${identity}" in its body, so nothing an agent reads leads to it.`,
-            `Name it where it is used, as "${identity}", or delete it.`,
+            `No primitive names "${id}" in its body, so nothing an agent reads leads to it.`,
+            `Name it where it is used, as "[[${id}]]", or delete it.`,
             "warn",
           ),
         );
@@ -335,7 +311,7 @@ export class CharterRoot {
     // below takes every layer to see.
     const mcpPrimitives = everyPrimitive
       .flatMap((primitive) => (primitive instanceof McpPrimitive ? [primitive] : []))
-      .sort((one, another) => (one.identity < another.identity ? -1 : 1));
+      .sort((one, another) => (one.headers.id < another.headers.id ? -1 : 1));
 
     // One command is one process, and a process reads its token from one
     // variable: two named for one address leave it unsaid which (FR-145).
@@ -352,7 +328,7 @@ export class CharterRoot {
         addFault(
           file,
           new CharterRootFault(
-            `This hands "${primitive.address}" its token in "${tokenEnv}", and "${conflictingMcp.identity}" in "${conflictingMcp.headers.tokenEnv}". One process reads its token from one variable.`,
+            `This hands "${primitive.address}" its token in "${tokenEnv}", and "${conflictingMcp.headers.id}" in "${conflictingMcp.headers.tokenEnv}". One process reads its token from one variable.`,
             `Name the variable that command reads in both, or drop "tokenEnv" and "auth" from one of them.`,
           ),
         );
@@ -438,7 +414,7 @@ export function charterRootOf(
       if (one.pathInLayer !== `${primitive.primitiveFolder}/${primitive.index}`) {
         faultsByFiles[one.path] = [
           new CharterRootFault(
-            `This declares "${primitive.identity}", and it is kept at "${one.pathInLayer}"; a primitive is kept at "<kind>/<id>/${BasePrimitive.index}".`,
+            `This declares "${primitive.kind}" "${primitive.headers.id}", and it is kept at "${one.pathInLayer}"; a primitive is kept at "<kind>/<id>/${BasePrimitive.index}".`,
             `Move its folder to "${charterFolder}/${primitive.primitiveFolder}/", or declare the kind and id its folder says.`,
           ),
         ];
@@ -459,7 +435,7 @@ export function charterRootOf(
 
   // Read in the order the files sort in, whatever order they arrived in: a
   // charter compiles to the same bytes however a folder was walked (SC-007).
-  // The engine's layer first: the first claim on an identity is the one kept,
+  // The engine's layer first: the first claim on an id is the one kept,
   // so a collision with it is filed against the file its author can rename
   // (plan §3.1).
   for (const one of sorted(builtin)) read(one, BUILTIN_LAYER);

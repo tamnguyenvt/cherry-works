@@ -12,8 +12,8 @@ import type { McpAuthMethod } from "../../McpAuthMethod.js";
  */
 export interface McpOrigin {
   /** Every mcp at this address and path, sorted. */
-  readonly identities: readonly string[];
-  /** The name each of those identities is served under, its tools as
+  readonly ids: readonly string[];
+  /** The name each of those ids is served under, its tools as
    *  `<name>__<tool>`: made once, by the build that wrote the bodies naming
    *  it, so the server reads it rather than making it again (FR-145). */
   readonly names: Readonly<Record<string, string>>;
@@ -21,7 +21,7 @@ export interface McpOrigin {
   readonly endpoint?: string;
   readonly command?: { readonly command: string; readonly args: readonly string[]; readonly tokenEnv?: string };
   readonly path?: string;
-  /** Every way any identity here lets a developer sign in. */
+  /** Every way any mcp here lets a developer sign in. */
   readonly auth: readonly McpAuthMethod[];
 }
 

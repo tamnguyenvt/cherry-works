@@ -24,7 +24,7 @@ test("a word typed in the search lists what mentions it in every layer under the
 
     assert.deepEqual(
       await page.getByRole("option").evaluateAll((options) => options.map((option) => option.getAttribute("data-value"))),
-      ["guide:lint-clean", "sensor:check"],
+      ["check", "lint-clean"],
     );
     // The listing under the tabs is left as it was.
     assert.equal(await rowsOf(page).count(), 1);
@@ -46,7 +46,7 @@ test("choosing a result opens it where it is listed: its layer's tab, its kind (
 
     const dialog = page.getByRole("dialog");
     await dialog.getByRole("alert").waitFor();
-    assert.equal(await dialog.locator('[data-slot="dialog-title"]').innerText(), "guide:lint-clean");
+    assert.equal(await dialog.locator('[data-slot="dialog-title"]').innerText(), "lint-clean");
     assert.equal(await page.getByPlaceholder("Search everything").inputValue(), "");
 
     await dialog.getByRole("button", { name: "Close" }).click();

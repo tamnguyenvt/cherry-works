@@ -3,7 +3,7 @@ kind: guide
 id: hexagonal-architecture
 description: The layers of a hexagonal codebase, what each may import, and where a new file belongs.
 globs: ["src/**", "main.ts", "main.js"]
-rationale: corpus:hexagonal-architecture
+rationale: why-hexagonal-architecture
 ---
 
 This codebase is hexagonal (ports and adapters). Before writing a new class,
@@ -32,7 +32,7 @@ the import rules; run it after any change that adds an import.
   nothing else of the hexagon.
 - `port/zdriven/` — driven ports, `For<Doing>` (`ForReadingFiles`,
   `ForSendingMail`), named in the adapter's own words — see
-  `guide:driven-port-speaks-its-adapter`. Errors and types an adapter needs
+  `[[driven-port-speaks-its-adapter]]`. Errors and types an adapter needs
   are exported here.
 - `application/` — one class per driver port implementing it. A use case
   orchestrates: it reads through services or driven ports, asks the domain to

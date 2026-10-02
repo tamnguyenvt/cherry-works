@@ -60,7 +60,7 @@ export async function credentialFor(
 ): Promise<string> {
   if (origin.endpoint !== undefined && !isSecureEndpoint(origin.endpoint))
     throw new DomainFault(`${origin.address} is plain http to another machine, so no credential is sent there.`, 'Declare its endpoint as https://, then run "cw build".');
-  const signInAgain = `Run "cw mcp auth ${origin.identities[0] ?? ""}" at a terminal to sign in there.`;
+  const signInAgain = `Run "cw mcp auth ${origin.ids[0] ?? ""}" at a terminal to sign in there.`;
   const credential = await readCredential(secrets, origin.address);
   if (credential === undefined) throw new DomainFault(`You are not signed in to ${origin.address}.`, signInAgain);
 

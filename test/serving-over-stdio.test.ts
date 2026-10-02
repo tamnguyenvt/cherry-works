@@ -26,7 +26,7 @@ const onePlaceServed = () => {
     served: async () => ({
       type: "ServedTools",
       data: {
-        tools: [{ type: "ServedTool", data: { name: "linear_1a2b__list_issues", description: "[mcp:linear] Lists issues.", inputSchema: { type: "object" } } }],
+        tools: [{ type: "ServedTool", data: { name: "linear_1a2b__list_issues", description: "[linear] Lists issues.", inputSchema: { type: "object" } } }],
         problems: [],
       },
     }),
@@ -50,7 +50,7 @@ test("the server lists what the places serve, and forwards a call to them, its a
   const { tools } = await client.listTools();
   const toolAnswer = await client.callTool({ name: "linear_1a2b__list_issues", arguments: { team: "core" } });
 
-  assert.deepEqual(tools, [{ name: "linear_1a2b__list_issues", description: "[mcp:linear] Lists issues.", inputSchema: { type: "object" } }]);
+  assert.deepEqual(tools, [{ name: "linear_1a2b__list_issues", description: "[linear] Lists issues.", inputSchema: { type: "object" } }]);
   assert.deepEqual(calls, [{ name: "linear_1a2b__list_issues", args: { team: "core" } }]);
   assert.deepEqual(toolAnswer, { content: [{ type: "text", text: "3 issues" }], structuredContent: { count: 3 } });
 });
@@ -62,10 +62,10 @@ const aBuiltRepository = async () => {
   const command = { command: process.execPath, args: ["--import", TSX, STDIO_SERVER] };
   const address = [command.command, ...command.args].join(" ");
   await mkdir(join(repo, ".cw", "out", "mcp", "local"), { recursive: true });
-  await writeFile(join(repo, ".cw", "out", "mcp-origins.json"), JSON.stringify({ origins: [{ identities: ["mcp:local"], names: { "mcp:local": "local_0a1b" }, address, command, auth: [] }] }));
+  await writeFile(join(repo, ".cw", "out", "mcp-origins.json"), JSON.stringify({ origins: [{ ids: ["local"], names: { "local": "local_0a1b" }, address, command, auth: [] }] }));
   await writeFile(
     join(repo, ".cw", "out", "catalog.json"),
-    JSON.stringify([{ identity: "mcp:local", kind: "mcp", id: "local", description: "A local place.", file: ".cw/out/mcp/local/index.md" }]),
+    JSON.stringify([{ kind: "mcp", id: "local", description: "A local place.", file: ".cw/out/mcp/local/index.md" }]),
   );
   await writeFile(
     join(repo, ".cw", "out", "mcp", "local", "index.md"),
@@ -91,7 +91,7 @@ test("cw mcp serve, started by an agent, serves a built repository's places over
   assert.deepEqual(tools.map(({ name }) => name), ["local_0a1b__echo"]);
   assert.deepEqual(toolAnswer.content, [{ type: "text", text: "echo: hi" }]);
   assert.equal(undeclaredAnswer.isError, true);
-  assert.match(said.join(""), /mcp:local declares "missing_tool"/);
+  assert.match(said.join(""), /local declares "missing_tool"/);
 });
 
 test("cw mcp serve in a repository never built stops, saying to build (FR-152)", async (t) => {

@@ -13,7 +13,7 @@ const root = folderURL("file:///repo/.cw/charter/");
 
 type Authored = Primitive;
 
-/** One authored primitive as the charter holds it: under the identity its layer
+/** One authored primitive as the charter holds it: under the id its layer
  *  gives it, which is what reading a charter works out. */
 const layered = (vendor: string | undefined, file: string, primitive: Primitive): Authored =>
   PRIMITIVE_CLASSES.find((one) => one.kind === primitive.kind)!.of(primitive.headers, primitive.body, [], {

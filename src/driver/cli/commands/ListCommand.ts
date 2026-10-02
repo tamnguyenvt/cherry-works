@@ -16,7 +16,7 @@ const LISTING = {
   kind: { type: "string", describe: "Only the primitives of this kind" },
   min: {
     type: "boolean",
-    describe: "What an agent surveys by: identity and description, nothing else",
+    describe: "What an agent surveys by: id and description, nothing else",
     default: false,
   },
 } as const satisfies OptionSpec;
@@ -28,7 +28,7 @@ type Listing = typeof LISTING;
  *
  * It reaches for `list` and nothing else, and listing reads and says: nothing
  * this command runs can write a file (FR-041). What it adds is presentation —
- * one primitive to a line, ordered by identity as the listing already is, with
+ * one primitive to a line, ordered by id as the listing already is, with
  * `--min` saying what an agent surveys by and the default adding where the body
  * is and the files it applies to. The kind is passed on as it was
  * typed: which words are kinds is the charter's business and not this command's,
@@ -74,8 +74,8 @@ export class ListCommand implements Command<Listing> {
 
 /** One primitive as an agent surveys it: what it is called and what it is for
  *  (FR-012). */
-function surveyed({ data: { identity, description } }: DataDTOs.CatalogueEntry): string {
-  return `${identity}  ${description}`;
+function surveyed({ data: { id, description } }: DataDTOs.CatalogueEntry): string {
+  return `${id}  ${description}`;
 }
 
 /** One primitive in full: what it is called and what it is for, where its body

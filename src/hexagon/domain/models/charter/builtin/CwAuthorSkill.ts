@@ -21,7 +21,7 @@ export class CwAuthorSkill extends SkillPrimitive {
 
 This skill is cw's own. It comes with the engine, is not authored in this
 repository, and cannot be changed here. A repository that wants another way of
-authoring writes a primitive of its own, under an identity of its own.
+authoring writes a primitive of its own, under an id of its own.
 
 It covers writing a new primitive. Changing or removing one that already exists
 is not what it covers.
@@ -43,7 +43,10 @@ refused against.
    cw refuses, it says why and shows the kind's sample: answer again with that
    in hand. Nothing is written until the headers hold.
 4. Write the body into the file cw named. The headers decide when the primitive
-   comes up; the body is what an agent reads once it has.
+   comes up; the body is what an agent reads once it has. Name another
+   primitive by its id alone: bare in a header, and as \`[[<id>]]\` in the
+   body, which the build turns into a link to it. An id names one primitive
+   whatever its kind.
 5. Run \`cw build\`. If it refuses, \`cw doctor\` names each file with a problem
    and how to fix it.`,
       [],

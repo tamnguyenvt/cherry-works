@@ -114,20 +114,22 @@ Each kind comes up at a different time:
 |---|---|
 | `guide` | a touched file matches one of its `globs`, or on every turn when it has no globs |
 | `sensor` | the `signal` it names is raised, and the harness runs its `run` command |
-| `skill` | one of its `triggers` matches the request, or it is called by name as `/skill-<id>` |
+| `skill` | one of its `triggers` matches the request, or it is called by name as `/<id>` |
 | `playbook` | one of its `triggers` matches; its body is a sequence of skills |
-| `agent` | it is spawned by identity, with only the `tools` it lists |
+| `agent` | it is spawned by its id, with only the `tools` it lists |
 | `posture` | always, wherever the host can be told what to `allow` and `deny` |
 | `corpus` | a primitive's `rationale` cites it, to give the reasoning behind a rule |
 | `mixin` | never on its own; its body is lent to the primitives that pull it in |
-| `mcp` | a primitive's body names it as `mcp:<id>`: a place outside the repository, reached through `cw mcp serve` |
+| `mcp` | a primitive's body names it as `[[<id>]]`: a place outside the repository, reached through `cw mcp serve` |
 
-`cw kinds <kind>` gives the exact fields each kind takes. An identity is
-`kind:id`, and it names exactly one primitive across the whole charter. If two
-files claim the same identity, the build is refused and both files are named.
+`cw kinds <kind>` gives the exact fields each kind takes. An id names exactly
+one primitive across the whole charter, whatever its kind. If two files claim
+the same id, the build is refused and both files are named. A primitive is
+named by its id alone: bare in a header (`rationale: type-safety`), a test or a
+command, and as `[[<id>]]` in a body, which the build turns into a link.
 Every primitive is a folder holding its `index.md`, and any other file in that
 folder is one of its assets, reached from the body as `./<file>`. An id is at
-most 40 characters, and may be grouped with `/`: `mcp:mfbs/billing` is kept at
+most 40 characters, and may be grouped with `/`: the mcp `mfbs/billing` is kept at
 `.cw/charter/mcp/mfbs/billing/index.md`.
 
 `cw build` compiles every primitive to `.cw/out/<kind>/<id>/index.md`, with its
@@ -145,15 +147,15 @@ agent reads it.
 | `cw list [--kind] [--min]` | List what the charter holds |
 | `cw kinds [kind]` | List the kinds, or the fields one of them requires |
 | `cw add <kind> <id> [--header k=v …]` | Write a new primitive |
-| `cw edit <identity>` | Open a primitive's file in your editor |
-| `cw remove <identity> [--yes]` | Delete a primitive this repository authored |
-| `cw explain <identity>` | Show which file declares an identity, what it pulls in and which tests name it |
+| `cw edit <id>` | Open a primitive's file in your editor |
+| `cw remove <id> [--yes]` | Delete a primitive this repository authored |
+| `cw explain <id>` | Show which file declares an id, what it pulls in and which tests name it |
 | `cw doctor` | Check the agents, the charter, the vendor sources and the compiled output |
 | `cw test` | Run every case in `.cw/test/` against the charter |
 | `cw suite add \| edit \| remove` | Manage test files |
 | `cw vendor add <source> [--ref] \| remove \| list` | Install, update, remove or list vendor sources |
 | `cw portal [--port]` | Open the charter in a browser on this machine |
-| `cw mcp auth [identity] [--status]` | Sign in, as yourself, to every place the charter reaches, or to one again |
+| `cw mcp auth [id] [--status]` | Sign in, as yourself, to every place the charter reaches, or to one again |
 | `cw mcp serve` | Serve every place the charter reaches to your agent, over stdio |
 
 `cw doctor` exits with a failure status when the charter has an error, when a
@@ -235,7 +237,7 @@ there, test it, and push. Only its `.cw/charter/` folder is installed, under
 `.cw/vendor/<name>/`, pinned to the ref you chose and committed. A repository
 without that folder is refused, and so is one that has vendors of its own:
 vendoring is one level deep. Vendored primitives are read-only. To differ from
-one, write your own primitive under a new identity.
+one, write your own primitive under a new id.
 
 Run `cw vendor add` again with a new `--ref` to update a source, and
 `cw vendor remove <name>` to take it away. Run `cw build` after either.
@@ -269,7 +271,7 @@ The billing service. Look here before changing anything that charges a customer.
 A place is either an `endpoint` reached over HTTP, or a `command` with its
 `args` that `cw` starts as a local process; a local one takes a token only, in
 the environment variable its `tokenEnv` names. Any primitive points the agent
-at a place by naming it in its body as `mcp:mfbs/billing`.
+at a place by naming it in its body as `[[mfbs/billing]]`.
 
 ```bash
 cw build            # adds one entry, cw mcp serve, to your agent's .mcp.json
@@ -285,8 +287,8 @@ given: it serves the tools each place declares and forwards every call under
 your own credential. A place that is down or not signed in to loses only its own
 tools.
 
-A subagent reaches only the places it lists under `tools`: `mcp:<id>` for every
-tool of a place, or `mcp:<id>:<tool>` for one of them.
+A subagent reaches only the places it lists under `tools`: `[[<id>]]` for every
+tool of a place, or `[[<id>]]:<tool>` for one of them.
 
 ## Your agent can write rules too
 

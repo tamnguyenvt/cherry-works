@@ -10,7 +10,7 @@ import type { Projection } from "../ProjectionPolicy.js";
  *
  * It says itself which file it lands in and what that file holds.
  *
- * Ordered by identity rather than by the order the files happened to be read, so
+ * Ordered by id rather than by the order the files happened to be read, so
  * the same charter catalogues byte for byte the same and a committed catalogue
  * changes only when the charter does (SC-007).
  *
@@ -18,7 +18,7 @@ import type { Projection } from "../ProjectionPolicy.js";
  * when the thing it applies to comes up and not before (FR-013).
  */
 export class Catalogue {
-  /** Entries in the order they are to be listed: by identity (SC-007). */
+  /** Entries in the order they are to be listed: by id (SC-007). */
   constructor(readonly entries: readonly CatalogueEntry[]) {}
 
   /** The file it is put down as: beside `CHARTER.md`, which sends a reader to
@@ -42,7 +42,7 @@ export class Catalogue {
    *
    * A narrowed listing is a listing: what comes back answers `entries` the way
    * this does, so whoever reads it never has to ask whether it was narrowed. Nothing is re-sorted — the entries keep the order they were
-   * put in, which is the order by identity they were made in.
+   * put in, which is the order by id they were made in.
    */
   filterByKind(kind: string): Catalogue {
     return new Catalogue(this.entries.filter((one) => one.kind === kind));
@@ -51,14 +51,14 @@ export class Catalogue {
 
 /**
  * One primitive as the listing records it: what it is called, what it is for,
- * the files it applies to, and the file its body is in (FR-011). Its identity
- * already says its id, and every other header is read from that file.
+ * the files it applies to, and the file its body is in (FR-011). Its kind and
+ * id are all it is known by, and every other header is read from that file.
  *
  * Globs nobody wrote are left out rather than recorded as nothing.
  */
 export interface CatalogueEntry {
-  readonly identity: string;
   readonly kind: string;
+  readonly id: string;
   readonly description: string;
   /** Where the body is, from the repository holding the charter — the one path
    *  that reads the same on every machine that checks it out. The compiled

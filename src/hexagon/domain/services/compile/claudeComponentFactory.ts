@@ -4,10 +4,10 @@ import { AgentPrimitive } from "../../models/charter/primitive/AgentPrimitive.js
 import { GuidePrimitive } from "../../models/charter/primitive/GuidePrimitive.js";
 import { PlaybookPrimitive } from "../../models/charter/primitive/PlaybookPrimitive.js";
 import { SkillPrimitive } from "../../models/charter/primitive/SkillPrimitive.js";
-import { MCP_TOOL_REFERENCE, McpPrimitive } from "../../models/charter/primitive/McpPrimitive.js";
+import { McpPrimitive } from "../../models/charter/primitive/McpPrimitive.js";
+import { REFERENCE, TOOL_REFERENCE } from "../../models/charter/primitive/BasePrimitive.js";
 import { PosturePrimitive } from "../../models/charter/primitive/PosturePrimitive.js";
 import type { ShortStrings } from "../../models/helper.js";
-import { SCRIPT_MENTION } from "../../models/charter/primitive/ScriptPrimitive.js";
 import { SensorPrimitive } from "../../models/charter/primitive/SensorPrimitive.js";
 import type { CompiledPrimitive } from "../../models/output/common/CompiledPrimitive.js";
 import type { ClaudeComponent } from "../../models/output/provider-component/claude/ClaudeComponent.js";
@@ -47,7 +47,7 @@ import {
 export function claudeComponentsOf(
   charter: CharterRoot,
   compiledPrimitiveByPrimitive: ReadonlyMap<Primitive, CompiledPrimitive>,
-  shortenMcpIdentities: ShortStrings,
+  shortMcpIds: ShortStrings,
 ): readonly ClaudeComponent[] {
   // Does this primitive ask something of the settings this host runs on, rather
   // than compile to a file of its own? A posture says what may be run, a sensor
@@ -58,18 +58,18 @@ export function claudeComponentsOf(
   const asDocuments = charter.primitives.filter((one) => !isSettingComponent(one));
 
   // A subagent holds the tools it lists and nothing else. A place it lists,
-  // `mcp:<id>` whole or `mcp:<id>:<tool>` one tool, is written as this host is
+  // `[[<id>]]` whole or `[[<id>]]:<tool>` one tool, is written as this host is
   // given each of its tools, `mcp__cw__<served name>__<tool>` (FR-156); the
   // charter has refused a place or tool it does not hold.
-  const toolsByMcpIdentity = new Map(
-    charter.primitives.flatMap((primitive) => (primitive instanceof McpPrimitive ? [[primitive.identity, primitive.headers.tools] as const] : [])),
+  const toolsByMcpId = new Map(
+    charter.primitives.flatMap((primitive) => (primitive instanceof McpPrimitive ? [[primitive.headers.id, primitive.headers.tools] as const] : [])),
   );
   const agentToolsOf = (agent: AgentPrimitive) =>
     agent.headers.tools.flatMap((tool) => {
-      const [, mcpIdentity, mcpTool] = tool.match(MCP_TOOL_REFERENCE) ?? [];
-      if (mcpIdentity === undefined) return [tool];
-      return (mcpTool === undefined ? (toolsByMcpIdentity.get(mcpIdentity) ?? []) : [mcpTool]).map(
-        (oneTool) => `mcp__${ClaudeMcpConfig.cwMcpName}__${shortenMcpIdentities[mcpIdentity]}__${oneTool}`,
+      const [, mcpId, mcpTool] = tool.match(TOOL_REFERENCE) ?? [];
+      if (mcpId === undefined) return [tool];
+      return (mcpTool === undefined ? (toolsByMcpId.get(mcpId) ?? []) : [mcpTool]).map(
+        (oneTool) => `mcp__${ClaudeMcpConfig.cwMcpName}__${shortMcpIds[mcpId]}__${oneTool}`,
       );
     });
 
@@ -127,10 +127,10 @@ function claudeSettingsOf(
       // A harness runs the command and looks nothing up, so a script named in
       // it is written as the file a build put down, from the repository's
       // root; the charter has refused a script it does not hold (FR-169).
-      const command = run.replace(SCRIPT_MENTION, (mentionedIdentity) => {
-        const mentioned = charter.primitiveById.get(mentionedIdentity);
-        const executionFile = mentioned && compiledPrimitiveByPrimitive.get(mentioned)?.projections.find((projection) => projection.executable)?.file;
-        return executionFile ?? mentionedIdentity;
+      const command = run.replace(REFERENCE, (reference, referencedId: string) => {
+        const scriptPrimitive = charter.primitiveById.get(referencedId);
+        const executionFile = scriptPrimitive && compiledPrimitiveByPrimitive.get(scriptPrimitive)?.projections.find((projection) => projection.executable)?.file;
+        return executionFile ?? reference;
       });
       if (isClaudeHookEvent(signal))
         hooks[signal] = [...(hooks[signal] ?? []), { hooks: [{ type: "command", command }] }];
@@ -157,10 +157,10 @@ function claudeSettingsOf(
  * holds written as that place's tools (FR-156).
  */
 function claudeDocumentComponentOf(sc: Primitive, compiledFile: string, agentTools?: readonly string[]): ClaudeComponent | undefined {
-  // The kind stays in the name, because two charter kinds can land in one
-  // directory there — `guide:no-any` and `skill:no-any` are two primitives and
-  // must stay two files (FR-014).
-  const name = sc.normIdentity;
+  // The id alone, so a skill is invoked as `/<id>` rather than
+  // `/skill-<id>`; one id names one primitive whatever its kind, so no two
+  // land on one name here (FR-015, FR-171).
+  const name = sc.normId;
   // From `.claude/<kind>/`, two folders down; a skill's `SKILL.md` sits one
   // further, in a folder of its own.
   const compiledFromClaudeFolder = `../../${compiledFile}`;
@@ -169,7 +169,7 @@ function claudeDocumentComponentOf(sc: Primitive, compiledFile: string, agentToo
   switch (sc.kind) {
     // A guide is a rule this host loads into context whole: when a file it names
     // is touched, which is what `paths` on a rule does, and at the start of every
-    // session where it names none (FR-013). Under the identity it is changed by,
+    // session where it names none (FR-013). Under the id it is changed by,
     // so a reader who wants it changed is sent to the primitive rather than
     // editing what the next build overwrites (FR-017, FR-020).
     case GuidePrimitive.kind: {

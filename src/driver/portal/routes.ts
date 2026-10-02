@@ -40,7 +40,7 @@ export function api(
 ) {
   const app = new OpenAPIHono();
   app.onError((raised, c) => {
-    // What no file is wrong with — a word that is no kind, an identity the
+    // What no file is wrong with — a word that is no kind, an id the
     // charter holds nothing of — is raised rather than given back, and reads
     // at the page as every other fault does (plan §2.2).
     if (raised instanceof DomainFault) return c.json(faultDTO(raised), 422);
@@ -84,16 +84,16 @@ export function api(
     .openapi(
       createRoute({
         method: "get",
-        path: "/charter/root/primitives/{identity}/explanation",
-        request: { params: z.object({ identity: z.string() }) },
+        path: "/charter/root/primitives/{id}/explanation",
+        request: { params: z.object({ id: z.string() }) },
         responses: {
           200: json(OutcomeDTOs.ExplanationOutcome, "What the engine says of one primitive"),
           422: json(z.union([DataDTOs.FaultsByFile, DataDTOs.Fault]), "The charter does not hold, or holds nothing of it"),
         },
       }),
       async (c) => {
-        const { identity } = c.req.valid("param");
-        const explanationOutcomeDTO = await charterAuthoringApp.explain(identity);
+        const { id } = c.req.valid("param");
+        const explanationOutcomeDTO = await charterAuthoringApp.explain(id);
         return explanationOutcomeDTO.type === "FaultsByFile" ? c.json(explanationOutcomeDTO, 422) : c.json(explanationOutcomeDTO, 200);
       },
     )
@@ -117,21 +117,21 @@ export function api(
             ...json(DataDTOs.Primitive, "The primitive written"),
             headers: z.object({ Location: z.string() }),
           },
-          422: json(z.union([DataDTOs.Faults, DataDTOs.Fault]), "The answers the kind refused, or an identity already claimed"),
+          422: json(z.union([DataDTOs.Faults, DataDTOs.Fault]), "The answers the kind refused, or an id already claimed"),
         },
       }),
       async (c) => {
         const { kind, id, headers, body } = c.req.valid("json");
         const primitiveDTO = await charterAuthoringApp.add(kind, id, headers, body);
         if (primitiveDTO.type === "Faults") return c.json(primitiveDTO, 422);
-        return c.json(primitiveDTO, 201, { Location: `/api/charter/root/primitives/${encodeURIComponent(primitiveDTO.data.identity)}` });
+        return c.json(primitiveDTO, 201, { Location: `/api/charter/root/primitives/${encodeURIComponent(primitiveDTO.data.id)}` });
       },
     )
     .openapi(
       createRoute({
         method: "get",
-        path: "/charter/root/primitives/{identity}",
-        request: { params: z.object({ identity: z.string() }) },
+        path: "/charter/root/primitives/{id}",
+        request: { params: z.object({ id: z.string() }) },
         responses: {
           200: {
             ...json(DataDTOs.Primitive, "One primitive as the charter read it"),
@@ -141,8 +141,8 @@ export function api(
         },
       }),
       async (c) => {
-        const { identity } = c.req.valid("param");
-        const primitiveDTO = await charterAuthoringApp.open(identity);
+        const { id } = c.req.valid("param");
+        const primitiveDTO = await charterAuthoringApp.open(id);
         // Its hash is the entity tag, quoted.
         return c.json(primitiveDTO, 200, { ETag: `"${primitiveDTO.data.hash}"` });
       },
@@ -150,9 +150,9 @@ export function api(
     .openapi(
       createRoute({
         method: "put",
-        path: "/charter/root/primitives/{identity}",
+        path: "/charter/root/primitives/{id}",
         request: {
-          params: z.object({ identity: z.string() }),
+          params: z.object({ id: z.string() }),
           headers: z.object({ "if-match": z.string().optional() }),
           body: json(
             z.object({
@@ -169,12 +169,12 @@ export function api(
         },
       }),
       async (c) => {
-        const { identity } = c.req.valid("param");
+        const { id } = c.req.valid("param");
         // The primitive is opened again here, and its hash held against the one
         // the page opened it at, so a stale one is a 412 rather than a refusal
         // like any other; `rewrite` is handed the hash just opened, and checks
         // it once more as it writes (FR-078).
-        const primitive = (await charterAuthoringApp.open(identity)).data;
+        const primitive = (await charterAuthoringApp.open(id)).data;
         if (c.req.valid("header")["if-match"] !== `"${primitive.hash}"`)
           return c.json(
             faultDTO(
@@ -187,23 +187,23 @@ export function api(
           );
 
         const { headers, body } = c.req.valid("json");
-        const primitiveDTO = await charterAuthoringApp.rewrite(identity, headers, body, primitive.hash);
+        const primitiveDTO = await charterAuthoringApp.rewrite(id, headers, body, primitive.hash);
         return primitiveDTO.type === "Faults" ? c.json(primitiveDTO, 422) : c.json(primitiveDTO, 200);
       },
     )
     .openapi(
       createRoute({
         method: "delete",
-        path: "/charter/root/primitives/{identity}",
-        request: { params: z.object({ identity: z.string() }) },
+        path: "/charter/root/primitives/{id}",
+        request: { params: z.object({ id: z.string() }) },
         responses: {
           204: { description: "The file is gone" },
           422: json(DataDTOs.Fault, "A primitive this repository did not author, or none at all"),
         },
       }),
       async (c) => {
-        const { identity } = c.req.valid("param");
-        await charterAuthoringApp.remove(identity);
+        const { id } = c.req.valid("param");
+        await charterAuthoringApp.remove(id);
         return c.body(null, 204);
       },
     )

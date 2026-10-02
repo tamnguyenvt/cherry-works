@@ -3,12 +3,12 @@ import { DomainFault } from "#hexagon/port/driver/ForManagingCharter.js";
 import type { DataDTOs } from "#hexagon/port/driver/dtos/index.js";
 import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./Command.js";
 
-/** What `cw mcp auth` takes: one identity to sign in again for, or whether to
+/** What `cw mcp auth` takes: one id to sign in again for, or whether to
  *  say where the developer is signed in and do nothing else (FR-150). */
 const OPTIONS = {
-  identity: {
+  id: {
     type: "string",
-    describe: 'One mcp whose address to sign in to again, whatever you were signed in as: "mcp:github/billing"',
+    describe: 'One mcp whose address to sign in to again, whatever you were signed in as: "github/billing"',
   },
   status: {
     type: "boolean",
@@ -31,11 +31,11 @@ const OPTIONS = {
  * the command waits, and never opened (plan §15). No token is printed.
  */
 export class McpAuthCommand implements Command<typeof OPTIONS> {
-  readonly name = "mcp auth [identity]";
+  readonly name = "mcp auth [id]";
   readonly summary = "Sign in, as yourself, to every place the charter reaches";
   readonly options = OPTIONS;
 
-  async run({ mcpConnectingApp }: Context, { identity, status }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async run({ mcpConnectingApp }: Context, { id, status }: Options<typeof OPTIONS>): Promise<Outcome> {
     const signInStatuses = (await mcpConnectingApp.signInStatus()).map((one) => one.data);
 
     if (status)
@@ -45,22 +45,22 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
           signInStatuses.length === 0
             ? "No place the last build listed takes a sign-in.\n"
             : signInStatuses
-                .map(({ address, identities, signedIn, method }) =>
-                  [address, `  ${identities.join(", ")}`, `  ${signedIn ? `signed in by ${method}` : "not signed in"}`, ""].join("\n"),
+                .map(({ address, ids, signedIn, method }) =>
+                  [address, `  ${ids.join(", ")}`, `  ${signedIn ? `signed in by ${method}` : "not signed in"}`, ""].join("\n"),
                 )
                 .join(""),
       };
 
     let unsignedStatuses: readonly DataDTOs.SignInStatus["data"][];
-    if (identity === undefined) unsignedStatuses = signInStatuses.filter((one) => !one.signedIn);
+    if (id === undefined) unsignedStatuses = signInStatuses.filter((one) => !one.signedIn);
     else {
-      const identityStatus = signInStatuses.find((one) => one.identities.includes(identity));
-      if (identityStatus === undefined)
+      const signInStatus = signInStatuses.find((one) => one.ids.includes(id));
+      if (signInStatus === undefined)
         throw new DomainFault(
-          `No place the last build listed is declared by ${identity}.`,
+          `No place the last build listed is declared by ${id}.`,
           'Run "cw mcp auth --status" to see every mcp, or "cw build" if the charter changed.',
         );
-      unsignedStatuses = [identityStatus];
+      unsignedStatuses = [signInStatus];
     }
 
     if (unsignedStatuses.length === 0)
@@ -83,8 +83,8 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
         ].join("\n"),
       };
 
-    for (const { address, identities, auth } of unsignedStatuses) {
-      process.stderr.write(`${address}\n  ${identities.join(", ")}\n`);
+    for (const { address, ids, auth } of unsignedStatuses) {
+      process.stderr.write(`${address}\n  ${ids.join(", ")}\n`);
       const { method } =
         auth.length > 1
           ? await prompts({

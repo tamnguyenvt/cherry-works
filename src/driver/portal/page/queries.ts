@@ -36,32 +36,32 @@ export function usePrimitives(matching?: string) {
 
 /** What the engine says of one primitive (FR-029, FR-116).
  *
- *  An identity is sent encoded wherever it is part of a path, here and in the
+ *  An id is sent encoded wherever it is part of a path, here and in the
  *  hooks below: the client puts a parameter in as it is, and an id may hold
  *  `/` (FR-141). */
-export function useExplanation(identity: string) {
+export function useExplanation(id: string) {
   return useQuery({
-    queryKey: ["explanation", identity],
-    queryFn: async () => (await client.charter.root.primitives[":identity"].explanation.$get({ param: { identity: encodeURIComponent(identity) } })).json(),
+    queryKey: ["explanation", id],
+    queryFn: async () => (await client.charter.root.primitives[":id"].explanation.$get({ param: { id: encodeURIComponent(id) } })).json(),
   });
 }
 
 /** One primitive as the charter read it, with the entity tag a save is sent
- *  back with (FR-075, FR-078); or the fault of an identity the charter holds
- *  nothing of. Not asked where there is no identity: a new primitive has none.
+ *  back with (FR-075, FR-078); or the fault of an id the charter holds
+ *  nothing of. Not asked where there is no id: a new primitive has none.
  *
  *  Asked once per opening and kept by nobody after: an entity tag asked for
  *  again while the form is open would move the revision the author is editing
  *  from, and the save would write over what changed on disk instead of being
  *  refused for it. */
-export function usePrimitive(identity: string | undefined) {
+export function usePrimitive(id: string | undefined) {
   return useQuery({
-    queryKey: ["primitive", identity],
-    enabled: identity !== undefined,
+    queryKey: ["primitive", id],
+    enabled: id !== undefined,
     gcTime: 0,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const response = await client.charter.root.primitives[":identity"].$get({ param: { identity: encodeURIComponent(identity ?? "") } });
+      const response = await client.charter.root.primitives[":id"].$get({ param: { id: encodeURIComponent(id ?? "") } });
       return { answer: await response.json(), entityTag: response.headers.get("ETag") ?? "" };
     },
   });
@@ -106,8 +106,8 @@ export function useAddPrimitive() {
 export function useRewritePrimitive() {
   const written = useWritten();
   return useMutation({
-    mutationFn: async (request: InferRequestType<(typeof client.charter.root.primitives)[":identity"]["$put"]>) =>
-      (await client.charter.root.primitives[":identity"].$put({ ...request, param: { identity: encodeURIComponent(request.param.identity) } })).json(),
+    mutationFn: async (request: InferRequestType<(typeof client.charter.root.primitives)[":id"]["$put"]>) =>
+      (await client.charter.root.primitives[":id"].$put({ ...request, param: { id: encodeURIComponent(request.param.id) } })).json(),
     onSuccess: written,
   });
 }
@@ -117,11 +117,11 @@ export function useRewritePrimitive() {
 export function useRemovePrimitive() {
   const written = useWritten();
   return useMutation({
-    mutationFn: async (identity: string) => {
+    mutationFn: async (id: string) => {
       // Sent as JSON though it carries none: every verb but GET is, so a page
       // of another origin cannot make it without a preflight (plan §12.4).
-      const response = await client.charter.root.primitives[":identity"].$delete(
-        { param: { identity: encodeURIComponent(identity) } },
+      const response = await client.charter.root.primitives[":id"].$delete(
+        { param: { id: encodeURIComponent(id) } },
         { headers: { "Content-Type": "application/json" } },
       );
       return response.status === 422 ? response.json() : null;

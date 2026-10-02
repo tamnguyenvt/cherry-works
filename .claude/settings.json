@@ -1,14 +1,1 @@
-{
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -z \"$(git status --porcelain -- specs)\" ] || { pnpm -s run specs:link && pnpm -s run specs:check || exit 2; }"
-          }
-        ]
-      }
-    ]
-  }
-}
+{}

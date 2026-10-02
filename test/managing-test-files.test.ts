@@ -35,9 +35,9 @@ const withTwoFiles = () => ({
   [at(".cw/test/shapes.json")]: suiteText({
     description: "All three shapes.",
     cases: [
-      { do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } },
+      { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
       { do: { touchFile: ".env" }, expect: { allow: false } },
-      { when: "Stop", expect: { run: "sensor:test" } },
+      { when: "Stop", expect: { run: "test" } },
     ],
   }),
   [at(".cw/test/broken.json")]: "{ not json",
@@ -83,9 +83,9 @@ test("suites() lists each file with its name, text and cases said, and one that 
   assert.deepEqual(
     shapes?.data.cases.map(({ data }) => data),
     [
-      { situation: "touching src/one.ts", expectation: "activates guide:no-any", identity: "guide:no-any" },
+      { situation: "touching src/one.ts", expectation: "activates no-any", id: "no-any" },
       { situation: "touching .env", expectation: "is denied" },
-      { situation: "firing event Stop", expectation: "runs sensor:test", identity: "sensor:test" },
+      { situation: "firing event Stop", expectation: "runs test", id: "test" },
     ],
   );
 });
@@ -98,8 +98,8 @@ test("a run names the test file each case came from (FR-125)", async () => {
   const { charterAuthoringApp } = authoring({
     ...settings,
     [at(".cw/charter/guide/no-any/index.md")]: guide("no-any", ["src/**/*.ts"]),
-    [at(".cw/test/one.json")]: suiteText({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
-    [at(".cw/test/two.json")]: suiteText({ cases: [{ do: { touchFile: "docs/a.md" }, expect: { activate: "guide:no-any" } }] }),
+    [at(".cw/test/one.json")]: suiteText({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
+    [at(".cw/test/two.json")]: suiteText({ cases: [{ do: { touchFile: "docs/a.md" }, expect: { activate: "no-any" } }] }),
   });
 
   const testRunReportDTO = await charterAuthoringApp.test();
@@ -134,7 +134,7 @@ test("addSuite() takes the first free number", async () => {
 
 test("writeSuite() writes text that reads as a suite (FR-090)", async () => {
   const { testAuthoringApp, fileAt } = authoring(withTwoFiles());
-  const text = suiteText({ cases: [{ when: "Stop", expect: { run: "sensor:test" } }] });
+  const text = suiteText({ cases: [{ when: "Stop", expect: { run: "test" } }] });
 
   assert.equal(await testAuthoringApp.writeSuite("broken.json", text), "broken.json");
 
@@ -159,7 +159,7 @@ test("writeSuite() refuses text that is not JSON or not a suite, with the sample
 
 test("writeSuite() and removeSuite() refuse a name that is no test file (FR-090, FR-092)", async () => {
   const { testAuthoringApp, fileAt } = authoring(withTwoFiles());
-  const text = suiteText({ cases: [{ when: "Stop", expect: { run: "sensor:test" } }] });
+  const text = suiteText({ cases: [{ when: "Stop", expect: { run: "test" } }] });
 
   await assert.rejects(testAuthoringApp.writeSuite("missing.json", text), /holds no test file called "missing.json"/);
   await assert.rejects(testAuthoringApp.writeSuite("../charter/guide/no-any/index.md", text), /holds no test file/);

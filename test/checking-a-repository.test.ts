@@ -25,9 +25,9 @@ const guide = (id: string, body?: string) => primitive("guide", id, ['globs: ["s
 
 /** A test file naming one guide, so no warning says nothing pins it down
  *  (FR-014). */
-const pinningDown = (identity: string) => ({
-  [inRepo(`.cw/test/${identity.replace(":", "-")}.json`)]: JSON.stringify({
-    cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: identity } }],
+const pinningDown = (id: string) => ({
+  [inRepo(`.cw/test/${id.replace("/", "-")}.json`)]: JSON.stringify({
+    cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: id } }],
   }),
 });
 
@@ -91,7 +91,7 @@ test("a repository with nothing wrong passes, and says so of each thing it looke
   const { run } = commandLine({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: guide("no-any"),
-    ...pinningDown("guide:no-any"),
+    ...pinningDown("no-any"),
   });
   await run(["build"]);
 
@@ -235,16 +235,16 @@ test("a guide and a sensor no test case names are each a warning under their own
 
   assert.deepEqual([errorCount, warnCount], [0, 2]);
   assert.deepEqual(Object.keys(faultsByFile.data.files).sort(), [".cw/charter/guide/no-any/index.md", ".cw/charter/sensor/lint/index.md"]);
-  assert.match(messagesUnder(faultsByFile, ".cw/charter/guide/no-any/index.md").join(), /warn: No test case names "guide:no-any"/);
-  assert.match(messagesUnder(faultsByFile, ".cw/charter/sensor/lint/index.md").join(), /warn: No test case names "sensor:lint"/);
+  assert.match(messagesUnder(faultsByFile, ".cw/charter/guide/no-any/index.md").join(), /warn: No test case names "no-any"/);
+  assert.match(messagesUnder(faultsByFile, ".cw/charter/sensor/lint/index.md").join(), /warn: No test case names "lint"/);
 });
 
 test("a guide and a sensor a test case names raise no warning (FR-014)", async () => {
   const { warnCount } = await doctorOf({
     [at("guide/no-any/index.md")]: guide("no-any"),
     [at("sensor/lint/index.md")]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
-    ...pinningDown("guide:no-any"),
-    [inRepo(".cw/test/lint.json")]: JSON.stringify({ cases: [{ when: "PostToolUse", expect: { run: "sensor:lint" } }] }),
+    ...pinningDown("no-any"),
+    [inRepo(".cw/test/lint.json")]: JSON.stringify({ cases: [{ when: "PostToolUse", expect: { run: "lint" } }] }),
   });
 
   assert.equal(warnCount, 0);
@@ -253,18 +253,18 @@ test("a guide and a sensor a test case names raise no warning (FR-014)", async (
 test("a vendored guide no test case names is warned about like one of the repository's own (FR-014)", async () => {
   const { faultsByFile } = await doctorOf({ [inRepo(".cw/vendor/team/guide/no-any/index.md")]: guide("no-any") });
 
-  assert.match(messagesUnder(faultsByFile, ".cw/vendor/team/guide/no-any/index.md").join(), /No test case names "guide:no-any"/);
+  assert.match(messagesUnder(faultsByFile, ".cw/vendor/team/guide/no-any/index.md").join(), /No test case names "no-any"/);
 });
 
 test("a guide warned about twice keeps both warnings under its file", async () => {
   const { warnCount, faultsByFile } = await doctorOf({
-    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:absent"]),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: absent"]),
   });
 
   assert.equal(warnCount, 2);
   const messages = messagesUnder(faultsByFile, ".cw/charter/guide/no-any/index.md").join("\n");
-  assert.match(messages, /corpus:absent/);
-  assert.match(messages, /No test case names "guide:no-any"/);
+  assert.match(messages, /absent/);
+  assert.match(messages, /No test case names "no-any"/);
 });
 
 test("a test file that does not read raises no warning of its own; cw test names it", async () => {
@@ -290,11 +290,11 @@ test("warnings alone let the build through, and doctor passes once it is built (
 
 test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-144)", async () => {
   const { errorCount, warnCount, faultsByFile } = await doctorOf({
-    ...pinningDown("guide:no-any"),
+    ...pinningDown("no-any"),
     [at("guide/no-any/index.md")]: guide("no-any"),
     [at("mcp/mfbs/billing/index.md")]: primitive("mcp", "mfbs/billing", ["endpoint: https://mcp.example.com/", "auth: [oauth]", "tools: [search_code]"]),
   });
 
   assert.deepEqual([errorCount, warnCount], [0, 1]);
-  assert.match(messagesUnder(faultsByFile, ".cw/charter/mcp/mfbs/billing/index.md").join(), /warn: No primitive names "mcp:mfbs\/billing" in its body/);
+  assert.match(messagesUnder(faultsByFile, ".cw/charter/mcp/mfbs/billing/index.md").join(), /warn: No primitive names "mfbs\/billing" in its body/);
 });

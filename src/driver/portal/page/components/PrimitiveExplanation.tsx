@@ -9,12 +9,12 @@ import { Button } from "./ui/button.js";
  * cites it or names it, the test cases naming it, and its file and layer
  * (FR-029).
  *
- * Every identity in it opens that primitive's own explanation (FR-116): which
+ * Every id in it opens that primitive's own explanation (FR-116): which
  * primitives those are is the engine's answer, so nothing here works a
  * relation out.
  */
-export function PrimitiveExplanation({ identity, onExplain }: { identity: string; onExplain: (identity: string) => void }) {
-  const { data: answered } = useExplanation(identity);
+export function PrimitiveExplanation({ id, onExplain }: { id: string; onExplain: (id: string) => void }) {
+  const { data: answered } = useExplanation(id);
 
   if (answered === undefined) return null;
   if (answered.type === "Fault")
@@ -30,12 +30,12 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
   const { kind, description, file, layerName, headers } = primitive.data;
   const linkTo = ({ data }: DataDTOs.Primitive) => (
     <Button
-      key={data.identity}
+      key={data.id}
       variant="link"
       className="h-auto rounded-none p-0 font-mono text-[11.5px] font-normal text-[#1d4ed8] underline underline-offset-2"
-      onClick={() => onExplain(data.identity)}
+      onClick={() => onExplain(data.id)}
     >
-      {data.identity}
+      {data.id}
     </Button>
   );
   // A rationale the charter holds no corpus for is still what the author
@@ -68,7 +68,7 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
       {(useMixins.length > 0 || rationale !== undefined || unresolvedRationale !== undefined) && (
         <ExplanationSection title="What it pulls in">
           {useMixins.map((one) => (
-            <div key={one.data.identity}>
+            <div key={one.data.id}>
               {linkTo(one)} <span className="text-zinc-500">lends its body</span>
             </div>
           ))}
@@ -87,21 +87,21 @@ export function PrimitiveExplanation({ identity, onExplain }: { identity: string
       {hosts.length > 0 && (
         <ExplanationSection title="Lent to">
           {hosts.map((one) => (
-            <div key={one.data.identity}>{linkTo(one)}</div>
+            <div key={one.data.id}>{linkTo(one)}</div>
           ))}
         </ExplanationSection>
       )}
       {citers.length > 0 && (
         <ExplanationSection title="Cited by">
           {citers.map((one) => (
-            <div key={one.data.identity}>{linkTo(one)}</div>
+            <div key={one.data.id}>{linkTo(one)}</div>
           ))}
         </ExplanationSection>
       )}
       {mentioners.length > 0 && (
         <ExplanationSection title="Mentioned in">
           {mentioners.map((one) => (
-            <div key={one.data.identity}>{linkTo(one)}</div>
+            <div key={one.data.id}>{linkTo(one)}</div>
           ))}
         </ExplanationSection>
       )}

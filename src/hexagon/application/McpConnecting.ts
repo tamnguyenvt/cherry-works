@@ -14,11 +14,11 @@ import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 /** How long one place has to answer when the server starts (FR-154). */
 const CONNECT_TIMEOUT_MS = 10_000;
 
-/** Where a call to one served name goes: the place, the identity declaring the
+/** Where a call to one served name goes: the place, the id declaring the
  *  tool, and the tool's name there. */
 interface ToolRoute {
   readonly origin: McpOrigin;
-  readonly identity: string;
+  readonly id: string;
   readonly upstream: string;
   readonly connection: McpServerConnection;
 }
@@ -74,11 +74,11 @@ export class McpConnecting implements ForConnectingMcps {
 
   async signInStatus(): Promise<readonly DataDTOs.SignInStatus[]> {
     return Promise.all(
-      (await this.#signInAddresses()).map(async ({ address, identities, auth }) => {
+      (await this.#signInAddresses()).map(async ({ address, ids, auth }) => {
         const credential = await readCredential(this.#secrets, address);
         return {
           type: "SignInStatus" as const,
-          data: { address, identities, auth, signedIn: credential !== undefined, ...(credential && { method: credential.method }) },
+          data: { address, ids, auth, signedIn: credential !== undefined, ...(credential && { method: credential.method }) },
         };
       }),
     );
@@ -106,8 +106,8 @@ export class McpConnecting implements ForConnectingMcps {
     if (toolRoute === undefined)
       return errorAnswerOf(unreachableTools.get(name) ?? `"${name}" is not a tool this server serves; call one it listed.`);
 
-    const { origin, identity, upstream, connection } = toolRoute;
-    const signInAgain = `${origin.address} refused your credential. Run "cw mcp auth ${identity}" at a terminal to sign in there again.`;
+    const { origin, id, upstream, connection } = toolRoute;
+    const signInAgain = `${origin.address} refused your credential. Run "cw mcp auth ${id}" at a terminal to sign in there again.`;
     // A local command was handed its token when it started; only a place at an
     // endpoint is sent one with each call, renewed first where it has expired.
     const accessTokenOf = (refused: boolean) =>
@@ -138,7 +138,7 @@ export class McpConnecting implements ForConnectingMcps {
 
   /**
    * Every place the last build listed, reached at once and once per run
-   * (FR-152). What each lists is kept where one of its identities
+   * (FR-152). What each lists is kept where one of its ids
    * declares it, renamed `<prefix>__<tool>`; a place down or not signed in to,
    * and a declared tool its place lacks, is said and left out, and the rest
    * are served (FR-153, FR-154, SC-039).
@@ -146,7 +146,7 @@ export class McpConnecting implements ForConnectingMcps {
   #serving(): Promise<McpServing> {
     this.#mcpServing ??= (async () => {
       const origins = await loadMcpOrigins(this.#repoPath, this.#fileReader);
-      const toolsByIdentity = await loadMcpTools(this.#repoPath, this.#fileReader, this.#yamlParser);
+      const toolsById = await loadMcpTools(this.#repoPath, this.#fileReader, this.#yamlParser);
 
       const problems: string[] = [];
       const servedTools: DataDTOs.ServedTool[] = [];
@@ -168,33 +168,33 @@ export class McpConnecting implements ForConnectingMcps {
 
       for (const { origin, connection, reason } of reachedPlaces) {
         if (connection !== undefined) connections.push(connection);
-        else problems.push(`${origin.identities.join(", ")}: ${reason}`);
+        else problems.push(`${origin.ids.join(", ")}: ${reason}`);
 
-        for (const identity of origin.identities) {
-          const declaredTools = toolsByIdentity.get(identity);
+        for (const id of origin.ids) {
+          const declaredTools = toolsById.get(id);
           if (declaredTools === undefined) {
-            problems.push(`${identity} has no compiled document under .cw/out/, so none of its tools is served. Run "cw build".`);
+            problems.push(`${id} has no compiled document under .cw/out/, so none of its tools is served. Run "cw build".`);
             continue;
           }
-          // The name the build served this identity under and wrote into
+          // The name the build served this id under and wrote into
           // every body naming it (FR-145); a list without one is from before.
-          const identityName = origin.names?.[identity];
-          if (identityName === undefined) {
-            problems.push(`${identity} has no served name in .cw/out/mcp-origins.json, so none of its tools is served. Run "cw build" again.`);
+          const servedPrefix = origin.names?.[id];
+          if (servedPrefix === undefined) {
+            problems.push(`${id} has no served name in .cw/out/mcp-origins.json, so none of its tools is served. Run "cw build" again.`);
             continue;
           }
           for (const tool of declaredTools) {
-            const servedName = `${identityName}__${tool}`;
+            const servedName = `${servedPrefix}__${tool}`;
             if (connection === undefined) {
               unreachableTools.set(servedName, reason ?? "");
               continue;
             }
             const upstreamTool = connection.tools.find(({ name }) => name === tool);
             if (upstreamTool === undefined) {
-              problems.push(`${identity} declares "${tool}", which ${origin.address} does not have; it is not served.`);
+              problems.push(`${id} declares "${tool}", which ${origin.address} does not have; it is not served.`);
               continue;
             }
-            const placeName = origin.path === undefined ? identity : `${identity} — ${origin.path}`;
+            const placeName = origin.path === undefined ? id : `${id} — ${origin.path}`;
             servedTools.push({
               type: "ServedTool",
               data: {
@@ -203,7 +203,7 @@ export class McpConnecting implements ForConnectingMcps {
                 inputSchema: upstreamTool.inputSchema,
               },
             });
-            toolRoutes.set(servedName, { origin, identity, upstream: tool, connection });
+            toolRoutes.set(servedName, { origin, id, upstream: tool, connection });
           }
         }
       }
@@ -227,21 +227,21 @@ export class McpConnecting implements ForConnectingMcps {
    * place there names. A local command taking no token signs in to nothing and
    * is left out.
    */
-  async #signInAddresses(): Promise<readonly Pick<McpOrigin, "address" | "endpoint" | "identities" | "auth">[]> {
+  async #signInAddresses(): Promise<readonly Pick<McpOrigin, "address" | "endpoint" | "ids" | "auth">[]> {
     const origins = await loadMcpOrigins(this.#repoPath, this.#fileReader);
-    const addresses = new Map<string, { endpoint?: string; identities: Set<string>; auth: Set<McpOrigin["auth"][number]> }>();
-    for (const { address, endpoint, identities, auth } of origins.filter((one) => one.auth.length > 0)) {
-      const signInAddress = addresses.get(address) ?? { ...(endpoint !== undefined && { endpoint }), identities: new Set(), auth: new Set() };
-      identities.forEach((identity) => signInAddress.identities.add(identity));
+    const addresses = new Map<string, { endpoint?: string; ids: Set<string>; auth: Set<McpOrigin["auth"][number]> }>();
+    for (const { address, endpoint, ids, auth } of origins.filter((one) => one.auth.length > 0)) {
+      const signInAddress = addresses.get(address) ?? { ...(endpoint !== undefined && { endpoint }), ids: new Set(), auth: new Set() };
+      ids.forEach((id) => signInAddress.ids.add(id));
       auth.forEach((method) => signInAddress.auth.add(method));
       addresses.set(address, signInAddress);
     }
     return [...addresses]
       .sort(([one], [other]) => one.localeCompare(other))
-      .map(([address, { endpoint, identities, auth }]) => ({
+      .map(([address, { endpoint, ids, auth }]) => ({
         address,
         ...(endpoint !== undefined && { endpoint }),
-        identities: [...identities].sort(),
+        ids: [...ids].sort(),
         auth: (["oauth", "token"] as const).filter((method) => auth.has(method)),
       }));
   }

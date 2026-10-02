@@ -10,7 +10,7 @@ the working tree and stop there.
 **Why:** the user stages a file once they have read it, so the index is their
 record of what is reviewed and what is not. A change staged for them erases that
 record, and an unasked commit takes the reading away altogether. Being on a
-`task/<id>-<slug>` branch is not permission ([[one-branch-per-task]]), and
+`task/<id>-<slug>` branch is not permission, and
 neither is an earlier "commit đi" in the same session — that authorised one
 commit, not the ones after it. When a commit happened unasked, the fix was
 `git reset --soft` back to the branch point.

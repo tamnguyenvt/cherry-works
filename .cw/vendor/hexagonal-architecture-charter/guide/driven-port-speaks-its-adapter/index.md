@@ -3,7 +3,7 @@ kind: guide
 id: driven-port-speaks-its-adapter
 description: Name what crosses a driven port after what its adapter deals in, never after a domain concept.
 globs: ["src/hexagon/port/zdriven/**"]
-rationale: corpus:driven-port-speaks-its-adapter
+rationale: why-driven-port-speaks-its-adapter
 ---
 
 A driven port speaks the language of the adapter behind it, not the domain's.

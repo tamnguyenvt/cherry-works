@@ -74,7 +74,7 @@ export interface ForManagingCharter {
    * and every header it declared (FR-112, FR-114). What the portal lists by;
    * `list` stays what an agent surveys by.
    *
-   * Given a word, only the primitives that mention it — in the identity, the
+   * Given a word, only the primitives that mention it — in the id, the
    * kind, the description, when the kind comes up, the file or any header
    * value, ignoring case.
    *
@@ -84,25 +84,25 @@ export interface ForManagingCharter {
   fullList(matching?: string): Promise<DataDTOs.Primitives | DataDTOs.FaultsByFile>;
 
   /**
-   * Which file declares one identity, and which layer that file arrived in
+   * Which file declares one id, and which layer that file arrived in
    * (FR-017, SC-006); the mixins it uses and the corpus it cites, and what
    * uses, cites or names it (FR-014, FR-163).
    *
    * Reads and says, as `doctor` and `list` do: there is no way through this to
    * write anything (FR-041).
    *
-   * The identity is taken as typed. Text that is not `<kind>:<id>`, and an
-   * identity this charter holds nothing of, are raised rather than given back,
+   * The id is taken as typed. Text that is not an id, `<kind>:<id>` among it, and an
+   * id this charter holds nothing of, are raised rather than given back,
    * for the reason an unknown kind is: there is no file it is wrong with, and
    * nothing to explain.
    *
    * A charter with an error explains nothing and hands the errors back, the way
    * a listing does: a charter that does not hold would answer for a primitive it
    * has not got (FR-009). The collision SC-006 asks about is among those errors,
-   * naming both files that claim the identity, so it is read where every other
+   * naming both files that claim the id, so it is read where every other
    * fault is.
    */
-  explain(identity: string): Promise<OutcomeDTOs.ExplanationOutcome | DataDTOs.FaultsByFile>;
+  explain(id: string): Promise<OutcomeDTOs.ExplanationOutcome | DataDTOs.FaultsByFile>;
 
   /**
    * Compile this repository's charter and put it on disk: the catalogues, the
@@ -204,7 +204,7 @@ export interface ForManagingCharter {
    * answers — so the asking belongs to whoever had an author to ask and the
    * checking belongs here: answers the kind refuses come back as the faults they
    * are and no file is written (FR-004). What it gives back is the primitive as
-   * `explain` would say it — its identity, the file it went into, this
+   * `explain` would say it — its id, the file it went into, this
    * repository's layer — so a caller can say it without going and looking.
    *
    * The body is what its author typed, and empty where none was: at the command
@@ -213,7 +213,7 @@ export interface ForManagingCharter {
    * Nothing is compiled: a build is the command that compiles a charter
    * (FR-020, FR-079).
    *
-   * A word that is no kind, and an identity the charter already holds in any
+   * A word that is no kind, and an id the charter already holds in any
    * layer, are raised rather than given back: neither leaves a file to report a
    * fault under, and the second names the file already holding it.
    */
@@ -231,10 +231,10 @@ export interface ForManagingCharter {
    *
    * Reads and says: there is no way through this to write anything (FR-041).
    * Asked of the files as read rather than of the validation, so a primitive
-   * opens whatever else in the charter is wrong. An identity the charter holds
+   * opens whatever else in the charter is wrong. An id the charter holds
    * nothing of is raised, as `explain` raises it.
    */
-  open(identity: string): Promise<DataDTOs.Primitive>;
+  open(id: string): Promise<DataDTOs.Primitive>;
 
   /**
    * One repository primitive's headers and body written over, its kind, id and
@@ -248,7 +248,7 @@ export interface ForManagingCharter {
    * (FR-079).
    */
   rewrite(
-    identity: string,
+    id: string,
     headers: UnparsedHeaders,
     body: string,
     openedHash: string,
@@ -261,7 +261,7 @@ export interface ForManagingCharter {
    * is the primitive that was removed. Nothing is compiled or committed
    * (FR-079).
    */
-  remove(identity: string): Promise<DataDTOs.Primitive>;
+  remove(id: string): Promise<DataDTOs.Primitive>;
 
   /**
    * What this repository configured itself with, on its own — no charter read

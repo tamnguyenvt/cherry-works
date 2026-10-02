@@ -10,12 +10,12 @@ import type { McpOrigin } from "../../models/output/common/McpOrigin.js";
  *
  * One per address and `path`: the repository and a vendor may call one place
  * by two names, and it is one place under both. What is held is where it is and
- * how it is signed in to — every way any identity there allows — the name
- * each identity is served under, and nothing an mcp's own file already says.
+ * how it is signed in to — every way any mcp there allows — the name
+ * each id is served under, and nothing an mcp's own file already says.
  */
-export function mcpOriginsOf(charter: CharterRoot, shortenMcpIdentities: ShortStrings): readonly McpOrigin[] {
+export function mcpOriginsOf(charter: CharterRoot, shortMcpIds: ShortStrings): readonly McpOrigin[] {
   const mcpsByKey = new Map<string, McpPrimitive[]>();
-  for (const primitive of [...charter.primitives].sort((one, another) => (one.identity < another.identity ? -1 : 1))) {
+  for (const primitive of [...charter.primitives].sort((one, another) => (one.headers.id < another.headers.id ? -1 : 1))) {
     if (!(primitive instanceof McpPrimitive)) continue;
     // Joined by a character neither side can hold: a path is one line, and an
     // address is an endpoint or a command line.
@@ -32,8 +32,8 @@ export function mcpOriginsOf(charter: CharterRoot, shortenMcpIdentities: ShortSt
       const auths = new Set(mcpsAtOrigin.flatMap((one) => one.headers.auth ?? []));
 
       return {
-        identities: mcpsAtOrigin.map((one) => one.identity),
-        names: Object.fromEntries(mcpsAtOrigin.map((one) => [one.identity, shortenMcpIdentities[one.identity] as string])),
+        ids: mcpsAtOrigin.map((one) => one.headers.id),
+        names: Object.fromEntries(mcpsAtOrigin.map((one) => [one.headers.id, shortMcpIds[one.headers.id] as string])),
         address: firstMcp.address,
         ...(endpoint === undefined ? {} : { endpoint }),
         ...(command === undefined ? {} : { command: { command, args, ...(tokenEnv === undefined ? {} : { tokenEnv }) } }),

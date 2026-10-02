@@ -13,7 +13,7 @@ export const BUILTIN_LAYER = "builtin";
 
 /** Whose layer a primitive came from, and there are only the three. It says
  *  where a primitive was written, never what it is called: one charter has one
- *  identity space, whichever layer a file arrived in (FR-014, FR-019). */
+ *  id space, whichever layer a file arrived in (FR-014, FR-019). */
 export type LayerName = typeof REPO_LAYER | typeof VENDOR_LAYER | typeof BUILTIN_LAYER;
 
 /** The layer a primitive was read in: whose it is, and its charter folder,

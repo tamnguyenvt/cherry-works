@@ -2,12 +2,6 @@ import { z } from "zod";
 import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
 import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
-/**
- * Where a body names a script: `script:<id>`, the id as FR-141 writes one. The
- * id is the first group.
- */
-export const SCRIPT_MENTION = /\bscript:([a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*)/g;
-
 /** Files the agent or a sensor runs, kept as real files beside the script's
  *  `index.md`: its assets (FR-165). */
 export const ScriptHeadersSchema = CommonHeadersSchema.extend({
@@ -34,7 +28,7 @@ export class ScriptPrimitive extends BasePrimitive<ScriptHeaders> {
 
   /** When a reader of this charter is to open this kind at all (FR-002). */
   static readonly activatesWhen =
-    "a primitive names it as `script:<id>`, or a sensor runs it — its assets, copied to `.cw/out/script/<id>/`, of which its `executionPath` names the one to run";
+    "a primitive names it as `[[<id>]]`, or a sensor runs it — its assets, copied to `.cw/out/script/<id>/`, of which its `executionPath` names the one to run";
 
   /** A script as an author writes one: what a refused header is fixed with. */
   static readonly sample: ScriptHeaders = {

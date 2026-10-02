@@ -14,7 +14,7 @@ import { Button } from "./ui/button.js";
  * many pass, each case marked, a failing one saying what came up instead, and
  * the first file holding a failure opened (Story 9 scenarios 1, 2, 8).
  *
- * The identity an expectation names opens that primitive; one the listing does
+ * The id an expectation names opens that primitive; one the listing does
  * not hold is marked so (scenario 5). Nothing is resolved here: a case's
  * outcome is the engine's, matched to the case by its file and its place in it.
  */
@@ -28,8 +28,8 @@ export function TestSuites() {
 
   if (testSuitesQuery.data === undefined) return null;
   const { testSuites } = testSuitesQuery.data.data;
-  const heldIdentities = new Set(
-    primitivesQuery.data?.type === "Primitives" ? primitivesQuery.data.data.primitives.map(({ data }) => data.identity) : [],
+  const heldIds = new Set(
+    primitivesQuery.data?.type === "Primitives" ? primitivesQuery.data.data.primitives.map(({ data }) => data.id) : [],
   );
   const testRunReport = testOutcomeQuery.data?.type === "TestRunReport" ? testOutcomeQuery.data : undefined;
   const reportsOf = (name: string) => testRunReport?.data.testCaseReports.filter(({ data }) => data.suiteName === name) ?? [];
@@ -119,8 +119,8 @@ export function TestSuites() {
                   key={index}
                   testCase={testCase}
                   testCaseReport={testCaseReports[index]}
-                  isHeld={testCase.identity === undefined || heldIdentities.has(testCase.identity)}
-                  onOpen={(identity) => open("primitive", { identity })}
+                  isHeld={testCase.id === undefined || heldIds.has(testCase.id)}
+                  onOpen={(id) => open("primitive", { id })}
                 />
               ))}
           </section>
@@ -141,10 +141,10 @@ function TestCaseRow({
   testCase: DataDTOs.TestCase["data"];
   testCaseReport: DataDTOs.TestCaseReport | undefined;
   isHeld: boolean;
-  onOpen: (identity: string) => void;
+  onOpen: (id: string) => void;
 }) {
   const unmet = testCaseReport?.data.unmet;
-  const { identity, expectation } = testCase;
+  const { id, expectation } = testCase;
   return (
     <div className={`grid grid-cols-[minmax(150px,1fr)_minmax(0,1.4fr)_auto] items-baseline gap-3 border-t border-[#f7f7f8] px-[15px] py-2.5 ${unmet ? "bg-[#fef6f6]" : ""}`}>
       <span className="font-mono text-[10.5px]">{testCase.situation}</span>
@@ -154,18 +154,18 @@ function TestCaseRow({
         </span>
       ) : (
         <span className="font-mono text-[10.5px] text-zinc-400">
-          {identity === undefined || !expectation.endsWith(identity) ? (
+          {id === undefined || !expectation.endsWith(id) ? (
             expectation
           ) : (
             <>
-              {expectation.slice(0, -identity.length)}
+              {expectation.slice(0, -id.length)}
               {isHeld ? (
-                <button className="cursor-pointer text-[#1d4ed8] underline underline-offset-2" onClick={() => onOpen(identity)}>
-                  {identity}
+                <button className="cursor-pointer text-[#1d4ed8] underline underline-offset-2" onClick={() => onOpen(id)}>
+                  {id}
                 </button>
               ) : (
                 <>
-                  <span className="underline decoration-dotted underline-offset-2">{identity}</span>{" "}
+                  <span className="underline decoration-dotted underline-offset-2">{id}</span>{" "}
                   <Badge className="rounded-[5px] bg-zinc-100 px-1.5 py-0 font-sans text-[10px] font-normal text-zinc-500">not in the charter</Badge>
                 </>
               )}

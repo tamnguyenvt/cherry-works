@@ -9,39 +9,39 @@ import {
   type Outcome,
 } from "./Command.js";
 
-/** What `cw explain` takes: the identity to trace, typed where it is written
+/** What `cw explain` takes: the id to trace, typed where it is written
  *  rather than offered as a flag beside itself. */
 const OPTIONS = {
-  identity: {
+  id: {
     type: "string",
-    describe: 'What the primitive is named by across the whole charter: "guide:no-any"',
+    describe: 'What the primitive is named by across the whole charter, its id: "no-any"',
   },
 } as const satisfies OptionSpec;
 
 /**
- * `cw explain`: trace one identity to the single file that declares it
+ * `cw explain`: trace one id to the single file that declares it
  * (FR-017, SC-006).
  *
  * One command and one answer: what the primitive is for, the file it was
  * authored in, which layer that file arrived in, when it comes up, the mixins
  * it uses and the corpus it cites, what uses, cites or names it, and the
- * situations this repository wrote down about it (FR-014, FR-163). The identity
+ * situations this repository wrote down about it (FR-014, FR-163). The id
  * is passed on as it was typed — which names this charter answers to is the charter's
  * business, and one it does not comes back as a fault the command line reports
  * the way it reports any other.
  *
  * A charter with an error explains nothing, and what is wrong is not repeated
  * here: `cw doctor` is the command that says it under each file, and the
- * collision that makes two files claim one identity is said there naming both
+ * collision that makes two files claim one id is said there naming both
  * (SC-006).
  */
 export class ExplainCommand implements Command<typeof OPTIONS> {
-  readonly name = "explain <identity>";
-  readonly summary = "Say which file declares an identity, and which layer it came from";
+  readonly name = "explain <id>";
+  readonly summary = "Say which file declares an id, and which layer it came from";
   readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { identity }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const explanationOutcomeDTO = await charterAuthoringApp.explain(identity ?? "");
+  async run({ charterAuthoringApp }: Context, { id }: Options<typeof OPTIONS>): Promise<Outcome> {
+    const explanationOutcomeDTO = await charterAuthoringApp.explain(id ?? "");
 
     if (explanationOutcomeDTO.type === "FaultsByFile") {
       const noOfFiles = Object.keys(explanationOutcomeDTO.data.files).length;
@@ -64,20 +64,20 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
     return {
       code: EXIT_OK,
       result: [
-        `${primitive.data.identity}  ${primitive.data.description}`,
+        `${primitive.data.id}  ${primitive.data.description}`,
         `  ${primitive.data.file}`,
         `  ${layer(primitive.data.layerName)}`,
         `  comes up when ${activatesWhen}`,
         ...declaredHeaders.map(([name, value]) => `  declares ${name}: ${typeof value === "string" ? value : value.join(", ")}`),
-        ...useMixins.map(({ data }) => `  uses mixin ${data.identity}`),
+        ...useMixins.map(({ data }) => `  uses mixin ${data.id}`),
         ...(rationale !== undefined
-          ? [`  rationale ${rationale.data.identity}`]
+          ? [`  rationale ${rationale.data.id}`]
           : citedRationale !== undefined
             ? [`  rationale ${String(citedRationale)} (does not resolve)`]
             : []),
-        ...hosts.map(({ data }) => `  mixin of ${data.identity}`),
-        ...citers.map(({ data }) => `  rationale of ${data.identity}`),
-        ...mentioners.map(({ data }) => `  mentioned in ${data.identity}`),
+        ...hosts.map(({ data }) => `  mixin of ${data.id}`),
+        ...citers.map(({ data }) => `  rationale of ${data.id}`),
+        ...mentioners.map(({ data }) => `  mentioned in ${data.id}`),
         ...Object.entries(testCasesByFile.data).flatMap(([file, situations]) =>
           situations.map((situation) => `  pinned down by ${file}: ${situation}`),
         ),

@@ -14,7 +14,7 @@ const guide = (id: string, headers: readonly string[] = []) => primitive("guide"
 /** One guide, and the case naming it. */
 const holding = (extra: Record<string, string> = {}) => ({
   [at(".cw/charter/guide/no-any/index.md")]: guide("no-any"),
-  [at(".cw/test/no-any.json")]: JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
+  [at(".cw/test/no-any.json")]: JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
   ...extra,
 });
 
@@ -70,7 +70,7 @@ test("Doctor shows the four answers and every warning, and builds when the outpu
     assert.match(answers, /Charter\s+holds, with 1 warning\./i);
     assert.match(answers, /Vendors\s+none edited here\./i);
     assert.match(answers, /Built\s+\d+ files out of date\./i);
-    assert.match(await page.getByRole("table", { name: "Faults" }).innerText(), /\.cw\/charter\/corpus\/why\/index\.md[\s\S]*warn[\s\S]*No primitive cites "corpus:why"/);
+    assert.match(await page.getByRole("table", { name: "Faults" }).innerText(), /\.cw\/charter\/corpus\/why\/index\.md[\s\S]*warn[\s\S]*No primitive cites "why"/);
 
     await page.getByRole("dialog").getByRole("button", { name: "Build", exact: true }).click();
     await page.getByRole("table", { name: "Build written" }).waitFor();

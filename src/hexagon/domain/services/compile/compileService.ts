@@ -41,14 +41,14 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
   // short whatever the id's length, and the same on every build whatever other
   // mcps come and go (FR-145). Written into `mcp-origins.json` beside each
   // place, so the server, which reads no charter, serves under these.
-  const shortenMcpIdentities = shortenStringsOf(
-    charter.primitives.filter((primitive) => primitive.kind === McpPrimitive.kind).map((one) => one.identity),
+  const shortMcpIds = shortenStringsOf(
+    charter.primitives.filter((primitive) => primitive.kind === McpPrimitive.kind).map((one) => one.headers.id),
   );
-  // In the order identities sort in, as the catalogue lists them, so the same
+  // In the order ids sort in, as the catalogue lists them, so the same
   // charter is put down in the same order however its files were read (SC-007).
   const compiledPrimitiveByPrimitive = new Map(
     [...charter.primitives]
-      .sort((one, another) => (one.identity < another.identity ? -1 : one.identity > another.identity ? 1 : 0))
+      .sort((one, another) => (one.headers.id < another.headers.id ? -1 : one.headers.id > another.headers.id ? 1 : 0))
       .map((primitive) => [primitive, compiledPrimitiveOf(charter, primitive)] as const),
   );
   return new CharterOutput(
@@ -59,8 +59,8 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
     catalogueOf(charter, (one) => compiledPrimitiveByPrimitive.get(one)!.projections[0]!.file),
     charterMdOf(PRIMITIVE_CLASSES),
     [...compiledPrimitiveByPrimitive.values()],
-    new McpOrigins(mcpOriginsOf(charter, shortenMcpIdentities)),
-    agents.flatMap((agent) => providerComponentsOf(agent, charter, compiledPrimitiveByPrimitive, shortenMcpIdentities)),
+    new McpOrigins(mcpOriginsOf(charter, shortMcpIds)),
+    agents.flatMap((agent) => providerComponentsOf(agent, charter, compiledPrimitiveByPrimitive, shortMcpIds)),
   );
 }
 
@@ -71,10 +71,10 @@ function providerComponentsOf(
   agent: AgentProvider,
   charter: CharterRoot,
   compiledPrimitiveByPrimitive: ReadonlyMap<Primitive, CompiledPrimitive>,
-  shortenMcpIdentities: ShortStrings,
+  shortMcpIds: ShortStrings,
 ): readonly ProviderComponent[] {
   switch (agent) {
     case "claude":
-      return claudeComponentsOf(charter, compiledPrimitiveByPrimitive, shortenMcpIdentities);
+      return claudeComponentsOf(charter, compiledPrimitiveByPrimitive, shortMcpIds);
   }
 }

@@ -50,7 +50,7 @@ const PrimitiveKindsSchema = dto("PrimitiveKinds", z.record(z.string(), z.string
 const CatalogueEntrySchema = dto(
   "CatalogueEntry",
   z.object({
-    identity: z.string(),
+    id: z.string(),
     kind: z.string(),
     description: z.string(),
     file: z.string(),
@@ -58,7 +58,7 @@ const CatalogueEntrySchema = dto(
   }),
 );
 
-/** What the charter holds, ordered by identity. */
+/** What the charter holds, ordered by id. */
 const CatalogueSchema = dto(
   "Catalogue",
   z.object({
@@ -73,7 +73,7 @@ const CatalogueSchema = dto(
 const PrimitiveSchema = dto(
   "Primitive",
   z.object({
-    identity: z.string(),
+    id: z.string(),
     kind: z.string(),
     description: z.string(),
     file: z.string(),
@@ -85,7 +85,7 @@ const PrimitiveSchema = dto(
 );
 
 /** Every primitive the charter holds, each as the whole charter sees it,
- *  ordered by identity. What the portal lists by, since it names the layer and
+ *  ordered by id. What the portal lists by, since it names the layer and
  *  every header where the CatalogueSchema names neither. */
 const PrimitivesSchema = dto(
   "Primitives",
@@ -158,13 +158,13 @@ const TestRunReportSchema = dto(
 
 /** One situation a test pins down, said rather than handed over as written:
  *  the file it touches or the event it raises, what it expects of it, and the
- *  identity it names where it names one. */
+ *  id it names where it names one. */
 const TestCaseSchema = dto(
   "TestCase",
   z.object({
     situation: z.string(),
     expectation: z.string(),
-    identity: z.string().optional(),
+    id: z.string().optional(),
   }),
 );
 
@@ -197,7 +197,7 @@ const SignInStatusSchema = dto(
   "SignInStatus",
   z.object({
     address: z.string(),
-    identities: StringsSchema,
+    ids: StringsSchema,
     auth: z.array(z.enum(["oauth", "token"])).readonly(),
     signedIn: z.boolean(),
     method: z.enum(["oauth", "token"]).optional(),
@@ -205,7 +205,7 @@ const SignInStatusSchema = dto(
 );
 
 /** One tool `cw mcp serve` shows the agent: named `<prefix>__<tool>` after the
- *  identity declaring it, its description led by that identity and its path,
+ *  id declaring it, its description led by that id and its path,
  *  its input schema the place's own (FR-153). */
 const ServedToolSchema = dto(
   "ServedTool",

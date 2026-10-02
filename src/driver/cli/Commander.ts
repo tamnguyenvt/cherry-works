@@ -69,7 +69,7 @@ export class Commander {
     // subcommand, and yargs only knows one word: what follows it is read as
     // positional arguments. So the ones sharing a first word are registered
     // under it as a group of their own. What a command takes is not part of
-    // that name: `explain <identity>` is one word and an argument, and is
+    // that name: `explain <id>` is one word and an argument, and is
     // declared whole.
     const groups = new Map<string, AnyCommand[]>();
     for (const command of this.#commands) {
@@ -122,7 +122,7 @@ export class Commander {
 }
 
 /** The words one command is typed by, without the arguments it takes: the name
- *  says where the command sits, and `<identity>` is not a place. */
+ *  says where the command sits, and `<id>` is not a place. */
 function wordsOf(name: string): readonly string[] {
   return name.split(" ").filter((word) => !word.startsWith("<") && !word.startsWith("["));
 }

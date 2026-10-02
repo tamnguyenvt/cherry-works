@@ -29,24 +29,24 @@ type DialogHelpers = {
  * also closes on a click outside it and on Escape.
  */
 const DIALOGS = {
-  /** What the engine says of one primitive; every identity in it opens its
+  /** What the engine says of one primitive; every id in it opens its
    *  own, in the same dialog (FR-116). */
   explanation: {
     title: () => "Explain",
-    context: ({ identity }: { identity: string }) => identity,
+    context: ({ id }: { id: string }) => id,
     holdsDraft: false,
-    render: ({ identity }: { identity: string }, { open }: DialogHelpers) => (
-      <PrimitiveExplanation key={identity} identity={identity} onExplain={(next) => open("explanation", { identity: next })} />
+    render: ({ id }: { id: string }, { open }: DialogHelpers) => (
+      <PrimitiveExplanation key={id} id={id} onExplain={(next) => open("explanation", { id: next })} />
     ),
   },
   /** One primitive opened in the form, or read-only where this repository did
    *  not author it (FR-075, FR-077). */
   primitive: {
-    title: ({ identity }: { identity: string }) => identity,
+    title: ({ id }: { id: string }) => id,
     context: () => "",
     holdsDraft: true,
-    render: ({ identity }: { identity: string }, { close }: DialogHelpers) => (
-      <PrimitiveForm key={identity} identity={identity} onDone={toastWritten(close)} onClose={close} />
+    render: ({ id }: { id: string }, { close }: DialogHelpers) => (
+      <PrimitiveForm key={id} id={id} onDone={toastWritten(close)} onClose={close} />
     ),
   },
   /** A new primitive, starting as the kind the listing was showing (FR-117). */

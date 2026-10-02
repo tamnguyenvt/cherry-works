@@ -91,7 +91,7 @@ test("creating a script writes its index.md in the folders its id names, and an 
   });
 });
 
-test("answers the kind refuses, and an identity already claimed, are shown in the engine's words and nothing is written", async () => {
+test("answers the kind refuses, and an id already claimed, are shown in the engine's words and nothing is written", async () => {
   await inTheBrowser({ [at(".cw/charter/guide/no-any/index.md")]: guide("no-any") }, async (page, files) => {
     await startingNew(page, "guide");
     await page.getByRole("dialog").getByLabel("id", { exact: true }).fill("Not A Slug");
@@ -111,7 +111,7 @@ test("answers the kind refuses, and an identity already claimed, are shown in th
   });
 });
 
-test("an existing primitive opens locked to its identity, saves over its file and deletes it (Story 6 scenarios 4 – 6)", async () => {
+test("an existing primitive opens locked to its id, saves over its file and deletes it (Story 6 scenarios 4 – 6)", async () => {
   await inTheBrowser({ [at(".cw/charter/guide/no-any/index.md")]: guide("no-any") }, async (page, files) => {
     await opening(page, "no-any");
     await page.getByRole("dialog").getByLabel("description", { exact: true }).waitFor();
@@ -174,7 +174,7 @@ test("a vendored primitive opens read-only, saying how to differ from it (Story 
     const note = page.getByRole("dialog").getByRole("alert");
     await note.waitFor();
 
-    assert.match(await note.innerText(), /author a primitive of your own under an identity of its own/);
+    assert.match(await note.innerText(), /author a primitive of your own under an id of its own/);
     assert.match(await page.getByRole("dialog").innerText(), /\.cw\/vendor\/team\/guide\/theirs\/index\.md/);
     assert.equal(await page.getByRole("button", { name: "Save" }).count(), 0);
     assert.equal(await page.getByRole("button", { name: "Delete" }).count(), 0);

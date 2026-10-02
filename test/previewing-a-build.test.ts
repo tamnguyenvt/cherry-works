@@ -74,8 +74,8 @@ test("a repository that has never been built would have every file created (FR-0
     ".cw/out/guide/no-any/index.md": "create",
     "CLAUDE.md": "create",
     ".mcp.json": "create",
-    ".claude/rules/guide-no-any.md": "create",
-    ".claude/skills/skill-cw-author/SKILL.md": "create",
+    ".claude/rules/no-any.md": "create",
+    ".claude/skills/cw-author/SKILL.md": "create",
   });
   // The whole of what a preview promises: it said all that, and wrote none of it.
   assert.deepEqual(await everything(held), before);
@@ -115,8 +115,8 @@ test("a rule edited since the last build would be updated, and its listings with
     ".mcp.json": "unchanged",
     // The rule points to the compiled document, so it says the same whatever
     // the body holds.
-    ".claude/rules/guide-no-any.md": "unchanged",
-    ".claude/skills/skill-cw-author/SKILL.md": "unchanged",
+    ".claude/rules/no-any.md": "unchanged",
+    ".claude/skills/cw-author/SKILL.md": "unchanged",
   });
 });
 
@@ -131,9 +131,9 @@ test("a projection whose primitive is gone would be deleted, and is not (FR-020,
 
   const previewed = planOf(await preview());
 
-  assert.equal(changed(previewed ?? nothing)[".claude/agents/agent-ship.md"], "delete");
+  assert.equal(changed(previewed ?? nothing)[".claude/agents/ship.md"], "delete");
   // Said, and still there: nothing is taken away until a build takes it.
-  assert.ok(await held.read(new URL(".claude/agents/agent-ship.md", repo)));
+  assert.ok(await held.read(new URL(".claude/agents/ship.md", repo)));
 });
 
 test("a host's settings file the charter has nothing more to say to is unchanged (FR-018)", async () => {

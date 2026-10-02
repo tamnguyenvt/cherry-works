@@ -10,16 +10,16 @@ const guide = (id: string) =>
 const suiteText = (written: unknown) => `${JSON.stringify(written, undefined, 2)}\n`;
 
 /** One guide; `guides.json` with a passing case, a failing one and one naming
- *  an identity the charter does not hold; and `posture.json`, all passing. */
+ *  an id the charter does not hold; and `posture.json`, all passing. */
 const withTwoFiles = () => ({
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: [] })}\n`,
   [at(".cw/charter/guide/no-any/index.md")]: guide("no-any"),
   [at(".cw/test/guides.json")]: suiteText({
     description: "The guides come up on code.",
     cases: [
-      { do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } },
-      { do: { touchFile: "docs/a.md" }, expect: { activate: "guide:no-any" } },
-      { do: { touchFile: "src/two.ts" }, expect: { activate: "guide:gone" } },
+      { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
+      { do: { touchFile: "docs/a.md" }, expect: { activate: "no-any" } },
+      { do: { touchFile: "src/two.ts" }, expect: { activate: "gone" } },
     ],
   }),
   [at(".cw/test/posture.json")]: suiteText({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { allow: true } }] }),
@@ -59,21 +59,21 @@ test("Run all tests says how many pass, marks each case, says why one failed, an
     assert.match(await guides.innerText(), /2 failing/);
     assert.equal(await guides.getByText("pass", { exact: true }).count(), 1);
     assert.equal(await guides.getByText("fail", { exact: true }).count(), 2);
-    await guides.getByText(/matches none of the globs "guide:no-any" speaks about/).waitFor();
+    await guides.getByText(/matches none of the globs "no-any" speaks about/).waitFor();
   });
 });
 
-test("an expected identity opens its primitive, and one the charter does not hold is marked (Story 9 scenario 5)", async () => {
+test("an expected id opens its primitive, and one the charter does not hold is marked (Story 9 scenario 5)", async () => {
   await inTheBrowser(withTwoFiles(), async (page) => {
     await page.getByRole("tab", { name: "Test" }).click();
     const guides = page.getByLabel("guides.json", { exact: true });
     await guides.getByRole("button", { name: /guides\.json/ }).click();
 
     await guides.getByText("not in the charter").waitFor();
-    assert.equal(await guides.getByRole("button", { name: "guide:gone" }).count(), 0);
+    assert.equal(await guides.getByRole("button", { name: "gone" }).count(), 0);
 
-    await guides.getByRole("button", { name: "guide:no-any" }).first().click();
-    await page.getByRole("dialog").getByRole("heading", { name: "guide:no-any" }).waitFor();
+    await guides.getByRole("button", { name: "no-any" }).first().click();
+    await page.getByRole("dialog").getByRole("heading", { name: "no-any" }).waitFor();
   });
 });
 

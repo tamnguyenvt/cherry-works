@@ -35,7 +35,7 @@ import {
   KINDS,
   PRIMITIVE_CLASSES,
   PrimitiveRequirements,
-  identityOf,
+  primitiveIdOf,
   primitiveOf,
   primitiveHeadersOf,
   primitiveSampleOf,
@@ -185,37 +185,37 @@ export class CharterAuthoring implements ForManagingCharter {
   }
 
   /**
-   * Which file declares one identity, which layer it arrived in, when it comes
+   * Which file declares one id, which layer it arrived in, when it comes
    * up, the mixins it uses and the corpus it cites, what uses, cites or names
    * it, and the situations this repository wrote down about it (FR-014, FR-017,
    * FR-163).
    *
-   * The charter is asked, not searched here: one identity space covers every
+   * The charter is asked, not searched here: one id space covers every
    * layer, and which file answers to a name, and which names one primitive
    * shares with another, are the charter's own questions (FR-014). What is here
    * is the order — read, refuse a charter that does not hold, then ask.
    *
-   * An identity nothing answers to is raised rather than reported, the way a
+   * An id nothing answers to is raised rather than reported, the way a
    * word that is no kind is: there is no file it is wrong with, and the next
    * move is to go and look at what the charter does hold.
    *
    * Reads and says: this holds a writing port and never reaches for it (FR-041).
    */
-  async explain(identity: string): Promise<OutcomeDTOs.ExplanationOutcome | DataDTOs.FaultsByFile> {
-    // Held to the shape an identity is written in before anything is read: text
+  async explain(id: string): Promise<OutcomeDTOs.ExplanationOutcome | DataDTOs.FaultsByFile> {
+    // Held to the shape an id is written in before anything is read: text
     // that is not one names nothing to look for (FR-014).
-    const primitiveIdentity = identityOf(identity);
+    const primitiveId = primitiveIdOf(id);
     const [charter, , faultsByFiles] = await this.#read();
     if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
 
-    const declared = charter.primitiveById.get(primitiveIdentity);
+    const declared = charter.primitiveById.get(primitiveId);
     if (declared === undefined)
       throw new DomainFault(
-        `This charter holds no "${identity}".`,
-        'Run "cw list --min" to see every identity it does hold.',
+        `This charter holds no "${id}".`,
+        'Run "cw list --min" to see every id it does hold.',
       );
 
-    // The cases are read once the identity is known: an identity the charter
+    // The cases are read once the id is known: an id the charter
     // holds nothing of has nothing to name, and a test file that will not read
     // names nothing either — there are no cases in it to match, and `cw test` is
     // the command that refuses it (plan §3.3).
@@ -231,7 +231,7 @@ export class CharterAuthoring implements ForManagingCharter {
       Object.entries(testRoot.suitesByFile)
         .map(([file, suite]) => [
           file,
-          suite.cases.filter((each) => each.activatedIdentity === primitiveIdentity).map((each) => each.describe()),
+          suite.cases.filter((each) => each.activatedId === primitiveId).map((each) => each.describe()),
         ] as const)
         .filter(([, situations]) => situations.length > 0),
     );
@@ -359,15 +359,15 @@ export class CharterAuthoring implements ForManagingCharter {
    * in an editor afterwards (FR-117).
    *
    * Nothing is validated and nothing is asked of the charter but which
-   * identities it already holds. What arrives is what an author answered, and
+   * ids it already holds. What arrives is what an author answered, and
    * reading it as the primitive it claims to be is what refuses an answer its
    * kind will not take — the same reading a file of it would get, so there is no
    * second contract here to keep in step with the kind's (FR-004). Where it goes
    * is the convention: a directory per kind, since nothing reads the directory
    * (FR-002).
    *
-   * An identity the charter already holds, in any layer, is refused naming the
-   * file holding it: one identity names one primitive in the whole charter, and
+   * An id the charter already holds, in any layer, is refused naming the
+   * file holding it: one id names one primitive in the whole charter, and
    * a second file claiming it is a collision the next read would report
    * (FR-014). The files are read without being validated, so a charter wrong
    * somewhere else can still be added to.
@@ -391,10 +391,10 @@ export class CharterAuthoring implements ForManagingCharter {
     }
 
     const charter = await loadCharterRoot(this.#repoPath, this.#fileReader, this.#yamlParser);
-    const claimingPrimitive = charter.primitiveById.get(identityOf({ kind, id }));
+    const claimingPrimitive = charter.primitiveById.get(id);
     if (claimingPrimitive !== undefined)
       throw new DomainFault(
-        `"${identityOf({ kind, id })}" is already there, declared by ${claimingPrimitive.file}, and one identity names one primitive in the whole charter.`,
+        `"${id}" is already there, declared by ${claimingPrimitive.file}, and one id names one primitive in the whole charter.`,
         `Open ${claimingPrimitive.file}, or run this again with an id this charter has not got.`,
       );
 
@@ -410,8 +410,8 @@ export class CharterAuthoring implements ForManagingCharter {
    * needs to open it. A save made over its hash is checked against the
    * primitive read again then.
    */
-  async open(identity: string): Promise<DataDTOs.Primitive> {
-    return primitiveDTO(await this.#primitiveByIdentity(identity));
+  async open(id: string): Promise<DataDTOs.Primitive> {
+    return primitiveDTO(await this.#primitiveById(id));
   }
 
   /**
@@ -424,21 +424,21 @@ export class CharterAuthoring implements ForManagingCharter {
    * this one (FR-078). Answers the kind will not take come back as the faults
    * `add` gives for them, since both read answers the one way.
    *
-   * Kind and id are the identity's, never the headers': an edit cannot move a
+   * Kind and id are the id's, never the headers': an edit cannot move a
    * file, and a rename is a new primitive and a deletion. Nothing is compiled
    * and nothing committed (FR-079).
    */
   async rewrite(
-    identity: string,
+    id: string,
     headers: UnparsedHeaders,
     body: string,
     openedHash: string,
   ): Promise<DataDTOs.Primitive | DataDTOs.Faults> {
-    const authoredPrimitive = await this.#primitiveByIdentity(identity);
+    const authoredPrimitive = await this.#primitiveById(id);
     if (!RepoLayerPrimitive.isSatisfiedBy(authoredPrimitive))
       throw new DomainFault(
-        `${identity} was not authored in this repository, and ${authoredPrimitive.file} is read-only here.`,
-        `To differ from it, author a primitive of your own under an identity of its own.`,
+        `${id} was not authored in this repository, and ${authoredPrimitive.file} is read-only here.`,
+        `To differ from it, author a primitive of your own under an id of its own.`,
       );
     // Read again now and hashed the way `open` hashed it: the two differ only
     // if the file changed since (FR-078).
@@ -448,7 +448,7 @@ export class CharterAuthoring implements ForManagingCharter {
         `Open it again to see what changed, then make your edit there.`,
       );
 
-    // Kind and id are the identity's, whatever the headers say.
+    // Kind and id are the id's, whatever the headers say.
     let primitive: Primitive;
     try {
       primitive = primitiveOf({
@@ -473,12 +473,12 @@ export class CharterAuthoring implements ForManagingCharter {
    * each as dangling, and what to do about them is its author's call. Nothing is
    * compiled and nothing committed (FR-079).
    */
-  async remove(identity: string): Promise<DataDTOs.Primitive> {
-    const primitive = await this.#primitiveByIdentity(identity);
+  async remove(id: string): Promise<DataDTOs.Primitive> {
+    const primitive = await this.#primitiveById(id);
     if (!RepoLayerPrimitive.isSatisfiedBy(primitive))
       throw new DomainFault(
-        `${identity} was not authored in this repository, and ${primitive.file} is read-only here.`,
-        `To differ from it, author a primitive of your own under an identity of its own.`,
+        `${id} was not authored in this repository, and ${primitive.file} is read-only here.`,
+        `To differ from it, author a primitive of your own under an id of its own.`,
       );
     const file = new URL(primitive.file, this.#repoPath);
     await this.#fileWriter.delete(file);
@@ -487,17 +487,17 @@ export class CharterAuthoring implements ForManagingCharter {
     return primitiveDTO(primitive);
   }
 
-  /** The primitive one identity names, off the files as read and not the
+  /** The primitive one id names, off the files as read and not the
    *  validation. Raised when the charter holds nothing of it, the way `explain`
    *  raises it: there is no file it is wrong with. */
-  async #primitiveByIdentity(identity: string): Promise<Primitive> {
-    const primitiveIdentity = identityOf(identity);
+  async #primitiveById(id: string): Promise<Primitive> {
+    const primitiveId = primitiveIdOf(id);
     const charter = await loadCharterRoot(this.#repoPath, this.#fileReader, this.#yamlParser);
-    const primitive = charter.primitiveById.get(primitiveIdentity);
+    const primitive = charter.primitiveById.get(primitiveId);
     if (primitive === undefined)
       throw new DomainFault(
-        `This charter holds no "${identity}".`,
-        'Run "cw list --min" to see every identity it does hold.',
+        `This charter holds no "${id}".`,
+        'Run "cw list --min" to see every id it does hold.',
       );
     return primitive;
   }

@@ -83,7 +83,7 @@ const charter = {
   [new URL("corpus/type-safety/index.md", root).href]: primitive("corpus", "type-safety"),
 };
 
-test("every primitive is listed, ordered by identity, with what it is for", async () => {
+test("every primitive is listed, ordered by id, with what it is for", async () => {
   const { code, results } = await run(charter);
 
   assert.equal(code, EXIT_OK);
@@ -92,10 +92,10 @@ test("every primitive is listed, ordered by identity, with what it is for", asyn
       .split("\n")
       .filter((line) => !line.startsWith(" ") && line !== ""),
     [
-      "corpus:type-safety  What type-safety is for.",
-      "guide:no-any  What no-any is for.",
-      `skill:cw-author  ${new CwAuthorSkill().headers.description}`,
-      "skill:writing-tests  What writing-tests is for.",
+      `cw-author  ${new CwAuthorSkill().headers.description}`,
+      "no-any  What no-any is for.",
+      "type-safety  What type-safety is for.",
+      "writing-tests  What writing-tests is for.",
     ],
   );
 });
@@ -124,10 +124,10 @@ test("--min says what an agent surveys by, and nothing else", async () => {
 
   assert.equal(code, EXIT_OK);
   assert.deepEqual(results, [
-    "corpus:type-safety  What type-safety is for.",
-    "guide:no-any  What no-any is for.",
-    `skill:cw-author  ${new CwAuthorSkill().headers.description}`,
-    "skill:writing-tests  What writing-tests is for.",
+    `cw-author  ${new CwAuthorSkill().headers.description}`,
+    "no-any  What no-any is for.",
+    "type-safety  What type-safety is for.",
+    "writing-tests  What writing-tests is for.",
     "",
   ].join("\n"));
 });
@@ -142,7 +142,7 @@ test("--kind narrows the listing to that kind", async () => {
   const { code, results } = await run(charter, ["list", "--kind", "guide", "--min"]);
 
   assert.equal(code, EXIT_OK);
-  assert.deepEqual(results, "guide:no-any  What no-any is for.\n");
+  assert.deepEqual(results, "no-any  What no-any is for.\n");
 });
 
 test("a kind the charter holds nothing of lists nothing, and says so", async () => {
@@ -175,7 +175,7 @@ test("a repository that authored nothing is listed what the engine brings (FR-01
   const { code, results } = await run({}, ["list", "--min"]);
 
   assert.equal(code, EXIT_OK);
-  assert.equal(results, `skill:cw-author  ${new CwAuthorSkill().headers.description}\n`);
+  assert.equal(results, `cw-author  ${new CwAuthorSkill().headers.description}\n`);
 });
 
 test("cw kinds says every kind and when each comes up, in a repository that authored none of them", async () => {

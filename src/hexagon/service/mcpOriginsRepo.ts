@@ -31,7 +31,7 @@ export async function loadMcpOrigins(repo: URL, fileReader: ForReadingFiles): Pr
 }
 
 /**
- * The tools each mcp the last build compiled declares, under its identity: read
+ * The tools each mcp the last build compiled declares, under its id: read
  * from its compiled document, found through `.cw/out/catalog.json`, since the
  * list of places holds where a place is and nothing an mcp's own file says
  * (FR-145). The server reads these and no charter.
@@ -45,7 +45,7 @@ export async function loadMcpTools(
   yamlParser: ForParsingYaml,
 ): Promise<ReadonlyMap<string, readonly string[]>> {
   const contents = await fileReader.readIfThere(new URL("catalog.json", outFolderIn(repo)));
-  let catalogEntries: readonly { identity?: unknown; kind?: unknown; file?: unknown }[] = [];
+  let catalogEntries: readonly { id?: unknown; kind?: unknown; file?: unknown }[] = [];
   try {
     const catalogJson: unknown = JSON.parse(contents ?? "[]");
     if (Array.isArray(catalogJson)) catalogEntries = catalogJson;
@@ -53,17 +53,17 @@ export async function loadMcpTools(
     // No mcp is read from a catalogue that does not read; each is said missing.
   }
 
-  const toolsByIdentity = new Map<string, readonly string[]>();
-  for (const { identity, kind, file } of catalogEntries) {
-    if (kind !== McpPrimitive.kind || typeof identity !== "string" || typeof file !== "string") continue;
+  const toolsById = new Map<string, readonly string[]>();
+  for (const { id, kind, file } of catalogEntries) {
+    if (kind !== McpPrimitive.kind || typeof id !== "string" || typeof file !== "string") continue;
     const compiledDocument = await fileReader.readIfThere(new URL(file, repo));
     if (compiledDocument === undefined) continue;
     try {
       const primitive = primitiveOf(compiledDocument, yamlParser);
-      if (primitive instanceof McpPrimitive) toolsByIdentity.set(identity, primitive.headers.tools);
+      if (primitive instanceof McpPrimitive) toolsById.set(id, primitive.headers.tools);
     } catch {
       // Said by the caller, as a missing one is.
     }
   }
-  return toolsByIdentity;
+  return toolsById;
 }

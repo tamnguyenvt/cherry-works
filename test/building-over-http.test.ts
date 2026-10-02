@@ -25,7 +25,7 @@ const guide = (id: string, headers: readonly string[] = []) => primitive("guide"
 const holding = (extra: Readonly<Record<string, string>> = {}) => ({
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
   [at(".cw/charter/guide/no-any/index.md")]: guide("no-any"),
-  [at(".cw/test/no-any.json")]: JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
+  [at(".cw/test/no-any.json")]: JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
   ...extra,
 });
 

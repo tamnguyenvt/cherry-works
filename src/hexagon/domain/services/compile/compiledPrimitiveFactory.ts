@@ -1,12 +1,10 @@
 import type { CharterRoot } from "../../models/charter/CharterRoot.js";
-import { MCP_MENTION } from "../../models/charter/primitive/McpPrimitive.js";
 import { MixinPrimitive } from "../../models/charter/primitive/MixinPrimitive.js";
 import type { Primitive } from "../../models/charter/primitive/Primitive.js";
-import { SCRIPT_MENTION, ScriptPrimitive } from "../../models/charter/primitive/ScriptPrimitive.js";
-import { TEMPLATE_MENTION } from "../../models/charter/primitive/TemplatePrimitive.js";
+import { ScriptPrimitive } from "../../models/charter/primitive/ScriptPrimitive.js";
 import { CompiledPrimitive } from "../../models/output/common/CompiledPrimitive.js";
 import { stamp } from "../../models/output/StampedDocument.js";
-import { BasePrimitive } from "../../models/charter/primitive/BasePrimitive.js";
+import { BasePrimitive, REFERENCE } from "../../models/charter/primitive/BasePrimitive.js";
 
 /** What a body is read through to find the names in it: a fenced block, a link
  *  and a code span are each taken whole, so a name inside one is seen as part
@@ -16,15 +14,13 @@ const PRIMITIVES_MENTION = new RegExp(
     /^ {0,3}(`{3,}|~{3,})[\s\S]*?(?:^ {0,3}\1[^\n]*$|(?![\s\S]))/.source,
     /\[[^\]\n]*\]\([^)\n]*\)/.source,
     /`[^`\n]*`/.source,
-    MCP_MENTION.source,
-    SCRIPT_MENTION.source,
-    TEMPLATE_MENTION.source,
+    REFERENCE.source,
   ].join("|"),
   "gm",
 );
 
 /** A code span holding one name and nothing else. */
-const PRIMITIVES_EXACT_MENTION = new RegExp(`^\`(?:${MCP_MENTION.source}|${SCRIPT_MENTION.source}|${TEMPLATE_MENTION.source})\`$`);
+const PRIMITIVES_EXACT_MENTION = new RegExp(`^\`${REFERENCE.source}\`$`);
 
 /**
  * One primitive as an agent opens it, in the output folder whichever layer
@@ -39,8 +35,8 @@ const PRIMITIVES_EXACT_MENTION = new RegExp(`^\`(?:${MCP_MENTION.source}|${SCRIP
  * `index.md`; of a script's, the one it runs alone is run by its path (FR-160,
  * FR-166, FR-168).
  *
- * Each place, script and template a body names is written as a link: the
- * identity as its text, and the file the catalogue names for it as its target,
+ * Each primitive a body names as `[[<id>]]`, of any kind, is written as a
+ * link: the id as its text, and the file the catalogue names for it as its target,
  * from this document. A name the charter does not hold is left as
  * written: the charter has refused it, and a build never reaches here with one
  * (FR-147, FR-162).
@@ -54,13 +50,16 @@ export function compiledPrimitiveOf(charter: CharterRoot, primitive: Primitive):
     idReplacer: (body) =>
       body.replace(PRIMITIVES_MENTION, (found) => {
         const exactFound = PRIMITIVES_EXACT_MENTION.test(found);
-        if (!exactFound && /^[\s`~[]/.test(found)) return found;
-        const mentioned = charter.primitiveById.get(exactFound ? found.slice(1, -1) : found);
+        const isReference = /^\[\[[^\]]*\]\]$/.test(found);
+        if (!exactFound && !isReference) return found;
+        const referencedId = (exactFound ? found.slice(1, -1) : found).slice(2, -2);
+        const referencedPrimitive = charter.primitiveById.get(referencedId);
         // Up from this document's folder to the output folder, a step per
-        // segment of its path, then down to the one it names.
-        return mentioned === undefined
+        // segment of its path, then down to the one it names. The id is the
+        // text, in a code span where the author wrote one.
+        return referencedPrimitive === undefined
           ? found
-          : `[${found}](${"../".repeat(primitive.primitiveFolder.split("/").length)}${mentioned.primitiveFolder}/${mentioned.index})`;
+          : `[${exactFound ? `\`${referencedId}\`` : referencedId}](${"../".repeat(primitive.primitiveFolder.split("/").length)}${referencedPrimitive.primitiveFolder}/${referencedPrimitive.index})`;
       }),
   });
   return new CompiledPrimitive(

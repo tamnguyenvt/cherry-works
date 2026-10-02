@@ -30,13 +30,13 @@ test("a touched file is read with the primitive it is expected to bring up", () 
   const suite = read(
     file({
       description: "Type guides must come up when application code is touched.",
-      cases: [{ do: { touchFile: "src/services/user.ts" }, expect: { activate: "guide:no-any" } }],
+      cases: [{ do: { touchFile: "src/services/user.ts" }, expect: { activate: "no-any" } }],
     }),
   );
 
   assert.equal(suite.description, "Type guides must come up when application code is touched.");
   assert.deepEqual(written(suite), [
-    { do: { touchFile: "src/services/user.ts" }, expect: { activate: "guide:no-any" } },
+    { do: { touchFile: "src/services/user.ts" }, expect: { activate: "no-any" } },
   ]);
 });
 
@@ -57,17 +57,17 @@ test("a touched file is read with the permission it is expected to meet, either 
 });
 
 test("a raised event is read with the sensor it is expected to run", () => {
-  const suite = read(file({ cases: [{ when: "PreToolUse", expect: { run: "sensor:no-secrets" } }] }));
+  const suite = read(file({ cases: [{ when: "PreToolUse", expect: { run: "no-secrets" } }] }));
 
-  assert.deepEqual(written(suite), [{ when: "PreToolUse", expect: { run: "sensor:no-secrets" } }]);
+  assert.deepEqual(written(suite), [{ when: "PreToolUse", expect: { run: "no-secrets" } }]);
 });
 
 test("one file holds as many cases as it describes, in the order they are written", () => {
   const suite = read(
     file({
       cases: [
-        { do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } },
-        { when: "Stop", expect: { run: "sensor:tests" } },
+        { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
+        { when: "Stop", expect: { run: "tests" } },
       ],
     }),
   );
@@ -85,7 +85,7 @@ test("a file that is not JSON is refused, saying so", () => {
 });
 
 test("a file the shape refuses is shown a suite that reads, rather than told which field went wrong", () => {
-  const fault = refusing(file({ cases: [{ expect: { activate: "guide:no-any" } }] }));
+  const fault = refusing(file({ cases: [{ expect: { activate: "no-any" } }] }));
 
   assert.match(said(fault), /is not written as a suite of cases/);
   assert.match(said(fault), /"do": \{ "touchFile": "src\/one\.ts" \}/);
@@ -98,7 +98,7 @@ test("a file describing no case is refused, since running it would assert nothin
 });
 
 test("a case putting both a touched file and an event is refused, since a case is one situation", () => {
-  assert.ok(refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, when: "Stop", expect: { activate: "guide:no-any" } }] })) !== undefined);
+  assert.ok(refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, when: "Stop", expect: { activate: "no-any" } }] })) !== undefined);
 });
 
 test("a raised event expecting a permission is refused, since an event touches no file", () => {
@@ -106,19 +106,20 @@ test("a raised event expecting a permission is refused, since an event touches n
 });
 
 test("a case expecting both an activation and a permission is refused", () => {
-  assert.ok(refusing(file({ cases: [{ do: { touchFile: ".env" }, expect: { activate: "guide:no-any", allow: false } }] })) !== undefined);
+  assert.ok(refusing(file({ cases: [{ do: { touchFile: ".env" }, expect: { activate: "no-any", allow: false } }] })) !== undefined);
 });
 
 test("a case raising an event nothing raises is refused", () => {
-  assert.ok(refusing(file({ cases: [{ when: "OnSave", expect: { run: "sensor:tests" } }] })) !== undefined);
+  assert.ok(refusing(file({ cases: [{ when: "OnSave", expect: { run: "tests" } }] })) !== undefined);
 });
 
-test("an expectation that is not an identity is refused, since nothing answers to it", () => {
-  assert.ok(refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] })) !== undefined);
+test("an expectation that is not an id is refused, since nothing answers to it (FR-172)", () => {
+  assert.ok(refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] })) !== undefined);
+  assert.ok(refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "No Any" } }] })) !== undefined);
 });
 
 test("a field nothing reads is refused rather than passed over", () => {
   assert.ok(refusing(
-      file({ cases: [{ do: { touchFile: "src/one.ts", request: "add a field" }, expect: { activate: "guide:no-any" } }] }),
+      file({ cases: [{ do: { touchFile: "src/one.ts", request: "add a field" }, expect: { activate: "no-any" } }] }),
     ) !== undefined);
 });

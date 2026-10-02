@@ -1,7 +1,7 @@
 import { charterRootOf, type CharterRoot } from "../domain/models/charter/CharterRoot.js";
 import { REPO_LAYER } from "../domain/models/charter/PrimitiveLayer.js";
 import { BUILTIN_PRIMITIVES } from "../domain/models/charter/builtin/index.js";
-import { identityOf, KINDS, type Primitive } from "../domain/models/charter/primitive/Primitive.js";
+import { KINDS, type Primitive } from "../domain/models/charter/primitive/Primitive.js";
 import { ScriptPrimitive } from "../domain/models/charter/primitive/ScriptPrimitive.js";
 import { DomainFault } from "../domain/models/DomainFault.js";
 import { charterFolderIn, CHARTER_DIRECTORY, vendorFolderIn } from "../domain/path.js";
@@ -113,7 +113,7 @@ export async function loadCharterRoot(
  * standing there.
  *
  * What comes back is the primitive as the charter will hold it once read: its
- * identity, this repository's layer, and the file it was written into, from
+ * id, this repository's layer, and the file it was written into, from
  * the repository — so a caller can say what it wrote without going and
  * looking.
  */
@@ -128,7 +128,7 @@ export async function writeCharter(
   if ((await fileReader.readIfThere(file)) !== undefined)
     throw new DomainFault(
       `${primitive.file} is already there, and writing this one would write over what it holds.`,
-      `Open it, or run this again with an identity this charter has not got.`,
+      `Open it, or run this again with an id this charter has not got.`,
     );
 
   // Going down from a kind's folder the first index.md is the primitive, so a

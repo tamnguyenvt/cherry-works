@@ -27,28 +27,28 @@ const fullListOf = async (files: Readonly<Record<string, string>>, matching?: st
   return charterAuthoringApp.fullList(matching);
 };
 
-const identitiesIn = (answer: DataDTOs.Primitives | DataDTOs.FaultsByFile) => {
+const idsIn = (answer: DataDTOs.Primitives | DataDTOs.FaultsByFile) => {
   assert.equal(answer.type, "Primitives");
-  return DataDTOs.Primitives.parse(answer).data.primitives.map(({ data }) => data.identity);
+  return DataDTOs.Primitives.parse(answer).data.primitives.map(({ data }) => data.id);
 };
 
-test("every primitive of every layer is listed by identity, each under the layer it arrived in (FR-112)", async () => {
+test("every primitive of every layer is listed by id, each under the layer it arrived in (FR-112)", async () => {
   const answer = DataDTOs.Primitives.parse(await fullListOf(charter));
 
   assert.deepEqual(
-    answer.data.primitives.map(({ data: { identity, layerName } }) => [identity, layerName]),
+    answer.data.primitives.map(({ data: { id, layerName } }) => [id, layerName]),
     [
-      ["guide:no-any", "repo"],
-      ["guide:small-diffs", "vendor"],
-      ["sensor:lint", "repo"],
-      ["skill:cw-author", "builtin"],
+      ["cw-author", "builtin"],
+      ["lint", "repo"],
+      ["no-any", "repo"],
+      ["small-diffs", "vendor"],
     ],
   );
 });
 
 test("each primitive carries every header it declared, the ones the catalogue does not record included", async () => {
   const answer = DataDTOs.Primitives.parse(await fullListOf(charter));
-  const sensor = answer.data.primitives.find(({ data }) => data.identity === "sensor:lint")!;
+  const sensor = answer.data.primitives.find(({ data }) => data.id === "lint")!;
 
   assert.equal(sensor.data.file, ".cw/charter/sensor/lint/index.md");
   assert.equal(sensor.data.headers.signal, "PostToolUse");
@@ -56,18 +56,18 @@ test("each primitive carries every header it declared, the ones the catalogue do
 });
 
 test("a word keeps only the primitives mentioning it, in a header value as much as in a description (FR-114)", async () => {
-  assert.deepEqual(identitiesIn(await fullListOf(charter, "posttooluse")), ["sensor:lint"]);
-  assert.deepEqual(identitiesIn(await fullListOf(charter, "About small")), ["guide:small-diffs"]);
-  assert.deepEqual(identitiesIn(await fullListOf(charter, ".cw/vendor")), ["guide:small-diffs"]);
+  assert.deepEqual(idsIn(await fullListOf(charter, "posttooluse")), ["lint"]);
+  assert.deepEqual(idsIn(await fullListOf(charter, "About small")), ["small-diffs"]);
+  assert.deepEqual(idsIn(await fullListOf(charter, ".cw/vendor")), ["small-diffs"]);
 });
 
 test("a word is found in the line saying when a primitive's kind comes up", async () => {
   // Only a sensor's kind says the harness runs something.
-  assert.deepEqual(identitiesIn(await fullListOf(charter, "the harness runs")), ["sensor:lint"]);
+  assert.deepEqual(idsIn(await fullListOf(charter, "the harness runs")), ["lint"]);
 });
 
 test("a word nothing mentions lists nothing, and is no fault", async () => {
-  assert.deepEqual(identitiesIn(await fullListOf(charter, "nowhere-at-all")), []);
+  assert.deepEqual(idsIn(await fullListOf(charter, "nowhere-at-all")), []);
 });
 
 test("a charter with an error lists nothing and hands back what is wrong under its file", async () => {

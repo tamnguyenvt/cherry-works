@@ -43,7 +43,7 @@ export function VendorSources() {
       <h2 className="px-3.5 py-[11px] text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">Vendor sources</h2>
       {folders.map((folder) => {
         const primitivesOfFolder = vendoredPrimitives.filter(({ data }) => data.file.startsWith(`${folder}/`));
-        const countsByKind = [...new Set(primitivesOfFolder.map(({ data }) => data.kind))].map(
+        const countsByKind = [...new Set(primitivesOfFolder.map(({ data }) => data.kind))].sort().map(
           (kind) => [kind, primitivesOfFolder.filter(({ data }) => data.kind === kind).length] as const,
         );
         return (

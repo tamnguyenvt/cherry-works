@@ -177,16 +177,16 @@ function Rows({ kind, listed }: { kind: string; listed: DataDTOs.Primitives["dat
           </TableRow>
         </TableHeader>
         <TableBody>
-          {listed.map(({ data: { identity, description, file, headers } }) => {
+          {listed.map(({ data: { id, description, file, headers } }) => {
             const globs = namedIn(headers.globs);
             return (
-              <TableRow key={identity} className="group/row border-[#f7f7f8] align-top hover:bg-zinc-50 [&>td]:px-[15px] [&>td]:py-3">
+              <TableRow key={id} className="group/row border-[#f7f7f8] align-top hover:bg-zinc-50 [&>td]:px-[15px] [&>td]:py-3">
                 <TableCell className="truncate">
                   <Button
                     variant="link"
                     className="block h-auto max-w-full truncate rounded-none p-0 text-left font-mono text-[11.5px] font-bold text-foreground"
                     title={`Open ${file}`}
-                    onClick={() => open("primitive", { identity })}
+                    onClick={() => open("primitive", { id })}
                   >
                     {String(headers.id)}
                   </Button>
@@ -210,8 +210,8 @@ function Rows({ kind, listed }: { kind: string; listed: DataDTOs.Primitives["dat
                     variant="ghost"
                     size="icon"
                     className="ml-auto size-6 rounded-[7px] border border-transparent text-zinc-300 group-hover/row:border-zinc-200 group-hover/row:bg-background group-hover/row:text-zinc-400 hover:!border-foreground hover:bg-background hover:!text-foreground [&_svg:not([class*='size-'])]:size-[13px]"
-                    aria-label={`Explain ${identity}`}
-                    onClick={() => open("explanation", { identity })}
+                    aria-label={`Explain ${id}`}
+                    onClick={() => open("explanation", { id })}
                   >
                     <CircleHelp />
                   </Button>

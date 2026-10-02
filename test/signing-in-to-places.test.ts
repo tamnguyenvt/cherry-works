@@ -26,10 +26,10 @@ const LINEAR = "https://mcp.linear.app/mcp";
  *  signed in to by token alone, and a local command taking no token, which
  *  signs in to nothing. */
 const ORIGINS: readonly McpOrigin[] = [
-  { identities: ["mcp:github/billing"], names: { "mcp:github/billing": "github_0000" }, address: GITHUB, endpoint: GITHUB, path: "acme/billing", auth: ["oauth", "token"] },
-  { identities: ["mcp:github/web"], names: { "mcp:github/web": "github_0000" }, address: GITHUB, endpoint: GITHUB, path: "acme/web", auth: ["token"] },
-  { identities: ["mcp:linear"], names: { "mcp:linear": "linear_0000" }, address: LINEAR, endpoint: LINEAR, auth: ["token"] },
-  { identities: ["mcp:local"], names: { "mcp:local": "local_0000" }, address: "npx -y some-server", command: { command: "npx", args: ["-y", "some-server"] }, auth: [] },
+  { ids: ["github/billing"], names: { "github/billing": "github_0000" }, address: GITHUB, endpoint: GITHUB, path: "acme/billing", auth: ["oauth", "token"] },
+  { ids: ["github/web"], names: { "github/web": "github_0000" }, address: GITHUB, endpoint: GITHUB, path: "acme/web", auth: ["token"] },
+  { ids: ["linear"], names: { "linear": "linear_0000" }, address: LINEAR, endpoint: LINEAR, auth: ["token"] },
+  { ids: ["local"], names: { "local": "local_0000" }, address: "npx -y some-server", command: { command: "npx", args: ["-y", "some-server"] }, auth: [] },
 ];
 
 /** Every place the command line is driven through over one list of places, the
@@ -71,13 +71,13 @@ const running = async (cli: Commander, argv: readonly string[], { atTerminal, an
   }
 };
 
-test("signInStatus() answers one row per address taking a sign-in, its identities whatever their path, and asks nothing (FR-150)", async () => {
+test("signInStatus() answers one row per address taking a sign-in, its ids whatever their path, and asks nothing (FR-150)", async () => {
   const { mcpConnectingApp, secrets } = placesOver();
   await secrets.writeSecret(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "t" }));
 
   assert.deepEqual((await mcpConnectingApp.signInStatus()).map((one) => one.data), [
-    { address: GITHUB, identities: ["mcp:github/billing", "mcp:github/web"], auth: ["oauth", "token"], signedIn: false },
-    { address: LINEAR, identities: ["mcp:linear"], auth: ["token"], signedIn: true, method: "token" },
+    { address: GITHUB, ids: ["github/billing", "github/web"], auth: ["oauth", "token"], signedIn: false },
+    { address: LINEAR, ids: ["linear"], auth: ["token"], signedIn: true, method: "token" },
   ]);
 });
 
@@ -153,7 +153,7 @@ test("cw mcp auth without a terminal asks nothing, names each address not signed
   assert.equal(secrets.secrets.size, 0);
 });
 
-test("cw mcp auth --status lists each address, its identities and whether signed in, and changes nothing (Story 18, 6)", async () => {
+test("cw mcp auth --status lists each address, its ids and whether signed in, and changes nothing (Story 18, 6)", async () => {
   const { cli, secrets } = placesOver();
   await secrets.writeSecret(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "lin-secret" }));
 
@@ -162,30 +162,30 @@ test("cw mcp auth --status lists each address, its identities and whether signed
   assert.equal(run.code, EXIT_OK);
   assert.equal(
     run.results,
-    [GITHUB, "  mcp:github/billing, mcp:github/web", "  not signed in", LINEAR, "  mcp:linear", "  signed in by token", ""].join("\n"),
+    [GITHUB, "  github/billing, github/web", "  not signed in", LINEAR, "  linear", "  signed in by token", ""].join("\n"),
   );
   assert.doesNotMatch(run.results, /lin-secret/);
   assert.equal(secrets.secrets.size, 1);
 });
 
-test("cw mcp auth <identity> signs in again at that identity's address alone, whatever was kept (Story 18, 7)", async () => {
+test("cw mcp auth <id> signs in again at that id's address alone, whatever was kept (Story 18, 7)", async () => {
   const { cli, secrets } = placesOver();
   await secrets.writeSecret(GITHUB, JSON.stringify({ address: GITHUB, method: "token", accessToken: "old" }));
 
-  const run = await running(cli, ["mcp", "auth", "mcp:github/web"], { atTerminal: true, answers: ["token", "new"] });
+  const run = await running(cli, ["mcp", "auth", "github/web"], { atTerminal: true, answers: ["token", "new"] });
 
   assert.equal(run.code, EXIT_OK, run.problems);
   assert.equal(JSON.parse(secrets.secrets.get(GITHUB) ?? "").accessToken, "new");
   assert.equal(secrets.secrets.has(LINEAR), false);
 
-  const unknown = await running(cli, ["mcp", "auth", "mcp:nowhere"], { atTerminal: true });
+  const unknown = await running(cli, ["mcp", "auth", "nowhere"], { atTerminal: true });
   assert.equal(unknown.code, EXIT_FAILURE);
-  assert.match(unknown.problems, /mcp:nowhere/);
+  assert.match(unknown.problems, /nowhere/);
 });
 
 test("a place at plain http on another machine is signed in to by no way, and keeps nothing, whatever the list says (FR-149)", async () => {
   const CLEARTEXT = "http://mcp.example/mcp";
-  const { mcpConnectingApp, secrets } = placesOver([{ identities: ["mcp:cleartext"], names: { "mcp:cleartext": "cleartext_0000" }, address: CLEARTEXT, endpoint: CLEARTEXT, auth: ["oauth", "token"] }]);
+  const { mcpConnectingApp, secrets } = placesOver([{ ids: ["cleartext"], names: { "cleartext": "cleartext_0000" }, address: CLEARTEXT, endpoint: CLEARTEXT, auth: ["oauth", "token"] }]);
 
   await assert.rejects(mcpConnectingApp.signInWithToken(CLEARTEXT, "t"), { message: /plain http/, fix: /https:\/\// });
   await assert.rejects(mcpConnectingApp.signInWithOAuth(CLEARTEXT, () => undefined), /plain http/);

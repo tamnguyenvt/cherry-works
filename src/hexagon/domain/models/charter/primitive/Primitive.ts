@@ -10,7 +10,7 @@ import { SensorPrimitive } from "./SensorPrimitive.js";
 import { SkillPrimitive } from "./SkillPrimitive.js";
 import { ScriptPrimitive } from "./ScriptPrimitive.js";
 import { TemplatePrimitive } from "./TemplatePrimitive.js";
-import { BasePrimitive, DELIMITER, type AssetFile } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, DELIMITER, type AssetFile } from "./BasePrimitive.js";
 import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 import { CharterPrimitiveFault, throwAggregateError, type DomainFault } from "../../DomainFault.js";
 import { formatFrontmatterValue } from "../../helper.js";
@@ -51,32 +51,16 @@ export const KINDS = Object.freeze(PRIMITIVE_CLASSES.map((one) => one.kind));
 
 export type Kind = (typeof KINDS)[number];
 
-/** What the whole charter names one primitive by: its kind and its id joined by
- *  a colon, `guide:no-any` (FR-014). Written as the shape rather than as plain
- *  text, so a bare word cannot be passed where an identity is asked for. */
-export type PrimitiveIdentity = `${string}:${string}`;
-
-/** One identity as an author typed it: the two words and the colon between
- *  them. What it names is not asked here — whether this charter holds anything
- *  of that name takes the whole charter (FR-014). */
-export const PrimitiveIdentitySchema = z
-  .string()
-  .regex(/^[a-z0-9-]+:[a-z0-9-]+(\/[a-z0-9-]+)*$/)
-  .transform((identity) => identity as PrimitiveIdentity);
-
-/** One identity: the one a kind and an id make together, or one as it was
- *  typed, held to the shape an identity is written in. The one place an
- *  identity is written and read, so nothing else spells it. Typed text that is
- *  not `<kind>:<id>` is raised: it names nothing to look for (FR-014). */
-export function identityOf(kindAndId: { readonly kind: string; readonly id: string } | string): PrimitiveIdentity {
-  if (typeof kindAndId !== "string") return `${kindAndId.kind}:${kindAndId.id}`;
-  const parsed = PrimitiveIdentitySchema.safeParse(kindAndId);
-  if (!parsed.success)
+/** An id as someone typed it, at a command or in a request, held to the shape
+ *  an id is written in: text that is not one names nothing to look for
+ *  (FR-172). */
+export function primitiveIdOf(typed: string): string {
+  if (!CommonHeadersSchema.shape.id.safeParse(typed).success)
     throw new CharterPrimitiveFault(
-      `"${kindAndId}" is not an identity: one is a kind and an id with a colon between them.`,
-      'Write it as <kind>:<id>, as in "guide:no-any".',
+      `"${typed}" is not an id: one is lowercase letters, digits and inner hyphens, in segments joined by "/".`,
+      'Type it as the primitive declares it, as in "no-any".',
     );
-  return parsed.data;
+  return typed;
 }
 
 export function isKind(value: unknown): value is Kind {

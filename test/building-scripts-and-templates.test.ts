@@ -56,7 +56,7 @@ const errorsUnder = (faultsByFile: DataDTOs.FaultsByFile["data"], fileEnding: st
 test("a template is compiled like any other primitive, its headers then its body, as the index.md of its folder (FR-159)", async () => {
   const { held, build } = building({
     [at("template/release-note/index.md")]: template("release-note"),
-    [at("skill/release/index.md")]: skillNaming("template:release-note"),
+    [at("skill/release/index.md")]: skillNaming("[[release-note]]"),
   });
 
   const built = filesOf(await build());
@@ -70,7 +70,7 @@ test("a template is compiled like any other primitive, its headers then its body
 test("every asset of a primitive is copied beside its compiled document byte for byte, whatever its kind (FR-168)", async () => {
   const { held, build } = building({
     ...script("check-changelog", { "run.sh": runFile, "lib/versions.sh": "latest() { :; }\n", "README.md": "How it is laid out.\n" }),
-    [at("skill/release/index.md")]: skillNaming("script:check-changelog"),
+    [at("skill/release/index.md")]: skillNaming("[[check-changelog]]"),
     [at("skill/release/checklist.md")]: "1. Check the changelog.\n",
   });
 
@@ -93,7 +93,7 @@ test("of a built script, the asset it runs is executable and no other; a built t
   const { fileOutput, build } = building({
     ...script("check", { "run.sh": runFile, "lib.sh": "true\n" }),
     [at("template/note/index.md")]: template("note"),
-    [at("skill/release/index.md")]: skillNaming("script:check", "template:note"),
+    [at("skill/release/index.md")]: skillNaming("[[check]]", "[[note]]"),
   });
 
   await build();
@@ -108,14 +108,14 @@ test("the catalogue names each primitive's compiled file, and a listing the inde
   const { held, charterAuthoringApp, build } = building({
     ...script("check"),
     [at("template/note/index.md")]: template("note"),
-    [at("skill/release/index.md")]: skillNaming("script:check", "template:note"),
+    [at("skill/release/index.md")]: skillNaming("[[check]]", "[[note]]"),
   });
 
   await build();
 
-  const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalog.json", repo))) as { identity: string; file: string }[];
-  assert.equal(catalogue.find((entry) => entry.identity === "script:check")?.file, ".cw/out/script/check/index.md");
-  assert.equal(catalogue.find((entry) => entry.identity === "template:note")?.file, ".cw/out/template/note/index.md");
+  const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalog.json", repo))) as { id: string; file: string }[];
+  assert.equal(catalogue.find((entry) => entry.id === "check")?.file, ".cw/out/script/check/index.md");
+  assert.equal(catalogue.find((entry) => entry.id === "note")?.file, ".cw/out/template/note/index.md");
   const listing = await charterAuthoringApp.fullList();
   assert.ok(listing.type === "Primitives");
   assert.match(JSON.stringify(listing.data), /\.cw\/charter\/script\/check\/index\.md/);
@@ -125,7 +125,7 @@ test("an id holding / is a folder in the charter and in the output alike (FR-141
   const { held, build } = building({
     [at("script/release/check/index.md")]: primitive("script", "release/check", ["executionPath: ./run.sh"], ""),
     [at("script/release/check/run.sh")]: runFile,
-    [at("skill/release/index.md")]: skillNaming("script:release/check"),
+    [at("skill/release/index.md")]: skillNaming("[[release/check]]"),
   });
 
   filesOf(await build());
@@ -137,7 +137,7 @@ test("an id holding / is a folder in the charter and in the output alike (FR-141
 test("an asset edited and not built leaves its copy as the last build left it, and the preview says what a build would write (FR-166)", async () => {
   const { held, charterAuthoringApp, build } = building({
     ...script("check", { "run.sh": runFile, "old.sh": "true\n" }),
-    [at("skill/release/index.md")]: skillNaming("script:check"),
+    [at("skill/release/index.md")]: skillNaming("[[check]]"),
   });
   await build();
 
@@ -191,7 +191,7 @@ test("a script or a template no primitive names is a warning, and the build stil
     ...script("check"),
     [at("template/note/index.md")]: template("note"),
     [at("template/used/index.md")]: template("used"),
-    [at("skill/release/index.md")]: skillNaming("template:used"),
+    [at("skill/release/index.md")]: skillNaming("[[used]]"),
   });
 
   filesOf(await build());
@@ -209,7 +209,7 @@ test("a vendor's assets are copied into the repository's output folder like ones
   const { held, build } = building({
     [inRepo(".cw/vendor/team/script/check/index.md")]: primitive("script", "check", ["executionPath: ./run.sh"], ""),
     [inRepo(".cw/vendor/team/script/check/run.sh")]: runFile,
-    [at("skill/release/index.md")]: skillNaming("script:check"),
+    [at("skill/release/index.md")]: skillNaming("[[check]]"),
   });
 
   filesOf(await build());
@@ -254,7 +254,7 @@ test("deleting a primitive takes every asset of it with it (FR-167)", async () =
     ...script("other"),
   });
 
-  await charterAuthoringApp.remove("script:check");
+  await charterAuthoringApp.remove("check");
 
   assert.equal(await held.readIfThere(new URL(at("script/check/index.md"))), undefined);
   assert.equal(await held.readIfThere(new URL(at("script/check/run.sh"))), undefined);

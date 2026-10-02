@@ -16,13 +16,13 @@ import { Catalogue } from "../../models/output/common/Catalogue.js";
  */
 export function catalogueOf(charter: CharterRoot, fileOf: (one: Primitive) => string): Catalogue {
   return new Catalogue(
-    // Ordered by identity rather than by the order the files happened to be
+    // Ordered by id rather than by the order the files happened to be
     // read, so the same charter catalogues byte for byte the same (SC-007).
-    [...charter.primitives].sort((one, another) => (one.identity < another.identity ? -1 : one.identity > another.identity ? 1 : 0)).map((one) => {
+    [...charter.primitives].sort((one, another) => (one.headers.id < another.headers.id ? -1 : one.headers.id > another.headers.id ? 1 : 0)).map((one) => {
       const { description, globs } = one.headers;
       return {
-        identity: one.identity,
         kind: one.kind,
+        id: one.headers.id,
         description,
         file: fileOf(one),
         ...(globs === undefined ? {} : { globs }),

@@ -47,9 +47,9 @@ const guide = (id: string, headers: readonly string[] = []) =>
 
 /** A test file naming one guide, so no warning says nothing pins it down
  *  (FR-014). */
-const pinningDown = (identity: string) => ({
-  [`file:///repo/.cw/test/${identity.replace(":", "-")}.json`]: JSON.stringify({
-    cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: identity } }],
+const pinningDown = (id: string) => ({
+  [`file:///repo/.cw/test/${id.replace("/", "-")}.json`]: JSON.stringify({
+    cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: id } }],
   }),
 });
 
@@ -109,7 +109,7 @@ test("a charter with nothing wrong passes, and says so", async () => {
   const { written } = await run({
     [new URL("guide/no-any/index.md", root).href]: guide("no-any", ['mixins: ["ts-defaults"]']),
     [new URL("mixin/ts-defaults/index.md", root).href]: primitive("mixin", "ts-defaults"),
-    ...pinningDown("guide:no-any"),
+    ...pinningDown("no-any"),
   });
 
   // Whether this repository is built is a question of its own, and not this
@@ -170,14 +170,14 @@ test("every bad file is named in one run, not the first one found", async () => 
 
 test("a warning is said and lets the run through", async () => {
   const { written } = await run({
-    [new URL("guide/no-any/index.md", root).href]: guide("no-any", ["rationale: corpus:absent"]),
-    ...pinningDown("guide:no-any"),
+    [new URL("guide/no-any/index.md", root).href]: guide("no-any", ["rationale: absent"]),
+    ...pinningDown("no-any"),
   });
 
   // Said, and the charter still holds: a warning is worth saying and not worth
   // stopping on.
   assert.match(written.everything, /holds, with 1 warning/);
-  assert.match(written.everything, /warn: .*corpus:absent/);
+  assert.match(written.everything, /warn: .*absent/);
 });
 
 test("a flag the command never declared is a usage error, not a fault of the charter's", async () => {

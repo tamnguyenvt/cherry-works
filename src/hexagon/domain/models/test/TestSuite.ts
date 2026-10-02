@@ -33,9 +33,9 @@ export class TestSuite {
  *  the schema refused is handed this instead of a reading of what went wrong —
  *  the shapes are few enough that seeing one is the correction. */
 const SAMPLE_CASES = [
-  { do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } },
+  { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
   { do: { touchFile: ".env" }, expect: { allow: false } },
-  { when: "PreToolUse", expect: { run: "sensor:no-secrets" } },
+  { when: "PreToolUse", expect: { run: "no-secrets" } },
 ];
 // Said on one line, spaced as a person writes it.
 const SAMPLE = JSON.stringify({ cases: SAMPLE_CASES }, undefined, 1).replace(/\n\s*/g, " ");

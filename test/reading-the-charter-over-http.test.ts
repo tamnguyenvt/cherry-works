@@ -39,11 +39,11 @@ test("the listing is sent as every primitive the charter read, each under its la
   const { type, data } = DataDTOs.Primitives.parse(await answer.json());
   assert.equal(type, "Primitives");
   assert.deepEqual(
-    data.primitives.map((one) => [one.data.identity, one.data.layerName]),
+    data.primitives.map((one) => [one.data.id, one.data.layerName]),
     [
-      ["corpus:why", "repo"],
-      ["guide:no-any", "repo"],
-      ["skill:cw-author", "builtin"],
+      ["cw-author", "builtin"],
+      ["no-any", "repo"],
+      ["why", "repo"],
     ],
   );
 });
@@ -53,8 +53,8 @@ test("a word sent with the listing narrows it to what mentions the word, and an 
 
   const narrowed = DataDTOs.Primitives.parse(await (await portalRoutes.request("/charter/root/primitives?matching=WHY")).json());
   assert.deepEqual(
-    narrowed.data.primitives.map((one) => one.data.identity),
-    ["corpus:why"],
+    narrowed.data.primitives.map((one) => one.data.id),
+    ["why"],
   );
 
   const unnarrowed = DataDTOs.Primitives.parse(await (await portalRoutes.request("/charter/root/primitives?matching=")).json());
@@ -62,28 +62,28 @@ test("a word sent with the listing narrows it to what mentions the word, and an 
 });
 
 test("one primitive is explained by kind and id, with when it comes up (FR-029, FR-116)", async () => {
-  const answer = await portal({ [at("guide/no-any/index.md")]: guide("no-any", ["rationale: corpus:why"]), [at("corpus/why/index.md")]: primitive("corpus", "why") }).request(
-    "/charter/root/primitives/guide:no-any/explanation",
+  const answer = await portal({ [at("guide/no-any/index.md")]: guide("no-any", ["rationale: why"]), [at("corpus/why/index.md")]: primitive("corpus", "why") }).request(
+    "/charter/root/primitives/no-any/explanation",
   );
 
   assert.equal(answer.status, 200);
   const { data } = OutcomeDTOs.ExplanationOutcome.parse(await answer.json());
-  assert.equal(data.primitive.data.identity, "guide:no-any");
+  assert.equal(data.primitive.data.id, "no-any");
   assert.equal(data.activatesWhen, GuidePrimitive.activatesWhen);
-  assert.equal(data.rationale?.data.identity, "corpus:why");
+  assert.equal(data.rationale?.data.id, "why");
 });
 
-test("an identity the charter holds nothing of is explained as a fault under no file", async () => {
-  const answer = await portal({}).request("/charter/root/primitives/guide:nowhere/explanation");
+test("an id the charter holds nothing of is explained as a fault under no file", async () => {
+  const answer = await portal({}).request("/charter/root/primitives/nowhere/explanation");
 
   assert.equal(answer.status, 422);
   const { data } = DataDTOs.Fault.parse(await answer.json());
-  assert.match(data.message, /holds no "guide:nowhere"/);
+  assert.match(data.message, /holds no "nowhere"/);
 });
 
 test("a charter with an error explains nothing and hands back what is wrong under its file", async () => {
   const answer = await portal({ [at("guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }).request(
-    "/charter/root/primitives/guide:no-any/explanation",
+    "/charter/root/primitives/no-any/explanation",
   );
 
   assert.equal(answer.status, 422);
@@ -112,7 +112,7 @@ test("what validating found is sent as it stands, a charter that holds having no
   const holds = await portal({
     [at("guide/no-any/index.md")]: guide("no-any"),
     // A guide no test case names is a warning (FR-014); this one is named.
-    "file:///repo/.cw/test/no-any.json": JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] }),
+    "file:///repo/.cw/test/no-any.json": JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
   }).request("/charter/root/faults");
 
   assert.equal(holds.status, 200);
@@ -136,7 +136,7 @@ test("the charter is read again on every call, so what changed on disk is what t
   const answer = await portalRoutes.request("/charter/root/primitives");
 
   const { data } = DataDTOs.Primitives.parse(await answer.json());
-  assert.ok(data.primitives.some((one) => one.data.identity === "corpus:why"));
+  assert.ok(data.primitives.some((one) => one.data.id === "why"));
 });
 
 test("a fault raised rather than given back is sent as a fault, under no file (plan §12.2)", async () => {

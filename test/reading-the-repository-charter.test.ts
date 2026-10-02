@@ -13,7 +13,7 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 /** A charter with something of three kinds and nothing of the five others: what
  *  a reader meets, and what a chip with no primitives behind it has to survive. */
 const charter = {
-  [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: corpus:why", 'mixins: ["voice"]']),
+  [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: why", 'mixins: ["voice"]']),
   [at("corpus/why/index.md")]: primitive("corpus", "why"),
   [at("mixin/voice/index.md")]: primitive("mixin", "voice"),
 };
@@ -46,7 +46,7 @@ test("a guide is listed with what it is for, the file it is in, the globs it mat
     assert.equal(await row.locator("td").nth(1).locator("div").nth(0).innerText(), "About no-any.");
     assert.equal(await row.locator("td").nth(1).locator("div").nth(1).innerText(), ".cw/charter/guide/no-any/index.md");
     assert.equal(await row.getByRole("cell", { name: "Matching globs" }).innerText(), "src/**/*.ts");
-    assert.equal(await row.getByRole("cell", { name: "Rationale" }).innerText(), "corpus:why");
+    assert.equal(await row.getByRole("cell", { name: "Rationale" }).innerText(), "why");
     assert.equal(await row.getByRole("cell", { name: "Mixins" }).innerText(), "voice");
   });
 });

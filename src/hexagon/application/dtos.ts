@@ -145,11 +145,11 @@ export function primitiveKindsDTO(
  *  for, the file it was authored in, which layer that file arrived in, every
  *  header it declared, its body and its hash (FR-017, FR-078). */
 export function primitiveDTO(primitive: Primitive): DataDTOs.Primitive {
-  const { identity, layerName, file, body, hash } = primitive;
+  const { layerName, file, body, hash } = primitive;
   return {
     type: "Primitive",
     data: {
-      identity,
+      id: primitive.headers.id,
       kind: primitive.kind,
       description: primitive.headers.description,
       file,
@@ -167,14 +167,14 @@ export function primitiveDTO(primitive: Primitive): DataDTOs.Primitive {
   };
 }
 
-/** Every primitive given, as the whole charter sees each, ordered by identity
+/** Every primitive given, as the whole charter sees each, ordered by id
  *  the way the catalogue orders its entries. */
 export function primitivesDTO(primitives: readonly Primitive[]): DataDTOs.Primitives {
   return {
     type: "Primitives",
     data: {
       primitives: [...primitives]
-        .sort((one, another) => (one.identity < another.identity ? -1 : one.identity > another.identity ? 1 : 0))
+        .sort((one, another) => (one.headers.id < another.headers.id ? -1 : one.headers.id > another.headers.id ? 1 : 0))
         .map(primitiveDTO),
     },
   };
@@ -211,9 +211,9 @@ export function testSuitesDTO({ suitesByFile, faultsByFiles }: TestRoot): DataDT
             name: testSuiteNameOf(path),
             ...(suite === undefined ? {} : { text: suite.body }),
             ...(suite?.description === undefined ? {} : { description: suite.description }),
-            cases: (suite?.cases ?? []).map(({ situation, expectation, activatedIdentity }) => ({
+            cases: (suite?.cases ?? []).map(({ situation, expectation, activatedId }) => ({
               type: "TestCase",
-              data: { situation, expectation, ...(activatedIdentity === undefined ? {} : { identity: activatedIdentity }) },
+              data: { situation, expectation, ...(activatedId === undefined ? {} : { id: activatedId }) },
             })),
             ...(fault === undefined ? {} : { fault: faultDTO(fault) }),
           },

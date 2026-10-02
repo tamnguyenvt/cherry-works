@@ -26,10 +26,9 @@ export type NoHeaders = Record<string, never>;
  */
 export abstract class DocumentBasedComponent<Headers extends object = NoHeaders> extends ProviderComponent {
   protected constructor(
-    /** What this host calls this one: the charter identity with the separators a
-     *  filename does not carry replaced, so `acme/skill:review` is
-     *  `acme-skill-review` and two charter kinds landing in one directory of this
-     *  host cannot be taken for each other (FR-014). Every document has one,
+    /** What this host calls this one: the charter id with the `/` a filename
+     *  does not carry written `-`, so `acme/review` is `acme-review` (FR-141,
+     *  FR-171). Every document has one,
      *  whether or not that host reads it out of the frontmatter: it is what the
      *  file is called. */
     readonly name: string,

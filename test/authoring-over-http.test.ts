@@ -46,21 +46,21 @@ test("a new primitive is created with its body, answered 201 with where it lives
   );
 
   assert.equal(answer.status, 201);
-  assert.equal(answer.headers.get("Location"), "/api/charter/root/primitives/guide%3Ano-any");
+  assert.equal(answer.headers.get("Location"), "/api/charter/root/primitives/no-any");
   assert.equal(DataDTOs.Primitive.parse(await answer.json()).data.file, ".cw/charter/guide/no-any/index.md");
   assert.match((await fileAt(".cw/charter/guide/no-any/index.md")) ?? "", /---\n\nNever any\.\n$/);
 });
 
-test("an identity holding / is reached encoded, as the page sends it (FR-141)", async () => {
+test("an id holding / is reached encoded, as the page sends it (FR-141)", async () => {
   const { portalRoutes } = portal({ [at(".cw/charter/guide/mfbs/no-any/index.md")]: guide("mfbs/no-any") });
 
-  const answer = await portalRoutes.request(`/charter/root/primitives/${encodeURIComponent("guide:mfbs/no-any")}`);
+  const answer = await portalRoutes.request(`/charter/root/primitives/${encodeURIComponent("mfbs/no-any")}`);
 
   assert.equal(answer.status, 200);
-  assert.equal(DataDTOs.Primitive.parse(await answer.json()).data.identity, "guide:mfbs/no-any");
+  assert.equal(DataDTOs.Primitive.parse(await answer.json()).data.id, "mfbs/no-any");
 });
 
-test("answers the kind refuses are 422 and every fault, and an identity already claimed is 422 and one fault", async () => {
+test("answers the kind refuses are 422 and every fault, and an id already claimed is 422 and one fault", async () => {
   const { portalRoutes, fileAt } = portal({ [at(".cw/charter/guide/no-any/index.md")]: guide("no-any") });
 
   const refused = await portalRoutes.request(
@@ -82,14 +82,14 @@ test("answers the kind refuses are 422 and every fault, and an identity already 
 test("a primitive is opened with an ETag, and saved with it as If-Match (FR-075)", async () => {
   const { portalRoutes, fileAt } = portal({ [at(".cw/charter/guide/no-any/index.md")]: guide("no-any") });
 
-  const opened = await portalRoutes.request("/charter/root/primitives/guide:no-any");
+  const opened = await portalRoutes.request("/charter/root/primitives/no-any");
   assert.equal(opened.status, 200);
   const entityTag = opened.headers.get("ETag") ?? "";
   assert.match(entityTag, /^"[0-9a-f]{16}"$/);
   assert.equal(entityTag, `"${DataDTOs.Primitive.parse(await opened.json()).data.hash}"`);
 
   const saved = await portalRoutes.request(
-    "/charter/root/primitives/guide:no-any",
+    "/charter/root/primitives/no-any",
     sending("PUT", { headers: { description: "Never any.", globs: ["src/**"] }, body: "Use unknown." }, { "If-Match": entityTag }),
   );
   assert.equal(saved.status, 200);
@@ -98,13 +98,13 @@ test("a primitive is opened with an ETag, and saved with it as If-Match (FR-075)
 
 test("a save over a file changed on disk, or with no If-Match, is 412 naming the file, and the file stays (FR-078)", async () => {
   const { portalRoutes, fileAt, held } = portal({ [at(".cw/charter/guide/no-any/index.md")]: guide("no-any") });
-  const entityTag = (await portalRoutes.request("/charter/root/primitives/guide:no-any")).headers.get("ETag") ?? "";
+  const entityTag = (await portalRoutes.request("/charter/root/primitives/no-any")).headers.get("ETag") ?? "";
   const changedOnDisk = guide("no-any").replace("About no-any.", "Changed elsewhere.");
   held.write(new URL(at(".cw/charter/guide/no-any/index.md")), changedOnDisk);
 
   for (const ifMatch of [{ "If-Match": entityTag }, {}]) {
     const refused = await portalRoutes.request(
-      "/charter/root/primitives/guide:no-any",
+      "/charter/root/primitives/no-any",
       sending("PUT", { headers: { description: "Mine.", globs: ["src/**"] }, body: "" }, ifMatch),
     );
     assert.equal(refused.status, 412);
@@ -119,23 +119,23 @@ test("a repository primitive is deleted with 204, and a vendored one is refused 
     [at(".cw/vendor/team/guide/theirs/index.md")]: guide("theirs"),
   });
 
-  const deleted = await portalRoutes.request("/charter/root/primitives/guide:no-any", { method: "DELETE" });
+  const deleted = await portalRoutes.request("/charter/root/primitives/no-any", { method: "DELETE" });
   assert.equal(deleted.status, 204);
   assert.equal(await fileAt(".cw/charter/guide/no-any/index.md"), undefined);
 
-  const refused = await portalRoutes.request("/charter/root/primitives/guide:theirs", { method: "DELETE" });
+  const refused = await portalRoutes.request("/charter/root/primitives/theirs", { method: "DELETE" });
   assert.equal(refused.status, 422);
   assert.match(DataDTOs.Fault.parse(await refused.json()).data.message, /\.cw\/vendor\/team\/guide\/theirs\/index\.md is read-only/);
   assert.ok(await fileAt(".cw/vendor/team/guide/theirs/index.md"));
 });
 
-test("an identity not written <kind>:<id> is a 422 and a fault before the engine is asked (FR-014)", async () => {
+test("text not shaped as an id is a 422 and a fault before the engine is asked (FR-172)", async () => {
   const { portalRoutes } = portal();
 
-  const answer = await portalRoutes.request("/charter/root/primitives/no-any");
+  const answer = await portalRoutes.request("/charter/root/primitives/guide%3Ano-any");
 
   assert.equal(answer.status, 422);
-  assert.match(DataDTOs.Fault.parse(await answer.json()).data.message, /"no-any" is not an identity/);
+  assert.match(DataDTOs.Fault.parse(await answer.json()).data.message, /"guide:no-any" is not an id/);
 });
 
 test("what a kind requires is sent under /definitions, a closed header with its values (FR-117, FR-118)", async () => {

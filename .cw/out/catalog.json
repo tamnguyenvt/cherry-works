@@ -1,49 +1,7 @@
 [
   {
-    "identity": "agent:hexagon-initializer",
-    "kind": "agent",
-    "description": "Initialise a hexagonal architecture in the folder whose path it is given, then fit it to that project.",
-    "file": ".cw/out/agent/hexagon-initializer/index.md"
-  },
-  {
-    "identity": "agent:hexagon-reviewer",
-    "kind": "agent",
-    "description": "Check the files a hexagonal init wrote against every guide that applies to them, and name each breach with its fix; changes nothing.",
-    "file": ".cw/out/agent/hexagon-reviewer/index.md"
-  },
-  {
-    "identity": "corpus:changelog-short-for-users",
-    "kind": "corpus",
-    "description": "Why changelog entries are one short sentence for users, and how a release entry is written.",
-    "file": ".cw/out/corpus/changelog-short-for-users/index.md"
-  },
-  {
-    "identity": "corpus:driven-port-speaks-its-adapter",
-    "kind": "corpus",
-    "description": "Why a driven port carries no domain knowledge.",
-    "file": ".cw/out/corpus/driven-port-speaks-its-adapter/index.md"
-  },
-  {
-    "identity": "corpus:hexagonal-architecture",
-    "kind": "corpus",
-    "description": "Why the code is split into driver, hexagon and zdriven, and why the arrows between them point inward.",
-    "file": ".cw/out/corpus/hexagonal-architecture/index.md"
-  },
-  {
-    "identity": "corpus:learnings-go-to-the-inbox",
-    "kind": "corpus",
-    "description": "Why lessons go to learning/inbox rather than an agent's memory, and how a note there is written.",
-    "file": ".cw/out/corpus/learnings-go-to-the-inbox/index.md"
-  },
-  {
-    "identity": "corpus:no-single-word-naming",
-    "kind": "corpus",
-    "description": "Why a variable is named after the type it holds, and how to name a call's result.",
-    "file": ".cw/out/corpus/no-single-word-naming/index.md"
-  },
-  {
-    "identity": "guide:architecture-map",
     "kind": "guide",
+    "id": "architecture-map",
     "description": "Where each part of cw lives, the rules between them, and which existing class to extend before writing a new one.",
     "file": ".cw/out/guide/architecture-map/index.md",
     "globs": [
@@ -51,23 +9,14 @@
     ]
   },
   {
-    "identity": "guide:branch-naming",
-    "kind": "guide",
-    "description": "Name a phase branch <three-digit number>-<slug>, such as 006-scripts-and-templates, and a story branch task/<story number>-<slug> started from it.",
-    "file": ".cw/out/guide/branch-naming/index.md"
+    "kind": "skill",
+    "id": "cw-author",
+    "description": "Author a new primitive of this repository's charter, asking cw what its kind requires.",
+    "file": ".cw/out/skill/cw-author/index.md"
   },
   {
-    "identity": "guide:changelog-short-for-users",
     "kind": "guide",
-    "description": "Write each CHANGELOG.md entry as one short plain sentence for users of cw, with no spec ids or internals.",
-    "file": ".cw/out/guide/changelog-short-for-users/index.md",
-    "globs": [
-      "CHANGELOG.md"
-    ]
-  },
-  {
-    "identity": "guide:driven-port-speaks-its-adapter",
-    "kind": "guide",
+    "id": "driven-port-speaks-its-adapter",
     "description": "Name what crosses a driven port after what its adapter deals in, never after a domain concept.",
     "file": ".cw/out/guide/driven-port-speaks-its-adapter/index.md",
     "globs": [
@@ -75,8 +24,26 @@
     ]
   },
   {
-    "identity": "guide:hexagonal-architecture",
     "kind": "guide",
+    "id": "explain-in-plain-vietnamese",
+    "description": "Explain to this user in plain everyday Vietnamese, in complete sentences, never in a compressed fragment style.",
+    "file": ".cw/out/guide/explain-in-plain-vietnamese/index.md"
+  },
+  {
+    "kind": "agent",
+    "id": "hexagon-initializer",
+    "description": "Initialise a hexagonal architecture in the folder whose path it is given, then fit it to that project.",
+    "file": ".cw/out/agent/hexagon-initializer/index.md"
+  },
+  {
+    "kind": "agent",
+    "id": "hexagon-reviewer",
+    "description": "Check the files a hexagonal init wrote against every guide that applies to them, and name each breach with its fix; changes nothing.",
+    "file": ".cw/out/agent/hexagon-reviewer/index.md"
+  },
+  {
+    "kind": "guide",
+    "id": "hexagonal-architecture",
     "description": "The layers of a hexagonal codebase, what each may import, and where a new file belongs.",
     "file": ".cw/out/guide/hexagonal-architecture/index.md",
     "globs": [
@@ -86,87 +53,66 @@
     ]
   },
   {
-    "identity": "guide:learnings-go-to-the-inbox",
-    "kind": "guide",
-    "description": "Never save to the agent's own memory; write what was learned into learning/inbox, where repeated lessons become rules.",
-    "file": ".cw/out/guide/learnings-go-to-the-inbox/index.md"
-  },
-  {
-    "identity": "guide:leave-changes-unstaged",
-    "kind": "guide",
-    "description": "Never stage and never commit on your own — leave every change in the working tree and stop, even on a task branch and even after an earlier commit was approved.",
-    "file": ".cw/out/guide/leave-changes-unstaged/index.md"
-  },
-  {
-    "identity": "guide:no-abirtrary-function-split",
-    "kind": "guide",
-    "description": "read when you are about to create a helper function or split into smaller function",
-    "file": ".cw/out/guide/no-abirtrary-function-split/index.md"
-  },
-  {
-    "identity": "guide:no-single-word-naming",
-    "kind": "guide",
-    "description": "rule for name a function or variable",
-    "file": ".cw/out/guide/no-single-word-naming/index.md"
-  },
-  {
-    "identity": "playbook:implement-task",
-    "kind": "playbook",
-    "description": "Instruction for implement new task",
-    "file": ".cw/out/playbook/implement-task/index.md"
-  },
-  {
-    "identity": "playbook:plan-task",
-    "kind": "playbook",
-    "description": "Instruction for writing a phase's stories into the spec",
-    "file": ".cw/out/playbook/plan-task/index.md"
-  },
-  {
-    "identity": "script:init-hexagon",
-    "kind": "script",
-    "description": "Scaffold a hexagonal architecture (driver / hexagon / zdriven), in TypeScript or JavaScript, into the folder it is given.",
-    "file": ".cw/out/script/init-hexagon/index.md"
-  },
-  {
-    "identity": "sensor:link-specs-on-stop",
-    "kind": "sensor",
-    "description": "Link every id the specs cite to where it is defined, and refuse to stop while a citation dangles.",
-    "file": ".cw/out/sensor/link-specs-on-stop/index.md"
-  },
-  {
-    "identity": "skill:cw-author",
     "kind": "skill",
-    "description": "Author a new primitive of this repository's charter, asking cw what its kind requires.",
-    "file": ".cw/out/skill/cw-author/index.md"
-  },
-  {
-    "identity": "skill:init-hexagon",
-    "kind": "skill",
+    "id": "init-hexagon",
     "description": "Ask the user what a hexagonal setup needs — folder, language (TypeScript or JavaScript only), dependency-cruiser, example, overwrite — show the plan, and start only once they confirm.",
     "file": ".cw/out/skill/init-hexagon/index.md"
   },
   {
-    "identity": "skill:learn",
-    "kind": "skill",
-    "description": "Learn from the conversation",
-    "file": ".cw/out/skill/learn/index.md"
+    "kind": "guide",
+    "id": "leave-changes-unstaged",
+    "description": "Never stage and never commit on your own — leave every change in the working tree and stop, even on a task branch and even after an earlier commit was approved.",
+    "file": ".cw/out/guide/leave-changes-unstaged/index.md"
   },
   {
-    "identity": "skill:merge",
-    "kind": "skill",
-    "description": "merge branch",
-    "file": ".cw/out/skill/merge/index.md"
+    "kind": "guide",
+    "id": "no-abirtrary-function-split",
+    "description": "read when you are about to create a helper function or split into smaller function",
+    "file": ".cw/out/guide/no-abirtrary-function-split/index.md"
   },
   {
-    "identity": "skill:review",
-    "kind": "skill",
-    "description": "review implementation",
-    "file": ".cw/out/skill/review/index.md"
+    "kind": "guide",
+    "id": "no-single-word-naming",
+    "description": "Name a variable as its context plus the type it holds — mcpPrimitive, rationaleId, primitiveById — never a vague word or a past participle.",
+    "file": ".cw/out/guide/no-single-word-naming/index.md"
   },
   {
-    "identity": "skill:verify",
-    "kind": "skill",
-    "description": "verify changes",
-    "file": ".cw/out/skill/verify/index.md"
+    "kind": "script",
+    "id": "scaffold-hexagon",
+    "description": "Scaffold a hexagonal architecture (driver / hexagon / zdriven), in TypeScript or JavaScript, into the folder it is given.",
+    "file": ".cw/out/script/scaffold-hexagon/index.md"
+  },
+  {
+    "kind": "corpus",
+    "id": "why-driven-port-speaks-its-adapter",
+    "description": "Why a driven port carries no domain knowledge.",
+    "file": ".cw/out/corpus/why-driven-port-speaks-its-adapter/index.md"
+  },
+  {
+    "kind": "corpus",
+    "id": "why-hexagonal-architecture",
+    "description": "Why the code is split into driver, hexagon and zdriven, and why the arrows between them point inward.",
+    "file": ".cw/out/corpus/why-hexagonal-architecture/index.md"
+  },
+  {
+    "kind": "corpus",
+    "id": "why-no-single-word-naming",
+    "description": "Why a variable is named as its context plus the type it holds, and why participles and vague words are refused.",
+    "file": ".cw/out/corpus/why-no-single-word-naming/index.md"
+  },
+  {
+    "kind": "corpus",
+    "id": "why-write-changelog",
+    "description": "Why changelog entries are one short sentence for users, and how a release entry is written.",
+    "file": ".cw/out/corpus/why-write-changelog/index.md"
+  },
+  {
+    "kind": "guide",
+    "id": "write-changelog",
+    "description": "Write each CHANGELOG.md entry as one short plain sentence for users of cw, with no spec ids or internals, and mark Breaking only when users must edit what they wrote.",
+    "file": ".cw/out/guide/write-changelog/index.md",
+    "globs": [
+      "CHANGELOG.md"
+    ]
   }
 ]

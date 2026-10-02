@@ -10,13 +10,22 @@ export interface AssetFile {
   readonly contents: string;
 }
 
-declare const normalized: unique symbol;
+/** An id as FR-141 writes one: lowercase slugs joined by `/`. */
+const ID_SOURCE = /[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*/.source;
 
-/** An identity as a host is given it in its own files: the separators a
- *  filename does not carry replaced — the kind's `:` and the `/` that groups an
- *  id alike (FR-141). A type of its own, so a name written into a host's files
- *  is one `normIdentity` made. */
-export type NormalizedIdentity = string & { readonly [normalized]: true };
+/**
+ * Where a body or a sensor's `run` names another primitive: `[[<id>]]`, of any
+ * kind (FR-172). Only a name so written is a reference, so prose is never taken
+ * for one. The id is the first group.
+ */
+export const REFERENCE = new RegExp(`\\[\\[(${ID_SOURCE})\\]\\]`, "g");
+
+/**
+ * Where an agent's `tools` holds a place: `[[<id>]]` for every tool that mcp
+ * declares, `[[<id>]]:<tool>` for one of them (FR-156). The id is the first
+ * group, the tool the second where one is named.
+ */
+export const TOOL_REFERENCE = new RegExp(`^\\[\\[(${ID_SOURCE})\\]\\](?::([^:\\s]+))?$`);
 
 /** The delimiter a primitive's headers are written between. One constant for
  *  the writing here and the reading in `primitiveOf`, so the two cannot drift. */
@@ -35,7 +44,7 @@ export const GoodArraySchema = z.array(GoodLineSchema).min(1).readonly();
  *  (data-model §1). Each kind's own headers extend these, so what every
  *  primitive holds is written once. */
 export const CommonHeadersSchema = z.object({
-  /** Slugs joined by `/`, so identities can be grouped by team or domain
+  /** Slugs joined by `/`, so ids can be grouped by team or domain
    *  (FR-141). The `/` is written `-` in the file's name and nothing else:
    *  nothing is read from what a file is called. At most 40 characters, so every name a host
    *  is given for it — an mcp's tools among them, `mcp__cw__mcp-<id>__<tool>` —
@@ -51,7 +60,8 @@ export const CommonHeadersSchema = z.object({
    *  are what decide when its body is loaded; a mixin may name them to say how
    *  far what it lends reaches (FR-006). */
   globs: z.array(GoodLineSchema).readonly().optional(),
-  /** `corpus:<id>`, the reasoning this primitive cites (FR-005). */
+  /** The id of the corpus this primitive cites as its reasoning (FR-005,
+   *  FR-172). */
   rationale: GoodLineSchema.optional(),
   mixins: z.array(GoodLineSchema).readonly().optional(),
 });
@@ -116,7 +126,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
   }
 
   /** Whether a word someone searched for is anywhere a reader would look for
-   *  it: the identity, the kind, what it is for, when its kind comes up, its
+   *  it: the id, the kind, what it is for, when its kind comes up, its
    *  file, or any header it declared — ignoring case, since whoever typed it
    *  did not know how it was written (FR-114). */
   search(word: string): boolean {
@@ -124,7 +134,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
       value === undefined ? [] : Array.isArray(value) ? value : [String(value)],
     );
     const loweredWord = word.toLowerCase();
-    return [this.identity, this.kind, this.activatesWhen, this.file, ...headerValues].some((one) => one.toLowerCase().includes(loweredWord));
+    return [this.headers.id, this.kind, this.activatesWhen, this.file, ...headerValues].some((one) => one.toLowerCase().includes(loweredWord));
   }
 
   /** Which kind this is. Each class declares it as a literal, and those
@@ -157,17 +167,12 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
     return contentHashOf(this.toMarkdown());
   }
 
-  /** What the whole charter names it by: `guide:no-any` (FR-014). */
-  get identity(): string {
-    return `${this.kind}:${this.headers.id}`;
-  }
-
-  /** Its identity as every name given to a host writes it, `:` and `/` as
-   *  `-`: `guide-mfbs-no-any` for `guide:mfbs/no-any` (FR-141). Made here,
-   *  once, so nothing that names a host's file or a place's tools spells it
-   *  again. */
-  get normIdentity(): NormalizedIdentity {
-    return this.identity.replace(/[:/]/g, "-") as NormalizedIdentity;
+  /** Its id as every name given to a host writes it, `/` as `-`:
+   *  `mfbs-no-any` for `mfbs/no-any`, so a skill is invoked as `/mfbs-no-any`
+   *  (FR-141, FR-171). Made here, once, so nothing that names a host's file
+   *  spells it again. */
+  get normId(): string {
+    return this.headers.id.replace(/\//g, "-");
   }
 
   /**

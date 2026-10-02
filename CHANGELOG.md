@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Small enhancement to naming for Claude: a skill is invoked as `/<id>`, not `/skill-<id>`, and an agent is spawned by its id. Run `cw build` to apply it.
+- **Breaking:** big refactoring that removes the identity (`kind:id`) and names every primitive by its id only; write `<id>` in headers and tests and `[[<id>]]` in bodies (see `specs/ADR.md`).
+
 ## 0.4.0 — 2026-10-02
 
 - `cw vendor` is ready: `cw vendor add <source>` installs another repository's charter, from its `.cw/charter/` folder, under `.cw/vendor/<name>/`.

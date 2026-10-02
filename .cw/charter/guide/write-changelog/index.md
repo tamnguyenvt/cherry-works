@@ -1,0 +1,14 @@
+---
+kind: guide
+id: write-changelog
+description: Write each CHANGELOG.md entry as one short plain sentence for users of cw, with no spec ids or internals, and mark Breaking only when users must edit what they wrote.
+globs: ["CHANGELOG.md"]
+rationale: why-write-changelog
+---
+Write each entry of `CHANGELOG.md` as one short plain sentence that a user of
+`cw` understands. No spec ids, no internals, no long upgrade essays.
+
+Mark an entry **Breaking:** only when a user must edit something they wrote —
+their charter, their config, their code — and say the fix in the same line. A
+change that running `cw build` applies on its own is not breaking: write it as a
+plain entry that says to run `cw build`.

@@ -34,7 +34,7 @@ const primitive = (kind: string, id: string, body = `The body of ${id}.`) =>
 /** The skill the engine brings, as the catalogue carries it before the file it
  *  is opened at: every charter holds it, so every catalogue lists it (FR-017). */
 const builtinEntry = {
-  identity: "skill:cw-author",
+  id: "cw-author",
   kind: "skill",
   description: new CwAuthorSkill().headers.description,
 };
@@ -68,17 +68,17 @@ test("compiling produces the listing, the charter file, and what the installed a
     ".cw/out/CHARTER.md",
     // Every primitive as it compiled, in the catalogue's order, since the
     // catalogue is what names each file (FR-139, FR-140).
-    ".cw/out/guide/no-any/index.md",
     ".cw/out/skill/cw-author/index.md",
+    ".cw/out/guide/no-any/index.md",
     // The file that agent reads unasked, which is what sends it to the
     // orientation above.
     "CLAUDE.md",
     // The one server that reaches every place the charter declares.
     ".mcp.json",
     // The skill the engine brings, which every charter holds and reads first.
-    ".claude/skills/skill-cw-author/SKILL.md",
+    ".claude/skills/cw-author/SKILL.md",
     // The one guide as the installed agent's own kinds have it.
-    ".claude/rules/guide-no-any.md",
+    ".claude/rules/no-any.md",
   ]);
 });
 
@@ -105,8 +105,8 @@ test("a repository with no agent installed still compiles the whole neutral half
     ".cw/out/catalog.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
-    ".cw/out/guide/no-any/index.md",
     ".cw/out/skill/cw-author/index.md",
+    ".cw/out/guide/no-any/index.md",
   ]);
 });
 
@@ -115,14 +115,14 @@ test("the full catalogue is written as the catalogue says it, one entry per line
 
   const contents = files[".cw/out/catalog.json"] ?? "";
   assert.deepEqual(JSON.parse(contents), [
+    { ...builtinEntry, file: ".cw/out/skill/cw-author/index.md" },
     {
-      identity: "guide:no-any",
+      id: "no-any",
       kind: "guide",
       description: "What no-any is for, in one line.",
       file: ".cw/out/guide/no-any/index.md",
       globs: ["src/**/*.ts"],
     },
-    { ...builtinEntry, file: ".cw/out/skill/cw-author/index.md" },
   ]);
   assert.ok(contents.includes("\n  {\n"));
 });
@@ -155,9 +155,9 @@ test("every primitive compiles to one document holding its headers, then its mix
 test("what the engine brings compiles to a file on disk like any other primitive (SC-033)", async () => {
   const { files } = await built(oneGuide);
 
-  const catalogue: readonly { identity: string; file: string }[] = JSON.parse(files[".cw/out/catalog.json"] ?? "");
+  const catalogue: readonly { id: string; file: string }[] = JSON.parse(files[".cw/out/catalog.json"] ?? "");
 
-  for (const { identity, file } of catalogue) assert.ok(files[file], `${identity} names ${file}, which was not written`);
+  for (const { id, file } of catalogue) assert.ok(files[file], `${id} names ${file}, which was not written`);
   assert.match(files[".cw/out/skill/cw-author/index.md"] ?? "", /^---\nkind: skill\nid: cw-author\n/);
 });
 
@@ -202,8 +202,8 @@ test("a charter with a broken file still compiles what the readable files hold",
 
   assert.equal(Object.keys(charter.allFaultsByFiles.files).length, 1);
   assert.deepEqual(
-    JSON.parse(files[".cw/out/catalog.json"] ?? "").map((one: { identity: string }) => one.identity),
-    ["guide:no-any", "skill:cw-author"],
+    JSON.parse(files[".cw/out/catalog.json"] ?? "").map((one: { id: string }) => one.id),
+    ["cw-author", "no-any"],
   );
 });
 
@@ -228,24 +228,24 @@ test("a header YAML would read as something else is quoted in the compiled docum
   assert.deepEqual(new YamlParser().parse(headers).run, run);
 });
 
-test("a place is served under the first segment of its id and a hash of its identity, the same on every build (FR-145)", () => {
+test("a place is served under the first segment of its id and a hash of its id, the same on every build (FR-145)", () => {
   assert.deepEqual(
-    shortenStringsOf(["mcp:notion", "mcp:moneyforward/tax", "mcp:moneyforward/billing-service"]),
+    shortenStringsOf(["notion", "moneyforward/tax", "moneyforward/billing-service"]),
     {
-      "mcp:moneyforward/billing-service": "moneyforward_a518",
-      "mcp:moneyforward/tax": "moneyforward_923f",
-      "mcp:notion": "notion_f3cb",
+      "moneyforward/billing-service": "moneyforward_c3ae",
+      "moneyforward/tax": "moneyforward_e2d3",
+      "notion": "notion_8d57",
     },
   );
 });
 
 test("two places whose prefixes hash alike are told apart by a number, in the order they sort in (FR-145)", () => {
-  // Both hash to `acme_b34a`; `place-1032` sorts before `place-838`.
+  // Both hash to `acme_3b85`; `place-1157` sorts before `place-5`.
   assert.deepEqual(
-    shortenStringsOf(["mcp:acme/place-838", "mcp:acme/place-1032"]),
+    shortenStringsOf(["acme/place-5", "acme/place-1157"]),
     {
-      "mcp:acme/place-1032": "acme_b34a",
-      "mcp:acme/place-838": "acme_b34a_2",
+      "acme/place-1157": "acme_3b85",
+      "acme/place-5": "acme_3b85_2",
     },
   );
 });
