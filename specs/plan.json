@@ -189,6 +189,56 @@
       "dependsOn": [
         "CORE Story 26"
       ]
+    },
+    {
+      "id": "EVAL Story 1",
+      "title": "See what the charter loads into the agent's context",
+      "dependsOn": [
+        "CORE Story 16"
+      ]
+    },
+    {
+      "id": "EVAL Story 2",
+      "title": "Be told what a session has used when the agent stops",
+      "dependsOn": [
+        "CORE Story 24"
+      ]
+    },
+    {
+      "id": "EVAL Story 3",
+      "title": "Read back the sessions kept",
+      "dependsOn": [
+        "EVAL Story 2"
+      ]
+    },
+    {
+      "id": "EVAL Story 4",
+      "title": "Ask what the sessions cost",
+      "dependsOn": [
+        "EVAL Story 3",
+        "CORE Story 12"
+      ]
+    },
+    {
+      "id": "EVAL Story 5",
+      "title": "Search tools rather than load them all into context",
+      "dependsOn": [
+        "CORE Story 20"
+      ]
+    },
+    {
+      "id": "EVAL Story 6",
+      "title": "Evaluate the charter against the real agent",
+      "dependsOn": [
+        "CORE Story 9"
+      ]
+    },
+    {
+      "id": "EVAL Story 7",
+      "title": "Run the evaluation under an evaluation framework",
+      "dependsOn": [
+        "EVAL Story 6"
+      ]
     }
   ]
 }

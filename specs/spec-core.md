@@ -4,7 +4,7 @@
 
 **Updated**: 2026-10-02
 
-**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "Phase 008, after Uber's efficient software factory: predict how many tokens the charter loads into the agent's main context; give the tokens a session used when it stops; let `cw mcp serve` search its tools rather than load them all; evaluate the charter against a real model with promptfoo and deepeval."
+**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by."
 
 ## Overview
 
@@ -78,18 +78,6 @@ A single charter covering design, planning and implementation at once has to be 
 - Q: Is a charter still written as `corpus:x` or `script:x` told so? → A: No. Nothing reads the earlier way: `rationale: corpus:x` is a rationale no corpus answers to, and `script:x` in a body is text. `cw doctor` says the first; the second is the author's to find.
 - Q: An always-on guide (no `globs`) is warned as untested; should the health check let it be? → A: No, it is a rule like any other and a case should name it too ([CORE-FR-014](#core-fr-014)).
 - Q: Should a vendor's untested guides still be warned about here? → A: No: a vendor is tested and checked in its own repository, so the health check leaves every warning under its files out and still says its errors ([CORE-FR-014](#core-fr-014)).
-- Q: How is the charter evaluated against a real model? → A: By a command of its own, apart from the self-regression tests, which stay deterministic and offline ([CORE-FR-084](#core-fr-084)).
-- Q: promptfoo, deepeval, or both? → A: Both.
-- Q: What does an evaluation check? → A: That the right skill is invoked for a prompt, that a guide is followed, and what each case cost in tokens and money.
-- Q: Claude Code already defers MCP tool schemas on its own; still give `cw mcp serve` a tool search? → A: Yes, so a host without one gains it too.
-
-### Session 2026-10-03
-
-- Q: How is the main-context prediction counted, with no offline Claude tokenizer? → A: Estimated offline by default, said to be an estimate; counted exactly through the model provider's token count when asked to and a key is at hand.
-- Q: Where is the prediction said, and is there a ceiling? → A: A command of its own lists it per primitive, largest first; a build says the total; the portal shows it; the health check warns above a ceiling the repository sets, 20,000 tokens when it sets none.
-- Q: How is a session's token use said when the agent stops, and is it kept? → A: Said to the developer only when the session crosses a mark, every 100,000 tokens by default, in one line the model is not sent; every stop is also kept as one line of a log on the developer's machine, never committed. Subagents and an estimated cost are counted in.
-- Q: When does `cw mcp serve` search its tools rather than list them, and how does a found tool appear? → A: On its own once the declared tools' schemas pass a ceiling, 5,000 tokens by default; below it every tool is listed as before; the repository can hold it always on or always off. A found tool joins the list under the name it always had, so a subagent's hold on its tools ([CORE-FR-156](#core-fr-156)) still means what it says.
-- Q: What does an evaluation run against? → A: The real agent, run headless in a copy of the repository with its charter built; one case file runs under promptfoo or deepeval, chosen when run, on the developer's own key; a model judges what is said in words.
 
 ### Session 2026-10-04
 
@@ -394,7 +382,7 @@ A developer is asked which version they are on when they report a problem, and a
 
 ### CORE Story 15 - Publish a release that users can trust (Priority: P3)
 
-**Status**: Todo
+**Status**: Done
 
 A maintainer wants to put a new version in users' hands. They ask for a release of one version, and it is published only if what would be published is known to work: the tests pass, the working tree holds nothing uncommitted, the version is new, and the exact package about to be published has been installed apart from the repository and seen to set a repository up and build it. Each published version can be traced back to the commit it was built from.
 
