@@ -1,15 +1,15 @@
 ---
 kind: sensor
-id: session-tokens-counter-on-stop
+id: cw-session-tokens-counter-on-stop
 description: Count the session's tokens each time the agent stops.
 signal: Stop
-run: node "[[session-tokens-counter]]"
+run: node "[[cw-session-tokens-counter]]"
 ---
 
 This sensor is cw's own. It comes with the engine, is not authored in this
 repository, and cannot be changed here.
 
-When the agent stops, [session-tokens-counter](../../script/session-tokens-counter/index.md) counts the session's tokens and
+When the agent stops, [cw-session-tokens-counter](../../script/cw-session-tokens-counter/index.md) counts the session's tokens and
 keeps them on this machine. It shows the developer one line only when the
 session crosses a mark, and never holds the stop up.
 

@@ -40,7 +40,8 @@ here and extend what is already there.
   - `models/charter/` — `CharterRoot` (every primitive, every composite
     fault, in `compositeFaultsByFiles`), `primitive/` (one `<Kind>Primitive`
     per kind extending `BasePrimitive`, registered in `PRIMITIVE_CLASSES` of
-    `Primitive.ts`), `builtin/` (the engine's own layer).
+    `Primitive.ts`), `builtin/` (the engine's own layer: `cw-author`,
+    `cw-session-cost`, the session counter; listed in `BUILTIN_PRIMITIVES`).
   - `models/output/` — what a build produces, knowing no primitive:
     `CharterOutput`; `common/` (`Catalogue`, `CharterMd`, `CompiledPrimitive`,
     `McpOrigin`); `provider-component/` — a host's files: `ProviderComponent`
@@ -64,11 +65,11 @@ here and extend what is already there.
   - `models/context/` — `MainContext`: what a charter puts into one agent's
     main context, counted, and the ceiling it is held to.
   - `models/session/` — `SessionAnalysisLine`: one stop of one session, as
-    `session-tokens-counter` keeps it; `SessionSpan` (`sessionSpanOf`: the
+    `cw-session-tokens-counter` keeps it; `SessionSpan` (`sessionSpanOf`: the
     days a summary spans, 31 at most); `SessionAnalysis`: the lines read,
     and `summarize(span)` / `summarizeByDay(span)` into a
-    `SessionAnalysisSummary`, which holds each session's total at its last
-    stop and no line.
+    `SessionAnalysisSummary`, which holds each session's tokens by kind and
+    total at its last stop and no line.
   - `models/` root — what the charter and the output share: closed value
     sets with their type (`AgentProvider`, `McpAuthMethod`), `WorkspaceSettings`,
     `DomainFault` (faults with a fix and a severity).

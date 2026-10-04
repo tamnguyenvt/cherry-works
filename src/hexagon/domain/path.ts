@@ -136,7 +136,7 @@ export const SESSION_LOG_FILE = "session-analysis.jsonl";
 
 /**
  * The folder one repository's sessions are kept in on this machine, a folder
- * per session id under it, as `session-tokens-counter` keeps them
+ * per session id under it, as `cw-session-tokens-counter` keeps them
  * (EVAL-FR-009): the `sessionAnalysisFolder` the repository set, an absolute
  * path or one under `~/`, or else `~/.cherry-works/` and the repository's
  * path, each character that is not a letter or a digit a dash. The counter

@@ -1,8 +1,8 @@
 ---
 kind: script
-id: session-tokens-counter
+id: cw-session-tokens-counter
 description: Count the session's tokens when the agent stops, keep them on this machine, and say so at every mark.
-executionPath: ./count.mjs
+executionPath: ./sessionTokensCounter.mjs
 ---
 
 This script is cw's own. It comes with the engine, is not authored in this

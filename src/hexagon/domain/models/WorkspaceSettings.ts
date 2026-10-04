@@ -17,10 +17,10 @@ export const WorkspaceSettingsSchema = z.object({
    *  session opens with (EVAL-FR-006). */
   mainContextCeiling: z.number().int().positive().optional(),
   /** Every how many tokens a session tells the developer what it has used
-   *  (EVAL-FR-010). Read by `session-tokens-counter`, which runs outside the
+   *  (EVAL-FR-010). Read by `cw-session-tokens-counter`, which runs outside the
    *  engine; held here so a wrong one is refused like any other field. */
   sessionContextMark: z.number().int().positive().optional(),
-  /** Where `session-tokens-counter` keeps each session, a folder per session
+  /** Where `cw-session-tokens-counter` keeps each session, a folder per session
    *  id holding its `session-analysis.jsonl`: an absolute path or one under
    *  `~/`; a folder of this repository's own under `~/.cherry-works/` where it
    *  sets none (EVAL-FR-009). */

@@ -25,15 +25,16 @@ const at = (path: string) => new URL(path, root).href;
 
 const inRepo = (path: string) => new URL(path, repo).href;
 
-/** What the engine's own session counter puts under the workspace on every
- *  build, beside the authored charter's files (EVAL-FR-008). */
+/** What the engine's own session primitives put under the workspace on every
+ *  build, beside the authored charter's files (EVAL-FR-008, EVAL-FR-014). */
 const sessionCounterPaths = [
-  ".cw/out/script/session-tokens-counter/index.md",
-  ".cw/out/script/session-tokens-counter/count.mjs",
-  ".cw/out/sensor/session-tokens-counter-on-stop/index.md",
+  ".cw/out/skill/cw-session-cost/index.md",
+  ".cw/out/script/cw-session-tokens-counter/index.md",
+  ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs",
+  ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md",
 ];
 /** The Stop hook the engine's own sensor compiles to in Claude's settings. */
-const sessionCounterStopHook = { hooks: [{ type: "command", command: 'node ".cw/out/script/session-tokens-counter/count.mjs"' }] };
+const sessionCounterStopHook = { hooks: [{ type: "command", command: 'node ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs"' }] };
 
 /** What a repository answered at setup, kept in its own settings: which agents
  *  it compiles its charter for (FR-033). Every repository a build test authors
@@ -76,12 +77,13 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
     ".cw/out/skill/cw-author/index.md",
-    ".cw/out/guide/no-any/index.md",
     ...sessionCounterPaths,
+    ".cw/out/guide/no-any/index.md",
     "CLAUDE.md",
     ".claude/settings.json",
     ".mcp.json",
     ".claude/skills/cw-author/SKILL.md",
+    ".claude/skills/cw-session-cost/SKILL.md",
     ".claude/rules/no-any.md",
   ]);
   assert.deepEqual(built.deleted, []);
@@ -532,8 +534,8 @@ test("a charter naming no agent still gets the surface every reader shares (FR-0
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
     ".cw/out/skill/cw-author/index.md",
-    ".cw/out/guide/no-any/index.md",
     ...sessionCounterPaths,
+    ".cw/out/guide/no-any/index.md",
   ]);
 });
 

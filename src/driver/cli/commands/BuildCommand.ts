@@ -11,15 +11,13 @@ import {
 /** What `cw build` takes: whether the build lands, or is only said. One flag
  *  rather than a command of its own, because what is asked for is the same
  *  build either way (FR-022). */
-const BUILDING = {
+const OPTIONS = {
   preview: {
     type: "boolean",
     describe: "Say what a build would do to each file, and write nothing",
     default: false,
   },
 } as const satisfies OptionSpec;
-
-type Building = typeof BUILDING;
 
 /**
  * `cw build`: compile the charter and put it where each reader looks.
@@ -36,16 +34,16 @@ type Building = typeof BUILDING;
  * under each file, and sending the user there is one line rather than two
  * commands saying the same thing differently.
  */
-export class BuildCommand implements Command<Building> {
+export class BuildCommand implements Command<typeof OPTIONS> {
   readonly name = "build";
   readonly summary = "Compile the charter into the files each agent reads";
-  readonly options = BUILDING;
+  readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { preview }: Options<Building>): Promise<Outcome> {
+  async run({ charterAuthoringApp }: Context, { preview: isPreview }: Options<typeof OPTIONS>): Promise<Outcome> {
     // What a build would do, every file it would touch under what would happen
     // to it, and how many of each (FR-022). The unchanged are said too — naming
     // none of them would leave a fully built repository saying nothing.
-    if (preview) {
+    if (isPreview) {
       const planSummaryDTO = await charterAuthoringApp.preview();
 
       if (planSummaryDTO.type === "FaultsByFile") {

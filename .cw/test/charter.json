@@ -1,8 +1,9 @@
 {
-  "description": "The repository's own guides come up where they speak: the map on the code, the changelog rule on the changelog, the rest every turn.",
+  "description": "The repository's own guides come up where they speak: the map on the code, the options rule on the commands, the changelog rule on the changelog, the rest every turn.",
   "cases": [
     { "do": { "touchFile": "src/hexagon/application/CharterAuthoring.ts" }, "expect": { "activate": "architecture-map" } },
     { "do": { "touchFile": "CHANGELOG.md" }, "expect": { "activate": "write-changelog" } },
+    { "do": { "touchFile": "src/driver/cli/commands/SessionsCommand.ts" }, "expect": { "activate": "command-options-named-options" } },
     { "do": { "touchFile": "README.md" }, "expect": { "activate": "explain-in-plain-vietnamese" } },
     { "do": { "touchFile": "README.md" }, "expect": { "activate": "leave-changes-unstaged" } },
     { "do": { "touchFile": "src/hexagon/domain/services/testService.ts" }, "expect": { "activate": "no-abirtrary-function-split" } },

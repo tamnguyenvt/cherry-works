@@ -5,14 +5,14 @@ import { BUILTIN_PRIMITIVE_LAYER } from "../PrimitiveLayer.js";
 import sessionTokensCounterMjs from "./scripts/sessionTokensCounter.mjs";
 
 /** The engine's own counter of a session's tokens, run by
- *  `session-tokens-counter-on-stop` each time the agent stops (EVAL-FR-008). */
-export class SessionTokensCounterScript extends ScriptPrimitive {
+ *  `cw-session-tokens-counter-on-stop` each time the agent stops (EVAL-FR-008). */
+export class CwSessionTokensCounterScript extends ScriptPrimitive {
   constructor() {
     super(
       {
-        id: "session-tokens-counter",
+        id: "cw-session-tokens-counter",
         description: "Count the session's tokens when the agent stops, keep them on this machine, and say so at every mark.",
-        executionPath: "./count.mjs",
+        executionPath: "./sessionTokensCounter.mjs",
       },
       `This script is cw's own. It comes with the engine, is not authored in this
 repository, and cannot be changed here.
@@ -33,7 +33,7 @@ its tokens. The model is sent nothing of it.
 
 A transcript it cannot read is left alone: nothing is shown or kept, and the
 agent stops as it would have.`,
-      [{ file: "count.mjs", contents: sessionTokensCounterMjs }],
+      [{ file: "sessionTokensCounter.mjs", contents: sessionTokensCounterMjs }],
       BUILTIN_PRIMITIVE_LAYER,
     );
   }

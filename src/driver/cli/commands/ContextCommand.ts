@@ -1,14 +1,12 @@
 import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./Command.js";
 
-const COUNTING = {
+const OPTIONS = {
   exact: {
     type: "boolean",
     describe: "Count exactly, through the agent's own command line, rather than estimate",
     default: false,
   },
 } as const satisfies OptionSpec;
-
-type Counting = typeof COUNTING;
 
 /**
  * `cw context`: what the charter puts into each agent's main context when a
@@ -19,13 +17,13 @@ type Counting = typeof COUNTING;
  * every guide loaded only when a file it names is touched, with its globs.
  * What the portal shows is the same answer (EVAL-FR-007).
  */
-export class ContextCommand implements Command<Counting> {
+export class ContextCommand implements Command<typeof OPTIONS> {
   readonly name = "context";
   readonly summary = "Say how many tokens the charter puts into the agent's main context";
-  readonly options = COUNTING;
+  readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { exact }: Options<Counting>): Promise<Outcome> {
-    const mainContextsDTO = await charterAuthoringApp.predictMainContext(exact);
+  async run({ charterAuthoringApp }: Context, { exact: isExactAsked }: Options<typeof OPTIONS>): Promise<Outcome> {
+    const mainContextsDTO = await charterAuthoringApp.predictMainContext(isExactAsked);
 
     if (mainContextsDTO.type === "FaultsByFile") {
       const noOfFiles = Object.keys(mainContextsDTO.data.files).length;

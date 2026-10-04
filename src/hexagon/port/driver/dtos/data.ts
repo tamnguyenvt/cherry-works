@@ -287,6 +287,9 @@ const SessionSummarySchema = dto(
           sessionId: z.string(),
           model: z.string(),
           lastStopAt: z.string(),
+          /** Its tokens by kind at that stop, which a cost is reckoned from
+           *  (EVAL-FR-014). */
+          tokens: z.object({ input: z.number(), output: z.number(), cacheWrite: z.number(), cacheRead: z.number() }),
           /** Its tokens so far, subagents included (EVAL-FR-008). */
           totalTokens: z.number(),
         }),

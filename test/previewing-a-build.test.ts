@@ -74,14 +74,16 @@ test("a repository that has never been built would have every file created (FR-0
     ".cw/out/CHARTER.md": "create",
     ".cw/out/skill/cw-author/index.md": "create",
     ".cw/out/guide/no-any/index.md": "create",
-    ".cw/out/script/session-tokens-counter/index.md": "create",
-    ".cw/out/script/session-tokens-counter/count.mjs": "create",
-    ".cw/out/sensor/session-tokens-counter-on-stop/index.md": "create",
+    ".cw/out/skill/cw-session-cost/index.md": "create",
+    ".cw/out/script/cw-session-tokens-counter/index.md": "create",
+    ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs": "create",
+    ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md": "create",
     "CLAUDE.md": "create",
     ".claude/settings.json": "create",
     ".mcp.json": "create",
     ".claude/rules/no-any.md": "create",
     ".claude/skills/cw-author/SKILL.md": "create",
+    ".claude/skills/cw-session-cost/SKILL.md": "create",
   });
   // The whole of what a preview promises: it said all that, and wrote none of it.
   assert.deepEqual(await everything(held), before);
@@ -115,9 +117,10 @@ test("a rule edited since the last build would be updated, and its listings with
     // engine brings does not.
     ".cw/out/guide/no-any/index.md": "update",
     ".cw/out/skill/cw-author/index.md": "unchanged",
-    ".cw/out/script/session-tokens-counter/index.md": "unchanged",
-    ".cw/out/script/session-tokens-counter/count.mjs": "unchanged",
-    ".cw/out/sensor/session-tokens-counter-on-stop/index.md": "unchanged",
+    ".cw/out/skill/cw-session-cost/index.md": "unchanged",
+    ".cw/out/script/cw-session-tokens-counter/index.md": "unchanged",
+    ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs": "unchanged",
+    ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md": "unchanged",
     // The section in the entry file is a pointer and says nothing of any
     // primitive, so no edit to a body reaches it.
     "CLAUDE.md": "unchanged",
@@ -128,6 +131,7 @@ test("a rule edited since the last build would be updated, and its listings with
     // the body holds.
     ".claude/rules/no-any.md": "unchanged",
     ".claude/skills/cw-author/SKILL.md": "unchanged",
+    ".claude/skills/cw-session-cost/SKILL.md": "unchanged",
   });
 });
 

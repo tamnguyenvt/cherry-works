@@ -43,21 +43,23 @@ const putDown = async (files: Readonly<Record<string, string>>, agents: readonly
 const projected = async (files: Readonly<Record<string, string>>) =>
   Object.fromEntries(Object.entries(await putDown(files)).filter(([path]) => path.startsWith(".claude/")));
 
-/** Where the skill the engine brings lands on this host: every charter holds
- *  it, so every projection has it (FR-021). */
+/** Where the skills the engine brings land on this host: every charter holds
+ *  them, so every projection has them (FR-021, EVAL-FR-014). */
 const builtinSkill = ".claude/skills/cw-author/SKILL.md";
+const cwSessionCostSkill = ".claude/skills/cw-session-cost/SKILL.md";
 
 /** Where the sensor the engine brings lands on this host: its settings, as a
  *  Stop hook running the engine's session counter (EVAL-FR-008). Every charter
  *  holds it, so every projection has that file. */
 const builtinSettings = ".claude/settings.json";
-const sessionCounterStopHook = { hooks: [{ type: "command", command: 'node ".cw/out/script/session-tokens-counter/count.mjs"' }] };
+const sessionCounterStopHook = { hooks: [{ type: "command", command: 'node ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs"' }] };
 
-/** What the engine's session counter compiles to under the workspace. */
+/** What the engine's session primitives compile to under the workspace. */
 const sessionCounterPaths = [
-  ".cw/out/script/session-tokens-counter/index.md",
-  ".cw/out/script/session-tokens-counter/count.mjs",
-  ".cw/out/sensor/session-tokens-counter-on-stop/index.md",
+  ".cw/out/skill/cw-session-cost/index.md",
+  ".cw/out/script/cw-session-tokens-counter/index.md",
+  ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs",
+  ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md",
 ];
 
 const aRole = {
@@ -86,6 +88,7 @@ test("each charter kind this host has a kind for lands where that host reads it 
     ".claude/rules/no-any.md",
     ".claude/settings.json",
     builtinSkill,
+    cwSessionCostSkill,
     ".claude/skills/refactoring/SKILL.md",
     ".claude/skills/release/SKILL.md",
   ]);
@@ -123,6 +126,7 @@ test("a guide and a skill of the same id stay two files, each named by its id al
     ".claude/rules/review.md",
     builtinSettings,
     builtinSkill,
+    cwSessionCostSkill,
     ".claude/skills/review/SKILL.md",
   ]);
 });
@@ -143,7 +147,7 @@ test("the kinds this host has no kind for project nothing: they are read from th
     [at("mixin/house-style/index.md")]: primitive("mixin", "house-style", "Write plainly."),
   });
 
-  assert.deepEqual(Object.keys(files), [builtinSettings, builtinSkill]);
+  assert.deepEqual(Object.keys(files), [builtinSettings, builtinSkill, cwSessionCostSkill]);
 });
 
 test("a host's document points to the compiled one, which alone carries the body (FR-018, FR-139)", async () => {
@@ -227,7 +231,7 @@ test("a sensor compiles to a hook this host runs: the event, and the command (FR
     ]),
   });
 
-  assert.deepEqual(Object.keys(files), [".claude/settings.json", builtinSkill]);
+  assert.deepEqual(Object.keys(files), [".claude/settings.json", builtinSkill, cwSessionCostSkill]);
   assert.deepEqual(JSON.parse(files[".claude/settings.json"] ?? ""), {
     hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "./bin/report-ci" }] }], Stop: [sessionCounterStopHook] },
   });
@@ -275,7 +279,7 @@ test("every posture lands in the one file this host reads its settings from", as
 
   // Two postures, one file: what both of them ask for, read together, each thing
   // once — and in the order their files sort in (SC-007).
-  assert.deepEqual(Object.keys(files), [".claude/settings.json", builtinSkill]);
+  assert.deepEqual(Object.keys(files), [".claude/settings.json", builtinSkill, cwSessionCostSkill]);
   assert.deepEqual(JSON.parse(files[".claude/settings.json"] ?? "").permissions, {
     allow: ["Read(**)"],
     deny: ["WebFetch", "Bash(rm:*)"],

@@ -12,7 +12,7 @@ import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
 import { SessionReviewing } from "../src/hexagon/application/SessionReviewing.js";
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { SessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/SessionTokensCounterScript.js";
+import { CwSessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensCounterScript.js";
 import { FileReaders } from "../src/zdriven/FileReaders.js";
 import { InMemoryClock } from "../src/zdriven/InMemoryClock.js";
 import { SystemClock } from "../src/zdriven/SystemClock.js";
@@ -31,7 +31,7 @@ const homePath = new URL("file:///home/dev/");
 /** Where the counter keeps this repository's sessions unless it says otherwise. */
 const defaultSessionsFolder = "file:///home/dev/.cherry-works/-work-my-repo/";
 
-/** One kept stop of one session, as `session-tokens-counter` writes it. Each
+/** One kept stop of one session, as `cw-session-tokens-counter` writes it. Each
  *  at noon UTC, so its day is the same wherever the test runs. */
 const sessionAnalysisLine = (sessionId: string, time: string, total: number, model = "claude-opus-5-5") =>
   JSON.stringify({
@@ -264,8 +264,8 @@ test("the summary reads what the counter kept when the agent stopped, on a disk 
     await mkdir(join(repoFolder, ".cw"), { recursive: true });
     await mkdir(homeFolder, { recursive: true });
     await writeFile(join(repoFolder, ".cw/settings.json"), JSON.stringify({ agents: ["claude"] }));
-    const counterFile = join(machineFolder, "count.mjs");
-    await writeFile(counterFile, new SessionTokensCounterScript().assets.find((assetFile) => assetFile.file === "count.mjs")!.contents);
+    const counterFile = join(machineFolder, "sessionTokensCounter.mjs");
+    await writeFile(counterFile, new CwSessionTokensCounterScript().assets.find((assetFile) => assetFile.file === "sessionTokensCounter.mjs")!.contents);
     const transcriptFile = join(machineFolder, "session-e.jsonl");
     await writeFile(
       transcriptFile,
@@ -286,4 +286,27 @@ test("the summary reads what the counter kept when the agent stopped, on a disk 
   } finally {
     await rm(machineFolder, { recursive: true, force: true });
   }
+});
+
+test("asked for JSON, the summary gives each session's tokens by kind, so a skill can price them (EVAL-FR-012, EVAL-FR-014)", async () => {
+  const cli = cliOver(machineHolding(keptLog));
+
+  const { code, text } = await printed(cli, ["sessions", "--json"]);
+
+  assert.equal(code, EXIT_OK);
+  const {
+    data: { sessionSummary, dailySessionSummary },
+  } = JSON.parse(text);
+  assert.deepEqual(sessionSummary.data.span, { since: "2026-09-03", until: "2026-10-03" });
+  assert.equal(sessionSummary.data.totalTokens, 84000);
+  assert.deepEqual(
+    sessionSummary.data.sessions.map(({ sessionId, model, tokens }: { sessionId: string; model: string; tokens: unknown }) => ({ sessionId, model, tokens })),
+    [
+      { sessionId: "session-c", model: "claude-opus-5-5", tokens: { input: 7000, output: 7000, cacheWrite: 7000, cacheRead: 49000 } },
+      { sessionId: "session-b", model: "claude-opus-5-5", tokens: { input: 900, output: 900, cacheWrite: 900, cacheRead: 6300 } },
+      { sessionId: "session-a", model: "claude-opus-5-5", tokens: { input: 500, output: 500, cacheWrite: 500, cacheRead: 3500 } },
+    ],
+  );
+  assert.deepEqual(Object.keys(dailySessionSummary), ["2026-10-02", "2026-10-01"]);
+  assert.deepEqual(dailySessionSummary["2026-10-01"].data.sessions[0].tokens, { input: 900, output: 900, cacheWrite: 900, cacheRead: 6300 });
 });

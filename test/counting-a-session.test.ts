@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { SessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/SessionTokensCounterScript.js";
+import { CwSessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensCounterScript.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -25,8 +25,8 @@ test("a built charter runs the engine's own counter when the agent stops (EVAL-F
 
   const claudeSettings = JSON.parse((await fileReaders.readIfThere(new URL(".claude/settings.json", repo))) ?? "{}");
   const stopCommands = (claudeSettings.hooks?.Stop ?? []).flatMap((entry: { hooks: { command: string }[] }) => entry.hooks.map((hook) => hook.command));
-  assert.deepEqual(stopCommands, ['node ".cw/out/script/session-tokens-counter/count.mjs"']);
-  assert.ok(fileOutput.executables.has(inRepo(".cw/out/script/session-tokens-counter/count.mjs")));
+  assert.deepEqual(stopCommands, ['node ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs"']);
+  assert.ok(fileOutput.executables.has(inRepo(".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs")));
 });
 
 /** One line of a Claude Code transcript: an assistant message and its usage. */
@@ -50,9 +50,9 @@ async function aMachine(settings: object = { agents: ["claude"] }) {
   await mkdir(join(repoFolder, ".cw"), { recursive: true });
   await mkdir(homeFolder, { recursive: true });
   await writeFile(join(repoFolder, ".cw/settings.json"), JSON.stringify(settings));
-  const counterAsset = new SessionTokensCounterScript().assets.find((assetFile) => assetFile.file === "count.mjs");
+  const counterAsset = new CwSessionTokensCounterScript().assets.find((assetFile) => assetFile.file === "sessionTokensCounter.mjs");
   assert.ok(counterAsset);
-  const counterFile = join(machineFolder, "count.mjs");
+  const counterFile = join(machineFolder, "sessionTokensCounter.mjs");
   await writeFile(counterFile, counterAsset.contents);
 
   /** Write a session's transcript, its subagents' beside it. */

@@ -106,7 +106,7 @@ A developer wants to know where last week went. One command sums the log up by d
 
 ### EVAL Story 4 - Ask what the sessions cost (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 The developer asks their agent what last week cost. A skill the engine brings reads the kept sessions through the summary, asks whether to use prices they type in or the model provider's published prices as they stand today, fetches those when asked, and answers what each session and each day cost, saying which prices it used and when they were read.
 

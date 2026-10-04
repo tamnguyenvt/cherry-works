@@ -41,10 +41,11 @@ test("every primitive of every layer is listed by id, each under the layer it ar
     answer.data.primitives.map(({ data: { id, layerName } }) => [id, layerName]),
     [
       ["cw-author", "builtin"],
+      ["cw-session-cost", "builtin"],
+      ["cw-session-tokens-counter", "builtin"],
+      ["cw-session-tokens-counter-on-stop", "builtin"],
       ["lint", "repo"],
       ["no-any", "repo"],
-      ["session-tokens-counter", "builtin"],
-      ["session-tokens-counter-on-stop", "builtin"],
       ["small-diffs", "vendor"],
     ],
   );
@@ -68,7 +69,7 @@ test("a word keeps only the primitives mentioning it, in a header value as much 
 test("a word is found in the line saying when a primitive's kind comes up", async () => {
   // Only a sensor's kind says the harness runs something: the authored one, and
   // the one the engine brings to count a session's tokens.
-  assert.deepEqual(idsIn(await fullListOf(charter, "the harness runs")), ["lint", "session-tokens-counter-on-stop"]);
+  assert.deepEqual(idsIn(await fullListOf(charter, "the harness runs")), ["cw-session-tokens-counter-on-stop", "lint"]);
 });
 
 test("a word nothing mentions lists nothing, and is no fault", async () => {

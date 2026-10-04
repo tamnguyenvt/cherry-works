@@ -11,7 +11,7 @@ const SPAN_MARGIN_MS = 24 * 60 * 60 * 1000;
 
 /**
  * The stops of the sessions kept for one repository on this machine that may
- * fall within the span, read off the folder `session-tokens-counter` keeps
+ * fall within the span, read off the folder `cw-session-tokens-counter` keeps
  * them in (EVAL-FR-009), as a `SessionAnalysis`. A session's log is last written at
  * its last stop, so one last written outside the span is never read
  * (EVAL-SC-007). A folder that is not there is no stops; a line that does not

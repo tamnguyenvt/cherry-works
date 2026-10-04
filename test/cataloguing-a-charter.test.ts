@@ -8,8 +8,9 @@ import { Catalogue } from "../src/hexagon/domain/models/output/common/Catalogue.
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CwAuthorSkill } from "../src/hexagon/domain/models/charter/builtin/CwAuthorSkill.js";
-import { SessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/SessionTokensCounterScript.js";
-import { SessionTokensSensor } from "../src/hexagon/domain/models/charter/builtin/SessionTokensSensor.js";
+import { CwSessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensCounterScript.js";
+import { CwSessionCostSkill } from "../src/hexagon/domain/models/charter/builtin/CwSessionCostSkill.js";
+import { CwSessionTokensSensor } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensSensor.js";
 
 const repo = new URL("file:///repo");
 const root = folderURL("file:///repo/.cw/charter/");
@@ -50,20 +51,27 @@ const builtinEntry = {
   description: new CwAuthorSkill().headers.description,
 };
 
-/** The script and the sensor the engine brings to count a session's tokens,
- *  catalogued as every charter's are (EVAL-FR-008). */
+/** The skill that prices a session, and the script and the sensor the
+ *  engine brings to count its tokens, catalogued as every charter's are
+ *  (EVAL-FR-008, EVAL-FR-014). */
 const sessionCounterEntries = [
   {
-    id: "session-tokens-counter",
-    kind: "script",
-    description: new SessionTokensCounterScript().headers.description,
-    file: ".cw/out/script/session-tokens-counter/index.md",
+    id: "cw-session-cost",
+    kind: "skill",
+    description: new CwSessionCostSkill().headers.description,
+    file: ".cw/out/skill/cw-session-cost/index.md",
   },
   {
-    id: "session-tokens-counter-on-stop",
+    id: "cw-session-tokens-counter",
+    kind: "script",
+    description: new CwSessionTokensCounterScript().headers.description,
+    file: ".cw/out/script/cw-session-tokens-counter/index.md",
+  },
+  {
+    id: "cw-session-tokens-counter-on-stop",
     kind: "sensor",
-    description: new SessionTokensSensor().headers.description,
-    file: ".cw/out/sensor/session-tokens-counter-on-stop/index.md",
+    description: new CwSessionTokensSensor().headers.description,
+    file: ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md",
   },
 ];
 
@@ -89,6 +97,7 @@ test("the catalogue records what a primitive is called, what it is for, the file
 
   assert.deepEqual(catalogue.entries, [
     { ...builtinEntry, file: ".cw/out/skill/cw-author/index.md" },
+    ...sessionCounterEntries,
     {
       id: "no-any",
       kind: "guide",
@@ -96,7 +105,6 @@ test("the catalogue records what a primitive is called, what it is for, the file
       file: ".cw/out/guide/no-any/index.md",
       globs: ["src/**/*.ts"],
     },
-    ...sessionCounterEntries,
   ]);
 });
 
@@ -129,7 +137,7 @@ test("the same charter catalogues in the same order however its files were read"
 
   const ids = (await catalogueOf(files)).entries.map((one) => one.id);
 
-  assert.deepEqual(ids, ["cw-author", "no-any", "session-tokens-counter", "session-tokens-counter-on-stop", "type-safety", "writing-tests"]);
+  assert.deepEqual(ids, ["cw-author", "cw-session-cost", "cw-session-tokens-counter", "cw-session-tokens-counter-on-stop", "no-any", "type-safety", "writing-tests"]);
 });
 
 test("the catalogue carries no body", async () => {

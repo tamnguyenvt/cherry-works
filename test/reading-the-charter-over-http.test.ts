@@ -44,9 +44,10 @@ test("the listing is sent as every primitive the charter read, each under its la
     data.primitives.map((one) => [one.data.id, one.data.layerName]),
     [
       ["cw-author", "builtin"],
+      ["cw-session-cost", "builtin"],
+      ["cw-session-tokens-counter", "builtin"],
+      ["cw-session-tokens-counter-on-stop", "builtin"],
       ["no-any", "repo"],
-      ["session-tokens-counter", "builtin"],
-      ["session-tokens-counter-on-stop", "builtin"],
       ["why", "repo"],
     ],
   );
@@ -62,8 +63,8 @@ test("a word sent with the listing narrows it to what mentions the word, and an 
   );
 
   const unnarrowed = DataDTOs.Primitives.parse(await (await portalRoutes.request("/charter/root/primitives?matching=")).json());
-  // The two authored, and the three the engine brings.
-  assert.equal(unnarrowed.data.primitives.length, 5);
+  // The two authored, and the four the engine brings.
+  assert.equal(unnarrowed.data.primitives.length, 6);
 });
 
 test("one primitive is explained by kind and id, with when it comes up (FR-029, FR-116)", async () => {

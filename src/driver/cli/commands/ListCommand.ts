@@ -12,7 +12,7 @@ import {
 /** What `cw list` takes: which kind to narrow to, and how much of each
  *  primitive to say. Both are how the listing is read, never what is in it —
  *  the listing is the charter's own and this command only asks it for less. */
-const LISTING = {
+const OPTIONS = {
   kind: { type: "string", describe: "Only the primitives of this kind" },
   min: {
     type: "boolean",
@@ -20,8 +20,6 @@ const LISTING = {
     default: false,
   },
 } as const satisfies OptionSpec;
-
-type Listing = typeof LISTING;
 
 /**
  * `cw list`: say what the charter holds (FR-011, FR-012).
@@ -40,12 +38,12 @@ type Listing = typeof LISTING;
  * the user there is one line rather than two commands saying the same thing
  * differently.
  */
-export class ListCommand implements Command<Listing> {
+export class ListCommand implements Command<typeof OPTIONS> {
   readonly name = "list";
   readonly summary = "Say what the charter holds";
-  readonly options = LISTING;
+  readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { kind, min }: Options<Listing>): Promise<Outcome> {
+  async run({ charterAuthoringApp }: Context, { kind, min: isMin }: Options<typeof OPTIONS>): Promise<Outcome> {
     const catalogueDTO = await charterAuthoringApp.list(kind);
 
     if (catalogueDTO.type === "FaultsByFile") {
@@ -65,7 +63,7 @@ export class ListCommand implements Command<Listing> {
 
     return {
       code: EXIT_OK,
-      result: min
+      result: isMin
         ? `${entries.map(surveyed).join("\n")}\n`
         : `${entries.map(inFull).join("\n")}\n`,
     };

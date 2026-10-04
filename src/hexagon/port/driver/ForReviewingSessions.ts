@@ -5,7 +5,7 @@ import type { OutcomeDTOs } from "./dtos/index.js";
  * back (EVAL-FR-012, EVAL-FR-013).
  *
  * Apart from `ForManagingCharter` because it reads no charter: what it reads
- * is the log `session-tokens-counter` keeps each time the agent stops, outside
+ * is the log `cw-session-tokens-counter` keeps each time the agent stops, outside
  * the repository. It holds no port that writes, so nothing on it can change
  * the log or the repository.
  */

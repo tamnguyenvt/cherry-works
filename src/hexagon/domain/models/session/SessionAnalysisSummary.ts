@@ -1,3 +1,4 @@
+import type { SessionAnalysisLine } from "./SessionAnalysisLine.js";
 import type { SessionSpan } from "./SessionSpan.js";
 
 /**
@@ -12,6 +13,9 @@ export interface SessionAnalysisSummary {
     readonly sessionId: string;
     readonly model: string;
     readonly lastStopAt: string;
+    /** Its tokens by kind at that stop, which a cost is reckoned from
+     *  (EVAL-FR-014). */
+    readonly tokens: SessionAnalysisLine["tokens"];
     /** Its tokens so far, subagents included (EVAL-FR-008). */
     readonly totalTokens: number;
   }[];

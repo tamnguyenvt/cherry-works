@@ -13,8 +13,9 @@ import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { KINDS } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
 import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
 import { CwAuthorSkill } from "../src/hexagon/domain/models/charter/builtin/CwAuthorSkill.js";
-import { SessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/SessionTokensCounterScript.js";
-import { SessionTokensSensor } from "../src/hexagon/domain/models/charter/builtin/SessionTokensSensor.js";
+import { CwSessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensCounterScript.js";
+import { CwSessionTokensSensor } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensSensor.js";
+import { CwSessionCostSkill } from "../src/hexagon/domain/models/charter/builtin/CwSessionCostSkill.js";
 import { noPlacesReached } from "./no-places.js";
 import { noSessionsKept } from "./no-sessions.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
@@ -82,11 +83,13 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
   return writing(() => cli.run(argv));
 };
 
-/** The lines the engine's own session counter is listed by, in every
- *  repository: its script, then the sensor that runs it (EVAL-FR-008). */
+/** The lines the engine's own session primitives are listed by, in every
+ *  repository: the skill that prices them, the counter's script, then the
+ *  sensor that runs it (EVAL-FR-008, EVAL-FR-014). */
 const sessionCounterLines = [
-  `session-tokens-counter  ${new SessionTokensCounterScript().headers.description}`,
-  `session-tokens-counter-on-stop  ${new SessionTokensSensor().headers.description}`,
+  `cw-session-cost  ${new CwSessionCostSkill().headers.description}`,
+  `cw-session-tokens-counter  ${new CwSessionTokensCounterScript().headers.description}`,
+  `cw-session-tokens-counter-on-stop  ${new CwSessionTokensSensor().headers.description}`,
 ];
 
 const charter = {
@@ -105,8 +108,8 @@ test("every primitive is listed, ordered by id, with what it is for", async () =
       .filter((line) => !line.startsWith(" ") && line !== ""),
     [
       `cw-author  ${new CwAuthorSkill().headers.description}`,
-      "no-any  What no-any is for.",
       ...sessionCounterLines,
+      "no-any  What no-any is for.",
       "type-safety  What type-safety is for.",
       "writing-tests  What writing-tests is for.",
     ],
@@ -138,8 +141,8 @@ test("--min says what an agent surveys by, and nothing else", async () => {
   assert.equal(code, EXIT_OK);
   assert.deepEqual(results, [
     `cw-author  ${new CwAuthorSkill().headers.description}`,
-    "no-any  What no-any is for.",
     ...sessionCounterLines,
+    "no-any  What no-any is for.",
     "type-safety  What type-safety is for.",
     "writing-tests  What writing-tests is for.",
     "",

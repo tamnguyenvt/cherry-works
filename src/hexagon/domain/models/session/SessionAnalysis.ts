@@ -30,7 +30,7 @@ export class SessionAnalysis {
         const stopDay = localDayOf(new Date(lastAnalysisLine.time));
         return stopDay >= span.since && stopDay <= span.until;
       })
-      .map(({ sessionId, model, time, total }) => ({ sessionId, model, lastStopAt: time, totalTokens: total }))
+      .map(({ sessionId, model, time, tokens, total }) => ({ sessionId, model, lastStopAt: time, tokens, totalTokens: total }))
       .sort((session, otherSession) => otherSession.totalTokens - session.totalTokens || session.sessionId.localeCompare(otherSession.sessionId));
     return {
       span,

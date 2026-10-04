@@ -11,8 +11,9 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CwAuthorSkill } from "../src/hexagon/domain/models/charter/builtin/CwAuthorSkill.js";
-import { SessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/SessionTokensCounterScript.js";
-import { SessionTokensSensor } from "../src/hexagon/domain/models/charter/builtin/SessionTokensSensor.js";
+import { CwSessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensCounterScript.js";
+import { CwSessionCostSkill } from "../src/hexagon/domain/models/charter/builtin/CwSessionCostSkill.js";
+import { CwSessionTokensSensor } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensSensor.js";
 import { isStamped } from "../src/hexagon/domain/models/output/StampedDocument.js";
 
 const CLAUDE: AgentProvider = "claude";
@@ -41,29 +42,38 @@ const builtinEntry = {
   description: new CwAuthorSkill().headers.description,
 };
 
-/** The script and the sensor the engine brings to count a session's tokens,
- *  catalogued as every charter's are (EVAL-FR-008). */
+/** The skill that prices a session, and the script and the sensor the
+ *  engine brings to count its tokens, catalogued as every charter's are
+ *  (EVAL-FR-008, EVAL-FR-014). */
 const sessionCounterEntries = [
   {
-    id: "session-tokens-counter",
-    kind: "script",
-    description: new SessionTokensCounterScript().headers.description,
-    file: ".cw/out/script/session-tokens-counter/index.md",
+    id: "cw-session-cost",
+    kind: "skill",
+    description: new CwSessionCostSkill().headers.description,
+    file: ".cw/out/skill/cw-session-cost/index.md",
   },
   {
-    id: "session-tokens-counter-on-stop",
+    id: "cw-session-tokens-counter",
+    kind: "script",
+    description: new CwSessionTokensCounterScript().headers.description,
+    file: ".cw/out/script/cw-session-tokens-counter/index.md",
+  },
+  {
+    id: "cw-session-tokens-counter-on-stop",
     kind: "sensor",
-    description: new SessionTokensSensor().headers.description,
-    file: ".cw/out/sensor/session-tokens-counter-on-stop/index.md",
+    description: new CwSessionTokensSensor().headers.description,
+    file: ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md",
   },
 ];
 
-/** What the engine's session counter compiles to under the workspace: the
- *  script's document and its one asset, then the sensor's document. */
+/** What the engine's session primitives compile to under the workspace: the
+ *  pricing skill's document, the script's document and its one asset, then
+ *  the sensor's document. */
 const sessionCounterPaths = [
-  ".cw/out/script/session-tokens-counter/index.md",
-  ".cw/out/script/session-tokens-counter/count.mjs",
-  ".cw/out/sensor/session-tokens-counter-on-stop/index.md",
+  ".cw/out/skill/cw-session-cost/index.md",
+  ".cw/out/script/cw-session-tokens-counter/index.md",
+  ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs",
+  ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md",
 ];
 
 const oneGuide = { [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any") };
@@ -96,8 +106,8 @@ test("compiling produces the listing, the charter file, and what the installed a
     // Every primitive as it compiled, in the catalogue's order, since the
     // catalogue is what names each file (FR-139, FR-140).
     ".cw/out/skill/cw-author/index.md",
-    ".cw/out/guide/no-any/index.md",
     ...sessionCounterPaths,
+    ".cw/out/guide/no-any/index.md",
     // The file that agent reads unasked, which is what sends it to the
     // orientation above.
     "CLAUDE.md",
@@ -105,8 +115,9 @@ test("compiling produces the listing, the charter file, and what the installed a
     ".claude/settings.json",
     // The one server that reaches every place the charter declares.
     ".mcp.json",
-    // The skill the engine brings, which every charter holds and reads first.
+    // The skills the engine brings, which every charter holds and reads first.
     ".claude/skills/cw-author/SKILL.md",
+    ".claude/skills/cw-session-cost/SKILL.md",
     // The one guide as the installed agent's own kinds have it.
     ".claude/rules/no-any.md",
   ]);
@@ -125,7 +136,7 @@ test("no listing and no projection can be produced without the others (SC-004)",
   // list, and no argument that narrows it to a single file. The second argument
   // says which agents are installed, never which file is wanted.
   assert.equal(compile.length, 2);
-  assert.equal((await built(oneGuide)).written.length, 13);
+  assert.equal((await built(oneGuide)).written.length, 15);
 });
 
 test("a repository with no agent installed still compiles the whole neutral half (FR-019)", async () => {
@@ -136,8 +147,8 @@ test("a repository with no agent installed still compiles the whole neutral half
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
     ".cw/out/skill/cw-author/index.md",
-    ".cw/out/guide/no-any/index.md",
     ...sessionCounterPaths,
+    ".cw/out/guide/no-any/index.md",
   ]);
 });
 
@@ -147,6 +158,7 @@ test("the full catalogue is written as the catalogue says it, one entry per line
   const contents = files[".cw/out/catalog.json"] ?? "";
   assert.deepEqual(JSON.parse(contents), [
     { ...builtinEntry, file: ".cw/out/skill/cw-author/index.md" },
+    ...sessionCounterEntries,
     {
       id: "no-any",
       kind: "guide",
@@ -154,7 +166,6 @@ test("the full catalogue is written as the catalogue says it, one entry per line
       file: ".cw/out/guide/no-any/index.md",
       globs: ["src/**/*.ts"],
     },
-    ...sessionCounterEntries,
   ]);
   assert.ok(contents.includes("\n  {\n"));
 });
@@ -235,7 +246,7 @@ test("a charter with a broken file still compiles what the readable files hold",
   assert.equal(Object.keys(charter.allFaultsByFiles.files).length, 1);
   assert.deepEqual(
     JSON.parse(files[".cw/out/catalog.json"] ?? "").map((one: { id: string }) => one.id),
-    ["cw-author", "no-any", "session-tokens-counter", "session-tokens-counter-on-stop"],
+    ["cw-author", "cw-session-cost", "cw-session-tokens-counter", "cw-session-tokens-counter-on-stop", "no-any"],
   );
 });
 

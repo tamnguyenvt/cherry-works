@@ -1,6 +1,6 @@
 import { EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./Command.js";
 
-const SPAN = {
+const OPTIONS = {
   since: {
     type: "string",
     describe: "Count the sessions whose last stop is on or after this day, YYYY-MM-DD; 31 days from it unless --until says",
@@ -9,9 +9,12 @@ const SPAN = {
     type: "string",
     describe: "Count the sessions whose last stop is on or before this day, YYYY-MM-DD; today unless --since says",
   },
+  json: {
+    type: "boolean",
+    describe: "Print the summary as JSON, each session's tokens by kind included",
+    default: false,
+  },
 } as const satisfies OptionSpec;
-
-type Span = typeof SPAN;
 
 /**
  * `cw sessions`: the sessions kept on this machine for this repository, summed
@@ -20,14 +23,19 @@ type Span = typeof SPAN;
  *
  * One line per day, its sessions under it, each with its model, its id and
  * the time of its last stop on this machine's clock; then the total. With none
- * kept, it says so, where it looked, and how one starts.
+ * kept, it says so, where it looked, and how one starts. With `--json`, the
+ * summary as it was answered, each session's tokens by kind included, for
+ * `cw-session-cost` to price (EVAL-FR-014).
  */
-export class SessionsCommand implements Command<Span> {
+export class SessionsCommand implements Command<typeof OPTIONS> {
   readonly name = "sessions";
   readonly summary = "Sum up the tokens of the sessions kept on this machine, by day and by session";
-  readonly options = SPAN;
+  readonly options = OPTIONS;
 
-  async run({ sessionReviewingApp }: Context, { since, until }: Options<Span>): Promise<Outcome> {
+  async run({ sessionReviewingApp }: Context, { since, until, json: isJson }: Options<typeof OPTIONS>): Promise<Outcome> {
+    const sessionReviewOutcome = await sessionReviewingApp.sessionSummary(since, until);
+    if (isJson) return { code: EXIT_OK, result: `${JSON.stringify(sessionReviewOutcome, null, 2)}\n` };
+
     const {
       data: {
         sessionsFolder,
@@ -40,7 +48,7 @@ export class SessionsCommand implements Command<Span> {
         },
         dailySessionSummary,
       },
-    } = await sessionReviewingApp.sessionSummary(since, until);
+    } = sessionReviewOutcome;
 
     if (sessionCount === 0)
       return {
