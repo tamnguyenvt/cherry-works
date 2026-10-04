@@ -5,6 +5,7 @@ import type { Catalogue } from "../domain/models/output/common/Catalogue.js";
 import type { PrimitiveHeader, PrimitiveRequirements } from "../domain/models/charter/primitive/Primitive.js";
 import type { TestCaseReport, TestRunReport } from "../domain/services/testService.js";
 import type { WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
+import type { MainContext, MainContextLoad } from "../domain/models/context/MainContext.js";
 import type { PlanSummary } from "../service/buildService.js";
 import { testSuiteNameOf, type TestRoot } from "../domain/models/test/TestRoot.js";
 
@@ -32,12 +33,16 @@ export function catalogueDTO(catalogue: Catalogue): DataDTOs.Catalogue {
  * for everybody (FR-019) — and the other three are unwell with an error in the
  * charter, a vendor edited here, or a build still to run or one that cannot be
  * known, since the charter does not hold.
+ *
+ * Each agent's main context is said beside them, and a total past the ceiling
+ * is a warning rather than a question unwell (EVAL-FR-006).
  */
 export function doctorOutcomeDTO(
-  { agents }: WorkspaceSettings,
+  { agents, contextCeiling }: WorkspaceSettings,
   faultsByFile: FaultsByFile,
   planSummary: PlanSummary | undefined,
   driftedVendors: readonly string[],
+  mainContexts: readonly MainContext[],
   repo: URL,
 ): OutcomeDTOs.DoctorOutcome {
   const faults = Object.values(faultsByFile.files).flat();
@@ -55,6 +60,8 @@ export function doctorOutcomeDTO(
       faultsByFile: faultsByFileDTO(faultsByFile, repo),
       driftedVendors,
       problemCount: unwell.filter(Boolean).length,
+      mainContexts: mainContexts.map((mainContext) => ({ agent: mainContext.agent, totalTokens: mainContext.totalTokens })),
+      contextCeiling,
     },
   };
 }
@@ -224,6 +231,27 @@ export function testSuitesDTO({ suitesByFile, faultsByFiles }: TestRoot): DataDT
 }
 
 /** What a repository configured itself with. */
-export function workspaceSettingsDTO({ agents }: WorkspaceSettings): DataDTOs.WorkspaceSettings {
-  return { type: "WorkspaceSettings", data: { agents } };
+export function workspaceSettingsDTO({ agents, contextCeiling }: WorkspaceSettings): DataDTOs.WorkspaceSettings {
+  return { type: "WorkspaceSettings", data: { agents, contextCeiling } };
+}
+
+/** What a charter puts into each agent's main context (EVAL-FR-001 –
+ *  EVAL-FR-003). */
+export function mainContextsDTO(mainContexts: readonly MainContext[]): DataDTOs.MainContexts {
+  const mainContextLoadDTO = (load: MainContextLoad): DataDTOs.MainContextLoad => ({ type: "MainContextLoad", data: load });
+  return {
+    type: "MainContexts",
+    data: {
+      contexts: mainContexts.map((mainContext) => ({
+        type: "MainContext",
+        data: {
+          agent: mainContext.agent,
+          isExact: mainContext.isExact,
+          sessionLoads: mainContext.sessionLoads.map(mainContextLoadDTO),
+          fileLoads: mainContext.fileLoads.map(mainContextLoadDTO),
+          totalTokens: mainContext.totalTokens,
+        },
+      })),
+    },
+  };
 }

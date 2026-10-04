@@ -11,6 +11,8 @@ import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noPlacesReached } from "./no-places.js";
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
 const repo = "/repo";
 
@@ -18,7 +20,7 @@ const repo = "/repo";
  *  these commands reach for the vendoring one only. */
 const unread = () => {
   const files = new InMemoryFileReaders({});
-  return new CharterAuthoring(new URL(`file://${repo}/`), files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryVCS());
+  return new CharterAuthoring(new URL(`file://${repo}/`), files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 };
 
 /** One run of the command line over version control held in memory, and what it

@@ -16,6 +16,8 @@ import { InMemoryMcpServers } from "../src/zdriven/InMemoryMcpServers.js";
 import { InMemorySecrets } from "../src/zdriven/InMemorySecrets.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
 const repoPath = new URL("file:///repo/");
 const ORIGINS_FILE = "file:///repo/.cw/out/mcp-origins.json";
@@ -43,7 +45,7 @@ const placesOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
   const cli = new Commander({
     cwd: "/repo",
     version: "0.0.0",
-    charterAuthoringApp: new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS()),
+    charterAuthoringApp: new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
     charterVendoringApp: new CharterVendoring(repoPath, noFiles, new InMemoryVCS()),
     testAuthoringApp: new TestAuthoring(repoPath, noFiles, new InMemoryFileOutput(noFiles)),
     mcpConnectingApp,

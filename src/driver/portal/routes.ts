@@ -266,6 +266,28 @@ export function api(
     .openapi(
       createRoute({
         method: "get",
+        path: "/charter/root/context",
+        responses: {
+          200: json(DataDTOs.MainContexts, "What the charter puts into each agent's main context, estimated, as cw context lists it"),
+          422: json(z.union([DataDTOs.FaultsByFile, DataDTOs.Fault]), "The charter does not hold"),
+        },
+      }),
+      async (c) => {
+        const mainContextsDTO = await charterAuthoringApp.predictMainContext(false);
+        return mainContextsDTO.type === "FaultsByFile" ? c.json(mainContextsDTO, 422) : c.json(mainContextsDTO, 200);
+      },
+    )
+    .openapi(
+      createRoute({
+        method: "get",
+        path: "/settings",
+        responses: { 200: json(DataDTOs.WorkspaceSettings, "What this repository configured itself with, whole") },
+      }),
+      async (c) => c.json(await charterAuthoringApp.settings(), 200),
+    )
+    .openapi(
+      createRoute({
+        method: "get",
         path: "/test-suites",
         responses: { 200: json(DataDTOs.TestSuites, "Every test file, its text, and its cases or why it does not read") },
       }),

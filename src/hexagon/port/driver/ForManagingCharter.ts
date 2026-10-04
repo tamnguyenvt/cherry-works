@@ -105,6 +105,22 @@ export interface ForManagingCharter {
   explain(id: string): Promise<OutcomeDTOs.ExplanationOutcome | DataDTOs.FaultsByFile>;
 
   /**
+   * What the charter puts into the main context of each agent this repository
+   * compiles for, when a session opens, before anything is asked
+   * (EVAL-FR-001 – EVAL-FR-003): per primitive, the largest first, with the
+   * total, and apart from them what is loaded only when a file is touched.
+   *
+   * Estimated by a tokenizer on this machine, with no key and no network; asked
+   * for `exact`, counted by each agent's own command line, run headless — and
+   * raised, with nothing counted, where that is not installed (EVAL-FR-004).
+   *
+   * Reads and says: there is no way through this to write anything (FR-041). A
+   * charter with an error is refused with nothing counted and the errors given
+   * back, as `list` refuses it.
+   */
+  predictMainContext(exact: boolean): Promise<DataDTOs.MainContexts | DataDTOs.FaultsByFile>;
+
+  /**
    * Compile this repository's charter and put it on disk: the catalogues, the
    * neutral files, and every projection each agent reads (FR-018 – FR-021).
    *
@@ -311,6 +327,10 @@ export interface SettingsOptions {
    *  will keep them (FR-033). Empty is a repository that compiles for none and
    *  still gets the neutral surface (FR-019). */
   readonly agents: readonly AgentProvider[];
+  /** The tokens past which the health check warns of the main context a
+   *  session opens with (EVAL-FR-006); none keeps what the repository already
+   *  set, or 20,000. */
+  readonly contextCeiling?: number;
 }
 
 /** What one primitive's author answered, under the header each answer fills

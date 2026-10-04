@@ -150,6 +150,25 @@ export function useHealth() {
   });
 }
 
+/** What the charter puts into each agent's main context, as `cw context`
+ *  lists it (EVAL-FR-007): or the faults of a charter that does not hold. */
+export function useMainContexts() {
+  return useQuery({
+    queryKey: ["mainContexts"],
+    gcTime: 0,
+    queryFn: async () => (await client.charter.root.context.$get()).json(),
+  });
+}
+
+/** What this repository configured itself with, whole: the agents, and the
+ *  ceiling a main context is held to. */
+export function useSettings() {
+  return useQuery({
+    queryKey: ["settings"],
+    queryFn: async () => (await client.settings.$get()).json(),
+  });
+}
+
 /** The charter built (FR-120): what was written and deleted, or the faults
  *  that refused it with nothing written. */
 export function useBuild() {

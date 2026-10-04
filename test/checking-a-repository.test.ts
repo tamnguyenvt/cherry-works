@@ -12,6 +12,8 @@ import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noPlacesReached } from "./no-places.js";
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
 const repo = "/repo";
 const root = new URL("file:///repo/.cw/charter/");
@@ -72,7 +74,7 @@ const writing = async (work: () => Promise<number>): Promise<{ code: number; wri
 const commandLine = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), vcs);
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const cli = new Commander(
     {
       cwd: repo,
@@ -158,7 +160,7 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
   });
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS());
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 
   // Sent and read back, the way the portal's page will read it.
   const doctorOutcomeDTO = OutcomeDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterAuthoringApp.doctor())));
@@ -219,7 +221,7 @@ test("what doctor reports is a result, never a problem", async () => {
 /** What `doctor()` answers over these files, read back as the portal reads it. */
 const doctorOf = async (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders({ ...compilingFor("claude"), ...files });
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS());
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   return OutcomeDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterAuthoringApp.doctor()))).data;
 };
 

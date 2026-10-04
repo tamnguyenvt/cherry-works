@@ -15,9 +15,9 @@ test("the header reads as the mockup draws it: the brand, the search, Build and 
   });
 });
 
-test("the three tabs are shown, the repository charter first, and the one clicked is the one on", async () => {
+test("the four tabs are shown, the repository charter first, and the one clicked is the one on", async () => {
   await inTheBrowser({}, async (page) => {
-    assert.deepEqual(await page.getByRole("tab").allInnerTexts(), ["Repo Charter", "Vendor", "Test"]);
+    assert.deepEqual(await page.getByRole("tab").allInnerTexts(), ["Repo Charter", "Vendor", "Test", "Context"]);
     assert.equal(await page.getByRole("tab", { selected: true }).innerText(), "Repo Charter");
 
     await page.getByRole("tab", { name: "Vendor" }).click();

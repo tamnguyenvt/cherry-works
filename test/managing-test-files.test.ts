@@ -17,6 +17,8 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noPlacesReached } from "./no-places.js";
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
 const repoPath = new URL("file:///repo/");
 const at = (path: string) => new URL(path, repoPath).href;
@@ -48,7 +50,7 @@ const withTwoFiles = () => ({
  *  disk. */
 const authoring = (files: Readonly<Record<string, string>> = {}) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS());
+  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
   return { charterAuthoringApp, testAuthoringApp, fileAt: (path: string) => held.readIfThere(new URL(path, repoPath)) };
 };

@@ -1,3 +1,5 @@
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Commander } from "../src/driver/cli/Commander.js";
@@ -57,7 +59,7 @@ const pinningDown = (id: string) => ({
  *  Given a writing port like the real one is, and validating never reaches for
  *  it — which is the point of the split (FR-041). */
 const charterAuthoringAppOver = (files: InMemoryFileReaders) =>
-  new CharterAuthoring(new URL(`file://${repo}/`), files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryVCS());
+  new CharterAuthoring(new URL(`file://${repo}/`), files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 
 /** A charter nothing asks about: what a command that never validates is given,
  *  since a context always carries every use case. */

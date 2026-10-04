@@ -11,6 +11,8 @@ import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { KINDS } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
 import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
 const repo = new URL("file:///repo/");
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/").href;
@@ -25,7 +27,7 @@ const guide = (id: string, headers: readonly string[] = []) => primitive("guide"
  *  rather than the guards the server wraps it in (plan §6, tested there). */
 const portal = (files: Readonly<Record<string, string>>, held = new InMemoryFileReaders(files)) => {
   const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), vcs);
+  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   return api(charterAuthoringApp, new CharterVendoring(repo, held, vcs), new TestAuthoring(repo, held, new InMemoryFileOutput(held)));
 };
 

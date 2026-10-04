@@ -6,7 +6,9 @@ import { DIALOG_FOOTER } from "../lib/utils.js";
 
 /**
  * The health check, as `cw doctor` gives it (FR-121): the four answers —
- * agents, charter, vendors, compiled output — in the words it prints them in,
+ * agents, charter, vendors, compiled output — and what each agent's main
+ * context comes to against the ceiling (EVAL-FR-006), in the words it prints
+ * them in,
  * then every fault under its file, errors before warnings. Nothing is counted
  * or judged here; the engine did both. Where the compiled output is behind, the
  * build is offered from here.
@@ -16,7 +18,7 @@ export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
   const buildMutation = useBuild();
 
   if (healthQuery.data === undefined) return null;
-  const { agents, errorCount, warnCount, pendingCount, faultsByFile, driftedVendors, problemCount } = healthQuery.data.data;
+  const { agents, errorCount, warnCount, pendingCount, faultsByFile, driftedVendors, problemCount, mainContexts, contextCeiling } = healthQuery.data.data;
 
   const healthAnswers = [
     [
@@ -45,6 +47,13 @@ export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
           ? "up to date."
           : `${pendingCount} file${pendingCount === 1 ? "" : "s"} out of date.`,
     ],
+    ...mainContexts.map(
+      ({ agent, totalTokens }) =>
+        [
+          "Context",
+          `${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens, ${totalTokens > contextCeiling ? `past the ceiling of ${contextCeiling.toLocaleString("en-US")}. Open Context to see what takes the most.` : `within the ceiling of ${contextCeiling.toLocaleString("en-US")}.`}`,
+        ] as const,
+    ),
   ] as const;
 
   // The strip is tinted by the worst of what the engine found: red for an
@@ -61,7 +70,7 @@ export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
       </div>
       <dl className="overflow-hidden rounded-[11px] border border-[#f0f0f0]" aria-label="Health">
         {healthAnswers.map(([question, answer]) => (
-          <div key={question} className="flex items-baseline gap-3 border-b border-zinc-100 px-[13px] py-2.5 last:border-b-0">
+          <div key={`${question} ${answer}`} className="flex items-baseline gap-3 border-b border-zinc-100 px-[13px] py-2.5 last:border-b-0">
             <dt className="w-[118px] shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">{question}</dt>
             <dd className="text-xs">{answer}</dd>
           </div>

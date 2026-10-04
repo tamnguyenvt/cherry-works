@@ -7,6 +7,8 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
 /** Clear of the default and of the other portal tests, so a portal left running
  *  here answers nothing they ask. */
@@ -36,7 +38,7 @@ export async function inTheBrowser(
 ): Promise<void> {
   const files = new InMemoryFileReaders(held);
   const repoPath = new URL("file:///repo/");
-  const engine = new CharterAuthoring(repoPath, files, new YamlParser(), new InMemoryFileOutput(files), vcs);
+  const engine = new CharterAuthoring(repoPath, files, new YamlParser(), new InMemoryFileOutput(files), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const charterVendoringApp = new CharterVendoring(repoPath, files, vcs);
   const testAuthoringApp = new TestAuthoring(repoPath, files, new InMemoryFileOutput(files));
   const { address, server } = await startPortal(

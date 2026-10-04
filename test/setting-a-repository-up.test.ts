@@ -12,6 +12,8 @@ import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { noPlacesReached } from "./no-places.js";
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
 const repo = "/repo";
 
@@ -36,7 +38,7 @@ const setUp = async (
   versioned = true,
 ) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(versioned));
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(versioned), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };
@@ -85,7 +87,7 @@ test("with nobody to ask, the one agent this engine compiles for is the default,
 
 test("setup given no agent is refused by the engine, whatever drives it (FR-033)", async () => {
   const held = new InMemoryFileReaders({});
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS());
+  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 
   await assert.rejects(charterAuthoringApp.init({ agents: [] }), /no agent to compile for/);
   assert.equal(await held.readIfThere(new URL(".cw/settings.json", repoPath)), undefined);

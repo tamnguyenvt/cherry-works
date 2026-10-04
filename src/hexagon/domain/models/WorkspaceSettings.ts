@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AGENT_PROVIDERS, type AgentProvider } from "./AgentProvider.js";
+import { DEFAULT_CONTEXT_CEILING } from "./context/MainContext.js";
 
 /**
  * What a settings file may hold, as the one shape everything else reads it
@@ -12,10 +13,18 @@ import { AGENT_PROVIDERS, type AgentProvider } from "./AgentProvider.js";
  */
 export const WorkspaceSettingsSchema = z.object({
   agents: z.array(z.enum(AGENT_PROVIDERS)),
+  /** The tokens past which the health check warns of the main context a
+   *  session opens with (EVAL-FR-006). */
+  contextCeiling: z.number().int().positive().optional(),
 });
 
 /** What a repository configured this engine with, as its settings file records
  *  it (FR-037, FR-038): today the agents it compiles for, tomorrow whatever
  *  else setup has to remember. Read by `loadSettings` and by nothing else. */
 export class WorkspaceSettings {
-  constructor(readonly agents: readonly AgentProvider[]) {}}
+  constructor(
+    readonly agents: readonly AgentProvider[],
+    /** 20,000 where the repository set none (EVAL-FR-006). */
+    readonly contextCeiling: number = DEFAULT_CONTEXT_CEILING,
+  ) {}
+}

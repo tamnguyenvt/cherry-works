@@ -13,6 +13,8 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
 /** Clear of the default, so a portal left running here does not answer. */
 const PORT = 47310;
@@ -33,7 +35,7 @@ async function builtPage(): Promise<URL> {
  *  every one of them answers before a route is reached. */
 function engine(): CharterAuthoring {
   const held = new InMemoryFileReaders({});
-  return new CharterAuthoring(new URL("file:///repo/"), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS());
+  return new CharterAuthoring(new URL("file:///repo/"), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 }
 
 /** The vendoring the routes are driven by beside the engine, over the same

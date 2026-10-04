@@ -13,6 +13,10 @@ const OPTIONS = {
     type: "string",
     describe: `Which agent this charter compiles for: ${AGENT_PROVIDERS.join(", ")}`,
   },
+  contextCeiling: {
+    type: "number",
+    describe: "The tokens of main context past which the health check warns; 20000 unless set",
+  },
 } as const;
 
 /**
@@ -40,9 +44,9 @@ export class InitCommand implements Command<typeof OPTIONS> {
   readonly summary = "Set this repository up under a charter";
   readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { agent }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async run({ charterAuthoringApp }: Context, { agent, contextCeiling }: Options<typeof OPTIONS>): Promise<Outcome> {
     const agents = await whichAgents(charterAuthoringApp, agent);
-    const planSummaryDTO = await charterAuthoringApp.init({ agents });
+    const planSummaryDTO = await charterAuthoringApp.init({ agents, ...(contextCeiling === undefined ? {} : { contextCeiling }) });
     const setUp = ["Set up this repository under a charter.", `Compiling for: ${agents.join(", ")}.`];
 
     // Set up either way; a charter already here that does not hold is not

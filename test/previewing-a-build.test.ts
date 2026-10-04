@@ -6,6 +6,8 @@ import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import type { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
 const repo = new URL("file:///repo/");
 const root = new URL(".cw/charter/", repo);
@@ -29,7 +31,7 @@ const compilingFor = (...agents: readonly string[]) => ({
  *  claims (FR-022). */
 const previewing = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS());
+  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   return { held, build: () => charterAuthoringApp.build(), preview: () => charterAuthoringApp.preview() };
 };
 

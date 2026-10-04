@@ -39,7 +39,7 @@ export async function loadSettings(repo: URL, fileReaders: ForReadingFiles): Pro
   const read = WorkspaceSettingsSchema.safeParse(written);
   if (!read.success) throw whatIsWrongWith(written);
 
-  return new WorkspaceSettings(read.data.agents);
+  return new WorkspaceSettings(read.data.agents, read.data.contextCeiling);
 }
 
 /**
@@ -57,11 +57,17 @@ function whatIsWrongWith(written: unknown): SettingsFault {
       `Write it as an object, as in { "agents": ["claude"] }.`,
     );
 
-  const agents = (written as { agents?: unknown }).agents;
+  const { agents, contextCeiling } = written as { agents?: unknown; contextCeiling?: unknown };
   if (!Array.isArray(agents))
     return new SettingsFault(
       `"agents" is what this repository compiles its charter for, and it is not a list of names here.`,
       `Write it as a list of names, as in { "agents": ["claude"] }.`,
+    );
+
+  if (agents.every(isAgentProvider))
+    return new SettingsFault(
+      `"contextCeiling" is the tokens past which the health check warns of the main context, and ${JSON.stringify(contextCeiling)} is no whole number above 0.`,
+      `Write it as one, as in { "agents": ["claude"], "contextCeiling": 20000 }, or drop it for 20000.`,
     );
 
   return new SettingsFault(

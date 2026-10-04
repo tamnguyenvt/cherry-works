@@ -16,7 +16,9 @@ import { byType, dto, StringsSchema } from "./dto.js";
  *  how many warnings; how many files a build would still change — `null` where
  *  the charter does not hold and nothing was previewed; which installed
  *  charters are edited here; and how many of those four questions are
- *  unwell. */
+ *  unwell. Beside them, what each agent's main context is estimated to open a
+ *  session with — none where the charter does not hold — and the ceiling it is
+ *  held to, which warns and is no question unwell (EVAL-FR-006). */
 const DoctorOutcomeSchema = dto(
   "DoctorOutcome",
   z.object({
@@ -27,6 +29,8 @@ const DoctorOutcomeSchema = dto(
     faultsByFile: DataDTOs.FaultsByFile,
     driftedVendors: StringsSchema,
     problemCount: z.number(),
+    mainContexts: z.array(z.object({ agent: z.string(), totalTokens: z.number() })).readonly(),
+    contextCeiling: z.number(),
   }),
 );
 

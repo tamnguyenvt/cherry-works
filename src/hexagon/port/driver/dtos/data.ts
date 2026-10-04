@@ -236,6 +236,42 @@ const WorkspaceSettingsSchema = dto(
   "WorkspaceSettings",
   z.object({
     agents: StringsSchema,
+    contextCeiling: z.number(),
+  }),
+);
+
+/** What one primitive, or the charter itself, puts into an agent's main
+ *  context, in tokens; with the globs a file touched has to match, where it
+ *  is loaded only then. */
+const MainContextLoadSchema = dto(
+  "MainContextLoad",
+  z.object({
+    id: z.string(),
+    kind: z.string(),
+    tokens: z.number(),
+    globs: StringsSchema.optional(),
+  }),
+);
+
+/** What a charter puts into one agent's main context: what is loaded when a
+ *  session opens, the largest first, and their total; apart, what is loaded
+ *  when a file is touched; and whether it was counted exactly or estimated. */
+const MainContextSchema = dto(
+  "MainContext",
+  z.object({
+    agent: z.string(),
+    isExact: z.boolean(),
+    sessionLoads: z.array(MainContextLoadSchema).readonly(),
+    fileLoads: z.array(MainContextLoadSchema).readonly(),
+    totalTokens: z.number(),
+  }),
+);
+
+/** The main context of every agent the repository compiles for. */
+const MainContextsSchema = dto(
+  "MainContexts",
+  z.object({
+    contexts: z.array(MainContextSchema).readonly(),
   }),
 );
 
@@ -247,6 +283,9 @@ export const DataDTOs = byType(
   FaultSchema,
   FaultsSchema,
   FaultsByFileSchema,
+  MainContextSchema,
+  MainContextLoadSchema,
+  MainContextsSchema,
   PlanSummarySchema,
   PrimitiveHeaderSchema,
   PrimitiveKindsSchema,
@@ -273,6 +312,9 @@ export namespace DataDTOs {
   export type Fault = z.infer<typeof DataDTOs.Fault>;
   export type Faults = z.infer<typeof DataDTOs.Faults>;
   export type FaultsByFile = z.infer<typeof DataDTOs.FaultsByFile>;
+  export type MainContext = z.infer<typeof DataDTOs.MainContext>;
+  export type MainContextLoad = z.infer<typeof DataDTOs.MainContextLoad>;
+  export type MainContexts = z.infer<typeof DataDTOs.MainContexts>;
   export type PlanSummary = z.infer<typeof DataDTOs.PlanSummary>;
   export type PrimitiveKinds = z.infer<typeof DataDTOs.PrimitiveKinds>;
   export type PrimitiveHeader = z.infer<typeof DataDTOs.PrimitiveHeader>;

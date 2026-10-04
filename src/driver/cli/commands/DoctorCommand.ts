@@ -45,6 +45,8 @@ export class DoctorCommand implements Command {
       faultsByFile,
       driftedVendors,
       problemCount,
+      mainContexts,
+      contextCeiling,
     } = (await charterAuthoringApp.doctor()).data;
 
     return {
@@ -69,6 +71,12 @@ export class DoctorCommand implements Command {
           : pending === 0
             ? "Built:    up to date."
             : `Built:    ${pending} file${pending === 1 ? "" : "s"} out of date. Run "cw build".`,
+        // What each agent opens a session with, held to the ceiling: past it is
+        // a warning, and fails nothing (EVAL-FR-006).
+        ...mainContexts.map(
+          ({ agent, totalTokens }) =>
+            `Context:  ${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens, ${totalTokens > contextCeiling ? `past the ceiling of ${contextCeiling.toLocaleString("en-US")}. Run "cw context" to see what takes the most.` : `within the ceiling of ${contextCeiling.toLocaleString("en-US")}.`}`,
+        ),
         // Every fault under the file that has to change, below the four lines
         // rather than inside them: a line says how many, and this says which
         // (FR-009).

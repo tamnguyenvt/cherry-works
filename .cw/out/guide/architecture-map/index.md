@@ -24,14 +24,16 @@ here and extend what is already there.
 - `port/driver/` — use-case interfaces (`ForManagingCharter`…) and the DTOs
   crossing them (`dtos/data.ts`, `dtos/outcome.ts`).
 - `port/zdriven/` — driven ports (`ForReadingFiles`, `ForWritingFiles`,
-  `ForVCS`…), named in the adapter's own words, never the domain's.
+  `ForVCS`, `ForCountingTokens`, `ForRunningAgentCli`…), named in the adapter's own words, never the domain's.
 - `application/` — use cases implementing the driver ports: `CharterAuthoring`,
   `CharterVendoring`, `TestAuthoring`, `McpConnecting`; `dtos.ts` turns domain
   values into DTOs. A use case orchestrates; it holds no rule of its own.
 - `service/` — reads and writes through driven ports: `charterRepo`
   (`loadCharterRoot`, `writeCharter`), `buildService` (`plan`,
   `previewPlan`, `executePlan`), `settingsRepo`, `vendorRepo`,
-  `testSuitesRepo`, `credentialRepo`, `mcpOriginsRepo`.
+  `testSuitesRepo`, `credentialRepo`, `mcpOriginsRepo`, `contextService`
+  (`estimatedMainContextOf` through the tokenizer, `exactMainContextOf`
+  through the agent's own command line).
 - `domain/` — pure rules, no port:
   - `models/charter/` — `CharterRoot` (every primitive, every composite
     fault, in `compositeFaultsByFiles`), `primitive/` (one `<Kind>Primitive`
@@ -50,9 +52,15 @@ here and extend what is already there.
     factory per output, each `<model>Of()` in `compile/<model>Factory.ts`:
     `compiledPrimitiveOf`, `catalogueOf`, `charterMdOf`, `mcpOriginsOf`, and
     `claudeComponentsOf` in `claudeComponentFactory.ts`;
+    `context/mainContextService.ts` (`mainContextTextsOf`: what an agent puts
+    into its main context when a session opens, hosts dispatched there, and
+    `tokenFactorOf`, each host's token factor) calling `claudeMainContextOf`
+    in `context/claudeMainContextFactory.ts`, beside `CLAUDE_TOKEN_FACTOR`;
     `testService.ts`.
   - `path.ts` — the repository's layout: every folder and file name, and the
     URLs built from them. Not a model.
+  - `models/context/` — `MainContext`: what a charter puts into one agent's
+    main context, counted, and the ceiling it is held to.
   - `models/` root — what the charter and the output share: closed value
     sets with their type (`AgentProvider`, `McpAuthMethod`), `WorkspaceSettings`,
     `DomainFault` (faults with a fix and a severity).
@@ -72,7 +80,10 @@ here and extend what is already there.
   `SettingBasedComponent` that sets its own `path` in `of`, listed in that
   host's `<Host>Component.ts`, built in `<host>ComponentFactory.ts`.
 - A new host: `provider-component/<host>/`, `compile/<host>ComponentFactory.ts`, one
-  arm in `providerComponentsOf`, one value of `AgentProvider`.
+  arm in `providerComponentsOf`, one value of `AgentProvider`; for its main
+  context, `context/<host>MainContextFactory.ts`, one arm each in
+  `mainContextTextsOf` and `tokenFactorOf`, and an adapter of
+  `ForRunningAgentCli` under it in `agentCliByProvider` of `main.ts`.
 - A new composite check: a fault in `CharterRoot.compositeFaultsByFiles`;
   a warning is `"warn"`, anything that could send an agent to something that is
   not there is an error.

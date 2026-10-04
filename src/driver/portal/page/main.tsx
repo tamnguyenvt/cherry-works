@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CharterListing } from "./components/CharterListing.js";
 import { CharterSearch } from "./components/CharterSearch.js";
+import { MainContextListing } from "./components/MainContextListing.js";
 import { DialogProvider, useDialog } from "./components/Dialogs.js";
 import { TestSuites } from "./components/TestSuites.js";
 import { VendorSources } from "./components/VendorSources.js";
@@ -15,6 +16,7 @@ const TABS = [
   ["repo", "Repo Charter"],
   ["vendor", "Vendor"],
   ["test", "Test"],
+  ["context", "Context"],
 ] as const;
 
 /** The white sheet a tab's view is drawn in, over the grey of the page. */
@@ -96,6 +98,11 @@ function Portal() {
           </TabsContent>
           <TabsContent value="test" className={SHEET}>
             <TestSuites />
+          </TabsContent>
+          {/* What the charter costs the agent's main context, as `cw context`
+              lists it (EVAL-FR-007). */}
+          <TabsContent value="context" className={SHEET}>
+            <MainContextListing />
           </TabsContent>
         </Tabs>
       </main>

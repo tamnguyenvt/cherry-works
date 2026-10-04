@@ -35,12 +35,15 @@ A charter is paid for in tokens every turn an agent works under it, and it is on
 - Q: How does a developer read the sessions kept? → A: A command sums the log up by day and by session, in tokens, the largest first, narrowed to a span of time when asked; a session is counted once, at the last stop it was kept at.
 - Q: Where do the prices a cost is reckoned at come from? → A: The engine counts tokens only and prices nothing. What tokens cost is a skill's to work out: a skill the engine brings analyses the kept log, at prices the developer types in or that it fetches, at the time, from the model provider's published price list.
 - Q: Does an evaluation need a framework to run? → A: No: the engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-charter-against-the-real-agent-priority-p3)); promptfoo or deepeval, named when the command is run, runs the same cases there too ([EVAL-FR-027](#eval-fr-027)).
+- Q: Is an exact count made through a model provider key? → A: No: through the agent's own command line, run headless, which needs no key of its own; without that command line installed, an exact count is refused, saying the estimate needs nothing.
+- Q: How is the estimate made offline? → A: By a tokenizer that runs offline, said to be an estimate, rather than by text length.
+- Q: Does the main-context prediction count the tools the one server lists? → A: Not until the server lists its search tool ([EVAL Story 5](#eval-story-5---search-tools-rather-than-load-them-all-into-context-priority-p2)); from then on, that tool is counted ([EVAL-FR-029](#eval-fr-029)).
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### EVAL Story 1 - See what the charter loads into the agent's context (Priority: P1)
 
-**Status**: Todo
+**Status**: Done
 
 An author adds a guide with no files named, and three skills with long descriptions. Before this, nothing said what that cost: the agent paid for it every turn and nobody saw it. After this, one command lists, before any agent runs, how many tokens each primitive puts into the agent's main context when a session opens, the largest first, and the total, said to be an estimate. A guide that names files is listed apart, as loaded only when a file it names is touched. A build says the total in one line, the portal shows the same list, and the health check warns once the total passes the repository's ceiling.
 
@@ -52,7 +55,7 @@ An author adds a guide with no files named, and three skills with long descripti
 
 1. **Given** a charter, **When** the developer asks for the prediction, **Then** every primitive that puts anything into the main context when a session opens is listed with its tokens, the largest first, with the total, said to be an estimate ([EVAL-FR-001](#eval-fr-001), [EVAL-FR-002](#eval-fr-002)).
 2. **Given** a guide that names files, **When** the prediction is listed, **Then** it is listed apart, as loaded when a file it names is touched, and is not in the total ([EVAL-FR-003](#eval-fr-003)).
-3. **Given** a model provider key and the developer asking for an exact count, **When** the prediction is listed, **Then** each number is counted by the provider and said to be exact ([EVAL-FR-004](#eval-fr-004)).
+3. **Given** the agent's own command line installed and the developer asking for an exact count, **When** the prediction is listed, **Then** each number is counted through it and said to be exact ([EVAL-FR-004](#eval-fr-004)).
 4. **Given** a build, **When** it finishes, **Then** it says the predicted total in one line ([EVAL-FR-005](#eval-fr-005)).
 5. **Given** a total above the repository's ceiling, or above 20,000 tokens where it set none, **When** the developer runs the health check, **Then** it warns, naming the total and the ceiling ([EVAL-FR-006](#eval-fr-006)).
 6. **Given** the portal, **When** the developer opens the charter, **Then** it shows the same list and total the command gives ([EVAL-FR-007](#eval-fr-007)).
@@ -131,6 +134,7 @@ A charter declares four places with sixty tools between them. Before this, the a
 3. **Given** declared tools below the ceiling, **When** the server starts, **Then** every tool is listed, as before ([EVAL-FR-016](#eval-fr-016)).
 4. **Given** the repository holding searching always on, or always off, **When** the server starts, **Then** it searches, or lists every tool, whatever the schemas weigh ([EVAL-FR-018](#eval-fr-018)).
 5. **Given** a subagent holding only some of a place's tools, **When** it searches, **Then** it finds only those ([EVAL-FR-019](#eval-fr-019), [CORE-FR-156](spec-core.md#core-fr-156)).
+6. **Given** the server listing its search tool, **When** the developer asks for the main-context prediction, **Then** the search tool is listed with its tokens and counted in the total ([EVAL-FR-029](#eval-fr-029)).
 
 ---
 
@@ -176,7 +180,7 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 
 - A charter holding nothing loaded when a session opens — the prediction says the total is none, and the health check is quiet.
 - A guide naming files that every file in the repository matches — it is still listed apart: what is predicted is what the host loads, not what it is likely to.
-- An exact count asked for with no key at hand — the prediction is refused, saying the estimate needs none ([EVAL-FR-004](#eval-fr-004)).
+- An exact count asked for with the agent's command line not installed — the prediction is refused, saying the estimate needs nothing ([EVAL-FR-004](#eval-fr-004)).
 - The agent's own record of a session changes shape between versions of the agent — the stop is let through untouched, and nothing is kept for it ([EVAL-FR-011](#eval-fr-011)).
 - A session the developer closes without the agent stopping — what was kept at its last stop is what the summary counts.
 - Two sessions stopping at once — each is kept as its own line, and neither is lost ([EVAL-FR-009](#eval-fr-009)).
@@ -190,10 +194,10 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 
 **The main context**
 
-- <a id="eval-fr-001"></a>**EVAL-FR-001**: The engine MUST predict, without running an agent, the tokens each primitive puts into the agent's main context when a session opens: the charter's always-loaded instructions, every guide that names no files in full, the name and description of each skill, playbook and subagent, and the tools the one server lists.
+- <a id="eval-fr-001"></a>**EVAL-FR-001**: The engine MUST predict, without running an agent, the tokens each primitive puts into the agent's main context when a session opens: the charter's always-loaded instructions, every guide that names no files in full, and the name and description of each skill, playbook and subagent.
 - <a id="eval-fr-002"></a>**EVAL-FR-002**: The prediction MUST be listed per primitive, the largest first, with the total, and MUST say it is an estimate unless it was counted exactly.
 - <a id="eval-fr-003"></a>**EVAL-FR-003**: A guide that names files MUST be listed apart, as loaded when a file it names is touched, and MUST NOT be added to the total or held to the ceiling.
-- <a id="eval-fr-004"></a>**EVAL-FR-004**: Asked to, and with a model provider key at hand, the engine MUST count the prediction exactly through the provider, and say so; asked to without a key, it MUST refuse, saying the estimate needs none.
+- <a id="eval-fr-004"></a>**EVAL-FR-004**: Asked to, and with the agent's own command line installed, the engine MUST count the prediction exactly through it, run headless, and say so; asked to without it, it MUST refuse, saying the estimate needs nothing.
 - <a id="eval-fr-005"></a>**EVAL-FR-005**: A build MUST say the predicted total in one line.
 - <a id="eval-fr-006"></a>**EVAL-FR-006**: The health check MUST warn when the predicted total passes the ceiling the repository sets, or 20,000 tokens where it sets none, naming both.
 - <a id="eval-fr-007"></a>**EVAL-FR-007**: The portal MUST show the prediction the command lists, as the command lists it.
@@ -218,6 +222,7 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 - <a id="eval-fr-017"></a>**EVAL-FR-017**: A search MUST name each matching tool with what it does, and a tool found MUST be listed from then on under the name it always had.
 - <a id="eval-fr-018"></a>**EVAL-FR-018**: A repository MUST be able to hold searching always on or always off, whatever the schemas weigh.
 - <a id="eval-fr-019"></a>**EVAL-FR-019**: A search MUST find only the tools the one searching may call ([CORE-FR-156](spec-core.md#core-fr-156)).
+- <a id="eval-fr-029"></a>**EVAL-FR-029**: Once the one server lists its search tool, the main-context prediction MUST count that tool ([EVAL-FR-001](#eval-fr-001)).
 
 **Evaluating the charter**
 
@@ -251,7 +256,7 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 ## Assumptions
 
 - **Claude Code is the agent counted and evaluated.** It is the one host the engine builds for; another host is counted the day it is built for.
-- **The estimate is offline.** No tokenizer for the model is at hand offline, so a count by text length stands in for it, and says it does.
+- **The estimate is offline.** No tokenizer for the model is at hand offline, so a tokenizer that runs offline stands in for it, and says it does.
 - **A developer's log is theirs.** It lives on their machine, where the engine already keeps their credentials, and is never read by anyone else.
 - **An evaluation spends the developer's own key.** Nothing in the engine pays for it or holds a key of its own.
 

@@ -13,6 +13,8 @@ import { Git } from "./src/zdriven/Git.js";
 import { OsSecrets } from "./src/zdriven/OsSecrets.js";
 import { OAuth } from "./src/zdriven/OAuth.js";
 import { McpClients } from "./src/zdriven/McpClients.js";
+import { Tiktoken } from "./src/zdriven/Tiktoken.js";
+import { ClaudeCli } from "./src/zdriven/ClaudeCli.js";
 import type { ForReadingFiles } from "./src/hexagon/port/zdriven/ForReadingFiles.js";
 import type { ForParsingYaml } from "./src/hexagon/port/zdriven/ForParsingYaml.js";
 import type { ForWritingFiles } from "./src/hexagon/port/zdriven/ForWritingFiles.js";
@@ -20,6 +22,9 @@ import type { ForVCS } from "./src/hexagon/port/zdriven/ForVCS.js";
 import type { ForKeepingSecrets } from "./src/hexagon/port/zdriven/ForKeepingSecrets.js";
 import type { ForAuthorizing } from "./src/hexagon/port/zdriven/ForAuthorizing.js";
 import type { ForCallingMcpServers } from "./src/hexagon/port/zdriven/ForCallingMcpServers.js";
+import type { ForCountingTokens } from "./src/hexagon/port/zdriven/ForCountingTokens.js";
+import type { ForRunningAgentCli } from "./src/hexagon/port/zdriven/ForRunningAgentCli.js";
+import type { AgentProvider } from "./src/hexagon/port/driver/ForManagingCharter.js";
 import type { ForManagingCharter } from "./src/hexagon/port/driver/ForManagingCharter.js";
 import type { ForVendoringCharters } from "./src/hexagon/port/driver/ForVendoringCharters.js";
 import type { ForAuthoringTests } from "./src/hexagon/port/driver/ForAuthoringTests.js";
@@ -38,12 +43,16 @@ const vcs: ForVCS = new Git();
 const secrets: ForKeepingSecrets = new OsSecrets();
 const authorizing: ForAuthorizing = new OAuth();
 const mcpServers: ForCallingMcpServers = new McpClients();
+const tokenCounter: ForCountingTokens = new Tiktoken();
+/** Each agent's own command line, under the agent it runs: a second host is
+ *  one more entry here. */
+const agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>> = { claude: new ClaudeCli() };
 
 /** Where this was run, as the hexagon takes a repository: a directory, so it
  *  ends in a separator. */
 const repoPath = pathToFileURL(`${process.cwd()}/`);
 
-const charterAuthoringApp: ForManagingCharter = new CharterAuthoring(repoPath, fileReader, yamlParser, fileWriter, vcs);
+const charterAuthoringApp: ForManagingCharter = new CharterAuthoring(repoPath, fileReader, yamlParser, fileWriter, vcs, tokenCounter, agentCliByProvider);
 
 const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath, fileReader, vcs);
 

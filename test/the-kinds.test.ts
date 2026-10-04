@@ -1,3 +1,5 @@
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Commander } from "../src/driver/cli/Commander.js";
@@ -35,7 +37,7 @@ const testAuthoringApp = new TestAuthoring(repoPath, noTestFiles, new InMemoryFi
  *  the real command, the real service behind it, and what the terminal read. */
 const asking = async (argv: readonly string[]) => {
   const held = new InMemoryFileReaders({});
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS());
+  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };

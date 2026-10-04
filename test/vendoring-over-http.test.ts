@@ -9,6 +9,8 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
+import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
+import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
 const repoPath = new URL("file:///repo/");
 
@@ -20,7 +22,7 @@ const portal = (files: Readonly<Record<string, string>> = {}, vcs = new InMemory
   const held = new InMemoryFileReaders(files);
   const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
   const portalRoutes = api(
-    new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs),
+    new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
     charterVendoringApp,
     new TestAuthoring(repoPath, held, new InMemoryFileOutput(held)),
   );

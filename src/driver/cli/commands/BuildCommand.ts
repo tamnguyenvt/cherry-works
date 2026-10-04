@@ -86,11 +86,18 @@ export class BuildCommand implements Command<Building> {
 
     const { added, edited, deleted } = planSummaryDTO.data;
     const wrote = added.length + edited.length;
+    // What each agent will open a session with, in one line (EVAL-FR-005).
+    const mainContextsDTO = await charterAuthoringApp.predictMainContext(false);
+    const mainContexts = mainContextsDTO.type === "MainContexts" ? mainContextsDTO.data.contexts : [];
     return {
       code: EXIT_OK,
       result: [
         `Built ${wrote} file${wrote === 1 ? "" : "s"}: ${added.length} added, ${edited.length} changed.`,
         ...deleted.map((path) => `  deleted ${path}, whose primitive is gone`),
+        ...mainContexts.map(
+          ({ data: { agent, totalTokens } }) =>
+            `${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens of the charter, estimated. Run "cw context" for each primitive's share.`,
+        ),
         "",
       ].join("\n"),
     };

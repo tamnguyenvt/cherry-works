@@ -22,10 +22,11 @@ import {
   primitivesDTO,
   testRunReportDTO,
   workspaceSettingsDTO,
+  mainContextsDTO,
 } from "./dtos.js";
 import { catalogueOf } from "../domain/services/compile/catalogueFactory.js";
 import { executePlan, plan, previewPlan } from "../service/buildService.js";
-import type { WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
+import { WorkspaceSettingsSchema, type WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import { AGENT_PROVIDERS } from "../domain/models/AgentProvider.js";
 import { CHARTER_DIRECTORY, VENDOR_DIRECTORY, settingsFileIn } from "../domain/path.js";
 import type { UnparsedHeaders, ForManagingCharter, SettingsOptions } from "../port/driver/ForManagingCharter.js";
@@ -45,6 +46,11 @@ import {
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
 import type { ForParsingYaml } from "../port/zdriven/ForParsingYaml.js";
+import type { ForCountingTokens } from "../port/zdriven/ForCountingTokens.js";
+import type { ForRunningAgentCli } from "../port/zdriven/ForRunningAgentCli.js";
+import type { AgentProvider } from "../domain/models/AgentProvider.js";
+import { DEFAULT_CONTEXT_CEILING } from "../domain/models/context/MainContext.js";
+import { estimatedMainContextOf, exactMainContextOf } from "../service/contextService.js";
 
 /**
  * APPLICATION SERVICE — everything the engine does with a charter, in one
@@ -61,6 +67,8 @@ export class CharterAuthoring implements ForManagingCharter {
   readonly #yamlParser: ForParsingYaml;
   readonly #fileWriter: ForWritingFiles;
   readonly #vcs: ForVCS;
+  readonly #tokenCounter: ForCountingTokens;
+  readonly #agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>>;
 
   constructor(
     /** The repository this speaks for, named once: every use case reads the
@@ -74,12 +82,19 @@ export class CharterAuthoring implements ForManagingCharter {
     yamlParser: ForParsingYaml,
     fileWriter: ForWritingFiles,
     vcs: ForVCS,
+    /** What a main context is estimated by, on this machine (EVAL-FR-001). */
+    tokenCounter: ForCountingTokens,
+    /** Each agent's own command line, what a main context is counted exactly
+     *  by (EVAL-FR-004). */
+    agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>>,
   ) {
     this.#repoPath = repoPath;
     this.#fileReader = fileReader;
     this.#yamlParser = yamlParser;
     this.#fileWriter = fileWriter;
     this.#vcs = vcs;
+    this.#tokenCounter = tokenCounter;
+    this.#agentCliByProvider = agentCliByProvider;
   }
 
   /**
@@ -122,7 +137,7 @@ export class CharterAuthoring implements ForManagingCharter {
           .filter(([, faults]) => faults.length > 0),
       ),
     );
-    if (charter === undefined) return doctorOutcomeDTO(settings, heardFaultsByFile, undefined, drifted, this.#repoPath);
+    if (charter === undefined) return doctorOutcomeDTO(settings, heardFaultsByFile, undefined, drifted, [], this.#repoPath);
 
     const { cleanupPlan, projectionPlan } = await plan(this.#repoPath, charter, settings.agents, this.#fileReader);
     return doctorOutcomeDTO(
@@ -130,6 +145,7 @@ export class CharterAuthoring implements ForManagingCharter {
       heardFaultsByFile,
       previewPlan(cleanupPlan, projectionPlan),
       drifted,
+      settings.agents.map((agent) => estimatedMainContextOf(charter, agent, this.#tokenCounter)),
       this.#repoPath,
     );
   }
@@ -263,6 +279,20 @@ export class CharterAuthoring implements ForManagingCharter {
       charter.citersOf(declared),
       charter.mentionersOf(declared),
       testCasesByFile,
+    );
+  }
+
+  /** What each agent this repository compiles for is sent of the charter when
+   *  a session opens, estimated or counted exactly (EVAL-FR-001 –
+   *  EVAL-FR-004). Reads and says (FR-041). */
+  async predictMainContext(exact: boolean): Promise<DataDTOs.MainContexts | DataDTOs.FaultsByFile> {
+    const [charter, settings, faultsByFiles] = await this.#read();
+    if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
+
+    return mainContextsDTO(
+      exact
+        ? await Promise.all(settings.agents.map((agent) => exactMainContextOf(charter, agent, this.#agentCliByProvider[agent])))
+        : settings.agents.map((agent) => estimatedMainContextOf(charter, agent, this.#tokenCounter)),
     );
   }
 
@@ -576,7 +606,7 @@ export class CharterAuthoring implements ForManagingCharter {
    * so running this again reconfigures the repository and discards nothing
    * anybody wrote (FR-038).
    */
-  async init({ agents }: SettingsOptions): Promise<DataDTOs.PlanSummary | DataDTOs.FaultsByFile> {
+  async init({ agents, contextCeiling }: SettingsOptions): Promise<DataDTOs.PlanSummary | DataDTOs.FaultsByFile> {
     if (!(await this.#vcs.isInstalled(this.#repoPath)))
       throw new DomainFault(
         "This folder is not inside a git repository, and a charter is authored inside one.",
@@ -589,7 +619,19 @@ export class CharterAuthoring implements ForManagingCharter {
         `Choose at least one of: ${AGENT_PROVIDERS.join(", ")}.`,
       );
 
-    await this.#fileWriter.write(settingsFileIn(this.#repoPath), `${JSON.stringify({ agents }, null, 2)}\n`);
+    if (!WorkspaceSettingsSchema.shape.contextCeiling.safeParse(contextCeiling).success)
+      throw new DomainFault(
+        `A context ceiling is the tokens past which the health check warns, and ${contextCeiling} is no whole number above 0.`,
+        "Give one, as in --contextCeiling 20000.",
+      );
+
+    // The ceiling is kept where one was set, now or before, and left out where
+    // it is the 20,000 that none means (EVAL-FR-006).
+    const keptCeiling = contextCeiling ?? (await loadSettings(this.#repoPath, this.#fileReader).catch(() => undefined))?.contextCeiling;
+    await this.#fileWriter.write(
+      settingsFileIn(this.#repoPath),
+      `${JSON.stringify({ agents, ...(keptCeiling === undefined || keptCeiling === DEFAULT_CONTEXT_CEILING ? {} : { contextCeiling: keptCeiling }) }, null, 2)}\n`,
+    );
 
     // A directory per kind, which a filesystem only keeps once there is a file
     // in it — and which git only records at all once there is one. The kinds
