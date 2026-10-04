@@ -117,6 +117,10 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: "node_modules" },
+    // A script of the engine's own layer is an asset it puts down, imported as
+    // its text and run only on the developer's machine: not a module of the
+    // hexagon, so not held to its rules.
+    exclude: { path: "^src/hexagon/domain/models/charter/builtin/.+\\.(mjs|d\\.mts)$" },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
     enhancedResolveOptions: { exportsFields: ["exports"], conditionNames: ["import", "require", "node"] },

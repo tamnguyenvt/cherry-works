@@ -1,4 +1,5 @@
 import type { CharterRoot } from "../models/charter/CharterRoot.js";
+import { BUILTIN_LAYER } from "../models/charter/PrimitiveLayer.js";
 import { FaultsByFile, TestCaseFault, type DomainFault } from "../models/DomainFault.js";
 import type { TestCase } from "../models/test/TestCase.js";
 import type { TestSuite } from "../models/test/TestSuite.js";
@@ -59,7 +60,9 @@ export function findUntestedPrimitives(charter: CharterRoot, testSuites: readonl
   for (const primitive of charter.primitives) {
     const { file } = primitive;
     const { id } = primitive.headers;
-    if ((primitive.kind !== "guide" && primitive.kind !== "sensor") || testedIds.has(id)) continue;
+    // The engine's own are tested where the engine is, as a vendor's are in its
+    // own repository.
+    if ((primitive.kind !== "guide" && primitive.kind !== "sensor") || testedIds.has(id) || primitive.layerName === BUILTIN_LAYER) continue;
     faultsByFiles[file] = [
       new TestCaseFault(
         `No test case names "${id}", so nothing notices when it stops coming up where it should.`,

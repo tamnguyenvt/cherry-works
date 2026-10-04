@@ -38,7 +38,7 @@ export function catalogueDTO(catalogue: Catalogue): DataDTOs.Catalogue {
  * is a warning rather than a question unwell (EVAL-FR-006).
  */
 export function doctorOutcomeDTO(
-  { agents, contextCeiling }: WorkspaceSettings,
+  { agents, mainContextCeiling }: WorkspaceSettings,
   faultsByFile: FaultsByFile,
   planSummary: PlanSummary | undefined,
   driftedVendors: readonly string[],
@@ -61,7 +61,7 @@ export function doctorOutcomeDTO(
       driftedVendors,
       problemCount: unwell.filter(Boolean).length,
       mainContexts: mainContexts.map((mainContext) => ({ agent: mainContext.agent, totalTokens: mainContext.totalTokens })),
-      contextCeiling,
+      mainContextCeiling,
     },
   };
 }
@@ -231,8 +231,8 @@ export function testSuitesDTO({ suitesByFile, faultsByFiles }: TestRoot): DataDT
 }
 
 /** What a repository configured itself with. */
-export function workspaceSettingsDTO({ agents, contextCeiling }: WorkspaceSettings): DataDTOs.WorkspaceSettings {
-  return { type: "WorkspaceSettings", data: { agents, contextCeiling } };
+export function workspaceSettingsDTO({ agents, mainContextCeiling }: WorkspaceSettings): DataDTOs.WorkspaceSettings {
+  return { type: "WorkspaceSettings", data: { agents, mainContextCeiling } };
 }
 
 /** What a charter puts into each agent's main context (EVAL-FR-001 –

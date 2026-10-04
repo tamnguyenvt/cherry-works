@@ -18,7 +18,7 @@ export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
   const buildMutation = useBuild();
 
   if (healthQuery.data === undefined) return null;
-  const { agents, errorCount, warnCount, pendingCount, faultsByFile, driftedVendors, problemCount, mainContexts, contextCeiling } = healthQuery.data.data;
+  const { agents, errorCount, warnCount, pendingCount, faultsByFile, driftedVendors, problemCount, mainContexts, mainContextCeiling } = healthQuery.data.data;
 
   const healthAnswers = [
     [
@@ -51,7 +51,7 @@ export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
       ({ agent, totalTokens }) =>
         [
           "Context",
-          `${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens, ${totalTokens > contextCeiling ? `past the ceiling of ${contextCeiling.toLocaleString("en-US")}. Open Context to see what takes the most.` : `within the ceiling of ${contextCeiling.toLocaleString("en-US")}.`}`,
+          `${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens, ${totalTokens > mainContextCeiling ? `past the ceiling of ${mainContextCeiling.toLocaleString("en-US")}. Open Context to see what takes the most.` : `within the ceiling of ${mainContextCeiling.toLocaleString("en-US")}.`}`,
         ] as const,
     ),
   ] as const;

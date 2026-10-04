@@ -39,7 +39,7 @@ export async function loadSettings(repo: URL, fileReaders: ForReadingFiles): Pro
   const read = WorkspaceSettingsSchema.safeParse(written);
   if (!read.success) throw whatIsWrongWith(written);
 
-  return new WorkspaceSettings(read.data.agents, read.data.contextCeiling);
+  return new WorkspaceSettings(read.data.agents, read.data.mainContextCeiling);
 }
 
 /**
@@ -57,17 +57,34 @@ function whatIsWrongWith(written: unknown): SettingsFault {
       `Write it as an object, as in { "agents": ["claude"] }.`,
     );
 
-  const { agents, contextCeiling } = written as { agents?: unknown; contextCeiling?: unknown };
+  const { agents, mainContextCeiling, sessionContextMark, sessionAnalysisFolder } = written as {
+    agents?: unknown;
+    mainContextCeiling?: unknown;
+    sessionContextMark?: unknown;
+    sessionAnalysisFolder?: unknown;
+  };
   if (!Array.isArray(agents))
     return new SettingsFault(
       `"agents" is what this repository compiles its charter for, and it is not a list of names here.`,
       `Write it as a list of names, as in { "agents": ["claude"] }.`,
     );
 
+  if (agents.every(isAgentProvider) && !WorkspaceSettingsSchema.shape.sessionAnalysisFolder.safeParse(sessionAnalysisFolder).success)
+    return new SettingsFault(
+      `"sessionAnalysisFolder" is where each session's tokens are kept on this machine, and ${JSON.stringify(sessionAnalysisFolder)} is no absolute path or path under "~/".`,
+      `Write it as one, as in { "agents": ["claude"], "sessionAnalysisFolder": "~/.cherry-works/sessions" }, or drop it for a folder of this repository's own under ~/.cherry-works.`,
+    );
+
+  if (agents.every(isAgentProvider) && !WorkspaceSettingsSchema.shape.sessionContextMark.safeParse(sessionContextMark).success)
+    return new SettingsFault(
+      `"sessionContextMark" is every how many tokens a session says what it has used, and ${JSON.stringify(sessionContextMark)} is no whole number above 0.`,
+      `Write it as one, as in { "agents": ["claude"], "sessionContextMark": 100000 }, or drop it for 100000.`,
+    );
+
   if (agents.every(isAgentProvider))
     return new SettingsFault(
-      `"contextCeiling" is the tokens past which the health check warns of the main context, and ${JSON.stringify(contextCeiling)} is no whole number above 0.`,
-      `Write it as one, as in { "agents": ["claude"], "contextCeiling": 20000 }, or drop it for 20000.`,
+      `"mainContextCeiling" is the tokens past which the health check warns of the main context, and ${JSON.stringify(mainContextCeiling)} is no whole number above 0.`,
+      `Write it as one, as in { "agents": ["claude"], "mainContextCeiling": 20000 }, or drop it for 20000.`,
     );
 
   return new SettingsFault(

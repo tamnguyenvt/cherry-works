@@ -122,8 +122,8 @@ export class McpPrimitive extends BasePrimitive<McpHeaders> {
 
   /** One mcp, or every fault its headers have, shown the sample of the shape
    *  it declared (FR-004, FR-142). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): McpPrimitive {
+  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): McpPrimitive {
     const nearerSample = record.command === undefined ? McpPrimitive.sample : McpPrimitive.commandSample;
-    return new McpPrimitive(headersOf({ kind: McpPrimitive.kind, sample: nearerSample }, McpHeadersSchema, record), body, assetFiles, primitiveLayer);
+    return new McpPrimitive(headersOf({ kind: McpPrimitive.kind, sample: nearerSample }, McpHeadersSchema, record), body, assets, primitiveLayer);
   }
 }

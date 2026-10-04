@@ -37,7 +37,7 @@ export class PosturePrimitive extends BasePrimitive<PostureHeaders> {
   };
 
   /** One posture, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): PosturePrimitive {
-    return new PosturePrimitive(headersOf(PosturePrimitive, PostureHeadersSchema, record), body, assetFiles, primitiveLayer);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): PosturePrimitive {
+    return new PosturePrimitive(headersOf(PosturePrimitive, PostureHeadersSchema, record), body, assets, primitiveLayer);
   }
 }

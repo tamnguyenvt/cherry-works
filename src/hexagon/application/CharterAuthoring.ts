@@ -49,7 +49,7 @@ import type { ForParsingYaml } from "../port/zdriven/ForParsingYaml.js";
 import type { ForCountingTokens } from "../port/zdriven/ForCountingTokens.js";
 import type { ForRunningAgentCli } from "../port/zdriven/ForRunningAgentCli.js";
 import type { AgentProvider } from "../domain/models/AgentProvider.js";
-import { DEFAULT_CONTEXT_CEILING } from "../domain/models/context/MainContext.js";
+import { DEFAULT_MAIN_CONTEXT_CEILING } from "../domain/models/context/MainContext.js";
 import { estimatedMainContextOf, exactMainContextOf } from "../service/contextService.js";
 
 /**
@@ -606,7 +606,7 @@ export class CharterAuthoring implements ForManagingCharter {
    * so running this again reconfigures the repository and discards nothing
    * anybody wrote (FR-038).
    */
-  async init({ agents, contextCeiling }: SettingsOptions): Promise<DataDTOs.PlanSummary | DataDTOs.FaultsByFile> {
+  async init({ agents, mainContextCeiling }: SettingsOptions): Promise<DataDTOs.PlanSummary | DataDTOs.FaultsByFile> {
     if (!(await this.#vcs.isInstalled(this.#repoPath)))
       throw new DomainFault(
         "This folder is not inside a git repository, and a charter is authored inside one.",
@@ -619,18 +619,18 @@ export class CharterAuthoring implements ForManagingCharter {
         `Choose at least one of: ${AGENT_PROVIDERS.join(", ")}.`,
       );
 
-    if (!WorkspaceSettingsSchema.shape.contextCeiling.safeParse(contextCeiling).success)
+    if (!WorkspaceSettingsSchema.shape.mainContextCeiling.safeParse(mainContextCeiling).success)
       throw new DomainFault(
-        `A context ceiling is the tokens past which the health check warns, and ${contextCeiling} is no whole number above 0.`,
-        "Give one, as in --contextCeiling 20000.",
+        `A context ceiling is the tokens past which the health check warns, and ${mainContextCeiling} is no whole number above 0.`,
+        "Give one, as in --mainContextCeiling 20000.",
       );
 
     // The ceiling is kept where one was set, now or before, and left out where
     // it is the 20,000 that none means (EVAL-FR-006).
-    const keptCeiling = contextCeiling ?? (await loadSettings(this.#repoPath, this.#fileReader).catch(() => undefined))?.contextCeiling;
+    const keptCeiling = mainContextCeiling ?? (await loadSettings(this.#repoPath, this.#fileReader).catch(() => undefined))?.mainContextCeiling;
     await this.#fileWriter.write(
       settingsFileIn(this.#repoPath),
-      `${JSON.stringify({ agents, ...(keptCeiling === undefined || keptCeiling === DEFAULT_CONTEXT_CEILING ? {} : { contextCeiling: keptCeiling }) }, null, 2)}\n`,
+      `${JSON.stringify({ agents, ...(keptCeiling === undefined || keptCeiling === DEFAULT_MAIN_CONTEXT_CEILING ? {} : { mainContextCeiling: keptCeiling }) }, null, 2)}\n`,
     );
 
     // A directory per kind, which a filesystem only keeps once there is a file

@@ -196,7 +196,7 @@ test("a build says the predicted total in one line (EVAL-FR-005)", async () => {
 });
 
 test("the health check warns once the total passes the repository's ceiling, naming both (EVAL-FR-006)", async () => {
-  const { cli, portalRoutes } = surfaces(holding({ agents: ["claude"], contextCeiling: 100 }));
+  const { cli, portalRoutes } = surfaces(holding({ agents: ["claude"], mainContextCeiling: 100 }));
   const { portalRoutes: underCeilingRoutes } = surfaces(holding());
 
   const { text } = await printed(cli, ["doctor"]);
@@ -215,12 +215,12 @@ test("the health check is quiet under the 20,000 a repository setting none is he
   const doctorOutcome = OutcomeDTOs.DoctorOutcome.parse(await (await portalRoutes.request("/charter/root/health")).json());
 
   assert.match(text, /Context: {2}claude opens a session with about [\d,]+ tokens, within the ceiling of 20,000\./);
-  assert.equal(doctorOutcome.data.contextCeiling, 20_000);
+  assert.equal(doctorOutcome.data.mainContextCeiling, 20_000);
   assert.equal(doctorOutcome.data.mainContexts[0]?.agent, "claude");
 });
 
 test("the portal is given the same list and total the command prints, and the whole settings (EVAL-FR-007)", async () => {
-  const { cli, portalRoutes } = surfaces(holding({ agents: ["claude"], contextCeiling: 30_000 }));
+  const { cli, portalRoutes } = surfaces(holding({ agents: ["claude"], mainContextCeiling: 30_000 }));
 
   const { text } = await printed(cli, ["context"]);
   const [mainContext] = DataDTOs.MainContexts.parse(await (await portalRoutes.request("/charter/root/context")).json()).data.contexts;
@@ -230,17 +230,17 @@ test("the portal is given the same list and total the command prints, and the wh
     listedLoads(text),
     [...mainContext!.data.sessionLoads, ...mainContext!.data.fileLoads].map(({ data: { tokens, kind, id } }) => ({ tokens, kind, id })),
   );
-  assert.deepEqual(settings.data, { agents: ["claude"], contextCeiling: 30_000 });
+  assert.deepEqual(settings.data, { agents: ["claude"], mainContextCeiling: 30_000 });
 });
 
 test("setup keeps the ceiling it is given, and the one already set when given none (EVAL-FR-006)", async () => {
   const { cli, held } = surfaces(holding());
 
-  assert.equal((await printed(cli, ["init", "--agent", "claude", "--contextCeiling", "5000"])).code, EXIT_OK);
-  assert.deepEqual(JSON.parse((await held.readIfThere(new URL(".cw/settings.json", repoPath)))!), { agents: ["claude"], contextCeiling: 5000 });
+  assert.equal((await printed(cli, ["init", "--agent", "claude", "--mainContextCeiling", "5000"])).code, EXIT_OK);
+  assert.deepEqual(JSON.parse((await held.readIfThere(new URL(".cw/settings.json", repoPath)))!), { agents: ["claude"], mainContextCeiling: 5000 });
 
   assert.equal((await printed(cli, ["init", "--agent", "claude"])).code, EXIT_OK);
-  assert.deepEqual(JSON.parse((await held.readIfThere(new URL(".cw/settings.json", repoPath)))!), { agents: ["claude"], contextCeiling: 5000 });
+  assert.deepEqual(JSON.parse((await held.readIfThere(new URL(".cw/settings.json", repoPath)))!), { agents: ["claude"], mainContextCeiling: 5000 });
 });
 
 test("a repository compiling for no agent is told nothing is loaded", async () => {

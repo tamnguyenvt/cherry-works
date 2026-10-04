@@ -41,7 +41,7 @@ export class SkillPrimitive extends BasePrimitive<SkillHeaders> {
   }
 
   /** One skill, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): SkillPrimitive {
-    return new SkillPrimitive(headersOf(SkillPrimitive, SkillHeadersSchema, record), body, assetFiles, primitiveLayer);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): SkillPrimitive {
+    return new SkillPrimitive(headersOf(SkillPrimitive, SkillHeadersSchema, record), body, assets, primitiveLayer);
   }
 }

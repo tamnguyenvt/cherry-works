@@ -11,6 +11,8 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CwAuthorSkill } from "../src/hexagon/domain/models/charter/builtin/CwAuthorSkill.js";
+import { SessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/SessionTokensCounterScript.js";
+import { SessionTokensSensor } from "../src/hexagon/domain/models/charter/builtin/SessionTokensSensor.js";
 import { isStamped } from "../src/hexagon/domain/models/output/StampedDocument.js";
 
 const CLAUDE: AgentProvider = "claude";
@@ -38,6 +40,31 @@ const builtinEntry = {
   kind: "skill",
   description: new CwAuthorSkill().headers.description,
 };
+
+/** The script and the sensor the engine brings to count a session's tokens,
+ *  catalogued as every charter's are (EVAL-FR-008). */
+const sessionCounterEntries = [
+  {
+    id: "session-tokens-counter",
+    kind: "script",
+    description: new SessionTokensCounterScript().headers.description,
+    file: ".cw/out/script/session-tokens-counter/index.md",
+  },
+  {
+    id: "session-tokens-counter-on-stop",
+    kind: "sensor",
+    description: new SessionTokensSensor().headers.description,
+    file: ".cw/out/sensor/session-tokens-counter-on-stop/index.md",
+  },
+];
+
+/** What the engine's session counter compiles to under the workspace: the
+ *  script's document and its one asset, then the sensor's document. */
+const sessionCounterPaths = [
+  ".cw/out/script/session-tokens-counter/index.md",
+  ".cw/out/script/session-tokens-counter/count.mjs",
+  ".cw/out/sensor/session-tokens-counter-on-stop/index.md",
+];
 
 const oneGuide = { [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any") };
 
@@ -70,9 +97,12 @@ test("compiling produces the listing, the charter file, and what the installed a
     // catalogue is what names each file (FR-139, FR-140).
     ".cw/out/skill/cw-author/index.md",
     ".cw/out/guide/no-any/index.md",
+    ...sessionCounterPaths,
     // The file that agent reads unasked, which is what sends it to the
     // orientation above.
     "CLAUDE.md",
+    // The hook the engine's own sensor runs when the agent stops.
+    ".claude/settings.json",
     // The one server that reaches every place the charter declares.
     ".mcp.json",
     // The skill the engine brings, which every charter holds and reads first.
@@ -95,7 +125,7 @@ test("no listing and no projection can be produced without the others (SC-004)",
   // list, and no argument that narrows it to a single file. The second argument
   // says which agents are installed, never which file is wanted.
   assert.equal(compile.length, 2);
-  assert.equal((await built(oneGuide)).written.length, 9);
+  assert.equal((await built(oneGuide)).written.length, 13);
 });
 
 test("a repository with no agent installed still compiles the whole neutral half (FR-019)", async () => {
@@ -107,6 +137,7 @@ test("a repository with no agent installed still compiles the whole neutral half
     ".cw/out/CHARTER.md",
     ".cw/out/skill/cw-author/index.md",
     ".cw/out/guide/no-any/index.md",
+    ...sessionCounterPaths,
   ]);
 });
 
@@ -123,6 +154,7 @@ test("the full catalogue is written as the catalogue says it, one entry per line
       file: ".cw/out/guide/no-any/index.md",
       globs: ["src/**/*.ts"],
     },
+    ...sessionCounterEntries,
   ]);
   assert.ok(contents.includes("\n  {\n"));
 });
@@ -203,7 +235,7 @@ test("a charter with a broken file still compiles what the readable files hold",
   assert.equal(Object.keys(charter.allFaultsByFiles.files).length, 1);
   assert.deepEqual(
     JSON.parse(files[".cw/out/catalog.json"] ?? "").map((one: { id: string }) => one.id),
-    ["cw-author", "no-any"],
+    ["cw-author", "no-any", "session-tokens-counter", "session-tokens-counter-on-stop"],
   );
 });
 

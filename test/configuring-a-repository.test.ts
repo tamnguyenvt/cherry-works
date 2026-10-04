@@ -54,3 +54,16 @@ test("the repository is what is asked, whether or not it was named as a director
 
   assert.deepEqual(settings.agents, ["claude"]);
 });
+
+test("a session mark that is no whole number above 0 is refused, naming the field (EVAL-FR-010)", async () => {
+  const settingsFault = await refusing(`${JSON.stringify({ agents: ["claude"], sessionContextMark: -5 })}\n`);
+
+  assert.match(settingsFault.message, /"sessionContextMark"/);
+  assert.match(settingsFault.fix ?? "", /100000/);
+});
+
+test("a session analysis folder that is no absolute path or path under ~/ is refused, naming the field (EVAL-FR-009)", async () => {
+  const settingsFault = await refusing(`${JSON.stringify({ agents: ["claude"], sessionAnalysisFolder: "logs/sessions" })}\n`);
+
+  assert.match(settingsFault.message, /"sessionAnalysisFolder"/);
+});

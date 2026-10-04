@@ -43,6 +43,8 @@ test("every primitive of every layer is listed by id, each under the layer it ar
       ["cw-author", "builtin"],
       ["lint", "repo"],
       ["no-any", "repo"],
+      ["session-tokens-counter", "builtin"],
+      ["session-tokens-counter-on-stop", "builtin"],
       ["small-diffs", "vendor"],
     ],
   );
@@ -64,8 +66,9 @@ test("a word keeps only the primitives mentioning it, in a header value as much 
 });
 
 test("a word is found in the line saying when a primitive's kind comes up", async () => {
-  // Only a sensor's kind says the harness runs something.
-  assert.deepEqual(idsIn(await fullListOf(charter, "the harness runs")), ["lint"]);
+  // Only a sensor's kind says the harness runs something: the authored one, and
+  // the one the engine brings to count a session's tokens.
+  assert.deepEqual(idsIn(await fullListOf(charter, "the harness runs")), ["lint", "session-tokens-counter-on-stop"]);
 });
 
 test("a word nothing mentions lists nothing, and is no fault", async () => {

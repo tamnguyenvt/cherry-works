@@ -36,7 +36,7 @@ export class MixinPrimitive extends BasePrimitive<MixinHeaders> {
   };
 
   /** One mixin, or every fault its headers have (FR-004, FR-006). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): MixinPrimitive {
-    return new MixinPrimitive(headersOf(MixinPrimitive, MixinHeadersSchema, record), body, assetFiles, primitiveLayer);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): MixinPrimitive {
+    return new MixinPrimitive(headersOf(MixinPrimitive, MixinHeadersSchema, record), body, assets, primitiveLayer);
   }
 }

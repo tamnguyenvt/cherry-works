@@ -64,7 +64,7 @@ An author adds a guide with no files named, and three skills with long descripti
 
 ### EVAL Story 2 - Be told what a session has used when the agent stops (Priority: P1)
 
-**Status**: Todo
+**Status**: Done
 
 A developer works with their agent for an afternoon. Before this, how many tokens the session had used was something they found out at the end of the month. After this, each time the agent stops the session's tokens are counted, its subagents' included, and kept as one line of a log on the developer's machine. When the session crosses a mark — every 100,000 tokens unless the repository sets another — the developer reads one line saying so; the model is never sent it, so being told costs nothing.
 

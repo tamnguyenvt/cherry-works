@@ -53,11 +53,11 @@ export async function loadCharterRoot(
       ({ file }) => !indexFiles.some((other) => other.file.href !== file.href && file.href.startsWith(folderOf(other.file.href))),
     );
     const isUnderAPrimitive = (href: string) => primitiveIndexFiles.some(({ file }) => href.startsWith(folderOf(file.href)));
-    const authoredFileOf = (file: URL, contents: string, assetFiles: readonly AssetFile[]) => ({
+    const authoredFileOf = (file: URL, contents: string, assets: readonly AssetFile[]) => ({
       path: decodeURIComponent(file.href.slice(repoHref.length)),
       pathInLayer: decodeURIComponent(file.href.slice(layerFolder.href.length)),
       contents,
-      assetFiles,
+      assets,
     });
     return [
       ...primitiveIndexFiles.map(({ file, contents }) =>
@@ -90,6 +90,7 @@ export async function loadCharterRoot(
     path: primitive.file,
     pathInLayer: `${primitive.primitiveFolder}/${primitive.index}`,
     contents: primitive.toMarkdown(),
+    assets: primitive.assets,
   }));
 
   return charterRootOf({ repo: authoredFiles, vendor: vendorFiles.flat(), builtin: builtinFiles }, yamlParser);

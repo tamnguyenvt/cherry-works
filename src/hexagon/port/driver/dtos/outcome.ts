@@ -30,7 +30,7 @@ const DoctorOutcomeSchema = dto(
     driftedVendors: StringsSchema,
     problemCount: z.number(),
     mainContexts: z.array(z.object({ agent: z.string(), totalTokens: z.number() })).readonly(),
-    contextCeiling: z.number(),
+    mainContextCeiling: z.number(),
   }),
 );
 

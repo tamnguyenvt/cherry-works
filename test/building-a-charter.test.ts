@@ -25,6 +25,16 @@ const at = (path: string) => new URL(path, root).href;
 
 const inRepo = (path: string) => new URL(path, repo).href;
 
+/** What the engine's own session counter puts under the workspace on every
+ *  build, beside the authored charter's files (EVAL-FR-008). */
+const sessionCounterPaths = [
+  ".cw/out/script/session-tokens-counter/index.md",
+  ".cw/out/script/session-tokens-counter/count.mjs",
+  ".cw/out/sensor/session-tokens-counter-on-stop/index.md",
+];
+/** The Stop hook the engine's own sensor compiles to in Claude's settings. */
+const sessionCounterStopHook = { hooks: [{ type: "command", command: 'node ".cw/out/script/session-tokens-counter/count.mjs"' }] };
+
 /** What a repository answered at setup, kept in its own settings: which agents
  *  it compiles its charter for (FR-033). Every repository a build test authors
  *  says so, because one naming none has no host surface to build. */
@@ -67,7 +77,9 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
     ".cw/out/CHARTER.md",
     ".cw/out/skill/cw-author/index.md",
     ".cw/out/guide/no-any/index.md",
+    ...sessionCounterPaths,
     "CLAUDE.md",
+    ".claude/settings.json",
     ".mcp.json",
     ".claude/skills/cw-author/SKILL.md",
     ".claude/rules/no-any.md",
@@ -176,7 +188,7 @@ test("every posture lands in the one settings file its host reads, merged (FR-01
     // In the order the files sort in: `posture/no-network/index.md` before
     // `posture/sandboxed/index.md`.
     permissions: { allow: ["Read(**)"], deny: ["WebFetch", "Bash(rm:*)"] },
-    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "./bin/report-ci" }] }] },
+    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "./bin/report-ci" }] }], Stop: [sessionCounterStopHook] },
   });
 });
 
@@ -367,6 +379,7 @@ test("what the repository set in the host's settings is kept beside the charter'
   assert.deepEqual(JSON.parse(await contentsOf(held, ".claude/settings.json")), {
     model: "opus",
     permissions: { additionalDirectories: ["../shared"], allow: ["Read(**)"], deny: ["Bash(rm:*)"] },
+    hooks: { Stop: [sessionCounterStopHook] },
   });
 });
 
@@ -470,7 +483,7 @@ test("a sensor's run naming a script is, in the command its host runs, the built
   filesOf(await build());
 
   assert.deepEqual(JSON.parse(await contentsOf(held, ".claude/settings.json")).hooks, {
-    Stop: [{ hooks: [{ type: "command", command: ".cw/out/script/release/check/bin/run.sh --strict" }] }],
+    Stop: [sessionCounterStopHook, { hooks: [{ type: "command", command: ".cw/out/script/release/check/bin/run.sh --strict" }] }],
   });
   assert.notEqual(await held.readIfThere(new URL(".cw/out/script/release/check/bin/run.sh", repo)), undefined);
 });
@@ -520,6 +533,7 @@ test("a charter naming no agent still gets the surface every reader shares (FR-0
     ".cw/out/CHARTER.md",
     ".cw/out/skill/cw-author/index.md",
     ".cw/out/guide/no-any/index.md",
+    ...sessionCounterPaths,
   ]);
 });
 
@@ -546,6 +560,8 @@ test("what the charter speaks for is replaced; the rest of a host's settings is 
     // The charter speaks for permissions, so what it says they are is what they
     // are: a permission it no longer asks for is gone, not kept for ever.
     permissions: { allow: ["Read(**)"], deny: ["Bash(rm:*)"] },
+    // The engine's own sensor speaks for the hooks, as an authored one would.
+    hooks: { Stop: [sessionCounterStopHook] },
   });
 });
 

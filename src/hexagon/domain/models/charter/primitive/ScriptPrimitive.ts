@@ -38,8 +38,8 @@ export class ScriptPrimitive extends BasePrimitive<ScriptHeaders> {
   };
 
   /** One script, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): ScriptPrimitive {
-    return new ScriptPrimitive(headersOf(ScriptPrimitive, ScriptHeadersSchema, record), body, assetFiles, primitiveLayer);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): ScriptPrimitive {
+    return new ScriptPrimitive(headersOf(ScriptPrimitive, ScriptHeadersSchema, record), body, assets, primitiveLayer);
   }
 
   /** The asset that runs, as a path inside its folder: `run.sh` of

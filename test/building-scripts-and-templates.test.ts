@@ -23,9 +23,9 @@ const releaseNote = ["# Release {{version}}", "", "  - indented on purpose"].joi
 
 /** A script as it is kept: its index.md, and its assets beside it, of which
  *  `run.sh` is the one that runs. */
-const script = (id: string, assetFiles: Readonly<Record<string, string>> = { "run.sh": runFile }, body = "Takes the version as its one argument.") => ({
+const script = (id: string, assets: Readonly<Record<string, string>> = { "run.sh": runFile }, body = "Takes the version as its one argument.") => ({
   [at(`script/${id}/index.md`)]: primitive("script", id, ["executionPath: ./run.sh"], body),
-  ...Object.fromEntries(Object.entries(assetFiles).map(([path, contents]) => [at(`script/${id}/${path}`), contents])),
+  ...Object.fromEntries(Object.entries(assets).map(([path, contents]) => [at(`script/${id}/${path}`), contents])),
 });
 const template = (id: string, body = releaseNote) => primitive("template", id, [], body);
 const skillNaming = (...names: readonly string[]) =>

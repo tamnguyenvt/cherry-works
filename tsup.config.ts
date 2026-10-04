@@ -19,6 +19,9 @@ export default defineConfig([
     entry: { main: "main.ts" },
     format: ["esm"],
     target: "node22",
+    // A `.mjs` under the engine's own layer is an asset it puts down, taken
+    // as its text (scripts/moduleLoader.mjs does the same under tsx).
+    loader: { ".mjs": "text" },
     outDir: "dist",
     // The page and the launcher write dist/ alongside; cleaning them here
     // would race them.

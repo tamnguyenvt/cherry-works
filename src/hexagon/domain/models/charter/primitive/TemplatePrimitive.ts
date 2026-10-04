@@ -29,7 +29,7 @@ export class TemplatePrimitive extends BasePrimitive<TemplateHeaders> {
   };
 
   /** One template, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): TemplatePrimitive {
-    return new TemplatePrimitive(headersOf(TemplatePrimitive, TemplateHeadersSchema, record), body, assetFiles, primitiveLayer);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): TemplatePrimitive {
+    return new TemplatePrimitive(headersOf(TemplatePrimitive, TemplateHeadersSchema, record), body, assets, primitiveLayer);
   }
 }

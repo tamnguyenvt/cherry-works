@@ -39,8 +39,8 @@
   "scripts": {
     "build": "tsup && tailwindcss -i src/driver/portal/page/styles.css -o dist/portal/styles.css --minify",
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/driver/portal/page",
-    "test": "pnpm run lint:deps && pnpm run build && node --import tsx --test \"test/**/*.test.ts\"",
-    "cw": "node --import tsx main.ts",
+    "test": "pnpm run lint:deps && pnpm run build && node --import tsx --import ./scripts/moduleLoader.mjs --test \"test/**/*.test.ts\"",
+    "cw": "node --import tsx --import ./scripts/moduleLoader.mjs main.ts",
     "lint:deps": "depcruise src main.ts",
     "release": "node --import tsx scripts/release.ts",
     "prepublishOnly": "node -e \"console.error('Publish with \\\"pnpm release <version>\\\", which checks the package first.'); process.exit(1)\""

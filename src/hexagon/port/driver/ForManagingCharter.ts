@@ -330,7 +330,7 @@ export interface SettingsOptions {
   /** The tokens past which the health check warns of the main context a
    *  session opens with (EVAL-FR-006); none keeps what the repository already
    *  set, or 20,000. */
-  readonly contextCeiling?: number;
+  readonly mainContextCeiling?: number;
 }
 
 /** What one primitive's author answered, under the header each answer fills

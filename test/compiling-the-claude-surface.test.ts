@@ -47,6 +47,19 @@ const projected = async (files: Readonly<Record<string, string>>) =>
  *  it, so every projection has it (FR-021). */
 const builtinSkill = ".claude/skills/cw-author/SKILL.md";
 
+/** Where the sensor the engine brings lands on this host: its settings, as a
+ *  Stop hook running the engine's session counter (EVAL-FR-008). Every charter
+ *  holds it, so every projection has that file. */
+const builtinSettings = ".claude/settings.json";
+const sessionCounterStopHook = { hooks: [{ type: "command", command: 'node ".cw/out/script/session-tokens-counter/count.mjs"' }] };
+
+/** What the engine's session counter compiles to under the workspace. */
+const sessionCounterPaths = [
+  ".cw/out/script/session-tokens-counter/index.md",
+  ".cw/out/script/session-tokens-counter/count.mjs",
+  ".cw/out/sensor/session-tokens-counter-on-stop/index.md",
+];
+
 const aRole = {
   [at("agent/ship/index.md")]: primitive("agent", "ship", "Run the build, then push.", ['tools: ["Bash"]']),
 };
@@ -108,6 +121,7 @@ test("a guide and a skill of the same id stay two files, each named by its id al
 
   assert.deepEqual(Object.keys(files).sort(), [
     ".claude/rules/review.md",
+    builtinSettings,
     builtinSkill,
     ".claude/skills/review/SKILL.md",
   ]);
@@ -129,7 +143,7 @@ test("the kinds this host has no kind for project nothing: they are read from th
     [at("mixin/house-style/index.md")]: primitive("mixin", "house-style", "Write plainly."),
   });
 
-  assert.deepEqual(Object.keys(files), [builtinSkill]);
+  assert.deepEqual(Object.keys(files), [builtinSettings, builtinSkill]);
 });
 
 test("a host's document points to the compiled one, which alone carries the body (FR-018, FR-139)", async () => {
@@ -215,7 +229,7 @@ test("a sensor compiles to a hook this host runs: the event, and the command (FR
 
   assert.deepEqual(Object.keys(files), [".claude/settings.json", builtinSkill]);
   assert.deepEqual(JSON.parse(files[".claude/settings.json"] ?? ""), {
-    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "./bin/report-ci" }] }] },
+    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "./bin/report-ci" }] }], Stop: [sessionCounterStopHook] },
   });
 });
 
@@ -243,6 +257,7 @@ test("a posture compiles to the settings this host enforces, as JSON (FR-018)", 
 
   assert.deepEqual(JSON.parse(files[".claude/settings.json"] ?? ""), {
     permissions: { allow: ["Read(**)", "Grep(**)"], deny: ["Bash(rm:*)"] },
+    hooks: { Stop: [sessionCounterStopHook] },
   });
 });
 
@@ -291,6 +306,7 @@ test("nothing is compiled for an agent that was not named as installed", async (
     ".cw/out/mcp-origins.json",
     ".cw/out/CHARTER.md",
     ".cw/out/skill/cw-author/index.md",
+    ...sessionCounterPaths,
     ".cw/out/agent/ship/index.md",
   ]);
 });

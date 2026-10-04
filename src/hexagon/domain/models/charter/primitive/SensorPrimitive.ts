@@ -62,7 +62,7 @@ export class SensorPrimitive extends BasePrimitive<SensorHeaders> {
   };
 
   /** One sensor, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): SensorPrimitive {
-    return new SensorPrimitive(headersOf(SensorPrimitive, SensorHeadersSchema, record), body, assetFiles, primitiveLayer);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): SensorPrimitive {
+    return new SensorPrimitive(headersOf(SensorPrimitive, SensorHeadersSchema, record), body, assets, primitiveLayer);
   }
 }

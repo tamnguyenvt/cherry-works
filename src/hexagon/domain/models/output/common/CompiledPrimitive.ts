@@ -23,7 +23,7 @@ export class CompiledPrimitive {
     /** Its assets, put down beside its document: the path each has in its
      *  folder, what it holds, and whether it is run by its path — the one a
      *  script says to run (FR-160, FR-168). */
-    private readonly assetFiles: readonly { readonly file: string; readonly contents: string; readonly executable: boolean }[] = [],
+    private readonly assets: readonly { readonly file: string; readonly contents: string; readonly executable: boolean }[] = [],
   ) {}
 
   /** Every file it puts down, from the repository: its document first, then
@@ -35,7 +35,7 @@ export class CompiledPrimitive {
     const outFolder = `${OUT_DIRECTORY}/${this.kind}/${this.id}`;
     return [
       { file: `${outFolder}/index.md`, contents: this.stampedContents, projectionPolicy: "replace", executable: false },
-      ...this.assetFiles.map(({ file, contents, executable }) => ({ file: `${outFolder}/${file}`, contents, projectionPolicy: "replace" as const, executable })),
+      ...this.assets.map(({ file, contents, executable }) => ({ file: `${outFolder}/${file}`, contents, projectionPolicy: "replace" as const, executable })),
     ];
   }
 }

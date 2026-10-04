@@ -2,7 +2,7 @@ import type { AgentProvider } from "../AgentProvider.js";
 
 /** The tokens a repository holds an agent's main context to when it sets
  *  none (EVAL-FR-006). */
-export const DEFAULT_CONTEXT_CEILING = 20_000;
+export const DEFAULT_MAIN_CONTEXT_CEILING = 20_000;
 
 /**
  * What one primitive, or the charter itself, puts into an agent's main
@@ -51,7 +51,7 @@ export class MainContext {
     return this.sessionLoads.reduce((total, load) => total + load.tokens, 0);
   }
 
-  isOverCeiling(contextCeiling: number): boolean {
-    return this.totalTokens > contextCeiling;
+  isOverCeiling(mainContextCeiling: number): boolean {
+    return this.totalTokens > mainContextCeiling;
   }
 }

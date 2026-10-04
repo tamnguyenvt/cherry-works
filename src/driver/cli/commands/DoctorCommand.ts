@@ -46,7 +46,7 @@ export class DoctorCommand implements Command {
       driftedVendors,
       problemCount,
       mainContexts,
-      contextCeiling,
+      mainContextCeiling,
     } = (await charterAuthoringApp.doctor()).data;
 
     return {
@@ -75,7 +75,7 @@ export class DoctorCommand implements Command {
         // a warning, and fails nothing (EVAL-FR-006).
         ...mainContexts.map(
           ({ agent, totalTokens }) =>
-            `Context:  ${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens, ${totalTokens > contextCeiling ? `past the ceiling of ${contextCeiling.toLocaleString("en-US")}. Run "cw context" to see what takes the most.` : `within the ceiling of ${contextCeiling.toLocaleString("en-US")}.`}`,
+            `Context:  ${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens, ${totalTokens > mainContextCeiling ? `past the ceiling of ${mainContextCeiling.toLocaleString("en-US")}. Run "cw context" to see what takes the most.` : `within the ceiling of ${mainContextCeiling.toLocaleString("en-US")}.`}`,
         ),
         // Every fault under the file that has to change, below the four lines
         // rather than inside them: a line says how many, and this says which

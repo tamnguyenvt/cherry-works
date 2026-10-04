@@ -14,6 +14,7 @@ import type { ForConnectingMcps } from "../src/hexagon/port/driver/ForConnecting
 const MAIN = fileURLToPath(new URL("../main.ts", import.meta.url));
 const STDIO_SERVER = fileURLToPath(new URL("./an-mcp-server-over-stdio.ts", import.meta.url));
 const TSX = import.meta.resolve("tsx");
+const MODULE_LOADER = import.meta.resolve("../scripts/moduleLoader.mjs");
 
 /** The places reached through a port a test answers: one served tool, and a
  *  record of every call forwarded. */
@@ -77,7 +78,7 @@ const aBuiltRepository = async () => {
 test("cw mcp serve, started by an agent, serves a built repository's places over stdio and stops them with it (FR-152, FR-153)", async (t) => {
   const repo = await aBuiltRepository();
   t.after(() => rm(repo, { recursive: true, force: true }));
-  const transport = new StdioClientTransport({ command: process.execPath, args: ["--import", TSX, MAIN, "mcp", "serve"], cwd: repo, stderr: "pipe" });
+  const transport = new StdioClientTransport({ command: process.execPath, args: ["--import", TSX, "--import", MODULE_LOADER, MAIN, "mcp", "serve"], cwd: repo, stderr: "pipe" });
   const said: string[] = [];
   transport.stderr?.on("data", (chunk: Buffer) => said.push(chunk.toString()));
   const client = new Client({ name: "an-agent", version: "0.0.0" });
@@ -98,7 +99,7 @@ test("cw mcp serve in a repository never built stops, saying to build (FR-152)",
   const repo = await mkdtemp(join(tmpdir(), "cw-serve-"));
   t.after(() => rm(repo, { recursive: true, force: true }));
 
-  const serveRun = spawnSync(process.execPath, ["--import", TSX, MAIN, "mcp", "serve"], { cwd: repo, encoding: "utf8", input: "" });
+  const serveRun = spawnSync(process.execPath, ["--import", TSX, "--import", MODULE_LOADER, MAIN, "mcp", "serve"], { cwd: repo, encoding: "utf8", input: "" });
 
   assert.equal(serveRun.status, 1);
   assert.equal(serveRun.stdout, "");

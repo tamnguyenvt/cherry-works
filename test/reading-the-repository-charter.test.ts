@@ -24,9 +24,11 @@ test("every kind the charter knows has a chip, carrying how many primitives of i
     // the view is waited for once, here.
     await page.getByRole("radio", { checked: true }).waitFor();
 
+    // The sensor, the skill and the script the engine brings are counted with
+    // what the repository authored.
     assert.deepEqual(
       await chipsOf(page),
-      KINDS.map((kind, index) => [kind, ["1", "0", "1", "0", "0", "0", "1", "1", "0", "0", "0"][index]]),
+      KINDS.map((kind, index) => [kind, ["1", "1", "1", "0", "0", "0", "1", "1", "0", "1", "0"][index]]),
     );
   });
 });

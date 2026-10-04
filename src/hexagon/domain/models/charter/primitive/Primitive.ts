@@ -176,11 +176,11 @@ export interface UnparsedPrimitive {
  * wrong (FR-009). A file is read as it always was.
  */
 export function primitiveOf(unparsedPrimitive: UnparsedPrimitive): Primitive;
-export function primitiveOf(text: string, parser: ForParsingYaml, assetFiles?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer): Primitive;
+export function primitiveOf(text: string, parser: ForParsingYaml, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer): Primitive;
 export function primitiveOf(
   input: string | UnparsedPrimitive,
   parser?: ForParsingYaml,
-  assetFiles: readonly AssetFile[] = [],
+  assets: readonly AssetFile[] = [],
   primitiveLayer?: PrimitiveLayer,
 ): Primitive {
   let headers: Readonly<Record<string, unknown>>;
@@ -228,7 +228,7 @@ export function primitiveOf(
           ),
     ]);
   const kind = headers.kind;
-  if (typeof input === "string") return CLASS_OF.get(kind)!.of(headers, body, assetFiles, primitiveLayer);
+  if (typeof input === "string") return CLASS_OF.get(kind)!.of(headers, body, assets, primitiveLayer);
 
   const headerFields = primitiveHeadersOf(kind).map((header) => header.field);
   const unknownHeaderFaults = Object.keys(headers)

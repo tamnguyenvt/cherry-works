@@ -74,7 +74,11 @@ test("a repository that has never been built would have every file created (FR-0
     ".cw/out/CHARTER.md": "create",
     ".cw/out/skill/cw-author/index.md": "create",
     ".cw/out/guide/no-any/index.md": "create",
+    ".cw/out/script/session-tokens-counter/index.md": "create",
+    ".cw/out/script/session-tokens-counter/count.mjs": "create",
+    ".cw/out/sensor/session-tokens-counter-on-stop/index.md": "create",
     "CLAUDE.md": "create",
+    ".claude/settings.json": "create",
     ".mcp.json": "create",
     ".claude/rules/no-any.md": "create",
     ".claude/skills/cw-author/SKILL.md": "create",
@@ -107,13 +111,18 @@ test("a rule edited since the last build would be updated, and its listings with
     ".cw/out/catalog.json": "unchanged",
     ".cw/out/mcp-origins.json": "unchanged",
     ".cw/out/CHARTER.md": "unchanged",
-    // The compiled document holds the body, so it changes with it; the engine's
-    // own skill does not.
+    // The compiled document holds the body, so it changes with it; what the
+    // engine brings does not.
     ".cw/out/guide/no-any/index.md": "update",
     ".cw/out/skill/cw-author/index.md": "unchanged",
+    ".cw/out/script/session-tokens-counter/index.md": "unchanged",
+    ".cw/out/script/session-tokens-counter/count.mjs": "unchanged",
+    ".cw/out/sensor/session-tokens-counter-on-stop/index.md": "unchanged",
     // The section in the entry file is a pointer and says nothing of any
     // primitive, so no edit to a body reaches it.
     "CLAUDE.md": "unchanged",
+    // The engine's own Stop hook names no body either.
+    ".claude/settings.json": "unchanged",
     ".mcp.json": "unchanged",
     // The rule points to the compiled document, so it says the same whatever
     // the body holds.

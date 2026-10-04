@@ -236,7 +236,7 @@ const WorkspaceSettingsSchema = dto(
   "WorkspaceSettings",
   z.object({
     agents: StringsSchema,
-    contextCeiling: z.number(),
+    mainContextCeiling: z.number(),
   }),
 );
 

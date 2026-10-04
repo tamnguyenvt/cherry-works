@@ -13,6 +13,8 @@ import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { KINDS } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
 import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
 import { CwAuthorSkill } from "../src/hexagon/domain/models/charter/builtin/CwAuthorSkill.js";
+import { SessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/SessionTokensCounterScript.js";
+import { SessionTokensSensor } from "../src/hexagon/domain/models/charter/builtin/SessionTokensSensor.js";
 import { noPlacesReached } from "./no-places.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
@@ -79,6 +81,13 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
   return writing(() => cli.run(argv));
 };
 
+/** The lines the engine's own session counter is listed by, in every
+ *  repository: its script, then the sensor that runs it (EVAL-FR-008). */
+const sessionCounterLines = [
+  `session-tokens-counter  ${new SessionTokensCounterScript().headers.description}`,
+  `session-tokens-counter-on-stop  ${new SessionTokensSensor().headers.description}`,
+];
+
 const charter = {
   [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["tags: [types]"]),
   [new URL("skill/writing-tests/index.md", root).href]: primitive("skill", "writing-tests"),
@@ -96,6 +105,7 @@ test("every primitive is listed, ordered by id, with what it is for", async () =
     [
       `cw-author  ${new CwAuthorSkill().headers.description}`,
       "no-any  What no-any is for.",
+      ...sessionCounterLines,
       "type-safety  What type-safety is for.",
       "writing-tests  What writing-tests is for.",
     ],
@@ -128,6 +138,7 @@ test("--min says what an agent surveys by, and nothing else", async () => {
   assert.deepEqual(results, [
     `cw-author  ${new CwAuthorSkill().headers.description}`,
     "no-any  What no-any is for.",
+    ...sessionCounterLines,
     "type-safety  What type-safety is for.",
     "writing-tests  What writing-tests is for.",
     "",
@@ -177,7 +188,7 @@ test("a repository that authored nothing is listed what the engine brings (FR-01
   const { code, results } = await run({}, ["list", "--min"]);
 
   assert.equal(code, EXIT_OK);
-  assert.equal(results, `cw-author  ${new CwAuthorSkill().headers.description}\n`);
+  assert.equal(results, [`cw-author  ${new CwAuthorSkill().headers.description}`, ...sessionCounterLines, ""].join("\n"));
 });
 
 test("cw kinds says every kind and when each comes up, in a repository that authored none of them", async () => {

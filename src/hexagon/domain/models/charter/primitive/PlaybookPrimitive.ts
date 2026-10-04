@@ -41,7 +41,7 @@ export class PlaybookPrimitive extends BasePrimitive<PlaybookHeaders> {
   }
 
   /** One playbook, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assetFiles: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): PlaybookPrimitive {
-    return new PlaybookPrimitive(headersOf(PlaybookPrimitive, PlaybookHeadersSchema, record), body, assetFiles, primitiveLayer);
+  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): PlaybookPrimitive {
+    return new PlaybookPrimitive(headersOf(PlaybookPrimitive, PlaybookHeadersSchema, record), body, assets, primitiveLayer);
   }
 }

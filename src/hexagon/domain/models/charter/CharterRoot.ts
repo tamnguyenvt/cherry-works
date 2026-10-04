@@ -350,7 +350,7 @@ export interface AuthoredFile {
   readonly pathInLayer: string;
   /** Every other file of the folder it sits in, at any depth: its assets
    *  (FR-168). */
-  readonly assetFiles?: readonly AssetFile[];
+  readonly assets?: readonly AssetFile[];
 }
 
 /** One file a vendor published, under the name this repository installed it as.
@@ -408,7 +408,7 @@ export function charterRootOf(
       return;
     }
     try {
-      const primitive = primitiveOf(one.contents, yamlParser, one.assetFiles ?? [], { name: layerName, charterFolder });
+      const primitive = primitiveOf(one.contents, yamlParser, one.assets ?? [], { name: layerName, charterFolder });
       // Its folder is its kind and id: what it declares is where it is kept
       // (FR-003, FR-141).
       if (one.pathInLayer !== `${primitive.primitiveFolder}/${primitive.index}`) {

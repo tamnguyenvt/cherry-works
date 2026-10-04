@@ -10,7 +10,7 @@ const primitive = (kind: string, id: string, headers: readonly string[]) =>
 /** A repository compiling for claude, a guide on every turn and one loaded
  *  when a file it names is touched. */
 const holding = {
-  [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"], contextCeiling: 30 })}\n`,
+  [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"], mainContextCeiling: 30 })}\n`,
   [at(".cw/charter/guide/plain-words/index.md")]: primitive("guide", "plain-words", []),
   [at(".cw/charter/guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
 };

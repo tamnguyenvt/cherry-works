@@ -17,7 +17,7 @@ export function MainContextListing() {
 
   const { contexts } = mainContextsQuery.data.data;
   if (contexts.length === 0) return <p className="text-xs text-zinc-500">No agent is chosen, so no agent loads anything of the charter.</p>;
-  const contextCeiling = settingsQuery.data?.data.contextCeiling;
+  const mainContextCeiling = settingsQuery.data?.data.mainContextCeiling;
 
   return (
     <div className="space-y-6">
@@ -25,10 +25,10 @@ export function MainContextListing() {
         <section key={agent} className="space-y-3" aria-label={`${agent} main context`}>
           <h2 className="text-[13px] font-semibold">
             {agent} opens a session with {totalTokens.toLocaleString("en-US")} tokens of the charter, {isExact ? "counted exactly" : "estimated"}
-            {contextCeiling !== undefined && (
-              <span className={totalTokens > contextCeiling ? "text-[#b45309]" : "text-zinc-400"}>
+            {mainContextCeiling !== undefined && (
+              <span className={totalTokens > mainContextCeiling ? "text-[#b45309]" : "text-zinc-400"}>
                 {" "}
-                · {totalTokens > contextCeiling ? "past" : "within"} the ceiling of {contextCeiling.toLocaleString("en-US")}
+                · {totalTokens > mainContextCeiling ? "past" : "within"} the ceiling of {mainContextCeiling.toLocaleString("en-US")}
               </span>
             )}
           </h2>
