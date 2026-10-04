@@ -27,7 +27,7 @@ import { catalogueOf } from "../domain/services/compile/catalogueFactory.js";
 import { executePlan, plan, previewPlan } from "../service/buildService.js";
 import type { WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import { AGENT_PROVIDERS } from "../domain/models/AgentProvider.js";
-import { CHARTER_DIRECTORY, settingsFileIn } from "../domain/path.js";
+import { CHARTER_DIRECTORY, VENDOR_DIRECTORY, settingsFileIn } from "../domain/path.js";
 import type { UnparsedHeaders, ForManagingCharter, SettingsOptions } from "../port/driver/ForManagingCharter.js";
 import type { ForVCS } from "../port/zdriven/ForVCS.js";
 import {
@@ -98,6 +98,11 @@ export class CharterAuthoring implements ForManagingCharter {
    * `cw test` is what refuses it (FR-014). Nothing else reads them for this — a
    * warning stops nothing, and every other use case asks only for the errors.
    * Where it does not hold, nothing is previewed (FR-005, FR-009).
+   *
+   * The warnings under `.cw/vendor/` are left out before anything is counted,
+   * so the summary line and the faults below it say one thing: a vendor is
+   * tested and checked in its own repository. Its errors stay, since they stop
+   * the build here.
    */
   async doctor(): Promise<OutcomeDTOs.DoctorOutcome> {
     const [settings, [charter, , faultsByFiles], drifted, testRoot] = await Promise.all([
@@ -106,12 +111,23 @@ export class CharterAuthoring implements ForManagingCharter {
       driftedVendors(this.#repoPath, this.#vcs),
       loadTestRoot(this.#repoPath, this.#fileReader),
     ]);
-    if (charter === undefined) return doctorOutcomeDTO(settings, faultsByFiles, undefined, drifted, this.#repoPath);
+    const allFaultsByFile =
+      charter === undefined
+        ? faultsByFiles
+        : faultsByFiles.with(findUntestedPrimitives(charter, Object.values(testRoot.suitesByFile)));
+    const heardFaultsByFile = new FaultsByFile(
+      Object.fromEntries(
+        Object.entries(allFaultsByFile.files)
+          .map(([file, faults]) => [file, file.startsWith(`${VENDOR_DIRECTORY}/`) ? faults.filter((fault) => fault.severity !== "warn") : faults] as const)
+          .filter(([, faults]) => faults.length > 0),
+      ),
+    );
+    if (charter === undefined) return doctorOutcomeDTO(settings, heardFaultsByFile, undefined, drifted, this.#repoPath);
 
     const { cleanupPlan, projectionPlan } = await plan(this.#repoPath, charter, settings.agents, this.#fileReader);
     return doctorOutcomeDTO(
       settings,
-      faultsByFiles.with(findUntestedPrimitives(charter, Object.values(testRoot.suitesByFile))),
+      heardFaultsByFile,
       previewPlan(cleanupPlan, projectionPlan),
       drifted,
       this.#repoPath,

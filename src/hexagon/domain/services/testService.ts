@@ -100,7 +100,8 @@ export function runCase(charter: CharterRoot, suiteName: string, one: TestCase):
  *
  *  Activating on a touched file is a guide's own rule, so an id of any
  *  other kind is the case asking the charter for something that kind never
- *  does — said as that rather than as a glob that did not match (FR-004). */
+ *  does — said as that rather than as a glob that did not match (FR-004).
+ *  A guide naming no files comes up every turn, so any file brings it up. */
 function assertPrimitiveActivated(charter: CharterRoot, file: string, id: string): TestCaseFault | undefined {
   const declared = charter.primitiveById.get(id);
   if (declared === undefined) return primitiveNotFound(id);
@@ -111,11 +112,7 @@ function assertPrimitiveActivated(charter: CharterRoot, file: string, id: string
     );
 
   const { globs = [] } = declared.headers;
-  if (globs.length === 0)
-    return new TestCaseFault(
-      `"${id}" names no files, so touching one never brings it up.`,
-      `Give that guide "globs", or expect nothing of it here.`,
-    );
+  if (globs.length === 0) return undefined;
   return globs.some((glob) => matches(glob, file))
     ? undefined
     : new TestCaseFault(

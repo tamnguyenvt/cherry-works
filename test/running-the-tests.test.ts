@@ -97,6 +97,21 @@ test("a touched file that matches a guide's globs brings it up, and the case pas
   assert.match(result, /1 case passed\./);
 });
 
+test("a guide naming no files comes up every turn, so any touched file brings it up (FR-048)", async () => {
+  const run = commandLine({
+    ...charter,
+    [at("guide/plain-words/index.md")]: primitive("guide", "plain-words"),
+    ...suite({
+      cases: [{ do: { touchFile: "notes/today.md" }, expect: { activate: "plain-words" } }],
+    }),
+  });
+
+  const { code, result } = await run();
+
+  assert.equal(code, EXIT_OK);
+  assert.match(result, /pass {2}touching notes\/today\.md activates plain-words/);
+});
+
 test("a touched file that matches none of the guide's globs fails, naming the globs it has (FR-048, FR-050)", async () => {
   const run = commandLine({
     ...charter,

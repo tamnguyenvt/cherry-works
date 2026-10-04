@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `cw test` now passes a case that expects a guide without `globs` to come up, since that guide comes up every turn.
+
 ## 0.5.0 — 2026-10-02
 
 - **Breaking:** primitives are named by their id alone — `<id>` in headers and tests, `[[<id>]]` in bodies — and a skill is invoked as `/<id>`; rewrite each `kind:<id>` in your charter, then run `cw build`.

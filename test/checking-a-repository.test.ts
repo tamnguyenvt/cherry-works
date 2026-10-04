@@ -250,10 +250,39 @@ test("a guide and a sensor a test case names raise no warning (FR-014)", async (
   assert.equal(warnCount, 0);
 });
 
-test("a vendored guide no test case names is warned about like one of the repository's own (FR-014)", async () => {
-  const { faultsByFile } = await doctorOf({ [inRepo(".cw/vendor/team/guide/no-any/index.md")]: guide("no-any") });
+test("a guide naming no files is a rule like any other, so a test case is asked for it too (FR-014)", async () => {
+  const { warnCount, faultsByFile } = await doctorOf({ [at("guide/plain-words/index.md")]: primitive("guide", "plain-words") });
 
-  assert.match(messagesUnder(faultsByFile, ".cw/vendor/team/guide/no-any/index.md").join(), /No test case names "no-any"/);
+  assert.equal(warnCount, 1);
+  assert.match(messagesUnder(faultsByFile, ".cw/charter/guide/plain-words/index.md").join("\n"), /No test case names "plain-words"/);
+});
+
+test("a vendor's warnings are left out, since it is tested in its own repository, and the repository's own are kept (FR-014)", async () => {
+  const { run } = commandLine({
+    ...compilingFor("claude"),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    [inRepo(".cw/vendor/team/guide/no-class/index.md")]: guide("no-class"),
+  });
+
+  const { written } = await run(["doctor"]);
+
+  assert.match(written.everything, /Charter: {2}holds, with 1 warning\./);
+  assert.match(written.everything, /\.cw\/charter\/guide\/no-any\/index\.md/);
+  assert.doesNotMatch(written.everything, /\.cw\/vendor\/team/);
+});
+
+test("a vendor's error is still said, since it stops the build (FR-014)", async () => {
+  const { run } = commandLine({
+    ...compilingFor("claude"),
+    [inRepo(".cw/vendor/team/guide/no-class/index.md")]: primitive("guide", "no-class", ['globs: ["src/**/*.ts"]', "rationale: absent"]),
+    [inRepo(".cw/vendor/team/guide/broken/index.md")]: "---\nkind: guide\n---\n",
+  });
+
+  const { code, written } = await run(["doctor"]);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(written.everything, /\.cw\/vendor\/team\/guide\/broken\/index\.md/);
+  assert.doesNotMatch(written.everything, /No test case names "no-class"/);
 });
 
 test("a guide warned about twice keeps both warnings under its file", async () => {

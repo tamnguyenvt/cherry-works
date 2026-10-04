@@ -33,8 +33,12 @@ Do as it says; where it says nothing about the case at hand, ask.
    acceptance.
 3. **Implement** — test first: a failing test per scenario, then the code that
    passes it. Surgical edits only.
-4. **Check drift** — read the diff against every guide that applies to the
-   files it touches, and fix what they flag.
+4. **Check drift** — for each changed file, list the guides that apply to
+   it, then read every changed hunk line by line against each of them; a
+   static check passing is not this step. What a hunk touches is the guide's
+   to judge, old code on a changed line included: a name, a call or a shape
+   the line already had is held to the guide as a new one is. Fix what they
+   flag, and say file by file which guides were read.
 5. **Verify** — run /sdd-verify.
 6. **Review** — run /sdd-review.
 7. **Learn** *(only if something surprising came up)* — run /sdd-learn.
