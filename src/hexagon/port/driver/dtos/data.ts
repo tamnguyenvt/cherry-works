@@ -275,6 +275,28 @@ const MainContextsSchema = dto(
   }),
 );
 
+/** The sessions kept within a span, both its days counted in (EVAL-FR-012):
+ *  each once at its last stop, the largest first, how many, and their total. */
+const SessionSummarySchema = dto(
+  "SessionSummary",
+  z.object({
+    span: z.object({ since: z.string(), until: z.string() }),
+    sessions: z
+      .array(
+        z.object({
+          sessionId: z.string(),
+          model: z.string(),
+          lastStopAt: z.string(),
+          /** Its tokens so far, subagents included (EVAL-FR-008). */
+          totalTokens: z.number(),
+        }),
+      )
+      .readonly(),
+    sessionCount: z.number(),
+    totalTokens: z.number(),
+  }),
+);
+
 /** Every data DTO's schema, under the model's name — the name its DTO carries
  *  as `type` — in alphabetical order. */
 export const DataDTOs = byType(
@@ -294,6 +316,7 @@ export const DataDTOs = byType(
   PrimitivesSchema,
   ServedToolSchema,
   ServedToolsSchema,
+  SessionSummarySchema,
   SignInStatusSchema,
   TestCaseSchema,
   TestCaseReportSchema,
@@ -323,6 +346,7 @@ export namespace DataDTOs {
   export type Primitives = z.infer<typeof DataDTOs.Primitives>;
   export type ServedTool = z.infer<typeof DataDTOs.ServedTool>;
   export type ServedTools = z.infer<typeof DataDTOs.ServedTools>;
+  export type SessionSummary = z.infer<typeof DataDTOs.SessionSummary>;
   export type SignInStatus = z.infer<typeof DataDTOs.SignInStatus>;
   export type TestCase = z.infer<typeof DataDTOs.TestCase>;
   export type TestCaseReport = z.infer<typeof DataDTOs.TestCaseReport>;

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
 import packageJson from "./package.json" with { type: "json" };
 import { Commander } from "./src/driver/cli/Commander.js";
@@ -6,6 +7,7 @@ import { CharterAuthoring } from "./src/hexagon/application/CharterAuthoring.js"
 import { CharterVendoring } from "./src/hexagon/application/CharterVendoring.js";
 import { TestAuthoring } from "./src/hexagon/application/TestAuthoring.js";
 import { McpConnecting } from "./src/hexagon/application/McpConnecting.js";
+import { SessionReviewing } from "./src/hexagon/application/SessionReviewing.js";
 import { FileReaders } from "./src/zdriven/FileReaders.js";
 import { YamlParser } from "./src/zdriven/YamlParser.js";
 import { FileOutput } from "./src/zdriven/FileOutput.js";
@@ -15,6 +17,7 @@ import { OAuth } from "./src/zdriven/OAuth.js";
 import { McpClients } from "./src/zdriven/McpClients.js";
 import { Tiktoken } from "./src/zdriven/Tiktoken.js";
 import { ClaudeCli } from "./src/zdriven/ClaudeCli.js";
+import { SystemClock } from "./src/zdriven/SystemClock.js";
 import type { ForReadingFiles } from "./src/hexagon/port/zdriven/ForReadingFiles.js";
 import type { ForParsingYaml } from "./src/hexagon/port/zdriven/ForParsingYaml.js";
 import type { ForWritingFiles } from "./src/hexagon/port/zdriven/ForWritingFiles.js";
@@ -24,11 +27,13 @@ import type { ForAuthorizing } from "./src/hexagon/port/zdriven/ForAuthorizing.j
 import type { ForCallingMcpServers } from "./src/hexagon/port/zdriven/ForCallingMcpServers.js";
 import type { ForCountingTokens } from "./src/hexagon/port/zdriven/ForCountingTokens.js";
 import type { ForRunningAgentCli } from "./src/hexagon/port/zdriven/ForRunningAgentCli.js";
+import type { ForTellingTime } from "./src/hexagon/port/zdriven/ForTellingTime.js";
 import type { AgentProvider } from "./src/hexagon/port/driver/ForManagingCharter.js";
 import type { ForManagingCharter } from "./src/hexagon/port/driver/ForManagingCharter.js";
 import type { ForVendoringCharters } from "./src/hexagon/port/driver/ForVendoringCharters.js";
 import type { ForAuthoringTests } from "./src/hexagon/port/driver/ForAuthoringTests.js";
 import type { ForConnectingMcps } from "./src/hexagon/port/driver/ForConnectingMcps.js";
+import type { ForReviewingSessions } from "./src/hexagon/port/driver/ForReviewingSessions.js";
 
 /**
  * COMPOSITION ROOT — the one place that knows every concrete class.
@@ -44,6 +49,7 @@ const secrets: ForKeepingSecrets = new OsSecrets();
 const authorizing: ForAuthorizing = new OAuth();
 const mcpServers: ForCallingMcpServers = new McpClients();
 const tokenCounter: ForCountingTokens = new Tiktoken();
+const clock: ForTellingTime = new SystemClock();
 /** Each agent's own command line, under the agent it runs: a second host is
  *  one more entry here. */
 const agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>> = { claude: new ClaudeCli() };
@@ -60,6 +66,11 @@ const testAuthoringApp: ForAuthoringTests = new TestAuthoring(repoPath, fileRead
 
 const mcpConnectingApp: ForConnectingMcps = new McpConnecting(repoPath, fileReader, secrets, authorizing, yamlParser, mcpServers);
 
-const cli = new Commander({ cwd: process.cwd(), version: packageJson.version, charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp });
+/** The developer's home, which the sessions kept on this machine are under. */
+const homePath = pathToFileURL(`${homedir()}/`);
+
+const sessionReviewingApp: ForReviewingSessions = new SessionReviewing(repoPath, homePath, fileReader, clock);
+
+const cli = new Commander({ cwd: process.cwd(), version: packageJson.version, charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp, sessionReviewingApp });
 
 process.exitCode = await cli.run(process.argv.slice(2));

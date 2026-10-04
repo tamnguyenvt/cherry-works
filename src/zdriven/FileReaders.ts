@@ -1,6 +1,6 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import type { Dirent } from "node:fs";
-import type { ForReadingFiles, ReadFile } from "#hexagon/port/zdriven/ForReadingFiles.js";
+import type { ForReadingFiles, ListedFile, ReadFile } from "#hexagon/port/zdriven/ForReadingFiles.js";
 
 /** DRIVEN ADAPTER: the filesystem. The charter as it was authored, on a disk.
  *
@@ -19,6 +19,17 @@ export class FileReaders implements ForReadingFiles {
       }),
     );
     return found.flat();
+  }
+
+  async listFiles(folder: URL): Promise<readonly ListedFile[]> {
+    return Promise.all(
+      (await entriesOf(folder))
+        .filter((entry) => entry.isFile())
+        .map(async (entry) => {
+          const file = new URL(encodeURIComponent(entry.name), folder);
+          return { file, modifiedAt: (await stat(file)).mtime };
+        }),
+    );
   }
 
   async listFolders(folder: URL): Promise<readonly URL[]> {

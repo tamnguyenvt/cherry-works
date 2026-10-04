@@ -11,6 +11,7 @@ import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noPlacesReached } from "./no-places.js";
+import { noSessionsKept } from "./no-sessions.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
@@ -43,7 +44,7 @@ async function running(argv: readonly string[], vcs: InMemoryVCS = new InMemoryV
       charterAuthoringApp: unread(),
       charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), vcs),
       testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), noTestFiles, new InMemoryFileOutput(noTestFiles)),
-      mcpConnectingApp: noPlacesReached,
+      mcpConnectingApp: noPlacesReached, sessionReviewingApp: noSessionsKept,
     };
     const code = await new Commander(context, COMMANDS).run(argv);
     return { code, said: said.join(""), vcs };

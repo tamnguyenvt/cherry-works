@@ -11,6 +11,7 @@ import { McpAuthCommand } from "./McpAuthCommand.js";
 import { McpServeCommand } from "./McpServeCommand.js";
 import { PortalCommand } from "./PortalCommand.js";
 import { RemoveCommand } from "./RemoveCommand.js";
+import { SessionsCommand } from "./SessionsCommand.js";
 import { SuiteAddCommand } from "./SuiteAddCommand.js";
 import { SuiteEditCommand } from "./SuiteEditCommand.js";
 import { SuiteRemoveCommand } from "./SuiteRemoveCommand.js";
@@ -34,6 +35,7 @@ export const COMMANDS: readonly AnyCommand[] = [
   new ExplainCommand(),
   new DoctorCommand(),
   new ContextCommand(),
+  new SessionsCommand(),
   new TestCommand(),
   new SuiteAddCommand(),
   new SuiteEditCommand(),

@@ -20,19 +20,22 @@ here and extend what is already there.
 
 ## Inside `hexagon/`
 
-- `port/driver/` — use-case interfaces (`ForManagingCharter`…) and the DTOs
+- `port/driver/` — use-case interfaces (`ForManagingCharter`, `ForReviewingSessions`…) and the DTOs
   crossing them (`dtos/data.ts`, `dtos/outcome.ts`).
 - `port/zdriven/` — driven ports (`ForReadingFiles`, `ForWritingFiles`,
-  `ForVCS`, `ForCountingTokens`, `ForRunningAgentCli`…), named in the adapter's own words, never the domain's.
+  `ForVCS`, `ForCountingTokens`, `ForRunningAgentCli`, `ForTellingTime`…), named in the adapter's own words, never the domain's.
 - `application/` — use cases implementing the driver ports: `CharterAuthoring`,
-  `CharterVendoring`, `TestAuthoring`, `McpConnecting`; `dtos.ts` turns domain
+  `CharterVendoring`, `TestAuthoring`, `McpConnecting`, `SessionReviewing`; `dtos.ts` turns domain
   values into DTOs. A use case orchestrates; it holds no rule of its own.
 - `service/` — reads and writes through driven ports: `charterRepo`
   (`loadCharterRoot`, `writeCharter`), `buildService` (`plan`,
   `previewPlan`, `executePlan`), `settingsRepo`, `vendorRepo`,
   `testSuitesRepo`, `credentialRepo`, `mcpOriginsRepo`, `contextService`
   (`estimatedMainContextOf` through the tokenizer, `exactMainContextOf`
-  through the agent's own command line).
+  through the agent's own command line), `sessionAnalysisRepo`
+  (`loadSessionAnalysis`: the `SessionAnalysis` of the stops kept on this machine within a span,
+  off the folder `sessionsFolderOf` in `path.ts` names, reading no log last
+  written outside it).
 - `domain/` — pure rules, no port:
   - `models/charter/` — `CharterRoot` (every primitive, every composite
     fault, in `compositeFaultsByFiles`), `primitive/` (one `<Kind>Primitive`
@@ -60,6 +63,12 @@ here and extend what is already there.
     URLs built from them. Not a model.
   - `models/context/` — `MainContext`: what a charter puts into one agent's
     main context, counted, and the ceiling it is held to.
+  - `models/session/` — `SessionAnalysisLine`: one stop of one session, as
+    `session-tokens-counter` keeps it; `SessionSpan` (`sessionSpanOf`: the
+    days a summary spans, 31 at most); `SessionAnalysis`: the lines read,
+    and `summarize(span)` / `summarizeByDay(span)` into a
+    `SessionAnalysisSummary`, which holds each session's total at its last
+    stop and no line.
   - `models/` root — what the charter and the output share: closed value
     sets with their type (`AgentProvider`, `McpAuthMethod`), `WorkspaceSettings`,
     `DomainFault` (faults with a fix and a severity).

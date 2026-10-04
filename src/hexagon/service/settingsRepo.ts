@@ -39,7 +39,7 @@ export async function loadSettings(repo: URL, fileReaders: ForReadingFiles): Pro
   const read = WorkspaceSettingsSchema.safeParse(written);
   if (!read.success) throw whatIsWrongWith(written);
 
-  return new WorkspaceSettings(read.data.agents, read.data.mainContextCeiling);
+  return new WorkspaceSettings(read.data.agents, read.data.mainContextCeiling, read.data.sessionAnalysisFolder);
 }
 
 /**

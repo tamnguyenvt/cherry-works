@@ -3,6 +3,7 @@ import type { ForManagingCharter } from "#hexagon/port/driver/ForManagingCharter
 import type { ForVendoringCharters } from "#hexagon/port/driver/ForVendoringCharters.js";
 import type { ForAuthoringTests } from "#hexagon/port/driver/ForAuthoringTests.js";
 import type { ForConnectingMcps } from "#hexagon/port/driver/ForConnectingMcps.js";
+import type { ForReviewingSessions } from "#hexagon/port/driver/ForReviewingSessions.js";
 
 /** What every command is run with: where it runs, and the use cases the hexagon
  *  offers. Held by the command line and handed over at execution, so a command
@@ -24,6 +25,9 @@ export interface Context {
   /** What it offers for the places the last build listed: signing in to them
    *  reads no charter and writes no file. */
   readonly mcpConnectingApp: ForConnectingMcps;
+  /** What it offers for the sessions kept on this machine: reading them back
+   *  reads no charter and writes nothing. */
+  readonly sessionReviewingApp: ForReviewingSessions;
 }
 
 /** What a command did: the exit status, and what the user reads.

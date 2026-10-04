@@ -6,6 +6,8 @@
 
 **Input**: User description: "Phase 008, after Uber's efficient software factory: predict how many tokens the charter loads into the agent's main context; give the tokens a session used when it stops; let `cw mcp serve` search its tools rather than load them all; evaluate the charter against a real model with promptfoo and deepeval."
 
+Then: "The summary of the sessions kept spans 31 days at most, the last 31 when none is named, and reads only the files that span needs."
+
 ## Overview
 
 A charter is paid for in tokens every turn an agent works under it, and it is only worth that price if the agent does what it says. This part lets the people who write and use a charter see both sides. An author learns, before anyone runs an agent, how much of the agent's main context the charter takes and which primitives take the most. A developer is told, when their agent stops, how many tokens the session has used. The places a charter reaches stop costing context for every tool they declare, by being searched rather than listed. And an author can put the charter in front of the real agent and a real model, and learn whether the right skill is invoked and a guide is followed, and what each case cost.
@@ -38,6 +40,7 @@ A charter is paid for in tokens every turn an agent works under it, and it is on
 - Q: Is an exact count made through a model provider key? → A: No: through the agent's own command line, run headless, which needs no key of its own; without that command line installed, an exact count is refused, saying the estimate needs nothing.
 - Q: How is the estimate made offline? → A: By a tokenizer that runs offline, said to be an estimate, rather than by text length.
 - Q: Does the main-context prediction count the tools the one server lists? → A: Not until the server lists its search tool ([EVAL Story 5](#eval-story-5---search-tools-rather-than-load-them-all-into-context-priority-p2)); from then on, that tool is counted ([EVAL-FR-029](#eval-fr-029)).
+- Q: How far back does the summary of the sessions kept reach? → A: At most 31 days: the last 31, today among them, when no span is named; 31 from the day named, or up to it, when only one end is; a longer span is refused. Only the sessions kept within the span are read, however long the log has grown ([EVAL-FR-030](#eval-fr-030), [EVAL-SC-007](#eval-sc-007)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -83,19 +86,21 @@ A developer works with their agent for an afternoon. Before this, how many token
 
 ### EVAL Story 3 - Read back the sessions kept (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
-A developer wants to know where last week went. One command sums the log up by day and by session, in tokens, the largest first, narrowed to the span of time they ask for. A session is counted once, at the last stop it was kept at.
+A developer wants to know where last week went. One command sums the log up by day and by session, in tokens, the largest first, over a span of at most 31 days: the last 31 unless they name another. A session is counted once, at the last stop it was kept at, and only the sessions kept within the span are read, however long the log has grown.
 
 **Why this priority**: The log is only worth keeping if it is read; this is the one way to read it that needs no reading of the file.
 
-**Independent Test**: With a log holding several stops of three sessions over two days, run the command; confirm each session appears once, at its last stop, under its day, the largest first, and that a span leaves out what falls outside it.
+**Independent Test**: With a log holding several stops of three sessions over two days, run the command; confirm each session appears once, at its last stop, under its day, the largest first, and that a span leaves out what falls outside it, unread. Name a span longer than 31 days and confirm it is refused.
 
 **Acceptance Scenarios**:
 
 1. **Given** a log of several sessions, **When** the developer asks for the summary, **Then** each day and each session in it is listed with its tokens, the largest first, each session counted once at its last stop ([EVAL-FR-012](#eval-fr-012)).
-2. **Given** a span of time, **When** the developer asks for the summary, **Then** only the sessions within it are counted ([EVAL-FR-012](#eval-fr-012)).
+2. **Given** a span of time, **When** the developer asks for the summary, **Then** only the sessions within it are counted, and none outside it is read ([EVAL-FR-012](#eval-fr-012), [EVAL-SC-007](#eval-sc-007)).
 3. **Given** no log yet, **When** the developer asks for the summary, **Then** it says none was kept and how one starts ([EVAL-FR-013](#eval-fr-013)).
+4. **Given** no span named, **When** the developer asks for the summary, **Then** the last 31 days are summed up, today among them ([EVAL-FR-030](#eval-fr-030)).
+5. **Given** a span longer than 31 days, **When** the developer asks for the summary, **Then** it is refused before anything is read, saying how long a span may be ([EVAL-FR-030](#eval-fr-030)).
 
 ---
 
@@ -182,6 +187,7 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 - A guide naming files that every file in the repository matches — it is still listed apart: what is predicted is what the host loads, not what it is likely to.
 - An exact count asked for with the agent's command line not installed — the prediction is refused, saying the estimate needs nothing ([EVAL-FR-004](#eval-fr-004)).
 - The agent's own record of a session changes shape between versions of the agent — the stop is let through untouched, and nothing is kept for it ([EVAL-FR-011](#eval-fr-011)).
+- A span named by one end only — 31 days from the day named, or up to it ([EVAL-FR-030](#eval-fr-030)).
 - A session the developer closes without the agent stopping — what was kept at its last stop is what the summary counts.
 - Two sessions stopping at once — each is kept as its own line, and neither is lost ([EVAL-FR-009](#eval-fr-009)).
 - A place that is down when the server starts — its tools are weighed and searched as declared; calling one says the place is down, as before.
@@ -208,7 +214,8 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 - <a id="eval-fr-009"></a>**EVAL-FR-009**: Each stop MUST be kept as one line of a log on the developer's machine, outside every repository, naming the session, the repository, the model and the time; it MUST never be committed or sent anywhere.
 - <a id="eval-fr-010"></a>**EVAL-FR-010**: When a session crosses a mark, every 100,000 tokens unless the repository sets another, the developer MUST be shown one line with its tokens; the model MUST NOT be sent it, and below the next mark nothing MUST be shown.
 - <a id="eval-fr-011"></a>**EVAL-FR-011**: A session whose record cannot be read MUST be let stop as it would have, with nothing shown and nothing kept.
-- <a id="eval-fr-012"></a>**EVAL-FR-012**: The engine MUST sum the log up by day and by session, in tokens, the largest first, each session counted once at the last stop it was kept at, narrowed to a span of time when asked.
+- <a id="eval-fr-012"></a>**EVAL-FR-012**: The engine MUST sum the log up by day and by session, in tokens, the largest first, each session counted once at the last stop it was kept at, over a span of time of at most 31 days, reading only the sessions kept within it.
+- <a id="eval-fr-030"></a>**EVAL-FR-030**: The summary's span MUST be the last 31 days, today among them, when none is named, and 31 days from or up to the one end named; a span longer than 31 days MUST be refused, saying how long one may be.
 - <a id="eval-fr-013"></a>**EVAL-FR-013**: With no log kept, the summary MUST say so and how one starts.
 
 **What a session costs**
@@ -252,6 +259,7 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 - <a id="eval-sc-004"></a>**EVAL-SC-004**: Counting a session at a stop adds less than half a second to that stop.
 - <a id="eval-sc-005"></a>**EVAL-SC-005**: A charter whose places declare tools past the ceiling sends the agent at least 80% fewer tokens of tool schemas when a session opens.
 - <a id="eval-sc-006"></a>**EVAL-SC-006**: An author writes each evaluation case once, and it runs by the engine alone and under either framework with the same outcome.
+- <a id="eval-sc-007"></a>**EVAL-SC-007**: Summing up the sessions reads none kept outside the span, so it takes no longer after a year of sessions than after a month.
 
 ## Assumptions
 

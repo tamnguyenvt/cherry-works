@@ -53,12 +53,27 @@ const ExplanationOutcomeSchema = dto(
   }),
 );
 
+/** What reading the sessions kept back found (EVAL-FR-012, EVAL-FR-013): the
+ *  folder they are kept in on this machine, their summary over the span asked
+ *  for, and the summary of each day in it. */
+const SessionReviewOutcomeSchema = dto(
+  "SessionReviewOutcome",
+  z.object({
+    sessionsFolder: z.string(),
+    sessionSummary: DataDTOs.SessionSummary,
+    /** The summary of each day a session's last stop fell on, keyed by the
+     *  day, the largest day first. */
+    dailySessionSummary: z.record(z.string(), DataDTOs.SessionSummary),
+  }),
+);
+
 /** Every outcome DTO's schema, under its name — the name it carries as `type` —
  *  in alphabetical order. */
-export const OutcomeDTOs = byType(DoctorOutcomeSchema, ExplanationOutcomeSchema);
+export const OutcomeDTOs = byType(DoctorOutcomeSchema, ExplanationOutcomeSchema, SessionReviewOutcomeSchema);
 
 /** Every outcome DTO's type, under its name: what its schema infers. */
 export namespace OutcomeDTOs {
   export type DoctorOutcome = z.infer<typeof OutcomeDTOs.DoctorOutcome>;
   export type ExplanationOutcome = z.infer<typeof OutcomeDTOs.ExplanationOutcome>;
+  export type SessionReviewOutcome = z.infer<typeof OutcomeDTOs.SessionReviewOutcome>;
 }

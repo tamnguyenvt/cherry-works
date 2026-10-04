@@ -130,3 +130,28 @@ function folderIn(repo: URL, directory: string): FolderURL {
 export function settingsFileIn(repo: URL): URL {
   return new URL(SETTINGS_FILE, repo.href.endsWith("/") ? repo : new URL(`${repo.href}/`));
 }
+
+/** What each session's folder keeps its stops in, one line each (EVAL-FR-009). */
+export const SESSION_LOG_FILE = "session-analysis.jsonl";
+
+/**
+ * The folder one repository's sessions are kept in on this machine, a folder
+ * per session id under it, as `session-tokens-counter` keeps them
+ * (EVAL-FR-009): the `sessionAnalysisFolder` the repository set, an absolute
+ * path or one under `~/`, or else `~/.cherry-works/` and the repository's
+ * path, each character that is not a letter or a digit a dash. The counter
+ * names it the same way, from the folder the agent ran in.
+ */
+export function sessionsFolderOf(repo: URL, home: URL, sessionAnalysisFolder?: string): FolderURL {
+  const homeFolder = home.href.endsWith("/") ? home : new URL(`${home.href}/`);
+  if (sessionAnalysisFolder === undefined) {
+    const repoFolder = decodeURIComponent(repo.pathname).replace(/\/$/, "");
+    return folderURL(new URL(`.cherry-works/${repoFolder.replace(/[^A-Za-z0-9]/g, "-")}/`, homeFolder));
+  }
+  const sessionsFolderPath = sessionAnalysisFolder.endsWith("/") ? sessionAnalysisFolder : `${sessionAnalysisFolder}/`;
+  return folderURL(
+    sessionsFolderPath.startsWith("~/")
+      ? new URL(sessionsFolderPath.slice(2).split("/").map(encodeURIComponent).join("/"), homeFolder)
+      : new URL(`file://${sessionsFolderPath.split("/").map(encodeURIComponent).join("/")}`),
+  );
+}

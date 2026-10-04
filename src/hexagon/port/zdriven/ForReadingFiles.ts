@@ -20,6 +20,18 @@ export interface ForReadingFiles {
    *  repository configured itself with, and the settings file a host already
    *  keeps that a build has to write into rather than over. */
   readIfThere(file: URL): Promise<string | undefined>;
+
+  /** The files directly in one folder, not in the folders under it, each with
+   *  when it was last modified and without what it holds, in no promised
+   *  order: what is asked where most of the files are not to be read. A folder
+   *  that is not there is no files. */
+  listFiles(folder: URL): Promise<readonly ListedFile[]>;
+}
+
+/** One file as it was listed: where it is, and when it was last modified. */
+export interface ListedFile {
+  readonly file: URL;
+  readonly modifiedAt: Date;
 }
 
 /** One file as it was read: where it is, and what it says. */

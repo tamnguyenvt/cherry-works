@@ -35,5 +35,8 @@ export class WorkspaceSettings {
     readonly agents: readonly AgentProvider[],
     /** 20,000 where the repository set none (EVAL-FR-006). */
     readonly mainContextCeiling: number = DEFAULT_MAIN_CONTEXT_CEILING,
+    /** Where each session is kept, as the repository wrote it; a folder of its
+     *  own under `~/.cherry-works/` where it set none (EVAL-FR-009). */
+    readonly sessionAnalysisFolder?: string,
   ) {}
 }

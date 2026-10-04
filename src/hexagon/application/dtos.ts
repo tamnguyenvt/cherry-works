@@ -7,6 +7,8 @@ import type { TestCaseReport, TestRunReport } from "../domain/services/testServi
 import type { WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import type { MainContext, MainContextLoad } from "../domain/models/context/MainContext.js";
 import type { PlanSummary } from "../service/buildService.js";
+import type { SessionAnalysis } from "../domain/models/session/SessionAnalysis.js";
+import type { SessionAnalysisSummary } from "../domain/models/session/SessionAnalysisSummary.js";
 import { testSuiteNameOf, type TestRoot } from "../domain/models/test/TestRoot.js";
 
 /**
@@ -252,6 +254,32 @@ export function mainContextsDTO(mainContexts: readonly MainContext[]): DataDTOs.
           totalTokens: mainContext.totalTokens,
         },
       })),
+    },
+  };
+}
+
+/** The sessions kept within a span, each at its last stop (EVAL-FR-012). */
+export function sessionSummaryDTO({ span, sessions, sessionCount, totalTokens }: SessionAnalysisSummary): DataDTOs.SessionSummary {
+  return {
+    type: "SessionSummary",
+    data: { span, sessions, sessionCount, totalTokens },
+  };
+}
+
+/** What reading the sessions kept back found: the folder they are kept in,
+ *  their summary, and each day's (EVAL-FR-012, EVAL-FR-013). The lines read
+ *  stay behind. */
+export function sessionReviewOutcomeDTO(
+  sessionAnalysis: SessionAnalysis,
+  sessionAnalysisSummary: SessionAnalysisSummary,
+  sessionAnalysisSummaryByDay: Readonly<Record<string, SessionAnalysisSummary>>,
+): OutcomeDTOs.SessionReviewOutcome {
+  return {
+    type: "SessionReviewOutcome",
+    data: {
+      sessionsFolder: decodeURIComponent(sessionAnalysis.sessionsFolder.pathname),
+      sessionSummary: sessionSummaryDTO(sessionAnalysisSummary),
+      dailySessionSummary: Object.fromEntries(Object.entries(sessionAnalysisSummaryByDay).map(([day, daySummary]) => [day, sessionSummaryDTO(daySummary)])),
     },
   };
 }

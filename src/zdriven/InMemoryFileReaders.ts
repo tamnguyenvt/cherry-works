@@ -1,10 +1,11 @@
-import type { ForReadingFiles, ReadFile } from "#hexagon/port/zdriven/ForReadingFiles.js";
+import type { ForReadingFiles, ListedFile, ReadFile } from "#hexagon/port/zdriven/ForReadingFiles.js";
 
 /** Files held in memory: the text of each, keyed by its URL. What a test
  *  authors a charter in without touching a disk, and the second implementation
  *  that earns the port its place (plan §2.4). */
 export class InMemoryFileReaders implements ForReadingFiles {
   private readonly texts = new Map<string, string>();
+  private readonly modifiedAtByFile = new Map<string, Date>();
 
   /** Every listing and every read served, in order, for a test that cares how
    *  often it was asked. */
@@ -14,14 +15,16 @@ export class InMemoryFileReaders implements ForReadingFiles {
     for (const [file, text] of Object.entries(files)) this.write(new URL(file), text);
   }
 
-  /** Author or replace one file. */
-  write(file: URL, text: string): void {
+  /** Author or replace one file, modified now unless a test says when. */
+  write(file: URL, text: string, modifiedAt: Date = new Date()): void {
     this.texts.set(file.href, text);
+    this.modifiedAtByFile.set(file.href, modifiedAt);
   }
 
   /** Drop one file, so a test can watch a listing shrink. */
   remove(file: URL): void {
     this.texts.delete(file.href);
+    this.modifiedAtByFile.delete(file.href);
   }
 
   async readFilesRecursively(folder: URL): Promise<readonly ReadFile[]> {
@@ -29,6 +32,13 @@ export class InMemoryFileReaders implements ForReadingFiles {
     return [...this.texts.entries()]
       .filter(([file]) => file.startsWith(folder.href))
       .map(([file, contents]) => ({ file: new URL(file), contents }));
+  }
+
+  async listFiles(folder: URL): Promise<readonly ListedFile[]> {
+    this.calls.push(`listed files under ${folder.href}`);
+    return [...this.texts.keys()]
+      .filter((file) => file.startsWith(folder.href) && !file.slice(folder.href.length).includes("/"))
+      .map((file) => ({ file: new URL(file), modifiedAt: this.modifiedAtByFile.get(file) ?? new Date() }));
   }
 
   async listFolders(folder: URL): Promise<readonly URL[]> {
