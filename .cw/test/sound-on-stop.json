@@ -1,0 +1,6 @@
+{
+  "description": "A sound is played when the agent stops, so the developer hears the session is waiting.",
+  "cases": [
+    { "when": "Stop", "expect": { "run": "sound-on-stop" } }
+  ]
+}

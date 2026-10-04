@@ -5,6 +5,14 @@
         "hooks": [
           {
             "type": "command",
+            "command": "afplay /System/Library/Sounds/Glass.aiff &"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "node \".cw/out/script/sdd-specs/specs.mjs\" link --if-changed && node \".cw/out/script/sdd-specs/specs.mjs\" check --if-changed || exit 2"
           }
         ]

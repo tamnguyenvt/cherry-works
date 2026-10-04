@@ -1,0 +1,11 @@
+---
+kind: sensor
+id: sound-on-stop
+description: Play a sound when the agent stops, so the developer hears the session is waiting.
+signal: Stop
+run: afplay /System/Library/Sounds/Glass.aiff &
+---
+
+When the agent stops, macOS plays `Glass.aiff` with `afplay`, in the
+background so the stop is not held up. Swap the file for any sound on the
+machine, as in `afplay ~/Music/done.mp3 &`.

@@ -204,6 +204,12 @@
     "file": ".cw/out/corpus/sdd-why-learnings-go-to-the-inbox/index.md"
   },
   {
+    "kind": "sensor",
+    "id": "sound-on-stop",
+    "description": "Play a sound when the agent stops, so the developer hears the session is waiting.",
+    "file": ".cw/out/sensor/sound-on-stop/index.md"
+  },
+  {
     "kind": "corpus",
     "id": "why-driven-port-speaks-its-adapter",
     "description": "Why a driven port carries no domain knowledge.",
