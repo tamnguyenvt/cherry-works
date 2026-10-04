@@ -10,8 +10,14 @@ Read `<spec folder>/manifest.md` (the folder is in `.sdd/settings.json`). Do
 what its **Finishing** section says and nothing it does not; if it says
 nothing about the case at hand, ask, and offer to write the answer into it.
 
-1. **Check** — the working tree is clean, the story's status is `Done`, and
-   the checks pass (/sdd-verify). Refuse otherwise, saying what is missing.
+1. **Check** — the story's status is `Done` and the checks pass
+   (/sdd-verify). Refuse otherwise, saying what is missing.
+
+   On a story branch, a change still in the working tree, staged or not, is
+   the story's: being asked to finish is being asked to commit it. Stage every
+   change and commit it on the story branch without asking, the story's id
+   and title as its message in the **Message** convention. On a phase branch,
+   refuse a working tree that is not clean, naming what is left.
 2. **Story** — on a story branch, do what **Story** says:
    - merge or squash-merge into its target; a squash's message is the
      story's id and title, `CORE Story 4: Reset a password`, in the

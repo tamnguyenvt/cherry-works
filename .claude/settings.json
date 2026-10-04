@@ -5,6 +5,14 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \".cw/out/script/session-tokens-counter/count.mjs\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "afplay /System/Library/Sounds/Glass.aiff &"
           }
         ]

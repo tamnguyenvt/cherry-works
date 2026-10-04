@@ -18,4 +18,5 @@ commit, not the ones after it. When a commit happened unasked, the fix was
 **How to apply:** finish the work, run the checks, report which files changed,
 and wait. A file moved with `git mv` is staged by git itself; move it with a
 plain `mv` instead. Stage or commit only when this turn's message asks for it,
-and only the change it asks for.
+and only the change it asks for. Running [[sdd-finish]] in this turn is such an
+ask: it commits what the story left in the working tree, as it says.

@@ -204,6 +204,18 @@
     "file": ".cw/out/corpus/sdd-why-learnings-go-to-the-inbox/index.md"
   },
   {
+    "kind": "script",
+    "id": "session-tokens-counter",
+    "description": "Count the session's tokens when the agent stops, keep them on this machine, and say so at every mark.",
+    "file": ".cw/out/script/session-tokens-counter/index.md"
+  },
+  {
+    "kind": "sensor",
+    "id": "session-tokens-counter-on-stop",
+    "description": "Count the session's tokens each time the agent stops.",
+    "file": ".cw/out/sensor/session-tokens-counter-on-stop/index.md"
+  },
+  {
     "kind": "sensor",
     "id": "sound-on-stop",
     "description": "Play a sound when the agent stops, so the developer hears the session is waiting.",
