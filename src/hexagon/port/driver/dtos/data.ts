@@ -206,7 +206,7 @@ const SignInStatusSchema = dto(
 
 /** One tool `cw mcp serve` shows the agent: named `<prefix>__<tool>` after the
  *  id declaring it, its description led by that id and its path,
- *  its input schema the place's own (FR-153). */
+ *  its input schema the mcp origin's own (FR-153). */
 const ServedToolSchema = dto(
   "ServedTool",
   z.object({
@@ -217,7 +217,7 @@ const ServedToolSchema = dto(
 );
 
 /** What one run serves, ordered by name, and what was left out and why: a
- *  place down or not signed in to, a declared tool its place lacks (FR-153,
+ *  mcp origin down or not signed in to, a declared tool its mcp origin lacks (FR-153,
  *  FR-154). */
 const ServedToolsSchema = dto(
   "ServedTools",
@@ -227,8 +227,8 @@ const ServedToolsSchema = dto(
   }),
 );
 
-/** What a call answered: the place's answer as it came, or an error answer
- *  saying why no place was reached (FR-154). */
+/** What a call answered: the mcp origin's answer as it came, or an error answer
+ *  saying why no mcp origin was reached (FR-154). */
 const ToolAnswerSchema = dto("ToolAnswer", z.record(z.string(), z.unknown()));
 
 /** What a repository configured itself with. */

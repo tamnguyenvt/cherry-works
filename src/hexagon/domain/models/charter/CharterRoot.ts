@@ -99,7 +99,7 @@ export class CharterRoot {
   }
 
   /** The ids one primitive names as `[[<id>]]`, whether the charter holds them
-   *  or not: in its body (FR-143, FR-172); for an agent, each place it holds by
+   *  or not: in its body (FR-143, FR-172); for an agent, each mcp origin it holds by
    *  listing it among its tools (FR-156); and for a sensor, each script its
    *  `run` names (FR-161). */
   private idsMentionedIn(one: Primitive): readonly string[] {
@@ -246,7 +246,7 @@ export class CharterRoot {
           ),
         );
 
-      // A role holds what its tools say and nothing else, so each place it
+      // A role holds what its tools say and nothing else, so each mcp origin it
       // lists must be an mcp the charter holds, and each tool one it declares
       // (FR-156).
       if (primitive instanceof AgentPrimitive)
@@ -257,11 +257,11 @@ export class CharterRoot {
             addFault(
               file,
               new CharterRootFault(
-                `"${tool}" under "tools" is not a place this role can hold.`,
-                `Write a place as "[[<id>]]" for every tool it declares, or "[[<id>]]:<tool>" for one.`,
+                `"${tool}" under "tools" is not an mcp origin this role can hold.`,
+                `Write an mcp origin as "[[<id>]]" for every tool it declares, or "[[<id>]]:<tool>" for one.`,
               ),
             );
-          // A place no layer holds is already said above, as any name nothing
+          // An mcp origin no layer holds is already said above, as any name nothing
           // holds is.
           else if (mcpPrimitive instanceof McpPrimitive && mcpTool !== undefined && !mcpPrimitive.headers.tools.includes(mcpTool))
             addFault(
@@ -294,7 +294,7 @@ export class CharterRoot {
             "warn",
           ),
         );
-      // A kind reached only by being named — a place, a script, a template —
+      // A kind reached only by being named — an mcp origin, a script, a template —
       // is dead weight where nothing names it (FR-144, FR-163).
       if ((primitive.kind === "mcp" || primitive.kind === "script" || primitive.kind === "template") && !referencedIds.has(id))
         addFault(

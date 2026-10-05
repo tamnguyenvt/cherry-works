@@ -3,7 +3,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { aTestMcpServer, TEST_TOOLS } from "./an-mcp-server.js";
 
 /**
- * A place started as a local command: the test tools over standard input and
+ * An mcp origin started as a local command: the test tools over standard input and
  * output, and two more — `read_token` answering what `PLACE_TOKEN` holds, the
  * variable its mcp names, and `process_id` answering its own, so a test can
  * see it stopped.

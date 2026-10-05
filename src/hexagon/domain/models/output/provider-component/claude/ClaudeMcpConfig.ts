@@ -9,11 +9,11 @@ export interface ClaudeMcpServer {
 
 /**
  * The MCP configuration this host reads: the one server that reaches every
- * place the charter declares (FR-146).
+ * mcp origin the charter declares (FR-146).
  *
  * One for the whole charter, whatever it holds: the agent is given
- * `cw mcp serve` and nothing per place, so the host's configuration says the
- * same however many places there are — none included — and shows the agent only
+ * `cw mcp serve` and nothing per mcp origin, so the host's configuration says the
+ * same however many mcp origins there are — none included — and shows the agent only
  * the tools the charter declares (plan §19).
  */
 export class ClaudeMcpConfig extends SettingBasedComponent<{ readonly mcpServers: Readonly<Record<string, ClaudeMcpServer>> }> {

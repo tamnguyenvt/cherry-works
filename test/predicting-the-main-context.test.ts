@@ -15,7 +15,7 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { noPlacesReached } from "./no-places.js";
+import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
 
 const repoPath = new URL("file:///repo/");
@@ -71,7 +71,7 @@ const surfaces = (files: Readonly<Record<string, string>>, agentCli = new InMemo
   });
   const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
   const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
-  const cli = new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noPlacesReached, sessionReviewingApp: noSessionsKept }, COMMANDS);
+  const cli = new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept }, COMMANDS);
   return { portalRoutes: api(charterAuthoringApp, charterVendoringApp, testAuthoringApp), held, cli };
 };
 
@@ -154,6 +154,25 @@ test("a guide naming files is listed apart, as loaded when one is touched, and i
     mainContext.data.totalTokens,
     mainContext.data.sessionLoads.reduce((sum, { data: { tokens } }) => sum + tokens, 0),
   );
+});
+
+test("each mcp is counted by the names of the tools the server lists for it, and no schema (EVAL-FR-029)", async () => {
+  const { portalRoutes } = surfaces({
+    ...holding(),
+    [at(".cw/charter/mcp/linear/index.md")]: primitive(
+      "mcp",
+      "linear",
+      ["description: Issues.", "endpoint: https://mcp.linear.app/mcp", "auth: [token]", "tools: [list_issues, create_issue]"],
+      "Read the issues.",
+    ),
+  });
+
+  const answer = await portalRoutes.request("/charter/root/context");
+
+  const [mainContext] = DataDTOs.MainContexts.parse(await answer.json()).data.contexts;
+  const linearLoad = mainContext?.data.sessionLoads.find(({ data: { id } }) => id === "linear");
+  assert.equal(linearLoad?.data.kind, "mcp");
+  assert.ok((linearLoad?.data.tokens ?? 0) > 0);
 });
 
 test("counted exactly, each number is the agent's own command line's, and said to be exact (EVAL-FR-004)", async () => {

@@ -63,7 +63,7 @@ export class OsSecrets implements ForKeepingSecrets {
     // `security -i` reads the key between double quotes, which it cannot
     // escape out of. An address never holds one.
     if (this.platform === "darwin" && /["\\\n]/.test(key)) {
-      throw new DrivenFault(`The key "${key}" cannot be kept in the keychain.`, "Name the place by an address without quotes, backslashes or line breaks.");
+      throw new DrivenFault(`The key "${key}" cannot be kept in the keychain.`, "Name the mcp origin by an address without quotes, backslashes or line breaks.");
     }
     const commandOutputOfWrite =
       this.platform === "darwin"

@@ -113,7 +113,7 @@ test("compiling produces the listing, the charter file, and what the installed a
     "CLAUDE.md",
     // The hook the engine's own sensor runs when the agent stops.
     ".claude/settings.json",
-    // The one server that reaches every place the charter declares.
+    // The one server that reaches every mcp origin the charter declares.
     ".mcp.json",
     // The skills the engine brings, which every charter holds and reads first.
     ".claude/skills/cw-author/SKILL.md",
@@ -271,7 +271,7 @@ test("a header YAML would read as something else is quoted in the compiled docum
   assert.deepEqual(new YamlParser().parse(headers).run, run);
 });
 
-test("a place is served under the first segment of its id and a hash of its id, the same on every build (FR-145)", () => {
+test("an mcp origin is served under the first segment of its id and a hash of its id, the same on every build (FR-145)", () => {
   assert.deepEqual(
     shortenStringsOf(["notion", "moneyforward/tax", "moneyforward/billing-service"]),
     {
@@ -282,7 +282,7 @@ test("a place is served under the first segment of its id and a hash of its id, 
   );
 });
 
-test("two places whose prefixes hash alike are told apart by a number, in the order they sort in (FR-145)", () => {
+test("two mcp origins whose prefixes hash alike are told apart by a number, in the order they sort in (FR-145)", () => {
   // Both hash to `acme_3b85`; `place-1157` sorts before `place-5`.
   assert.deepEqual(
     shortenStringsOf(["acme/place-5", "acme/place-1157"]),

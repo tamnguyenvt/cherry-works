@@ -9,15 +9,15 @@ import { anMcpServer } from "./an-mcp-server.js";
 
 const STDIO_SERVER = fileURLToPath(new URL("./an-mcp-server-over-stdio.ts", import.meta.url));
 
-/** The test place over stdio, as an mcp declaring a command names it. */
-const aLocalPlace = (tokenEnv?: string) => ({
+/** The test mcp origin over stdio, as an mcp declaring a command names it. */
+const aLocalMcpOrigin = (tokenEnv?: string) => ({
   address: `node --import tsx ${STDIO_SERVER}`,
   command: { command: process.execPath, args: ["--import", "tsx", STDIO_SERVER], ...(tokenEnv !== undefined && { tokenEnv }) },
 });
 
 const textOf = (toolAnswer: Readonly<Record<string, unknown>>) => (toolAnswer.content as { text: string }[])[0]?.text;
 
-test("a place at an endpoint lists its tools, and a call reaches it with the token as a bearer credential", async (t) => {
+test("an mcp origin at an endpoint lists its tools, and a call reaches it with the token as a bearer credential", async (t) => {
   const mcpTestServer = await anMcpServer("dev-token");
   t.after(() => mcpTestServer.server.close());
 
@@ -31,7 +31,7 @@ test("a place at an endpoint lists its tools, and a call reaches it with the tok
   assert.ok(mcpTestServer.authorizations.length > 0 && mcpTestServer.authorizations.every((one) => one === "Bearer dev-token"));
 });
 
-test("a place's own error answer comes back as an answer, not a fault", async (t) => {
+test("an mcp origin's own error answer comes back as an answer, not a fault", async (t) => {
   const mcpTestServer = await anMcpServer("dev-token");
   t.after(() => mcpTestServer.server.close());
   const connection = await new McpClients().connect({ address: mcpTestServer.endpoint, endpoint: mcpTestServer.endpoint }, "dev-token", 5_000);
@@ -40,7 +40,7 @@ test("a place's own error answer comes back as an answer, not a fault", async (t
   const toolAnswer = await connection.callTool("fail", {}, "dev-token");
 
   assert.equal(toolAnswer.isError, true);
-  assert.equal(textOf(toolAnswer), "it failed at the place");
+  assert.equal(textOf(toolAnswer), "it failed at the mcp origin");
 });
 
 test("each call carries the token it is handed, so a renewed one is sent from then on", async (t) => {
@@ -55,7 +55,7 @@ test("each call carries the token it is handed, so a renewed one is sent from th
   assert.equal(textOf(toolAnswer), "echo: again");
 });
 
-test("a place refusing the credential when it is reached is an UnauthorizedMcpFault", async (t) => {
+test("an mcp origin refusing the credential when it is reached is an UnauthorizedMcpFault", async (t) => {
   const mcpTestServer = await anMcpServer("dev-token");
   t.after(() => mcpTestServer.server.close());
 
@@ -65,7 +65,7 @@ test("a place refusing the credential when it is reached is an UnauthorizedMcpFa
   );
 });
 
-test("a place nobody answers at is a DrivenFault naming its address", async () => {
+test("an mcp origin nobody answers at is a DrivenFault naming its address", async () => {
   const closedServer = createServer();
   await new Promise<void>((resolve) => closedServer.listen(0, "127.0.0.1", resolve));
   const endpoint = `http://127.0.0.1:${(closedServer.address() as AddressInfo).port}/mcp`;
@@ -77,7 +77,7 @@ test("a place nobody answers at is a DrivenFault naming its address", async () =
   );
 });
 
-test("a place that does not answer in time is a DrivenFault, and the wait ends at the limit", async (t) => {
+test("an mcp origin that does not answer in time is a DrivenFault, and the wait ends at the limit", async (t) => {
   const silentServer = createServer(() => undefined);
   await new Promise<void>((resolve) => silentServer.listen(0, "127.0.0.1", resolve));
   t.after(() => (silentServer.closeAllConnections(), silentServer.close()));
@@ -89,20 +89,20 @@ test("a place that does not answer in time is a DrivenFault, and the wait ends a
   assert.ok(Date.now() - startedAt < 3_000);
 });
 
-test("a place declared by a command is started, lists its tools, and reads its token from the variable named", async (t) => {
-  const localPlace = aLocalPlace("PLACE_TOKEN");
+test("an mcp origin declared by a command is started, lists its tools, and reads its token from the variable named", async (t) => {
+  const localMcpOrigin = aLocalMcpOrigin("PLACE_TOKEN");
 
-  const connection = await new McpClients().connect(localPlace, "local-token", 10_000);
+  const connection = await new McpClients().connect(localMcpOrigin, "local-token", 10_000);
   t.after(() => connection.close());
   const toolAnswer = await connection.callTool("read_token", {}, undefined);
 
   assert.ok(connection.tools.some(({ name }) => name === "read_token"));
   assert.equal(textOf(toolAnswer), "local-token");
-  assert.ok(!localPlace.command.args.some((arg) => arg.includes("local-token")));
+  assert.ok(!localMcpOrigin.command.args.some((arg) => arg.includes("local-token")));
 });
 
-test("a command's process is stopped when its place is let go", async () => {
-  const connection = await new McpClients().connect(aLocalPlace(), undefined, 10_000);
+test("a command's process is stopped when its mcp origin is let go", async () => {
+  const connection = await new McpClients().connect(aLocalMcpOrigin(), undefined, 10_000);
   const processId = Number(textOf(await connection.callTool("process_id", {}, undefined)));
 
   await connection.close();
@@ -112,10 +112,10 @@ test("a command's process is stopped when its place is let go", async () => {
 });
 
 test("a command that does not exist is a DrivenFault naming its address", async () => {
-  const missingPlace = { address: "no-such-command-anywhere --serve", command: { command: "no-such-command-anywhere", args: ["--serve"] } };
+  const missingMcpOrigin = { address: "no-such-command-anywhere --serve", command: { command: "no-such-command-anywhere", args: ["--serve"] } };
 
   await assert.rejects(
-    new McpClients().connect(missingPlace, undefined, 5_000),
+    new McpClients().connect(missingMcpOrigin, undefined, 5_000),
     (raised: DrivenFault) => raised instanceof DrivenFault && raised.message.includes("no-such-command-anywhere --serve"),
   );
 });

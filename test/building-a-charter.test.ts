@@ -8,6 +8,9 @@ import { YamlParser } from "../src/zdriven/YamlParser.js";
 import type { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { InMemoryMcpServers } from "../src/zdriven/InMemoryMcpServers.js";
+import { InMemorySecrets } from "../src/zdriven/InMemorySecrets.js";
+import { InMemoryAuthorizing } from "../src/zdriven/InMemoryAuthorizing.js";
 
 const repo = new URL("file:///repo/");
 const root = new URL(".cw/charter/", repo);
@@ -47,10 +50,23 @@ const compilingFor = (...agents: readonly string[]) => ({
 /** A charter on files a test can both write into and read back out of: the
  *  build puts its files where the next build finds them, which is what makes a
  *  second build over a changed charter the real thing. */
-const building = (files: Readonly<Record<string, string>>) => {
+/** A build over these files; given `mcpServers` and `secrets`, it asks each
+ *  mcp origin for its tools through them (EVAL-FR-031), and otherwise asks none. */
+const building = (files: Readonly<Record<string, string>>, mcpServers?: InMemoryMcpServers, secrets?: InMemorySecrets) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  return { held, build: () => charterAuthoringApp.build() };
+  const charterAuthoringApp = new CharterAuthoring(
+    repo,
+    held,
+    new YamlParser(),
+    new InMemoryFileOutput(held),
+    new InMemoryVCS(),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    mcpServers,
+    secrets,
+    mcpServers === undefined ? undefined : new InMemoryAuthorizing(),
+  );
+  return { held, build: () => charterAuthoringApp.build(), doctor: () => charterAuthoringApp.doctor() };
 };
 
 /** Every file one build put down, whether it was there before or not. */
@@ -300,7 +316,7 @@ test("a body naming [[<id>]] no layer holds stops the build (FR-143, FR-162)", a
   }
 });
 
-test("a build writes every place the charter's mcps reach to mcp-origins.json, with the name each id is served under (FR-145)", async () => {
+test("a build writes every mcp origin the charter's mcps reach to mcp-origins.json, with the name each id is served under (FR-145)", async () => {
   const { held, build } = building({
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Read [[mfbs/billing]]."),
     [at("mcp/mfbs/billing/index.md")]: primitive("mcp", "mfbs/billing", [
@@ -325,6 +341,73 @@ test("a build writes every place the charter's mcps reach to mcp-origins.json, w
       },
     ],
   });
+});
+
+const LINEAR = "https://mcp.linear.app/mcp";
+const linearDeclared = {
+  [at("mcp/linear/index.md")]: primitive("mcp", "linear", [`endpoint: ${LINEAR}`, "auth: [token]", "tools: [list_issues, create_issue]"]),
+};
+const toolNamed = (name: string) => ({ name, description: `${name} at linear`, inputSchema: { type: "object", properties: { team: { type: "string" } } } });
+
+test("a build asks each mcp origin for its tools and keeps those its mcps declare, with what each takes, beside it (EVAL-FR-031)", async () => {
+  const mcpServers = new InMemoryMcpServers();
+  mcpServers.servers.set(LINEAR, { tools: ["create_issue", "list_issues", "delete_team"].map(toolNamed) });
+  const secrets = new InMemorySecrets();
+  await secrets.writeSecret(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }));
+  const { held, build } = building(linearDeclared, mcpServers, secrets);
+
+  filesOf(await build());
+
+  const [linearOrigin] = JSON.parse(await contentsOf(held, ".cw/out/mcp-origins.json")).origins;
+  assert.deepEqual(linearOrigin.tools, [toolNamed("create_issue"), toolNamed("list_issues")]);
+  assert.deepEqual(mcpServers.connected, [{ address: LINEAR, accessToken: "linear token" }]);
+  assert.deepEqual(mcpServers.closed, [LINEAR]);
+});
+
+/** What a build that was refused says, under each file. */
+const faultsOf = (planSummaryDTO: DataDTOs.PlanSummary | DataDTOs.FaultsByFile) => {
+  assert.ok(planSummaryDTO.type === "FaultsByFile", "this build ran, and the test expected it refused");
+  return JSON.stringify(planSummaryDTO.data);
+};
+
+test("an mcp origin the build cannot ask for its tools stops the build, under the mcp's file, and writes nothing (EVAL-FR-031)", async () => {
+  const mcpServers = new InMemoryMcpServers();
+  mcpServers.servers.set(LINEAR, { tools: ["list_issues", "create_issue"].map(toolNamed) });
+  const { held, build } = building(linearDeclared, mcpServers, new InMemorySecrets());
+
+  const faultsText = faultsOf(await build());
+
+  assert.match(faultsText, /mcp\/linear\/index\.md/);
+  assert.match(faultsText, /not signed in/);
+  assert.match(faultsText, /cw mcp auth linear/);
+  assert.equal(await held.readIfThere(new URL(".cw/out/mcp-origins.json", repo)), undefined);
+});
+
+test("a tool an mcp declares that its mcp origin does not list stops the build, naming the tools it lists (EVAL-FR-031)", async () => {
+  const mcpServers = new InMemoryMcpServers();
+  mcpServers.servers.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
+  const secrets = new InMemorySecrets();
+  await secrets.writeSecret(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }));
+  const { build } = building(linearDeclared, mcpServers, secrets);
+
+  const faultsText = faultsOf(await build());
+
+  assert.match(faultsText, /mcp\/linear\/index\.md/);
+  assert.match(faultsText, /no tool .*create_issue/);
+  assert.match(faultsText, /list_issues/);
+});
+
+test("without the mcp origins to ask, a build keeps the tools the last build kept (EVAL-FR-031)", async () => {
+  const keptTools = [toolNamed("create_issue"), toolNamed("list_issues")];
+  const { held, build } = building({
+    ...linearDeclared,
+    [new URL(".cw/out/mcp-origins.json", repo).href]: JSON.stringify({ origins: [{ ids: ["linear"], address: LINEAR, endpoint: LINEAR, auth: ["token"], tools: keptTools }] }),
+  });
+
+  filesOf(await build());
+
+  const [linearOrigin] = JSON.parse(await contentsOf(held, ".cw/out/mcp-origins.json")).origins;
+  assert.deepEqual(linearOrigin.tools, keptTools);
 });
 
 test("a charter with no mcp still writes the list, empty, for the server to find (FR-145, FR-152)", async () => {
@@ -353,7 +436,7 @@ test("a charter with an mcp gives the host one cw entry, beside the repository's
   });
 });
 
-test("the cw entry is written before the charter holds any mcp, so a place added later needs no setup (FR-146)", async () => {
+test("the cw entry is written before the charter holds any mcp, so an mcp origin added later needs no setup (FR-146)", async () => {
   const { held, build } = building({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
 
   filesOf(await build());
@@ -391,7 +474,7 @@ const script = (id: string) => ({
   [at(`script/${id}/run.sh`)]: "#!/usr/bin/env bash\n",
 });
 
-test("once compiled, a place, a script or a template a body names is a link to the file the catalogue names for it, from the document holding it (FR-147)", async () => {
+test("once compiled, an mcp origin, a script or a template a body names is a link to the file the catalogue names for it, from the document holding it (FR-147)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: primitive(

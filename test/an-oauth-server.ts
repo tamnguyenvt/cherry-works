@@ -8,7 +8,7 @@ import type { AddressInfo } from "node:net";
  * registration, an authorization that redirects back at once as though the
  * developer had agreed, and a token endpoint that checks PKCE and renews.
  *
- * `refusesRenewal` makes a renewal answer `invalid_grant`, as a place that
+ * `refusesRenewal` makes a renewal answer `invalid_grant`, as an mcp origin that
  * took the developer's access away does.
  */
 export interface OAuthTestServer {

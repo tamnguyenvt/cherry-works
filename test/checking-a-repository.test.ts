@@ -11,7 +11,7 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { noPlacesReached } from "./no-places.js";
+import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
@@ -83,7 +83,7 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
       charterAuthoringApp,
       charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs),
       testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), held, new InMemoryFileOutput(held)),
-      mcpConnectingApp: noPlacesReached, sessionReviewingApp: noSessionsKept,
+      mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept,
     },
     COMMANDS,
   );

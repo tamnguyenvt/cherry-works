@@ -4,7 +4,7 @@
 export { DrivenFault } from "./DrivenFault.js";
 
 /**
- * What one OAuth sign-in ends with: the tokens a place issued, and what it
+ * What one OAuth sign-in ends with: the tokens an mcp origin issued, and what it
  * registered `cw` as, so a renewal needs no second registration (plan §19.5).
  *
  * Not a domain type, and no DTO carries one (SC-036): it goes from this port
@@ -13,9 +13,9 @@ export { DrivenFault } from "./DrivenFault.js";
 export interface OAuthGrant {
   readonly accessToken: string;
   readonly refreshToken?: string;
-  /** ISO 8601. Absent where the place said nothing of when it expires. */
+  /** ISO 8601. Absent where the mcp origin said nothing of when it expires. */
   readonly expiresAt?: string;
-  /** What the place's authorization server registered `cw` as, and which
+  /** What the mcp origin's authorization server registered `cw` as, and which
    *  server that was: a registration is presented to the server it came from
    *  and no other. */
   readonly client: { readonly clientId: string; readonly clientSecret?: string; readonly issuer: string };

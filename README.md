@@ -120,7 +120,7 @@ Each kind comes up at a different time:
 | `posture` | always, wherever the host can be told what to `allow` and `deny` |
 | `corpus` | a primitive's `rationale` cites it, to give the reasoning behind a rule |
 | `mixin` | never on its own; its body is lent to the primitives that pull it in |
-| `mcp` | a primitive's body names it as `[[<id>]]`: a place outside the repository, reached through `cw mcp serve` |
+| `mcp` | a primitive's body names it as `[[<id>]]`: an mcp origin outside the repository, reached through `cw mcp serve` |
 
 `cw kinds <kind>` gives the exact fields each kind takes. An id names exactly
 one primitive across the whole charter, whatever its kind. If two files claim
@@ -155,8 +155,8 @@ agent reads it.
 | `cw suite add \| edit \| remove` | Manage test files |
 | `cw vendor add <source> [--ref] \| remove \| list` | Install, update, remove or list vendor sources |
 | `cw portal [--port]` | Open the charter in a browser on this machine |
-| `cw mcp auth [id] [--status]` | Sign in, as yourself, to every place the charter reaches, or to one again |
-| `cw mcp serve` | Serve every place the charter reaches to your agent, over stdio |
+| `cw mcp auth [id] [--status]` | Sign in, as yourself, to every mcp origin the charter reaches, or to one again |
+| `cw mcp serve` | Serve every mcp origin the charter reaches to your agent, over stdio |
 
 `cw doctor` exits with a failure status when the charter has an error, when a
 vendored file was edited in this repository, or when the compiled output no
@@ -249,10 +249,10 @@ Run `cw vendor add` again with a new `--ref` to update a source, and
 | [sdd-charter](https://github.com/tamnguyenvt/sdd-charter) | Spec-driven development: a spec set with a status per story and a roadmap of their dependencies, and skills (`/sdd-init`, `/sdd-plan`, `/sdd-implement`, `/sdd-finish`, `/sdd-report`…) that take each story from request to merge, stopping for your yes at each step. | `cw vendor add git@github.com:tamnguyenvt/sdd-charter.git --ref v0.1.0` |
 | [hexagonal-architecture-charter](https://github.com/tamnguyenvt/hexagonal-architecture-charter) | Sets up a hexagonal (ports and adapters) architecture in a folder you choose, then keeps the agent following it. | `cw vendor add git@github.com:tamnguyenvt/hexagonal-architecture-charter.git --ref v0.1.0` |
 
-## Places outside the repository
+## MCP origins outside the repository
 
 Much of what an agent needs to know is kept elsewhere: another service's code,
-an issue tracker, a wiki. An `mcp` primitive declares one such place, an MCP
+an issue tracker, a wiki. An `mcp` primitive declares one such mcp origin, an MCP
 server, and the tools of it your agent may use:
 
 ```markdown
@@ -269,27 +269,27 @@ tools: ["get_file_contents", "search_code", "list_pull_requests"]
 The billing service. Look here before changing anything that charges a customer.
 ```
 
-A place is either an `endpoint` reached over HTTP, or a `command` with its
+An mcp origin is either an `endpoint` reached over HTTP, or a `command` with its
 `args` that `cw` starts as a local process; a local one takes a token only, in
 the environment variable its `tokenEnv` names. Any primitive points the agent
-at a place by naming it in its body as `[[mfbs/billing]]`.
+at an mcp origin by naming it in its body as `[[mfbs/billing]]`.
 
 ```bash
 cw build            # adds one entry, cw mcp serve, to your agent's .mcp.json
-cw mcp auth         # sign in to every place you are not signed in to yet
+cw mcp auth         # sign in to every mcp origin you are not signed in to yet
 cw mcp auth --status
 ```
 
-Every developer signs in as themselves, by browser where the place offers OAuth
+Every developer signs in as themselves, by browser where the mcp origin offers OAuth
 or with a token typed at a hidden prompt. Credentials are kept in the operating
 system's credential store, never in the repository, and renewed without asking
-where the place allows it. `cw mcp serve` is the one MCP server your agent is
-given: it serves the tools each place declares and forwards every call under
-your own credential. A place that is down or not signed in to loses only its own
+where the mcp origin allows it. `cw mcp serve` is the one MCP server your agent is
+given: it serves the tools each mcp origin declares and forwards every call under
+your own credential. An mcp origin that is down or not signed in to loses only its own
 tools.
 
-A subagent reaches only the places it lists under `tools`: `[[<id>]]` for every
-tool of a place, or `[[<id>]]:<tool>` for one of them.
+A subagent reaches only the mcp origins it lists under `tools`: `[[<id>]]` for every
+tool of an mcp origin, or `[[<id>]]:<tool>` for one of them.
 
 ## Your agent can write rules too
 

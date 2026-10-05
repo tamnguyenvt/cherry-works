@@ -19,7 +19,7 @@ import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { noPlacesReached } from "./no-places.js";
+import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
 
 const repo = "/repo";
@@ -45,7 +45,7 @@ const asking = async (argv: readonly string[]) => {
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
-    const code = await new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noPlacesReached, sessionReviewingApp: noSessionsKept }, COMMANDS).run(argv);
+    const code = await new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept }, COMMANDS).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -131,7 +131,7 @@ test("the sample it shows is a primitive of that kind, as an author writes one (
   }
 });
 
-test("an agent is shown holding a place under its tools, in the charter's own words (FR-156)", async () => {
+test("an agent is shown holding an mcp origin under its tools, in the charter's own words (FR-156)", async () => {
   const { results: kindLines } = await asking(["kinds"]);
   const { results: agentKind } = await asking(["kinds", "agent"]);
 

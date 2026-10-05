@@ -12,6 +12,7 @@ import { charterMdOf } from "./charterMdFactory.js";
 import { compiledPrimitiveOf } from "./compiledPrimitiveFactory.js";
 import { claudeComponentsOf } from "./claudeComponentFactory.js";
 import { mcpOriginsOf } from "./mcpOriginsFactory.js";
+import type { McpToolDefinition } from "../../models/output/common/McpOrigin.js";
 
 /**
  * Everything one reading of a charter compiles to (FR-021).
@@ -35,12 +36,20 @@ import { mcpOriginsOf } from "./mcpOriginsFactory.js";
  * What is wrong with the charter is not asked here. A charter that has faults
  * still compiles to something, and whether that something may be written is
  * `everythingWrong` answered by whoever is about to write (FR-009).
+ *
+ * The tools each mcp origin listed when the build reached it, by `originKeyOf`, are
+ * handed in, since reaching an mcp origin is no model's to do; none for an mcp origin
+ * keeps none (EVAL-FR-031).
  */
-export function compile(charter: CharterRoot, agents: readonly AgentProvider[]): CharterOutput {
-  // What `cw mcp serve` serves each place's tools under, `<prefix>__<tool>`:
+export function compile(
+  charter: CharterRoot,
+  agents: readonly AgentProvider[],
+  toolsByOriginKey: ReadonlyMap<string, readonly McpToolDefinition[]> = new Map(),
+): CharterOutput {
+  // What `cw mcp serve` serves each mcp origin's tools under, `<prefix>__<tool>`:
   // short whatever the id's length, and the same on every build whatever other
   // mcps come and go (FR-145). Written into `mcp-origins.json` beside each
-  // place, so the server, which reads no charter, serves under these.
+  // mcp origin, so the server, which reads no charter, serves under these.
   const shortMcpIds = shortenStringsOf(
     charter.primitives.filter((primitive) => primitive.kind === McpPrimitive.kind).map((one) => one.headers.id),
   );
@@ -59,7 +68,7 @@ export function compile(charter: CharterRoot, agents: readonly AgentProvider[]):
     catalogueOf(charter, (one) => compiledPrimitiveByPrimitive.get(one)!.projections[0]!.file),
     charterMdOf(PRIMITIVE_CLASSES),
     [...compiledPrimitiveByPrimitive.values()],
-    new McpOrigins(mcpOriginsOf(charter, shortMcpIds)),
+    new McpOrigins(mcpOriginsOf(charter, shortMcpIds, toolsByOriginKey)),
     agents.flatMap((agent) => providerComponentsOf(agent, charter, compiledPrimitiveByPrimitive, shortMcpIds)),
   );
 }

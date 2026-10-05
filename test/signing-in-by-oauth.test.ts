@@ -11,8 +11,8 @@ import { OAuth } from "../src/zdriven/OAuth.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { anOAuthServer } from "./an-oauth-server.js";
 
-/** One place at the test server's endpoint, signed in to by OAuth. */
-const placeAt = (endpoint: string): McpOrigin => ({ ids: ["billing"], names: { "billing": "billing_0000" }, address: endpoint, endpoint, auth: ["oauth"] });
+/** One mcp origin at the test server's endpoint, signed in to by OAuth. */
+const mcpOriginAt = (endpoint: string): McpOrigin => ({ ids: ["billing"], names: { "billing": "billing_0000" }, address: endpoint, endpoint, auth: ["oauth"] });
 
 /** The developer opening the address they were shown: the test server agrees
  *  at once and sends the browser back to the callback. */
@@ -24,11 +24,11 @@ const expire = async (secrets: InMemorySecrets, address: string) => {
   await secrets.writeSecret(address, JSON.stringify({ ...credential, expiresAt: new Date(Date.now() - 60_000).toISOString() }));
 };
 
-test("an OAuth sign-in against a place ends with a credential in the store holding a refresh token (FR-148)", async (t) => {
+test("an OAuth sign-in against an mcp origin ends with a credential in the store holding a refresh token (FR-148)", async (t) => {
   const oauthTestServer = await anOAuthServer();
   t.after(() => oauthTestServer.server.close());
   const secrets = new InMemorySecrets();
-  const origin = placeAt(oauthTestServer.endpoint);
+  const origin = mcpOriginAt(oauthTestServer.endpoint);
   const held = new InMemoryFileReaders({ "file:///repo/.cw/out/mcp-origins.json": JSON.stringify({ origins: [origin] }) });
   const shown: string[] = [];
 
@@ -47,12 +47,12 @@ test("an OAuth sign-in against a place ends with a credential in the store holdi
   assert.ok(Date.parse(credential.expiresAt) > Date.now());
 });
 
-test("an expired credential is renewed on use, asking nothing, and the renewal kept; one the place refuses says to sign in again (FR-151)", async (t) => {
+test("an expired credential is renewed on use, asking nothing, and the renewal kept; one the mcp origin refuses says to sign in again (FR-151)", async (t) => {
   const oauthTestServer = await anOAuthServer();
   t.after(() => oauthTestServer.server.close());
   const secrets = new InMemorySecrets();
   const oauth = new OAuth();
-  const origin = placeAt(oauthTestServer.endpoint);
+  const origin = mcpOriginAt(oauthTestServer.endpoint);
   const held = new InMemoryFileReaders({ "file:///repo/.cw/out/mcp-origins.json": JSON.stringify({ origins: [origin] }) });
   await new McpConnecting(new URL("file:///repo/"), held, secrets, oauth, new YamlParser(), new InMemoryMcpServers()).signInWithOAuth(origin.address, openInBrowser);
 
@@ -75,8 +75,8 @@ test("an expired credential is renewed on use, asking nothing, and the renewal k
   });
 });
 
-test("a place nobody signed in to is refused naming the command that signs in there (FR-151)", async () => {
-  const origin = placeAt("https://nowhere.example/mcp");
+test("an mcp origin nobody signed in to is refused naming the command that signs in there (FR-151)", async () => {
+  const origin = mcpOriginAt("https://nowhere.example/mcp");
   await assert.rejects(credentialFor(new InMemorySecrets(), new InMemoryAuthorizing(), origin), { fix: /cw mcp auth billing/ });
 });
 
@@ -101,7 +101,7 @@ test("a sign-in the developer refuses in the browser keeps nothing, and says so"
   assert.equal(oauthTestServer.issued.authorization_code, 0);
 });
 
-test("a credential kept for a place now at plain http on another machine is not handed out (FR-149)", async () => {
+test("a credential kept for an mcp origin now at plain http on another machine is not handed out (FR-149)", async () => {
   const secrets = new InMemorySecrets();
   const origin: McpOrigin = { ids: ["cleartext"], names: { "cleartext": "cleartext_0000" }, address: "http://mcp.example/mcp", endpoint: "http://mcp.example/mcp", auth: ["token"] };
   await secrets.writeSecret(origin.address, JSON.stringify({ address: origin.address, method: "token", accessToken: "t" }));

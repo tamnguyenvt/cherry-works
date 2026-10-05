@@ -13,11 +13,6 @@ const OUT = "file:///repo/.cw/out/";
 const GITHUB = "https://api.githubcopilot.com/mcp/";
 const LINEAR = "https://mcp.linear.app/mcp";
 
-/** Two places at two addresses, each declared by one mcp. */
-const ORIGINS: readonly McpOrigin[] = [
-  { ids: ["github/billing"], names: { "github/billing": "github_aaaa" }, address: GITHUB, endpoint: GITHUB, path: "acme/billing", auth: ["oauth", "token"] },
-  { ids: ["linear"], names: { "linear": "linear_bbbb" }, address: LINEAR, endpoint: LINEAR, auth: ["token"] },
-];
 
 /** What each mcp declares, as its compiled document under `.cw/out/` holds it. */
 const COMPILED_MCPS = {
@@ -25,25 +20,41 @@ const COMPILED_MCPS = {
   "linear": { file: ".cw/out/mcp/linear/index.md", headers: `endpoint: ${LINEAR}\nauth: [token]\ntools: [list_issues, create_issue]` },
 } as const;
 
-/** The names the build wrote into the list of places, which the server
+/** The names the build wrote into the list of mcp origins, which the server
  *  serves under rather than making its own. */
 const SERVED_PREFIXES = { "github/billing": "github_aaaa", "linear": "linear_bbbb" } as const;
 const servedName = (id: keyof typeof COMPILED_MCPS, tool: string) => `${SERVED_PREFIXES[id]}__${tool}`;
 
-const toolNamed = (name: string) => ({ name, description: `${name} at its place`, inputSchema: { type: "object", properties: {} } });
+const toolNamed = (name: string) => ({ name, description: `${name} at its mcp origin`, inputSchema: { type: "object", properties: {} } });
 
-/** A built repository with both places listed and both signed in to by token;
+/** Two mcp origins at two addresses, each declared by one mcp, with the tools the
+ *  build kept of each: Linear's lacks one it was declared with, as a list
+ *  edited since the build would. */
+const ORIGINS: readonly McpOrigin[] = [
+  {
+    ids: ["github/billing"],
+    names: { "github/billing": "github_aaaa" },
+    address: GITHUB,
+    endpoint: GITHUB,
+    path: "acme/billing",
+    auth: ["oauth", "token"],
+    tools: ["get_file_contents", "search_code"].map(toolNamed),
+  },
+  { ids: ["linear"], names: { "linear": "linear_bbbb" }, address: LINEAR, endpoint: LINEAR, auth: ["token"], tools: ["list_issues"].map(toolNamed) },
+];
+
+/** A built repository with both mcp origins listed and both signed in to by token;
  *  GitHub lists a tool nobody declared, Linear lacks one it was declared with. */
-const placesServed = ({ origins = ORIGINS as readonly McpOrigin[] | null } = {}) => {
+const mcpOriginsServed = ({ origins = ORIGINS as readonly McpOrigin[] | null } = {}) => {
   const held = new InMemoryFileReaders({
     ...(origins !== null && { [`${OUT}mcp-origins.json`]: JSON.stringify({ origins }) }),
     [`${OUT}catalog.json`]: JSON.stringify(
-      Object.entries(COMPILED_MCPS).map(([id, { file }]) => ({ kind: "mcp", id, description: "A place.", file })),
+      Object.entries(COMPILED_MCPS).map(([id, { file }]) => ({ kind: "mcp", id, description: "An mcp origin.", file })),
     ),
     ...Object.fromEntries(
       Object.entries(COMPILED_MCPS).map(([id, { file, headers }]) => [
         `file:///repo/${file}`,
-        `---\nkind: mcp\nid: ${id}\ndescription: A place.\n${headers}\n---\n\nRead it.\n`,
+        `---\nkind: mcp\nid: ${id}\ndescription: An mcp origin.\n${headers}\n---\n\nRead it.\n`,
       ]),
     ),
   });
@@ -59,17 +70,17 @@ const placesServed = ({ origins = ORIGINS as readonly McpOrigin[] | null } = {})
 const signIn = (secrets: InMemorySecrets, address: string, credential: Record<string, unknown> = {}) =>
   secrets.writeSecret(address, JSON.stringify({ address, method: "token", accessToken: `${address} token`, ...credential }));
 
-const signedInPlaces = async () => {
-  const places = placesServed();
-  await signIn(places.secrets, GITHUB);
-  await signIn(places.secrets, LINEAR);
-  return places;
+const signedInMcpOrigins = async () => {
+  const mcpOrigins = mcpOriginsServed();
+  await signIn(mcpOrigins.secrets, GITHUB);
+  await signIn(mcpOrigins.secrets, LINEAR);
+  return mcpOrigins;
 };
 
 test("the tools served are exactly the declared ones, each under its id's prefix (FR-153, SC-037)", async () => {
-  const { mcpConnectingApp } = await signedInPlaces();
+  const { mcpConnectingApp } = await signedInMcpOrigins();
 
-  const servedTools = await mcpConnectingApp.served();
+  const servedTools = await mcpConnectingApp.tools();
 
   assert.deepEqual(
     servedTools.data.tools.map(({ data }) => data.name),
@@ -81,38 +92,37 @@ test("the tools served are exactly the declared ones, each under its id's prefix
   );
 });
 
-test("a served tool's description names its place, and its input schema is the place's own (FR-153)", async () => {
-  const { mcpConnectingApp } = await signedInPlaces();
+test("a served tool's description names its mcp origin, and its input schema is the mcp origin's own (FR-153)", async () => {
+  const { mcpConnectingApp } = await signedInMcpOrigins();
 
-  const servedTools = await mcpConnectingApp.served();
+  const servedTools = await mcpConnectingApp.tools();
 
   const searchCode = servedTools.data.tools.find(({ data }) => data.name === servedName("github/billing", "search_code"));
   const listIssues = servedTools.data.tools.find(({ data }) => data.name === servedName("linear", "list_issues"));
-  assert.equal(searchCode?.data.description, "[github/billing — acme/billing] search_code at its place");
-  assert.equal(listIssues?.data.description, "[linear] list_issues at its place");
+  assert.equal(searchCode?.data.description, "[github/billing — acme/billing] search_code at its mcp origin");
+  assert.equal(listIssues?.data.description, "[linear] list_issues at its mcp origin");
   assert.deepEqual(searchCode?.data.inputSchema, { type: "object", properties: {} });
 });
 
-test("a declared tool its place does not have is said, naming the mcp and the tool, and the rest are served (FR-153)", async () => {
-  const { mcpConnectingApp } = await signedInPlaces();
+test("a declared tool its mcp origin does not have is said, naming the mcp and the tool, and the rest are served (FR-153)", async () => {
+  const { mcpConnectingApp } = await signedInMcpOrigins();
 
-  const servedTools = await mcpConnectingApp.served();
+  const servedTools = await mcpConnectingApp.tools();
 
   assert.ok(servedTools.data.problems.some((problem) => problem.includes("linear") && problem.includes("create_issue")));
   assert.ok(servedTools.data.tools.some(({ data }) => data.name === servedName("linear", "list_issues")));
 });
 
-test("every place is reached once, however often the tools are asked for", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInPlaces();
+test("the tools are listed off what the build kept, reaching no mcp origin (EVAL-FR-031)", async () => {
+  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
 
-  await Promise.all([mcpConnectingApp.served(), mcpConnectingApp.served()]);
-  await mcpConnectingApp.served();
+  await mcpConnectingApp.tools();
 
-  assert.deepEqual(mcpServers.connected.map(({ address }) => address).sort(), [GITHUB, LINEAR].sort());
+  assert.deepEqual(mcpServers.connected, []);
 });
 
-test("a call to a tool that was not served is refused, and reaches no place (FR-153, SC-037)", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInPlaces();
+test("a call to a tool that was not served is refused, and reaches no mcp origin (FR-153, SC-037)", async () => {
+  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
 
   const undeclared = await mcpConnectingApp.call(servedName("github/billing", "delete_repository"), {});
   const unknown = await mcpConnectingApp.call("nothing__at_all", {});
@@ -122,48 +132,44 @@ test("a call to a tool that was not served is refused, and reaches no place (FR-
   assert.deepEqual(mcpServers.calls, []);
 });
 
-test("a call reaches its place under the developer's own credential, and the answer comes back as it came (FR-154, SC-035)", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInPlaces();
-  const placeAnswer = { content: [{ type: "text", text: "3 issues" }], isError: false, structuredContent: { count: 3 } };
-  mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], answer: () => placeAnswer });
+test("a call reaches its mcp origin under the developer's own credential, and the answer comes back as it came (FR-154, SC-035)", async () => {
+  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
+  const mcpOriginAnswer = { content: [{ type: "text", text: "3 issues" }], isError: false, structuredContent: { count: 3 } };
+  mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], answer: () => mcpOriginAnswer });
 
   const toolAnswer = await mcpConnectingApp.call(servedName("linear", "list_issues"), { team: "core" });
 
   assert.deepEqual(mcpServers.calls, [{ address: LINEAR, name: "list_issues", args: { team: "core" }, accessToken: `${LINEAR} token` }]);
-  assert.deepEqual(toolAnswer.data, placeAnswer);
+  assert.deepEqual(toolAnswer.data, mcpOriginAnswer);
 });
 
-test("a place not signed in to is left out, said naming the command, and its calls answer the same (FR-154, SC-039)", async () => {
-  const { mcpConnectingApp, mcpServers, secrets } = placesServed();
+test("a call to an mcp origin not signed in to answers why, naming the command, and reaches it not (FR-154, SC-039)", async () => {
+  const { mcpConnectingApp, mcpServers, secrets } = mcpOriginsServed();
   await signIn(secrets, GITHUB);
 
-  const servedTools = await mcpConnectingApp.served();
+  const servedTools = await mcpConnectingApp.tools();
   const toolAnswer = await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
 
-  assert.ok(servedTools.data.tools.every(({ data }) => !data.name.startsWith(`${SERVED_PREFIXES["linear"]}__`)));
-  assert.ok(servedTools.data.problems.some((problem) => problem.includes("cw mcp auth linear")));
   assert.equal(toolAnswer.data.isError, true);
   assert.match(JSON.stringify(toolAnswer.data), /cw mcp auth linear/);
   assert.ok(mcpServers.calls.every(({ address }) => address !== LINEAR));
   assert.ok(servedTools.data.tools.some(({ data }) => data.name === servedName("github/billing", "search_code")));
 });
 
-test("a place that cannot be reached is left out and said, and every other place is served and answers (FR-154, SC-039)", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInPlaces();
+test("a call to an mcp origin that cannot be reached answers why, and every other mcp origin answers (FR-154, SC-039)", async () => {
+  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
   mcpServers.servers.delete(GITHUB);
 
-  const servedTools = await mcpConnectingApp.served();
   const unreachableAnswer = await mcpConnectingApp.call(servedName("github/billing", "search_code"), {});
   const reachableAnswer = await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
 
-  assert.deepEqual(servedTools.data.tools.map(({ data }) => data.name), [servedName("linear", "list_issues")]);
-  assert.ok(servedTools.data.problems.some((problem) => problem.includes(GITHUB)));
+  assert.match(JSON.stringify(unreachableAnswer.data), /could not be reached/);
   assert.equal(unreachableAnswer.data.isError, true);
   assert.equal(reachableAnswer.data.isError, undefined);
 });
 
 test("an expired credential is renewed before the call, asking nobody, and the renewal is kept (FR-151)", async () => {
-  const { mcpConnectingApp, mcpServers, secrets, authorizing } = placesServed();
+  const { mcpConnectingApp, mcpServers, secrets, authorizing } = mcpOriginsServed();
   await signIn(secrets, GITHUB);
   await signIn(secrets, LINEAR, {
     method: "oauth",
@@ -179,8 +185,8 @@ test("an expired credential is renewed before the call, asking nobody, and the r
   assert.equal(JSON.parse(secrets.secrets.get(LINEAR) ?? "").accessToken, "renewed");
 });
 
-test("a call the place refuses with 401 is tried once more after a renewal (FR-151)", async () => {
-  const { mcpConnectingApp, mcpServers, secrets, authorizing } = placesServed();
+test("a call the mcp origin refuses with 401 is tried once more after a renewal (FR-151)", async () => {
+  const { mcpConnectingApp, mcpServers, secrets, authorizing } = mcpOriginsServed();
   await signIn(secrets, GITHUB);
   await signIn(secrets, LINEAR, { method: "oauth", refreshToken: "refresh", client: { clientId: "cw", issuer: LINEAR } });
   authorizing.renewedGrant = { accessToken: "renewed", client: { clientId: "cw", issuer: LINEAR } };
@@ -193,7 +199,7 @@ test("a call the place refuses with 401 is tried once more after a renewal (FR-1
 });
 
 test("a 401 that no renewal gets past answers to sign in again, naming the command (FR-151)", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInPlaces();
+  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
   mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], acceptsToken: () => false });
 
   const toolAnswer = await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
@@ -204,38 +210,37 @@ test("a 401 that no renewal gets past answers to sign in again, naming the comma
 });
 
 test("no token appears in anything served, said or answered (SC-036)", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInPlaces();
+  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
   mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], acceptsToken: () => false });
 
-  const servedTools = await mcpConnectingApp.served();
+  const servedTools = await mcpConnectingApp.tools();
   const toolAnswer = await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
 
   const everythingShown = JSON.stringify([servedTools, toolAnswer]);
   assert.ok(!everythingShown.includes(`${LINEAR} token`) && !everythingShown.includes(`${GITHUB} token`));
 });
 
-test("with no list of places, serving stops saying to build (FR-152)", async () => {
-  const { mcpConnectingApp } = placesServed({ origins: null });
+test("with no list of mcp origins, serving stops saying to build (FR-152)", async () => {
+  const { mcpConnectingApp } = mcpOriginsServed({ origins: null });
 
-  await assert.rejects(mcpConnectingApp.served(), (raised: DomainFault) => raised instanceof DomainFault && /cw build/.test(raised.fix));
+  await assert.rejects(mcpConnectingApp.tools(), (raised: DomainFault) => raised instanceof DomainFault && /cw build/.test(raised.fix));
 });
 
-test("a list of places written without names serves nothing of it, saying to build again (FR-145)", async () => {
-  const { mcpConnectingApp, secrets } = placesServed({ origins: ORIGINS.map(({ names, ...origin }) => origin) as unknown as McpOrigin[] });
+test("a list of mcp origins written without names serves nothing of it, saying to build again (FR-145)", async () => {
+  const { mcpConnectingApp, secrets } = mcpOriginsServed({ origins: ORIGINS.map(({ names, ...origin }) => origin) as unknown as McpOrigin[] });
   await signIn(secrets, GITHUB);
   await signIn(secrets, LINEAR);
 
-  const servedTools = await mcpConnectingApp.served();
+  const servedTools = await mcpConnectingApp.tools();
 
   assert.deepEqual(servedTools.data.tools, []);
   assert.ok(servedTools.data.problems.some((problem) => problem.includes("linear") && problem.includes("cw build")));
 });
 
-test("stopping lets go of every place reached", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInPlaces();
-  await mcpConnectingApp.served();
+test("an mcp origin reached for a call is let go once it has answered", async () => {
+  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
 
-  await mcpConnectingApp.stopServing();
+  await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
 
-  assert.deepEqual([...mcpServers.closed].sort(), [GITHUB, LINEAR].sort());
+  assert.deepEqual(mcpServers.closed, [LINEAR]);
 });

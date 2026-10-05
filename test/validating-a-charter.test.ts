@@ -64,12 +64,12 @@ const mcp = (id: string, vendor?: string, headers: Record<string, unknown> = {})
     vendor,
     at(vendor === undefined ? `mcp/${id.replace(/\//g, "-")}/index.md` : `../vendor/${vendor}/mcp/${id.replace(/\//g, "-")}/index.md`),
     McpPrimitive.of(
-      { id, description: `The ${id} place.`, endpoint: "https://mcp.example.com/", auth: ["oauth"], tools: ["search"], ...headers },
+      { id, description: `The ${id} mcp origin.`, endpoint: "https://mcp.example.com/", auth: ["oauth"], tools: ["search"], ...headers },
       "Body.",
     ),
   );
 
-/** Every place a charter's mcps reach, as a build writes them (FR-145). */
+/** Every mcp origin a charter's mcps reach, as a build writes them (FR-145). */
 const mcpOriginsOf = (charter: CharterRoot) => compile(charter, []).mcpOrigins.origins;
 
 /** Every mcp of these, named in a guide's body so none is reported as unnamed. */
@@ -296,7 +296,7 @@ test("an agent holding an mcp no layer holds, a tool that mcp does not declare, 
   assert.match(messages(faultsByFiles), /"\[\[linear\]\]:list_issues:again"/);
 });
 
-test("a repository mcp and a vendor mcp at one endpoint and path are one place, under both, signed in to either way (FR-145)", () => {
+test("a repository mcp and a vendor mcp at one endpoint and path are one mcp origin, under both, signed in to either way (FR-145)", () => {
   const charter = new CharterRoot(
     namedMcps(
       mcp("billing", undefined, { path: "acme/billing", auth: ["oauth"], tools: ["search_code"] }),
@@ -318,7 +318,7 @@ test("a repository mcp and a vendor mcp at one endpoint and path are one place, 
   assert.deepEqual(charter.compositeFaultsByFiles.files, {});
 });
 
-test("the same two at different paths are two places (FR-145)", () => {
+test("the same two at different paths are two mcp origins (FR-145)", () => {
   const charter = new CharterRoot(
     namedMcps(mcp("billing", undefined, { path: "acme/billing" }), mcp("acme/code", "acme", { path: "acme/code" })),
     FaultsByFile.none,
@@ -333,7 +333,7 @@ test("the same two at different paths are two places (FR-145)", () => {
   );
 });
 
-test("a command's place carries its arguments and the variable its token is read from (FR-145)", () => {
+test("a command's mcp origin carries its arguments and the variable its token is read from (FR-145)", () => {
   const command = { endpoint: undefined, command: "npx", args: ["-y", "server-github"], auth: ["token"], tokenEnv: "GITHUB_TOKEN" };
   const charter = new CharterRoot(namedMcps(mcp("github", undefined, command)), FaultsByFile.none);
 

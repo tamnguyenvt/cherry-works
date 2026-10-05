@@ -17,6 +17,7 @@ import { ClaudeSkill } from "../../models/output/provider-component/claude/Claud
 import { ClaudeMcpConfig } from "../../models/output/provider-component/claude/ClaudeMcpConfig.js";
 import { ClaudeEntryFile } from "../../models/output/provider-component/claude/ClaudeEntryFile.js";
 import {
+  CLAUDE_TOOL_SEARCH_ENV,
   ClaudeSettings,
   isClaudeHookEvent,
   type ClaudeHookEvent,
@@ -41,8 +42,8 @@ import {
  * loaded, a `mixin` has no life of its own — its body is written into each host
  * that pulls it in, which `toMarkdown` does when `compile` hands it the mixins — and an `mcp` is reached through
  * `cw mcp serve` rather than read: the one entry of the host's MCP
- * configuration that starts it, written whether the charter holds a place yet or
- * not, since the server reads which places there are when it starts (FR-146).
+ * configuration that starts it, written whether the charter holds an mcp origin yet or
+ * not, since the server reads which mcp origins there are when it starts (FR-146).
  */
 export function claudeComponentsOf(
   charter: CharterRoot,
@@ -57,10 +58,10 @@ export function claudeComponentsOf(
   const asSettings = charter.primitives.filter(isSettingComponent);
   const asDocuments = charter.primitives.filter((one) => !isSettingComponent(one));
 
-  // A subagent holds the tools it lists and nothing else. A place it lists,
+  // A subagent holds the tools it lists and nothing else. An mcp origin it lists,
   // `[[<id>]]` whole or `[[<id>]]:<tool>` one tool, is written as this host is
   // given each of its tools, `mcp__cw__<served name>__<tool>` (FR-156); the
-  // charter has refused a place or tool it does not hold.
+  // charter has refused an mcp origin or tool it does not hold.
   const toolsByMcpId = new Map(
     charter.primitives.flatMap((primitive) => (primitive instanceof McpPrimitive ? [[primitive.headers.id, primitive.headers.tools] as const] : [])),
   );
@@ -77,7 +78,9 @@ export function claudeComponentsOf(
     // The section of `CLAUDE.md` that sends this host to the charter at all
     // (FR-051).
     ClaudeEntryFile.of(),
-    ...(asSettings.length === 0 ? [] : [ClaudeSettings.of(claudeSettingsOf(charter, compiledPrimitiveByPrimitive, asSettings))]),
+    ...(asSettings.length === 0 && toolsByMcpId.size === 0
+      ? []
+      : [ClaudeSettings.of(claudeSettingsOf(charter, compiledPrimitiveByPrimitive, asSettings))]),
     ClaudeMcpConfig.of(),
     ...asDocuments.flatMap(
       (one) =>
@@ -99,7 +102,8 @@ export function claudeComponentsOf(
  * posture's permissions are the permissions, each thing once, and every sensor's
  * command is a hook under the event that fires it. Two sensors on one event are
  * two commands under it, in the order their files sort in (SC-007). A script a
- * command names is written as the file that runs (FR-169).
+ * command names is written as the file that runs (FR-169). A charter reaching a
+ * mcp origin turns the host's own tool search on (EVAL-FR-016).
  *
  * What the repository set for itself is not here at all: that is on disk, and
  * reading it together with this is the projection's (FR-020).
@@ -140,6 +144,9 @@ function claudeSettingsOf(
   return {
     ...(allow.size === 0 && deny.size === 0 ? {} : { permissions: { allow: [...allow], deny: [...deny] } }),
     ...(Object.keys(hooks).length === 0 ? {} : { hooks }),
+    // A charter reaching an mcp origin has its tools' schemas deferred by the host
+    // itself, the one server listing every tool (EVAL-FR-016).
+    ...(charter.primitives.some((primitive) => primitive instanceof McpPrimitive) && { env: CLAUDE_TOOL_SEARCH_ENV }),
   };
 }
 
@@ -153,8 +160,8 @@ function claudeSettingsOf(
  * `@` import: `.claude/<kind>/` two folders down, a skill's `SKILL.md` three.
  * A rule's `@` is expanded when the rule loads; for the other kinds claude
  * documents no such expansion, so the line says to read the file. A subagent
- * is handed `agentTools`: its tools as this host names them, each place it
- * holds written as that place's tools (FR-156).
+ * is handed `agentTools`: its tools as this host names them, each mcp origin it
+ * holds written as that mcp origin's tools (FR-156).
  */
 function claudeDocumentComponentOf(sc: Primitive, compiledFile: string, agentTools?: readonly string[]): ClaudeComponent | undefined {
   // The id alone, so a skill is invoked as `/<id>` rather than

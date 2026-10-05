@@ -16,15 +16,15 @@ const STDIO_SERVER = fileURLToPath(new URL("./an-mcp-server-over-stdio.ts", impo
 const TSX = import.meta.resolve("tsx");
 const MODULE_LOADER = import.meta.resolve("../scripts/moduleLoader.mjs");
 
-/** The places reached through a port a test answers: one served tool, and a
+/** The mcp origins reached through a port a test answers: one served tool, and a
  *  record of every call forwarded. */
-const onePlaceServed = () => {
+const oneMcpOriginServed = () => {
   const calls: { name: string; args: unknown }[] = [];
   const mcpConnectingApp: ForConnectingMcps = {
     signInStatus: async () => [],
     signInWithToken: async () => undefined,
     signInWithOAuth: async () => undefined,
-    served: async () => ({
+    tools: async () => ({
       type: "ServedTools",
       data: {
         tools: [{ type: "ServedTool", data: { name: "linear_1a2b__list_issues", description: "[linear] Lists issues.", inputSchema: { type: "object" } } }],
@@ -35,13 +35,12 @@ const onePlaceServed = () => {
       calls.push({ name, args });
       return { type: "ToolAnswer", data: { content: [{ type: "text", text: "3 issues" }], structuredContent: { count: 3 } } };
     },
-    stopServing: async () => undefined,
   };
   return { mcpConnectingApp, calls };
 };
 
-test("the server lists what the places serve, and forwards a call to them, its answer returned as it came (FR-152, FR-153)", async (t) => {
-  const { mcpConnectingApp, calls } = onePlaceServed();
+test("the server lists what the mcp origins serve, and forwards a call to them, its answer returned as it came (FR-152, FR-153)", async (t) => {
+  const { mcpConnectingApp, calls } = oneMcpOriginServed();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await startMcpServer(mcpConnectingApp, serverTransport);
   const client = new Client({ name: "an-agent", version: "0.0.0" });
@@ -56,26 +55,37 @@ test("the server lists what the places serve, and forwards a call to them, its a
   assert.deepEqual(toolAnswer, { content: [{ type: "text", text: "3 issues" }], structuredContent: { count: 3 } });
 });
 
-/** A built repository whose one place is the test server started as a local
- *  command, declaring `echo` and a tool the place does not have. */
+/** A built repository whose one mcp origin is the test server started as a local
+ *  command, declaring `echo` and a tool the mcp origin does not have. */
 const aBuiltRepository = async () => {
   const repo = await mkdtemp(join(tmpdir(), "cw-serve-"));
   const command = { command: process.execPath, args: ["--import", TSX, STDIO_SERVER] };
   const address = [command.command, ...command.args].join(" ");
   await mkdir(join(repo, ".cw", "out", "mcp", "local"), { recursive: true });
-  await writeFile(join(repo, ".cw", "out", "mcp-origins.json"), JSON.stringify({ origins: [{ ids: ["local"], names: { "local": "local_0a1b" }, address, command, auth: [] }] }));
+  await writeFile(join(repo, ".cw", "out", "mcp-origins.json"), JSON.stringify({
+      origins: [
+        {
+          ids: ["local"],
+          names: { "local": "local_0a1b" },
+          address,
+          command,
+          auth: [],
+          tools: [{ name: "echo", description: "Echo the text back.", inputSchema: { type: "object", properties: { text: { type: "string" } } } }],
+        },
+      ],
+    }));
   await writeFile(
     join(repo, ".cw", "out", "catalog.json"),
-    JSON.stringify([{ kind: "mcp", id: "local", description: "A local place.", file: ".cw/out/mcp/local/index.md" }]),
+    JSON.stringify([{ kind: "mcp", id: "local", description: "A local mcp origin.", file: ".cw/out/mcp/local/index.md" }]),
   );
   await writeFile(
     join(repo, ".cw", "out", "mcp", "local", "index.md"),
-    `---\nkind: mcp\nid: local\ndescription: A local place.\ncommand: ${process.execPath}\ntools: [echo, missing_tool]\n---\n`,
+    `---\nkind: mcp\nid: local\ndescription: A local mcp origin.\ncommand: ${process.execPath}\ntools: [echo, missing_tool]\n---\n`,
   );
   return repo;
 };
 
-test("cw mcp serve, started by an agent, serves a built repository's places over stdio and stops them with it (FR-152, FR-153)", async (t) => {
+test("cw mcp serve, started by an agent, serves a built repository's mcp origins over stdio and stops them with it (FR-152, FR-153)", async (t) => {
   const repo = await aBuiltRepository();
   t.after(() => rm(repo, { recursive: true, force: true }));
   const transport = new StdioClientTransport({ command: process.execPath, args: ["--import", TSX, "--import", MODULE_LOADER, MAIN, "mcp", "serve"], cwd: repo, stderr: "pipe" });

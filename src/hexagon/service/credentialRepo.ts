@@ -40,16 +40,16 @@ export async function writeCredential(secrets: ForKeepingSecrets, credential: Cr
 }
 
 /**
- * The access token a call to this place is made with: the developer's own,
+ * The access token a call to this mcp origin is made with: the developer's own,
  * renewed first where it has expired, asking nobody (FR-151, SC-035).
  *
- * A place nobody signed in to, or whose credential expired and cannot be
+ * An mcp origin nobody signed in to, or whose credential expired and cannot be
  * renewed, is refused naming the command that signs in again there. A renewal
- * is kept, so the next call uses it rather than renewing again. A place at
+ * is kept, so the next call uses it rather than renewing again. An mcp origin at
  * plain `http` on another machine is refused before anything is read: the
  * credential would travel in the clear.
  *
- * `refused` says the place has just refused this credential, so it is renewed
+ * `refused` says the mcp origin has just refused this credential, so it is renewed
  * whatever its expiry says.
  */
 export async function credentialFor(
@@ -64,8 +64,8 @@ export async function credentialFor(
   const credential = await readCredential(secrets, origin.address);
   if (credential === undefined) throw new DomainFault(`You are not signed in to ${origin.address}.`, signInAgain);
 
-  // A credential the place has just refused is renewed as an expired one is:
-  // the place knows better than `expiresAt` (FR-151).
+  // A credential the mcp origin has just refused is renewed as an expired one is:
+  // the mcp origin knows better than `expiresAt` (FR-151).
   const expired = refused || (credential.expiresAt !== undefined && Date.parse(credential.expiresAt) <= Date.now());
   if (!expired) return credential.accessToken;
 

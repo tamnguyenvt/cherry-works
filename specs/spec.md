@@ -6,8 +6,8 @@ its own stories, FR and SC under its prefix: `spec-core.md` holds
 
 | Spec | Prefix | What it covers |
 |---|---|---|
-| [Core](spec-core.md) | CORE | The charter and its engine, the `cw` command line, the portal, agent authoring, distribution, places reached through MCP, scripts and templates, and how primitives are named. |
-| [Eval](spec-eval.md) | EVAL | What a charter costs in the agent's context and in a session, searching a place's tools rather than listing them, and evaluating the charter against a real model. |
+| [Core](spec-core.md) | CORE | The charter and its engine, the `cw` command line, the portal, agent authoring, distribution, mcp origins reached through MCP, scripts and templates, and how primitives are named. |
+| [Eval](spec-eval.md) | EVAL | What a charter costs in the agent's context and in a session, searching an mcp origin's tools rather than listing them, and evaluating the charter against a real model. |
 
 - [plan.json](plan.json) — every story and the stories it depends on: the roadmap.
 - [manifest.md](manifest.md) — how work on a story is carried out and finished here.

@@ -25,6 +25,11 @@ export function isClaudeHookEvent(name: string): name is ClaudeHookEvent {
   return (CLAUDE_HOOK_EVENTS as readonly string[]).includes(name);
 }
 
+/** What turns on this host's own tool search, so a session opens with each
+ *  tool's name and no schema, and the agent searches for a schema when it needs
+ *  one (EVAL-FR-016). */
+export const CLAUDE_TOOL_SEARCH_ENV = { ENABLE_TOOL_SEARCH: "true" } as const;
+
 /** One command this host runs when an event fires. */
 export interface ClaudeHook {
   readonly type: "command";

@@ -32,7 +32,7 @@ const OPTIONS = {
  */
 export class McpAuthCommand implements Command<typeof OPTIONS> {
   readonly name = "mcp auth [id]";
-  readonly summary = "Sign in, as yourself, to every place the charter reaches";
+  readonly summary = "Sign in, as yourself, to every mcp origin the charter reaches";
   readonly options = OPTIONS;
 
   async run({ mcpConnectingApp }: Context, { id, status }: Options<typeof OPTIONS>): Promise<Outcome> {
@@ -43,7 +43,7 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
         code: EXIT_OK,
         result:
           signInStatuses.length === 0
-            ? "No place the last build listed takes a sign-in.\n"
+            ? "No mcp origin the last build listed takes a sign-in.\n"
             : signInStatuses
                 .map(({ address, ids, signedIn, method }) =>
                   [address, `  ${ids.join(", ")}`, `  ${signedIn ? `signed in by ${method}` : "not signed in"}`, ""].join("\n"),
@@ -57,7 +57,7 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
       const signInStatus = signInStatuses.find((one) => one.ids.includes(id));
       if (signInStatus === undefined)
         throw new DomainFault(
-          `No place the last build listed is declared by ${id}.`,
+          `No mcp origin the last build listed is declared by ${id}.`,
           'Run "cw mcp auth --status" to see every mcp, or "cw build" if the charter changed.',
         );
       unsignedStatuses = [signInStatus];
@@ -68,7 +68,7 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
         code: EXIT_OK,
         result:
           signInStatuses.length === 0
-            ? "No place the last build listed takes a sign-in.\n"
+            ? "No mcp origin the last build listed takes a sign-in.\n"
             : `You are signed in at every address: ${signInStatuses.length}.\n`,
       };
 

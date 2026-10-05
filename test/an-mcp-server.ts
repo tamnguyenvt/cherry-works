@@ -5,8 +5,8 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
-/** The tools every test place has: `echo` answers what it was handed, and
- *  `fail` answers an error of its own, which is still the place's answer. */
+/** The tools every test mcp origin has: `echo` answers what it was handed, and
+ *  `fail` answers an error of its own, which is still the mcp origin's answer. */
 export const TEST_TOOLS = [
   { name: "echo", description: "Answers what it was handed.", inputSchema: { type: "object", properties: { text: { type: "string" } } } },
   { name: "fail", description: "Answers an error of its own.", inputSchema: { type: "object", properties: {} } },
@@ -15,11 +15,11 @@ export const TEST_TOOLS = [
 /** One MCP server as a test stands it up: its answers to `tools/list` and
  *  `tools/call`, whoever is speaking to it. */
 export function aTestMcpServer(): Server {
-  const server = new Server({ name: "a-test-place", version: "0.0.0" }, { capabilities: { tools: {} } });
+  const server = new Server({ name: "a-test-mcp-origin", version: "0.0.0" }, { capabilities: { tools: {} } });
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TEST_TOOLS }));
   server.setRequestHandler(CallToolRequestSchema, async ({ params }) =>
     params.name === "fail"
-      ? { content: [{ type: "text", text: "it failed at the place" }], isError: true }
+      ? { content: [{ type: "text", text: "it failed at the mcp origin" }], isError: true }
       : { content: [{ type: "text", text: `echo: ${String(params.arguments?.text ?? "")}` }] },
   );
   return server;

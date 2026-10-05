@@ -21,7 +21,7 @@ const ID_SOURCE = /[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\/[a-z0-9](?:[a-z0-9-]*[a-z
 export const REFERENCE = new RegExp(`\\[\\[(${ID_SOURCE})\\]\\]`, "g");
 
 /**
- * Where an agent's `tools` holds a place: `[[<id>]]` for every tool that mcp
+ * Where an agent's `tools` holds an mcp origin: `[[<id>]]` for every tool that mcp
  * declares, `[[<id>]]:<tool>` for one of them (FR-156). The id is the first
  * group, the tool the second where one is named.
  */
@@ -192,7 +192,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    * Written as its author wrote it unless the compiler says otherwise (FR-139):
    * `mixins` lend their bodies, before this one's own so it reads as the point
    * and theirs as the setting — nothing is merged and no header moves (FR-006);
-   * and `idReplacer` rewrites the body as its reader uses it, each place,
+   * and `idReplacer` rewrites the body as its reader uses it, each mcp origin,
    * script and template it names as a link to its file (FR-147).
    */
   toMarkdown({

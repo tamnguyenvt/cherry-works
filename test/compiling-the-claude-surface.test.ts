@@ -187,7 +187,7 @@ test("a role carries the tools it may use, on the one line claude reads them fro
   assert.ok(contents.includes("\nname: reviewer\n"));
 });
 
-test("a role holds each mcp it lists, whole or one tool, under the name this host is given it by, and no place its body only names (FR-156)", async () => {
+test("a role holds each mcp it lists, whole or one tool, under the name this host is given it by, and no mcp origin its body only names (FR-156)", async () => {
   const files = await projected({
     [at("mcp/linear/index.md")]: primitive("mcp", "linear", "Issues.", ["endpoint: https://mcp.linear.app/mcp", "auth: [token]", "tools: [list_issues, create_issue]"]),
     [at("mcp/github/billing/index.md")]: primitive("mcp", "github/billing", "Code.", ["endpoint: https://api.githubcopilot.com/mcp/", "auth: [oauth]", "tools: [search_code, get_file_contents]"]),
@@ -206,6 +206,16 @@ test("a role holds each mcp it lists, whole or one tool, under the name this hos
     contents,
   );
   assert.ok(!contents.includes(`${servedNames["sentry"]}__`));
+});
+
+test("a charter reaching an mcp origin turns the host's own tool search on, and one reaching none leaves the settings alone (EVAL-FR-016)", async () => {
+  const reachingFiles = await projected({
+    [at("mcp/linear/index.md")]: primitive("mcp", "linear", "Issues.", ["endpoint: https://mcp.linear.app/mcp", "auth: [token]", "tools: [list_issues]"]),
+  });
+  const reachingNoneFiles = await projected({ [at("skill/refactoring/index.md")]: primitive("skill", "refactoring", "How this repository refactors.", []) });
+
+  assert.deepEqual(JSON.parse(reachingFiles[".claude/settings.json"] ?? "{}").env, { ENABLE_TOOL_SEARCH: "true" });
+  assert.equal(JSON.parse(reachingNoneFiles[".claude/settings.json"] ?? "{}").env, undefined);
 });
 
 test("a skill says its triggers in the description, which is what decides it is loaded", async () => {

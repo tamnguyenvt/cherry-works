@@ -16,7 +16,7 @@ import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { noPlacesReached } from "./no-places.js";
+import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
@@ -62,7 +62,7 @@ const contextOver = ({ charterAuthoringApp, testAuthoringApp }: ReturnType<typeo
   charterAuthoringApp,
   charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS()),
   testAuthoringApp,
-  mcpConnectingApp: noPlacesReached, sessionReviewingApp: noSessionsKept,
+  mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept,
 });
 
 test("suites() lists each file with its name, text and cases said, and one that does not read with its fault (FR-124)", async () => {

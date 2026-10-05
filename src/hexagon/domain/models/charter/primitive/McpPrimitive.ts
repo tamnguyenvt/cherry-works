@@ -18,7 +18,7 @@ export function isSecureEndpoint(endpoint: string): boolean {
 }
 
 /**
- * One MCP server, a place where a primitive's reasons are kept outside the
+ * One MCP server, an mcp origin where a primitive's reasons are kept outside the
  * repository: reached at an `endpoint`, or started as a `command` (FR-142).
  *
  * One object refined rather than a union of the two shapes, so every header it
@@ -39,7 +39,7 @@ export const McpHeadersSchema = CommonHeadersSchema.extend({
   auth: z.array(z.enum(MCP_AUTH_METHODS)).min(1).readonly().optional(),
   /** The environment variable a command reads its token from. */
   tokenEnv: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).optional(),
-  /** The place inside that server: a repository, a database, a channel. */
+  /** The mcp origin inside that server: a repository, a database, a channel. */
   path: GoodLineSchema.optional(),
   /** The server's tools the agent may use there, by the server's own names. */
   tools: GoodArraySchema,
@@ -85,7 +85,7 @@ export class McpPrimitive extends BasePrimitive<McpHeaders> {
    *  where the kind's contract is: the neutral surface lists one
    *  line per kind and none of them is written down twice (FR-002). */
   static readonly activatesWhen =
-    "a primitive's body names it as `[[<id>]]` — a place outside the repository, reached through `cw mcp serve`";
+    "a primitive's body names it as `[[<id>]]` — an mcp origin outside the repository, reached through `cw mcp serve`";
 
   /** An mcp reached at an endpoint, as an author writes one: what a refused
    *  header is fixed with. */
@@ -98,7 +98,7 @@ export class McpPrimitive extends BasePrimitive<McpHeaders> {
     tools: ["get_file_contents", "search_code", "list_pull_requests"],
   };
 
-  /** The same place started as a local process: what a refused file declaring
+  /** The same mcp origin started as a local process: what a refused file declaring
    *  `command` is held up against, since that is the shape it was nearer. */
   static readonly commandSample: McpHeaders = {
     id: "mfbs/billing",
@@ -111,7 +111,7 @@ export class McpPrimitive extends BasePrimitive<McpHeaders> {
     tools: ["get_file_contents", "search_code", "list_pull_requests"],
   };
 
-  /** What a developer signs in to, and what places are told apart by beside
+  /** What a developer signs in to, and what mcp origins are told apart by beside
    *  their `path`: the endpoint, or the command followed by each of its
    *  arguments. The refinement has already held that one of the two is here
    *  (FR-142). */

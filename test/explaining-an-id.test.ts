@@ -11,7 +11,7 @@ import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
-import { noPlacesReached } from "./no-places.js";
+import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
@@ -72,7 +72,7 @@ const writing = async (work: () => Promise<number>) => {
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[]) => {
   const readers = new InMemoryFileReaders(files);
   const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noPlacesReached, sessionReviewingApp: noSessionsKept }, COMMANDS);
+  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept }, COMMANDS);
   return writing(() => cli.run(argv));
 };
 
@@ -198,7 +198,7 @@ test("an explanation says which primitives name a script or a template in their 
   assert.deepEqual(template.results.split("\n").filter((line) => line.startsWith("  mentioned in ")), ["  mentioned in check"]);
 });
 
-test("an explanation says which primitives name a place, in a body or among an agent's tools (FR-144)", async () => {
+test("an explanation says which primitives name an mcp origin, in a body or among an agent's tools (FR-144)", async () => {
   const { results } = await run(naming, ["explain", "linear"]);
 
   assert.deepEqual(results.split("\n").filter((line) => line.startsWith("  mentioned in ")), [

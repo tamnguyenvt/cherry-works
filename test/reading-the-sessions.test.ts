@@ -24,7 +24,7 @@ import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import type { ForReadingFiles } from "../src/hexagon/port/zdriven/ForReadingFiles.js";
 import type { ForTellingTime } from "../src/hexagon/port/zdriven/ForTellingTime.js";
-import { noPlacesReached } from "./no-places.js";
+import { noMcpOriginsReached } from "./no-mcp-origins.js";
 
 const repoPath = new URL("file:///work/my-repo/");
 const homePath = new URL("file:///home/dev/");
@@ -83,7 +83,7 @@ const cliOver = (fileReaders: ForReadingFiles, repo = repoPath, home = homePath,
   const charterVendoringApp = new CharterVendoring(repo, held, vcs);
   const testAuthoringApp = new TestAuthoring(repo, held, new InMemoryFileOutput(held));
   const sessionReviewingApp = new SessionReviewing(repo, home, fileReaders, clock);
-  return new Commander({ cwd: "/work/my-repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noPlacesReached, sessionReviewingApp }, COMMANDS);
+  return new Commander({ cwd: "/work/my-repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp }, COMMANDS);
 };
 
 /** What one command printed to each stream, and its exit status. */

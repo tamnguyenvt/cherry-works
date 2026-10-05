@@ -121,21 +121,21 @@
     },
     {
       "id": "CORE Story 18",
-      "title": "Sign in to every place as yourself",
+      "title": "Sign in to every mcp origin as yourself",
       "dependsOn": [
         "CORE Story 17"
       ]
     },
     {
       "id": "CORE Story 19",
-      "title": "Give the agent one server that reaches every place",
+      "title": "Give the agent one server that reaches every mcp origin",
       "dependsOn": [
         "CORE Story 17"
       ]
     },
     {
       "id": "CORE Story 20",
-      "title": "Hold a subagent to the places it lists",
+      "title": "Hold a subagent to the mcp origins it lists",
       "dependsOn": [
         "CORE Story 19"
       ]

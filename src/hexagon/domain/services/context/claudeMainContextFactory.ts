@@ -5,6 +5,8 @@ import { ClaudeEntryFile } from "../../models/output/provider-component/claude/C
 import { ClaudeRule } from "../../models/output/provider-component/claude/ClaudeRule.js";
 import { ClaudeSkill } from "../../models/output/provider-component/claude/ClaudeSkill.js";
 import { compile } from "../compile/compileService.js";
+import { McpPrimitive } from "../../models/charter/primitive/McpPrimitive.js";
+import { ClaudeMcpConfig } from "../../models/output/provider-component/claude/ClaudeMcpConfig.js";
 
 /**
  * How many of claude's tokens one token of the tokenizer on this machine
@@ -24,11 +26,13 @@ export const CLAUDE_TOKEN_FACTOR = 1.43;
  * description of each skill and subagent, all it reads of them before one is
  * called for. A rule naming `paths` is loaded when a file they match is
  * touched, so it carries the guide's globs. Settings and the MCP configuration
- * put nothing there; the tools `cw mcp serve` lists are not counted yet
- * (EVAL-FR-029).
+ * put nothing there. Of each tool `cw mcp serve` lists for an mcp, its name
+ * alone, under the mcp: the host's tool search, which the build turns on,
+ * sends a schema only once the agent searches for it (EVAL-FR-029).
  */
 export function claudeMainContextOf(charter: CharterRoot): readonly MainContextText[] {
-  const { charterMd, compiledPrimitives, providerComponents } = compile(charter, ["claude"]);
+  const { charterMd, compiledPrimitives, mcpOrigins, providerComponents } = compile(charter, ["claude"]);
+  const servedPrefixById = new Map(mcpOrigins.origins.flatMap(({ names }) => Object.entries(names)));
   const compiledDocumentById = new Map(compiledPrimitives.map((compiledPrimitive) => [compiledPrimitive.id, compiledPrimitive.projections[0]!.contents]));
   const entryFile = providerComponents.find((providerComponent) => providerComponent instanceof ClaudeEntryFile);
 
@@ -42,6 +46,10 @@ export function claudeMainContextOf(charter: CharterRoot): readonly MainContextT
           providerComponent.name === primitive.normId,
       );
       const { id } = primitive.headers;
+      if (primitive instanceof McpPrimitive) {
+        const toolNames = primitive.headers.tools.map((tool) => `mcp__${ClaudeMcpConfig.cwMcpName}__${servedPrefixById.get(id)}__${tool}`);
+        return [{ id, kind: primitive.kind, text: toolNames.join("\n") }];
+      }
       if (claudeComponent instanceof ClaudeRule) {
         const { paths } = claudeComponent.headers;
         return [{ id, kind: primitive.kind, text: `${claudeComponent.document}${compiledDocumentById.get(id) ?? ""}`, ...(paths === undefined ? {} : { globs: paths }) }];

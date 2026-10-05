@@ -26,10 +26,10 @@ export class AgentPrimitive extends BasePrimitive<AgentHeaders> {
    *  where the kind's contract is: the neutral surface lists one
    *  line per kind and none of them is written down twice (FR-002). */
   static readonly activatesWhen =
-    "it is spawned by id, holding the `tools` it lists and nothing else — a place as `[[<id>]]`, or one of its tools as `[[<id>]]:<tool>`";
+    "it is spawned by id, holding the `tools` it lists and nothing else — an mcp origin as `[[<id>]]`, or one of its tools as `[[<id>]]:<tool>`";
 
   /** An agent as an author writes one: what a refused header is fixed with.
-   *  It holds one tool of a place the way an author writes it (FR-156). */
+   *  It holds one tool of an mcp origin the way an author writes it (FR-156). */
   static readonly sample: AgentHeaders = {
     id: "reviewer",
     description: "Review a diff and name what is wrong with it.",

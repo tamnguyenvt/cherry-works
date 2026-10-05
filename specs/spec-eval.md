@@ -10,7 +10,7 @@ Then: "The summary of the sessions kept spans 31 days at most, the last 31 when 
 
 ## Overview
 
-A charter is paid for in tokens every turn an agent works under it, and it is only worth that price if the agent does what it says. This part lets the people who write and use a charter see both sides. An author learns, before anyone runs an agent, how much of the agent's main context the charter takes and which primitives take the most. A developer is told, when their agent stops, how many tokens the session has used. The places a charter reaches stop costing context for every tool they declare, by being searched rather than listed. And an author can put the charter in front of the real agent and a real model, and learn whether the right skill is invoked and a guide is followed, and what each case cost.
+A charter is paid for in tokens every turn an agent works under it, and it is only worth that price if the agent does what it says. This part lets the people who write and use a charter see both sides. An author learns, before anyone runs an agent, how much of the agent's main context the charter takes and which primitives take the most. A developer is told, when their agent stops, how many tokens the session has used. The mcp origins a charter reaches stop costing context for every tool they declare, by being searched rather than listed. And an author can put the charter in front of the real agent and a real model, and learn whether the right skill is invoked and a guide is followed, and what each case cost.
 
 ## Clarifications
 
@@ -26,7 +26,7 @@ A charter is paid for in tokens every turn an agent works under it, and it is on
 - Q: How is the main-context prediction counted, with no offline Claude tokenizer? → A: Estimated offline by default, said to be an estimate; counted exactly through the model provider's token count when asked to and a key is at hand.
 - Q: Where is the prediction said, and is there a ceiling? → A: A command of its own lists it per primitive, largest first; a build says the total; the portal shows it; the health check warns above a ceiling the repository sets, 20,000 tokens when it sets none.
 - Q: How is a session's token use said when the agent stops, and is it kept? → A: Said to the developer only when the session crosses a mark, every 100,000 tokens by default, in one line the model is not sent; every stop is also kept as one line of a log on the developer's machine, never committed. Subagents are counted in.
-- Q: When does `cw mcp serve` search its tools rather than list them, and how does a found tool appear? → A: On its own once the declared tools' schemas pass a ceiling, 5,000 tokens by default; below it every tool is listed as before; the repository can hold it always on or always off. A found tool joins the list under the name it always had, so a subagent's hold on its tools ([CORE-FR-156](spec-core.md#core-fr-156)) still means what it says.
+- Q: When does `cw mcp serve` search its tools rather than list them, and how does a found tool appear? → A: It does not search: it lists every tool under the name it always had, and the host's own tool search, which the build turns on, sends the agent each tool's name and its schema only once the agent searches for it. A subagent's hold on its tools ([CORE-FR-156](spec-core.md#core-fr-156)) still means what it says.
 - Q: What does an evaluation run against? → A: The real agent, run headless in a copy of the repository with its charter built; one case file runs by the engine alone, or under promptfoo or deepeval when one is named, on the developer's own key; a model judges what is said in words.
 
 ### Session 2026-10-04
@@ -39,8 +39,15 @@ A charter is paid for in tokens every turn an agent works under it, and it is on
 - Q: Does an evaluation need a framework to run? → A: No: the engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-charter-against-the-real-agent-priority-p3)); promptfoo or deepeval, named when the command is run, runs the same cases there too ([EVAL-FR-027](#eval-fr-027)).
 - Q: Is an exact count made through a model provider key? → A: No: through the agent's own command line, run headless, which needs no key of its own; without that command line installed, an exact count is refused, saying the estimate needs nothing.
 - Q: How is the estimate made offline? → A: By a tokenizer that runs offline, said to be an estimate, rather than by text length.
-- Q: Does the main-context prediction count the tools the one server lists? → A: Not until the server lists its search tool ([EVAL Story 5](#eval-story-5---search-tools-rather-than-load-them-all-into-context-priority-p2)); from then on, that tool is counted ([EVAL-FR-029](#eval-fr-029)).
+- Q: Does the main-context prediction count the tools the one server lists? → A: By their names, from [EVAL Story 5](#eval-story-5---search-tools-rather-than-load-them-all-into-context-priority-p2) on: the host's tool search sends each tool's name when a session opens, and its schema only once searched for ([EVAL-FR-029](#eval-fr-029)).
+- Q: Does the host's tool search wait for the schemas to pass a ceiling? → A: No: the build turns it always on wherever the charter reaches an mcp origin ([EVAL-FR-016](#eval-fr-016)).
+- Q: How is a subagent kept to the tools it holds? → A: By its host: the tools it lists are all it may call, their schemas deferred or not ([CORE-FR-156](spec-core.md#core-fr-156)).
+- Q: Does the server reach every mcp origin to list their tools? → A: No: the build asks each mcp origin for its tools and keeps them, with what each takes, beside it in the list of mcp origins; the server lists what was kept, reaches an mcp origin only for a call to one of its tools, and lets it go once it has answered. An mcp origin the build cannot reach or is not signed in to, and a tool an mcp declares that its mcp origin does not list, stops the build ([EVAL-FR-031](#eval-fr-031)).
 - Q: How far back does the summary of the sessions kept reach? → A: At most 31 days: the last 31, today among them, when no span is named; 31 from the day named, or up to it, when only one end is; a longer span is refused. Only the sessions kept within the span are read, however long the log has grown ([EVAL-FR-030](#eval-fr-030), [EVAL-SC-007](#eval-sc-007)).
+
+### Session 2026-10-05
+
+- Q: Claude Code defers MCP tool schemas on its own: give `cw mcp serve` a tool search of its own, or lean on the host's? → A: The host's, which replaces the answer of 2026-10-02: the build turns it on, and the server lists every tool and keeps nothing between calls; a host without a tool search of its own is sent every schema, as before ([EVAL-FR-016](#eval-fr-016)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -124,22 +131,21 @@ The developer asks their agent what last week cost. A skill the engine brings re
 
 ### EVAL Story 5 - Search tools rather than load them all into context (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
-A charter declares four places with sixty tools between them. Before this, the agent was sent every tool's schema at the start of each session, used or not. After this, once those schemas pass a ceiling — 5,000 tokens unless the repository sets another — the one server lists a single tool that searches the others, and a tool found joins the list under the name it always had. Below the ceiling, every tool is listed as before. A repository can hold searching always on or always off.
+A charter declares four mcp origins with sixty tools between them. Before this, the agent was sent every tool's schema at the start of each session, used or not. After this, the build turns the host's own tool search on, so a session opens with each tool's name and no schema, and the agent searches for the one it needs. The build keeps each mcp origin's tools beside it, so the one server lists them without reaching any mcp origin, and reaches one only for a call.
 
-**Why this priority**: It is the largest share of the main context in a charter that reaches many places, and a host that does not defer schemas itself gains it too.
+**Why this priority**: It is the largest share of the main context in a charter that reaches many mcp origins.
 
-**Independent Test**: Declare places whose tools pass the ceiling; start the server, and confirm only the search tool is listed, that a search names matching tools, and that one found is then listed and answers under its usual name. Declare fewer and confirm every tool is listed. Hold searching off and confirm every tool is listed past the ceiling.
+**Independent Test**: Declare an mcp origin with several tools and build; confirm the host's tool search is turned on and the mcp origin's tools are kept beside it. Start the server, and confirm it lists every tool without reaching the mcp origin, and that a call reaches it and answers under the tool's usual name. Declare a tool the mcp origin does not list, or build without signing in, and confirm the build stops.
 
 **Acceptance Scenarios**:
 
-1. **Given** declared tools whose schemas pass the ceiling, **When** the server starts, **Then** it lists the search tool alone ([EVAL-FR-016](#eval-fr-016)).
-2. **Given** a search, **When** it is answered, **Then** the matching tools are named with what each does, and each one found is listed from then on under the name it always had ([EVAL-FR-017](#eval-fr-017)).
-3. **Given** declared tools below the ceiling, **When** the server starts, **Then** every tool is listed, as before ([EVAL-FR-016](#eval-fr-016)).
-4. **Given** the repository holding searching always on, or always off, **When** the server starts, **Then** it searches, or lists every tool, whatever the schemas weigh ([EVAL-FR-018](#eval-fr-018)).
-5. **Given** a subagent holding only some of a place's tools, **When** it searches, **Then** it finds only those ([EVAL-FR-019](#eval-fr-019), [CORE-FR-156](spec-core.md#core-fr-156)).
-6. **Given** the server listing its search tool, **When** the developer asks for the main-context prediction, **Then** the search tool is listed with its tokens and counted in the total ([EVAL-FR-029](#eval-fr-029)).
+1. **Given** a charter declaring an mcp origin, **When** it is built, **Then** the host's own tool search is turned on ([EVAL-FR-016](#eval-fr-016)).
+2. **Given** a built charter, **When** the server starts, **Then** it lists every declared tool under the name it always had, off what the build kept, and reaches an mcp origin only for a call to one of its tools ([EVAL-FR-031](#eval-fr-031)).
+3. **Given** a subagent holding only some of an mcp origin's tools, **When** the charter is built, **Then** it is allowed those tools and no other tool of the mcp origin ([CORE-FR-156](spec-core.md#core-fr-156)).
+4. **Given** a charter declaring an mcp origin, **When** the developer asks for the main-context prediction, **Then** each mcp is listed with the tokens of its tools' names, and no schema is counted ([EVAL-FR-029](#eval-fr-029)).
+5. **Given** an mcp origin the build cannot reach or is not signed in to, or an mcp declaring a tool its mcp origin does not list, **When** the developer builds, **Then** the build stops, naming the mcp's file and why, and writes nothing ([EVAL-FR-031](#eval-fr-031)).
 
 ---
 
@@ -190,7 +196,7 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 - A span named by one end only — 31 days from the day named, or up to it ([EVAL-FR-030](#eval-fr-030)).
 - A session the developer closes without the agent stopping — what was kept at its last stop is what the summary counts.
 - Two sessions stopping at once — each is kept as its own line, and neither is lost ([EVAL-FR-009](#eval-fr-009)).
-- A place that is down when the server starts — its tools are weighed and searched as declared; calling one says the place is down, as before.
+- An mcp origin that is down when the agent works — its tools are listed as the build kept them; calling one says the mcp origin is down, as before.
 - A case whose prompt leads the agent to ask a question back — the case fails, saying the agent asked rather than acted ([EVAL-FR-022](#eval-fr-022)).
 - A case naming a skill or a guide the charter does not hold — the run is refused before any case runs, naming it.
 
@@ -223,13 +229,11 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 - <a id="eval-fr-014"></a>**EVAL-FR-014**: The engine MUST bring a skill that answers what the kept sessions cost, per session and per day, at prices the developer types in or at the model provider's published prices read when asked, naming the prices used and where and when they were read. The engine itself MUST price nothing.
 - <a id="eval-fr-015"></a>**EVAL-FR-015**: A session of a model no price is known for MUST be answered with its tokens and its cost said to be unknown.
 
-**A place's tools**
+**An mcp origin's tools**
 
-- <a id="eval-fr-016"></a>**EVAL-FR-016**: The one server MUST list a single tool that searches the declared tools when their schemas pass a ceiling, 5,000 tokens unless the repository sets another, and every tool otherwise.
-- <a id="eval-fr-017"></a>**EVAL-FR-017**: A search MUST name each matching tool with what it does, and a tool found MUST be listed from then on under the name it always had.
-- <a id="eval-fr-018"></a>**EVAL-FR-018**: A repository MUST be able to hold searching always on or always off, whatever the schemas weigh.
-- <a id="eval-fr-019"></a>**EVAL-FR-019**: A search MUST find only the tools the one searching may call ([CORE-FR-156](spec-core.md#core-fr-156)).
-- <a id="eval-fr-029"></a>**EVAL-FR-029**: Once the one server lists its search tool, the main-context prediction MUST count that tool ([EVAL-FR-001](#eval-fr-001)).
+- <a id="eval-fr-016"></a>**EVAL-FR-016**: The build MUST turn the host's own tool search on wherever the charter reaches an mcp origin, so a session opens with each tool's name and no schema.
+- <a id="eval-fr-029"></a>**EVAL-FR-029**: Once the charter declares an mcp origin, the main-context prediction MUST count the name of each tool the one server lists for it, and no schema ([EVAL-FR-001](#eval-fr-001)).
+- <a id="eval-fr-031"></a>**EVAL-FR-031**: The build MUST ask each mcp origin for its tools, under the developer's own credential, and keep those its mcps declare, with what each does and takes, beside it in the list of mcp origins. The server MUST list what was kept without reaching the mcp origin, reach it only for a call to one of its tools, and keep nothing between calls. An mcp origin the build cannot reach or is not signed in to, and a tool an mcp declares that its mcp origin does not list, MUST stop the build as an error under that mcp's file.
 
 **Evaluating the charter**
 
@@ -257,7 +261,7 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 - <a id="eval-sc-002"></a>**EVAL-SC-002**: An exact count and the estimate of one charter differ by no more than 15%.
 - <a id="eval-sc-003"></a>**EVAL-SC-003**: Being told a session's tokens adds zero tokens to what the model is sent.
 - <a id="eval-sc-004"></a>**EVAL-SC-004**: Counting a session at a stop adds less than half a second to that stop.
-- <a id="eval-sc-005"></a>**EVAL-SC-005**: A charter whose places declare tools past the ceiling sends the agent at least 80% fewer tokens of tool schemas when a session opens.
+- <a id="eval-sc-005"></a>**EVAL-SC-005**: A charter whose mcp origins declare 5,000 tokens of tool schemas or more sends the agent at least 80% fewer of them when a session opens.
 - <a id="eval-sc-006"></a>**EVAL-SC-006**: An author writes each evaluation case once, and it runs by the engine alone and under either framework with the same outcome.
 - <a id="eval-sc-007"></a>**EVAL-SC-007**: Summing up the sessions reads none kept outside the span, so it takes no longer after a year of sessions than after a month.
 

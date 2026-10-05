@@ -22,7 +22,7 @@ export interface Context {
   /** What it offers for the test files written beside the charter: listing,
    *  writing and removing them reads no charter. */
   readonly testAuthoringApp: ForAuthoringTests;
-  /** What it offers for the places the last build listed: signing in to them
+  /** What it offers for the mcp origins the last build listed: signing in to them
    *  reads no charter and writes no file. */
   readonly mcpConnectingApp: ForConnectingMcps;
   /** What it offers for the sessions kept on this machine: reading them back

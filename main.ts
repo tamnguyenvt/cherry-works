@@ -58,7 +58,18 @@ const agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>> = 
  *  ends in a separator. */
 const repoPath = pathToFileURL(`${process.cwd()}/`);
 
-const charterAuthoringApp: ForManagingCharter = new CharterAuthoring(repoPath, fileReader, yamlParser, fileWriter, vcs, tokenCounter, agentCliByProvider);
+const charterAuthoringApp: ForManagingCharter = new CharterAuthoring(
+  repoPath,
+  fileReader,
+  yamlParser,
+  fileWriter,
+  vcs,
+  tokenCounter,
+  agentCliByProvider,
+  mcpServers,
+  secrets,
+  authorizing,
+);
 
 const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath, fileReader, vcs);
 

@@ -25,7 +25,7 @@ const ORIGINS_FILE = "file:///repo/.cw/out/mcp-origins.json";
 const GITHUB = "https://api.githubcopilot.com/mcp/";
 const LINEAR = "https://mcp.linear.app/mcp";
 
-/** Four places at three addresses: two at one address under two paths, one
+/** Four mcp origins at three addresses: two at one address under two paths, one
  *  signed in to by token alone, and a local command taking no token, which
  *  signs in to nothing. */
 const ORIGINS: readonly McpOrigin[] = [
@@ -35,9 +35,9 @@ const ORIGINS: readonly McpOrigin[] = [
   { ids: ["local"], names: { "local": "local_0000" }, address: "npx -y some-server", command: { command: "npx", args: ["-y", "some-server"] }, auth: [] },
 ];
 
-/** Every place the command line is driven through over one list of places, the
+/** Every mcp origin the command line is driven through over one list of mcp origins, the
  *  store held in memory, and a repository whose files are watched for change. */
-const placesOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
+const mcpOriginsOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
   const held = new InMemoryFileReaders(origins === null ? {} : { [ORIGINS_FILE]: JSON.stringify({ origins }) });
   const secrets = new InMemorySecrets();
   const authorizing = new InMemoryAuthorizing();
@@ -76,7 +76,7 @@ const running = async (cli: Commander, argv: readonly string[], { atTerminal, an
 };
 
 test("signInStatus() answers one row per address taking a sign-in, its ids whatever their path, and asks nothing (FR-150)", async () => {
-  const { mcpConnectingApp, secrets } = placesOver();
+  const { mcpConnectingApp, secrets } = mcpOriginsOver();
   await secrets.writeSecret(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "t" }));
 
   assert.deepEqual((await mcpConnectingApp.signInStatus()).map((one) => one.data), [
@@ -85,8 +85,8 @@ test("signInStatus() answers one row per address taking a sign-in, its ids whate
   ]);
 });
 
-test("no list of places is refused, saying to build (FR-152)", async () => {
-  const { mcpConnectingApp } = placesOver(null);
+test("no list of mcp origins is refused, saying to build (FR-152)", async () => {
+  const { mcpConnectingApp } = mcpOriginsOver(null);
   await assert.rejects(mcpConnectingApp.signInStatus(), (raised: Error & { fix?: string }) => {
     assert.match(raised.message, /mcp-origins\.json/);
     assert.match(raised.fix ?? "", /cw build/);
@@ -94,20 +94,20 @@ test("no list of places is refused, saying to build (FR-152)", async () => {
   });
 });
 
-test("a token is kept under its address; one for no place, a way the address does not allow, or an empty token keeps nothing (FR-148)", async () => {
-  const { mcpConnectingApp, secrets } = placesOver();
+test("a token is kept under its address; one for no mcp origin, a way the address does not allow, or an empty token keeps nothing (FR-148)", async () => {
+  const { mcpConnectingApp, secrets } = mcpOriginsOver();
 
   await mcpConnectingApp.signInWithToken(LINEAR, "lin-token");
   assert.deepEqual(JSON.parse(secrets.secrets.get(LINEAR) ?? ""), { address: LINEAR, method: "token", accessToken: "lin-token" });
 
-  await assert.rejects(mcpConnectingApp.signInWithToken("https://nowhere.example/mcp", "t"), /No place/);
+  await assert.rejects(mcpConnectingApp.signInWithToken("https://nowhere.example/mcp", "t"), /No mcp origin/);
   await assert.rejects(mcpConnectingApp.signInWithOAuth(LINEAR, () => undefined), /allows token/);
   await assert.rejects(mcpConnectingApp.signInWithToken(GITHUB, "  "), /No token/);
   assert.deepEqual([...secrets.secrets.keys()], [LINEAR]);
 });
 
-test("an OAuth sign-in keeps what the place issued, with its registration (FR-148)", async () => {
-  const { mcpConnectingApp, secrets, authorizing } = placesOver();
+test("an OAuth sign-in keeps what the mcp origin issued, with its registration (FR-148)", async () => {
+  const { mcpConnectingApp, secrets, authorizing } = mcpOriginsOver();
   authorizing.oauthGrant = { accessToken: "a", refreshToken: "r", expiresAt: "2030-01-01T00:00:00.000Z", client: { clientId: "c", issuer: "https://github.com/" } };
   const shown: string[] = [];
 
@@ -118,7 +118,7 @@ test("an OAuth sign-in keeps what the place issued, with its registration (FR-14
 });
 
 test("cw mcp auth at a terminal asks about each address not signed in, then asks nothing the next time, and no file changes (Story 18, 1 – 3, 5)", async () => {
-  const { cli, secrets, held } = placesOver();
+  const { cli, secrets, held } = mcpOriginsOver();
   const filesBefore = await held.readFilesRecursively(repoPath);
 
   const firstRun = await running(cli, ["mcp", "auth"], { atTerminal: true, answers: ["token", "gh-secret", "lin-secret"] });
@@ -135,7 +135,7 @@ test("cw mcp auth at a terminal asks about each address not signed in, then asks
 });
 
 test("cw mcp auth signs in by OAuth where chosen, printing the address to open", async () => {
-  const { cli, secrets, authorizing } = placesOver();
+  const { cli, secrets, authorizing } = mcpOriginsOver();
 
   const run = await running(cli, ["mcp", "auth"], { atTerminal: true, answers: ["oauth", "lin-secret"] });
 
@@ -146,7 +146,7 @@ test("cw mcp auth signs in by OAuth where chosen, printing the address to open",
 });
 
 test("cw mcp auth without a terminal asks nothing, names each address not signed in, and fails (Story 18, 4)", async () => {
-  const { cli, secrets } = placesOver();
+  const { cli, secrets } = mcpOriginsOver();
 
   const run = await running(cli, ["mcp", "auth"], { atTerminal: false });
 
@@ -158,7 +158,7 @@ test("cw mcp auth without a terminal asks nothing, names each address not signed
 });
 
 test("cw mcp auth --status lists each address, its ids and whether signed in, and changes nothing (Story 18, 6)", async () => {
-  const { cli, secrets } = placesOver();
+  const { cli, secrets } = mcpOriginsOver();
   await secrets.writeSecret(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "lin-secret" }));
 
   const run = await running(cli, ["mcp", "auth", "--status"], { atTerminal: true });
@@ -173,7 +173,7 @@ test("cw mcp auth --status lists each address, its ids and whether signed in, an
 });
 
 test("cw mcp auth <id> signs in again at that id's address alone, whatever was kept (Story 18, 7)", async () => {
-  const { cli, secrets } = placesOver();
+  const { cli, secrets } = mcpOriginsOver();
   await secrets.writeSecret(GITHUB, JSON.stringify({ address: GITHUB, method: "token", accessToken: "old" }));
 
   const run = await running(cli, ["mcp", "auth", "github/web"], { atTerminal: true, answers: ["token", "new"] });
@@ -187,9 +187,9 @@ test("cw mcp auth <id> signs in again at that id's address alone, whatever was k
   assert.match(unknown.problems, /nowhere/);
 });
 
-test("a place at plain http on another machine is signed in to by no way, and keeps nothing, whatever the list says (FR-149)", async () => {
+test("an mcp origin at plain http on another machine is signed in to by no way, and keeps nothing, whatever the list says (FR-149)", async () => {
   const CLEARTEXT = "http://mcp.example/mcp";
-  const { mcpConnectingApp, secrets } = placesOver([{ ids: ["cleartext"], names: { "cleartext": "cleartext_0000" }, address: CLEARTEXT, endpoint: CLEARTEXT, auth: ["oauth", "token"] }]);
+  const { mcpConnectingApp, secrets } = mcpOriginsOver([{ ids: ["cleartext"], names: { "cleartext": "cleartext_0000" }, address: CLEARTEXT, endpoint: CLEARTEXT, auth: ["oauth", "token"] }]);
 
   await assert.rejects(mcpConnectingApp.signInWithToken(CLEARTEXT, "t"), { message: /plain http/, fix: /https:\/\// });
   await assert.rejects(mcpConnectingApp.signInWithOAuth(CLEARTEXT, () => undefined), /plain http/);

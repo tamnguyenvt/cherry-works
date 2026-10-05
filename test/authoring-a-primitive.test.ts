@@ -18,7 +18,7 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { contentHashOf } from "../src/hexagon/domain/models/helper.js";
-import { noPlacesReached } from "./no-places.js";
+import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
@@ -49,7 +49,7 @@ const contextOver = (charterAuthoringApp: CharterAuthoring) => ({
   charterAuthoringApp,
   charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS()),
   testAuthoringApp: new TestAuthoring(repoPath, new InMemoryFileReaders({}), new InMemoryFileOutput(new InMemoryFileReaders({}))),
-  mcpConnectingApp: noPlacesReached, sessionReviewingApp: noSessionsKept,
+  mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept,
 });
 
 test("a primitive added with a body is the file cw add writes, with the body under its headers (FR-117)", async () => {

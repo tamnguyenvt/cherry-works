@@ -26,6 +26,7 @@ import {
 } from "./dtos.js";
 import { catalogueOf } from "../domain/services/compile/catalogueFactory.js";
 import { executePlan, plan, previewPlan } from "../service/buildService.js";
+import type { McpReaching } from "../service/mcpOriginsRepo.js";
 import { WorkspaceSettingsSchema, type WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import { AGENT_PROVIDERS } from "../domain/models/AgentProvider.js";
 import { CHARTER_DIRECTORY, VENDOR_DIRECTORY, settingsFileIn } from "../domain/path.js";
@@ -48,6 +49,9 @@ import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
 import type { ForParsingYaml } from "../port/zdriven/ForParsingYaml.js";
 import type { ForCountingTokens } from "../port/zdriven/ForCountingTokens.js";
 import type { ForRunningAgentCli } from "../port/zdriven/ForRunningAgentCli.js";
+import type { ForCallingMcpServers } from "../port/zdriven/ForCallingMcpServers.js";
+import type { ForKeepingSecrets } from "../port/zdriven/ForKeepingSecrets.js";
+import type { ForAuthorizing } from "../port/zdriven/ForAuthorizing.js";
 import type { AgentProvider } from "../domain/models/AgentProvider.js";
 import { DEFAULT_MAIN_CONTEXT_CEILING } from "../domain/models/context/MainContext.js";
 import { estimatedMainContextOf, exactMainContextOf } from "../service/contextService.js";
@@ -69,6 +73,7 @@ export class CharterAuthoring implements ForManagingCharter {
   readonly #vcs: ForVCS;
   readonly #tokenCounter: ForCountingTokens;
   readonly #agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>>;
+  readonly #mcpReaching: McpReaching | undefined;
 
   constructor(
     /** The repository this speaks for, named once: every use case reads the
@@ -87,6 +92,13 @@ export class CharterAuthoring implements ForManagingCharter {
     /** Each agent's own command line, what a main context is counted exactly
      *  by (EVAL-FR-004). */
     agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>>,
+    /** The mcp origins' MCP servers, and the developer's credentials to them: what
+     *  a build asks each mcp origin for its tools with, and stops where one cannot
+     *  be asked (EVAL-FR-031). Without them, a build keeps the tools the last
+     *  one kept. */
+    mcpServers?: ForCallingMcpServers,
+    secrets?: ForKeepingSecrets,
+    authorizing?: ForAuthorizing,
   ) {
     this.#repoPath = repoPath;
     this.#fileReader = fileReader;
@@ -95,6 +107,8 @@ export class CharterAuthoring implements ForManagingCharter {
     this.#vcs = vcs;
     this.#tokenCounter = tokenCounter;
     this.#agentCliByProvider = agentCliByProvider;
+    this.#mcpReaching =
+      mcpServers === undefined || secrets === undefined || authorizing === undefined ? undefined : { mcpServers, secrets, authorizing };
   }
 
   /**
@@ -139,11 +153,13 @@ export class CharterAuthoring implements ForManagingCharter {
     );
     if (charter === undefined) return doctorOutcomeDTO(settings, heardFaultsByFile, undefined, drifted, [], this.#repoPath);
 
-    const { cleanupPlan, projectionPlan } = await plan(this.#repoPath, charter, settings.agents, this.#fileReader);
+    // Asked often, so no mcp origin is reached: what the last build kept is what a
+    // build would keep where nothing changed there.
+    const doctorPlan = await plan(this.#repoPath, charter, settings.agents, this.#fileReader, this.#mcpReaching, { refreshMcpOrigins: false });
     return doctorOutcomeDTO(
       settings,
       heardFaultsByFile,
-      previewPlan(cleanupPlan, projectionPlan),
+      doctorPlan instanceof FaultsByFile ? undefined : previewPlan(doctorPlan.cleanupPlan, doctorPlan.projectionPlan),
       drifted,
       settings.agents.map((agent) => estimatedMainContextOf(charter, agent, this.#tokenCounter)),
       this.#repoPath,
@@ -319,7 +335,11 @@ export class CharterAuthoring implements ForManagingCharter {
     const [charter, settings, faultsByFiles] = await this.#read();
     if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
 
-    const { cleanupPlan, projectionPlan } = await plan(this.#repoPath, charter, settings.agents, this.#fileReader);
+    // An mcp origin that cannot be asked for its tools, or lacks one declared,
+    // stops the build as an error in the charter does (EVAL-FR-031).
+    const buildPlan = await plan(this.#repoPath, charter, settings.agents, this.#fileReader, this.#mcpReaching, { refreshMcpOrigins: true });
+    if (buildPlan instanceof FaultsByFile) return faultsByFileDTO(buildPlan, this.#repoPath);
+    const { cleanupPlan, projectionPlan } = buildPlan;
 
     // What it will have done, read off the plans before anything moves: a build
     // says the same thing a preview of it said (FR-022).
@@ -341,7 +361,11 @@ export class CharterAuthoring implements ForManagingCharter {
     const [charter, settings, faultsByFiles] = await this.#read();
     if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
 
-    const { cleanupPlan, projectionPlan } = await plan(this.#repoPath, charter, settings.agents, this.#fileReader);
+    // An mcp origin that cannot be asked for its tools, or lacks one declared,
+    // stops the build as an error in the charter does (EVAL-FR-031).
+    const buildPlan = await plan(this.#repoPath, charter, settings.agents, this.#fileReader, this.#mcpReaching, { refreshMcpOrigins: true });
+    if (buildPlan instanceof FaultsByFile) return faultsByFileDTO(buildPlan, this.#repoPath);
+    const { cleanupPlan, projectionPlan } = buildPlan;
     return planSummaryDTO(previewPlan(cleanupPlan, projectionPlan));
   }
 

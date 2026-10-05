@@ -3,9 +3,10 @@ import type { CharterRoot } from "../domain/models/charter/CharterRoot.js";
 import type { CharterOutput } from "../domain/models/output/CharterOutput.js";
 import { isStamped } from "../domain/models/output/StampedDocument.js";
 import { compile } from "../domain/services/compile/compileService.js";
+import { loadToolsByOriginKey, type McpReaching } from "./mcpOriginsRepo.js";
 import { agentProviderFolderIn, outFolderIn } from "../domain/path.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
-import { DomainFault } from "../domain/models/DomainFault.js";
+import { DomainFault, FaultsByFile } from "../domain/models/DomainFault.js";
 import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
 
 /**
@@ -40,16 +41,26 @@ export interface PlannedFile {
  * Reads, and only reads. Which agents are compiled for is what the repository
  * said at setup, never what happens to be installed on the machine running this
  * (FR-033); one naming none still gets the surface every reader shares (FR-019).
+ *
+ * What each mcp origin lists is asked of it through `mcpReaching` where
+ * `refreshMcpOrigins` says so, and read off what the last build kept otherwise;
+ * an mcp origin that cannot be asked, or lacks a tool declared, is answered as
+ * its faults in place of a plan (EVAL-FR-031).
  */
 export async function plan(
   repo: URL,
   charter: CharterRoot,
   agentProviders: readonly AgentProvider[],
   fileReaders: ForReadingFiles,
-): Promise<Plan> {
+  mcpReaching: McpReaching | undefined,
+  { refreshMcpOrigins }: { readonly refreshMcpOrigins: boolean },
+): Promise<Plan | FaultsByFile> {
+  const { toolsByOriginKey, faultsByFile } = await loadToolsByOriginKey(repo, charter, fileReaders, mcpReaching, refreshMcpOrigins);
+  if (!faultsByFile.isEmpty) return faultsByFile;
+
   const [cleanupPlan, projectionPlan] = await Promise.all([
     planForCleanup(repo, agentProviders, fileReaders),
-    planForProjection(repo, compile(charter, agentProviders), fileReaders),
+    planForProjection(repo, compile(charter, agentProviders, toolsByOriginKey), fileReaders),
   ]);
 
   return { cleanupPlan, projectionPlan };
