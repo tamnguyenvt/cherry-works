@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A skill or a playbook with `disable-user-invocation: true` in its headers is no longer offered as a `/` command; the agent still opens it, for instance as a step of a playbook.
+
 - `cw test` now passes a case that expects a guide without `globs` to come up, since that guide comes up every turn.
 
 ## 0.5.0 — 2026-10-02

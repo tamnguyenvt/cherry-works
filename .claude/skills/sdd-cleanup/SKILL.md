@@ -1,6 +1,7 @@
 ---
 name: sdd-cleanup
 description: "List the story and phase branches whose work has already landed, and delete the ones the user confirms, with their worktrees. Use when: sdd cleanup; clean up branches; delete merged branches; prune branches."
+user-invocable: false
 ---
 
 Read and follow @../../../.cw/out/skill/sdd-cleanup/index.md.

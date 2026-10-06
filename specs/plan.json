@@ -191,6 +191,13 @@
       ]
     },
     {
+      "id": "CORE Story 28",
+      "title": "Keep a step skill out of the user's commands",
+      "dependsOn": [
+        "CORE Story 26"
+      ]
+    },
+    {
       "id": "EVAL Story 1",
       "title": "See what the charter loads into the agent's context",
       "dependsOn": [

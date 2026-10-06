@@ -1,6 +1,7 @@
 ---
 name: sdd-analyze
 description: "Check the spec set for gaps, contradictions and format faults, and report each by id with its fix; changes nothing. Use when: analyze the spec; check the spec; review the spec."
+user-invocable: false
 ---
 
 Read and follow @../../../.cw/out/skill/sdd-analyze/index.md.

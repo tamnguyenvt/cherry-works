@@ -261,6 +261,22 @@ test("a playbook is loaded the way a skill is, since this host has one kind for 
   );
 });
 
+test("a skill or a playbook marked disable-user-invocation is no command the user types, and still a skill the agent opens (CORE-FR-173, CORE-FR-174)", async () => {
+  const files = await projected({
+    [at("playbook/ship/index.md")]: primitive("playbook", "ship", "Run [[ship-review]], then tag.", ['triggers: ["ship this"]', "disable-user-invocation: false"]),
+    [at("skill/ship-review/index.md")]: primitive("skill", "ship-review", "Review what ships.", ['triggers: ["review the release"]', "disable-user-invocation: true"]),
+    [at("playbook/hotfix-step/index.md")]: primitive("playbook", "hotfix-step", "One step of a hotfix.", ['triggers: ["patch it"]', "disable-user-invocation: true"]),
+    [at("skill/explain/index.md")]: primitive("skill", "explain", "Explain the code.", ['triggers: ["explain this"]']),
+  });
+
+  for (const hiddenSkillFile of [".claude/skills/ship-review/SKILL.md", ".claude/skills/hotfix-step/SKILL.md"]) {
+    assert.match(files[hiddenSkillFile] ?? "", /^---\nname: [a-z-]+\ndescription: .+\nuser-invocable: false\n---\n/, hiddenSkillFile);
+    assert.match(files[hiddenSkillFile] ?? "", /Read and follow @/, hiddenSkillFile);
+  }
+  for (const commandSkillFile of [".claude/skills/ship/SKILL.md", ".claude/skills/explain/SKILL.md"])
+    assert.doesNotMatch(files[commandSkillFile] ?? "", /user-invocable/, commandSkillFile);
+});
+
 test("a posture compiles to the settings this host enforces, as JSON (FR-018)", async () => {
   const files = await projected({
     [at("posture/sandboxed/index.md")]: primitive("posture", "sandboxed", "What may be run unattended.", [

@@ -3,6 +3,7 @@ kind: skill
 id: sdd-finish
 description: Finish the story, bug fix or phase you stand on exactly as manifest.md says — merge, squash-merge or pull request, into the branch it names — then clean its worktree up.
 triggers: ["finish the story", "finish the task", "merge branch", "finish the phase"]
+disable-user-invocation: true
 rationale: sdd-concept
 ---
 

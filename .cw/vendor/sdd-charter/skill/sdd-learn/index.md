@@ -3,6 +3,7 @@ kind: skill
 id: sdd-learn
 description: Write what this conversation taught — a correction, a preference, a constraint — as a note in learning/inbox.
 triggers: ["learn from the conversation"]
+disable-user-invocation: true
 rationale: sdd-why-learnings-go-to-the-inbox
 ---
 

@@ -2,9 +2,9 @@
 
 **Created**: 2026-08-30
 
-**Updated**: 2026-10-02
+**Updated**: 2026-10-06
 
-**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by."
+**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types; let its author say so in its headers."
 
 ## Overview
 
@@ -82,6 +82,11 @@ A single charter covering design, planning and implementation at once has to be 
 ### Session 2026-10-04
 
 - Q: Should a vendor's test cases be installed with it and run here? → A: No: a vendor tests itself in its own repository, and only the repository's own tests run here ([CORE-FR-042](#core-fr-042), [CORE-FR-014](#core-fr-014)).
+
+### Session 2026-10-06
+
+- Q: What is the header called, and what does `disable-user-invocation: true` keep a skill or a playbook from? → A: Only from being a command the user types; the agent still opens it when its description matches or another playbook names it ([CORE-FR-174](#core-fr-174)). It is a step of something else, not a way of hiding it from the agent.
+- Q: What is a skill or a playbook that does not say? → A: A command, as before: `disable-user-invocation` is `false` unless written, so no charter changes by itself ([CORE-FR-173](#core-fr-173)). Marking a vendor's step skills is that vendor's to do in its own repository.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -654,10 +659,30 @@ An author names primitives everywhere: the corpus a guide cites, the mixin it pu
 
 ---
 
+### CORE Story 28 - Keep a step skill out of the user's commands (Priority: P2)
+
+**Status**: Done
+
+A charter's playbook is the command a user runs, and the skills it calls are its steps: `/sdd-implement` runs a review and a verification of its own. Before this, every skill and every playbook was offered to the user as a command, so the list of commands held every step as well, and a user could run a step on its own, outside the playbook it belongs to. After this, an author writes `disable-user-invocation: true` in a skill's or a playbook's headers, and the host no longer offers it as a command; the agent still opens it whenever its description matches or a playbook sends it there.
+
+**Why this priority**: The commands a user sees are the charter's interface. A list holding every step makes the few that matter hard to find, and invites running a step out of the order it was written for.
+
+**Independent Test**: Author a playbook `ship` with `disable-user-invocation: false`, a skill `ship-review` with `disable-user-invocation: true` that `ship` names, and a skill `explain` with no such header. Build for Claude, and confirm `ship` and `explain` are offered as commands, `ship-review` is not, and the agent still opens `ship-review` when `ship` reaches that step. Then set `disable-user-invocation: maybe` and confirm the charter is refused under that file.
+
+**Acceptance Scenarios**:
+
+1. **Given** a skill or a playbook declaring `disable-user-invocation: true`, **When** the charter is built for a host, **Then** the host does not offer it as a command the user types, and the agent can still open it ([CORE-FR-174](#core-fr-174)).
+2. **Given** a skill or a playbook declaring `disable-user-invocation: false`, or not declaring it, **When** the charter is built, **Then** it is offered as a command exactly as before ([CORE-FR-173](#core-fr-173)).
+3. **Given** a skill built with `disable-user-invocation: true`, **When** the header is removed and the charter built again, **Then** it is offered as a command again ([CORE-FR-174](#core-fr-174)).
+4. **Given** a skill or a playbook whose `disable-user-invocation` is not `true` or `false`, **When** the charter is checked, **Then** it is an error under its file naming how the header is written, and nothing is built ([CORE-FR-173](#core-fr-173)).
+
+---
+
 ### Edge Cases
 
 **The charter and its engine**
 
+- A skill with `disable-user-invocation: true` that no playbook names — still built and still opened by the agent when its description matches; it is only not a command ([CORE-FR-174](#core-fr-174)).
 - A primitive declares a kind that is not in the closed set — validation fails and names the file and the offending kind.
 - Two primitives share an id, wherever they were authored — validation fails as a collision and names both files.
 - A mixin tries to pull in another mixin — validation fails, because mixins are leaves.
@@ -808,6 +833,8 @@ An author names primitives everywhere: the corpus a guide cites, the mixin it pu
 - <a id="core-fr-170"></a>**CORE-FR-170**: Vendoring MUST be one level deep: a source that holds vendored content of its own at the version asked for MUST be refused, installing nothing, since its charter may lean on primitives that would not be installed with it.
 - <a id="core-fr-171"></a>**CORE-FR-171**: Every name a host is given for a primitive — a skill's folder, a rule's file, a subagent's name — MUST be its id, `/` written as `-`, without its kind, so a skill `sdd-plan` is invoked as `/sdd-plan`. A file a build wrote under the name an earlier version gave MUST be deleted by the next build.
 - <a id="core-fr-172"></a>**CORE-FR-172**: A primitive MUST be named by its id alone, wherever it is named. Where a field holds nothing but names — `rationale`, `mixins`, a test case's expectation, a command's argument — the name MUST be the bare id. Where it sits among other text — a body, a sensor's `run`, an agent's `tools` — it MUST be written `[[<id>]]`, and only a name so written is a reference. Which kind a name refers to MUST be read off the primitive it names; where a field takes one kind, an id of another MUST be read as one nothing of that kind answers to.
+- <a id="core-fr-173"></a>**CORE-FR-173**: A `skill` and a `playbook` MAY declare `disable-user-invocation`, `true` or `false`; one that does not is `false`. Any other value MUST be an error under its file, and nothing is built.
+- <a id="core-fr-174"></a>**CORE-FR-174**: A build for a host MUST keep every skill and playbook declaring `disable-user-invocation: true` out of the commands that host offers its user, and MUST still give it to the host as know-how the agent opens when its description matches what is asked. Every other skill and playbook MUST be offered as a command, as before. Changing the header changes what the host is given at the next build.
 - <a id="core-fr-043"></a>**CORE-FR-043**: The system MUST attach no meaning to a vendored directory's name. Any grouping such a name implies belongs to the people using it, not to the system.
 - <a id="core-fr-044"></a>**CORE-FR-044**: The system MUST install vendored content only under the vendor directory, beside the charter rather than inside it, so no vendor source can land on a kind directory or on what this repository authored.
 - <a id="core-fr-045"></a>**CORE-FR-045**: The system MUST allow more than one vendor source per repository.
@@ -1074,6 +1101,7 @@ The shape of each is in the data model.
 - <a id="core-sc-043"></a>**CORE-SC-043**: Every primitive of every layer is a folder holding its `index.md` at `<kind>/<id>/`, and every `./<file>` its body names opens from its compiled document as it does from its `index.md`, for 100% of them.
 - <a id="core-sc-044"></a>**CORE-SC-044**: A user invokes 100% of a charter's skills and playbooks by the id their author wrote, with no kind in front.
 - <a id="core-sc-045"></a>**CORE-SC-045**: An author writes no kind in front of any name: 100% of the references a charter holds are an id, bare or as `[[<id>]]`.
+- <a id="core-sc-046"></a>**CORE-SC-046**: A user is offered as commands 0 of the skills and playbooks marked `disable-user-invocation: true`, and the agent opens 100% of them as it did before they were marked.
 
 ## Assumptions
 
@@ -1167,4 +1195,6 @@ The shape of each is in the data model.
 - Running a script, or filling a template, on the agent's behalf. No placeholder in a template is filled by the build.
 - A file that is not text, such as an image or an archive, kept as a template or among a script's files.
 - Copying a script or a template into a host's own skill folder. There is one built copy, in the output folder, and every name of it points there.
+- Keeping a skill or a playbook from the agent itself, or from any other kind than those two: `disable-user-invocation` only decides whether the user is offered it as a command.
+- Marking a vendor's skills as steps from this repository: a vendor marks its own.
 - Highlighting a template's body in the portal by its language, and editing the files of a script's folder in the portal: they are written in an editor.

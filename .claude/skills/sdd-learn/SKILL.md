@@ -1,6 +1,7 @@
 ---
 name: sdd-learn
 description: "Write what this conversation taught — a correction, a preference, a constraint — as a note in learning/inbox. Use when: learn from the conversation."
+user-invocable: false
 ---
 
 Read and follow @../../../.cw/out/skill/sdd-learn/index.md.

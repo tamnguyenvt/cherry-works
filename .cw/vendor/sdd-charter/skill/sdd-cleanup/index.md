@@ -3,6 +3,7 @@ kind: skill
 id: sdd-cleanup
 description: List the story and phase branches whose work has already landed, and delete the ones the user confirms, with their worktrees.
 triggers: ["sdd cleanup", "clean up branches", "delete merged branches", "prune branches"]
+disable-user-invocation: true
 rationale: sdd-concept
 ---
 

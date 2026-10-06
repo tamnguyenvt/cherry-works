@@ -4,6 +4,7 @@ id: sdd-cleanup
 description: List the story and phase branches whose work has already landed, and delete the ones the user confirms, with their worktrees.
 rationale: sdd-concept
 triggers: ["sdd cleanup", "clean up branches", "delete merged branches", "prune branches"]
+disable-user-invocation: true
 ---
 
 Read `<spec folder>/manifest.md` (the folder is in `.sdd/settings.json`): its

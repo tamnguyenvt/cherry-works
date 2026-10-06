@@ -40,6 +40,13 @@ export const GoodLineSchema = z.string().regex(/\S/);
  *  to read. */
 export const GoodArraySchema = z.array(GoodLineSchema).min(1).readonly();
 
+/** A yes or a no: `true` or `false`, read as YAML reads it off a file, or as
+ *  the line an author typed at `cw add` or in the portal. */
+export const FlagSchema = z
+  .unknown()
+  .refine((value) => [true, false, "true", "false"].includes(value as never), { message: "A yes or no header is written true or false." })
+  .transform((value) => value === true || value === "true");
+
 /** The headers every kind declares, whatever else its own contract asks for
  *  (data-model §1). Each kind's own headers extend these, so what every
  *  primitive holds is written once. */

@@ -1,6 +1,7 @@
 ---
 name: sdd-review
 description: "Review the change against the story's scenarios, FR and SC — nothing missing, nothing beyond them — and for security issues. Use when: review implementation."
+user-invocable: false
 ---
 
 Read and follow @../../../.cw/out/skill/sdd-review/index.md.

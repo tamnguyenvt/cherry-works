@@ -117,7 +117,11 @@ test("cw kinds <kind> names what that kind's contract requires, and no more (FR-
 test("a header read from a closed set carries its values, and no other header does (FR-118)", async () => {
   for (const kind of KINDS)
     for (const { field, allowedValues } of primitiveHeadersOf(kind))
-      assert.deepEqual(allowedValues, kind === "sensor" && field === "signal" ? SIGNALS : undefined, `${kind} ${field}`);
+      assert.deepEqual(
+        allowedValues,
+        kind === "sensor" && field === "signal" ? SIGNALS : field === "disable-user-invocation" ? ["true", "false"] : undefined,
+        `${kind} ${field}`,
+      );
 
   const { results } = await asking(["kinds", "sensor"]);
   assert.match(results, new RegExp(`signal\\s+line, one of ${SIGNALS.join(", ")}\n`));

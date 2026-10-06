@@ -7,6 +7,7 @@
  *  is written as it is. */
 export function formatFrontmatterValue(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map((one) => JSON.stringify(one)).join(", ")}]`;
+  if (typeof value === "boolean") return String(value);
   const line = String(value);
   return YAML_READS_OTHERWISE.test(line) ? JSON.stringify(line) : line;
 }

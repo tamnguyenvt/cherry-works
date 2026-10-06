@@ -190,10 +190,15 @@ function claudeDocumentComponentOf(sc: Primitive, compiledFile: string, agentToo
     // One kind of this host for the two the charter loads when the request calls
     // for them: what decides that the body is worth opening is the description,
     // because that line is all this host reads before deciding (FR-013), and
-    // composing it is the primitive's.
+    // composing it is the primitive's. One that is a step of another is kept
+    // out of the user's commands (CORE-FR-174).
     case SkillPrimitive.kind:
     case PlaybookPrimitive.kind:
-      return ClaudeSkill.of(name, { description: sc.description() }, pointerTo(`../${compiledFromClaudeFolder}`));
+      return ClaudeSkill.of(
+        name,
+        { description: sc.description(), ...(sc.headers["disable-user-invocation"] === true ? { "user-invocable": false } : {}) },
+        pointerTo(`../${compiledFromClaudeFolder}`),
+      );
     default:
       return undefined;
   }

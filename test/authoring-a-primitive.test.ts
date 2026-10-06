@@ -66,6 +66,17 @@ test("a primitive added with a body is the file cw add writes, with the body und
   assert.equal(written, `${scaffolded.trimEnd()}\n\n# No any\n\nNever write \`any\`.\n`);
 });
 
+test("a disable-user-invocation answered as a line is written as the yes or no it is, and read back so (CORE-FR-173)", async () => {
+  const { charterAuthoringApp, fileAt } = authoring();
+
+  await charterAuthoringApp.add("skill", "ship-review", { description: "Review what ships.", triggers: ["review the release"], "disable-user-invocation": "true" });
+
+  const written = (await fileAt(".cw/charter/skill/ship-review/index.md")) ?? "";
+  assert.match(written, /\ndisable-user-invocation: true\n/);
+  const { data } = DataDTOs.Primitive.parse(await charterAuthoringApp.open("ship-review"));
+  assert.equal(data.headers["disable-user-invocation"], "true");
+});
+
 test("an id another layer already holds is refused naming its file, and nothing is written (FR-014)", async () => {
   const { charterAuthoringApp, fileAt } = authoring({ [at(".cw/vendor/team/guide/no-any/index.md")]: guide("no-any") });
 

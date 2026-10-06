@@ -1,10 +1,13 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, FlagSchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
 import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** An ordered procedure loaded when a request matches its triggers (FR-004). */
 export const PlaybookHeadersSchema = CommonHeadersSchema.extend({
   triggers: GoodArraySchema,
+  /** Whether it is kept out of the commands its host offers the user, being a
+   *  step of something else; the agent still opens it (CORE-FR-173). */
+  "disable-user-invocation": FlagSchema.optional(),
 });
 export type PlaybookHeaders = Readonly<z.infer<typeof PlaybookHeadersSchema>>;
 

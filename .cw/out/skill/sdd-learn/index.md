@@ -4,6 +4,7 @@ id: sdd-learn
 description: Write what this conversation taught — a correction, a preference, a constraint — as a note in learning/inbox.
 rationale: sdd-why-learnings-go-to-the-inbox
 triggers: ["learn from the conversation"]
+disable-user-invocation: true
 ---
 
 Find what this conversation taught that the next one should know: a correction

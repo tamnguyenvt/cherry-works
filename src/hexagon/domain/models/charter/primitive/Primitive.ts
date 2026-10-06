@@ -10,7 +10,7 @@ import { SensorPrimitive } from "./SensorPrimitive.js";
 import { SkillPrimitive } from "./SkillPrimitive.js";
 import { ScriptPrimitive } from "./ScriptPrimitive.js";
 import { TemplatePrimitive } from "./TemplatePrimitive.js";
-import { BasePrimitive, CommonHeadersSchema, DELIMITER, type AssetFile } from "./BasePrimitive.js";
+import { BasePrimitive, CommonHeadersSchema, DELIMITER, FlagSchema, type AssetFile } from "./BasePrimitive.js";
 import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 import { CharterPrimitiveFault, throwAggregateError, type DomainFault } from "../../DomainFault.js";
 import { formatFrontmatterValue } from "../../helper.js";
@@ -130,7 +130,7 @@ export function primitiveHeadersOf(kind: Kind): readonly PrimitiveHeader[] {
         field,
         heldType instanceof z.ZodArray ? "list" : "line",
         field in required,
-        heldType instanceof z.ZodEnum ? (heldType.options as readonly string[]) : undefined,
+        heldType instanceof z.ZodEnum ? (heldType.options as readonly string[]) : heldType === FlagSchema ? ["true", "false"] : undefined,
       );
     });
 }

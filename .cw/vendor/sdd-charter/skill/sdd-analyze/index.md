@@ -3,6 +3,7 @@ kind: skill
 id: sdd-analyze
 description: Check the spec set for gaps, contradictions and format faults, and report each by id with its fix; changes nothing.
 triggers: ["analyze the spec", "check the spec", "review the spec"]
+disable-user-invocation: true
 rationale: sdd-concept
 ---
 

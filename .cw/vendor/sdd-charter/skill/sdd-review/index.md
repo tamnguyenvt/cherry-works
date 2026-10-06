@@ -3,6 +3,7 @@ kind: skill
 id: sdd-review
 description: Review the change against the story's scenarios, FR and SC — nothing missing, nothing beyond them — and for security issues.
 triggers: ["review implementation"]
+disable-user-invocation: true
 rationale: sdd-concept
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: sdd-verify
 description: "Prove the change works with evidence produced this turn — tests, static checks, and a manual run of what the story describes. Use when: verify changes."
+user-invocable: false
 ---
 
 Read and follow @../../../.cw/out/skill/sdd-verify/index.md.

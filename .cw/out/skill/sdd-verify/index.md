@@ -3,6 +3,7 @@ kind: skill
 id: sdd-verify
 description: Prove the change works with evidence produced this turn — tests, static checks, and a manual run of what the story describes.
 triggers: ["verify changes"]
+disable-user-invocation: true
 ---
 
 1. Run the full test suite and every static check the project defines —

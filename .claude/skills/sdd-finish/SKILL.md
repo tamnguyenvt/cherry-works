@@ -1,6 +1,7 @@
 ---
 name: sdd-finish
 description: "Finish the story, bug fix or phase you stand on exactly as manifest.md says — merge, squash-merge or pull request, into the branch it names — then clean its worktree up. Use when: finish the story; finish the task; merge branch; finish the phase."
+user-invocable: false
 ---
 
 Read and follow @../../../.cw/out/skill/sdd-finish/index.md.

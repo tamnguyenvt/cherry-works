@@ -165,10 +165,11 @@ export function primitiveDTO(primitive: Primitive): DataDTOs.Primitive {
       file,
       layerName,
       // A header nobody wrote is left out rather than carried as undefined: this
-      // says what the file declared.
+      // says what the file declared. A yes or no is carried as the line an
+      // author types for it.
       headers: Object.fromEntries(
-        Object.entries(primitive.headers).filter(
-          (entry): entry is [string, string | readonly string[]] => entry[1] !== undefined,
+        Object.entries(primitive.headers).flatMap(([field, value]: [string, string | readonly string[] | boolean | undefined]) =>
+          value === undefined ? [] : [[field, typeof value === "boolean" ? String(value) : value]],
         ),
       ),
       body,

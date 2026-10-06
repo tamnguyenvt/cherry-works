@@ -1,11 +1,14 @@
 import { CLAUDE_DIRECTORY } from "../../../../path.js";
 import { DocumentBasedComponent } from "../DocumentBasedComponent.js";
 
-/** A skill's frontmatter: the name its directory carries, and the description
- *  this host reads on every turn to decide whether to open the body. */
+/** A skill's frontmatter: the name its directory carries, the description
+ *  this host reads on every turn to decide whether to open the body, and,
+ *  where it is no command of the user's, `user-invocable: false`: left out of
+ *  the `/` menu, still opened by the agent (CORE-FR-174). */
 export interface ClaudeSkillHeaders {
   readonly name: string;
   readonly description: string;
+  readonly "user-invocable"?: false;
 }
 
 /** What a skill is compiled with, its name aside: that is what the component is
