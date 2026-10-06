@@ -1,4 +1,4 @@
-import { copyFile } from "node:fs/promises";
+import { copyFile, readFile } from "node:fs/promises";
 import { defineConfig } from "tsup";
 import packageJson from "./package.json" with { type: "json" };
 
@@ -20,8 +20,25 @@ export default defineConfig([
     format: ["esm"],
     target: "node22",
     // A `.mjs` under the engine's own layer is an asset it puts down, taken
-    // as its text (scripts/moduleLoader.mjs does the same under tsx).
-    loader: { ".mjs": "text" },
+    // as its text (scripts/moduleLoader.mjs does the same under tsx). Only
+    // there: a dependency's `.mjs` is code.
+    esbuildPlugins: [
+      {
+        name: "builtin-asset-text",
+        setup(build) {
+          build.onLoad({ filter: /\/src\/hexagon\/domain\/models\/charter\/builtin\/.+\.mjs$/ }, async ({ path }) => ({
+            contents: await readFile(path, "utf8"),
+            loader: "text",
+          }));
+        },
+      },
+    ],
+    // Every dependency is bundled in, of each only what cw reaches: installing
+    // cw then adds this file and nothing else (SC-029). Some of them are
+    // CommonJS and require Node's own modules, which an ES module cannot do
+    // unless handed a require.
+    noExternal: [/./],
+    banner: { js: 'import { createRequire as createBannerRequire } from "node:module"; const require = createBannerRequire(import.meta.url);' },
     outDir: "dist",
     // The page and the launcher write dist/ alongside; cleaning them here
     // would race them.

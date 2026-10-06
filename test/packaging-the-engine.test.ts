@@ -26,7 +26,9 @@ async function importedPackagesOf(builtFile: string): Promise<Set<string>> {
 }
 
 test("what the engine imports is exactly what the package depends on (FR-129)", async () => {
-  assert.deepEqual([...(await importedPackagesOf("dist/main.js"))].sort(), Object.keys(packageJson.dependencies).sort());
+  // Every dependency is bundled in, so a package with none is the expected one.
+  const { dependencies = {} } = packageJson as { dependencies?: Record<string, string> };
+  assert.deepEqual([...(await importedPackagesOf("dist/main.js"))].sort(), Object.keys(dependencies).sort());
 });
 
 test("the launcher imports no package, so it loads on any Node (FR-128)", async () => {

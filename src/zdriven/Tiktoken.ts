@@ -1,4 +1,5 @@
-import { getEncoding, type Tiktoken as Encoding } from "js-tiktoken";
+import { Tiktoken as Encoding } from "js-tiktoken/lite";
+import o200kBase from "js-tiktoken/ranks/o200k_base";
 import type { ForCountingTokens } from "#hexagon/port/zdriven/ForCountingTokens.js";
 
 /**
@@ -14,7 +15,7 @@ export class Tiktoken implements ForCountingTokens {
   #encoding: Encoding | undefined;
 
   countTokens(text: string): number {
-    this.#encoding ??= getEncoding("o200k_base");
+    this.#encoding ??= new Encoding(o200kBase);
     return this.#encoding.encode(text).length;
   }
 }
