@@ -115,12 +115,16 @@ Each kind comes up at a different time:
 | `guide` | a touched file matches one of its `globs`, or on every turn when it has no globs |
 | `sensor` | the `signal` it names is raised, and the harness runs its `run` command |
 | `skill` | one of its `triggers` matches the request, or it is called by name as `/<id>` |
-| `playbook` | one of its `triggers` matches; its body is a sequence of skills |
+| `playbook` | one of its `triggers` matches, or it is called as `/<id>`; its body is a sequence of skills |
 | `agent` | it is spawned by its id, with only the `tools` it lists |
 | `posture` | always, wherever the host can be told what to `allow` and `deny` |
 | `corpus` | a primitive's `rationale` cites it, to give the reasoning behind a rule |
 | `mixin` | never on its own; its body is lent to the primitives that pull it in |
 | `mcp` | a primitive's body names it as `[[<id>]]`: an mcp origin outside the repository, reached through `cw mcp serve` |
+
+A skill or a playbook that is only a step of another can say
+`disable-user-invocation: true`: it is then not offered as a `/` command, and
+the agent still opens it when its triggers match or a playbook sends it there.
 
 `cw kinds <kind>` gives the exact fields each kind takes. An id names exactly
 one primitive across the whole charter, whatever its kind. If two files claim
@@ -151,7 +155,10 @@ agent reads it.
 | `cw remove <id> [--yes]` | Delete a primitive this repository authored |
 | `cw explain <id>` | Show which file declares an id, what it pulls in and which tests name it |
 | `cw doctor` | Check the agents, the charter, the vendor sources and the compiled output |
+| `cw context [--exact]` | Say how many tokens the charter puts into the agent's context when a session opens |
+| `cw sessions [--since] [--until] [--json]` | Sum up the tokens of the sessions kept on this machine, by day and by session |
 | `cw test` | Run every case in `.cw/test/` against the charter |
+| `cw eval` | Put every case in `.cw/eval/` to the real agent under promptfoo |
 | `cw suite add \| edit \| remove` | Manage test files |
 | `cw vendor add <source> [--ref] \| remove \| list` | Install, update, remove or list vendor sources |
 | `cw portal [--port]` | Open the charter in a browser on this machine |
@@ -216,15 +223,95 @@ one:
 {
   "description": "The TypeScript guide comes up on source files.",
   "cases": [
-    { "do": { "touchFile": "src/one.ts" }, "expect": { "activate": "guide:no-any" } },
-    { "when": "Stop", "expect": { "run": "sensor:lint" } },
+    { "do": { "touchFile": "src/one.ts" }, "expect": { "activate": "no-any" } },
+    { "when": "Stop", "expect": { "run": "lint" } },
     { "do": { "touchFile": ".env" }, "expect": { "allow": false } }
   ]
 }
 ```
 
 `cw test` resolves each case against the charter and reports the ones that no
-longer hold.
+longer hold. It runs no agent and costs nothing, so it fits in CI.
+
+## Evaluating against the real agent
+
+`cw test` proves what the charter says; `cw eval` proves what the agent does
+with it. A file in `.cw/eval/` holds prompts and what is expected of each:
+
+```json
+{
+  "description": "Planning goes through the planning skill.",
+  "cases": [
+    { "prompt": "plan this feature: export a report as PDF", "expect": { "invoke": "sdd-plan", "maxTokens": 200000 } },
+    { "prompt": "add a function that totals an invoice", "expect": { "follow": "no-single-word-naming" } }
+  ]
+}
+```
+
+Each case expects at least one of:
+
+| Expectation | Passes when |
+|---|---|
+| `invoke: <id>` | the agent invoked that skill or playbook |
+| `follow: <id>` | a model judge finds the agent followed that guide |
+| `maxTokens: <n>` | the case used no more than that many tokens |
+
+```bash
+cw eval
+```
+
+Every case is handed to [promptfoo](https://www.promptfoo.dev), which puts its
+prompt to Claude Code run headless, in a worktree of your last commit with the
+charter built, so your working tree is never touched. You never write a
+promptfoo configuration. The first run installs promptfoo and the Claude Agent
+SDK under `~/.cherry-works/promptfoo/`, and later runs reuse them.
+
+The report gives each case's outcome and tokens, and the run's total. A case
+that misses what it expects fails the run, with what the agent did instead.
+It runs on whatever Claude Code is signed in with, or on `ANTHROPIC_API_KEY`
+when set, and spends real tokens: commit before you run it, and keep the cases
+few.
+
+## What the charter costs
+
+Everything the charter loads when a session opens — always-on guides, every
+skill's description, every subagent's — is paid for on every turn.
+
+```bash
+cw context           # each primitive's tokens, the largest first, estimated
+cw context --exact   # counted through the agent's own command line
+```
+
+A guide with `globs` is listed apart: it is loaded only when a file it names is
+touched. `cw build` prints the total in one line, the portal shows the same
+list, and `cw doctor` warns once the total passes `mainContextCeiling` in
+`.cw/settings.json` (20,000 tokens unless you set it).
+
+Once a session runs, the engine's own Stop hook counts what it has used, its
+subagents included, each time the agent stops. It keeps one line per stop
+under `~/.cherry-works/` (or the folder `sessionAnalysisFolder` names), never in
+the repository, and tells you in one line each time a session crosses another
+`sessionContextMark` tokens (100,000 unless you set it). The model is never
+sent that line.
+
+```bash
+cw sessions                          # the last 31 days, by day and by session
+cw sessions --since 2026-10-01       # 31 days from that day at most
+cw sessions --since 2026-10-01 --until 2026-10-05 --json
+```
+
+To put a price on it, ask your agent what last week cost: the built-in
+`cw-session-cost` skill reads the same summary, asks whether to use prices you
+type or the provider's published ones, and answers per session and per day,
+naming the prices it used.
+
+```json
+{
+  "agents": ["claude"],
+  "mainContextCeiling": 20000,
+  "sessionContextMark": 100000
+}
+```
 
 ## Vendor sources
 
@@ -246,7 +333,7 @@ Run `cw vendor add` again with a new `--ref` to update a source, and
 
 | Charter | What it gives your agent | Install |
 | --- | --- | --- |
-| [sdd-charter](https://github.com/tamnguyenvt/sdd-charter) | Spec-driven development: a spec set with a status per story and a roadmap of their dependencies, and skills (`/sdd-init`, `/sdd-plan`, `/sdd-implement`, `/sdd-finish`, `/sdd-report`…) that take each story from request to merge, stopping for your yes at each step. | `cw vendor add git@github.com:tamnguyenvt/sdd-charter.git --ref v0.1.0` |
+| [sdd-charter](https://github.com/tamnguyenvt/sdd-charter) | Spec-driven development: a spec set with a status per story and a roadmap of their dependencies, and six commands (`/sdd-init`, `/sdd-plan`, `/sdd-implement`, `/sdd-bug-fix`, `/sdd-status`, `/sdd-report`) that take each story from request to merge, stopping for your yes at each step. | `cw vendor add git@github.com:tamnguyenvt/sdd-charter.git --ref v0.1.7` |
 | [hexagonal-architecture-charter](https://github.com/tamnguyenvt/hexagonal-architecture-charter) | Sets up a hexagonal (ports and adapters) architecture in a folder you choose, then keeps the agent following it. | `cw vendor add git@github.com:tamnguyenvt/hexagonal-architecture-charter.git --ref v0.1.0` |
 
 ## MCP origins outside the repository
@@ -288,12 +375,19 @@ given: it serves the tools each mcp origin declares and forwards every call unde
 your own credential. An mcp origin that is down or not signed in to loses only its own
 tools.
 
+The build asks each mcp origin for its tools once and keeps them beside the
+charter, and turns your agent's own tool search on: a session opens with each
+tool's name and no schema, and the agent looks up the one it needs. `cw mcp
+serve` lists the kept tools without reaching any mcp origin, and reaches one
+only for a call. A tool an `mcp` declares that its mcp origin does not list
+stops the build.
+
 A subagent reaches only the mcp origins it lists under `tools`: `[[<id>]]` for every
 tool of an mcp origin, or `[[<id>]]:<tool>` for one of them.
 
 ## Your agent can write rules too
 
-Every governed repository gets a built-in skill, `skill:cw-author`, in the
+Every governed repository gets a built-in skill, `cw-author`, in the
 agent's hands from the moment `cw init` finishes. It teaches
 the agent to ask `cw kinds` what a kind requires and to write primitives with
 `cw add`, instead of copying fields from memory.

@@ -1,9 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 — 2026-10-06
 
+- New `cw context` says how many tokens each primitive puts into the agent's context when a session opens; `cw build` prints the total, and `cw doctor` warns past `mainContextCeiling` (20,000 unless set).
+- Each session's tokens are now counted when the agent stops, kept on your machine, and you are told each time a session passes another 100,000 tokens (`sessionContextMark`); run `cw build` to add the hook.
+- New `cw sessions` sums up the kept sessions by day and by session, over at most 31 days.
+- New built-in `cw-session-cost` skill: ask your agent what the sessions cost, at prices you type or the provider's published ones.
+- A charter reaching mcp origins now turns on the agent's tool search, so tools are looked up rather than all loaded into context; run `cw build`.
+- New `cw eval` puts the cases in `.cw/eval/` to the real agent under promptfoo and reports which skills it invoked, which guides it followed and the tokens each case used.
 - A skill or a playbook with `disable-user-invocation: true` in its headers is no longer offered as a `/` command; the agent still opens it, for instance as a step of a playbook.
-
 - `cw test` now passes a case that expects a guide without `globs` to come up, since that guide comes up every turn.
 
 ## 0.5.0 — 2026-10-02
