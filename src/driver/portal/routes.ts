@@ -273,7 +273,7 @@ export function api(
         },
       }),
       async (c) => {
-        const mainContextsDTO = await charterAuthoringApp.predictMainContext(false);
+        const mainContextsDTO = await charterAuthoringApp.predictMainContext({ exact: false });
         return mainContextsDTO.type === "FaultsByFile" ? c.json(mainContextsDTO, 422) : c.json(mainContextsDTO, 200);
       },
     )

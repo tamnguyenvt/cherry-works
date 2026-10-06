@@ -4,7 +4,7 @@ import { MainContext } from "../domain/models/context/MainContext.js";
 import { DomainFault } from "../domain/models/DomainFault.js";
 import { mainContextTextsOf, tokenFactorOf } from "../domain/services/context/mainContextService.js";
 import type { ForCountingTokens } from "../port/zdriven/ForCountingTokens.js";
-import type { ForRunningAgentCli, PromptUsage } from "../port/zdriven/ForRunningAgentCli.js";
+import type { Answer, ForRunningAgentCli } from "../port/zdriven/ForRunningAgentCli.js";
 
 /** What one agent's main context of this charter comes to, counted by a
  *  tokenizer on this machine and scaled to that agent's: an estimate, with no
@@ -32,11 +32,12 @@ export async function exactMainContextOf(charter: CharterRoot, agent: AgentProvi
       'Run "cw context" without --exact: the estimate needs nothing.',
     );
 
-  const sentTokensOf = ({ inputTokens, cacheCreationInputTokens, cacheReadInputTokens }: PromptUsage) =>
+  const countTokensFromAnswer = ({ usage: { inputTokens, cacheCreationInputTokens, cacheReadInputTokens } }: Answer) =>
     inputTokens + cacheCreationInputTokens + cacheReadInputTokens;
-  const ownTokens = sentTokensOf(await agentCli.promptUsage("."));
+
+  const ownTokens = countTokensFromAnswer(await agentCli.ask("."));
   const mainContextTexts = mainContextTextsOf(charter, agent);
-  const sentTokenCounts = await Promise.all(mainContextTexts.map(async ({ text }) => sentTokensOf(await agentCli.promptUsage(text))));
+  const sentTokenCounts = await Promise.all(mainContextTexts.map(async ({ text }) => countTokensFromAnswer(await agentCli.ask(text))));
   return new MainContext(
     agent,
     mainContextTexts.map(({ text: _text, ...mainContextText }, index) => ({ ...mainContextText, tokens: Math.max(0, sentTokenCounts[index]! - ownTokens) })),

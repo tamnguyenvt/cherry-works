@@ -2,15 +2,17 @@
 
 **Created**: 2026-10-04
 
-**Updated**: 2026-10-04
+**Updated**: 2026-10-05
 
 **Input**: User description: "Phase 008, after Uber's efficient software factory: predict how many tokens the charter loads into the agent's main context; give the tokens a session used when it stops; let `cw mcp serve` search its tools rather than load them all; evaluate the charter against a real model with promptfoo and deepeval."
 
 Then: "The summary of the sessions kept spans 31 days at most, the last 31 when none is named, and reads only the files that span needs."
 
+Then: "Evaluate the charter under promptfoo alone: drop the engine's own runner and deepeval."
+
 ## Overview
 
-A charter is paid for in tokens every turn an agent works under it, and it is only worth that price if the agent does what it says. This part lets the people who write and use a charter see both sides. An author learns, before anyone runs an agent, how much of the agent's main context the charter takes and which primitives take the most. A developer is told, when their agent stops, how many tokens the session has used. The mcp origins a charter reaches stop costing context for every tool they declare, by being searched rather than listed. And an author can put the charter in front of the real agent and a real model, and learn whether the right skill is invoked and a guide is followed, and what each case cost.
+A charter is paid for in tokens every turn an agent works under it, and it is only worth that price if the agent does what it says. This part lets the people who write and use a charter see both sides. An author learns, before anyone runs an agent, how much of the agent's main context the charter takes and which primitives take the most. A developer is told, when their agent stops, how many tokens the session has used. The mcp origins a charter reaches stop costing context for every tool they declare, by being searched rather than listed. And an author can put the charter in front of the real agent under promptfoo, and learn whether the right skill is invoked and a guide is followed, and what each case cost.
 
 ## Clarifications
 
@@ -36,7 +38,7 @@ A charter is paid for in tokens every turn an agent works under it, and it is on
 - Q: When does an evaluation run fail? → A: Each case runs once, and a case that does not meet what it expects fails the run through its exit status; the report says each case's outcome and the tokens it used, and the run's total.
 - Q: How does a developer read the sessions kept? → A: A command sums the log up by day and by session, in tokens, the largest first, narrowed to a span of time when asked; a session is counted once, at the last stop it was kept at.
 - Q: Where do the prices a cost is reckoned at come from? → A: The engine counts tokens only and prices nothing. What tokens cost is a skill's to work out: a skill the engine brings analyses the kept log, at prices the developer types in or that it fetches, at the time, from the model provider's published price list.
-- Q: Does an evaluation need a framework to run? → A: No: the engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-charter-against-the-real-agent-priority-p3)); promptfoo or deepeval, named when the command is run, runs the same cases there too ([EVAL-FR-027](#eval-fr-027)).
+- Q: Does an evaluation need a framework to run? → A: No: the engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-charter-against-the-real-agent-under-promptfoo-priority-p3)); promptfoo or deepeval, named when the command is run, runs the same cases there too.
 - Q: Is an exact count made through a model provider key? → A: No: through the agent's own command line, run headless, which needs no key of its own; without that command line installed, an exact count is refused, saying the estimate needs nothing.
 - Q: How is the estimate made offline? → A: By a tokenizer that runs offline, said to be an estimate, rather than by text length.
 - Q: Does the main-context prediction count the tools the one server lists? → A: By their names, from [EVAL Story 5](#eval-story-5---search-tools-rather-than-load-them-all-into-context-priority-p2) on: the host's tool search sends each tool's name when a session opens, and its schema only once searched for ([EVAL-FR-029](#eval-fr-029)).
@@ -48,6 +50,9 @@ A charter is paid for in tokens every turn an agent works under it, and it is on
 ### Session 2026-10-05
 
 - Q: Claude Code defers MCP tool schemas on its own: give `cw mcp serve` a tool search of its own, or lean on the host's? → A: The host's, which replaces the answer of 2026-10-02: the build turns it on, and the server lists every tool and keeps nothing between calls; a host without a tool search of its own is sent every schema, as before ([EVAL-FR-016](#eval-fr-016)).
+- Q: Does an evaluation need a key of its own? → A: No, which replaces "on the developer's own key" of 2026-10-03: it runs through the agent's own command line, on whatever it is signed in with, a key among them; it is refused only where that command line is not installed ([EVAL-FR-026](#eval-fr-026)).
+- Q: Where does a case run? → A: In a worktree of the last commit under `.cw/eval/.worktrees/`, git-ignored, removed after each case and swept at the start of each run, never in the working tree someone may be writing in; this replaces "a copy of the repository" of 2026-10-03 ([EVAL-FR-021](#eval-fr-021)).
+- Q: Which framework runs an evaluation? → A: promptfoo alone, fetched once onto the developer's machine; the engine runs and judges no case itself. This replaces "Both" of 2026-10-02 and "the engine runs the cases itself" of 2026-10-04 ([EVAL-FR-020](#eval-fr-020), [EVAL-FR-032](#eval-fr-032)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -149,15 +154,15 @@ A charter declares four mcp origins with sixty tools between them. Before this, 
 
 ---
 
-### EVAL Story 6 - Evaluate the charter against the real agent (Priority: P3)
+### EVAL Story 6 - Evaluate the charter against the real agent under promptfoo (Priority: P3)
 
-**Status**: Todo
+**Status**: Done
 
-An author wants to know that asking the agent to "plan this feature" invokes the planning skill, and that the agent follows the naming guide when it writes code. They write cases — a prompt, the skill expected, the guide expected followed — in a file of their own beside their tests, and run one command on their own key. Each case puts its prompt to the real agent, run headless in a copy of the repository with its charter built; whether a skill was invoked is read off what the agent did, and whether a guide was followed is judged by a model. The report says each case's outcome and the tokens it used, and the run's total; a case that does not meet what it expects fails the run.
+An author wants to know that asking the agent to "plan this feature" invokes the planning skill, and that the agent follows the naming guide when it writes code. They write cases — a prompt, the skill expected, the guide expected followed — in a file of their own beside their tests, and run one command on their own sign-in to the agent, or their own key. Each case is handed to promptfoo, which puts its prompt to the real agent, run headless in a worktree of the last commit with its charter built; promptfoo reads whether a skill was invoked off what the agent did, and has a model judge whether a guide was followed. The report says each case's outcome and the tokens it used, and the run's total; a case that does not meet what it expects fails the run. The author never writes a promptfoo configuration.
 
-**Why this priority**: It is the one way to show a charter changes what the agent does, but it costs a key and real tokens, so it comes after what saves them.
+**Why this priority**: It is the one way to show a charter changes what the agent does, but it costs a sign-in and real tokens, so it comes after what saves them.
 
-**Independent Test**: Write two cases, one whose skill the charter invokes and one whose skill it does not; run the command; confirm the first passes, the second fails naming what the agent did instead, the run fails, each case's tokens are given, and the repository itself was not changed.
+**Independent Test**: Write two cases, one whose skill the charter invokes and one whose skill it does not; run the command; confirm the first passes, the second fails naming the skills the agent invoked, the run fails, each case's tokens are given, and the repository's working tree was not changed.
 
 **Acceptance Scenarios**:
 
@@ -165,25 +170,9 @@ An author wants to know that asking the agent to "plan this feature" invokes the
 2. **Given** a case expecting a guide followed, **When** the run puts its prompt, **Then** a model judges what the agent did against that guide, and the case passes or fails with the judge's reason ([EVAL-FR-023](#eval-fr-023)).
 3. **Given** a case naming a number of tokens, **When** the agent uses more, **Then** the case fails, saying how many it used ([EVAL-FR-024](#eval-fr-024)).
 4. **Given** any run, **When** it ends, **Then** each case's outcome and tokens and the run's total are reported, and a failed case fails the run through its exit status ([EVAL-FR-025](#eval-fr-025)).
-5. **Given** a run, **When** it ends, **Then** the repository it ran from holds nothing it did not hold before ([EVAL-FR-021](#eval-fr-021)).
-6. **Given** no key at hand, **When** the developer runs it, **Then** it is refused before any case runs, saying what it needs ([EVAL-FR-026](#eval-fr-026)).
-
----
-
-### EVAL Story 7 - Run the evaluation under an evaluation framework (Priority: P3)
-
-**Status**: Todo
-
-The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-charter-against-the-real-agent-priority-p3)). A team that already reads its evaluations through an evaluation framework — its dashboards, its history, its comparisons between runs — wants this charter's cases there too. The same case file runs under either of two frameworks, named when the command is run; each case comes out as the engine's own run says, and is reported in the same shape.
-
-**Why this priority**: The engine's own run already answers whether the charter works; a framework adds where the answer is kept and compared, and must not make an author write a case twice.
-
-**Independent Test**: Run one case file by the engine alone and under each framework against the same charter, and confirm each case comes out the same and is reported the same way.
-
-**Acceptance Scenarios**:
-
-1. **Given** one case file, **When** the developer runs it naming either framework, **Then** it runs unchanged, and each case is reported in the shape the engine's own run reports it ([EVAL-FR-027](#eval-fr-027)).
-2. **Given** a framework not installed, **When** the developer names it, **Then** the run is refused before any case runs, saying how to install it ([EVAL-FR-028](#eval-fr-028)).
+5. **Given** a run, **When** it ends, **Then** it ran on what was last committed, and the repository's working tree holds nothing it did not hold before ([EVAL-FR-021](#eval-fr-021)).
+6. **Given** the agent's command line not installed, **When** the developer runs it, **Then** it is refused before any case runs, saying what it needs ([EVAL-FR-026](#eval-fr-026)).
+7. **Given** promptfoo not yet on the machine, **When** the developer runs it the first time, **Then** promptfoo is fetched once into a folder outside every repository, the run saying so, and later runs use it ([EVAL-FR-032](#eval-fr-032)).
 
 ---
 
@@ -197,8 +186,10 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 - A session the developer closes without the agent stopping — what was kept at its last stop is what the summary counts.
 - Two sessions stopping at once — each is kept as its own line, and neither is lost ([EVAL-FR-009](#eval-fr-009)).
 - An mcp origin that is down when the agent works — its tools are listed as the build kept them; calling one says the mcp origin is down, as before.
-- A case whose prompt leads the agent to ask a question back — the case fails, saying the agent asked rather than acted ([EVAL-FR-022](#eval-fr-022)).
+- A case whose prompt leads the agent to ask a question back — the case fails, saying the agent invoked no skill ([EVAL-FR-022](#eval-fr-022)).
 - A case naming a skill or a guide the charter does not hold — the run is refused before any case runs, naming it.
+- A charter or cases changed and not yet committed — not evaluated: the run is of the last commit.
+- A run stopped halfway — the worktrees it left are removed when the next run starts.
 
 ## Requirements *(mandatory)*
 
@@ -237,15 +228,14 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 
 **Evaluating the charter**
 
-- <a id="eval-fr-020"></a>**EVAL-FR-020**: The engine MUST run the evaluation cases a repository writes, in a folder of their own beside its tests, one file of cases each, by a command apart from the self-regression tests ([CORE-FR-084](spec-core.md#core-fr-084)). Evaluation cases are not primitives, and a vendor's are not installed with it.
-- <a id="eval-fr-021"></a>**EVAL-FR-021**: Each case MUST put its prompt to the real agent, run headless in a copy of the repository with its charter built, once; the repository run from MUST be left as it was.
-- <a id="eval-fr-022"></a>**EVAL-FR-022**: A case expecting a skill MUST pass when the agent invoked it and fail otherwise, saying what was invoked instead, or that the agent asked a question rather than acted.
-- <a id="eval-fr-023"></a>**EVAL-FR-023**: A case expecting a guide followed MUST be judged by a model against that guide, passing or failing with the judge's reason.
+- <a id="eval-fr-020"></a>**EVAL-FR-020**: The engine MUST run the evaluation cases a repository writes under promptfoo, running and judging none itself, in a folder of their own beside its tests, one file of cases each, by a command apart from the self-regression tests ([CORE-FR-084](spec-core.md#core-fr-084)). Evaluation cases are not primitives, and a vendor's are not installed with it.
+- <a id="eval-fr-021"></a>**EVAL-FR-021**: Each case MUST put its prompt to the real agent, run headless, once, in a worktree of the repository's last commit, kept under `.cw/eval/.worktrees/` which version control ignores, with its charter built; the worktree MUST be removed once the case has run, and the files of the repository's own working tree MUST be left as they were.
+- <a id="eval-fr-022"></a>**EVAL-FR-022**: A case expecting a skill MUST pass when the agent invoked it and fail otherwise, saying which skills it invoked, none among them.
+- <a id="eval-fr-023"></a>**EVAL-FR-023**: A case expecting a guide followed MUST be judged by promptfoo's model grader against that guide, on the developer's own sign-in or key, passing or failing with the grader's reason.
 - <a id="eval-fr-024"></a>**EVAL-FR-024**: A case naming a number of tokens MUST fail when the agent used more, saying how many.
 - <a id="eval-fr-025"></a>**EVAL-FR-025**: A run MUST report each case's outcome and tokens and the run's total, and MUST fail through its exit status when any case fails.
-- <a id="eval-fr-026"></a>**EVAL-FR-026**: A run MUST be refused before any case runs when no key is at hand, or when a case names a skill or a guide the charter does not hold, saying which.
-- <a id="eval-fr-027"></a>**EVAL-FR-027**: One case file MUST also run unchanged under either of two evaluation frameworks, named when the command is run, each case reported in the shape the engine's own run reports it.
-- <a id="eval-fr-028"></a>**EVAL-FR-028**: Naming a framework that is not installed MUST be refused before any case runs, saying how to install it.
+- <a id="eval-fr-026"></a>**EVAL-FR-026**: A run MUST be refused before any case runs when the agent's own command line is not installed, or when a case names a skill or a guide the charter does not hold, saying which.
+- <a id="eval-fr-032"></a>**EVAL-FR-032**: The first run that needs promptfoo MUST fetch it, and what it needs to run the agent, once into a folder on the developer's machine outside every repository, saying so; later runs MUST use what was fetched, and nothing MUST be installed into the repository.
 
 ### Key Entities
 
@@ -262,7 +252,7 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 - <a id="eval-sc-003"></a>**EVAL-SC-003**: Being told a session's tokens adds zero tokens to what the model is sent.
 - <a id="eval-sc-004"></a>**EVAL-SC-004**: Counting a session at a stop adds less than half a second to that stop.
 - <a id="eval-sc-005"></a>**EVAL-SC-005**: A charter whose mcp origins declare 5,000 tokens of tool schemas or more sends the agent at least 80% fewer of them when a session opens.
-- <a id="eval-sc-006"></a>**EVAL-SC-006**: An author writes each evaluation case once, and it runs by the engine alone and under either framework with the same outcome.
+- <a id="eval-sc-006"></a>**EVAL-SC-006**: An author writes each evaluation case once, in the engine's own format, and never a promptfoo configuration.
 - <a id="eval-sc-007"></a>**EVAL-SC-007**: Summing up the sessions reads none kept outside the span, so it takes no longer after a year of sessions than after a month.
 
 ## Assumptions
@@ -270,7 +260,8 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 - **Claude Code is the agent counted and evaluated.** It is the one host the engine builds for; another host is counted the day it is built for.
 - **The estimate is offline.** No tokenizer for the model is at hand offline, so a tokenizer that runs offline stands in for it, and says it does.
 - **A developer's log is theirs.** It lives on their machine, where the engine already keeps their credentials, and is never read by anyone else.
-- **An evaluation spends the developer's own key.** Nothing in the engine pays for it or holds a key of its own.
+- **An evaluation spends the developer's own sign-in to the agent, or their own key where one is set.** Nothing in the engine pays for it or holds a key of its own.
+- **promptfoo is heavy.** With what it needs to run the agent, it takes about 2.5 GB, so it is fetched once, the first time a run needs it, and never with the engine.
 
 ## Out of Scope
 
@@ -279,3 +270,4 @@ The engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-ch
 - Pricing anything inside the engine.
 - Running evaluations in a pipeline on anyone's behalf, or more than once per case.
 - Evaluating a host other than Claude Code.
+- Evaluating under any framework other than promptfoo.

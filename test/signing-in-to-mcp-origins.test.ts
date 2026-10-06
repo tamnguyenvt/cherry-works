@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import prompts from "prompts";
 import { noSessionsKept } from "./no-sessions.js";
+import { noEvaluationsRun } from "./no-evaluations.js";
 import { Commander } from "../src/driver/cli/Commander.js";
 import { COMMANDS } from "../src/driver/cli/commands/index.js";
 import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
@@ -50,7 +51,7 @@ const mcpOriginsOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
     charterVendoringApp: new CharterVendoring(repoPath, noFiles, new InMemoryVCS()),
     testAuthoringApp: new TestAuthoring(repoPath, noFiles, new InMemoryFileOutput(noFiles)),
     mcpConnectingApp,
-    sessionReviewingApp: noSessionsKept,
+    sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun,
   }, COMMANDS);
   return { held, secrets, authorizing, mcpConnectingApp, cli };
 };

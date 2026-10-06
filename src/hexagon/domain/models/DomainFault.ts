@@ -80,6 +80,10 @@ export class TestSuiteFault extends DomainFault {}
  */
 export class TestCaseFault extends DomainFault {}
 
+/** An evaluation file that does not read as a suite of cases, or a case
+ *  naming what the charter does not hold (EVAL-FR-026). */
+export class EvalSuiteFault extends DomainFault {}
+
 /** A vendor source whose address names no folder to land in (FR-044). */
 export class VendorFault extends DomainFault {}
 

@@ -156,6 +156,28 @@ const TestRunReportSchema = dto(
   }),
 );
 
+/** How one evaluation case came out: its file, its prompt, the tokens the
+ *  agent used, and each expectation it did not meet (EVAL-FR-025). */
+const EvalCaseReportSchema = dto(
+  "EvalCaseReport",
+  z.object({
+    suiteName: z.string(),
+    prompt: z.string(),
+    passed: z.boolean(),
+    tokens: z.number(),
+    unmetReasons: z.array(z.string()).readonly(),
+  }),
+);
+
+/** How every evaluation case came out, and the tokens of them all. */
+const EvalRunReportSchema = dto(
+  "EvalRunReport",
+  z.object({
+    evalCaseReports: z.array(EvalCaseReportSchema).readonly(),
+    totalTokens: z.number(),
+  }),
+);
+
 /** One situation a test pins down, said rather than handed over as written:
  *  the file it touches or the event it raises, what it expects of it, and the
  *  id it names where it names one. */
@@ -305,6 +327,8 @@ const SessionSummarySchema = dto(
 export const DataDTOs = byType(
   CatalogueSchema,
   CatalogueEntrySchema,
+  EvalCaseReportSchema,
+  EvalRunReportSchema,
   FaultSchema,
   FaultsSchema,
   FaultsByFileSchema,
@@ -335,6 +359,8 @@ export const DataDTOs = byType(
 export namespace DataDTOs {
   export type Catalogue = z.infer<typeof DataDTOs.Catalogue>;
   export type CatalogueEntry = z.infer<typeof DataDTOs.CatalogueEntry>;
+  export type EvalCaseReport = z.infer<typeof DataDTOs.EvalCaseReport>;
+  export type EvalRunReport = z.infer<typeof DataDTOs.EvalRunReport>;
   export type Fault = z.infer<typeof DataDTOs.Fault>;
   export type Faults = z.infer<typeof DataDTOs.Faults>;
   export type FaultsByFile = z.infer<typeof DataDTOs.FaultsByFile>;

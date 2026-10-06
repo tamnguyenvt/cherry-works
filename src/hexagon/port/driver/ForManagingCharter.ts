@@ -118,7 +118,7 @@ export interface ForManagingCharter {
    * charter with an error is refused with nothing counted and the errors given
    * back, as `list` refuses it.
    */
-  predictMainContext(exact: boolean): Promise<DataDTOs.MainContexts | DataDTOs.FaultsByFile>;
+  predictMainContext({ exact }: { readonly exact: boolean }): Promise<DataDTOs.MainContexts | DataDTOs.FaultsByFile>;
 
   /**
    * Compile this repository's charter and put it on disk: the catalogues, the
@@ -303,7 +303,9 @@ export interface ForManagingCharter {
 
   /**
    * Set this repository up under a charter: the workspace, a directory per
-   * kind, and what it configured itself with (FR-037) — then the charter built,
+   * kind, what it configured itself with (FR-037), and the line of
+   * `.cw/.gitignore` that keeps the evaluation worktrees out of version control
+   * (EVAL-FR-021) — then the charter built,
    * so the skill the engine brings reaches the agent before anything is
    * authored (FR-057, FR-096).
    *

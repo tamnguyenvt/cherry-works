@@ -3,6 +3,7 @@ import { BUILTIN_LAYER } from "../models/charter/PrimitiveLayer.js";
 import { FaultsByFile, TestCaseFault, type DomainFault } from "../models/DomainFault.js";
 import type { TestCase } from "../models/test/TestCase.js";
 import type { TestSuite } from "../models/test/TestSuite.js";
+import type { TestRoot } from "../models/test/TestRoot.js";
 import { matches } from "../../utils/globs.js";
 
 /**
@@ -54,8 +55,8 @@ export function runSuite(charter: CharterRoot, suiteName: string, suite: TestSui
  * file is allowed names none, and a `deny` may name a command no case can
  * touch.
  */
-export function findUntestedPrimitives(charter: CharterRoot, testSuites: readonly TestSuite[]): FaultsByFile {
-  const testedIds = new Set<string | undefined>(testSuites.flatMap((testSuite) => testSuite.cases.map((one) => one.activatedId)));
+export function validateTestRoot(charter: CharterRoot, testRoot: TestRoot): FaultsByFile {
+  const testedIds = new Set<string | undefined>(Object.values(testRoot.suitesByFile).flatMap((testSuite) => testSuite.cases.map((one) => one.activatedId)));
   const faultsByFiles: Record<string, readonly DomainFault[]> = {};
   for (const primitive of charter.primitives) {
     const { file } = primitive;

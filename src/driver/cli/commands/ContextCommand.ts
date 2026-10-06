@@ -23,7 +23,7 @@ export class ContextCommand implements Command<typeof OPTIONS> {
   readonly options = OPTIONS;
 
   async run({ charterAuthoringApp }: Context, { exact: isExactAsked }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const mainContextsDTO = await charterAuthoringApp.predictMainContext(isExactAsked);
+    const mainContextsDTO = await charterAuthoringApp.predictMainContext({ exact: isExactAsked });
 
     if (mainContextsDTO.type === "FaultsByFile") {
       const noOfFiles = Object.keys(mainContextsDTO.data.files).length;

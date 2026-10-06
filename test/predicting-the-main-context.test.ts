@@ -17,6 +17,7 @@ import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
+import { noEvaluationsRun } from "./no-evaluations.js";
 
 const repoPath = new URL("file:///repo/");
 const at = (path: string) => new URL(path, repoPath).href;
@@ -71,7 +72,7 @@ const surfaces = (files: Readonly<Record<string, string>>, agentCli = new InMemo
   });
   const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
   const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
-  const cli = new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept }, COMMANDS);
+  const cli = new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun }, COMMANDS);
   return { portalRoutes: api(charterAuthoringApp, charterVendoringApp, testAuthoringApp), held, cli };
 };
 

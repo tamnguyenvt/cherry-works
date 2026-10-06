@@ -13,6 +13,7 @@ import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
+import { noEvaluationsRun } from "./no-evaluations.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
@@ -46,7 +47,7 @@ const setUp = async (
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
-    const code = await new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept }, COMMANDS).run(argv);
+    const code = await new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun }, COMMANDS).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -163,7 +164,28 @@ test("setting up again discards nothing authored (FR-038)", async () => {
   );
 });
 
-test("nothing is written into an ignore file: what a vendor installed is committed too", async () => {
+test("setting up has version control ignore the worktrees an evaluation runs in, in the workspace's own ignore file (EVAL-FR-021)", async () => {
+  const { code, held: files } = await setUp({}, ["init", "--agent", "claude"]);
+
+  assert.equal(code, 0);
+  assert.equal(await held(files, ".cw/.gitignore"), "eval/.worktrees/\n");
+});
+
+test("setting up again keeps what the workspace's ignore file holds, and adds its line once (EVAL-FR-021, FR-038)", async () => {
+  const { held: files } = await setUp({ [new URL(".cw/.gitignore", repoPath).href]: "vendor/*.log" }, ["init", "--agent", "claude"]);
+  assert.equal(await held(files, ".cw/.gitignore"), "vendor/*.log\neval/.worktrees/\n");
+
+  const { held: filesAgain } = await setUp({ [new URL(".cw/.gitignore", repoPath).href]: "vendor/*.log\neval/.worktrees/\n" }, ["init", "--agent", "claude"]);
+  assert.equal(await held(filesAgain, ".cw/.gitignore"), "vendor/*.log\neval/.worktrees/\n");
+});
+
+test("a build writes no ignore file: the workspace's is written once, at setup (EVAL-FR-021)", async () => {
+  const { held: files } = await setUp({ [new URL(".cw/settings.json", repoPath).href]: '{ "agents": ["claude"] }\n' }, ["build"]);
+
+  assert.equal(await held(files, ".cw/.gitignore"), undefined);
+});
+
+test("the repository's own ignore file is left alone: what a vendor installed is committed too", async () => {
   const { held: files } = await setUp({ [new URL(".gitignore", repoPath).href]: "node_modules/\n" }, [
     "init",
     "--agent",

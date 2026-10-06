@@ -1,13 +1,19 @@
 import { DrivenFault, type ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
+import type { InMemoryFileReaders } from "./InMemoryFileReaders.js";
 
 /** Version control held in memory: a test says whether the folder it is setting
  *  up is inside a repository, and nothing shells out. The second implementation
- *  that earns `ForVCS` its place (plan §2.4). */
+ *  that earns `ForVCS` its place (plan §2.4). A worktree is the files it is
+ *  handed copied to the folder named, as if they were all committed. */
 export class InMemoryVCS implements ForVCS {
   constructor(
     private readonly versioned: boolean = true,
     private readonly clean: boolean = true,
+    private readonly files?: InMemoryFileReaders,
   ) {}
+
+  /** Every worktree added and not yet removed. */
+  readonly worktreeFolders: URL[] = [];
 
   /** Every source it was asked to install, in the order it was asked: what a
    *  test about vendoring looks at, since nothing was fetched. */
@@ -61,5 +67,19 @@ export class InMemoryVCS implements ForVCS {
 
   async removeSubFolder(repo: URL, subFolder: string): Promise<void> {
     this.removed.push({ repo, subFolder });
+  }
+
+  async addWorktree(repo: URL, worktreeFolder: URL): Promise<void> {
+    // What the folder holding worktrees holds is no part of a commit.
+    const worktreesFolderHref = new URL("../", worktreeFolder).href;
+    for (const { file, contents } of (await this.files?.readFilesRecursively(repo)) ?? [])
+      if (!file.href.startsWith(worktreesFolderHref)) this.files?.write(new URL(file.href.slice(repo.href.length), worktreeFolder), contents);
+    this.worktreeFolders.push(worktreeFolder);
+  }
+
+  async removeWorktree(_repo: URL, worktreeFolder: URL): Promise<void> {
+    for (const { file } of (await this.files?.readFilesRecursively(worktreeFolder)) ?? []) this.files?.remove(file);
+    const worktreeIndex = this.worktreeFolders.findIndex(({ href }) => href === worktreeFolder.href);
+    if (worktreeIndex >= 0) this.worktreeFolders.splice(worktreeIndex, 1);
   }
 }

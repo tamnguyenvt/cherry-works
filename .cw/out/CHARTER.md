@@ -12,11 +12,11 @@ This repository is governed by a charter — the standards it authored under `.c
 - **sensor** — the `signal` it names is raised, and the harness runs what it says to `run`.
 - **skill** — one of its `triggers` matches what is being asked.
 - **playbook** — one of its `triggers` matches; the body is a sequence of skills.
-- **agent** — it is spawned by id, holding the `tools` it lists and nothing else — a place as `[[<id>]]`, or one of its tools as `[[<id>]]:<tool>`.
+- **agent** — it is spawned by id, holding the `tools` it lists and nothing else — an mcp origin as `[[<id>]]`, or one of its tools as `[[<id>]]:<tool>`.
 - **posture** — always, wherever the host can be told what to `allow` and what to `deny`.
 - **corpus** — a primitive's `rationale` cites it — the reasoning, read when someone asks why.
 - **mixin** — never on its own: its body is lent to the primitives that pull it in.
-- **mcp** — a primitive's body names it as `[[<id>]]` — a place outside the repository, reached through `cw mcp serve`.
+- **mcp** — a primitive's body names it as `[[<id>]]` — an mcp origin outside the repository, reached through `cw mcp serve`.
 - **script** — a primitive names it as `[[<id>]]`, or a sensor runs it — its assets, copied to `.cw/out/script/<id>/`, of which its `executionPath` names the one to run.
 - **template** — a primitive names it as `[[<id>]]` — a file the agent fills or copies, written as its body.
 

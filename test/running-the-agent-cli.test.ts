@@ -13,7 +13,7 @@ import { DrivenFault } from "../src/hexagon/port/zdriven/ForRunningAgentCli.js";
  * first message is sent 100 tokens and one per character of the prompt; a
  * second message, as a model answering at length runs on into, 999 more. The
  * prompt `fail` stops it with status 2, and `error` is answered as a run that
- * is not signed in. Every run writes the folder it ran in and how many runs
+ * is not signed in; any other is answered "Answered: " and the prompt. Every run writes the folder it ran in and how many runs
  * were under way at once into the folder it was put in.
  */
 const FAKE_CLAUDE = `#!/usr/bin/env node
@@ -34,7 +34,7 @@ process.stdin.on("end", () => setTimeout(() => {
   const first = { input_tokens: 1, cache_creation_input_tokens: 100 + prompt.length, cache_read_input_tokens: 0 };
   const second = { input_tokens: 999, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 };
   const usage = { input_tokens: 1000, cache_creation_input_tokens: first.cache_creation_input_tokens, cache_read_input_tokens: 0, iterations: [first, second] };
-  console.log(JSON.stringify(prompt === "error" ? { is_error: true, result: "Not logged in", usage } : { is_error: false, usage }));
+  console.log(JSON.stringify(prompt === "error" ? { is_error: true, result: "Not logged in", usage } : { is_error: false, result: "Answered: " + prompt, usage }));
 }, 50));
 `;
 
@@ -81,12 +81,11 @@ test("the command line is installed where `claude` answers, and not where it is 
   }
 });
 
-test("a prompt's usage is read off the first message sent, not the total a long answer adds a second one to (EVAL-FR-004)", async () => {
+test("an answer holds what the model said, and its usage read off the first message sent, not the total a long answer adds a second one to (EVAL-FR-004)", async () => {
   await withFakeClaude(async () => {
-    assert.deepEqual(await new ClaudeCli().promptUsage("hello"), {
-      inputTokens: 1,
-      cacheCreationInputTokens: 105,
-      cacheReadInputTokens: 0,
+    assert.deepEqual(await new ClaudeCli().ask("hello"), {
+      resultText: "Answered: hello",
+      usage: { inputTokens: 1, cacheCreationInputTokens: 105, cacheReadInputTokens: 0 },
     });
   });
 });
@@ -94,8 +93,8 @@ test("a prompt's usage is read off the first message sent, not the total a long 
 test("each prompt runs in an empty folder of its own, taken away afterwards", async () => {
   await withFakeClaude(async (fakeFolder) => {
     const claudeCli = new ClaudeCli();
-    await claudeCli.promptUsage("one");
-    await claudeCli.promptUsage("two");
+    await claudeCli.ask("one");
+    await claudeCli.ask("two");
 
     const [firstRun, secondRun] = await runsOf(fakeFolder);
     assert.ok(firstRun !== undefined && secondRun !== undefined);
@@ -108,7 +107,7 @@ test("each prompt runs in an empty folder of its own, taken away afterwards", as
 test("no more than four prompts run at once, however many are asked for together", async () => {
   await withFakeClaude(async (fakeFolder) => {
     const claudeCli = new ClaudeCli();
-    await Promise.all(Array.from({ length: 10 }, (_, index) => claudeCli.promptUsage(`prompt ${index}`)));
+    await Promise.all(Array.from({ length: 10 }, (_, index) => claudeCli.ask(`prompt ${index}`)));
 
     const runs = await runsOf(fakeFolder);
     assert.equal(runs.length, 10);
@@ -120,9 +119,9 @@ test("a run that stops with an error, or is answered as one, is raised and frees
   await withFakeClaude(async () => {
     const claudeCli = new ClaudeCli();
 
-    await assert.rejects(claudeCli.promptUsage("fail"), (raised) => raised instanceof DrivenFault && /status 2: boom/.test(raised.message));
-    await assert.rejects(claudeCli.promptUsage("error"), (raised) => raised instanceof DrivenFault && /Not logged in/.test(raised.message));
+    await assert.rejects(claudeCli.ask("fail"), (raised) => raised instanceof DrivenFault && /status 2: boom/.test(raised.message));
+    await assert.rejects(claudeCli.ask("error"), (raised) => raised instanceof DrivenFault && /Not logged in/.test(raised.message));
     // Every place freed: five more run, and none waits forever.
-    await Promise.all(Array.from({ length: 5 }, () => claudeCli.promptUsage("after")));
+    await Promise.all(Array.from({ length: 5 }, () => claudeCli.ask("after")));
   });
 });

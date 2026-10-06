@@ -84,4 +84,17 @@ export interface ForVCS {
    * it does.
    */
   removeSubFolder(repo: URL, subFolder: string): Promise<void>;
+
+  /**
+   * A worktree of this repository's last commit, checked out detached at this
+   * folder: its files as committed, and none of the work in hand
+   * (EVAL-FR-021). A repository with nothing committed raises a
+   * `DrivenFault`.
+   */
+  addWorktree(repo: URL, worktreeFolder: URL): Promise<void>;
+
+  /** One worktree taken away: its folder, and version control's record of
+   *  it. A folder that is no worktree any more, or is not there, is removed
+   *  all the same. */
+  removeWorktree(repo: URL, worktreeFolder: URL): Promise<void>;
 }

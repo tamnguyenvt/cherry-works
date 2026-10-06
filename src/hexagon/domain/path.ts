@@ -55,6 +55,11 @@ export const VENDOR_DIRECTORY = `${WORKSPACE_DIRECTORY}/vendor`;
  *  read only when tests run. */
 export const TEST_DIRECTORY = `${WORKSPACE_DIRECTORY}/test`;
 
+/** The cases this repository evaluates its charter by against the real agent,
+ *  one file of cases each (EVAL-FR-020). Beside the tests rather than inside
+ *  them: a test is resolved offline, and an evaluation spends a key. */
+export const EVAL_DIRECTORY = `${WORKSPACE_DIRECTORY}/eval`;
+
 /** What one reading of the charter compiles to. Everything under it is
  *  generated, which is what makes a build's deleting safe (FR-020). */
 export const OUT_DIRECTORY = `${WORKSPACE_DIRECTORY}/out`;
@@ -109,6 +114,28 @@ export function agentProviderFolderIn(repo: URL, provider: AgentProvider): Folde
 /** The folder one repository keeps its self-regression tests in. */
 export function testFolderIn(repo: URL): FolderURL {
   return folderIn(repo, TEST_DIRECTORY);
+}
+
+/** The folder one repository keeps its evaluation cases in. */
+export function evalFolderIn(repo: URL): FolderURL {
+  return folderIn(repo, EVAL_DIRECTORY);
+}
+
+/** The folder, under the cases, that every case runs in a worktree of its own
+ *  under, which version control is told to ignore (EVAL-FR-021). */
+export const EVAL_WORKTREES_DIRECTORY = ".worktrees";
+
+/** What version control is told to ignore of the workspace, written at setup
+ *  (EVAL-FR-021). */
+export const WORKSPACE_GITIGNORE_FILE = `${WORKSPACE_DIRECTORY}/.gitignore`;
+
+/** The line of it that keeps the evaluation worktrees out of version control,
+ *  named from the workspace. */
+export const EVAL_WORKTREES_GITIGNORE_LINE = `${EVAL_DIRECTORY.slice(`${WORKSPACE_DIRECTORY}/`.length)}/${EVAL_WORKTREES_DIRECTORY}/`;
+
+/** The folder every evaluation worktree of one repository is added under. */
+export function evalWorktreesFolderIn(repo: URL): FolderURL {
+  return folderIn(repo, `${EVAL_DIRECTORY}/${EVAL_WORKTREES_DIRECTORY}`);
 }
 
 /** The folder it keeps every vendor it installed in, one directory each. */

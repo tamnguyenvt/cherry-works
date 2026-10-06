@@ -228,16 +228,9 @@
     },
     {
       "id": "EVAL Story 6",
-      "title": "Evaluate the charter against the real agent",
+      "title": "Evaluate the charter against the real agent under promptfoo",
       "dependsOn": [
         "CORE Story 9"
-      ]
-    },
-    {
-      "id": "EVAL Story 7",
-      "title": "Run the evaluation under an evaluation framework",
-      "dependsOn": [
-        "EVAL Story 6"
       ]
     }
   ]

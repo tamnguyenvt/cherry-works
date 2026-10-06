@@ -2,7 +2,7 @@ import { loadCharterRoot, writeCharter } from "../service/charterRepo.js";
 import { loadSettings } from "../service/settingsRepo.js";
 import { loadTestRoot } from "../service/testSuitesRepo.js";
 import { driftedVendors } from "../service/vendorRepo.js";
-import { runSuite, TestRunReport, findUntestedPrimitives } from "../domain/services/testService.js";
+import { runSuite, TestRunReport, validateTestRoot } from "../domain/services/testService.js";
 import { DomainFault, Faults, FaultsByFile } from "../domain/models/DomainFault.js";
 import { testSuiteNameOf } from "../domain/models/test/TestRoot.js";
 import type { CharterRoot } from "../domain/models/charter/CharterRoot.js";
@@ -29,7 +29,7 @@ import { executePlan, plan, previewPlan } from "../service/buildService.js";
 import type { McpReaching } from "../service/mcpOriginsRepo.js";
 import { WorkspaceSettingsSchema, type WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import { AGENT_PROVIDERS } from "../domain/models/AgentProvider.js";
-import { CHARTER_DIRECTORY, VENDOR_DIRECTORY, settingsFileIn } from "../domain/path.js";
+import { CHARTER_DIRECTORY, EVAL_WORKTREES_GITIGNORE_LINE, VENDOR_DIRECTORY, WORKSPACE_GITIGNORE_FILE, settingsFileIn } from "../domain/path.js";
 import type { UnparsedHeaders, ForManagingCharter, SettingsOptions } from "../port/driver/ForManagingCharter.js";
 import type { ForVCS } from "../port/zdriven/ForVCS.js";
 import {
@@ -143,7 +143,7 @@ export class CharterAuthoring implements ForManagingCharter {
     const allFaultsByFile =
       charter === undefined
         ? faultsByFiles
-        : faultsByFiles.with(findUntestedPrimitives(charter, Object.values(testRoot.suitesByFile)));
+        : faultsByFiles.with(validateTestRoot(charter, testRoot));
     const heardFaultsByFile = new FaultsByFile(
       Object.fromEntries(
         Object.entries(allFaultsByFile.files)
@@ -301,7 +301,7 @@ export class CharterAuthoring implements ForManagingCharter {
   /** What each agent this repository compiles for is sent of the charter when
    *  a session opens, estimated or counted exactly (EVAL-FR-001 –
    *  EVAL-FR-004). Reads and says (FR-041). */
-  async predictMainContext(exact: boolean): Promise<DataDTOs.MainContexts | DataDTOs.FaultsByFile> {
+  async predictMainContext({ exact }: { readonly exact: boolean }): Promise<DataDTOs.MainContexts | DataDTOs.FaultsByFile> {
     const [charter, settings, faultsByFiles] = await this.#read();
     if (charter === undefined) return faultsByFileDTO(faultsByFiles.errors(), this.#repoPath);
 
@@ -662,6 +662,15 @@ export class CharterAuthoring implements ForManagingCharter {
     // are read off the domain rather than listed again here (FR-001).
     const kindFolders = KINDS.map((kind) => `${CHARTER_DIRECTORY}/${kind}/.gitkeep`);
     for (const path of kindFolders) await this.#fileWriter.write(new URL(path, this.#repoPath), "");
+
+    // Version control ignores the worktrees an evaluation runs each case in
+    // (EVAL-FR-021). Written here, once, and not by a build: the file is the
+    // workspace's, not something the charter compiles to, and every other line
+    // of it is the repository's and kept.
+    const gitignoreFile = new URL(WORKSPACE_GITIGNORE_FILE, this.#repoPath);
+    const gitignoreText = (await this.#fileReader.readIfThere(gitignoreFile)) ?? "";
+    if (!gitignoreText.split("\n").includes(EVAL_WORKTREES_GITIGNORE_LINE))
+      await this.#fileWriter.write(gitignoreFile, `${gitignoreText}${gitignoreText === "" || gitignoreText.endsWith("\n") ? "" : "\n"}${EVAL_WORKTREES_GITIGNORE_LINE}\n`);
 
     return this.build();
   }

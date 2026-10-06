@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { homedir } from "node:os";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import packageJson from "./package.json" with { type: "json" };
 import { Commander } from "./src/driver/cli/Commander.js";
@@ -8,6 +9,7 @@ import { CharterVendoring } from "./src/hexagon/application/CharterVendoring.js"
 import { TestAuthoring } from "./src/hexagon/application/TestAuthoring.js";
 import { McpConnecting } from "./src/hexagon/application/McpConnecting.js";
 import { SessionReviewing } from "./src/hexagon/application/SessionReviewing.js";
+import { CharterEvaluating } from "./src/hexagon/application/CharterEvaluating.js";
 import { FileReaders } from "./src/zdriven/FileReaders.js";
 import { YamlParser } from "./src/zdriven/YamlParser.js";
 import { FileOutput } from "./src/zdriven/FileOutput.js";
@@ -17,6 +19,8 @@ import { OAuth } from "./src/zdriven/OAuth.js";
 import { McpClients } from "./src/zdriven/McpClients.js";
 import { Tiktoken } from "./src/zdriven/Tiktoken.js";
 import { ClaudeCli } from "./src/zdriven/ClaudeCli.js";
+import { Promptfoo } from "./src/zdriven/Promptfoo.js";
+import { ConsoleReporter } from "./src/zdriven/ConsoleReporter.js";
 import { SystemClock } from "./src/zdriven/SystemClock.js";
 import type { ForReadingFiles } from "./src/hexagon/port/zdriven/ForReadingFiles.js";
 import type { ForParsingYaml } from "./src/hexagon/port/zdriven/ForParsingYaml.js";
@@ -28,12 +32,15 @@ import type { ForCallingMcpServers } from "./src/hexagon/port/zdriven/ForCalling
 import type { ForCountingTokens } from "./src/hexagon/port/zdriven/ForCountingTokens.js";
 import type { ForRunningAgentCli } from "./src/hexagon/port/zdriven/ForRunningAgentCli.js";
 import type { ForTellingTime } from "./src/hexagon/port/zdriven/ForTellingTime.js";
+import type { ForRunningPromptfoo } from "./src/hexagon/port/zdriven/ForRunningPromptfoo.js";
+import type { ForReportingProgress } from "./src/hexagon/port/zdriven/ForReportingProgress.js";
 import type { AgentProvider } from "./src/hexagon/port/driver/ForManagingCharter.js";
 import type { ForManagingCharter } from "./src/hexagon/port/driver/ForManagingCharter.js";
 import type { ForVendoringCharters } from "./src/hexagon/port/driver/ForVendoringCharters.js";
 import type { ForAuthoringTests } from "./src/hexagon/port/driver/ForAuthoringTests.js";
 import type { ForConnectingMcps } from "./src/hexagon/port/driver/ForConnectingMcps.js";
 import type { ForReviewingSessions } from "./src/hexagon/port/driver/ForReviewingSessions.js";
+import type { ForEvaluatingCharter } from "./src/hexagon/port/driver/ForEvaluatingCharter.js";
 
 /**
  * COMPOSITION ROOT — the one place that knows every concrete class.
@@ -82,6 +89,22 @@ const homePath = pathToFileURL(`${homedir()}/`);
 
 const sessionReviewingApp: ForReviewingSessions = new SessionReviewing(repoPath, homePath, fileReader, clock);
 
-const cli = new Commander({ cwd: process.cwd(), version: packageJson.version, charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp, sessionReviewingApp });
+/** promptfoo, installed once under this engine's own folder in the developer's
+ *  home, outside every repository (EVAL-FR-032). */
+const promptfooRunner: ForRunningPromptfoo = new Promptfoo(join(homedir(), ".cherry-works"));
+const progressReporter: ForReportingProgress = new ConsoleReporter();
+
+const charterEvaluatingApp: ForEvaluatingCharter = new CharterEvaluating(repoPath, fileReader, yamlParser, fileWriter, vcs, agentCliByProvider, promptfooRunner, progressReporter);
+
+const cli = new Commander({
+  cwd: process.cwd(),
+  version: packageJson.version,
+  charterAuthoringApp,
+  charterVendoringApp,
+  testAuthoringApp,
+  mcpConnectingApp,
+  sessionReviewingApp,
+  charterEvaluatingApp,
+});
 
 process.exitCode = await cli.run(process.argv.slice(2));

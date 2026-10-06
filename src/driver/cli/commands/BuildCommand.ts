@@ -85,7 +85,7 @@ export class BuildCommand implements Command<typeof OPTIONS> {
     const { added, edited, deleted } = planSummaryDTO.data;
     const wrote = added.length + edited.length;
     // What each agent will open a session with, in one line (EVAL-FR-005).
-    const mainContextsDTO = await charterAuthoringApp.predictMainContext(false);
+    const mainContextsDTO = await charterAuthoringApp.predictMainContext({ exact: false });
     const mainContexts = mainContextsDTO.type === "MainContexts" ? mainContextsDTO.data.contexts : [];
     return {
       code: EXIT_OK,

@@ -4,6 +4,7 @@ import type { DomainFault, Faults, FaultsByFile } from "../domain/models/DomainF
 import type { Catalogue } from "../domain/models/output/common/Catalogue.js";
 import type { PrimitiveHeader, PrimitiveRequirements } from "../domain/models/charter/primitive/Primitive.js";
 import type { TestCaseReport, TestRunReport } from "../domain/services/testService.js";
+import type { EvalRunReport } from "../domain/services/evalService.js";
 import type { WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import type { MainContext, MainContextLoad } from "../domain/models/context/MainContext.js";
 import type { PlanSummary } from "../service/buildService.js";
@@ -201,6 +202,20 @@ export function testCaseReportDTO({ suiteName, situation, passed, unmet }: TestC
 /** How every case came out. */
 export function testRunReportDTO({ testCaseReports }: TestRunReport): DataDTOs.TestRunReport {
   return { type: "TestRunReport", data: { testCaseReports: testCaseReports.map(testCaseReportDTO) } };
+}
+
+/** How every evaluation case came out, and the tokens of them all. */
+export function evalRunReportDTO(evalRunReport: EvalRunReport): DataDTOs.EvalRunReport {
+  return {
+    type: "EvalRunReport",
+    data: {
+      evalCaseReports: evalRunReport.evalCaseReports.map(({ suiteName, prompt, passed, tokens, unmetReasons }) => ({
+        type: "EvalCaseReport",
+        data: { suiteName, prompt, passed, tokens, unmetReasons },
+      })),
+      totalTokens: evalRunReport.totalTokens,
+    },
+  };
 }
 
 /** Every test file, in the order their paths sort in: one that reads with its

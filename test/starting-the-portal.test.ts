@@ -12,6 +12,7 @@ import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
+import { noEvaluationsRun } from "./no-evaluations.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
@@ -33,7 +34,7 @@ const portal = async (files: Readonly<Record<string, string>>, versioned: boolea
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
-    const code = await new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept }, COMMANDS).run(["portal"]);
+    const code = await new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun }, COMMANDS).run(["portal"]);
     return { code, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;

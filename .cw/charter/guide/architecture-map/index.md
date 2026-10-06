@@ -23,9 +23,10 @@ here and extend what is already there.
 - `port/driver/` — use-case interfaces (`ForManagingCharter`, `ForReviewingSessions`…) and the DTOs
   crossing them (`dtos/data.ts`, `dtos/outcome.ts`).
 - `port/zdriven/` — driven ports (`ForReadingFiles`, `ForWritingFiles`,
-  `ForVCS`, `ForCountingTokens`, `ForRunningAgentCli`, `ForTellingTime`…), named in the adapter's own words, never the domain's.
+  `ForVCS`, `ForCountingTokens`, `ForRunningAgentCli`, `ForRunningPromptfoo`, `ForTellingTime`…), named in the adapter's own words, never the domain's.
 - `application/` — use cases implementing the driver ports: `CharterAuthoring`,
-  `CharterVendoring`, `TestAuthoring`, `McpConnecting`, `SessionReviewing`; `dtos.ts` turns domain
+  `CharterVendoring`, `TestAuthoring`, `McpConnecting`, `SessionReviewing`,
+  `CharterEvaluating`; `dtos.ts` turns domain
   values into DTOs. A use case orchestrates; it holds no rule of its own.
 - `service/` — reads and writes through driven ports: `charterRepo`
   (`loadCharterRoot`, `writeCharter`), `buildService` (`plan`,
@@ -35,7 +36,9 @@ here and extend what is already there.
   through the agent's own command line), `sessionAnalysisRepo`
   (`loadSessionAnalysis`: the `SessionAnalysis` of the stops kept on this machine within a span,
   off the folder `sessionsFolderOf` in `path.ts` names, reading no log last
-  written outside it).
+  written outside it), `evalSuitesRepo` (`loadEvalRoot`: the cases under
+  `.cw/eval/`), `promptfooService` (`runWithPromptfoo`: one case said as a
+  promptfoo test, run and graded by promptfoo, read back as its report).
 - `domain/` — pure rules, no port:
   - `models/charter/` — `CharterRoot` (every primitive, every composite
     fault, in `compositeFaultsByFiles`), `primitive/` (one `<Kind>Primitive`
@@ -59,7 +62,8 @@ here and extend what is already there.
     into its main context when a session opens, hosts dispatched there, and
     `tokenFactorOf`, each host's token factor) calling `claudeMainContextOf`
     in `context/claudeMainContextFactory.ts`, beside `CLAUDE_TOKEN_FACTOR`;
-    `testService.ts`.
+    `testService.ts`; `evalService.ts` (`EvalCaseReport`, `EvalRunReport`, and the
+    cases naming what the charter does not hold).
   - `path.ts` — the repository's layout: every folder and file name, and the
     URLs built from them. Not a model.
   - `models/context/` — `MainContext`: what a charter puts into one agent's
@@ -70,6 +74,8 @@ here and extend what is already there.
     and `summarize(span)` / `summarizeByDay(span)` into a
     `SessionAnalysisSummary`, which holds each session's tokens by kind and
     total at its last stop and no line.
+  - `models/eval/` — `EvalSuite` (the cases of one file under `.cw/eval/`,
+    `evalRootOf` reading them all into an `EvalRoot`).
   - `models/` root — what the charter and the output share: closed value
     sets with their type (`AgentProvider`, `McpAuthMethod`), `WorkspaceSettings`,
     `DomainFault` (faults with a fix and a severity).
