@@ -1,0 +1,31 @@
+---
+kind: skill
+id: sdd-cleanup
+description: List the story and phase branches whose work has already landed, and delete the ones the user confirms, with their worktrees.
+triggers: ["sdd cleanup", "clean up branches", "delete merged branches", "prune branches"]
+rationale: sdd-concept
+---
+
+Read `<spec folder>/manifest.md` (the folder is in `.sdd/settings.json`): its
+**Branches** say which branches are story and phase branches, and its
+**Finishing** where each lands — a story into its phase branch, a phase into
+the branch it names.
+
+1. **List** — every local story and phase branch, never the one checked out
+   and never a branch the manifest lands work into. For each, say whether its
+   work has landed in its target:
+   - merged: `git rev-list --count <target>..<branch>` is `0`;
+   - squash-merged: the story is `Done` and the target holds a commit whose
+     message is the story's id and title — `git branch -d` refuses these, so
+     say each needs `-D`;
+   - not landed: name the commits the target does not hold.
+
+   Add the worktree each one is checked out in (`git worktree list`).
+2. **Ask** — show the list and ask which to delete; offer every landed one.
+   Nothing is deleted before the user answers.
+3. **Delete** — only what the user confirmed: remove its worktree
+   (`git worktree remove`), then the branch, `git branch -d`, or `-D` for one
+   step 1 found squash-merged. Never a branch that has not landed, never a
+   remote branch unless the user names it.
+
+Say what was deleted, and what was kept and why.

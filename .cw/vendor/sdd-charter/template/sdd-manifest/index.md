@@ -6,8 +6,9 @@ description: The skeleton of manifest.md — how work is carried out and finishe
 
 # Manifest
 
-How work on a story is carried out and finished in this repository. Read by
-/sdd-implement and /sdd-finish; changed only by asking the user.
+How work on a story or a bug fix is carried out and finished in this
+repository. Read by /sdd-implement, /sdd-bug-fix and /sdd-finish; changed only
+by asking the user.
 
 ## Specs
 
@@ -17,7 +18,8 @@ How work on a story is carried out and finished in this repository. Read by
 
 - **Worktree**: [main — every story in the main worktree, on its own branch | per story — each story in a git worktree of its own, under `[path]`]
 - **Order**: [linear — one story at a time, in plan.json order | parallel — every ready story at once, each by its own agent in its own worktree]
-- **Branches**: [phase branch `<nnn>-<slug>`; story branch `task/<prefix>-<n>-<slug>` started from it | story branch from `[base]` | none]
+- **Development branch**: `[the branch work starts from and lands in between releases; develop unless the user names another]`
+- **Branches**: [phase branch `<nnn>-<slug>`; story branch `task/<prefix>-<n>-<slug>` started from it | story branch from `[base]` | none]; a bug fix on `fix/<slug>` from the development branch
 
 ## Committing
 

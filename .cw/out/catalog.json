@@ -116,6 +116,18 @@
     "file": ".cw/out/skill/sdd-analyze/index.md"
   },
   {
+    "kind": "playbook",
+    "id": "sdd-bug-fix",
+    "description": "Fix one bug on a fix branch of its own — understand it, reproduce it with evidence, report the root cause and the fix for approval, fix it test first, review, verify, and finish into the development branch.",
+    "file": ".cw/out/playbook/sdd-bug-fix/index.md"
+  },
+  {
+    "kind": "skill",
+    "id": "sdd-cleanup",
+    "description": "List the story and phase branches whose work has already landed, and delete the ones the user confirms, with their worktrees.",
+    "file": ".cw/out/skill/sdd-cleanup/index.md"
+  },
+  {
     "kind": "corpus",
     "id": "sdd-concept",
     "description": "Why specs are split by part with a status per story, why a roadmap sits beside them, why they hold no how, and why every phase stops at a gate.",
@@ -124,7 +136,7 @@
   {
     "kind": "skill",
     "id": "sdd-finish",
-    "description": "Finish the story or phase you stand on exactly as manifest.md says — merge, squash-merge or pull request, into the branch it names — then clean its worktree up.",
+    "description": "Finish the story, bug fix or phase you stand on exactly as manifest.md says — merge, squash-merge or pull request, into the branch it names — then clean its worktree up.",
     "file": ".cw/out/skill/sdd-finish/index.md"
   },
   {

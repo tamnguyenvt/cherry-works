@@ -1,7 +1,7 @@
 ---
 kind: skill
 id: sdd-finish
-description: Finish the story or phase you stand on exactly as manifest.md says — merge, squash-merge or pull request, into the branch it names — then clean its worktree up.
+description: Finish the story, bug fix or phase you stand on exactly as manifest.md says — merge, squash-merge or pull request, into the branch it names — then clean its worktree up.
 triggers: ["finish the story", "finish the task", "merge branch", "finish the phase"]
 rationale: sdd-concept
 ---
@@ -10,13 +10,15 @@ Read `<spec folder>/manifest.md` (the folder is in `.sdd/settings.json`). Do
 what its **Finishing** section says and nothing it does not; if it says
 nothing about the case at hand, ask, and offer to write the answer into it.
 
-1. **Check** — the story's status is `Done` and the checks pass
+1. **Check** — the story's status is `Done`, or on a fix branch the user has
+   accepted the fix at /sdd-bug-fix's last gate, and the checks pass
    (/sdd-verify). Refuse otherwise, saying what is missing.
 
    On a story branch, a change still in the working tree, staged or not, is
    the story's: being asked to finish is being asked to commit it. Stage every
    change and commit it on the story branch without asking, the story's id
-   and title as its message in the **Message** convention. On a phase branch,
+   and title as its message in the **Message** convention. On a fix branch
+   the same, the fix's one-line root cause as its message. On a phase branch,
    refuse a working tree that is not clean, naming what is left.
 2. **Story** — on a story branch, do what **Story** says:
    - merge or squash-merge into its target; a squash's message is the
@@ -26,12 +28,18 @@ nothing about the case at hand, ask, and offer to write the answer into it.
      story's id, title and acceptance scenarios in its body.
 
    Add a `Co-Authored-By` line only where **Co-Authored-By** says yes.
+
+   On a fix branch (`fix/<slug>`), the same, as **Story** says, except that
+   the target is the manifest's **Development branch** — `develop` where it
+   names none — never a phase branch; a squash's message is the fix's one-line
+   root cause.
 3. **Phase** — on a phase branch, do what **Phase** says: fast-forward,
    merge, or open a pull request. Where a fast-forward is impossible, stop and
    say why.
 4. **Clean up** — with **Worktree** per story, remove the story's worktree
    once its branch is merged; delete a merged story branch only if the user
-   says so.
+   says so (/sdd-cleanup).
+5. **Report** — run /sdd-report, so the roadmap shows what just landed.
 
 Say which branch went where, the resulting commit or pull request, and the
 next ready story (`ready` of [[sdd-specs]]).

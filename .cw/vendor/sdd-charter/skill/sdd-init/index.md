@@ -73,12 +73,16 @@ the user takes with "yes":
    main worktree on its own branch.
 3. **Order** — one story at a time in plan.json order, or every ready story at
    once, each by its own agent in its own worktree (needs worktrees).
-4. **Branches** — phase and story branch names, or none.
-5. **While working** — leave changes unstaged for the user, or commit at each
+4. **Development branch** — the branch work starts from and lands in between
+   releases, which a phase branch starts from and a bug fix lands in. Ask it
+   by name; where the user names none, it is `develop`.
+5. **Branches** — phase and story branch names, or none. A bug fix is always
+   on `fix/<slug>`, started from the development branch.
+6. **While working** — leave changes unstaged for the user, or commit at each
    step that passes its checks.
-6. **Commit message** — the convention, and whether to add a
+7. **Commit message** — the convention, and whether to add a
    `Co-Authored-By` line for the agent.
-7. **Finishing** — merge, squash-merge or pull request, into which branch, and
+8. **Finishing** — merge, squash-merge or pull request, into which branch, and
    what happens when a phase is done.
 
 ## 4. Write, and check

@@ -7,15 +7,19 @@ triggers: ["implement task", "implement next task", "implement the next story", 
 ---
 
 The end-to-end walk of one story: `pick → spec → implement → check drift →
-verify → review → (learn) → done`. After each phase, **pause for the user's
-acceptance** before the next. Talk to the user in the language they write in,
-in full sentences.
+verify → review → (learn) → done`. The user is asked twice: at the spec gate,
+and once the change has passed its own checks. Implement, check drift, verify
+and review run on their own in between, with no pause: the user is never
+handed a change to look at that has not been verified and reviewed first.
+Talk to the user in the language they write in, in full sentences.
 
 Read `.sdd/settings.json` for the spec folder, and `manifest.md` there: it
 decides the worktree, the order, the branches and how changes are committed.
 Do as it says; where it says nothing about the case at hand, ask.
 
 1. **Pick** —
+   - Run /sdd-report first, so the user sees the roadmap the story is picked
+     from.
    - With more than one `spec-<key>.md`, ask which spec to work in before
      looking up any story, unless the user named one.
    - Run `ready` of [sdd-specs](../../script/sdd-specs/index.md): the stories whose dependencies are `Done`.
@@ -39,12 +43,21 @@ Do as it says; where it says nothing about the case at hand, ask.
    to judge, old code on a changed line included: a name, a call or a shape
    the line already had is held to the guide as a new one is. Fix what they
    flag, and say file by file which guides were read.
-5. **Verify** — run /sdd-verify.
-6. **Review** — run /sdd-review.
+5. **Verify** — run /sdd-verify. A failure goes back to step 3.
+6. **Review** — run /sdd-review. A finding to fix goes back to step 3, and
+   the steps after it run again.
+   **Gate:** only now, with verify and review passed, hand the change to the
+   user, saying what changed and what verify and review showed.
+   - **The loop:** each change the user asks for at this gate is made, then
+     checked for drift, verified and reviewed again, before it is handed back.
+     Never report a requested change as done on the edit alone.
 7. **Learn** *(only if something surprising came up)* — run /sdd-learn.
-8. **Done** — set the story's status line to `Done`, run `check` of
-   [sdd-specs](../../script/sdd-specs/index.md), and commit or leave the change as **While working** says.
-   Say which stories `ready` lists now, and that /sdd-finish merges this one.
+8. **Done** — once the user accepts the change at the gate, set the story's
+   status line to `Done`, run `check` of [sdd-specs](../../script/sdd-specs/index.md), and commit or leave
+   the change as **While working** says.
+   Then run /sdd-finish at once: the user saying the story is done is the ask
+   to finish it, with no second acceptance. Say which stories `ready` lists
+   once it has merged.
 
 ## Iron laws (across every phase)
 

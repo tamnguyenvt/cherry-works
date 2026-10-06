@@ -11,7 +11,8 @@ How work on a story is carried out and finished in this repository. Read by
 
 - **Worktree**: main — every story in the main worktree, on its own branch.
 - **Order**: linear — one story at a time, in plan.json order.
-- **Branches**: phase branch `<nnn>-<slug>` (`007-sdd-and-host-names`); story branch `task/<prefix>-<n>-<slug>` started from it (`task/core-15-publish-a-release`).
+- **Development branch**: `develop`.
+- **Branches**: phase branch `<nnn>-<slug>` (`007-sdd-and-host-names`); story branch `task/<prefix>-<n>-<slug>` started from it (`task/core-15-publish-a-release`); a bug fix on `fix/<slug>` from the development branch.
 
 ## Committing
 
