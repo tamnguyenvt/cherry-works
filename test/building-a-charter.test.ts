@@ -104,7 +104,7 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
   ]);
   assert.deepEqual(built.deleted, []);
   assert.ok((await contentsOf(held, ".cw/out/guide/no-any/index.md")).includes("The body of no-any."));
-  assert.ok((await contentsOf(held, ".claude/rules/no-any.md")).includes("@../../.cw/out/guide/no-any/index.md"));
+  assert.ok((await contentsOf(held, ".claude/rules/no-any.md")).includes("Read and follow .cw/out/guide/no-any/index.md."));
 });
 
 test("an id holding / is built as one file in its kind's folder, each / as -, and into a host file named the same way (FR-141)", async () => {
@@ -172,7 +172,7 @@ test("a compiled file someone edited by hand is written back over (FR-020)", asy
 
   await build();
 
-  assert.ok((await contentsOf(held, ".claude/rules/no-any.md")).includes("@../../.cw/out/guide/no-any/index.md"));
+  assert.ok((await contentsOf(held, ".claude/rules/no-any.md")).includes("Read and follow .cw/out/guide/no-any/index.md."));
 });
 
 test("a file the charter never wrote is left alone, wherever it sits", async () => {

@@ -103,7 +103,10 @@ test("a guide becomes a rule, and the files it speaks about are the paths that l
 
   const contents = files[".claude/rules/no-any.md"] ?? "";
   assert.ok(contents.includes('---\npaths: ["src/**/*.ts", "test/**/*.ts"]\n---'), contents);
-  assert.ok(contents.includes("@../../.cw/out/guide/no-any/index.md\n"), contents);
+  // An `@` is expanded when the session opens, whatever its paths, so the
+  // guide is pointed to and read only once a file it names is touched.
+  assert.ok(contents.includes("Read and follow .cw/out/guide/no-any/index.md.\n"), contents);
+  assert.ok(!contents.includes("@"), contents);
 });
 
 test("a guide that names no files is a rule with no paths, loaded every session (FR-013)", async () => {

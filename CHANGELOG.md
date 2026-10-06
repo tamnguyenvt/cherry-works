@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- A guide with `globs` now loads only when the agent works on a matching file, instead of in every session, which saves tokens; run `cw build`.
+
 ## 0.6.0 — 2026-10-06
 
 - New `cw context` says how many tokens each primitive puts into the agent's context when a session opens; `cw build` prints the total, and `cw doctor` warns past `mainContextCeiling` (20,000 unless set).

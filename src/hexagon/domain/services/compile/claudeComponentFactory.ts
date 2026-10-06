@@ -158,7 +158,7 @@ function claudeSettingsOf(
  * what the host reads before it opens a body, and one line pointing there
  * (FR-139). The path is from this document's own folder, as claude resolves an
  * `@` import: `.claude/<kind>/` two folders down, a skill's `SKILL.md` three.
- * A rule's `@` is expanded when the rule loads; for the other kinds claude
+ * A rule's `@` is expanded when the session opens; for the other kinds claude
  * documents no such expansion, so the line says to read the file. A subagent
  * is handed `agentTools`: its tools as this host names them, each mcp origin it
  * holds written as that mcp origin's tools (FR-156).
@@ -180,8 +180,12 @@ function claudeDocumentComponentOf(sc: Primitive, compiledFile: string, agentToo
     // so a reader who wants it changed is sent to the primitive rather than
     // editing what the next build overwrites (FR-017, FR-020).
     case GuidePrimitive.kind: {
+      // An `@` is expanded when the session opens, paths or not, so a guide
+      // naming files is pointed to from the repository's root instead, and
+      // read only once one of them is touched.
       const { globs = [] } = sc.headers;
-      return ClaudeRule.of(name, globs.length === 0 ? {} : { paths: globs }, `@${compiledFromClaudeFolder}\n`);
+      if (globs.length === 0) return ClaudeRule.of(name, {}, `@${compiledFromClaudeFolder}\n`);
+      return ClaudeRule.of(name, { paths: globs }, `Read and follow ${compiledFile}.\n`);
     }
     case AgentPrimitive.kind: {
       const { tools } = sc.headers;
