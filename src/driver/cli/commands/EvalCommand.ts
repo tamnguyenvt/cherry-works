@@ -1,5 +1,5 @@
 import { EVAL_DIRECTORY } from "#hexagon/port/driver/ForEvaluatingCharter.js";
-import { toText } from "./helper.js";
+import { printFaultsByFile } from "./helper.js";
 import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type Outcome } from "./Command.js";
 
 /**
@@ -18,7 +18,7 @@ export class EvalCommand implements Command {
 
   async run({ charterEvaluatingApp }: Context, _options: Options): Promise<Outcome> {
     const evalRunReportDTO = await charterEvaluatingApp.evaluate();
-    if (evalRunReportDTO.type === "FaultsByFile") return { code: EXIT_FAILURE, problem: `No case was run.\n\n${toText(evalRunReportDTO)}` };
+    if (evalRunReportDTO.type === "FaultsByFile") return { code: EXIT_FAILURE, problem: `No case was run.\n\n${printFaultsByFile(evalRunReportDTO)}` };
 
     const { evalCaseReports, totalTokens } = evalRunReportDTO.data;
     if (evalCaseReports.length === 0)

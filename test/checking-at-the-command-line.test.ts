@@ -119,7 +119,7 @@ test("a charter with nothing wrong passes, and says so", async () => {
   // Whether this repository is built is a question of its own, and not this
   // one: what a charter with nothing wrong answers is that it holds.
   assert.deepEqual(written.problems, []);
-  assert.match(written.everything, /Charter: {2}holds\./);
+  assert.match(written.everything, /Charter: {2}good\./);
 });
 
 test("a file that is no primitive at all is named, with the problem and the next move", async () => {
@@ -180,7 +180,7 @@ test("a warning is said and lets the run through", async () => {
 
   // Said, and the charter still holds: a warning is worth saying and not worth
   // stopping on.
-  assert.match(written.everything, /holds, with 1 warning/);
+  assert.match(written.everything, /good, with 1 warning/);
   assert.match(written.everything, /warn: .*absent/);
 });
 

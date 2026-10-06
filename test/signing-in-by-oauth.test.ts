@@ -10,6 +10,7 @@ import { InMemorySecrets } from "../src/zdriven/InMemorySecrets.js";
 import { OAuth } from "../src/zdriven/OAuth.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { anOAuthServer } from "./an-oauth-server.js";
+import { charterFilesOf } from "./charter-of-mcp-origins.js";
 
 /** One mcp origin at the test server's endpoint, signed in to by OAuth. */
 const mcpOriginAt = (endpoint: string): McpOrigin => ({ ids: ["billing"], names: { "billing": "billing_0000" }, address: endpoint, endpoint, auth: ["oauth"] });
@@ -29,7 +30,7 @@ test("an OAuth sign-in against an mcp origin ends with a credential in the store
   t.after(() => oauthTestServer.server.close());
   const secrets = new InMemorySecrets();
   const origin = mcpOriginAt(oauthTestServer.endpoint);
-  const held = new InMemoryFileReaders({ "file:///repo/.cw/out/mcp-origins.json": JSON.stringify({ origins: [origin] }) });
+  const held = new InMemoryFileReaders({ ...charterFilesOf([origin]), "file:///repo/.cw/out/mcp-origins.json": JSON.stringify({ origins: [origin] }) });
   const shown: string[] = [];
 
   await new McpConnecting(new URL("file:///repo/"), held, secrets, new OAuth(), new YamlParser(), new InMemoryMcpServers()).signInWithOAuth(origin.address, (authorizationUrl) => {
@@ -53,7 +54,7 @@ test("an expired credential is renewed on use, asking nothing, and the renewal k
   const secrets = new InMemorySecrets();
   const oauth = new OAuth();
   const origin = mcpOriginAt(oauthTestServer.endpoint);
-  const held = new InMemoryFileReaders({ "file:///repo/.cw/out/mcp-origins.json": JSON.stringify({ origins: [origin] }) });
+  const held = new InMemoryFileReaders({ ...charterFilesOf([origin]), "file:///repo/.cw/out/mcp-origins.json": JSON.stringify({ origins: [origin] }) });
   await new McpConnecting(new URL("file:///repo/"), held, secrets, oauth, new YamlParser(), new InMemoryMcpServers()).signInWithOAuth(origin.address, openInBrowser);
 
   assert.equal(await credentialFor(secrets, oauth, origin), "access-1");

@@ -18,6 +18,7 @@ import { InMemoryMcpServers } from "../src/zdriven/InMemoryMcpServers.js";
 import { InMemorySecrets } from "../src/zdriven/InMemorySecrets.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
+import { charterFilesOf } from "./charter-of-mcp-origins.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
@@ -39,7 +40,7 @@ const ORIGINS: readonly McpOrigin[] = [
 /** Every mcp origin the command line is driven through over one list of mcp origins, the
  *  store held in memory, and a repository whose files are watched for change. */
 const mcpOriginsOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
-  const held = new InMemoryFileReaders(origins === null ? {} : { [ORIGINS_FILE]: JSON.stringify({ origins }) });
+  const held = new InMemoryFileReaders(origins === null ? {} : { ...charterFilesOf(origins), [ORIGINS_FILE]: JSON.stringify({ origins }) });
   const secrets = new InMemorySecrets();
   const authorizing = new InMemoryAuthorizing();
   const mcpConnectingApp = new McpConnecting(repoPath, held, secrets, authorizing, new YamlParser(), new InMemoryMcpServers());
@@ -86,13 +87,19 @@ test("signInStatus() answers one row per address taking a sign-in, its ids whate
   ]);
 });
 
-test("no list of mcp origins is refused, saying to build (FR-152)", async () => {
+test("a charter with no mcp has no address to sign in to (FR-148)", async () => {
   const { mcpConnectingApp } = mcpOriginsOver(null);
-  await assert.rejects(mcpConnectingApp.signInStatus(), (raised: Error & { fix?: string }) => {
-    assert.match(raised.message, /mcp-origins\.json/);
-    assert.match(raised.fix ?? "", /cw build/);
-    return true;
-  });
+  assert.deepEqual(await mcpConnectingApp.signInStatus(), []);
+});
+
+test("an mcp the charter holds is signed in to before any build has listed it (FR-148, EVAL-FR-031)", async () => {
+  const [githubOrigin] = ORIGINS as [McpOrigin];
+  const { held, mcpConnectingApp, secrets } = mcpOriginsOver(null);
+  for (const [href, text] of Object.entries(charterFilesOf([githubOrigin]))) held.write(new URL(href), text);
+
+  assert.deepEqual((await mcpConnectingApp.signInStatus()).map((one) => one.data.ids), [["github/billing"]]);
+  await mcpConnectingApp.signInWithToken(GITHUB, "gh-token");
+  assert.deepEqual(JSON.parse(secrets.secrets.get(GITHUB) ?? ""), { address: GITHUB, method: "token", accessToken: "gh-token" });
 });
 
 test("a token is kept under its address; one for no mcp origin, a way the address does not allow, or an empty token keeps nothing (FR-148)", async () => {
@@ -101,7 +108,7 @@ test("a token is kept under its address; one for no mcp origin, a way the addres
   await mcpConnectingApp.signInWithToken(LINEAR, "lin-token");
   assert.deepEqual(JSON.parse(secrets.secrets.get(LINEAR) ?? ""), { address: LINEAR, method: "token", accessToken: "lin-token" });
 
-  await assert.rejects(mcpConnectingApp.signInWithToken("https://nowhere.example/mcp", "t"), /No mcp origin/);
+  await assert.rejects(mcpConnectingApp.signInWithToken("https://nowhere.example/mcp", "t"), /No mcp in the charter/);
   await assert.rejects(mcpConnectingApp.signInWithOAuth(LINEAR, () => undefined), /allows token/);
   await assert.rejects(mcpConnectingApp.signInWithToken(GITHUB, "  "), /No token/);
   assert.deepEqual([...secrets.secrets.keys()], [LINEAR]);
@@ -188,11 +195,11 @@ test("cw mcp auth <id> signs in again at that id's address alone, whatever was k
   assert.match(unknown.problems, /nowhere/);
 });
 
-test("an mcp origin at plain http on another machine is signed in to by no way, and keeps nothing, whatever the list says (FR-149)", async () => {
+test("an mcp origin at plain http on another machine is signed in to by no way, and keeps nothing: the charter does not hold it (FR-149)", async () => {
   const CLEARTEXT = "http://mcp.example/mcp";
   const { mcpConnectingApp, secrets } = mcpOriginsOver([{ ids: ["cleartext"], names: { "cleartext": "cleartext_0000" }, address: CLEARTEXT, endpoint: CLEARTEXT, auth: ["oauth", "token"] }]);
 
-  await assert.rejects(mcpConnectingApp.signInWithToken(CLEARTEXT, "t"), { message: /plain http/, fix: /https:\/\// });
-  await assert.rejects(mcpConnectingApp.signInWithOAuth(CLEARTEXT, () => undefined), /plain http/);
+  await assert.rejects(mcpConnectingApp.signInWithToken(CLEARTEXT, "t"), /No mcp in the charter is at http:\/\/mcp\.example\/mcp/);
+  await assert.rejects(mcpConnectingApp.signInWithOAuth(CLEARTEXT, () => undefined), /No mcp in the charter/);
   assert.equal(secrets.secrets.size, 0);
 });

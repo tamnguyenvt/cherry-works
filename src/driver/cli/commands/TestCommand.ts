@@ -1,5 +1,5 @@
 import { TEST_DIRECTORY } from "#hexagon/port/driver/ForManagingCharter.js";
-import { toText } from "./helper.js";
+import { printFaultsByFile } from "./helper.js";
 import type { DataDTOs } from "#hexagon/port/driver/dtos/index.js";
 import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type Outcome } from "./Command.js";
 
@@ -29,7 +29,7 @@ export class TestCommand implements Command {
     // nothing was resolved, and what has to change is named under its own path
     // (SC-003).
     if (testRunReportDTO.type === "FaultsByFile")
-      return { code: EXIT_FAILURE, problem: `Nothing was resolved.\n\n${toText(testRunReportDTO)}` };
+      return { code: EXIT_FAILURE, problem: `Nothing was resolved.\n\n${printFaultsByFile(testRunReportDTO)}` };
 
     const cases = testRunReportDTO.data.testCaseReports;
 

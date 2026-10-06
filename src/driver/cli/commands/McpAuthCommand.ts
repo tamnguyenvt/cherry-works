@@ -19,7 +19,7 @@ const OPTIONS = {
 
 /**
  * `cw mcp auth`: the developer signs in, as themselves, to every address the
- * last build listed that they have not signed in to yet (FR-148 – FR-150).
+ * charter holds that they have not signed in to yet (FR-148 – FR-150).
  *
  * The asking happens here, as it does in `cw add`: which way to sign in where
  * an address allows two, and a token at a prompt that does not show it. The
@@ -43,7 +43,7 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
         code: EXIT_OK,
         result:
           signInStatuses.length === 0
-            ? "No mcp origin the last build listed takes a sign-in.\n"
+            ? "No mcp in the charter takes a sign-in.\n"
             : signInStatuses
                 .map(({ address, ids, signedIn, method }) =>
                   [address, `  ${ids.join(", ")}`, `  ${signedIn ? `signed in by ${method}` : "not signed in"}`, ""].join("\n"),
@@ -57,8 +57,8 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
       const signInStatus = signInStatuses.find((one) => one.ids.includes(id));
       if (signInStatus === undefined)
         throw new DomainFault(
-          `No mcp origin the last build listed is declared by ${id}.`,
-          'Run "cw mcp auth --status" to see every mcp, or "cw build" if the charter changed.',
+          `No mcp in the charter that takes a sign-in is ${id}.`,
+          'Run "cw mcp auth --status" to see every mcp that does.',
         );
       unsignedStatuses = [signInStatus];
     }
@@ -68,7 +68,7 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
         code: EXIT_OK,
         result:
           signInStatuses.length === 0
-            ? "No mcp origin the last build listed takes a sign-in.\n"
+            ? "No mcp in the charter takes a sign-in.\n"
             : `You are signed in at every address: ${signInStatuses.length}.\n`,
       };
 

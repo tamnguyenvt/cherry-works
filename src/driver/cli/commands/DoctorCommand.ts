@@ -1,4 +1,4 @@
-import { toText } from "./helper.js";
+import { printFaultsByFile } from "./helper.js";
 import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type Outcome } from "./Command.js";
 
 /**
@@ -21,7 +21,7 @@ import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type O
  * It is also where a fault is read. There was a `cw validate` that said the
  * same thing about one of these four questions and nothing about the other
  * three, and two commands answering one question differently is one command
- * too many: what is wrong with the charter is written out here, by `toText`,
+ * too many: what is wrong with the charter is written out here, by `printFaultsByFile`,
  * which is what a fault says rather than how this prints it (SC-003).
  *
  * Every question is asked even when an earlier one is unwell, since the point
@@ -49,6 +49,16 @@ export class DoctorCommand implements Command {
       mainContextCeiling,
     } = (await charterAuthoringApp.doctor()).data;
 
+    // Each answer is marked by what it asks of the developer: nothing, a step to
+    // take, or a fault to fix. Coloured only on a terminal that takes colour, so
+    // a report piped or pasted reads the same marks without escape codes.
+    const isColoured = process.stdout.isTTY === true && process.env.NO_COLOR === undefined;
+    const markByStanding = {
+      good: isColoured ? "\x1b[32m✔\x1b[0m" : "✔",
+      todo: isColoured ? "\x1b[33m⚠\x1b[0m" : "⚠",
+      fault: isColoured ? "\x1b[31m✘\x1b[0m" : "✘",
+    } as const;
+
     return {
       code: problemCount === 0 ? EXIT_OK : EXIT_FAILURE,
       result: [
@@ -57,30 +67,33 @@ export class DoctorCommand implements Command {
         `cw ${version}`,
         // A repository that compiles for none is set up and building: the
         // neutral surface is compiled for everybody (FR-019).
-        agents.length === 0 ? "Agents:   none chosen, so only the neutral surface is compiled." : `Agents:   ${agents.join(", ")}.`,
+        agents.length === 0
+          ? `${markByStanding.good} Agents:   none chosen, so only the neutral surface is compiled.`
+          : `${markByStanding.good} Agents:   ${agents.join(", ")}.`,
         errors > 0
-          ? `Charter:  ${errors} error${errors === 1 ? "" : "s"}.`
+          ? `${markByStanding.fault} Charter:  ${errors} error${errors === 1 ? "" : "s"}.`
           : warnings === 0
-            ? "Charter:  holds."
-            : `Charter:  holds, with ${warnings} warning${warnings === 1 ? "" : "s"}.`,
+            ? `${markByStanding.good} Charter:  good.`
+            : `${markByStanding.todo} Charter:  good, with ${warnings} warning${warnings === 1 ? "" : "s"}.`,
         driftedVendors.length === 0
-          ? "Vendors:  none edited here."
-          : `Vendors:  edited here: ${driftedVendors.join(", ")}. Run "git checkout" under .cw/vendor/ to undo, or commit what you meant.`,
+          ? `${markByStanding.good} Vendors:  good.`
+          : `${markByStanding.fault} Vendors:  edited here: ${driftedVendors.join(", ")}. Run "git checkout" under .cw/vendor/ to undo, or commit what you meant.`,
         pending === null
-          ? "Built:    not known, since the charter does not hold."
+          ? `${markByStanding.fault} Built:    Fix the charter's errors, then run "cw build".`
           : pending === 0
-            ? "Built:    up to date."
-            : `Built:    ${pending} file${pending === 1 ? "" : "s"} out of date. Run "cw build".`,
+            ? `${markByStanding.good} Built:    up to date.`
+            : `${markByStanding.todo} Built:    ${pending} file${pending === 1 ? "" : "s"} out of date. Run "cw build".`,
         // What each agent opens a session with, held to the ceiling: past it is
         // a warning, and fails nothing (EVAL-FR-006).
-        ...mainContexts.map(
-          ({ agent, totalTokens }) =>
-            `Context:  ${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens, ${totalTokens > mainContextCeiling ? `past the ceiling of ${mainContextCeiling.toLocaleString("en-US")}. Run "cw context" to see what takes the most.` : `within the ceiling of ${mainContextCeiling.toLocaleString("en-US")}.`}`,
+        ...mainContexts.map(({ agent, totalTokens }) =>
+          totalTokens > mainContextCeiling
+            ? `${markByStanding.todo} Context:  ${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens, past the ceiling of ${mainContextCeiling.toLocaleString("en-US")}. Run "cw context" to see what takes the most.`
+            : `${markByStanding.good} Context:  good (${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens, within the ceiling of ${mainContextCeiling.toLocaleString("en-US")}).`,
         ),
         // Every fault under the file that has to change, below the four lines
         // rather than inside them: a line says how many, and this says which
         // (FR-009).
-        ...(Object.keys(faultsByFile.data.files).length === 0 ? [] : ["", toText(faultsByFile)]),
+        ...(Object.keys(faultsByFile.data.files).length === 0 ? [] : ["", printFaultsByFile(faultsByFile)]),
         problemCount === 0 ? "Nothing to fix." : `${problemCount} thing${problemCount === 1 ? "" : "s"} to fix.`,
         "",
       ].join("\n"),

@@ -103,9 +103,9 @@ test("a repository with nothing wrong passes, and says so of each thing it looke
 
   assert.equal(code, EXIT_OK);
   assert.match(written.everything, /Agents: {3}claude\./);
-  assert.match(written.everything, /Charter: {2}holds\./);
-  assert.match(written.everything, /Vendors: {2}none edited here\./);
-  assert.match(written.everything, /Built: {4}up to date\./);
+  assert.match(written.everything, /✔ Charter: {2}good\./);
+  assert.match(written.everything, /✔ Vendors: {2}good\./);
+  assert.match(written.everything, /✔ Built: {4}up to date\./);
   assert.match(written.everything, /Nothing to fix\./);
 });
 
@@ -123,7 +123,7 @@ test("a repository that has never been built is out of date, and fails (FR-040)"
   const { code, written } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /Built: {4}15 files out of date\. Run "cw build"\./);
+  assert.match(written.everything, /⚠ Built: {4}15 files out of date\. Run "cw build"\./);
 });
 
 test("staleness is the preview run, not a record kept of the last build (FR-040)", async () => {
@@ -146,14 +146,14 @@ test("a charter with an error is counted, and read where every fault is (FR-040,
   const { code, written } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /Charter: {2}1 error\./);
+  assert.match(written.everything, /✘ Charter: {2}1 error\./);
   // Counted above, and written out below: the file that has to change, and what
   // is wrong with it (FR-009, SC-003).
   assert.match(written.everything, /\.cw\/charter\/guide\/no-any\/index\.md/);
   assert.match(written.everything, /error: This pulls in the mixin "nowhere"/);
   // A charter that does not hold previews nothing, so what is built cannot be
   // answered.
-  assert.match(written.everything, /Built: {4}not known, since the charter does not hold\./);
+  assert.match(written.everything, /Built: {4}Fix the charter's errors, then run "cw build"\./);
   assert.match(written.everything, /2 things to fix\./);
 });
 
@@ -186,7 +186,7 @@ test("a vendored file edited here is named by its vendor, once (FR-040, SC-008)"
   const { code, written } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /Vendors: {2}edited here: house-rules\./);
+  assert.match(written.everything, /✘ Vendors: {2}edited here: house-rules\./);
 });
 
 test("work in hand outside the vendor folder is no business of doctor's (FR-040)", async () => {
@@ -197,7 +197,7 @@ test("work in hand outside the vendor folder is no business of doctor's (FR-040)
   const { code, written } = await run(["doctor"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(written.everything, /Vendors: {2}none edited here\./);
+  assert.match(written.everything, /✔ Vendors: {2}good\./);
 });
 
 test("a repository compiling for no agent is told what that means, and passes (FR-019, FR-040)", async () => {
@@ -270,7 +270,7 @@ test("a vendor's warnings are left out, since it is tested in its own repository
 
   const { written } = await run(["doctor"]);
 
-  assert.match(written.everything, /Charter: {2}holds, with 1 warning\./);
+  assert.match(written.everything, /⚠ Charter: {2}good, with 1 warning\./);
   assert.match(written.everything, /\.cw\/charter\/guide\/no-any\/index\.md/);
   assert.doesNotMatch(written.everything, /\.cw\/vendor\/team/);
 });
@@ -318,7 +318,7 @@ test("warnings alone let the build through, and doctor passes once it is built (
   const { code, written } = await run(["doctor"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(written.everything, /Charter: {2}holds, with 3 warnings\./);
+  assert.match(written.everything, /⚠ Charter: {2}good, with 3 warnings\./);
 });
 
 test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-144)", async () => {

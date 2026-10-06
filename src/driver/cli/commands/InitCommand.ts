@@ -6,6 +6,7 @@ import {
   type AgentProvider,
   type ForManagingCharter,
 } from "#hexagon/port/driver/ForManagingCharter.js";
+import { printFaultsByFile } from "./helper.js";
 import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type Outcome } from "./Command.js";
 
 const OPTIONS = {
@@ -56,7 +57,7 @@ export class InitCommand implements Command<typeof OPTIONS> {
       return {
         code: EXIT_FAILURE,
         result: [...setUp, ""].join("\n"),
-        problem: `Nothing was built: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+        problem: `Nothing was built: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
       };
     }
 

@@ -226,7 +226,7 @@ test("the health check warns once the total passes the repository's ceiling, nam
 
   // A warning, as every other: said, and no question the more unwell for it.
   assert.equal(await problemCountOf(portalRoutes), await problemCountOf(underCeilingRoutes));
-  assert.match(text, /Context: {2}claude opens a session with about [\d,]+ tokens, past the ceiling of 100\./);
+  assert.match(text, /⚠ Context: {2}claude opens a session with about [\d,]+ tokens, past the ceiling of 100\./);
 });
 
 test("the health check is quiet under the 20,000 a repository setting none is held to (EVAL-FR-006)", async () => {
@@ -235,7 +235,7 @@ test("the health check is quiet under the 20,000 a repository setting none is he
   const { text } = await printed(cli, ["doctor"]);
   const doctorOutcome = OutcomeDTOs.DoctorOutcome.parse(await (await portalRoutes.request("/charter/root/health")).json());
 
-  assert.match(text, /Context: {2}claude opens a session with about [\d,]+ tokens, within the ceiling of 20,000\./);
+  assert.match(text, /✔ Context: {2}good \(claude opens a session with about [\d,]+ tokens, within the ceiling of 20,000\)\./);
   assert.equal(doctorOutcome.data.mainContextCeiling, 20_000);
   assert.equal(doctorOutcome.data.mainContexts[0]?.agent, "claude");
 });

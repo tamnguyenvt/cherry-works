@@ -136,7 +136,7 @@ test("setting up over a charter that does not hold keeps what it configured, bui
   assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["claude"] });
   assert.equal(await held(files, ".cw/out/CHARTER.md"), undefined);
   assert.match(problems, /Nothing was built/);
-  assert.match(problems, /cw doctor/);
+  assert.match(problems, /\.cw\/charter\/guide\/broken\/index\.md/);
 });
 
 test("setting up authors nothing for what the engine brings: it is supplied on every read (FR-016, FR-020)", async () => {

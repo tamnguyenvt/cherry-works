@@ -305,6 +305,8 @@ To put a price on it, ask your agent what last week cost: the built-in
 type or the provider's published ones, and answers per session and per day,
 naming the prices it used.
 
+Both limits are set in `.cw/settings.json`; leave one out to keep its default:
+
 ```json
 {
   "agents": ["claude"],
@@ -312,6 +314,14 @@ naming the prices it used.
   "sessionContextMark": 100000
 }
 ```
+
+- `mainContextCeiling` — the tokens a session may open with before `cw doctor`
+  warns. Raise it when your charter is meant to be large.
+- `sessionContextMark` — every how many tokens a running session tells you what
+  it has used so far.
+
+Each is a whole number above 0. Run `cw build` after changing either, then
+`cw doctor` to check.
 
 ## Vendor sources
 
@@ -362,13 +372,16 @@ the environment variable its `tokenEnv` names. Any primitive points the agent
 at an mcp origin by naming it in its body as `[[mfbs/billing]]`.
 
 ```bash
-cw build            # adds one entry, cw mcp serve, to your agent's .mcp.json
-cw mcp auth         # sign in to every mcp origin you are not signed in to yet
+cw mcp auth         # sign in to every mcp origin the charter declares that you are not signed in to yet
+cw build            # asks each mcp origin for its tools; adds one entry, cw mcp serve, to your agent's .mcp.json
 cw mcp auth --status
 ```
 
-Every developer signs in as themselves, by browser where the mcp origin offers OAuth
-or with a token typed at a hidden prompt. Credentials are kept in the operating
+Sign in before you build: the build reaches each mcp origin under your
+credential, and stops on one you are not signed in to. Every developer signs in
+as themselves, by browser where the mcp origin offers OAuth or with a token
+typed at a hidden prompt. GitHub's MCP server does not let `cw` register for
+OAuth, so sign in there with a personal access token. Credentials are kept in the operating
 system's credential store, never in the repository, and renewed without asking
 where the mcp origin allows it. `cw mcp serve` is the one MCP server your agent is
 given: it serves the tools each mcp origin declares and forwards every call under

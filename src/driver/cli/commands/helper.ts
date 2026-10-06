@@ -47,7 +47,7 @@ export function parseKVParams(typed: readonly string[], paramName: string): Reco
  * is what a command was answered with, each file already named from the
  * repository: the path an author would type.
  */
-export function toText({ data: { files } }: DataDTOs.FaultsByFile): string {
+export function printFaultsByFile({ data: { files } }: DataDTOs.FaultsByFile): string {
   return Object.keys(files)
     .sort()
     .map((file) => [file, ...(files[file] ?? []).flatMap(lines), ""].join("\n"))

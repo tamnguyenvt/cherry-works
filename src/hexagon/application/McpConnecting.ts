@@ -1,6 +1,7 @@
 import { DomainFault } from "../domain/models/DomainFault.js";
-import { isSecureEndpoint } from "../domain/models/charter/primitive/McpPrimitive.js";
+import { isSecureEndpoint, McpPrimitive } from "../domain/models/charter/primitive/McpPrimitive.js";
 import type { McpOrigin } from "../domain/models/output/common/McpOrigin.js";
+import { loadCharterRoot } from "../service/charterRepo.js";
 import { credentialFor, readCredential, writeCredential } from "../service/credentialRepo.js";
 import { loadMcpOrigins, loadMcpTools } from "../service/mcpOriginsRepo.js";
 import type { ForConnectingMcps } from "../port/driver/ForConnectingMcps.js";
@@ -31,11 +32,13 @@ const errorAnswerOf = (text: string): DataDTOs.ToolAnswer => ({
 });
 
 /**
- * APPLICATION SERVICE — the mcp origins the last build listed, signed in to by the
+ * APPLICATION SERVICE — the mcp origins the charter reaches, signed in to by the
  * developer running it (FR-148 – FR-151).
  *
- * Reads `.cw/out/mcp-origins.json` and no charter, every time it is asked:
- * every tool is listed off what the build kept there, and an mcp origin is reached
+ * Where to sign in is read off the charter, since a build cannot list an mcp
+ * origin before it is signed in to. What is served is read off
+ * `.cw/out/mcp-origins.json`, every time it is asked: every tool is listed off
+ * what the build kept there, and an mcp origin is reached
  * only for a call, and let go once it has answered (EVAL-FR-031). Holds no port that writes a file: what it keeps
  * goes to the credential store, so nothing it does can change the repository
  * (FR-149).
@@ -175,15 +178,21 @@ export class McpConnecting implements ForConnectingMcps {
    * §19.5): one address is one account at one service, whatever path each
    * mcp origin there names. A local command taking no token signs in to nothing and
    * is left out.
+   *
+   * Read off the charter rather than the last build (FR-148): a build stops on
+   * an mcp origin it is not signed in to (EVAL-FR-031), so an mcp added since
+   * would never be listed for the sign-in that lets it build.
    */
   async #signInAddresses(): Promise<readonly Pick<McpOrigin, "address" | "endpoint" | "ids" | "auth">[]> {
-    const { origins } = await loadMcpOrigins(this.#repoPath, this.#fileReader);
+    const charter = await loadCharterRoot(this.#repoPath, this.#fileReader, this.#yamlParser);
     const addresses = new Map<string, { endpoint?: string; ids: Set<string>; auth: Set<McpOrigin["auth"][number]> }>();
-    for (const { address, endpoint, ids, auth } of origins.filter((one) => one.auth.length > 0)) {
-      const signInAddress = addresses.get(address) ?? { ...(endpoint !== undefined && { endpoint }), ids: new Set(), auth: new Set() };
-      ids.forEach((id) => signInAddress.ids.add(id));
+    for (const mcpPrimitive of charter.primitives) {
+      if (!(mcpPrimitive instanceof McpPrimitive) || mcpPrimitive.headers.auth === undefined) continue;
+      const { id, endpoint, auth } = mcpPrimitive.headers;
+      const signInAddress = addresses.get(mcpPrimitive.address) ?? { ...(endpoint !== undefined && { endpoint }), ids: new Set(), auth: new Set() };
+      signInAddress.ids.add(id);
       auth.forEach((method) => signInAddress.auth.add(method));
-      addresses.set(address, signInAddress);
+      addresses.set(mcpPrimitive.address, signInAddress);
     }
     return [...addresses]
       .sort(([one], [other]) => one.localeCompare(other))
@@ -203,7 +212,7 @@ export class McpConnecting implements ForConnectingMcps {
   async #addressTaking(address: string, method: McpOrigin["auth"][number]): Promise<void> {
     const signInAddress = (await this.#signInAddresses()).find((one) => one.address === address);
     if (signInAddress === undefined)
-      throw new DomainFault(`No mcp origin the last build listed is at ${address}.`, 'Run "cw mcp auth --status" to see every address, or "cw build" if the charter changed.');
+      throw new DomainFault(`No mcp in the charter is at ${address}.`, 'Run "cw mcp auth --status" to see every address.');
     if (signInAddress.endpoint !== undefined && !isSecureEndpoint(signInAddress.endpoint))
       throw new DomainFault(
         `${address} is plain http to another machine, so no credential is sent there.`,

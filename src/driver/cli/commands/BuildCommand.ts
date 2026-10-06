@@ -1,3 +1,4 @@
+import { printFaultsByFile } from "./helper.js";
 import {
   EXIT_FAILURE,
   EXIT_OK,
@@ -29,10 +30,10 @@ const OPTIONS = {
  * listing. A preview lists every file all the same, each under what would happen
  * to it, since what is being asked for there is exactly that.
  *
- * A charter with an error builds nothing and previews nothing. What is wrong is
- * not repeated here: `cw doctor` is the command that says it, in full and
- * under each file, and sending the user there is one line rather than two
- * commands saying the same thing differently.
+ * A charter with an error builds nothing and previews nothing, and what is
+ * wrong is written out here, under each file. Sending the user to `cw doctor`
+ * instead left them nowhere when the fault was an mcp origin that could not be
+ * reached: only a build reaches one, so doctor never saw it and sent them back.
  */
 export class BuildCommand implements Command<typeof OPTIONS> {
   readonly name = "build";
@@ -50,7 +51,7 @@ export class BuildCommand implements Command<typeof OPTIONS> {
         const noOfFiles = Object.keys(planSummaryDTO.data.files).length;
         return {
           code: EXIT_FAILURE,
-          problem: `Nothing was previewed: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+          problem: `Nothing was previewed: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
         };
       }
 
@@ -78,7 +79,7 @@ export class BuildCommand implements Command<typeof OPTIONS> {
       const noOfFiles = Object.keys(planSummaryDTO.data.files).length;
       return {
         code: EXIT_FAILURE,
-        problem: `Nothing was built: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+        problem: `Nothing was built: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
       };
     }
 
