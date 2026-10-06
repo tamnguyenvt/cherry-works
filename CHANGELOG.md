@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.1 — 2026-10-06
 
 - A guide with `globs` now loads only when the agent works on a matching file, instead of in every session, which saves tokens; run `cw build`.
 
