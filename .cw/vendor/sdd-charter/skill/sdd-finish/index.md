@@ -38,8 +38,15 @@ nothing about the case at hand, ask, and offer to write the answer into it.
    merge, or open a pull request. Where a fast-forward is impossible, stop and
    say why.
 4. **Clean up** — with **Worktree** per story, remove the story's worktree
-   once its branch is merged; delete a merged story branch only if the user
-   says so (/sdd-cleanup).
+   once its branch is merged. Then, for a story or fix branch that landed by
+   merge or squash-merge, do what **Branch after finishing** says:
+   - local and remote: `git branch -d` (`-D` after a squash-merge), then
+     `git push <remote> --delete <branch>` where the remote has it;
+   - local: the local branch only;
+   - keep: neither.
+
+   Where the manifest says nothing, keep the branch and offer /sdd-cleanup.
+   A branch with an open pull request is never deleted, nor a phase branch.
 5. **Report** — run /sdd-report, so the roadmap shows what just landed.
 
 Say which branch went where, the resulting commit or pull request, and the

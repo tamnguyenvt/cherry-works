@@ -27,6 +27,7 @@ the branch it names.
 3. **Delete** — only what the user confirmed: remove its worktree
    (`git worktree remove`), then the branch, `git branch -d`, or `-D` for one
    step 1 found squash-merged. Never a branch that has not landed, never a
-   remote branch unless the user names it.
+   remote branch unless the user names it or the manifest's **Branch after
+   finishing** says local and remote.
 
 Say what was deleted, and what was kept and why.

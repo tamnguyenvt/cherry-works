@@ -29,3 +29,4 @@ How work on a story is carried out and finished in this repository. Read by
 - **Story**: squash-merge the story branch into its phase branch; the message is the story's id and title.
 - **Phase**: fast-forward `develop` to the phase branch.
 - **Pull request**: none.
+- **Branch after finishing**: local and remote — delete the landed story or fix branch locally and on the remote.
