@@ -122,6 +122,12 @@
     "file": ".cw/out/playbook/sdd-bug-fix/index.md"
   },
   {
+    "kind": "mixin",
+    "id": "sdd-change-rules",
+    "description": "What every change to code walked by a playbook of the spec set is held to: the manifest first, and a change handed over only once checked.",
+    "file": ".cw/out/mixin/sdd-change-rules/index.md"
+  },
+  {
     "kind": "skill",
     "id": "sdd-cleanup",
     "description": "List the story and phase branches whose work has already landed, and delete the ones the user confirms, with their worktrees.",
@@ -152,6 +158,12 @@
     "file": ".cw/out/skill/sdd-init/index.md"
   },
   {
+    "kind": "mixin",
+    "id": "sdd-iron-laws",
+    "description": "The iron laws every change to code walked by a playbook of the spec set is held to, closing the playbook: evidence before a claim, no commit the manifest does not allow.",
+    "file": ".cw/out/mixin/sdd-iron-laws/index.md"
+  },
+  {
     "kind": "skill",
     "id": "sdd-learn",
     "description": "Write what this conversation taught — a correction, a preference, a constraint — as a note in learning/inbox.",
@@ -162,6 +174,12 @@
     "id": "sdd-learnings-go-to-the-inbox",
     "description": "Never save to the agent's own memory; write what was learned into learning/inbox, where repeated lessons become rules.",
     "file": ".cw/out/guide/sdd-learnings-go-to-the-inbox/index.md"
+  },
+  {
+    "kind": "agent",
+    "id": "sdd-locator",
+    "description": "Find where the code a story or a bug runs through lives, and name it as path:line ranges with a reason each; reads only, changes nothing.",
+    "file": ".cw/out/agent/sdd-locator/index.md"
   },
   {
     "kind": "template",
@@ -235,6 +253,12 @@
     "id": "sdd-verify",
     "description": "Prove the change works with evidence produced this turn — tests, static checks, and a manual run of what the story describes.",
     "file": ".cw/out/skill/sdd-verify/index.md"
+  },
+  {
+    "kind": "mixin",
+    "id": "sdd-voice",
+    "description": "How a playbook of the spec set talks to the user: the answer first, a line per step, every name and error verbatim, in full sentences of the user's language.",
+    "file": ".cw/out/mixin/sdd-voice/index.md"
   },
   {
     "kind": "corpus",

@@ -23,9 +23,10 @@ const OPTIONS = {
  * Running it again on a source already installed brings it up to date (FR-030),
  * so there is one thing to type rather than two to remember.
  *
- * What is installed is committed, and the build that compiles it is not run
- * here: a charter is read and compiled by `cw build`, which is the one command
- * that writes what an agent reads (FR-020).
+ * What is installed is left unstaged, with the source's README beside it, for
+ * the user to read and commit, whatever else is in hand; and the build that
+ * compiles it is not run here: a charter is read and compiled by `cw build`,
+ * which is the one command that writes what an agent reads (FR-020).
  */
 export class VendorAddCommand implements Command<typeof OPTIONS> {
   readonly name = "vendor add <source>";

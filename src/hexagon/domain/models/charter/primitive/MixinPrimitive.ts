@@ -7,6 +7,9 @@ import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 export const MixinHeadersSchema = CommonHeadersSchema.extend({
   /** Never: reading refuses a mixin that declares one. */
   mixins: z.undefined().optional(),
+  /** Where its body is lent: before its host's own, where it sets the scene and
+   *  where it goes unsaid, or after it, where it closes what the host says. */
+  position: z.enum(["start", "end"]).default("start"),
 });
 export type MixinHeaders = Readonly<z.infer<typeof MixinHeadersSchema>>;
 
@@ -33,6 +36,7 @@ export class MixinPrimitive extends BasePrimitive<MixinHeaders> {
     id: "typescript-scope",
     description: "What counts as TypeScript application code.",
     globs: ["src/**/*.ts"],
+    position: "start",
   };
 
   /** One mixin, or every fault its headers have (FR-004, FR-006). */

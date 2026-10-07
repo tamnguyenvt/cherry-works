@@ -190,6 +190,16 @@ test("a role carries the tools it may use, on the one line claude reads them fro
   assert.ok(contents.includes("\nname: reviewer\n"));
 });
 
+test("a role carries the model its charter names for this host, and none where it names none", async () => {
+  const files = await projected({
+    [at("agent/locator/index.md")]: primitive("agent", "locator", "Find the code.", ['tools: ["Read"]', "model: claude:haiku-4-5"]),
+    [at("agent/reviewer/index.md")]: primitive("agent", "reviewer", "Review the diff.", ['tools: ["Read"]']),
+  });
+
+  assert.ok(files[".claude/agents/locator.md"]?.includes("\nmodel: haiku-4-5\n"));
+  assert.ok(!files[".claude/agents/reviewer.md"]?.includes("model:"));
+});
+
 test("a role holds each mcp it lists, whole or one tool, under the name this host is given it by, and no mcp origin its body only names (FR-156)", async () => {
   const files = await projected({
     [at("mcp/linear/index.md")]: primitive("mcp", "linear", "Issues.", ["endpoint: https://mcp.linear.app/mcp", "auth: [token]", "tools: [list_issues, create_issue]"]),

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- An agent can name the model it runs on with `model: <provider>:<model>`, such as `model: claude:haiku`.
+- A mixin can set `position: end` to put its body after the primitive that pulls it in; `start`, the default, keeps it before. Run `cw build`.
+- `cw vendor add` works whatever you have in hand, leaves what it installs unstaged for you to read and commit, and copies the source's `README.md` beside it.
+
 ## 0.6.2 — 2026-10-06
 
 - fix `cw mcp auth`

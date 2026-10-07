@@ -14,6 +14,10 @@ How work on a story is carried out and finished in this repository. Read by
 - **Development branch**: `develop`.
 - **Branches**: phase branch `<nnn>-<slug>` (`007-sdd-and-host-names`); story branch `task/<prefix>-<n>-<slug>` started from it (`task/core-15-publish-a-release`); a bug fix on `fix/<slug>` from the development branch.
 
+## Talking
+
+- **Conversation**: short — a gate says only what it asks; what changed is never listed, the user reads the code and asks.
+
 ## Committing
 
 - **While working**: leave every change unstaged; the user stages what they have read and commits. Never `git add` or `git commit` unless the user asks in that turn.

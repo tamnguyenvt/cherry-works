@@ -68,7 +68,8 @@ test("a source added from the dialog is installed through the engine, and the di
 });
 
 test("a refused source stays in the dialog, in the engine's words (Story 8 scenarios 3, 6)", async () => {
-  const vcs = new InMemoryVCS(true, false);
+  const vcs = new InMemoryVCS();
+  vcs.sourcesWithoutSubFolder.push("team/charter");
   await inTheBrowser(
     {},
     async (page) => {
@@ -78,7 +79,7 @@ test("a refused source stays in the dialog, in the engine's words (Story 8 scena
       await page.getByRole("button", { name: "Add source" }).click();
       await page.getByText("Refused, and nothing was installed").waitFor();
 
-      assert.match(await page.getByRole("dialog").innerText(), /work in hand[\s\S]*stash/);
+      assert.match(await page.getByRole("dialog").innerText(), /no "\.cw\/charter"[\s\S]*Check that the source holds/);
       assert.deepEqual(vcs.installed, []);
     },
     vcs,

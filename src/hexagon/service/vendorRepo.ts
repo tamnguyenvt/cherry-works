@@ -14,21 +14,23 @@ export async function loadVendorNames(repo: URL, fileReaders: ForReadingFiles): 
 }
 
 /**
- * The two questions asked before installing or removing touches anything.
+ * The questions asked before installing or removing touches anything.
  *
- * Both commit, so both need a repository to commit into and nothing already
- * in hand: a commit made while somebody's work is in the index would carry
+ * Both need a repository, since a vendor is fetched by it and lives in it.
+ * Only removing commits, so only removing asks for nothing in hand, saying
+ * `because`: a commit made while somebody's work is in the index would carry
  * that work along with it, and whoever is holding it is the one who decides
- * what to do with it.
+ * what to do with it. Installing leaves what it fetched in the working tree,
+ * beside whatever is there.
  */
-async function ensureVCSReady(repo: URL, vcs: ForVCS, because: string): Promise<void> {
+async function ensureVCSReady(repo: URL, vcs: ForVCS, because?: string): Promise<void> {
   if (!(await vcs.isInstalled(repo)))
     throw new DomainFault(
       "This folder is not inside a git repository, and a vendor lives in one.",
       'Run "git init" here, or run this again where your repository is.',
     );
 
-  if (!(await vcs.isClean(repo)))
+  if (because !== undefined && !(await vcs.isClean(repo)))
     throw new DomainFault(
       `This repository has work in hand, and ${because}.`,
       "Commit or stash what you are holding, then run this again.",
@@ -37,8 +39,9 @@ async function ensureVCSReady(repo: URL, vcs: ForVCS, because: string): Promise<
 
 /**
  * Install the charter of one source under the folder its address names, pinned
- * to this version where one is named, as a commit version control makes; and
- * answer that folder (FR-042, FR-047, FR-050).
+ * to this version where one is named, with the source's README beside it, left
+ * unstaged and uncommitted for the user to read; and answer that folder
+ * (FR-042, FR-047, FR-050).
  *
  * What is taken is the source's own charter folder, where `cw init` put it,
  * and nothing else: a repository without one is not a charter, and is refused
@@ -47,9 +50,9 @@ async function ensureVCSReady(repo: URL, vcs: ForVCS, because: string): Promise<
  * what they hold and that is not installed with it.
  */
 export async function addVendor(repo: URL, vcs: ForVCS, source: string, version?: string): Promise<string> {
-  await ensureVCSReady(repo, vcs, "installing a vendor commits what it installs");
+  await ensureVCSReady(repo, vcs);
   const folder = `${VENDOR_DIRECTORY}/${vendorSourceOf(source).name}`;
-  return vcs.subtreeAdd(source, CHARTER_DIRECTORY, repo, folder, version, VENDOR_DIRECTORY);
+  return vcs.subtreeAdd(source, [CHARTER_DIRECTORY, "README.md"], repo, folder, version, VENDOR_DIRECTORY);
 }
 
 /** Take the folder one vendor was installed as away, as a commit version
@@ -65,9 +68,9 @@ export async function removeVendor(repo: URL, vcs: ForVCS, name: string): Promis
  * Which installed charters this repository is holding a change to, named by the
  * folder each was installed as (FR-040, SC-008).
  *
- * Version control answers it: a vendor landed as a commit, so what differs from
- * that commit is what somebody edited here, and `git checkout` is what undoes
- * it. A vendor changed in ten files is one drifted vendor, so the folder is what
+ * Version control answers it: a vendor is committed once its install is
+ * read, so what differs from the last commit is what somebody edited here, or
+ * an install not yet committed, and `git checkout` is what undoes it. A vendor changed in ten files is one drifted vendor, so the folder is what
  * comes back rather than the files, and the files are read where every other
  * uncommitted change is.
  */

@@ -119,7 +119,13 @@ test("a header read from a closed set carries its values, and no other header do
     for (const { field, allowedValues } of primitiveHeadersOf(kind))
       assert.deepEqual(
         allowedValues,
-        kind === "sensor" && field === "signal" ? SIGNALS : field === "disable-user-invocation" ? ["true", "false"] : undefined,
+        kind === "sensor" && field === "signal"
+          ? SIGNALS
+          : kind === "mixin" && field === "position"
+            ? ["start", "end"]
+            : field === "disable-user-invocation"
+              ? ["true", "false"]
+              : undefined,
         `${kind} ${field}`,
       );
 

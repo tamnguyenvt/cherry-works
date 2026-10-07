@@ -195,6 +195,22 @@ test("every primitive compiles to one document holding its headers, then its mix
   assert.ok(isStamped(document));
 });
 
+test("a mixin at the end lends its body after its host's, and one at the start before it, each in the order the host named them", async () => {
+  const mixinText = (id: string, position: string) =>
+    ["---", "kind: mixin", `id: ${id}`, "description: What every rule here shares.", ...(position === "" ? [] : [`position: ${position}`]), "---", "", id.toUpperCase(), ""].join("\n");
+  const { files } = await built({
+    [new URL("mixin/opening/index.md", root).href]: mixinText("opening", ""),
+    [new URL("mixin/closing/index.md", root).href]: mixinText("closing", "end"),
+    [new URL("mixin/setting/index.md", root).href]: mixinText("setting", "start"),
+    [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", "OWN BODY").replace(
+      "---\n\nOWN BODY",
+      "mixins: [closing, opening, setting]\n---\n\nOWN BODY",
+    ),
+  });
+
+  assert.match(files[".cw/out/guide/no-any/index.md"] ?? "", /---\n\nOPENING\n\nSETTING\n\nOWN BODY\n\nCLOSING\n/);
+});
+
 test("what the engine brings compiles to a file on disk like any other primitive (SC-033)", async () => {
   const { files } = await built(oneGuide);
 

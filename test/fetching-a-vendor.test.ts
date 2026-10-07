@@ -59,20 +59,37 @@ async function repository(t: { after(fn: () => unknown): void }): Promise<string
 /** One repository, and where a vendor installs under it, as the adapter is
  *  handed the two. Which folder that is is the hexagon's to decide; the adapter
  *  is told. */
-const at = (repo: string) => [".cw/charter", pathToFileURL(`${repo}/`), ".cw/vendor/charter"] as const;
+const at = (repo: string) => [[".cw/charter"], pathToFileURL(`${repo}/`), ".cw/vendor/charter"] as const;
 
 /** What the vendored guide says in this repository, read off disk. */
 const vendored = (repo: string) => readFile(join(repo, ".cw", "vendor", "charter", "guide", "no-any", "index.md"), "utf8");
 
-test("a source's charter folder installs under the folder its address names, and is committed there", async (t) => {
+test("a source's charter folder installs under the folder its address names, its README beside it, left unstaged and uncommitted", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
+  const { stdout: headBefore } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
 
-  assert.equal(await git.subtreeAdd(source, ...at(repo)), ".cw/vendor/charter");
+  assert.equal(await git.subtreeAdd(source, [".cw/charter", "README.md", "CHANGELOG.md"], pathToFileURL(`${repo}/`), ".cw/vendor/charter"), ".cw/vendor/charter");
 
   assert.match(await vendored(repo), /Reject any\./);
-  await assert.rejects(readFile(join(repo, ".cw", "vendor", "charter", "README.md")), "what lies outside the charter folder stays behind");
-  const { stdout } = await run("git", ["status", "--porcelain"], { cwd: repo });
-  assert.equal(stdout.trim(), "", "what was installed is committed, not left in hand");
+  assert.equal(await readFile(join(repo, ".cw", "vendor", "charter", "README.md"), "utf8"), "Not part of the charter.\n");
+  const { stdout: headAfter } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
+  assert.equal(headAfter, headBefore, "nothing is committed");
+  const { stdout: stagedFiles } = await run("git", ["diff", "--cached", "--name-only"], { cwd: repo });
+  assert.equal(stagedFiles.trim(), "", "nothing is staged");
+});
+
+test("installing with work in hand leaves that work as it was, staged or not", async (t) => {
+  const [source, repo] = [await published(t), await repository(t)];
+  await writeFile(join(repo, "README.md"), "two\n");
+  await writeFile(join(repo, "staged.md"), "staged\n");
+  await run("git", ["add", "staged.md"], { cwd: repo });
+
+  await git.subtreeAdd(source, ...at(repo));
+
+  assert.match(await vendored(repo), /Reject any\./);
+  const { stdout: stagedFiles } = await run("git", ["diff", "--cached", "--name-only"], { cwd: repo });
+  assert.equal(stagedFiles.trim(), "staged.md");
+  assert.equal(await readFile(join(repo, "README.md"), "utf8"), "two\n");
 });
 
 test("a version names what is installed", async (t) => {
@@ -96,25 +113,24 @@ test("installing a source already there brings it up to date", async (t) => {
   assert.match(await vendored(repo), /Reject it everywhere\./);
 });
 
-test("installing again what is already there commits nothing new, and leaves nothing in hand", async (t) => {
+test("installing again what is already committed there leaves nothing in hand", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   await git.subtreeAdd(source, ...at(repo));
-  const { stdout: before } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
+  await run("git", ["add", "."], { cwd: repo });
+  await commit(repo, "vendored");
 
   await git.subtreeAdd(source, ...at(repo));
 
-  const { stdout: after } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
-  assert.equal(after, before);
   assert.equal(await git.isClean(pathToFileURL(`${repo}/`)), true);
 });
 
 test("a source without the folder asked for says so, installing nothing", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
 
-  const raised = await git.subtreeAdd(source, "not-there", pathToFileURL(`${repo}/`), ".cw/vendor/charter").catch((one: unknown) => one);
+  const raised = await git.subtreeAdd(source, ["not-there", "README.md"], pathToFileURL(`${repo}/`), ".cw/vendor/charter").catch((one: unknown) => one);
 
   assert.ok(raised instanceof DrivenFault, String(raised));
-  assert.match(raised.message, /no folder "not-there"/);
+  assert.match(raised.message, /no "not-there"/);
 
   await assert.rejects(readFile(join(repo, ".cw", "vendor", "charter", "README.md")));
   assert.equal(await git.isClean(pathToFileURL(`${repo}/`)), true);
@@ -165,6 +181,8 @@ test("a source that cannot be reached is refused in git's own words", async (t) 
 test("an installed folder is taken away, and that it is gone is committed", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   await git.subtreeAdd(source, ...at(repo));
+  await run("git", ["add", "."], { cwd: repo });
+  await commit(repo, "vendored");
 
   await git.removeSubFolder(pathToFileURL(`${repo}/`), ".cw/vendor/charter");
 

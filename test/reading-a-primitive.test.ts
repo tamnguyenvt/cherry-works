@@ -116,3 +116,23 @@ test("a delimiter inside the body does not reopen the frontmatter", () => {
 test("the same text reads as the same primitive, every time", () => {
   assert.deepEqual(primitiveOf(guide, parser), primitiveOf(guide, parser));
 });
+
+test("an agent's model is written <provider>:<model>, the provider one this engine compiles for", () => {
+  const agentText = (model: string) =>
+    ["---", "kind: agent", "id: locator", "description: Find the code.", 'tools: ["Read"]', `model: "${model}"`, "---", "", "Find it.", ""].join("\n");
+
+  const agentPrimitive = primitive(agentText("claude:haiku-4-5"));
+  assert.equal(agentPrimitive.kind === "agent" ? agentPrimitive.headers.model : undefined, "claude:haiku-4-5");
+  for (const model of ["haiku-4-5", "claude:", "codex:gpt-5"]) {
+    assert.match(messages(faultsIn(agentText(model))), /<provider>:<model>/, model);
+  }
+});
+
+test("a mixin's position is start or end, and nothing else", () => {
+  const mixinText = (position: string) =>
+    ["---", "kind: mixin", "id: house-style", "description: What every rule here shares.", `position: ${position}`, "---", "", "Lent.", ""].join("\n");
+
+  const mixinPrimitive = primitive(mixinText("end"));
+  assert.equal(mixinPrimitive.kind === "mixin" ? mixinPrimitive.headers.position : undefined, "end");
+  assert.match(messages(faultsIn(mixinText("middle"))), /not what a mixin holds/);
+});

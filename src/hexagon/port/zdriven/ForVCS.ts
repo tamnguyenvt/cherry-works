@@ -17,8 +17,8 @@ export interface ForVCS {
    *  what setup writes into. */
   isInstalled(folder: URL): Promise<boolean>;
 
-  /** Is there nothing staged and nothing modified here? What vendoring asks
-   *  before it fetches: what it installs lands as a commit on the branch that
+  /** Is there nothing staged and nothing modified here? What removing a
+   *  vendor asks first: that it is gone lands as a commit on the branch that
    *  is checked out, and a commit made while somebody's work is in the index
    *  would carry that work along with it. */
   isClean(folder: URL): Promise<boolean>;
@@ -28,9 +28,9 @@ export interface ForVCS {
    * control last recorded it — edited, staged, added since, or gone — named as
    * it sits under the repository (FR-040).
    *
-   * What is installed lands as a commit, so a vendored file that differs from
-   * the commit it arrived in is a hand-edit and version control already knows
-   * it (T204, T209). This is that question asked of one folder rather than of
+   * What is installed is committed by whoever reviewed it, so a vendored file
+   * that differs from the last commit is a hand-edit, or an install not yet
+   * committed, and version control already knows it (T204, T209). This is that question asked of one folder rather than of
    * the whole repository, since the work somebody is holding elsewhere is no
    * part of the answer.
    *
@@ -40,9 +40,13 @@ export interface ForVCS {
   changedUnder(repo: URL, subFolder: string): Promise<readonly string[]>;
 
   /**
-   * Copy one folder of this source, at this version where one is named, into
-   * this folder of this repository, replacing what that folder held, and commit
-   * it (FR-023, FR-042).
+   * Copy the paths `includePaths` names in this source, at this version where
+   * one is named, into this folder of this repository, replacing what that
+   * folder held: a folder's files at its root, a file under its own name. The
+   * first path is one the source must hold; the others are copied where it
+   * holds them. Nothing is staged and nothing is committed: what lands is left in
+   * the working tree for the user to read, whatever else is in hand (FR-023,
+   * FR-042).
    *
    * The source is whatever version control fetches — an address over any
    * transport, a path on disk — and is passed along as it was written. Reading
@@ -50,22 +54,21 @@ export interface ForVCS {
    * behalf is nobody's: the credentials a private source needs are the
    * configuration of whoever runs this (FR-031).
    *
-   * Both folders are named as they sit under their own repository: which one
-   * is taken from the source, and where it goes here, is the caller's to say.
-   * What lands is that folder's files alone, committed: a checkout of this
-   * repository holds the whole charter it is governed by, with nothing left to
-   * fetch (FR-028). Copying it again is how what was copied is brought up to
+   * Every path is named as it sits under its own repository: what is taken
+   * from the source, and where it goes here, is the caller's to say. What
+   * lands is those paths and nothing else of the source: once
+   * committed, a checkout of this repository holds the whole charter it is
+   * governed by, with nothing left to fetch (FR-028). Copying it again is how what was copied is brought up to
    * date. Answers the folder it copied into.
    *
-   * A source that holds no such folder at that version, one that holds a file
+   * A source that holds no first path at that version, one that holds a file
    * under `refusedIfSourceHolds`, a source that cannot be reached, a version
-   * that is not there, a repository with work in hand: each raises a
-   * `DrivenFault`, saying what version control found. Nothing is installed
-   * when it does (Edge Cases).
+   * that is not there: each raises a `DrivenFault`, saying what version
+   * control found. Nothing is installed when it does (Edge Cases).
    */
   subtreeAdd(
     source: string,
-    sourceSubFolder: string,
+    includePaths: readonly string[],
     repo: URL,
     intoSubFolder: string,
     version?: string,

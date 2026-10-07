@@ -53,7 +53,7 @@ test("a source posted is installed as cw vendor add installs it (Story 8 scenari
 
   assert.equal(answer.status, 204);
   assert.deepEqual(vcs.installed, [
-    { source: "git@github.com:team/charter.git", sourceSubFolder: ".cw/charter", repo: repoPath, intoSubFolder: ".cw/vendor/charter", version: "v1.2.0" },
+    { source: "git@github.com:team/charter.git", includePaths: [".cw/charter", "README.md"], repo: repoPath, intoSubFolder: ".cw/vendor/charter", version: "v1.2.0" },
   ]);
 });
 
@@ -74,7 +74,7 @@ test("a source holding no charter folder is refused, saying how to make it one",
 
   assert.equal(answer.status, 422);
   const faultDTO = DataDTOs.Fault.parse(await answer.json());
-  assert.match(faultDTO.data.message, /no folder "\.cw\/charter"/);
+  assert.match(faultDTO.data.message, /no "\.cw\/charter"/);
   assert.deepEqual(vcs.installed, []);
 });
 
@@ -87,20 +87,19 @@ test("a vendor deleted is taken away by its folder name (Story 8 scenario 5)", a
   assert.deepEqual(vcs.removed, [{ repo: repoPath, subFolder: ".cw/vendor/charter" }]);
 });
 
-test("with work in hand, adding and removing are refused in the engine's words and touch nothing (Story 8 scenario 3)", async () => {
+test("with work in hand, removing is refused in the engine's words and touches nothing, and adding installs all the same (Story 8 scenario 3)", async () => {
   const { portalRoutes, vcs } = portal({}, new InMemoryVCS(true, false));
 
-  const added = await portalRoutes.request("/vendors", sending("POST", { source: "team/charter" }));
   const removed = await portalRoutes.request("/vendors/charter", sending("DELETE", {}));
-
-  for (const answer of [added, removed]) {
-    assert.equal(answer.status, 422);
-    const faultDTO = DataDTOs.Fault.parse(await answer.json());
-    assert.match(faultDTO.data.message, /work in hand/);
-    assert.match(faultDTO.data.fix, /stash/);
-  }
-  assert.deepEqual(vcs.installed, []);
+  assert.equal(removed.status, 422);
+  const faultDTO = DataDTOs.Fault.parse(await removed.json());
+  assert.match(faultDTO.data.message, /work in hand/);
+  assert.match(faultDTO.data.fix, /stash/);
   assert.deepEqual(vcs.removed, []);
+
+  const added = await portalRoutes.request("/vendors", sending("POST", { source: "team/charter" }));
+  assert.equal(added.status, 204);
+  assert.equal(vcs.installed.length, 1);
 });
 
 test("outside version control, adding is refused saying the next move", async () => {

@@ -84,6 +84,9 @@ the user takes with "yes":
    `Co-Authored-By` line for the agent.
 8. **Finishing** — merge, squash-merge or pull request, into which branch, and
    what happens when a phase is done.
+9. **Conversation** — short or detailed. Short, the default: a gate says only
+   what it asks, and what changed is never listed — the user reads the code
+   and asks. Detailed: each step reports what it did and what it showed.
 
 ## 4. Write, and check
 

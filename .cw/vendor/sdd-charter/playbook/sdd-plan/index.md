@@ -4,6 +4,7 @@ id: sdd-plan
 description: Write a phase's stories, FR and SC into the right spec-<key>.md and plan.json, clarifying what is unclear first; no plan of how, no task list.
 triggers: ["plan a feature", "plan a phase", "specify a feature", "clarify requirement", "write the spec"]
 rationale: sdd-concept
+mixins: [sdd-voice]
 ---
 
 One job: write the stories of a phase into the spec set, in the shape
@@ -12,8 +13,7 @@ else — no plan of how, no task list. How a story is built is decided when it
 is implemented (/sdd-implement). A decision that changes how every later story
 is built goes to `ADR.md` as well.
 
-Pause for the user's acceptance after each step. Talk to the user in the
-language they write in, in full sentences.
+Pause for the user's acceptance after each step.
 
 1. **Read** — the spec folder from `.sdd/settings.json`; with none, run
    /sdd-init first. Read `spec.md`, `plan.json` and `manifest.md`.

@@ -1,0 +1,21 @@
+---
+kind: mixin
+id: sdd-change-rules
+description: "What every change to code walked by a playbook of the spec set is held to: the manifest first, and a change handed over only once checked."
+---
+
+## Every change
+
+Read `.sdd/settings.json` for the spec folder, and `manifest.md` there: it
+decides the worktree, the order, the branches — the development branch
+`develop` where it names none — and how changes are committed. Do as it says;
+where it says nothing about the case at hand, ask.
+
+- **Handed over only once checked.** The user is handed a change only after
+  /sdd-verify and /sdd-review have passed. With **Conversation** short, say
+  only that it is done and needs the user's review, with each `q` the review
+  left to answer; with it detailed, say what changed and what each check
+  showed, with each `nit` and `q` the review left for the user to decide. Each
+  change the user asks for then is made and checked the same way again before
+  it is handed back; a requested change is never reported done on the edit
+  alone.

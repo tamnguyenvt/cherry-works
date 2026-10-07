@@ -189,7 +189,12 @@ function claudeDocumentComponentOf(sc: Primitive, compiledFile: string, agentToo
     }
     case AgentPrimitive.kind: {
       const { tools } = sc.headers;
-      return ClaudeAgent.of(name, { description: sc.description(), tools: (agentTools ?? tools).join(", ") }, pointerTo(compiledFromClaudeFolder));
+      const claudeModel = sc.modelOf("claude");
+      return ClaudeAgent.of(
+        name,
+        { description: sc.description(), tools: (agentTools ?? tools).join(", "), ...(claudeModel === undefined ? {} : { model: claudeModel }) },
+        pointerTo(compiledFromClaudeFolder),
+      );
     }
     // One kind of this host for the two the charter loads when the request calls
     // for them: what decides that the body is worth opening is the description,

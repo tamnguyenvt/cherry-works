@@ -21,6 +21,10 @@ by asking the user.
 - **Development branch**: `[the branch work starts from and lands in between releases; develop unless the user names another]`
 - **Branches**: [phase branch `<nnn>-<slug>`; story branch `task/<prefix>-<n>-<slug>` started from it | story branch from `[base]` | none]; a bug fix on `fix/<slug>` from the development branch
 
+## Talking
+
+- **Conversation**: [short — a gate says only what it asks; what changed is never listed, the user reads the code and asks | detailed — each step reports what it did and what it showed]
+
 ## Committing
 
 - **While working**: [leave every change unstaged; the user stages and commits | commit at each step that passes its checks]

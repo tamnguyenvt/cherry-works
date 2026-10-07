@@ -1,10 +1,23 @@
-import type { z } from "zod";
+import { z } from "zod";
 import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
 import type { PrimitiveLayer } from "../PrimitiveLayer.js";
+import { AGENT_PROVIDERS, isAgentProvider, type AgentProvider } from "../../AgentProvider.js";
+
+/** `<provider>:<model>`: the host the model is named for, then the model as
+ *  that host names it. */
+const MODEL_REFERENCE = /^([^:]+):(\S+)$/;
 
 /** A role the agent delegates to, with the tools it may use (FR-004). */
 export const AgentHeadersSchema = CommonHeadersSchema.extend({
   tools: GoodArraySchema,
+  /** The model it runs on, `<provider>:<model>`, the provider one this engine
+   *  compiles for; a host it does not name runs it on that host's default. */
+  model: z
+    .string()
+    .refine((model) => isAgentProvider(model.match(MODEL_REFERENCE)?.[1]), {
+      message: `"model" is written <provider>:<model>, the provider one of ${AGENT_PROVIDERS.join(", ")}: claude:haiku-4-5.`,
+    })
+    .optional(),
 });
 export type AgentHeaders = Readonly<z.infer<typeof AgentHeadersSchema>>;
 
@@ -35,6 +48,13 @@ export class AgentPrimitive extends BasePrimitive<AgentHeaders> {
     description: "Review a diff and name what is wrong with it.",
     tools: ["Read", "Grep", "[[mfbs/billing]]:search_code"],
   };
+
+  /** The model this host runs it on, as this host names it; none where its
+   *  model is named for another host, or not at all. */
+  modelOf(provider: AgentProvider): string | undefined {
+    const [, modelProvider, model] = this.headers.model?.match(MODEL_REFERENCE) ?? [];
+    return modelProvider === provider ? model : undefined;
+  }
 
   /** One agent, or every fault its headers have (FR-004). */
   static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): AgentPrimitive {

@@ -2,12 +2,13 @@ import { CLAUDE_DIRECTORY } from "../../../../path.js";
 import { DocumentBasedComponent } from "../DocumentBasedComponent.js";
 
 /** A subagent's frontmatter: the name this host spawns it by, the line it is
- *  described by, and the tools it holds — comma-separated, the way this host
- *  reads them. */
+ *  described by, the tools it holds — comma-separated, the way this host
+ *  reads them — and the model it runs on, where one is named. */
 export interface ClaudeAgentHeaders {
   readonly name: string;
   readonly description: string;
   readonly tools: string;
+  readonly model?: string;
 }
 
 /** What a subagent is compiled with, its name aside: that is what the component

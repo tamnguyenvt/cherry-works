@@ -17,7 +17,7 @@ export class InMemoryVCS implements ForVCS {
 
   /** Every source it was asked to install, in the order it was asked: what a
    *  test about vendoring looks at, since nothing was fetched. */
-  readonly installed: { source: string; sourceSubFolder: string; repo: URL; intoSubFolder: string; version?: string }[] = [];
+  readonly installed: { source: string; includePaths: readonly string[]; repo: URL; intoSubFolder: string; version?: string }[] = [];
 
   /** Every source a test says holds no folder of the name asked for: what
    *  `subtreeAdd` raises for, copying nothing. */
@@ -51,17 +51,17 @@ export class InMemoryVCS implements ForVCS {
 
   async subtreeAdd(
     source: string,
-    sourceSubFolder: string,
+    includePaths: readonly string[],
     repo: URL,
     intoSubFolder: string,
     version?: string,
     refusedIfSourceHolds?: string,
   ): Promise<string> {
     if (this.sourcesWithoutSubFolder.includes(source))
-      throw new DrivenFault(`${source} has no folder "${sourceSubFolder}".`, `Check that the source holds "${sourceSubFolder}".`);
+      throw new DrivenFault(`${source} has no "${includePaths[0]}".`, `Check that the source holds "${includePaths[0]}".`);
     if (refusedIfSourceHolds !== undefined && this.sourcesHoldingRefusedFolder.includes(source))
       throw new DrivenFault(`${source} holds "${refusedIfSourceHolds}".`, `Remove "${refusedIfSourceHolds}" from the source.`);
-    this.installed.push({ source, sourceSubFolder, repo, intoSubFolder, ...(version === undefined ? {} : { version }) });
+    this.installed.push({ source, includePaths, repo, intoSubFolder, ...(version === undefined ? {} : { version }) });
     return intoSubFolder;
   }
 

@@ -4,6 +4,7 @@ id: sdd-implement
 description: Implement a ready story of the spec set — pick it, spec gate, test first, verify, review — the way manifest.md says, and mark it Done.
 triggers: ["implement task", "implement next task", "implement the next story", "implement story"]
 rationale: sdd-concept
+mixins: [sdd-voice, sdd-change-rules, sdd-iron-laws]
 ---
 
 The end-to-end walk of one story: `pick → spec → implement → check drift →
@@ -11,11 +12,6 @@ verify → review → (learn) → done`. The user is asked twice: at the spec ga
 and once the change has passed its own checks. Implement, check drift, verify
 and review run on their own in between, with no pause: the user is never
 handed a change to look at that has not been verified and reviewed first.
-Talk to the user in the language they write in, in full sentences.
-
-Read `.sdd/settings.json` for the spec folder, and `manifest.md` there: it
-decides the worktree, the order, the branches and how changes are committed.
-Do as it says; where it says nothing about the case at hand, ask.
 
 1. **Pick** —
    - Run /sdd-report first, so the user sees the roadmap the story is picked
@@ -28,12 +24,15 @@ Do as it says; where it says nothing about the case at hand, ask.
      side and offer to give each its own agent in its own worktree; each then
      walks this playbook on its own.
    - Open the story's branch, in its own worktree where **Worktree** says so,
-     and set its status to `In Progress`. Read the code it will touch.
+     and set its status to `In Progress`. Spawn [[sdd-locator]] with the
+     story to find the code it will touch, then read the ranges it names.
 2. **Spec** — restate the story: its intent, its acceptance criteria (its
    scenarios and the FR and SC it cites), and what is out of scope. List the
    technical decisions it needs — libraries, modules, the shape of new data —
    each with the choice proposed. End with one sentence saying what will be
-   done. Nothing else in the spec folder is edited here. **Gate:** explicit
+   done. With **Conversation** short, say that one sentence alone, and ask
+   besides only a technical decision that needs the user, or what is unclear.
+   Nothing else in the spec folder is edited here. **Gate:** explicit
    acceptance.
 3. **Implement** — test first: a failing test per scenario, then the code that
    passes it. Surgical edits only.
@@ -44,13 +43,13 @@ Do as it says; where it says nothing about the case at hand, ask.
    the line already had is held to the guide as a new one is. Fix what they
    flag, and say file by file which guides were read.
 5. **Verify** — run /sdd-verify. A failure goes back to step 3.
-6. **Review** — run /sdd-review. A finding to fix goes back to step 3, and
-   the steps after it run again.
-   **Gate:** only now, with verify and review passed, hand the change to the
-   user, saying what changed and what verify and review showed.
-   - **The loop:** each change the user asks for at this gate is made, then
-     checked for drift, verified and reviewed again, before it is handed back.
-     Never report a requested change as done on the edit alone.
+6. **Review** — run /sdd-review. A review that failed goes back to step 3,
+   and the steps after it run again.
+   **Gate:** only now hand the change to the user — with **Conversation**
+   short, in one line: it is implemented and needs the user's review. Each
+   change the user asks
+   for here goes through check drift, verify and review again before it is
+   handed back.
 7. **Learn** *(only if something surprising came up)* — run /sdd-learn.
 8. **Done** — once the user accepts the change at the gate, set the story's
    status line to `Done`, run `check` of [[sdd-specs]], and commit or leave
@@ -70,7 +69,4 @@ Do as it says; where it says nothing about the case at hand, ask.
   writes an answer, and run `check` until
   it passes. A reversal that changes how every later story is built is also
   written to `ADR.md`.
-- **No completion claim without fresh evidence.** Checks run this turn.
-- **No commit the manifest does not allow, and none with failing checks.**
-  Never `--no-verify`.
 - **No silent overwrite** of a file the user did not ask to change.

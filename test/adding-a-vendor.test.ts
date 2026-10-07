@@ -61,7 +61,7 @@ test("a source's charter folder is installed under the folder its address names"
   assert.deepEqual(vcs.installed, [
     {
       source: "git@github.com:team/charter.git",
-      sourceSubFolder: ".cw/charter",
+      includePaths: [".cw/charter", "README.md"],
       repo: new URL("file:///repo/"),
       intoSubFolder: ".cw/vendor/charter",
     },
@@ -98,7 +98,7 @@ test("a source holding no charter folder is refused, saying how to make it one",
 
   assert.equal(code, EXIT_FAILURE);
   assert.deepEqual(vcs.installed, []);
-  assert.match(said, /no folder "\.cw\/charter"/);
+  assert.match(said, /no "\.cw\/charter"/);
 });
 
 test("a source that installs vendors of its own is refused: vendoring is one level deep", async () => {
@@ -112,13 +112,11 @@ test("a source that installs vendors of its own is refused: vendoring is one lev
   assert.match(said, /holds "\.cw\/vendor"/);
 });
 
-test("a repository with work in hand is refused before anything is fetched", async () => {
-  const { code, said, vcs } = await running(["vendor", "add", "team/charter"], new InMemoryVCS(true, false));
+test("a repository with work in hand installs all the same", async () => {
+  const { code, vcs } = await running(["vendor", "add", "team/charter"], new InMemoryVCS(true, false));
 
-  assert.equal(code, EXIT_FAILURE);
-  assert.deepEqual(vcs.installed, []);
-  assert.match(said, /work in hand/);
-  assert.match(said, /stash/);
+  assert.equal(code, EXIT_OK);
+  assert.equal(vcs.installed[0]?.intoSubFolder, ".cw/vendor/charter");
 });
 
 test("a folder outside version control is refused, saying the next move", async () => {

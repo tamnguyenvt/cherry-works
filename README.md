@@ -331,7 +331,9 @@ cw vendor add git@github.com:your-org/charter-baseline.git --ref v1.2.0
 
 A vendor source is a git repository set up with `cw init`: author its charter
 there, test it, and push. Only its `.cw/charter/` folder is installed, under
-`.cw/vendor/<name>/`, pinned to the ref you chose and committed. A repository
+`.cw/vendor/<name>/`, pinned to the ref you chose, with the source's
+`README.md` beside it, and left unstaged for you to read and commit, whatever
+else you have in hand. A repository
 without that folder is refused, and so is one that has vendors of its own:
 vendoring is one level deep. Vendored primitives are read-only. To differ from
 one, write your own primitive under a new id.

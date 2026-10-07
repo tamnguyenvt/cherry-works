@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { basename, join } from "node:path";
 import { DrivenFault, type ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
 
 const run = promisify(execFile);
@@ -65,11 +66,13 @@ export class Git implements ForVCS {
   }
 
   /**
-   * `git fetch`, handed the source exactly as it was written, then
-   * `git read-tree` of the one folder asked for into the folder given, and a
-   * commit: a folder already there is removed in the same commit, so
-   * installing a source and bringing it up to date are one call (FR-023,
-   * FR-030, FR-042).
+   * `git fetch`, handed the source exactly as it was written, then each path
+   * asked for read into an index of its own and checked out into the folder
+   * given — a folder's files at that folder's root, a file under its own name:
+   * the repository's own index is never touched, so nothing is staged, nothing
+   * is committed, and whatever is in hand stays as it was. A folder already
+   * there is replaced, so installing a source and bringing it up to date are
+   * one call (FR-023, FR-030, FR-042).
    *
    * Which transport it is, whether the credentials are there, whether the
    * version exists: git answers all three, and what it says is what the user
@@ -77,14 +80,13 @@ export class Git implements ForVCS {
    * calls its own default.
    *
    * `git subtree` takes a source whole and cannot take one folder of it, so
-   * the tree is read straight off what was fetched. Whether that folder is
+   * each path is read straight off what was fetched. Whether the first is
    * there, and whether the refused one is, is asked of git before anything is
-   * touched. One commit lands, holding the folder's files and no history to
-   * walk (FR-028); none lands where the copy is what was already there.
+   * touched. What lands has no history to walk (FR-028).
    */
   async subtreeAdd(
     source: string,
-    sourceSubFolder: string,
+    includePaths: readonly string[],
     repo: URL,
     intoSubFolder: string,
     version?: string,
@@ -103,39 +105,50 @@ export class Git implements ForVCS {
       );
     }
     // The commit fetched is pinned now, before anything else can move FETCH_HEAD.
-    const { stdout: fetchedCommit } = await run("git", ["rev-parse", "FETCH_HEAD"], { cwd });
-    const isTreeAt = (folder: string) =>
-      run("git", ["cat-file", "-t", `${fetchedCommit.trim()}:${folder}`], { cwd }).then(
-        ({ stdout }) => stdout.trim() === "tree",
-        () => false,
+    const fetchedCommit = (await run("git", ["rev-parse", "FETCH_HEAD"], { cwd })).stdout.trim();
+    // `tree` for a folder, `blob` for a file, nothing for a path the source has not got.
+    const objectTypeAt = (path: string) =>
+      run("git", ["cat-file", "-t", `${fetchedCommit}:${path}`], { cwd }).then(
+        ({ stdout }) => stdout.trim(),
+        () => undefined,
       );
     const atVersion = version === undefined ? "" : ` at ${version}`;
-    if (!(await isTreeAt(sourceSubFolder)))
-      throw new DrivenFault(
-        `${source} has no folder "${sourceSubFolder}"${atVersion}.`,
-        `Check that the source holds "${sourceSubFolder}" at the version asked for.`,
-      );
-    if (refusedIfSourceHolds !== undefined && (await isTreeAt(refusedIfSourceHolds)))
+    const [requiredPath = ""] = includePaths;
+    if ((await objectTypeAt(requiredPath)) === undefined)
+      throw new DrivenFault(`${source} has no "${requiredPath}"${atVersion}.`, `Check that the source holds "${requiredPath}" at the version asked for.`);
+    if (refusedIfSourceHolds !== undefined && (await objectTypeAt(refusedIfSourceHolds)) === "tree")
       throw new DrivenFault(
         `${source} holds "${refusedIfSourceHolds}"${atVersion}, which this copy refuses.`,
         `Remove "${refusedIfSourceHolds}" from the source, or copy a version without it.`,
       );
-    const sourceTree = `${fetchedCommit.trim()}:${sourceSubFolder}`;
 
+    // An index of this copy's own, so the repository's index, and what is
+    // staged in it, is never read from or written to.
+    const vendorIndexPath = (await run("git", ["rev-parse", "--path-format=absolute", "--git-path", "cw-vendor-index"], { cwd })).stdout.trim();
+    const vendorIndexEnv = { ...process.env, GIT_INDEX_FILE: vendorIndexPath };
     try {
-      await run("git", ["rm", "-r", "--quiet", "--ignore-unmatch", "--", intoSubFolder], { cwd });
-      await run("git", ["read-tree", `--prefix=${intoSubFolder}/`, "-u", sourceTree], { cwd });
-      const unchanged = await run("git", ["diff", "--cached", "--quiet"], { cwd }).then(
-        () => true,
-        () => false,
-      );
-      if (!unchanged)
-        await run("git", ["commit", "-qm", `Install ${source}${atVersion} into ${intoSubFolder}`], { cwd });
+      await rm(vendorIndexPath, { force: true });
+      for (const includePath of includePaths) {
+        const objectType = await objectTypeAt(includePath);
+        if (objectType === "tree")
+          await run("git", ["read-tree", `--prefix=${intoSubFolder}/`, `${fetchedCommit}:${includePath}`], { cwd, env: vendorIndexEnv });
+        if (objectType === "blob") {
+          const [fileMode = "100644", , fileHash = ""] = (await run("git", ["ls-tree", fetchedCommit, "--", includePath], { cwd })).stdout.split(/\s+/);
+          await run("git", ["update-index", "--add", "--cacheinfo", `${fileMode},${fileHash},${intoSubFolder}/${basename(includePath)}`], {
+            cwd,
+            env: vendorIndexEnv,
+          });
+        }
+      }
+      await rm(join(cwd, intoSubFolder), { recursive: true, force: true });
+      await run("git", ["checkout-index", "--all", "--force"], { cwd, env: vendorIndexEnv });
       return intoSubFolder;
     } catch (raised) {
       // Whatever was half done to that folder goes back to what was committed.
-      await run("git", ["restore", "--source=HEAD", "--staged", "--worktree", "--", intoSubFolder], { cwd }).catch(() => undefined);
-      throw new DrivenFault(`${raised}`, `Check that "${intoSubFolder}" holds nothing of your own in hand, and run this again.`);
+      await run("git", ["restore", "--source=HEAD", "--worktree", "--", intoSubFolder], { cwd }).catch(() => undefined);
+      throw new DrivenFault(`${raised}`, `Check that "${intoSubFolder}" can be written, and run this again.`);
+    } finally {
+      await rm(vendorIndexPath, { force: true });
     }
   }
 

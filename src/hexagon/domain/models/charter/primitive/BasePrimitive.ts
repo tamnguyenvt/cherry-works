@@ -198,7 +198,8 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    *
    * Written as its author wrote it unless the compiler says otherwise (FR-139):
    * `mixins` lend their bodies, before this one's own so it reads as the point
-   * and theirs as the setting — nothing is merged and no header moves (FR-006);
+   * and theirs as the setting, or after it where a mixin's `position` is `end`
+   * — nothing is merged and no header moves (FR-006);
    * and `idReplacer` rewrites the body as its reader uses it, each mcp origin,
    * script and template it names as a link to its file (FR-147).
    */
@@ -207,11 +208,15 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
     idReplacer = (body) => body,
   }: {
     /** The mixin primitives it pulls in, in the order it named them: all a
-     *  mixin lends is its body. */
-    readonly mixins?: readonly { readonly body: string }[];
+     *  mixin lends is its body, and where it goes. */
+    readonly mixins?: readonly { readonly body: string; readonly headers: { readonly position: "start" | "end" } }[];
     readonly idReplacer?: (body: string) => string;
   } = {}): string {
-    const body = [...mixins.map((mixin) => mixin.body), this.body].filter((one) => one.trim() !== "").join("\n\n");
+    const endMixins = mixins.filter((mixin) => mixin.headers.position === "end");
+    const startMixins = mixins.filter((mixin) => mixin.headers.position === "start");
+    const body = [...startMixins.map((mixin) => mixin.body), this.body, ...endMixins.map((mixin) => mixin.body)]
+      .filter((one) => one.trim() !== "")
+      .join("\n\n");
     return [
       DELIMITER,
       ...Object.entries({ kind: this.kind, ...this.headers }).map(([field, value]) => `${field}: ${formatFrontmatterValue(value)}`),
