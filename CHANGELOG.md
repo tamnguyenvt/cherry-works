@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 — 2026-10-07
 
 - An agent can name the model it runs on with `model: <provider>:<model>`, such as `model: claude:haiku`.
 - A mixin can set `position: end` to put its body after the primitive that pulls it in; `start`, the default, keeps it before. Run `cw build`.
