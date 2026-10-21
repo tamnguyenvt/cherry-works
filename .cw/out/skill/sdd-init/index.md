@@ -78,8 +78,10 @@ the user takes with "yes":
    by name; where the user names none, it is `develop`.
 5. **Branches** — phase and story branch names, or none. A bug fix is always
    on `fix/<slug>`, started from the development branch.
-6. **While working** — leave changes unstaged for the user, or commit at each
-   step that passes its checks.
+6. **While working** — leave every change unstaged until the work is
+   finished, so the user stages what they have read, or commit at each step
+   that passes its checks, a linear history of small commits. Recommend
+   unstaged, the default when the user names none.
 7. **Commit message** — the convention, and whether to add a
    `Co-Authored-By` line for the agent.
 8. **Finishing** — merge, squash-merge or pull request, into which branch, and

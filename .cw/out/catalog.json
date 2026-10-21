@@ -9,15 +9,6 @@
     ]
   },
   {
-    "kind": "guide",
-    "id": "command-options-named-options",
-    "description": "Name the options a command takes OPTIONS, and nothing else.",
-    "file": ".cw/out/guide/command-options-named-options/index.md",
-    "globs": [
-      "src/driver/cli/commands/**"
-    ]
-  },
-  {
     "kind": "skill",
     "id": "cw-author",
     "description": "Author a new primitive of this repository's charter, asking cw what its kind requires.",
@@ -51,12 +42,6 @@
     ]
   },
   {
-    "kind": "guide",
-    "id": "explain-in-plain-vietnamese",
-    "description": "Explain to this user in plain everyday Vietnamese, in complete sentences, never in a compressed fragment style.",
-    "file": ".cw/out/guide/explain-in-plain-vietnamese/index.md"
-  },
-  {
     "kind": "agent",
     "id": "hexagon-initializer",
     "description": "Initialise a hexagonal architecture in the folder whose path it is given, then fit it to that project.",
@@ -87,15 +72,15 @@
   },
   {
     "kind": "guide",
-    "id": "leave-changes-unstaged",
-    "description": "Never stage and never commit on your own — leave every change in the working tree and stop, even on a task branch and even after an earlier commit was approved.",
-    "file": ".cw/out/guide/leave-changes-unstaged/index.md"
+    "id": "name-like-the-files-before-it",
+    "description": "A file of a pattern the repository already has follows the files before it — their shape and their names — rather than inventing names of its own.",
+    "file": ".cw/out/guide/name-like-the-files-before-it/index.md"
   },
   {
     "kind": "guide",
-    "id": "no-abirtrary-function-split",
-    "description": "read when you are about to create a helper function or split into smaller function",
-    "file": ".cw/out/guide/no-abirtrary-function-split/index.md"
+    "id": "no-arbitrary-function-split",
+    "description": "Read when you are about to write a helper function or split a function into smaller ones.",
+    "file": ".cw/out/guide/no-arbitrary-function-split/index.md"
   },
   {
     "kind": "guide",
@@ -299,7 +284,7 @@
   {
     "kind": "guide",
     "id": "write-changelog",
-    "description": "Write each CHANGELOG.md entry as one short plain sentence for users of cw, with no spec ids or internals, and mark Breaking only when users must edit what they wrote.",
+    "description": "Write each CHANGELOG.md entry as one short plain sentence for the people who use what you ship, with no spec ids or internals, and mark Breaking only when they must edit what they wrote.",
     "file": ".cw/out/guide/write-changelog/index.md",
     "globs": [
       "CHANGELOG.md"

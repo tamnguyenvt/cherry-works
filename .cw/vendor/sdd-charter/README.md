@@ -29,6 +29,8 @@ request — with recommendations drawn from your history, and writes it down.
 | `/sdd-status` | Every story with its status, and which can be built now. |
 | `/sdd-report` | Draws the roadmap into `report.html`: what is done, in progress, ready and waiting, and what waits on what. |
 
+![The roadmap /sdd-report draws into report.html: Done stories grey with green ids, In Progress pink with a green dot, ready with a solid border, waiting dashed, and an arrow from each story to the ones waiting on it](docs/report.png)
+
 ## The spec set
 
 ```text

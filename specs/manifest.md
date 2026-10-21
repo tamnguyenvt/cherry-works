@@ -20,7 +20,7 @@ How work on a story is carried out and finished in this repository. Read by
 
 ## Committing
 
-- **While working**: leave every change unstaged; the user stages what they have read and commits. Never `git add` or `git commit` unless the user asks in that turn.
+- **While working**: unstaged — leave every change unstaged until the story or fix is finished; the user stages what they have read, and /sdd-finish commits. Never `git add` or `git commit` unless the user asks in that turn.
 - **Message**: the story's id and title, `CORE Story 15: Publish a release that users can trust`, with a short body when the why is not obvious.
 - **Co-Authored-By**: no — no AI attribution in commits, pull requests or comments.
 
