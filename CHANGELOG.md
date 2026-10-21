@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1 — 2026-10-21
+
+- No change to `cw` itself. The coding guides this repository wrote for itself now ship as their own charter: `cw vendor add https://github.com/tamnguyenvt/happy-code-charter`.
+
 ## 0.7.0 — 2026-10-07
 
 - An agent can name the model it runs on with `model: <provider>:<model>`, such as `model: claude:haiku`.
