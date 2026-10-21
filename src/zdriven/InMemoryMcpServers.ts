@@ -1,5 +1,5 @@
 import {
-  DrivenFault,
+  AdapterFault,
   UnauthorizedMcpFault,
   type ForCallingMcpServers,
   type McpServerAddress,
@@ -28,7 +28,7 @@ export class InMemoryMcpServers implements ForCallingMcpServers {
 
   async connect({ address }: McpServerAddress, accessToken: string | undefined): Promise<McpServerConnection> {
     const server = this.servers.get(address);
-    if (server === undefined) throw new DrivenFault(`${address} could not be reached.`, "Check the mcp origin is up.");
+    if (server === undefined) throw new AdapterFault(`${address} could not be reached.`, "Check the mcp origin is up.");
     this.connected.push({ address, accessToken });
     return {
       tools: server.tools,

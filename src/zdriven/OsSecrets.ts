@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { DrivenFault, type ForKeepingSecrets } from "#hexagon/port/zdriven/ForKeepingSecrets.js";
+import { AdapterFault, type ForKeepingSecrets } from "#hexagon/port/zdriven/ForKeepingSecrets.js";
 
 /** Every secret `cw` keeps is under this service, one account per key
  *  (data-model §17.3). */
@@ -63,7 +63,7 @@ export class OsSecrets implements ForKeepingSecrets {
     // `security -i` reads the key between double quotes, which it cannot
     // escape out of. An address never holds one.
     if (this.platform === "darwin" && /["\\\n]/.test(key)) {
-      throw new DrivenFault(`The key "${key}" cannot be kept in the keychain.`, "Name the mcp origin by an address without quotes, backslashes or line breaks.");
+      throw new AdapterFault(`The key "${key}" cannot be kept in the keychain.`, "Name the mcp origin by an address without quotes, backslashes or line breaks.");
     }
     const commandOutputOfWrite =
       this.platform === "darwin"
@@ -96,7 +96,7 @@ export class OsSecrets implements ForKeepingSecrets {
    *  before a command runs. */
   private refuseUnsupportedPlatform(): void {
     if (this.platform !== "darwin" && this.platform !== "linux") {
-      throw new DrivenFault(
+      throw new AdapterFault(
         `Keeping a secret is not supported on "${this.platform}".`,
         "Sign in from macOS or Linux, whose credential stores cw uses.",
       );
@@ -105,7 +105,7 @@ export class OsSecrets implements ForKeepingSecrets {
 
   private throwFault(operation: "read" | "write" | "remove", key: string, stderr = ""): never {
     const storeName = this.platform === "darwin" ? "The keychain" : "The secret service";
-    throw new DrivenFault(
+    throw new AdapterFault(
       `${storeName} refused to ${operation} the secret for "${key}".${stderr.trim() === "" ? "" : ` It said: ${stderr.trim()}`}`,
       this.platform === "darwin"
         ? "Check that the login keychain is unlocked."

@@ -116,14 +116,16 @@ skeleton="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$language-skeleton"
 
 # The greeting slice: one use case through every layer, named without its
 # extension so one list serves both skeletons. Without it, each folder it fills
-# is kept by a .gitkeep, and the composition root is empty.
+# is kept by a .gitkeep, and the composition root is empty. The faults, the
+# log and the service that logs faults are no example: they are written either
+# way, less the example's own faults, kept between `@example-start` and
+# `@example-end` in the fault files.
 example_stems=(
   main
   src/driver/cli/GreetCommand
-  src/hexagon/application/VisitorGreeting
+  src/hexagon/application/GreetingVisitors
   src/hexagon/domain/models/Greeting
   src/hexagon/port/driver/ForGreetingVisitors
-  src/hexagon/port/driver/dtos/GreetingDTO
   src/hexagon/port/zdriven/ForReadingClock
   src/zdriven/InMemoryClock
   src/zdriven/SystemClock
@@ -163,7 +165,13 @@ place_file() {
   written+=("$relative_path")
   [[ $dry_run -eq 1 ]] && return
   mkdir -p "$(dirname "$destination")"
-  if [[ -n "$source_file" ]]; then cp "$source_file" "$destination"; else printf '%s' "$text" > "$destination"; fi
+  if [[ -z "$source_file" ]]; then
+    printf '%s' "$text" > "$destination"
+  elif [[ $with_example -eq 0 ]] && grep -q '@example-start' "$source_file"; then
+    sed '/@example-start/,/@example-end/d' "$source_file" > "$destination"
+  else
+    sed '/@example-start/d;/@example-end/d' "$source_file" > "$destination"
+  fi
 }
 
 while IFS= read -r -d '' source_file; do
@@ -215,21 +223,22 @@ else
   typecheck_script='"typecheck": "tsc -p jsconfig.json",'
   test_command='node --test \"test/**/*.test.js\"'
 fi
+echo "  1. Dependencies:      pnpm add zod   (the DTOs are zod schemas)"
 if [[ $with_dependency_cruiser -eq 1 ]]; then
-  echo "  1. Dev dependencies:  pnpm add -D $dev_dependencies dependency-cruiser   (dependency-cruiser cannot read TypeScript 7 yet)"
-  echo '  2. package.json scripts:'
+  echo "  2. Dev dependencies:  pnpm add -D $dev_dependencies dependency-cruiser   (dependency-cruiser cannot read TypeScript 7 yet)"
+  echo '  3. package.json scripts:'
   echo "       $typecheck_script"
   echo "       \"lint:deps\": \"depcruise src main.$language\","
   echo "       \"test\":      \"pnpm lint:deps && $test_command\""
 else
-  echo "  1. Dev dependencies:  pnpm add -D $dev_dependencies"
-  echo '  2. package.json scripts:'
+  echo "  2. Dev dependencies:  pnpm add -D $dev_dependencies"
+  echo '  3. package.json scripts:'
   echo "       $typecheck_script"
   echo "       \"test\": \"$test_command\""
 fi
 [[ $language == js ]] && echo '     and "type": "module" in package.json: the skeleton is ES modules.'
 if [[ $with_example -eq 1 ]]; then
-  echo '  3. Read src/ARCHITECTURE.md, then replace the greeting example with the first real use case.'
+  echo '  4. Read src/ARCHITECTURE.md, then replace the greeting example with the first real use case.'
 else
-  echo '  3. Read src/ARCHITECTURE.md, then write the first use case through every layer.'
+  echo '  4. Read src/ARCHITECTURE.md, then write the first use case through every layer.'
 fi

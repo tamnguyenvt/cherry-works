@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { auth, type OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import { OAuthError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import type { OAuthClientInformationMixed, OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
-import { DrivenFault, type ForAuthorizing, type OAuthGrant } from "#hexagon/port/zdriven/ForAuthorizing.js";
+import { AdapterFault, type ForAuthorizing, type OAuthGrant } from "#hexagon/port/zdriven/ForAuthorizing.js";
 
 /** How long a sign-in waits for the developer to come back from the browser. */
 const CALLBACK_TIMEOUT_MS = 5 * 60_000;
@@ -42,7 +42,7 @@ export class OAuth implements ForAuthorizing {
     let callbackTimeout: NodeJS.Timeout | undefined;
     const authorizationCode = new Promise<string>((resolve, reject) => {
       callbackTimeout = setTimeout(
-        () => reject(new DrivenFault(`Nobody came back from signing in to ${endpoint} in time.`, 'Run "cw mcp auth" again, and open the address it prints.')),
+        () => reject(new AdapterFault(`Nobody came back from signing in to ${endpoint} in time.`, 'Run "cw mcp auth" again, and open the address it prints.')),
         this.#callbackTimeoutMs,
       );
       callbackServer.on("request", (request, response) => {
@@ -56,7 +56,7 @@ export class OAuth implements ForAuthorizing {
           .end(signedIn ? "Signed in. Go back to the terminal.\n" : "Not signed in. Go back to the terminal.\n");
         if (signedIn) return resolve(callbackCode);
         const callbackError = callbackUrl.searchParams.get("error");
-        reject(new DrivenFault(`Signing in to ${endpoint} came back without an authorization${callbackError ? `: ${callbackError}` : ""}.`, 'Run "cw mcp auth" again.'));
+        reject(new AdapterFault(`Signing in to ${endpoint} came back without an authorization${callbackError ? `: ${callbackError}` : ""}.`, 'Run "cw mcp auth" again.'));
       });
     });
     // Awaited only once the address is shown: a sign-in failing before then
@@ -70,8 +70,8 @@ export class OAuth implements ForAuthorizing {
         await auth(provider, { serverUrl: endpoint, authorizationCode: await authorizationCode });
       return oauthGrantOf(endpoint, oauthSession);
     } catch (raised) {
-      if (raised instanceof DrivenFault) throw raised;
-      throw new DrivenFault(
+      if (raised instanceof AdapterFault) throw raised;
+      throw new AdapterFault(
         `Signing in to ${endpoint} failed: ${raised instanceof Error ? raised.message : String(raised)}`,
         "Check the address is reachable and offers an OAuth sign-in, then run \"cw mcp auth\" again.",
       );
@@ -100,7 +100,7 @@ export class OAuth implements ForAuthorizing {
       if ((await auth(provider, { serverUrl: endpoint })) === "REDIRECT") return undefined;
     } catch (raised) {
       if (raised instanceof OAuthError) return undefined;
-      throw new DrivenFault(
+      throw new AdapterFault(
         `Renewing the sign-in to ${endpoint} failed: ${raised instanceof Error ? raised.message : String(raised)}`,
         "Check the address is reachable, then try again.",
       );
@@ -156,7 +156,7 @@ export class OAuth implements ForAuthorizing {
 /** What a finished flow saved, as the grant it ends with. */
 function oauthGrantOf(endpoint: string, { clientInformation, tokens }: OAuthSession): OAuthGrant {
   if (clientInformation === undefined || tokens === undefined)
-    throw new DrivenFault(`Signing in to ${endpoint} ended without a token.`, 'Run "cw mcp auth" again.');
+    throw new AdapterFault(`Signing in to ${endpoint} ended without a token.`, 'Run "cw mcp auth" again.');
   return {
     accessToken: tokens.access_token,
     ...(tokens.refresh_token !== undefined && { refreshToken: tokens.refresh_token }),

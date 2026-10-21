@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
-import { DrivenFault, UnauthorizedMcpFault } from "../src/hexagon/port/zdriven/ForCallingMcpServers.js";
+import { AdapterFault, UnauthorizedMcpFault } from "../src/hexagon/port/zdriven/ForCallingMcpServers.js";
 import { McpClients } from "../src/zdriven/McpClients.js";
 import { anMcpServer } from "./an-mcp-server.js";
 
@@ -65,7 +65,7 @@ test("an mcp origin refusing the credential when it is reached is an Unauthorize
   );
 });
 
-test("an mcp origin nobody answers at is a DrivenFault naming its address", async () => {
+test("an mcp origin nobody answers at is an AdapterFault naming its address", async () => {
   const closedServer = createServer();
   await new Promise<void>((resolve) => closedServer.listen(0, "127.0.0.1", resolve));
   const endpoint = `http://127.0.0.1:${(closedServer.address() as AddressInfo).port}/mcp`;
@@ -73,18 +73,18 @@ test("an mcp origin nobody answers at is a DrivenFault naming its address", asyn
 
   await assert.rejects(
     new McpClients().connect({ address: endpoint, endpoint }, "dev-token", 5_000),
-    (raised: DrivenFault) => raised instanceof DrivenFault && raised.message.includes(endpoint),
+    (raised: AdapterFault) => raised instanceof AdapterFault && raised.message.includes(endpoint),
   );
 });
 
-test("an mcp origin that does not answer in time is a DrivenFault, and the wait ends at the limit", async (t) => {
+test("an mcp origin that does not answer in time is an AdapterFault, and the wait ends at the limit", async (t) => {
   const silentServer = createServer(() => undefined);
   await new Promise<void>((resolve) => silentServer.listen(0, "127.0.0.1", resolve));
   t.after(() => (silentServer.closeAllConnections(), silentServer.close()));
   const endpoint = `http://127.0.0.1:${(silentServer.address() as AddressInfo).port}/mcp`;
   const startedAt = Date.now();
 
-  await assert.rejects(new McpClients().connect({ address: endpoint, endpoint }, "dev-token", 300), DrivenFault);
+  await assert.rejects(new McpClients().connect({ address: endpoint, endpoint }, "dev-token", 300), AdapterFault);
 
   assert.ok(Date.now() - startedAt < 3_000);
 });
@@ -111,11 +111,11 @@ test("a command's process is stopped when its mcp origin is let go", async () =>
   assert.throws(() => process.kill(processId, 0));
 });
 
-test("a command that does not exist is a DrivenFault naming its address", async () => {
+test("a command that does not exist is an AdapterFault naming its address", async () => {
   const missingMcpOrigin = { address: "no-such-command-anywhere --serve", command: { command: "no-such-command-anywhere", args: ["--serve"] } };
 
   await assert.rejects(
     new McpClients().connect(missingMcpOrigin, undefined, 5_000),
-    (raised: DrivenFault) => raised instanceof DrivenFault && raised.message.includes("no-such-command-anywhere --serve"),
+    (raised: AdapterFault) => raised instanceof AdapterFault && raised.message.includes("no-such-command-anywhere --serve"),
   );
 });

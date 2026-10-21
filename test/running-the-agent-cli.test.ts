@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ClaudeCli } from "../src/zdriven/ClaudeCli.js";
-import { DrivenFault } from "../src/hexagon/port/zdriven/ForRunningAgentCli.js";
+import { AdapterFault } from "../src/hexagon/port/zdriven/ForRunningAgentCli.js";
 
 /**
  * A `claude` of the test's own, put first on the PATH: it answers `--version`,
@@ -119,8 +119,8 @@ test("a run that stops with an error, or is answered as one, is raised and frees
   await withFakeClaude(async () => {
     const claudeCli = new ClaudeCli();
 
-    await assert.rejects(claudeCli.ask("fail"), (raised) => raised instanceof DrivenFault && /status 2: boom/.test(raised.message));
-    await assert.rejects(claudeCli.ask("error"), (raised) => raised instanceof DrivenFault && /Not logged in/.test(raised.message));
+    await assert.rejects(claudeCli.ask("fail"), (raised) => raised instanceof AdapterFault && /status 2: boom/.test(raised.message));
+    await assert.rejects(claudeCli.ask("error"), (raised) => raised instanceof AdapterFault && /Not logged in/.test(raised.message));
     // Every place freed: five more run, and none waits forever.
     await Promise.all(Array.from({ length: 5 }, () => claudeCli.ask("after")));
   });

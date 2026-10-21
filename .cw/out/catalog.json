@@ -65,6 +65,17 @@
     ]
   },
   {
+    "kind": "guide",
+    "id": "hexagonal-naming",
+    "description": "What each part of a hexagon is named — ports, use cases, services, models, adapters, DTOs and faults — and where its faults live.",
+    "file": ".cw/out/guide/hexagonal-naming/index.md",
+    "globs": [
+      "src/**",
+      "main.ts",
+      "main.js"
+    ]
+  },
+  {
     "kind": "skill",
     "id": "init-hexagon",
     "description": "Ask the user what a hexagonal setup needs — folder, language (TypeScript or JavaScript only), dependency-cruiser, example, overwrite — show the plan, and start only once they confirm.",
@@ -268,6 +279,12 @@
     "id": "why-hexagonal-architecture",
     "description": "Why the code is split into driver, hexagon and zdriven, and why the arrows between them point inward.",
     "file": ".cw/out/corpus/why-hexagonal-architecture/index.md"
+  },
+  {
+    "kind": "corpus",
+    "id": "why-hexagonal-naming",
+    "description": "Why each part of a hexagon is named by its role, why faults and not errors, and why a fault is internal unless it says otherwise.",
+    "file": ".cw/out/corpus/why-hexagonal-naming/index.md"
   },
   {
     "kind": "corpus",

@@ -1,6 +1,6 @@
 /** What an adapter answering this port raises when the command line refuses,
  *  named again here so it names this port and nothing behind it. */
-export { DrivenFault } from "./DrivenFault.js";
+export { AdapterFault } from "./AdapterFault.js";
 
 /**
  * DRIVEN PORT — an agent's own command line, run headless: one prompt asked,

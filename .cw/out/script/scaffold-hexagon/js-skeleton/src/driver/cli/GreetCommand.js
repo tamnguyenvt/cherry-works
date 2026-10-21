@@ -6,11 +6,11 @@
  */
 export class GreetCommand {
   /** @type {ForGreetingVisitors} */
-  #visitorGreetingApp;
+  #greetingVisitors;
 
-  /** @param {ForGreetingVisitors} visitorGreetingApp */
-  constructor(visitorGreetingApp) {
-    this.#visitorGreetingApp = visitorGreetingApp;
+  /** @param {ForGreetingVisitors} greetingVisitors */
+  constructor(greetingVisitors) {
+    this.#greetingVisitors = greetingVisitors;
   }
 
   /**
@@ -18,14 +18,12 @@ export class GreetCommand {
    * @returns {Promise<number>}
    */
   async run(commandArguments) {
-    const visitorName = commandArguments.join(" ");
-    try {
-      const greetingDTO = await this.#visitorGreetingApp.greet(visitorName);
-      console.log(greetingDTO.text);
-      return 0;
-    } catch (error) {
-      console.error(error instanceof Error ? error.message : String(error));
+    const greetingAnswer = await this.#greetingVisitors.greet(commandArguments.join(" "));
+    if (greetingAnswer.type === "Fault") {
+      console.error(`${greetingAnswer.data.message} ${greetingAnswer.data.fix}`);
       return 1;
     }
+    console.log(greetingAnswer.data.text);
+    return 0;
   }
 }

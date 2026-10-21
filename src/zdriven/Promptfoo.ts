@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 // Types only, off the promptfoo this pins: what is written to it and read
 // back is held to its own shapes, and nothing of it is bundled.
 import type { OutputFile, UnifiedConfig } from "promptfoo";
-import { DrivenFault, type ForRunningPromptfoo, type PromptfooTest, type PromptfooTestResult } from "#hexagon/port/zdriven/ForRunningPromptfoo.js";
+import { AdapterFault, type ForRunningPromptfoo, type PromptfooTest, type PromptfooTestResult } from "#hexagon/port/zdriven/ForRunningPromptfoo.js";
 
 const run = promisify(execFile);
 
@@ -66,7 +66,7 @@ export class Promptfoo implements ForRunningPromptfoo {
         { cwd: this.installFolderPath, maxBuffer: 64 * 1024 * 1024 },
       );
     } catch (raised) {
-      throw new DrivenFault(`Installing promptfoo failed: ${raised}`, `Check that npm can reach the registry, then run "cw eval" again.`);
+      throw new AdapterFault(`Installing promptfoo failed: ${raised}`, `Check that npm can reach the registry, then run "cw eval" again.`);
     }
   }
 
@@ -126,13 +126,13 @@ export class Promptfoo implements ForRunningPromptfoo {
       } catch (raised) {
         // A test failing is an answer, not an error.
         if ((raised as { code?: unknown }).code !== PROMPTFOO_FAILED_TEST_EXIT_CODE)
-          throw new DrivenFault(`"promptfoo eval" stopped with an error: ${(raised as { stderr?: string }).stderr?.trim() || raised}`, 'Check that "claude" runs and is signed in here.');
+          throw new AdapterFault(`"promptfoo eval" stopped with an error: ${(raised as { stderr?: string }).stderr?.trim() || raised}`, 'Check that "claude" runs and is signed in here.');
       }
       const {
         results: { results: testResults },
       } = JSON.parse(await readFile(outputFilePath, "utf8")) as OutputFile;
       const [testResult] = testResults;
-      if (testResult === undefined) throw new DrivenFault('"promptfoo eval" wrote no result.', 'Run "cw eval" again.');
+      if (testResult === undefined) throw new AdapterFault('"promptfoo eval" wrote no result.', 'Run "cw eval" again.');
       return {
         success: testResult.success,
         totalTokens: testResult.response?.tokenUsage?.total ?? 0,

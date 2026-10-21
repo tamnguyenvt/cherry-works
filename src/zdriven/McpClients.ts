@@ -3,7 +3,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport, StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import {
-  DrivenFault,
+  AdapterFault,
   UnauthorizedMcpFault,
   type ForCallingMcpServers,
   type McpServerAddress,
@@ -52,7 +52,7 @@ export class McpClients implements ForCallingMcpServers {
         client.connect(transport).then(() => client.listTools()),
         new Promise<never>((_resolve, reject) => {
           connectTimeout = setTimeout(
-            () => reject(new DrivenFault(`${address} did not answer within ${timeoutMs / 1000} seconds.`, "Check the mcp origin is up, then start the server again.")),
+            () => reject(new AdapterFault(`${address} did not answer within ${timeoutMs / 1000} seconds.`, "Check the mcp origin is up, then start the server again.")),
             timeoutMs,
           );
         }),
@@ -79,11 +79,11 @@ export class McpClients implements ForCallingMcpServers {
 }
 
 /** What the SDK raised, as this port raises it: a `401` the one refusal the
- *  caller can act on, anything else a `DrivenFault` saying what failed where.
+ *  caller can act on, anything else an `AdapterFault` saying what failed where.
  *  Never what was sent: a credential is not in any message. */
-function faultOf(raised: unknown, failed: string, fix: string): DrivenFault {
-  if (raised instanceof DrivenFault) return raised;
+function faultOf(raised: unknown, failed: string, fix: string): AdapterFault {
+  if (raised instanceof AdapterFault) return raised;
   if (raised instanceof StreamableHTTPError && raised.code === 401)
     return new UnauthorizedMcpFault(`${failed}: the mcp origin refused your credential.`, 'Run "cw mcp auth" at a terminal to sign in there again.');
-  return new DrivenFault(`${failed}: ${raised instanceof Error ? raised.message : String(raised)}`, fix);
+  return new AdapterFault(`${failed}: ${raised instanceof Error ? raised.message : String(raised)}`, fix);
 }

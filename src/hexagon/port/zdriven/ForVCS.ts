@@ -1,6 +1,6 @@
 /** What an adapter answering this port raises when git refuses, named again
  *  here so it names this port and nothing behind it. */
-export { DrivenFault } from "./DrivenFault.js";
+export { AdapterFault } from "./AdapterFault.js";
 
 /**
  * DRIVEN PORT — version control. The hexagon asks what is true of a folder it
@@ -63,7 +63,7 @@ export interface ForVCS {
    *
    * A source that holds no first path at that version, one that holds a file
    * under `refusedIfSourceHolds`, a source that cannot be reached, a version
-   * that is not there: each raises a `DrivenFault`, saying what version
+   * that is not there: each raises an `AdapterFault`, saying what version
    * control found. Nothing is installed when it does (Edge Cases).
    */
   subtreeAdd(
@@ -92,7 +92,7 @@ export interface ForVCS {
    * A worktree of this repository's last commit, checked out detached at this
    * folder: its files as committed, and none of the work in hand
    * (EVAL-FR-021). A repository with nothing committed raises a
-   * `DrivenFault`.
+   * `AdapterFault`.
    */
   addWorktree(repo: URL, worktreeFolder: URL): Promise<void>;
 

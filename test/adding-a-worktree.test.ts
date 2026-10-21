@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { Git } from "../src/zdriven/Git.js";
-import { DrivenFault } from "../src/hexagon/port/zdriven/ForVCS.js";
+import { AdapterFault } from "../src/hexagon/port/zdriven/ForVCS.js";
 
 const run = promisify(execFile);
 
@@ -61,7 +61,7 @@ test("a worktree of a repository with nothing committed is refused, saying to co
     const repo = pathToFileURL(`${repoFolder}/`);
     await assert.rejects(
       new Git().addWorktree(repo, new URL(".worktrees/1/", repo)),
-      (raised) => raised instanceof DrivenFault && /Commit what is to be evaluated first/.test(raised.fix),
+      (raised) => raised instanceof AdapterFault && /Commit what is to be evaluated first/.test(raised.fix),
     );
   } finally {
     await rm(repoFolder, { recursive: true, force: true });

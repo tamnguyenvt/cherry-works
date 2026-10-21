@@ -8,4 +8,4 @@ import { DomainFault } from "../../domain/models/DomainFault.js";
  * A `DomainFault` still, so a driver reports it as it reports any other: one
  * message, one next move.
  */
-export class DrivenFault extends DomainFault {}
+export class AdapterFault extends DomainFault {}

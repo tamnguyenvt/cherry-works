@@ -1,3 +1,5 @@
+import { ClockUnreadableFault } from "../hexagon/port/zdriven/ForReadingClock.js";
+
 /** @typedef {import("../hexagon/port/zdriven/ForReadingClock.js").ForReadingClock} ForReadingClock */
 
 /**
@@ -7,6 +9,8 @@
  * @implements {ForReadingClock}
  */
 export class InMemoryClock {
+  #isBroken = false;
+
   /** @param {Date} instant */
   constructor(instant) {
     this.instant = instant;
@@ -20,7 +24,13 @@ export class InMemoryClock {
     this.instant = instant;
   }
 
+  /** Break the clock, so a test can watch an internal fault reach the log and not the visitor. */
+  breakDown() {
+    this.#isBroken = true;
+  }
+
   now() {
+    if (this.#isBroken) throw new ClockUnreadableFault("The clock could not be read.", "Check the machine's clock.");
     return this.instant;
   }
 }

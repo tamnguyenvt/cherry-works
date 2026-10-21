@@ -1,6 +1,6 @@
 /** What an adapter answering this port raises when the store refuses, named
  *  again here so it names this port and nothing behind it. */
-export { DrivenFault } from "./DrivenFault.js";
+export { AdapterFault } from "./AdapterFault.js";
 
 /**
  * DRIVEN PORT — the credential store. One secret under one key: read, write,

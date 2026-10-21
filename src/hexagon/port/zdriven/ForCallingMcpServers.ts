@@ -1,13 +1,13 @@
-import { DrivenFault } from "./DrivenFault.js";
+import { AdapterFault } from "./AdapterFault.js";
 
 /** What an adapter answering this port raises when an mcp origin cannot be reached
  *  or started, named again here so it names this port and nothing behind it. */
-export { DrivenFault };
+export { AdapterFault };
 
 /** What an adapter raises when an mcp origin refuses the credential a call was made
  *  with (`401`): the one refusal the caller can do something about, by renewing
  *  and asking again (FR-151). */
-export class UnauthorizedMcpFault extends DrivenFault {}
+export class UnauthorizedMcpFault extends AdapterFault {}
 
 /** Where one mcp origin is, as the list of mcp origins holds it: reached at an endpoint,
  *  or started as a local command reading its token from `tokenEnv`. */
@@ -40,7 +40,7 @@ export interface McpServerConnection {
    * when it started, and ignores it.
    *
    * Raises `UnauthorizedMcpFault` where the mcp origin refuses the credential, and a
-   * `DrivenFault` where the call fails on the way.
+   * `AdapterFault` where the call fails on the way.
    */
   callTool(name: string, args: Readonly<Record<string, unknown>>, accessToken: string | undefined): Promise<ToolAnswer>;
 
@@ -61,7 +61,7 @@ export interface ForCallingMcpServers {
    * command is started, `accessToken` in the variable its `tokenEnv` names and
    * in no other way.
    *
-   * Raises a `DrivenFault` naming the address where the mcp origin cannot be
+   * Raises an `AdapterFault` naming the address where the mcp origin cannot be
    * reached or started, or does not answer in time.
    */
   connect(mcpServerAddress: McpServerAddress, accessToken: string | undefined, timeoutMs: number): Promise<McpServerConnection>;

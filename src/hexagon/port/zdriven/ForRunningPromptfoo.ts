@@ -1,7 +1,7 @@
 /** What an adapter answering this port raises when promptfoo cannot be
  *  installed or stops with an error, named again here so it names this port and
  *  nothing behind it. */
-export { DrivenFault } from "./DrivenFault.js";
+export { AdapterFault } from "./AdapterFault.js";
 
 /**
  * DRIVEN PORT — promptfoo, the evaluation framework a charter is evaluated
@@ -22,7 +22,7 @@ export interface ForRunningPromptfoo {
   /** One test run with `promptfoo eval`: its prompt put to Claude Code,
    *  headless, in the working folder, with the project's settings and skills
    *  and edits accepted, on whatever it is signed in with; and how it came
-   *  out. A run promptfoo itself fails raises a `DrivenFault`. */
+   *  out. A run promptfoo itself fails raises an `AdapterFault`. */
   evaluate(promptfooTest: PromptfooTest): Promise<PromptfooTestResult>;
 }
 

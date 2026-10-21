@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { OsSecrets } from "../src/zdriven/OsSecrets.js";
 import { InMemorySecrets } from "../src/zdriven/InMemorySecrets.js";
-import { DrivenFault } from "../src/hexagon/port/zdriven/DrivenFault.js";
+import { AdapterFault } from "../src/hexagon/port/zdriven/AdapterFault.js";
 import type { ForKeepingSecrets } from "../src/hexagon/port/zdriven/ForKeepingSecrets.js";
 
 /** Whether this machine has the store `OsSecrets` would reach: `security` on
@@ -58,7 +58,7 @@ test("a platform with no store it knows is refused, naming the two it supports",
     () => secrets.removeSecret("https://a.example/mcp"),
   ]) {
     await assert.rejects(call, (raised: unknown) => {
-      assert.ok(raised instanceof DrivenFault);
+      assert.ok(raised instanceof AdapterFault);
       assert.match(`${raised.message} ${raised.fix}`, /macOS/);
       assert.match(`${raised.message} ${raised.fix}`, /Linux/);
       assert.doesNotMatch(raised.message, /s3cret/);

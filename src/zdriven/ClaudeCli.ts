@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { DrivenFault, type Answer, type ForRunningAgentCli } from "#hexagon/port/zdriven/ForRunningAgentCli.js";
+import { AdapterFault, type Answer, type ForRunningAgentCli } from "#hexagon/port/zdriven/ForRunningAgentCli.js";
 
 /** How many runs of `claude` are under way at once. */
 const PARALLEL_RUNNER_COUNT = 4;
@@ -74,12 +74,12 @@ export class ClaudeCli implements ForRunningAgentCli {
         claudeProcess.on("close", (code) =>
           code === 0
             ? resolve(stdout)
-            : reject(new DrivenFault(`"claude -p" stopped with status ${code}: ${stderr.trim()}`, 'Check that "claude" runs and is signed in here.')),
+            : reject(new AdapterFault(`"claude -p" stopped with status ${code}: ${stderr.trim()}`, 'Check that "claude" runs and is signed in here.')),
         );
         claudeProcess.stdin.end(prompt);
       });
       const { is_error: isError, result: resultText } = JSON.parse(printedJson) as { is_error?: boolean; result?: string };
-      if (isError === true) throw new DrivenFault(`"claude -p" answered with an error: ${resultText ?? ""}`.trim(), 'Check that "claude" runs and is signed in here.');
+      if (isError === true) throw new AdapterFault(`"claude -p" answered with an error: ${resultText ?? ""}`.trim(), 'Check that "claude" runs and is signed in here.');
       return printedJson;
     } finally {
       if (emptyFolder !== undefined) await rm(emptyFolder, { recursive: true, force: true });

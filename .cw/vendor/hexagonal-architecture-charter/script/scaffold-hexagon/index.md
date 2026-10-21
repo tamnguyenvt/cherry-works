@@ -10,8 +10,13 @@ Scaffolds a hexagonal (ports and adapters) architecture into one folder, in
 this file, `ts-skeleton/` and `js-skeleton/`: the layer folders, a
 `.dependency-cruiser.cjs` that enforces them, a `tsconfig.json` (TypeScript)
 or a `jsconfig.json` with `checkJs` (JavaScript), a composition root
-`main.ts` / `main.js`, `src/ARCHITECTURE.md`, and one walking-skeleton use case
-(a greeting) through every layer with a passing test. In JavaScript a port is a
+`main.ts` / `main.js`, `src/ARCHITECTURE.md`, the faults and the log every
+hexagon has — `DomainFault`, `ApplicationFault`, `AdapterFault`, the DTO
+files (`dto`, `data` with `DataDTOs.Fault`) and `faultDTO()` in
+`application/dtos`, a `ForWritingLogs` port with `StderrLogs` and
+`InMemoryLogs`, and `LogFaultService`, which logs an internal fault before a
+use case cooks it — and one walking-skeleton use case (a greeting) through
+every layer with passing tests, named as [[hexagonal-naming]] says. In JavaScript a port is a
 JSDoc `@typedef`, held to by `checkJs`, and dependency-cruiser counts JSDoc
 `import("…")` types as edges.
 
@@ -36,6 +41,9 @@ JSDoc `@typedef`, held to by `checkJs`, and dependency-cruiser counts JSDoc
 - `--no-dependency-cruiser` — leave out `.dependency-cruiser.cjs`.
 - `--no-example` — leave out the greeting slice: each folder it would have
   filled gets a `.gitkeep`, and `main.<ts|js>` is an empty composition root.
+  The faults, the log and `LogFaultService` are still written, less the
+  example's own faults — kept between `@example-start` and `@example-end` in
+  the fault files, and cut out with the rest of the example.
 
 A folder detected as `unsupported:` is refused whatever `--language` says:
 hexagonal scaffolding in JavaScript does not belong in a Go or Python project.

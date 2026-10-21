@@ -1,4 +1,4 @@
-import { DrivenFault, type ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
+import { AdapterFault, type ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
 import type { InMemoryFileReaders } from "./InMemoryFileReaders.js";
 
 /** Version control held in memory: a test says whether the folder it is setting
@@ -58,9 +58,9 @@ export class InMemoryVCS implements ForVCS {
     refusedIfSourceHolds?: string,
   ): Promise<string> {
     if (this.sourcesWithoutSubFolder.includes(source))
-      throw new DrivenFault(`${source} has no "${includePaths[0]}".`, `Check that the source holds "${includePaths[0]}".`);
+      throw new AdapterFault(`${source} has no "${includePaths[0]}".`, `Check that the source holds "${includePaths[0]}".`);
     if (refusedIfSourceHolds !== undefined && this.sourcesHoldingRefusedFolder.includes(source))
-      throw new DrivenFault(`${source} holds "${refusedIfSourceHolds}".`, `Remove "${refusedIfSourceHolds}" from the source.`);
+      throw new AdapterFault(`${source} holds "${refusedIfSourceHolds}".`, `Remove "${refusedIfSourceHolds}" from the source.`);
     this.installed.push({ source, includePaths, repo, intoSubFolder, ...(version === undefined ? {} : { version }) });
     return intoSubFolder;
   }

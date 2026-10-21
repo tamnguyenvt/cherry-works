@@ -5,21 +5,19 @@ import type { ForGreetingVisitors } from "../../hexagon/port/driver/ForGreetingV
  * answer back into text. It parses and prints; it decides nothing.
  */
 export class GreetCommand {
-  readonly #visitorGreetingApp: ForGreetingVisitors;
+  readonly #greetingVisitors: ForGreetingVisitors;
 
-  constructor(visitorGreetingApp: ForGreetingVisitors) {
-    this.#visitorGreetingApp = visitorGreetingApp;
+  constructor(greetingVisitors: ForGreetingVisitors) {
+    this.#greetingVisitors = greetingVisitors;
   }
 
   async run(commandArguments: readonly string[]): Promise<number> {
-    const visitorName = commandArguments.join(" ");
-    try {
-      const greetingDTO = await this.#visitorGreetingApp.greet(visitorName);
-      console.log(greetingDTO.text);
-      return 0;
-    } catch (error) {
-      console.error(error instanceof Error ? error.message : String(error));
+    const greetingAnswer = await this.#greetingVisitors.greet(commandArguments.join(" "));
+    if (greetingAnswer.type === "Fault") {
+      console.error(`${greetingAnswer.data.message} ${greetingAnswer.data.fix}`);
       return 1;
     }
+    console.log(greetingAnswer.data.text);
+    return 0;
   }
 }

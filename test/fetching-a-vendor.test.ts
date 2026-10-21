@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 import { Git } from "../src/zdriven/Git.js";
-import { DrivenFault } from "../src/hexagon/port/zdriven/DrivenFault.js";
+import { AdapterFault } from "../src/hexagon/port/zdriven/AdapterFault.js";
 
 const run = promisify(execFile);
 const git = new Git();
@@ -129,7 +129,7 @@ test("a source without the folder asked for says so, installing nothing", async 
 
   const raised = await git.subtreeAdd(source, ["not-there", "README.md"], pathToFileURL(`${repo}/`), ".cw/vendor/charter").catch((one: unknown) => one);
 
-  assert.ok(raised instanceof DrivenFault, String(raised));
+  assert.ok(raised instanceof AdapterFault, String(raised));
   assert.match(raised.message, /no "not-there"/);
 
   await assert.rejects(readFile(join(repo, ".cw", "vendor", "charter", "README.md")));
@@ -145,7 +145,7 @@ test("a source holding the folder it is refused for says so, installing nothing"
 
   const raised = await git.subtreeAdd(source, ...at(repo), undefined, ".cw/vendor").catch((one: unknown) => one);
 
-  assert.ok(raised instanceof DrivenFault, String(raised));
+  assert.ok(raised instanceof AdapterFault, String(raised));
   assert.match(raised.message, /holds "\.cw\/vendor"/);
 
   await assert.rejects(vendored(repo));
@@ -163,7 +163,7 @@ test("a version the source has not got is refused in git's own words, installing
 
   const raised = await git.subtreeAdd(source, ...at(repo), "v9.9.9").catch((one: unknown) => one);
 
-  assert.ok(raised instanceof DrivenFault, String(raised));
+  assert.ok(raised instanceof AdapterFault, String(raised));
   assert.match(raised.fix, /tag or branch/);
   await assert.rejects(vendored(repo));
 });
@@ -174,7 +174,7 @@ test("a source that cannot be reached is refused in git's own words", async (t) 
 
   const raised = await git.subtreeAdd(source, ...at(repo)).catch((one: unknown) => one);
 
-  assert.ok(raised instanceof DrivenFault, String(raised));
+  assert.ok(raised instanceof AdapterFault, String(raised));
   assert.match(raised.message, /repository|does not exist/);
 });
 
@@ -198,7 +198,7 @@ test("a folder this repository has not got is refused in git's own words", async
     .removeSubFolder(pathToFileURL(`${repo}/`), ".cw/vendor/absent")
     .catch((one: unknown) => one);
 
-  assert.ok(raised instanceof DrivenFault, String(raised));
+  assert.ok(raised instanceof AdapterFault, String(raised));
   assert.match(raised.fix, /\.cw\/vendor\/absent/);
 });
 

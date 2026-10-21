@@ -1,7 +1,7 @@
 /** What an adapter answering this port raises when the server behind it
  *  cannot be reached, named again here so it names this port and nothing
  *  behind it. */
-export { DrivenFault } from "./DrivenFault.js";
+export { AdapterFault } from "./AdapterFault.js";
 
 /**
  * What one OAuth sign-in ends with: the tokens an mcp origin issued, and what it
@@ -33,7 +33,7 @@ export interface ForAuthorizing {
    * Sign in to the server at this endpoint in the developer's browser.
    *
    * `showAuthorizationUrl` is handed the address to open, once: the adapter
-   * never opens it (plan §15). Raises a `DrivenFault` where the server cannot
+   * never opens it (plan §15). Raises an `AdapterFault` where the server cannot
    * be reached, the developer refuses, or nobody comes back in time.
    */
   authorize(endpoint: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<OAuthGrant>;
@@ -42,7 +42,7 @@ export interface ForAuthorizing {
    * Renew one grant with its refresh token, asking nobody.
    *
    * `undefined` where the server refuses: the developer has to sign in again.
-   * A server that cannot be reached raises a `DrivenFault` instead, since
+   * A server that cannot be reached raises an `AdapterFault` instead, since
    * nothing says the grant is no good.
    */
   renew(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined>;

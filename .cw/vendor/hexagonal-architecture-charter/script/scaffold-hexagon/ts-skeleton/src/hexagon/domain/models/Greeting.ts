@@ -1,3 +1,5 @@
+import { NamelessVisitorFault } from "./DomainFault.js";
+
 /**
  * DOMAIN MODEL — a greeting, and the rule for which one fits the hour.
  *
@@ -10,9 +12,14 @@ export class Greeting {
     readonly visitorName: string,
   ) {}
 
-  static forHour(hour: number, visitorName: string): Greeting {
+  /** The greeting that fits this hour; a visitor with no name is refused. */
+  static greetingOf(hour: number, visitorName: string): Greeting {
     const trimmedName = visitorName.trim();
-    if (trimmedName === "") throw new Error("a visitor is greeted by name, and none was given");
+    if (trimmedName === "") {
+      throw new NamelessVisitorFault("A visitor is greeted by name, and none was given.", "Give a name.", {
+        internal: false,
+      });
+    }
     const salutation = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     return new Greeting(salutation, trimmedName);
   }

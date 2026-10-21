@@ -3,7 +3,7 @@ import { rm } from "node:fs/promises";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { basename, join } from "node:path";
-import { DrivenFault, type ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
+import { AdapterFault, type ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
 
 const run = promisify(execFile);
 
@@ -97,7 +97,7 @@ export class Git implements ForVCS {
     try {
       await run("git", ["fetch", "--quiet", "--no-tags", "--", source, ref], { cwd });
     } catch (raised) {
-      throw new DrivenFault(
+      throw new AdapterFault(
         `${raised}`,
         version === undefined
           ? "Check the address, and that you can reach it from here."
@@ -115,9 +115,9 @@ export class Git implements ForVCS {
     const atVersion = version === undefined ? "" : ` at ${version}`;
     const [requiredPath = ""] = includePaths;
     if ((await objectTypeAt(requiredPath)) === undefined)
-      throw new DrivenFault(`${source} has no "${requiredPath}"${atVersion}.`, `Check that the source holds "${requiredPath}" at the version asked for.`);
+      throw new AdapterFault(`${source} has no "${requiredPath}"${atVersion}.`, `Check that the source holds "${requiredPath}" at the version asked for.`);
     if (refusedIfSourceHolds !== undefined && (await objectTypeAt(refusedIfSourceHolds)) === "tree")
-      throw new DrivenFault(
+      throw new AdapterFault(
         `${source} holds "${refusedIfSourceHolds}"${atVersion}, which this copy refuses.`,
         `Remove "${refusedIfSourceHolds}" from the source, or copy a version without it.`,
       );
@@ -146,7 +146,7 @@ export class Git implements ForVCS {
     } catch (raised) {
       // Whatever was half done to that folder goes back to what was committed.
       await run("git", ["restore", "--source=HEAD", "--worktree", "--", intoSubFolder], { cwd }).catch(() => undefined);
-      throw new DrivenFault(`${raised}`, `Check that "${intoSubFolder}" can be written, and run this again.`);
+      throw new AdapterFault(`${raised}`, `Check that "${intoSubFolder}" can be written, and run this again.`);
     } finally {
       await rm(vendorIndexPath, { force: true });
     }
@@ -161,7 +161,7 @@ export class Git implements ForVCS {
       await run("git", ["rm", "-r", "--quiet", "--", subFolder], { cwd });
       await run("git", ["commit", "-qm", `Remove ${subFolder}`], { cwd });
     } catch (raised) {
-      throw new DrivenFault(`${raised}`, `Check that "${subFolder}" is a folder this repository holds.`);
+      throw new AdapterFault(`${raised}`, `Check that "${subFolder}" is a folder this repository holds.`);
     }
   }
 
@@ -171,7 +171,7 @@ export class Git implements ForVCS {
     try {
       await run("git", ["worktree", "add", "--quiet", "--detach", "--force", fileURLToPath(worktreeFolder), "HEAD"], { cwd: fileURLToPath(repo) });
     } catch (raised) {
-      throw new DrivenFault(`${raised}`, "Commit what is to be evaluated first: a worktree holds the last commit.");
+      throw new AdapterFault(`${raised}`, "Commit what is to be evaluated first: a worktree holds the last commit.");
     }
   }
 
