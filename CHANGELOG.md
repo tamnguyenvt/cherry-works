@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.4 — 2026-10-22
+
+- Your agent's settings now hold one `cw sensor run <signal>` hook per signal instead of one hook per sensor. Run `cw build`, and make sure `cw` is on the path your agent runs hooks with.
+- A sensor runs as the last build left it, so run `cw build` after changing one.
+
 ## 0.7.3 — 2026-10-22
 
 - Small refactor
