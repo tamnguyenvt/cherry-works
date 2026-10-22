@@ -14,8 +14,9 @@ or a `jsconfig.json` with `checkJs` (JavaScript), a composition root
 hexagon has — `DomainFault`, `ApplicationFault`, `AdapterFault`, the DTO
 files (`dto`, `data` with `DataDTOs.Fault`) and `faultDTO()` in
 `application/dtos`, a `ForWritingLogs` port with `StderrLogs` and
-`InMemoryLogs`, and `LogFaultService`, which logs an internal fault before a
-use case cooks it — and one walking-skeleton use case (a greeting) through
+`InMemoryLogs`, and `LogService`, the one service every use case logs
+through, an internal fault included before it is cooked — and one
+walking-skeleton use case (a greeting) through
 every layer with passing tests, named as [[hexagonal-naming]] says. In JavaScript a port is a
 JSDoc `@typedef`, held to by `checkJs`, and dependency-cruiser counts JSDoc
 `import("…")` types as edges.
@@ -41,7 +42,7 @@ JSDoc `@typedef`, held to by `checkJs`, and dependency-cruiser counts JSDoc
 - `--no-dependency-cruiser` — leave out `.dependency-cruiser.cjs`.
 - `--no-example` — leave out the greeting slice: each folder it would have
   filled gets a `.gitkeep`, and `main.<ts|js>` is an empty composition root.
-  The faults, the log and `LogFaultService` are still written, less the
+  The faults, the log and `LogService` are still written, less the
   example's own faults — kept between `@example-start` and `@example-end` in
   the fault files, and cut out with the rest of the example.
 

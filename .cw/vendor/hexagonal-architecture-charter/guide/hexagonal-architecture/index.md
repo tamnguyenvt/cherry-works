@@ -44,7 +44,9 @@ the import rules; run it after any change that adds an import.
 - `service/` — the logic a use case follows when it is more than a few
   calls: reading and writing through driven ports, turning what an adapter
   speaks into domain values, stringing several models together. One service
-  is reused by every use case that follows the same logic.
+  is reused by every use case that follows the same logic. It is an object
+  of functions, holding no state and never constructed: a use case hands it
+  the ports a call needs, so only ports are wired in the composition root.
 - `domain/models/` — pure values and rules. No port, no service, no DTO, no
   I/O: whatever a rule needs, it is handed. `DomainFault.ts` here is the base
   of every fault.

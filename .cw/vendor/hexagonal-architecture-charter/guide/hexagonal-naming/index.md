@@ -37,6 +37,12 @@ into a service, named for what it does (`FindSignedInPersonService`,
 service. A use case stays light enough to read in one go; a service is where
 logic is reused.
 
+A service is logic and nothing else: an object of functions, holding no
+state, never constructed and never wired in the composition root. A use case
+holds the ports it was given and hands a service the ones a call needs —
+`LogService.logFault(this.#logs, fault)` — so only ports are injected, and a
+service is read as plainly as a domain function.
+
 ## Functions
 
 - **Named for what it returns** — `signInMethodOf()`, `rateOf()` — only in
@@ -107,8 +113,17 @@ file, beside the base they extend:
   into the system's own words — `{ name: "InternalFault", message: "Something
   went wrong on our side.", fix: "Try again in a moment…" }` — so nothing of
   how the system is set up reaches a client.
-- Before it does, the use case hands the fault to `LogFaultService`, which
-  writes an internal one — its message, its fix and its cause — through the
-  `ForWritingLogs` port (`StderrLogs`, `InMemoryLogs` in tests). What the
+- Before it does, the use case hands the fault to `LogService.logFault(logs, fault)`,
+  which writes an internal one — its message, its fix and its cause — through
+  the `ForWritingLogs` port (`StderrLogs`, `InMemoryLogs` in tests). What the
   client is not told, whoever runs the system can still read; the person's
-  own faults are not logged. A log entry never carries a secret.
+  own faults are not logged.
+
+## Logs
+
+One service writes the log for every use case and whatever it logs:
+`LogService` in `service/` — `logInfo()`, `logWarning()`, `logError()` and
+`logFault()`, each handed the `ForWritingLogs` port the use case holds. A use case says what happened
+and never builds a log entry itself, and a new kind of thing to log is a
+method on `LogService`, never a second log service. A log entry never
+carries a secret.

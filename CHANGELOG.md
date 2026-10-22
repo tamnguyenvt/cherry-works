@@ -1,8 +1,12 @@
 # Changelog
 
+## 0.7.3 — 2026-10-22
+
+- Small refactor
+
 ## 0.7.2 — 2026-10-21
 
-- No change to `cw` itself. This repository now follows hexagonal-architecture-charter 0.1.2; `cw vendor add https://github.com/tamnguyenvt/hexagonal-architecture-charter` brings its naming guide, faults, DTOs and log to yours.
+- Small refactor
 
 ## 0.7.1 — 2026-10-21
 

@@ -1,6 +1,6 @@
 import { DomainFault } from "../domain/models/DomainFault.js";
 import { Greeting } from "../domain/models/Greeting.js";
-import { LogFaultService } from "../service/LogFaultService.js";
+import { LogService } from "../service/LogService.js";
 import { faultDTO, greetingDTO } from "./dtos.js";
 
 /**
@@ -22,8 +22,8 @@ import { faultDTO, greetingDTO } from "./dtos.js";
 export class GreetingVisitors {
   /** @type {ForReadingClock} */
   #clock;
-  /** @type {LogFaultService} */
-  #logFaultService;
+  /** @type {ForWritingLogs} */
+  #logs;
 
   /**
    * @param {ForReadingClock} clock
@@ -31,7 +31,7 @@ export class GreetingVisitors {
    */
   constructor(clock, logs) {
     this.#clock = clock;
-    this.#logFaultService = new LogFaultService(logs);
+    this.#logs = logs;
   }
 
   /**
@@ -43,7 +43,7 @@ export class GreetingVisitors {
       return greetingDTO(Greeting.greetingOf(this.#clock.now().getHours(), visitorName));
     } catch (error) {
       if (!(error instanceof DomainFault)) throw error;
-      this.#logFaultService.logFault(error);
+      LogService.logFault(this.#logs, error);
       return faultDTO(error);
     }
   }

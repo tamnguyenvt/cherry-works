@@ -3,7 +3,7 @@ import { Greeting } from "../domain/models/Greeting.js";
 import type { DataDTOs, ForGreetingVisitors } from "../port/driver/ForGreetingVisitors.js";
 import type { ForReadingClock } from "../port/zdriven/ForReadingClock.js";
 import type { ForWritingLogs } from "../port/zdriven/ForWritingLogs.js";
-import { LogFaultService } from "../service/LogFaultService.js";
+import { LogService } from "../service/LogService.js";
 import { faultDTO, greetingDTO } from "./dtos.js";
 
 /**
@@ -14,11 +14,11 @@ import { faultDTO, greetingDTO } from "./dtos.js";
  */
 export class GreetingVisitors implements ForGreetingVisitors {
   readonly #clock: ForReadingClock;
-  readonly #logFaultService: LogFaultService;
+  readonly #logs: ForWritingLogs;
 
   constructor(clock: ForReadingClock, logs: ForWritingLogs) {
     this.#clock = clock;
-    this.#logFaultService = new LogFaultService(logs);
+    this.#logs = logs;
   }
 
   async greet(visitorName: string): Promise<DataDTOs.Greeting | DataDTOs.Fault> {
@@ -26,7 +26,7 @@ export class GreetingVisitors implements ForGreetingVisitors {
       return greetingDTO(Greeting.greetingOf(this.#clock.now().getHours(), visitorName));
     } catch (error) {
       if (!(error instanceof DomainFault)) throw error;
-      this.#logFaultService.logFault(error);
+      LogService.logFault(this.#logs, error);
       return faultDTO(error);
     }
   }

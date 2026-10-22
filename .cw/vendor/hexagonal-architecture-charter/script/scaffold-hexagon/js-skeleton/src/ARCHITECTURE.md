@@ -20,7 +20,8 @@ src/
     application/          use cases, named after their port without For — light
       dtos                one function per DTO: faultDTO(), greetingDTO()
     service/              <Verb>Service: logic a use case would grow heavy with,
-                          or that several follow (LogFaultService)
+                          or that several follow (LogService) — functions,
+                          no state, handed the ports a call needs
     domain/models/        pure rules and values, no port
       DomainFault         the base of every fault, and the domain's faults
     domain/services/      pure logic over several models
@@ -37,7 +38,7 @@ travels.
 |---|---|---|
 | driver port | `For<Doing>` | `ForGreetingVisitors` |
 | use case | its port as a noun, without `For` | `GreetingVisitors` |
-| service | verb first, `Service` last | `LogFaultService` |
+| service | verb first, `Service` last | `LogService` |
 | model | what it is in the business | `Greeting` |
 | driven adapter | the technology, then what it holds; twin `InMemory…` | `StderrLogs`, `InMemoryLogs` |
 | fault | `<What is wrong>Fault`, never `Error` | `NamelessVisitorFault` |
@@ -53,7 +54,7 @@ A function named for what it returns lives only in `domain/models/`
 Every error is a `…Fault` with a `message` and a `fix`, extending
 `DomainFault`, `ApplicationFault` or `AdapterFault` from its layer's file. A
 fault is internal unless raised with `{ internal: false }`. A use case catches
-it, logs it through `LogFaultService` when it is internal, and answers a
+it, logs it through `LogService` when it is internal, and answers a
 a `FaultDTO` from `faultDTO()`: the person's fault as it is, an internal
 one as `InternalFault` in the system's own words. A driver port never hands a fault
 class out.
