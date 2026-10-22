@@ -2,9 +2,9 @@
 
 **Created**: 2026-08-30
 
-**Updated**: 2026-10-06
+**Updated**: 2026-10-22
 
-**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types; let its author say so in its headers."
+**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types; let its author say so in its headers." Then: "Let the hooks go through a `cw` command rather than the raw command compiled from the charter: `cw sensor run <signal>` gathers every sensor of that signal and runs them."
 
 ## Overview
 
@@ -86,7 +86,16 @@ A single charter covering design, planning and implementation at once has to be 
 ### Session 2026-10-06
 
 - Q: What is the header called, and what does `disable-user-invocation: true` keep a skill or a playbook from? → A: Only from being a command the user types; the agent still opens it when its description matches or another playbook names it ([CORE-FR-174](#core-fr-174)). It is a step of something else, not a way of hiding it from the agent.
-- Q: What is a skill or a playbook that does not say? → A: A command, as before: `disable-user-invocation` is `false` unless written, so no charter changes by itself ([CORE-FR-173](#core-fr-173)). Marking a vendor's step skills is that vendor's to do in its own repository.
+- Q: What is a skill or a playbook that does not say? → A: A command, as before: `disable-user-invocation` is `false` unless written, so no charter changes by itself ([CORE-FR-173](#core-fr-173)).
+
+### Session 2026-10-22
+
+- Q: How do the sensors of one signal run under `cw sensor run <signal>`, and what does the host get back? → A: All at once, as the host runs several hooks on one event, each given the host's same standard input; one that fails stops none of the others. What they answer is read in order of id, so it is the same at every run. The host gets 2 when any exited 2, with the error output of those; otherwise the first other non-zero status in order of id; otherwise 0.
+- Q: Where does `cw sensor run <signal>` read the sensors and their commands from? → A: From the last build's output, each `[[<id>]]` already written as its built script's path; a sensor edited in the charter runs as edited only after the next build, as a script does ([CORE-FR-166](#core-fr-166)).
+- Q: What does `cw sensor run <signal>` do when it has nothing to run, or is given a signal the charter does not know? → A: A signal no sensor names runs nothing and exits 0, saying nothing. No other case is handled: the host is given the command only by a build, which refuses an unknown signal, and what it reads is the last build's output, which a later failed build leaves as it was.
+- Q: What does the host read when several sensors of one signal each answer on their standard output? → A: One answer, combined the way that host itself combines the answers of several hooks on one event, so a host given one command per signal acts as it did when given one per sensor; one sensor's answer never makes another's unreadable.
+- Q: What becomes of a hook the repository set for itself under a signal the charter's sensors name, and of a signal's command once its last sensor is gone? → A: The first is written over: the charter speaks for each of its signals' hooks whole, as it did when each sensor was a hook of its own. The second is left as the last build wrote it, as any hook a build no longer writes is; it runs nothing and exits 0 ([CORE-FR-039](#core-fr-039), [CORE-FR-175](#core-fr-175)).
+- Q: How long may the sensors of one signal run? → A: Within the one time limit the host gives that signal's command, its default unless a later phase lets a sensor say its own. Run all at once, they finish when the slowest does, so each has the time it had as a hook of its own. Marking a vendor's step skills is that vendor's to do in its own repository.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -607,11 +616,11 @@ The charter holds ids: `[[check-changelog]]` in a sensor's `run`, `[[linear]]` a
 
 **Why this priority**: Stories 23 and 24 put the files in place. Without this a sensor cannot run a charter script at all, and a reader of a compiled document has to look every name up.
 
-**Independent Test**: Author a script, a template, an mcp, a sensor whose `run` is `[[<id>]] --strict`, and a skill whose body names all three; build for a host; confirm the host's hook command starts with `.cw/out/script/<id>/` and runs, that each name in the skill's compiled document is a link whose target opens from that document, and that `cw explain` on the script names the sensor and the skill.
+**Independent Test**: Author a script, a template, an mcp, a sensor whose `run` is `[[<id>]] --strict`, and a skill whose body names all three; build for a host; confirm the sensor's built command starts with `.cw/out/script/<id>/` and runs, that each name in the skill's compiled document is a link whose target opens from that document, and that `cw explain` on the script names the sensor and the skill.
 
 **Acceptance Scenarios**:
 
-1. **Given** a sensor whose `run` names `[[<id>]]` of a script the charter holds, **When** the charter is built for a host, **Then** the command that host is given holds the built file's path from the repository's root in its place, with the rest of the command as written.
+1. **Given** a sensor whose `run` names `[[<id>]]` of a script the charter holds, **When** the charter is built for a host, **Then** the command built for that sensor holds the built file's path from the repository's root in its place, with the rest of the command as written ([CORE-FR-169](#core-fr-169)).
 2. **Given** a sensor whose `run` names a script no layer holds, **When** the charter is checked, **Then** it is an error under the sensor's file, as a body naming one is ([CORE-FR-162](#core-fr-162)); a script only a sensor names is not warned about, and `cw explain` on it names the sensor.
 3. **Given** a primitive of any kind whose body names `[[<id>]]` of a primitive the charter holds, **When** the charter is built, **Then** its compiled document holds a markdown link in its place: the id as its text, and the file the catalogue names for it as its target, written from that document.
 4. **Given** a name written alone inside a code span, **When** the charter is built, **Then** the link's text is that code span; **Given** a name inside a longer code span or a fenced block, **Then** it is left as written.
@@ -675,6 +684,30 @@ A charter's playbook is the command a user runs, and the skills it calls are its
 2. **Given** a skill or a playbook declaring `disable-user-invocation: false`, or not declaring it, **When** the charter is built, **Then** it is offered as a command exactly as before ([CORE-FR-173](#core-fr-173)).
 3. **Given** a skill built with `disable-user-invocation: true`, **When** the header is removed and the charter built again, **Then** it is offered as a command again ([CORE-FR-174](#core-fr-174)).
 4. **Given** a skill or a playbook whose `disable-user-invocation` is not `true` or `false`, **When** the charter is checked, **Then** it is an error under its file naming how the header is written, and nothing is built ([CORE-FR-173](#core-fr-173)).
+
+---
+
+### CORE Story 29 - Fire every sensor of a signal through one `cw` command (Priority: P2)
+
+**Status**: Done
+
+Before this, every sensor was written into the host's settings as its own hook, its command copied there whole, with each script's built path in place of its id. A developer reading those settings sees commands, not which sensors fire on which signal, and every sensor added, removed or changed rewrites them. After this, the host is given one command per signal, `cw sensor run Stop`, and `cw` gathers every sensor of that signal from the last build and runs them all at once. The host gets one exit status and one answer back, the same as when it ran each sensor as a hook of its own.
+
+**Why this priority**: The settings file is shared with what the repository sets there for itself; keeping the charter's part to one line per signal keeps it readable, and makes a sensor's command the build's output alone, where every other compiled thing already is.
+
+**Independent Test**: Author sensors `say-a` and `say-b` on `Stop`, each answering with a message, and `gate` on `Stop`, exiting 2 with an error when a file exists. Build for Claude, and confirm its settings hold one `Stop` hook, `cw sensor run Stop`, and no sensor's command. Give `cw sensor run Stop` a `Stop` event: both messages come back as one answer, and it exits 0. Create the file: it exits 2 with `gate`'s error, and both messages still come back. Change `say-a`'s message without building: the old message comes back.
+
+**Acceptance Scenarios**:
+
+1. **Given** sensors on `Stop` and a sensor on `PreToolUse`, **When** the charter is built for a host, **Then** that host's settings hold exactly one command under each of those signals, `cw sensor run Stop` and `cw sensor run PreToolUse`, and none of the sensors' own commands ([CORE-FR-175](#core-fr-175), [CORE-SC-047](#core-sc-047)).
+2. **Given** a hook the repository set under `Stop` for itself, **When** the charter is built, **Then** `Stop` holds `cw sensor run Stop` alone: the charter speaks for each of its signals' hooks whole ([CORE-FR-039](#core-fr-039)).
+3. **Given** a signal whose last sensor is removed, **When** the charter is built again, **Then** that signal's command is left in the host's settings as the last build wrote it, and running it runs nothing and exits 0 ([CORE-FR-175](#core-fr-175), [CORE-FR-176](#core-fr-176)).
+4. **Given** two sensors on `Stop`, **When** `cw sensor run Stop` is given an event on its standard input, **Then** both run at once, each given that same event ([CORE-FR-176](#core-fr-176)).
+5. **Given** one sensor of a signal exiting 2 and another exiting 0, **When** that signal's command runs, **Then** it exits 2 with the first's error output, and the second has run to its end ([CORE-FR-177](#core-fr-177)).
+6. **Given** one sensor of a signal exiting 1 and another exiting 0, **When** that signal's command runs, **Then** it exits 1, and the second has run to its end ([CORE-FR-177](#core-fr-177)).
+7. **Given** two sensors of a signal each answering with a message, **When** that signal's command runs under the host, **Then** the host shows both, as it did when each was a hook of its own ([CORE-FR-178](#core-fr-178), [CORE-SC-048](#core-sc-048)).
+8. **Given** a sensor whose `run` was changed in the charter and not yet built, **When** its signal's command runs, **Then** the sensor runs as last built ([CORE-FR-179](#core-fr-179)).
+9. **Given** a signal no sensor names, **When** `cw sensor run` is given it, **Then** nothing runs, nothing is written, and it exits 0 ([CORE-FR-176](#core-fr-176)).
 
 ---
 
@@ -763,6 +796,10 @@ A charter's playbook is the command a user runs, and the skills it calls are its
 - A header value that is empty — it is refused where the kind refuses an empty value, in the kind's own words.
 - The agent asks for a kind it invented — answered with every kind there is, as an unknown kind is everywhere else.
 - The charter holds an error — `cw kinds` still answers, because what a kind requires is not read off the charter; `cw add` refuses as it always does.
+- One sensor of a signal runs long or never ends — the others still run to their end and answer; the host's one time limit for that signal's command ends it, as it ended that sensor's own hook before.
+- Two sensors of a signal both exit 2 — the command exits 2 with the error output of both, in order of id.
+- A host's settings hold the hooks an earlier build wrote one per sensor — the next build writes each signal's hooks over whole, so only `cw sensor run <signal>` is left under it; one for a signal no sensor names any more stays.
+- One sensor answers in the host's structured form and another in plain text — the two are combined the way the host combines such answers from two hooks.
 
 ## Requirements *(mandatory)*
 
@@ -823,7 +860,7 @@ A charter's playbook is the command a user runs, and the skills it calls are its
 - <a id="core-fr-036"></a>**CORE-FR-036**: The agent-neutral orientation MUST say what governs the repository, send its reader to the catalogue first, and say for each kind when it applies. It MUST carry no primitive body, so it does not grow with the charter.
 - <a id="core-fr-037"></a>**CORE-FR-037**: Each primitive compiled for an agent MUST carry its body, preceded by the bodies of the mixins it pulls in.
 - <a id="core-fr-038"></a>**CORE-FR-038**: The build MUST compile for the agents the repository chose at setup, so a charter builds the same files wherever it is checked out.
-- <a id="core-fr-039"></a>**CORE-FR-039**: A host's settings file MUST be written into rather than over: every posture and sensor of the charter lands in it beside whatever the repository set there for itself, and a build MUST NOT delete it.
+- <a id="core-fr-039"></a>**CORE-FR-039**: A host's settings file MUST be written into rather than over: every posture of the charter, and one command for each signal its sensors name ([CORE-FR-175](#core-fr-175)), lands in it beside whatever the repository set there for itself, and a build MUST NOT delete it. The hooks under a signal its sensors name are the charter's whole, and a build MUST write them over what is there.
 - <a id="core-fr-040"></a>**CORE-FR-040**: A charter with an error MUST make the build write nothing at all.
 
 **Vendor sources**
@@ -835,6 +872,11 @@ A charter's playbook is the command a user runs, and the skills it calls are its
 - <a id="core-fr-172"></a>**CORE-FR-172**: A primitive MUST be named by its id alone, wherever it is named. Where a field holds nothing but names — `rationale`, `mixins`, a test case's expectation, a command's argument — the name MUST be the bare id. Where it sits among other text — a body, a sensor's `run`, an agent's `tools` — it MUST be written `[[<id>]]`, and only a name so written is a reference. Which kind a name refers to MUST be read off the primitive it names; where a field takes one kind, an id of another MUST be read as one nothing of that kind answers to.
 - <a id="core-fr-173"></a>**CORE-FR-173**: A `skill` and a `playbook` MAY declare `disable-user-invocation`, `true` or `false`; one that does not is `false`. Any other value MUST be an error under its file, and nothing is built.
 - <a id="core-fr-174"></a>**CORE-FR-174**: A build for a host MUST keep every skill and playbook declaring `disable-user-invocation: true` out of the commands that host offers its user, and MUST still give it to the host as know-how the agent opens when its description matches what is asked. Every other skill and playbook MUST be offered as a command, as before. Changing the header changes what the host is given at the next build.
+- <a id="core-fr-175"></a>**CORE-FR-175**: A build for a host MUST give that host, for each signal at least one sensor names, exactly one command, `cw sensor run <signal>`, and write none for a signal no sensor names; one an earlier build wrote for such a signal is left as it is. A sensor's own command MUST NOT be written into the host's settings.
+- <a id="core-fr-176"></a>**CORE-FR-176**: `cw sensor run <signal>` MUST run the command of every sensor naming that signal, all at once, each given the standard input the command was given; one that fails or runs long MUST NOT stop the others. Given a signal no sensor names, it MUST run nothing, write nothing, and exit 0.
+- <a id="core-fr-177"></a>**CORE-FR-177**: `cw sensor run <signal>` MUST exit 2 when any of its sensors exited 2, writing the error output of each that did, in order of id; otherwise with the first other non-zero status in order of id; otherwise 0.
+- <a id="core-fr-178"></a>**CORE-FR-178**: What the sensors of one signal answer on their standard output MUST reach the host as one answer, combined the way that host combines the answers of several hooks on one event, read in order of id. One sensor's answer MUST NOT make another's unreadable.
+- <a id="core-fr-179"></a>**CORE-FR-179**: `cw sensor run` MUST read the sensors and their commands from the last build's output, never from the charter: a sensor changed in the charter MUST NOT run as changed before the next build, and a build that fails MUST leave what it runs as it was.
 - <a id="core-fr-043"></a>**CORE-FR-043**: The system MUST attach no meaning to a vendored directory's name. Any grouping such a name implies belongs to the people using it, not to the system.
 - <a id="core-fr-044"></a>**CORE-FR-044**: The system MUST install vendored content only under the vendor directory, beside the charter rather than inside it, so no vendor source can land on a kind directory or on what this repository authored.
 - <a id="core-fr-045"></a>**CORE-FR-045**: The system MUST allow more than one vendor source per repository.
@@ -1012,7 +1054,7 @@ A charter's playbook is the command a user runs, and the skills it calls are its
 - <a id="core-fr-166"></a>**CORE-FR-166**: What runs is the copy of a script's assets in `.cw/out/script/<id>/` ([CORE-FR-168](#core-fr-168)): every command and every path written for a script names it, so a change to a script's assets reaches what runs at the next build and not before.
 - <a id="core-fr-167"></a>**CORE-FR-167**: Creating a primitive, from `cw add` and from the portal, MUST be refused, naming the primitive in the way and writing nothing, where its folder would sit inside another primitive's folder of its layer, or hold one. Creating a script MUST also write an empty asset at the `executionPath` answered, and both MUST say it was written, so its author knows where the script goes. Deleting a primitive ([CORE-FR-076](#core-fr-076)) MUST take every asset of it with it.
 - <a id="core-fr-168"></a>**CORE-FR-168**: Every file in a primitive's folder but its `index.md`, at any depth, MUST be one of its assets, a file named `index.md` deeper in it included, and MUST NOT be read as a primitive. A build MUST copy every asset of every primitive, of every layer, beside its compiled document, at the path it has in the folder, byte for byte: no name rewritten. The build that no longer copies a file, because the primitive or the file is gone, MUST delete it.
-- <a id="core-fr-169"></a>**CORE-FR-169**: A sensor's `run` naming `[[<id>]]` of a script the charter holds MUST be written, in every command a host is given for that sensor, as that script's built file's path from the repository's root, with the rest of the command as written.
+- <a id="core-fr-169"></a>**CORE-FR-169**: A sensor's `run` naming `[[<id>]]` of a script the charter holds MUST be written, in the command built for that sensor, which is what runs when its signal fires ([CORE-FR-176](#core-fr-176)), as that script's built file's path from the repository's root, with the rest of the command as written.
 
 **The portal: tests**
 
@@ -1102,6 +1144,8 @@ The shape of each is in the data model.
 - <a id="core-sc-044"></a>**CORE-SC-044**: A user invokes 100% of a charter's skills and playbooks by the id their author wrote, with no kind in front.
 - <a id="core-sc-045"></a>**CORE-SC-045**: An author writes no kind in front of any name: 100% of the references a charter holds are an id, bare or as `[[<id>]]`.
 - <a id="core-sc-046"></a>**CORE-SC-046**: A user is offered as commands 0 of the skills and playbooks marked `disable-user-invocation: true`, and the agent opens 100% of them as it did before they were marked.
+- <a id="core-sc-047"></a>**CORE-SC-047**: A developer reads, in a host's settings file, 1 command for each signal the charter's sensors name, and 0 sensor commands written out there.
+- <a id="core-sc-048"></a>**CORE-SC-048**: In 100% of the cases where a charter's sensors were built one hook each, the host blocks, shows and adds to the agent's context the same when they are built one command per signal.
 
 ## Assumptions
 
@@ -1115,7 +1159,7 @@ The shape of each is in the data model.
 - **Three kinds in the reference design are deliberately not adopted**: the external-callable declaration, the governed-output-document kind, and the reusable-documentation-pattern kind. The reference's own charter never exercises the document graph — no primitive in it declares a producing or consuming relationship — so nothing proven is lost. For this product specifically, the lifecycle of a work item (its state, its gates, its board) belongs to a later application, and expressing it a second time in the charter would duplicate it. The producing and consuming relationships on a unit of work are dropped alongside the document kind, since their referent is gone, and so are the lifecycle phase and the explicit done-condition: the reference declares neither, and a skill reaches an agent through the one line it describes itself with, which is all that host reads before loading it — a phase it has no field for is a header nothing carries.
 - **The five warnings are validation warnings, not portal features.** A primitive no case pins down is limited to guides and sensors because those are the only kinds a case names ([CORE-FR-082](#core-fr-082)); a posture is asserted only through whether a file is allowed, which names none. All five are warnings and never errors.
 - **Self-regression tests assert activation, not behaviour.** A test pins which rules apply to a described situation, which is what catches the common failure of a rule quietly going dead after a glob or cascade change. It deliberately does not run a check's command or ask an agent for a judgement: the first needs a live environment and would break the reader/writer split, and the second is non-deterministic, so a suite built on it becomes flaky and then gets ignored. Both may be added later once there are real checks to exercise.
-- **Sensors are run by the agent's own harness, not by this system.** A check that runs a command and a check that asks an agent for a judgement are both declared in the charter and compiled into the agent's activation surface; firing them is the agent's job. This system declares and compiles; it does not execute agent work.
+- **Sensors are fired by the agent's own harness, and run by `cw`.** A check that runs a command and a check that asks an agent for a judgement are both declared in the charter and compiled into the agent's activation surface. Deciding when a signal fires is the harness's; it hands the event to `cw sensor run <signal>`, which runs that signal's sensors and hands one answer back ([CORE-FR-176](#core-fr-176)). This system does not execute agent work.
 - **Two files defining the same id are reported as a collision**, in whichever layers they sit, rather than resolved by an implicit rule, because any silent winner would be arbitrary.
 - **Reasoning citations that do not resolve are reported but do not block the build**, so a charter under construction stays usable.
 - **The first agent supported in full is Claude Code**, with the agent-neutral target always available alongside it. Other agents are additive and do not change the charter format.
@@ -1148,7 +1192,8 @@ The shape of each is in the data model.
 - **A primitive is a markdown file with headers; a script's files are real files beside it.** Every primitive is read by one reading ([CORE-FR-009](#core-fr-009)) against its kind's contract, so a script keeps its id, description and the file it runs in a markdown file like any other. What runs is kept as files of their own language, which every editor, linter and shell already knows how to read; a template's body is the file to fill, compiled like any body.
 - **A command is written from the repository's root, a link from the document holding it.** A harness and an agent run commands from the root, so a path there reads one way everywhere. A link is followed by whoever is reading the document, and only a path from that document opens for them.
 - **A name nothing holds stops the build, for an mcp origin as for a script or a template.** An agent sent to a file that does not exist may write the script itself, or find one with a similar name and assume it is the one meant, then run it; sent to an mcp origin that does not exist, it looks for the knowledge somewhere else. Nobody reviewed what it runs, and nothing in the output says it guessed. Refusing the build at the name that does not resolve is the only point where the mistake is caught before anything runs.
-- **`cw` builds scripts and never runs them.** Running one is the agent's, when its skill says to, as firing a sensor is ([CORE-FR-030](#core-fr-030)).
+- **`cw` runs a script only as a sensor's command.** Running one any other way is the agent's, when its skill says to ([CORE-FR-030](#core-fr-030)); `cw sensor run` runs a sensor's built command, and the scripts it names with it ([CORE-FR-176](#core-fr-176)).
+- **`cw` is found where the host runs its hooks**, as it is where the host starts `cw mcp serve`.
 - **What runs is a copy.** A script's files are copied into the output folder by a build, and every command names the copy. An edit in progress in the charter is therefore never what a sensor fires, and what runs is what the last preview showed.
 - **A primitive is a folder.** What a primitive says lives in its `index.md`, and what it needs beside it — a checklist, a sample, the files a script runs — lives beside it, reached as `./<file>` from the charter and from the output alike. Stopping at the first `index.md` going down keeps one reading of any folder.
 
@@ -1192,9 +1237,11 @@ The shape of each is in the data model.
 - A posture deciding which tools exist. A posture still decides whether a call needs approval.
 - Signing in from the portal, or showing who is signed in there.
 - A skill kept as a folder holding its own files. A skill uses scripts and templates by their ids.
-- Running a script, or filling a template, on the agent's behalf. No placeholder in a template is filled by the build.
+- Running a script, or filling a template, on the agent's behalf, other than a sensor's command run by `cw sensor run`. No placeholder in a template is filled by the build.
 - A file that is not text, such as an image or an archive, kept as a template or among a script's files.
 - Copying a script or a template into a host's own skill folder. There is one built copy, in the output folder, and every name of it points there.
 - Keeping a skill or a playbook from the agent itself, or from any other kind than those two: `disable-user-invocation` only decides whether the user is offered it as a command.
 - Marking a vendor's skills as steps from this repository: a vendor marks its own.
 - Highlighting a template's body in the portal by its language, and editing the files of a script's folder in the portal: they are written in an editor.
+- A time limit of a sensor's own: the sensors of a signal run within the one the host gives that signal's command.
+- Firing a sensor on anything narrower than its signal, such as one tool: a sensor still names only its signal.

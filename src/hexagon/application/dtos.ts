@@ -8,6 +8,7 @@ import type { EvalRunReport } from "../domain/services/evalService.js";
 import type { WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import type { MainContext, MainContextLoad } from "../domain/models/context/MainContext.js";
 import type { PlanSummary } from "../service/buildService.js";
+import type { SensorAnswer } from "../domain/models/sensor/SensorAnswer.js";
 import type { SessionAnalysis } from "../domain/models/session/SessionAnalysis.js";
 import type { SessionAnalysisSummary } from "../domain/models/session/SessionAnalysisSummary.js";
 import { testSuiteNameOf, type TestRoot } from "../domain/models/test/TestRoot.js";
@@ -298,4 +299,10 @@ export function sessionReviewOutcomeDTO(
       dailySessionSummary: Object.fromEntries(Object.entries(sessionAnalysisSummaryByDay).map(([day, daySummary]) => [day, sessionSummaryDTO(daySummary)])),
     },
   };
+}
+
+/** What running every sensor of one signal came to, as the host is answered
+ *  (CORE-FR-177, CORE-FR-178). */
+export function sensorRunOutcomeDTO(signalAnswer: SensorAnswer): OutcomeDTOs.SensorRunOutcome {
+  return { type: "SensorRunOutcome", data: { exitCode: signalAnswer.exitCode, answer: signalAnswer.stdout, problem: signalAnswer.stderr } };
 }

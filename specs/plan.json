@@ -198,6 +198,13 @@
       ]
     },
     {
+      "id": "CORE Story 29",
+      "title": "Fire every sensor of a signal through one `cw` command",
+      "dependsOn": [
+        "CORE Story 25"
+      ]
+    },
+    {
       "id": "EVAL Story 1",
       "title": "See what the charter loads into the agent's context",
       "dependsOn": [

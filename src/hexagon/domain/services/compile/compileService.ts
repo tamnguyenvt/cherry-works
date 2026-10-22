@@ -12,6 +12,8 @@ import { charterMdOf } from "./charterMdFactory.js";
 import { compiledPrimitiveOf } from "./compiledPrimitiveFactory.js";
 import { claudeComponentsOf } from "./claudeComponentFactory.js";
 import { mcpOriginsOf } from "./mcpOriginsFactory.js";
+import { builtSensorsOf } from "./builtSensorsFactory.js";
+import { BuiltSensors } from "../../models/output/common/BuiltSensor.js";
 import type { McpToolDefinition } from "../../models/output/common/McpOrigin.js";
 
 /**
@@ -60,6 +62,9 @@ export function compile(
       .sort((one, another) => (one.headers.id < another.headers.id ? -1 : one.headers.id > another.headers.id ? 1 : 0))
       .map((primitive) => [primitive, compiledPrimitiveOf(charter, primitive)] as const),
   );
+  // What `cw sensor run` runs, each sensor's command as built: written once,
+  // read by every host given one command per signal (FR-175, FR-179).
+  const builtSensors = new BuiltSensors(builtSensorsOf(charter, compiledPrimitiveByPrimitive));
   return new CharterOutput(
     // What an agent opens from the catalogue is the primitive as it compiled,
     // not the file its author wrote: the whole body in one place, under the
@@ -69,7 +74,8 @@ export function compile(
     charterMdOf(PRIMITIVE_CLASSES),
     [...compiledPrimitiveByPrimitive.values()],
     new McpOrigins(mcpOriginsOf(charter, shortMcpIds, toolsByOriginKey)),
-    agents.flatMap((agent) => providerComponentsOf(agent, charter, compiledPrimitiveByPrimitive, shortMcpIds)),
+    builtSensors,
+    agents.flatMap((agent) => providerComponentsOf(agent, charter, compiledPrimitiveByPrimitive, shortMcpIds, builtSensors)),
   );
 }
 
@@ -81,9 +87,10 @@ function providerComponentsOf(
   charter: CharterRoot,
   compiledPrimitiveByPrimitive: ReadonlyMap<Primitive, CompiledPrimitive>,
   shortMcpIds: ShortStrings,
+  builtSensors: BuiltSensors,
 ): readonly ProviderComponent[] {
   switch (agent) {
     case "claude":
-      return claudeComponentsOf(charter, compiledPrimitiveByPrimitive, shortMcpIds);
+      return claudeComponentsOf(charter, compiledPrimitiveByPrimitive, shortMcpIds, builtSensors);
   }
 }

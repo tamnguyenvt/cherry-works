@@ -1,0 +1,19 @@
+{
+  "sensors": [
+    {
+      "id": "cw-session-tokens-counter-on-stop",
+      "signal": "Stop",
+      "command": "node \".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs\""
+    },
+    {
+      "id": "sdd-specs-on-stop",
+      "signal": "Stop",
+      "command": "node \".cw/out/script/sdd-specs/specs.mjs\" link --if-changed && node \".cw/out/script/sdd-specs/specs.mjs\" check --if-changed || exit 2"
+    },
+    {
+      "id": "sound-on-stop",
+      "signal": "Stop",
+      "command": "afplay /System/Library/Sounds/Glass.aiff &"
+    }
+  ]
+}

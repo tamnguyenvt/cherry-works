@@ -5,11 +5,12 @@ import { GuidePrimitive } from "../../models/charter/primitive/GuidePrimitive.js
 import { PlaybookPrimitive } from "../../models/charter/primitive/PlaybookPrimitive.js";
 import { SkillPrimitive } from "../../models/charter/primitive/SkillPrimitive.js";
 import { McpPrimitive } from "../../models/charter/primitive/McpPrimitive.js";
-import { REFERENCE, TOOL_REFERENCE } from "../../models/charter/primitive/BasePrimitive.js";
+import { TOOL_REFERENCE } from "../../models/charter/primitive/BasePrimitive.js";
 import { PosturePrimitive } from "../../models/charter/primitive/PosturePrimitive.js";
 import type { ShortStrings } from "../../models/helper.js";
 import { SensorPrimitive } from "../../models/charter/primitive/SensorPrimitive.js";
 import type { CompiledPrimitive } from "../../models/output/common/CompiledPrimitive.js";
+import { sensorRunCommandOf, type BuiltSensors } from "../../models/output/common/BuiltSensor.js";
 import type { ClaudeComponent } from "../../models/output/provider-component/claude/ClaudeComponent.js";
 import { ClaudeAgent } from "../../models/output/provider-component/claude/ClaudeAgent.js";
 import { ClaudeRule } from "../../models/output/provider-component/claude/ClaudeRule.js";
@@ -20,7 +21,6 @@ import {
   CLAUDE_TOOL_SEARCH_ENV,
   ClaudeSettings,
   isClaudeHookEvent,
-  type ClaudeHookEvent,
   type ClaudeSettingsFields,
 } from "../../models/output/provider-component/claude/ClaudeSettings.js";
 
@@ -49,6 +49,7 @@ export function claudeComponentsOf(
   charter: CharterRoot,
   compiledPrimitiveByPrimitive: ReadonlyMap<Primitive, CompiledPrimitive>,
   shortMcpIds: ShortStrings,
+  builtSensors: BuiltSensors,
 ): readonly ClaudeComponent[] {
   // Does this primitive ask something of the settings this host runs on, rather
   // than compile to a file of its own? A posture says what may be run, a sensor
@@ -80,7 +81,7 @@ export function claudeComponentsOf(
     ClaudeEntryFile.of(),
     ...(asSettings.length === 0 && toolsByMcpId.size === 0
       ? []
-      : [ClaudeSettings.of(claudeSettingsOf(charter, compiledPrimitiveByPrimitive, asSettings))]),
+      : [ClaudeSettings.of(claudeSettingsOf(charter, builtSensors, asSettings))]),
     ClaudeMcpConfig.of(),
     ...asDocuments.flatMap(
       (one) =>
@@ -99,51 +100,35 @@ export function claudeComponentsOf(
  * (FR-018).
  *
  * One fragment for the whole charter, because the host keeps one such file: every
- * posture's permissions are the permissions, each thing once, and every sensor's
- * command is a hook under the event that fires it. Two sensors on one event are
- * two commands under it, in the order their files sort in (SC-007). A script a
- * command names is written as the file that runs (FR-169). A charter reaching a
- * mcp origin turns the host's own tool search on (EVAL-FR-016).
+ * posture's permissions are the permissions, each thing once, and every event a
+ * sensor fires on is one hook, `cw sensor run <event>`, which runs that event's
+ * sensors as the last build wrote them (FR-175). A charter reaching a mcp origin
+ * turns the host's own tool search on (EVAL-FR-016).
  *
  * What the repository set for itself is not here at all: that is on disk, and
  * reading it together with this is the projection's (FR-020).
  */
-function claudeSettingsOf(
-  charter: CharterRoot,
-  compiledPrimitiveByPrimitive: ReadonlyMap<Primitive, CompiledPrimitive>,
-  ones: readonly Primitive[],
-): ClaudeSettingsFields {
-  const allow = new Set<string>();
-  const deny = new Set<string>();
-  const hooks: Partial<Record<ClaudeHookEvent, { hooks: { type: "command"; command: string }[] }[]>> = {};
+function claudeSettingsOf(charter: CharterRoot, builtSensors: BuiltSensors, settingPrimitives: readonly Primitive[]): ClaudeSettingsFields {
+  const allowedPermissions = new Set<string>();
+  const deniedPermissions = new Set<string>();
 
-  for (const one of ones) {
-    if (one.kind === PosturePrimitive.kind) {
-      const headers = one.headers;
-      for (const permission of headers.allow) allow.add(permission);
-      for (const permission of headers.deny) deny.add(permission);
-    }
-    if (one.kind === SensorPrimitive.kind) {
-      const { signal, run } = one.headers;
-      // A signal this host raises nothing for compiles to nothing: writing it
-      // would be a hook that never fires, and the charter still names the event
-      // for whichever host does raise it.
-      // A harness runs the command and looks nothing up, so a script named in
-      // it is written as the file a build put down, from the repository's
-      // root; the charter has refused a script it does not hold (FR-169).
-      const command = run.replace(REFERENCE, (reference, referencedId: string) => {
-        const scriptPrimitive = charter.primitiveById.get(referencedId);
-        const executionFile = scriptPrimitive && compiledPrimitiveByPrimitive.get(scriptPrimitive)?.projections.find((projection) => projection.executable)?.file;
-        return executionFile ?? reference;
-      });
-      if (isClaudeHookEvent(signal))
-        hooks[signal] = [...(hooks[signal] ?? []), { hooks: [{ type: "command", command }] }];
+  for (const settingPrimitive of settingPrimitives) {
+    if (settingPrimitive.kind === PosturePrimitive.kind) {
+      for (const permission of settingPrimitive.headers.allow) allowedPermissions.add(permission);
+      for (const permission of settingPrimitive.headers.deny) deniedPermissions.add(permission);
     }
   }
+  // A signal this host raises nothing for compiles to nothing: writing it would
+  // be a hook that never fires, and the charter still names the event for
+  // whichever host does raise it. In the order the events' names sort in, so the
+  // same charter writes the same file (SC-007).
+  const hookEvents = builtSensors.signals.filter(isClaudeHookEvent).sort();
 
   return {
-    ...(allow.size === 0 && deny.size === 0 ? {} : { permissions: { allow: [...allow], deny: [...deny] } }),
-    ...(Object.keys(hooks).length === 0 ? {} : { hooks }),
+    ...(allowedPermissions.size === 0 && deniedPermissions.size === 0 ? {} : { permissions: { allow: [...allowedPermissions], deny: [...deniedPermissions] } }),
+    ...(hookEvents.length === 0
+      ? {}
+      : { hooks: Object.fromEntries(hookEvents.map((hookEvent) => [hookEvent, [{ hooks: [{ type: "command", command: sensorRunCommandOf(hookEvent) }] }]])) }),
     // A charter reaching an mcp origin has its tools' schemas deferred by the host
     // itself, the one server listing every tool (EVAL-FR-016).
     ...(charter.primitives.some((primitive) => primitive instanceof McpPrimitive) && { env: CLAUDE_TOOL_SEARCH_ENV }),

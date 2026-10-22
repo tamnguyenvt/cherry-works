@@ -67,13 +67,26 @@ const SessionReviewOutcomeSchema = dto(
   }),
 );
 
+/** What running every sensor of one signal came to, as one command
+ *  (CORE-FR-177, CORE-FR-178): the exit code, the one answer for the host, and
+ *  the error output it is given. */
+const SensorRunOutcomeSchema = dto(
+  "SensorRunOutcome",
+  z.object({
+    exitCode: z.number(),
+    answer: z.string(),
+    problem: z.string(),
+  }),
+);
+
 /** Every outcome DTO's schema, under its name — the name it carries as `type` —
  *  in alphabetical order. */
-export const OutcomeDTOs = byType(DoctorOutcomeSchema, ExplanationOutcomeSchema, SessionReviewOutcomeSchema);
+export const OutcomeDTOs = byType(DoctorOutcomeSchema, ExplanationOutcomeSchema, SensorRunOutcomeSchema, SessionReviewOutcomeSchema);
 
 /** Every outcome DTO's type, under its name: what its schema infers. */
 export namespace OutcomeDTOs {
   export type DoctorOutcome = z.infer<typeof OutcomeDTOs.DoctorOutcome>;
   export type ExplanationOutcome = z.infer<typeof OutcomeDTOs.ExplanationOutcome>;
+  export type SensorRunOutcome = z.infer<typeof OutcomeDTOs.SensorRunOutcome>;
   export type SessionReviewOutcome = z.infer<typeof OutcomeDTOs.SessionReviewOutcome>;
 }

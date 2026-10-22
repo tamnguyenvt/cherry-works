@@ -36,8 +36,9 @@ const sessionCounterPaths = [
   ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs",
   ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md",
 ];
-/** The Stop hook the engine's own sensor compiles to in Claude's settings. */
-const sessionCounterStopHook = { hooks: [{ type: "command", command: 'node ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs"' }] };
+/** The Stop hook the engine's own sensor puts in Claude's settings: the one
+ *  command for that signal, whatever sensors it runs (CORE-FR-175). */
+const sessionCounterStopHook = { hooks: [{ type: "command", command: "cw sensor run Stop" }] };
 
 /** What a repository answered at setup, kept in its own settings: which agents
  *  it compiles its charter for (FR-033). Every repository a build test authors
@@ -91,6 +92,7 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
   assert.deepEqual(built.added, [
     ".cw/out/catalog.json",
     ".cw/out/mcp-origins.json",
+    ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",
     ".cw/out/skill/cw-author/index.md",
     ...sessionCounterPaths,
@@ -206,7 +208,7 @@ test("every posture lands in the one settings file its host reads, merged (FR-01
     // In the order the files sort in: `posture/no-network/index.md` before
     // `posture/sandboxed/index.md`.
     permissions: { allow: ["Read(**)"], deny: ["WebFetch", "Bash(rm:*)"] },
-    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "./bin/report-ci" }] }], Stop: [sessionCounterStopHook] },
+    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "cw sensor run PostToolUse" }] }], Stop: [sessionCounterStopHook] },
   });
 });
 
@@ -588,7 +590,7 @@ test("a template's body names a script as a link, as any compiled document does 
 
   assert.ok((await contentsOf(held, ".cw/out/template/note/index.md")).includes("Checked by [check](../../script/check/index.md)."));
 });
-test("a sensor's run naming a script is, in the command its host runs, the built file's path from the repository's root (FR-169)", async () => {
+test("a sensor's run naming a script is, in the command built for it, the built file's path from the repository's root (FR-169)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("sensor/check-on-stop/index.md")]: primitive("sensor", "check-on-stop", ["signal: Stop", 'run: "[[release/check]] --strict"']),
@@ -598,9 +600,12 @@ test("a sensor's run naming a script is, in the command its host runs, the built
 
   filesOf(await build());
 
-  assert.deepEqual(JSON.parse(await contentsOf(held, ".claude/settings.json")).hooks, {
-    Stop: [sessionCounterStopHook, { hooks: [{ type: "command", command: ".cw/out/script/release/check/bin/run.sh --strict" }] }],
-  });
+  assert.deepEqual(JSON.parse(await contentsOf(held, ".claude/settings.json")).hooks, { Stop: [sessionCounterStopHook] });
+  assert.ok(
+    JSON.parse(await contentsOf(held, ".cw/out/sensors.json")).sensors.some(
+      ({ id, command }: { id: string; command: string }) => id === "check-on-stop" && command === ".cw/out/script/release/check/bin/run.sh --strict",
+    ),
+  );
   assert.notEqual(await held.readIfThere(new URL(".cw/out/script/release/check/bin/run.sh", repo)), undefined);
 });
 
@@ -646,6 +651,7 @@ test("a charter naming no agent still gets the surface every reader shares (FR-0
   assert.deepEqual(built.added, [
     ".cw/out/catalog.json",
     ".cw/out/mcp-origins.json",
+    ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",
     ".cw/out/skill/cw-author/index.md",
     ...sessionCounterPaths,

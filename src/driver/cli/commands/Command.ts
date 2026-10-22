@@ -5,6 +5,7 @@ import type { ForAuthoringTests } from "#hexagon/port/driver/ForAuthoringTests.j
 import type { ForConnectingMcps } from "#hexagon/port/driver/ForConnectingMcps.js";
 import type { ForReviewingSessions } from "#hexagon/port/driver/ForReviewingSessions.js";
 import type { ForEvaluatingCharter } from "#hexagon/port/driver/ForEvaluatingCharter.js";
+import type { ForRunningSensors } from "#hexagon/port/driver/ForRunningSensors.js";
 
 /** What every command is run with: where it runs, and the use cases the hexagon
  *  offers. Held by the command line and handed over at execution, so a command
@@ -32,6 +33,9 @@ export interface Context {
   /** What it offers for evaluating the charter against the real agent: a
    *  different conversation, since it spends a sign-in. */
   readonly charterEvaluatingApp: ForEvaluatingCharter;
+  /** What it offers for the sensors the last build wrote: running one signal's
+   *  reads no charter and writes no file. */
+  readonly sensorRunningApp: ForRunningSensors;
 }
 
 /** What a command did: the exit status, and what the user reads.

@@ -71,6 +71,7 @@ test("a repository that has never been built would have every file created (FR-0
   assert.deepEqual(changed(previewed ?? nothing), {
     ".cw/out/catalog.json": "create",
     ".cw/out/mcp-origins.json": "create",
+    ".cw/out/sensors.json": "create",
     ".cw/out/CHARTER.md": "create",
     ".cw/out/skill/cw-author/index.md": "create",
     ".cw/out/guide/no-any/index.md": "create",
@@ -112,6 +113,7 @@ test("a rule edited since the last build would be updated, and its listings with
     // changed body leaves them exactly as they were.
     ".cw/out/catalog.json": "unchanged",
     ".cw/out/mcp-origins.json": "unchanged",
+    ".cw/out/sensors.json": "unchanged",
     ".cw/out/CHARTER.md": "unchanged",
     // The compiled document holds the body, so it changes with it; what the
     // engine brings does not.

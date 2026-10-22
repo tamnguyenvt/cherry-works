@@ -24,6 +24,7 @@ import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
 import { noEvaluationsRun } from "./no-evaluations.js";
+import { noSensorsRun } from "./no-sensors.js";
 
 const repo = "/repo";
 
@@ -105,7 +106,7 @@ const writing = async (work: () => Promise<number>): Promise<{ code: number; wri
  *  wrong with it — there is no second command saying the same thing. */
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[] = ["doctor"]) => {
   const charterAuthoringApp = charterAuthoringAppOver(new InMemoryFileReaders(files));
-  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun }, COMMANDS);
+  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);
   return writing(() => cli.run(argv));
 };
 
@@ -212,7 +213,7 @@ class CountingCommand implements Command<Count> {
 }
 
 test("a command reads the options it declared, under the types it declared", async () => {
-  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp: unread, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun }, [new CountingCommand()]);
+  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp: unread, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, [new CountingCommand()]);
 
   const { code, written } = await writing(() => cli.run(["count", "--times", "3"]));
 
@@ -221,7 +222,7 @@ test("a command reads the options it declared, under the types it declared", asy
 });
 
 test("an option a command declared a default for arrives without being typed", async () => {
-  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp: unread, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun }, [new CountingCommand()]);
+  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp: unread, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, [new CountingCommand()]);
 
   const { written } = await writing(() => cli.run(["count"]));
 

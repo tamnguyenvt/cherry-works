@@ -10,6 +10,7 @@ import { TestAuthoring } from "./src/hexagon/application/TestAuthoring.js";
 import { McpConnecting } from "./src/hexagon/application/McpConnecting.js";
 import { SessionReviewing } from "./src/hexagon/application/SessionReviewing.js";
 import { CharterEvaluating } from "./src/hexagon/application/CharterEvaluating.js";
+import { SensorRunning } from "./src/hexagon/application/SensorRunning.js";
 import { FileReaders } from "./src/zdriven/FileReaders.js";
 import { YamlParser } from "./src/zdriven/YamlParser.js";
 import { FileOutput } from "./src/zdriven/FileOutput.js";
@@ -22,6 +23,7 @@ import { ClaudeCli } from "./src/zdriven/ClaudeCli.js";
 import { Promptfoo } from "./src/zdriven/Promptfoo.js";
 import { ConsoleReporter } from "./src/zdriven/ConsoleReporter.js";
 import { SystemClock } from "./src/zdriven/SystemClock.js";
+import { Shell } from "./src/zdriven/Shell.js";
 import type { ForReadingFiles } from "./src/hexagon/port/zdriven/ForReadingFiles.js";
 import type { ForParsingYaml } from "./src/hexagon/port/zdriven/ForParsingYaml.js";
 import type { ForWritingFiles } from "./src/hexagon/port/zdriven/ForWritingFiles.js";
@@ -34,6 +36,7 @@ import type { ForRunningAgentCli } from "./src/hexagon/port/zdriven/ForRunningAg
 import type { ForTellingTime } from "./src/hexagon/port/zdriven/ForTellingTime.js";
 import type { ForRunningPromptfoo } from "./src/hexagon/port/zdriven/ForRunningPromptfoo.js";
 import type { ForReportingProgress } from "./src/hexagon/port/zdriven/ForReportingProgress.js";
+import type { ForRunningShellCommands } from "./src/hexagon/port/zdriven/ForRunningShellCommands.js";
 import type { AgentProvider } from "./src/hexagon/port/driver/ForManagingCharter.js";
 import type { ForManagingCharter } from "./src/hexagon/port/driver/ForManagingCharter.js";
 import type { ForVendoringCharters } from "./src/hexagon/port/driver/ForVendoringCharters.js";
@@ -41,6 +44,7 @@ import type { ForAuthoringTests } from "./src/hexagon/port/driver/ForAuthoringTe
 import type { ForConnectingMcps } from "./src/hexagon/port/driver/ForConnectingMcps.js";
 import type { ForReviewingSessions } from "./src/hexagon/port/driver/ForReviewingSessions.js";
 import type { ForEvaluatingCharter } from "./src/hexagon/port/driver/ForEvaluatingCharter.js";
+import type { ForRunningSensors } from "./src/hexagon/port/driver/ForRunningSensors.js";
 
 /**
  * COMPOSITION ROOT — the one place that knows every concrete class.
@@ -57,6 +61,7 @@ const authorizing: ForAuthorizing = new OAuth();
 const mcpServers: ForCallingMcpServers = new McpClients();
 const tokenCounter: ForCountingTokens = new Tiktoken();
 const clock: ForTellingTime = new SystemClock();
+const shell: ForRunningShellCommands = new Shell();
 /** Each agent's own command line, under the agent it runs: a second host is
  *  one more entry here. */
 const agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>> = { claude: new ClaudeCli() };
@@ -96,6 +101,8 @@ const progressReporter: ForReportingProgress = new ConsoleReporter();
 
 const charterEvaluatingApp: ForEvaluatingCharter = new CharterEvaluating(repoPath, fileReader, yamlParser, fileWriter, vcs, agentCliByProvider, promptfooRunner, progressReporter);
 
+const sensorRunningApp: ForRunningSensors = new SensorRunning(repoPath, fileReader, shell);
+
 const cli = new Commander({
   cwd: process.cwd(),
   version: packageJson.version,
@@ -105,6 +112,7 @@ const cli = new Commander({
   mcpConnectingApp,
   sessionReviewingApp,
   charterEvaluatingApp,
+  sensorRunningApp,
 });
 
 process.exitCode = await cli.run(process.argv.slice(2));

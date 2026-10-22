@@ -18,6 +18,7 @@ import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
+import { noSensorsRun } from "./no-sensors.js";
 
 const repoPath = new URL("file:///repo/");
 const at = (path: string) => new URL(path, repoPath).href;
@@ -79,6 +80,7 @@ const surfaces = (files: Readonly<Record<string, string>>, promptfoo: InMemoryPr
       mcpConnectingApp: noMcpOriginsReached,
       sessionReviewingApp: noSessionsKept,
       charterEvaluatingApp,
+      sensorRunningApp: noSensorsRun,
     },
     COMMANDS,
   );

@@ -12,6 +12,7 @@ import { McpAuthCommand } from "./McpAuthCommand.js";
 import { McpServeCommand } from "./McpServeCommand.js";
 import { PortalCommand } from "./PortalCommand.js";
 import { RemoveCommand } from "./RemoveCommand.js";
+import { SensorRunCommand } from "./SensorRunCommand.js";
 import { SessionsCommand } from "./SessionsCommand.js";
 import { SuiteAddCommand } from "./SuiteAddCommand.js";
 import { SuiteEditCommand } from "./SuiteEditCommand.js";
@@ -48,4 +49,5 @@ export const COMMANDS: readonly AnyCommand[] = [
   new PortalCommand(),
   new McpAuthCommand(),
   new McpServeCommand(),
+  new SensorRunCommand(),
 ];

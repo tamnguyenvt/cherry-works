@@ -26,6 +26,7 @@ import type { ForReadingFiles } from "../src/hexagon/port/zdriven/ForReadingFile
 import type { ForTellingTime } from "../src/hexagon/port/zdriven/ForTellingTime.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noEvaluationsRun } from "./no-evaluations.js";
+import { noSensorsRun } from "./no-sensors.js";
 
 const repoPath = new URL("file:///work/my-repo/");
 const homePath = new URL("file:///home/dev/");
@@ -84,7 +85,7 @@ const cliOver = (fileReaders: ForReadingFiles, repo = repoPath, home = homePath,
   const charterVendoringApp = new CharterVendoring(repo, held, vcs);
   const testAuthoringApp = new TestAuthoring(repo, held, new InMemoryFileOutput(held));
   const sessionReviewingApp = new SessionReviewing(repo, home, fileReaders, clock);
-  return new Commander({ cwd: "/work/my-repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp, charterEvaluatingApp: noEvaluationsRun }, COMMANDS);
+  return new Commander({ cwd: "/work/my-repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);
 };
 
 /** What one command printed to each stream, and its exit status. */

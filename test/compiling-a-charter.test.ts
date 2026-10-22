@@ -102,6 +102,7 @@ test("compiling produces the listing, the charter file, and what the installed a
   assert.deepEqual(written, [
     ".cw/out/catalog.json",
     ".cw/out/mcp-origins.json",
+    ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",
     // Every primitive as it compiled, in the catalogue's order, since the
     // catalogue is what names each file (FR-139, FR-140).
@@ -136,7 +137,7 @@ test("no listing and no projection can be produced without the others (SC-004)",
   // list, and no argument that narrows it to a single file. The second argument
   // says which agents are installed, never which file is wanted.
   assert.equal(compile.length, 2);
-  assert.equal((await built(oneGuide)).written.length, 15);
+  assert.equal((await built(oneGuide)).written.length, 16);
 });
 
 test("a repository with no agent installed still compiles the whole neutral half (FR-019)", async () => {
@@ -145,6 +146,7 @@ test("a repository with no agent installed still compiles the whole neutral half
   assert.deepEqual(written, [
     ".cw/out/catalog.json",
     ".cw/out/mcp-origins.json",
+    ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",
     ".cw/out/skill/cw-author/index.md",
     ...sessionCounterPaths,

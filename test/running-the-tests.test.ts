@@ -13,6 +13,7 @@ import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
 import { noEvaluationsRun } from "./no-evaluations.js";
+import { noSensorsRun } from "./no-sensors.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
@@ -71,7 +72,7 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
       charterAuthoringApp,
       charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs),
       testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), held, new InMemoryFileOutput(held)),
-      mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun,
+      mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,
     },
     COMMANDS,
   );

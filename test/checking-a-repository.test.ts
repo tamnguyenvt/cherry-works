@@ -14,6 +14,7 @@ import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
 import { noEvaluationsRun } from "./no-evaluations.js";
+import { noSensorsRun } from "./no-sensors.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 
@@ -84,7 +85,7 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
       charterAuthoringApp,
       charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs),
       testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), held, new InMemoryFileOutput(held)),
-      mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun,
+      mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,
     },
     COMMANDS,
   );
@@ -123,7 +124,7 @@ test("a repository that has never been built is out of date, and fails (FR-040)"
   const { code, written } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /⚠ Built: {4}15 files out of date\. Run "cw build"\./);
+  assert.match(written.everything, /⚠ Built: {4}16 files out of date\. Run "cw build"\./);
 });
 
 test("staleness is the preview run, not a record kept of the last build (FR-040)", async () => {
