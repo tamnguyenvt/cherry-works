@@ -125,6 +125,9 @@ Each kind comes up at a different time:
 A skill or a playbook that is only a step of another can say
 `disable-user-invocation: true`: it is then not offered as a `/` command, and
 the agent still opens it when its triggers match or a playbook sends it there.
+One that only you should start can say `disable-model-invocation: true`: it is
+still a `/` command, and the agent never opens it on its own. A primitive
+cannot say both, since then nobody could open it.
 
 `cw kinds <kind>` gives the exact fields each kind takes. An id names exactly
 one primitive across the whole charter, whatever its kind. If two files claim
@@ -160,7 +163,7 @@ agent reads it.
 | `cw test` | Run every case in `.cw/test/` against the charter |
 | `cw eval` | Put every case in `.cw/eval/` to the real agent under promptfoo |
 | `cw suite add \| edit \| remove` | Manage test files |
-| `cw vendor add <source> [--ref] \| remove \| list` | Install, update, remove or list vendor sources |
+| `cw vendor add <source> [--ref] [--skill] \| remove \| list` | Install, update, remove or list vendor sources: a charter, or skills from a repository listed on [skills.sh](https://skills.sh) |
 | `cw portal [--port]` | Open the charter in a browser on this machine |
 | `cw mcp auth [id] [--status]` | Sign in, as yourself, to every mcp origin the charter reaches, or to one again |
 | `cw mcp serve` | Serve every mcp origin the charter reaches to your agent, over stdio |
@@ -331,7 +334,7 @@ cw vendor add git@github.com:your-org/charter-baseline.git --ref v1.2.0
 
 A vendor source is a git repository set up with `cw init`: author its charter
 there, test it, and push. Only its `.cw/charter/` folder is installed, under
-`.cw/vendor/<name>/`, pinned to the ref you chose, with the source's
+`.cw/vendor/<owner>/<repository>/`, pinned to the ref you chose, with the source's
 `README.md` beside it, and left unstaged for you to read and commit, whatever
 else you have in hand. A repository
 without that folder is refused, and so is one that has vendors of its own:
@@ -339,7 +342,48 @@ vendoring is one level deep. Vendored primitives are read-only. To differ from
 one, write your own primitive under a new id.
 
 Run `cw vendor add` again with a new `--ref` to update a source, and
-`cw vendor remove <name>` to take it away. Run `cw build` after either.
+`cw vendor remove <owner>/<repository>` to take it away, the folder as
+`cw vendor list` shows it. Run `cw build` after either. A source installed
+before 0.8.0 sits in `.cw/vendor/<repository>/` and keeps working; remove it and
+add it again to move it.
+
+### Skills from `npx skills` repositories
+
+`cw vendor add` also installs skills from a repository made for
+[`npx skills`](https://github.com/vercel-labs/skills), one that holds no
+charter but a `skills/` folder with a folder and its `SKILL.md` for each skill,
+`skills/<name>/` or grouped up to three folders deep, as in
+`skills/<group>/<name>/`:
+
+```bash
+cw vendor add https://github.com/mattpocock/skills --skill grill-me --skill grilling
+cw vendor add https://github.com/mattpocock/skills   # every skill it holds
+```
+
+`--skill` names a skill by the `name` its `SKILL.md` declares, and can be
+given more than once; with none, every skill is installed. Each lands in
+`.cw/vendor/<owner>/<repository>/skill/<name>/` as a skill of your charter,
+read-only like any vendored primitive, with every file beside its `SKILL.md`,
+and left unstaged for you to read and commit:
+
+| `SKILL.md` | Becomes |
+| --- | --- |
+| `name` | the skill's id, and its one trigger |
+| `description` | its description |
+| `disable-model-invocation: true` | `disable-model-invocation: true` |
+| `user-invocable: false` | `disable-user-invocation: true` |
+| any other header (`license`, `allowed-tools`, `argument-hint`…) | left out; `cw vendor add` names each one it left out |
+
+Only `skills/` is looked in: a `SKILL.md` elsewhere, such as the copies a
+repository keeps for its own agent under `.claude/skills/`, is not a skill to
+install, nor is one below another skill's folder, which comes along as one of
+its files. A `SKILL.md` without a
+`name` or a `description`, with a name that is not an id, or with a name another
+one shares, stops the install. A source holding a `.cw/charter/` folder is a
+charter, installed whole: `--skill` is refused for it. A skill named by
+another skill in prose, as `grill-me` names `grilling`, is not installed with
+it: add it with a second `--skill`. Run `cw vendor add` again to update the
+skills you name; the others in the folder stay as they were.
 
 ### Recommended charter vendors
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 — 2026-10-26
+
+- `cw vendor add` installs skills from a skills repository made for `npx skills`, such as `cw vendor add https://github.com/mattpocock/skills --skill grill-me`; with no `--skill`, every skill it holds is installed.
+- A vendor source now lands in `.cw/vendor/<owner>/<repository>/`, so two repositories of one name no longer collide. One installed before keeps working; to move it, run `cw vendor remove <name>`, then `cw vendor add` again.
+- `cw vendor remove` takes the folder as `cw vendor list` shows it, such as `cw vendor remove mattpocock/skills`.
+- A skill or a playbook can say `disable-model-invocation: true` so the agent never opens it on its own and only you run it as a `/` command. Run `cw build`.
+
 ## 0.7.4 — 2026-10-22
 
 - Your agent's settings now hold one `cw sensor run <signal>` hook per signal instead of one hook per sensor. Run `cw build`, and make sure `cw` is on the path your agent runs hooks with.
