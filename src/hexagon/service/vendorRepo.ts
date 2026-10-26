@@ -1,16 +1,53 @@
 import { DomainFault } from "../domain/models/DomainFault.js";
-import { vendorSourceOf } from "../domain/models/vendor/VendorSource.js";
+import { KINDS } from "../domain/models/charter/primitive/Primitive.js";
+import { installedVendorFolderOf, vendorSourceOf } from "../domain/models/vendor/VendorSource.js";
 import { CHARTER_DIRECTORY, VENDOR_DIRECTORY, vendorFolderIn } from "../domain/path.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import type { ForVCS } from "../port/zdriven/ForVCS.js";
+
+/** One folder a vendor was installed as, and its name under the vendor
+ *  folder: `team/charter`, or the one folder an earlier version named it by. */
+export interface VendorFolder {
+  readonly folder: URL;
+  readonly vendorName: string;
+}
+
+/** What a vendor installed holds at its top, besides its kind folders: the
+ *  source's README (FR-042). */
+const VENDOR_README = "README.md";
+
+/**
+ * Every folder a vendor was installed as, under the repository: each source
+ * under its owner's folder, `team/charter` (FR-050), and each folder an
+ * earlier version installed a source as, named by its repository alone, read
+ * as it was and never moved (FR-180).
+ *
+ * Which is which is read off what a folder holds: a source holds kind folders
+ * and its README, an owner holds the folders of its repositories. An earlier
+ * name carries no owner, so the two never meet under one name.
+ */
+export async function loadVendorFolders(repo: URL, fileReaders: ForReadingFiles): Promise<readonly VendorFolder[]> {
+  const installedFolders = await fileReaders.listFolders(vendorFolderIn(repo));
+  const vendorFolders = await Promise.all(
+    installedFolders.map(async (folder): Promise<readonly VendorFolder[]> => {
+      const ownerName = decodeURIComponent(folder.href.split("/").at(-2) ?? "");
+      const childFolders = await fileReaders.listFolders(folder);
+      const childFolderNames = childFolders.map((childFolder) => decodeURIComponent(childFolder.href.split("/").at(-2) ?? ""));
+      const isSource =
+        childFolderNames.some((childFolderName) => (KINDS as readonly string[]).includes(childFolderName)) ||
+        (await fileReaders.listFiles(folder)).some(({ file }) => file.href.endsWith(`/${VENDOR_README}`));
+      if (isSource) return [{ folder, vendorName: ownerName }];
+      return childFolders.map((childFolder, index) => ({ folder: childFolder, vendorName: `${ownerName}/${childFolderNames[index]}` }));
+    }),
+  );
+  return vendorFolders.flat().sort((leftFolder, rightFolder) => leftFolder.vendorName.localeCompare(rightFolder.vendorName));
+}
 
 /** Every folder a vendor was installed as, under the repository, sorted: read
  *  the way the charter finds its vendor layers, so what is listed is what the
  *  charter reads (FR-053). */
 export async function loadVendorNames(repo: URL, fileReaders: ForReadingFiles): Promise<readonly string[]> {
-  return (await fileReaders.listFolders(vendorFolderIn(repo)))
-    .map((folder) => `${VENDOR_DIRECTORY}/${decodeURIComponent(folder.href.split("/").at(-2) ?? "")}`)
-    .sort();
+  return (await loadVendorFolders(repo, fileReaders)).map(({ vendorName }) => `${VENDOR_DIRECTORY}/${vendorName}`);
 }
 
 /**
@@ -38,7 +75,8 @@ async function ensureVCSReady(repo: URL, vcs: ForVCS, because?: string): Promise
 }
 
 /**
- * Install the charter of one source under the folder its address names, pinned
+ * Install the charter of one source under the folder of its owner and its
+ * repository, pinned
  * to this version where one is named, with the source's README beside it, left
  * unstaged and uncommitted for the user to read; and answer that folder
  * (FR-042, FR-047, FR-050).
@@ -56,10 +94,12 @@ export async function addVendor(repo: URL, vcs: ForVCS, source: string, version?
 }
 
 /** Take the folder one vendor was installed as away, as a commit version
- *  control makes; and answer that folder (FR-047). */
+ *  control makes; and answer that folder (FR-047). The folder is named as it is
+ *  listed: owner and repository, or the one folder an earlier version named it
+ *  by (FR-180). */
 export async function removeVendor(repo: URL, vcs: ForVCS, name: string): Promise<string> {
   await ensureVCSReady(repo, vcs, "removing a vendor commits that it is gone");
-  const folder = `${VENDOR_DIRECTORY}/${vendorSourceOf(name).name}`;
+  const folder = `${VENDOR_DIRECTORY}/${installedVendorFolderOf(name)}`;
   await vcs.removeSubFolder(repo, folder);
   return folder;
 }
@@ -76,8 +116,10 @@ export async function removeVendor(repo: URL, vcs: ForVCS, name: string): Promis
  */
 export async function driftedVendors(repo: URL, vcs: ForVCS): Promise<readonly string[]> {
   const changed = await vcs.changedUnder(repo, VENDOR_DIRECTORY);
-  const names = changed
-    .map((path) => path.slice(`${VENDOR_DIRECTORY}/`.length).split("/")[0])
-    .filter((name): name is string => name !== undefined && name !== "");
-  return [...new Set(names)].sort();
+  const vendorNames = changed.map((path) => {
+    const [ownerName = "", childName = ""] = path.slice(`${VENDOR_DIRECTORY}/`.length).split("/");
+    const isSource = childName === VENDOR_README || (KINDS as readonly string[]).includes(childName);
+    return isSource ? ownerName : `${ownerName}/${childName}`;
+  });
+  return [...new Set(vendorNames.filter((vendorName) => vendorName !== "" && !vendorName.endsWith("/")))].sort();
 }

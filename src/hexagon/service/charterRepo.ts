@@ -4,7 +4,8 @@ import { BUILTIN_PRIMITIVES } from "../domain/models/charter/builtin/index.js";
 import { KINDS, type Primitive } from "../domain/models/charter/primitive/Primitive.js";
 import { ScriptPrimitive } from "../domain/models/charter/primitive/ScriptPrimitive.js";
 import { DomainFault } from "../domain/models/DomainFault.js";
-import { charterFolderIn, CHARTER_DIRECTORY, vendorFolderIn } from "../domain/path.js";
+import { charterFolderIn, CHARTER_DIRECTORY } from "../domain/path.js";
+import { loadVendorFolders } from "./vendorRepo.js";
 import type { ForParsingYaml } from "../port/zdriven/ForParsingYaml.js";
 import { BasePrimitive, type AssetFile } from "../domain/models/charter/primitive/BasePrimitive.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
@@ -14,7 +15,8 @@ import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
  * One repository's charter, read off wherever its files are kept.
  *
  * Two folders, read the same way: what this repository authored under
- * `.cw/charter/`, and what it installed under `.cw/vendor/<name>/`. Which layer
+ * `.cw/charter/`, and what it installed under `.cw/vendor/<owner>/<repository>/`,
+ * or under the one folder an earlier version installed it as. Which layer
  * a file belongs to is settled here, where the folders are — the charter is
  * handed the layers apart and works nothing out from a path (FR-008, FR-023).
  *
@@ -78,12 +80,9 @@ export async function loadCharterRoot(
   const authoredFiles = await read(charterFolderIn(repo));
 
   // One vendor per folder installed, named by the folder it was installed as.
-  const vendors = await fileReaders.listFolders(vendorFolderIn(repo));
-  const vendorFiles  = await Promise.all(
-    vendors.map(async (folder) => {
-      const vendor = decodeURIComponent(folder.href.split("/").at(-2) ?? "");
-      return (await read(folder)).map((one) => ({ ...one, vendor }));
-    }),
+  const vendorFolders = await loadVendorFolders(repo, fileReaders);
+  const vendorFiles = await Promise.all(
+    vendorFolders.map(async ({ folder, vendorName }) => (await read(folder)).map((vendoredFile) => ({ ...vendoredFile, vendor: vendorName }))),
   );
 
   const builtinFiles = BUILTIN_PRIMITIVES.map((primitive) => ({

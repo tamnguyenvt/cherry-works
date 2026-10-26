@@ -23,7 +23,7 @@ export function VendorSources() {
     primitivesQuery.data?.type === "Primitives" ? primitivesQuery.data.data.primitives.filter(({ data }) => data.layerName === "vendor") : [];
 
   const removeInstall = async (folder: string) => {
-    const refusedDTO = await removeVendor.mutateAsync(folder.split("/").at(-1) ?? "");
+    const refusedDTO = await removeVendor.mutateAsync(folder.slice(".cw/vendor/".length));
     if (refusedDTO !== null) return void toast.error(refusedDTO.data.message, { description: refusedDTO.data.fix });
     toast("Vendor source removed", { description: `${folder} · run Build to compile the charter without it` });
   };
@@ -49,7 +49,7 @@ export function VendorSources() {
         return (
           <div key={folder} className="flex flex-col gap-2.5 bg-[#f6f2ff] px-3.5 py-3" aria-label={folder}>
             <div className="min-w-0 space-y-0.5">
-              <div className="text-[12.5px] font-semibold">{folder.split("/").at(-1)}</div>
+              <div className="text-[12.5px] font-semibold">{folder.slice(".cw/vendor/".length)}</div>
               <div className="text-[11px] text-zinc-500">
                 <span className="font-mono">{folder}/</span> · read-only
               </div>

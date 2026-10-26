@@ -59,7 +59,7 @@ test("a source added from the dialog is installed through the engine, and the di
 
       assert.deepEqual(
         vcs.installed.map(({ source, intoSubFolder, version }) => ({ source, intoSubFolder, version })),
-        [{ source: "git@github.com:team/charter.git", intoSubFolder: ".cw/vendor/charter", version: "v1.2.0" }],
+        [{ source: "git@github.com:team/charter.git", intoSubFolder: ".cw/vendor/team/charter", version: "v1.2.0" }],
       );
       await page.getByRole("dialog").waitFor({ state: "detached" });
     },
@@ -81,6 +81,21 @@ test("a refused source stays in the dialog, in the engine's words (Story 8 scena
 
       assert.match(await page.getByRole("dialog").innerText(), /no "\.cw\/charter"[\s\S]*Check that the source holds/);
       assert.deepEqual(vcs.installed, []);
+    },
+    vcs,
+  );
+});
+
+test("Remove takes a source under its owner away by owner and repository (Story 8 scenario 5, FR-050)", async () => {
+  const vcs = new InMemoryVCS();
+  await inTheBrowser(
+    { ...withTwoVendors(), [vendoredAt("team/rules", "guide/one-rule/index.md")]: primitive("guide", "one-rule") },
+    async (page) => {
+      await page.getByRole("tab", { name: "Vendor" }).click();
+      await page.getByLabel(".cw/vendor/team/rules", { exact: true }).getByRole("button", { name: "Remove" }).click();
+      await page.getByText("Vendor source removed").waitFor();
+
+      assert.deepEqual(vcs.removed.map(({ subFolder }) => subFolder), [".cw/vendor/team/rules"]);
     },
     vcs,
   );

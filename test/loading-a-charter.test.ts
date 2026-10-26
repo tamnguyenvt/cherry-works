@@ -56,12 +56,14 @@ test("the charter is read once, and one more read per vendor installed", async (
   await load(files);
 
   // One read of what this repository authored, the vendor folder asked what is
-  // installed, and one read of each layer that is — and the settings the
+  // installed, each folder there asked whether it is a source or an owner of
+  // sources (FR-050), and one read of each layer that is — and the settings the
   // repository configured itself with are read from their own file, not from
   // the charter (FR-037).
   assert.deepEqual(files.calls, [
     `files under ${root.href}`,
     `folders under ${vendorRoot.href}`,
+    `folders under ${new URL("team/", vendorRoot).href}`,
     `files under ${new URL("team/", vendorRoot).href}`,
   ]);
 });

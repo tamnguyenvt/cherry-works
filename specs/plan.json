@@ -205,6 +205,29 @@
       ]
     },
     {
+      "id": "CORE Story 30",
+      "title": "Name every vendor folder by its owner and its repository",
+      "dependsOn": [
+        "CORE Story 2"
+      ]
+    },
+    {
+      "id": "CORE Story 31",
+      "title": "Keep a skill out of the agent's own reach",
+      "dependsOn": [
+        "CORE Story 28"
+      ]
+    },
+    {
+      "id": "CORE Story 32",
+      "title": "Take a skill from a skills repository into the vendor layer",
+      "dependsOn": [
+        "CORE Story 30",
+        "CORE Story 31",
+        "CORE Story 23"
+      ]
+    },
+    {
       "id": "EVAL Story 1",
       "title": "See what the charter loads into the agent's context",
       "dependsOn": [

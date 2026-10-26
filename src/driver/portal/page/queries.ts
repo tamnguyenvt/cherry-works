@@ -207,8 +207,10 @@ export function useRemoveVendor() {
   const written = useWritten();
   return useMutation({
     mutationFn: async (name: string) => {
-      // Sent as JSON though it carries none, as a delete is (plan §12.4).
-      const response = await client.vendors[":name"].$delete({ param: { name } }, { headers: { "Content-Type": "application/json" } });
+      // Sent as JSON though it carries none, as a delete is (plan §12.4). The
+      // client fills the path as it is given it, and an owner's `/` would end
+      // the name there (FR-050).
+      const response = await client.vendors[":name"].$delete({ param: { name: encodeURIComponent(name) } }, { headers: { "Content-Type": "application/json" } });
       return response.status === 422 ? response.json() : null;
     },
     onSuccess: written,

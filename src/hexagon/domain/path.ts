@@ -43,8 +43,8 @@ export const WORKSPACE_DIRECTORY = ".cw";
  *  `vendor/`. The only part of the workspace a person authors. */
 export const CHARTER_DIRECTORY = `${WORKSPACE_DIRECTORY}/charter`;
 
-/** What this repository installed from someone else, one folder per vendor
- *  (FR-023, FR-024). Beside the charter rather than inside it: what a vendor
+/** What this repository installed from someone else, one folder per vendor,
+ *  `<owner>/<repository>` (FR-023, FR-024, FR-050). Beside the charter rather than inside it: what a vendor
  *  published is read-only and git-ignored, and what this repository authored is
  *  neither. */
 export const VENDOR_DIRECTORY = `${WORKSPACE_DIRECTORY}/vendor`;

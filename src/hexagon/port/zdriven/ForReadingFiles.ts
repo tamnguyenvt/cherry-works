@@ -11,8 +11,8 @@ export interface ForReadingFiles {
   readFilesRecursively(folder: URL): Promise<readonly ReadFile[]>;
 
   /** The folders one level under one folder, in no promised order. A charter
-   *  asks this of `.cw/vendor/`, where each folder is one layer someone
-   *  installed (FR-023, FR-024). */
+   *  asks this of `.cw/vendor/` and of each owner's folder under it, where each
+   *  folder is one layer someone installed (FR-023, FR-024, FR-050). */
   listFolders(folder: URL): Promise<readonly URL[]>;
 
   /** The text of one file that may not be there, and nothing where it is not.

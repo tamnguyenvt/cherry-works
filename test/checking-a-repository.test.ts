@@ -190,6 +190,17 @@ test("a vendored file edited here is named by its vendor, once (FR-040, SC-008)"
   assert.match(written.everything, /✘ Vendors: {2}edited here: house-rules\./);
 });
 
+test("a vendored file edited here is named by its owner and repository (FR-040, FR-050)", async () => {
+  const { vcs, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
+  await run(["build"]);
+  vcs.changed.push(".cw/vendor/team/rules/guide/no-any/index.md", ".cw/vendor/team/rules/README.md", ".cw/vendor/legacy/skill/ship/index.md");
+
+  const { code, written } = await run(["doctor"]);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(written.everything, /✘ Vendors: {2}edited here: legacy, team\/rules\./);
+});
+
 test("work in hand outside the vendor folder is no business of doctor's (FR-040)", async () => {
   const { vcs, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
   await run(["build"]);
