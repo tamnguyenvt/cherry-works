@@ -82,7 +82,7 @@ const cliOver = (fileReaders: ForReadingFiles, repo = repoPath, home = homePath,
   const held = new InMemoryFileReaders({});
   const vcs = new InMemoryVCS();
   const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const charterVendoringApp = new CharterVendoring(repo, held, vcs);
+  const charterVendoringApp = new CharterVendoring(repo, held, vcs, new InMemoryFileOutput(held), new YamlParser());
   const testAuthoringApp = new TestAuthoring(repo, held, new InMemoryFileOutput(held));
   const sessionReviewingApp = new SessionReviewing(repo, home, fileReaders, clock);
   return new Commander({ cwd: "/work/my-repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);

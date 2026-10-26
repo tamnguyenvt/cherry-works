@@ -57,10 +57,8 @@ test("a source added from the dialog is installed through the engine, and the di
       await page.getByRole("button", { name: "Add source" }).click();
       await page.getByText("Vendor source added").waitFor();
 
-      assert.deepEqual(
-        vcs.installed.map(({ source, intoSubFolder, version }) => ({ source, intoSubFolder, version })),
-        [{ source: "git@github.com:team/charter.git", intoSubFolder: ".cw/vendor/team/charter", version: "v1.2.0" }],
-      );
+      assert.deepEqual(vcs.fetched, [{ source: "git@github.com:team/charter.git", version: "v1.2.0" }]);
+      assert.deepEqual(vcs.checkedOut.map(({ intoSubFolder }) => intoSubFolder), [".cw/vendor/team/charter"]);
       await page.getByRole("dialog").waitFor({ state: "detached" });
     },
     vcs,
@@ -80,7 +78,7 @@ test("a refused source stays in the dialog, in the engine's words (Story 8 scena
       await page.getByText("Refused, and nothing was installed").waitFor();
 
       assert.match(await page.getByRole("dialog").innerText(), /no "\.cw\/charter"[\s\S]*Check that the source holds/);
-      assert.deepEqual(vcs.installed, []);
+      assert.deepEqual(vcs.checkedOut, []);
     },
     vcs,
   );

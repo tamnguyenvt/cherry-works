@@ -40,7 +40,7 @@ const surfaces = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS();
   const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
+  const charterVendoringApp = new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser());
   const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
   const cli = new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);
   return { portalRoutes: api(charterAuthoringApp, charterVendoringApp, testAuthoringApp), held, cli };

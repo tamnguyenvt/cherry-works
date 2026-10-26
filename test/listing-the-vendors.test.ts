@@ -45,7 +45,7 @@ async function listing(held: InMemoryFileReaders) {
   try {
     const vcs = new InMemoryVCS();
     const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-    const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
+    const charterVendoringApp = new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser());
     const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
     const code = await new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS).run(["vendor", "list"]);
     return { code, said: said.join("") };
@@ -55,7 +55,7 @@ async function listing(held: InMemoryFileReaders) {
 }
 
 test("every source folder under the vendor folder is listed by owner and repository, sorted, and nothing authored here (FR-053, FR-180)", async () => {
-  assert.deepEqual(await new CharterVendoring(repoPath, threeVendors(), new InMemoryVCS()).installed(), [
+  assert.deepEqual(await new CharterVendoring(repoPath, threeVendors(), new InMemoryVCS(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser()).installed(), [
     ".cw/vendor/legacy",
     ".cw/vendor/team/rules",
     ".cw/vendor/team/skills",
@@ -65,11 +65,11 @@ test("every source folder under the vendor folder is listed by owner and reposit
 test("a folder installed by an earlier version holding only its README is a source, not an owner (FR-180)", async () => {
   const held = new InMemoryFileReaders({ [vendoredAt("legacy", "README.md")]: "# Legacy\n" });
 
-  assert.deepEqual(await new CharterVendoring(repoPath, held, new InMemoryVCS()).installed(), [".cw/vendor/legacy"]);
+  assert.deepEqual(await new CharterVendoring(repoPath, held, new InMemoryVCS(), new InMemoryFileOutput(held), new YamlParser()).installed(), [".cw/vendor/legacy"]);
 });
 
 test("a repository with no vendor lists none", async () => {
-  assert.deepEqual(await new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS()).installed(), []);
+  assert.deepEqual(await new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser()).installed(), []);
 });
 
 test("cw vendor list prints each folder on a line of its own", async () => {

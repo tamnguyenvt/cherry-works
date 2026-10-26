@@ -29,7 +29,7 @@ const repoPath = new URL("file:///repo/");
 
 /** What vendoring is driven through: a context always carries every use case,
  *  and nothing here asks this one for anything. */
-const charterVendoringApp = new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS());
+const charterVendoringApp = new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
 
 /** What the test files are driven through, over an empty repository: nothing
  *  here asks it for anything. */

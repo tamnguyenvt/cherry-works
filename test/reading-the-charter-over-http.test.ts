@@ -28,7 +28,7 @@ const guide = (id: string, headers: readonly string[] = []) => primitive("guide"
 const portal = (files: Readonly<Record<string, string>>, held = new InMemoryFileReaders(files)) => {
   const vcs = new InMemoryVCS();
   const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  return api(charterAuthoringApp, new CharterVendoring(repo, held, vcs), new TestAuthoring(repo, held, new InMemoryFileOutput(held)));
+  return api(charterAuthoringApp, new CharterVendoring(repo, held, vcs, new InMemoryFileOutput(held), new YamlParser()), new TestAuthoring(repo, held, new InMemoryFileOutput(held)));
 };
 
 test("the listing is sent as every primitive the charter read, each under its layer (FR-112)", async () => {

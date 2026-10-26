@@ -20,7 +20,7 @@ const guide = (id: string) => ["---", "kind: guide", `id: ${id}`, `description: 
  *  they install through, so a test reads what was asked of it (plan §12.2). */
 const portal = (files: Readonly<Record<string, string>> = {}, vcs = new InMemoryVCS()) => {
   const held = new InMemoryFileReaders(files);
-  const charterVendoringApp = new CharterVendoring(repoPath, held, vcs);
+  const charterVendoringApp = new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser());
   const portalRoutes = api(
     new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
     charterVendoringApp,
@@ -52,9 +52,8 @@ test("a source posted is installed as cw vendor add installs it (Story 8 scenari
   const answer = await portalRoutes.request("/vendors", sending("POST", { source: "git@github.com:team/charter.git", version: "v1.2.0" }));
 
   assert.equal(answer.status, 204);
-  assert.deepEqual(vcs.installed, [
-    { source: "git@github.com:team/charter.git", includePaths: [".cw/charter", "README.md"], repo: repoPath, intoSubFolder: ".cw/vendor/team/charter", version: "v1.2.0" },
-  ]);
+  assert.deepEqual(vcs.fetched, [{ source: "git@github.com:team/charter.git", version: "v1.2.0" }]);
+  assert.deepEqual(vcs.checkedOut, [{ commit: "git@github.com:team/charter.git@v1.2.0", fromFolder: ".cw/charter", intoSubFolder: ".cw/vendor/team/charter" }]);
 });
 
 test("a source posted with no version is installed at its default", async () => {
@@ -62,7 +61,21 @@ test("a source posted with no version is installed at its default", async () => 
 
   await portalRoutes.request("/vendors", sending("POST", { source: "/srv/charters/charter" }));
 
-  assert.equal(vcs.installed[0]?.version, undefined);
+  assert.equal(vcs.fetched[0]?.version, undefined);
+});
+
+test("a skills repository posted has every skill it holds installed, asking nothing (CORE-FR-188)", async () => {
+  const vcs = new InMemoryVCS();
+  vcs.sourceFilesBySource["team/skills"] = {
+    "skills/one/SKILL.md": "---\nname: one\ndescription: The first.\n---\n\nOne.\n",
+    "skills/two/SKILL.md": "---\nname: two\ndescription: The second.\n---\n\nTwo.\n",
+  };
+  const { portalRoutes } = portal({}, vcs);
+
+  const answer = await portalRoutes.request("/vendors", sending("POST", { source: "team/skills" }));
+
+  assert.equal(answer.status, 204);
+  assert.deepEqual(vcs.checkedOut.map(({ intoSubFolder }) => intoSubFolder), [".cw/vendor/team/skills/skill/one", ".cw/vendor/team/skills/skill/two"]);
 });
 
 test("a source holding no charter folder is refused, saying how to make it one", async () => {
@@ -75,7 +88,7 @@ test("a source holding no charter folder is refused, saying how to make it one",
   assert.equal(answer.status, 422);
   const faultDTO = DataDTOs.Fault.parse(await answer.json());
   assert.match(faultDTO.data.message, /no "\.cw\/charter"/);
-  assert.deepEqual(vcs.installed, []);
+  assert.deepEqual(vcs.checkedOut, []);
 });
 
 test("a vendor deleted is taken away by its folder name (Story 8 scenario 5)", async () => {
@@ -108,7 +121,7 @@ test("with work in hand, removing is refused in the engine's words and touches n
 
   const added = await portalRoutes.request("/vendors", sending("POST", { source: "team/charter" }));
   assert.equal(added.status, 204);
-  assert.equal(vcs.installed.length, 1);
+  assert.equal(vcs.checkedOut.length, 1);
 });
 
 test("outside version control, adding is refused saying the next move", async () => {
@@ -118,7 +131,7 @@ test("outside version control, adding is refused saying the next move", async ()
 
   assert.equal(answer.status, 422);
   assert.match(DataDTOs.Fault.parse(await answer.json()).data.fix, /git init/);
-  assert.deepEqual(vcs.installed, []);
+  assert.deepEqual(vcs.checkedOut, []);
 });
 
 test("a name that climbs out of the vendor folder is refused, and nothing is taken away (FR-044)", async () => {

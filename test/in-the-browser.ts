@@ -39,7 +39,7 @@ export async function inTheBrowser(
   const files = new InMemoryFileReaders(held);
   const repoPath = new URL("file:///repo/");
   const engine = new CharterAuthoring(repoPath, files, new YamlParser(), new InMemoryFileOutput(files), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const charterVendoringApp = new CharterVendoring(repoPath, files, vcs);
+  const charterVendoringApp = new CharterVendoring(repoPath, files, vcs, new InMemoryFileOutput(files), new YamlParser());
   const testAuthoringApp = new TestAuthoring(repoPath, files, new InMemoryFileOutput(files));
   const { address, server } = await startPortal(
     new URL("../dist/portal/", import.meta.url),

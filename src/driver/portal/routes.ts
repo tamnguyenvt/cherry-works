@@ -372,8 +372,8 @@ export function api(
           ),
         },
         responses: {
-          204: { description: "The source is installed, and committed" },
-          422: json(DataDTOs.Fault, "No repository, work in hand, or what git refused"),
+          204: { description: "The source is installed — a charter whole, or every skill of a skills repository — left unstaged" },
+          422: json(DataDTOs.Fault, "No repository, a source holding neither a charter nor a skill, or what git refused"),
         },
       }),
       async (c) => {

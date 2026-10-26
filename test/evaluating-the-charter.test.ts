@@ -75,7 +75,7 @@ const surfaces = (files: Readonly<Record<string, string>>, promptfoo: InMemoryPr
       cwd: "/repo",
       version: "0.0.0",
       charterAuthoringApp,
-      charterVendoringApp: new CharterVendoring(repoPath, held, vcs),
+      charterVendoringApp: new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser()),
       testAuthoringApp: new TestAuthoring(repoPath, held, fileOutput),
       mcpConnectingApp: noMcpOriginsReached,
       sessionReviewingApp: noSessionsKept,

@@ -49,7 +49,7 @@ const contextOver = (charterAuthoringApp: CharterAuthoring) => ({
   cwd: "/repo",
   version: "0.0.0",
   charterAuthoringApp,
-  charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS()),
+  charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser()),
   testAuthoringApp: new TestAuthoring(repoPath, new InMemoryFileReaders({}), new InMemoryFileOutput(new InMemoryFileReaders({}))),
   mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,
 });

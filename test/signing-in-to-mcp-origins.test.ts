@@ -50,7 +50,7 @@ const mcpOriginsOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
     cwd: "/repo",
     version: "0.0.0",
     charterAuthoringApp: new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
-    charterVendoringApp: new CharterVendoring(repoPath, noFiles, new InMemoryVCS()),
+    charterVendoringApp: new CharterVendoring(repoPath, noFiles, new InMemoryVCS(), new InMemoryFileOutput(noFiles), new YamlParser()),
     testAuthoringApp: new TestAuthoring(repoPath, noFiles, new InMemoryFileOutput(noFiles)),
     mcpConnectingApp,
     sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,

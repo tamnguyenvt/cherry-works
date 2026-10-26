@@ -38,7 +38,7 @@ const portal = (files: Readonly<Record<string, string>>) => {
   const vcs = new InMemoryVCS();
   const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
-  const portalRoutes = api(charterAuthoringApp, new CharterVendoring(repoPath, held, vcs), testAuthoringApp);
+  const portalRoutes = api(charterAuthoringApp, new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser()), testAuthoringApp);
   return { portalRoutes, charterAuthoringApp, testAuthoringApp, fileAt: (path: string) => held.readIfThere(new URL(path, repoPath)) };
 };
 

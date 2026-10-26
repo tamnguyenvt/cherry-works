@@ -83,7 +83,7 @@ const charterAuthoringApp: ForManagingCharter = new CharterAuthoring(
   authorizing,
 );
 
-const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath, fileReader, vcs);
+const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath, fileReader, vcs, fileWriter, yamlParser);
 
 const testAuthoringApp: ForAuthoringTests = new TestAuthoring(repoPath, fileReader, fileWriter);
 

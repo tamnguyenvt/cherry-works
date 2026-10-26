@@ -40,47 +40,39 @@ export interface ForVCS {
   changedUnder(repo: URL, subFolder: string): Promise<readonly string[]>;
 
   /**
-   * Copy the paths `includePaths` names in this source, at this version where
-   * one is named, into this folder of this repository, replacing what that
-   * folder held: a folder's files at its root, a file under its own name. The
-   * first path is one the source must hold; the others are copied where it
-   * holds them. Nothing is staged and nothing is committed: what lands is left in
-   * the working tree for the user to read, whatever else is in hand (FR-023,
-   * FR-042).
+   * Fetch this source, at this version where one is named, into this
+   * repository's object store, and answer the commit fetched: what the other
+   * questions about a source are asked of, so it is fetched once. Nothing in
+   * the working tree, the index or the history is touched.
    *
-   * The source is whatever version control fetches — an address over any
-   * transport, a path on disk — and is passed along as it was written. Reading
-   * it is the adapter's business, and deciding a transport on the author's
-   * behalf is nobody's: the credentials a private source needs are the
-   * configuration of whoever runs this (FR-031).
-   *
-   * Every path is named as it sits under its own repository: what is taken
-   * from the source, and where it goes here, is the caller's to say. What
-   * lands is those paths and nothing else of the source: once
-   * committed, a checkout of this repository holds the whole charter it is
-   * governed by, with nothing left to fetch (FR-028). Copying it again is how what was copied is brought up to
-   * date. Answers the folder it copied into.
-   *
-   * A source that holds no first path at that version, one that holds a file
-   * under `refusedIfSourceHolds`, a source that cannot be reached, a version
-   * that is not there: each raises an `AdapterFault`, saying what version
-   * control found. Nothing is installed when it does (Edge Cases).
+   * A source that cannot be reached, and a version that is not there, each
+   * raise an `AdapterFault` saying what version control said (CORE-FR-190).
    */
-  subtreeAdd(
-    source: string,
-    includePaths: readonly string[],
-    repo: URL,
-    intoSubFolder: string,
-    version?: string,
-    refusedIfSourceHolds?: string,
-  ): Promise<string>;
+  fetchCommit(source: string, repo: URL, version?: string): Promise<string>;
+
+  /** Every file this fetched commit holds, by its path in it, at any depth, in
+   *  no promised order. */
+  listFilesAt(repo: URL, commit: string): Promise<readonly string[]>;
+
+  /** What one file of this fetched commit holds, as text. */
+  readFileAt(repo: URL, commit: string, path: string): Promise<string>;
+
+  /**
+   * Put one folder of this fetched commit — every file under it, at any depth —
+   * at this folder of this repository, replacing whatever that folder held and
+   * nothing beside it. The empty path is the commit's root. Nothing is staged
+   * and nothing is committed: what lands is left in the working tree for the
+   * user to read, whatever else is in hand (FR-023, FR-042, CORE-FR-187,
+   * CORE-FR-190).
+   */
+  checkoutFolderAt(repo: URL, commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
 
   /**
    * Take this folder of this repository away, and commit that it is gone
    * (FR-030).
    *
-   * The other half of `subtreeAdd`: what was installed as a commit leaves as
-   * one, so the repository's history says when it arrived and when it went.
+   * What was installed is committed by whoever read it, and what leaves does so
+   * as a commit, so the repository's history says when it arrived and when it went.
    *
    * A folder this repository has not got, and a repository with work in hand:
    * each raises, saying what version control said. Nothing is taken away when

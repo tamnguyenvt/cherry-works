@@ -1,3 +1,5 @@
+import type { OutcomeDTOs } from "./dtos/index.js";
+
 /**
  * DRIVER PORT — what this engine offers for the charters a repository did not
  * author itself (FR-023 – FR-031).
@@ -8,7 +10,9 @@
  * other one installs anything.
  *
  * What it answers are folder names, as they sit under the repository: a name
- * is already plain JSON, and there is no model behind it to say more.
+ * is already plain JSON, and there is no model behind it to say more. Installing
+ * answers the skills it took beside the folder, where the source was a skills
+ * repository (CORE-FR-184).
  */
 export interface ForVendoringCharters {
   /**
@@ -22,14 +26,19 @@ export interface ForVendoringCharters {
    * Installing one that is already there brings it up to date instead, so a
    * repository has one way of saying what it wants rather than two (FR-030).
    *
-   * Refused outside version control, and refused while there is work in hand:
-   * what it installs lands as a commit on the branch checked out, and a commit
-   * made over somebody's staged work would carry that work along with it.
+   * Refused outside version control. What it installs is left unstaged for the
+   * user to read and commit, whatever else is in hand (CORE-FR-190).
    *
-   * What it answers is the folder it landed in. Everything else about it is in
-   * that repository's history, which is where a commit belongs.
+   * A charter is installed whole, and `skillIds` is refused for it
+   * (CORE-FR-193). A skills repository's skills `skillIds` names are installed,
+   * or every one it holds where none is named, asking nothing (CORE-FR-184,
+   * CORE-FR-188).
+   *
+   * What it answers is the folder it landed in, and the primitives installed
+   * there, each skill with the headers its `SKILL.md` declared that were left
+   * out (CORE-FR-186).
    */
-  add(source: string, version?: string): Promise<string>;
+  add(source: string, version?: string, skillIds?: readonly string[]): Promise<OutcomeDTOs.VendorAddOutcome>;
 
   /**
    * Take one installed charter away, named by the folder it was installed as

@@ -81,7 +81,24 @@ const SensorRunOutcomeSchema = dto(
 
 /** Every outcome DTO's schema, under its name — the name it carries as `type` —
  *  in alphabetical order. */
-export const OutcomeDTOs = byType(DoctorOutcomeSchema, ExplanationOutcomeSchema, SensorRunOutcomeSchema, SessionReviewOutcomeSchema);
+/** What installing one vendor source came to (CORE-FR-184): the folder it
+ *  landed in, and the primitives installed there — a charter's every one, or
+ *  the skills chosen. */
+const VendorAddOutcomeSchema = dto(
+  "VendorAddOutcome",
+  z.object({
+    folder: z.string(),
+    primitives: z.array(DataDTOs.VendorPrimitive).readonly(),
+  }),
+);
+
+export const OutcomeDTOs = byType(
+  DoctorOutcomeSchema,
+  ExplanationOutcomeSchema,
+  SensorRunOutcomeSchema,
+  SessionReviewOutcomeSchema,
+  VendorAddOutcomeSchema,
+);
 
 /** Every outcome DTO's type, under its name: what its schema infers. */
 export namespace OutcomeDTOs {
@@ -89,4 +106,5 @@ export namespace OutcomeDTOs {
   export type ExplanationOutcome = z.infer<typeof OutcomeDTOs.ExplanationOutcome>;
   export type SensorRunOutcome = z.infer<typeof OutcomeDTOs.SensorRunOutcome>;
   export type SessionReviewOutcome = z.infer<typeof OutcomeDTOs.SessionReviewOutcome>;
+  export type VendorAddOutcome = z.infer<typeof OutcomeDTOs.VendorAddOutcome>;
 }

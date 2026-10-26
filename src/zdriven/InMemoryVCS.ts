@@ -15,16 +15,18 @@ export class InMemoryVCS implements ForVCS {
   /** Every worktree added and not yet removed. */
   readonly worktreeFolders: URL[] = [];
 
-  /** Every source it was asked to install, in the order it was asked: what a
-   *  test about vendoring looks at, since nothing was fetched. */
-  readonly installed: { source: string; includePaths: readonly string[]; repo: URL; intoSubFolder: string; version?: string }[] = [];
+  /** Every source it was asked to fetch, and the version asked for: what a test
+   *  about vendoring looks at, since nothing was fetched. */
+  readonly fetched: { source: string; version?: string }[] = [];
 
-  /** Every source a test says holds no folder of the name asked for: what
-   *  `subtreeAdd` raises for, copying nothing. */
+  /** Every folder of a fetched commit it was asked to put in place, in the
+   *  order it was asked. */
+  readonly checkedOut: { commit: string; fromFolder: string; intoSubFolder: string }[] = [];
+
+  /** Every source a test says holds neither a charter folder nor a skill. */
   readonly sourcesWithoutSubFolder: string[] = [];
 
-  /** Every source a test says holds the folder `subtreeAdd` is told to refuse:
-   *  what it raises for, copying nothing. */
+  /** Every source a test says holds a charter with vendors of its own. */
   readonly sourcesHoldingRefusedFolder: string[] = [];
 
   async isInstalled(_folder: URL): Promise<boolean> {
@@ -49,20 +51,53 @@ export class InMemoryVCS implements ForVCS {
     return this.changed.filter((path) => path.startsWith(folder));
   }
 
-  async subtreeAdd(
-    source: string,
-    includePaths: readonly string[],
-    repo: URL,
-    intoSubFolder: string,
-    version?: string,
-    refusedIfSourceHolds?: string,
-  ): Promise<string> {
-    if (this.sourcesWithoutSubFolder.includes(source))
-      throw new AdapterFault(`${source} has no "${includePaths[0]}".`, `Check that the source holds "${includePaths[0]}".`);
-    if (refusedIfSourceHolds !== undefined && this.sourcesHoldingRefusedFolder.includes(source))
-      throw new AdapterFault(`${source} holds "${refusedIfSourceHolds}".`, `Remove "${refusedIfSourceHolds}" from the source.`);
-    this.installed.push({ source, includePaths, repo, intoSubFolder, ...(version === undefined ? {} : { version }) });
-    return intoSubFolder;
+  /** Every source a test publishes, by the address it is fetched at: the files
+   *  it holds, by their paths in it. A source a test publishes nothing for holds
+   *  a charter, as every source did before skills were taken, unless the test
+   *  says it holds no charter folder either. */
+  readonly sourceFilesBySource: Record<string, Record<string, string>> = {};
+
+
+  /** Every source a test says cannot be reached: what `fetchCommit` raises
+   *  for. */
+  readonly unreachableSources: string[] = [];
+
+  /** The files a source holds, as a test published them. A commit here is the
+   *  source it was fetched from, and the version asked for after an `@`:
+   *  nothing is fetched, so nothing else names it. */
+  #listSourceFiles(commit: string): Record<string, string> {
+    const source = commit.split("@")[0] ?? commit;
+    const publishedCharter = { ".cw/charter/guide/published/index.md": "---\nkind: guide\nid: published\ndescription: Published.\n---\n", "README.md": "# Published\n" };
+    if (this.sourcesWithoutSubFolder.includes(source)) return { "README.md": "# Notes\n" };
+    if (this.sourcesHoldingRefusedFolder.includes(source)) return { ...publishedCharter, ".cw/vendor/other/guide/x/index.md": "x" };
+    return this.sourceFilesBySource[source] ?? publishedCharter;
+  }
+
+  async fetchCommit(source: string, _repo: URL, version?: string): Promise<string> {
+    if (this.unreachableSources.includes(source)) throw new AdapterFault(`${source} could not be fetched.`, "Check the address, and that you can reach it from here.");
+    this.fetched.push({ source, ...(version === undefined ? {} : { version }) });
+    return version === undefined ? source : `${source}@${version}`;
+  }
+
+  async listFilesAt(_repo: URL, commit: string): Promise<readonly string[]> {
+    return Object.keys(this.#listSourceFiles(commit));
+  }
+
+  async readFileAt(_repo: URL, commit: string, path: string): Promise<string> {
+    const contents = this.#listSourceFiles(commit)[path];
+    if (contents === undefined) throw new AdapterFault(`${commit} has no "${path}".`, "Read a file the commit holds.");
+    return contents;
+  }
+
+  /** The folder written over in the files a test handed it, every file of
+   *  the source under `fromFolder` put under it. */
+  async checkoutFolderAt(repo: URL, commit: string, fromFolder: string, intoSubFolder: string): Promise<void> {
+    this.checkedOut.push({ commit, fromFolder, intoSubFolder });
+    const intoFolder = new URL(`${intoSubFolder}/`, repo);
+    for (const { file } of (await this.files?.readFilesRecursively(intoFolder)) ?? []) this.files?.remove(file);
+    const fromPrefix = fromFolder === "" ? "" : `${fromFolder}/`;
+    for (const [path, contents] of Object.entries(this.#listSourceFiles(commit)))
+      if (path.startsWith(fromPrefix)) this.files?.write(new URL(path.slice(fromPrefix.length), intoFolder), contents);
   }
 
   async removeSubFolder(repo: URL, subFolder: string): Promise<void> {

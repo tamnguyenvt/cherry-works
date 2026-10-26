@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import { AdapterFault, type ForVCS } from "#hexagon/port/zdriven/ForVCS.js";
 
 const run = promisify(execFile);
@@ -65,90 +65,53 @@ export class Git implements ForVCS {
     }
   }
 
-  /**
-   * `git fetch`, handed the source exactly as it was written, then each path
-   * asked for read into an index of its own and checked out into the folder
-   * given — a folder's files at that folder's root, a file under its own name:
-   * the repository's own index is never touched, so nothing is staged, nothing
-   * is committed, and whatever is in hand stays as it was. A folder already
-   * there is replaced, so installing a source and bringing it up to date are
-   * one call (FR-023, FR-030, FR-042).
-   *
-   * Which transport it is, whether the credentials are there, whether the
-   * version exists: git answers all three, and what it says is what the user
-   * reads (FR-031). `HEAD` where no version is named, which is what the source
-   * calls its own default.
-   *
-   * `git subtree` takes a source whole and cannot take one folder of it, so
-   * each path is read straight off what was fetched. Whether the first is
-   * there, and whether the refused one is, is asked of git before anything is
-   * touched. What lands has no history to walk (FR-028).
-   */
-  async subtreeAdd(
-    source: string,
-    includePaths: readonly string[],
-    repo: URL,
-    intoSubFolder: string,
-    version?: string,
-    refusedIfSourceHolds?: string,
-  ): Promise<string> {
+  /** `git fetch` of one version, and `FETCH_HEAD` read at once, before
+   *  anything else can move it. */
+  async fetchCommit(source: string, repo: URL, version?: string): Promise<string> {
     const cwd = fileURLToPath(repo);
-    const ref = version ?? "HEAD";
     try {
-      await run("git", ["fetch", "--quiet", "--no-tags", "--", source, ref], { cwd });
+      await run("git", ["fetch", "--quiet", "--no-tags", "--", source, version ?? "HEAD"], { cwd });
     } catch (raised) {
       throw new AdapterFault(
-        `${raised}`,
+        `${source} could not be fetched: ${raised}`,
         version === undefined
           ? "Check the address, and that you can reach it from here."
           : `Check the address, and that "${version}" is a tag or branch it has.`,
       );
     }
-    // The commit fetched is pinned now, before anything else can move FETCH_HEAD.
-    const fetchedCommit = (await run("git", ["rev-parse", "FETCH_HEAD"], { cwd })).stdout.trim();
-    // `tree` for a folder, `blob` for a file, nothing for a path the source has not got.
-    const objectTypeAt = (path: string) =>
-      run("git", ["cat-file", "-t", `${fetchedCommit}:${path}`], { cwd }).then(
-        ({ stdout }) => stdout.trim(),
-        () => undefined,
-      );
-    const atVersion = version === undefined ? "" : ` at ${version}`;
-    const [requiredPath = ""] = includePaths;
-    if ((await objectTypeAt(requiredPath)) === undefined)
-      throw new AdapterFault(`${source} has no "${requiredPath}"${atVersion}.`, `Check that the source holds "${requiredPath}" at the version asked for.`);
-    if (refusedIfSourceHolds !== undefined && (await objectTypeAt(refusedIfSourceHolds)) === "tree")
-      throw new AdapterFault(
-        `${source} holds "${refusedIfSourceHolds}"${atVersion}, which this copy refuses.`,
-        `Remove "${refusedIfSourceHolds}" from the source, or copy a version without it.`,
-      );
+    return (await run("git", ["rev-parse", "FETCH_HEAD"], { cwd })).stdout.trim();
+  }
 
-    // An index of this copy's own, so the repository's index, and what is
-    // staged in it, is never read from or written to.
-    const vendorIndexPath = (await run("git", ["rev-parse", "--path-format=absolute", "--git-path", "cw-vendor-index"], { cwd })).stdout.trim();
-    const vendorIndexEnv = { ...process.env, GIT_INDEX_FILE: vendorIndexPath };
+  /** `git ls-tree -r`, the paths split on the NUL `-z` ends each with, so a
+   *  path holding a newline or a quote is read as it is. */
+  async listFilesAt(repo: URL, commit: string): Promise<readonly string[]> {
+    const { stdout } = await run("git", ["ls-tree", "-r", "-z", "--name-only", commit], { cwd: fileURLToPath(repo), maxBuffer: 64 * 1024 * 1024 });
+    return stdout.split("\0").filter((path) => path !== "");
+  }
+
+  /** `git show <commit>:<path>`. */
+  async readFileAt(repo: URL, commit: string, path: string): Promise<string> {
+    return (await run("git", ["show", `${commit}:${path}`], { cwd: fileURLToPath(repo), maxBuffer: 64 * 1024 * 1024 })).stdout;
+  }
+
+  /** `git read-tree --prefix` into an index of its own, then `checkout-index`
+   *  over the folder emptied first: the repository's own
+   *  index, and what is staged in it, is never read from or written to. */
+  async checkoutFolderAt(repo: URL, commit: string, fromFolder: string, intoSubFolder: string): Promise<void> {
+    const cwd = fileURLToPath(repo);
+    const checkoutIndexPath = (await run("git", ["rev-parse", "--path-format=absolute", "--git-path", "cw-checkout-index"], { cwd })).stdout.trim();
+    const checkoutIndexEnv = { ...process.env, GIT_INDEX_FILE: checkoutIndexPath };
     try {
-      await rm(vendorIndexPath, { force: true });
-      for (const includePath of includePaths) {
-        const objectType = await objectTypeAt(includePath);
-        if (objectType === "tree")
-          await run("git", ["read-tree", `--prefix=${intoSubFolder}/`, `${fetchedCommit}:${includePath}`], { cwd, env: vendorIndexEnv });
-        if (objectType === "blob") {
-          const [fileMode = "100644", , fileHash = ""] = (await run("git", ["ls-tree", fetchedCommit, "--", includePath], { cwd })).stdout.split(/\s+/);
-          await run("git", ["update-index", "--add", "--cacheinfo", `${fileMode},${fileHash},${intoSubFolder}/${basename(includePath)}`], {
-            cwd,
-            env: vendorIndexEnv,
-          });
-        }
-      }
+      await rm(checkoutIndexPath, { force: true });
+      await run("git", ["read-tree", `--prefix=${intoSubFolder}/`, fromFolder === "" ? commit : `${commit}:${fromFolder}`], { cwd, env: checkoutIndexEnv });
       await rm(join(cwd, intoSubFolder), { recursive: true, force: true });
-      await run("git", ["checkout-index", "--all", "--force"], { cwd, env: vendorIndexEnv });
-      return intoSubFolder;
+      await run("git", ["checkout-index", "--all", "--force"], { cwd, env: checkoutIndexEnv });
     } catch (raised) {
       // Whatever was half done to that folder goes back to what was committed.
       await run("git", ["restore", "--source=HEAD", "--worktree", "--", intoSubFolder], { cwd }).catch(() => undefined);
       throw new AdapterFault(`${raised}`, `Check that "${intoSubFolder}" can be written, and run this again.`);
     } finally {
-      await rm(vendorIndexPath, { force: true });
+      await rm(checkoutIndexPath, { force: true });
     }
   }
 

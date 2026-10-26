@@ -56,22 +56,26 @@ async function repository(t: { after(fn: () => unknown): void }): Promise<string
   return repo;
 }
 
-/** One repository, and where a vendor installs under it, as the adapter is
- *  handed the two. Which folder that is is the hexagon's to decide; the adapter
- *  is told. */
-const at = (repo: string) => [[".cw/charter"], pathToFileURL(`${repo}/`), ".cw/vendor/charter"] as const;
+/** One source installed into one repository the way vendoring does it: the
+ *  source fetched at this version, and its charter folder checked out at
+ *  `.cw/vendor/charter`. Which folders those are is the hexagon's to decide; the
+ *  adapter is told. */
+async function installed(source: string, repo: string, version?: string): Promise<void> {
+  const repoUrl = pathToFileURL(`${repo}/`);
+  await git.checkoutFolderAt(repoUrl, await git.fetchCommit(source, repoUrl, version), ".cw/charter", ".cw/vendor/charter");
+}
 
 /** What the vendored guide says in this repository, read off disk. */
 const vendored = (repo: string) => readFile(join(repo, ".cw", "vendor", "charter", "guide", "no-any", "index.md"), "utf8");
 
-test("a source's charter folder installs under the folder its address names, its README beside it, left unstaged and uncommitted", async (t) => {
+test("a source's charter folder checked out at its commit lands where it is told, left unstaged and uncommitted", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   const { stdout: headBefore } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
 
-  assert.equal(await git.subtreeAdd(source, [".cw/charter", "README.md", "CHANGELOG.md"], pathToFileURL(`${repo}/`), ".cw/vendor/charter"), ".cw/vendor/charter");
+  await installed(source, repo);
 
   assert.match(await vendored(repo), /Reject any\./);
-  assert.equal(await readFile(join(repo, ".cw", "vendor", "charter", "README.md"), "utf8"), "Not part of the charter.\n");
+  await assert.rejects(readFile(join(repo, ".cw", "vendor", "charter", "README.md")), "only the folder asked for lands");
   const { stdout: headAfter } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
   assert.equal(headAfter, headBefore, "nothing is committed");
   const { stdout: stagedFiles } = await run("git", ["diff", "--cached", "--name-only"], { cwd: repo });
@@ -84,7 +88,7 @@ test("installing with work in hand leaves that work as it was, staged or not", a
   await writeFile(join(repo, "staged.md"), "staged\n");
   await run("git", ["add", "staged.md"], { cwd: repo });
 
-  await git.subtreeAdd(source, ...at(repo));
+  await installed(source, repo);
 
   assert.match(await vendored(repo), /Reject any\./);
   const { stdout: stagedFiles } = await run("git", ["diff", "--cached", "--name-only"], { cwd: repo });
@@ -92,76 +96,42 @@ test("installing with work in hand leaves that work as it was, staged or not", a
   assert.equal(await readFile(join(repo, "README.md"), "utf8"), "two\n");
 });
 
-test("a version names what is installed", async (t) => {
+test("a version names what is fetched", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
 
-  await git.subtreeAdd(source, ...at(repo), "v1.0.0");
+  await installed(source, repo, "v1.0.0");
 
   assert.match(await vendored(repo), /Reject any\./);
 });
 
 test("installing a source already there brings it up to date", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
-  await git.subtreeAdd(source, ...at(repo));
+  await installed(source, repo);
 
   await writeFile(join(source, ".cw", "charter", "guide", "no-any", "index.md"), "---\nkind: guide\n---\n\nReject it everywhere.\n");
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "two");
 
-  await git.subtreeAdd(source, ...at(repo));
+  await installed(source, repo);
 
   assert.match(await vendored(repo), /Reject it everywhere\./);
 });
 
 test("installing again what is already committed there leaves nothing in hand", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
-  await git.subtreeAdd(source, ...at(repo));
+  await installed(source, repo);
   await run("git", ["add", "."], { cwd: repo });
   await commit(repo, "vendored");
 
-  await git.subtreeAdd(source, ...at(repo));
+  await installed(source, repo);
 
   assert.equal(await git.isClean(pathToFileURL(`${repo}/`)), true);
 });
 
-test("a source without the folder asked for says so, installing nothing", async (t) => {
+test("a version the source has not got is refused in git's own words, fetching nothing", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
 
-  const raised = await git.subtreeAdd(source, ["not-there", "README.md"], pathToFileURL(`${repo}/`), ".cw/vendor/charter").catch((one: unknown) => one);
-
-  assert.ok(raised instanceof AdapterFault, String(raised));
-  assert.match(raised.message, /no "not-there"/);
-
-  await assert.rejects(readFile(join(repo, ".cw", "vendor", "charter", "README.md")));
-  assert.equal(await git.isClean(pathToFileURL(`${repo}/`)), true);
-});
-
-test("a source holding the folder it is refused for says so, installing nothing", async (t) => {
-  const [source, repo] = [await published(t), await repository(t)];
-  await mkdir(join(source, ".cw", "vendor", "other", "guide", "x"), { recursive: true });
-  await writeFile(join(source, ".cw", "vendor", "other", "guide", "x", "index.md"), "---\nkind: guide\n---\n\nX.\n");
-  await run("git", ["add", "."], { cwd: source });
-  await commit(source, "vendored");
-
-  const raised = await git.subtreeAdd(source, ...at(repo), undefined, ".cw/vendor").catch((one: unknown) => one);
-
-  assert.ok(raised instanceof AdapterFault, String(raised));
-  assert.match(raised.message, /holds "\.cw\/vendor"/);
-
-  await assert.rejects(vendored(repo));
-  assert.equal(await git.isClean(pathToFileURL(`${repo}/`)), true);
-});
-
-test("a source without the folder it is refused for installs as any other", async (t) => {
-  const [source, repo] = [await published(t), await repository(t)];
-
-  assert.equal(await git.subtreeAdd(source, ...at(repo), undefined, ".cw/vendor"), ".cw/vendor/charter");
-});
-
-test("a version the source has not got is refused in git's own words, installing nothing", async (t) => {
-  const [source, repo] = [await published(t), await repository(t)];
-
-  const raised = await git.subtreeAdd(source, ...at(repo), "v9.9.9").catch((one: unknown) => one);
+  const raised = await git.fetchCommit(source, pathToFileURL(`${repo}/`), "v9.9.9").catch((one: unknown) => one);
 
   assert.ok(raised instanceof AdapterFault, String(raised));
   assert.match(raised.fix, /tag or branch/);
@@ -170,9 +140,8 @@ test("a version the source has not got is refused in git's own words, installing
 
 test("a source that cannot be reached is refused in git's own words", async (t) => {
   const repo = await repository(t);
-  const source = join(repo, "nothing-here");
 
-  const raised = await git.subtreeAdd(source, ...at(repo)).catch((one: unknown) => one);
+  const raised = await git.fetchCommit(join(repo, "nothing-here"), pathToFileURL(`${repo}/`)).catch((one: unknown) => one);
 
   assert.ok(raised instanceof AdapterFault, String(raised));
   assert.match(raised.message, /repository|does not exist/);
@@ -180,7 +149,7 @@ test("a source that cannot be reached is refused in git's own words", async (t) 
 
 test("an installed folder is taken away, and that it is gone is committed", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
-  await git.subtreeAdd(source, ...at(repo));
+  await installed(source, repo);
   await run("git", ["add", "."], { cwd: repo });
   await commit(repo, "vendored");
 
@@ -215,4 +184,56 @@ test("a folder that is no repository is not clean either", async (t) => {
   const folder = await temporary(t, "bare");
 
   assert.equal(await git.isClean(pathToFileURL(`${folder}/`)), false);
+});
+
+/** A skills repository to take from: two skills, one with an asset two folders
+ *  down, one commit. */
+async function publishedSkills(t: { after(fn: () => unknown): void }): Promise<string> {
+  const source = join(await temporary(t, "skills"), "skills");
+  await mkdir(join(source, "skills", "grill-me", "agents", "deep"), { recursive: true });
+  await mkdir(join(source, "skills", "grilling"), { recursive: true });
+  await writeFile(join(source, "skills", "grill-me", "SKILL.md"), "---\nname: grill-me\ndescription: Grill.\n---\n\nGrill me.\n");
+  await writeFile(join(source, "skills", "grill-me", "agents", "deep", "openai.yaml"), "model: x\n");
+  await writeFile(join(source, "skills", "grilling", "SKILL.md"), "---\nname: grilling\ndescription: Grilling.\n---\n\nGrill.\n");
+  await run("git", ["init", "-q", "-b", "main"], { cwd: source });
+  await run("git", ["add", "."], { cwd: source });
+  await commit(source, "one");
+  return source;
+}
+
+test("a source fetched once is read at its commit: every file it holds, and what one holds (CORE-FR-185)", async (t) => {
+  const [source, repo] = [await publishedSkills(t), await repository(t)];
+  const repoUrl = pathToFileURL(`${repo}/`);
+
+  const fetchedCommit = await git.fetchCommit(source, repoUrl);
+
+  assert.deepEqual([...(await git.listFilesAt(repoUrl, fetchedCommit))].sort(), [
+    "skills/grill-me/SKILL.md",
+    "skills/grill-me/agents/deep/openai.yaml",
+    "skills/grilling/SKILL.md",
+  ]);
+  assert.equal(await git.readFileAt(repoUrl, fetchedCommit, "skills/grilling/SKILL.md"), "---\nname: grilling\ndescription: Grilling.\n---\n\nGrill.\n");
+});
+
+test("one folder of a commit fetched is checked out over a folder here, whole, left unstaged and uncommitted (CORE-FR-187, CORE-FR-189)", async (t) => {
+  const [source, repo] = [await publishedSkills(t), await repository(t)];
+  const repoUrl = pathToFileURL(`${repo}/`);
+  const fetchedCommit = await git.fetchCommit(source, repoUrl);
+  const intoSubFolder = ".cw/vendor/team/skills/skill/grill-me";
+  await mkdir(join(repo, intoSubFolder), { recursive: true });
+  await writeFile(join(repo, intoSubFolder, "stale.md"), "From before.\n");
+  await mkdir(join(repo, ".cw/vendor/team/skills/skill/grilling"), { recursive: true });
+  await writeFile(join(repo, ".cw/vendor/team/skills/skill/grilling/index.md"), "Kept.\n");
+  const { stdout: headBefore } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
+
+  await git.checkoutFolderAt(repoUrl, fetchedCommit, "skills/grill-me", intoSubFolder);
+
+  assert.equal(await readFile(join(repo, intoSubFolder, "agents", "deep", "openai.yaml"), "utf8"), "model: x\n");
+  assert.match(await readFile(join(repo, intoSubFolder, "SKILL.md"), "utf8"), /name: grill-me/);
+  await assert.rejects(() => readFile(join(repo, intoSubFolder, "stale.md"), "utf8"), "what the folder held is replaced whole");
+  assert.equal(await readFile(join(repo, ".cw/vendor/team/skills/skill/grilling/index.md"), "utf8"), "Kept.\n", "a folder beside it is left as it was");
+  const { stdout: headAfter } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
+  assert.equal(headAfter, headBefore, "nothing is committed");
+  const { stdout: stagedFiles } = await run("git", ["diff", "--cached", "--name-only"], { cwd: repo });
+  assert.equal(stagedFiles.trim(), "", "nothing is staged");
 });

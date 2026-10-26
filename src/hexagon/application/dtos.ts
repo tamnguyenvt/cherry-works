@@ -8,6 +8,8 @@ import type { EvalRunReport } from "../domain/services/evalService.js";
 import type { WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import type { MainContext, MainContextLoad } from "../domain/models/context/MainContext.js";
 import type { PlanSummary } from "../service/buildService.js";
+import type { VendorInstall } from "../service/vendorRepo.js";
+import type { VendorPrimitive } from "../domain/models/vendor/VendorPrimitive.js";
 import type { SensorAnswer } from "../domain/models/sensor/SensorAnswer.js";
 import type { SessionAnalysis } from "../domain/models/session/SessionAnalysis.js";
 import type { SessionAnalysisSummary } from "../domain/models/session/SessionAnalysisSummary.js";
@@ -305,4 +307,16 @@ export function sessionReviewOutcomeDTO(
  *  (CORE-FR-177, CORE-FR-178). */
 export function sensorRunOutcomeDTO(signalAnswer: SensorAnswer): OutcomeDTOs.SensorRunOutcome {
   return { type: "SensorRunOutcome", data: { exitCode: signalAnswer.exitCode, answer: signalAnswer.stdout, problem: signalAnswer.stderr } };
+}
+
+/** One primitive installed from a vendor source (CORE-FR-184, CORE-FR-186). */
+export function vendorPrimitiveDTO(vendorPrimitive: VendorPrimitive): DataDTOs.VendorPrimitive {
+  const { kind, id, description, leftOutHeaders } = vendorPrimitive;
+  return { type: "VendorPrimitive", data: { kind, id, description, leftOutHeaders } };
+}
+
+/** What installing one vendor source came to: its folder, and the primitives
+ *  installed there (CORE-FR-184). */
+export function vendorAddOutcomeDTO(vendorInstall: VendorInstall): OutcomeDTOs.VendorAddOutcome {
+  return { type: "VendorAddOutcome", data: { folder: vendorInstall.folder, primitives: vendorInstall.vendorPrimitives.map(vendorPrimitiveDTO) } };
 }

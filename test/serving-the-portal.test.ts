@@ -40,7 +40,7 @@ function engine(): CharterAuthoring {
 
 /** The vendoring the routes are driven by beside the engine, over the same
  *  empty repository: no test here reaches a vendor route. */
-const charterVendoringApp = new CharterVendoring(new URL("file:///repo/"), new InMemoryFileReaders({}), new InMemoryVCS());
+const charterVendoringApp = new CharterVendoring(new URL("file:///repo/"), new InMemoryFileReaders({}), new InMemoryVCS(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
 
 /** What the test files are driven through, over an empty repository: nothing
  *  here asks it for anything. */

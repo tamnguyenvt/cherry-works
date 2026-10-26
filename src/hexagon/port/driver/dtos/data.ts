@@ -253,6 +253,19 @@ const ServedToolsSchema = dto(
  *  saying why no mcp origin was reached (FR-154). */
 const ToolAnswerSchema = dto("ToolAnswer", z.record(z.string(), z.unknown()));
 
+/** One primitive installed from a vendor source: its kind, id and
+ *  description, and, for a skill converted from a `SKILL.md`, the headers the
+ *  charter has no field for (CORE-FR-184, CORE-FR-186). */
+const VendorPrimitiveSchema = dto(
+  "VendorPrimitive",
+  z.object({
+    kind: z.string(),
+    id: z.string(),
+    description: z.string(),
+    leftOutHeaders: StringsSchema,
+  }),
+);
+
 /** What a repository configured itself with. */
 const WorkspaceSettingsSchema = dto(
   "WorkspaceSettings",
@@ -352,6 +365,7 @@ export const DataDTOs = byType(
   TestSuiteSchema,
   TestSuitesSchema,
   ToolAnswerSchema,
+  VendorPrimitiveSchema,
   WorkspaceSettingsSchema,
 );
 
@@ -384,5 +398,6 @@ export namespace DataDTOs {
   export type TestSuite = z.infer<typeof DataDTOs.TestSuite>;
   export type TestSuites = z.infer<typeof DataDTOs.TestSuites>;
   export type ToolAnswer = z.infer<typeof DataDTOs.ToolAnswer>;
+  export type VendorPrimitive = z.infer<typeof DataDTOs.VendorPrimitive>;
   export type WorkspaceSettings = z.infer<typeof DataDTOs.WorkspaceSettings>;
 }
