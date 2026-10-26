@@ -105,6 +105,7 @@ A single charter covering design, planning and implementation at once has to be 
 - Q: Which command takes a skill from a skills repository? → A: `cw vendor add` itself, with no flag naming the source's shape: a source holding a charter folder is installed as a charter, as before; one holding none is looked up for its skills. A command of its own named for skills would read as acting on skill primitives ([CORE-FR-184](#core-fr-184), [CORE-FR-193](#core-fr-193)).
 - Q: What does a skills repository given with no `--skill` install? → A: Every skill it holds ([CORE-FR-188](#core-fr-188)).
 - Q: What becomes of `disable-model-invocation: true`, which keeps the agent from opening a skill by itself? → A: The charter gains it as a header of its own, for a skill and a playbook, built for a host as that host's own header of the name; a skill taken from a skills repository keeps the value it was written with.
+- Q: What is a host given that has no header keeping the agent from opening a skill? → A: Nothing is decided for it yet: every host built for has one, and the story adding a host without one decides.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -741,7 +742,7 @@ Before this, a vendor source landed in a folder named by the end of its address 
 
 ### CORE Story 31 - Keep a skill out of the agent's own reach (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 Some skills are for the user to start and for nobody else: an interview that sharpens a plan is useless when the agent opens it on its own halfway through a task. Before this, the charter could keep a skill out of the user's commands ([CORE Story 28](#core-story-28---keep-a-step-skill-out-of-the-users-commands-priority-p2)) but not out of the agent's reach. After this, an author writes `disable-model-invocation: true` in a skill's or a playbook's headers; the host still offers it as a command the user types, and the agent no longer opens it because its description matches what is asked.
 
@@ -879,7 +880,6 @@ Most skills are published not as charters but as skills repositories, each skill
 - A `SKILL.md` header the charter has no field for (`license`, `allowed-tools`, `model`) — it is left out of the primitive, and the command names what it left out.
 - A `SKILL.md` declaring `user-invocable: false` — the primitive declares `disable-user-invocation: true` ([CORE-FR-186](#core-fr-186)).
 - Two folders of one skills repository declaring the same `name` — the skill is refused naming both files, and nothing is installed.
-- A host with no header of its own keeping the agent from opening a skill — that host is given the skill as before, and the build says so.
 
 ## Requirements *(mandatory)*
 
@@ -1145,7 +1145,7 @@ Most skills are published not as charters but as skills repositories, each skill
 
 - <a id="core-fr-180"></a>**CORE-FR-180**: The engine MUST list, build and remove a source installed by an earlier version in a folder named by the end of its address alone as it does any other source, and MUST NOT report it as an error.
 - <a id="core-fr-181"></a>**CORE-FR-181**: A `skill` and a `playbook` MAY declare `disable-model-invocation`, `true` or `false`; one that does not is `false`. Any other value MUST be an error under its file, and nothing is built.
-- <a id="core-fr-182"></a>**CORE-FR-182**: A build for a host MUST give every skill and playbook declaring `disable-model-invocation: true` to that host as a command the user types, under that host's own header keeping the agent from opening it by itself. A host with no such header MUST be given it as before, and the build MUST say so.
+- <a id="core-fr-182"></a>**CORE-FR-182**: A build for a host MUST give every skill and playbook declaring `disable-model-invocation: true` to that host as a command the user types, under that host's own header keeping the agent from opening it by itself.
 - <a id="core-fr-183"></a>**CORE-FR-183**: A skill or a playbook declaring both `disable-model-invocation: true` and `disable-user-invocation: true` MUST be an error under its file, and nothing is built.
 - <a id="core-fr-184"></a>**CORE-FR-184**: `cw vendor add <source> --skill=<name>` MUST take, from a source holding no charter folder at the version asked for given in the short form a vendor source is given in ([CORE-FR-041](#core-fr-041), [CORE-FR-049](#core-fr-049)), each skill named, `--skill` repeated for more than one, and install each as a skill primitive in that source's vendor folder ([CORE-FR-050](#core-fr-050)), read-only as any vendored primitive ([CORE-FR-077](#core-fr-077)).
 - <a id="core-fr-185"></a>**CORE-FR-185**: The system MUST find a skill in a skills repository the way `npx skills add` finds it: each folder holding a `SKILL.md`, known by the `name` its headers declare.

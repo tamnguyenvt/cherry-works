@@ -8,6 +8,16 @@ export const PlaybookHeadersSchema = CommonHeadersSchema.extend({
   /** Whether it is kept out of the commands its host offers the user, being a
    *  step of something else; the agent still opens it (CORE-FR-173). */
   "disable-user-invocation": FlagSchema.optional(),
+  /** Whether the agent is kept from opening it by itself, its description
+   *  matching what is asked; the user still runs it as a command (CORE-FR-181). */
+  "disable-model-invocation": FlagSchema.optional(),
+}).superRefine((headers, context) => {
+  // Kept from both, nobody could open it (CORE-FR-183).
+  if (headers["disable-user-invocation"] === true && headers["disable-model-invocation"] === true)
+    context.addIssue({
+      code: "custom",
+      message: `This playbook declares both "disable-user-invocation: true" and "disable-model-invocation: true", so neither the user nor the agent could open it; drop one.`,
+    });
 });
 export type PlaybookHeaders = Readonly<z.infer<typeof PlaybookHeadersSchema>>;
 

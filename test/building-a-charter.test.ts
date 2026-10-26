@@ -336,6 +336,38 @@ test("a disable-user-invocation that is neither true nor false stops the build u
   }
 });
 
+test("a disable-model-invocation that is neither true nor false stops the build under its file (CORE-FR-181)", async () => {
+  for (const kind of ["skill", "playbook"]) {
+    const { held, build } = building({
+      ...compilingFor("claude"),
+      [at(`${kind}/ship/index.md`)]: primitive(kind, "ship", ['triggers: ["ship this"]', "disable-model-invocation: maybe"]),
+    });
+
+    const planSummaryDTO = await build();
+
+    assert.ok(planSummaryDTO.type === "FaultsByFile", kind);
+    assert.deepEqual(Object.keys(planSummaryDTO.data.files), [`.cw/charter/${kind}/ship/index.md`], kind);
+    assert.match(JSON.stringify(planSummaryDTO.data.files), /written true or false/, kind);
+    await assert.rejects(() => contentsOf(held, ".claude/skills/ship/SKILL.md"), kind);
+  }
+});
+
+test("a skill nobody could open, kept from both the user and the agent, stops the build under its file (CORE-FR-183)", async () => {
+  for (const kind of ["skill", "playbook"]) {
+    const { held, build } = building({
+      ...compilingFor("claude"),
+      [at(`${kind}/ship/index.md`)]: primitive(kind, "ship", ['triggers: ["ship this"]', "disable-model-invocation: true", "disable-user-invocation: true"]),
+    });
+
+    const planSummaryDTO = await build();
+
+    assert.ok(planSummaryDTO.type === "FaultsByFile", kind);
+    assert.deepEqual(Object.keys(planSummaryDTO.data.files), [`.cw/charter/${kind}/ship/index.md`], kind);
+    assert.match(JSON.stringify(planSummaryDTO.data.files), /neither the user nor the agent/, kind);
+    await assert.rejects(() => contentsOf(held, ".claude/skills/ship/SKILL.md"), kind);
+  }
+});
+
 test("a body naming [[<id>]] no layer holds stops the build (FR-143, FR-162)", async () => {
   for (const mentionedReference of ["[[missing]]", "[[team/missing]]"]) {
     const { build } = building({

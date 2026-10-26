@@ -290,6 +290,22 @@ test("a skill or a playbook marked disable-user-invocation is no command the use
     assert.doesNotMatch(files[commandSkillFile] ?? "", /user-invocable/, commandSkillFile);
 });
 
+test("a skill or a playbook marked disable-model-invocation is a command the agent does not open by itself (CORE-FR-181, CORE-FR-182)", async () => {
+  const files = await projected({
+    [at("skill/grill/index.md")]: primitive("skill", "grill", "Interview the user.", ['triggers: ["grill me"]', "disable-model-invocation: true"]),
+    [at("playbook/release/index.md")]: primitive("playbook", "release", "Cut a release.", ['triggers: ["release it"]', "disable-model-invocation: true"]),
+    [at("skill/review/index.md")]: primitive("skill", "review", "Review the change.", ['triggers: ["review this"]', "disable-model-invocation: false"]),
+    [at("skill/explain/index.md")]: primitive("skill", "explain", "Explain the code.", ['triggers: ["explain this"]']),
+  });
+
+  for (const userOnlySkillFile of [".claude/skills/grill/SKILL.md", ".claude/skills/release/SKILL.md"]) {
+    assert.match(files[userOnlySkillFile] ?? "", /^---\nname: [a-z-]+\ndescription: .+\ndisable-model-invocation: true\n---\n/, userOnlySkillFile);
+    assert.doesNotMatch(files[userOnlySkillFile] ?? "", /user-invocable/, userOnlySkillFile);
+  }
+  for (const agentSkillFile of [".claude/skills/review/SKILL.md", ".claude/skills/explain/SKILL.md"])
+    assert.doesNotMatch(files[agentSkillFile] ?? "", /disable-model-invocation/, agentSkillFile);
+});
+
 test("a posture compiles to the settings this host enforces, as JSON (FR-018)", async () => {
   const files = await projected({
     [at("posture/sandboxed/index.md")]: primitive("posture", "sandboxed", "What may be run unattended.", [

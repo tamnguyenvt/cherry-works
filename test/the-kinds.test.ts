@@ -124,7 +124,7 @@ test("a header read from a closed set carries its values, and no other header do
           ? SIGNALS
           : kind === "mixin" && field === "position"
             ? ["start", "end"]
-            : field === "disable-user-invocation"
+            : field === "disable-user-invocation" || field === "disable-model-invocation"
               ? ["true", "false"]
               : undefined,
         `${kind} ${field}`,

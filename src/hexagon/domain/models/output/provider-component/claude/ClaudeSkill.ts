@@ -4,11 +4,14 @@ import { DocumentBasedComponent } from "../DocumentBasedComponent.js";
 /** A skill's frontmatter: the name its directory carries, the description
  *  this host reads on every turn to decide whether to open the body, and,
  *  where it is no command of the user's, `user-invocable: false`: left out of
- *  the `/` menu, still opened by the agent (CORE-FR-174). */
+ *  the `/` menu, still opened by the agent (CORE-FR-174); and where the user
+ *  alone starts it, `disable-model-invocation: true`: in the `/` menu, never
+ *  opened by the agent by itself (CORE-FR-182). */
 export interface ClaudeSkillHeaders {
   readonly name: string;
   readonly description: string;
   readonly "user-invocable"?: false;
+  readonly "disable-model-invocation"?: true;
 }
 
 /** What a skill is compiled with, its name aside: that is what the component is
