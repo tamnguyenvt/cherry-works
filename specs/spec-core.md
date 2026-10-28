@@ -2,9 +2,9 @@
 
 **Created**: 2026-08-30
 
-**Updated**: 2026-10-26
+**Updated**: 2026-10-28
 
-**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types; let its author say so in its headers." Then: "Let the hooks go through a `cw` command rather than the raw command compiled from the charter: `cw sensor run <signal>` gathers every sensor of that signal and runs them." Then: "`cw vendor add mattpocock/skills --skill=grill-me`: a source holding a charter is installed as a charter; otherwise its `SKILL.md` are looked up, each taken as `npx skills add mattpocock/skills --skill=grill-me` takes it and converted into a skill of the charter; with no `--skill`, every skill the source holds."
+**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types; let its author say so in its headers." Then: "Let the hooks go through a `cw` command rather than the raw command compiled from the charter: `cw sensor run <signal>` gathers every sensor of that signal and runs them." Then: "`cw vendor add mattpocock/skills --skill=grill-me`: a source holding a charter is installed as a charter; otherwise its `SKILL.md` are looked up, each taken as `npx skills add mattpocock/skills --skill=grill-me` takes it and converted into a skill of the charter; with no `--skill`, every skill the source holds." Then: "`cw vendor inject`, beside `cw vendor add`, writes what it takes straight into the repository's own charter rather than a vendor folder. A source may gather many charters: under `charters/`, one folder each, picked with `--charter=`; under `skills/`, skills, picked with `--skill=`."
 
 ## Overview
 
@@ -102,13 +102,21 @@ A single charter covering design, planning and implementation at once has to be 
 - Q: Where does a skill taken from a skills repository, one laid out for `npx skills add` rather than as a charter, land? → A: In the vendor layer, read-only and committed as any vendor source is; brought up to date and removed the way a vendor source is. To differ from it, a repository authors a primitive under its own id ([CORE-FR-016](#core-fr-016)). Its folder is named by owner and repository, `mattpocock/skills`.
 - Q: Is the folder named by owner and repository for skills repositories only, or for every vendor source? → A: For every vendor source, a charter source included ([CORE-FR-050](#core-fr-050)). A source installed under the folder an earlier version named is not moved for the repository: it is removed and installed again.
 - Q: A charter skill must carry `triggers`, and a `SKILL.md` has none: where do they come from? → A: Its `name` is its one trigger: `grill-me` for `grill-me`. The description stays the description alone; made a trigger as well, it would be read twice by the host, once as what the skill is for and once as when to use it. Nothing is invented.
-- Q: Which command takes a skill from a skills repository? → A: `cw vendor add` itself, with no flag naming the source's shape: a source holding a charter folder is installed as a charter, as before; one holding none is looked up for its skills. A command of its own named for skills would read as acting on skill primitives ([CORE-FR-184](#core-fr-184), [CORE-FR-193](#core-fr-193)).
+- Q: Which command takes a skill from a skills repository? → A: `cw vendor add` itself, with no flag naming the source's shape: a source holding a charter folder is installed as a charter, as before; one holding none is looked up for its skills (since 2026-10-28, `--skill` reads the source's skills whatever else it holds). A command of its own named for skills would read as acting on skill primitives ([CORE-FR-184](#core-fr-184), [CORE-FR-193](#core-fr-193)).
 - Q: What does a skills repository given with no `--skill` install? → A: Every skill it holds ([CORE-FR-188](#core-fr-188)).
 - Q: What becomes of `disable-model-invocation: true`, which keeps the agent from opening a skill by itself? → A: The charter gains it as a header of its own, for a skill and a playbook, built for a host as that host's own header of the name; a skill taken from a skills repository keeps the value it was written with.
 - Q: What is a host given that has no header keeping the agent from opening a skill? → A: Nothing is decided for it yet: every host built for has one, and the story adding a host without one decides.
 - Q: Does taking skills commit what it installs, and refuse work in hand? → A: Neither: it leaves what it installs unstaged for the developer to read and commit, whatever else is in hand, as installing a charter source does ([CORE-FR-190](#core-fr-190)).
 - Q: Where in a skills repository is a skill looked for? → A: Under its `skills/` folder alone, up to three folders deep, as `npx skills` walks it: `skills/<name>/` or `skills/<group>/<name>/`. A folder holding a `SKILL.md` is a skill, and nothing below it is looked at; a `SKILL.md` anywhere else in the source — `.claude/skills/`, `.agents/skills/`, `registry/` — is no skill to take. Two declaring one `name` are refused ([CORE-FR-185](#core-fr-185), [CORE-FR-192](#core-fr-192)).
-- Q: Is the developer asked which skills to take? → A: No, at the terminal or in the portal: `--skill` names the skills taken, and with none every skill is taken. A charter is installed whole, and `--skill` given for it is refused, since a charter is no list of skills to choose from ([CORE-FR-188](#core-fr-188), [CORE-FR-193](#core-fr-193)).
+- Q: Is the developer asked which skills to take? → A: No, at the terminal or in the portal: `--skill` names the skills taken, and with none every skill is taken. A charter is installed whole, and `--skill` given for it was refused, since a charter is no list of skills to choose from; since 2026-10-28 `--skill` reads the source's `skills/` folder whatever else it holds ([CORE-FR-188](#core-fr-188), [CORE-FR-193](#core-fr-193)).
+
+### Session 2026-10-28
+
+- Q: A primitive being injected has an id the charter already holds — the repository's own, a vendor's, or the engine's: what happens? → A: The whole inject is refused naming both files, and nothing is written, as any two files claiming one id are ([CORE-FR-015](#core-fr-015), [CORE-FR-194](#core-fr-194)). Injecting a skill a second time is refused the same way: it is the repository's own by then.
+- Q: Can a developer inject only part of a charter, rather than the whole of it? → A: Not by primitive: what is picked is a whole charter or a whole skill. A source may hold many charters instead, each picked by its name with `--charter=<name>`, as a skill is with `--skill=<name>` ([CORE-FR-195](#core-fr-195)).
+- Q: Where in a source does each of its many charters live? → A: Under its `charters/` folder, one folder per charter named by it, each holding a charter laid out as a single-charter source holds one: `charters/<name>/.cw/charter/`. Its author can build and test each there as any charter ([CORE-FR-195](#core-fr-195)).
+- Q: Do `cw vendor add` and `cw vendor inject` both read a source of many charters? → A: Both, with the same flags: they read the same sources and differ only in where they write. `cw vendor add` installs each charter picked in a vendor folder of its own, `<owner>/<repository>/<name>`, brought up to date and removed on its own ([CORE-FR-196](#core-fr-196)).
+- Q: What is taken with neither `--charter` nor `--skill`, and from a source holding more than one shape? → A: With neither, the first shape the source holds, in this order: its one charter folder, else every charter under `charters/`, else every skill under `skills/`. `--charter` reads `charters/` alone and `--skill` reads `skills/` alone, whatever else the source holds; both may be given together. A flag for a shape the source does not hold is refused, saying what it holds ([CORE-FR-193](#core-fr-193)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -780,11 +788,55 @@ Most skills are published not as charters but as skills repositories, each skill
 4. **Given** a skills repository and no `--skill`, **When** the command runs, **Then** every skill the source holds is installed, with nothing asked ([CORE-FR-188](#core-fr-188)).
 5. **Given** `--skill` naming a skill the source does not hold, among others it does, **When** the command runs, **Then** nothing is installed and the skills the source holds are named ([CORE-FR-188](#core-fr-188)).
 6. **Given** `mattpocock/skills` already holding `grill-me`, **When** the developer takes `grilling` from it, **Then** `grilling` is added and `grill-me` is left as it was; **When** they take `grill-me` again, **Then** it is replaced whole by the version asked for ([CORE-FR-189](#core-fr-189)).
-7. **Given** a vendor folder holding a charter, **When** the developer installs its source again at a version holding no charter folder, or a folder holding taken skills and a version of its source that holds a charter folder, **Then** it is refused naming the folder, and nothing is touched ([CORE-FR-191](#core-fr-191)).
+7. **Given** a vendor folder holding a charter, **When** the developer takes skills into it, or a folder holding taken skills and the developer installs a charter into it, **Then** it is refused naming the folder, and nothing is touched ([CORE-FR-191](#core-fr-191)).
 8. **Given** a `SKILL.md` with no name or no description, or a name that is not a valid id, **When** that skill is taken, **Then** it is refused naming the file, and nothing is installed ([CORE-FR-192](#core-fr-192)).
 9. **Given** a source that cannot be reached, **When** the command runs, **Then** nothing is installed and the reason is given in git's words; **Given** other uncommitted work, **Then** the skills are installed all the same ([CORE-FR-190](#core-fr-190)).
-10. **Given** a source holding a charter folder and `--skill`, **When** the command runs, **Then** nothing is installed and the developer is told `--skill` is for skills repositories, not a charter ([CORE-FR-193](#core-fr-193)).
+10. **Given** a source holding a charter folder, skill folders beside it and `--skill`, **When** the command runs, **Then** only the skills named are taken, and the charter is not installed ([CORE-FR-193](#core-fr-193)).
 11. **Given** a source holding a charter folder and skill folders beside it, **When** the developer runs `cw vendor add` with no `--skill`, **Then** it is installed as a charter exactly as before, and none of those skill folders is taken ([CORE-FR-193](#core-fr-193)).
+
+---
+
+### CORE Story 33 - Pick charters from a source that gathers many (Priority: P2)
+
+**Status**: Todo
+
+A team keeping several charters — a baseline, a spec-driven workflow, an architecture — had to publish each from a repository of its own. After this, one repository gathers them under `charters/`, one folder each, `charters/<name>/.cw/charter/`, and a developer picks the ones they want with `cw vendor add acme/charters --charter=baseline`, as they pick skills with `--skill`. Each charter picked lands in a vendor folder of its own, `acme/charters/baseline`, brought up to date and removed on its own. With no flag, the source's shape decides what is taken.
+
+**Why this priority**: One repository per charter is a cost every team publishing more than one pays; a source of many is how skills are already published, and how a team expects to find charters.
+
+**Independent Test**: Make a source holding `charters/baseline/.cw/charter/` and `charters/sdd/.cw/charter/`; run `cw vendor add <source> --charter=baseline` and confirm only `<owner>/<repository>/baseline` is installed, unstaged; remove it with `cw vendor remove` and confirm `sdd`, installed beside it, is untouched. Run with `--charter=nothing-here` and confirm nothing is installed and `baseline` and `sdd` are named. Run with no flag and confirm both are installed.
+
+**Acceptance Scenarios**:
+
+1. **Given** a source holding charters `baseline` and `sdd` under `charters/`, **When** the developer runs `cw vendor add` with `--charter=baseline`, **Then** the vendor folder `<owner>/<repository>/baseline` holds that charter, left unstaged, and `sdd` is not installed ([CORE-FR-195](#core-fr-195), [CORE-FR-196](#core-fr-196), [CORE-SC-052](#core-sc-052)).
+2. **Given** `baseline` and `sdd` both installed from that source, **When** the developer brings `baseline` up to date or removes it, **Then** `sdd` is left as it was ([CORE-FR-196](#core-fr-196)).
+3. **Given** a source holding only `charters/`, **When** the command runs with neither `--charter` nor `--skill`, **Then** every charter it holds is installed, with nothing asked ([CORE-FR-193](#core-fr-193)).
+4. **Given** a source holding a charter folder of its own, `charters/` and `skills/`, **When** the command runs with neither flag, **Then** its one charter is installed and nothing under `charters/` or `skills/` is taken; **When** it runs with `--skill`, **Then** only those skills are taken; **When** it runs with both `--charter` and `--skill`, **Then** those charters and those skills are taken ([CORE-FR-193](#core-fr-193)).
+5. **Given** `--charter` naming a charter the source does not hold, among others it does, **When** the command runs, **Then** nothing is installed and the charters it holds are named ([CORE-FR-197](#core-fr-197)).
+6. **Given** a source holding no `charters/` folder, **When** the command runs with `--charter`, **Then** nothing is installed and the shapes the source holds are named ([CORE-FR-193](#core-fr-193)).
+7. **Given** a folder under `charters/` named as a kind is, or holding no charter folder, **When** that charter is picked, **Then** it is refused naming the folder, and nothing is installed ([CORE-FR-197](#core-fr-197)).
+
+---
+
+### CORE Story 34 - Inject a charter or a skill into the repository's own charter (Priority: P2)
+
+**Status**: Todo
+
+A vendored primitive is read-only: to differ from it, a developer authors one of their own under another id, by hand. Often what they want is to start from someone else's skill or charter and make it theirs. After this, they run `cw vendor inject mattpocock/skills --skill=grill-me`, or `cw vendor inject acme/charters --charter=baseline`: it reads the source exactly as `cw vendor add` does, with the same flags, and writes each primitive it takes straight into the repository's own charter, as if it had been authored there. No vendor folder is made, nothing records where it came from, and from then on it is the repository's to edit, test and delete like any primitive it authored.
+
+**Why this priority**: Starting from what someone already wrote is the common case of authoring; copying a vendored folder and renaming every id by hand is where it goes wrong.
+
+**Independent Test**: In a repository with no uncommitted work, run `cw vendor inject mattpocock/skills --skill=grill-me`; confirm `grill-me` is in the repository's own charter, unstaged, converted as `cw vendor add` converts it, with nothing added under the vendor directory; edit its body and build, and confirm the edit is built; confirm `cw vendor list` does not name the source. Run it again and confirm it is refused naming both files, and nothing is written.
+
+**Acceptance Scenarios**:
+
+1. **Given** a skills repository holding `grill-me`, **When** the developer runs `cw vendor inject` with that source and `--skill=grill-me`, **Then** the repository's own charter holds the skill `grill-me`, converted and with its files beside it as `cw vendor add` would take it, left unstaged, nothing is built, and nothing is written under the vendor directory ([CORE-FR-198](#core-fr-198), [CORE-FR-199](#core-fr-199), [CORE-SC-053](#core-sc-053)).
+2. **Given** a source holding one charter, or charters under `charters/`, **When** the developer injects it, with or without `--charter`, **Then** every primitive of each charter taken is written into the repository's own charter, with its files beside it, as authored there ([CORE-FR-193](#core-fr-193), [CORE-FR-198](#core-fr-198)).
+3. **Given** an injected primitive, **When** the developer edits or deletes it, **Then** it is changed or deleted as any primitive the repository authored, with nothing refused as vendored ([CORE-FR-200](#core-fr-200)).
+4. **Given** an injected primitive, **When** the vendor commands are run, **Then** none of them lists, brings up to date or removes it, and nothing names the source it came from ([CORE-FR-200](#core-fr-200)).
+5. **Given** a primitive to inject whose id the charter already holds — the repository's own, a vendor's, the engine's, or one injected before — **When** the command runs, **Then** it is refused naming both files, and nothing is written ([CORE-FR-194](#core-fr-194)).
+6. **Given** a source that cannot be reached, a version that does not exist, a source holding vendors of its own, or a flag naming what the source does not hold, **When** the command runs, **Then** nothing is written, and the reason is given as `cw vendor add` gives it ([CORE-FR-198](#core-fr-198)).
+7. **Given** other uncommitted work, **When** the command runs, **Then** what it takes is written all the same ([CORE-FR-199](#core-fr-199)).
 
 ---
 
@@ -799,7 +851,9 @@ Most skills are published not as charters but as skills repositories, each skill
 - A mixin and its host both set the same single-valued field — the host wins; both set the same list-valued field — the values merge with the host's last.
 - A primitive cites reasoning that does not exist — validation reports a dangling reference.
 - The vendor source is unreachable, or the pinned version does not exist — the command fails without touching what is already installed.
-- The vendor source holds no `.cw/charter/` folder at the version asked for — it is refused as no charter, saying to run `cw init` there, and nothing is installed ([CORE-FR-042](#core-fr-042)).
+- The vendor source holds no charter folder, no `charters/` folder and no skill under `skills/` at the version asked for — it is refused as no charter, saying to run `cw init` there, and nothing is installed ([CORE-FR-042](#core-fr-042), [CORE-FR-193](#core-fr-193)).
+- A charter under a source's `charters/` holds vendors of its own — it is refused as a single-charter source holding them is ([CORE-FR-170](#core-fr-170)).
+- A skill being injected names another skill in its body that is not injected with it — it is written as it was published; the name stays prose ([CORE-FR-198](#core-fr-198)).
 - The vendor source installed vendors of its own — it is refused, saying to install those here directly, and nothing is installed ([CORE-FR-170](#core-fr-170)).
 - A projected file was hand-edited — the next build overwrites it, and the preview build reports it as an update.
 - A projection exists whose source primitive was deleted — the build deletes the projection.
@@ -1151,16 +1205,23 @@ Most skills are published not as charters but as skills repositories, each skill
 - <a id="core-fr-181"></a>**CORE-FR-181**: A `skill` and a `playbook` MAY declare `disable-model-invocation`, `true` or `false`; one that does not is `false`. Any other value MUST be an error under its file, and nothing is built.
 - <a id="core-fr-182"></a>**CORE-FR-182**: A build for a host MUST give every skill and playbook declaring `disable-model-invocation: true` to that host as a command the user types, under that host's own header keeping the agent from opening it by itself.
 - <a id="core-fr-183"></a>**CORE-FR-183**: A skill or a playbook declaring both `disable-model-invocation: true` and `disable-user-invocation: true` MUST be an error under its file, and nothing is built.
-- <a id="core-fr-184"></a>**CORE-FR-184**: `cw vendor add <source> --skill=<name>` MUST take, from a source holding no charter folder at the version asked for given in the short form a vendor source is given in ([CORE-FR-041](#core-fr-041), [CORE-FR-049](#core-fr-049)), each skill named, `--skill` repeated for more than one, and install each as a skill primitive in that source's vendor folder ([CORE-FR-050](#core-fr-050)), read-only as any vendored primitive ([CORE-FR-077](#core-fr-077)).
+- <a id="core-fr-184"></a>**CORE-FR-184**: `cw vendor add <source> --skill=<name>` MUST take, from the `skills/` folder of a source at the version asked for ([CORE-FR-193](#core-fr-193)) given in the short form a vendor source is given in ([CORE-FR-041](#core-fr-041), [CORE-FR-049](#core-fr-049)), each skill named, `--skill` repeated for more than one, and install each as a skill primitive in that source's vendor folder ([CORE-FR-050](#core-fr-050)), read-only as any vendored primitive ([CORE-FR-077](#core-fr-077)).
 - <a id="core-fr-185"></a>**CORE-FR-185**: The system MUST find a skill in a skills repository as a folder under its `skills/` folder, at most three folders deep, holding a `SKILL.md`, known by the `name` its headers declare. Nothing below a skill's folder, nothing under `node_modules`, and no `SKILL.md` outside `skills/` MUST be read as a skill.
 - <a id="core-fr-186"></a>**CORE-FR-186**: Converting a `SKILL.md` MUST make its `name` the id, keep its `description`, make its `name` the one trigger, keep `disable-model-invocation`, declare `disable-user-invocation: true` where it declares `user-invocable: false`, and keep its body as written. Every other header MUST be left out, and the command MUST name what it left out.
 - <a id="core-fr-187"></a>**CORE-FR-187**: Every file beside a `SKILL.md` in its folder, at any depth, MUST arrive as an asset of the primitive, at the same path.
-- <a id="core-fr-188"></a>**CORE-FR-188**: Given a skills repository and no `--skill`, the command MUST take every skill the source holds, asking nothing. Given a `--skill` the source does not hold, it MUST install nothing, naming the skills the source holds.
+- <a id="core-fr-188"></a>**CORE-FR-188**: Given a source whose skills are taken ([CORE-FR-193](#core-fr-193)) and no `--skill`, the command MUST take every skill the source holds, asking nothing. Given a `--skill` the source does not hold, it MUST install nothing, naming the skills the source holds.
 - <a id="core-fr-189"></a>**CORE-FR-189**: Taking a skill into a source folder MUST leave every other skill in it as it was, and taking one the folder already holds MUST replace it whole, as installing a vendor source again brings it up to date ([CORE-FR-047](#core-fr-047)).
 - <a id="core-fr-190"></a>**CORE-FR-190**: Taking skills MUST leave what it installs unstaged and uncommitted for the developer to read, as installing a charter source does, whatever other work is in hand; refuse a source that cannot be reached in git's own words; and compile nothing ([CORE-FR-052](#core-fr-052)).
-- <a id="core-fr-191"></a>**CORE-FR-191**: A vendor folder MUST hold either a charter installed from its source or skills taken from it, never both: installing a source whose version holds no charter folder into a folder holding a charter, or one whose version holds a charter folder into a folder holding taken skills, MUST be refused naming the folder.
+- <a id="core-fr-191"></a>**CORE-FR-191**: A vendor folder MUST hold either a charter installed from its source or skills taken from it, never both: installing a charter into a folder holding taken skills, or taking skills into a folder holding a charter, MUST be refused naming the folder.
 - <a id="core-fr-192"></a>**CORE-FR-192**: A `SKILL.md` with no `name` or no `description`, a `name` that is not a valid id, or a `name` two folders of the source declare, MUST be refused naming the files, and nothing is installed.
-- <a id="core-fr-193"></a>**CORE-FR-193**: `cw vendor add` MUST tell a source's shape from what it holds at the version asked for, with no flag naming it: a source holding a charter folder MUST be installed as a charter, as before, whatever skill folders it also holds; one holding none MUST be looked up for its skills. `--skill` given for a source holding a charter folder MUST be refused, installing nothing, saying it is for skills repositories and not a charter.
+- <a id="core-fr-193"></a>**CORE-FR-193**: `cw vendor add` and `cw vendor inject` MUST tell a source's shape from what it holds at the version asked for, with no flag naming it. With neither `--charter` nor `--skill`, they MUST take the first shape it holds in this order: its one charter folder, else every charter under `charters/`, else every skill under `skills/`. `--charter` MUST read `charters/` alone and `--skill` `skills/` alone, whatever else the source holds, and both MAY be given together. A flag for a shape the source does not hold MUST be refused, taking nothing, saying which shapes it holds.
+- <a id="core-fr-194"></a>**CORE-FR-194**: Injecting MUST be refused whole, naming both files and writing nothing, when a primitive it would write claims an id the charter already holds — the repository's own, a vendor's or the engine's ([CORE-FR-015](#core-fr-015)). A primitive injected before is the repository's own, so injecting it again MUST be refused the same way.
+- <a id="core-fr-195"></a>**CORE-FR-195**: A source MAY hold many charters, each under its `charters/` folder in a folder named by it and laid out there as a single-charter source holds its one. `--charter=<name>`, typed once per charter, MUST pick the charters taken from it by those names.
+- <a id="core-fr-196"></a>**CORE-FR-196**: `cw vendor add` MUST install each charter picked from a source of many charters in a vendor folder of its own, `<owner>/<repository>/<name>`, brought up to date and removed on its own as any vendor folder is ([CORE-FR-050](#core-fr-050)).
+- <a id="core-fr-197"></a>**CORE-FR-197**: A `--charter` naming a charter the source does not hold MUST install nothing, naming the charters it holds. A folder under `charters/` named as a kind is, or holding no charter folder, MUST be refused when picked, naming the folder, installing nothing.
+- <a id="core-fr-198"></a>**CORE-FR-198**: `cw vendor inject <source>` MUST take from a source, at the version asked for and with the same flags, what `cw vendor add` takes ([CORE-FR-193](#core-fr-193)) — a skill converted as [CORE-FR-186](#core-fr-186) and [CORE-FR-187](#core-fr-187) say — and write each primitive taken, with its files, into the repository's own charter where its kind is authored, as if authored there. It MUST refuse, writing nothing, wherever `cw vendor add` would refuse to install.
+- <a id="core-fr-199"></a>**CORE-FR-199**: Injecting MUST leave what it writes unstaged, whatever else is in hand, and MUST NOT build ([CORE-FR-190](#core-fr-190)).
+- <a id="core-fr-200"></a>**CORE-FR-200**: An injected primitive MUST be the repository's own in every way: nothing records the source it came from, it is never read-only, and no vendor command lists, brings up to date or removes it.
 
 ### Key Entities
 
@@ -1196,6 +1257,8 @@ The shape of each is in the data model.
 - **Flow**: One branch holding one charter. A convention of the product and of a later application; carries no meaning inside the engine, the command line or the portal.
 - **Skills repository**: A git repository publishing skills the way `npx skills add` reads them — each a folder holding a `SKILL.md` — rather than as a charter.
 - **Taken skill**: A skill converted from a skills repository into a skill primitive, kept read-only in that source's vendor folder.
+- **Source of many charters**: A source gathering charters under `charters/`, one folder each named by the charter, each picked on its own.
+- **Injected primitive**: A primitive taken from a source into the repository's own charter; from then on the repository's, with nothing recording where it came from.
 
 ## Success Criteria *(mandatory)*
 
@@ -1252,6 +1315,8 @@ The shape of each is in the data model.
 - <a id="core-sc-049"></a>**CORE-SC-049**: A developer takes a skill from a skills repository into the charter with 1 command and 0 files written by hand.
 - <a id="core-sc-050"></a>**CORE-SC-050**: Of the skills and playbooks marked `disable-model-invocation: true`, the agent opens 0 by itself, and the user is offered 100% as commands.
 - <a id="core-sc-051"></a>**CORE-SC-051**: 100% of the sources whose repositories share a name under different owners install side by side.
+- <a id="core-sc-052"></a>**CORE-SC-052**: A developer installs 1 of the charters a source gathers with 1 command, and 0 of the others arrive.
+- <a id="core-sc-053"></a>**CORE-SC-053**: A developer starts a primitive of their own from someone else's skill or charter with 1 command and 0 files copied or ids renamed by hand.
 
 ## Assumptions
 
@@ -1318,7 +1383,7 @@ The shape of each is in the data model.
 - A later application beyond the portal: agent sessions, a terminal, a work-item board, and anything such an application stores for itself.
 - Flows in any form: any representation of them inside the system, a view per flow, a flow per branch, colours or grouping by flow. A flow is a branch holding a charter; the system never learns the mapping.
 - Any account system, sign-in, licensing or payment of `cw`'s own. There is no login to `cw` and no cost; users bring their own agent subscription, and sign in to other services with their own accounts ([CORE-FR-148](#core-fr-148)).
-- Installing one directory of a charter source rather than the whole of it. A skills repository is taken skill by skill.
+- Installing one directory of a charter source rather than the whole of it. A skills repository is taken skill by skill, and a source of many charters charter by charter.
 - Running agent sessions, managing worktrees, or executing the work loop. The product declares and compiles the standards; the agent's own harness applies them.
 - More than one repository in one portal, and reaching the portal from another machine.
 - Setting a repository up from the portal. `cw init` does that.
@@ -1343,6 +1408,9 @@ The shape of each is in the data model.
 - Changing which tools are shown while the server runs, as a session moves from one primitive to another.
 - A posture deciding which tools exist. A posture still decides whether a call needs approval.
 - Signing in from the portal, or showing who is signed in there.
+- Injecting from the portal. `cw vendor inject` does it.
+- Bringing an injected primitive up to date from its source, or telling it has drifted from it.
+- Picking single primitives out of a charter, to install or to inject. A charter is taken whole.
 - A skill kept as a folder holding its own files. A skill uses scripts and templates by their ids.
 - Running a script, or filling a template, on the agent's behalf, other than a sensor's command run by `cw sensor run`. No placeholder in a template is filled by the build.
 - A file that is not text, such as an image or an archive, kept as a template or among a script's files.

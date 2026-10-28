@@ -228,6 +228,20 @@
       ]
     },
     {
+      "id": "CORE Story 33",
+      "title": "Pick charters from a source that gathers many",
+      "dependsOn": [
+        "CORE Story 32"
+      ]
+    },
+    {
+      "id": "CORE Story 34",
+      "title": "Inject a charter or a skill into the repository's own charter",
+      "dependsOn": [
+        "CORE Story 33"
+      ]
+    },
+    {
       "id": "EVAL Story 1",
       "title": "See what the charter loads into the agent's context",
       "dependsOn": [
