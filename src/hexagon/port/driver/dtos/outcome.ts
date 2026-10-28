@@ -81,15 +81,19 @@ const SensorRunOutcomeSchema = dto(
 
 /** Every outcome DTO's schema, under its name — the name it carries as `type` —
  *  in alphabetical order. */
-/** What installing one vendor source came to (CORE-FR-184): the folder it
- *  landed in, and the primitives installed there — a charter's every one, or
- *  the skills chosen. */
+/** What installing one vendor source came to (CORE-FR-184, CORE-FR-196):
+ *  each vendor folder it filled — its one charter's, each charter picked, the
+ *  skills chosen — with the primitives installed there. */
 const VendorAddOutcomeSchema = dto(
   "VendorAddOutcome",
-  z.object({
-    folder: z.string(),
-    primitives: z.array(DataDTOs.VendorPrimitive).readonly(),
-  }),
+  z
+    .array(
+      z.object({
+        folder: z.string(),
+        primitives: z.array(DataDTOs.VendorPrimitive).readonly(),
+      }),
+    )
+    .readonly(),
 );
 
 export const OutcomeDTOs = byType(

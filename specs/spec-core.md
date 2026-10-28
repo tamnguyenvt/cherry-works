@@ -798,7 +798,7 @@ Most skills are published not as charters but as skills repositories, each skill
 
 ### CORE Story 33 - Pick charters from a source that gathers many (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 A team keeping several charters — a baseline, a spec-driven workflow, an architecture — had to publish each from a repository of its own. After this, one repository gathers them under `charters/`, one folder each, `charters/<name>/.cw/charter/`, and a developer picks the ones they want with `cw vendor add acme/charters --charter=baseline`, as they pick skills with `--skill`. Each charter picked lands in a vendor folder of its own, `acme/charters/baseline`, brought up to date and removed on its own. With no flag, the source's shape decides what is taken.
 

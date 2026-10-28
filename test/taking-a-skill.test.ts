@@ -222,15 +222,14 @@ test("a source that cannot be reached is refused in git's words, and work in han
   assert.equal((await takenPrimitive(held, "grill-me")).headers.id, "grill-me");
 });
 
-test("a charter source is installed whole, as before: --skill is refused for it, and skill folders beside its charter are not taken (CORE-FR-193)", async () => {
+test("a charter source given --skill takes only the skills named, and given none is installed whole, as before, its skill folders not taken (CORE-FR-193)", async () => {
   const charterSource = { ".cw/charter/guide/no-any/index.md": "x", "skills/grill-me/SKILL.md": skillMd(["name: grill-me", "description: Grill."]) };
   const withSkill = withSkillsPublished(charterSource);
 
-  const refused = await running(["vendor", "add", "mattpocock/skills", "--skill", "grill-me"], withSkill.held, withSkill.vcs);
+  const taken = await running(["vendor", "add", "mattpocock/skills", "--skill", "grill-me"], withSkill.held, withSkill.vcs);
 
-  assert.equal(refused.code, EXIT_FAILURE);
-  assert.match(refused.said, /--skill is for skills repositories \(compatible with npx skills\), not a charter/);
-  assert.deepEqual(withSkill.vcs.checkedOut, []);
+  assert.equal(taken.code, EXIT_OK, taken.said);
+  assert.deepEqual(withSkill.vcs.checkedOut.map(({ fromFolder, intoSubFolder }) => [fromFolder, intoSubFolder]), [["skills/grill-me", ".cw/vendor/mattpocock/skills/skill/grill-me"]]);
 
   const withoutSkill = withSkillsPublished(charterSource);
 

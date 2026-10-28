@@ -172,7 +172,7 @@ test("a source nobody named is a usage error, not a vendoring one", async () => 
 });
 
 test("a name that is no folder is refused, and nothing is taken away (FR-044)", async () => {
-  for (const name of ["..", ".", "team/..", "../../src", "group/team/charter"]) {
+  for (const name of ["..", ".", "team/..", "../../src", "group/team/charter/more"]) {
     const { code, said, vcs } = await running(["vendor", "remove", name]);
 
     assert.equal(code, EXIT_FAILURE, name);

@@ -35,16 +35,17 @@ export function vendorSourceOf(source: string): VendorSource {
 
 /**
  * The folder one vendor was installed as, named as `cw vendor list` names it
- * under the vendor folder: its owner and its repository, or the one folder an
- * earlier version named it by (FR-050, FR-180).
+ * under the vendor folder: its owner and its repository, a charter picked from
+ * a source of many under them (CORE-FR-196), or the one folder an earlier
+ * version named it by (FR-050, FR-180).
  *
- * Refused where that is no such folder — more than two folders, or one that is
+ * Refused where that is no such folder — more than three folders, or one that is
  * empty, `.` or `..` — so what is taken away is never outside the vendor folder
  * nor more than one vendor of it (FR-044).
  */
 export function installedVendorFolderOf(name: string): string {
   const folderNames = name.split(/[/\\]/).filter(Boolean);
-  if (folderNames.length === 0 || folderNames.length > 2 || folderNames.some((folderName) => folderName === "." || folderName === ".."))
+  if (folderNames.length === 0 || folderNames.length > 3 || folderNames.some((folderName) => folderName === "." || folderName === ".."))
     throw new VendorFault(`Invalid path "${name}".`, "Name the folder as cw vendor list names it under .cw/vendor/.");
   return folderNames.join("/");
 }

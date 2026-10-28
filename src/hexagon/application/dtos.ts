@@ -315,8 +315,11 @@ export function vendorPrimitiveDTO(vendorPrimitive: VendorPrimitive): DataDTOs.V
   return { type: "VendorPrimitive", data: { kind, id, description, leftOutHeaders } };
 }
 
-/** What installing one vendor source came to: its folder, and the primitives
- *  installed there (CORE-FR-184). */
-export function vendorAddOutcomeDTO(vendorInstall: VendorInstall): OutcomeDTOs.VendorAddOutcome {
-  return { type: "VendorAddOutcome", data: { folder: vendorInstall.folder, primitives: vendorInstall.vendorPrimitives.map(vendorPrimitiveDTO) } };
+/** What installing one vendor source came to: each folder it filled, and the
+ *  primitives installed there (CORE-FR-184, CORE-FR-196). */
+export function vendorAddOutcomeDTO(vendorInstalls: readonly VendorInstall[]): OutcomeDTOs.VendorAddOutcome {
+  return {
+    type: "VendorAddOutcome",
+    data: vendorInstalls.map(({ folder, vendorPrimitives }) => ({ folder, primitives: vendorPrimitives.map(vendorPrimitiveDTO) })),
+  };
 }

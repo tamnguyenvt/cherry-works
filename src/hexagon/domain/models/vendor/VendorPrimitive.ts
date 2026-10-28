@@ -12,6 +12,11 @@ export const SKILL_FILE = "SKILL.md";
  *  (CORE-FR-185). */
 export const SKILLS_FOLDER = "skills";
 
+/** The folder a source of many charters keeps them in, one folder each named
+ *  by it, laid out as a single-charter source holds its one:
+ *  `charters/<name>/.cw/charter/` (CORE-FR-195). */
+export const CHARTERS_FOLDER = "charters";
+
 /** How many folders under `skills/` a skill's folder may sit, as `npx skills`
  *  walks it: `skills/<name>/`, `skills/<group>/<name>/`, and one group more
  *  (CORE-FR-185). */

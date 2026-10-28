@@ -41,8 +41,8 @@ export class CharterVendoring implements ForVendoringCharters {
     this.#yamlParser = yamlParser;
   }
 
-  async add(source: string, version?: string, skillIds: readonly string[] = []): Promise<OutcomeDTOs.VendorAddOutcome> {
-    return vendorAddOutcomeDTO(await addVendor(this.#repoPath, this.#fileReader, this.#fileWriter, this.#vcs, this.#yamlParser, source, version, skillIds));
+  async add(source: string, version?: string, skillIds: readonly string[] = [], charterNames: readonly string[] = []): Promise<OutcomeDTOs.VendorAddOutcome> {
+    return vendorAddOutcomeDTO(await addVendor(this.#repoPath, this.#fileReader, this.#fileWriter, this.#vcs, this.#yamlParser, source, version, skillIds, charterNames));
   }
 
   async remove(name: string): Promise<string> {
