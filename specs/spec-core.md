@@ -820,7 +820,7 @@ A team keeping several charters — a baseline, a spec-driven workflow, an archi
 
 ### CORE Story 34 - Inject a charter or a skill into the repository's own charter (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 A vendored primitive is read-only: to differ from it, a developer authors one of their own under another id, by hand. Often what they want is to start from someone else's skill or charter and make it theirs. After this, they run `cw vendor inject mattpocock/skills --skill=grill-me`, or `cw vendor inject acme/charters --charter=baseline`: it reads the source exactly as `cw vendor add` does, with the same flags, and writes each primitive it takes straight into the repository's own charter, as if it had been authored there. No vendor folder is made, nothing records where it came from, and from then on it is the repository's to edit, test and delete like any primitive it authored.
 

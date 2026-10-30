@@ -1,3 +1,4 @@
+import { injectVendor } from "../service/injectVendorService.js";
 import { addVendor, loadVendorNames, removeVendor } from "../service/vendorRepo.js";
 import { vendorAddOutcomeDTO } from "./dtos.js";
 import type { ForVendoringCharters } from "../port/driver/ForVendoringCharters.js";
@@ -43,6 +44,10 @@ export class CharterVendoring implements ForVendoringCharters {
 
   async add(source: string, version?: string, skillIds: readonly string[] = [], charterNames: readonly string[] = []): Promise<OutcomeDTOs.VendorAddOutcome> {
     return vendorAddOutcomeDTO(await addVendor(this.#repoPath, this.#fileReader, this.#fileWriter, this.#vcs, this.#yamlParser, source, version, skillIds, charterNames));
+  }
+
+  async inject(source: string, version?: string, skillIds: readonly string[] = [], charterNames: readonly string[] = []): Promise<OutcomeDTOs.VendorAddOutcome> {
+    return vendorAddOutcomeDTO(await injectVendor(this.#repoPath, this.#fileReader, this.#fileWriter, this.#vcs, this.#yamlParser, source, version, skillIds, charterNames));
   }
 
   async remove(name: string): Promise<string> {

@@ -188,3 +188,13 @@ test("a source whose address ends in no folder is refused, and nothing is instal
   assert.deepEqual(vcs.checkedOut, []);
   assert.match(said, /Invalid path/);
 });
+
+test("vendor inject exposes the same source, version and skill flags as add", async () => {
+  const vcs = new InMemoryVCS();
+  vcs.sourceFilesBySource["team/skills"] = { "skills/grill/SKILL.md": "---\nname: grill-me\ndescription: Ask questions.\n---\nAsk.\n" };
+  const { code, said } = await running(["vendor", "inject", "team/skills", "--ref", "v1", "--skill", "grill-me"], vcs);
+  assert.equal(code, EXIT_OK);
+  assert.match(said, /Injected skill grill-me/);
+  assert.deepEqual(vcs.fetched, [{ source: "team/skills", version: "v1" }]);
+  assert.deepEqual(vcs.checkedOut, []);
+});

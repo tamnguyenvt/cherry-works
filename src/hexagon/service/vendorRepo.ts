@@ -97,7 +97,7 @@ export async function loadVendorNames(repo: URL, fileReaders: ForReadingFiles): 
  * what to do with it. Installing leaves what it fetched in the working tree,
  * beside whatever is there.
  */
-async function ensureVCSReady(repo: URL, vcs: ForVCS, because?: string): Promise<void> {
+export async function ensureVCSReady(repo: URL, vcs: ForVCS, because?: string): Promise<void> {
   if (!(await vcs.isInstalled(repo)))
     throw new DomainFault(
       "This folder is not inside a git repository, and a vendor lives in one.",
@@ -140,7 +140,7 @@ async function ensureVCSReady(repo: URL, vcs: ForVCS, because?: string): Promise
  * never both: a charter's folder holds its README and its kind folders alone
  * (CORE-FR-191).
  */
-async function loadFetchedVendors(
+export async function loadFetchedVendors(
   repo: URL,
   fileReaders: ForReadingFiles,
   vcs: ForVCS,
@@ -193,8 +193,9 @@ async function loadFetchedVendors(
     if (sourcePaths.some((sourcePath) => sourcePath.startsWith(`${sourceVendorFolder}/`)))
       throw new VendorFault(`${source} holds "${sourceVendorFolder}", and vendoring is one level deep.`, `Remove "${sourceVendorFolder}" from the source, or install a version without it.`);
     const charterIndexPaths = sourcePaths.filter((sourcePath) => sourcePath.startsWith(`${charterFolder}/`) && sourcePath.endsWith(`/${SkillPrimitive.index}`));
+    const primitiveIndexPaths = charterIndexPaths.filter((indexPath) => !charterIndexPaths.some((otherPath) => otherPath !== indexPath && indexPath.startsWith(otherPath.slice(0, -SkillPrimitive.index.length))));
     const vendorPrimitives = await Promise.all(
-      charterIndexPaths.map(async (indexPath) => charterVendorPrimitiveOf(await vcs.readFileAt(repo, fetchedCommit, indexPath), indexPath, charterFolder, yamlParser)),
+      primitiveIndexPaths.map(async (indexPath) => charterVendorPrimitiveOf(await vcs.readFileAt(repo, fetchedCommit, indexPath), indexPath, charterFolder, yamlParser)),
     );
     return { folder: charterVendorFolder, sourceCharterFolder: charterFolder, vendorPrimitives };
   };

@@ -43,6 +43,9 @@ export interface ForVendoringCharters {
    */
   add(source: string, version?: string, skillIds?: readonly string[], charterNames?: readonly string[]): Promise<OutcomeDTOs.VendorAddOutcome>;
 
+  /** Copy source primitives into the own charter, unstaged, refusing collisions before writing (CORE-FR-198–200). */
+  inject(source: string, version?: string, skillIds?: readonly string[], charterNames?: readonly string[]): Promise<OutcomeDTOs.VendorAddOutcome>;
+
   /**
    * Take one installed charter away, named by the folder it was installed as
    * (FR-030), and answer that folder.

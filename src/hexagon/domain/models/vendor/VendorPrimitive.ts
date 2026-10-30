@@ -142,3 +142,27 @@ export function skillVendorPrimitiveOf(skillMd: string, skillFile: string, parse
     );
   }
 }
+
+/** A whole injection must fit the charter's single id space and keep every
+ *  authored folder apart before any file is written (CORE-FR-194). */
+export function assertInjectablePrimitives(
+  incomingPrimitives: readonly { readonly id: string; readonly file: string; readonly sourceFile: string }[],
+  existingPrimitives: readonly { readonly id: string; readonly file: string }[],
+  existingPaths: readonly string[],
+): void {
+  const fileById = new Map(existingPrimitives.map((primitive) => [primitive.id, primitive.file]));
+  const primitivePaths = existingPrimitives.map((primitive) => primitive.file);
+  for (const incomingPrimitive of incomingPrimitives) {
+    const existingFile = fileById.get(incomingPrimitive.id);
+    if (existingFile !== undefined)
+      throw new VendorFault(`${existingFile} and ${incomingPrimitive.sourceFile} claim id "${incomingPrimitive.id}".`, "Inject primitives with ids this charter does not already hold.");
+    const incomingFolder = incomingPrimitive.file.slice(0, -"index.md".length);
+    const conflictingPath = [...primitivePaths, ...existingPaths].find((existingPath) =>
+      existingPath.startsWith(incomingFolder) || (existingPath.endsWith("/index.md") && incomingPrimitive.file.startsWith(existingPath.slice(0, -"index.md".length))),
+    );
+    if (conflictingPath !== undefined)
+      throw new VendorFault(`${conflictingPath} and ${incomingPrimitive.sourceFile} claim overlapping primitive folders at ${incomingPrimitive.file}.`, "Inject primitives whose folders are apart from the existing files.");
+    fileById.set(incomingPrimitive.id, incomingPrimitive.sourceFile);
+    primitivePaths.push(incomingPrimitive.file);
+  }
+}
