@@ -218,6 +218,7 @@ export function evalRunReportDTO(evalRunReport: EvalRunReport): DataDTOs.EvalRun
         data: { suiteName, prompt, passed, tokens, unmetReasons },
       })),
       totalTokens: evalRunReport.totalTokens,
+      agent: evalRunReport.agent,
     },
   };
 }

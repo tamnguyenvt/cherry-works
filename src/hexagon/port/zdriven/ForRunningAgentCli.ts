@@ -11,9 +11,12 @@ export { AdapterFault } from "./AdapterFault.js";
  * was sent is the command line's own and the prompt, and nothing of whichever
  * repository asked.
  */
-export interface ForRunningAgentCli {
+export interface ForCheckingAgentCli {
   /** Is the command line installed on this machine? */
   isInstalled(): Promise<boolean>;
+}
+
+export interface ForRunningAgentCli extends ForCheckingAgentCli {
 
   /** This prompt asked, and what the model answered: what it said, and the
    *  usage the command line reports of what it was sent. */

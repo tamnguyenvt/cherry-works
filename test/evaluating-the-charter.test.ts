@@ -1,3 +1,4 @@
+import prompts from "prompts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Commander } from "../src/driver/cli/Commander.js";
@@ -15,6 +16,7 @@ import { InMemoryPromptfoo } from "../src/zdriven/InMemoryPromptfoo.js";
 import { InMemoryReporter } from "../src/zdriven/InMemoryReporter.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { TomlParser } from "../src/zdriven/TomlParser.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
@@ -69,7 +71,7 @@ const surfaces = (files: Readonly<Record<string, string>>, promptfoo: InMemoryPr
   const fileOutput = new InMemoryFileOutput(held);
   const reporter = new InMemoryReporter();
   const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), fileOutput, vcs, new InMemoryTokenCounter(), { claude: agentCli });
-  const charterEvaluatingApp = new CharterEvaluating(repoPath, held, new YamlParser(), fileOutput, vcs, { claude: agentCli }, promptfoo, reporter);
+  const charterEvaluatingApp = new CharterEvaluating(repoPath, held, new YamlParser(), fileOutput, vcs, { claude: agentCli, codex: agentCli }, promptfoo, reporter, new TomlParser());
   const cli = new Commander(
     {
       cwd: "/repo",
@@ -302,4 +304,77 @@ test("an evaluation file that does not read refuses the run, and none written is
   assert.equal(code, EXIT_OK);
   assert.match(result, /No evaluation: \.cw\/eval\/ holds no case as last committed\./);
   assert.equal(promptfoo.evaluatedTests.length, 0);
+});
+
+for (const agentName of ["claude", "codex"]) {
+  test(`explicit ${agentName} runs unchanged expectations and identifies the agent (EVAL Story 7 scenarios 1, 8)`, async () => {
+    const promptfooRunner = new InMemoryPromptfoo();
+    promptfooRunner.resultByPrompt.set("plan", promptfooResult(123, [{ assertionType: "skill-used", pass: false, reason: "Missing skill: planning" }]));
+    const repositoryFiles = { ...holding([{ prompt: "plan", expect: { invoke: "planning", follow: "plain-names", maxTokens: 100 } }]), [at(".cw/settings.json")]: JSON.stringify({ agents: ["claude", "codex"] }) };
+    const { cli, vcs, held } = surfaces(repositoryFiles, promptfooRunner);
+    const commandOutput = await printed(cli, ["eval", `--agent=${agentName}`]);
+    assert.equal(commandOutput.code, EXIT_FAILURE);
+    assert.match(commandOutput.result, new RegExp(`Agent: ${agentName}`));
+    assert.match(commandOutput.result, /123 tokens/);
+    assert.equal(promptfooRunner.evaluatedTests[0]?.agent, agentName);
+    assert.deepEqual(promptfooRunner.evaluatedTests[0]?.assertions.map(({ type }) => type), ["skill-used", "agent-rubric", "javascript"]);
+    assert.ok(promptfooRunner.evaluatedTests[0]?.builtFiles.some((filePath) => filePath.endsWith(agentName === "codex" ? ".agents/skills/planning/SKILL.md" : ".claude/skills/planning/SKILL.md")));
+    assert.deepEqual(vcs.worktreeFolders, []);
+    assert.deepEqual((await held.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort(), Object.keys(repositoryFiles).sort());
+  });
+  test(`a sole configured ${agentName} is selected automatically (EVAL Story 7 scenario 2)`, async () => {
+    const promptfooRunner = new InMemoryPromptfoo();
+    const repositoryFiles = { ...holding([{ prompt: "plan", expect: { invoke: "planning" } }]), [at(".cw/settings.json")]: JSON.stringify({ agents: [agentName] }) };
+    const commandOutput = await printed(surfaces(repositoryFiles, promptfooRunner).cli, ["eval"]);
+    assert.equal(commandOutput.code, EXIT_OK);
+    assert.equal(promptfooRunner.evaluatedTests[0]?.agent, agentName);
+  });
+}
+
+for (const selectionCase of [
+  { agents: ["claude", "codex"], argv: ["eval"], expectedProblem: /--agent/ },
+  { agents: ["claude"], argv: ["eval", "--agent=codex"], expectedProblem: /codex.*not configured|not.*codex/ },
+  { agents: [], argv: ["eval"], expectedProblem: /cw init/ },
+  { agents: undefined, argv: ["eval"], expectedProblem: /cw init/ },
+  { agents: ["claude"], argv: ["eval", "--agent=unknown"], expectedProblem: /claude, codex/ },
+  { agents: ["codex"], argv: ["eval"], expectedProblem: /codex.*not installed/, isInstalled: false },
+]) {
+  test(`invalid selection ${JSON.stringify(selectionCase)} spends no tokens (EVAL Story 7 scenarios 4–7)`, async () => {
+    const promptfooRunner = new InMemoryPromptfoo(false);
+    const repositoryFiles = { ...holding([{ prompt: "plan", expect: { invoke: "planning" } }]) };
+    if (selectionCase.agents === undefined) delete repositoryFiles[at(".cw/settings.json")];
+    else repositoryFiles[at(".cw/settings.json")] = JSON.stringify({ agents: selectionCase.agents });
+    const commandOutput = await printed(surfaces(repositoryFiles, promptfooRunner, new InMemoryAgentCli(selectionCase.isInstalled ?? true)).cli, selectionCase.argv);
+    assert.equal(commandOutput.code, EXIT_FAILURE);
+    assert.match(commandOutput.problem, selectionCase.expectedProblem);
+    assert.equal(promptfooRunner.evaluatedTests.length, 0);
+    assert.equal(promptfooRunner.installCount, 0);
+  });
+}
+
+for (const selectedAgent of ["codex", undefined]) {
+  test(`interactive selection ${selectedAgent ?? "cancelled"} (EVAL Story 7 scenario 3)`, async () => {
+    const ttyDescriptor = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    prompts.inject([selectedAgent]);
+    try {
+      const promptfooRunner = new InMemoryPromptfoo();
+      const repositoryFiles = { ...holding([{ prompt: "plan", expect: { invoke: "planning" } }]), [at(".cw/settings.json")]: JSON.stringify({ agents: ["claude", "codex"] }) };
+      const commandOutput = await printed(surfaces(repositoryFiles, promptfooRunner).cli, ["eval"]);
+      assert.equal(commandOutput.code, selectedAgent === undefined ? EXIT_FAILURE : EXIT_OK);
+      assert.equal(promptfooRunner.evaluatedTests.length, selectedAgent === undefined ? 0 : 1);
+      if (selectedAgent !== undefined) assert.equal(promptfooRunner.evaluatedTests[0]?.agent, selectedAgent);
+    } finally {
+      if (ttyDescriptor === undefined) delete (process.stdin as { isTTY?: boolean }).isTTY;
+      else Object.defineProperty(process.stdin, "isTTY", ttyDescriptor);
+    }
+  });
+}
+
+test("invalid agent is refused even when there are no cases", async () => {
+  const promptfooRunner = new InMemoryPromptfoo();
+  const commandOutput = await printed(surfaces(holding([]), promptfooRunner).cli, ["eval", "--agent=unknown"]);
+  assert.equal(commandOutput.code, EXIT_FAILURE);
+  assert.match(commandOutput.problem, /Unsupported evaluation agent/);
+  assert.equal(promptfooRunner.evaluatedTests.length, 0);
 });

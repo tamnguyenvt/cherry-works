@@ -2,14 +2,14 @@ import type { ForParsingToml } from "../port/zdriven/ForParsingToml.js";
 import type { AgentProvider } from "../domain/models/AgentProvider.js";
 import { DomainFault, FaultsByFile } from "../domain/models/DomainFault.js";
 import { evalSuiteNameOf } from "../domain/models/eval/EvalSuite.js";
-import { EvalRunReport, validateEvalRoot, type EvalCaseReport } from "../domain/services/evalService.js";
+import { EvalRunReport, selectEvaluationAgent, validateEvalRoot, type EvalCaseReport } from "../domain/services/evalService.js";
 import type { DataDTOs } from "../port/driver/dtos/index.js";
 import type { ForEvaluatingCharter } from "../port/driver/ForEvaluatingCharter.js";
 import type { ForParsingYaml } from "../port/zdriven/ForParsingYaml.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import type { ForReportingProgress } from "../port/zdriven/ForReportingProgress.js";
 import type { ForRunningPromptfoo } from "../port/zdriven/ForRunningPromptfoo.js";
-import type { ForRunningAgentCli } from "../port/zdriven/ForRunningAgentCli.js";
+import type { ForCheckingAgentCli } from "../port/zdriven/ForRunningAgentCli.js";
 import type { ForVCS } from "../port/zdriven/ForVCS.js";
 import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
 import { runWithPromptfoo } from "../service/promptfooService.js";
@@ -41,7 +41,7 @@ export class CharterEvaluating implements ForEvaluatingCharter {
   readonly #yamlParser: ForParsingYaml;
   readonly #fileWriter: ForWritingFiles;
   readonly #vcs: ForVCS;
-  readonly #agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForRunningAgentCli>>>;
+  readonly #agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForCheckingAgentCli>>>;
   readonly #promptfooRunner: ForRunningPromptfoo;
   readonly #progressReporter: ForReportingProgress;
 
@@ -55,7 +55,7 @@ export class CharterEvaluating implements ForEvaluatingCharter {
     vcs: ForVCS,
     /** Each agent's own command line: what promptfoo runs the agent through,
      *  asked only whether it is installed. */
-    agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForRunningAgentCli>>>,
+    agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForCheckingAgentCli>>>,
     /** What runs and grades every case (EVAL-FR-020). */
     promptfooRunner: ForRunningPromptfoo,
     /** What the developer is told while a run installs promptfoo
@@ -74,12 +74,15 @@ export class CharterEvaluating implements ForEvaluatingCharter {
     this.#progressReporter = progressReporter;
   }
 
-  async evaluate(): Promise<DataDTOs.EvalRunReport | DataDTOs.FaultsByFile> {
+  async evaluate(requestedAgent?: string): Promise<DataDTOs.EvalRunReport | DataDTOs.FaultsByFile> {
+    const workspaceSettings = await loadSettings(this.#repoPath, this.#fileReader);
+    const agent = selectEvaluationAgent(workspaceSettings.agents, requestedAgent);
+
     // A repository that wrote no case is told so, and nothing is written.
     const evalFolder = evalFolderIn(this.#repoPath);
     const worktreesFolder = evalWorktreesFolderIn(this.#repoPath);
     const evalFiles = (await this.#fileReader.readFilesRecursively(evalFolder)).filter(({ file }) => !file.href.startsWith(worktreesFolder.href));
-    if (evalFiles.length === 0) return evalRunReportDTO(new EvalRunReport([]));
+    if (evalFiles.length === 0) return evalRunReportDTO(new EvalRunReport([], agent));
 
     // What a run stopped halfway left is swept (EVAL-FR-021).
     for (const leftWorktreeFolder of await this.#fileReader.listFolders(worktreesFolder))
@@ -107,15 +110,13 @@ export class CharterEvaluating implements ForEvaluatingCharter {
     const suiteCases = Object.entries(evalRoot.suitesByFile).flatMap(([path, evalSuite]) =>
       evalSuite.cases.map((evalCase) => ({ suiteName: evalSuiteNameOf(path), evalCase })),
     );
-    if (suiteCases.length === 0) return evalRunReportDTO(new EvalRunReport([]));
+    if (suiteCases.length === 0) return evalRunReportDTO(new EvalRunReport([], agent));
 
-    // Claude Code is the one agent evaluated (spec Assumptions).
-    if (!settings.agents.includes("claude"))
-      throw new DomainFault("Evaluating runs the cases through claude, and this repository does not compile for it.", 'Run "cw init" and choose claude.');
-    if (!(await this.#agentCliByProvider.claude?.isInstalled()))
+    selectEvaluationAgent(settings.agents, agent);
+    if (!(await this.#agentCliByProvider[agent]?.isInstalled()))
       throw new DomainFault(
-        "Evaluating puts every case to claude's own command line, and it is not installed here.",
-        'Install Claude Code and sign in, then run "cw eval" again.',
+        `Evaluating puts every case to ${agent}'s own command line, and it is not installed here.`,
+        `Install ${agent === "claude" ? "Claude Code" : "Codex"} and sign in, then run "cw eval --agent=${agent}" again.`,
       );
 
     // Installed once, the first time a run needs it (EVAL-FR-032).
@@ -138,11 +139,11 @@ export class CharterEvaluating implements ForEvaluatingCharter {
 
         const guideId = evalCase.expect.follow;
         const guideBody = guideId === undefined ? undefined : charter.primitiveById.get(guideId)?.body;
-        evalCaseReports.push(await runWithPromptfoo(this.#promptfooRunner, caseWorktreeFolder, suiteName, evalCase, guideBody));
+        evalCaseReports.push(await runWithPromptfoo(this.#promptfooRunner, caseWorktreeFolder, suiteName, evalCase, guideBody, agent));
       } finally {
         await this.#vcs.removeWorktree(this.#repoPath, caseWorktreeFolder);
       }
     }
-    return evalRunReportDTO(new EvalRunReport(evalCaseReports));
+    return evalRunReportDTO(new EvalRunReport(evalCaseReports, agent));
   }
 }

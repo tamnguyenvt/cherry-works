@@ -1,5 +1,6 @@
+import { AGENT_PROVIDERS, isAgentProvider, type AgentProvider } from "../models/AgentProvider.js";
 import type { CharterRoot } from "../models/charter/CharterRoot.js";
-import { EvalSuiteFault, FaultsByFile, type DomainFault } from "../models/DomainFault.js";
+import { EvalSuiteFault, FaultsByFile, DomainFault } from "../models/DomainFault.js";
 import type { EvalRoot } from "../models/eval/EvalSuite.js";
 
 /** How one evaluation case came out: the file it is in, its prompt, the tokens
@@ -20,7 +21,7 @@ export class EvalCaseReport {
 /** How every case came out, in the order their files and cases were read, and
  *  the tokens of them all (EVAL-FR-025). */
 export class EvalRunReport {
-  constructor(readonly evalCaseReports: readonly EvalCaseReport[]) {}
+  constructor(readonly evalCaseReports: readonly EvalCaseReport[], readonly agent: AgentProvider) {}
 
   get totalTokens(): number {
     return this.evalCaseReports.reduce((tokens, evalCaseReport) => tokens + evalCaseReport.tokens, 0);
@@ -59,4 +60,21 @@ export function validateEvalRoot(charter: CharterRoot, evalRoot: EvalRoot): Faul
     if (faults.length > 0) faultsByFiles[path] = faults;
   }
   return new FaultsByFile(faultsByFiles);
+}
+
+/** Resolve a run's agent before any case can spend tokens. */
+export function selectEvaluationAgent(configuredAgents: readonly AgentProvider[], requestedAgent?: string): AgentProvider {
+  if (requestedAgent !== undefined && !isAgentProvider(requestedAgent))
+    throw new DomainFault(`Unsupported evaluation agent "${requestedAgent}".`, `Choose one of: ${AGENT_PROVIDERS.join(", ")}.`);
+  configuredAgents = [...new Set(configuredAgents)];
+  if (configuredAgents.length === 0)
+    throw new DomainFault("No evaluation agent is configured.", 'Run "cw init" and configure an agent.');
+  if (requestedAgent !== undefined) {
+    if (!configuredAgents.includes(requestedAgent as AgentProvider))
+      throw new DomainFault(`Evaluation agent ${requestedAgent} is not configured.`, `Run "cw init" and add ${requestedAgent} to the settings.`);
+    return requestedAgent as AgentProvider;
+  }
+  if (configuredAgents.length !== 1)
+    throw new DomainFault("Several evaluation agents are configured and no agent was selected.", 'Run "cw eval --agent=<agent>" to select one.');
+  return configuredAgents[0]!;
 }

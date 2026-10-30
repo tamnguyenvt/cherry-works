@@ -148,7 +148,8 @@ The main host differences:
 |---|---|---|
 | `cw context` | Offline estimate | Offline estimate |
 | `cw context --exact` | Supported | Not implemented |
-| Session token logging and `cw eval` | Supported | Not implemented; Claude's built-in token counter is excluded from Codex hooks |
+| Session token logging | Supported | Not implemented; Claude's built-in token counter is excluded from Codex hooks |
+| `cw eval` | Supported | Supported |
 
 ## The charter
 
@@ -327,18 +328,21 @@ Each case expects at least one of:
 
 ```bash
 cw eval
+cw eval --agent=codex
 ```
 
 Every case is handed to [promptfoo](https://www.promptfoo.dev), which puts its
-prompt to Claude Code run headless, in a worktree of your last commit with the
+prompt to the selected agent run headless, in a worktree of your last commit with the
 charter built, so your working tree is never touched. You never write a
-promptfoo configuration. The first run installs promptfoo and the Claude Agent
-SDK under `~/.cherry-works/promptfoo/`, and later runs reuse them.
+promptfoo configuration. Choose `claude` or `codex` with `--agent`. Without
+that option, the sole agent in settings is used; with several agents, you are
+asked to choose. Without an interactive terminal, pass `--agent`. Missing
+settings, an unconfigured agent, or an unavailable agent CLI stops the run.
+The first run installs promptfoo, the Claude Agent SDK and the Codex SDK under `~/.cherry-works/promptfoo/`, and later runs reuse them.
 
 The report gives each case's outcome and tokens, and the run's total. A case
 that misses what it expects fails the run, with what the agent did instead.
-It runs on whatever Claude Code is signed in with, or on `ANTHROPIC_API_KEY`
-when set, and spends real tokens: commit before you run it, and keep the cases
+It runs on the selected agent's sign-in, or its API key when set, and spends real tokens: commit before you run it, and keep the cases
 few.
 
 ## What the charter costs

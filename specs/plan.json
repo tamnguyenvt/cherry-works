@@ -283,6 +283,13 @@
       "dependsOn": [
         "CORE Story 9"
       ]
+    },
+    {
+      "id": "EVAL Story 7",
+      "title": "Evaluate with the selected configured agent",
+      "dependsOn": [
+        "EVAL Story 6"
+      ]
     }
   ]
 }

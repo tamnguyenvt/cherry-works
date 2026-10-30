@@ -2,13 +2,15 @@
 
 **Created**: 2026-10-04
 
-**Updated**: 2026-10-05
+**Updated**: 2026-10-30
 
 **Input**: User description: "Phase 008, after Uber's efficient software factory: predict how many tokens the charter loads into the agent's main context; give the tokens a session used when it stops; let `cw mcp serve` search its tools rather than load them all; evaluate the charter against a real model with promptfoo and deepeval."
 
 Then: "The summary of the sessions kept spans 31 days at most, the last 31 when none is named, and reads only the files that span needs."
 
 Then: "Evaluate the charter under promptfoo alone: drop the engine's own runner and deepeval."
+
+Then: "Upgrade cw eval to support Codex and --agent=<agent>; without it, use the sole configured agent or ask the developer to choose among several. Work directly on develop for this small feature."
 
 ## Overview
 
@@ -53,6 +55,14 @@ A charter is paid for in tokens every turn an agent works under it, and it is on
 - Q: Does an evaluation need a key of its own? → A: No, which replaces "on the developer's own key" of 2026-10-03: it runs through the agent's own command line, on whatever it is signed in with, a key among them; it is refused only where that command line is not installed ([EVAL-FR-026](#eval-fr-026)).
 - Q: Where does a case run? → A: In a worktree of the last commit under `.cw/eval/.worktrees/`, git-ignored, removed after each case and swept at the start of each run, never in the working tree someone may be writing in; this replaces "a copy of the repository" of 2026-10-03 ([EVAL-FR-021](#eval-fr-021)).
 - Q: Which framework runs an evaluation? → A: promptfoo alone, fetched once onto the developer's machine; the engine runs and judges no case itself. This replaces "Both" of 2026-10-02 and "the engine runs the cases itself" of 2026-10-04 ([EVAL-FR-020](#eval-fr-020), [EVAL-FR-032](#eval-fr-032)).
+
+### Session 2026-10-30
+
+- Q: What happens when settings are missing or no agent is configured? → A: Refuse before any case runs and tell the developer to configure an agent; never choose a default ([EVAL-FR-035](#eval-fr-035)).
+
+- Q: May an explicitly selected agent be absent from the configured agents? → A: No. Refuse before any case runs and tell the developer to add that agent to the settings ([EVAL-FR-034](#eval-fr-034)).
+
+- Q: When several agents are configured and the evaluation cannot ask interactively, what happens? → A: Refuse before any case runs and require an explicit agent selection ([EVAL-FR-033](#eval-fr-033)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -176,6 +186,29 @@ An author wants to know that asking the agent to "plan this feature" invokes the
 
 ---
 
+### EVAL Story 7 - Evaluate with the selected configured agent (Priority: P2)
+
+**Status**: Done
+
+An author evaluates the same charter with Claude Code or Codex. They select an agent explicitly with `--agent=<agent>`. Without that option, the evaluation uses the sole configured agent, or asks them to choose among the configured agents before running any case. An unattended run with several configured agents requires an explicit choice. The existing case expectations and report remain available with either agent.
+
+**Why this priority**: Authors building for Codex need to prove that its charter works with the agent they actually use, without spending tokens on a different agent by accident.
+
+**Independent Test**: Run the same cases with Claude Code and Codex, including skill, guide and token expectations; confirm outcomes and token reports for each. Exercise explicit selection, automatic selection of a sole configured agent, and interactive selection among two agents. Confirm every invalid or unavailable selection stops before any case runs.
+
+**Acceptance Scenarios**:
+
+1. **Given** Claude Code and Codex are configured, **When** the author explicitly selects either, **Then** all cases run with that agent, using the existing case format and expectations, and the report identifies it ([EVAL-FR-036](#eval-fr-036), [EVAL-FR-037](#eval-fr-037), [EVAL-SC-008](#eval-sc-008)).
+2. **Given** exactly one configured agent and no explicit selection, **When** evaluation starts, **Then** that agent is used without a selection prompt ([EVAL-FR-036](#eval-fr-036)).
+3. **Given** several configured agents and no explicit selection in an interactive terminal, **When** evaluation starts, **Then** the author must choose among those agents before any case runs; cancelling runs no case ([EVAL-FR-036](#eval-fr-036), [EVAL-FR-038](#eval-fr-038)).
+4. **Given** several configured agents and no explicit selection without interactive input, **When** evaluation starts, **Then** it refuses and asks for an explicit selection before any case runs ([EVAL-FR-033](#eval-fr-033)).
+5. **Given** an explicitly selected agent absent from settings, **When** evaluation starts, **Then** it refuses and names the agent and how to configure it ([EVAL-FR-034](#eval-fr-034)).
+6. **Given** missing settings or no configured agents, **When** evaluation starts, **Then** it refuses and explains how to configure an agent without choosing a default ([EVAL-FR-035](#eval-fr-035)).
+7. **Given** an unsupported agent name or the selected agent's command line is missing, **When** evaluation starts, **Then** it refuses before any case runs and explains what must be corrected, without falling back to another agent ([EVAL-FR-026](#eval-fr-026), [EVAL-FR-038](#eval-fr-038)).
+8. **Given** cases expecting a skill, a guide or a token ceiling, **When** evaluated with Codex, **Then** each expectation is checked, failed expectations fail the run, tokens are reported and the working tree is preserved as with Claude Code ([EVAL-FR-021](#eval-fr-021), [EVAL-FR-022](#eval-fr-022), [EVAL-FR-023](#eval-fr-023), [EVAL-FR-024](#eval-fr-024), [EVAL-FR-025](#eval-fr-025), [EVAL-FR-037](#eval-fr-037)).
+
+---
+
 ### Edge Cases
 
 - A charter holding nothing loaded when a session opens — the prediction says the total is none, and the health check is quiet.
@@ -237,6 +270,16 @@ An author wants to know that asking the agent to "plan this feature" invokes the
 - <a id="eval-fr-026"></a>**EVAL-FR-026**: A run MUST be refused before any case runs when the agent's own command line is not installed, or when a case names a skill or a guide the charter does not hold, saying which.
 - <a id="eval-fr-032"></a>**EVAL-FR-032**: The first run that needs promptfoo MUST fetch it, and what it needs to run the agent, once into a folder on the developer's machine outside every repository, saying so; later runs MUST use what was fetched, and nothing MUST be installed into the repository.
 
+- <a id="eval-fr-033"></a>**EVAL-FR-033**: When several agents are configured, no agent was explicitly selected and an interactive choice is unavailable, the evaluation MUST refuse before any case runs and tell the developer to select an agent explicitly.
+
+- <a id="eval-fr-034"></a>**EVAL-FR-034**: An explicitly selected agent absent from the configured agents MUST be refused before any case runs, naming the agent and telling the developer to add it to the settings.
+
+- <a id="eval-fr-035"></a>**EVAL-FR-035**: Missing settings or an empty configured agent list MUST cause the evaluation to refuse before any case runs and tell the developer to configure an agent; it MUST NOT choose a default agent.
+
+- <a id="eval-fr-036"></a>**EVAL-FR-036**: Evaluation MUST accept an explicit agent selection through `--agent=<agent>`, supporting `claude` and `codex`. Without it, it MUST use the sole configured agent or require an interactive choice among several configured agents before any case runs.
+- <a id="eval-fr-037"></a>**EVAL-FR-037**: Both Claude Code and Codex MUST support the existing evaluation case format, skill and guide expectations, token ceilings, per-case outcomes and token totals, failed-run exit status, isolated execution and cleanup. The report MUST identify the selected agent.
+- <a id="eval-fr-038"></a>**EVAL-FR-038**: An unsupported agent selection MUST be refused before any case runs, naming the supported choices. Cancelling an interactive selection MUST run no case. A failed selection or an unavailable selected agent MUST NOT cause a fallback to another agent.
+
 ### Key Entities
 
 - **Prediction**: what each primitive puts into the main context when a session opens, in tokens, estimated or exact, and their total.
@@ -255,9 +298,11 @@ An author wants to know that asking the agent to "plan this feature" invokes the
 - <a id="eval-sc-006"></a>**EVAL-SC-006**: An author writes each evaluation case once, in the engine's own format, and never a promptfoo configuration.
 - <a id="eval-sc-007"></a>**EVAL-SC-007**: Summing up the sessions reads none kept outside the span, so it takes no longer after a year of sessions than after a month.
 
+- <a id="eval-sc-008"></a>**EVAL-SC-008**: Authors can evaluate 100% of their existing cases with either supported agent without rewriting cases or authoring framework configuration.
+
 ## Assumptions
 
-- **Claude Code is the agent counted and evaluated.** It is the one host the engine builds for; another host is counted the day it is built for.
+- **Evaluation supports Claude Code and Codex.** Session token logging remains limited to Claude Code in this phase.
 - **The estimate is offline.** No tokenizer for the model is at hand offline, so a tokenizer that runs offline stands in for it, and says it does.
 - **A developer's log is theirs.** It lives on their machine, where the engine already keeps their credentials, and is never read by anyone else.
 - **An evaluation spends the developer's own sign-in to the agent, or their own key where one is set.** Nothing in the engine pays for it or holds a key of its own.
@@ -269,5 +314,6 @@ An author wants to know that asking the agent to "plan this feature" invokes the
 - Stopping or slowing a session that passes a mark.
 - Pricing anything inside the engine.
 - Running evaluations in a pipeline on anyone's behalf, or more than once per case.
-- Evaluating a host other than Claude Code.
+- Evaluating an agent other than Claude Code or Codex.
+- Extending session token logging or exact main-context counting to Codex in this phase.
 - Evaluating under any framework other than promptfoo.

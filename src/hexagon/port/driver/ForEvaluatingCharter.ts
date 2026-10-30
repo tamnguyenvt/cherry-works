@@ -13,6 +13,10 @@ export { EVAL_DIRECTORY } from "../../domain/path.js";
  */
 export interface ForEvaluatingCharter {
   /**
+   * Select an explicitly requested configured agent, or the sole configured
+   * agent. Several agents require a choice from the driver before execution.
+   * Missing settings or an invalid choice refuses the run without fallback.
+   *
    * Every case under `.cw/eval/` as last committed, each handed once to
    * promptfoo, which puts it to the agent, run headless in a worktree of the
    * last commit under `.cw/eval/.worktrees/` with its charter built, and
@@ -28,5 +32,5 @@ export interface ForEvaluatingCharter {
    * installed is raised, with no case run either (EVAL-FR-026). None written
    * is a report of no case.
    */
-  evaluate(): Promise<DataDTOs.EvalRunReport | DataDTOs.FaultsByFile>;
+  evaluate(agent?: string): Promise<DataDTOs.EvalRunReport | DataDTOs.FaultsByFile>;
 }

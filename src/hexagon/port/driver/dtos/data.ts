@@ -175,6 +175,7 @@ const EvalCaseReportSchema = dto(
 const EvalRunReportSchema = dto(
   "EvalRunReport",
   z.object({
+    agent: z.enum(["claude", "codex"]),
     evalCaseReports: z.array(EvalCaseReportSchema).readonly(),
     totalTokens: z.number(),
   }),

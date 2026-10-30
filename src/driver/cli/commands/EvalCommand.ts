@@ -1,6 +1,11 @@
+import prompts from "prompts";
 import { EVAL_DIRECTORY } from "#hexagon/port/driver/ForEvaluatingCharter.js";
 import { printFaultsByFile } from "./helper.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type Outcome } from "./Command.js";
+import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./Command.js";
+
+const OPTIONS = {
+  agent: { type: "string", describe: "Evaluate with a configured agent: claude or codex" },
+} as const satisfies OptionSpec;
 
 /**
  * `cw eval`: put every case in `.cw/eval/` to the real agent under promptfoo,
@@ -12,12 +17,28 @@ import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type O
  * tokens of them all. A case failing fails the run through its exit status
  * (EVAL-FR-025). Apart from `cw test`: this spends a sign-in, and that never does.
  */
-export class EvalCommand implements Command {
+export class EvalCommand implements Command<typeof OPTIONS> {
   readonly name = "eval";
   readonly summary = `Put every case in ${EVAL_DIRECTORY}/ to the real agent under promptfoo`;
+  readonly options = OPTIONS;
 
-  async run({ charterEvaluatingApp }: Context, _options: Options): Promise<Outcome> {
-    const evalRunReportDTO = await charterEvaluatingApp.evaluate();
+  async run({ charterEvaluatingApp, charterAuthoringApp }: Context, { agent: requestedAgent }: Options<typeof OPTIONS>): Promise<Outcome> {
+    let selectedAgent = requestedAgent;
+    if (selectedAgent === undefined) {
+      const settingsDTO = await charterAuthoringApp.settings();
+      const configuredAgents = [...new Set(settingsDTO.data.agents)];
+      if (configuredAgents.length > 1 && process.stdin.isTTY) {
+        const promptAnswer = await prompts({
+          type: "select",
+          name: "agent",
+          message: "Which agent should evaluate this charter?",
+          choices: configuredAgents.map((agentName) => ({ title: agentName, value: agentName })),
+        });
+        if (promptAnswer.agent === undefined) return { code: EXIT_FAILURE, problem: "Evaluation cancelled. No case was run.\n" };
+        selectedAgent = promptAnswer.agent;
+      }
+    }
+    const evalRunReportDTO = await charterEvaluatingApp.evaluate(selectedAgent);
     if (evalRunReportDTO.type === "FaultsByFile") return { code: EXIT_FAILURE, problem: `No case was run.\n\n${printFaultsByFile(evalRunReportDTO)}` };
 
     const { evalCaseReports, totalTokens } = evalRunReportDTO.data;
@@ -32,6 +53,7 @@ export class EvalCommand implements Command {
     return {
       code: failedCount === 0 ? EXIT_OK : EXIT_FAILURE,
       result: [
+        `Agent: ${evalRunReportDTO.data.agent}`,
         ...evalCaseReports.flatMap(({ data: { passed, tokens, prompt, unmetReasons } }) => [
           `  ${passed ? "pass" : "FAIL"}  ${`${tokens.toLocaleString("en-US")} tokens`.padStart(14)}  ${prompt.split("\n")[0]}`,
           ...unmetReasons.map((unmetReason) => `          ${unmetReason}`),

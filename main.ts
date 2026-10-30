@@ -21,6 +21,7 @@ import { OsSecrets } from "./src/zdriven/OsSecrets.js";
 import { OAuth } from "./src/zdriven/OAuth.js";
 import { McpClients } from "./src/zdriven/McpClients.js";
 import { Tiktoken } from "./src/zdriven/Tiktoken.js";
+import { CodexCli } from "./src/zdriven/CodexCli.js";
 import { ClaudeCli } from "./src/zdriven/ClaudeCli.js";
 import { Promptfoo } from "./src/zdriven/Promptfoo.js";
 import { ConsoleReporter } from "./src/zdriven/ConsoleReporter.js";
@@ -34,7 +35,7 @@ import type { ForKeepingSecrets } from "./src/hexagon/port/zdriven/ForKeepingSec
 import type { ForAuthorizing } from "./src/hexagon/port/zdriven/ForAuthorizing.js";
 import type { ForCallingMcpServers } from "./src/hexagon/port/zdriven/ForCallingMcpServers.js";
 import type { ForCountingTokens } from "./src/hexagon/port/zdriven/ForCountingTokens.js";
-import type { ForRunningAgentCli } from "./src/hexagon/port/zdriven/ForRunningAgentCli.js";
+import type { ForCheckingAgentCli, ForRunningAgentCli } from "./src/hexagon/port/zdriven/ForRunningAgentCli.js";
 import type { ForTellingTime } from "./src/hexagon/port/zdriven/ForTellingTime.js";
 import type { ForRunningPromptfoo } from "./src/hexagon/port/zdriven/ForRunningPromptfoo.js";
 import type { ForReportingProgress } from "./src/hexagon/port/zdriven/ForReportingProgress.js";
@@ -103,7 +104,8 @@ const sessionReviewingApp: ForReviewingSessions = new SessionReviewing(repoPath,
 const promptfooRunner: ForRunningPromptfoo = new Promptfoo(join(homedir(), ".cherry-works"));
 const progressReporter: ForReportingProgress = new ConsoleReporter();
 
-const charterEvaluatingApp: ForEvaluatingCharter = new CharterEvaluating(repoPath, fileReader, yamlParser, fileWriter, vcs, agentCliByProvider, promptfooRunner, progressReporter, tomlParser);
+const codexCli: ForCheckingAgentCli = new CodexCli();
+const charterEvaluatingApp: ForEvaluatingCharter = new CharterEvaluating(repoPath, fileReader, yamlParser, fileWriter, vcs, { ...agentCliByProvider, codex: codexCli }, promptfooRunner, progressReporter, tomlParser);
 
 const sensorRunningApp: ForRunningSensors = new SensorRunning(repoPath, fileReader, shell);
 

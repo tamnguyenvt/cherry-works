@@ -1,3 +1,4 @@
+import type { AgentProvider } from "../domain/models/AgentProvider.js";
 import type { EvalCase } from "../domain/models/eval/EvalSuite.js";
 import { EvalCaseReport } from "../domain/services/evalService.js";
 import type { ForRunningPromptfoo, PromptfooAssertion } from "../port/zdriven/ForRunningPromptfoo.js";
@@ -16,6 +17,7 @@ export async function runWithPromptfoo(
   suiteName: string,
   evalCase: EvalCase,
   guideBody: string | undefined,
+  agent: AgentProvider,
 ): Promise<EvalCaseReport> {
   const { invoke: skillId, follow: guideId, maxTokens } = evalCase.expect;
   const assertions: PromptfooAssertion[] = [
@@ -44,6 +46,7 @@ export async function runWithPromptfoo(
         ]),
   ];
   const { success, totalTokens, componentResults, error } = await promptfooRunner.evaluate({
+    agent,
     description: `${suiteName}: ${evalCase.prompt}`,
     prompt: evalCase.prompt,
     workingFolder,

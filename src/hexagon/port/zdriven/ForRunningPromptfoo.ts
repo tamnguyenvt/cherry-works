@@ -6,11 +6,11 @@ export { AdapterFault } from "./AdapterFault.js";
 /**
  * DRIVEN PORT — promptfoo, the evaluation framework a charter is evaluated
  * under (EVAL-FR-020, EVAL-FR-032): installed once onto this machine, then
- * handed one test at a time, which it runs against Claude Code in the folder
+ * handed one test at a time, which it runs against the selected agent in the folder
  * named and grades by the assertions it carries.
  */
 export interface ForRunningPromptfoo {
-  /** Is promptfoo, and what it needs to run Claude Code, on this machine? */
+  /** Is promptfoo, and what it needs to run the supported agents, on this machine? */
   isInstalled(): Promise<boolean>;
 
   /** Install it once into a folder of its own, outside every repository. */
@@ -19,7 +19,7 @@ export interface ForRunningPromptfoo {
   /** Where it is installed, as the developer would find it. */
   readonly installFolderPath: string;
 
-  /** One test run with `promptfoo eval`: its prompt put to Claude Code,
+  /** One test run with `promptfoo eval`: its prompt put to the selected agent,
    *  headless, in the working folder, with the project's settings and skills
    *  and edits accepted, on whatever it is signed in with; and how it came
    *  out. A run promptfoo itself fails raises an `AdapterFault`. */
@@ -28,9 +28,10 @@ export interface ForRunningPromptfoo {
 
 /** One promptfoo test, in promptfoo's own words. */
 export interface PromptfooTest {
+  readonly agent: "claude" | "codex";
   readonly description: string;
   readonly prompt: string;
-  /** The folder Claude Code runs in. */
+  /** The folder the selected agent runs in. */
   readonly workingFolder: URL;
   readonly assertions: readonly PromptfooAssertion[];
 }

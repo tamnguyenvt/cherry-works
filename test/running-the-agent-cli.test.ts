@@ -4,6 +4,7 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { CodexCli } from "../src/zdriven/CodexCli.js";
 import { ClaudeCli } from "../src/zdriven/ClaudeCli.js";
 import { AdapterFault } from "../src/hexagon/port/zdriven/ForRunningAgentCli.js";
 
@@ -123,5 +124,16 @@ test("a run that stops with an error, or is answered as one, is raised and frees
     await assert.rejects(claudeCli.ask("error"), (raised) => raised instanceof AdapterFault && /Not logged in/.test(raised.message));
     // Every place freed: five more run, and none waits forever.
     await Promise.all(Array.from({ length: 5 }, () => claudeCli.ask("after")));
+  });
+});
+
+test("Codex availability checks only its CLI without spending model tokens", async () => {
+  await withFakeClaude(async (temporaryFolderPath) => {
+    const codexCli = new CodexCli();
+    assert.equal(await codexCli.isInstalled(), false);
+    const executableFilePath = join(temporaryFolderPath, "codex");
+    await writeFile(executableFilePath, '#!/usr/bin/env node\nif (process.argv.join(" ").endsWith("--version")) process.exit(0); process.exit(2);\n');
+    await chmod(executableFilePath, 0o755);
+    assert.equal(await codexCli.isInstalled(), true);
   });
 });

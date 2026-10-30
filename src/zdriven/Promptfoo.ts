@@ -10,11 +10,12 @@ import { AdapterFault, type ForRunningPromptfoo, type PromptfooTest, type Prompt
 
 const run = promisify(execFile);
 
-/** The promptfoo installed, and the Claude Agent SDK its Claude Code provider
- *  runs the agent with: pinned, so every machine grades the same way. Kept
+/** The promptfoo and agent SDK versions installed: pinned so every machine
+ *  grades the same way. Kept
  *  equal to the promptfoo in `devDependencies`, whose types this reads. */
 const PROMPTFOO_VERSION = "0.123.1";
 const CLAUDE_AGENT_SDK_VERSION = "0.3.289";
+const CODEX_SDK_VERSION = "0.166.0";
 
 /** What `promptfoo eval` exits with when a test failed, as against an error. */
 const PROMPTFOO_FAILED_TEST_EXIT_CODE = 100;
@@ -26,12 +27,13 @@ const PROMPTFOO_QUIET_ENV = { PROMPTFOO_DISABLE_TELEMETRY: "1", PROMPTFOO_DISABL
  * DRIVEN ADAPTER: promptfoo, installed with npm into a folder of its own and run
  * as `promptfoo eval` (EVAL-FR-020, EVAL-FR-032).
  *
- * The agent is run by promptfoo's `anthropic:claude-agent-sdk` provider in the
- * working folder: the project's settings, every skill, edits accepted, and no
+ * The selected agent runs through its promptfoo SDK provider in the working
+ * folder. Claude Code uses the project's settings, every skill, edits accepted, and no
  * command, since no one is there to allow one. An `agent-rubric` is graded by
  * the same provider in the same folder, reading and searching only, with no
- * settings of the project's to sway it. Both run on whatever Claude Code is
- * signed in with, or the key the environment sets.
+ * settings of the project's to sway it. Codex uses workspace-write for the
+ * case and read-only for grading, without approval prompts or retries. Both
+ * use the selected agent's sign-in, or the key the environment sets.
  *
  * The provider finds the SDK from where the configuration is, so each test is
  * written into a folder under the one it is installed in, and taken away
@@ -50,6 +52,7 @@ export class Promptfoo implements ForRunningPromptfoo {
     return Promise.all([
       access(join(this.installFolderPath, "node_modules", ".bin", "promptfoo")),
       access(join(this.installFolderPath, "node_modules", "@anthropic-ai", "claude-agent-sdk", "package.json")),
+      access(join(this.installFolderPath, "node_modules", "@openai", "codex-sdk", "package.json")),
     ]).then(
       () => true,
       () => false,
@@ -62,7 +65,7 @@ export class Promptfoo implements ForRunningPromptfoo {
     try {
       await run(
         "npm",
-        ["install", "--no-audit", "--no-fund", "--silent", `promptfoo@${PROMPTFOO_VERSION}`, `@anthropic-ai/claude-agent-sdk@${CLAUDE_AGENT_SDK_VERSION}`],
+        ["install", "--no-audit", "--no-fund", "--silent", `promptfoo@${PROMPTFOO_VERSION}`, `@anthropic-ai/claude-agent-sdk@${CLAUDE_AGENT_SDK_VERSION}`, `@openai/codex-sdk@${CODEX_SDK_VERSION}`],
         { cwd: this.installFolderPath, maxBuffer: 64 * 1024 * 1024 },
       );
     } catch (raised) {
@@ -70,29 +73,24 @@ export class Promptfoo implements ForRunningPromptfoo {
     }
   }
 
-  async evaluate({ description, prompt, workingFolder, assertions }: PromptfooTest): Promise<PromptfooTestResult> {
+  async evaluate({ agent, description, prompt, workingFolder, assertions }: PromptfooTest): Promise<PromptfooTestResult> {
     const workingFolderPath = fileURLToPath(workingFolder);
     const runFolderPath = await mkdtemp(join(this.installFolderPath, "run-"));
     try {
       const configFilePath = join(runFolderPath, "promptfooconfig.json");
       const outputFilePath = join(runFolderPath, "output.json");
       const isAgentGraded = assertions.some(({ type }) => type === "agent-rubric");
+      const providerId = agent === "codex" ? "openai:codex-sdk" : "anthropic:claude-agent-sdk";
+      const providerConfig = agent === "codex"
+        ? { working_dir: workingFolderPath, codex_path_override: "codex", sandbox_mode: "workspace-write", approval_policy: "never", maxRetries: 0 }
+        : { working_dir: workingFolderPath, setting_sources: ["project"], permission_mode: "acceptEdits", skills: "all", append_allowed_tools: ["Write", "Edit", "MultiEdit"], apiKeyRequired: false };
+      const graderConfig = agent === "codex"
+        ? { working_dir: workingFolderPath, codex_path_override: "codex", sandbox_mode: "read-only", approval_policy: "never", maxRetries: 0, cli_config: { project_doc_max_bytes: 0 } }
+        : { working_dir: workingFolderPath, setting_sources: [], allowed_tools: ["Read", "Glob", "Grep"], permission_mode: "default", apiKeyRequired: false };
       const promptfooConfig = {
         description,
         prompts: ["{{prompt}}"],
-        providers: [
-          {
-            id: "anthropic:claude-agent-sdk",
-            config: {
-              working_dir: workingFolderPath,
-              setting_sources: ["project"],
-              permission_mode: "acceptEdits",
-              skills: "all",
-              append_allowed_tools: ["Write", "Edit", "MultiEdit"],
-              apiKeyRequired: false,
-            },
-          },
-        ],
+        providers: [{ id: providerId, config: providerConfig }],
         tests: [
           {
             vars: { prompt },
@@ -100,14 +98,8 @@ export class Promptfoo implements ForRunningPromptfoo {
               ? {
                   options: {
                     provider: {
-                      id: "anthropic:claude-agent-sdk",
-                      config: {
-                        working_dir: workingFolderPath,
-                        setting_sources: [],
-                        allowed_tools: ["Read", "Glob", "Grep"],
-                        permission_mode: "default",
-                        apiKeyRequired: false,
-                      },
+                      id: providerId,
+                      config: graderConfig,
                     },
                   },
                 }
@@ -126,7 +118,7 @@ export class Promptfoo implements ForRunningPromptfoo {
       } catch (raised) {
         // A test failing is an answer, not an error.
         if ((raised as { code?: unknown }).code !== PROMPTFOO_FAILED_TEST_EXIT_CODE)
-          throw new AdapterFault(`"promptfoo eval" stopped with an error: ${(raised as { stderr?: string }).stderr?.trim() || raised}`, 'Check that "claude" runs and is signed in here.');
+          throw new AdapterFault(`"promptfoo eval" stopped with an error: ${(raised as { stderr?: string }).stderr?.trim() || raised}`, `Check that "${agent}" runs and is signed in here.`);
       }
       const {
         results: { results: testResults },
