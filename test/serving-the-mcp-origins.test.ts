@@ -48,7 +48,7 @@ const ORIGINS: readonly McpOrigin[] = [
 const mcpOriginsServed = ({ origins = ORIGINS as readonly McpOrigin[] | null } = {}) => {
   const held = new InMemoryFileReaders({
     ...(origins !== null && { [`${OUT}mcp-origins.json`]: JSON.stringify({ origins }) }),
-    [`${OUT}catalog.json`]: JSON.stringify(
+    [`${OUT}catalogue.json`]: JSON.stringify(
       Object.entries(COMPILED_MCPS).map(([id, { file }]) => ({ kind: "mcp", id, description: "An mcp origin.", file })),
     ),
     ...Object.fromEntries(
@@ -243,4 +243,14 @@ test("an mcp origin reached for a call is let go once it has answered", async ()
   await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
 
   assert.deepEqual(mcpServers.closed, [LINEAR]);
+});
+
+test("MCP reads only the shared catalogue, since its primitives are shared", async () => {
+  const { held, mcpConnectingApp } = await signedInMcpOrigins();
+  held.write(new URL(`${OUT}catalogue.claude.json`), "not json");
+  held.write(new URL(`${OUT}catalogue.codex.json`), "not json");
+  held.calls.length = 0;
+  const servedTools = await mcpConnectingApp.tools();
+  assert.equal(servedTools.data.tools.length, 3);
+  assert.ok(!held.calls.some((file) => file.includes("catalogue.claude.json") || file.includes("catalogue.codex.json")));
 });

@@ -16,6 +16,7 @@ export abstract class ProviderComponent {
     /** The whole of what the file holds, or of this engine's part of it. */
     readonly document: string,
     readonly projectionPolicy: ProjectionPolicy,
+    readonly warnings: readonly string[] = [],
   ) {}
 
   /** The file it is put down as, and how it goes down over what is there. */

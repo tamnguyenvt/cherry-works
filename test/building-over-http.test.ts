@@ -67,8 +67,8 @@ test("the preview lists every target cw build --preview prints, and writes nothi
 
   assert.equal(answer.status, 200);
   const { added, edited, deleted, unchanged } = DataDTOs.PlanSummary.parse(await answer.json()).data;
-  assert.ok(added.includes(".cw/out/catalog.json"));
-  assert.equal(await held.readIfThere(new URL(".cw/out/catalog.json", repoPath)), undefined);
+  assert.ok(added.includes(".cw/out/catalogue.json"));
+  assert.equal(await held.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
 
   const { text } = await printed(cli, ["build", "--preview"]);
   const listed = text.split("\n").flatMap((line) => line.match(/^ {2}(\S+) +(\S+)$/)?.slice(1, 3).join(" ") ?? []);
@@ -87,8 +87,8 @@ test("building writes, says what it wrote, and the health check then says the ou
 
   assert.equal(answer.status, 200);
   const { added } = DataDTOs.PlanSummary.parse(await answer.json()).data;
-  assert.ok(added.includes(".cw/out/catalog.json"));
-  assert.notEqual(await held.readIfThere(new URL(".cw/out/catalog.json", repoPath)), undefined);
+  assert.ok(added.includes(".cw/out/catalogue.json"));
+  assert.notEqual(await held.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
 
   const health = OutcomeDTOs.DoctorOutcome.parse(await (await portalRoutes.request("/charter/root/health")).json()).data;
   assert.equal(health.pendingCount, 0);
@@ -102,7 +102,7 @@ test("a charter with an error builds nothing, and its faults are sent under thei
 
   assert.equal(answer.status, 422);
   assert.deepEqual(Object.keys(DataDTOs.FaultsByFile.parse(await answer.json()).data.files), [".cw/charter/guide/no-any/index.md"]);
-  assert.equal(await held.readIfThere(new URL(".cw/out/catalog.json", repoPath)), undefined);
+  assert.equal(await held.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
 });
 
 test("the health check is what doctor answers, and names the faults cw doctor prints (FR-121, SC-014)", async () => {

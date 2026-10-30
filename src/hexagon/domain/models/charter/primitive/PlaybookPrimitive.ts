@@ -1,27 +1,13 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, FlagSchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import { BasePrimitive, headersOf, GoodArraySchema, FlagSchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
 import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** An ordered procedure loaded when a request matches its triggers (FR-004). */
-export const PlaybookHeadersSchema = CommonHeadersSchema.extend({
-  triggers: GoodArraySchema,
-  /** Whether it is kept out of the commands its host offers the user, being a
-   *  step of something else; the agent still opens it (CORE-FR-173). */
-  "disable-user-invocation": FlagSchema.optional(),
-  /** Whether the agent is kept from opening it by itself, its description
-   *  matching what is asked; the user still runs it as a command (CORE-FR-181). */
-  "disable-model-invocation": FlagSchema.optional(),
-}).superRefine((headers, context) => {
-  // Kept from both, nobody could open it (CORE-FR-183).
-  if (headers["disable-user-invocation"] === true && headers["disable-model-invocation"] === true)
-    context.addIssue({
-      code: "custom",
-      message: `This playbook declares both "disable-user-invocation: true" and "disable-model-invocation: true", so neither the user nor the agent could open it; drop one.`,
-    });
-});
-export type PlaybookHeaders = Readonly<z.infer<typeof PlaybookHeadersSchema>>;
+export type PlaybookHeaders = Readonly<z.infer<typeof PlaybookPrimitive.schema>>;
 
-export class PlaybookPrimitive extends BasePrimitive<PlaybookHeaders> {
+export class PlaybookPrimitive extends BasePrimitive {
+  declare readonly headers: PlaybookHeaders;
+
   static readonly kind = "playbook" as const;
   readonly kind = PlaybookPrimitive.kind;
 
@@ -33,7 +19,22 @@ export class PlaybookPrimitive extends BasePrimitive<PlaybookHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = PlaybookHeadersSchema;
+  static override readonly schema = super.headersSchema().extend({
+    triggers: GoodArraySchema,
+    /** Whether it is kept out of the commands its host offers the user, being a
+     *  step of something else; the agent still opens it (CORE-FR-173). */
+    "disable-user-invocation": FlagSchema.optional(),
+    /** Whether the agent is kept from opening it by itself, its description
+     *  matching what is asked; the user still runs it as a command (CORE-FR-181). */
+    "disable-model-invocation": FlagSchema.optional(),
+  }).superRefine((headers, context) => {
+    // Kept from both, nobody could open it (CORE-FR-183).
+    if (headers["disable-user-invocation"] === true && headers["disable-model-invocation"] === true)
+      context.addIssue({
+        code: "custom",
+        message: `This playbook declares both "disable-user-invocation: true" and "disable-model-invocation: true", so neither the user nor the agent could open it; drop one.`,
+      });
+  });
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -55,6 +56,6 @@ export class PlaybookPrimitive extends BasePrimitive<PlaybookHeaders> {
 
   /** One playbook, or every fault its headers have (FR-004). */
   static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): PlaybookPrimitive {
-    return new PlaybookPrimitive(headersOf(PlaybookPrimitive, PlaybookHeadersSchema, record), body, assets, primitiveLayer);
+    return new PlaybookPrimitive(headersOf(PlaybookPrimitive, PlaybookPrimitive.schema, record), body, assets, primitiveLayer);
   }
 }

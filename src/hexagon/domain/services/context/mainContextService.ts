@@ -1,6 +1,7 @@
 import type { AgentProvider } from "../../models/AgentProvider.js";
 import type { CharterRoot } from "../../models/charter/CharterRoot.js";
 import type { MainContextText } from "../../models/context/MainContext.js";
+import { codexMainContextOf } from "./codexMainContextFactory.js";
 import { CLAUDE_TOKEN_FACTOR, claudeMainContextOf } from "./claudeMainContextFactory.js";
 
 /** What one agent puts into its main context of this charter, as the text it
@@ -8,6 +9,8 @@ import { CLAUDE_TOKEN_FACTOR, claudeMainContextOf } from "./claudeMainContextFac
  *  second host is a case here and a factory beside this one. */
 export function mainContextTextsOf(charter: CharterRoot, agent: AgentProvider): readonly MainContextText[] {
   switch (agent) {
+    case "codex":
+      return codexMainContextOf(charter);
     case "claude":
       return claudeMainContextOf(charter);
   }
@@ -17,6 +20,8 @@ export function mainContextTextsOf(charter: CharterRoot, agent: AgentProvider): 
  *  stands for: what an estimate is scaled by (EVAL-SC-002). */
 export function tokenFactorOf(agent: AgentProvider): number {
   switch (agent) {
+    case "codex":
+      return 1;
     case "claude":
       return CLAUDE_TOKEN_FACTOR;
   }

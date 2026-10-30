@@ -52,7 +52,7 @@ const cwSessionCostSkill = ".claude/skills/cw-session-cost/SKILL.md";
  *  Stop hook running the engine's session counter (EVAL-FR-008). Every charter
  *  holds it, so every projection has that file. */
 const builtinSettings = ".claude/settings.json";
-const sessionCounterStopHook = { hooks: [{ type: "command", command: "cw sensor run Stop" }] };
+const sessionCounterStopHook = { hooks: [{ type: "command", command: "cw sensor run Stop --agent claude" }] };
 
 /** What the engine's session primitives compile to under the workspace. */
 const sessionCounterPaths = [
@@ -256,7 +256,7 @@ test("a sensor compiles to a hook this host runs: the event, and the command (FR
 
   assert.deepEqual(Object.keys(files), [".claude/settings.json", builtinSkill, cwSessionCostSkill]);
   assert.deepEqual(JSON.parse(files[".claude/settings.json"] ?? ""), {
-    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "cw sensor run PostToolUse" }] }], Stop: [sessionCounterStopHook] },
+    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "cw sensor run PostToolUse --agent claude" }] }], Stop: [sessionCounterStopHook] },
   });
 });
 
@@ -361,7 +361,7 @@ test("nothing is compiled for an agent that was not named as installed", async (
   const files = await putDown(aRole, []);
 
   assert.deepEqual(Object.keys(files), [
-    ".cw/out/catalog.json",
+    ".cw/out/catalogue.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",

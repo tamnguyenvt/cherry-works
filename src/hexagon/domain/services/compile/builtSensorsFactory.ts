@@ -20,9 +20,10 @@ export function builtSensorsOf(
   return [...charter.primitives]
     .flatMap((primitive) => (primitive.kind === SensorPrimitive.kind ? [primitive] : []))
     .sort((one, another) => (one.headers.id < another.headers.id ? -1 : 1))
-    .map(({ headers: { id, signal, run } }) => ({
+    .map(({ headers: { id, signal, run, "agent-provider": agentProviders } }) => ({
       id,
       signal,
+      ...(agentProviders === undefined ? {} : { "agent-provider": agentProviders }),
       command: run.replace(REFERENCE, (reference, referencedId: string) => {
         const scriptPrimitive = charter.primitiveById.get(referencedId);
         const executionFile = scriptPrimitive && compiledPrimitiveByPrimitive.get(scriptPrimitive)?.projections.find((projection) => projection.executable)?.file;

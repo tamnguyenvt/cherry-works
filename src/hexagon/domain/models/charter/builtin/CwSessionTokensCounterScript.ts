@@ -1,4 +1,4 @@
-import { ScriptPrimitive } from "../primitive/ScriptPrimitive.js";
+import { ScriptPrimitive, type ScriptHeaders } from "../primitive/ScriptPrimitive.js";
 import { BUILTIN_PRIMITIVE_LAYER } from "../PrimitiveLayer.js";
 // Its text, not the module: it runs on the developer's machine when the agent
 // stops, never here.
@@ -8,12 +8,13 @@ import sessionTokensCounterMjs from "./scripts/sessionTokensCounter.mjs";
  *  `cw-session-tokens-counter-on-stop` each time the agent stops (EVAL-FR-008). */
 export class CwSessionTokensCounterScript extends ScriptPrimitive {
   constructor() {
+    const scriptHeaders: ScriptHeaders = {
+      id: "cw-session-tokens-counter",
+      description: "Count the session's tokens when the agent stops, keep them on this machine, and say so at every mark.",
+      executionPath: "./sessionTokensCounter.mjs",
+    };
     super(
-      {
-        id: "cw-session-tokens-counter",
-        description: "Count the session's tokens when the agent stops, keep them on this machine, and say so at every mark.",
-        executionPath: "./sessionTokensCounter.mjs",
-      },
+      scriptHeaders,
       `This script is cw's own. It comes with the engine, is not authored in this
 repository, and cannot be changed here.
 

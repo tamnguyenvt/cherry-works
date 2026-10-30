@@ -108,6 +108,7 @@ test("of a built script, the asset it runs is executable and no other; a built t
 
 test("the catalogue names each primitive's compiled file, and a listing the index.md it was authored in (FR-164, FR-140)", async () => {
   const { held, charterAuthoringApp, build } = building({
+    [inRepo(".cw/settings.json")]: '{"agents":["claude"]}',
     ...script("check"),
     [at("template/note/index.md")]: template("note"),
     [at("skill/release/index.md")]: skillNaming("[[check]]", "[[note]]"),
@@ -115,7 +116,7 @@ test("the catalogue names each primitive's compiled file, and a listing the inde
 
   await build();
 
-  const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalog.json", repo))) as { id: string; file: string }[];
+  const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalogue.json", repo))) as { id: string; file: string }[];
   assert.equal(catalogue.find((entry) => entry.id === "check")?.file, ".cw/out/script/check/index.md");
   assert.equal(catalogue.find((entry) => entry.id === "note")?.file, ".cw/out/template/note/index.md");
   const listing = await charterAuthoringApp.fullList();

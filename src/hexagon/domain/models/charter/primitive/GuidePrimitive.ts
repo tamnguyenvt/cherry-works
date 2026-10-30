@@ -1,13 +1,14 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import { BasePrimitive, headersOf, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
 import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** A standard the agent is held to. Its body is loaded when a touched file
  *  matches one of its globs, and on every turn where it names none (FR-004). */
-export const GuideHeadersSchema = CommonHeadersSchema.extend({});
-export type GuideHeaders = Readonly<z.infer<typeof GuideHeadersSchema>>;
+export type GuideHeaders = Readonly<z.infer<typeof GuidePrimitive.schema>>;
 
-export class GuidePrimitive extends BasePrimitive<GuideHeaders> {
+export class GuidePrimitive extends BasePrimitive {
+  declare readonly headers: GuideHeaders;
+
   static readonly kind = "guide" as const;
   readonly kind = GuidePrimitive.kind;
 
@@ -18,7 +19,7 @@ export class GuidePrimitive extends BasePrimitive<GuideHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = GuideHeadersSchema;
+  static override readonly schema = super.headersSchema().extend({});
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -36,6 +37,6 @@ export class GuidePrimitive extends BasePrimitive<GuideHeaders> {
 
   /** One guide, or every fault its headers have (FR-004). */
   static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): GuidePrimitive {
-    return new GuidePrimitive(headersOf(GuidePrimitive, GuideHeadersSchema, record), body, assets, primitiveLayer);
+    return new GuidePrimitive(headersOf(GuidePrimitive, GuidePrimitive.schema, record), body, assets, primitiveLayer);
   }
 }

@@ -1,0 +1,8 @@
+[
+  {
+    "kind": "sensor",
+    "id": "cw-session-tokens-counter-on-stop",
+    "description": "Count the session's tokens each time the agent stops.",
+    "file": ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md"
+  }
+]

@@ -1,3 +1,4 @@
+import type { ForParsingToml } from "../port/zdriven/ForParsingToml.js";
 import type { AgentProvider } from "../domain/models/AgentProvider.js";
 import { DomainFault, FaultsByFile } from "../domain/models/DomainFault.js";
 import { evalSuiteNameOf } from "../domain/models/eval/EvalSuite.js";
@@ -34,12 +35,13 @@ import { evalRunReportDTO, faultsByFileDTO } from "./dtos.js";
  * (EVAL-FR-021).
  */
 export class CharterEvaluating implements ForEvaluatingCharter {
+  readonly #tomlParser: ForParsingToml | undefined;
   readonly #repoPath: URL;
   readonly #fileReader: ForReadingFiles;
   readonly #yamlParser: ForParsingYaml;
   readonly #fileWriter: ForWritingFiles;
   readonly #vcs: ForVCS;
-  readonly #agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>>;
+  readonly #agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForRunningAgentCli>>>;
   readonly #promptfooRunner: ForRunningPromptfoo;
   readonly #progressReporter: ForReportingProgress;
 
@@ -53,13 +55,15 @@ export class CharterEvaluating implements ForEvaluatingCharter {
     vcs: ForVCS,
     /** Each agent's own command line: what promptfoo runs the agent through,
      *  asked only whether it is installed. */
-    agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>>,
+    agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForRunningAgentCli>>>,
     /** What runs and grades every case (EVAL-FR-020). */
     promptfooRunner: ForRunningPromptfoo,
     /** What the developer is told while a run installs promptfoo
      *  (EVAL-FR-032). */
     progressReporter: ForReportingProgress,
+    tomlParser?: ForParsingToml,
   ) {
+    this.#tomlParser = tomlParser;
     this.#repoPath = repoPath;
     this.#fileReader = fileReader;
     this.#yamlParser = yamlParser;
@@ -108,7 +112,7 @@ export class CharterEvaluating implements ForEvaluatingCharter {
     // Claude Code is the one agent evaluated (spec Assumptions).
     if (!settings.agents.includes("claude"))
       throw new DomainFault("Evaluating runs the cases through claude, and this repository does not compile for it.", 'Run "cw init" and choose claude.');
-    if (!(await this.#agentCliByProvider.claude.isInstalled()))
+    if (!(await this.#agentCliByProvider.claude?.isInstalled()))
       throw new DomainFault(
         "Evaluating puts every case to claude's own command line, and it is not installed here.",
         'Install Claude Code and sign in, then run "cw eval" again.',
@@ -128,7 +132,7 @@ export class CharterEvaluating implements ForEvaluatingCharter {
       const caseWorktreeFolder = folderURL(new URL(`${caseIndex + 1}/`, worktreesFolder));
       await this.#vcs.addWorktree(this.#repoPath, caseWorktreeFolder);
       try {
-        const buildPlan = await plan(caseWorktreeFolder, charter, settings.agents, this.#fileReader, undefined, { refreshMcpOrigins: false });
+        const buildPlan = await plan(caseWorktreeFolder, charter, settings.agents, this.#fileReader, undefined, { refreshMcpOrigins: false }, this.#tomlParser);
         if (buildPlan instanceof FaultsByFile) return faultsByFileDTO(buildPlan, caseWorktreeFolder);
         await executePlan(buildPlan.cleanupPlan, buildPlan.projectionPlan, this.#fileWriter);
 

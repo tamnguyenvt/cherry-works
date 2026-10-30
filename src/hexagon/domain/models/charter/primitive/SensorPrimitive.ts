@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, GoodLineSchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import { headersOf, GoodLineSchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import { AgentBasedPrimitive } from "./AgentBasedPrimitive.js";
 import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** The events a charter knows how to be raised by, and the only ones a sensor
@@ -13,28 +14,25 @@ export const SIGNALS = [
   "PreToolUse",
   "PostToolUse",
   "UserPromptSubmit",
-  "Notification",
   "Stop",
   "SubagentStop",
   "PreCompact",
   "SessionStart",
   "SessionEnd",
+  "PermissionRequest",
+  "SubagentStart",
+  "PostCompact",
 ] as const;
 
 /** One of them, read off the list rather than written out again. */
 export type Signal = (typeof SIGNALS)[number];
 
 /** A command the agent's own harness runs when a signal fires (FR-004). */
-export const SensorHeadersSchema = CommonHeadersSchema.extend({
-  /** What raises it: one of the events every host of this engine speaks in. */
-  signal: z.enum(SIGNALS),
-  /** What is run when it does. A sensor that names no command is a sensor
-   *  nothing can fire, so this is required. */
-  run: GoodLineSchema,
-});
-export type SensorHeaders = Readonly<z.infer<typeof SensorHeadersSchema>>;
+export type SensorHeaders = Readonly<z.infer<typeof SensorPrimitive.schema>>;
 
-export class SensorPrimitive extends BasePrimitive<SensorHeaders> {
+export class SensorPrimitive extends AgentBasedPrimitive {
+  declare readonly headers: SensorHeaders;
+
   static readonly kind = "sensor" as const;
   readonly kind = SensorPrimitive.kind;
 
@@ -46,7 +44,13 @@ export class SensorPrimitive extends BasePrimitive<SensorHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = SensorHeadersSchema;
+  static override readonly schema = super.headersSchema().extend({
+    /** What raises it: one of the events every host of this engine speaks in. */
+    signal: z.enum(SIGNALS),
+    /** What is run when it does. A sensor that names no command is a sensor
+     *  nothing can fire, so this is required. */
+    run: GoodLineSchema,
+  });
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -63,6 +67,6 @@ export class SensorPrimitive extends BasePrimitive<SensorHeaders> {
 
   /** One sensor, or every fault its headers have (FR-004). */
   static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): SensorPrimitive {
-    return new SensorPrimitive(headersOf(SensorPrimitive, SensorHeadersSchema, record), body, assets, primitiveLayer);
+    return new SensorPrimitive(headersOf(SensorPrimitive, SensorPrimitive.schema, record), body, assets, primitiveLayer);
   }
 }

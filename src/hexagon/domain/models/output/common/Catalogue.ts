@@ -1,3 +1,4 @@
+import type { AgentProvider } from "../../AgentProvider.js";
 import { OUT_DIRECTORY } from "../../../path.js";
 import type { Projection } from "../ProjectionPolicy.js";
 
@@ -19,7 +20,11 @@ import type { Projection } from "../ProjectionPolicy.js";
  */
 export class Catalogue {
   /** Entries in the order they are to be listed: by id (SC-007). */
-  constructor(readonly entries: readonly CatalogueEntry[]) {}
+  constructor(readonly entries: readonly CatalogueEntry[], readonly agent?: AgentProvider) {}
+
+  static pathOf(agent?: AgentProvider): string {
+    return `${OUT_DIRECTORY}/catalogue${agent === undefined ? "" : `.${agent}`}.json`;
+  }
 
   /** The file it is put down as: beside `CHARTER.md`, which sends a reader to
    *  it by name (FR-011), and the charter's own, written whole over whatever is
@@ -27,10 +32,13 @@ export class Catalogue {
    *  whose entries land one per line says what changed in the charter rather
    *  than that the listing changed. */
   get projections(): readonly Projection[] {
+    const catalogueEntries = this.entries
+      .filter((catalogueEntry) => catalogueEntry.agentProvider === (this.agent ?? "all"))
+      .map(({ agentProvider, ...catalogueEntry }) => catalogueEntry);
     return [
       {
-        file: `${OUT_DIRECTORY}/catalog.json`,
-        contents: `${JSON.stringify(this.entries, undefined, 2)}\n`,
+        file: Catalogue.pathOf(this.agent),
+        contents: `${JSON.stringify(catalogueEntries, undefined, 2)}\n`,
         projectionPolicy: "replace",
         executable: false,
       },
@@ -45,7 +53,7 @@ export class Catalogue {
    * put in, which is the order by id they were made in.
    */
   filterByKind(kind: string): Catalogue {
-    return new Catalogue(this.entries.filter((one) => one.kind === kind));
+    return new Catalogue(this.entries.filter((one) => one.kind === kind), this.agent);
   }
 }
 
@@ -57,6 +65,8 @@ export class Catalogue {
  * Globs nobody wrote are left out rather than recorded as nothing.
  */
 export interface CatalogueEntry {
+  /** Used to split catalogues in memory; omitted from their JSON files. */
+  readonly agentProvider: "all" | AgentProvider;
   readonly kind: string;
   readonly id: string;
   readonly description: string;

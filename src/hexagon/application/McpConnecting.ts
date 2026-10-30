@@ -156,6 +156,7 @@ export class McpConnecting implements ForConnectingMcps {
     const declaredTools: DeclaredTool[] = [];
     for (const origin of origins)
       for (const id of origin.ids) {
+        if (!toolsById.has(id)) continue;
         const tools = toolsById.get(id);
         if (tools === undefined) {
           problems.push(`${id} has no compiled document under .cw/out/, so none of its tools is served. Run "cw build".`);

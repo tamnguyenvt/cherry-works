@@ -56,7 +56,7 @@ export function claudeComponentsOf(
   // what runs when an event fires, and this host reads both out of one file.
   const isSettingComponent = (one: Primitive) =>
     one.kind === PosturePrimitive.kind || one.kind === SensorPrimitive.kind;
-  const asSettings = charter.primitives.filter(isSettingComponent);
+  const asSettings = charter.primitives.filter((primitive) => primitive.supportsAgent("claude") && isSettingComponent(primitive));
   const asDocuments = charter.primitives.filter((one) => !isSettingComponent(one));
 
   // A subagent holds the tools it lists and nothing else. An mcp origin it lists,
@@ -128,7 +128,7 @@ function claudeSettingsOf(charter: CharterRoot, builtSensors: BuiltSensors, sett
     ...(allowedPermissions.size === 0 && deniedPermissions.size === 0 ? {} : { permissions: { allow: [...allowedPermissions], deny: [...deniedPermissions] } }),
     ...(hookEvents.length === 0
       ? {}
-      : { hooks: Object.fromEntries(hookEvents.map((hookEvent) => [hookEvent, [{ hooks: [{ type: "command", command: sensorRunCommandOf(hookEvent) }] }]])) }),
+      : { hooks: Object.fromEntries(hookEvents.map((hookEvent) => [hookEvent, [{ hooks: [{ type: "command", command: sensorRunCommandOf(hookEvent, "claude") }] }]])) }),
     // A charter reaching an mcp origin has its tools' schemas deferred by the host
     // itself, the one server listing every tool (EVAL-FR-016).
     ...(charter.primitives.some((primitive) => primitive instanceof McpPrimitive) && { env: CLAUDE_TOOL_SEARCH_ENV }),

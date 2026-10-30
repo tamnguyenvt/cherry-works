@@ -57,8 +57,8 @@ test("a host is given one command per signal its sensors name, and none of the s
   await build();
 
   assert.deepEqual((await claudeSettings()).hooks, {
-    PreToolUse: [hookEntry("cw sensor run PreToolUse")],
-    Stop: [hookEntry("cw sensor run Stop")],
+    PreToolUse: [hookEntry("cw sensor run PreToolUse --agent claude")],
+    Stop: [hookEntry("cw sensor run Stop --agent claude")],
   });
   const settingsText = (await held.readIfThere(new URL(".claude/settings.json", repo))) ?? "";
   for (const sensorCommand of ["echo a", "echo b", "./bin/guard", SESSION_COUNTER_COMMAND]) assert.ok(!settingsText.includes(sensorCommand.replaceAll('"', '\\"')));
@@ -76,7 +76,7 @@ test("each sensor's command is built into the output, in order of id, its script
   assert.deepEqual(JSON.parse((await held.readIfThere(new URL(".cw/out/sensors.json", repo))) ?? "{}"), {
     sensors: [
       { id: "check-on-stop", signal: "Stop", command: ".cw/out/script/release/check/bin/run.sh --strict" },
-      { id: "cw-session-tokens-counter-on-stop", signal: "Stop", command: SESSION_COUNTER_COMMAND },
+      { id: "cw-session-tokens-counter-on-stop", signal: "Stop", command: SESSION_COUNTER_COMMAND, "agent-provider": ["claude"] },
     ],
   });
 });
@@ -93,7 +93,7 @@ test("the hooks under a signal the charter's sensors name are the charter's whol
 
   await build();
 
-  assert.deepEqual((await claudeSettings()).hooks, { Stop: [hookEntry("cw sensor run Stop")] });
+  assert.deepEqual((await claudeSettings()).hooks, { Stop: [hookEntry("cw sensor run Stop --agent claude")] });
 });
 
 test("a signal whose last sensor is removed keeps the command the last build wrote, which runs nothing (CORE-FR-175, CORE-FR-176)", async () => {
@@ -104,7 +104,7 @@ test("a signal whose last sensor is removed keeps the command the last build wro
   await build();
   const sensorRunOutcome = await runSensors("PreToolUse", "{}");
 
-  assert.deepEqual((await claudeSettings()).hooks, { PreToolUse: [hookEntry("cw sensor run PreToolUse")], Stop: [hookEntry("cw sensor run Stop")] });
+  assert.deepEqual((await claudeSettings()).hooks, { PreToolUse: [hookEntry("cw sensor run PreToolUse --agent claude")], Stop: [hookEntry("cw sensor run Stop --agent claude")] });
   assert.deepEqual(sensorRunOutcome.data, { exitCode: 0, answer: "", problem: "" });
   assert.deepEqual(shell.runs, []);
 });
@@ -222,6 +222,21 @@ test("sensors answering in the host's structured form are combined as the host c
   });
 });
 
+test("a PermissionRequest denial wins over an earlier allowance without carrying its input override", async () => {
+  const { build, runSensors } = aRepository({
+    [at("sensor/allow/index.md")]: sensor("allow", "PermissionRequest", "./allow"),
+    [at("sensor/deny/index.md")]: sensor("deny", "PermissionRequest", "./deny"),
+  }, {
+    "./allow": { exitCode: 0, stderr: "", stdout: JSON.stringify({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow", updatedInput: { command: "echo allowed" } } } }) },
+    "./deny": { exitCode: 0, stderr: "", stdout: JSON.stringify({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "deny", message: "blocked by the charter", interrupt: true } } }) },
+  });
+  assert.equal((await build()).type, "PlanSummary");
+  const outcome = await runSensors("PermissionRequest", "{}");
+  assert.deepEqual(JSON.parse(outcome.data.answer).hookSpecificOutput.decision, {
+    behavior: "deny", message: "blocked by the charter", interrupt: true,
+  });
+});
+
 test("a block and context from two sensors both reach the host (CORE-FR-178)", async () => {
   const { build, runSensors } = aRepository(
     {
@@ -261,10 +276,29 @@ test("a signal no sensor names runs nothing, writes nothing, and exits 0 (CORE-F
   const { shell, build, runSensors } = aRepository({});
   await build();
 
-  const sensorRunOutcome = await runSensors("Notification", "{}");
+  const sensorRunOutcome = await runSensors("PreCompact", "{}");
 
   assert.deepEqual(sensorRunOutcome.data, { exitCode: 0, answer: "", problem: "" });
   assert.deepEqual(shell.runs, []);
+});
+
+test("Codex runs a signal once through the shared runner, passes its payload and excludes the Claude counter", async () => {
+  const { shell, build, runSensors } = aRepository({
+    [at("sensor/check/index.md")]: sensor("check", "Stop", "echo check"),
+    [at("sensor/gate/index.md")]: sensor("gate", "Stop", "echo gate"),
+  }, {
+    "echo check": { exitCode: 0, stdout: '{"decision":"block","reason":"check failed"}', stderr: "" },
+    "echo gate": { exitCode: 2, stdout: "", stderr: "blocked" },
+  });
+  await build();
+  const payload = '{"hook_event_name":"Stop","turn_id":"turn-1"}';
+  const outcome = await runSensors("Stop", payload, "codex");
+  assert.equal(outcome.data.exitCode, 2);
+  assert.equal(outcome.data.problem, "blocked");
+  assert.match(outcome.data.answer, /check failed/);
+  assert.equal(shell.runs.length, 2);
+  assert.ok(!shell.runs.some(({ command }) => command === SESSION_COUNTER_COMMAND));
+  assert.ok(shell.runs.every((run) => run.stdin === payload));
 });
 
 test("cw sensor run, started by the host, runs a built signal's sensors in the shell and answers once (CORE-FR-176, CORE-FR-177, CORE-FR-178)", async (t) => {
@@ -294,4 +328,23 @@ test("cw sensor run, started by the host, runs a built signal's sensors in the s
 
   assert.deepEqual({ status: openRun.status, stdout: openRun.stdout, stderr: openRun.stderr }, { status: 0, stdout: "a\nb\n", stderr: "" });
   assert.deepEqual({ status: lockedRun.status, stdout: lockedRun.stdout, stderr: lockedRun.stderr }, { status: 2, stdout: "a\nb\n", stderr: "a release is open\n" });
+});
+
+test("sensors run only for their declared provider from the built snapshot", async () => {
+  const { held, shell, build, runSensors, claudeSettings } = aRepository({
+    [at("sensor/shared/index.md")]: sensor("shared", "SessionStart", "echo shared"),
+    [at("sensor/claude-only/index.md")]: sensor("claude-only", "SessionStart", "echo claude").replace("signal:", "agent-provider: [claude]\nsignal:"),
+    [at("sensor/codex-only/index.md")]: sensor("codex-only", "SessionStart", "echo codex").replace("signal:", "agent-provider: [codex]\nsignal:"),
+    [at("sensor/codex-event/index.md")]: sensor("codex-event", "PreCompact", "echo compact").replace("signal:", "agent-provider: [codex]\nsignal:"),
+  });
+  assert.equal((await build()).type, "PlanSummary");
+  assert.equal((await claudeSettings()).hooks.PreCompact, undefined);
+  assert.match(JSON.stringify((await claudeSettings()).hooks), /--agent claude/);
+  // Editing the source does not change what the last build runs.
+  held.write(new URL(at("sensor/codex-only/index.md")), sensor("codex-only", "SessionStart", "echo modified"));
+  await runSensors("SessionStart", "original event", "codex");
+  assert.deepEqual(shell.runs.map((shellCall) => shellCall.command).sort(), ["echo codex", "echo shared"]);
+  shell.runs.length = 0;
+  await runSensors("SessionStart", "original event", "claude");
+  assert.deepEqual(shell.runs.map((shellCall) => shellCall.command).sort(), ["echo claude", "echo shared"]);
 });

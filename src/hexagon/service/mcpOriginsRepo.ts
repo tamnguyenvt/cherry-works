@@ -1,3 +1,4 @@
+import { Catalogue } from "../domain/models/output/common/Catalogue.js";
 import { DomainFault, FaultsByFile } from "../domain/models/DomainFault.js";
 import type { CharterRoot } from "../domain/models/charter/CharterRoot.js";
 import { McpPrimitive } from "../domain/models/charter/primitive/McpPrimitive.js";
@@ -49,7 +50,7 @@ export async function loadMcpOrigins(repo: URL, fileReader: ForReadingFiles): Pr
 
 /**
  * The tools each mcp the last build compiled declares, under its id: read
- * from its compiled document, found through `.cw/out/catalog.json`, since the
+ * from its compiled document, found through the shared catalogue, since the
  * list of mcp origins holds where an mcp origin is and nothing an mcp's own file says
  * (FR-145). The server reads these and no charter.
  *
@@ -60,19 +61,21 @@ export async function loadMcpTools(
   repo: URL,
   fileReader: ForReadingFiles,
   yamlParser: ForParsingYaml,
-): Promise<ReadonlyMap<string, readonly string[]>> {
-  const contents = await fileReader.readIfThere(new URL("catalog.json", outFolderIn(repo)));
-  let catalogEntries: readonly { id?: unknown; kind?: unknown; file?: unknown }[] = [];
+): Promise<ReadonlyMap<string, readonly string[] | undefined>> {
+  const catalogEntries: { id?: unknown; kind?: unknown; file?: unknown }[] = [];
+  const contents = await fileReader.readIfThere(new URL(Catalogue.pathOf(), repo));
   try {
     const catalogJson: unknown = JSON.parse(contents ?? "[]");
-    if (Array.isArray(catalogJson)) catalogEntries = catalogJson;
+    if (Array.isArray(catalogJson)) catalogEntries.push(...catalogJson);
   } catch {
-    // No mcp is read from a catalogue that does not read; each is said missing.
+    throw new DomainFault(`"${Catalogue.pathOf()}" is not a readable catalogue.`, 'Run "cw build" to write it again.');
   }
 
-  const toolsById = new Map<string, readonly string[]>();
+  const toolsById = new Map<string, readonly string[] | undefined>();
   for (const { id, kind, file } of catalogEntries) {
     if (kind !== McpPrimitive.kind || typeof id !== "string" || typeof file !== "string") continue;
+    if (toolsById.has(id)) continue;
+    toolsById.set(id, undefined);
     const compiledDocument = await fileReader.readIfThere(new URL(file, repo));
     if (compiledDocument === undefined) continue;
     try {

@@ -53,13 +53,13 @@ here and extend what is already there.
     (`ClaudeSkill`, `ClaudeRule`, `ClaudeAgent`, `ClaudeSettings`,
     `ClaudeMcpConfig`, listed in `ClaudeComponent.ts`).
   - `services/` — logic that knows charter and output together:
-    `compile/compileService.ts` (`compile`: one reading into a
-    `CharterOutput`, hosts dispatched in `providerComponentsOf`) calling one
-    factory per output, each `<model>Of()` in `compile/<model>Factory.ts`:
+    `compile/compileService.ts` (`compile`: charter to output, no file reads,
+    with hosts dispatched in `providerComponentsOf`), calling one pure factory
+    per output in `compile/<model>Factory.ts`:
     `compiledPrimitiveOf`, `catalogueOf`, `charterMdOf`, `mcpOriginsOf`, and
     `claudeComponentsOf` in `claudeComponentFactory.ts`;
-    `context/mainContextService.ts` (`mainContextTextsOf`: what an agent puts
-    into its main context when a session opens, hosts dispatched there, and
+    `context/mainContextService.ts` (`mainContextTextsOf`: what compiled output puts
+    into the agent's main context when a session opens, hosts dispatched there, and
     `tokenFactorOf`, each host's token factor) calling `claudeMainContextOf`
     in `context/claudeMainContextFactory.ts`, beside `CLAUDE_TOKEN_FACTOR`;
     `testService.ts`; `evalService.ts` (`EvalCaseReport`, `EvalRunReport`, and the

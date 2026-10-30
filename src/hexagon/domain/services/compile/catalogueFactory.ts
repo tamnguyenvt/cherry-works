@@ -1,3 +1,4 @@
+import { AGENT_PROVIDERS } from "../../models/AgentProvider.js";
 import type { Primitive } from "../../models/charter/primitive/Primitive.js";
 import type { CharterRoot } from "../../models/charter/CharterRoot.js";
 import { Catalogue } from "../../models/output/common/Catalogue.js";
@@ -20,7 +21,9 @@ export function catalogueOf(charter: CharterRoot, fileOf: (one: Primitive) => st
     // read, so the same charter catalogues byte for byte the same (SC-007).
     [...charter.primitives].sort((one, another) => (one.headers.id < another.headers.id ? -1 : one.headers.id > another.headers.id ? 1 : 0)).map((one) => {
       const { description, globs } = one.headers;
+      const agentProviders = AGENT_PROVIDERS.filter((agentProvider) => one.supportsAgent(agentProvider));
       return {
+        agentProvider: agentProviders.length === AGENT_PROVIDERS.length ? "all" : agentProviders[0]!,
         kind: one.kind,
         id: one.headers.id,
         description,

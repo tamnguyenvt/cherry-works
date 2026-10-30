@@ -1,7 +1,9 @@
 import { text } from "node:stream/consumers";
 import type { Command, Context, OptionSpec, Options, Outcome } from "./Command.js";
+import { isAgentProvider, DomainFault } from "#hexagon/port/driver/ForRunningSensors.js";
 
 const OPTIONS = {
+  agent: { type: "string", describe: "The host raising the signal: claude or codex" },
   signal: {
     type: "string",
     describe: "The signal the host fired, as a sensor names it: Stop, PreToolUse…",
@@ -22,10 +24,12 @@ export class SensorRunCommand implements Command<typeof OPTIONS> {
   readonly summary = "Run every sensor of a signal, as the host's one hook for it";
   readonly options = OPTIONS;
 
-  async run({ sensorRunningApp }: Context, { signal }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async run({ sensorRunningApp }: Context, { signal, agent }: Options<typeof OPTIONS>): Promise<Outcome> {
+    if (agent !== undefined && !isAgentProvider(agent))
+      throw new DomainFault(`Unknown sensor host "${agent}".`, "Name claude or codex.");
     // Typed at a terminal, there is no event to wait for.
     const stdin = process.stdin.isTTY ? "" : await text(process.stdin);
-    const { data: sensorRunOutcome } = await sensorRunningApp.runSensors(signal ?? "", stdin);
+    const { data: sensorRunOutcome } = await sensorRunningApp.runSensors(signal ?? "", stdin, agent);
     return { code: sensorRunOutcome.exitCode, result: sensorRunOutcome.answer, problem: sensorRunOutcome.problem };
   }
 }

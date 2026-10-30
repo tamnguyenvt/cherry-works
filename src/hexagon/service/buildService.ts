@@ -4,9 +4,11 @@ import type { CharterOutput } from "../domain/models/output/CharterOutput.js";
 import { isStamped } from "../domain/models/output/StampedDocument.js";
 import { compile } from "../domain/services/compile/compileService.js";
 import { loadToolsByOriginKey, type McpReaching } from "./mcpOriginsRepo.js";
-import { agentProviderFolderIn, outFolderIn } from "../domain/path.js";
+import { agentProviderFolderIn, outFolderIn, codexSkillsFolderIn } from "../domain/path.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import { DomainFault, FaultsByFile } from "../domain/models/DomainFault.js";
+import type { ForParsingToml } from "../port/zdriven/ForParsingToml.js";
+import { mergeTomlTables, sameTomlValue } from "./helper.js";
 import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
 
 /**
@@ -54,20 +56,24 @@ export async function plan(
   fileReaders: ForReadingFiles,
   mcpReaching: McpReaching | undefined,
   { refreshMcpOrigins }: { readonly refreshMcpOrigins: boolean },
+  tomlParser?: ForParsingToml,
 ): Promise<Plan | FaultsByFile> {
   const { toolsByOriginKey, faultsByFile } = await loadToolsByOriginKey(repo, charter, fileReaders, mcpReaching, refreshMcpOrigins);
   if (!faultsByFile.isEmpty) return faultsByFile;
 
+  const output = compile(charter, agentProviders, toolsByOriginKey);
   const [cleanupPlan, projectionPlan] = await Promise.all([
     planForCleanup(repo, agentProviders, fileReaders),
-    planForProjection(repo, compile(charter, agentProviders, toolsByOriginKey), fileReaders),
+    planForProjection(repo, output, fileReaders, tomlParser),
   ]);
 
-  return { cleanupPlan, projectionPlan };
+  const preservedFiles = cleanupPlan.filter((plannedFile) => plannedFile.contents !== undefined && !projectionPlan.some((projectionFile) => projectionFile.path === plannedFile.path));
+  return { cleanupPlan, projectionPlan: [...projectionPlan, ...preservedFiles], warnings: output.warnings };
 }
 
 /** One reading of a charter, said as what it would do to disk. */
 export interface Plan {
+  readonly warnings: readonly string[];
   /** What the last build left, whether this one writes it again or not. */
   readonly cleanupPlan: readonly PlannedFile[];
   /** Everything this reading of the charter would put down. */
@@ -92,18 +98,33 @@ export async function planForProjection(
   repo: URL,
   output: CharterOutput,
   fileReaders: ForReadingFiles,
+  tomlParser?: ForParsingToml,
 ): Promise<readonly PlannedFile[]> {
   const planned = new Map<string, PlannedFile>();
 
   for (const one of output.projections) {
     const file = new URL(one.file, repo);
-    const held = await fileReaders.readIfThere(file);
+    const original = await fileReaders.readIfThere(file);
+    const currentContents = planned.get(one.file)?.contents ?? original;
 
     // One arm per way a file goes down, and the set is closed: a file the
     // charter owns is what the charter says, and the two the charter shares are
     // what is there now with this build's part of it written into it.
     let contents: string;
     switch (one.projectionPolicy) {
+      case "mergeTOML": {
+        if (tomlParser === undefined)
+          throw new DomainFault("A TOML projection needs a parser and serializer.", "Wire ForParsingToml into the build use case.");
+        let currentSettings: Readonly<Record<string, unknown>>;
+        try { currentSettings = tomlParser.parse(currentContents ?? ""); }
+        catch (cause) {
+          throw new DomainFault(`"${one.file}" is not readable TOML: ${(cause as Error).message}`, "Correct that file before building; no files have been written.");
+        }
+        const desiredSettings = tomlParser.parse(one.contents);
+        const mergedSettings = mergeTomlTables(currentSettings, desiredSettings);
+        contents = currentContents !== undefined && sameTomlValue(currentSettings, mergedSettings) ? currentContents : tomlParser.stringify(mergedSettings);
+        break;
+      }
       case "replace":
         contents = one.contents;
         break;
@@ -125,14 +146,14 @@ export async function planForProjection(
                 ]),
               )
             : written;
-        contents = `${JSON.stringify(mergedJSON(JSON.parse(held?.trim() || "{}"), JSON.parse(one.contents)), undefined, 2)}\n`;
+        contents = `${JSON.stringify(mergedJSON(JSON.parse(currentContents?.trim() || "{}"), JSON.parse(one.contents)), undefined, 2)}\n`;
         break;
       }
       // A section says where it starts and ends itself — its first line and its
       // last — so nothing here knows what a marker of this engine's looks like,
       // and a second output written this way brings its own (FR-051).
       case "upsertWithMarker": {
-        const already = held ?? "";
+        const already = currentContents ?? "";
         const lines = one.contents.trimEnd().split("\n");
         // Escaped, because a marker is a comment and a comment holds characters
         // a regular expression reads as its own.
@@ -161,7 +182,7 @@ export async function planForProjection(
       }
     }
 
-    planned.set(one.file, { path: one.file, file, contents, held, ...(one.executable === true ? { executable: true } : {}) });
+    planned.set(one.file, { path: one.file, file, contents, held: original, ...(one.executable === true ? { executable: true } : {}) });
   }
 
   return [...planned.values()];
@@ -188,18 +209,37 @@ export async function planForCleanup(
   agentProviders: readonly AgentProvider[],
   fileReaders: ForReadingFiles,
 ): Promise<readonly PlannedFile[]> {
-  // Where this build writes, and the only places it looks: the workspace's own
-  // output folder, and the directory of each agent this repository compiles for
-  // — so one compiling for none has only its own output looked at (FR-019).
   const outFolder = outFolderIn(repo);
-  const folders = [outFolder, ...agentProviders.map((agent) => agentProviderFolderIn(repo, agent))];
-
+  const folders = [outFolder, ...agentProviders.map((agent) => agentProviderFolderIn(repo, agent)), ...(agentProviders.includes("codex") ? [codexSkillsFolderIn(repo)] : [])];
   const found = await Promise.all(folders.map((folder) => fileReaders.readFilesRecursively(folder)));
 
-  return found
-    .flat()
+  const entryCleanupPlan: PlannedFile[] = [];
+  if (agentProviders.includes("codex")) {
+    // Discover only nested instruction files; do not read every repository file.
+    let entryFolders = await fileReaders.listFolders(repo);
+    while (entryFolders.length > 0) {
+      const nextEntryFolders: URL[] = [];
+      for (const entryFolder of entryFolders) {
+        const folderName = decodeURIComponent(entryFolder.pathname.split("/").at(-2) ?? "");
+        if ([".git", ".cw", ".claude", ".codex", ".agents", "node_modules"].includes(folderName)) continue;
+        const file = new URL("AGENTS.md", entryFolder);
+        const contents = await fileReaders.readIfThere(file);
+        if (contents !== undefined && isStamped(contents)) {
+          // A stamped managed section does not make the surrounding user text ours.
+          const userText = contents.replace(/<!-- CHERRYWORKS START -->[\s\S]*?<!-- CHERRYWORKS END -->\n?/g, "");
+          entryCleanupPlan.push({
+            path: decodeURIComponent(file.href.slice(repo.href.length)), file, held: contents,
+            ...(contents.includes("<!-- CHERRYWORKS START -->") && userText.trim() !== "" ? { contents: userText } : {}),
+          });
+        }
+        nextEntryFolders.push(...await fileReaders.listFolders(entryFolder));
+      }
+      entryFolders = nextEntryFolders;
+    }
+  }
+  return [...found.flat()
     .filter(({ file, contents }) => file.href.startsWith(outFolder.href) || isStamped(contents))
-    .map(({ file, contents }) => ({ path: decodeURIComponent(file.href.slice(repo.href.length)), file, held: contents }));
+    .map(({ file, contents }) => ({ path: decodeURIComponent(file.href.slice(repo.href.length)), file, held: contents })), ...entryCleanupPlan];
 }
 
 /**
@@ -225,6 +265,7 @@ export class PlanSummary {
     readonly deleted: readonly string[],
     /** Already holding exactly what the build compiles to. */
     readonly unchanged: readonly string[],
+    readonly warnings: readonly string[] = [],
   ) {}}
 
 /**
@@ -242,12 +283,14 @@ export class PlanSummary {
 export function previewPlan(
   cleanupPlan: readonly PlannedFile[],
   projectionPlan: readonly PlannedFile[],
+  warnings: readonly string[] = [],
 ): PlanSummary {
   return new PlanSummary(
     projectionPlan.filter((one) => one.held === undefined).map((one) => one.path),
     projectionPlan.filter((one) => one.held !== undefined && one.held !== one.contents).map((one) => one.path),
     cleanupPlan.filter((one) => !projectionPlan.some((other) => other.path === one.path)).map((one) => one.path),
     projectionPlan.filter((one) => one.held === one.contents).map((one) => one.path),
+    warnings,
   );
 }
 

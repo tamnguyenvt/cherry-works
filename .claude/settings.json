@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cw sensor run Stop"
+            "command": "cw sensor run Stop --agent claude"
           }
         ]
       }

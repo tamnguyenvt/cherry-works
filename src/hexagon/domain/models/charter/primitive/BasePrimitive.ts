@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AgentProvider } from "../../AgentProvider.js";
 import { CharterPrimitiveFault, throwAggregateError } from "../../DomainFault.js";
 import { contentHashOf, formatFrontmatterValue } from "../../helper.js";
 import { REPO_PRIMITIVE_LAYER, type PrimitiveLayer, type LayerName } from "../PrimitiveLayer.js";
@@ -47,32 +48,7 @@ export const FlagSchema = z
   .refine((value) => [true, false, "true", "false"].includes(value as never), { message: "A yes or no header is written true or false." })
   .transform((value) => value === true || value === "true");
 
-/** The headers every kind declares, whatever else its own contract asks for
- *  (data-model §1). Each kind's own headers extend these, so what every
- *  primitive holds is written once. */
-export const CommonHeadersSchema = z.object({
-  /** Slugs joined by `/`, so ids can be grouped by team or domain
-   *  (FR-141). The `/` is written `-` in the file's name and nothing else:
-   *  nothing is read from what a file is called. At most 40 characters, so every name a host
-   *  is given for it — an mcp's tools among them, `mcp__cw__mcp-<id>__<tool>` —
-   *  stays within what the host takes (FR-157). */
-  id: z
-    .string()
-    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\/[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/)
-    .refine((id) => id.length <= 40, { message: `"id" is at most 40 characters.` }),
-  /** All an agent reads of a primitive before opening its body. */
-  description: GoodLineSchema,
-  tags: z.array(GoodLineSchema).readonly().optional(),
-  /** The files this primitive speaks about, where it speaks about any. A guide's
-   *  are what decide when its body is loaded; a mixin may name them to say how
-   *  far what it lends reaches (FR-006). */
-  globs: z.array(GoodLineSchema).readonly().optional(),
-  /** The id of the corpus this primitive cites as its reasoning (FR-005,
-   *  FR-172). */
-  rationale: GoodLineSchema.optional(),
-  mixins: z.array(GoodLineSchema).readonly().optional(),
-});
-export type CommonHeaders = Readonly<z.infer<typeof CommonHeadersSchema>>;
+export type CommonHeaders = Readonly<z.infer<ReturnType<typeof BasePrimitive.headersSchema>>>;
 
 /**
  * What every kind of primitive is: the headers its file declared, and the body
@@ -84,6 +60,34 @@ export type CommonHeaders = Readonly<z.infer<typeof CommonHeadersSchema>>;
  * it is checked, and held as that kind's headers from then on.
  */
 export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeaders> {
+  /** The headers every kind declares, whatever else its own contract asks for
+   *  (data-model §1). Each kind's own headers extend these, so what every
+   *  primitive holds is written once. */
+  static headersSchema() {
+    return z.object({
+      /** Slugs joined by `/`, so ids can be grouped by team or domain
+       *  (FR-141). The `/` is written `-` in the file's name and nothing else:
+       *  nothing is read from what a file is called. At most 40 characters, so every name a host
+       *  is given for it — an mcp's tools among them, `mcp__cw__mcp-<id>__<tool>` —
+       *  stays within what the host takes (FR-157). */
+      id: z
+        .string()
+        .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\/[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/)
+        .refine((id) => id.length <= 40, { message: `"id" is at most 40 characters.` }),
+      /** All an agent reads of a primitive before opening its body. */
+      description: GoodLineSchema,
+      tags: z.array(GoodLineSchema).readonly().optional(),
+      /** The files this primitive speaks about, where it speaks about any. A guide's
+       *  are what decide when its body is loaded; a mixin may name them to say how
+       *  far what it lends reaches (FR-006). */
+      globs: z.array(GoodLineSchema).readonly().optional(),
+      /** The id of the corpus this primitive cites as its reasoning (FR-005,
+       *  FR-172). */
+      rationale: GoodLineSchema.optional(),
+      mixins: z.array(GoodLineSchema).readonly().optional(),
+    });
+  }
+
   /** What every kind requires of its author, whatever else its own contract
    *  asks for. A kind's own `requires` stands beside this rather than adding to
    *  it, so whoever asks for a kind's headers asks for both (FR-039). `id` is
@@ -101,7 +105,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    *  each header holds — including the ones a kind takes without requiring, so
    *  whoever is writing a header reads its shape off the same contract a file
    *  is refused against (FR-004). */
-  static readonly schema: z.ZodObject = CommonHeadersSchema;
+  static readonly schema: z.ZodObject = BasePrimitive.headersSchema();
 
   protected constructor(
     /** What this primitive's file declared, read as the contract of its kind:
@@ -142,6 +146,11 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
     );
     const loweredWord = word.toLowerCase();
     return [this.headers.id, this.kind, this.activatesWhen, this.file, ...headerValues].some((one) => one.toLowerCase().includes(loweredWord));
+  }
+
+  /** Whether this primitive is available to a host. No restriction means all. */
+  supportsAgent(_agent: AgentProvider): boolean {
+    return true;
   }
 
   /** Which kind this is. Each class declares it as a literal, and those

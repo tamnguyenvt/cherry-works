@@ -27,12 +27,6 @@
     "file": ".cw/out/script/cw-session-tokens-counter/index.md"
   },
   {
-    "kind": "sensor",
-    "id": "cw-session-tokens-counter-on-stop",
-    "description": "Count the session's tokens each time the agent stops.",
-    "file": ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md"
-  },
-  {
     "kind": "guide",
     "id": "driven-port-speaks-its-adapter",
     "description": "Name what crosses a driven port after what its adapter deals in, never after a domain concept.",

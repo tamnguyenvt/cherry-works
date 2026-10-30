@@ -1,4 +1,7 @@
 import type { OutcomeDTOs } from "./dtos/index.js";
+import type { AgentProvider } from "../../domain/models/AgentProvider.js";
+export { isAgentProvider } from "../../domain/models/AgentProvider.js";
+export { DomainFault } from "../../domain/models/DomainFault.js";
 
 /**
  * DRIVER PORT — the sensors of one signal, run when the host fires it
@@ -15,5 +18,5 @@ export interface ForRunningSensors {
    * output. A signal no sensor names, or a repository never built, runs
    * nothing and answers 0 with nothing said.
    */
-  runSensors(signal: string, stdin: string): Promise<OutcomeDTOs.SensorRunOutcome>;
+  runSensors(signal: string, stdin: string, agent?: AgentProvider): Promise<OutcomeDTOs.SensorRunOutcome>;
 }

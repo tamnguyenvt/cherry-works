@@ -12,6 +12,8 @@ import { SessionReviewing } from "./src/hexagon/application/SessionReviewing.js"
 import { CharterEvaluating } from "./src/hexagon/application/CharterEvaluating.js";
 import { SensorRunning } from "./src/hexagon/application/SensorRunning.js";
 import { FileReaders } from "./src/zdriven/FileReaders.js";
+import { TomlParser } from "./src/zdriven/TomlParser.js";
+import type { ForParsingToml } from "./src/hexagon/port/zdriven/ForParsingToml.js";
 import { YamlParser } from "./src/zdriven/YamlParser.js";
 import { FileOutput } from "./src/zdriven/FileOutput.js";
 import { Git } from "./src/zdriven/Git.js";
@@ -54,6 +56,7 @@ import type { ForRunningSensors } from "./src/hexagon/port/driver/ForRunningSens
  */
 const fileReader: ForReadingFiles = new FileReaders();
 const yamlParser: ForParsingYaml = new YamlParser();
+const tomlParser: ForParsingToml = new TomlParser();
 const fileWriter: ForWritingFiles = new FileOutput();
 const vcs: ForVCS = new Git();
 const secrets: ForKeepingSecrets = new OsSecrets();
@@ -64,7 +67,7 @@ const clock: ForTellingTime = new SystemClock();
 const shell: ForRunningShellCommands = new Shell();
 /** Each agent's own command line, under the agent it runs: a second host is
  *  one more entry here. */
-const agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>> = { claude: new ClaudeCli() };
+const agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForRunningAgentCli>>> = { claude: new ClaudeCli() };
 
 /** Where this was run, as the hexagon takes a repository: a directory, so it
  *  ends in a separator. */
@@ -81,6 +84,7 @@ const charterAuthoringApp: ForManagingCharter = new CharterAuthoring(
   mcpServers,
   secrets,
   authorizing,
+  tomlParser,
 );
 
 const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath, fileReader, vcs, fileWriter, yamlParser);
@@ -99,7 +103,7 @@ const sessionReviewingApp: ForReviewingSessions = new SessionReviewing(repoPath,
 const promptfooRunner: ForRunningPromptfoo = new Promptfoo(join(homedir(), ".cherry-works"));
 const progressReporter: ForReportingProgress = new ConsoleReporter();
 
-const charterEvaluatingApp: ForEvaluatingCharter = new CharterEvaluating(repoPath, fileReader, yamlParser, fileWriter, vcs, agentCliByProvider, promptfooRunner, progressReporter);
+const charterEvaluatingApp: ForEvaluatingCharter = new CharterEvaluating(repoPath, fileReader, yamlParser, fileWriter, vcs, agentCliByProvider, promptfooRunner, progressReporter, tomlParser);
 
 const sensorRunningApp: ForRunningSensors = new SensorRunning(repoPath, fileReader, shell);
 

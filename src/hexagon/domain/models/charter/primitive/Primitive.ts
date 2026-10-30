@@ -10,7 +10,7 @@ import { SensorPrimitive } from "./SensorPrimitive.js";
 import { SkillPrimitive } from "./SkillPrimitive.js";
 import { ScriptPrimitive } from "./ScriptPrimitive.js";
 import { TemplatePrimitive } from "./TemplatePrimitive.js";
-import { BasePrimitive, CommonHeadersSchema, DELIMITER, FlagSchema, type AssetFile } from "./BasePrimitive.js";
+import { BasePrimitive, DELIMITER, FlagSchema, type AssetFile } from "./BasePrimitive.js";
 import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 import { CharterPrimitiveFault, throwAggregateError, type DomainFault } from "../../DomainFault.js";
 import { formatFrontmatterValue } from "../../helper.js";
@@ -55,7 +55,7 @@ export type Kind = (typeof KINDS)[number];
  *  an id is written in: text that is not one names nothing to look for
  *  (FR-172). */
 export function primitiveIdOf(typed: string): string {
-  if (!CommonHeadersSchema.shape.id.safeParse(typed).success)
+  if (!BasePrimitive.headersSchema().shape.id.safeParse(typed).success)
     throw new CharterPrimitiveFault(
       `"${typed}" is not an id: one is lowercase letters, digits and inner hyphens, in segments joined by "/".`,
       'Type it as the primitive declares it, as in "no-any".',
@@ -228,6 +228,11 @@ export function primitiveOf(
           ),
     ]);
   const kind = headers.kind;
+  if (Object.hasOwn(headers, "agent-provider") && !Object.hasOwn(CLASS_OF.get(kind)!.schema.shape, "agent-provider"))
+    throwAggregateError([new CharterPrimitiveFault(
+      `A ${kind} holds no "agent-provider".`,
+      'Use "agent-provider" only on posture and sensor primitives.',
+    )]);
   if (typeof input === "string") return CLASS_OF.get(kind)!.of(headers, body, assets, primitiveLayer);
 
   const headerFields = primitiveHeadersOf(kind).map((header) => header.field);

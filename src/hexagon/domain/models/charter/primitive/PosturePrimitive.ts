@@ -1,15 +1,14 @@
 import type { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, GoodArraySchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import { headersOf, GoodArraySchema, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import { AgentBasedPrimitive } from "./AgentBasedPrimitive.js";
 import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** What the agent may and may not do, as permission lists (FR-004). */
-export const PostureHeadersSchema = CommonHeadersSchema.extend({
-  allow: GoodArraySchema,
-  deny: GoodArraySchema,
-});
-export type PostureHeaders = Readonly<z.infer<typeof PostureHeadersSchema>>;
+export type PostureHeaders = Readonly<z.infer<typeof PosturePrimitive.schema>>;
 
-export class PosturePrimitive extends BasePrimitive<PostureHeaders> {
+export class PosturePrimitive extends AgentBasedPrimitive {
+  declare readonly headers: PostureHeaders;
+
   static readonly kind = "posture" as const;
   readonly kind = PosturePrimitive.kind;
 
@@ -21,7 +20,10 @@ export class PosturePrimitive extends BasePrimitive<PostureHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = PostureHeadersSchema;
+  static override readonly schema = super.headersSchema().extend({
+    allow: GoodArraySchema,
+    deny: GoodArraySchema,
+  });
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -38,6 +40,6 @@ export class PosturePrimitive extends BasePrimitive<PostureHeaders> {
 
   /** One posture, or every fault its headers have (FR-004). */
   static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): PosturePrimitive {
-    return new PosturePrimitive(headersOf(PosturePrimitive, PostureHeadersSchema, record), body, assets, primitiveLayer);
+    return new PosturePrimitive(headersOf(PosturePrimitive, PosturePrimitive.schema, record), body, assets, primitiveLayer);
   }
 }

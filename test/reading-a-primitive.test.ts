@@ -123,7 +123,7 @@ test("an agent's model is written <provider>:<model>, the provider one this engi
 
   const agentPrimitive = primitive(agentText("claude:haiku-4-5"));
   assert.equal(agentPrimitive.kind === "agent" ? agentPrimitive.headers.model : undefined, "claude:haiku-4-5");
-  for (const model of ["haiku-4-5", "claude:", "codex:gpt-5"]) {
+  for (const model of ["haiku-4-5", "claude:", "unknown:gpt-5"]) {
     assert.match(messages(faultsIn(agentText(model))), /<provider>:<model>/, model);
   }
 });
@@ -135,4 +135,40 @@ test("a mixin's position is start or end, and nothing else", () => {
   const mixinPrimitive = primitive(mixinText("end"));
   assert.equal(mixinPrimitive.kind === "mixin" ? mixinPrimitive.headers.position : undefined, "end");
   assert.match(messages(faultsIn(mixinText("middle"))), /not what a mixin holds/);
+});
+
+test("posture and sensor support agent-provider, with omitted and empty lists supporting all hosts", () => {
+  for (const primitiveClass of PRIMITIVE_CLASSES.filter((primitiveClass) => ["posture", "sensor"].includes(primitiveClass.kind))) {
+    for (const agentProviders of [undefined, [], ["claude"], ["codex"], ["claude", "codex"]]) {
+      const charterPrimitive = primitiveOf({
+        headers: {
+          kind: primitiveClass.kind,
+          ...primitiveClass.sample,
+          ...(agentProviders === undefined ? {} : { "agent-provider": agentProviders }),
+        },
+        body: "Provider-specific instructions.",
+      });
+      for (const agent of ["claude", "codex"] as const)
+        assert.equal(charterPrimitive.supportsAgent(agent), !agentProviders?.length || agentProviders.includes(agent), primitiveClass.kind);
+      const rereadPrimitive = primitiveOf(charterPrimitive.toMarkdown(), parser);
+      assert.ok(rereadPrimitive.kind === "posture" || rereadPrimitive.kind === "sensor");
+      assert.deepEqual(rereadPrimitive.headers["agent-provider"], agentProviders);
+    }
+  }
+});
+
+test("only posture and sensor accept agent-provider in authored files and authoring requests", () => {
+  for (const primitiveClass of PRIMITIVE_CLASSES) {
+    const headers = { kind: primitiveClass.kind, ...primitiveClass.sample, "agent-provider": ["claude"] };
+    if (["posture", "sensor"].includes(primitiveClass.kind)) {
+      for (const agentProviders of [["unknown"], "claude"]) assert.throws(() => primitiveOf({ headers: { ...headers, "agent-provider": agentProviders }, body: "" }));
+    } else {
+      assert.throws(() => primitiveOf({ headers, body: "" }));
+      const authoredPrimitive = primitiveOf({ headers: { kind: primitiveClass.kind, ...primitiveClass.sample }, body: "Shared." });
+      const fileText = authoredPrimitive.toMarkdown().replace("description:", "agent-provider: [claude]\ndescription:");
+      assert.match(messages(faultsIn(fileText)), /holds no "agent-provider"/);
+      assert.equal(authoredPrimitive.supportsAgent("claude"), true);
+      assert.equal(authoredPrimitive.supportsAgent("codex"), true);
+    }
+  }
 });

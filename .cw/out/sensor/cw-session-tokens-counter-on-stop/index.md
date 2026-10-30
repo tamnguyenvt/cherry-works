@@ -2,6 +2,7 @@
 kind: sensor
 id: cw-session-tokens-counter-on-stop
 description: Count the session's tokens each time the agent stops.
+agent-provider: ["claude"]
 signal: Stop
 run: node "[[cw-session-tokens-counter]]"
 ---

@@ -62,7 +62,7 @@ test("the charter file sends an agent to the catalogue first, and to no reduced 
   const contents = await written(oneGuide, CHARTER_MD);
 
   // Named beside it, since the listing lands in the same folder it does.
-  assert.ok(contents.includes("(./catalog.json)"));
+  assert.ok(contents.includes("catalogue.<provider>.json"));
   assert.ok(!contents.includes("catalog.min.json"));
 });
 

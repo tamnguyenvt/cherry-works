@@ -17,7 +17,7 @@ export function charterMdOf(
     "# Charter",
     `This repository is governed by a charter — the standards it authored under \`${CHARTER_DIRECTORY}/\`, which constrain whatever coding agent runs here. Every surface an agent reads, this file included, is generated from that charter: do not edit them, edit the primitive behind them.`,
     "## Read first",
-    `[catalog.json](./catalog.json) — the kind, id, description and file of every primitive this charter holds, with its globs. Survey it to find what you need, and open a file only once its activation condition below is met.`,
+    "Read [catalogue.json](./catalogue.json) for shared primitives and `catalogue.<provider>.json` linked from your host's entry file for primitives restricted to your provider. Entries are not repeated between these files. Each entry lists kind, id, description, file and globs. Use these two catalogues and open a file when its activation condition below is met.",
     "## When each kind applies",
     kinds.map((one) => `- **${one.kind}** — ${one.activatesWhen}.`).join("\n"),
     "## One id, one primitive",

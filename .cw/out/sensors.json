@@ -3,6 +3,9 @@
     {
       "id": "cw-session-tokens-counter-on-stop",
       "signal": "Stop",
+      "agent-provider": [
+        "claude"
+      ],
       "command": "node \".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs\""
     },
     {

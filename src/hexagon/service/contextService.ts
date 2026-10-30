@@ -25,7 +25,9 @@ export function estimatedMainContextOf(charter: CharterRoot, agent: AgentProvide
  * count, the command line's own instructions taken away. Refused before
  * anything runs where the command line is not installed.
  */
-export async function exactMainContextOf(charter: CharterRoot, agent: AgentProvider, agentCli: ForRunningAgentCli): Promise<MainContext> {
+export async function exactMainContextOf(charter: CharterRoot, agent: AgentProvider, agentCli: ForRunningAgentCli | undefined): Promise<MainContext> {
+  if (agentCli === undefined)
+    throw new DomainFault(`Counting exactly is not supported for ${agent} yet.`, 'Run "cw context" without --exact: the estimate needs nothing.');
   if (!(await agentCli.isInstalled()))
     throw new DomainFault(
       `Counting exactly runs ${agent}'s own command line, and it is not installed here.`,

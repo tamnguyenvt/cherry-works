@@ -1,4 +1,4 @@
-import { SkillPrimitive } from "../primitive/SkillPrimitive.js";
+import { SkillPrimitive, type SkillHeaders } from "../primitive/SkillPrimitive.js";
 import { BUILTIN_PRIMITIVE_LAYER } from "../PrimitiveLayer.js";
 
 /** What the sessions kept on this machine cost, reckoned by the agent at prices
@@ -6,17 +6,18 @@ import { BUILTIN_PRIMITIVE_LAYER } from "../PrimitiveLayer.js";
  *  (EVAL-FR-014, EVAL-FR-015). */
 export class CwSessionCostSkill extends SkillPrimitive {
   constructor() {
+    const skillHeaders: SkillHeaders = {
+      id: "cw-session-cost",
+      description: "Answer what the sessions kept on this machine cost, per session and per day, at prices the developer types in or the model provider publishes.",
+      triggers: [
+        "what did the sessions cost",
+        "how much did last week cost",
+        "price the sessions",
+        "session cost",
+      ],
+    };
     super(
-      {
-        id: "cw-session-cost",
-        description: "Answer what the sessions kept on this machine cost, per session and per day, at prices the developer types in or the model provider publishes.",
-        triggers: [
-          "what did the sessions cost",
-          "how much did last week cost",
-          "price the sessions",
-          "session cost",
-        ],
-      },
+      skillHeaders,
       `# What the sessions cost
 
 This skill is cw's own. It comes with the engine, is not authored in this

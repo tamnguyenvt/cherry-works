@@ -1,6 +1,6 @@
 {
   "agents": [
-    "claude"
-  ],
-  "sessionContextMark": 10000000
+    "claude",
+    "codex"
+  ]
 }

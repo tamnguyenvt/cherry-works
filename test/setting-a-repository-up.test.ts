@@ -1,3 +1,4 @@
+import { TomlParser } from "../src/zdriven/TomlParser.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Commander } from "../src/driver/cli/Commander.js";
@@ -41,7 +42,7 @@ const setUp = async (
   versioned = true,
 ) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(versioned), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(versioned), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, undefined, undefined, undefined, new TomlParser());
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };
@@ -80,17 +81,27 @@ test("an agent this engine does not compile for is refused, naming the ones it d
   assert.match(problems, /no agent called "cursor"/);
 });
 
-test("with nobody to ask, the one agent this engine compiles for is the default, and is taken (FR-055)", async () => {
+test("setup can choose Codex without it being installed on this machine", async () => {
+  const { code, held: files, results } = await setUp({}, ["init", "--agent", "codex"]);
+  assert.doesNotMatch(results, /Warning: Codex sensor.*cw-session-tokens-counter-on-stop/);
+  assert.equal(code, 0);
+  assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json"))!), { agents: ["codex"] });
+  assert.match((await held(files, "AGENTS.md"))!, /CHERRYWORKS START/);
+  assert.match((await held(files, ".agents/skills/cw-author/SKILL.md"))!, /name: cw-author/);
+  assert.equal(await held(files, "CLAUDE.md"), undefined);
+});
+
+test("with nobody to ask, Claude remains the default agent (FR-055)", async () => {
   const { code, held: files, results } = await setUp();
 
   assert.equal(code, 0);
-  assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: AGENT_PROVIDERS });
+  assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["claude"] });
   assert.match(results, new RegExp(`Compiling for: ${AGENT_PROVIDERS[0]}\\.`));
 });
 
 test("setup given no agent is refused by the engine, whatever drives it (FR-033)", async () => {
   const held = new InMemoryFileReaders({});
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, undefined, undefined, undefined, new TomlParser());
 
   await assert.rejects(charterAuthoringApp.init({ agents: [] }), /no agent to compile for/);
   assert.equal(await held.readIfThere(new URL(".cw/settings.json", repoPath)), undefined);

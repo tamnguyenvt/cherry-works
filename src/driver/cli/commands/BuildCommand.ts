@@ -66,6 +66,7 @@ export class BuildCommand implements Command<typeof OPTIONS> {
       return {
         code: EXIT_OK,
         result: [
+          ...(planSummaryDTO.data.warnings ?? []).map((warning) => `Warning: ${warning}`),
           ...changes.map(([change, path]) => `  ${change.padEnd("unchanged".length)}  ${path}`),
           `${changes.length} file${changes.length === 1 ? "" : "s"}: ${added.length} create, ${edited.length} update, ${deleted.length} delete, ${unchanged.length} unchanged.`,
           "",
@@ -91,6 +92,7 @@ export class BuildCommand implements Command<typeof OPTIONS> {
     return {
       code: EXIT_OK,
       result: [
+        ...(planSummaryDTO.data.warnings ?? []).map((warning) => `Warning: ${warning}`),
         `Built ${wrote} file${wrote === 1 ? "" : "s"}: ${added.length} added, ${edited.length} changed.`,
         ...deleted.map((path) => `  deleted ${path}, whose primitive is gone`),
         ...mainContexts.map(

@@ -29,9 +29,9 @@ test("the preview lists every target with its change and a count, and writes not
     await previewing(page);
 
     const rows = await page.getByRole("table", { name: "Build plan" }).locator("tr").allInnerTexts();
-    assert.ok(rows.some((row) => /create\s+\.cw\/out\/catalog\.json/i.test(row)));
+    assert.ok(rows.some((row) => /create\s+\.cw\/out\/CHARTER\.md/i.test(row)));
     assert.match(await page.getByLabel("Plan counts").innerText(), /^\d+ files: \d+ create, 0 update, 0 delete, 0 unchanged\.$/);
-    assert.equal(await files.readIfThere(new URL(at(".cw/out/catalog.json"))), undefined);
+    assert.equal(await files.readIfThere(new URL(at(".cw/out/CHARTER.md"))), undefined);
   });
 });
 
@@ -42,7 +42,7 @@ test("building from the preview writes, and lists what it wrote (FR-120)", async
 
     await page.getByRole("table", { name: "Build written" }).waitFor();
     assert.match(await page.getByLabel("Build counts").innerText(), /^Built \d+ files: \d+ added, 0 changed, 0 deleted\.$/);
-    assert.notEqual(await files.readIfThere(new URL(at(".cw/out/catalog.json"))), undefined);
+    assert.notEqual(await files.readIfThere(new URL(at(".cw/out/CHARTER.md"))), undefined);
   });
 });
 
@@ -53,7 +53,7 @@ test("a charter with an error builds nothing, and its faults are shown under the
     const refused = page.getByRole("dialog").getByRole("table", { name: "Refused files" });
     await refused.waitFor();
     assert.match(await refused.innerText(), /\.cw\/charter\/guide\/no-any\/index\.md[\s\S]*the mixin "nowhere"/);
-    assert.equal(await files.readIfThere(new URL(at(".cw/out/catalog.json"))), undefined);
+    assert.equal(await files.readIfThere(new URL(at(".cw/out/CHARTER.md"))), undefined);
   });
 });
 
@@ -74,7 +74,7 @@ test("Doctor shows the four answers and every warning, and builds when the outpu
 
     await page.getByRole("dialog").getByRole("button", { name: "Build", exact: true }).click();
     await page.getByRole("table", { name: "Build written" }).waitFor();
-    assert.notEqual(await files.readIfThere(new URL(at(".cw/out/catalog.json"))), undefined);
+    assert.notEqual(await files.readIfThere(new URL(at(".cw/out/CHARTER.md"))), undefined);
   });
 });
 

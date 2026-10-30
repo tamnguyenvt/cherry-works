@@ -1,3 +1,4 @@
+import type { ForParsingToml } from "../port/zdriven/ForParsingToml.js";
 import { loadCharterRoot, writeCharter } from "../service/charterRepo.js";
 import { loadSettings } from "../service/settingsRepo.js";
 import { loadTestRoot } from "../service/testSuitesRepo.js";
@@ -66,13 +67,14 @@ import { estimatedMainContextOf, exactMainContextOf } from "../service/contextSe
  * handed back, and never the model itself (plan §3.0).
  */
 export class CharterAuthoring implements ForManagingCharter {
+  readonly #tomlParser: ForParsingToml | undefined;
   readonly #repoPath: URL;
   readonly #fileReader: ForReadingFiles;
   readonly #yamlParser: ForParsingYaml;
   readonly #fileWriter: ForWritingFiles;
   readonly #vcs: ForVCS;
   readonly #tokenCounter: ForCountingTokens;
-  readonly #agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>>;
+  readonly #agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForRunningAgentCli>>>;
   readonly #mcpReaching: McpReaching | undefined;
 
   constructor(
@@ -91,7 +93,7 @@ export class CharterAuthoring implements ForManagingCharter {
     tokenCounter: ForCountingTokens,
     /** Each agent's own command line, what a main context is counted exactly
      *  by (EVAL-FR-004). */
-    agentCliByProvider: Readonly<Record<AgentProvider, ForRunningAgentCli>>,
+    agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForRunningAgentCli>>>,
     /** The mcp origins' MCP servers, and the developer's credentials to them: what
      *  a build asks each mcp origin for its tools with, and stops where one cannot
      *  be asked (EVAL-FR-031). Without them, a build keeps the tools the last
@@ -99,7 +101,9 @@ export class CharterAuthoring implements ForManagingCharter {
     mcpServers?: ForCallingMcpServers,
     secrets?: ForKeepingSecrets,
     authorizing?: ForAuthorizing,
+    tomlParser?: ForParsingToml,
   ) {
+    this.#tomlParser = tomlParser;
     this.#repoPath = repoPath;
     this.#fileReader = fileReader;
     this.#yamlParser = yamlParser;
@@ -155,7 +159,7 @@ export class CharterAuthoring implements ForManagingCharter {
 
     // Asked often, so no mcp origin is reached: what the last build kept is what a
     // build would keep where nothing changed there.
-    const doctorPlan = await plan(this.#repoPath, charter, settings.agents, this.#fileReader, this.#mcpReaching, { refreshMcpOrigins: false });
+    const doctorPlan = await plan(this.#repoPath, charter, settings.agents, this.#fileReader, this.#mcpReaching, { refreshMcpOrigins: false }, this.#tomlParser);
     return doctorOutcomeDTO(
       settings,
       heardFaultsByFile,
@@ -337,13 +341,13 @@ export class CharterAuthoring implements ForManagingCharter {
 
     // An mcp origin that cannot be asked for its tools, or lacks one declared,
     // stops the build as an error in the charter does (EVAL-FR-031).
-    const buildPlan = await plan(this.#repoPath, charter, settings.agents, this.#fileReader, this.#mcpReaching, { refreshMcpOrigins: true });
+    const buildPlan = await plan(this.#repoPath, charter, settings.agents, this.#fileReader, this.#mcpReaching, { refreshMcpOrigins: true }, this.#tomlParser);
     if (buildPlan instanceof FaultsByFile) return faultsByFileDTO(buildPlan, this.#repoPath);
     const { cleanupPlan, projectionPlan } = buildPlan;
 
     // What it will have done, read off the plans before anything moves: a build
     // says the same thing a preview of it said (FR-022).
-    const planSummary = previewPlan(cleanupPlan, projectionPlan);
+    const planSummary = previewPlan(cleanupPlan, projectionPlan, buildPlan.warnings);
     await executePlan(cleanupPlan, projectionPlan, this.#fileWriter);
 
     return planSummaryDTO(planSummary);
@@ -363,10 +367,10 @@ export class CharterAuthoring implements ForManagingCharter {
 
     // An mcp origin that cannot be asked for its tools, or lacks one declared,
     // stops the build as an error in the charter does (EVAL-FR-031).
-    const buildPlan = await plan(this.#repoPath, charter, settings.agents, this.#fileReader, this.#mcpReaching, { refreshMcpOrigins: true });
+    const buildPlan = await plan(this.#repoPath, charter, settings.agents, this.#fileReader, this.#mcpReaching, { refreshMcpOrigins: true }, this.#tomlParser);
     if (buildPlan instanceof FaultsByFile) return faultsByFileDTO(buildPlan, this.#repoPath);
     const { cleanupPlan, projectionPlan } = buildPlan;
-    return planSummaryDTO(previewPlan(cleanupPlan, projectionPlan));
+    return planSummaryDTO(previewPlan(cleanupPlan, projectionPlan, buildPlan.warnings));
   }
 
   /**

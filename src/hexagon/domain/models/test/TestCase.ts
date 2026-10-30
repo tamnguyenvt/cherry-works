@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { SIGNALS } from "../charter/primitive/SensorPrimitive.js";
-import { CommonHeadersSchema } from "../charter/primitive/BasePrimitive.js";
+import { BasePrimitive } from "../charter/primitive/BasePrimitive.js";
 
 /** The id a case expects to come up, written as a primitive declares it
  *  (FR-172): bare, never `<kind>:<id>`. */
-const ExpectedIdSchema = CommonHeadersSchema.shape.id;
+const ExpectedIdSchema = BasePrimitive.headersSchema().shape.id;
 
 /**
  * What a case may say (FR-047).

@@ -69,7 +69,8 @@ test("a repository that has never been built would have every file created (FR-0
 
   assert.equal(faultsByFiles, undefined);
   assert.deepEqual(changed(previewed ?? nothing), {
-    ".cw/out/catalog.json": "create",
+    ".cw/out/catalogue.json": "create",
+    ".cw/out/catalogue.claude.json": "create",
     ".cw/out/mcp-origins.json": "create",
     ".cw/out/sensors.json": "create",
     ".cw/out/CHARTER.md": "create",
@@ -111,7 +112,8 @@ test("a rule edited since the last build would be updated, and its listings with
   assert.deepEqual(changed(previewed ?? nothing), {
     // The listings say what a primitive is for and not what its body holds, so a
     // changed body leaves them exactly as they were.
-    ".cw/out/catalog.json": "unchanged",
+    ".cw/out/catalogue.json": "unchanged",
+    ".cw/out/catalogue.claude.json": "unchanged",
     ".cw/out/mcp-origins.json": "unchanged",
     ".cw/out/sensors.json": "unchanged",
     ".cw/out/CHARTER.md": "unchanged",

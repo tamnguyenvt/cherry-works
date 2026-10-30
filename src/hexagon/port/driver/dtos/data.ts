@@ -50,6 +50,7 @@ const PrimitiveKindsSchema = dto("PrimitiveKinds", z.record(z.string(), z.string
 const CatalogueEntrySchema = dto(
   "CatalogueEntry",
   z.object({
+    agentProvider: z.enum(["all", "claude", "codex"]),
     id: z.string(),
     kind: z.string(),
     description: z.string(),
@@ -102,6 +103,7 @@ const PlanSummarySchema = dto(
     edited: StringsSchema,
     deleted: StringsSchema,
     unchanged: StringsSchema,
+    warnings: StringsSchema.optional(),
   }),
 );
 

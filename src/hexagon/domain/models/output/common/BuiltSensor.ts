@@ -1,3 +1,4 @@
+import type { AgentProvider } from "../../AgentProvider.js";
 import { OUT_DIRECTORY } from "../../../path.js";
 import type { Projection } from "../ProjectionPolicy.js";
 
@@ -7,18 +8,27 @@ export interface BuiltSensor {
   readonly id: string;
   readonly signal: string;
   readonly command: string;
+  readonly "agent-provider"?: readonly AgentProvider[];
 }
 
 /** The one command a host is given for a signal its charter's sensors fire
  *  on, whichever host: `cw` runs every one of them (FR-175). */
-export function sensorRunCommandOf(signal: string): string {
-  return `cw sensor run ${signal}`;
+export function sensorRunCommandOf(signal: string, agent?: AgentProvider): string {
+  return `cw sensor run ${signal}${agent === undefined ? "" : ` --agent ${agent}`}`;
 }
 
 /** Every sensor the last build compiled, in order of id: what
  *  `cw sensor run <signal>` reads, since it reads no charter (FR-179). */
 export class BuiltSensors {
   constructor(readonly sensors: readonly BuiltSensor[]) {}
+
+  /** Select only sensors that support the host raising the signal. */
+  forAgent(agent: AgentProvider): BuiltSensors {
+    return new BuiltSensors(this.sensors.filter((builtSensor) => {
+      const agentProviders = builtSensor["agent-provider"];
+      return agentProviders === undefined || agentProviders.length === 0 || agentProviders.includes(agent);
+    }));
+  }
 
   /** The file it is put down as, in the output folder: generated, and the
    *  charter's alone. Indented, since it is committed and read in diffs when a

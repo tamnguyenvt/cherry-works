@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0 — 2026-10-30
+
+- Run `cw init --agent codex` to build charter instructions, skills, subagents, MCP, command permission rules and sensor hooks for Codex.
+
+- One repository can gather several charters under `charters/<name>/.cw/charter/`, and `cw vendor add <source> --charter baseline` picks the ones you want, as `--skill` picks skills. Each lands in `.cw/vendor/<owner>/<repository>/<name>/`, updated and removed on its own.
+- With neither `--charter` nor `--skill`, `cw vendor add` takes what the source's shape holds: its one charter, else every charter under `charters/`, else every skill under `skills/`. `--skill` is no longer refused for a source that holds a charter: it takes the skills named from its `skills/`.
+
 ## 0.8.0 — 2026-10-26
 
 - `cw vendor add` installs skills from a skills repository made for `npx skills`, such as `cw vendor add https://github.com/mattpocock/skills --skill grill-me`; with no `--skill`, every skill it holds is installed.

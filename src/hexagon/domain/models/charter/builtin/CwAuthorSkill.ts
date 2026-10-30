@@ -1,4 +1,4 @@
-import { SkillPrimitive } from "../primitive/SkillPrimitive.js";
+import { SkillPrimitive, type SkillHeaders } from "../primitive/SkillPrimitive.js";
 import { BUILTIN_PRIMITIVE_LAYER } from "../PrimitiveLayer.js";
 
 /** How a primitive of this charter is authored, brought by the engine to every
@@ -6,17 +6,18 @@ import { BUILTIN_PRIMITIVE_LAYER } from "../PrimitiveLayer.js";
  *  (FR-026). */
 export class CwAuthorSkill extends SkillPrimitive {
   constructor() {
+    const skillHeaders: SkillHeaders = {
+      id: "cw-author",
+      description: "Author a new primitive of this repository's charter, asking cw what its kind requires.",
+      triggers: [
+        "write a rule",
+        "add a standard",
+        "write a skill",
+        "author a primitive of the charter",
+      ],
+    };
     super(
-      {
-        id: "cw-author",
-        description: "Author a new primitive of this repository's charter, asking cw what its kind requires.",
-        triggers: [
-          "write a rule",
-          "add a standard",
-          "write a skill",
-          "author a primitive of the charter",
-        ],
-      },
+      skillHeaders,
       `# Authoring a primitive of this charter
 
 This skill is cw's own. It comes with the engine, is not authored in this

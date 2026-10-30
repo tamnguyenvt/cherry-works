@@ -1,19 +1,14 @@
 import { z } from "zod";
-import { BasePrimitive, CommonHeadersSchema, headersOf, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
+import { BasePrimitive, headersOf, type RequiredHeaders, type AssetFile } from "./BasePrimitive.js";
 import type { PrimitiveLayer } from "../PrimitiveLayer.js";
 
 /** Headers and body reused by other primitives. A leaf: it lends its body to
  *  the host that pulls it in, and pulls in none of its own (FR-006). */
-export const MixinHeadersSchema = CommonHeadersSchema.extend({
-  /** Never: reading refuses a mixin that declares one. */
-  mixins: z.undefined().optional(),
-  /** Where its body is lent: before its host's own, where it sets the scene and
-   *  where it goes unsaid, or after it, where it closes what the host says. */
-  position: z.enum(["start", "end"]).default("start"),
-});
-export type MixinHeaders = Readonly<z.infer<typeof MixinHeadersSchema>>;
+export type MixinHeaders = Readonly<z.infer<typeof MixinPrimitive.schema>>;
 
-export class MixinPrimitive extends BasePrimitive<MixinHeaders> {
+export class MixinPrimitive extends BasePrimitive {
+  declare readonly headers: MixinHeaders;
+
   static readonly kind = "mixin" as const;
   readonly kind = MixinPrimitive.kind;
 
@@ -24,7 +19,13 @@ export class MixinPrimitive extends BasePrimitive<MixinHeaders> {
   /** The schema its headers are read by: what `headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = MixinHeadersSchema;
+  static override readonly schema = super.headersSchema().extend({
+    /** Never: reading refuses a mixin that declares one. */
+    mixins: z.undefined().optional(),
+    /** Where its body is lent: before its host's own, where it sets the scene and
+     *  where it goes unsaid, or after it, where it closes what the host says. */
+    position: z.enum(["start", "end"]).default("start"),
+  });
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -41,6 +42,6 @@ export class MixinPrimitive extends BasePrimitive<MixinHeaders> {
 
   /** One mixin, or every fault its headers have (FR-004, FR-006). */
   static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer): MixinPrimitive {
-    return new MixinPrimitive(headersOf(MixinPrimitive, MixinHeadersSchema, record), body, assets, primitiveLayer);
+    return new MixinPrimitive(headersOf(MixinPrimitive, MixinPrimitive.schema, record), body, assets, primitiveLayer);
   }
 }

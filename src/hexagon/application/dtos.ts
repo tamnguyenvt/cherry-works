@@ -127,8 +127,8 @@ export function faultsByFileDTO(faultsByFile: FaultsByFile, repo: URL): DataDTOs
 }
 
 /** What a build did, or would do: the four lists as they are. */
-export function planSummaryDTO({ added, edited, deleted, unchanged }: PlanSummary): DataDTOs.PlanSummary {
-  return { type: "PlanSummary", data: { added, edited, deleted, unchanged } };
+export function planSummaryDTO({ added, edited, deleted, unchanged, warnings }: PlanSummary): DataDTOs.PlanSummary {
+  return { type: "PlanSummary", data: { added, edited, deleted, unchanged, ...(warnings.length === 0 ? {} : { warnings }) } };
 }
 
 /** One header a kind takes: what a driver asks an author by. */

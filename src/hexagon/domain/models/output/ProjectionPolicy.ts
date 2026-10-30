@@ -17,7 +17,7 @@
  * Every output says which of the three it is, so nothing putting them down has to
  * know one kind of output from another.
  */
-export type ProjectionPolicy = "replace" | "mergeJSON" | "upsertWithMarker";
+export type ProjectionPolicy = "replace" | "mergeJSON" | "mergeTOML" | "upsertWithMarker";
 
 /**
  * One file this build puts down: where it goes, what it holds, and how it goes

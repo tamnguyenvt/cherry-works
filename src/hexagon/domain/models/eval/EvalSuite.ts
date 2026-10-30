@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { CommonHeadersSchema } from "../charter/primitive/BasePrimitive.js";
+import { BasePrimitive } from "../charter/primitive/BasePrimitive.js";
 import { DomainFault, EvalSuiteFault, FaultsByFile } from "../DomainFault.js";
 import { EVAL_DIRECTORY } from "../../path.js";
 
 /** The id a case expects, written as a primitive declares it (FR-172). */
-const ExpectedIdSchema = CommonHeadersSchema.shape.id;
+const ExpectedIdSchema = BasePrimitive.headersSchema().shape.id;
 
 /**
  * What one evaluation case may say (EVAL-FR-020): a prompt put to the agent,

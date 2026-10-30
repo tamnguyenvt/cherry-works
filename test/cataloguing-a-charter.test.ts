@@ -86,7 +86,7 @@ const catalogueOf = async (files: InMemoryFileReaders): Promise<Catalogue> => co
  *  (SC-005). */
 const written = (entries: readonly unknown[]) => JSON.stringify(entries);
 
-test("the catalogue records what a primitive is called, what it is for, the files it applies to and where its body is, and no other header", async () => {
+test("the catalogue records what a primitive is called, what it is for, the files and providers it applies to and where its body is", async () => {
   const catalogue = await catalogueOf(
     new InMemoryFileReaders({
       [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", {
@@ -97,7 +97,7 @@ test("the catalogue records what a primitive is called, what it is for, the file
 
   assert.deepEqual(catalogue.entries, [
     { ...builtinEntry, file: ".cw/out/skill/cw-author/index.md" },
-    ...sessionCounterEntries,
+    ...sessionCounterEntries.filter((catalogueEntry) => catalogueEntry.id !== CwSessionTokensSensor.id),
     {
       id: "no-any",
       kind: "guide",
@@ -105,7 +105,7 @@ test("the catalogue records what a primitive is called, what it is for, the file
       file: ".cw/out/guide/no-any/index.md",
       globs: ["src/**/*.ts"],
     },
-  ]);
+  ].map((catalogueEntry) => ({ ...catalogueEntry, agentProvider: "all" })));
 });
 
 test("a header the author left out is left out, not recorded as nothing", async () => {
@@ -115,7 +115,20 @@ test("a header the author left out is left out, not recorded as nothing", async 
 
   const entry = catalogue.entries.find((one) => one.id === "no-any");
 
-  assert.deepEqual(Object.keys(entry!).sort(), ["description", "file", "globs", "id", "kind"]);
+  assert.deepEqual(Object.keys(entry!).sort(), ["agentProvider", "description", "file", "globs", "id", "kind"]);
+});
+
+test("the output keeps shared entries in catalogue and restricted entries only in provider catalogues", async () => {
+  const charter = await load(new InMemoryFileReaders());
+  const charterOutput = compile(charter, ["claude", "codex"]);
+  const sensorId = CwSessionTokensSensor.id;
+
+  assert.ok(charterOutput.catalogue.entries.every((catalogueEntry) => catalogueEntry.agentProvider === "all"));
+  assert.ok(!charterOutput.catalogue.entries.some((catalogueEntry) => catalogueEntry.id === sensorId));
+  assert.deepEqual(charterOutput.agentBasedCatalogues.claude?.entries.map((catalogueEntry) => catalogueEntry.id), [sensorId]);
+  assert.deepEqual(charterOutput.agentBasedCatalogues.codex?.entries, []);
+  const sharedProjection = charterOutput.catalogue.projections[0]!;
+  assert.ok(!JSON.parse(sharedProjection.contents).some((catalogueEntry: { id: string }) => catalogueEntry.id === sensorId));
 });
 
 test("a vendored primitive is catalogued at its compiled file, as every layer's is (FR-140)", async () => {
@@ -137,7 +150,7 @@ test("the same charter catalogues in the same order however its files were read"
 
   const ids = (await catalogueOf(files)).entries.map((one) => one.id);
 
-  assert.deepEqual(ids, ["cw-author", "cw-session-cost", "cw-session-tokens-counter", "cw-session-tokens-counter-on-stop", "no-any", "type-safety", "writing-tests"]);
+  assert.deepEqual(ids, ["cw-author", "cw-session-cost", "cw-session-tokens-counter", "no-any", "type-safety", "writing-tests"]);
 });
 
 test("the catalogue carries no body", async () => {

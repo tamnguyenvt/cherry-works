@@ -100,7 +100,8 @@ test("compiling produces the listing, the charter file, and what the installed a
   const { written } = await built(oneGuide);
 
   assert.deepEqual(written, [
-    ".cw/out/catalog.json",
+    ".cw/out/catalogue.json",
+    ".cw/out/catalogue.claude.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",
@@ -137,14 +138,14 @@ test("no listing and no projection can be produced without the others (SC-004)",
   // list, and no argument that narrows it to a single file. The second argument
   // says which agents are installed, never which file is wanted.
   assert.equal(compile.length, 2);
-  assert.equal((await built(oneGuide)).written.length, 16);
+  assert.equal((await built(oneGuide)).written.length, 17);
 });
 
 test("a repository with no agent installed still compiles the whole neutral half (FR-019)", async () => {
   const { written } = await built(oneGuide, []);
 
   assert.deepEqual(written, [
-    ".cw/out/catalog.json",
+    ".cw/out/catalogue.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",
@@ -157,10 +158,10 @@ test("a repository with no agent installed still compiles the whole neutral half
 test("the full catalogue is written as the catalogue says it, one entry per line", async () => {
   const { files } = await built(oneGuide);
 
-  const contents = files[".cw/out/catalog.json"] ?? "";
+  const contents = files[".cw/out/catalogue.json"] ?? "";
   assert.deepEqual(JSON.parse(contents), [
     { ...builtinEntry, file: ".cw/out/skill/cw-author/index.md" },
-    ...sessionCounterEntries,
+    ...sessionCounterEntries.filter((entry) => entry.kind !== "sensor"),
     {
       id: "no-any",
       kind: "guide",
@@ -216,7 +217,7 @@ test("a mixin at the end lends its body after its host's, and one at the start b
 test("what the engine brings compiles to a file on disk like any other primitive (SC-033)", async () => {
   const { files } = await built(oneGuide);
 
-  const catalogue: readonly { id: string; file: string }[] = JSON.parse(files[".cw/out/catalog.json"] ?? "");
+  const catalogue: readonly { id: string; file: string }[] = JSON.parse(files[".cw/out/catalogue.json"] ?? "");
 
   for (const { id, file } of catalogue) assert.ok(files[file], `${id} names ${file}, which was not written`);
   assert.match(files[".cw/out/skill/cw-author/index.md"] ?? "", /^---\nkind: skill\nid: cw-author\n/);
@@ -225,7 +226,7 @@ test("what the engine brings compiles to a file on disk like any other primitive
 test("one listing is compiled, and no reduced copy of it", async () => {
   const { files } = await built(oneGuide);
 
-  assert.ok(files[".cw/out/catalog.json"]);
+  assert.ok(files[".cw/out/catalogue.json"]);
   assert.equal(files[".cw/out/catalog.min.json"], undefined);
 });
 
@@ -252,7 +253,7 @@ test("a body reaches no listing: what carries a body is what an agent opens (FR-
     [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", "SECRET BODY TEXT"),
   });
 
-  assert.ok(!(files[".cw/out/catalog.json"] ?? "").includes("SECRET BODY TEXT"));
+  assert.ok(!(files[".cw/out/catalogue.json"] ?? "").includes("SECRET BODY TEXT"));
 });
 
 test("a charter with a broken file still compiles what the readable files hold", async () => {
@@ -263,8 +264,8 @@ test("a charter with a broken file still compiles what the readable files hold",
 
   assert.equal(Object.keys(charter.allFaultsByFiles.files).length, 1);
   assert.deepEqual(
-    JSON.parse(files[".cw/out/catalog.json"] ?? "").map((one: { id: string }) => one.id),
-    ["cw-author", "cw-session-cost", "cw-session-tokens-counter", "cw-session-tokens-counter-on-stop", "no-any"],
+    JSON.parse(files[".cw/out/catalogue.json"] ?? "").map((one: { id: string }) => one.id),
+    ["cw-author", "cw-session-cost", "cw-session-tokens-counter", "no-any"],
   );
 });
 

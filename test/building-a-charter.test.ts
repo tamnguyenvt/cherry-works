@@ -38,7 +38,7 @@ const sessionCounterPaths = [
 ];
 /** The Stop hook the engine's own sensor puts in Claude's settings: the one
  *  command for that signal, whatever sensors it runs (CORE-FR-175). */
-const sessionCounterStopHook = { hooks: [{ type: "command", command: "cw sensor run Stop" }] };
+const sessionCounterStopHook = { hooks: [{ type: "command", command: "cw sensor run Stop --agent claude" }] };
 
 /** What a repository answered at setup, kept in its own settings: which agents
  *  it compiles its charter for (FR-033). Every repository a build test authors
@@ -90,7 +90,8 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
   const built = filesOf(await build());
 
   assert.deepEqual(built.added, [
-    ".cw/out/catalog.json",
+    ".cw/out/catalogue.json",
+    ".cw/out/catalogue.claude.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",
@@ -113,7 +114,7 @@ test("an id holding / is built as one file in its kind's folder, each / as -, an
   const { held, build } = building({ ...compilingFor("claude"), [at("guide/mfbs/no-any/index.md")]: guide("mfbs/no-any") });
 
   const built = filesOf(await build());
-  const catalogue = JSON.parse(await contentsOf(held, ".cw/out/catalog.json")) as readonly { id: string; file: string }[];
+  const catalogue = JSON.parse(await contentsOf(held, ".cw/out/catalogue.json")) as readonly { id: string; file: string }[];
 
   assert.ok(built.added.includes(".cw/out/guide/mfbs/no-any/index.md"));
   assert.ok(built.added.includes(".claude/rules/mfbs-no-any.md"));
@@ -208,7 +209,7 @@ test("every posture lands in the one settings file its host reads, merged (FR-01
     // In the order the files sort in: `posture/no-network/index.md` before
     // `posture/sandboxed/index.md`.
     permissions: { allow: ["Read(**)"], deny: ["WebFetch", "Bash(rm:*)"] },
-    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "cw sensor run PostToolUse" }] }], Stop: [sessionCounterStopHook] },
+    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "cw sensor run PostToolUse --agent claude" }] }], Stop: [sessionCounterStopHook] },
   });
 });
 
@@ -681,7 +682,7 @@ test("a charter naming no agent still gets the surface every reader shares (FR-0
   const built = filesOf(await build());
 
   assert.deepEqual(built.added, [
-    ".cw/out/catalog.json",
+    ".cw/out/catalogue.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",

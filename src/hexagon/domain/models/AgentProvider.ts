@@ -12,7 +12,7 @@
  * engine compiles for, and saying so is a fault rather than a run that quietly
  * writes nothing (FR-018, FR-033).
  */
-export const AGENT_PROVIDERS = ["claude"] as const;
+export const AGENT_PROVIDERS = ["claude", "codex"] as const;
 
 /** One of them, read off the list rather than written out again. */
 export type AgentProvider = (typeof AGENT_PROVIDERS)[number];

@@ -67,6 +67,7 @@ export class InitCommand implements Command<typeof OPTIONS> {
       code: EXIT_OK,
       result: [
         ...setUp,
+        ...(planSummaryDTO.data.warnings ?? []).map((warning) => `Warning: ${warning}`),
         `Built ${wrote} file${wrote === 1 ? "" : "s"}: ${added.length} added, ${edited.length} changed.`,
         'Author your first rule under .cw/charter/guide/, or ask your agent to write one, then run "cw build".',
         "",
@@ -105,10 +106,10 @@ async function whichAgents(
   }
 
   const agentsInSettings = (await charterAuthoringApp.settings()).data.agents.filter(isAgentProvider);
-  // What the repository already chose, or — where this engine compiles for one
-  // agent only — that one, selected before anybody is asked (FR-055).
+  // Keep the repository's choice; new repositories default to Claude for
+  // compatibility with earlier releases (FR-055).
   const defaultAgents: readonly AgentProvider[] =
-    agentsInSettings.length > 0 ? agentsInSettings : AGENT_PROVIDERS.length === 1 ? AGENT_PROVIDERS : [];
+    agentsInSettings.length > 0 ? agentsInSettings : ["claude"];
 
   // Nobody at the terminal is answered with what the settings already name,
   // which is what the prompt below would hand back on a return: a pipeline
@@ -130,8 +131,7 @@ async function whichAgents(
     // What the settings already name arrives ticked, so a return keeps what this
     // repository is already running under and a second run is rechoosing rather
     // than starting over (FR-038). Nothing named yet — a repository being set up
-    // for the first time — arrives with the one agent ticked where this engine
-    // compiles for one, and with nothing ticked otherwise (FR-055).
+    // for the first time — arrives with Claude ticked (FR-055).
     choices: AGENT_PROVIDERS.map((one) => ({ title: one, value: one, selected: defaultAgents.includes(one) })),
     // Ticking none of them is not an answer: a charter compiles for at least one
     // agent, so the prompt holds the submit until one is ticked (FR-033).

@@ -1,0 +1,11 @@
+project_doc_max_bytes = 1048576
+
+[mcp_servers.cw]
+command = "cw"
+args = [ "mcp", "serve" ]
+
+[[hooks.Stop]]
+[[hooks.Stop.hooks]]
+type = "command"
+command = "cd -- \"$(git rev-parse --show-toplevel)\" && cw sensor run Stop --agent codex"
+statusMessage = "cw sensors: Stop"

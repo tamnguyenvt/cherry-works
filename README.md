@@ -5,11 +5,12 @@ markdown files, and `cw` checks them, tests them and compiles them into the
 files your coding agent actually reads.
 
 ```text
-.cw/charter/guide/no-any/index.md   ──cw build──▶   CLAUDE.md
-.cw/charter/sensor/lint/index.md                    .claude/rules/…
-.cw/charter/posture/secrets/index.md                .claude/settings.json (hooks, permissions)
-…                                                   .claude/skills/…, .claude/agents/…
-                                                    .mcp.json (cw mcp serve)
+.cw/charter/<kind>/<id>/index.md
+              │
+           cw build
+              ├── .cw/out/…                       shared compiled charter
+              ├── CLAUDE.md, .claude/…, .mcp.json  Claude Code
+              └── AGENTS.md, .agents/…, .codex/…   Codex
 ```
 
 ## Why
@@ -36,7 +37,7 @@ date. Cherry Works handles them the way you handle code:
 
 - Node.js 22 or later
 - git
-- A supported agent. Today that is [Claude Code](https://claude.com/claude-code).
+- A supported agent. Choose [Claude Code](https://claude.com/claude-code) or [Codex](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
   `cw` always writes a neutral output under `.cw/out/` as well.
 
 ## Install
@@ -80,7 +81,7 @@ The link points at your checkout. After you change the sources, run
 Inside the git repository you want to govern:
 
 ```bash
-cw init                       # asks which agent to compile for (claude, selected), scaffolds .cw/charter/ and builds
+cw init                       # asks which agent to compile for (claude selected; codex available), scaffolds .cw/charter/ and builds
 cw kinds guide                # what a guide requires
 cw add guide no-any --header description="No any in TypeScript." --header globs="src/**/*.ts"
 cw edit guide:no-any          # write the body in $VISUAL or $EDITOR
@@ -90,6 +91,64 @@ cw doctor                     # check that everything holds
 
 Commit `.cw/` together with what `cw build` wrote. Your agent now reads the rule
 in every session in this repository.
+
+## Charter → agent outputs
+
+Choose one with `cw init --agent claude` or `cw init --agent codex`. To build for
+both, set `"agents": ["claude", "codex"]` in `.cw/settings.json`, then run `cw build`.
+Every primitive also has a shared compiled document under `.cw/out/<kind>/<id>/`,
+with its mixins and assets.
+
+| Charter primitive | Claude Code | Codex |
+|---|---|---|
+| `guide`, no `globs` | `.claude/rules/<name>.md`, importing the compiled guide | Body embedded in root `AGENTS.md` |
+| `guide`, with `globs` | `.claude/rules/<name>.md` with `paths` | Body embedded in directory `AGENTS.md` files; `src/**/*.ts` → `src/AGENTS.md`, with the file condition retained |
+| `sensor` | `.claude/settings.json` hook → `cw sensor run <signal>` | `.codex/config.toml` hook → `cw sensor run <signal> --agent codex` |
+| `skill` | `.claude/skills/<name>/SKILL.md`; invoke with `/<name>` | `.agents/skills/<name>/SKILL.md`; invoke with `$<name>` or choose through `/skills` |
+| `playbook` | `.claude/skills/<name>/SKILL.md`, sequencing other skills | `.agents/skills/<name>/SKILL.md`, sequencing other skills |
+| `agent` | `.claude/agents/<name>.md`, with `tools` and optional Claude model | `.codex/agents/<name>.toml`, with feature restrictions and optional Codex model; remaining tools inherit the parent scope |
+| `posture`, file permissions | `permissions.allow` / `permissions.deny` in `.claude/settings.json` | Native `cw` permissions profile in `.codex/config.toml`: `read`, `write`, `deny` |
+| `posture`, command permissions | `permissions.allow` / `permissions.deny` in `.claude/settings.json` | Literal `Bash(...:*)` prefixes → `.codex/rules/cw.rules`, with `allow` / `forbidden`; applies outside the sandbox |
+| `corpus` | Shared compiled document, read when cited | Shared compiled document, read when cited |
+| `mixin` | Body included in the primitives that use it | Body included in the primitives that use it |
+| `mcp` | `.mcp.json` starts `cw mcp serve` | `.codex/config.toml` starts `cw mcp serve` |
+| `script` | Compiled assets under `.cw/out/script/<id>/`, run by references or sensors | Same shared assets |
+| `template` | Compiled document under `.cw/out/template/<id>/`, read when referenced | Same shared document |
+
+`<name>` is the primitive id with `/` replaced by `-`. The entry sections in
+`CLAUDE.md` and `AGENTS.md` point to `.cw/out/CHARTER.md` and their own
+catalogues: `catalogue.json` holds primitives supporting every known provider,
+while `catalogue.<provider>.json` holds only primitives restricted to that
+provider. Each host reads both files; shared
+entries are not duplicated in provider catalogues. Entries have no
+`agent-provider` field.
+
+| Skill / playbook header | Claude Code | Codex |
+|---|---|---|
+| `disable-user-invocation: true` | `user-invocable: false`; model invocation remains available | Kept in the catalogue and entry instructions, outside native skills; no documented native flag hides only explicit invocation |
+| `disable-model-invocation: true` | `disable-model-invocation: true`; explicit invocation remains available | `agents/openai.yaml` → `policy.allow_implicit_invocation: false` |
+
+The main host differences:
+
+- **Guide scope:** Codex discovers nested `AGENTS.md` along root → cwd. Root
+  instructions retain glob pointers; file-specific conditions remain in the
+  embedded text. Builds preserve user sections and retire stamped generated
+  sections. The generated config sets `project_doc_max_bytes` to 1 MiB;
+  compilation does not read or size existing instruction files.
+- **Permissions:** Codex's file profile extends `:workspace`. Bare file paths map
+  to write grants or denies; `Read` maps to read, `Write`/`Edit` to write. Denying
+  `Read` blocks both reads and writes; denying `Write`/`Edit` makes the path read-only.
+  Legacy sandbox settings can override profiles. Unsupported mappings produce warnings.
+- **Hooks and agents:** Sensors receive their host's event JSON; scripts that
+  assume Claude payloads need adaptation. Unsupported Codex events produce build
+  warnings; new hooks require trust through `/hooks`. Subagent feature flags
+  restrict capability groups, not exact tool or MCP whitelists.
+
+| Measurement / evaluation | Claude Code | Codex |
+|---|---|---|
+| `cw context` | Offline estimate | Offline estimate |
+| `cw context --exact` | Supported | Not implemented |
+| Session token logging and `cw eval` | Supported | Not implemented; Claude's built-in token counter is excluded from Codex hooks |
 
 ## The charter
 
@@ -108,25 +167,32 @@ Never name a function or variable with a single vague word such as `it`, `data`
 or `merged`. Name it after what it holds or does.
 ```
 
+Only `posture` and `sensor` accept `agent-provider: [claude, codex]`. Omit it or use `[]`
+to support all providers; list providers to install and activate the primitive
+only for those hosts. For example, `agent-provider: [claude]` keeps a
+Claude-specific sensor out of Codex hooks. Rebuild after changing the list.
+Hooks pass `--agent claude` or `--agent codex`; manual `cw sensor run`
+defaults to Claude for compatibility.
+
 Each kind comes up at a different time:
 
 | Kind | Comes up when |
 |---|---|
 | `guide` | a touched file matches one of its `globs`, or on every turn when it has no globs |
 | `sensor` | the `signal` it names is raised, and the harness runs its `run` command |
-| `skill` | one of its `triggers` matches the request, or it is called by name as `/<id>` |
-| `playbook` | one of its `triggers` matches, or it is called as `/<id>`; its body is a sequence of skills |
-| `agent` | it is spawned by its id, with only the `tools` it lists |
+| `skill` | one of its `triggers` matches the request, or it is invoked by name through the host |
+| `playbook` | one of its `triggers` matches, or it is invoked by name; its body is a sequence of skills |
+| `agent` | it is spawned by its id, with the host capability controls mapped above |
 | `posture` | always, wherever the host can be told what to `allow` and `deny` |
 | `corpus` | a primitive's `rationale` cites it, to give the reasoning behind a rule |
 | `mixin` | never on its own; its body is lent to the primitives that pull it in |
 | `mcp` | a primitive's body names it as `[[<id>]]`: an mcp origin outside the repository, reached through `cw mcp serve` |
 
 A skill or a playbook that is only a step of another can say
-`disable-user-invocation: true`: it is then not offered as a `/` command, and
-the agent still opens it when its triggers match or a playbook sends it there.
-One that only you should start can say `disable-model-invocation: true`: it is
-still a `/` command, and the agent never opens it on its own. A primitive
+`disable-user-invocation: true`: it is not offered for direct user invocation,
+and the agent still opens it when its triggers match or a playbook sends it there.
+One that only you should start can say `disable-model-invocation: true`.
+The host-specific mappings and limits are listed above. A primitive
 cannot say both, since then nobody could open it.
 
 `cw kinds <kind>` gives the exact fields each kind takes. An id names exactly

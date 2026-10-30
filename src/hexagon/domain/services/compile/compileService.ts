@@ -8,8 +8,10 @@ import { McpOrigins } from "../../models/output/common/McpOrigin.js";
 import type { CompiledPrimitive } from "../../models/output/common/CompiledPrimitive.js";
 import type { ProviderComponent } from "../../models/output/provider-component/ProviderComponent.js";
 import { catalogueOf } from "./catalogueFactory.js";
+import { Catalogue } from "../../models/output/common/Catalogue.js";
 import { charterMdOf } from "./charterMdFactory.js";
 import { compiledPrimitiveOf } from "./compiledPrimitiveFactory.js";
+import { codexComponentsOf } from "./codexComponentFactory.js";
 import { claudeComponentsOf } from "./claudeComponentFactory.js";
 import { mcpOriginsOf } from "./mcpOriginsFactory.js";
 import { builtSensorsOf } from "./builtSensorsFactory.js";
@@ -25,8 +27,8 @@ import type { McpToolDefinition } from "../../models/output/common/McpOrigin.js"
  * primitive in that host's own kinds (FR-018).
  *
  * The whole of what this does is reading primitives into the parameters those
- * models take — the neutral ones here, and each host's in `<host>ComponentFactory.ts`
- * beside this: a `guide` becomes a claude skill there and nowhere in the
+ * models take — the neutral ones here, and each host's pure factory under
+ * `domain/services/compile/`: a `guide` becomes a claude skill there and nowhere in the
  * charter, and the charter does not know any of these exist. A model holds what
  * its file says and answers for how it is written; putting it somewhere is the
  * projection's.
@@ -65,17 +67,26 @@ export function compile(
   // What `cw sensor run` runs, each sensor's command as built: written once,
   // read by every host given one command per signal (FR-175, FR-179).
   const builtSensors = new BuiltSensors(builtSensorsOf(charter, compiledPrimitiveByPrimitive));
+  const allCatalogue = catalogueOf(charter, (primitive) => compiledPrimitiveByPrimitive.get(primitive)!.projections[0]!.file);
+  const agentBasedCatalogues = Object.fromEntries(agents.map((agentProvider) => [
+    agentProvider,
+    new Catalogue(allCatalogue.entries.filter((catalogueEntry) => catalogueEntry.agentProvider === agentProvider), agentProvider),
+  ]));
+  const providerComponents = agents.flatMap((agentProvider) =>
+    providerComponentsOf(agentProvider, charter, compiledPrimitiveByPrimitive, shortMcpIds, builtSensors.forAgent(agentProvider)),
+  );
   return new CharterOutput(
     // What an agent opens from the catalogue is the primitive as it compiled,
     // not the file its author wrote: the whole body in one place, under the
     // output folder whichever layer brought it (FR-140). Its document is the
     // first file it puts down.
-    catalogueOf(charter, (one) => compiledPrimitiveByPrimitive.get(one)!.projections[0]!.file),
+    new Catalogue(allCatalogue.entries.filter((catalogueEntry) => catalogueEntry.agentProvider === "all")),
     charterMdOf(PRIMITIVE_CLASSES),
     [...compiledPrimitiveByPrimitive.values()],
     new McpOrigins(mcpOriginsOf(charter, shortMcpIds, toolsByOriginKey)),
     builtSensors,
-    agents.flatMap((agent) => providerComponentsOf(agent, charter, compiledPrimitiveByPrimitive, shortMcpIds, builtSensors)),
+    providerComponents,
+    agentBasedCatalogues,
   );
 }
 
@@ -90,6 +101,8 @@ function providerComponentsOf(
   builtSensors: BuiltSensors,
 ): readonly ProviderComponent[] {
   switch (agent) {
+    case "codex":
+      return codexComponentsOf(charter, compiledPrimitiveByPrimitive);
     case "claude":
       return claudeComponentsOf(charter, compiledPrimitiveByPrimitive, shortMcpIds, builtSensors);
   }

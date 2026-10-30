@@ -1,4 +1,5 @@
 import { CLAUDE_ENTRY_FILE, OUT_DIRECTORY } from "../../../../path.js";
+import { Catalogue } from "../../common/Catalogue.js";
 import { ProviderComponent } from "../ProviderComponent.js";
 
 /**
@@ -32,6 +33,7 @@ export class ClaudeEntryFile extends ProviderComponent {
       `<!-- CHERRYWORKS START -->\n${[
         "## Charter",
         `This repository is governed by a charter. Read [CHARTER.md](./${OUT_DIRECTORY}/CHARTER.md) before anything else here, and work under what it says.`,
+        `Find primitives in [catalogue.json](./${Catalogue.pathOf()}) and [catalogue.claude.json](./${Catalogue.pathOf("claude")}).`,
         "It is generated from the charter under `.cw/charter/`: do not edit it, edit the primitive behind it.",
       ].join("\n\n")}\n<!-- CHERRYWORKS END -->\n`,
     );

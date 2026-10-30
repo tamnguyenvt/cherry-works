@@ -39,7 +39,7 @@ export function claudeMainContextOf(charter: CharterRoot): readonly MainContextT
   return [
     ...(entryFile === undefined ? [] : [{ id: entryFile.path, kind: "charter", text: entryFile.document }]),
     { id: "CHARTER.md", kind: "charter", text: charterMd.projections[0]!.contents },
-    ...charter.primitives.flatMap((primitive): MainContextText[] => {
+    ...charter.primitives.filter((primitive) => primitive.supportsAgent("claude")).flatMap((primitive): MainContextText[] => {
       const claudeComponent = providerComponents.find(
         (providerComponent) =>
           (providerComponent instanceof ClaudeRule || providerComponent instanceof ClaudeSkill || providerComponent instanceof ClaudeAgent) &&

@@ -9,7 +9,7 @@ export interface SensorAnswer {
 
 /** The signals whose plain answer this host adds to the agent's context
  *  rather than only showing it. */
-const CONTEXT_SIGNALS: readonly string[] = ["UserPromptSubmit", "SessionStart"];
+const CONTEXT_SIGNALS: readonly string[] = ["UserPromptSubmit", "SessionStart", "SubagentStart"];
 
 /** Each permission decision, the one that stops more first. */
 const PERMISSION_DECISIONS: readonly string[] = ["deny", "ask", "allow"];
@@ -79,6 +79,24 @@ export function signalAnswerOf(signal: string, sensorAnswers: readonly SensorAns
     combinedHookSpecificOutput["permissionDecisionReason"] = joinedTextOf(
       hookSpecificOutputs.filter((hookSpecificOutput) => hookSpecificOutput["permissionDecision"] === permissionDecision).map((hookSpecificOutput) => hookSpecificOutput["permissionDecisionReason"]),
     );
+  }
+  // Claude's PermissionRequest uses a nested decision, unlike PreToolUse's
+  // permissionDecision. Preserve denials when another sensor allows first.
+  // Claude: https://code.claude.com/docs/en/hooks#permissionrequest-decision-control
+  // Codex: https://learn.chatgpt.com/docs/hooks#permissionrequest
+  // Codex does not currently support interrupt, updatedInput or updatedPermissions here.
+  if (signal === "PermissionRequest") {
+    const deniedDecisions = hookSpecificOutputs
+      .map((hookSpecificOutput) => hookSpecificOutput["decision"])
+      .filter(isPlainObject)
+      .filter((decision) => decision["behavior"] === "deny");
+    if (deniedDecisions.length > 0) {
+      combinedHookSpecificOutput["decision"] = {
+        ...deniedDecisions[0],
+        message: joinedTextOf(deniedDecisions.map((decision) => decision["message"])),
+        ...(deniedDecisions.some((decision) => decision["interrupt"] === true) ? { interrupt: true } : {}),
+      };
+    }
   }
   const additionalContext = joinedTextOf([...hookSpecificOutputs.map((hookSpecificOutput) => hookSpecificOutput["additionalContext"]), ...(isContextSignal ? plainTexts : [])]);
   if (additionalContext !== "") combinedHookSpecificOutput["additionalContext"] = additionalContext;

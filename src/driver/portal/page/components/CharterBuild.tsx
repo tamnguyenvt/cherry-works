@@ -43,6 +43,7 @@ export function BuildPreview({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
         </p>
       </div>
       <div className="-mx-5">
+        {(planSummaryDTO.data.warnings ?? []).map((warning) => <p key={warning} role="status" className="px-4 py-2 text-sm text-amber-800">Warning: {warning}</p>)}
         <Table aria-label="Build plan">
           <TableBody>
             {planTargets.map(([change, path]) => (
@@ -76,6 +77,7 @@ export function BuildOutcome({ buildAnswer }: { buildAnswer: BuildAnswer }) {
         </p>
       </div>
       <div className="-mx-5">
+        {(buildAnswer.data.warnings ?? []).map((warning) => <p key={warning} role="status" className="px-4 py-2 text-sm text-amber-800">Warning: {warning}</p>)}
         <Table aria-label="Build written">
           <TableBody>
             {[...writtenPaths.map((path) => ["wrote", path] as const), ...deleted.map((path) => ["deleted", path] as const)].map(([pathChange, path]) => (

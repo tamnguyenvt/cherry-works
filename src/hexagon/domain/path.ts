@@ -83,6 +83,9 @@ export function outFolderIn(repo: URL): FolderURL {
  *  folders one repository holds, since that is what it is: a folder beside `.cw/`
  *  rather than inside it. */
 export const CLAUDE_DIRECTORY = ".claude";
+export const CODEX_DIRECTORY = ".codex";
+export const CODEX_SKILLS_DIRECTORY = ".agents/skills";
+export const CODEX_ENTRY_FILE = "AGENTS.md";
 
 /** The file claude reads before it is asked to read anything, at the root of the
  *  repository rather than under its own folder. The charter reaches an agent
@@ -108,7 +111,14 @@ export function agentProviderFolderIn(repo: URL, provider: AgentProvider): Folde
   switch (provider) {
     case "claude":
       return folderIn(repo, CLAUDE_DIRECTORY);
+    case "codex":
+      return folderIn(repo, CODEX_DIRECTORY);
   }
+}
+
+/** Where Codex discovers repository skills, separate from its config folder. */
+export function codexSkillsFolderIn(repo: URL): FolderURL {
+  return folderIn(repo, CODEX_SKILLS_DIRECTORY);
 }
 
 /** The folder one repository keeps its self-regression tests in. */

@@ -75,7 +75,7 @@ const aBuiltRepository = async () => {
       ],
     }));
   await writeFile(
-    join(repo, ".cw", "out", "catalog.json"),
+    join(repo, ".cw", "out", "catalogue.json"),
     JSON.stringify([{ kind: "mcp", id: "local", description: "A local mcp origin.", file: ".cw/out/mcp/local/index.md" }]),
   );
   await writeFile(

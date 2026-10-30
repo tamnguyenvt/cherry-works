@@ -1,18 +1,22 @@
-import { SensorPrimitive } from "../primitive/SensorPrimitive.js";
+import { SensorPrimitive, type SensorHeaders } from "../primitive/SensorPrimitive.js";
 import { BUILTIN_PRIMITIVE_LAYER } from "../PrimitiveLayer.js";
 
 /** What runs `cw-session-tokens-counter` each time the agent stops, so a built
  *  charter counts every session with nothing written by the repository
  *  (EVAL-FR-008). */
 export class CwSessionTokensSensor extends SensorPrimitive {
+  static readonly id = "cw-session-tokens-counter-on-stop";
+
   constructor() {
+    const sensorHeaders: SensorHeaders = {
+      id: CwSessionTokensSensor.id,
+      description: "Count the session's tokens each time the agent stops.",
+      "agent-provider": ["claude"],
+      signal: "Stop",
+      run: 'node "[[cw-session-tokens-counter]]"',
+    };
     super(
-      {
-        id: "cw-session-tokens-counter-on-stop",
-        description: "Count the session's tokens each time the agent stops.",
-        signal: "Stop",
-        run: 'node "[[cw-session-tokens-counter]]"',
-      },
+      sensorHeaders,
       `This sensor is cw's own. It comes with the engine, is not authored in this
 repository, and cannot be changed here.
 

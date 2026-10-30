@@ -1,19 +1,20 @@
 import { CLAUDE_DIRECTORY } from "../../../../path.js";
 import { SettingBasedComponent } from "../SettingBasedComponent.js";
 
-/** The events this host raises, and the only keys `hooks` takes: a name outside
- *  this set is a hook that never fires, which is a charter naming an event of a
- *  host that does not have it. */
+/** Events this compiler installs hooks for. This is the engine's supported
+ *  subset, not an exhaustive list of Claude Code's lifecycle events. */
 export const CLAUDE_HOOK_EVENTS = [
   "PreToolUse",
   "PostToolUse",
   "UserPromptSubmit",
-  "Notification",
   "Stop",
   "SubagentStop",
   "PreCompact",
   "SessionStart",
   "SessionEnd",
+  "PermissionRequest",
+  "SubagentStart",
+  "PostCompact",
 ] as const;
 
 /** One of them, read off the list rather than written out again. */
