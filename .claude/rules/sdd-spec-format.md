@@ -1,5 +1,5 @@
 ---
-paths: ["**/spec.md", "**/spec-*.md", "**/plan.json", "**/manifest.md", "**/ADR.md"]
+paths: ["**/spec.md", "**/spec-*.md", "**/plan.json", "**/manifest.md", "**/ADR.md", "**/quality.md"]
 ---
 
 Read and follow .cw/out/guide/sdd-spec-format/index.md.

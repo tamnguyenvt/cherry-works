@@ -1,15 +1,16 @@
 ---
 kind: playbook
 id: sdd-bug-fix
-description: Fix one bug on a fix branch of its own — understand it, reproduce it with evidence, report the root cause and the fix for approval, fix it test first, review, verify, and finish into the development branch.
+description: Fix one bug on a fix branch of its own — understand it, check the baseline, reproduce it with evidence, report the root cause and the fix for approval, fix it test first, verify and review, and finish into the development branch.
 triggers: ["fix bug", "fix this bug", "bug fix", "debug this"]
 rationale: sdd-concept
-mixins: [sdd-voice, sdd-change-rules, sdd-iron-laws]
+mixins: [sdd-change-rules, sdd-iron-laws]
 ---
 
-The walk of one bug: `branch → understand → find the cause → report → fix →
-review → verify → (learn) → finish`. The user is asked twice: once the cause
-and the fix are reported, and once the fix has passed its own checks.
+The walk of one bug: `branch → understand → baseline → find the cause → report
+→ fix → verify and review → (learn) → finish`. The user is asked twice: to
+approve the reported cause and fix, and to accept the fix handed over — and at
+the baseline, only when it fails or finds no check.
 
 1. **Branch** — a bug is fixed on `fix/<slug>`, `<slug>` a few words of
    the bug, started from the development branch:
@@ -20,11 +21,28 @@ and the fix are reported, and once the fix has passed its own checks.
    - **Worktree** per story: leave the main worktree as it is, and add one for
      the fix, `git worktree add -b fix/<slug> <path>/fix-<slug>
      <development branch>`, under the path the manifest names.
+
+   Then write the fix's handoff note, `<spec folder>/handoff/fix-<slug>.md`,
+   from [[sdd-handoff]], and bring it up to date before every stop, as
+   /sdd-implement does a story's.
 2. **Understand** — restate the bug: what happens, what should happen
    instead, where, and the steps given to reproduce it, if any. Where the
    bug as told cannot be understood — what goes wrong, or where — ask the
    user before looking for its cause, rather than guessing.
-3. **Find the cause** — spawn [[sdd-locator]] with the bug as restated to
+3. **Baseline** — before the fix's first change, and so before any test
+   that reproduces the bug is written, run every test and static check the
+   project defines, as /sdd-verify finds them; where **Conversation** is short,
+   say nothing of them when they pass.
+   Where the project defines none, say so and ask whether to go on. A failure
+   that is the bug as restated in step 2 is evidence for step 4, not a fault
+   of the baseline. Any other failure stops the walk: quote each failure the
+   check printed, and offer two ways on: fix it first in a /sdd-bug-fix of
+   its own, then bring the development branch into `fix/<slug>` and run the
+   baseline again; or record it as a known failure and go on. A known failure
+   is kept with the walk as every failure the check printed — each failing
+   test's name, each error's line. Where a commit hook then fails on it, stop
+   and ask the user.
+4. **Find the cause** — spawn [[sdd-locator]] with the bug as restated to
    find the code it runs through, then read the ranges it names. Reproduce it:
    with steps given, follow them; without, find them. Bring evidence of it
    happening — a failing test, a run of the command, an API call and its
@@ -32,10 +50,10 @@ and the fix are reported, and once the fix has passed its own checks.
    20 attempts at most, each a different way in; where it still will not
    reproduce, say what was tried and give the most likely cause as a
    prediction, saying it is one.
-4. **Report** — in this order:
+5. **Report** — in this order:
    - **Root cause** — one line.
    - **Flow** — the steps that reproduce it and what each showed, or the
-     prediction and why.
+     prediction and why; a baseline that passed is not one of them.
    - **Root cause in detail** — the code path and why it goes wrong, where
      known.
    - **Fix** — what will change, and where.
@@ -44,18 +62,21 @@ and the fix are reported, and once the fix has passed its own checks.
    - **Definition of done** — what will be true once it is fixed, each
      checkable.
 
-   **Gate:** explicit approval of the fix.
-5. **Fix** — test first: a test that fails for the bug's own reason, then
+   **Gate:** explicit approval of the fix, with nothing of it written or run
+   before the yes.
+6. **Fix** — test first: a test that fails for the bug's own reason, then
    the smallest change that makes it pass, and nothing else.
-6. **Review** — run /sdd-review, held to the definition of done instead of a
-   story. A review that failed goes back to step 5.
-7. **Verify** — run /sdd-verify, the reproduction of step 3 run again among
-   it, now showing the bug gone. A failure goes back to step 5.
-   **Gate:** only now hand the fix to the user — with **Conversation** short,
-   in one line: it is fixed and needs the user's review.
+7. **Verify and review** — run /sdd-review, held to the definition of done
+   instead of a story; its /sdd-verify runs with the known failures of the
+   baseline, and the reproduction of step 4 run again among it, now showing
+   the bug gone. A failure of either goes back to step 6.
+   **Gate:** only now hand the fix to the user, ending on this line alone,
+   word for word whatever the user's language, and at no other gate:
+   `approve ?`
 8. **Learn** *(only if something surprising came up)* — run /sdd-learn.
-9. **Finish** — once the user accepts the fix, run /sdd-finish: it lands
-   `fix/<slug>` in the development branch, never in a phase branch.
+9. **Finish** — bring the fix's handoff note up to date, then run /sdd-finish
+   at once; the user accepting the fix is the ask. It lands `fix/<slug>` in
+   the development branch, never in a phase branch.
 
 ## Iron laws (across every step)
 

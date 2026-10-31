@@ -1,6 +1,6 @@
 ---
 name: sdd-implement
-description: "Implement a ready story of the spec set — pick it, spec gate, test first, verify, review — the way manifest.md says, and mark it Done. Use when: implement task; implement next task; implement the next story; implement story."
+description: "Implement a ready story of the spec set — pick it, baseline, spec gate, test first, verify and review — the way manifest.md says, and mark it Done. Use when: implement task; implement next task; implement the next story; implement story."
 ---
 
 Read and follow .cw/out/playbook/sdd-implement/index.md.

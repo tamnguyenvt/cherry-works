@@ -13,6 +13,7 @@ by asking the user.
 ## Specs
 
 - **Folder**: `[spec folder, from the repository's root]`
+- **Quality cross-check**: every [5, unless the user names another number] stories
 
 ## Working
 
@@ -24,11 +25,13 @@ by asking the user.
 ## Talking
 
 - **Conversation**: [short — a gate says only what it asks; what changed is never listed, the user reads the code and asks | detailed — each step reports what it did and what it showed]
+- **Review**: [strict — every `nit` and `q` the review leaves is put to the user at the hand-over | quick — a `nit` is not acted on but written to the handoff note; a `q` whose answer changes no FR, scenario or out of scope and touches only the changed files is settled and written there; neither is said in the chat, and every other `q` is asked]
 
 ## Committing
 
 - **While working**: [unstaged — leave every change unstaged until the story or fix is finished; the user stages what they have read, and /sdd-finish commits | linear — commit at each step that passes its checks]
 - **Message**: [the convention: `CORE Story 4: <title>`, Conventional Commits, …]
+- **Handoff notes**: [committed — a story's handoff note is committed with its work, so another machine resumes from it; with **While working** unstaged, it waits in the working tree with the rest of the work | ignored — `handoff/` is in the spec folder's `.gitignore`; a note stays on the machine that wrote it]
 - **Co-Authored-By**: [yes — end each commit with the agent's Co-Authored-By line | no — no AI attribution]
 
 ## Finishing

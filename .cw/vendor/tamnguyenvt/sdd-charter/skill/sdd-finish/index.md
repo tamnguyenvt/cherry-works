@@ -9,11 +9,25 @@ rationale: sdd-concept
 
 Read `<spec folder>/manifest.md` (the folder is in `.sdd/settings.json`). Do
 what its **Finishing** section says and nothing it does not; if it says
-nothing about the case at hand, ask, and offer to write the answer into it.
+nothing about the case at hand — no **Story** line for a story or a fix, no
+**Phase** line for a phase — ask, never inferring it from the rest of the
+manifest or the history, and offer to write the answer into it.
 
 1. **Check** — the story's status is `Done`, or on a fix branch the user has
    accepted the fix at /sdd-bug-fix's last gate, and the checks pass
    (/sdd-verify). Refuse otherwise, saying what is missing.
+
+   On a story or a fix branch, before anything is committed, check that nothing
+   is left behind: run `check` of [[sdd-specs]] — on a story branch with
+   `--landing "<story id>"`, so a story landing with no evidence in `plan.json`
+   fails it — and [[sdd-clean]] with the branch the change lands in: the target
+   **Story** names for a story, the development branch for a fix. On any
+   finding, land nothing: name each finding as it was printed, and ask the user
+   to clean it or to accept it for this change. Run both again until nothing is
+   left but what the user accepted: [[sdd-clean]] with each finding it printed
+   and the user accepted as `--accept <path>:<line>`, or `--accept <path>` for
+   a file; `check`, which takes no `--accept`, by setting aside each fault it
+   printed that the user accepted. An acceptance holds for this change only.
 
    On a story branch, a change still in the working tree, staged or not, is
    the story's: being asked to finish is being asked to commit it. Stage every
@@ -47,7 +61,9 @@ nothing about the case at hand, ask, and offer to write the answer into it.
 
    Where the manifest says nothing, keep the branch and offer /sdd-cleanup.
    A branch with an open pull request is never deleted, nor a phase branch.
-5. **Report** — run /sdd-report, so the roadmap shows what just landed.
+5. **Report** — run /sdd-report, then end on these four bullets alone:
 
-Say which branch went where, the resulting commit or pull request, and the
-next ready story (`ready` of [[sdd-specs]]).
+   - `branch <x> merged to <y>` — or the pull request opened
+   - `current branch: <z>`
+   - `next ready tasks: <numbers>` — `ready` of [[sdd-specs]]
+   - `recommend: <id>: <title>` — the first of them in `plan.json` order

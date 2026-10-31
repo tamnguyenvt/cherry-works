@@ -8,5 +8,7 @@ position: end
 ## Iron laws of every change
 
 - **No completion claim without fresh evidence.** Checks run this turn.
-- **No commit the manifest does not allow, and none with failing checks.**
+- **No commit the manifest does not allow, and none with failing checks** —
+  a check failing only with the known failures the baseline recorded is not
+  one.
   Never `--no-verify`.

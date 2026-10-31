@@ -3,31 +3,8 @@ kind: playbook
 id: sdd-plan
 description: Write a phase's stories, FR and SC into the right spec-<key>.md and plan.json, clarifying what is unclear first; no plan of how, no task list.
 rationale: sdd-concept
-mixins: ["sdd-voice"]
 triggers: ["plan a feature", "plan a phase", "specify a feature", "clarify requirement", "write the spec"]
 ---
-
-## How to talk to the user
-
-Talk in the language the user writes in, in full sentences: compress what is
-said, never the grammar it is said in.
-
-- **The answer first** — then why, then what comes next. Never open by
-  announcing what you are about to do, never close with a recap or an offer
-  of more help.
-- **A line per step** — no text between routine tool calls: one line when a
-  step of the walk starts, one with what it showed. Speak in between only to
-  warn, to clarify, or to ask.
-- **Verbatim** — commands, paths, ids, code and errors are quoted exactly; an
-  error by its shortest decisive line.
-- **Every negation kept** — never drop a not, never, no, only or except to
-  save a word: a lost negation costs more than any word saved.
-- **One reading** — a sentence that could be read two ways is written again
-  until it cannot.
-- **As long as `manifest.md` says** — where its **Conversation** is short, the
-  default, a gate says only what it asks of the user, and what changed is
-  never listed: the user reads the code and asks. Where it is detailed, each
-  step reports what it did and what it showed.
 
 One job: write the stories of a phase into the spec set, in the shape
 [sdd-spec-format](../../guide/sdd-spec-format/index.md) sets, and put them on the roadmap in `plan.json`. Nothing
@@ -68,6 +45,16 @@ Pause for the user's acceptance after each step.
    `dependsOn`: the stories, in any spec, that must be `Done` before it can be
    built. Depend only on what the story truly needs, so independent stories can
    run side by side. Show the user which stories become ready together.
+   Then add the quality cross-checks: count the stories in `plan.json` after
+   its last `Quality cross-check of …` story — where there is none, only the
+   stories this phase adds. After every five, or the number `manifest.md`
+   names as **Quality cross-check**, add a story right after them,
+   `Quality cross-check of <their ids>`, depending on those stories, in the
+   spec most of them belong to, priority P3, its one scenario: once they are
+   `Done`, /sdd-quality checks the code and every spec against the
+   checklist of `quality.md`, and each violation it reports becomes a story.
+   The stories left over count
+   toward the next phase's.
 7. **Check** — `link`, then `check` of [sdd-specs](../../script/sdd-specs/index.md), until it passes; then
    /sdd-analyze, fixing every error it reports.
 8. **Review** — show the new stories, FR, SC and dependencies by id.

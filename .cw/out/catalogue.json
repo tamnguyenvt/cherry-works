@@ -108,7 +108,7 @@
   {
     "kind": "playbook",
     "id": "sdd-bug-fix",
-    "description": "Fix one bug on a fix branch of its own — understand it, reproduce it with evidence, report the root cause and the fix for approval, fix it test first, review, verify, and finish into the development branch.",
+    "description": "Fix one bug on a fix branch of its own — understand it, check the baseline, reproduce it with evidence, report the root cause and the fix for approval, fix it test first, verify and review, and finish into the development branch.",
     "file": ".cw/out/playbook/sdd-bug-fix/index.md"
   },
   {
@@ -116,6 +116,12 @@
     "id": "sdd-change-rules",
     "description": "What every change to code walked by a playbook of the spec set is held to: the manifest first, and a change handed over only once checked.",
     "file": ".cw/out/mixin/sdd-change-rules/index.md"
+  },
+  {
+    "kind": "script",
+    "id": "sdd-clean",
+    "description": "Say what a change would leave behind if it landed — a stray or temporary file, debug output, a leftover marker, a secret — each by where it is; changes nothing.",
+    "file": ".cw/out/script/sdd-clean/index.md"
   },
   {
     "kind": "skill",
@@ -131,14 +137,26 @@
   },
   {
     "kind": "skill",
+    "id": "sdd-doctor",
+    "description": "Check that the repository's spec set is set up — settings, spec folder, every manifest answer — and offer the fix of each fault.",
+    "file": ".cw/out/skill/sdd-doctor/index.md"
+  },
+  {
+    "kind": "skill",
     "id": "sdd-finish",
     "description": "Finish the story, bug fix or phase you stand on exactly as manifest.md says — merge, squash-merge or pull request, into the branch it names — then clean its worktree up.",
     "file": ".cw/out/skill/sdd-finish/index.md"
   },
   {
+    "kind": "template",
+    "id": "sdd-handoff",
+    "description": "The skeleton of a handoff note, <spec folder>/handoff/<prefix>-<n>.md or fix-<slug>.md — where a story In Progress or a bug fix stands, for the next session to resume from.",
+    "file": ".cw/out/template/sdd-handoff/index.md"
+  },
+  {
     "kind": "playbook",
     "id": "sdd-implement",
-    "description": "Implement a ready story of the spec set — pick it, spec gate, test first, verify, review — the way manifest.md says, and mark it Done.",
+    "description": "Implement a ready story of the spec set — pick it, baseline, spec gate, test first, verify and review — the way manifest.md says, and mark it Done.",
     "file": ".cw/out/playbook/sdd-implement/index.md"
   },
   {
@@ -185,6 +203,18 @@
   },
   {
     "kind": "skill",
+    "id": "sdd-quality",
+    "description": "Check the whole codebase against every story, and the specs against each other, item by item against the checklist in quality.md; give the product one grade, report it, and hand each violation to /sdd-plan.",
+    "file": ".cw/out/skill/sdd-quality/index.md"
+  },
+  {
+    "kind": "template",
+    "id": "sdd-quality-doc",
+    "description": "The skeleton of quality.md — the checklist a quality pass checks the code and the specs against, kept and edited by the project.",
+    "file": ".cw/out/template/sdd-quality-doc/index.md"
+  },
+  {
+    "kind": "skill",
     "id": "sdd-report",
     "description": "Draw the roadmap — every story of plan.json, where it stands and what it waits on — into report.html in the spec folder, and say what it shows.",
     "file": ".cw/out/skill/sdd-report/index.md"
@@ -192,8 +222,14 @@
   {
     "kind": "skill",
     "id": "sdd-review",
-    "description": "Review the change against the story's scenarios, FR and SC — nothing missing, nothing beyond them — and for security issues.",
+    "description": "Verify the change, then have an agent that did not write it review it, with what verify showed, against the story's scenarios, FR and SC — nothing missing, nothing beyond them — and for security issues.",
     "file": ".cw/out/skill/sdd-review/index.md"
+  },
+  {
+    "kind": "agent",
+    "id": "sdd-review-agent",
+    "description": "Review a change against its story's scenarios, FR and SC, or a bug's definition of done — nothing missing, nothing beyond them — the guides that apply, and security, grading each finding; reads only, changes nothing.",
+    "file": ".cw/out/agent/sdd-review-agent/index.md"
   },
   {
     "kind": "template",
@@ -204,14 +240,15 @@
   {
     "kind": "guide",
     "id": "sdd-spec-format",
-    "description": "The shape of a spec set — spec.md as index, spec-<key>.md with prefixed ids, plan.json, manifest.md, ADR.md — what and why, never how.",
+    "description": "The shape of a spec set — spec.md as index, spec-<key>.md with prefixed ids, plan.json, manifest.md, ADR.md, quality.md — what and why, never how.",
     "file": ".cw/out/guide/sdd-spec-format/index.md",
     "globs": [
       "**/spec.md",
       "**/spec-*.md",
       "**/plan.json",
       "**/manifest.md",
-      "**/ADR.md"
+      "**/ADR.md",
+      "**/quality.md"
     ]
   },
   {
@@ -245,10 +282,10 @@
     "file": ".cw/out/skill/sdd-verify/index.md"
   },
   {
-    "kind": "mixin",
+    "kind": "guide",
     "id": "sdd-voice",
-    "description": "How a playbook of the spec set talks to the user: the answer first, a line per step, every name and error verbatim, in full sentences of the user's language.",
-    "file": ".cw/out/mixin/sdd-voice/index.md"
+    "description": "How the agent talks to the user, in and out of the spec set's commands: in the user's language, the answer first, no chatter between steps, every name and error verbatim, each question with its case.",
+    "file": ".cw/out/guide/sdd-voice/index.md"
   },
   {
     "kind": "corpus",

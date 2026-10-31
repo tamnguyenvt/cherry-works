@@ -1,8 +1,8 @@
 ---
 kind: guide
 id: sdd-spec-format
-description: The shape of a spec set — spec.md as index, spec-<key>.md with prefixed ids, plan.json, manifest.md, ADR.md — what and why, never how.
-globs: ["**/spec.md", "**/spec-*.md", "**/plan.json", "**/manifest.md", "**/ADR.md"]
+description: The shape of a spec set — spec.md as index, spec-<key>.md with prefixed ids, plan.json, manifest.md, ADR.md, quality.md — what and why, never how.
+globs: ["**/spec.md", "**/spec-*.md", "**/plan.json", "**/manifest.md", "**/ADR.md", "**/quality.md"]
 rationale: sdd-concept
 ---
 
@@ -13,10 +13,12 @@ A repository's specs live in one folder, the one `.sdd/settings.json` names
 |---|---|
 | `spec.md` | the index: one row per spec — its file, its prefix, what part of the product it covers. No stories. |
 | `spec-<key>.md` | one part of the product: what it must do and why. Its ids carry the prefix its key makes, upper-cased without hyphens: `spec-core.md` is `CORE`. |
-| `plan.json` | every story of every spec, once, and the stories it depends on: the roadmap. |
+| `plan.json` | every story of every spec, once, and the stories it depends on: the roadmap; a `Done` story's entry also holds the evidence that proved it. |
 | `manifest.md` | how work is carried out and finished here, as the user chose it (/sdd-init). |
 | `ADR.md` | the decisions that change how every later story is built or written. |
+| `quality.md` | the checklist a quality pass (/sdd-quality) checks the code and the specs against, from [[sdd-quality-doc]]: written by /sdd-init, kept and edited by the project; under `## Last pass` at its end, the report of the last pass, rewritten by each. |
 | `report.html` | the roadmap drawn from `plan.json` and the statuses (/sdd-report); generated, never edited, and ignored by the folder's `.gitignore`. |
+| `handoff/` | one note per story `In Progress`, `<prefix>-<n>.md`, and per bug fix not yet landed, `fix-<slug>.md`, from [[sdd-handoff]]: what is done, what remains, the decisions taken, what blocks it — nothing the spec says. Kept once the story is `Done` or the fix lands; committed or ignored as `manifest.md` says. Never linked or checked as a spec. |
 | `mockup/` | designs, when there are any. |
 
 A part grows in its own spec, extended in place; a new part gets a new
@@ -63,7 +65,8 @@ Title, `**Created**`, `**Updated**`, `**Input**` (each request appended as
 ```json
 {
   "stories": [
-    { "id": "CORE Story 3", "title": "Sign in", "dependsOn": [] },
+    { "id": "CORE Story 3", "title": "Sign in", "dependsOn": [],
+      "evidence": { "summary": "npm test: 41 pass, 0 fail; signed in by hand as a new user", "date": "2026-10-27" } },
     { "id": "CORE Story 4", "title": "Reset a password", "dependsOn": ["CORE Story 3"] },
     { "id": "BILLING Story 1", "title": "Pay an invoice", "dependsOn": ["CORE Story 3"] }
   ]
@@ -72,9 +75,11 @@ Title, `**Created**`, `**Updated**`, `**Input**` (each request appended as
 
 Every story of every spec, once, in the order it is to be built; `title` as
 its heading says it; `dependsOn` the stories that must be `Done` first, in any
-spec. No status here — the spec's status line is the one. Stories whose
-dependencies are all `Done` can be built side by side: `ready` of
-[[sdd-specs]] lists them.
+spec. No status here — the spec's status line is the one. `evidence` is set
+by /sdd-implement when it sets the story `Done`: one line of what /sdd-verify
+ran and what it showed, and the date it was produced. A story set back from
+`Done` loses its evidence. Stories whose dependencies are all `Done` can be
+built side by side: `ready` of [[sdd-specs]] lists them.
 
 ## Citing
 

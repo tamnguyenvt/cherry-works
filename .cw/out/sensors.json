@@ -11,7 +11,7 @@
     {
       "id": "sdd-specs-on-stop",
       "signal": "Stop",
-      "command": "node \".cw/out/script/sdd-specs/specs.mjs\" link --if-changed && node \".cw/out/script/sdd-specs/specs.mjs\" check --if-changed || exit 2"
+      "command": "cd \"$(git rev-parse --show-toplevel)\" && node \".cw/out/script/sdd-specs/specs.mjs\" link --if-changed && node \".cw/out/script/sdd-specs/specs.mjs\" check --if-changed || exit 2"
     },
     {
       "id": "sound-on-stop",

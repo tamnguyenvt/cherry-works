@@ -12,8 +12,10 @@ Node 20 or later, nothing else.
 ```bash
 node .cw/out/script/sdd-specs/specs.mjs link    # anchor every definition, link every citation, across files
 node .cw/out/script/sdd-specs/specs.mjs check   # change nothing; exit 1 on any fault
+node .cw/out/script/sdd-specs/specs.mjs check --landing "CORE Story 3"   # and on that story with no evidence
 node .cw/out/script/sdd-specs/specs.mjs ready   # stories not Done whose dependencies are all Done
 node .cw/out/script/sdd-specs/specs.mjs report  # write <spec folder>/report.html, the roadmap drawn
+node .cw/out/script/sdd-specs/specs.mjs doctor  # whether settings, spec folder and manifest are set up; change nothing; exit 1 on any fault
 ```
 
 `--if-changed` makes `link` and `check` do nothing when `git status` reports
@@ -28,7 +30,32 @@ the file citing it. Code spans and fenced blocks are left as written.
 file whose prefix is not its own (`spec-core.md` defines `CORE-…` only); a
 story with no `**Status**: Todo | In Progress | Done` line right under its
 heading; a story missing from `plan.json`, or one there that no spec holds; a
-dependency on no story; a dependency cycle; a stale link.
+dependency on no story; a dependency cycle; a stale link; a story `In Progress`
+with no handoff note at `handoff/<prefix>-<n>.md` (`handoff/core-3.md` for CORE
+Story 3) — unless `manifest.md` says `**Handoff notes**: ignored` — or a note
+there for a story `Todo` — a `Done` story keeps its note; evidence on the
+`plan.json` entry of a story that is not `Done`, or evidence that is not `{
+"summary": "<one line>", "date": "yyyy-mm-dd" }`. A bug fix's note,
+`handoff/fix-<slug>.md`, is left alone, unless it is a FIX spec's story note. A
+`Done` story with no evidence passes, as the stories landed before evidence was
+kept; with `--landing "<story id>"`, which /sdd-finish passes for the story it
+lands, that story with no evidence fails. Notes are not read as specs: what
+they cite is neither linked nor checked.
+
+**doctor** prints a line per item, `pass` or `fail` with its reason, and for
+a fault its fix: `.sdd/settings.json` names a spec folder — where there is no
+settings file, the one line says the repository is not set up, fix /sdd-init;
+the folder exists; `manifest.md` answers every `- **<Field>**:` line of the
+[[sdd-manifest]] template, read beside this script — each one missing, left
+as the template's text or keeping one of its `[placeholders]` a line of its
+own, fix the /sdd-init question on it. It checks the spec set alone; the
+engine's health is `cw doctor`'s.
+
+Its tests, beside it:
+
+```bash
+node --test .cw/out/script/sdd-specs/specs.test.mjs
+```
 
 **ready** lists, in `plan.json` order, every story not `Done` whose
 `dependsOn` are all `Done` — the ones that can be built now, side by side.

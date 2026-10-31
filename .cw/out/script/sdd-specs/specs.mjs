@@ -5,20 +5,95 @@
 //
 //   node specs.mjs link  [--if-changed]   rewrite the spec files' links and anchors
 //   node specs.mjs check [--if-changed]   change nothing; exit 1 on any fault
+//         [--landing "<story id>"]        and on that story with no evidence
 //   node specs.mjs ready                  the stories whose dependencies are Done
 //   node specs.mjs report                 write <spec folder>/report.html, the roadmap drawn
+//   node specs.mjs doctor                 whether the settings, spec folder and manifest are set up; exit 1 on any fault
 //
 // The spec folder is read from .sdd/settings.json ("specFolder"), from the
 // repository's root; "specs" when there is none.
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 
 const [command = "check", ...flags] = process.argv.slice(2);
 const settingsFile = join(".sdd", "settings.json");
+if (command === "doctor") {
+  // The report is flushed before exiting, a pipe on macOS being asynchronous.
+  process.exitCode = doctor();
+  await new Promise((resolve) => process.stdout.write("", resolve));
+  process.exit();
+}
 const specFolder = existsSync(settingsFile) ? JSON.parse(readFileSync(settingsFile, "utf8")).specFolder ?? "specs" : "specs";
 const planFile = join(specFolder, "plan.json");
 const STATUSES = ["Todo", "In Progress", "Done"];
+
+// Whether the spec set is set up — settings, spec folder, manifest — one line
+// per item: pass or fail, its reason, and for a fault its fix. Reads only;
+// exit 1 on any fail.
+function doctor() {
+  const report = [];
+  const pass = (item, reason) => report.push(`pass  ${item.padEnd(11)} ${reason}`);
+  const fail = (item, reason, fix) => report.push(`fail  ${item.padEnd(11)} ${reason} — fix: ${fix}`);
+  const print = () => {
+    console.log(report.join("\n"));
+    return report.some((line) => line.startsWith("fail")) ? 1 : 0;
+  };
+
+  if (!existsSync(settingsFile)) {
+    fail("settings", `no ${settingsFile}: this repository is not set up for spec-driven development`, "/sdd-init");
+    return print();
+  }
+  let folder;
+  try {
+    folder = JSON.parse(readFileSync(settingsFile, "utf8")).specFolder;
+  } catch {}
+  if (typeof folder !== "string" || folder === "") folder = undefined;
+  if (folder) pass("settings", `${settingsFile} names "${folder}"`);
+  else fail("settings", `${settingsFile} names no "specFolder"`, "ask /sdd-init's question on the spec folder");
+  // With none named, the rest is checked on "specs", and says so.
+  const assumed = !folder;
+  folder ||= "specs";
+  const shown = (path) => (assumed ? `${path} (assumed)` : path);
+
+  let isFolder = false;
+  try {
+    isFolder = statSync(folder).isDirectory();
+  } catch {}
+  if (isFolder) pass("spec folder", `${shown(folder)} exists`);
+  else fail("spec folder", `no folder at ${shown(folder)}`, "/sdd-init");
+
+  // Every answer the manifest template asks for, as /sdd-init asks it today.
+  const templateFile = join(dirname(process.argv[1]), "..", "..", "template", "sdd-manifest", "index.md");
+  const manifestFile = join(folder, "manifest.md");
+  if (!existsSync(manifestFile)) fail("manifest", `no ${shown(manifestFile)}`, "/sdd-init");
+  else {
+    // An answer is left unanswered when it is still the template's text for
+    // its field, or keeps one of its placeholders, `[path]`.
+    const fields = [...readFileSync(templateFile, "utf8").matchAll(/^- \*\*([^*]+)\*\*:(.*)$/gm)].map((match) => ({
+      field: match[1],
+      text: match[2].trim(),
+      placeholders: match[2].match(/\[[^[\]]*\]/g) ?? [],
+    }));
+    const manifestText = readFileSync(manifestFile, "utf8");
+    // The /sdd-init question that writes a field, where its name differs.
+    const questions = { Message: "Commit message", "Co-Authored-By": "Commit message", Story: "Finishing", Phase: "Finishing", "Pull request": "Finishing" };
+    const before = report.length;
+    for (const { field, text, placeholders } of fields) {
+      const answer = new RegExp(`^- \\*\\*${field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\*\\*:(.*)$`, "m").exec(manifestText)?.[1].trim();
+      const fix =
+        field === "Folder"
+          ? "ask /sdd-init's question on the spec folder"
+          : `ask /sdd-init's question on **${Object.hasOwn(questions, field) ? questions[field] : field}** and write the answer`;
+      if (answer === undefined) fail("manifest", `${shown(manifestFile)} has no **${field}**`, fix);
+      else if (answer.replace(/[`\s]/g, "") === "" || answer === text || placeholders.some((placeholder) => answer.includes(placeholder)))
+        fail("manifest", `${shown(manifestFile)} leaves **${field}** unanswered`, fix);
+    }
+    if (report.length === before) pass("manifest", `${shown(manifestFile)} answers all ${fields.length} questions`);
+  }
+
+  return print();
+}
 
 if (flags.includes("--if-changed")) {
   let changed = "x";
@@ -108,6 +183,22 @@ for (const planned of plannedStories) {
   else if (planned.title !== undefined && planned.title !== story.title) faults.push(`${planFile}: "${planned.id}" is titled "${planned.title}"; its heading says "${story.title}"`);
   for (const dependency of planned.dependsOn ?? [])
     if (!storyById.has(dependency)) faults.push(`${planFile}: "${planned.id}" depends on "${dependency}", which is no story`);
+  // Evidence is what proved a Done story, and when; a story set back from Done
+  // loses it.
+  if (planned.evidence !== undefined) {
+    const { summary, date } = planned.evidence ?? {};
+    const isDay = typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && new Date(`${date}T00:00:00Z`).toJSON()?.startsWith(date) === true;
+    if (typeof summary !== "string" || summary.trim() === "" || /[\r\n]/.test(summary) || !isDay)
+      faults.push(`${planFile}: "${planned.id}" has evidence that is not { "summary": "<one line>", "date": "yyyy-mm-dd" }`);
+    if (STATUSES.includes(story?.status) && story.status !== "Done") faults.push(`${planFile}: "${planned.id}" has evidence, but is ${story.status}; remove it`);
+  }
+}
+// The story /sdd-finish lands: set Done from now on, it carries its evidence.
+const landingIndex = flags.indexOf("--landing");
+if (landingIndex !== -1) {
+  const landingId = flags[landingIndex + 1];
+  if (!plannedById.has(landingId)) faults.push(`${planFile}: "${landingId}" lands, but is no story in plan.json`);
+  else if (plannedById.get(landingId).evidence === undefined) faults.push(`${planFile}: "${landingId}" lands with no evidence; write what proved it and the date`);
 }
 for (const id of storyById.keys()) if (!plannedById.has(id)) faults.push(`${planFile}: "${id}" is missing`);
 // A dependency cycle leaves its stories never ready.
@@ -120,6 +211,32 @@ const visit = (id, path) => {
   visitStates.set(id, "done");
 };
 for (const id of plannedById.keys()) visit(id, []);
+
+// A handoff note per story In Progress, handoff/core-3.md for CORE Story 3,
+// kept once it is Done, and none for a story Todo: the next session resumes
+// from it. A bug fix's note, handoff/fix-<slug>.md, is its own and not
+// checked here, unless it is a FIX spec's story note. Where the manifest
+// says notes are ignored, a clone on another machine has none, so none is
+// required.
+const manifestFile = join(specFolder, "manifest.md");
+const handoffNotesIgnored = existsSync(manifestFile) && /^- \*\*Handoff notes\*\*: ignored\b/im.test(readFileSync(manifestFile, "utf8"));
+const handoffFolder = join(specFolder, "handoff");
+const handoffFileOf = (id) => join(handoffFolder, `${id.replace(" Story ", "-").toLowerCase()}.md`);
+const isStoryNote = (file) => [...storyById.keys()].some((id) => handoffFileOf(id) === file);
+const handoffFiles = existsSync(handoffFolder)
+  ? readdirSync(handoffFolder)
+      .filter((name) => name.endsWith(".md"))
+      .map((name) => join(handoffFolder, name))
+      .filter((file) => !basename(file).startsWith("fix-") || isStoryNote(file))
+  : [];
+for (const [id, story] of storyById)
+  if (story.status === "In Progress" && !handoffNotesIgnored && !handoffFiles.includes(handoffFileOf(id)))
+    faults.push(`${handoffFileOf(id)}: missing; ${id} is In Progress, so its handoff note says what is done, what remains, the decisions taken and what blocks it`);
+for (const file of handoffFiles) {
+  const id = [...storyById.keys()].find((storyId) => handoffFileOf(storyId) === file);
+  if (id === undefined) faults.push(`${file}: a handoff note for no story`);
+  else if (storyById.get(id).status === "Todo") faults.push(`${file}: a handoff note for ${id}, which is Todo; remove it`);
+}
 
 if (command === "report") {
   const reportFile = join(specFolder, "report.html");

@@ -6,6 +6,7 @@ How work on a story is carried out and finished in this repository. Read by
 ## Specs
 
 - **Folder**: `specs`
+- **Quality cross-check**: every 5 stories
 
 ## Working
 
@@ -17,11 +18,13 @@ How work on a story is carried out and finished in this repository. Read by
 ## Talking
 
 - **Conversation**: short — a gate says only what it asks; what changed is never listed, the user reads the code and asks.
+- **Review**: strict — every `nit` and `q` the review leaves is put to the user at the hand-over.
 
 ## Committing
 
 - **While working**: unstaged — leave every change unstaged until the story or fix is finished; the user stages what they have read, and /sdd-finish commits. Never `git add` or `git commit` unless the user asks in that turn.
 - **Message**: the story's id and title, `CORE Story 15: Publish a release that users can trust`, with a short body when the why is not obvious.
+- **Handoff notes**: committed — a story's handoff note is committed with its work, so another machine resumes from it; with **While working** unstaged, it waits in the working tree with the rest of the work.
 - **Co-Authored-By**: no — no AI attribution in commits, pull requests or comments.
 
 ## Finishing

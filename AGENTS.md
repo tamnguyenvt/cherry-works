@@ -352,11 +352,11 @@ Never write to the agent's own memory (for Claude Code, the files under
 worth keeping — a correction, a preference, a constraint — write it into a note
 under `learning/inbox/`, named `<yyyy-mm-dd>-<slug>.md`, as /sdd-learn does.
 
-- When touching a file matching "**/spec.md", "**/spec-*.md", "**/plan.json", "**/manifest.md", "**/ADR.md": Read and follow .cw/out/guide/sdd-spec-format/index.md.
+- When touching a file matching "**/spec.md", "**/spec-*.md", "**/plan.json", "**/manifest.md", "**/ADR.md", "**/quality.md": Read and follow .cw/out/guide/sdd-spec-format/index.md.
 
 #### sdd-spec-format
 
-Applies only to repository paths matching: "**/spec.md", "**/spec-*.md", "**/plan.json", "**/manifest.md", "**/ADR.md".
+Applies only to repository paths matching: "**/spec.md", "**/spec-*.md", "**/plan.json", "**/manifest.md", "**/ADR.md", "**/quality.md".
 
 Source: [.cw/out/guide/sdd-spec-format/index.md](./.cw/out/guide/sdd-spec-format/index.md).
 
@@ -367,10 +367,12 @@ A repository's specs live in one folder, the one `.sdd/settings.json` names
 |---|---|
 | `spec.md` | the index: one row per spec — its file, its prefix, what part of the product it covers. No stories. |
 | `spec-<key>.md` | one part of the product: what it must do and why. Its ids carry the prefix its key makes, upper-cased without hyphens: `spec-core.md` is `CORE`. |
-| `plan.json` | every story of every spec, once, and the stories it depends on: the roadmap. |
+| `plan.json` | every story of every spec, once, and the stories it depends on: the roadmap; a `Done` story's entry also holds the evidence that proved it. |
 | `manifest.md` | how work is carried out and finished here, as the user chose it (/sdd-init). |
 | `ADR.md` | the decisions that change how every later story is built or written. |
+| `quality.md` | the checklist a quality pass (/sdd-quality) checks the code and the specs against, from [sdd-quality-doc](./.cw/out/template/sdd-quality-doc/index.md): written by /sdd-init, kept and edited by the project; under `## Last pass` at its end, the report of the last pass, rewritten by each. |
 | `report.html` | the roadmap drawn from `plan.json` and the statuses (/sdd-report); generated, never edited, and ignored by the folder's `.gitignore`. |
+| `handoff/` | one note per story `In Progress`, `<prefix>-<n>.md`, and per bug fix not yet landed, `fix-<slug>.md`, from [sdd-handoff](./.cw/out/template/sdd-handoff/index.md): what is done, what remains, the decisions taken, what blocks it — nothing the spec says. Kept once the story is `Done` or the fix lands; committed or ignored as `manifest.md` says. Never linked or checked as a spec. |
 | `mockup/` | designs, when there are any. |
 
 A part grows in its own spec, extended in place; a new part gets a new
@@ -417,7 +419,8 @@ Title, `**Created**`, `**Updated**`, `**Input**` (each request appended as
 ```json
 {
   "stories": [
-    { "id": "CORE Story 3", "title": "Sign in", "dependsOn": [] },
+    { "id": "CORE Story 3", "title": "Sign in", "dependsOn": [],
+      "evidence": { "summary": "npm test: 41 pass, 0 fail; signed in by hand as a new user", "date": "2026-10-27" } },
     { "id": "CORE Story 4", "title": "Reset a password", "dependsOn": ["CORE Story 3"] },
     { "id": "BILLING Story 1", "title": "Pay an invoice", "dependsOn": ["CORE Story 3"] }
   ]
@@ -426,9 +429,11 @@ Title, `**Created**`, `**Updated**`, `**Input**` (each request appended as
 
 Every story of every spec, once, in the order it is to be built; `title` as
 its heading says it; `dependsOn` the stories that must be `Done` first, in any
-spec. No status here — the spec's status line is the one. Stories whose
-dependencies are all `Done` can be built side by side: `ready` of
-[sdd-specs](./.cw/out/script/sdd-specs/index.md) lists them.
+spec. No status here — the spec's status line is the one. `evidence` is set
+by /sdd-implement when it sets the story `Done`: one line of what /sdd-verify
+ran and what it showed, and the date it was produced. A story set back from
+`Done` loses its evidence. Stories whose dependencies are all `Done` can be
+built side by side: `ready` of [sdd-specs](./.cw/out/script/sdd-specs/index.md) lists them.
 
 ## Citing
 
@@ -454,6 +459,41 @@ story is built is decided when it is implemented and lives in the code. At
 most three `[NEEDS CLARIFICATION: …]` markers at a time; the clarify step of /sdd-plan resolves
 them before the story they block is implemented.
 
+#### sdd-voice — every turn
+
+Source: [.cw/out/guide/sdd-voice/index.md](./.cw/out/guide/sdd-voice/index.md).
+
+## How to talk to the user
+
+Report in the language of the user's own words, however much code, ids or
+commands they mix in — the words passed after a slash command included: every
+answer, report, gate, question and hand-over, never in the language of the
+code, the specs, the charter or a tool's output. A line said while working,
+between tool calls, may be in any language. Talk in full sentences: compress
+what is said, never the grammar it is said in.
+
+- **The answer first** — then why, then what comes next. Never open by
+  announcing what you are about to do, never close with a recap or an offer
+  of more help.
+- **No chatter** — no text between routine tool calls; how much a step says
+  is set below.
+- **Verbatim** — commands, paths, ids, code and errors are quoted exactly; an
+  error by its shortest decisive line. A line a playbook gives word for word,
+  the hand-over's closing line among them, is written as it is given.
+- **Every negation kept** — never drop a not, never, no, only or except to
+  save a word: a lost negation costs more than any word saved.
+- **A question carries its case** — each question, and each `nit` or `q`
+  put to the user, says first what you were doing, then what you met there:
+  the problem; then the fix you propose — where there are several ways on,
+  the one you propose; only then what you ask.
+- **One reading** — a sentence that could be read two ways is written again
+  until it cannot.
+- **As long as `manifest.md` says** — where its **Conversation** is short, the
+  default, a step that passes says nothing: only a failure, a warning or a
+  question is said; a gate says only what it asks of the user, with its case;
+  and what changed is never listed: the user reads the code and asks. Where it
+  is detailed, each step reports what it did and what it showed.
+
 - sdd-analyze: Check the spec set for gaps, contradictions and format faults, and report each by id with its fix; changes nothing. Use when: analyze the spec; check the spec; review the spec. Open .cw/out/skill/sdd-analyze/index.md when its triggers match or another primitive calls it; do not offer it as a user command.
 
 - sdd-cleanup: List the story and phase branches whose work has already landed, and delete the ones the user confirms, with their worktrees. Use when: sdd cleanup; clean up branches; delete merged branches; prune branches. Open .cw/out/skill/sdd-cleanup/index.md when its triggers match or another primitive calls it; do not offer it as a user command.
@@ -462,7 +502,7 @@ them before the story they block is implemented.
 
 - sdd-learn: Write what this conversation taught — a correction, a preference, a constraint — as a note in learning/inbox. Use when: learn from the conversation. Open .cw/out/skill/sdd-learn/index.md when its triggers match or another primitive calls it; do not offer it as a user command.
 
-- sdd-review: Review the change against the story's scenarios, FR and SC — nothing missing, nothing beyond them — and for security issues. Use when: review implementation. Open .cw/out/skill/sdd-review/index.md when its triggers match or another primitive calls it; do not offer it as a user command.
+- sdd-review: Verify the change, then have an agent that did not write it review it, with what verify showed, against the story's scenarios, FR and SC — nothing missing, nothing beyond them — and for security issues. Use when: review implementation. Open .cw/out/skill/sdd-review/index.md when its triggers match or another primitive calls it; do not offer it as a user command.
 
 - sdd-verify: Prove the change works with evidence produced this turn — tests, static checks, and a manual run of what the story describes. Use when: verify changes. Open .cw/out/skill/sdd-verify/index.md when its triggers match or another primitive calls it; do not offer it as a user command.
 

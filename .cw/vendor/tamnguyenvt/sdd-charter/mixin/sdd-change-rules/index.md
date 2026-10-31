@@ -12,10 +12,16 @@ decides the worktree, the order, the branches — the development branch
 where it says nothing about the case at hand, ask.
 
 - **Handed over only once checked.** The user is handed a change only after
-  /sdd-verify and /sdd-review have passed. With **Conversation** short, say
-  only that it is done and needs the user's review, with each `q` the review
-  left to answer; with it detailed, say what changed and what each check
-  showed, with each `nit` and `q` the review left for the user to decide. Each
+  /sdd-verify and /sdd-review have passed. With **Review** quick in the
+  manifest, a `nit` is not acted on but written to the handoff note, and a `q`
+  whose answer changes no FR, scenario or out of scope and touches only the
+  changed files is settled, what was chosen written there, and an edit it
+  brings is checked the same way again before the hand-over; neither is said
+  in the chat. With **Review** strict, or no answer, every `nit` and `q` is
+  left for the user. With **Conversation** short, open on each `nit` and `q`
+  left for the user to decide; with it detailed, say what changed and what
+  each check showed, then each `nit` and `q` left for the user. Either way,
+  name each known failure the baseline recorded, where it recorded any. Each
   change the user asks for then is made and checked the same way again before
   it is handed back; a requested change is never reported done on the edit
   alone.

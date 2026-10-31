@@ -1,6 +1,6 @@
 ---
 name: sdd-bug-fix
-description: "Fix one bug on a fix branch of its own — understand it, reproduce it with evidence, report the root cause and the fix for approval, fix it test first, review, verify, and finish into the development branch. Use when: fix bug; fix this bug; bug fix; debug this."
+description: "Fix one bug on a fix branch of its own — understand it, check the baseline, reproduce it with evidence, report the root cause and the fix for approval, fix it test first, verify and review, and finish into the development branch. Use when: fix bug; fix this bug; bug fix; debug this."
 ---
 
 Read and follow @../../../.cw/out/playbook/sdd-bug-fix/index.md.

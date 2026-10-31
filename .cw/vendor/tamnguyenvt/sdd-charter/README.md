@@ -24,9 +24,11 @@ request — with recommendations drawn from your history, and writes it down.
 |---|---|
 | `/sdd-init` | Surveys the repository, offers to refactor the specs it already has (one big spec, Spec Kit folders, a PRD) into a spec set, asks how work is done and finished, and writes `.sdd/settings.json` and `<specs>/manifest.md`. |
 | `/sdd-plan <what you want>` | Clarifies, then writes the phase's stories, FR and SC into the right spec, and their dependencies into `plan.json`. |
-| `/sdd-implement` | Draws the roadmap, asks which spec, takes a ready story, then spec gate, test first, verify, review, and marks it `Done`. |
-| `/sdd-bug-fix <the bug>` | On a `fix/` branch from your development branch: reproduces the bug with evidence, reports the root cause and the fix for your yes, fixes it test first, reviews, verifies, and finishes into the development branch. |
+| `/sdd-implement` | Draws the roadmap, asks which spec, takes a ready story, checks the baseline, then spec gate, test first, verify and review, and marks it `Done`. |
+| `/sdd-bug-fix <the bug>` | On a `fix/` branch from your development branch: checks the baseline, reproduces the bug with evidence, reports the root cause and the fix for your yes, fixes it test first, verifies and reviews, and finishes into the development branch. |
 | `/sdd-status` | Every story with its status, and which can be built now. |
+| `/sdd-quality` | Checks the whole codebase against every story, and the specs against each other — consistent, complete, no conflict — item by item against the checklist in `quality.md`; gives the product one grade, reports it, and hands each violation to `/sdd-plan` to become a story. |
+| `/sdd-doctor` | Checks the spec set is set up — settings, spec folder, every answer the manifest needs today — each passing or failing with why, and offers the fix of each fault. The engine's own health is `cw doctor`'s. |
 | `/sdd-report` | Draws the roadmap into `report.html`: what is done, in progress, ready and waiting, and what waits on what. |
 
 ![The roadmap /sdd-report draws into report.html: Done stories grey with green ids, In Progress pink with a green dot, ready with a solid border, waiting dashed, and an arrow from each story to the ones waiting on it](docs/report.png)
@@ -39,8 +41,10 @@ specs/
 ├── spec.md               index: one row per spec, its prefix and scope
 ├── spec-core.md          CORE Story 1…, CORE-FR-001…, CORE-SC-001…
 ├── spec-billing.md       BILLING Story 1…, BILLING-FR-001…
-├── plan.json             every story and what it depends on
+├── plan.json             every story, what it depends on, what proved it Done
 ├── manifest.md           how work is carried out and finished here
+├── handoff/core-3.md     where a story In Progress stands, for the next session
+├── quality.md            the checklist the quality pass checks against
 └── ADR.md                decisions that shape every later story
 ```
 
@@ -65,6 +69,19 @@ specs/
 - **Status** sits under each story's heading: `Todo`, `In Progress`, `Done`.
 - **Roadmap apart from the prose.** Once CORE Story 3 is `Done`, CORE Story 4
   and BILLING Story 1 are both ready and can be built side by side.
+- **Work outlives the session.** A story `In Progress` keeps a handoff note
+  — done, remaining, decisions, blockers — that the next session reads
+  before anything else, and that goes once the story is `Done`.
+- **Done says why.** A story set `Done` keeps, in its `plan.json` entry,
+  one line of what proved it and the date, and `check` refuses evidence on a
+  story that is not `Done`.
+- **Nothing left behind.** Before a story or a fix lands, its change is
+  checked for stray or temporary files, debug output, leftover markers and
+  secrets, and nothing lands until each finding is cleaned or accepted.
+- **Quality on a beat.** /sdd-plan adds a quality cross-check story after
+  every five stories, or the number `manifest.md` names: built like any
+  other, it checks the code and the specs against the checklist in
+  `quality.md`, and each violation it finds becomes a story through /sdd-plan.
 - **Ids are cited, not copied.** When the agent stops with the spec folder
   changed, a hook links every id across files and checks the set against
   `plan.json`, and refuses to stop while either fails.
@@ -73,9 +90,13 @@ specs/
 
 - Playbooks: `sdd-plan`, `sdd-implement`, `sdd-bug-fix`.
 - Skills: `sdd-init`, `sdd-finish`, `sdd-cleanup`, `sdd-status`, `sdd-report`,
-  `sdd-analyze`, `sdd-verify`, `sdd-review`, `sdd-learn`.
+  `sdd-analyze`, `sdd-verify`, `sdd-review`, `sdd-quality`, `sdd-doctor`,
+  `sdd-learn`.
+- Agents: `sdd-locator` (where a story's code lives), `sdd-review-agent` (the
+  review, by an agent that did not write the change).
 - Guides: `sdd-spec-format` (on the spec set's files),
   `sdd-learnings-go-to-the-inbox`.
-- Sensor `sdd-specs-on-stop`; script `sdd-specs` (`link`, `check`, `ready`, `report`;
-  Node 20+, no dependencies); templates `sdd-spec-index`, `sdd-spec`,
-  `sdd-manifest`.
+- Sensor `sdd-specs-on-stop`; script `sdd-specs` (`link`, `check`, `ready`, `report`, `doctor`;
+  Node 20+, no dependencies); script `sdd-clean` (what a change would leave
+  behind); templates `sdd-spec-index`, `sdd-spec`,
+  `sdd-manifest`, `sdd-quality-doc`.
