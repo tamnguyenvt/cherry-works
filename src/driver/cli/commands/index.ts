@@ -3,6 +3,7 @@ import { BuildCommand } from "./BuildCommand.js";
 import { ContextCommand } from "./ContextCommand.js";
 import { DoctorCommand } from "./DoctorCommand.js";
 import { EditCommand } from "./EditCommand.js";
+import { EvalAnalyzeCommand } from "./EvalAnalyzeCommand.js";
 import { EvalCommand } from "./EvalCommand.js";
 import { ExplainCommand } from "./ExplainCommand.js";
 import { InitCommand } from "./InitCommand.js";
@@ -41,6 +42,7 @@ export const COMMANDS: readonly AnyCommand[] = [
   new SessionsCommand(),
   new TestCommand(),
   new EvalCommand(),
+  new EvalAnalyzeCommand(),
   new SuiteAddCommand(),
   new SuiteEditCommand(),
   new SuiteRemoveCommand(),

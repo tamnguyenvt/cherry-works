@@ -378,3 +378,56 @@ test("invalid agent is refused even when there are no cases", async () => {
   assert.match(commandOutput.problem, /Unsupported evaluation agent/);
   assert.equal(promptfooRunner.evaluatedTests.length, 0);
 });
+
+test("a read-only expectation is accepted and handed to promptfoo without requiring an invocation", async () => {
+  const promptfoo = new InMemoryPromptfoo();
+  const { cli } = surfaces(holding([{ prompt: "verify this branch", expect: { read: ".cw/out/skill/planning/index.md" } }]), promptfoo);
+  const { code } = await printed(cli, ["eval"]);
+  assert.equal(code, EXIT_OK);
+  assert.deepEqual(promptfoo.evaluatedTests[0]?.assertions, [{ type: "file-read", value: ".cw/out/skill/planning/index.md" }]);
+});
+
+test("read expectations reject absolute, traversal, empty and control-character paths before running an agent", async () => {
+  for (const filePath of ["", "/etc/passwd", "../secret", "a/../secret", "a/./file", "a//file", "C:/secret", "a\\file", "a\nfile"]) {
+    const promptfoo = new InMemoryPromptfoo();
+    const { cli } = surfaces(holding([{ prompt: "read", expect: { read: filePath } }]), promptfoo);
+    const { code } = await printed(cli, ["eval"]);
+    assert.equal(code, EXIT_FAILURE, JSON.stringify(filePath));
+    assert.equal(promptfoo.evaluatedTests.length, 0);
+  }
+});
+
+test("eval prints retained promptfoo and agent session paths, and eval-analyze reads saved evidence without evaluating", async () => {
+  const promptfoo = new InMemoryPromptfoo();
+  promptfoo.resultByPrompt.set("plan", { ...promptfooResult(123), logPath: "/logs/case.json", sessionId: "session-one", sessionPath: "/sessions/session-one.jsonl" });
+  promptfoo.savedLogs.push({
+    logPath: "/logs/case.json", createdAt: "2026-10-31T02:00:00.000Z", agent: "codex", prompt: "plan",
+    workingFolderPath: "/repo/.cw/eval/.worktrees/1", outputPath: "/logs/output.json", stdoutPath: "/logs/stdout.log", stderrPath: "/logs/stderr.log",
+    success: false, totalTokens: 123, unmetReasons: ["Missing required skill(s): planning"], answer: "I read the instructions.",
+    toolCalls: ['{"command":"cat instructions.md","exit_code":0}'], sessionId: "session-one", sessionPath: "/sessions/session-one.jsonl",
+  });
+  const { cli } = surfaces(holding([{ prompt: "plan", expect: { invoke: "planning" } }]), promptfoo);
+  const evalOutput = await printed(cli, ["eval"]);
+  assert.match(evalOutput.result, /Log: \/logs\/case.json/);
+  assert.match(evalOutput.result, /Session log: \/sessions\/session-one.jsonl/);
+  const evaluateCount = promptfoo.evaluatedTests.length;
+  const analysisOutput = await printed(cli, ["eval-analyze", "--log", "/logs/case.json"]);
+  assert.equal(analysisOutput.code, EXIT_OK);
+  assert.match(analysisOutput.result, /FAIL codex/);
+  assert.match(analysisOutput.result, /Missing required skill/);
+  assert.match(analysisOutput.result, /cat instructions.md/);
+  assert.match(analysisOutput.result, /I read the instructions/);
+  assert.match(analysisOutput.result, /Session log: \/sessions\/session-one.jsonl/);
+  const jsonOutput = await printed(cli, ["eval-analyze", "--json"]);
+  assert.equal(JSON.parse(jsonOutput.result).data.logs[0].sessionId, "session-one");
+  assert.equal(promptfoo.evaluatedTests.length, evaluateCount);
+});
+
+test("eval-analyze explains an empty history without running an agent", async () => {
+  const promptfoo = new InMemoryPromptfoo();
+  const { cli } = surfaces(holding([]), promptfoo);
+  const analysisOutput = await printed(cli, ["eval-analyze"]);
+  assert.equal(analysisOutput.code, EXIT_OK);
+  assert.match(analysisOutput.result, /No saved evaluation log/);
+  assert.equal(promptfoo.evaluatedTests.length, 0);
+});

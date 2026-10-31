@@ -168,6 +168,9 @@ const EvalCaseReportSchema = dto(
     passed: z.boolean(),
     tokens: z.number(),
     unmetReasons: z.array(z.string()).readonly(),
+    logPath: z.string().optional(),
+    sessionId: z.string().optional(),
+    sessionPath: z.string().optional(),
   }),
 );
 
@@ -180,6 +183,17 @@ const EvalRunReportSchema = dto(
     totalTokens: z.number(),
   }),
 );
+
+/** Saved promptfoo case diagnostics, including verified agent session locations. */
+const EvalLogAnalysisSchema = dto("EvalLogAnalysis", z.object({
+  logs: z.array(z.object({
+    logPath: z.string(), createdAt: z.string(), agent: z.enum(["claude", "codex"]),
+    prompt: z.string(), workingFolderPath: z.string(), outputPath: z.string(),
+    stdoutPath: z.string(), stderrPath: z.string(), success: z.boolean(), totalTokens: z.number(),
+    unmetReasons: z.array(z.string()).readonly(), answer: z.string(), toolCalls: z.array(z.string()).readonly(),
+    sessionId: z.string().optional(), sessionPath: z.string().optional(), error: z.string().optional(),
+  })).readonly(),
+}));
 
 /** One situation a test pins down, said rather than handed over as written:
  *  the file it touches or the event it raises, what it expects of it, and the
@@ -344,6 +358,7 @@ export const DataDTOs = byType(
   CatalogueSchema,
   CatalogueEntrySchema,
   EvalCaseReportSchema,
+  EvalLogAnalysisSchema,
   EvalRunReportSchema,
   FaultSchema,
   FaultsSchema,
@@ -376,6 +391,7 @@ export const DataDTOs = byType(
 export namespace DataDTOs {
   export type Catalogue = z.infer<typeof DataDTOs.Catalogue>;
   export type CatalogueEntry = z.infer<typeof DataDTOs.CatalogueEntry>;
+  export type EvalLogAnalysis = z.infer<typeof DataDTOs.EvalLogAnalysis>;
   export type EvalCaseReport = z.infer<typeof DataDTOs.EvalCaseReport>;
   export type EvalRunReport = z.infer<typeof DataDTOs.EvalRunReport>;
   export type Fault = z.infer<typeof DataDTOs.Fault>;

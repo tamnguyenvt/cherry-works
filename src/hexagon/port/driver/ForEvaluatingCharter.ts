@@ -32,5 +32,7 @@ export interface ForEvaluatingCharter {
    * installed is raised, with no case run either (EVAL-FR-026). None written
    * is a report of no case.
    */
+  analyze(logFilePath?: string): Promise<DataDTOs.EvalLogAnalysis>;
+
   evaluate(agent?: string): Promise<DataDTOs.EvalRunReport | DataDTOs.FaultsByFile>;
 }

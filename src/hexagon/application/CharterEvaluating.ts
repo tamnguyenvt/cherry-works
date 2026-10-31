@@ -18,7 +18,7 @@ import { loadCharterRoot } from "../service/charterRepo.js";
 import { loadEvalRoot } from "../service/evalSuitesRepo.js";
 import { loadSettings } from "../service/settingsRepo.js";
 import { evalFolderIn, evalWorktreesFolderIn, folderURL } from "../domain/path.js";
-import { evalRunReportDTO, faultsByFileDTO } from "./dtos.js";
+import { evalLogAnalysisDTO, evalRunReportDTO, faultsByFileDTO } from "./dtos.js";
 
 /**
  * APPLICATION SERVICE — the charter evaluated against the real agent
@@ -72,6 +72,10 @@ export class CharterEvaluating implements ForEvaluatingCharter {
     this.#agentCliByProvider = agentCliByProvider;
     this.#promptfooRunner = promptfooRunner;
     this.#progressReporter = progressReporter;
+  }
+
+  async analyze(logFilePath?: string): Promise<DataDTOs.EvalLogAnalysis> {
+    return evalLogAnalysisDTO(await this.#promptfooRunner.readLogs(this.#repoPath, logFilePath));
   }
 
   async evaluate(requestedAgent?: string): Promise<DataDTOs.EvalRunReport | DataDTOs.FaultsByFile> {

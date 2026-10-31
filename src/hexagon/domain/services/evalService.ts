@@ -11,6 +11,9 @@ export class EvalCaseReport {
     readonly prompt: string,
     readonly tokens: number,
     readonly unmetReasons: readonly string[],
+    readonly logPath?: string,
+    readonly sessionId?: string,
+    readonly sessionPath?: string,
   ) {}
 
   get passed(): boolean {

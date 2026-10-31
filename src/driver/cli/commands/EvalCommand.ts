@@ -54,9 +54,12 @@ export class EvalCommand implements Command<typeof OPTIONS> {
       code: failedCount === 0 ? EXIT_OK : EXIT_FAILURE,
       result: [
         `Agent: ${evalRunReportDTO.data.agent}`,
-        ...evalCaseReports.flatMap(({ data: { passed, tokens, prompt, unmetReasons } }) => [
+        ...evalCaseReports.flatMap(({ data: { passed, tokens, prompt, unmetReasons, logPath, sessionId, sessionPath } }) => [
           `  ${passed ? "pass" : "FAIL"}  ${`${tokens.toLocaleString("en-US")} tokens`.padStart(14)}  ${prompt.split("\n")[0]}`,
           ...unmetReasons.map((unmetReason) => `          ${unmetReason}`),
+          ...(logPath === undefined ? [] : [`          Log: ${logPath}`]),
+          ...(sessionId === undefined ? [] : [`          Agent session: ${sessionId}`]),
+          ...(sessionPath === undefined ? [] : [`          Session log: ${sessionPath}`]),
         ]),
         "",
         `${failedCount === 0 ? `${evalCaseReports.length} ${casesWord} passed` : `${failedCount} of ${evalCaseReports.length} ${casesWord} failed`}, ${totalTokens.toLocaleString("en-US")} tokens in all.`,

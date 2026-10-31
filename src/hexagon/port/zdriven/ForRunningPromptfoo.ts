@@ -24,6 +24,10 @@ export interface ForRunningPromptfoo {
    *  and edits accepted, on whatever it is signed in with; and how it came
    *  out. A run promptfoo itself fails raises an `AdapterFault`. */
   evaluate(promptfooTest: PromptfooTest): Promise<PromptfooTestResult>;
+
+  /** Read saved promptfoo artifacts without invoking an agent. With no path,
+   * list the latest twenty case logs belonging to this repository. */
+  readLogs(repositoryFolder: URL, logFilePath?: string): Promise<readonly PromptfooLog[]>;
 }
 
 /** One promptfoo test, in promptfoo's own words. */
@@ -40,7 +44,7 @@ export interface PromptfooTest {
  *  grader holds what the agent did to, reading the working folder itself, or
  *  a JavaScript check of the response. */
 export interface PromptfooAssertion {
-  readonly type: "skill-used" | "agent-rubric" | "javascript";
+  readonly type: "skill-used" | "agent-rubric" | "javascript" | "file-read";
   readonly value: string;
 }
 
@@ -51,5 +55,28 @@ export interface PromptfooTestResult {
   readonly success: boolean;
   readonly totalTokens: number;
   readonly componentResults: readonly { readonly assertionType: string; readonly pass: boolean; readonly reason: string }[];
+  readonly error?: string;
+  readonly logPath?: string;
+  readonly sessionId?: string;
+  readonly sessionPath?: string;
+}
+
+/** A saved case and its diagnostics, read without an inference call. */
+export interface PromptfooLog {
+  readonly logPath: string;
+  readonly createdAt: string;
+  readonly agent: "claude" | "codex";
+  readonly prompt: string;
+  readonly workingFolderPath: string;
+  readonly outputPath: string;
+  readonly stdoutPath: string;
+  readonly stderrPath: string;
+  readonly success: boolean;
+  readonly totalTokens: number;
+  readonly unmetReasons: readonly string[];
+  readonly answer: string;
+  readonly toolCalls: readonly string[];
+  readonly sessionId?: string;
+  readonly sessionPath?: string;
   readonly error?: string;
 }

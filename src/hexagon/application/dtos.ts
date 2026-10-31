@@ -213,9 +213,13 @@ export function evalRunReportDTO(evalRunReport: EvalRunReport): DataDTOs.EvalRun
   return {
     type: "EvalRunReport",
     data: {
-      evalCaseReports: evalRunReport.evalCaseReports.map(({ suiteName, prompt, passed, tokens, unmetReasons }) => ({
+      evalCaseReports: evalRunReport.evalCaseReports.map(({ suiteName, prompt, passed, tokens, unmetReasons, logPath, sessionId, sessionPath }) => ({
         type: "EvalCaseReport",
-        data: { suiteName, prompt, passed, tokens, unmetReasons },
+        data: { suiteName, prompt, passed, tokens, unmetReasons,
+          ...(logPath === undefined ? {} : { logPath }),
+          ...(sessionId === undefined ? {} : { sessionId }),
+          ...(sessionPath === undefined ? {} : { sessionPath }),
+        },
       })),
       totalTokens: evalRunReport.totalTokens,
       agent: evalRunReport.agent,
@@ -323,4 +327,9 @@ export function vendorAddOutcomeDTO(vendorInstalls: readonly VendorInstall[]): O
     type: "VendorAddOutcome",
     data: vendorInstalls.map(({ folder, vendorPrimitives }) => ({ folder, primitives: vendorPrimitives.map(vendorPrimitiveDTO) })),
   };
+}
+
+/** Saved diagnostics are returned independently of the inference that produced them. */
+export function evalLogAnalysisDTO(logs: DataDTOs.EvalLogAnalysis["data"]["logs"]): DataDTOs.EvalLogAnalysis {
+  return { type: "EvalLogAnalysis", data: { logs } };
 }

@@ -9,7 +9,7 @@ const ExpectedIdSchema = BasePrimitive.headersSchema().shape.id;
 /**
  * What one evaluation case may say (EVAL-FR-020): a prompt put to the agent,
  * and what is expected of it — a skill invoked, a guide followed, at most a
- * number of tokens — at least one of the three.
+ * number of tokens, or a file read — at least one expectation.
  */
 export const EvalCaseSchema = z.strictObject({
   prompt: z.string().min(1),
@@ -17,9 +17,15 @@ export const EvalCaseSchema = z.strictObject({
     .strictObject({
       invoke: ExpectedIdSchema.optional(),
       follow: ExpectedIdSchema.optional(),
+      read: z.string().min(1).refine(
+        (filePath) => !filePath.startsWith("/") && !filePath.includes("\\") && !/^[A-Za-z]:/.test(filePath)
+          && filePath.split("/").every((part) => part.length > 0 && part !== "." && part !== "..")
+          && !/[\x00-\x1f{}]/.test(filePath),
+        "Use a repository-relative file path without traversal or template delimiters.",
+      ).optional(),
       maxTokens: z.number().int().positive().optional(),
     })
-    .refine(({ invoke, follow, maxTokens }) => invoke !== undefined || follow !== undefined || maxTokens !== undefined),
+    .refine(({ invoke, follow, read, maxTokens }) => invoke !== undefined || follow !== undefined || read !== undefined || maxTokens !== undefined),
 });
 
 /** One case, as `EvalCaseSchema` read it. */

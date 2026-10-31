@@ -19,8 +19,9 @@ export async function runWithPromptfoo(
   guideBody: string | undefined,
   agent: AgentProvider,
 ): Promise<EvalCaseReport> {
-  const { invoke: skillId, follow: guideId, maxTokens } = evalCase.expect;
+  const { invoke: skillId, follow: guideId, read: filePath, maxTokens } = evalCase.expect;
   const assertions: PromptfooAssertion[] = [
+    ...(filePath === undefined ? [] : [{ type: "file-read" as const, value: filePath }]),
     ...(skillId === undefined ? [] : [{ type: "skill-used" as const, value: skillId }]),
     ...(guideId === undefined || guideBody === undefined
       ? []
@@ -45,7 +46,7 @@ export async function runWithPromptfoo(
           },
         ]),
   ];
-  const { success, totalTokens, componentResults, error } = await promptfooRunner.evaluate({
+  const { success, totalTokens, componentResults, error, logPath, sessionId, sessionPath } = await promptfooRunner.evaluate({
     agent,
     description: `${suiteName}: ${evalCase.prompt}`,
     prompt: evalCase.prompt,
@@ -57,5 +58,5 @@ export async function runWithPromptfoo(
     .map(({ assertionType, reason }) => (assertionType === "agent-rubric" ? `"${guideId}" was not followed: ${reason}` : reason));
   // A case promptfoo could not run has no grading to say: its error is why.
   if (!success && unmetReasons.length === 0) unmetReasons.push(error ?? "promptfoo failed this case without saying why.");
-  return new EvalCaseReport(suiteName, evalCase.prompt, totalTokens, unmetReasons);
+  return new EvalCaseReport(suiteName, evalCase.prompt, totalTokens, unmetReasons, logPath, sessionId, sessionPath);
 }

@@ -1,4 +1,4 @@
-import type { ForRunningPromptfoo, PromptfooTest, PromptfooTestResult } from "#hexagon/port/zdriven/ForRunningPromptfoo.js";
+import type { ForRunningPromptfoo, PromptfooTest, PromptfooTestResult, PromptfooLog } from "#hexagon/port/zdriven/ForRunningPromptfoo.js";
 import type { InMemoryFileReaders } from "./InMemoryFileReaders.js";
 
 /**
@@ -11,6 +11,7 @@ export class InMemoryPromptfoo implements ForRunningPromptfoo {
   readonly installFolderPath = "~/.cherry-works/promptfoo/test";
   /** How many times it was installed. */
   installCount = 0;
+  readonly savedLogs: PromptfooLog[] = [];
   readonly resultByPrompt = new Map<string, PromptfooTestResult>();
   readonly evaluatedTests: (PromptfooTest & { readonly builtFiles: readonly string[] })[] = [];
   /** The files a test's working folder is read from, set by a test asking
@@ -26,6 +27,10 @@ export class InMemoryPromptfoo implements ForRunningPromptfoo {
   async install(): Promise<void> {
     this.installCount++;
     this.installed = true;
+  }
+
+  async readLogs(_repositoryFolder: URL, logFilePath?: string): Promise<readonly PromptfooLog[]> {
+    return this.savedLogs.filter((savedLog) => logFilePath === undefined || savedLog.logPath === logFilePath);
   }
 
   async evaluate(promptfooTest: PromptfooTest): Promise<PromptfooTestResult> {

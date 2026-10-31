@@ -2,6 +2,9 @@
 
 ## 0.9.0 — 2026-10-30
 
+- `cw eval` retains promptfoo logs and agent session links, and `cw eval-analyze` reads them without spending tokens.
+- Evaluation cases can use `expect.read` to check that an agent read a file from successful tool evidence.
+
 - Run `cw init --agent codex` to build charter instructions, skills, subagents, MCP, command permission rules and sensor hooks for Codex.
 
 - One repository can gather several charters under `charters/<name>/.cw/charter/`, and `cw vendor add <source> --charter baseline` picks the ones you want, as `--skill` picks skills. Each lands in `.cw/vendor/<owner>/<repository>/<name>/`, updated and removed on its own.

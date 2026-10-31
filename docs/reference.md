@@ -180,7 +180,24 @@ Each case expects at least one of:
 |---|---|
 | `invoke: <id>` | the agent invoked that skill or playbook |
 | `follow: <id>` | a model judge finds the agent followed that guide |
+| `read: <path>` | tool evidence shows a successful read of that repository-relative file |
 | `maxTokens: <n>` | the case used no more than that many tokens |
+
+For a workflow exposed through `AGENTS.md` rather than a public `SKILL.md`,
+expect its instructions to be read instead of asking `skill-used` to recognize it:
+
+```json
+{ "prompt": "verify changes on this branch", "expect": { "read": ".cw/out/skill/sdd-verify/index.md" } }
+```
+
+`read` accepts a nonempty repository-relative file path, without `.` or `..`
+segments. It checks provider tool evidence, never the final answer. Currently
+supported evidence is a completed Codex `cat` command with exit code zero
+(including literal shell wrappers and multiple files), or a successful Claude
+`Read` call with a returned result. Compound shell commands, other readers,
+and missing or unsupported trace formats fail with an explanation. A read
+proves that instructions were loaded; it does not prove the workflow succeeded.
+`invoke` keeps its existing meaning and behavior.
 
 ```bash
 cw eval
@@ -200,6 +217,35 @@ The report gives each case's outcome and tokens, and the run's total. A case
 that misses what it expects fails the run, with what the agent did instead.
 It runs on the selected agent's sign-in, or its API key when set, and spends real tokens: commit before you run it, and keep the cases
 few.
+
+### Saved evaluation logs
+
+Each new case retains a private `run-*` folder under
+`~/.cherry-works/promptfoo/<version>/`, with `promptfooconfig.json`, the raw
+promptfoo `output.json` when produced, `stdout.log`, `stderr.log`, and a
+`case.json` manifest. `cw eval` prints the manifest path beside each case,
+including failed cases. Process errors preserve diagnostics too.
+
+When the provider returns a session ID, the manifest records it and links to
+the existing local Codex or Claude session JSONL if found. An unavailable
+session is reported explicitly; the raw promptfoo output remains the primary
+artifact. Case worktrees are still removed, while these logs are retained
+until you delete their `run-*` folders.
+
+```bash
+cw eval-analyze                         # latest twenty saved cases for this repo
+cw eval-analyze --log /path/to/case.json # one case, including failures and tool evidence
+cw eval-analyze --log /path/to/case.json --json
+```
+
+This command runs offline and spends no tokens. It shows the agent answer,
+assertion failures, tool evidence, artifact paths, and the agent session ID
+and local session path when available. Long tool entries are abbreviated in
+terminal output; `--json` and the raw artifact keep them complete. A failed
+evaluation remains marked as failed in the report, but reading its log exits
+successfully. A missing or malformed explicit log is an error. Without
+`--log`, logs from other repositories are excluded. Older evaluations whose
+artifacts were deleted cannot be reconstructed by this command.
 
 ## What the charter costs
 
