@@ -1,11 +1,11 @@
 /**
  * Releases one version of the package to npm (FR-134 – FR-137, plan §18.4).
  * Everything that can fail runs before anything reaches the registry or the
- * remote, so a refused release leaves both, and this repository, as they were
- * (SC-032).
+ * remote. Once a push is attempted, keep the release commit and tag so the
+ * local history cannot diverge from a partially updated remote.
  *
- *   pnpm release <version>            check, then commit, tag, publish and push
- *   pnpm release <version> --dry-run  check only; package.json is put back
+ *   pnpm release <version>            check, then commit, tag, push and publish
+ *   pnpm release <version> --dry-run  check only; package.json and README.md are put back
  */
 import { spawnSync } from "node:child_process";
 import { lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
@@ -14,6 +14,7 @@ import { join } from "node:path";
 
 const ROOT = join(import.meta.dirname, "..");
 const PACKAGE_JSON = join(ROOT, "package.json");
+const README_MD = join(ROOT, "README.md");
 const RELEASE_BRANCH = "develop";
 /** What installing cw may add to a machine (SC-029). */
 const INSTALLED_SIZE_LIMIT = 20 * 1024 * 1024;
@@ -39,6 +40,12 @@ try {
   const firstDifference = nextParts.findIndex((part, index) => part !== currentParts[index]);
   if (firstDifference === -1 || nextParts[firstDifference]! < currentParts[firstDifference]!) {
     throw new ReleaseError(`${version} is not above ${currentVersion}, the version package.json holds.`);
+  }
+
+  const readmeText = await readFile(README_MD, "utf8");
+  const currentVersionLines = readmeText.match(/^Current version: \*\*\d+\.\d+\.\d+\*\*$/gm) ?? [];
+  if (currentVersionLines.length !== 1 || currentVersionLines[0] !== `Current version: **${currentVersion}**`) {
+    throw new ReleaseError(`README.md must hold exactly one "Current version: **${currentVersion}**" line matching package.json.`);
   }
 
   // Signed in to the registry, as an account that may publish this package:
@@ -86,6 +93,7 @@ try {
   try {
     // The version written, and the suite run, which builds.
     await writeFile(PACKAGE_JSON, packageJsonText.replace(`"version": "${currentVersion}"`, `"version": "${version}"`));
+    await writeFile(README_MD, readmeText.replace(currentVersionLines[0]!, `Current version: **${version}**`));
     if (spawnSync("pnpm", ["test"], { cwd: ROOT, stdio: "inherit" }).status !== 0) throw new ReleaseError("the tests fail.");
 
     // The install check (FR-135): the one tarball that will be published,
@@ -122,33 +130,33 @@ try {
     if (isDryRun) {
       console.log(`Dry run: ${version} passes every check, installed at ${(installedSize / 1024 / 1024).toFixed(1)} MB. Nothing was recorded, published or pushed.`);
     } else {
-      // Recorded (FR-136), then published: the tarball checked above, byte for
-      // byte. npm asks for the account's second factor here.
-      if (spawnSync("git", ["commit", "--quiet", "--message", `Release ${version}`, "--", "package.json"], { cwd: ROOT, stdio: "inherit" }).status !== 0) {
+      // Record and push the release before publishing the checked tarball.
+      // npm asks for the account's second factor at publish time.
+      if (spawnSync("git", ["commit", "--quiet", "--message", `Release ${version}`, "--", "package.json", "README.md"], { cwd: ROOT, stdio: "inherit" }).status !== 0) {
         throw new ReleaseError("the release commit could not be made.");
       }
       isRecorded = true;
       // With a message, so a repository that signs its tags can make this one.
       if (spawnSync("git", ["tag", "--annotate", "--message", `Release ${version}`, `v${version}`], { cwd: ROOT, stdio: "inherit" }).status !== 0) {
         spawnSync("git", ["reset", "--hard", "--quiet", "HEAD~1"], inRoot);
+        isRecorded = false;
         throw new ReleaseError(`the tag v${version} could not be made. The release commit is undone.`);
       }
-      if (spawnSync("npm", ["publish", tarball], { cwd: ROOT, stdio: "inherit" }).status !== 0) {
-        spawnSync("git", ["tag", "--delete", `v${version}`], inRoot);
-        spawnSync("git", ["reset", "--hard", "--quiet", "HEAD~1"], inRoot);
-        throw new ReleaseError("npm publish failed. The tag and the release commit are undone.");
-      }
-
-      // Published cannot be taken back, so a failed push is said, not undone.
+      // A push may update some refs before failing. Keep local history and
+      // never publish after a failed push; the maintainer can reconcile refs.
       if (spawnSync("git", ["push", "origin", RELEASE_BRANCH, `v${version}`], { cwd: ROOT, stdio: "inherit" }).status !== 0) {
-        console.error(`${version} is published and tagged, but the push failed. Run: git push origin ${RELEASE_BRANCH} v${version}`);
-        process.exitCode = 1;
-      } else {
-        console.log(`Released ${version}: published, and tagged v${version} at the commit it was built from.`);
+        throw new ReleaseError(`the push failed; ${version} was not published. The release commit and tag are kept. Check origin, then retry: git push origin ${RELEASE_BRANCH} v${version}`);
       }
+      if (spawnSync("npm", ["publish", tarball], { cwd: ROOT, stdio: "inherit" }).status !== 0) {
+        throw new ReleaseError(`npm publish failed after ${RELEASE_BRANCH} and v${version} were pushed. The release commit and tag are kept. From that release commit, run "npm pack", then "npm publish <tarball>" to retry.`);
+      }
+      console.log(`Released ${version}: pushed ${RELEASE_BRANCH} and v${version}, then published the checked package.`);
     }
   } finally {
-    if (!isRecorded) await writeFile(PACKAGE_JSON, packageJsonText);
+    if (!isRecorded) {
+      await writeFile(PACKAGE_JSON, packageJsonText);
+      await writeFile(README_MD, readmeText);
+    }
     await rm(workFolder, { recursive: true, force: true });
   }
 } catch (raised) {
