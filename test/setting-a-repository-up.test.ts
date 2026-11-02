@@ -42,7 +42,7 @@ const setUp = async (
   versioned = true,
 ) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(versioned), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, undefined, undefined, undefined, new TomlParser());
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, undefined, undefined, undefined, new TomlParser());
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };
@@ -101,7 +101,7 @@ test("with nobody to ask, Claude remains the default agent (FR-055)", async () =
 
 test("setup given no agent is refused by the engine, whatever drives it (FR-033)", async () => {
   const held = new InMemoryFileReaders({});
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, undefined, undefined, undefined, new TomlParser());
+  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, undefined, undefined, undefined, new TomlParser());
 
   await assert.rejects(charterAuthoringApp.init({ agents: [] }), /no agent to compile for/);
   assert.equal(await held.readIfThere(new URL(".cw/settings.json", repoPath)), undefined);

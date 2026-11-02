@@ -51,7 +51,7 @@ async function running(argv: readonly string[], held: InMemoryFileReaders, vcs: 
     const context = {
       cwd: "/repo",
       version: "0.0.0",
-      charterAuthoringApp: new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
+      charterAuthoringApp: new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
       charterVendoringApp: new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser()),
       testAuthoringApp: new TestAuthoring(repoPath, held, new InMemoryFileOutput(held)),
       mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,

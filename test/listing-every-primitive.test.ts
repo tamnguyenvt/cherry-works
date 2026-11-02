@@ -4,7 +4,6 @@ import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js
 import { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
@@ -25,7 +24,7 @@ const charter = {
 
 const fullListOf = async (files: Readonly<Record<string, string>>, matching?: string) => {
   const readers = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(new URL("file:///repo/"), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(new URL("file:///repo/"), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   return charterAuthoringApp.fullList(matching);
 };
 

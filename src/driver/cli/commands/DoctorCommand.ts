@@ -2,13 +2,12 @@ import { printFaultsByFile } from "./helper.js";
 import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type Outcome } from "./Command.js";
 
 /**
- * `cw doctor`: the four questions about this repository, asked in one command
+ * `cw doctor`: the three questions about this repository, asked in one command
  * (FR-040), and everything wrong with its charter written out under them
  * (FR-009, FR-010).
  *
- * Which agents it compiles for, whether its charter holds, whether an installed
- * charter has been edited here, and whether what agents read is still what the
- * charter compiles to. All four are `doctor()`'s answer, worked out behind the
+ * Which agents it compiles for, whether its charter holds, and whether what agents
+ * read is still what the charter compiles to. All three are `doctor()`'s answer, worked out behind the
  * port — how many are unwell included — so this command and the portal's
  * health check say one thing, nothing here is a second opinion, and staleness
  * in particular is the preview run rather than a record kept of it.
@@ -19,8 +18,8 @@ import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type O
  * none is told what that means rather than failed for it.
  *
  * It is also where a fault is read. There was a `cw validate` that said the
- * same thing about one of these four questions and nothing about the other
- * three, and two commands answering one question differently is one command
+ * same thing about one of these three questions and nothing about the other
+ * two, and two commands answering one question differently is one command
  * too many: what is wrong with the charter is written out here, by `printFaultsByFile`,
  * which is what a fault says rather than how this prints it (SC-003).
  *
@@ -43,7 +42,6 @@ export class DoctorCommand implements Command {
       warnCount: warnings,
       pendingCount: pending,
       faultsByFile,
-      driftedVendors,
       problemCount,
       mainContexts,
       mainContextCeiling,
@@ -75,9 +73,6 @@ export class DoctorCommand implements Command {
           : warnings === 0
             ? `${markByStanding.good} Charter:  good.`
             : `${markByStanding.todo} Charter:  good, with ${warnings} warning${warnings === 1 ? "" : "s"}.`,
-        driftedVendors.length === 0
-          ? `${markByStanding.good} Vendors:  good.`
-          : `${markByStanding.fault} Vendors:  edited here: ${driftedVendors.join(", ")}. Run "git checkout" under .cw/vendor/ to undo, or commit what you meant.`,
         pending === null
           ? `${markByStanding.fault} Built:    Fix the charter's errors, then run "cw build".`
           : pending === 0
@@ -90,7 +85,7 @@ export class DoctorCommand implements Command {
             ? `${markByStanding.todo} Context:  ${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens, past the ceiling of ${mainContextCeiling.toLocaleString("en-US")}. Run "cw context" to see what takes the most.`
             : `${markByStanding.good} Context:  good (${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens, within the ceiling of ${mainContextCeiling.toLocaleString("en-US")}).`,
         ),
-        // Every fault under the file that has to change, below the four lines
+        // Every fault under the file that has to change, below the three lines
         // rather than inside them: a line says how many, and this says which
         // (FR-009).
         ...(Object.keys(faultsByFile.data.files).length === 0 ? [] : ["", printFaultsByFile(faultsByFile)]),

@@ -35,7 +35,7 @@ async function builtPage(): Promise<URL> {
  *  every one of them answers before a route is reached. */
 function engine(): CharterAuthoring {
   const held = new InMemoryFileReaders({});
-  return new CharterAuthoring(new URL("file:///repo/"), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  return new CharterAuthoring(new URL("file:///repo/"), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 }
 
 /** The vendoring the routes are driven by beside the engine, over the same

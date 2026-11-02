@@ -8,7 +8,6 @@ import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js
 import { CwSessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensCounterScript.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
@@ -19,7 +18,7 @@ const inRepo = (path: string) => new URL(path, repo).href;
 test("a built charter runs the engine's own counter when the agent stops (EVAL-FR-008)", async () => {
   const fileReaders = new InMemoryFileReaders({ [inRepo(".cw/settings.json")]: JSON.stringify({ agents: ["claude"] }) });
   const fileOutput = new InMemoryFileOutput(fileReaders);
-  const charterAuthoringApp = new CharterAuthoring(repo, fileReaders, new YamlParser(), fileOutput, new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(repo, fileReaders, new YamlParser(), fileOutput, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 
   await charterAuthoringApp.build();
 

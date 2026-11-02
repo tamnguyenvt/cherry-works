@@ -24,9 +24,8 @@ const OPTIONS = {
  *
  * It writes nothing: the engine is asked which file declares the id, and
  * whoever saves in the editor is the one who wrote it. So there is no revision
- * to check here, and a vendored primitive opens like any other — the next
- * `cw doctor` names an edit there as drift. What the engine brings has no file,
- * and is refused.
+ * to check here, and a vendored primitive opens like any other. What the engine
+ * brings has no file, and is refused.
  *
  * The editor is `$VISUAL`, else `$EDITOR`, as `editInEditor` runs it.
  */

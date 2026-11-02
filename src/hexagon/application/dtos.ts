@@ -32,12 +32,12 @@ export function catalogueDTO(catalogue: Catalogue): DataDTOs.Catalogue {
 /**
  * What checking a repository found (FR-040): the agents it compiles for, every
  * fault under its file and counted, how many files a build would still change —
- * `null` where the charter does not hold, since nothing was previewed — the
- * vendors edited here, and how many of the four questions are unwell.
+ * `null` where the charter does not hold, since nothing was previewed — and how
+ * many of the three questions are unwell.
  *
  * A repository compiling for no agent is well — the neutral surface is compiled
- * for everybody (FR-019) — and the other three are unwell with an error in the
- * charter, a vendor edited here, or a build still to run or one that cannot be
+ * for everybody (FR-019) — and the other two are unwell with an error in the
+ * charter, or a build still to run or one that cannot be
  * known, since the charter does not hold.
  *
  * Each agent's main context is said beside them, and a total past the ceiling
@@ -47,7 +47,6 @@ export function doctorOutcomeDTO(
   { agents, mainContextCeiling }: WorkspaceSettings,
   faultsByFile: FaultsByFile,
   planSummary: PlanSummary | undefined,
-  driftedVendors: readonly string[],
   mainContexts: readonly MainContext[],
   repo: URL,
 ): OutcomeDTOs.DoctorOutcome {
@@ -55,7 +54,7 @@ export function doctorOutcomeDTO(
   const errorCount = faults.filter((one) => one.severity === "error").length;
   const pendingCount =
     planSummary === undefined ? null : planSummary.added.length + planSummary.edited.length + planSummary.deleted.length;
-  const unwell = [errorCount > 0, driftedVendors.length > 0, pendingCount !== 0];
+  const unwell = [errorCount > 0, pendingCount !== 0];
   return {
     type: "DoctorOutcome",
     data: {
@@ -64,7 +63,6 @@ export function doctorOutcomeDTO(
       warnCount: faults.filter((one) => one.severity === "warn").length,
       pendingCount,
       faultsByFile: faultsByFileDTO(faultsByFile, repo),
-      driftedVendors,
       problemCount: unwell.filter(Boolean).length,
       mainContexts: mainContexts.map((mainContext) => ({ agent: mainContext.agent, totalTokens: mainContext.totalTokens })),
       mainContextCeiling,

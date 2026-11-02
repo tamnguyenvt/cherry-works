@@ -18,7 +18,7 @@ export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
   const buildMutation = useBuild();
 
   if (healthQuery.data === undefined) return null;
-  const { agents, errorCount, warnCount, pendingCount, faultsByFile, driftedVendors, problemCount, mainContexts, mainContextCeiling } = healthQuery.data.data;
+  const { agents, errorCount, warnCount, pendingCount, faultsByFile, problemCount, mainContexts, mainContextCeiling } = healthQuery.data.data;
 
   const healthAnswers = [
     [
@@ -32,12 +32,6 @@ export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
         : warnCount === 0
           ? "holds."
           : `holds, with ${warnCount} warning${warnCount === 1 ? "" : "s"}.`,
-    ],
-    [
-      "Vendors",
-      driftedVendors.length === 0
-        ? "none edited here."
-        : `edited here: ${driftedVendors.join(", ")}. Run "git checkout" under .cw/vendor/ to undo, or commit what you meant.`,
     ],
     [
       "Built",

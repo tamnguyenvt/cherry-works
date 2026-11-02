@@ -301,24 +301,3 @@ export async function removeVendor(repo: URL, vcs: ForVCS, name: string): Promis
   await vcs.removeSubFolder(repo, folder);
   return folder;
 }
-
-/**
- * Which installed charters this repository is holding a change to, named by the
- * folder each was installed as (FR-040, SC-008).
- *
- * Version control answers it: a vendor is committed once its install is
- * read, so what differs from the last commit is what somebody edited here, or
- * an install not yet committed, and `git checkout` is what undoes it. A vendor changed in ten files is one drifted vendor, so the folder is what
- * comes back rather than the files, and the files are read where every other
- * uncommitted change is.
- */
-export async function driftedVendors(repo: URL, vcs: ForVCS): Promise<readonly string[]> {
-  const changed = await vcs.changedUnder(repo, VENDOR_DIRECTORY);
-  const vendorNames = changed.map((path) => {
-    const [ownerName = "", childName = "", grandchildName = ""] = path.slice(`${VENDOR_DIRECTORY}/`.length).split("/");
-    const isSourcePathName = (fileName: string) => fileName === VENDOR_README || (KINDS as readonly string[]).includes(fileName);
-    if (isSourcePathName(childName)) return ownerName;
-    return isSourcePathName(grandchildName) ? `${ownerName}/${childName}` : `${ownerName}/${childName}/${grandchildName}`;
-  });
-  return [...new Set(vendorNames.filter((vendorName) => vendorName !== "" && !vendorName.endsWith("/")))].sort();
-}

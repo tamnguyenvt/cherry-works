@@ -27,7 +27,7 @@ const guide = (id: string, headers: readonly string[] = []) => primitive("guide"
  *  rather than the guards the server wraps it in (plan §6, tested there). */
 const portal = (files: Readonly<Record<string, string>>, held = new InMemoryFileReaders(files)) => {
   const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   return api(charterAuthoringApp, new CharterVendoring(repo, held, vcs, new InMemoryFileOutput(held), new YamlParser()), new TestAuthoring(repo, held, new InMemoryFileOutput(held)));
 };
 

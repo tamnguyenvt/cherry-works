@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { stamp } from "../src/hexagon/domain/models/output/StampedDocument.js";
@@ -15,7 +14,7 @@ const primitiveText = (kind: string, id: string, headers = "") => `---\nkind: ${
 
 const building = (files: Readonly<Record<string, string>> = {}) => {
   const held = new InMemoryFileReaders({ [inRepo(".cw/settings.json").href]: '{"agents":["codex"]}', ...files });
-  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), {}, undefined, undefined, undefined, new TomlParser());
+  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), {}, undefined, undefined, undefined, new TomlParser());
   return { held, charterAuthoringApp };
 };
 

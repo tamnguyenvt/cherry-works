@@ -80,7 +80,7 @@ const writing = async (work: () => Promise<number>) => {
 /** The command line as a user meets it, over a charter held in memory. */
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[] = ["list"]) => {
   const readers = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);
   return writing(() => cli.run(argv));
 };

@@ -25,7 +25,7 @@ const portal = (files: Readonly<Record<string, string>> = {}) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS();
   const portalRoutes = api(
-    new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
+    new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
     new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser()),
     new TestAuthoring(repoPath, held, new InMemoryFileOutput(held)),
   );

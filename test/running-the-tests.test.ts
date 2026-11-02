@@ -64,7 +64,7 @@ const writing = async (work: () => Promise<number>) => {
 const commandLine = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const cli = new Commander(
     {
       cwd: repo,

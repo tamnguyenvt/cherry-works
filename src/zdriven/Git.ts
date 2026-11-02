@@ -39,32 +39,6 @@ export class Git implements ForVCS {
     }
   }
 
-  /**
-   * `git status --porcelain` narrowed to one folder, with every untracked file
-   * named rather than the folder holding them: what a vendor folder holds that
-   * the commit it arrived in does not (FR-040).
-   *
-   * The path comes off each line after the two status letters and the space
-   * following them; a rename says `old -> new`, and what is there now is the
-   * half that matters. A folder git refuses to answer about has nothing
-   * changed under it, for the reason a folder outside version control is not
-   * clean: there is nothing recorded to differ from.
-   */
-  async changedUnder(repo: URL, subFolder: string): Promise<readonly string[]> {
-    try {
-      const { stdout } = await run("git", ["status", "--porcelain", "--untracked-files=all", "--", subFolder], {
-        cwd: fileURLToPath(repo),
-      });
-      return stdout
-        .split("\n")
-        .filter((line) => line.trim() !== "")
-        .map((line) => line.slice(3).trim())
-        .map((path) => path.split(" -> ").at(-1) ?? path);
-    } catch {
-      return [];
-    }
-  }
-
   /** `git fetch` of one version, and `FETCH_HEAD` read at once, before
    *  anything else can move it. */
   async fetchCommit(source: string, repo: URL, version?: string): Promise<string> {

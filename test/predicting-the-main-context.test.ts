@@ -68,7 +68,7 @@ const holding = (settings: object = { agents: ["claude"] }) => ({
 const surfaces = (files: Readonly<Record<string, string>>, agentCli = new InMemoryAgentCli()) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), {
+  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), {
     claude: agentCli,
   });
   const charterVendoringApp = new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser());

@@ -82,7 +82,6 @@ const charterAuthoringApp: ForManagingCharter = new CharterAuthoring(
   fileReader,
   yamlParser,
   fileWriter,
-  vcs,
   tokenCounter,
   agentCliByProvider,
   mcpServers,

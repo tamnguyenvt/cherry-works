@@ -26,7 +26,7 @@ const repoPath = new URL("file:///repo/");
 const portal = async (files: Readonly<Record<string, string>>, versioned: boolean) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS(versioned);
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const charterVendoringApp = new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser());
   const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
   const results: string[] = [];
@@ -47,7 +47,7 @@ const settings = new URL(".cw/settings.json", repoPath).href;
 
 test("a folder set up with no version control is ready to serve (CORE-FR-107)", async () => {
   const fileReaders = new InMemoryFileReaders({ [settings]: '{ "agents": [] }' });
-  const charterAuthoringApp = new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryVCS(false), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 
   await charterAuthoringApp.ensureRepoReady();
 });

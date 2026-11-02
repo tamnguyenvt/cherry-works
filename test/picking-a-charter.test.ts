@@ -7,7 +7,6 @@ import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
-import { driftedVendors } from "../src/hexagon/service/vendorRepo.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
@@ -49,7 +48,7 @@ async function running(argv: readonly string[], held: InMemoryFileReaders, vcs: 
     const context = {
       cwd: "/repo",
       version: "0.0.0",
-      charterAuthoringApp: new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
+      charterAuthoringApp: new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
       charterVendoringApp: new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser()),
       testAuthoringApp: new TestAuthoring(repoPath, held, new InMemoryFileOutput(held)),
       mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,
@@ -86,7 +85,7 @@ test("a charter picked from a source of many lands in a vendor folder of its own
   assert.match(said, /Installed acme\/charters under \.cw\/vendor\/acme\/charters\/baseline\.\n {2}guide small-diffs\n/);
 });
 
-test("each charter picked is a vendor of its own: listed, read, brought up to date, removed and drifted on its own (CORE-FR-196)", async () => {
+test("each charter picked is a vendor of its own: listed, read, brought up to date, and removed on its own (CORE-FR-196)", async () => {
   const { held, vcs } = withChartersPublished();
   await running(["vendor", "add", "acme/charters", "--charter", "baseline", "--charter", "sdd"], held, vcs);
   const charterVendoringApp = new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser());
@@ -102,9 +101,6 @@ test("each charter picked is a vendor of its own: listed, read, brought up to da
   await running(["vendor", "add", "acme/charters", "--charter", "baseline"], held, vcs);
   assert.deepEqual(checkedOutFolders(vcs), [["charters/baseline/.cw/charter", ".cw/vendor/acme/charters/baseline"]]);
   assert.equal(await held.read(new URL(pickedAt("sdd/guide/spec-first/index.md"))), guide("spec-first"), "sdd left as it was");
-
-  vcs.changed.push(".cw/vendor/acme/charters/baseline/guide/small-diffs/index.md", ".cw/vendor/acme/charters/baseline/README.md");
-  assert.deepEqual(await driftedVendors(repoPath, vcs), ["acme/charters/baseline"]);
 
   const removed = await running(["vendor", "remove", "acme/charters/baseline"], held, vcs);
   assert.equal(removed.code, EXIT_OK, removed.said);

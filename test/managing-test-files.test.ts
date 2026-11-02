@@ -53,7 +53,7 @@ const withTwoFiles = () => ({
  *  disk. */
 const authoring = (files: Readonly<Record<string, string>> = {}) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
   return { charterAuthoringApp, testAuthoringApp, fileAt: (path: string) => held.readIfThere(new URL(path, repoPath)) };
 };

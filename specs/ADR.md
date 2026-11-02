@@ -81,7 +81,7 @@ package and `cw` share one version number and one release.
 
 ## ADR-003: Git fetches sources; it is not the engine's baseline
 
-**Date**: 2026-11-02 · **Status**: Accepted · **Story**: [CORE Story 35](spec-core.md#core-story-35---set-a-repository-up-anywhere-with-or-without-git-priority-p2), [CORE Story 36](spec-core.md#core-story-36---tell-an-edited-vendor-from-the-record-of-what-was-installed-priority-p2), [CORE Story 37](spec-core.md#core-story-37---install-and-remove-a-vendor-source-in-any-folder-priority-p3) ([CORE-FR-054](spec-core.md#core-fr-054), [CORE-FR-107](spec-core.md#core-fr-107), [CORE-FR-053](spec-core.md#core-fr-053), [CORE-FR-201](spec-core.md#core-fr-201), [CORE-FR-204](spec-core.md#core-fr-204), [CORE-FR-206](spec-core.md#core-fr-206))
+**Date**: 2026-11-02 · **Status**: Accepted · **Story**: [CORE Story 35](spec-core.md#core-story-35---set-a-repository-up-anywhere-with-or-without-git-priority-p2), [CORE Story 37](spec-core.md#core-story-37---install-and-remove-a-vendor-source-in-any-folder-priority-p3) ([CORE-FR-054](spec-core.md#core-fr-054), [CORE-FR-107](spec-core.md#core-fr-107), [CORE-FR-053](spec-core.md#core-fr-053), [CORE-FR-204](spec-core.md#core-fr-204), [CORE-FR-206](spec-core.md#core-fr-206))
 
 ### Decision
 
@@ -92,16 +92,14 @@ No use case asks for version control unless it cannot work without it.
 | Reaching a source and reading what it holds | installing and injecting a vendor source, on a port of its own, named for fetching sources and not for vendors |
 | Worktrees of the last commit | evaluating, on a port of its own |
 
-Setup and the portal do not ask. A vendor's drift is judged from a hash the
-engine records on install, and removing a vendor neither commits nor looks at
-work in hand. The one port for version control goes.
+Setup and the portal do not ask. Nothing tells an edited vendor any more
+([ADR-004](#adr-004-nothing-tells-an-edited-vendor)), and removing a vendor
+neither commits nor looks at work in hand. The one port for version control goes.
 
 ### Why
 
 - **Those checks protected nothing they used.** Setup and the portal asked once
   and used nothing of the answer.
-- **A hash sees more than git did.** Git cannot see an edit that was committed,
-  and it reports a source just installed as edited.
 - **The engine is published for tools with no git**, and a port with ten
   questions, of which authoring asks two, is a cost with no return.
 
@@ -111,9 +109,40 @@ work in hand. The one port for version control goes.
   and removing a vendor no longer commits.
 - **A repository without git has no review, history or undo of its charter.**
   The engine does not enforce them; the tool or the developer takes them on.
-- **The health check now reads a record** that must be committed with the
-  vendor, and vendors installed earlier warn until installed again.
-- **The hash finds mistakes, not forgeries**: anyone able to edit a vendor can
-  edit its record too.
-- **The spec's rule that the repository's history is a vendor's only record is
-  replaced** for the hash, and only for the hash.
+
+## ADR-004: Nothing tells an edited vendor
+
+**Date**: 2026-11-02 · **Status**: Accepted · **Story**: [CORE Story 37](spec-core.md#core-story-37---install-and-remove-a-vendor-source-in-any-folder-priority-p3) ([CORE-FR-046](spec-core.md#core-fr-046), [CORE-FR-053](spec-core.md#core-fr-053), [CORE-FR-080](spec-core.md#core-fr-080), [CORE-FR-081](spec-core.md#core-fr-081))
+
+### Decision
+
+The engine no longer checks whether a vendored file was edited, by git or by a
+record of its own. `cw doctor` asks three questions, with no line for vendors,
+`cw vendor add` and `cw vendor remove` compare nothing, and nothing is kept
+beside a vendor.
+
+A story that would have judged an edit from a hash in `.cw/vendor.json` was
+built, reviewed and dropped before it landed.
+
+### Why
+
+- **The check cost more than the edit it catches.** A vendor is replaced by
+  installing it again, and an edit is seen in the diff that brought it.
+- **One hash could not tell an edit from noise.** `.DS_Store`, a file git
+  ignores, a checkout's line endings, a folder that does not read and a
+  removal each needed a rule of their own, and each rule brought the next
+  fault: ten reviews of it failed.
+- **A hash that refuses work has to be undone by hand.** Refusing installs and
+  removals over a difference left a repository stuck with nothing to undo.
+- **Git was no answer either.** It cannot see an edit that was committed, it
+  reports a source just installed as edited, and the engine is published for
+  tools with no git.
+
+### Consequences
+
+- **Breaking for `cw`.** `doctor` no longer fails on an edited vendor, so a CI
+  gate on it no longer catches one.
+- **Read-only is a convention.** Docs still call a vendor read-only; nothing
+  enforces it, and review of the diff is what catches an edit.
+- **`ForVCS` loses `changedUnder`**, and `CharterAuthoring` no longer takes
+  version control.

@@ -72,7 +72,7 @@ const surfaces = (files: Readonly<Record<string, string>>, promptfoo: InMemoryPr
   promptfoo.folderFiles = held;
   const fileOutput = new InMemoryFileOutput(held);
   const reporter = new InMemoryReporter();
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), fileOutput, vcs, new InMemoryTokenCounter(), { claude: agentCli });
+  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), fileOutput, new InMemoryTokenCounter(), { claude: agentCli });
   const charterEvaluatingApp = new CharterEvaluating(repoPath, held, new YamlParser(), fileOutput, worktrees, { claude: agentCli, codex: agentCli }, promptfoo, reporter, new TomlParser());
   const cli = new Commander(
     {

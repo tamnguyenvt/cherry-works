@@ -9,7 +9,6 @@ import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js
 import { SensorRunning } from "../src/hexagon/application/SensorRunning.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 import { InMemoryShellCommands } from "../src/zdriven/InMemoryShellCommands.js";
@@ -38,7 +37,7 @@ const hookEntry = (command: string) => ({ hooks: [{ type: "command", command }] 
  *  test says, and the engine's own sensor answering nothing. */
 const aRepository = (files: Readonly<Record<string, string>>, resultByCommand: Readonly<Record<string, ShellCommandResult>> = {}) => {
   const held = new InMemoryFileReaders({ [inRepo(".cw/settings.json")]: JSON.stringify({ agents: ["claude"] }), ...files });
-  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), {
+  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), {
     claude: new InMemoryAgentCli(),
   });
   const shell = new InMemoryShellCommands({ [SESSION_COUNTER_COMMAND]: { exitCode: 0, stdout: "", stderr: "" }, ...resultByCommand });

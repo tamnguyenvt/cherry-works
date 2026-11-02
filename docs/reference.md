@@ -74,7 +74,7 @@ The main host differences:
 | `cw edit <id>` | Open a primitive's file in your editor |
 | `cw remove <id> [--yes]` | Delete a primitive this repository authored |
 | `cw explain <id>` | Show which file declares an id, what it pulls in and which tests name it |
-| `cw doctor` | Check the agents, the charter, the vendor sources and the compiled output |
+| `cw doctor` | Check the agents, the charter and the compiled output |
 | `cw context [--exact]` | Say how many tokens the charter puts into the agent's context when a session opens |
 | `cw sessions [--since] [--until] [--json]` | Sum up the tokens of the sessions kept on this machine, by day and by session |
 | `cw test` | Run every case in `.cw/test/` against the charter |
@@ -86,9 +86,8 @@ The main host differences:
 | `cw mcp auth [id] [--status]` | Sign in, as yourself, to every mcp origin the charter reaches, or to one again |
 | `cw mcp serve` | Serve every mcp origin the charter reaches to your agent, over stdio |
 
-`cw doctor` exits with a failure status when the charter has an error, when a
-vendored file was edited in this repository, or when the compiled output no
-longer matches the charter. That makes it a gate you can run in CI.
+`cw doctor` exits with a failure status when the charter has an error, or when
+the compiled output no longer matches the charter. That makes it a gate you can run in CI.
 
 ## The portal
 

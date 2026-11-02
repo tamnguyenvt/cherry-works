@@ -14,9 +14,8 @@ import { byType, dto, StringsSchema } from "./dto.js";
 /** What checking a repository found (FR-040): which agents it compiles for;
  *  every FaultSchema in its charter under its file, how many of them are errors and
  *  how many warnings; how many files a build would still change — `null` where
- *  the charter does not hold and nothing was previewed; which installed
- *  charters are edited here; and how many of those four questions are
- *  unwell. Beside them, what each agent's main context is estimated to open a
+ *  the charter does not hold and nothing was previewed; and how many of those
+ *  three questions are unwell. Beside them, what each agent's main context is estimated to open a
  *  session with — none where the charter does not hold — and the ceiling it is
  *  held to, which warns and is no question unwell (EVAL-FR-006). */
 const DoctorOutcomeSchema = dto(
@@ -27,7 +26,6 @@ const DoctorOutcomeSchema = dto(
     warnCount: z.number(),
     pendingCount: z.number().nullable(),
     faultsByFile: DataDTOs.FaultsByFile,
-    driftedVendors: StringsSchema,
     problemCount: z.number(),
     mainContexts: z.array(z.object({ agent: z.string(), totalTokens: z.number() })).readonly(),
     mainContextCeiling: z.number(),

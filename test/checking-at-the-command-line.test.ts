@@ -62,7 +62,7 @@ const pinningDown = (id: string) => ({
  *  Given a writing port like the real one is, and validating never reaches for
  *  it — which is the point of the split (FR-041). */
 const charterAuthoringAppOver = (files: InMemoryFileReaders) =>
-  new CharterAuthoring(new URL(`file://${repo}/`), files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  new CharterAuthoring(new URL(`file://${repo}/`), files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 
 /** A charter nothing asks about: what a command that never validates is given,
  *  since a context always carries every use case. */

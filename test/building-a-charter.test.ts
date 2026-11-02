@@ -2,7 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import type { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
@@ -60,7 +59,6 @@ const building = (files: Readonly<Record<string, string>>, mcpServers?: InMemory
     held,
     new YamlParser(),
     new InMemoryFileOutput(held),
-    new InMemoryVCS(),
     new InMemoryTokenCounter(),
     { claude: new InMemoryAgentCli() },
     mcpServers,

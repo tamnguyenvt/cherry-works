@@ -24,9 +24,9 @@ export { TEST_DIRECTORY } from "../../domain/path.js";
  */
 export interface ForManagingCharter {
   /**
-   * The four questions about this repository, asked in one go (FR-040): which
-   * agents it compiles for, what validating its charter finds, which installed
-   * charters have been edited here, and how many of those four are unwell.
+   * The three questions about this repository, asked in one go (FR-040): which
+   * agents it compiles for, what validating its charter finds, and how many of
+   * those three are unwell.
    *
    * What validating finds is everything wrong with the charter, under the file
    * that has to change, named from the repository. Warnings come back with the

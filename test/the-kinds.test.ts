@@ -40,7 +40,7 @@ const testAuthoringApp = new TestAuthoring(repoPath, noTestFiles, new InMemoryFi
  *  the real command, the real service behind it, and what the terminal read. */
 const asking = async (argv: readonly string[]) => {
   const held = new InMemoryFileReaders({});
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };

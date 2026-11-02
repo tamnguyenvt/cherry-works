@@ -57,7 +57,7 @@ test("a charter with an error builds nothing, and its faults are shown under the
   });
 });
 
-test("Doctor shows the four answers and every warning, and builds when the output is behind (FR-121)", async () => {
+test("Doctor shows the three answers and every warning, and builds when the output is behind (FR-121)", async () => {
   await inTheBrowser(holding({ [at(".cw/charter/corpus/why/index.md")]: primitive("corpus", "why") }), async (page, files) => {
     await page.getByRole("button", { name: "Doctor" }).click();
 
@@ -68,7 +68,6 @@ test("Doctor shows the four answers and every warning, and builds when the outpu
     const answers = await health.innerText();
     assert.match(answers, /Agents\s+none chosen/i);
     assert.match(answers, /Charter\s+holds, with 1 warning\./i);
-    assert.match(answers, /Vendors\s+none edited here\./i);
     assert.match(answers, /Built\s+\d+ files out of date\./i);
     assert.match(await page.getByRole("table", { name: "Faults" }).innerText(), /\.cw\/charter\/corpus\/why\/index\.md[\s\S]*warn[\s\S]*No primitive cites "why"/);
 

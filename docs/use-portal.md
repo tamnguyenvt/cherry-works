@@ -123,8 +123,8 @@ Review those changes in Git together with the source changes.
 
 ## Check health and context
 
-Click **Doctor** to check the charter, configured agents, vendor changes and
-whether generated output is behind. Follow the reported fix for each issue;
+Click **Doctor** to check the charter, configured agents and whether
+generated output is behind. Follow the reported fix for each issue;
 when output needs rebuilding, the report offers a build.
 
 Open **Context** to see the estimated tokens each configured agent loads when

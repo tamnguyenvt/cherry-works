@@ -303,17 +303,10 @@
       }
     },
     {
-      "id": "CORE Story 36",
-      "title": "Tell an edited vendor from the record of what was installed",
-      "dependsOn": [
-        "CORE Story 8"
-      ]
-    },
-    {
       "id": "CORE Story 37",
       "title": "Install and remove a vendor source in any folder",
       "dependsOn": [
-        "CORE Story 36"
+        "CORE Story 8"
       ]
     },
     {
@@ -332,10 +325,9 @@
     },
     {
       "id": "CORE Story 39",
-      "title": "Quality cross-check of CORE Story 35, CORE Story 36, CORE Story 37, CORE Story 38, SDK Story 1",
+      "title": "Quality cross-check of CORE Story 35, CORE Story 37, CORE Story 38, SDK Story 1",
       "dependsOn": [
         "CORE Story 35",
-        "CORE Story 36",
         "CORE Story 37",
         "CORE Story 38",
         "SDK Story 1"

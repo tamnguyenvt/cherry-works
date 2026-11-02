@@ -2,7 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import type { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
@@ -31,7 +30,7 @@ const compilingFor = (...agents: readonly string[]) => ({
  *  claims (FR-022). */
 const previewing = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   return { held, build: () => charterAuthoringApp.build(), preview: () => charterAuthoringApp.preview() };
 };
 

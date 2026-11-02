@@ -23,7 +23,7 @@ const repo = "/repo";
  *  these commands reach for the vendoring one only. */
 const unread = () => {
   const files = new InMemoryFileReaders({});
-  return new CharterAuthoring(new URL(`file://${repo}/`), files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  return new CharterAuthoring(new URL(`file://${repo}/`), files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 };
 
 /** One run of the command line over version control held in memory, and what it

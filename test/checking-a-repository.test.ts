@@ -71,13 +71,13 @@ const writing = async (work: () => Promise<number>): Promise<{ code: number; wri
 };
 
 /** The command line over one repository held in memory, with the version
- *  control a test answers for: doctor asks all four questions of the same
+ *  control a test answers for: doctor asks all three questions of the same
  *  repository a build writes into, which is what makes the staleness it reports
  *  the build's own answer. */
 const commandLine = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const cli = new Commander(
     {
       cwd: repo,
@@ -105,7 +105,6 @@ test("a repository with nothing wrong passes, and says so of each thing it looke
   assert.equal(code, EXIT_OK);
   assert.match(written.everything, /Agents: {3}claude\./);
   assert.match(written.everything, /✔ Charter: {2}good\./);
-  assert.match(written.everything, /✔ Vendors: {2}good\./);
   assert.match(written.everything, /✔ Built: {4}up to date\./);
   assert.match(written.everything, /Nothing to fix\./);
 });
@@ -163,7 +162,7 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
   });
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 
   // Sent and read back, the way the portal's page will read it.
   const doctorOutcomeDTO = OutcomeDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterAuthoringApp.doctor())));
@@ -177,39 +176,6 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
   assert.deepEqual([errorCount, warnCount, pendingCount], [1, 0, null]);
   assert.deepEqual(Object.keys(faultsByFile.data.files), [".cw/charter/guide/no-any/index.md"]);
   assert.ok(faultsByFile.data.files[".cw/charter/guide/no-any/index.md"]?.some(({ data: { message } }) => /This pulls in the mixin "nowhere"/.test(message)));
-});
-
-test("a vendored file edited here is named by its vendor, once (FR-040, SC-008)", async () => {
-  const { vcs, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
-  await run(["build"]);
-  vcs.changed.push(".cw/vendor/house-rules/guide/no-any/index.md", ".cw/vendor/house-rules/agent/ship/index.md");
-
-  const { code, written } = await run(["doctor"]);
-
-  assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /✘ Vendors: {2}edited here: house-rules\./);
-});
-
-test("a vendored file edited here is named by its owner and repository (FR-040, FR-050)", async () => {
-  const { vcs, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
-  await run(["build"]);
-  vcs.changed.push(".cw/vendor/team/rules/guide/no-any/index.md", ".cw/vendor/team/rules/README.md", ".cw/vendor/legacy/skill/ship/index.md");
-
-  const { code, written } = await run(["doctor"]);
-
-  assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /✘ Vendors: {2}edited here: legacy, team\/rules\./);
-});
-
-test("work in hand outside the vendor folder is no business of doctor's (FR-040)", async () => {
-  const { vcs, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
-  await run(["build"]);
-  vcs.changed.push("src/main.ts", ".cw/charter/guide/no-any/index.md");
-
-  const { code, written } = await run(["doctor"]);
-
-  assert.equal(code, EXIT_OK);
-  assert.match(written.everything, /✔ Vendors: {2}good\./);
 });
 
 test("a repository compiling for no agent is told what that means, and passes (FR-019, FR-040)", async () => {
@@ -235,7 +201,7 @@ test("what doctor reports is a result, never a problem", async () => {
 /** What `doctor()` answers over these files, read back as the portal reads it. */
 const doctorOf = async (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders({ ...compilingFor("claude"), ...files });
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   return OutcomeDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterAuthoringApp.doctor()))).data;
 };
 

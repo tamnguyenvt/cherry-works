@@ -38,7 +38,7 @@ const guide = (id: string, headers: readonly string[] = []) => primitive("guide"
  *  calls. */
 const authoring = (files: Readonly<Record<string, string>> = {}) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   return { charterAuthoringApp, held, fileAt: (path: string) => held.readIfThere(new URL(path, repoPath)) };
 };
 

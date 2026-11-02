@@ -2,7 +2,6 @@ import type { ForParsingToml } from "../port/zdriven/ForParsingToml.js";
 import { loadCharterRoot, writeCharter } from "../service/charterRepo.js";
 import { loadSettings } from "../service/settingsRepo.js";
 import { loadTestRoot } from "../service/testSuitesRepo.js";
-import { driftedVendors } from "../service/vendorRepo.js";
 import { runSuite, TestRunReport, validateTestRoot } from "../domain/services/testService.js";
 import { DomainFault, Faults, FaultsByFile } from "../domain/models/DomainFault.js";
 import { testSuiteNameOf } from "../domain/models/test/TestRoot.js";
@@ -32,7 +31,6 @@ import { WorkspaceSettingsSchema, type WorkspaceSettings } from "../domain/model
 import { AGENT_PROVIDERS } from "../domain/models/AgentProvider.js";
 import { CHARTER_DIRECTORY, EVAL_WORKTREES_GITIGNORE_LINE, VENDOR_DIRECTORY, WORKSPACE_GITIGNORE_FILE, settingsFileIn } from "../domain/path.js";
 import type { UnparsedHeaders, ForManagingCharter, SettingsOptions } from "../port/driver/ForManagingCharter.js";
-import type { ForVCS } from "../port/zdriven/ForVCS.js";
 import {
   isKind,
   KINDS,
@@ -72,7 +70,6 @@ export class CharterAuthoring implements ForManagingCharter {
   readonly #fileReader: ForReadingFiles;
   readonly #yamlParser: ForParsingYaml;
   readonly #fileWriter: ForWritingFiles;
-  readonly #vcs: ForVCS;
   readonly #tokenCounter: ForCountingTokens;
   readonly #agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForRunningAgentCli>>>;
   readonly #mcpReaching: McpReaching | undefined;
@@ -88,7 +85,6 @@ export class CharterAuthoring implements ForManagingCharter {
     fileReader: ForReadingFiles,
     yamlParser: ForParsingYaml,
     fileWriter: ForWritingFiles,
-    vcs: ForVCS,
     /** What a main context is estimated by, on this machine (EVAL-FR-001). */
     tokenCounter: ForCountingTokens,
     /** Each agent's own command line, what a main context is counted exactly
@@ -108,7 +104,6 @@ export class CharterAuthoring implements ForManagingCharter {
     this.#fileReader = fileReader;
     this.#yamlParser = yamlParser;
     this.#fileWriter = fileWriter;
-    this.#vcs = vcs;
     this.#tokenCounter = tokenCounter;
     this.#agentCliByProvider = agentCliByProvider;
     this.#mcpReaching =
@@ -116,12 +111,12 @@ export class CharterAuthoring implements ForManagingCharter {
   }
 
   /**
-   * The four questions about this repository, asked in one go (FR-040): which
-   * agents it compiles for, what validating its charter finds, which installed
-   * charters are edited here, and how many of those are unwell.
+   * The three questions about this repository, asked in one go (FR-040): which
+   * agents it compiles for, what validating its charter finds, and how many of
+   * those are unwell.
    *
    * Each is asked of whoever already answers it — the settings, the charter's
-   * validation, version control — and whether each is well is worked out here,
+   * validation — and whether each is well is worked out here,
    * so what `cw doctor` says and what the portal's health check says are one
    * answer said twice (SC-003). Reads and says: nothing here writes (FR-041).
    *
@@ -138,10 +133,9 @@ export class CharterAuthoring implements ForManagingCharter {
    * the build here.
    */
   async doctor(): Promise<OutcomeDTOs.DoctorOutcome> {
-    const [settings, [charter, , faultsByFiles], drifted, testRoot] = await Promise.all([
+    const [settings, [charter, , faultsByFiles], testRoot] = await Promise.all([
       loadSettings(this.#repoPath, this.#fileReader),
       this.#read(),
-      driftedVendors(this.#repoPath, this.#vcs),
       loadTestRoot(this.#repoPath, this.#fileReader),
     ]);
     const allFaultsByFile =
@@ -155,7 +149,7 @@ export class CharterAuthoring implements ForManagingCharter {
           .filter(([, faults]) => faults.length > 0),
       ),
     );
-    if (charter === undefined) return doctorOutcomeDTO(settings, heardFaultsByFile, undefined, drifted, [], this.#repoPath);
+    if (charter === undefined) return doctorOutcomeDTO(settings, heardFaultsByFile, undefined, [], this.#repoPath);
 
     // Asked often, so no mcp origin is reached: what the last build kept is what a
     // build would keep where nothing changed there.
@@ -164,7 +158,6 @@ export class CharterAuthoring implements ForManagingCharter {
       settings,
       heardFaultsByFile,
       doctorPlan instanceof FaultsByFile ? undefined : previewPlan(doctorPlan.cleanupPlan, doctorPlan.projectionPlan),
-      drifted,
       settings.agents.map((agent) => estimatedMainContextOf(charter, agent, this.#tokenCounter)),
       this.#repoPath,
     );

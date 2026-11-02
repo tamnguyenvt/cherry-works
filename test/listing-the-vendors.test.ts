@@ -44,7 +44,7 @@ async function listing(held: InMemoryFileReaders) {
   }) as typeof process.stdout.write;
   try {
     const vcs = new InMemoryVCS();
-    const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), vcs, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+    const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
     const charterVendoringApp = new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser());
     const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
     const code = await new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS).run(["vendor", "list"]);

@@ -22,22 +22,6 @@ export interface ForVCS {
   isClean(folder: URL): Promise<boolean>;
 
   /**
-   * Every file under this folder of this repository that is not as version
-   * control last recorded it — edited, staged, added since, or gone — named as
-   * it sits under the repository (FR-040).
-   *
-   * What is installed is committed by whoever reviewed it, so a vendored file
-   * that differs from the last commit is a hand-edit, or an install not yet
-   * committed, and version control already knows it (T204, T209). This is that question asked of one folder rather than of
-   * the whole repository, since the work somebody is holding elsewhere is no
-   * part of the answer.
-   *
-   * A folder that is not there, and one no repository holds, has nothing
-   * changed under it: there is no recorded state to differ from.
-   */
-  changedUnder(repo: URL, subFolder: string): Promise<readonly string[]>;
-
-  /**
    * Fetch this source, at this version where one is named, into this
    * repository's object store, and answer the commit fetched: what the other
    * questions about a source are asked of, so it is fetched once. Nothing in

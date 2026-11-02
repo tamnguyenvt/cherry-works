@@ -49,7 +49,7 @@ const mcpOriginsOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
   const cli = new Commander({
     cwd: "/repo",
     version: "0.0.0",
-    charterAuthoringApp: new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
+    charterAuthoringApp: new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
     charterVendoringApp: new CharterVendoring(repoPath, noFiles, new InMemoryVCS(), new InMemoryFileOutput(noFiles), new YamlParser()),
     testAuthoringApp: new TestAuthoring(repoPath, noFiles, new InMemoryFileOutput(noFiles)),
     mcpConnectingApp,

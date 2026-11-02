@@ -36,17 +36,6 @@ export class InMemoryVCS implements ForVCS {
     return this.clean;
   }
 
-  /** Every file this repository is holding a change to, as a test says it:
-   *  paths under the repository, whichever folder they sit in. What
-   *  `changedUnder` answers out of, narrowed to the folder it was asked
-   *  about. */
-  readonly changed: string[] = [];
-
-  async changedUnder(_repo: URL, subFolder: string): Promise<readonly string[]> {
-    const folder = subFolder.endsWith("/") ? subFolder : `${subFolder}/`;
-    return this.changed.filter((path) => path.startsWith(folder));
-  }
-
   /** Every source a test publishes, by the address it is fetched at: the files
    *  it holds, by their paths in it. A source a test publishes nothing for holds
    *  a charter, as every source did before skills were taken, unless the test

@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { TomlParser } from "../src/zdriven/TomlParser.js";
@@ -18,7 +17,7 @@ const building = (config: string, files: Readonly<Record<string, string>> = {}) 
     [inRepo(".codex/config.toml").href]: config,
     ...files,
   });
-  const app = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryVCS(), new InMemoryTokenCounter(), {}, undefined, undefined, undefined, toml);
+  const app = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), {}, undefined, undefined, undefined, toml);
   return { held, app };
 };
 
