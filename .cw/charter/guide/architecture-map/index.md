@@ -23,7 +23,7 @@ here and extend what is already there.
 - `port/driver/` — use-case interfaces (`ForManagingCharter`, `ForReviewingSessions`…) and the DTOs
   crossing them (`dtos/data.ts`, `dtos/outcome.ts`).
 - `port/zdriven/` — driven ports (`ForReadingFiles`, `ForWritingFiles`,
-  `ForVCS`, `ForCountingTokens`, `ForRunningAgentCli`, `ForRunningPromptfoo`, `ForTellingTime`…), named in the adapter's own words, never the domain's.
+  `ForVCS`, `ForKeepingWorktrees`, `ForCountingTokens`, `ForRunningAgentCli`, `ForRunningPromptfoo`, `ForTellingTime`…), named in the adapter's own words, never the domain's.
 - `application/` — use cases implementing the driver ports: `CharterAuthoring`,
   `CharterVendoring`, `TestAuthoring`, `McpConnecting`, `SessionReviewing`,
   `CharterEvaluating`; `dtos.ts` turns domain

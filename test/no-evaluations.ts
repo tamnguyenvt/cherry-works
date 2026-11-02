@@ -2,7 +2,7 @@ import { CharterEvaluating } from "../src/hexagon/application/CharterEvaluating.
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemoryWorktrees } from "../src/zdriven/InMemoryWorktrees.js";
 import { InMemoryPromptfoo } from "../src/zdriven/InMemoryPromptfoo.js";
 import { InMemoryReporter } from "../src/zdriven/InMemoryReporter.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
@@ -16,7 +16,7 @@ export const noEvaluationsRun = new CharterEvaluating(
   noFiles,
   new YamlParser(),
   new InMemoryFileOutput(noFiles),
-  new InMemoryVCS(),
+  new InMemoryWorktrees(noFiles),
   { claude: new InMemoryAgentCli() },
   new InMemoryPromptfoo(),
   new InMemoryReporter(),

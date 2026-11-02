@@ -296,7 +296,11 @@
       "title": "Set a repository up anywhere, with or without git",
       "dependsOn": [
         "CORE Story 1"
-      ]
+      ],
+      "evidence": {
+        "summary": "pnpm test: 740 pass, 0 fail; typecheck and lint:deps clean; cw init, add, build, portal run in a folder with no git, and cw eval refused there with fatal: not a git repository",
+        "date": "2026-11-02"
+      }
     },
     {
       "id": "CORE Story 36",

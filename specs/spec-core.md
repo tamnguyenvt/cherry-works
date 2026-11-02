@@ -125,6 +125,7 @@ A single charter covering design, planning and implementation at once has to be 
 - Q: What of a vendor installed before the record existed? → A: The health check warns that it has nothing to compare with, and that installing it again makes one; it is not reported as drifted ([CORE-FR-203](#core-fr-203)).
 - Q: Does removing a vendor still commit, and refuse work in hand? → A: Neither: it leaves its folder gone in the working tree for the developer to commit, as installing does ([CORE-FR-204](#core-fr-204)).
 - Q: Must the folder a source is installed into be a repository? → A: No. Git on the machine reaches the source; the folder needs nothing ([CORE-FR-205](#core-fr-205)).
+- Q: Is a run with no case refused outside git too? → A: No: with no case there is nothing to run in a worktree, so it answers that there is none, as in a repository ([CORE-FR-206](#core-fr-206)).
 - Q: How does an evaluation stand? → A: As it was: a case runs in a worktree of the last commit, so evaluating still needs git, and asks it through a question of its own, apart from fetching ([CORE-FR-206](#core-fr-206)).
 
 ## User Scenarios & Testing *(mandatory)*
@@ -851,7 +852,7 @@ A vendored primitive is read-only: to differ from it, a developer authors one of
 
 ### CORE Story 35 - Set a repository up anywhere, with or without git (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 A developer tries a charter in a plain folder, and a tool keeps one where no git exists. Setup and the portal used to refuse both, though they use nothing of git. After this, neither asks: a folder can be set up, authored in, built and served, and a repository that does use git behaves as it did.
 
@@ -864,7 +865,7 @@ A developer tries a charter in a plain folder, and a tool keeps one where no git
 1. **Given** a folder with no version control, **When** the developer runs setup, **Then** the charter is set up and built as in a git repository ([CORE-FR-054](#core-fr-054)).
 2. **Given** a folder with no version control that was set up, **When** the portal starts, **Then** it serves the charter ([CORE-FR-107](#core-fr-107)).
 3. **Given** a folder that was never set up, **When** the portal starts, **Then** it stops before serving anything and says `cw init` is how to set one up ([CORE-FR-107](#core-fr-107)).
-4. **Given** a folder with no version control, **When** the developer evaluates the charter, **Then** it is refused in git's words, and nothing is left behind ([CORE-FR-206](#core-fr-206)).
+4. **Given** a folder with no version control holding an evaluation case, **When** the developer evaluates the charter, **Then** it is refused in git's words, and nothing is left behind ([CORE-FR-206](#core-fr-206)).
 
 ---
 
@@ -1336,7 +1337,7 @@ Five stories have changed what the engine asks of version control, what its port
 - <a id="core-fr-203"></a>**CORE-FR-203**: A vendor folder with no record, and a record that does not read, MUST each be one warning saying how to make one, and neither MUST be reported as drift. A record of no folder MUST be ignored.
 - <a id="core-fr-204"></a>**CORE-FR-204**: Removing a vendor source MUST delete its folder and its record, and nothing else, leaving that in the working tree uncommitted, whatever other work is in hand. A name no vendor folder answers to MUST be refused, changing nothing.
 - <a id="core-fr-205"></a>**CORE-FR-205**: Installing and injecting a source MUST NOT need the folder installed into to be a repository. A machine without git MUST be told so, and nothing is installed.
-- <a id="core-fr-206"></a>**CORE-FR-206**: Evaluating MUST still run on worktrees ([EVAL-FR-021](spec-eval.md#eval-fr-021)), and is the one use case needing a git repository; outside one it MUST be refused in git's words. What it asks of version control MUST be apart from what fetching a source asks, so neither use case holds the other's questions.
+- <a id="core-fr-206"></a>**CORE-FR-206**: Evaluating MUST still run on worktrees ([EVAL-FR-021](spec-eval.md#eval-fr-021)), and is the one use case needing a git repository; outside one, a run with a case to evaluate MUST be refused in git's words, and a run with no case answers that there is none, as in a repository. What it asks of version control MUST be apart from what fetching a source asks, so neither use case holds the other's questions.
 
 **Binary assets**
 

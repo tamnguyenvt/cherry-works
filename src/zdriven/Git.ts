@@ -127,23 +127,4 @@ export class Git implements ForVCS {
       throw new AdapterFault(`${raised}`, `Check that "${subFolder}" is a folder this repository holds.`);
     }
   }
-
-  /** `git worktree add --detach` at `HEAD`, forced over a record of one
-   *  left at that folder by a run stopped halfway. */
-  async addWorktree(repo: URL, worktreeFolder: URL): Promise<void> {
-    try {
-      await run("git", ["worktree", "add", "--quiet", "--detach", "--force", fileURLToPath(worktreeFolder), "HEAD"], { cwd: fileURLToPath(repo) });
-    } catch (raised) {
-      throw new AdapterFault(`${raised}`, "Commit what is to be evaluated first: a worktree holds the last commit.");
-    }
-  }
-
-  /** `git worktree remove --force`, then the folder removed whatever git
-   *  said, and `git worktree prune` for a record whose folder is gone. */
-  async removeWorktree(repo: URL, worktreeFolder: URL): Promise<void> {
-    const cwd = fileURLToPath(repo);
-    await run("git", ["worktree", "remove", "--force", "--force", fileURLToPath(worktreeFolder)], { cwd }).catch(() => undefined);
-    await rm(fileURLToPath(worktreeFolder), { recursive: true, force: true });
-    await run("git", ["worktree", "prune"], { cwd });
-  }
 }

@@ -290,12 +290,11 @@ export interface ForManagingCharter {
   settings(): Promise<DataDTOs.WorkspaceSettings>;
 
   /**
-   * Whether this repository is one to serve a charter from: inside version
-   * control, and set up under a charter (FR-004).
+   * Whether this repository is one to serve a charter from: set up under a
+   * charter, with version control or without (CORE-FR-107).
    *
-   * Reads and says nothing but a refusal: a folder that is not versioned, and a
-   * repository that has no settings of its own, are each raised with what to
-   * run, and one that is both is told about the first. Asked by whoever is
+   * Reads and says nothing but a refusal: a repository that has no settings of
+   * its own is raised with what to run. Asked by whoever is
    * about to stay open over this repository, before it is — a caller that ran
    * once can be refused by what it reads, and one that serves cannot.
    */

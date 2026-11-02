@@ -10,14 +10,14 @@ import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import type { ForReportingProgress } from "../port/zdriven/ForReportingProgress.js";
 import type { ForRunningPromptfoo } from "../port/zdriven/ForRunningPromptfoo.js";
 import type { ForCheckingAgentCli } from "../port/zdriven/ForRunningAgentCli.js";
-import type { ForVCS } from "../port/zdriven/ForVCS.js";
+import type { ForKeepingWorktrees } from "../port/zdriven/ForKeepingWorktrees.js";
 import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
 import { runWithPromptfoo } from "../service/promptfooService.js";
 import { executePlan, plan } from "../service/buildService.js";
 import { loadCharterRoot } from "../service/charterRepo.js";
 import { loadEvalRoot } from "../service/evalSuitesRepo.js";
 import { loadSettings } from "../service/settingsRepo.js";
-import { evalFolderIn, evalWorktreesFolderIn, folderURL } from "../domain/path.js";
+import { evalWorktreesFolderIn, folderURL } from "../domain/path.js";
 import { evalLogAnalysisDTO, evalRunReportDTO, faultsByFileDTO } from "./dtos.js";
 
 /**
@@ -40,7 +40,7 @@ export class CharterEvaluating implements ForEvaluatingCharter {
   readonly #fileReader: ForReadingFiles;
   readonly #yamlParser: ForParsingYaml;
   readonly #fileWriter: ForWritingFiles;
-  readonly #vcs: ForVCS;
+  readonly #worktrees: ForKeepingWorktrees;
   readonly #agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForCheckingAgentCli>>>;
   readonly #promptfooRunner: ForRunningPromptfoo;
   readonly #progressReporter: ForReportingProgress;
@@ -52,7 +52,7 @@ export class CharterEvaluating implements ForEvaluatingCharter {
     /** What the charter is built into each worktree with. */
     fileWriter: ForWritingFiles,
     /** What adds a worktree of the last commit, and removes it. */
-    vcs: ForVCS,
+    worktrees: ForKeepingWorktrees,
     /** Each agent's own command line: what promptfoo runs the agent through,
      *  asked only whether it is installed. */
     agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForCheckingAgentCli>>>,
@@ -68,7 +68,7 @@ export class CharterEvaluating implements ForEvaluatingCharter {
     this.#fileReader = fileReader;
     this.#yamlParser = yamlParser;
     this.#fileWriter = fileWriter;
-    this.#vcs = vcs;
+    this.#worktrees = worktrees;
     this.#agentCliByProvider = agentCliByProvider;
     this.#promptfooRunner = promptfooRunner;
     this.#progressReporter = progressReporter;
@@ -83,19 +83,17 @@ export class CharterEvaluating implements ForEvaluatingCharter {
     const agent = selectEvaluationAgent(workspaceSettings.agents, requestedAgent);
 
     // A repository that wrote no case is told so, and nothing is written.
-    const evalFolder = evalFolderIn(this.#repoPath);
     const worktreesFolder = evalWorktreesFolderIn(this.#repoPath);
-    const evalFiles = (await this.#fileReader.readFilesRecursively(evalFolder)).filter(({ file }) => !file.href.startsWith(worktreesFolder.href));
-    if (evalFiles.length === 0) return evalRunReportDTO(new EvalRunReport([], agent));
+    if ((await loadEvalRoot(this.#repoPath, this.#fileReader)).isEmpty) return evalRunReportDTO(new EvalRunReport([], agent));
 
     // What a run stopped halfway left is swept (EVAL-FR-021).
     for (const leftWorktreeFolder of await this.#fileReader.listFolders(worktreesFolder))
-      await this.#vcs.removeWorktree(this.#repoPath, leftWorktreeFolder);
+      await this.#worktrees.removeWorktree(this.#repoPath, leftWorktreeFolder);
 
     // What is evaluated is the last commit: its charter and its cases are read
     // off a worktree of it, so what is checked and what the agent meets are one.
     const headWorktreeFolder = folderURL(new URL("head/", worktreesFolder));
-    await this.#vcs.addWorktree(this.#repoPath, headWorktreeFolder);
+    await this.#worktrees.addWorktree(this.#repoPath, headWorktreeFolder);
     let charter, settings, evalRoot;
     try {
       [charter, settings, evalRoot] = await Promise.all([
@@ -104,7 +102,7 @@ export class CharterEvaluating implements ForEvaluatingCharter {
         loadEvalRoot(headWorktreeFolder, this.#fileReader),
       ]);
     } finally {
-      await this.#vcs.removeWorktree(this.#repoPath, headWorktreeFolder);
+      await this.#worktrees.removeWorktree(this.#repoPath, headWorktreeFolder);
     }
     // Everything that would stop a case is said before the first one spends
     // anything (EVAL-FR-026).
@@ -135,7 +133,7 @@ export class CharterEvaluating implements ForEvaluatingCharter {
     const evalCaseReports: EvalCaseReport[] = [];
     for (const [caseIndex, { suiteName, evalCase }] of suiteCases.entries()) {
       const caseWorktreeFolder = folderURL(new URL(`${caseIndex + 1}/`, worktreesFolder));
-      await this.#vcs.addWorktree(this.#repoPath, caseWorktreeFolder);
+      await this.#worktrees.addWorktree(this.#repoPath, caseWorktreeFolder);
       try {
         const buildPlan = await plan(caseWorktreeFolder, charter, settings.agents, this.#fileReader, undefined, { refreshMcpOrigins: false }, this.#tomlParser);
         if (buildPlan instanceof FaultsByFile) return faultsByFileDTO(buildPlan, caseWorktreeFolder);
@@ -145,7 +143,7 @@ export class CharterEvaluating implements ForEvaluatingCharter {
         const guideBody = guideId === undefined ? undefined : charter.primitiveById.get(guideId)?.body;
         evalCaseReports.push(await runWithPromptfoo(this.#promptfooRunner, caseWorktreeFolder, suiteName, evalCase, guideBody, agent));
       } finally {
-        await this.#vcs.removeWorktree(this.#repoPath, caseWorktreeFolder);
+        await this.#worktrees.removeWorktree(this.#repoPath, caseWorktreeFolder);
       }
     }
     return evalRunReportDTO(new EvalRunReport(evalCaseReports, agent));

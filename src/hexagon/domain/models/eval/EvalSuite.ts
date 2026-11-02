@@ -81,6 +81,11 @@ export class EvalRoot {
     readonly suitesByFile: Readonly<Record<string, EvalSuite>>,
     readonly faultsByFiles: FaultsByFile,
   ) {}
+
+  /** No suite read and none refused: nothing was written to evaluate. */
+  get isEmpty(): boolean {
+    return Object.keys(this.suitesByFile).length === 0 && this.faultsByFiles.isEmpty;
+  }
 }
 
 /** The one way the evaluation files are read: each one that reads under its

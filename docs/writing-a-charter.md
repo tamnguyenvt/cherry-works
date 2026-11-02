@@ -7,7 +7,7 @@ agent reads. This guide walks through a first rule and a reusable workflow.
 
 ## Start with one rule
 
-Inside the git repository you want to govern:
+Inside the repository or folder you want to govern:
 
 ```bash
 cw init

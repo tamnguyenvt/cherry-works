@@ -592,30 +592,20 @@ export class CharterAuthoring implements ForManagingCharter {
   }
 
   /**
-   * Refused outside version control, and then without a settings file, which
-   * setup writes whatever it was answered: its absence is what a repository
-   * never set up looks like, while `loadSettings` reads it as settings naming
-   * no agent (FR-004, FR-037).
+   * Refused without a settings file, which setup writes whatever it was
+   * answered: its absence is what a repository never set up looks like, while
+   * `loadSettings` reads it as settings naming no agent (FR-037, CORE-FR-107).
    */
   async ensureRepoReady(): Promise<void> {
-    if (!(await this.#vcs.isInstalled(this.#repoPath)))
-      throw new DomainFault(
-        "This folder is not inside a git repository, and a charter is authored inside one.",
-        'Run "git init" here, then "cw init", or run this again where your repository is.',
-      );
-
     if ((await this.#fileReader.readIfThere(settingsFileIn(this.#repoPath))) === undefined)
       throw new DomainFault("This repository was never set up under a charter.", 'Run "cw init" first.');
   }
 
   /**
-   * One repository, set up under a charter (FR-032, FR-037).
+   * One repository, set up under a charter, with version control or without
+   * (FR-037, CORE-FR-054).
    *
-   * Refused outside version control before anything is written: what setup
-   * writes is committed as one change, and a folder with nothing to commit into
-   * is a folder this has no business writing in (FR-032).
-   *
-   * Refused, too, without an agent to compile for: a charter is authored to
+   * Refused without an agent to compile for: a charter is authored to
    * instruct one, and a repository compiling for none would build a surface no
    * agent it runs reads (FR-033).
    *
@@ -635,12 +625,6 @@ export class CharterAuthoring implements ForManagingCharter {
    * anybody wrote (FR-038).
    */
   async init({ agents, mainContextCeiling }: SettingsOptions): Promise<DataDTOs.PlanSummary | DataDTOs.FaultsByFile> {
-    if (!(await this.#vcs.isInstalled(this.#repoPath)))
-      throw new DomainFault(
-        "This folder is not inside a git repository, and a charter is authored inside one.",
-        'Run "git init" here, or run this again where your repository is.',
-      );
-
     if (agents.length === 0)
       throw new DomainFault(
         "Setup was given no agent to compile for, and a charter compiles for at least one.",

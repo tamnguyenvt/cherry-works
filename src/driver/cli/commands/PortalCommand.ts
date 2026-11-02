@@ -11,10 +11,10 @@ const OPTIONS = {
 
 /**
  * `cw portal`: serve this repository's charter to a browser on this machine
- * (FR-001 – FR-004).
+ * (CORE-FR-104 – CORE-FR-106).
  *
- * A folder that is not a repository, and a repository never set up, are
- * refused before anything is served, saying which and what to run (FR-004).
+ * A repository never set up is refused before anything is served, saying what
+ * to run; version control is not asked of it (CORE-FR-107).
  *
  * What it answers with is the address, token and all (plan §6). The run goes
  * on after that because the server does, until the process is interrupted:

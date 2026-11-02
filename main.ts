@@ -17,6 +17,7 @@ import type { ForParsingToml } from "./src/hexagon/port/zdriven/ForParsingToml.j
 import { YamlParser } from "./src/zdriven/YamlParser.js";
 import { FileOutput } from "./src/zdriven/FileOutput.js";
 import { Git } from "./src/zdriven/Git.js";
+import { GitWorktrees } from "./src/zdriven/GitWorktrees.js";
 import { OsSecrets } from "./src/zdriven/OsSecrets.js";
 import { OAuth } from "./src/zdriven/OAuth.js";
 import { McpClients } from "./src/zdriven/McpClients.js";
@@ -30,6 +31,7 @@ import { Shell } from "./src/zdriven/Shell.js";
 import type { ForReadingFiles } from "./src/hexagon/port/zdriven/ForReadingFiles.js";
 import type { ForParsingYaml } from "./src/hexagon/port/zdriven/ForParsingYaml.js";
 import type { ForWritingFiles } from "./src/hexagon/port/zdriven/ForWritingFiles.js";
+import type { ForKeepingWorktrees } from "./src/hexagon/port/zdriven/ForKeepingWorktrees.js";
 import type { ForVCS } from "./src/hexagon/port/zdriven/ForVCS.js";
 import type { ForKeepingSecrets } from "./src/hexagon/port/zdriven/ForKeepingSecrets.js";
 import type { ForAuthorizing } from "./src/hexagon/port/zdriven/ForAuthorizing.js";
@@ -60,6 +62,7 @@ const yamlParser: ForParsingYaml = new YamlParser();
 const tomlParser: ForParsingToml = new TomlParser();
 const fileWriter: ForWritingFiles = new FileOutput();
 const vcs: ForVCS = new Git();
+const worktrees: ForKeepingWorktrees = new GitWorktrees();
 const secrets: ForKeepingSecrets = new OsSecrets();
 const authorizing: ForAuthorizing = new OAuth();
 const mcpServers: ForCallingMcpServers = new McpClients();
@@ -105,7 +108,7 @@ const promptfooRunner: ForRunningPromptfoo = new Promptfoo(join(homedir(), ".che
 const progressReporter: ForReportingProgress = new ConsoleReporter();
 
 const codexCli: ForCheckingAgentCli = new CodexCli();
-const charterEvaluatingApp: ForEvaluatingCharter = new CharterEvaluating(repoPath, fileReader, yamlParser, fileWriter, vcs, { ...agentCliByProvider, codex: codexCli }, promptfooRunner, progressReporter, tomlParser);
+const charterEvaluatingApp: ForEvaluatingCharter = new CharterEvaluating(repoPath, fileReader, yamlParser, fileWriter, worktrees, { ...agentCliByProvider, codex: codexCli }, promptfooRunner, progressReporter, tomlParser);
 
 const sensorRunningApp: ForRunningSensors = new SensorRunning(repoPath, fileReader, shell);
 

@@ -207,10 +207,13 @@ test("the repository's own ignore file is left alone: what a vendor installed is
   assert.equal(await held(files, ".gitignore"), "node_modules/\n");
 });
 
-test("a folder under no repository is refused before anything is written (FR-032)", async () => {
-  const { code, held: files, problems } = await setUp({}, ["init", "--agent", "claude"], false);
+test("a folder under no repository is set up and built as a git repository is (CORE-FR-054)", async () => {
+  const argv = ["init", "--agent", "claude"];
+  const gitSetupOutcome = await setUp({}, argv, true);
+  const plainSetupOutcome = await setUp({}, argv, false);
 
-  assert.equal(code, 1);
-  assert.match(problems, /not inside a git repository/);
-  assert.equal(await held(files, ".cw/settings.json"), undefined);
+  assert.equal(plainSetupOutcome.code, 0);
+  assert.equal(plainSetupOutcome.problems, "");
+  assert.notEqual(await held(plainSetupOutcome.held, ".cw/settings.json"), undefined);
+  assert.deepEqual(await plainSetupOutcome.held.readFilesRecursively(repoPath), await gitSetupOutcome.held.readFilesRecursively(repoPath));
 });

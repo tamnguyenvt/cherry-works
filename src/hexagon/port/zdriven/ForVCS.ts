@@ -3,18 +3,16 @@
 export { AdapterFault } from "./AdapterFault.js";
 
 /**
- * DRIVEN PORT — version control. The hexagon asks what is true of a folder it
- * is about to set up; how that is answered — a git command today, a library or
- * a test's own answer tomorrow — is the adapter's business.
+ * DRIVEN PORT — version control. How it is answered — a git command today, a
+ * library or a test's own answer tomorrow — is the adapter's business.
  *
- * Setup asks what is true of the folder it is about to write in, and vendoring
- * asks for a source to be fetched: both are git's business and neither is the
- * hexagon's (FR-032, FR-023).
+ * Vendoring asks for a source to be fetched; setup and the portal ask it nothing
+ * (FR-023, CORE-FR-054, CORE-FR-107).
  */
 export interface ForVCS {
   /** Is this folder inside version control? A folder that is not there is not,
-   *  which is the same answer for the same reason: there is nothing to commit
-   *  what setup writes into. */
+   *  which is the same answer for the same reason: there is nothing to install
+   *  a source into. */
   isInstalled(folder: URL): Promise<boolean>;
 
   /** Is there nothing staged and nothing modified here? What removing a
@@ -79,17 +77,4 @@ export interface ForVCS {
    * it does.
    */
   removeSubFolder(repo: URL, subFolder: string): Promise<void>;
-
-  /**
-   * A worktree of this repository's last commit, checked out detached at this
-   * folder: its files as committed, and none of the work in hand
-   * (EVAL-FR-021). A repository with nothing committed raises a
-   * `AdapterFault`.
-   */
-  addWorktree(repo: URL, worktreeFolder: URL): Promise<void>;
-
-  /** One worktree taken away: its folder, and version control's record of
-   *  it. A folder that is no worktree any more, or is not there, is removed
-   *  all the same. */
-  removeWorktree(repo: URL, worktreeFolder: URL): Promise<void>;
 }

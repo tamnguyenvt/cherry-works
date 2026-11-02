@@ -16,6 +16,7 @@ import { InMemoryPromptfoo } from "../src/zdriven/InMemoryPromptfoo.js";
 import { InMemoryReporter } from "../src/zdriven/InMemoryReporter.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemoryWorktrees } from "../src/zdriven/InMemoryWorktrees.js";
 import { TomlParser } from "../src/zdriven/TomlParser.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
@@ -64,14 +65,15 @@ const promptfooResult = (totalTokens: number, componentResults: PromptfooTestRes
 
 /** The command line over one repository held in memory, promptfoo and the
  *  agent's command line answering as a test says. */
-const surfaces = (files: Readonly<Record<string, string>>, promptfoo: InMemoryPromptfoo, agentCli = new InMemoryAgentCli()) => {
+const surfaces = (files: Readonly<Record<string, string>>, promptfoo: InMemoryPromptfoo, agentCli = new InMemoryAgentCli(), isVersioned = true) => {
   const held = new InMemoryFileReaders(files);
   const vcs = new InMemoryVCS(true, true, held);
+  const worktrees = new InMemoryWorktrees(held, isVersioned);
   promptfoo.folderFiles = held;
   const fileOutput = new InMemoryFileOutput(held);
   const reporter = new InMemoryReporter();
   const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), fileOutput, vcs, new InMemoryTokenCounter(), { claude: agentCli });
-  const charterEvaluatingApp = new CharterEvaluating(repoPath, held, new YamlParser(), fileOutput, vcs, { claude: agentCli, codex: agentCli }, promptfoo, reporter, new TomlParser());
+  const charterEvaluatingApp = new CharterEvaluating(repoPath, held, new YamlParser(), fileOutput, worktrees, { claude: agentCli, codex: agentCli }, promptfoo, reporter, new TomlParser());
   const cli = new Commander(
     {
       cwd: "/repo",
@@ -86,7 +88,7 @@ const surfaces = (files: Readonly<Record<string, string>>, promptfoo: InMemoryPr
     },
     COMMANDS,
   );
-  return { held, vcs, reporter, cli };
+  return { held, worktrees, reporter, cli };
 };
 
 /** What one command printed to each stream, and its exit status. */
@@ -217,7 +219,7 @@ test("each case runs once in a worktree of its own under .cw/eval/.worktrees/ wi
     { prompt: "plan this feature", expect: { invoke: "planning" } },
     { prompt: "refactor this", expect: { invoke: "refactoring" } },
   ]);
-  const { held, vcs, cli } = surfaces(files, promptfoo);
+  const { held, worktrees, cli } = surfaces(files, promptfoo);
 
   await printed(cli, ["eval"]);
 
@@ -230,7 +232,7 @@ test("each case runs once in a worktree of its own under .cw/eval/.worktrees/ wi
   // The charter was built in the worktree before promptfoo ran the agent there.
   assert.ok(firstTest.builtFiles.some((file) => file.endsWith(".claude/skills/planning/SKILL.md")));
   // Every worktree removed, and the working tree holding exactly what it held.
-  assert.deepEqual(vcs.worktreeFolders, []);
+  assert.deepEqual(worktrees.worktreeFolders, []);
   const heldNow = (await held.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort();
   assert.deepEqual(heldNow, Object.keys(files).sort());
 });
@@ -311,7 +313,7 @@ for (const agentName of ["claude", "codex"]) {
     const promptfooRunner = new InMemoryPromptfoo();
     promptfooRunner.resultByPrompt.set("plan", promptfooResult(123, [{ assertionType: "skill-used", pass: false, reason: "Missing skill: planning" }]));
     const repositoryFiles = { ...holding([{ prompt: "plan", expect: { invoke: "planning", follow: "plain-names", maxTokens: 100 } }]), [at(".cw/settings.json")]: JSON.stringify({ agents: ["claude", "codex"] }) };
-    const { cli, vcs, held } = surfaces(repositoryFiles, promptfooRunner);
+    const { cli, worktrees, held } = surfaces(repositoryFiles, promptfooRunner);
     const commandOutput = await printed(cli, ["eval", `--agent=${agentName}`]);
     assert.equal(commandOutput.code, EXIT_FAILURE);
     assert.match(commandOutput.result, new RegExp(`Agent: ${agentName}`));
@@ -319,7 +321,7 @@ for (const agentName of ["claude", "codex"]) {
     assert.equal(promptfooRunner.evaluatedTests[0]?.agent, agentName);
     assert.deepEqual(promptfooRunner.evaluatedTests[0]?.assertions.map(({ type }) => type), ["skill-used", "agent-rubric", "javascript"]);
     assert.ok(promptfooRunner.evaluatedTests[0]?.builtFiles.some((filePath) => filePath.endsWith(agentName === "codex" ? ".agents/skills/planning/SKILL.md" : ".claude/skills/planning/SKILL.md")));
-    assert.deepEqual(vcs.worktreeFolders, []);
+    assert.deepEqual(worktrees.worktreeFolders, []);
     assert.deepEqual((await held.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort(), Object.keys(repositoryFiles).sort());
   });
   test(`a sole configured ${agentName} is selected automatically (EVAL Story 7 scenario 2)`, async () => {
@@ -430,4 +432,46 @@ test("eval-analyze explains an empty history without running an agent", async ()
   assert.equal(analysisOutput.code, EXIT_OK);
   assert.match(analysisOutput.result, /No saved evaluation log/);
   assert.equal(promptfoo.evaluatedTests.length, 0);
+});
+
+test("a case outside a git repository is refused in git's words, naming git init, and nothing is left behind (CORE-FR-206)", async () => {
+  const promptfoo = new InMemoryPromptfoo();
+  const files = holding([{ prompt: "plan this feature", expect: { invoke: "planning" } }]);
+  const { cli, worktrees, held: fileReaders } = surfaces(files, promptfoo, new InMemoryAgentCli(), false);
+
+  const { code, problem } = await printed(cli, ["eval"]);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(problem, /not a git repository/);
+  assert.match(problem, /git init/);
+  assert.deepEqual(worktrees.worktreeFolders, []);
+  assert.deepEqual((await fileReaders.readFilesRecursively(repoPath)).map(({ file }) => file.href).sort(), Object.keys(files).sort());
+});
+
+test("no case outside a git repository answers that there is none, as in a repository (CORE-FR-206)", async () => {
+  const { cli } = surfaces({ [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n` }, new InMemoryPromptfoo(), new InMemoryAgentCli(), false);
+
+  const commandOutput = await printed(cli, ["eval"]);
+
+  assert.equal(commandOutput.code, EXIT_OK);
+  assert.match(commandOutput.result, /holds no case/);
+});
+
+test("a folder of notes and no case outside a git repository answers that there is none (CORE-FR-206)", async () => {
+  const { cli } = surfaces({ [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`, [at(".cw/eval/notes.md")]: "# Notes\n" }, new InMemoryPromptfoo(), new InMemoryAgentCli(), false);
+
+  const commandOutput = await printed(cli, ["eval"]);
+
+  assert.equal(commandOutput.code, EXIT_OK);
+  assert.match(commandOutput.result, /holds no case/);
+});
+
+test("what a stopped run left, and no case, outside a git repository answers that there is none (CORE-FR-206)", async () => {
+  const settingsFile = `${JSON.stringify({ agents: ["claude"] })}\n`;
+  const { cli } = surfaces({ [at(".cw/settings.json")]: settingsFile, [at(".cw/eval/.worktrees/7/.cw/settings.json")]: settingsFile }, new InMemoryPromptfoo(), new InMemoryAgentCli(), false);
+
+  const commandOutput = await printed(cli, ["eval"]);
+
+  assert.equal(commandOutput.code, EXIT_OK);
+  assert.match(commandOutput.result, /holds no case/);
 });

@@ -45,13 +45,21 @@ const portal = async (files: Readonly<Record<string, string>>, versioned: boolea
 
 const settings = new URL(".cw/settings.json", repoPath).href;
 
-test("outside a git repository nothing is served, and git init is named (FR-004)", async () => {
-  const { code, results, problems } = await portal({ [settings]: '{ "agents": [] }' }, false);
+test("a folder set up with no version control is ready to serve (CORE-FR-107)", async () => {
+  const fileReaders = new InMemoryFileReaders({ [settings]: '{ "agents": [] }' });
+  const charterAuthoringApp = new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryVCS(false), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+
+  await charterAuthoringApp.ensureRepoReady();
+});
+
+test("a folder with no version control never set up is refused, naming cw init and not git (CORE-FR-107)", async () => {
+  const { code, results, problems } = await portal({}, false);
 
   assert.equal(code, EXIT_FAILURE);
   assert.equal(results, "");
-  assert.match(problems, /not inside a git repository/);
-  assert.match(problems, /git init/);
+  assert.match(problems, /never set up/);
+  assert.match(problems, /cw init/);
+  assert.doesNotMatch(problems, /git/);
 });
 
 test("a repository never set up is refused before anything is served, naming cw init (FR-004)", async () => {
