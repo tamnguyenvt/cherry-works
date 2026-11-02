@@ -2,9 +2,9 @@
 
 **Created**: 2026-08-30
 
-**Updated**: 2026-10-28
+**Updated**: 2026-11-02
 
-**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types; let its author say so in its headers." Then: "Let the hooks go through a `cw` command rather than the raw command compiled from the charter: `cw sensor run <signal>` gathers every sensor of that signal and runs them." Then: "`cw vendor add mattpocock/skills --skill=grill-me`: a source holding a charter is installed as a charter; otherwise its `SKILL.md` are looked up, each taken as `npx skills add mattpocock/skills --skill=grill-me` takes it and converted into a skill of the charter; with no `--skill`, every skill the source holds." Then: "`cw vendor inject`, beside `cw vendor add`, writes what it takes straight into the repository's own charter rather than a vendor folder. A source may gather many charters: under `charters/`, one folder each, picked with `--charter=`; under `skills/`, skills, picked with `--skill=`."
+**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types; let its author say so in its headers." Then: "Let the hooks go through a `cw` command rather than the raw command compiled from the charter: `cw sensor run <signal>` gathers every sensor of that signal and runs them." Then: "`cw vendor add mattpocock/skills --skill=grill-me`: a source holding a charter is installed as a charter; otherwise its `SKILL.md` are looked up, each taken as `npx skills add mattpocock/skills --skill=grill-me` takes it and converted into a skill of the charter; with no `--skill`, every skill the source holds." Then: "`cw vendor inject`, beside `cw vendor add`, writes what it takes straight into the repository's own charter rather than a vendor folder. A source may gather many charters: under `charters/`, one folder each, picked with `--charter=`; under `skills/`, skills, picked with `--skill=`." Then: "Git is only how a vendor source is fetched: drop it from setup and the portal, judge a vendor's drift from a content hash kept when it is installed, and carry binary assets whole, so the engine can be published for tools with no git and no disk."
 
 ## Overview
 
@@ -118,6 +118,15 @@ A single charter covering design, planning and implementation at once has to be 
 - Q: Do `cw vendor add` and `cw vendor inject` both read a source of many charters? → A: Both, with the same flags: they read the same sources and differ only in where they write. `cw vendor add` installs each charter picked in a vendor folder of its own, `<owner>/<repository>/<name>`, brought up to date and removed on its own ([CORE-FR-196](#core-fr-196)).
 - Q: What is taken with neither `--charter` nor `--skill`, and from a source holding more than one shape? → A: With neither, the first shape the source holds, in this order: its one charter folder, else every charter under `charters/`, else every skill under `skills/`. `--charter` reads `charters/` alone and `--skill` reads `skills/` alone, whatever else the source holds; both may be given together. A flag for a shape the source does not hold is refused, saying what it holds ([CORE-FR-193](#core-fr-193)).
 
+### Session 2026-11-02
+
+- Q: Why does a repository need git at all? → A: Only a vendor source and an evaluation do. Setup and the portal asked for it to keep a charter out of an untracked folder, and used nothing of it afterwards, so neither asks any more; what git gave a governed repository stays recommended and is no longer enforced ([CORE-FR-054](#core-fr-054), [CORE-FR-107](#core-fr-107), [ADR-003](ADR.md#adr-003-git-fetches-sources-it-is-not-the-engines-baseline)).
+- Q: What is a vendor's drift judged against, with no git to ask? → A: A record of its content hash, written when it is installed and committed with it. Only the hash: where it came from and at which version are still not recorded ([CORE-FR-053](#core-fr-053), [CORE-FR-201](#core-fr-201), [CORE-FR-202](#core-fr-202)).
+- Q: What of a vendor installed before the record existed? → A: The health check warns that it has nothing to compare with, and that installing it again makes one; it is not reported as drifted ([CORE-FR-203](#core-fr-203)).
+- Q: Does removing a vendor still commit, and refuse work in hand? → A: Neither: it leaves its folder gone in the working tree for the developer to commit, as installing does ([CORE-FR-204](#core-fr-204)).
+- Q: Must the folder a source is installed into be a repository? → A: No. Git on the machine reaches the source; the folder needs nothing ([CORE-FR-205](#core-fr-205)).
+- Q: How does an evaluation stand? → A: As it was: a case runs in a worktree of the last commit, so evaluating still needs git, and asks it through a question of its own, apart from fetching ([CORE-FR-206](#core-fr-206)).
+
 ## User Scenarios & Testing *(mandatory)*
 
 Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, Stories 10 to 12 agent authoring, Stories 13 to 15 distribution, [CORE Story 16](#core-story-16---open-every-primitive-as-it-was-compiled-priority-p1) the charter compiled for an agent to open, Stories 17 to 20 knowledge reached through MCP, Stories 21 and 22 the files an agent runs and fills, [CORE Story 26](#core-story-26---invoke-a-skill-by-its-id-alone-priority-p2) the names a host is given, and [CORE Story 27](#core-story-27---name-every-primitive-by-its-id-alone-priority-p1) the name a primitive is known by. A story's priority ranks it among the stories of its own part of the product.
@@ -148,17 +157,17 @@ A developer has a repository and a coding agent, and wants the agent to work und
 
 **Status**: Done
 
-A team keeps its baselines — security rules, review roles, permissions — in one shared repository, and wants every project to inherit them without anyone copy-pasting. A developer points their repository at that vendor source, and the content arrives committed, pinned to a version. Their own rules keep working beside it: an id names one primitive in the whole charter, so a repository that redefines a vendored one is told at once and renames its own rather than shadowing someone else's.
+A team keeps its baselines — security rules, review roles, permissions — in one shared repository, and wants every project to inherit them without anyone copy-pasting. A developer points their repository at that vendor source, and the content arrives pinned to a version, for them to read and commit. Their own rules keep working beside it: an id names one primitive in the whole charter, so a repository that redefines a vendored one is told at once and renames its own rather than shadowing someone else's.
 
 **Why this priority**: A charter that lives in one repository helps one team. Distribution is what makes it governance. It depends on [CORE Story 1](#core-story-1---author-a-charter-and-put-the-agent-under-it-priority-p1) having produced something to distribute.
 
-**Independent Test**: Point an initialized repository at a vendor source, confirm the content arrives committed and pinned, and confirm a local rule that reuses a vendored id is reported.
+**Independent Test**: Point an initialized repository at a vendor source, confirm the content arrives pinned, and confirm a local rule that reuses a vendored id is reported.
 
 **Acceptance Scenarios**:
 
-1. **Given** an initialized repository, **When** the developer adds a vendor source by its short git form, **Then** its content is installed under the vendor directory at a pinned version and committed to the repository.
+1. **Given** an initialized repository, **When** the developer adds a vendor source by its short git form, **Then** its content is installed under the vendor directory at a pinned version, left for the developer to commit.
 2. **Given** a repository with both a local rule and a vendored rule of the same id, **When** the charter is read, **Then** both files are named and the charter is refused until one of them is renamed.
-3. **Given** a repository with a vendor source installed, **When** the developer brings it up to date or removes it, **Then** the vendored content is updated or deleted to match, each as a commit.
+3. **Given** a repository with a vendor source installed, **When** the developer brings it up to date or removes it, **Then** the vendored content is updated or deleted to match, each left for the developer to commit.
 
 ---
 
@@ -275,13 +284,13 @@ The developer opens the vendor view and sees each source the repository installe
 
 **Why this priority**: Vendoring is done rarely — once per repository per baseline, then an occasional bump — and it is already one command. The portal makes it visible more than it makes it easier.
 
-**Independent Test**: Add a vendor source from the portal and confirm it is installed as `cw vendor add` would install it, committed on the checked-out branch; confirm its primitives are listed read-only with the installing commit named; remove it and confirm its folder is gone.
+**Independent Test**: Add a vendor source from the portal and confirm it is installed as `cw vendor add` would install it; confirm its primitives are listed read-only; remove it and confirm its folder is gone.
 
 **Acceptance Scenarios**:
 
 1. **Given** a repository with no vendor source, **When** the developer opens the vendor view, **Then** it says none is installed and offers to add one, and adding one lists the directory names reserved under a source's charter folder.
 2. **Given** a source in short git form and an optional version, **When** the developer adds it, **Then** it is installed the way `cw vendor add` installs it, and the portal lists the folder and the primitives it brought.
-3. **Given** staged or uncommitted work, or no version control, **When** the developer adds or removes a source, **Then** nothing is installed or removed and the portal shows why, in the engine's words.
+3. **Given** a source that cannot be reached, **When** the developer adds it, **Then** nothing is installed and the portal shows why, in the engine's words.
 4. **Given** installed sources, **When** the vendor view is shown, **Then** each is listed with its folder and its primitives counted by kind.
 5. **Given** an installed source, **When** the developer removes it, **Then** its folder is taken away as `cw vendor remove` takes it, and its primitives leave the listing.
 6. **Given** a source whose folder would land on a reserved directory name, or a source that cannot be reached, **When** the developer adds it, **Then** nothing already installed is touched and the reason is shown.
@@ -388,7 +397,7 @@ A developer reads about Cherry Works and wants to try it on their own repository
 **Acceptance Scenarios**:
 
 1. **Given** a machine with the supported runtime and git, **When** the developer installs the package globally, **Then** `cw` is on their path and `cw --help` lists every command.
-2. **Given** the installed `cw`, **When** it is run in any git repository, **Then** every command behaves as it does from a source build, the portal's page included, and nothing of this repository's source is needed.
+2. **Given** the installed `cw`, **When** it is run in any repository, **Then** every command behaves as it does from a source build, the portal's page included, and nothing of this repository's source is needed.
 3. **Given** a developer who does not want a global install, **When** they run `cw` once through their package manager's run-without-installing command, **Then** that run works and nothing is left installed.
 4. **Given** a runtime older than the one supported, **When** the developer runs `cw`, **Then** they are told which version it needs and nothing is done.
 5. **Given** the installed `cw` and no network, **When** any command but adding or updating a vendor source is run, **Then** it works, as it does from a source build.
@@ -840,6 +849,102 @@ A vendored primitive is read-only: to differ from it, a developer authors one of
 
 ---
 
+### CORE Story 35 - Set a repository up anywhere, with or without git (Priority: P2)
+
+**Status**: Todo
+
+A developer tries a charter in a plain folder, and a tool keeps one where no git exists. Setup and the portal used to refuse both, though they use nothing of git. After this, neither asks: a folder can be set up, authored in, built and served, and a repository that does use git behaves as it did.
+
+**Why this priority**: The engine is about to be published for tools with no git, and a check that protects nothing would be the first thing each of them works around.
+
+**Independent Test**: In a folder with no version control, run `cw init`, add a guide, build and start the portal, and confirm each works. Repeat in a git repository, and confirm the same files are written.
+
+**Acceptance Scenarios**:
+
+1. **Given** a folder with no version control, **When** the developer runs setup, **Then** the charter is set up and built as in a git repository ([CORE-FR-054](#core-fr-054)).
+2. **Given** a folder with no version control that was set up, **When** the portal starts, **Then** it serves the charter ([CORE-FR-107](#core-fr-107)).
+3. **Given** a folder that was never set up, **When** the portal starts, **Then** it stops before serving anything and says `cw init` is how to set one up ([CORE-FR-107](#core-fr-107)).
+4. **Given** a folder with no version control, **When** the developer evaluates the charter, **Then** it is refused in git's words, and nothing is left behind ([CORE-FR-206](#core-fr-206)).
+
+---
+
+### CORE Story 36 - Tell an edited vendor from the record of what was installed (Priority: P2)
+
+**Status**: Todo
+
+A vendored charter is read-only here, and the health check says when somebody edited it. It used to ask git, which only sees what is not committed: an edit committed by mistake went unseen, while a source just installed looked edited until it was committed. After this, installing a source records a hash of what landed, and the health check compares against that record, in a repository or out of one.
+
+**Why this priority**: It is what lets the health check stand without git, and it catches the edit that matters: the one that was committed.
+
+**Independent Test**: Install a source and run the health check: nothing has drifted, before or after committing it. Edit one of its files and confirm it is named, committed or not. Install it again and confirm it is not. Delete the record and confirm the health check warns rather than reports drift.
+
+**Acceptance Scenarios**:
+
+1. **Given** a source just installed and not committed, **When** the health check runs, **Then** no vendor has drifted ([CORE-FR-202](#core-fr-202)).
+2. **Given** an installed source with a file edited, added or deleted, committed or not, **When** the health check runs, **Then** that vendor is named once, however many files differ ([CORE-FR-081](#core-fr-081), [CORE-FR-202](#core-fr-202)).
+3. **Given** a drifted vendor, **When** it is installed again, **Then** its record is written again and it has not drifted ([CORE-FR-201](#core-fr-201)).
+4. **Given** a vendor folder with no record, **When** the health check runs, **Then** it warns that there is nothing to compare with and how to make it, and the vendor is not reported as drifted ([CORE-FR-203](#core-fr-203)).
+5. **Given** a record that does not read, **When** the health check runs, **Then** it says so as one finding and every other question is still answered ([CORE-FR-081](#core-fr-081), [CORE-FR-203](#core-fr-203)).
+6. **Given** a checkout that changed only the line endings of a vendored file, **When** the health check runs, **Then** that vendor has not drifted ([CORE-FR-202](#core-fr-202)).
+7. **Given** the record, **When** it is read, **Then** it holds a hash per vendor folder, and nothing of where it came from or at which version ([CORE-FR-053](#core-fr-053)).
+
+---
+
+### CORE Story 37 - Install and remove a vendor source in any folder (Priority: P3)
+
+**Status**: Todo
+
+Removing a vendor used to make a commit and to refuse while anything was in hand, and installing one refused a folder with no repository, though both could do without. After this, the three ways a source moves — installing, injecting and removing — work the same: each leaves its result in the working tree for the developer to read and commit, whatever else is in hand, in a repository or out of one. Git on the machine is what reaches a source, and nothing else.
+
+**Why this priority**: It makes fetching the one thing git is asked for on the charter's side, and removing consistent with installing.
+
+**Independent Test**: In a folder with no version control, install a source, then remove it, and confirm its folder and its record are gone. In a repository with work in hand, do the same, and confirm no commit was made and the work in hand is untouched.
+
+**Acceptance Scenarios**:
+
+1. **Given** a folder with no version control, **When** a source is installed or injected, **Then** it lands as in a repository ([CORE-FR-205](#core-fr-205)).
+2. **Given** an installed source and work in hand, **When** it is removed, **Then** its folder and its record are gone, nothing is committed, and the work in hand is as it was ([CORE-FR-204](#core-fr-204)).
+3. **Given** a name no vendor folder answers to, **When** it is removed, **Then** it is refused and nothing changes ([CORE-FR-204](#core-fr-204)).
+4. **Given** a machine with no git, **When** a source is installed, **Then** nothing is installed and it says git is what reaches a source ([CORE-FR-205](#core-fr-205)).
+
+---
+
+### CORE Story 38 - Keep a binary asset whole (Priority: P2)
+
+**Status**: Todo
+
+A skill keeps a diagram beside its `index.md`. Today the engine reads every asset as text, so a build writes a damaged image and says nothing, and installing or injecting a source that holds one can do the same. After this, whatever a primitive's folder holds arrives where it is copied exactly as it was.
+
+**Why this priority**: It is silent damage to a user's file, and it changes what the file ports carry, which must land before those ports are published.
+
+**Independent Test**: Author a skill with a PNG asset, build it, and confirm the compiled copy is identical to the file, byte for byte. Vendor a source holding one, then inject it, and confirm the same of each.
+
+**Acceptance Scenarios**:
+
+1. **Given** a primitive with a binary asset, **When** it is built, **Then** the copy is identical to the asset, byte for byte ([CORE-FR-207](#core-fr-207)).
+2. **Given** a source holding a binary file, **When** it is installed or injected, **Then** the file lands identical to the source's ([CORE-FR-207](#core-fr-207)).
+3. **Given** a primitive with a binary asset, **When** the charter is read, listed, validated or previewed, **Then** the asset is treated as any asset is, and an unchanged one is no change to the preview ([CORE-FR-207](#core-fr-207)).
+4. **Given** the file ports, **When** an adapter answers them, **Then** a file's bytes cross them whole ([CORE-FR-208](#core-fr-208)).
+5. **Given** a primitive with a binary asset, **When** it is deleted, **Then** the asset goes with it, as any asset does ([CORE-FR-076](#core-fr-076)).
+
+---
+
+### CORE Story 39 - Quality cross-check of CORE Story 35, CORE Story 36, CORE Story 37, CORE Story 38, SDK Story 1 (Priority: P3)
+
+**Status**: Todo
+
+Five stories have changed what the engine asks of version control, what its ports carry and what an address may be. Before the package is built on them, the product is checked against every story.
+
+**Why this priority**: It stops what those stories changed from reaching a published contract unchecked.
+
+**Independent Test**: Run /sdd-quality once they are `Done`.
+
+**Acceptance Scenarios**:
+
+1. **Given** [CORE Story 35](#core-story-35---set-a-repository-up-anywhere-with-or-without-git-priority-p2), [CORE Story 36](#core-story-36---tell-an-edited-vendor-from-the-record-of-what-was-installed-priority-p2), [CORE Story 37](#core-story-37---install-and-remove-a-vendor-source-in-any-folder-priority-p3), [CORE Story 38](#core-story-38---keep-a-binary-asset-whole-priority-p2) and [SDK Story 1](spec-sdk.md#sdk-story-1---keep-a-repository-at-any-address-priority-p2) `Done`, **When** /sdd-quality runs, **Then** it checks the code and every spec against the checklist of `quality.md`, and each violation it reports becomes a story.
+
+---
+
 ### Edge Cases
 
 **The charter and its engine**
@@ -859,7 +964,7 @@ A vendored primitive is read-only: to differ from it, a developer authors one of
 - A projection exists whose source primitive was deleted — the build deletes the projection.
 - The host's entry file already carries the section — the build writes that section again and leaves the rest of the file, whoever wrote it, untouched.
 - The host's entry file exists with no section, or does not exist at all — the build puts the section after what the file holds, or writes the file holding only the section.
-- Setup runs outside a git repository — it stops and says so rather than scaffolding into an untracked directory.
+- Setup runs outside a git repository — it sets the folder up as in one; nothing records what changes there unless the developer brings version control ([CORE-FR-054](#core-fr-054)).
 - Setup runs with nobody to ask in a repository that has chosen no agent yet, and the engine compiles for more than one — it stops and names the flag that answers it, since the agent has no default there. Where the engine compiles for one, that one is the default, and is taken.
 - Two commands run back to back over an unchanged charter — the charter is read once, not twice.
 - The engine stops shipping a primitive it once shipped — the next build deletes the surface it compiled to, the way a build deletes the projection of any primitive that is gone.
@@ -868,7 +973,9 @@ A vendored primitive is read-only: to differ from it, a developer authors one of
 
 **The portal**
 
-- The portal is started outside a git repository, or in one that was never set up — it stops before serving anything and says which, and that `cw init` is how a repository is set up.
+- The portal is started in a folder that was never set up — it stops before serving anything and says that `cw init` is how a repository is set up.
+- Two branches each install a different vendor — the record merges like any file; a conflict left in it does not read, and the health check says so ([CORE-FR-203](#core-fr-203)).
+- A vendor folder removed by hand, its record left behind — the record is of no folder, and is not reported.
 - The address the portal would listen on is taken — it listens on another one and says which.
 - Two portals are started on one repository — each works; a save made through one is caught by the other's check for changes on disk ([CORE Story 6](#core-story-6---author-edit-and-delete-a-primitive-without-looking-anything-up-priority-p2), scenario 9).
 - The charter holds an error when the portal opens — the portal shows the faults under their files; the developer fixes them in their editor, and the listing returns on the next view once the charter holds.
@@ -1018,18 +1125,17 @@ A vendored primitive is read-only: to differ from it, a developer authors one of
 - <a id="core-fr-043"></a>**CORE-FR-043**: The system MUST attach no meaning to a vendored directory's name. Any grouping such a name implies belongs to the people using it, not to the system.
 - <a id="core-fr-044"></a>**CORE-FR-044**: The system MUST install vendored content only under the vendor directory, beside the charter rather than inside it, so no vendor source can land on a kind directory or on what this repository authored.
 - <a id="core-fr-045"></a>**CORE-FR-045**: The system MUST allow more than one vendor source per repository.
-- <a id="core-fr-046"></a>**CORE-FR-046**: The system MUST commit vendored content to the repository it installs into, so a checkout carries the whole charter it is governed by with nothing left to fetch. It MUST NOT exclude that content from version control, and MUST NOT keep a record of its own beside it: the repository's history is that record.
+- <a id="core-fr-046"></a>**CORE-FR-046**: Vendored content MUST be kept in the repository it is installed into, so a checkout that holds it carries the whole charter it is governed by with nothing left to fetch. The system MUST NOT exclude that content from version control, and MUST NOT keep a record beside it other than the hash of [CORE-FR-201](#core-fr-201).
 - <a id="core-fr-047"></a>**CORE-FR-047**: The system MUST support bringing an installed source up to date and removing it. Bringing one up to date MUST be the same thing as installing it, so there is one command rather than two.
 - <a id="core-fr-048"></a>**CORE-FR-048**: Installing vendored content MUST NOT depend on any central service beyond the git source itself.
 - <a id="core-fr-049"></a>**CORE-FR-049**: Installing MUST accept a source address as it was typed, so that every transport git supports works. A source that cannot be reached, or a version that is not there, MUST be refused in git's own words, installing nothing.
 - <a id="core-fr-050"></a>**CORE-FR-050**: An installed source MUST land in a folder of its own under the vendor directory, named by the owner and the repository of its address, the repository without a trailing `.git`: `mattpocock/skills`. A source installed under the folder an earlier version named, the end of its address alone, MUST NOT be moved by the engine; it is moved by removing it and installing it again.
-- <a id="core-fr-051"></a>**CORE-FR-051**: Installing, updating and removing a vendor source MUST each land as a commit on the branch checked out, and MUST therefore be refused while the repository has uncommitted work in hand.
 - <a id="core-fr-052"></a>**CORE-FR-052**: Installing a vendor source MUST compile nothing: the build is the one command that writes what an agent reads.
-- <a id="core-fr-053"></a>**CORE-FR-053**: The engine MUST be able to list every installed vendor folder. It MUST NOT record where a folder came from or at which version: version control keeps no such record of a folder it copied, and a record kept beside it is one the repository's history does not hold ([CORE-FR-046](#core-fr-046)). Bringing a source up to date is installing it again with its source, as it was first typed.
+- <a id="core-fr-053"></a>**CORE-FR-053**: The engine MUST be able to list every installed vendor folder. It MUST NOT record where a folder came from or at which version: the one record kept of a folder is the hash of what landed ([CORE-FR-201](#core-fr-201)). Bringing a source up to date is installing it again with its source, as it was first typed.
 
 **Setup**
 
-- <a id="core-fr-054"></a>**CORE-FR-054**: Setup MUST run inside a git repository, and MUST stop with an explanation when there is none.
+- <a id="core-fr-054"></a>**CORE-FR-054**: Setup MUST NOT depend on version control: it MUST work the same in a folder with none as in a git repository.
 - <a id="core-fr-055"></a>**CORE-FR-055**: Setup MUST ask which agent the charter compiles for, offering the agents this engine compiles for and defaulting to the one the repository already chose, and MUST refuse to finish until at least one is chosen: a charter is authored to instruct an agent. Where the engine compiles for one agent only, a repository that has chosen none yet MUST be offered that one already selected, as its default. It MUST NOT detect what is installed on the machine: choosing an agent compiles everything that agent reads, and the build creates the directory it reads from whether it was there or not.
 - <a id="core-fr-056"></a>**CORE-FR-056**: Every setup prompt MUST have a default acceptable without typing and an equivalent that can be supplied non-interactively, so the whole run is scriptable. The one exception is the agent in a repository that has chosen none yet, where the engine compiles for more than one: it has no default, so a run with nobody to ask MUST stop and name the flag that answers it.
 - <a id="core-fr-057"></a>**CORE-FR-057**: Setup MUST create the charter root with a directory per kind and record the agents the repository chose, and then build the charter, as `cw build` does, so the skill the engine brings ([CORE-FR-096](#core-fr-096)) is in the agent's hands before anything is authored. A charter that does not hold is not built, and setup MUST say so as the build does, keeping what it configured. It MUST NOT commit the result: what it wrote is left in the working tree for whoever ran it to read over and commit themselves.
@@ -1068,7 +1174,7 @@ A vendored primitive is read-only: to differ from it, a developer authors one of
 **Health**
 
 - <a id="core-fr-080"></a>**CORE-FR-080**: The system MUST report, in one command, which agents the repository chose, whether validation passes, whether vendored content has drifted, and whether compiled output is out of date — determining the last by running the preview rather than tracking staleness independently.
-- <a id="core-fr-081"></a>**CORE-FR-081**: The health check MUST say so rather than fail when the repository chose no agent; MUST name a vendor whose content differs from what was committed once, however many of its files differ; and MUST ask every one of its questions whatever the one before it answered, since one command is one report.
+- <a id="core-fr-081"></a>**CORE-FR-081**: The health check MUST say so rather than fail when the repository chose no agent; MUST name a vendor whose content differs from its record once, however many of its files differ, and say that installing it again restores it; and MUST ask every one of its questions whatever the one before it answered, since one command is one report.
 
 **Self-regression tests**
 
@@ -1106,7 +1212,7 @@ A vendored primitive is read-only: to differ from it, a developer authors one of
 - <a id="core-fr-104"></a>**CORE-FR-104**: The system MUST offer a command that starts the portal for the repository it is run in, and MUST print the address the portal can be reached at.
 - <a id="core-fr-105"></a>**CORE-FR-105**: The portal MUST serve one repository for as long as it runs: the one it was started in. It MUST NOT offer a way to point it at another.
 - <a id="core-fr-106"></a>**CORE-FR-106**: The portal MUST be reachable only from the machine it runs on. It MUST NOT ask anyone to sign in.
-- <a id="core-fr-107"></a>**CORE-FR-107**: The command MUST stop before serving anything when run outside a git repository or in a repository that was never set up, and MUST say which and how to set one up.
+- <a id="core-fr-107"></a>**CORE-FR-107**: The command MUST stop before serving anything in a repository that was never set up, and MUST say so and how to set one up. It MUST NOT depend on version control.
 
 **The portal: reaching the engine**
 
@@ -1223,6 +1329,20 @@ A vendored primitive is read-only: to differ from it, a developer authors one of
 - <a id="core-fr-199"></a>**CORE-FR-199**: Injecting MUST leave what it writes unstaged, whatever else is in hand, and MUST NOT build ([CORE-FR-190](#core-fr-190)).
 - <a id="core-fr-200"></a>**CORE-FR-200**: An injected primitive MUST be the repository's own in every way: nothing records the source it came from, it is never read-only, and no vendor command lists, brings up to date or removes it.
 
+**Standing without git**
+
+- <a id="core-fr-201"></a>**CORE-FR-201**: Installing a vendor source MUST record a hash of the content of the folder it landed in, inside the repository, to be committed with it; installing it again MUST write that hash again. The record MUST hold nothing else of the source.
+- <a id="core-fr-202"></a>**CORE-FR-202**: The health check MUST judge a vendor's drift from that record alone, whether or not version control is there: a file added, edited or deleted under its folder is drift, committed or not; line endings alone are not. It MUST NOT ask version control.
+- <a id="core-fr-203"></a>**CORE-FR-203**: A vendor folder with no record, and a record that does not read, MUST each be one warning saying how to make one, and neither MUST be reported as drift. A record of no folder MUST be ignored.
+- <a id="core-fr-204"></a>**CORE-FR-204**: Removing a vendor source MUST delete its folder and its record, and nothing else, leaving that in the working tree uncommitted, whatever other work is in hand. A name no vendor folder answers to MUST be refused, changing nothing.
+- <a id="core-fr-205"></a>**CORE-FR-205**: Installing and injecting a source MUST NOT need the folder installed into to be a repository. A machine without git MUST be told so, and nothing is installed.
+- <a id="core-fr-206"></a>**CORE-FR-206**: Evaluating MUST still run on worktrees ([EVAL-FR-021](spec-eval.md#eval-fr-021)), and is the one use case needing a git repository; outside one it MUST be refused in git's words. What it asks of version control MUST be apart from what fetching a source asks, so neither use case holds the other's questions.
+
+**Binary assets**
+
+- <a id="core-fr-207"></a>**CORE-FR-207**: Every file under a primitive's folder MUST reach where it is built, installed or injected identical to its source, byte for byte, whatever it holds; and the preview MUST compare it as such.
+- <a id="core-fr-208"></a>**CORE-FR-208**: The ports a file is read and written through MUST carry bytes as well as text, so no adapter need decode a file the engine only copies.
+
 ### Key Entities
 
 The shape of each is in the data model.
@@ -1255,6 +1375,7 @@ The shape of each is in the data model.
 - **Asset**: A file kept in a primitive's folder beside its `index.md`, at any depth, reached from its body as `./<file>`, and copied beside its compiled document by a build (data-model).
 - **Built file**: What a build writes for each asset of a primitive: a copy beside its compiled document, in the output folder, where everything that names it points (data-model).
 - **Flow**: One branch holding one charter. A convention of the product and of a later application; carries no meaning inside the engine, the command line or the portal.
+- **Vendor record**: The hash of what landed in each vendor folder, kept in the repository and committed with it: what drift is judged against. It holds nothing of where the content came from.
 - **Skills repository**: A git repository publishing skills the way `npx skills add` reads them — each a folder holding a `SKILL.md` — rather than as a charter.
 - **Taken skill**: A skill converted from a skills repository into a skill primitive, kept read-only in that source's vendor folder.
 - **Source of many charters**: A source gathering charters under `charters/`, one folder each named by the charter, each picked on its own.
@@ -1317,6 +1438,9 @@ The shape of each is in the data model.
 - <a id="core-sc-051"></a>**CORE-SC-051**: 100% of the sources whose repositories share a name under different owners install side by side.
 - <a id="core-sc-052"></a>**CORE-SC-052**: A developer installs 1 of the charters a source gathers with 1 command, and 0 of the others arrive.
 - <a id="core-sc-053"></a>**CORE-SC-053**: A developer starts a primitive of their own from someone else's skill or charter with 1 command and 0 files copied or ids renamed by hand.
+- <a id="core-sc-054"></a>**CORE-SC-054**: In a folder with no version control, a developer sets up, authors, builds, installs a vendor and removes it, each with the commands they use in a git repository.
+- <a id="core-sc-055"></a>**CORE-SC-055**: Every edit to a vendored file is named by the health check, committed or not, and no source just installed is reported as edited.
+- <a id="core-sc-056"></a>**CORE-SC-056**: 0 bytes of a binary asset differ between a primitive's folder and any copy the engine makes of it.
 
 ## Assumptions
 
@@ -1371,7 +1495,7 @@ The shape of each is in the data model.
 
 ## Dependencies
 
-- A git repository, and git available on the machine, for setup, for installing vendored content, and for drift detection.
+- Git available on the machine, to reach a vendor source; and a git repository with a commit, to evaluate the charter. A git repository is recommended everywhere else, for reviewing what changes and for undoing it, and required nowhere else.
 - A network path to the vendor source's git host when installing or updating vendored content. Everything else works offline.
 - An installed coding agent for the compiled output to be consumed. Authoring, validation, cataloguing and the agent-neutral compilation all work without one.
 - A web browser on the developer's machine, for the portal.
@@ -1389,7 +1513,7 @@ The shape of each is in the data model.
 - Setting a repository up from the portal. `cw init` does that.
 - Renaming a primitive, or changing its kind, in place. Renaming a test file.
 - A standing build status outside the health check.
-- Committing, branching or any other version-control operation beyond what vendoring already does.
+- Committing, branching or any other version-control operation beyond what reaching a source and evaluating ask.
 - Changing or deleting a primitive that already exists, from the agent or from a header flag.
 - Writing a primitive's body for its author: what a rule should say stays the author's.
 - Any second builtin source, or a name for one. There is one owner of that layer.

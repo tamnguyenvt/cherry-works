@@ -290,6 +290,77 @@
       "dependsOn": [
         "EVAL Story 6"
       ]
+    },
+    {
+      "id": "CORE Story 35",
+      "title": "Set a repository up anywhere, with or without git",
+      "dependsOn": [
+        "CORE Story 1"
+      ]
+    },
+    {
+      "id": "CORE Story 36",
+      "title": "Tell an edited vendor from the record of what was installed",
+      "dependsOn": [
+        "CORE Story 8"
+      ]
+    },
+    {
+      "id": "CORE Story 37",
+      "title": "Install and remove a vendor source in any folder",
+      "dependsOn": [
+        "CORE Story 36"
+      ]
+    },
+    {
+      "id": "CORE Story 38",
+      "title": "Keep a binary asset whole",
+      "dependsOn": [
+        "CORE Story 23"
+      ]
+    },
+    {
+      "id": "SDK Story 1",
+      "title": "Keep a repository at any address",
+      "dependsOn": [
+        "EVAL Story 3"
+      ]
+    },
+    {
+      "id": "CORE Story 39",
+      "title": "Quality cross-check of CORE Story 35, CORE Story 36, CORE Story 37, CORE Story 38, SDK Story 1",
+      "dependsOn": [
+        "CORE Story 35",
+        "CORE Story 36",
+        "CORE Story 37",
+        "CORE Story 38",
+        "SDK Story 1"
+      ]
+    },
+    {
+      "id": "SDK Story 2",
+      "title": "Import the engine from a package of its own",
+      "dependsOn": [
+        "CORE Story 35",
+        "CORE Story 37",
+        "CORE Story 38",
+        "SDK Story 1"
+      ]
+    },
+    {
+      "id": "SDK Story 3",
+      "title": "Author a charter with no disk and no git",
+      "dependsOn": [
+        "SDK Story 2"
+      ]
+    },
+    {
+      "id": "SDK Story 4",
+      "title": "Publish the engine with every release",
+      "dependsOn": [
+        "CORE Story 15",
+        "SDK Story 3"
+      ]
     }
   ]
 }
