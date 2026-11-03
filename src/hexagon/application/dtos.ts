@@ -14,6 +14,7 @@ import type { SensorAnswer } from "../domain/models/sensor/SensorAnswer.js";
 import type { SessionAnalysis } from "../domain/models/session/SessionAnalysis.js";
 import type { SessionAnalysisSummary } from "../domain/models/session/SessionAnalysisSummary.js";
 import { testSuiteNameOf, type TestRoot } from "../domain/models/test/TestRoot.js";
+import { folderAddressOf, localPathOf } from "../domain/path.js";
 
 /**
  * What the application answers a driver with, made of what the domain and its
@@ -299,7 +300,8 @@ export function sessionReviewOutcomeDTO(
   return {
     type: "SessionReviewOutcome",
     data: {
-      sessionsFolder: decodeURIComponent(sessionAnalysis.sessionsFolder.pathname),
+      // A folder on this machine's disk is named by its path, as it was; any other by its whole address (SDK-FR-011).
+      sessionsFolder: localPathOf(sessionAnalysis.sessionsFolder) ?? folderAddressOf(sessionAnalysis.sessionsFolder).href,
       sessionSummary: sessionSummaryDTO(sessionAnalysisSummary),
       dailySessionSummary: Object.fromEntries(Object.entries(sessionAnalysisSummaryByDay).map(([day, daySummary]) => [day, sessionSummaryDTO(daySummary)])),
     },

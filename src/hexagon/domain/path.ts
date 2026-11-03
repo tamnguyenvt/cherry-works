@@ -13,19 +13,34 @@ declare const folder: unique symbol;
  */
 export type FolderURL = URL & { readonly [folder]: true };
 
-/** A folder URL from a URL or its text, refused unless it already ends in the
- *  separator a folder needs. Refused rather than corrected: adding the
- *  separator would make `file:///repo/.cw/charter` and a URL that really does
- *  name a file indistinguishable, and the caller is the one that knows which
- *  it meant. */
+/** A folder URL from a URL or its text, refused unless its path starts at
+ *  `/` (SDK-FR-010) and already ends in the separator a folder needs. Refused
+ *  rather than corrected: adding the separator would make
+ *  `file:///repo/.cw/charter` and a URL that really does name a file
+ *  indistinguishable, and the caller is the one that knows which it meant. */
 export function folderURL(at: URL | string): FolderURL {
-  const url = new URL(at);
-  if (!url.pathname.endsWith("/"))
+  const askedURL = new URL(at);
+  // An opaque path, as `mailto:` has, holds no folder: only a hierarchical one starts at its root (SDK-FR-010).
+  if (!askedURL.pathname.startsWith("/")) {
+    const folderAddress = folderAddressOf(askedURL);
+    // With a host, the path can start at its root; an opaque one, as `mailto:` has, can only be written again.
+    const fixFolderAddress = folderAddressOf(askedURL);
+    if (askedURL.host !== "") fixFolderAddress.pathname = "/";
     throw new DomainFault(
-      `"${url.href}" names a file, and a folder is what is wanted here.`,
-      `Write it with the separator a folder ends in, as in "${url.href}/".`,
+      `"${folderAddress.href}" names no folder: its path does not start at "/".`,
+      `Write an address whose path starts at "/" and ends in its separator, as in "${askedURL.host === "" ? "file:///work/my-repo/" : fixFolderAddress.href}".`,
     );
-  return url as FolderURL;
+  }
+  if (!askedURL.pathname.endsWith("/")) {
+    const folderAddress = folderAddressOf(askedURL);
+    const fixFolderAddress = folderAddressOf(askedURL);
+    fixFolderAddress.pathname += "/";
+    throw new DomainFault(
+      `"${folderAddress.href}" names a file, and a folder is what is wanted here.`,
+      `Write it with the separator a folder ends in, as in "${fixFolderAddress.href}".`,
+    );
+  }
+  return askedURL as FolderURL;
 }
 
 /**
@@ -171,24 +186,59 @@ export function settingsFileIn(repo: URL): URL {
 /** What each session's folder keeps its stops in, one line each (EVAL-FR-009). */
 export const SESSION_LOG_FILE = "session-analysis.jsonl";
 
+/** The longest name a repository's sessions folder is given, under the 255
+ *  bytes a disk takes for one. */
+const REPO_NAME_LIMIT = 200;
+
+/** The path of an address on this machine's disk, a `file:` one with no
+ *  host, as the disk names it; none for any other address (SDK-FR-011). */
+export function localPathOf(url: URL): string | undefined {
+  return url.protocol === "file:" && url.host === "" ? decodeURIComponent(url.pathname) : undefined;
+}
+
+/** The address of the folder a URL names, the user name, password, query and
+ *  fragment it carries left out: they say how a folder is reached, not which
+ *  folder it is, and are never answered. */
+export function folderAddressOf(url: URL): URL {
+  const folderAddress = new URL(url);
+  folderAddress.username = "";
+  folderAddress.password = "";
+  folderAddress.search = "";
+  folderAddress.hash = "";
+  return folderAddress;
+}
+
 /**
  * The folder one repository's sessions are kept in on this machine, a folder
  * per session id under it, as `cw-session-tokens-counter` keeps them
  * (EVAL-FR-009): the `sessionAnalysisFolder` the repository set, an absolute
- * path or one under `~/`, or else `~/.cherry-works/` and the repository's
- * path, each character that is not a letter or a digit a dash. The counter
- * names it the same way, from the folder the agent ran in.
+ * path or one under `~/`, both under the home's scheme, or else
+ * `~/.cherry-works/` and the repository's path, each character that is not a
+ * letter or a digit a dash. The counter names it the same way, from the folder
+ * the agent ran in. A repository at any other address than a `file:` one with
+ * no host is named by its `folderAddressOf` instead, each character that is
+ * not a letter or a digit `_` and its code in hex, so two naming different
+ * folders keep folders of their own (SDK-FR-011); past `REPO_NAME_LIMIT`, cut
+ * and ended with a hash of the address.
  */
 export function sessionsFolderOf(repo: URL, home: URL, sessionAnalysisFolder?: string): FolderURL {
   const homeFolder = home.href.endsWith("/") ? home : new URL(`${home.href}/`);
   if (sessionAnalysisFolder === undefined) {
-    const repoFolder = decodeURIComponent(repo.pathname).replace(/\/$/, "");
-    return folderURL(new URL(`.cherry-works/${repoFolder.replace(/[^A-Za-z0-9]/g, "-")}/`, homeFolder));
+    const repoPath = localPathOf(repo);
+    if (repoPath !== undefined) return folderURL(new URL(`.cherry-works/${repoPath.replace(/\/$/, "").replace(/[^A-Za-z0-9]/g, "-")}/`, homeFolder));
+    const repoAddress = folderAddressOf(repo).href.replace(/\/$/, "");
+    // A serialised URL is ASCII, so two hex digits a character keep any two addresses apart, where a dash would not.
+    const repoName = repoAddress.replace(/[^A-Za-z0-9]/g, (character) => `_${character.charCodeAt(0).toString(16).padStart(2, "0")}`);
+    if (repoName.length <= REPO_NAME_LIMIT) return folderURL(new URL(`.cherry-works/${repoName}/`, homeFolder));
+    // Past what a disk takes for a folder name, the name is cut and an FNV-1a hash of the whole address keeps it apart.
+    let repoAddressHash = 0xcbf29ce484222325n;
+    for (const character of repoAddress) repoAddressHash = BigInt.asUintN(64, (repoAddressHash ^ BigInt(character.charCodeAt(0))) * 0x100000001b3n);
+    return folderURL(new URL(`.cherry-works/${repoName.slice(0, REPO_NAME_LIMIT - 17)}_${repoAddressHash.toString(16).padStart(16, "0")}/`, homeFolder));
   }
   const sessionsFolderPath = sessionAnalysisFolder.endsWith("/") ? sessionAnalysisFolder : `${sessionAnalysisFolder}/`;
   return folderURL(
     sessionsFolderPath.startsWith("~/")
       ? new URL(sessionsFolderPath.slice(2).split("/").map(encodeURIComponent).join("/"), homeFolder)
-      : new URL(`file://${sessionsFolderPath.split("/").map(encodeURIComponent).join("/")}`),
+      : new URL(`.${sessionsFolderPath.split("/").map(encodeURIComponent).join("/")}`, new URL("/", homeFolder)),
   );
 }

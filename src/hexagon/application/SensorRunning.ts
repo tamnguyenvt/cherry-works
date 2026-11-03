@@ -6,6 +6,7 @@ import type { ForRunningShellCommands } from "../port/zdriven/ForRunningShellCom
 import { loadBuiltSensors } from "../service/sensorsRepo.js";
 import { sensorRunOutcomeDTO } from "./dtos.js";
 import type { AgentProvider } from "../domain/models/AgentProvider.js";
+import { folderURL } from "../domain/path.js";
 
 /**
  * APPLICATION SERVICE — the sensors of one signal, run as one hook
@@ -21,7 +22,8 @@ export class SensorRunning implements ForRunningSensors {
   readonly #shell: ForRunningShellCommands;
 
   constructor(repoPath: URL, fileReader: ForReadingFiles, shell: ForRunningShellCommands) {
-    this.#repoPath = repoPath;
+    // Refused here, before anything is asked, unless it names a folder (SDK-FR-010).
+    this.#repoPath = folderURL(repoPath);
     this.#fileReader = fileReader;
     this.#shell = shell;
   }

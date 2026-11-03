@@ -33,7 +33,7 @@ It serves whoever writes a tool on top of the engine, not the developer using `c
 
 ### SDK Story 1 - Keep a repository at any address (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 A tool keeps its charters in a database, and names one with an address of its own. Today most of the engine would take that address, and the part that reviews sessions would not: it writes a `file:` address of its own, and it tells two repositories apart by their path alone. After this, nothing in the engine assumes a disk, an address that cannot hold a folder is refused at once with a fault saying what is wanted, and `cw` on a `file:` address behaves as it did.
 

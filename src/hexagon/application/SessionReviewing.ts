@@ -5,6 +5,7 @@ import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import type { ForTellingTime } from "../port/zdriven/ForTellingTime.js";
 import { loadSessionAnalysis } from "../service/sessionAnalysisRepo.js";
 import { sessionReviewOutcomeDTO } from "./dtos.js";
+import { folderURL } from "../domain/path.js";
 
 /**
  * APPLICATION SERVICE — the sessions kept on this machine for one repository,
@@ -30,8 +31,9 @@ export class SessionReviewing implements ForReviewingSessions {
      *  named (EVAL-FR-030). */
     clock: ForTellingTime,
   ) {
-    this.#repoPath = repoPath;
-    this.#homePath = homePath;
+    // Refused here, before anything is asked, unless it names a folder (SDK-FR-010).
+    this.#repoPath = folderURL(repoPath);
+    this.#homePath = folderURL(homePath);
     this.#fileReader = fileReader;
     this.#clock = clock;
   }

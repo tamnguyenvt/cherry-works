@@ -4,6 +4,7 @@ import type { ForAuthoringTests } from "../port/driver/ForAuthoringTests.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
 import { testSuitesDTO } from "./dtos.js";
+import { folderURL } from "../domain/path.js";
 
 /**
  * APPLICATION SERVICE — the test files a repository writes beside its charter
@@ -26,7 +27,8 @@ export class TestAuthoring implements ForAuthoringTests {
     fileReader: ForReadingFiles,
     fileWriter: ForWritingFiles,
   ) {
-    this.#repoPath = repoPath;
+    // Refused here, before anything is asked, unless it names a folder (SDK-FR-010).
+    this.#repoPath = folderURL(repoPath);
     this.#fileReader = fileReader;
     this.#fileWriter = fileWriter;
   }

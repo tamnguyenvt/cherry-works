@@ -329,7 +329,11 @@
       "title": "Keep a repository at any address",
       "dependsOn": [
         "EVAL Story 3"
-      ]
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck and pnpm test passed: 778 tests, 0 failures; dependency rules and build passed; manual db: review isolated sessions, urn:x refused; cw sessions succeeded and cw build changed no files; specs check passed; independent review passed.",
+        "date": "2026-11-03"
+      }
     },
     {
       "id": "CORE Story 39",

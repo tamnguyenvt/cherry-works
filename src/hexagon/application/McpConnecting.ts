@@ -11,6 +11,7 @@ import { UnauthorizedMcpFault, type ForCallingMcpServers } from "../port/zdriven
 import type { ForKeepingSecrets } from "../port/zdriven/ForKeepingSecrets.js";
 import type { ForParsingYaml } from "../port/zdriven/ForParsingYaml.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
+import { folderURL } from "../domain/path.js";
 
 /** How long one mcp origin has to answer when the server starts (FR-154). */
 const CONNECT_TIMEOUT_MS = 10_000;
@@ -59,7 +60,8 @@ export class McpConnecting implements ForConnectingMcps {
     yamlParser: ForParsingYaml,
     mcpServers: ForCallingMcpServers,
   ) {
-    this.#repoPath = repoPath;
+    // Refused here, before anything is asked, unless it names a folder (SDK-FR-010).
+    this.#repoPath = folderURL(repoPath);
     this.#fileReader = fileReader;
     this.#secrets = secrets;
     this.#authorizing = authorizing;

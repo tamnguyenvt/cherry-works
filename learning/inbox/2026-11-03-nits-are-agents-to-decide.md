@@ -1,6 +1,6 @@
 The agent settles each `nit` a review leaves without asking: it fixes the nit at once when the fix makes the code more correct and harms nothing, or when leaving it could make a test fail; any other nit goes into the handoff note to handle later. Before putting any `nit` or `q` to the user, the agent checks `learning/inbox/` for a note that already answers it.
 
-**Applied**: 7 — add 1 each time this note decides a `nit` or a `q`; once the count is high enough, the reviewer knows it is time to turn the note into a guide.
+**Applied**: 18 — add 1 each time this note decides a `nit` or a `q`; once the count is high enough, the reviewer knows it is time to turn the note into a guide.
 
 **Why:** On 2026-11-03 the user said "nit thì tôi cho bạn tự quyết định", although `manifest.md` sets **Review** to strict. Later the same day, at the hand-over of CORE Story 38, the agent put three points to the user. One was a nit whose fix is a single argument and changes nothing else: `{ ignoreBOM: true }`, so the in-memory test adapter keeps a leading BOM the way the disk adapter does. The user said a fix like that is made at once, without asking, and that a note already in the inbox should be read before a question is asked.
 

@@ -7,6 +7,7 @@ import type { ForParsingYaml } from "../port/zdriven/ForParsingYaml.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
 import type { ForFetchingSources } from "../port/zdriven/ForFetchingSources.js";
 import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
+import { folderURL } from "../domain/path.js";
 
 /**
  * APPLICATION SERVICE — the charters a repository installs rather than authors
@@ -35,7 +36,8 @@ export class CharterVendoring implements ForVendoringCharters {
     fileWriter: ForWritingFiles,
     yamlParser: ForParsingYaml,
   ) {
-    this.#repoPath = repoPath;
+    // Refused here, before anything is asked, unless it names a folder (SDK-FR-010).
+    this.#repoPath = folderURL(repoPath);
     this.#fileReader = fileReader;
     this.#sourceFetcher = sourceFetcher;
     this.#fileWriter = fileWriter;

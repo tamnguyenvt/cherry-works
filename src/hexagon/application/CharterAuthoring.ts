@@ -29,7 +29,7 @@ import { executePlan, plan, previewPlan } from "../service/buildService.js";
 import type { McpReaching } from "../service/mcpOriginsRepo.js";
 import { WorkspaceSettingsSchema, type WorkspaceSettings } from "../domain/models/WorkspaceSettings.js";
 import { AGENT_PROVIDERS } from "../domain/models/AgentProvider.js";
-import { CHARTER_DIRECTORY, EVAL_WORKTREES_GITIGNORE_LINE, VENDOR_DIRECTORY, WORKSPACE_GITIGNORE_FILE, settingsFileIn } from "../domain/path.js";
+import { CHARTER_DIRECTORY, EVAL_WORKTREES_GITIGNORE_LINE, VENDOR_DIRECTORY, WORKSPACE_GITIGNORE_FILE, folderURL, settingsFileIn } from "../domain/path.js";
 import type { UnparsedHeaders, ForManagingCharter, SettingsOptions } from "../port/driver/ForManagingCharter.js";
 import {
   isKind,
@@ -100,7 +100,8 @@ export class CharterAuthoring implements ForManagingCharter {
     tomlParser?: ForParsingToml,
   ) {
     this.#tomlParser = tomlParser;
-    this.#repoPath = repoPath;
+    // Refused here, before anything is asked, unless it names a folder (SDK-FR-010).
+    this.#repoPath = folderURL(repoPath);
     this.#fileReader = fileReader;
     this.#yamlParser = yamlParser;
     this.#fileWriter = fileWriter;

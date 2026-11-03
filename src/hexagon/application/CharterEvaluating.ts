@@ -64,7 +64,8 @@ export class CharterEvaluating implements ForEvaluatingCharter {
     tomlParser?: ForParsingToml,
   ) {
     this.#tomlParser = tomlParser;
-    this.#repoPath = repoPath;
+    // Refused here, before anything is asked, unless it names a folder (SDK-FR-010).
+    this.#repoPath = folderURL(repoPath);
     this.#fileReader = fileReader;
     this.#yamlParser = yamlParser;
     this.#fileWriter = fileWriter;
