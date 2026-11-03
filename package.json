@@ -37,7 +37,7 @@
     "#portal/*": "./dist/portal/*"
   },
   "scripts": {
-    "build": "tsup && tailwindcss -i src/driver/portal/page/styles.css -o dist/portal/styles.css --minify",
+    "build": "tsup && tailwindcss -i src/driver/portal/page/styles.css -o dist/portal/styles.css --minify && tsup --config packages/engine/tsup.config.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/driver/portal/page",
     "test": "pnpm run lint:deps && pnpm run build && node --import tsx --import ./scripts/moduleLoader.mjs --test \"test/**/*.test.ts\"",
     "cw": "node --import tsx --import ./scripts/moduleLoader.mjs main.ts",

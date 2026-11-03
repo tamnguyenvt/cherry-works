@@ -25,9 +25,11 @@
     "test/**/*.ts",
     "scripts/**/*.ts",
     "main.ts",
-    "bin.ts"
+    "bin.ts",
+    "packages/engine/**/*.ts"
   ],
   "exclude": [
-    "src/driver/portal/page/**"
+    "src/driver/portal/page/**",
+    "packages/engine/dist/**"
   ]
 }

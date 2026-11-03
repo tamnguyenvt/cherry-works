@@ -336,16 +336,6 @@
       }
     },
     {
-      "id": "CORE Story 39",
-      "title": "Quality cross-check of CORE Story 35, CORE Story 37, CORE Story 38, SDK Story 1",
-      "dependsOn": [
-        "CORE Story 35",
-        "CORE Story 37",
-        "CORE Story 38",
-        "SDK Story 1"
-      ]
-    },
-    {
       "id": "SDK Story 2",
       "title": "Import the engine from a package of its own",
       "dependsOn": [
@@ -353,7 +343,11 @@
         "CORE Story 37",
         "CORE Story 38",
         "SDK Story 1"
-      ]
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck and pnpm test passed: 786 tests, 0 failures; unified pnpm build produced cw and engine JS/types; installed-package scenarios passed; manual engine 0.9.0 returned memory: sensor outcome 0 and refused urn:x as DomainFault; cw version 0.9.0; specs, clean-state and independent review passed.",
+        "date": "2026-11-03"
+      }
     },
     {
       "id": "SDK Story 3",
@@ -368,6 +362,16 @@
       "dependsOn": [
         "CORE Story 15",
         "SDK Story 3"
+      ]
+    },
+    {
+      "id": "CORE Story 39",
+      "title": "Quality cross-check of CORE Story 35, CORE Story 37, CORE Story 38, SDK Story 1",
+      "dependsOn": [
+        "CORE Story 35",
+        "CORE Story 37",
+        "CORE Story 38",
+        "SDK Story 1"
       ]
     }
   ]

@@ -53,7 +53,7 @@ A tool keeps its charters in a database, and names one with an address of its ow
 
 ### SDK Story 2 - Import the engine from a package of its own (Priority: P1)
 
-**Status**: Todo
+**Status**: Done
 
 A tool author installs `@cherry-works/engine`, and imports from it the use cases, the ports they are entered through, the ports they call out to, and the types that cross them. They ask it which version of the engine they hold. Nothing of the command line, the portal or the adapters comes with it, and what the engine keeps inside stays inside.
 
