@@ -551,7 +551,10 @@ export class CharterAuthoring implements ForManagingCharter {
     const file = new URL(primitive.file, this.#repoPath);
     await this.#fileWriter.delete(file);
     // Its assets go with it: nothing else names them (FR-167).
-    for (const assetFile of primitive.assets) await this.#fileWriter.delete(new URL(assetFile.file, file));
+    for (const assetFile of primitive.assets) {
+      const assetPath = assetFile.file.split("/").map(encodeURIComponent).join("/");
+      await this.#fileWriter.delete(new URL(assetPath, file));
+    }
     return primitiveDTO(primitive);
   }
 

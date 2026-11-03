@@ -104,7 +104,9 @@ export async function planForProjection(
   const plannedFileByPath = new Map<string, PlannedFile>();
 
   for (const projection of output.projections) {
-    const file = new URL(projection.file, repo);
+    // Projections carry file paths, so URL syntax in a name stays in the name.
+    const projectionPath = projection.file.split("/").map(encodeURIComponent).join("/");
+    const file = new URL(projectionPath, repo);
     // A copy is put down as the bytes it holds and compared with the bytes there
     // now, so a file no text says is still kept whole (CORE-FR-207).
     if (projection.contents instanceof Uint8Array) {

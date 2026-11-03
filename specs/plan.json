@@ -354,7 +354,11 @@
       "title": "Author a charter with no disk and no git",
       "dependsOn": [
         "SDK Story 2"
-      ]
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck and pnpm test passed: 792 tests, 0 failures; dependency rules and unified build passed; installed-package memory authoring covered all scenarios and matched cw disk output byte for byte; fresh manual memory flow made 0 filesystem/process calls with stderr empty; specs, clean-state and independent review passed.",
+        "date": "2026-11-03"
+      }
     },
     {
       "id": "SDK Story 4",

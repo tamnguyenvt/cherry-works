@@ -76,7 +76,7 @@ A tool author installs `@cherry-works/engine`, and imports from it the use cases
 
 ### SDK Story 3 - Author a charter with no disk and no git (Priority: P1)
 
-**Status**: Todo
+**Status**: Done
 
 A tool author writes a reader and a writer over a map in memory, and hands them, with a YAML parser and a token counter of their own, to the authoring use case. They set a repository up, add a primitive, validate the charter and build it: no disk is touched, no process is started, and no version control stands behind any of it.
 
