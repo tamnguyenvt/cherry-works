@@ -35,6 +35,7 @@ export default defineConfig({
       exports: { ".": { types: "./index.d.ts", import: "./index.js" } },
       types: "./index.d.ts",
       files: ["index.js", "index.d.ts"],
+      scripts: { prepublishOnly: packageJson.scripts.prepublishOnly },
       dependencies: { picomatch: packageJson.devDependencies.picomatch, zod: packageJson.devDependencies.zod },
     }, undefined, 2) + "\n");
   },

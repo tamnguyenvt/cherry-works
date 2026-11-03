@@ -366,7 +366,11 @@
       "dependsOn": [
         "CORE Story 15",
         "SDK Story 3"
-      ]
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck and pnpm test passed: 816 tests, 0 failures; dependency rules and unified build passed; the real release script refused 1.1.0 from 0.9.0 as not 1.0.0 with no file changed; a plain engine npm publish was refused by its prepublishOnly; specs check and independent review passed; the npm org scope check ran only against a fake npm.",
+        "date": "2026-11-03"
+      }
     },
     {
       "id": "CORE Story 39",

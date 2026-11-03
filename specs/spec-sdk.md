@@ -2,7 +2,7 @@
 
 **Created**: 2026-11-02
 
-**Updated**: 2026-11-02
+**Updated**: 2026-11-03
 
 **Input**: User description: "Publish the Cherry Works hexagon as an npm package, so a third party can import the engine's logic and write driver and driven adapters of their own, without `main.ts`, the command line or any adapter of this repository; a repository's address need not be a `file:` one; a test proves authoring through the built package on in-memory adapters, touching no disk."
 
@@ -28,6 +28,10 @@ It serves whoever writes a tool on top of the engine, not the developer using `c
 - Q: Do the writes rely on being read back? → A: Yes: setup writes and then builds from what it wrote. No use case relies on two writes landing together, and a build is not atomic. The adapter's duties are part of the contract ([SDK-FR-008](#sdk-fr-008)).
 - Q: What of a binary asset, when the ports carry text? → A: The ports carry it whole, and this lands before the first publish, since a change to a port afterwards would be a breaking one ([CORE-FR-208](spec-core.md#core-fr-208), [SDK-FR-002](#sdk-fr-002)).
 - Q: How is what goes wrong handed back? → A: As the engine does today, both ways: what is wrong with a charter is data in the answer; what stops a use case is raised as a fault carrying its message and its fix. The fault is exported, so a tool can tell it from any other error ([SDK-FR-004](#sdk-fr-004)).
+
+### Session 2026-11-03
+
+- Q: Does a release check the file-adapter duties, as it checks the exports? → A: No: they are prose, and whoever writes them owes their versioning; the release compares only what the package exports ([SDK-FR-015](#sdk-fr-015)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -96,7 +100,7 @@ A tool author writes a reader and a writer over a map in memory, and hands them,
 
 ### SDK Story 4 - Publish the engine with every release (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 A maintainer releases one version. The package goes out with `cherry-works` at the same number, under the same checks, or neither does. The first release of both is 1.0.0, and from then on a change that breaks the contract is a major one, written in the changelog.
 
@@ -150,7 +154,7 @@ A maintainer releases one version. The package goes out with `cherry-works` at t
 
 - <a id="sdk-fr-013"></a>**SDK-FR-013**: `cherry-works` MUST NOT depend on the package, and what installing it adds MUST NOT grow by it.
 - <a id="sdk-fr-014"></a>**SDK-FR-014**: The contract MUST be what the package exports and what [SDK-FR-008](#sdk-fr-008) states, and nothing else: anything reached any other way is internal, and MAY change in any release.
-- <a id="sdk-fr-015"></a>**SDK-FR-015**: The contract MUST follow semantic versioning from the first publish: a removal or an incompatible change is a major version, an addition a minor one, and a release narrowing the contract without one MUST be refused. A breaking change MUST be named in the changelog.
+- <a id="sdk-fr-015"></a>**SDK-FR-015**: The contract MUST follow semantic versioning from the first publish: a removal or an incompatible change is a major version, an addition a minor one, and a release narrowing the contract without one MUST be refused. A breaking change MUST be named in the changelog. The release compares only what the package exports: the duties [SDK-FR-008](#sdk-fr-008) states are prose, and whoever changes them versions and names the change by hand.
 - <a id="sdk-fr-016"></a>**SDK-FR-016**: The package and `cherry-works` MUST carry one version number and be released together, under the checks of [CORE-FR-134](spec-core.md#core-fr-134), or neither is. The first version of both published under this contract MUST be 1.0.0.
 
 ### Key Entities *(include if the product holds data)*

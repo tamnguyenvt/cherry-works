@@ -85,3 +85,8 @@ test("cw --help offers --version (FR-131)", () => {
 
   assert.match(helpRun.stdout, /--version\s+Show version number/);
 });
+
+test("a plain npm publish of the engine is refused as cw's is, so it goes out only by the release (SDK-FR-016)", async () => {
+  const enginePackageJson = JSON.parse(await readFile(new URL("packages/engine/dist/package.json", root), "utf8"));
+  assert.equal(enginePackageJson.scripts.prepublishOnly, packageJson.scripts.prepublishOnly);
+});
