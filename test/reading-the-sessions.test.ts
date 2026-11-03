@@ -20,7 +20,7 @@ import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import type { ForReadingFiles } from "../src/hexagon/port/zdriven/ForReadingFiles.js";
 import type { ForTellingTime } from "../src/hexagon/port/zdriven/ForTellingTime.js";
@@ -79,11 +79,11 @@ const machineHolding = (logTexts: Readonly<Record<string, string>>, otherFiles: 
 /** The command line over one repository and one home, the files of both held
  *  by one reader. */
 const cliOver = (fileReaders: ForReadingFiles, repo = repoPath, home = homePath, clock: ForTellingTime = new InMemoryClock(today)) => {
-  const held = new InMemoryFileReaders({});
-  const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const charterVendoringApp = new CharterVendoring(repo, held, vcs, new InMemoryFileOutput(held), new YamlParser());
-  const testAuthoringApp = new TestAuthoring(repo, held, new InMemoryFileOutput(held));
+  const emptyFileReaders = new InMemoryFileReaders({});
+  const sourceFetcher = new InMemorySources();
+  const charterAuthoringApp = new CharterAuthoring(repo, emptyFileReaders, new YamlParser(), new InMemoryFileOutput(emptyFileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterVendoringApp = new CharterVendoring(repo, emptyFileReaders, sourceFetcher, new InMemoryFileOutput(emptyFileReaders), new YamlParser());
+  const testAuthoringApp = new TestAuthoring(repo, emptyFileReaders, new InMemoryFileOutput(emptyFileReaders));
   const sessionReviewingApp = new SessionReviewing(repo, home, fileReaders, clock);
   return new Commander({ cwd: "/work/my-repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);
 };

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { inTheBrowser } from "./in-the-browser.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/").href;
 const vendoredAt = (vendor: string, path: string) => new URL(path, `file:///repo/.cw/vendor/${vendor}/`).href;
@@ -46,7 +46,7 @@ test("each source installed shows its folder and its primitives by kind (Story 8
 });
 
 test("a source added from the dialog is installed through the engine, and the dialog closes (Story 8 scenario 2)", async () => {
-  const vcs = new InMemoryVCS();
+  const sourceFetcher = new InMemorySources();
   await inTheBrowser(
     {},
     async (page) => {
@@ -57,17 +57,17 @@ test("a source added from the dialog is installed through the engine, and the di
       await page.getByRole("button", { name: "Add source" }).click();
       await page.getByText("Vendor source added").waitFor();
 
-      assert.deepEqual(vcs.fetched, [{ source: "git@github.com:team/charter.git", version: "v1.2.0" }]);
-      assert.deepEqual(vcs.checkedOut.map(({ intoSubFolder }) => intoSubFolder), [".cw/vendor/team/charter"]);
+      assert.deepEqual(sourceFetcher.fetchedSources, [{ source: "git@github.com:team/charter.git", version: "v1.2.0" }]);
+      assert.deepEqual(sourceFetcher.checkedOutFolders.map(({ intoSubFolder }) => intoSubFolder), [".cw/vendor/team/charter"]);
       await page.getByRole("dialog").waitFor({ state: "detached" });
     },
-    vcs,
+    sourceFetcher,
   );
 });
 
 test("a refused source stays in the dialog, in the engine's words (Story 8 scenarios 3, 6)", async () => {
-  const vcs = new InMemoryVCS();
-  vcs.sourcesWithoutSubFolder.push("team/charter");
+  const sourceFetcher = new InMemorySources();
+  sourceFetcher.sourcesWithoutSubFolder.push("team/charter");
   await inTheBrowser(
     {},
     async (page) => {
@@ -78,14 +78,14 @@ test("a refused source stays in the dialog, in the engine's words (Story 8 scena
       await page.getByText("Refused, and nothing was installed").waitFor();
 
       assert.match(await page.getByRole("dialog").innerText(), /no "\.cw\/charter"[\s\S]*Check that the source holds/);
-      assert.deepEqual(vcs.checkedOut, []);
+      assert.deepEqual(sourceFetcher.checkedOutFolders, []);
     },
-    vcs,
+    sourceFetcher,
   );
 });
 
 test("Remove takes a source under its owner away by owner and repository (Story 8 scenario 5, FR-050)", async () => {
-  const vcs = new InMemoryVCS();
+  const sourceFetcher = new InMemorySources();
   await inTheBrowser(
     { ...withTwoVendors(), [vendoredAt("team/rules", "guide/one-rule/index.md")]: primitive("guide", "one-rule") },
     async (page) => {
@@ -93,14 +93,14 @@ test("Remove takes a source under its owner away by owner and repository (Story 
       await page.getByLabel(".cw/vendor/team/rules", { exact: true }).getByRole("button", { name: "Remove" }).click();
       await page.getByText("Vendor source removed").waitFor();
 
-      assert.deepEqual(vcs.removed.map(({ subFolder }) => subFolder), [".cw/vendor/team/rules"]);
+      await page.getByLabel(".cw/vendor/team/rules", { exact: true }).waitFor({ state: "detached" });
     },
-    vcs,
+    sourceFetcher,
   );
 });
 
 test("Remove takes the source away through the engine (Story 8 scenario 5)", async () => {
-  const vcs = new InMemoryVCS();
+  const sourceFetcher = new InMemorySources();
   await inTheBrowser(
     withTwoVendors(),
     async (page) => {
@@ -108,8 +108,8 @@ test("Remove takes the source away through the engine (Story 8 scenario 5)", asy
       await page.getByLabel(".cw/vendor/acme", { exact: true }).getByRole("button", { name: "Remove" }).click();
       await page.getByText("Vendor source removed").waitFor();
 
-      assert.deepEqual(vcs.removed.map(({ subFolder }) => subFolder), [".cw/vendor/acme"]);
+      await page.getByLabel(".cw/vendor/acme", { exact: true }).waitFor({ state: "detached" });
     },
-    vcs,
+    sourceFetcher,
   );
 });

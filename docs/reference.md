@@ -317,7 +317,10 @@ one, write your own primitive under a new id.
 
 Run `cw vendor add` again with a new `--ref` to update a source, and
 `cw vendor remove <owner>/<repository>` to take it away, the folder as
-`cw vendor list` shows it. Run `cw build` after either. A source installed
+`cw vendor list` shows it. Removing leaves the folder gone in the working tree
+for you to commit, whatever else you have in hand. Adding needs git on the
+machine to reach a source, and neither needs the folder to be a repository. Run
+`cw build` after either. A source installed
 before 0.8.0 sits in `.cw/vendor/<repository>/` and keeps working; remove it and
 add it again to move it.
 

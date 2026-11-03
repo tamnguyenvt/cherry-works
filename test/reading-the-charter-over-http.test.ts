@@ -7,7 +7,7 @@ import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { DataDTOs, OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { KINDS } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
 import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
@@ -25,10 +25,10 @@ const guide = (id: string, headers: readonly string[] = []) => primitive("guide"
 /** The routes over one repository held in memory, asked the way the page asks
  *  them: the app's own `request`, so what is tested is the route and its status
  *  rather than the guards the server wraps it in (plan §6, tested there). */
-const portal = (files: Readonly<Record<string, string>>, held = new InMemoryFileReaders(files)) => {
-  const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  return api(charterAuthoringApp, new CharterVendoring(repo, held, vcs, new InMemoryFileOutput(held), new YamlParser()), new TestAuthoring(repo, held, new InMemoryFileOutput(held)));
+const portal = (files: Readonly<Record<string, string>>, fileReaders = new InMemoryFileReaders(files)) => {
+  const sourceFetcher = new InMemorySources();
+  const charterAuthoringApp = new CharterAuthoring(repo, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  return api(charterAuthoringApp, new CharterVendoring(repo, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser()), new TestAuthoring(repo, fileReaders, new InMemoryFileOutput(fileReaders)));
 };
 
 test("the listing is sent as every primitive the charter read, each under its layer (FR-112)", async () => {
@@ -134,11 +134,11 @@ test("what validating found is sent as it stands, a charter that holds having no
 });
 
 test("the charter is read again on every call, so what changed on disk is what the next call sends (FR-110)", async () => {
-  const held = new InMemoryFileReaders({ [at("guide/no-any/index.md")]: guide("no-any") });
-  const portalRoutes = portal({}, held);
+  const fileReaders = new InMemoryFileReaders({ [at("guide/no-any/index.md")]: guide("no-any") });
+  const portalRoutes = portal({}, fileReaders);
   await portalRoutes.request("/charter/root/primitives");
 
-  held.write(new URL(at("corpus/why/index.md")), primitive("corpus", "why"));
+  fileReaders.write(new URL(at("corpus/why/index.md")), primitive("corpus", "why"));
   const answer = await portalRoutes.request("/charter/root/primitives");
 
   const { data } = DataDTOs.Primitives.parse(await answer.json());
@@ -158,12 +158,12 @@ test("a fault raised rather than given back is sent as a fault, under no file (p
 
 test("what the engine never meant to say is a 500 with its message, the whole of it logged (plan §12.2)", async (t) => {
   const consoleErrorMock = t.mock.method(console, "error", () => {});
-  const held = new InMemoryFileReaders();
-  t.mock.method(held, "readFilesRecursively", async () => {
+  const fileReaders = new InMemoryFileReaders();
+  t.mock.method(fileReaders, "readFilesRecursively", async () => {
     throw new Error("The disk went away.");
   });
 
-  const answer = await portal({}, held).request("/charter/root/primitives");
+  const answer = await portal({}, fileReaders).request("/charter/root/primitives");
 
   assert.equal(answer.status, 500);
   assert.equal(await answer.text(), "The disk went away.");

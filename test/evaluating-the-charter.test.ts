@@ -15,7 +15,7 @@ import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryPromptfoo } from "../src/zdriven/InMemoryPromptfoo.js";
 import { InMemoryReporter } from "../src/zdriven/InMemoryReporter.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { InMemoryWorktrees } from "../src/zdriven/InMemoryWorktrees.js";
 import { TomlParser } from "../src/zdriven/TomlParser.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
@@ -66,21 +66,21 @@ const promptfooResult = (totalTokens: number, componentResults: PromptfooTestRes
 /** The command line over one repository held in memory, promptfoo and the
  *  agent's command line answering as a test says. */
 const surfaces = (files: Readonly<Record<string, string>>, promptfoo: InMemoryPromptfoo, agentCli = new InMemoryAgentCli(), isVersioned = true) => {
-  const held = new InMemoryFileReaders(files);
-  const vcs = new InMemoryVCS(true, true, held);
-  const worktrees = new InMemoryWorktrees(held, isVersioned);
-  promptfoo.folderFiles = held;
-  const fileOutput = new InMemoryFileOutput(held);
+  const fileReaders = new InMemoryFileReaders(files);
+  const sourceFetcher = new InMemorySources(fileReaders);
+  const worktrees = new InMemoryWorktrees(fileReaders, isVersioned);
+  promptfoo.folderFiles = fileReaders;
+  const fileOutput = new InMemoryFileOutput(fileReaders);
   const reporter = new InMemoryReporter();
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), fileOutput, new InMemoryTokenCounter(), { claude: agentCli });
-  const charterEvaluatingApp = new CharterEvaluating(repoPath, held, new YamlParser(), fileOutput, worktrees, { claude: agentCli, codex: agentCli }, promptfoo, reporter, new TomlParser());
+  const charterAuthoringApp = new CharterAuthoring(repoPath, fileReaders, new YamlParser(), fileOutput, new InMemoryTokenCounter(), { claude: agentCli });
+  const charterEvaluatingApp = new CharterEvaluating(repoPath, fileReaders, new YamlParser(), fileOutput, worktrees, { claude: agentCli, codex: agentCli }, promptfoo, reporter, new TomlParser());
   const cli = new Commander(
     {
       cwd: "/repo",
       version: "0.0.0",
       charterAuthoringApp,
-      charterVendoringApp: new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser()),
-      testAuthoringApp: new TestAuthoring(repoPath, held, fileOutput),
+      charterVendoringApp: new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser()),
+      testAuthoringApp: new TestAuthoring(repoPath, fileReaders, fileOutput),
       mcpConnectingApp: noMcpOriginsReached,
       sessionReviewingApp: noSessionsKept,
       charterEvaluatingApp,
@@ -88,7 +88,7 @@ const surfaces = (files: Readonly<Record<string, string>>, promptfoo: InMemoryPr
     },
     COMMANDS,
   );
-  return { held, worktrees, reporter, cli };
+  return { fileReaders, worktrees, reporter, cli };
 };
 
 /** What one command printed to each stream, and its exit status. */
@@ -219,7 +219,7 @@ test("each case runs once in a worktree of its own under .cw/eval/.worktrees/ wi
     { prompt: "plan this feature", expect: { invoke: "planning" } },
     { prompt: "refactor this", expect: { invoke: "refactoring" } },
   ]);
-  const { held, worktrees, cli } = surfaces(files, promptfoo);
+  const { fileReaders, worktrees, cli } = surfaces(files, promptfoo);
 
   await printed(cli, ["eval"]);
 
@@ -233,7 +233,7 @@ test("each case runs once in a worktree of its own under .cw/eval/.worktrees/ wi
   assert.ok(firstTest.builtFiles.some((file) => file.endsWith(".claude/skills/planning/SKILL.md")));
   // Every worktree removed, and the working tree holding exactly what it held.
   assert.deepEqual(worktrees.worktreeFolders, []);
-  const heldNow = (await held.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort();
+  const heldNow = (await fileReaders.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort();
   assert.deepEqual(heldNow, Object.keys(files).sort());
 });
 
@@ -243,11 +243,11 @@ test("the worktrees a run stopped halfway left are removed when the next run sta
     ...holding([{ prompt: "plan this feature", expect: { invoke: "planning" } }]),
     [at(".cw/eval/.worktrees/7/README.md")]: "left by a run stopped halfway\n",
   };
-  const { held, cli } = surfaces(files, promptfoo);
+  const { fileReaders, cli } = surfaces(files, promptfoo);
 
   await printed(cli, ["eval"]);
 
-  assert.equal(await held.readIfThere(new URL(at(".cw/eval/.worktrees/7/README.md"))), undefined);
+  assert.equal(await fileReaders.readIfThere(new URL(at(".cw/eval/.worktrees/7/README.md"))), undefined);
 });
 
 test("a run with the agent's command line not installed is refused before any case runs, saying what it needs (EVAL Story 6 scenario 6)", async () => {
@@ -313,7 +313,7 @@ for (const agentName of ["claude", "codex"]) {
     const promptfooRunner = new InMemoryPromptfoo();
     promptfooRunner.resultByPrompt.set("plan", promptfooResult(123, [{ assertionType: "skill-used", pass: false, reason: "Missing skill: planning" }]));
     const repositoryFiles = { ...holding([{ prompt: "plan", expect: { invoke: "planning", follow: "plain-names", maxTokens: 100 } }]), [at(".cw/settings.json")]: JSON.stringify({ agents: ["claude", "codex"] }) };
-    const { cli, worktrees, held } = surfaces(repositoryFiles, promptfooRunner);
+    const { cli, worktrees, fileReaders } = surfaces(repositoryFiles, promptfooRunner);
     const commandOutput = await printed(cli, ["eval", `--agent=${agentName}`]);
     assert.equal(commandOutput.code, EXIT_FAILURE);
     assert.match(commandOutput.result, new RegExp(`Agent: ${agentName}`));
@@ -322,7 +322,7 @@ for (const agentName of ["claude", "codex"]) {
     assert.deepEqual(promptfooRunner.evaluatedTests[0]?.assertions.map(({ type }) => type), ["skill-used", "agent-rubric", "javascript"]);
     assert.ok(promptfooRunner.evaluatedTests[0]?.builtFiles.some((filePath) => filePath.endsWith(agentName === "codex" ? ".agents/skills/planning/SKILL.md" : ".claude/skills/planning/SKILL.md")));
     assert.deepEqual(worktrees.worktreeFolders, []);
-    assert.deepEqual((await held.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort(), Object.keys(repositoryFiles).sort());
+    assert.deepEqual((await fileReaders.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort(), Object.keys(repositoryFiles).sort());
   });
   test(`a sole configured ${agentName} is selected automatically (EVAL Story 7 scenario 2)`, async () => {
     const promptfooRunner = new InMemoryPromptfoo();
@@ -437,7 +437,7 @@ test("eval-analyze explains an empty history without running an agent", async ()
 test("a case outside a git repository is refused in git's words, naming git init, and nothing is left behind (CORE-FR-206)", async () => {
   const promptfoo = new InMemoryPromptfoo();
   const files = holding([{ prompt: "plan this feature", expect: { invoke: "planning" } }]);
-  const { cli, worktrees, held: fileReaders } = surfaces(files, promptfoo, new InMemoryAgentCli(), false);
+  const { cli, worktrees, fileReaders } = surfaces(files, promptfoo, new InMemoryAgentCli(), false);
 
   const { code, problem } = await printed(cli, ["eval"]);
 

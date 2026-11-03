@@ -23,4 +23,11 @@ export class InMemoryFileOutput implements ForWritingFiles {
   async delete(file: URL): Promise<void> {
     this.files.remove(file);
   }
+
+  async deleteFolder(folder: URL): Promise<void> {
+    for (const { file } of await this.files.readFilesRecursively(folder)) this.files.remove(file);
+  }
+
+  /** A folder here is only the files under it, so an empty one is not there. */
+  async deleteEmptyFolder(_folder: URL): Promise<void> {}
 }

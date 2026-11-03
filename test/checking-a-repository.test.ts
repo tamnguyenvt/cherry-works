@@ -8,7 +8,7 @@ import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
@@ -75,21 +75,21 @@ const writing = async (work: () => Promise<number>): Promise<{ code: number; wri
  *  repository a build writes into, which is what makes the staleness it reports
  *  the build's own answer. */
 const commandLine = (files: Readonly<Record<string, string>>) => {
-  const held = new InMemoryFileReaders(files);
-  const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const fileReaders = new InMemoryFileReaders(files);
+  const sourceFetcher = new InMemorySources();
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const cli = new Commander(
     {
       cwd: repo,
       version: "1.2.3",
       charterAuthoringApp,
-      charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs, new InMemoryFileOutput(held), new YamlParser()),
-      testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), held, new InMemoryFileOutput(held)),
+      charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser()),
+      testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), fileReaders, new InMemoryFileOutput(fileReaders)),
       mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,
     },
     COMMANDS,
   );
-  return { held, vcs, run: (argv: readonly string[]) => writing(() => cli.run(argv)) };
+  return { fileReaders, sourceFetcher, run: (argv: readonly string[]) => writing(() => cli.run(argv)) };
 };
 
 test("a repository with nothing wrong passes, and says so of each thing it looked at (FR-040)", async () => {
@@ -127,9 +127,9 @@ test("a repository that has never been built is out of date, and fails (FR-040)"
 });
 
 test("staleness is the preview run, not a record kept of the last build (FR-040)", async () => {
-  const { held, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
+  const { fileReaders, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
   await run(["build"]);
-  held.write(new URL("guide/no-any/index.md", root), guide("no-any", "Never write `any`."));
+  fileReaders.write(new URL("guide/no-any/index.md", root), guide("no-any", "Never write `any`."));
 
   const { code, written } = await run(["doctor"]);
 
@@ -158,11 +158,11 @@ test("a charter with an error is counted, and read where every fault is (FR-040,
 });
 
 test("what validating finds reaches a driver as its DTO: counted, and every fault named from the repository (FR-009, FR-040)", async () => {
-  const held = new InMemoryFileReaders({
+  const fileReaders = new InMemoryFileReaders({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
   });
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
 
   // Sent and read back, the way the portal's page will read it.
   const doctorOutcomeDTO = OutcomeDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterAuthoringApp.doctor())));
@@ -200,8 +200,8 @@ test("what doctor reports is a result, never a problem", async () => {
 
 /** What `doctor()` answers over these files, read back as the portal reads it. */
 const doctorOf = async (files: Readonly<Record<string, string>>) => {
-  const held = new InMemoryFileReaders({ ...compilingFor("claude"), ...files });
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const fileReaders = new InMemoryFileReaders({ ...compilingFor("claude"), ...files });
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   return OutcomeDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterAuthoringApp.doctor()))).data;
 };
 

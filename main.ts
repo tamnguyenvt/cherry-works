@@ -16,7 +16,7 @@ import { TomlParser } from "./src/zdriven/TomlParser.js";
 import type { ForParsingToml } from "./src/hexagon/port/zdriven/ForParsingToml.js";
 import { YamlParser } from "./src/zdriven/YamlParser.js";
 import { FileOutput } from "./src/zdriven/FileOutput.js";
-import { Git } from "./src/zdriven/Git.js";
+import { GitSources } from "./src/zdriven/GitSources.js";
 import { GitWorktrees } from "./src/zdriven/GitWorktrees.js";
 import { OsSecrets } from "./src/zdriven/OsSecrets.js";
 import { OAuth } from "./src/zdriven/OAuth.js";
@@ -32,7 +32,7 @@ import type { ForReadingFiles } from "./src/hexagon/port/zdriven/ForReadingFiles
 import type { ForParsingYaml } from "./src/hexagon/port/zdriven/ForParsingYaml.js";
 import type { ForWritingFiles } from "./src/hexagon/port/zdriven/ForWritingFiles.js";
 import type { ForKeepingWorktrees } from "./src/hexagon/port/zdriven/ForKeepingWorktrees.js";
-import type { ForVCS } from "./src/hexagon/port/zdriven/ForVCS.js";
+import type { ForFetchingSources } from "./src/hexagon/port/zdriven/ForFetchingSources.js";
 import type { ForKeepingSecrets } from "./src/hexagon/port/zdriven/ForKeepingSecrets.js";
 import type { ForAuthorizing } from "./src/hexagon/port/zdriven/ForAuthorizing.js";
 import type { ForCallingMcpServers } from "./src/hexagon/port/zdriven/ForCallingMcpServers.js";
@@ -61,7 +61,7 @@ const fileReader: ForReadingFiles = new FileReaders();
 const yamlParser: ForParsingYaml = new YamlParser();
 const tomlParser: ForParsingToml = new TomlParser();
 const fileWriter: ForWritingFiles = new FileOutput();
-const vcs: ForVCS = new Git();
+const sourceFetcher: ForFetchingSources = new GitSources();
 const worktrees: ForKeepingWorktrees = new GitWorktrees();
 const secrets: ForKeepingSecrets = new OsSecrets();
 const authorizing: ForAuthorizing = new OAuth();
@@ -90,7 +90,7 @@ const charterAuthoringApp: ForManagingCharter = new CharterAuthoring(
   tomlParser,
 );
 
-const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath, fileReader, vcs, fileWriter, yamlParser);
+const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath, fileReader, sourceFetcher, fileWriter, yamlParser);
 
 const testAuthoringApp: ForAuthoringTests = new TestAuthoring(repoPath, fileReader, fileWriter);
 

@@ -17,7 +17,7 @@ import {
 } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
@@ -29,7 +29,7 @@ const repoPath = new URL("file:///repo/");
 
 /** What vendoring is driven through: a context always carries every use case,
  *  and nothing here asks this one for anything. */
-const charterVendoringApp = new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
+const charterVendoringApp = new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemorySources(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
 
 /** What the test files are driven through, over an empty repository: nothing
  *  here asks it for anything. */

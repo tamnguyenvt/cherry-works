@@ -17,7 +17,7 @@ import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryMcpServers } from "../src/zdriven/InMemoryMcpServers.js";
 import { InMemorySecrets } from "../src/zdriven/InMemorySecrets.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { charterFilesOf } from "./charter-of-mcp-origins.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
@@ -50,7 +50,7 @@ const mcpOriginsOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
     cwd: "/repo",
     version: "0.0.0",
     charterAuthoringApp: new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
-    charterVendoringApp: new CharterVendoring(repoPath, noFiles, new InMemoryVCS(), new InMemoryFileOutput(noFiles), new YamlParser()),
+    charterVendoringApp: new CharterVendoring(repoPath, noFiles, new InMemorySources(), new InMemoryFileOutput(noFiles), new YamlParser()),
     testAuthoringApp: new TestAuthoring(repoPath, noFiles, new InMemoryFileOutput(noFiles)),
     mcpConnectingApp,
     sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,

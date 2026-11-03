@@ -84,8 +84,8 @@ Open **Vendor**, then click **Add vendor source**:
 4. Run **Build** to compile what was added.
 
 To update a source, add the same address with the version you want. To remove
-it, use its **Remove** button, then build again. Removal uses Git and requires
-a clean working tree; commit or stash your work first.
+it, use its **Remove** button, then build again. Removal leaves the folder gone
+in the working tree for you to commit, whatever else you have in hand.
 
 The form provides source and version fields. Use the CLI when you need
 `--charter` or `--skill` selection flags, or `cw vendor inject` to create your

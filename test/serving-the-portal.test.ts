@@ -11,7 +11,7 @@ import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
@@ -40,7 +40,7 @@ function engine(): CharterAuthoring {
 
 /** The vendoring the routes are driven by beside the engine, over the same
  *  empty repository: no test here reaches a vendor route. */
-const charterVendoringApp = new CharterVendoring(new URL("file:///repo/"), new InMemoryFileReaders({}), new InMemoryVCS(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
+const charterVendoringApp = new CharterVendoring(new URL("file:///repo/"), new InMemoryFileReaders({}), new InMemorySources(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
 
 /** What the test files are driven through, over an empty repository: nothing
  *  here asks it for anything. */

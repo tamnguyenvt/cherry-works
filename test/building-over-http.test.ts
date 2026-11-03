@@ -9,7 +9,7 @@ import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { DataDTOs, OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
@@ -37,13 +37,13 @@ const holding = (extra: Readonly<Record<string, string>> = {}) => ({
 /** The routes and the command line over one repository held in memory, so
  *  what each surface says of it can be held side by side (SC-014). */
 const surfaces = (files: Readonly<Record<string, string>>) => {
-  const held = new InMemoryFileReaders(files);
-  const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const charterVendoringApp = new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser());
-  const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
+  const fileReaders = new InMemoryFileReaders(files);
+  const sourceFetcher = new InMemorySources();
+  const charterAuthoringApp = new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterVendoringApp = new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser());
+  const testAuthoringApp = new TestAuthoring(repoPath, fileReaders, new InMemoryFileOutput(fileReaders));
   const cli = new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);
-  return { portalRoutes: api(charterAuthoringApp, charterVendoringApp, testAuthoringApp), held, cli };
+  return { portalRoutes: api(charterAuthoringApp, charterVendoringApp, testAuthoringApp), fileReaders, cli };
 };
 
 /** What one command printed, and its exit status. */
@@ -61,14 +61,14 @@ const printed = async (cli: Commander, argv: readonly string[]) => {
 const buildRequest = { method: "POST", headers: { "Content-Type": "application/json" } };
 
 test("the preview lists every target cw build --preview prints, and writes nothing (FR-120, SC-014)", async () => {
-  const { portalRoutes, held, cli } = surfaces(holding());
+  const { portalRoutes, fileReaders, cli } = surfaces(holding());
 
   const answer = await portalRoutes.request("/charter/root/build");
 
   assert.equal(answer.status, 200);
   const { added, edited, deleted, unchanged } = DataDTOs.PlanSummary.parse(await answer.json()).data;
   assert.ok(added.includes(".cw/out/catalogue.json"));
-  assert.equal(await held.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
+  assert.equal(await fileReaders.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
 
   const { text } = await printed(cli, ["build", "--preview"]);
   const listed = text.split("\n").flatMap((line) => line.match(/^ {2}(\S+) +(\S+)$/)?.slice(1, 3).join(" ") ?? []);
@@ -81,14 +81,14 @@ test("the preview lists every target cw build --preview prints, and writes nothi
 });
 
 test("building writes, says what it wrote, and the health check then says the output is up to date (FR-120, FR-121)", async () => {
-  const { portalRoutes, held } = surfaces(holding());
+  const { portalRoutes, fileReaders } = surfaces(holding());
 
   const answer = await portalRoutes.request("/charter/root/build", buildRequest);
 
   assert.equal(answer.status, 200);
   const { added } = DataDTOs.PlanSummary.parse(await answer.json()).data;
   assert.ok(added.includes(".cw/out/catalogue.json"));
-  assert.notEqual(await held.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
+  assert.notEqual(await fileReaders.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
 
   const health = OutcomeDTOs.DoctorOutcome.parse(await (await portalRoutes.request("/charter/root/health")).json()).data;
   assert.equal(health.pendingCount, 0);
@@ -96,13 +96,13 @@ test("building writes, says what it wrote, and the health check then says the ou
 });
 
 test("a charter with an error builds nothing, and its faults are sent under their files (FR-120)", async () => {
-  const { portalRoutes, held } = surfaces(holding({ [at(".cw/charter/guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }));
+  const { portalRoutes, fileReaders } = surfaces(holding({ [at(".cw/charter/guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }));
 
   const answer = await portalRoutes.request("/charter/root/build", buildRequest);
 
   assert.equal(answer.status, 422);
   assert.deepEqual(Object.keys(DataDTOs.FaultsByFile.parse(await answer.json()).data.files), [".cw/charter/guide/no-any/index.md"]);
-  assert.equal(await held.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
+  assert.equal(await fileReaders.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
 });
 
 test("the health check is what doctor answers, and names the faults cw doctor prints (FR-121, SC-014)", async () => {

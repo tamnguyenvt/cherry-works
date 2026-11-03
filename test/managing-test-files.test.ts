@@ -14,7 +14,7 @@ import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js
 import { testSuiteOf } from "../src/hexagon/domain/models/test/TestSuite.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
@@ -62,7 +62,7 @@ const contextOver = ({ charterAuthoringApp, testAuthoringApp }: ReturnType<typeo
   cwd: "/repo",
   version: "0.0.0",
   charterAuthoringApp,
-  charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser()),
+  charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemorySources(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser()),
   testAuthoringApp,
   mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,
 });

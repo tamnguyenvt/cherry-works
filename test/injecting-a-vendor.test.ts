@@ -4,7 +4,7 @@ import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js
 import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 
 const repoPath = new URL("file:///repo/");
@@ -14,15 +14,15 @@ const guideMarkdown = "---\nkind: guide\nid: published\ndescription: Published.\
 function createVendoringFixture(sourceFiles: Record<string, string>, heldFiles: Record<string, string> = {}) {
   const fileReader = new InMemoryFileReaders(heldFiles);
   const fileWriter = new InMemoryFileOutput(fileReader);
-  const vcs = new InMemoryVCS(true, false, fileReader);
-  vcs.sourceFilesBySource["team/source"] = sourceFiles;
+  const sourceFetcher = new InMemorySources(fileReader);
+  sourceFetcher.sourceFilesBySource["team/source"] = sourceFiles;
   const yamlParser = new YamlParser();
-  const charterVendoringApp = new CharterVendoring(repoPath, fileReader, vcs, fileWriter, yamlParser);
-  return { fileReader, fileWriter, vcs, yamlParser, charterVendoringApp };
+  const charterVendoringApp = new CharterVendoring(repoPath, fileReader, sourceFetcher, fileWriter, yamlParser);
+  return { fileReader, fileWriter, sourceFetcher, yamlParser, charterVendoringApp };
 }
 
 test("inject converts a skill with assets into the own charter despite dirty work, without vendor files or build (CORE Story 34 scenarios 1, 7)", async () => {
-  const { charterVendoringApp, fileReader, vcs } = createVendoringFixture({ "skills/grill/SKILL.md": skillMarkdown, "skills/grill/examples/a.md": "Example" }, { "file:///repo/work.txt": "Uncommitted" });
+  const { charterVendoringApp, fileReader, sourceFetcher } = createVendoringFixture({ "skills/grill/SKILL.md": skillMarkdown, "skills/grill/examples/a.md": "Example" }, { "file:///repo/work.txt": "Uncommitted" });
   await charterVendoringApp.inject("team/source", "v1", ["grill-me"]);
   const injectedMarkdown = await fileReader.readIfThere(new URL(".cw/charter/skill/grill-me/index.md", repoPath));
   assert.match(injectedMarkdown!, /disable-user-invocation: true/);
@@ -31,7 +31,7 @@ test("inject converts a skill with assets into the own charter despite dirty wor
   assert.equal(await fileReader.readIfThere(new URL("work.txt", repoPath)), "Uncommitted");
   assert.deepEqual(await fileReader.readFilesRecursively(new URL(".cw/vendor/", repoPath)), []);
   assert.deepEqual(await fileReader.readFilesRecursively(new URL(".cw/out/", repoPath)), []);
-  assert.deepEqual(vcs.fetched, [{ source: "team/source", version: "v1" }]);
+  assert.deepEqual(sourceFetcher.fetchedSources, [{ source: "team/source", version: "v1" }]);
 });
 
 test("inject takes single and gathered charters with assets and explicit or default selection (scenario 2)", async () => {
@@ -75,9 +75,9 @@ test("inject refuses own, vendor, builtin and repeated id collisions before writ
 
 test("source and selection failures write nothing, just as vendor add does (scenario 6)", async () => {
   for (const failureKind of ["unreachable", "nested", "skill", "charter"]) {
-    const { charterVendoringApp, fileReader, vcs } = createVendoringFixture({ ".cw/charter/guide/published/index.md": guideMarkdown });
-    if (failureKind === "unreachable") vcs.unreachableSources.push("team/source");
-    if (failureKind === "nested") vcs.sourceFilesBySource["team/source"]![".cw/vendor/other/guide/x/index.md"] = guideMarkdown;
+    const { charterVendoringApp, fileReader, sourceFetcher } = createVendoringFixture({ ".cw/charter/guide/published/index.md": guideMarkdown });
+    if (failureKind === "unreachable") sourceFetcher.unreachableSources.push("team/source");
+    if (failureKind === "nested") sourceFetcher.sourceFilesBySource["team/source"]![".cw/vendor/other/guide/x/index.md"] = guideMarkdown;
     await assert.rejects(charterVendoringApp.inject("team/source", undefined, failureKind === "skill" ? ["missing"] : [], failureKind === "charter" ? ["missing"] : []));
     assert.deepEqual(await fileReader.readFilesRecursively(repoPath), []);
   }

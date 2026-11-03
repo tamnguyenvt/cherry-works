@@ -7,7 +7,7 @@ import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
@@ -34,12 +34,12 @@ const withOnePassingOneFailing = () => ({
 
 /** The routes over one repository held in memory, and what is on disk. */
 const portal = (files: Readonly<Record<string, string>>) => {
-  const held = new InMemoryFileReaders(files);
-  const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
-  const portalRoutes = api(charterAuthoringApp, new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser()), testAuthoringApp);
-  return { portalRoutes, charterAuthoringApp, testAuthoringApp, fileAt: (path: string) => held.readIfThere(new URL(path, repoPath)) };
+  const fileReaders = new InMemoryFileReaders(files);
+  const sourceFetcher = new InMemorySources();
+  const charterAuthoringApp = new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const testAuthoringApp = new TestAuthoring(repoPath, fileReaders, new InMemoryFileOutput(fileReaders));
+  const portalRoutes = api(charterAuthoringApp, new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser()), testAuthoringApp);
+  return { portalRoutes, charterAuthoringApp, testAuthoringApp, fileAt: (path: string) => fileReaders.readIfThere(new URL(path, repoPath)) };
 };
 
 /** A write, sent the way the page sends one. */

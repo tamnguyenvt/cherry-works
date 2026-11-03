@@ -1,6 +1,10 @@
+/** What an adapter answering this port raises when a folder cannot be taken
+ *  away, named again here so it names this port and nothing behind it. */
+export { AdapterFault } from "./AdapterFault.js";
+
 /**
- * DRIVEN PORT — repository, the writing half. What `build` needs and nothing
- * else: put this text at this path, and take that file away.
+ * DRIVEN PORT — repository, the writing half. What writing to the repository
+ * needs: put this text at this path, and take that file away.
  *
  * Apart from `ForReadingFiles` because the split is the point (FR-041). A
  * service constructed without this one cannot write whoever calls it, which is
@@ -19,4 +23,12 @@ export interface ForWritingFiles {
    *  a failure: a build that deletes what a previous build wrote is asking for
    *  an end state, not for a file to exist first. */
   delete(file: URL): Promise<void>;
+
+  /** Take this folder away, with everything under it, whatever that is. A
+   *  folder that is not there is already gone, as a file is. */
+  deleteFolder(folder: URL): Promise<void>;
+
+  /** Take this folder away only if it holds nothing at all, and leave it as it
+   *  is otherwise. A folder that is not there is already gone. */
+  deleteEmptyFolder(folder: URL): Promise<void>;
 }

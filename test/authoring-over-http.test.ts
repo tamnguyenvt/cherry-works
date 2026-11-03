@@ -8,7 +8,7 @@ import { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { SIGNALS } from "../src/hexagon/domain/models/charter/primitive/SensorPrimitive.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
@@ -22,14 +22,14 @@ const guide = (id: string) =>
 /** The routes over one repository held in memory, asked through the app's own
  *  `request`, and the files it holds (plan §12.2). */
 const portal = (files: Readonly<Record<string, string>> = {}) => {
-  const held = new InMemoryFileReaders(files);
-  const vcs = new InMemoryVCS();
+  const fileReaders = new InMemoryFileReaders(files);
+  const sourceFetcher = new InMemorySources();
   const portalRoutes = api(
-    new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
-    new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser()),
-    new TestAuthoring(repoPath, held, new InMemoryFileOutput(held)),
+    new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
+    new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser()),
+    new TestAuthoring(repoPath, fileReaders, new InMemoryFileOutput(fileReaders)),
   );
-  return { portalRoutes, fileAt: (path: string) => held.readIfThere(new URL(path, repoPath)), held };
+  return { portalRoutes, fileAt: (path: string) => fileReaders.readIfThere(new URL(path, repoPath)), fileReaders };
 };
 
 /** A write, sent the way the page sends one. */
@@ -99,10 +99,10 @@ test("a primitive is opened with an ETag, and saved with it as If-Match (FR-075)
 });
 
 test("a save over a file changed on disk, or with no If-Match, is 412 naming the file, and the file stays (FR-078)", async () => {
-  const { portalRoutes, fileAt, held } = portal({ [at(".cw/charter/guide/no-any/index.md")]: guide("no-any") });
+  const { portalRoutes, fileAt, fileReaders } = portal({ [at(".cw/charter/guide/no-any/index.md")]: guide("no-any") });
   const entityTag = (await portalRoutes.request("/charter/root/primitives/no-any")).headers.get("ETag") ?? "";
   const changedOnDisk = guide("no-any").replace("About no-any.", "Changed elsewhere.");
-  held.write(new URL(at(".cw/charter/guide/no-any/index.md")), changedOnDisk);
+  fileReaders.write(new URL(at(".cw/charter/guide/no-any/index.md")), changedOnDisk);
 
   for (const ifMatch of [{ "If-Match": entityTag }, {}]) {
     const refused = await portalRoutes.request(

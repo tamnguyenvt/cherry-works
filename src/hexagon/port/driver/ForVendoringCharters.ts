@@ -26,8 +26,9 @@ export interface ForVendoringCharters {
    * Installing one that is already there brings it up to date instead, so a
    * repository has one way of saying what it wants rather than two (FR-030).
    *
-   * Refused outside version control. What it installs is left unstaged for the
-   * user to read and commit, whatever else is in hand (CORE-FR-190).
+   * The folder need not be a repository; a machine without git is refused
+   * (CORE-FR-205). What it installs is left unstaged for the user to read and
+   * commit, whatever else is in hand (CORE-FR-190).
    *
    * What is taken is read off the source's shape where neither `skillIds` nor
    * `charterNames` is given: its one charter, else every charter under its
@@ -53,8 +54,9 @@ export interface ForVendoringCharters {
    * Named by the folder rather than by the address it came from: the folder is
    * what a reader of this repository sees, and what the charter is read out of.
    *
-   * Refused for the reasons installing is: outside version control, and while
-   * there is work in hand, since what leaves does so as a commit.
+   * Its folder is left gone in the working tree for the user to commit, whatever
+   * else is in hand, in a repository or out of one. A name no vendor folder
+   * answers to is refused, changing nothing (CORE-FR-204).
    */
   remove(name: string): Promise<string>;
 

@@ -5,7 +5,7 @@ import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
 import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
@@ -34,12 +34,12 @@ const PORT = 47420;
 export async function inTheBrowser(
   held: Record<string, string>,
   read: (page: Page, files: InMemoryFileReaders) => Promise<void>,
-  vcs: InMemoryVCS = new InMemoryVCS(),
+  sourceFetcher: InMemorySources = new InMemorySources(),
 ): Promise<void> {
   const files = new InMemoryFileReaders(held);
   const repoPath = new URL("file:///repo/");
   const engine = new CharterAuthoring(repoPath, files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const charterVendoringApp = new CharterVendoring(repoPath, files, vcs, new InMemoryFileOutput(files), new YamlParser());
+  const charterVendoringApp = new CharterVendoring(repoPath, files, sourceFetcher, new InMemoryFileOutput(files), new YamlParser());
   const testAuthoringApp = new TestAuthoring(repoPath, files, new InMemoryFileOutput(files));
   const { address, server } = await startPortal(
     new URL("../dist/portal/", import.meta.url),

@@ -2,9 +2,9 @@
 
 **Created**: 2026-08-30
 
-**Updated**: 2026-11-02
+**Updated**: 2026-11-03
 
-**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types; let its author say so in its headers." Then: "Let the hooks go through a `cw` command rather than the raw command compiled from the charter: `cw sensor run <signal>` gathers every sensor of that signal and runs them." Then: "`cw vendor add mattpocock/skills --skill=grill-me`: a source holding a charter is installed as a charter; otherwise its `SKILL.md` are looked up, each taken as `npx skills add mattpocock/skills --skill=grill-me` takes it and converted into a skill of the charter; with no `--skill`, every skill the source holds." Then: "`cw vendor inject`, beside `cw vendor add`, writes what it takes straight into the repository's own charter rather than a vendor folder. A source may gather many charters: under `charters/`, one folder each, picked with `--charter=`; under `skills/`, skills, picked with `--skill=`." Then: "Git is only how a vendor source is fetched: drop it from setup and the portal, judge a vendor's drift from a content hash kept when it is installed, and carry binary assets whole, so the engine can be published for tools with no git and no disk."
+**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — the substance that governs a coding agent, before any UI exists. Two deliverables: a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm, so a user can install it from npm." Then: "The catalogue must not send an agent into the charter: build every primitive into the output folder and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository — in GitHub, Notion, Slack — reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: a skill cannot run a script or fill a template, since it is one file. Add two kinds, `template` and `script`, authored as markdown with headers; a build writes only the body, under the extension a header names, and every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix from what Claude is given, so a skill is invoked as `/<id>` rather than `/skill-<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types; let its author say so in its headers." Then: "Let the hooks go through a `cw` command rather than the raw command compiled from the charter: `cw sensor run <signal>` gathers every sensor of that signal and runs them." Then: "`cw vendor add mattpocock/skills --skill=grill-me`: a source holding a charter is installed as a charter; otherwise its `SKILL.md` are looked up, each taken as `npx skills add mattpocock/skills --skill=grill-me` takes it and converted into a skill of the charter; with no `--skill`, every skill the source holds." Then: "`cw vendor inject`, beside `cw vendor add`, writes what it takes straight into the repository's own charter rather than a vendor folder. A source may gather many charters: under `charters/`, one folder each, picked with `--charter=`; under `skills/`, skills, picked with `--skill=`." Then: "Git is only how a vendor source is fetched: drop it from setup and the portal, judge a vendor's drift from a content hash kept when it is installed, and carry binary assets whole, so the engine can be published for tools with no git and no disk." Then: "Xoá luôn thư mục nếu thư mục rỗng." Then: "Phải dùng chính git config của repo."
 
 ## Overview
 
@@ -123,9 +123,14 @@ A single charter covering design, planning and implementation at once has to be 
 - Q: Why does a repository need git at all? → A: Only a vendor source and an evaluation do. Setup and the portal asked for it to keep a charter out of an untracked folder, and used nothing of it afterwards, so neither asks any more; what git gave a governed repository stays recommended and is no longer enforced ([CORE-FR-054](#core-fr-054), [CORE-FR-107](#core-fr-107), [ADR-003](ADR.md#adr-003-git-fetches-sources-it-is-not-the-engines-baseline)).
 - Q: Is an edit to a vendored file told? → A: No. Neither the health check nor anything else asks, by git or by a record: a hash record brought more trouble than the edit it would catch, so nothing is recorded beside a vendor ([CORE-FR-046](#core-fr-046), [CORE-FR-053](#core-fr-053), [CORE-FR-080](#core-fr-080), [CORE-FR-081](#core-fr-081)).
 - Q: Does removing a vendor still commit, and refuse work in hand? → A: Neither: it leaves its folder gone in the working tree for the developer to commit, as installing does ([CORE-FR-204](#core-fr-204)).
+- Q: Does a folder left empty by removing a vendor stay? → A: No: an owner's folder left empty goes with it, and the vendor directory too, never past it ([CORE-FR-204](#core-fr-204)).
 - Q: Must the folder a source is installed into be a repository? → A: No. Git on the machine reaches the source; the folder needs nothing ([CORE-FR-205](#core-fr-205)).
 - Q: Is a run with no case refused outside git too? → A: No: with no case there is nothing to run in a worktree, so it answers that there is none, as in a repository ([CORE-FR-206](#core-fr-206)).
 - Q: How does an evaluation stand? → A: As it was: a case runs in a worktree of the last commit, so evaluating still needs git, and asks it through a question of its own, apart from fetching ([CORE-FR-206](#core-fr-206)).
+
+### Session 2026-11-03
+
+- Q: Are a repository's own version control settings used to reach a source? → A: Yes, wherever the folder is in a repository ([CORE-FR-205](#core-fr-205)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -870,7 +875,7 @@ A developer tries a charter in a plain folder, and a tool keeps one where no git
 
 ### CORE Story 37 - Install and remove a vendor source in any folder (Priority: P3)
 
-**Status**: Todo
+**Status**: Done
 
 Removing a vendor used to make a commit and to refuse while anything was in hand, and installing one refused a folder with no repository, though both could do without. After this, the three ways a source moves — installing, injecting and removing — work the same: each leaves its result in the working tree for the developer to read and commit, whatever else is in hand, in a repository or out of one. Git on the machine is what reaches a source, and nothing else.
 
@@ -884,6 +889,8 @@ Removing a vendor used to make a commit and to refuse while anything was in hand
 2. **Given** an installed source and work in hand, **When** it is removed, **Then** its folder is gone, nothing is committed, and the work in hand is as it was ([CORE-FR-204](#core-fr-204)).
 3. **Given** a name no vendor folder answers to, **When** it is removed, **Then** it is refused and nothing changes ([CORE-FR-204](#core-fr-204)).
 4. **Given** a machine with no git, **When** a source is installed, **Then** nothing is installed and it says git is what reaches a source ([CORE-FR-205](#core-fr-205)).
+5. **Given** a source holding a link, or a file named to climb out of its folder, **When** it is installed or injected, **Then** nothing is written outside where it lands ([CORE-FR-044](#core-fr-044), [CORE-FR-198](#core-fr-198)).
+6. **Given** a repository whose own version control settings say how a source is reached, **When** that source is installed, **Then** it is reached under them ([CORE-FR-205](#core-fr-205)).
 
 ---
 
@@ -1307,8 +1314,8 @@ Five stories have changed what the engine asks of version control, what its port
 
 **Standing without git**
 
-- <a id="core-fr-204"></a>**CORE-FR-204**: Removing a vendor source MUST delete its folder, and nothing else, leaving that in the working tree uncommitted, whatever other work is in hand. A name no vendor folder answers to MUST be refused, changing nothing.
-- <a id="core-fr-205"></a>**CORE-FR-205**: Installing and injecting a source MUST NOT need the folder installed into to be a repository. A machine without git MUST be told so, and nothing is installed.
+- <a id="core-fr-204"></a>**CORE-FR-204**: Removing a vendor source MUST delete its folder, and each folder above it that leaves empty up to and including the vendor directory, and nothing else, leaving that in the working tree uncommitted, whatever other work is in hand. A name no vendor folder answers to MUST be refused, changing nothing.
+- <a id="core-fr-205"></a>**CORE-FR-205**: Installing and injecting a source MUST NOT need the folder installed into to be a repository. A machine without git MUST be told so, and nothing is installed. Where the folder is in a repository, a source MUST be reached under that repository's own version control settings.
 - <a id="core-fr-206"></a>**CORE-FR-206**: Evaluating MUST still run on worktrees ([EVAL-FR-021](spec-eval.md#eval-fr-021)), and is the one use case needing a git repository; outside one, a run with a case to evaluate MUST be refused in git's words, and a run with no case answers that there is none, as in a repository. What it asks of version control MUST be apart from what fetching a source asks, so neither use case holds the other's questions.
 
 **Binary assets**

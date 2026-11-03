@@ -307,7 +307,11 @@
       "title": "Install and remove a vendor source in any folder",
       "dependsOn": [
         "CORE Story 8"
-      ]
+      ],
+      "evidence": {
+        "summary": "pnpm test: 753 pass, 0 fail, with commit signing off as this machine's signing agent refuses commits; typecheck and lint:deps clean; cw vendor add and remove run in a folder with no git",
+        "date": "2026-11-03"
+      }
     },
     {
       "id": "CORE Story 38",

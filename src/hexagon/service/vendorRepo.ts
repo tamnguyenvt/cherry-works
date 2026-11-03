@@ -1,4 +1,4 @@
-import { DomainFault, VendorFault } from "../domain/models/DomainFault.js";
+import { VendorFault } from "../domain/models/DomainFault.js";
 import { KINDS } from "../domain/models/charter/primitive/Primitive.js";
 import { SkillPrimitive } from "../domain/models/charter/primitive/SkillPrimitive.js";
 import { CHARTERS_FOLDER, charterVendorPrimitiveOf, SKILL_FILE, SKILLS_FOLDER, skillFilesOf, skillVendorPrimitiveOf, type VendorPrimitive } from "../domain/models/vendor/VendorPrimitive.js";
@@ -6,7 +6,7 @@ import { installedVendorFolderOf, vendorSourceOf } from "../domain/models/vendor
 import { CHARTER_DIRECTORY, VENDOR_DIRECTORY, vendorFolderIn } from "../domain/path.js";
 import type { ForParsingYaml } from "../port/zdriven/ForParsingYaml.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
-import type { ForVCS } from "../port/zdriven/ForVCS.js";
+import type { ForFetchingSources } from "../port/zdriven/ForFetchingSources.js";
 import type { ForWritingFiles } from "../port/zdriven/ForWritingFiles.js";
 
 /** One folder a vendor was installed as, and its name under the vendor
@@ -88,30 +88,6 @@ export async function loadVendorNames(repo: URL, fileReaders: ForReadingFiles): 
 }
 
 /**
- * The questions asked before installing or removing touches anything.
- *
- * Both need a repository, since a vendor is fetched by it and lives in it.
- * Only removing commits, so only removing asks for nothing in hand, saying
- * `because`: a commit made while somebody's work is in the index would carry
- * that work along with it, and whoever is holding it is the one who decides
- * what to do with it. Installing leaves what it fetched in the working tree,
- * beside whatever is there.
- */
-export async function ensureVCSReady(repo: URL, vcs: ForVCS, because?: string): Promise<void> {
-  if (!(await vcs.isInstalled(repo)))
-    throw new DomainFault(
-      "This folder is not inside a git repository, and a vendor lives in one.",
-      'Run "git init" here, or run this again where your repository is.',
-    );
-
-  if (because !== undefined && !(await vcs.isClean(repo)))
-    throw new DomainFault(
-      `This repository has work in hand, and ${because}.`,
-      "Commit or stash what you are holding, then run this again.",
-    );
-}
-
-/**
  * What one source holds at one commit fetched, as the vendor folders it fills,
  * every refusal raised before anything is installed.
  *
@@ -143,7 +119,7 @@ export async function ensureVCSReady(repo: URL, vcs: ForVCS, because?: string): 
 export async function loadFetchedVendors(
   repo: URL,
   fileReaders: ForReadingFiles,
-  vcs: ForVCS,
+  sourceFetcher: ForFetchingSources,
   yamlParser: ForParsingYaml,
   source: string,
   fetchedCommit: string,
@@ -152,7 +128,7 @@ export async function loadFetchedVendors(
 ): Promise<readonly FetchedVendor[]> {
   const vendorName = vendorSourceOf(source).name;
   const folder = `${VENDOR_DIRECTORY}/${vendorName}`;
-  const sourcePaths = await vcs.listFilesAt(repo, fetchedCommit);
+  const sourcePaths = await sourceFetcher.listFilesAt(fetchedCommit);
 
   const folderUrl = new URL(`${folder}/`, repo);
   const installedFolderNames = (await fileReaders.listFolders(folderUrl)).map((installedFolder) => decodeURIComponent(installedFolder.href.split("/").at(-2) ?? ""));
@@ -195,7 +171,7 @@ export async function loadFetchedVendors(
     const charterIndexPaths = sourcePaths.filter((sourcePath) => sourcePath.startsWith(`${charterFolder}/`) && sourcePath.endsWith(`/${SkillPrimitive.index}`));
     const primitiveIndexPaths = charterIndexPaths.filter((indexPath) => !charterIndexPaths.some((otherPath) => otherPath !== indexPath && indexPath.startsWith(otherPath.slice(0, -SkillPrimitive.index.length))));
     const vendorPrimitives = await Promise.all(
-      primitiveIndexPaths.map(async (indexPath) => charterVendorPrimitiveOf(await vcs.readFileAt(repo, fetchedCommit, indexPath), indexPath, charterFolder, yamlParser)),
+      primitiveIndexPaths.map(async (indexPath) => charterVendorPrimitiveOf(await sourceFetcher.readFileAt(fetchedCommit, indexPath), indexPath, charterFolder, yamlParser)),
     );
     return { folder: charterVendorFolder, sourceCharterFolder: charterFolder, vendorPrimitives };
   };
@@ -225,7 +201,7 @@ export async function loadFetchedVendors(
   if (!isTakingSkills) return fetchedCharters;
 
   const vendorPrimitives = await Promise.all(
-    skillFiles.map(async (skillFile) => skillVendorPrimitiveOf(await vcs.readFileAt(repo, fetchedCommit, skillFile), skillFile, yamlParser)),
+    skillFiles.map(async (skillFile) => skillVendorPrimitiveOf(await sourceFetcher.readFileAt(fetchedCommit, skillFile), skillFile, yamlParser)),
   );
   const sharedIdPrimitives = vendorPrimitives.filter((vendorPrimitive) => vendorPrimitives.some((otherPrimitive) => otherPrimitive !== vendorPrimitive && otherPrimitive.id === vendorPrimitive.id));
   if (sharedIdPrimitives.length > 0)
@@ -261,43 +237,56 @@ export async function addVendor(
   repo: URL,
   fileReaders: ForReadingFiles,
   fileWriter: ForWritingFiles,
-  vcs: ForVCS,
+  sourceFetcher: ForFetchingSources,
   yamlParser: ForParsingYaml,
   source: string,
   version?: string,
   skillIds: readonly string[] = [],
   charterNames: readonly string[] = [],
 ): Promise<readonly VendorInstall[]> {
-  await ensureVCSReady(repo, vcs);
   vendorSourceOf(source);
-  const fetchedCommit = await vcs.fetchCommit(source, repo, version);
-  const fetchedVendors = await loadFetchedVendors(repo, fileReaders, vcs, yamlParser, source, fetchedCommit, skillIds, charterNames);
-  const sourcePaths = await vcs.listFilesAt(repo, fetchedCommit);
+  const fetchedCommit = await sourceFetcher.fetchCommit(source, repo, version);
+  try {
+    const fetchedVendors = await loadFetchedVendors(repo, fileReaders, sourceFetcher, yamlParser, source, fetchedCommit, skillIds, charterNames);
+    const sourcePaths = await sourceFetcher.listFilesAt(fetchedCommit);
 
-  for (const { folder, sourceCharterFolder, vendorPrimitives } of fetchedVendors) {
-    if (sourceCharterFolder !== undefined) {
-      await vcs.checkoutFolderAt(repo, fetchedCommit, sourceCharterFolder, folder);
-      const readmePath = `${sourceCharterFolder.slice(0, -CHARTER_DIRECTORY.length)}${VENDOR_README}`;
-      if (sourcePaths.includes(readmePath)) await fileWriter.write(new URL(`${folder}/${VENDOR_README}`, repo), await vcs.readFileAt(repo, fetchedCommit, readmePath));
-      continue;
+    for (const { folder, sourceCharterFolder, vendorPrimitives } of fetchedVendors) {
+      if (sourceCharterFolder !== undefined) {
+        await sourceFetcher.checkoutFolderAt(repo, fetchedCommit, sourceCharterFolder, folder);
+        const readmePath = `${sourceCharterFolder.slice(0, -CHARTER_DIRECTORY.length)}${VENDOR_README}`;
+        if (sourcePaths.includes(readmePath)) {
+          // Deleted first: a write follows a link, and a source may have put one here (CORE-FR-044).
+          await fileWriter.delete(new URL(`${folder}/${VENDOR_README}`, repo));
+          await fileWriter.write(new URL(`${folder}/${VENDOR_README}`, repo), await sourceFetcher.readFileAt(fetchedCommit, readmePath));
+        }
+        continue;
+      }
+      for (const { id, sourceFolder, convertedSkill } of vendorPrimitives) {
+        const skillFolder = `${folder}/${SkillPrimitive.kind}/${id}`;
+        await sourceFetcher.checkoutFolderAt(repo, fetchedCommit, sourceFolder, skillFolder);
+        await fileWriter.delete(new URL(`${skillFolder}/${SkillPrimitive.index}`, repo));
+        await fileWriter.write(new URL(`${skillFolder}/${SkillPrimitive.index}`, repo), convertedSkill!.toMarkdown());
+        await fileWriter.delete(new URL(`${skillFolder}/${SKILL_FILE}`, repo));
+      }
     }
-    for (const { id, sourceFolder, convertedSkill } of vendorPrimitives) {
-      const skillFolder = `${folder}/${SkillPrimitive.kind}/${id}`;
-      await vcs.checkoutFolderAt(repo, fetchedCommit, sourceFolder, skillFolder);
-      await fileWriter.write(new URL(`${skillFolder}/${SkillPrimitive.index}`, repo), convertedSkill!.toMarkdown());
-      await fileWriter.delete(new URL(`${skillFolder}/${SKILL_FILE}`, repo));
-    }
+    return fetchedVendors.map(({ folder, vendorPrimitives }) => ({ folder, vendorPrimitives }));
+  } finally {
+    await sourceFetcher.forgetCommit(fetchedCommit);
   }
-  return fetchedVendors.map(({ folder, vendorPrimitives }) => ({ folder, vendorPrimitives }));
 }
 
-/** Take the folder one vendor was installed as away, as a commit version
- *  control makes; and answer that folder (FR-047). The folder is named as it is
- *  listed: owner and repository, or the one folder an earlier version named it
- *  by (FR-180). */
-export async function removeVendor(repo: URL, vcs: ForVCS, name: string): Promise<string> {
-  await ensureVCSReady(repo, vcs, "removing a vendor commits that it is gone");
-  const folder = `${VENDOR_DIRECTORY}/${installedVendorFolderOf(name)}`;
-  await vcs.removeSubFolder(repo, folder);
-  return folder;
+/** Take the folder one vendor was installed as away, and each folder above it
+ *  that leaves empty, up to the vendor folder itself and never past it, leaving
+ *  that in the working tree to commit, whatever else is in hand; and answer that
+ *  folder (FR-047, CORE-FR-204). The folder is named as it is listed: owner and
+ *  repository, or the one folder an earlier version named it by (FR-180). A name
+ *  not listed is refused, changing nothing. */
+export async function removeVendor(repo: URL, fileReaders: ForReadingFiles, fileWriter: ForWritingFiles, name: string): Promise<string> {
+  const vendorName = installedVendorFolderOf(name);
+  const vendorFolder = (await loadVendorFolders(repo, fileReaders)).find((installedFolder) => installedFolder.vendorName === vendorName);
+  if (vendorFolder === undefined) throw new VendorFault(`No vendor folder is named "${name}".`, "Name the folder as cw vendor list names it under .cw/vendor/.");
+  await fileWriter.deleteFolder(vendorFolder.folder);
+  const vendorRootFolder = vendorFolderIn(repo);
+  for (let parentFolder = new URL("..", vendorFolder.folder); parentFolder.href.startsWith(vendorRootFolder.href); parentFolder = new URL("..", parentFolder)) await fileWriter.deleteEmptyFolder(parentFolder);
+  return `${VENDOR_DIRECTORY}/${vendorName}`;
 }

@@ -13,7 +13,7 @@ import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
 import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
@@ -66,15 +66,15 @@ const holding = (settings: object = { agents: ["claude"] }) => ({
 /** The command line and the routes over one repository held in memory, the
  *  agent's command line installed or not. */
 const surfaces = (files: Readonly<Record<string, string>>, agentCli = new InMemoryAgentCli()) => {
-  const held = new InMemoryFileReaders(files);
-  const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), {
+  const fileReaders = new InMemoryFileReaders(files);
+  const sourceFetcher = new InMemorySources();
+  const charterAuthoringApp = new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), {
     claude: agentCli,
   });
-  const charterVendoringApp = new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser());
-  const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
+  const charterVendoringApp = new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser());
+  const testAuthoringApp = new TestAuthoring(repoPath, fileReaders, new InMemoryFileOutput(fileReaders));
   const cli = new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);
-  return { portalRoutes: api(charterAuthoringApp, charterVendoringApp, testAuthoringApp), held, cli };
+  return { portalRoutes: api(charterAuthoringApp, charterVendoringApp, testAuthoringApp), fileReaders, cli };
 };
 
 /** What one command printed to each stream, and its exit status. */
@@ -256,13 +256,13 @@ test("the portal is given the same list and total the command prints, and the wh
 });
 
 test("setup keeps the ceiling it is given, and the one already set when given none (EVAL-FR-006)", async () => {
-  const { cli, held } = surfaces(holding());
+  const { cli, fileReaders } = surfaces(holding());
 
   assert.equal((await printed(cli, ["init", "--agent", "claude", "--mainContextCeiling", "5000"])).code, EXIT_OK);
-  assert.deepEqual(JSON.parse((await held.readIfThere(new URL(".cw/settings.json", repoPath)))!), { agents: ["claude"], mainContextCeiling: 5000 });
+  assert.deepEqual(JSON.parse((await fileReaders.readIfThere(new URL(".cw/settings.json", repoPath)))!), { agents: ["claude"], mainContextCeiling: 5000 });
 
   assert.equal((await printed(cli, ["init", "--agent", "claude"])).code, EXIT_OK);
-  assert.deepEqual(JSON.parse((await held.readIfThere(new URL(".cw/settings.json", repoPath)))!), { agents: ["claude"], mainContextCeiling: 5000 });
+  assert.deepEqual(JSON.parse((await fileReaders.readIfThere(new URL(".cw/settings.json", repoPath)))!), { agents: ["claude"], mainContextCeiling: 5000 });
 });
 
 test("a repository compiling for no agent is told nothing is loaded", async () => {

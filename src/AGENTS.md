@@ -21,14 +21,14 @@ here and extend what is already there.
 - `hexagon/` decides. It imports nothing outside itself but lodash, picomatch
   and zod: no `node:*`, no adapter.
 - `zdriven/` is called out to: one adapter per driven port, plus an `InMemory*`
-  twin used by tests (`FileOutput`/`InMemoryFileOutput`, `Git`/`InMemoryVCS`…).
+  twin used by tests (`FileOutput`/`InMemoryFileOutput`, `GitSources`/`InMemorySources`…).
 
 ## Inside `hexagon/`
 
 - `port/driver/` — use-case interfaces (`ForManagingCharter`, `ForReviewingSessions`…) and the DTOs
   crossing them (`dtos/data.ts`, `dtos/outcome.ts`).
 - `port/zdriven/` — driven ports (`ForReadingFiles`, `ForWritingFiles`,
-  `ForVCS`, `ForKeepingWorktrees`, `ForCountingTokens`, `ForRunningAgentCli`, `ForRunningPromptfoo`, `ForTellingTime`…), named in the adapter's own words, never the domain's.
+  `ForFetchingSources`, `ForKeepingWorktrees`, `ForCountingTokens`, `ForRunningAgentCli`, `ForRunningPromptfoo`, `ForTellingTime`…), named in the adapter's own words, never the domain's.
 - `application/` — use cases implementing the driver ports: `CharterAuthoring`,
   `CharterVendoring`, `TestAuthoring`, `McpConnecting`, `SessionReviewing`,
   `CharterEvaluating`; `dtos.ts` turns domain

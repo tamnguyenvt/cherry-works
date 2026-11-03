@@ -8,7 +8,7 @@ import { KINDS } from "../src/hexagon/domain/models/charter/primitive/Primitive.
 import { AGENT_PROVIDERS } from "../src/hexagon/domain/models/AgentProvider.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
@@ -23,7 +23,7 @@ const repo = "/repo";
 
 /** What installing a vendor is driven through: a context always carries every
  *  use case, and nothing here asks this one for anything. */
-const charterVendoringApp = new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), new InMemoryVCS(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
+const charterVendoringApp = new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), new InMemorySources(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
 
 /** What the test files are driven through, over an empty repository: nothing
  *  here asks it for anything. */
@@ -39,7 +39,6 @@ const repoPath = new URL("file:///repo/");
 const setUp = async (
   files: Readonly<Record<string, string>> = {},
   argv: readonly string[] = ["init"],
-  versioned = true,
 ) => {
   const held = new InMemoryFileReaders(files);
   const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, undefined, undefined, undefined, new TomlParser());
@@ -208,12 +207,9 @@ test("the repository's own ignore file is left alone: what a vendor installed is
 });
 
 test("a folder under no repository is set up and built as a git repository is (CORE-FR-054)", async () => {
-  const argv = ["init", "--agent", "claude"];
-  const gitSetupOutcome = await setUp({}, argv, true);
-  const plainSetupOutcome = await setUp({}, argv, false);
+  const plainSetupOutcome = await setUp({}, ["init", "--agent", "claude"]);
 
   assert.equal(plainSetupOutcome.code, 0);
   assert.equal(plainSetupOutcome.problems, "");
   assert.notEqual(await held(plainSetupOutcome.held, ".cw/settings.json"), undefined);
-  assert.deepEqual(await plainSetupOutcome.held.readFilesRecursively(repoPath), await gitSetupOutcome.held.readFilesRecursively(repoPath));
 });

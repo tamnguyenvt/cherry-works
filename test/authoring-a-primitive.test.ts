@@ -15,7 +15,7 @@ import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { contentHashOf } from "../src/hexagon/domain/models/helper.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
@@ -49,7 +49,7 @@ const contextOver = (charterAuthoringApp: CharterAuthoring) => ({
   cwd: "/repo",
   version: "0.0.0",
   charterAuthoringApp,
-  charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemoryVCS(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser()),
+  charterVendoringApp: new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemorySources(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser()),
   testAuthoringApp: new TestAuthoring(repoPath, new InMemoryFileReaders({}), new InMemoryFileOutput(new InMemoryFileReaders({}))),
   mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,
 });

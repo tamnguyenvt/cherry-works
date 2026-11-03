@@ -373,7 +373,7 @@ export function api(
         },
         responses: {
           204: { description: "The source is installed — a charter whole, or every skill of a skills repository — left unstaged" },
-          422: json(DataDTOs.Fault, "No repository, a source holding neither a charter nor a skill, or what git refused"),
+          422: json(DataDTOs.Fault, "No git on the machine, a source holding neither a charter nor a skill, or what git refused"),
         },
       }),
       async (c) => {
@@ -388,8 +388,8 @@ export function api(
         path: "/vendors/{name}",
         request: { params: z.object({ name: z.string() }) },
         responses: {
-          204: { description: "The folder is gone, and that it is gone is committed" },
-          422: json(DataDTOs.Fault, "No repository, work in hand, or what git refused"),
+          204: { description: "The folder is gone, left uncommitted in the working tree" },
+          422: json(DataDTOs.Fault, "A name no vendor folder answers to, or a folder that cannot be taken away"),
         },
       }),
       async (c) => {

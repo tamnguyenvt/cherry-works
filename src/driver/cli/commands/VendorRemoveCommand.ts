@@ -13,9 +13,9 @@ const OPTIONS = {
  * Named by the folder rather than by the address it came from: the folder is
  * what a reader of this repository sees, and what the charter is read out of.
  *
- * What was installed as a commit leaves as one, so this repository's history
- * says when it arrived and when it went. A folder this repository has not got
- * is refused in git's own words.
+ * What leaves is left gone in the working tree for the developer to read and
+ * commit, as what is installed is left there. A name no vendor folder answers
+ * to is refused (CORE-FR-204).
  */
 export class VendorRemoveCommand implements Command<typeof OPTIONS> {
   readonly name = "vendor remove <name>";

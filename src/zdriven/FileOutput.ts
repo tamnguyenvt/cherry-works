@@ -1,5 +1,5 @@
-import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
-import type { ForWritingFiles } from "#hexagon/port/zdriven/ForWritingFiles.js";
+import { chmod, mkdir, rm, rmdir, writeFile } from "node:fs/promises";
+import { AdapterFault, type ForWritingFiles } from "#hexagon/port/zdriven/ForWritingFiles.js";
 
 /** DRIVEN ADAPTER: the filesystem, written to. What the charter compiles to,
  *  put where a host will look for it.
@@ -18,5 +18,18 @@ export class FileOutput implements ForWritingFiles {
 
   async delete(file: URL): Promise<void> {
     await rm(file, { force: true });
+  }
+
+  async deleteFolder(folder: URL): Promise<void> {
+    await rm(folder, { recursive: true, force: true }).catch((rmError: unknown) => {
+      throw new AdapterFault(`${rmError}`, `Check that "${folder.pathname}" can be written, and run this again.`);
+    });
+  }
+
+  async deleteEmptyFolder(folder: URL): Promise<void> {
+    await rmdir(folder).catch((rmdirError: NodeJS.ErrnoException) => {
+      if (rmdirError.code !== "ENOTEMPTY" && rmdirError.code !== "EEXIST" && rmdirError.code !== "ENOENT")
+        throw new AdapterFault(`${rmdirError}`, `Check that "${folder.pathname}" can be written, and run this again.`);
+    });
   }
 }

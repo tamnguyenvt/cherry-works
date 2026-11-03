@@ -8,7 +8,7 @@ import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
 import { noSessionsKept } from "./no-sessions.js";
@@ -23,12 +23,12 @@ const repoPath = new URL("file:///repo/");
  *  command and the real service behind it, with both streams held so what the
  *  user reads can be read back. Only ever run where it is refused, since a
  *  portal that starts stays open. */
-const portal = async (files: Readonly<Record<string, string>>, versioned: boolean) => {
-  const held = new InMemoryFileReaders(files);
-  const vcs = new InMemoryVCS(versioned);
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const charterVendoringApp = new CharterVendoring(repoPath, held, vcs, new InMemoryFileOutput(held), new YamlParser());
-  const testAuthoringApp = new TestAuthoring(repoPath, held, new InMemoryFileOutput(held));
+const portal = async (files: Readonly<Record<string, string>>) => {
+  const fileReaders = new InMemoryFileReaders(files);
+  const sourceFetcher = new InMemorySources();
+  const charterAuthoringApp = new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterVendoringApp = new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser());
+  const testAuthoringApp = new TestAuthoring(repoPath, fileReaders, new InMemoryFileOutput(fileReaders));
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };
@@ -53,7 +53,7 @@ test("a folder set up with no version control is ready to serve (CORE-FR-107)", 
 });
 
 test("a folder with no version control never set up is refused, naming cw init and not git (CORE-FR-107)", async () => {
-  const { code, results, problems } = await portal({}, false);
+  const { code, results, problems } = await portal({});
 
   assert.equal(code, EXIT_FAILURE);
   assert.equal(results, "");
@@ -62,11 +62,4 @@ test("a folder with no version control never set up is refused, naming cw init a
   assert.doesNotMatch(problems, /git/);
 });
 
-test("a repository never set up is refused before anything is served, naming cw init (FR-004)", async () => {
-  const { code, results, problems } = await portal({}, true);
 
-  assert.equal(code, EXIT_FAILURE);
-  assert.equal(results, "");
-  assert.match(problems, /never set up/);
-  assert.match(problems, /cw init/);
-});

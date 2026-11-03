@@ -7,7 +7,7 @@ import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js
 import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
 import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
 import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryVCS } from "../src/zdriven/InMemoryVCS.js";
+import { InMemorySources } from "../src/zdriven/InMemorySources.js";
 import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
 import { YamlParser } from "../src/zdriven/YamlParser.js";
 import { noMcpOriginsReached } from "./no-mcp-origins.js";
@@ -62,16 +62,16 @@ const writing = async (work: () => Promise<number>) => {
 };
 
 const commandLine = (files: Readonly<Record<string, string>>) => {
-  const held = new InMemoryFileReaders(files);
-  const vcs = new InMemoryVCS();
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const fileReaders = new InMemoryFileReaders(files);
+  const sourceFetcher = new InMemorySources();
+  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
   const cli = new Commander(
     {
       cwd: repo,
       version: "0.0.0",
       charterAuthoringApp,
-      charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), held, vcs, new InMemoryFileOutput(held), new YamlParser()),
-      testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), held, new InMemoryFileOutput(held)),
+      charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser()),
+      testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), fileReaders, new InMemoryFileOutput(fileReaders)),
       mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,
     },
     COMMANDS,
