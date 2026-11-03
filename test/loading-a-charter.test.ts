@@ -61,10 +61,10 @@ test("the charter is read once, and one more read per vendor installed", async (
   // repository configured itself with are read from their own file, not from
   // the charter (FR-037).
   assert.deepEqual(files.calls, [
-    `files under ${root.href}`,
+    `bytes under ${root.href}`,
     `folders under ${vendorRoot.href}`,
     `folders under ${new URL("team/", vendorRoot).href}`,
-    `files under ${new URL("team/", vendorRoot).href}`,
+    `bytes under ${new URL("team/", vendorRoot).href}`,
   ]);
 });
 
@@ -131,7 +131,7 @@ test("what the engine brings is no folder: it adds no read, and is read without 
   assert.deepEqual(ids(BUILTIN_LAYER, charter), ["cw-author", "cw-session-cost", "cw-session-tokens-counter", "cw-session-tokens-counter-on-stop"]);
   assert.equal(charter.primitiveById.get("cw-author")?.file, "(built into cw)/skill/cw-author/index.md");
   assert.deepEqual(charter.faultsByFiles.files, {});
-  assert.deepEqual(files.calls, [`files under ${root.href}`, `folders under ${vendorRoot.href}`]);
+  assert.deepEqual(files.calls, [`bytes under ${root.href}`, `folders under ${vendorRoot.href}`]);
 });
 
 /** One primitive the engine brings, named the way `loadCharterRoot` names it. */

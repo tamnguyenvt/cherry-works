@@ -5,10 +5,11 @@ import { contentHashOf, formatFrontmatterValue } from "../../helper.js";
 import { REPO_PRIMITIVE_LAYER, type PrimitiveLayer, type LayerName } from "../PrimitiveLayer.js";
 
 /** One file of a primitive's folder beside its `index.md`: the path it has in
- *  that folder, and what it holds (FR-168). */
+ *  that folder, and the bytes it holds, never decoded, so it is copied whole
+ *  whatever it holds (FR-168, CORE-FR-207). */
 export interface AssetFile {
   readonly file: string;
-  readonly contents: string;
+  readonly contents: Uint8Array;
 }
 
 /** An id as FR-141 writes one: lowercase slugs joined by `/`. */

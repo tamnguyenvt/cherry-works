@@ -1,5 +1,5 @@
 import { OUT_DIRECTORY } from "../../../path.js";
-import type { Projection } from "../ProjectionPolicy.js";
+import type { BytesProjection, Projection } from "../ProjectionPolicy.js";
 import type { StampedDocument } from "../StampedDocument.js";
 
 /**
@@ -23,14 +23,14 @@ export class CompiledPrimitive {
     /** Its assets, put down beside its document: the path each has in its
      *  folder, what it holds, and whether it is run by its path — the one a
      *  script says to run (FR-160, FR-168). */
-    private readonly assets: readonly { readonly file: string; readonly contents: string; readonly executable: boolean }[] = [],
+    private readonly assets: readonly { readonly file: string; readonly contents: Uint8Array; readonly executable: boolean }[] = [],
   ) {}
 
   /** Every file it puts down, from the repository: its document first, then
    *  its assets beside it, the one a script runs marked executable (FR-140,
    *  FR-160, FR-168). Generated, and the charter's alone: each is written whole
    *  over whatever is there, and goes with the primitive it was compiled from. */
-  get projections(): readonly Projection[] {
+  get projections(): readonly [Projection, ...BytesProjection[]] {
     // Its folder in the output: its kind, then each segment of its id (FR-141).
     const outFolder = `${OUT_DIRECTORY}/${this.kind}/${this.id}`;
     return [

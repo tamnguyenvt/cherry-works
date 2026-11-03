@@ -4,7 +4,7 @@ import type { CharterMd } from "./common/CharterMd.js";
 import type { CompiledPrimitive } from "./common/CompiledPrimitive.js";
 import type { McpOrigins } from "./common/McpOrigin.js";
 import type { BuiltSensors } from "./common/BuiltSensor.js";
-import type { Projection } from "./ProjectionPolicy.js";
+import type { BytesProjection, Projection } from "./ProjectionPolicy.js";
 import type { ProviderComponent } from "./provider-component/ProviderComponent.js";
 /**
  * Everything one reading of a charter compiles to (FR-021), and every file it is
@@ -33,8 +33,8 @@ export class CharterOutput {
 
   /** Every file this output is put down as: what each of its parts says it is
    *  put down as, together (FR-020, FR-021). */
-  get projections(): readonly Projection[] {
-    return [this.catalogue, ...Object.values(this.agentBasedCatalogues), this.mcpOrigins, this.builtSensors, this.charterMd, ...this.compiledPrimitives, ...this.providerComponents].flatMap(
+  get projections(): readonly (Projection | BytesProjection)[] {
+    return [this.catalogue, ...Object.values(this.agentBasedCatalogues), this.mcpOrigins, this.builtSensors, this.charterMd, ...this.compiledPrimitives, ...this.providerComponents].flatMap<Projection | BytesProjection>(
       (outputPart) => outputPart.projections,
     );
   }

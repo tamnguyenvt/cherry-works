@@ -34,7 +34,7 @@ its tokens. The model is sent nothing of it.
 
 A transcript it cannot read is left alone: nothing is shown or kept, and the
 agent stops as it would have.`,
-      [{ file: "sessionTokensCounter.mjs", contents: sessionTokensCounterMjs }],
+      [{ file: "sessionTokensCounter.mjs", contents: new TextEncoder().encode(sessionTokensCounterMjs) }],
       BUILTIN_PRIMITIVE_LAYER,
     );
   }

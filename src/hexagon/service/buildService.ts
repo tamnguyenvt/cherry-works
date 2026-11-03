@@ -24,9 +24,10 @@ export interface PlannedFile {
   readonly file: URL;
   /** What the build would leave in it, or nothing where the plan is to take it
    *  away. */
-  readonly contents?: string | undefined;
-  /** What it holds now, or nothing where there is no such file yet. */
-  readonly held?: string | undefined;
+  readonly contents?: string | Uint8Array | undefined;
+  /** What it holds now, or nothing where there is no such file yet: its bytes
+   *  where it is a copy, which are what it is compared by (CORE-FR-207). */
+  readonly held?: string | Uint8Array | undefined;
   /** Run by its path once it is down: a built script (FR-160). */
   readonly executable?: boolean;
 }
@@ -100,33 +101,40 @@ export async function planForProjection(
   fileReaders: ForReadingFiles,
   tomlParser?: ForParsingToml,
 ): Promise<readonly PlannedFile[]> {
-  const planned = new Map<string, PlannedFile>();
+  const plannedFileByPath = new Map<string, PlannedFile>();
 
-  for (const one of output.projections) {
-    const file = new URL(one.file, repo);
-    const original = await fileReaders.readIfThere(file);
-    const currentContents = planned.get(one.file)?.contents ?? original;
+  for (const projection of output.projections) {
+    const file = new URL(projection.file, repo);
+    // A copy is put down as the bytes it holds and compared with the bytes there
+    // now, so a file no text says is still kept whole (CORE-FR-207).
+    if (projection.contents instanceof Uint8Array) {
+      plannedFileByPath.set(projection.file, { path: projection.file, file, contents: projection.contents, held: await fileReaders.readBytesIfThere(file), ...(projection.executable === true ? { executable: true } : {}) });
+      continue;
+    }
+    const heldContents = await fileReaders.readIfThere(file);
+    const plannedContents = plannedFileByPath.get(projection.file)?.contents;
+    const currentContents = typeof plannedContents === "string" ? plannedContents : heldContents;
 
     // One arm per way a file goes down, and the set is closed: a file the
     // charter owns is what the charter says, and the two the charter shares are
     // what is there now with this build's part of it written into it.
     let contents: string;
-    switch (one.projectionPolicy) {
+    switch (projection.projectionPolicy) {
       case "mergeTOML": {
         if (tomlParser === undefined)
           throw new DomainFault("A TOML projection needs a parser and serializer.", "Wire ForParsingToml into the build use case.");
         let currentSettings: Readonly<Record<string, unknown>>;
         try { currentSettings = tomlParser.parse(currentContents ?? ""); }
         catch (cause) {
-          throw new DomainFault(`"${one.file}" is not readable TOML: ${(cause as Error).message}`, "Correct that file before building; no files have been written.");
+          throw new DomainFault(`"${projection.file}" is not readable TOML: ${(cause as Error).message}`, "Correct that file before building; no files have been written.");
         }
-        const desiredSettings = tomlParser.parse(one.contents);
+        const desiredSettings = tomlParser.parse(projection.contents);
         const mergedSettings = mergeTomlTables(currentSettings, desiredSettings);
         contents = currentContents !== undefined && sameTomlValue(currentSettings, mergedSettings) ? currentContents : tomlParser.stringify(mergedSettings);
         break;
       }
       case "replace":
-        contents = one.contents;
+        contents = projection.contents;
         break;
       // What the repository set for itself is read and written back: the fields
       // this charter speaks for are put over the top of it, and every other one
@@ -146,15 +154,15 @@ export async function planForProjection(
                 ]),
               )
             : written;
-        contents = `${JSON.stringify(mergedJSON(JSON.parse(currentContents?.trim() || "{}"), JSON.parse(one.contents)), undefined, 2)}\n`;
+        contents = `${JSON.stringify(mergedJSON(JSON.parse(currentContents?.trim() || "{}"), JSON.parse(projection.contents)), undefined, 2)}\n`;
         break;
       }
       // A section says where it starts and ends itself — its first line and its
       // last — so nothing here knows what a marker of this engine's looks like,
       // and a second output written this way brings its own (FR-051).
       case "upsertWithMarker": {
-        const already = currentContents ?? "";
-        const lines = one.contents.trimEnd().split("\n");
+        const currentText = currentContents ?? "";
+        const lines = projection.contents.trimEnd().split("\n");
         // Escaped, because a marker is a comment and a comment holds characters
         // a regular expression reads as its own.
         const [start, end] = [lines.at(0) ?? "", lines.at(-1) ?? ""].map((line) =>
@@ -162,10 +170,10 @@ export async function planForProjection(
         );
         const section = new RegExp(`${start}[\\s\\S]*?${end}\\n?`, "g");
 
-        if (already.match(section) === null) {
+        if (currentText.match(section) === null) {
           // Nothing of this build's is in that file yet: the section goes after
           // whatever is there, and an empty file is the section alone.
-          contents = already === "" ? one.contents : `${already.replace(/\n*$/, "\n")}\n${one.contents}`;
+          contents = currentText === "" ? projection.contents : `${currentText.replace(/\n*$/, "\n")}\n${projection.contents}`;
           break;
         }
 
@@ -173,19 +181,19 @@ export async function planForProjection(
         // by keeping both sides — comes back with one, so a second build over it
         // changes nothing (SC-007).
         let written = false;
-        contents = already.replace(section, () => {
+        contents = currentText.replace(section, () => {
           if (written) return "";
           written = true;
-          return one.contents;
+          return projection.contents;
         });
         break;
       }
     }
 
-    planned.set(one.file, { path: one.file, file, contents, held: original, ...(one.executable === true ? { executable: true } : {}) });
+    plannedFileByPath.set(projection.file, { path: projection.file, file, contents, held: heldContents, ...(projection.executable === true ? { executable: true } : {}) });
   }
 
-  return [...planned.values()];
+  return [...plannedFileByPath.values()];
 }
 
 /**
@@ -287,11 +295,21 @@ export function previewPlan(
 ): PlanSummary {
   return new PlanSummary(
     projectionPlan.filter((one) => one.held === undefined).map((one) => one.path),
-    projectionPlan.filter((one) => one.held !== undefined && one.held !== one.contents).map((one) => one.path),
+    projectionPlan.filter((plannedFile) => plannedFile.held !== undefined && !isUnchanged(plannedFile)).map((plannedFile) => plannedFile.path),
     cleanupPlan.filter((one) => !projectionPlan.some((other) => other.path === one.path)).map((one) => one.path),
-    projectionPlan.filter((one) => one.held === one.contents).map((one) => one.path),
+    projectionPlan.filter((plannedFile) => isUnchanged(plannedFile)).map((plannedFile) => plannedFile.path),
     warnings,
   );
+}
+
+/** Whether a planned file already holds what the build would leave in it: text
+ *  by its text, a copy byte for byte (CORE-FR-207). */
+function isUnchanged(plannedFile: PlannedFile): boolean {
+  const heldContents = plannedFile.held;
+  const plannedContents = plannedFile.contents;
+  if (typeof heldContents === "string" || typeof plannedContents === "string" || heldContents === undefined || plannedContents === undefined)
+    return heldContents === plannedContents;
+  return heldContents.length === plannedContents.length && heldContents.every((heldByte, index) => heldByte === plannedContents[index]);
 }
 
 /**

@@ -2,6 +2,7 @@ import { loadCharterRoot } from "./charterRepo.js";
 import { loadFetchedVendors, type VendorInstall } from "./vendorRepo.js";
 import { primitiveOf } from "../domain/models/charter/primitive/Primitive.js";
 import { assertInjectablePrimitives } from "../domain/models/vendor/VendorPrimitive.js";
+import { VendorFault } from "../domain/models/DomainFault.js";
 import { vendorSourceOf } from "../domain/models/vendor/VendorSource.js";
 import { CHARTER_DIRECTORY } from "../domain/path.js";
 import type { ForReadingFiles } from "../port/zdriven/ForReadingFiles.js";
@@ -29,7 +30,7 @@ export async function injectVendor(
     const sourcePaths = await sourceFetcher.listFilesAt(fetchedCommit);
     const charterRoot = await loadCharterRoot(repoPath, fileReader, yamlParser);
     const incomingPrimitives: { id: string; file: string; sourceFile: string }[] = [];
-    const pendingFiles: { file: URL; contents: string }[] = [];
+    const pendingFiles: { file: URL; contents: string | Uint8Array }[] = [];
     const vendorInstalls: VendorInstall[] = [];
     for (const fetchedVendor of fetchedVendors) {
       for (const vendorPrimitive of fetchedVendor.vendorPrimitives) {
@@ -40,9 +41,13 @@ export async function injectVendor(
         const sourcePrefix = `${vendorPrimitive.sourceFolder}/`;
         for (const sourcePath of sourcePaths.filter((sourcePath) => sourcePath.startsWith(sourcePrefix))) {
           if (sourcePath === sourceFile) continue;
-          pendingFiles.push({ file: new URL(`${primitiveFolder}${sourcePath.slice(sourcePrefix.length).split("/").map(encodeURIComponent).join("/")}`, repoPath), contents: await sourceFetcher.readFileAt(fetchedCommit, sourcePath) });
+          const pendingFile = new URL(`${primitiveFolder}${sourcePath.slice(sourcePrefix.length).split("/").map(encodeURIComponent).join("/")}`, repoPath);
+          // A `..` a source's tree names would carry the file out of its primitive's folder (CORE-FR-044).
+          if (!pendingFile.href.startsWith(new URL(primitiveFolder, repoPath).href))
+            throw new VendorFault(`${sourcePath} would land outside ${primitiveFolder}.`, "Inject from a source whose files stay inside each primitive's folder.");
+          pendingFiles.push({ file: pendingFile, contents: await sourceFetcher.readBytesAt(fetchedCommit, sourcePath) });
         }
-        pendingFiles.push({ file: new URL(primitive.file, repoPath), contents: vendorPrimitive.convertedSkill === undefined ? await sourceFetcher.readFileAt(fetchedCommit, sourceFile) : primitive.toMarkdown() });
+        pendingFiles.push({ file: new URL(primitive.file, repoPath), contents: vendorPrimitive.convertedSkill === undefined ? await sourceFetcher.readBytesAt(fetchedCommit, sourceFile) : primitive.toMarkdown() });
       }
       vendorInstalls.push({ folder: CHARTER_DIRECTORY, vendorPrimitives: fetchedVendor.vendorPrimitives });
     }

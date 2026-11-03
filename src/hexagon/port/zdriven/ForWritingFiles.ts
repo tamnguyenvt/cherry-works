@@ -14,10 +14,10 @@ export { AdapterFault } from "./AdapterFault.js";
  * over is everything the file should hold (FR-020).
  */
 export interface ForWritingFiles {
-  /** Put this text at this file, whatever is there now, making whatever
-   *  directories it takes to get to it. An executable file is one its owner
-   *  may run by its path. */
-  write(file: URL, contents: string, options?: { readonly executable?: boolean }): Promise<void>;
+  /** Put this text, or these bytes as they are, at this file, whatever is
+   *  there now, making whatever directories it takes to get to it. An
+   *  executable file is one its owner may run by its path (CORE-FR-208). */
+  write(file: URL, contents: string | Uint8Array, options?: { readonly executable?: boolean }): Promise<void>;
 
   /** Take this file away. A file that is not there is already gone rather than
    *  a failure: a build that deletes what a previous build wrote is asking for

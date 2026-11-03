@@ -33,3 +33,12 @@ export interface Projection {
   /** Run by its path once it is down: the file a script runs (FR-160). */
   readonly executable: boolean;
 }
+
+/** One file this build copies: an asset, put down as the bytes it holds and
+ *  over whatever is there, never read as text (CORE-FR-207). */
+export interface BytesProjection {
+  readonly file: string;
+  readonly contents: Uint8Array;
+  readonly projectionPolicy: "replace";
+  readonly executable: boolean;
+}

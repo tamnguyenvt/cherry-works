@@ -318,7 +318,11 @@
       "title": "Keep a binary asset whole",
       "dependsOn": [
         "CORE Story 23"
-      ]
+      ],
+      "evidence": {
+        "summary": "typecheck and dependency rules clean, 763 tests pass 0 fail; by hand with cw, a random-bytes asset built, previewed, installed and injected byte for byte, and a non-UTF-8 index.md injected identical; specs check passes",
+        "date": "2026-11-03"
+      }
     },
     {
       "id": "SDK Story 1",

@@ -31,6 +31,10 @@ export interface ForFetchingSources {
   /** What one file of this fetched commit holds, as text. */
   readFileAt(commit: string, path: string): Promise<string>;
 
+  /** What one file of this fetched commit holds, as the bytes it holds, never
+   *  decoded (CORE-FR-208). */
+  readBytesAt(commit: string, path: string): Promise<Uint8Array>;
+
   /**
    * Put one folder of this fetched commit — every file under it, at any depth —
    * at this folder of this repository, replacing whatever that folder held and

@@ -46,7 +46,9 @@ export async function loadCharterRoot(
   // index.md included (FR-141, FR-168). A markdown file under no primitive's
   // folder is handed over too, for the charter to say where it belongs.
   const read = async (layerFolder: URL) => {
-    const filesInKindFolders = (await fileReaders.readFilesRecursively(layerFolder)).filter(({ file }) =>
+    // Read as bytes, so an asset reaches the charter as it is; only an index.md
+    // is decoded, since only that is read as text (CORE-FR-207).
+    const filesInKindFolders = (await fileReaders.readBytesRecursively(layerFolder)).filter(({ file }) =>
       KINDS.some((kind) => file.href.startsWith(`${layerFolder.href}${kind}/`)),
     );
     const folderOf = (indexHref: string) => indexHref.slice(0, -BasePrimitive.index.length);
@@ -55,15 +57,16 @@ export async function loadCharterRoot(
       ({ file }) => !indexFiles.some((other) => other.file.href !== file.href && file.href.startsWith(folderOf(other.file.href))),
     );
     const isUnderAPrimitive = (href: string) => primitiveIndexFiles.some(({ file }) => href.startsWith(folderOf(file.href)));
-    const authoredFileOf = (file: URL, contents: string, assets: readonly AssetFile[]) => ({
+    const createAuthoredFile = (file: URL, contents: Uint8Array, assets: readonly AssetFile[]) => ({
       path: decodeURIComponent(file.href.slice(repoHref.length)),
       pathInLayer: decodeURIComponent(file.href.slice(layerFolder.href.length)),
-      contents,
+      // A leading BOM is kept, as the text a file is read as keeps it.
+      contents: new TextDecoder("utf-8", { ignoreBOM: true }).decode(contents),
       assets,
     });
     return [
       ...primitiveIndexFiles.map(({ file, contents }) =>
-        authoredFileOf(
+        createAuthoredFile(
           file,
           contents,
           filesInKindFolders
@@ -73,7 +76,7 @@ export async function loadCharterRoot(
       ),
       ...filesInKindFolders
         .filter(({ file }) => file.href.endsWith(".md") && !isUnderAPrimitive(file.href))
-        .map(({ file, contents }) => authoredFileOf(file, contents, [])),
+        .map(({ file, contents }) => createAuthoredFile(file, contents, [])),
     ];
   };
 

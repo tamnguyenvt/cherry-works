@@ -84,6 +84,17 @@ export class GitSources implements ForFetchingSources {
     }
   }
 
+  /** `git cat-file blob FETCH_HEAD:<path>`, its output taken as bytes: the
+   *  blob as it was committed, with no textconv a user's own git config sets
+   *  (CORE-FR-207). */
+  async readBytesAt(storeFolder: string, path: string): Promise<Uint8Array> {
+    try {
+      return new Uint8Array((await runGit("git", ["cat-file", "blob", `${FETCHED_REF}:${path}`], { cwd: storeFolder, env: { ...process.env, GIT_DIR: storeFolder }, maxBuffer: 64 * 1024 * 1024, encoding: "buffer" })).stdout);
+    } catch (gitError) {
+      throw new AdapterFault(`${gitError}`, `Check that the source holds "${path}", and that it is under 64 MiB.`);
+    }
+  }
+
   /** `git read-tree --prefix` into an index of the store's, and `checkout-index`
    *  into a work tree of the store's, then a copy beside the folder, swapped with
    *  it once whole, the folder put back if the swap fails. The

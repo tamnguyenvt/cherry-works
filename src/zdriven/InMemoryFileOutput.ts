@@ -14,7 +14,7 @@ export class InMemoryFileOutput implements ForWritingFiles {
   /** Every file last written as executable, for a test asking which. */
   readonly executables = new Set<string>();
 
-  async write(file: URL, contents: string, options: { readonly executable?: boolean } = {}): Promise<void> {
+  async write(file: URL, contents: string | Uint8Array, options: { readonly executable?: boolean } = {}): Promise<void> {
     this.files.write(file, contents);
     if (options.executable === true) this.executables.add(file.href);
     else this.executables.delete(file.href);

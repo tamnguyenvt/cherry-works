@@ -17,7 +17,8 @@ export class InMemoryWorktrees implements ForKeepingWorktrees {
     if (!this.isVersioned) throw new AdapterFault("fatal: not a git repository (or any of the parent directories): .git", 'Evaluating needs a git repository: run "git init" here and commit what is to be evaluated.');
     // What the folder holding worktrees holds is no part of a commit.
     const worktreesFolderHref = new URL("../", worktreeFolder).href;
-    for (const { file, contents } of await this.fileReaders.readFilesRecursively(repo))
+    // Copied as bytes, as git checks a file out, so nothing is decoded on the way.
+    for (const { file, contents } of await this.fileReaders.readBytesRecursively(repo))
       if (!file.href.startsWith(worktreesFolderHref)) this.fileReaders.write(new URL(file.href.slice(repo.href.length), worktreeFolder), contents);
     this.worktreeFolders.push(worktreeFolder);
   }

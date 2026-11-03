@@ -8,9 +8,10 @@ import { AdapterFault, type ForWritingFiles } from "#hexagon/port/zdriven/ForWri
  *  whether anything has been built here before or not, and the hexagon names a
  *  path rather than a sequence of directories to create. */
 export class FileOutput implements ForWritingFiles {
-  async write(file: URL, contents: string, options: { readonly executable?: boolean } = {}): Promise<void> {
+  async write(file: URL, contents: string | Uint8Array, options: { readonly executable?: boolean } = {}): Promise<void> {
     await mkdir(new URL(".", file), { recursive: true });
-    await writeFile(file, contents, "utf8");
+    // Bytes go down as they are; only text is encoded (CORE-FR-207).
+    await writeFile(file, contents, typeof contents === "string" ? "utf8" : undefined);
     // Set whether or not the file was there: a mode passed to `writeFile` is
     // only taken when it creates one.
     if (options.executable === true) await chmod(file, 0o755);

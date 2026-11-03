@@ -159,7 +159,7 @@ test("a fault raised rather than given back is sent as a fault, under no file (p
 test("what the engine never meant to say is a 500 with its message, the whole of it logged (plan §12.2)", async (t) => {
   const consoleErrorMock = t.mock.method(console, "error", () => {});
   const fileReaders = new InMemoryFileReaders();
-  t.mock.method(fileReaders, "readFilesRecursively", async () => {
+  t.mock.method(fileReaders, "readBytesRecursively", async () => {
     throw new Error("The disk went away.");
   });
 

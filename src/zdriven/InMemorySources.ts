@@ -1,5 +1,6 @@
 import { AdapterFault, type ForFetchingSources } from "#hexagon/port/zdriven/ForFetchingSources.js";
 import type { InMemoryFileReaders } from "./InMemoryFileReaders.js";
+import { decodeContents, encodeContents } from "./helper.js";
 
 /** Sources held in memory: a test publishes what each holds, and nothing shells
  *  out. The second implementation that earns `ForFetchingSources` its place
@@ -28,7 +29,7 @@ export class InMemorySources implements ForFetchingSources {
    *  it holds, by their paths in it. A source a test publishes nothing for holds
    *  a charter, as every source did before skills were taken, unless the test
    *  says it holds no charter folder either. */
-  readonly sourceFilesBySource: Record<string, Record<string, string>> = {};
+  readonly sourceFilesBySource: Record<string, Record<string, string | Uint8Array>> = {};
 
   /** Every source a test says cannot be reached: what `fetchCommit` raises
    *  for. */
@@ -40,7 +41,7 @@ export class InMemorySources implements ForFetchingSources {
   /** The files a source holds, as a test published them. A commit here is the
    *  source it was fetched from, and the version asked for after an `@`:
    *  nothing is fetched, so nothing else names it. */
-  #listSourceFiles(commit: string): Record<string, string> {
+  #listSourceFiles(commit: string): Record<string, string | Uint8Array> {
     const source = commit.split("@")[0] ?? commit;
     const publishedCharter = { ".cw/charter/guide/published/index.md": "---\nkind: guide\nid: published\ndescription: Published.\n---\n", "README.md": "# Published\n" };
     if (this.sourcesWithoutSubFolder.includes(source)) return { "README.md": "# Notes\n" };
@@ -62,7 +63,13 @@ export class InMemorySources implements ForFetchingSources {
   async readFileAt(commit: string, path: string): Promise<string> {
     const contents = this.#listSourceFiles(commit)[path];
     if (contents === undefined) throw new AdapterFault(`${commit} has no "${path}".`, "Read a file the commit holds.");
-    return contents;
+    return decodeContents(contents);
+  }
+
+  async readBytesAt(commit: string, path: string): Promise<Uint8Array> {
+    const contents = this.#listSourceFiles(commit)[path];
+    if (contents === undefined) throw new AdapterFault(`${commit} has no "${path}".`, "Read a file the commit holds.");
+    return encodeContents(contents);
   }
 
   /** The folder written over in the files a test handed it, every file of

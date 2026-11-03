@@ -32,7 +32,7 @@ test("compilation supplies scoped instruction components without reading provide
   assert.equal(settings["project_doc_max_bytes"], 1_048_576n);
   assert.equal(await fileReaders.readIfThere(inRepo("src/AGENTS.md")), undefined);
   const projectionPlan = await planForProjection(repo, output, fileReaders, tomlParser);
-  assert.match(projectionPlan.find((plannedFile) => plannedFile.path === "src/AGENTS.md")!.contents!, /Follow this scoped guide/);
+  assert.match(projectionPlan.find((plannedFile) => plannedFile.path === "src/AGENTS.md")!.contents as string, /Follow this scoped guide/);
   assert.equal(await fileReaders.read(inRepo("AGENTS.md")), rootText);
 });
 

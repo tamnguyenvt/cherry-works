@@ -21,6 +21,17 @@ export class FileReaders implements ForReadingFiles {
     return found.flat();
   }
 
+  async readBytesRecursively(folder: URL): Promise<readonly ReadFile<Uint8Array>[]> {
+    const readFileLists = await Promise.all(
+      (await entriesOf(folder)).map(async (entry) => {
+        if (entry.isDirectory()) return this.readBytesRecursively(under(folder, entry.name));
+        const file = new URL(encodeURIComponent(entry.name), folder);
+        return [{ file, contents: new Uint8Array(await readFile(file)) }];
+      }),
+    );
+    return readFileLists.flat();
+  }
+
   async listFiles(folder: URL): Promise<readonly ListedFile[]> {
     return Promise.all(
       (await entriesOf(folder))
@@ -42,6 +53,15 @@ export class FileReaders implements ForReadingFiles {
     } catch (raised) {
       if ((raised as NodeJS.ErrnoException).code === "ENOENT") return undefined;
       throw raised;
+    }
+  }
+
+  async readBytesIfThere(file: URL): Promise<Uint8Array | undefined> {
+    try {
+      return new Uint8Array(await readFile(file));
+    } catch (readError) {
+      if ((readError as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw readError;
     }
   }
 }

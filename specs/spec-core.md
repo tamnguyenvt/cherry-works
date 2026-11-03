@@ -896,7 +896,7 @@ Removing a vendor used to make a commit and to refuse while anything was in hand
 
 ### CORE Story 38 - Keep a binary asset whole (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 A skill keeps a diagram beside its `index.md`. Today the engine reads every asset as text, so a build writes a damaged image and says nothing, and installing or injecting a source that holds one can do the same. After this, whatever a primitive's folder holds arrives where it is copied exactly as it was.
 
