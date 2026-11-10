@@ -1,40 +1,19 @@
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import prompts from "prompts";
-import { Commander } from "../src/driver/cli/Commander.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
-import { EXIT_FAILURE } from "../src/driver/cli/commands/Command.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import {
-  primitiveOf,
-  primitiveHeadersOf,
-  KINDS,
-  PRIMITIVE_CLASSES,
-} from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { noMcpOriginsReached } from "./no-mcp-origins.js";
-import { noSessionsKept } from "./no-sessions.js";
-import { noEvaluationsRun } from "./no-evaluations.js";
-import { noSensorsRun } from "./no-sensors.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { EXIT_FAILURE } from "../src/presentation/cli/commands/command.interface.js";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { authoringCharterOf, buildingCharterOf, testingCharterOf, readPrimitive, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
 const repoPath = new URL("file:///repo/");
-
-/** What vendoring is driven through: a context always carries every use case,
- *  and nothing here asks this one for anything. */
-const charterVendoringApp = new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemorySources(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
-
-/** What the test files are driven through, over an empty repository: nothing
- *  here asks it for anything. */
-const noTestFiles = new InMemoryFileReaders({});
-const testAuthoringApp = new TestAuthoring(repoPath, noTestFiles, new InMemoryFileOutput(noTestFiles));
 
 /** The command line as a user meets it, over a repository held in memory: the
  *  real `cw add`, the real service behind it, and the answers whoever is at the
@@ -45,7 +24,8 @@ const adding = async (
   files: Readonly<Record<string, string>> = {},
 ) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write, tty: process.stdin.isTTY };
@@ -56,7 +36,7 @@ const adding = async (
   process.stdin.isTTY = answers !== undefined;
   if (answers !== undefined) prompts.inject(answers);
   try {
-    const code = await new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS).run(argv);
+    const code = await new Commander(commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo), COMMANDS).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -70,15 +50,15 @@ const adding = async (
 const held = (files: InMemoryFileReaders, path: string) => files.readIfThere(new URL(path, repoPath));
 
 /** One answer per header the kind requires, in the order it is asked. */
-const answering = (kind: (typeof KINDS)[number]) =>
-  primitiveHeadersOf(kind)
+const answering = (kind: (typeof Primitives.kinds)[number]) =>
+  Primitives.headersOf(kind)
     .filter(({ required }) => required)
     .map(({ field, shape }) => (shape === "line" ? valued(field) : [valued(field)]));
 
 /** The same answers, typed as one flag per header: what an author with no
  *  terminal to answer at gives instead. */
-const flagging = (kind: (typeof KINDS)[number]) =>
-  primitiveHeadersOf(kind)
+const flagging = (kind: (typeof Primitives.kinds)[number]) =>
+  Primitives.headersOf(kind)
     .filter(({ required }) => required)
     .flatMap(({ field }) => ["--header", `${field}=${valued(field)}`]);
 
@@ -88,9 +68,9 @@ const valued = (field: string) =>
   field === "signal" ? "SessionStart" : field === "extension" ? "sh" : field === "executionPath" ? "./something/run.sh" : `what ${field} holds`;
 
 test("a kind is asked what it requires, and nothing else (FR-004, FR-039)", () => {
-  for (const one of PRIMITIVE_CLASSES)
+  for (const one of Primitives.classes)
     assert.deepEqual(
-      primitiveHeadersOf(one.kind)
+      Primitives.headersOf(one.kind)
         .filter(({ required }) => required)
         .map(({ field }) => field),
       ["description", ...Object.keys(one.requires)],
@@ -98,35 +78,35 @@ test("a kind is asked what it requires, and nothing else (FR-004, FR-039)", () =
 });
 
 test("what a kind says a header holds is what its schema reads it as (FR-004)", () => {
-  for (const one of PRIMITIVE_CLASSES)
+  for (const one of Primitives.classes)
     for (const [field, shape] of Object.entries({ description: "line", ...one.requires }))
-      assert.equal(primitiveHeadersOf(one.kind).find((taken) => taken.field === field)?.shape, shape);
+      assert.equal(Primitives.headersOf(one.kind).find((taken) => taken.field === field)?.shape, shape);
 });
 
 /** Every kind a terminal can answer whole. An mcp needs `endpoint` or
  *  `command` beside what it requires, which of the two being its author's
  *  choice, so it is written from flags alone (plan §19.1). */
-const answerableKinds = KINDS.filter((kind) => kind !== "mcp");
+const answerableKinds = Primitives.kinds.filter((kind) => kind !== "mcp");
 
 test("what is answered is what the file holds, read back as the same primitive (FR-039)", async () => {
   for (const kind of answerableKinds) {
     const { code, held: files } = await adding(["add", kind, "something"], answering(kind));
-    const written = (await held(files, `.cw/charter/${kind}/something/index.md`)) ?? "";
+    const keptText = (await held(files, `.cw/charter/primitive/${kind}/something/index.md`)) ?? "";
 
     assert.equal(code, 0);
-    const read = primitiveOf(written, new YamlParser());
-    assert.equal(read.kind, kind);
-    assert.equal(read.headers.id, "something");
-    assert.equal(read.headers.description, "what description holds");
+    const keptPrimitive = readPrimitive(keptText);
+    assert.equal(keptPrimitive.kind, kind);
+    assert.equal(keptPrimitive.headers.id, "something");
+    assert.equal(keptPrimitive.headers.description, "what description holds");
   }
 });
 
 test("an id holding / is written as one file in its kind's folder, each / as - (FR-141)", async () => {
   const { code, held: files } = await adding(["add", "guide", "mfbs/no-any"], ["what description holds"]);
-  const read = primitiveOf((await held(files, ".cw/charter/guide/mfbs/no-any/index.md")) ?? "", new YamlParser());
+  const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/guide/mfbs/no-any/index.md")) ?? "");
 
   assert.equal(code, 0);
-  assert.equal(read.headers.id, "mfbs/no-any");
+  assert.equal(keptPrimitive.headers.id, "mfbs/no-any");
 });
 
 test("an id with an empty segment is refused with the kind's sample, and nothing is written (FR-141)", async () => {
@@ -135,7 +115,7 @@ test("an id with an empty segment is refused with the kind's sample, and nothing
 
     assert.equal(code, EXIT_FAILURE, id);
     assert.match(problems, /not what a guide holds/, id);
-    assert.equal(await held(files, `.cw/charter/guide/${id}/index.md`), undefined, id);
+    assert.equal(await held(files, `.cw/charter/primitive/guide/${id}/index.md`), undefined, id);
   }
 });
 
@@ -144,7 +124,7 @@ test("a word that is no kind is refused, naming every kind there is (FR-001, FR-
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"rule" is not a kind/);
-  for (const kind of KINDS) assert.match(problems, new RegExp(kind));
+  for (const kind of Primitives.kinds) assert.match(problems, new RegExp(kind));
 });
 
 test("an answer its kind refuses is said before any file is written (FR-004, FR-039)", async () => {
@@ -157,7 +137,7 @@ test("an answer its kind refuses is said before any file is written (FR-004, FR-
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /not what a sensor holds/);
   assert.match(problems, /signal: Stop/);
-  assert.equal(await held(files, ".cw/charter/sensor/on-stop/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/primitive/sensor/on-stop/index.md"), undefined);
 });
 
 test("a list answer holds the names typed, each trimmed and a blank one dropped (FR-039)", async () => {
@@ -165,10 +145,10 @@ test("a list answer holds the names typed, each trimmed and a blank one dropped 
     "what description holds",
     [" refactor ", "", "  "],
   ]);
-  const read = primitiveOf((await held(files, ".cw/charter/skill/refactoring/index.md")) ?? "", new YamlParser());
+  const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/skill/refactoring/index.md")) ?? "");
 
   assert.equal(code, 0);
-  assert.deepEqual("triggers" in read.headers ? read.headers.triggers : undefined, ["refactor"]);
+  assert.deepEqual("triggers" in keptPrimitive.headers ? keptPrimitive.headers.triggers : undefined, ["refactor"]);
 });
 
 test("a list answer left empty is refused once, as the list it should hold (FR-004, FR-039)", async () => {
@@ -176,7 +156,7 @@ test("a list answer left empty is refused once, as the list it should hold (FR-0
 
   assert.equal(code, EXIT_FAILURE);
   assert.equal(problems.match(/not what a skill holds/g)?.length, 1);
-  assert.equal(await held(files, ".cw/charter/skill/refactoring/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/primitive/skill/refactoring/index.md"), undefined);
 });
 
 test("nobody at the terminal is told what the kind requires, and nothing is written (FR-039)", async () => {
@@ -184,21 +164,21 @@ test("nobody at the terminal is told what the kind requires, and nothing is writ
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"description".*"triggers"/);
-  assert.equal(await held(files, ".cw/charter/skill/refactoring/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/primitive/skill/refactoring/index.md"), undefined);
 });
 
 test("a file that is already there is never written over (FR-039)", async () => {
-  const authored = primitiveOf({
+  const authoredText = readPrimitive({
     headers: { kind: "guide", id: "no-any", description: "Authored.", globs: ["src/**/*.ts"] },
     body: "BODY",
   }).toMarkdown();
   const { code, problems, held: files } = await adding(["add", "guide", "no-any"], answering("guide"), {
-    "file:///repo/.cw/charter/guide/no-any/index.md": authored,
+    "file:///repo/.cw/charter/primitive/guide/no-any/index.md": authoredText,
   });
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /already there/);
-  assert.equal(await held(files, ".cw/charter/guide/no-any/index.md"), authored);
+  assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), authoredText);
 });
 
 test("what is typed as flags is the file that is written from answers, word for word (FR-014, SC-005)", async () => {
@@ -207,7 +187,7 @@ test("what is typed as flags is the file that is written from answers, word for 
     const answered = await adding(["add", kind, "something"], answering(kind));
 
     assert.equal(typed.code, 0);
-    assert.equal(await held(typed.held, `.cw/charter/${kind}/something/index.md`), await held(answered.held, `.cw/charter/${kind}/something/index.md`));
+    assert.equal(await held(typed.held, `.cw/charter/primitive/${kind}/something/index.md`), await held(answered.held, `.cw/charter/primitive/${kind}/something/index.md`));
   }
 });
 
@@ -218,7 +198,7 @@ test("a header typed as a flag is an answer, so nothing is asked at a terminal e
   const { code, held: files } = await adding(["add", "skill", "refactoring", ...flagging("skill")], []);
 
   assert.equal(code, 0);
-  assert.match((await held(files, ".cw/charter/skill/refactoring/index.md")) ?? "", /triggers:/);
+  assert.match((await held(files, ".cw/charter/primitive/skill/refactoring/index.md")) ?? "", /triggers:/);
 });
 
 test("a list header typed twice holds both, in the order they were typed (FR-007)", async () => {
@@ -228,10 +208,10 @@ test("a list header typed twice holds both, in the order they were typed (FR-007
     "--header", "triggers=extract",
     "--header", "triggers=inline",
   ]);
-  const read = primitiveOf((await held(files, ".cw/charter/skill/refactoring/index.md")) ?? "", new YamlParser());
+  const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/skill/refactoring/index.md")) ?? "");
 
   assert.equal(code, 0);
-  assert.deepEqual("triggers" in read.headers ? read.headers.triggers : undefined, ["extract", "inline"]);
+  assert.deepEqual("triggers" in keptPrimitive.headers ? keptPrimitive.headers.triggers : undefined, ["extract", "inline"]);
 });
 
 test("a header holding one line is refused where it was typed twice, naming it (FR-007)", async () => {
@@ -243,7 +223,7 @@ test("a header holding one line is refused where it was typed twice, naming it (
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"description" holds one line, and was typed 2 times/);
-  assert.equal(await held(files, ".cw/charter/guide/no-any/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), undefined);
 });
 
 test("a flag naming nothing to put a value under is refused, quoting it (FR-008)", async () => {
@@ -251,7 +231,7 @@ test("a flag naming nothing to put a value under is refused, quoting it (FR-008)
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"--header description" names nothing to put a value under/);
-  assert.equal(await held(files, ".cw/charter/guide/no-any/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), undefined);
 });
 
 test("a value holding an = is kept whole, everything after the first one (FR-008)", async () => {
@@ -259,10 +239,10 @@ test("a value holding an = is kept whole, everything after the first one (FR-008
     "add", "guide", "no-any",
     "--header", "description=Reject a = where an == was meant.",
   ]);
-  const read = primitiveOf((await held(files, ".cw/charter/guide/no-any/index.md")) ?? "", new YamlParser());
+  const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/guide/no-any/index.md")) ?? "");
 
   assert.equal(code, 0);
-  assert.equal(read.headers.description, "Reject a = where an == was meant.");
+  assert.equal(keptPrimitive.headers.description, "Reject a = where an == was meant.");
 });
 
 test("a header the kind does not take is named, and nothing is written (FR-011)", async () => {
@@ -274,7 +254,7 @@ test("a header the kind does not take is named, and nothing is written (FR-011)"
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /A guide holds no "signal"/);
-  assert.equal(await held(files, ".cw/charter/guide/no-any/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), undefined);
 });
 
 test("a header the kind requires and nobody answered is refused in the same words either way (FR-010, FR-012, SC-004)", async () => {
@@ -285,7 +265,7 @@ test("a header the kind requires and nobody answered is refused in the same word
   assert.equal(answered.code, EXIT_FAILURE);
   assert.equal(typed.problems, answered.problems);
   assert.match(typed.problems, /not what a skill holds/);
-  assert.equal(await held(typed.held, ".cw/charter/skill/refactoring/index.md"), undefined);
+  assert.equal(await held(typed.held, ".cw/charter/primitive/skill/refactoring/index.md"), undefined);
 });
 
 test("adding a script says the file it runs was written too, so its author knows where to write it (FR-167)", async () => {
@@ -293,7 +273,7 @@ test("adding a script says the file it runs was written too, so its author knows
 
   assert.equal(code, 0);
   assert.deepEqual(results.split("\n").slice(0, 2), [
-    "Wrote .cw/charter/script/release/check/index.md.",
+    "Wrote .cw/charter/primitive/script/release/check/index.md.",
     "Wrote ./run.sh beside it, the file it runs: write the script there.",
   ]);
 });

@@ -11,8 +11,8 @@ const primitive = (kind: string, id: string, headers: readonly string[]) =>
  *  when a file it names is touched. */
 const holding = {
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"], mainContextCeiling: 30 })}\n`,
-  [at(".cw/charter/guide/plain-words/index.md")]: primitive("guide", "plain-words", []),
-  [at(".cw/charter/guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
+  [at(".cw/charter/primitive/guide/plain-words/index.md")]: primitive("guide", "plain-words", []),
+  [at(".cw/charter/primitive/guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
 };
 
 test("the Context tab shows what a session opens with, the total against the ceiling, and the guides loaded on a touch apart (EVAL-FR-007)", async () => {

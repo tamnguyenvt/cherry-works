@@ -12,93 +12,209 @@ module.exports = {
       name: "hexagon-is-sealed",
       severity: "error",
       comment:
-        "The hexagon declares ports and forgets who fills them. It may import " +
-        "nothing outside itself — not node:*, not an adapter, and no library " +
-        "but lodash, picomatch and zod, which answer questions about lists, " +
-        "objects, glob strings and the shape of a value, and know nothing " +
-        "about where any of them came from. " +
+        "A module's application and domain declare ports and forget who fills " +
+        "them. They import nothing outside the modules — not node:*, not an " +
+        "adapter, and no library but zod, the shape of a value; any other " +
+        "library a notation or an algebra needs is wrapped by a lib of the " +
+        "domain (below), and knows nothing about where its input came from. " +
         "This is also what keeps a reading service unable to write (FR-041).",
-      from: { path: "^src/hexagon" },
-      to: { pathNot: "^src/hexagon|node_modules/.*/(lodash-es|picomatch|zod)/" },
+      from: { path: "^src/module/[^/]+/(app|domain)/", pathNot: "^src/module/[^/]+/domain/libs/" },
+      to: { pathNot: "^src/module/[^/]+/(app|domain)/|^src/module/[^/]+/module\\.ts$|node_modules/.*/zod/" },
     },
     {
-      name: "driver-enters-through-its-port",
+      name: "a-library-is-reached-through-a-lib",
       severity: "error",
       comment:
-        "A driving adapter reaches the hexagon through a driver port, or the " +
-        "application behind it, and nothing else. Whatever it needs from inside " +
-        "— a type, a constant, a function — is exported by the port, so the " +
-        "domain can be rearranged without a driver noticing.",
-      from: { path: "^src/driver" },
-      to: { path: "^src/hexagon", pathNot: "^src/hexagon/(port/driver|application)/" },
+        "A domain's libs wrap the libraries the hexagon reads with — glob " +
+        "strings, YAML, TOML — so nothing else of it imports one, and a parser " +
+        "is swapped in one file. They import nothing else outside the modules.",
+      from: { path: "^src/module/[^/]+/domain/libs/" },
+      to: { pathNot: "^src/module/[^/]+/(app|domain)/|^src/module/[^/]+/module\\.ts$|node_modules/.*/(lodash-es|picomatch|zod|yaml|smol-toml)/" },
+    },
+    {
+      name: "module-is-entered-through-module-ts",
+      severity: "error",
+      comment:
+        "Each module says in its module.ts what the code outside it may " +
+        "reach, and another module reaches it there and nowhere else: its " +
+        "inside can be rearranged without anything outside noticing.",
+      from: { path: "^src/module/([^/]+)/" },
+      to: { path: "^src/module/(?!$1/)[^/]+/", pathNot: "^src/module/[^/]+/module\\.ts$" },
+    },
+    {
+      name: "driver-and-composition-enter-through-module-ts",
+      severity: "error",
+      comment:
+        "A driver, the composition root (src/module/composition.ts) and the entry point reach a module " +
+        "through its module.ts alone, whatever they take of it — an " +
+        "application, a port, a DTO, an adapter.",
+      from: { pathNot: "^src/module/[^/]+/" },
+      to: { path: "^src/module/", pathNot: "^src/module/[^/]+/module\\.ts$|^src/module/composition\\.ts$" },
     },
     {
       name: "driven-answers-only-its-port",
       severity: "error",
       comment:
-        "A driven adapter implements a driven port, and that port is all it " +
-        "knows of the hexagon. Whatever it needs from inside — an error to " +
-        "raise, a type to return — is exported by the port it answers.",
-      from: { path: "^src/zdriven" },
-      to: { path: "^src/hexagon", pathNot: "^src/hexagon/port/zdriven/" },
+        "A driven adapter, in its module's infrastructure, implements a driven " +
+        "port of its module or of the kernel, and that port is all it knows of " +
+        "them. Whatever it needs from inside — an error to raise, a type to " +
+        "return — is exported by the port it answers.",
+      from: { path: "^src/module/([^/]+)/infra/" },
+      to: { path: "^src/module", pathNot: "^src/module/$1/(app/port/out/|infra/)|^src/module/shared/module\\.ts$" },
+    },
+    {
+      name: "plugin-enters-the-engine-through-module-ts",
+      severity: "error",
+      comment:
+        "An agent's plugin — its projection, its command line — sits outside " +
+        "the engine and reaches it as any tool author's adapter does: through " +
+        "a module's module.ts alone, beside the other files of src/plugin/ and " +
+        "the packages it runs with; never a module's inside, the composition " +
+        "root or a driver.",
+      from: { path: "^src/plugin/" },
+      to: { path: "^(src/|main\\.ts$)", pathNot: "^src/plugin/|^src/module/[^/]+/module\\.ts$" },
+    },
+    {
+      name: "engine-knows-no-plugin",
+      severity: "error",
+      comment:
+        "The engine is handed each agent's plugin where it is composed, and " +
+        "names none anywhere else (CORE-FR-221, CORE-FR-230).",
+      from: { path: "^src/module/", pathNot: "^src/module/composition\\.ts$" },
+      to: { path: "^src/plugin/" },
+    },
+    {
+      name: "application-holds-no-adapter",
+      severity: "error",
+      comment:
+        "A module's application and domain are the published engine; its " +
+        "adapters are not, and are handed to it where it is composed " +
+        "(CORE-FR-228, CORE-FR-230).",
+      from: { path: "^src/module/[^/]+/(app|domain)/" },
+      to: { path: "^src/module/[^/]+/infra/" },
     },
     {
       name: "dtos-are-zod-only",
       severity: "error",
       comment:
-        "Every model's DTO is read by every driver, and the portal's page " +
-        "bundles the schemas. They import zod and nothing else, so nothing " +
-        "more of the hexagon is shipped to the browser.",
-      from: { path: "^src/hexagon/port/driver/dtos/" },
-      to: { pathNot: "^src/hexagon/port/driver/dtos/|node_modules/.*/zod/" },
+        "Every module's DTOs are read by every driver and parsed by clients. " +
+        "They import zod, the other DTO files and dto() through the kernel's " +
+        "module.ts, and nothing else.",
+      from: { path: "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$" },
+      to: { pathNot: "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$|^src/module/shared/module\\.ts$|node_modules/.*/zod/" },
     },
     {
       name: "page-is-browser-code",
       severity: "error",
       comment:
         "The portal's page runs in the browser and knows only the JSON the " +
-        "server answers with (FR-005). It imports itself, the DTOs it parses " +
-        "that JSON with, the routes' types it calls them by, and the " +
+        "server answers with (FR-005). It imports itself, the DTOs it reads " +
+        "that JSON as — types only, from each module's module.ts —, the routes' types it calls them by, and the " +
         "libraries it renders and calls with — react, shadcn's own (radix, " +
         "cva, clsx, tailwind-merge, lucide, sonner, cmdk), tanstack query, " +
         "codemirror, marked, zod and hono's client — and never the hexagon, " +
         "the filesystem or " +
         "node:*.",
-      from: { path: "^src/driver/portal/page/" },
+      from: { path: "^src/presentation/portal/page/" },
       to: {
         pathNot:
-          "^src/driver/portal/page/|^src/hexagon/port/driver/dtos/|^src/driver/portal/routes\\.ts$|" +
+          "^src/presentation/portal/page/|^src/module/[^/]+/module\\.ts$|^src/presentation/portal/portal\\.routes\\.ts$|" +
           "node_modules/.*/(react|react-dom|@tanstack/react-query|radix-ui|class-variance-authority|clsx|tailwind-merge|lucide-react|sonner|cmdk|@codemirror/[^/]+|marked|zod|hono)/",
       },
+    },
+    {
+      name: "page-knows-modules-only-as-types",
+      severity: "error",
+      comment:
+        "The page reads what the modules answer as types, and bundles nothing " +
+        "of them: a module.ts reaches every application and adapter of its module.",
+      from: { path: "^src/presentation/portal/page/" },
+      to: { path: "^src/module/", dependencyTypesNot: ["type-only"] },
     },
     {
       name: "page-knows-routes-only-as-types",
       severity: "error",
       comment:
         "The page calls the routes through hono's client, typed by the app " +
-        "routes.ts exports. It imports its type and nothing else: the routes " +
+        "portal.routes.ts exports. It imports its type and nothing else: the routes " +
         "call the engine, and none of that is bundled into the browser.",
-      from: { path: "^src/driver/portal/page/" },
-      to: { path: "^src/driver/portal/routes\\.ts$", dependencyTypesNot: ["type-only"] },
+      from: { path: "^src/presentation/portal/page/" },
+      to: { path: "^src/presentation/portal/portal\\.routes\\.ts$", dependencyTypesNot: ["type-only"] },
     },
     {
       name: "models-know-no-dto",
       severity: "error",
       comment:
-        "A model knows nothing of what a driver reads: the domain and its " +
-        "services import no driver port, DTOs included. The application turns " +
-        "what they hand back into DTOs.",
-      from: { path: "^src/hexagon/(domain|service)/" },
-      to: { path: "^src/hexagon/port/driver/" },
+        "A model knows nothing of what a driver reads: the domain and the " +
+        "application's services import no driver port, " +
+        "DTOs included. The use cases turn what they hand back into DTOs.",
+      from: { path: "^src/module/[^/]+/(domain|app/services)/" },
+      to: { path: "^src/module/[^/]+/app/port/in/" },
+    },
+    {
+      name: "charter-knows-no-runtime",
+      severity: "error",
+      comment:
+        "The charter is asked by runtime and asks nothing of it: the two " +
+        "modules speak one way, so neither can be changed into a cycle " +
+        "(CORE-FR-229).",
+      from: { path: "^src/module/charter/" },
+      to: { path: "^src/module/runtime/" },
+    },
+    {
+      name: "runtime-asks-charter-through-its-applications",
+      severity: "error",
+      comment:
+        "Runtime asks the charter through its applications' driver ports alone, " +
+        "in the DTOs they answer with: no model of the charter's reaches it " +
+        "(CORE-FR-229).",
+      from: { path: "^src/module/runtime/" },
+      to: { path: "^src/module/charter/", pathNot: "^src/module/charter/module\\.ts$" },
+    },
+    {
+      name: "workspace-knows-no-other-module",
+      severity: "error",
+      comment:
+        "The workspace keeps what a repository configured itself with, and " +
+        "whoever composes the engine hands it to the charter and runtime: it " +
+        "knows neither, and is told the agents the engine compiles for " +
+        "(CORE-FR-231).",
+      from: { path: "^src/module/workspace/" },
+      to: { path: "^src/module/(charter|runtime)/" },
+    },
+    {
+      name: "no-module-reads-the-workspace",
+      severity: "error",
+      comment:
+        "Neither the charter nor runtime reads what a repository configured " +
+        "itself with: they are handed it when they are composed (CORE-FR-231).",
+      from: { path: "^src/module/(charter|runtime)/" },
+      to: { path: "^src/module/workspace/" },
+    },
+    {
+      name: "shared-belongs-to-no-module",
+      severity: "error",
+      comment:
+        "The kernel every module reads holds what is none's: it imports " +
+        "nothing of any (CORE-FR-222).",
+      from: { path: "^src/module/shared/" },
+      to: { path: "^src/module/(charter|runtime|workspace)/" },
     },
     {
       name: "adapters-do-not-know-each-other",
       severity: "error",
       comment:
-        "A driving adapter and a driven adapter meet only at the composition " +
-        "root, through the ports they each face.",
-      from: { path: "^src/(driver|zdriven)" },
-      to: { path: "^src/(driver|zdriven)", pathNot: "^src/$1" },
+        "A driving adapter and a driven adapter — a module's or a plugin's — " +
+        "meet only at the composition root, through the ports they each face.",
+      from: { path: "^src/presentation/" },
+      to: { path: "^src/(module/[^/]+/infra|plugin)/" },
+    },
+    {
+      name: "driven-adapters-know-no-driver",
+      severity: "error",
+      comment: "A driven adapter is called out to, and never calls in.",
+      from: { path: "^src/module/[^/]+/infra/" },
+      to: { path: "^src/presentation/" },
     },
     {
       name: "no-circular",
@@ -120,7 +236,7 @@ module.exports = {
     // A script of the engine's own layer is an asset it puts down, imported as
     // its text and run only on the developer's machine: not a module of the
     // hexagon, so not held to its rules.
-    exclude: { path: "^src/hexagon/domain/models/charter/builtin/.+\\.(mjs|d\\.mts)$" },
+    exclude: { path: "^src/module/charter/domain/builtin/.+\\.(mjs|d\\.mts)$" },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
     enhancedResolveOptions: { exportsFields: ["exports"], conditionNames: ["import", "require", "node"] },

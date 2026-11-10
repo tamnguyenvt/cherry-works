@@ -1,25 +1,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { folderURL } from "../src/hexagon/domain/path.js";
-import { CharterRoot } from "../src/hexagon/domain/models/charter/CharterRoot.js";
-import { REPO_LAYER, VENDOR_LAYER } from "../src/hexagon/domain/models/charter/PrimitiveLayer.js";
-import { FaultsByFile } from "../src/hexagon/domain/models/DomainFault.js";
-import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
-import { MixinPrimitive } from "../src/hexagon/domain/models/charter/primitive/MixinPrimitive.js";
-import { SkillPrimitive } from "../src/hexagon/domain/models/charter/primitive/SkillPrimitive.js";
-import { PRIMITIVE_CLASSES, type Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
+import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
+import { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
+import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.js";
+import { FaultsByFile } from "../src/module/shared/domain/models/domain.fault.js";
+import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
+import { MixinPrimitive } from "../src/module/charter/domain/models/primitive/mixin-primitive.js";
+import { SkillPrimitive } from "../src/module/charter/domain/models/primitive/skill-primitive.js";
+import { type Primitive, Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 
-const root = folderURL("file:///repo/.cw/charter/");
+const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
 
 type Authored = Primitive;
 
 /** One authored primitive as the charter holds it: under the id its layer
  *  gives it, which is what reading a charter works out. */
 const layered = (vendor: string | undefined, file: string, primitive: Primitive): Authored =>
-  PRIMITIVE_CLASSES.find((one) => one.kind === primitive.kind)!.of(primitive.headers, primitive.body, [], {
-    name: vendor === undefined ? REPO_LAYER : VENDOR_LAYER,
-    charterFolder: file.slice(0, -`/${primitive.primitiveFolder}/index.md`.length),
-  });
+  Primitives.classes.find((primitiveClass) => primitiveClass.kind === primitive.kind)!.of(primitive.headers, primitive.body, [], vendor === undefined ? PrimitiveLayer.REPO : PrimitiveLayer.ofVendor(vendor), file);
 
 /** One primitive of the kind its class reads, under the file it was authored
  *  in. */
@@ -119,7 +116,7 @@ test("what the domain finds on its own is reported too", () => {
   assert.match(
     messages([
       primitive(GuidePrimitive, "no-any"),
-      layered("acme", "file:///repo/.cw/vendor/acme/guide/no-any/index.md", primitive(GuidePrimitive, "no-any")),
+      layered("acme/charter/root", "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/guide/no-any/index.md", primitive(GuidePrimitive, "no-any")),
     ]),
     /already declared/,
   );

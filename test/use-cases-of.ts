@@ -1,0 +1,300 @@
+import { SystemClock } from "../src/module/shared/infra/system-clock.adapter.js";
+import { AuthoringCharter } from "../src/module/charter/app/authoring-charter.use-case.js";
+import { RunningCharter } from "../src/module/runtime/app/running-charter.use-case.js";
+import { BuildingCharter } from "../src/module/charter/app/building-charter.use-case.js";
+import type { ForBuildingCharter, AgentProviderName } from "../src/module/charter/app/port/in/building-charter.port.js";
+import type { ForRunningCharter } from "../src/module/runtime/app/port/in/running-charter.port.js";
+import { composeWorkspace } from "../src/module/composition.js";
+import type { ForManagingWorkspace } from "../src/module/workspace/app/port/in/managing-workspace.port.js";
+import type { CommandLine, Context, EngineApps, WorkspaceSettings } from "../src/presentation/cli/commands/command.interface.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { showPathsInApps } from "../src/presentation/cli/commands/helper.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import type { ForAuthoringCharter } from "../src/module/charter/app/port/in/authoring-charter.port.js";
+import type { ForLoadingSessionAnalysis } from "../src/module/runtime/app/port/out/loading-session-analysis.port.js";
+import type { ForManagingCharter } from "../src/module/charter/app/port/out/managing-charter.port.js";
+import type { ForStoringCredentials } from "../src/module/charter/app/port/out/storing-credentials.port.js";
+import type { ForManagingLocalAgentOutput } from "../src/module/charter/app/port/out/managing-local-agent-output.port.js";
+import type { ForManagingLocalOutput } from "../src/module/charter/app/port/out/managing-local-output.port.js";
+import type { ForAuthorizingMcpOrigins } from "../src/module/charter/app/port/out/authorizing-mcp-origins.port.js";
+import type { ForCallingMcpServers } from "../src/module/shared/app/port/out/calling-mcp-servers.port.js";
+import type { ForCountingTokens } from "../src/module/charter/app/port/out/counting-tokens.port.js";
+import type { ForFetchingCharterSources } from "../src/module/charter/app/port/out/fetching-charter-sources.port.js";
+import type { ForKeepingWorktrees } from "../src/module/runtime/app/port/out/keeping-worktrees.port.js";
+import type { ForReadingFiles } from "../src/module/shared/app/port/out/reading-files.port.js";
+import type { ForReportingProgress } from "../src/module/shared/app/port/out/reporting-progress.port.js";
+import type { ForCheckingAgentCli, ForRunningAgentCli } from "../src/module/runtime/app/port/out/running-agent-cli.port.js";
+import type { ForRunningPromptfoo } from "../src/module/runtime/app/port/out/running-promptfoo.port.js";
+import type { ForRunningShellCommands } from "../src/module/runtime/app/port/out/running-shell-commands.port.js";
+import type { ForTellingTime } from "../src/module/shared/app/port/out/telling-time.port.js";
+import type { ForWritingFiles } from "../src/module/shared/app/port/out/writing-files.port.js";
+import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
+import { LocalRepoManipulator } from "../src/module/charter/infra/local-repo-manipulator.adapter.js";
+import { ClaudeProjection } from "../src/plugin/claude/claude-projection.adapter.js";
+import { CodexProjection } from "../src/plugin/codex/codex-projection.adapter.js";
+import { FileSessionAnalysisRepository } from "../src/module/runtime/infra/file-session-analysis.repository.js";
+import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
+import { buildCharterService } from "../src/module/charter/app/services/build-charter.service.js";
+import { installCharterService } from "../src/module/charter/app/services/install-charter.service.js";
+import { loadCharterService } from "../src/module/charter/app/services/load-charter.service.js";
+import { loadMcpOriginsService } from "../src/module/charter/app/services/load-mcp-origins.service.js";
+import type { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
+import { PrimitiveFactory } from "../src/module/charter/domain/models/primitive/primitive.factory.js";
+import { RawPrimitive } from "../src/module/charter/domain/models/primitive/raw-primitive.js";
+import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import type { WorkspaceDTOs } from "../src/module/workspace/app/port/in/workspace.dto.js";
+import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.js";
+import type { Primitive } from "../src/module/charter/domain/models/primitive/primitive.js";
+
+/*
+ * Each use case over the ports a test holds, as main.ts wires it: the real
+ * repositories, built over those same ports, so a test still says the
+ * repository's state as the files it keeps.
+ */
+
+/** A port no test handed the use case: whatever is asked of it is refused,
+ *  naming what was not given. */
+function portNotGiven<Port extends object>(portName: string): Port {
+  return new Proxy({} as Port, {
+    get: (_target, methodName) => () => Promise.reject(new Error(`No ${portName} were given to ${String(methodName)}.`)),
+  });
+}
+
+/** Files no test writes: a use case that only reads holds no writing port, and
+ *  hands its repositories none. */
+const unwritableFiles = portNotGiven<ForWritingFiles>("files");
+
+/** The charter of a repository kept as files, its vendors', its test cases
+ *  and its eval cases among them, its sources fetched through `sourceFetcher`
+ *  where a test gives one. */
+export function charterRepositoryOf(fileReader: ForReadingFiles, fileWriter: ForWritingFiles = unwritableFiles, sourceFetcher = portNotGiven<ForFetchingCharterSources>("sources")): FileCharterRepository {
+  return new FileCharterRepository(fileReader, fileWriter, sourceFetcher);
+}
+
+/** The build laid onto, and read back off, the files a test holds, as main.ts
+ *  lays it. */
+export function charterOutputWriterOf(fileReader: ForReadingFiles, fileWriter: ForWritingFiles = unwritableFiles): LocalRepoManipulator {
+  return new LocalRepoManipulator(fileReader, fileWriter);
+}
+
+/** Each agent's projection onto the files a test holds, as main.ts projects
+ *  it. */
+export function agentProjectionByProviderOf(fileReader: ForReadingFiles): Readonly<Record<string, ForManagingLocalAgentOutput>> {
+  return { claude: new ClaudeProjection(fileReader), codex: new CodexProjection(fileReader) };
+}
+
+/** One repository's charter, read off the files a test holds as every use case reads it. */
+export function loadCharterRoot(fileReader: ForReadingFiles): Promise<CharterRoot> {
+  return loadCharterService.loadCharterRoot(charterRepositoryOf(fileReader));
+}
+
+/** Authoring the charter over the files a test holds: its sources fetched
+ *  through `sourceFetcher`, its credentials kept in `credentialsRepository`, signed in
+ *  through `authorizing`, where a test gives them. */
+export function authoringCharterOf(
+  fileReader: ForReadingFiles,
+  fileWriter: ForWritingFiles,
+  progressReporter: ForReportingProgress,
+  {
+    sourceFetcher = portNotGiven<ForFetchingCharterSources>("sources"),
+    authorizing = portNotGiven<ForAuthorizingMcpOrigins>("sign-ins"),
+    clock = new SystemClock(),
+    charterRepository = charterRepositoryOf(fileReader, fileWriter, sourceFetcher),
+    credentialsRepository = new InMemoryCredentialsRepository(),
+  }: {
+    readonly sourceFetcher?: ForFetchingCharterSources;
+    readonly authorizing?: ForAuthorizingMcpOrigins;
+    readonly clock?: ForTellingTime;
+    readonly charterRepository?: ForManagingCharter;
+    readonly credentialsRepository?: ForStoringCredentials;
+  } = {},
+): AuthoringCharter {
+  return new AuthoringCharter(
+    loadCharterService,
+    installCharterService,
+    charterRepository,
+    credentialsRepository,
+    authorizing,
+    clock,
+    progressReporter,
+  );
+}
+
+/** What a test reaches the charter's projection and runtime through: one
+ *  object answering both ports, each operation going to the application whose
+ *  it is. */
+export type CharterRuntimeApps = ForBuildingCharter & ForRunningCharter;
+
+/** The workspace module over the files a test holds: its settings and ignore
+ *  file, read and written as the command line has them read and written
+ *  (CORE-FR-231). */
+export function workspaceAppOf(fileReader: ForReadingFiles, fileWriter: ForWritingFiles = unwritableFiles): ForManagingWorkspace {
+  return composeWorkspace(new URL("file:///repo/"), { fileReader, fileWriter, progressReporter: new InMemoryReporter() });
+}
+
+/** The command line over the files a test holds and the applications it
+ *  hands, whatever settings it reads: each application of a test reads them
+ *  itself, as the command line would compose it, at each call. */
+export function commandLineOf(fileReader: ForReadingFiles, fileWriter: ForWritingFiles, engineApps: Partial<EngineApps> & Pick<EngineApps, "charterAuthoringApp">, cwd = "/repo", version = "0.0.0"): CommandLine {
+  const charterRuntimeApps = (engineApps.charterBuildingApp ?? engineApps.charterRuntimeApp) as CharterRuntimeApps | undefined;
+  return {
+    cwd,
+    version,
+    workspaceApp: workspaceAppOf(fileReader, fileWriter),
+    engineFactory: () => ({
+      charterAuthoringApp: engineApps.charterAuthoringApp,
+      charterBuildingApp: engineApps.charterBuildingApp ?? (charterRuntimeApps as ForBuildingCharter),
+      charterRuntimeApp: engineApps.charterRuntimeApp ?? (charterRuntimeApps as ForRunningCharter),
+    }),
+  };
+}
+
+/** The charter's projection and runtime over the files a test holds, as the
+ *  command line composes them: for the settings `workspaceSettings` names, or
+ *  else for those the files hold when each operation is asked; over charter
+ *  authoring's application; the mcp origins reached only where a test gives
+ *  `mcpServers`, the sensors run through `shell`, the cases evaluated in
+ *  worktrees `worktrees` adds through `promptfooRunner`, and the sessions read
+ *  through `sessionAnalysisRepository`, where it gives them. */
+export function runningCharterOf(
+  fileReader: ForReadingFiles,
+  progressReporter: ForReportingProgress,
+  {
+    fileWriter = unwritableFiles,
+    tokenCounter = portNotGiven<ForCountingTokens>("token counters"),
+    agentCliByProvider = {},
+    mcpServers,
+    credentialsRepository,
+    authorizing,
+    shell = portNotGiven<ForRunningShellCommands>("shells"),
+    worktrees = portNotGiven<ForKeepingWorktrees>("worktrees"),
+    promptfooRunner = portNotGiven<ForRunningPromptfoo>("promptfoo runs"),
+    sessionAnalysisRepository = portNotGiven<ForLoadingSessionAnalysis>("sessions"),
+    clock = new SystemClock(),
+    workspaceSettings,
+    charterRepository = charterRepositoryOf(fileReader, fileWriter),
+    localRepo = charterOutputWriterOf(fileReader, fileWriter),
+    agentProjectionByProvider = agentProjectionByProviderOf(fileReader),
+    charterAuthoringApp = authoringCharterOf(fileReader, fileWriter, progressReporter, { ...(credentialsRepository === undefined ? {} : { credentialsRepository }), ...(authorizing === undefined ? {} : { authorizing }), clock, charterRepository }),
+  }: {
+    readonly fileWriter?: ForWritingFiles;
+    readonly tokenCounter?: ForCountingTokens;
+    readonly agentCliByProvider?: Readonly<Partial<Record<AgentProviderName, ForCheckingAgentCli | ForRunningAgentCli>>>;
+    readonly mcpServers?: ForCallingMcpServers;
+    readonly credentialsRepository?: ForStoringCredentials;
+    readonly authorizing?: ForAuthorizingMcpOrigins;
+    readonly shell?: ForRunningShellCommands;
+    readonly worktrees?: ForKeepingWorktrees;
+    readonly promptfooRunner?: ForRunningPromptfoo;
+    readonly sessionAnalysisRepository?: ForLoadingSessionAnalysis;
+    readonly clock?: ForTellingTime;
+    readonly workspaceSettings?: WorkspaceSettings;
+    readonly charterRepository?: ForManagingCharter;
+    readonly localRepo?: ForManagingLocalOutput;
+    readonly agentProjectionByProvider?: Readonly<Record<string, ForManagingLocalAgentOutput>>;
+    readonly charterAuthoringApp?: ForAuthoringCharter;
+  } = {},
+): CharterRuntimeApps {
+  const composeApps = (settings: WorkspaceSettings) => {
+    const charterBuildingApp = new BuildingCharter(
+      buildCharterService,
+      loadCharterService,
+      loadMcpOriginsService,
+      charterRepository,
+      localRepo,
+      agentProjectionByProvider,
+      tokenCounter,
+      { agents: settings.agents, ...(settings.mainContextCeiling === undefined ? {} : { mainContextCeiling: settings.mainContextCeiling }) },
+      progressReporter,
+      charterAuthoringApp,
+      mcpServers,
+    );
+    const charterRuntimeApp = new RunningCharter(
+      charterAuthoringApp,
+      charterBuildingApp,
+      fileReader,
+      agentCliByProvider,
+      shell,
+      worktrees,
+      promptfooRunner,
+      sessionAnalysisRepository,
+      clock,
+      { agents: settings.agents, ...(settings.sessionAnalysisFolder === undefined ? {} : { sessionAnalysisFolder: settings.sessionAnalysisFolder }) },
+      progressReporter,
+      mcpServers,
+    );
+    return { charterBuildingApp, charterRuntimeApp };
+  };
+  return new Proxy({} as CharterRuntimeApps, {
+    get: (_target, operationName) =>
+      async (...operationArguments: unknown[]) => {
+        // Settings that do not read are refused as the command line refuses
+        // them, before anything is composed (FR-037).
+        const workspaceSettingsDTO = workspaceSettings === undefined ? await workspaceAppOf(fileReader).settings() : undefined;
+        if (workspaceSettingsDTO?.type === "Fault") return workspaceSettingsDTO;
+        const settings = workspaceSettings ?? workspaceSettingsDTO!.data;
+        const { charterBuildingApp, charterRuntimeApp } = composeApps(settings);
+        const charterApp = typeof (charterBuildingApp as unknown as Record<PropertyKey, unknown>)[operationName] === "function" ? charterBuildingApp : charterRuntimeApp;
+        return (charterApp as unknown as Record<PropertyKey, (...args: unknown[]) => unknown>)[operationName]!(...operationArguments);
+      },
+  });
+}
+
+/** The charter's projection and runtime as projecting it was: the build, the
+ *  health check, the context, the sensors and the mcp origins, over the files
+ *  a test holds. */
+export function buildingCharterOf(
+  fileReader: ForReadingFiles,
+  fileWriter: ForWritingFiles,
+  tokenCounter: ForCountingTokens,
+  agentCliByProvider: Readonly<Partial<Record<AgentProviderName, ForRunningAgentCli>>>,
+  progressReporter: ForReportingProgress,
+  runningOptions: Omit<Parameters<typeof runningCharterOf>[2], "fileWriter" | "tokenCounter" | "agentCliByProvider"> = {},
+): CharterRuntimeApps {
+  return runningCharterOf(fileReader, progressReporter, { ...runningOptions, fileWriter, tokenCounter, agentCliByProvider });
+}
+
+/** The charter's projection and runtime as testing it was: the cases
+ *  evaluated in worktrees `worktrees` adds, through `promptfooRunner`, where a
+ *  test gives them. */
+export function testingCharterOf(
+  fileReader: ForReadingFiles,
+  progressReporter: ForReportingProgress,
+  runningOptions: Parameters<typeof runningCharterOf>[2] = {},
+): CharterRuntimeApps {
+  return runningCharterOf(fileReader, progressReporter, runningOptions);
+}
+
+/** The sessions of the repository `fileReader` is set up on, kept under the
+ *  home, read through what `fileReaderAt` sets up, as main.ts sets it up. */
+export function reviewingSessionsOf(
+  repoFolder: URL,
+  homeFolder: URL,
+  fileReader: ForReadingFiles,
+  fileReaderAt: (rootFolder: URL) => ForReadingFiles,
+  clock: ForTellingTime,
+  progressReporter: ForReportingProgress,
+): CharterRuntimeApps {
+  return runningCharterOf(fileReader, progressReporter, { clock, sessionAnalysisRepository: new FileSessionAnalysisRepository(fileReaderAt, repoFolder, homeFolder) });
+}
+
+/** One primitive read as the engine reads what it is handed raw: an index.md
+ *  as kept, or the headers and body an author answered. */
+export function readPrimitive(contents: RawPrimitive["contents"]): Primitive {
+  return PrimitiveFactory.create(new RawPrimitive(PrimitiveLayer.REPO, "", "", contents, [], ""));
+}
+
+/** What the repository a test holds configured itself with, as the portal is
+ *  handed it by the command line (CORE-FR-231). */
+export function workspaceSettingsLoaderOf(fileReader: ForReadingFiles): () => Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault> {
+  return () => workspaceAppOf(fileReader).settings();
+}
+
+/** What a command is run with over these applications, as the command line
+ *  hands it over: every address said as the path from where it runs, and the
+ *  settings of an empty workspace. */
+export function commandContextOf(engineApps: Partial<EngineApps> & Pick<EngineApps, "charterAuthoringApp">, cwd = "/repo"): Context {
+  const emptyFileReaders = new InMemoryFileReaders({});
+  const commandLine = commandLineOf(emptyFileReaders, unwritableFiles, engineApps, cwd);
+  return { ...commandLine, ...showPathsInApps(commandLine.engineFactory({ agents: [] }), cwd), workspaceSettings: { agents: [] } };
+}

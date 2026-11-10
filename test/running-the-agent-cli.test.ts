@@ -4,9 +4,9 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { CodexCli } from "../src/zdriven/CodexCli.js";
-import { ClaudeCli } from "../src/zdriven/ClaudeCli.js";
-import { AdapterFault } from "../src/hexagon/port/zdriven/ForRunningAgentCli.js";
+import { CodexCli } from "../src/plugin/codex/codex-cli.adapter.js";
+import { ClaudeCli } from "../src/plugin/claude/claude-cli.adapter.js";
+import { AdapterFault } from "../src/module/runtime/app/port/out/running-agent-cli.port.js";
 
 /**
  * A `claude` of the test's own, put first on the PATH: it answers `--version`,
@@ -120,7 +120,14 @@ test("a run that stops with an error, or is answered as one, is raised and frees
   await withFakeClaude(async () => {
     const claudeCli = new ClaudeCli();
 
-    await assert.rejects(claudeCli.ask("fail"), (raised) => raised instanceof AdapterFault && /status 2: boom/.test(raised.message));
+    await assert.rejects(claudeCli.ask("fail"), (raised: unknown) => {
+      assert.ok(raised instanceof AdapterFault);
+      assert.equal(raised.internal, false);
+      assert.match(raised.message, /status 2\./);
+      assert.doesNotMatch(raised.message, /boom/);
+      assert.match(`${raised.cause}`, /boom/);
+      return true;
+    });
     await assert.rejects(claudeCli.ask("error"), (raised) => raised instanceof AdapterFault && /Not logged in/.test(raised.message));
     // Every place freed: five more run, and none waits forever.
     await Promise.all(Array.from({ length: 5 }, () => claudeCli.ask("after")));

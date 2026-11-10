@@ -1,20 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
-import { folderURL } from "../src/hexagon/domain/path.js";
-import { compile } from "../src/hexagon/domain/services/compile/compileService.js";
-import { shortenStringsOf } from "../src/hexagon/domain/models/helper.js";
+import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
+import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { ModelHelper } from "../src/module/charter/domain/helper.js";
 import { putDownBy } from "./put-down-by.js";
-import type { AgentProvider } from "../src/hexagon/domain/models/AgentProvider.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
+import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { loadCharterRoot } from "./use-cases-of.js";
 
-const CLAUDE: AgentProvider = "claude";
-const repo = new URL("file:///repo");
-const root = folderURL("file:///repo/.cw/charter/");
-const vendorRoot = folderURL("file:///repo/.cw/vendor/");
+const CLAUDE = new AgentProvider("claude");
+const repo = new URL("file:///repo/");
+const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
+const vendorRoot = FolderAddress.urlOf("file:///repo/.cw/charter/vendor/");
 
 const primitive = (kind: string, id: string, body: string, headers: readonly string[] = []) =>
   ["---", `kind: ${kind}`, `id: ${id}`, `description: What ${id} is for, in one line.`, ...headers, "---", "", body, ""].join(
@@ -22,17 +21,17 @@ const primitive = (kind: string, id: string, body: string, headers: readonly str
   );
 
 const at = (path: string) => new URL(path, root).href;
-const vendored = (path: string) => new URL(`acme/${path}`, vendorRoot).href;
+const vendored = (path: string) => new URL(`acme/charter/root/primitive/${path}`, vendorRoot).href;
 
 const load = (files: Readonly<Record<string, string>>, held = new InMemoryFileReaders(files)) =>
-  loadCharterRoot(repo, held, new YamlParser());
+  loadCharterRoot(held);
 
 /** Everything this charter is put down as, under the path each file was written
  *  at. */
 const putDown = async (files: Readonly<Record<string, string>>, agents: readonly AgentProvider[] = [CLAUDE]) => {
   const held = new InMemoryFileReaders(files);
   const charter = await load(files, held);
-  const written = await putDownBy(repo, compile(charter, agents), held);
+  const written = await putDownBy(charter, CompileService.compileCharterRoot(charter, agents), held);
 
   return Object.fromEntries(
     await Promise.all(written.map(async (path) => [path, await held.read(new URL(path, repo))] as const)),
@@ -210,7 +209,7 @@ test("a role holds each mcp it lists, whole or one tool, under the name this hos
     ]),
   });
 
-  const servedNames = shortenStringsOf(["linear", "github/billing", "sentry"]);
+  const servedNames = ModelHelper.shortenStringsOf(["linear", "github/billing", "sentry"]);
   const contents = files[".claude/agents/fraud-scanner.md"] ?? "";
   assert.ok(
     contents.includes(

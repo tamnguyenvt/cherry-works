@@ -1,16 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { McpConnecting } from "../src/hexagon/application/McpConnecting.js";
-import type { McpOrigin } from "../src/hexagon/domain/models/output/common/McpOrigin.js";
-import { credentialFor } from "../src/hexagon/service/credentialRepo.js";
-import { InMemoryAuthorizing } from "../src/zdriven/InMemoryAuthorizing.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryMcpServers } from "../src/zdriven/InMemoryMcpServers.js";
-import { InMemorySecrets } from "../src/zdriven/InMemorySecrets.js";
-import { OAuth } from "../src/zdriven/OAuth.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
+import type { McpOrigin } from "../src/module/charter/domain/models/projection/mcp-origin.js";
+import type { ForAuthorizingMcpOrigins } from "../src/module/charter/app/port/out/authorizing-mcp-origins.port.js";
+import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
+import { OAuth } from "../src/module/charter/infra/oauth.adapter.js";
 import { anOAuthServer } from "./an-oauth-server.js";
 import { charterFilesOf } from "./charter-of-mcp-origins.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { authoringCharterOf } from "./use-cases-of.js";
+import type { ForStoringCredentials } from "../src/module/charter/app/port/out/storing-credentials.port.js";
 
 /** One mcp origin at the test server's endpoint, signed in to by OAuth. */
 const mcpOriginAt = (endpoint: string): McpOrigin => ({ ids: ["billing"], names: { "billing": "billing_0000" }, address: endpoint, endpoint, auth: ["oauth"] });
@@ -20,25 +21,37 @@ const mcpOriginAt = (endpoint: string): McpOrigin => ({ ids: ["billing"], names:
 const openInBrowser = (authorizationUrl: string) => void fetch(authorizationUrl);
 
 /** A kept credential made to have expired a minute ago. */
-const expire = async (secrets: InMemorySecrets, address: string) => {
-  const credential = JSON.parse(secrets.secrets.get(address) ?? "");
-  await secrets.writeSecret(address, JSON.stringify({ ...credential, expiresAt: new Date(Date.now() - 60_000).toISOString() }));
+const expire = async (credentialsRepository: InMemoryCredentialsRepository, address: string) => {
+  const credential = JSON.parse(credentialsRepository.secrets.get(address) ?? "");
+  await credentialsRepository.secrets.set(address, JSON.stringify({ ...credential, expiresAt: new Date(Date.now() - 60_000).toISOString() }));
 };
+
+/** The developer's access token to this mcp origin, as charter runtime asks
+ *  charter authoring for it: the token, or its fault raised. */
+async function accessTokenOf(credentialsRepository: ForStoringCredentials, authorizing: ForAuthorizingMcpOrigins, origin: McpOrigin): Promise<string> {
+  const emptyFileReaders = new InMemoryFileReaders({});
+  const accessTokenAnswer = await authoringCharterOf(emptyFileReaders, new InMemoryFileOutput(emptyFileReaders), new InMemoryReporter(), { credentialsRepository, authorizing }).accessToken(
+    { address: origin.address, ...(origin.endpoint === undefined ? {} : { endpoint: origin.endpoint }), mcpId: origin.ids[0] ?? "" },
+    false,
+  );
+  if (accessTokenAnswer.type === "Fault") throw Object.assign(new Error(accessTokenAnswer.data.message), { fix: accessTokenAnswer.data.fix });
+  return accessTokenAnswer.data.accessToken;
+}
 
 test("an OAuth sign-in against an mcp origin ends with a credential in the store holding a refresh token (FR-148)", async (t) => {
   const oauthTestServer = await anOAuthServer();
   t.after(() => oauthTestServer.server.close());
-  const secrets = new InMemorySecrets();
+  const credentialsRepository = new InMemoryCredentialsRepository();
   const origin = mcpOriginAt(oauthTestServer.endpoint);
   const held = new InMemoryFileReaders({ ...charterFilesOf([origin]), "file:///repo/.cw/out/mcp-origins.json": JSON.stringify({ origins: [origin] }) });
   const shown: string[] = [];
 
-  await new McpConnecting(new URL("file:///repo/"), held, secrets, new OAuth(), new YamlParser(), new InMemoryMcpServers()).signInWithOAuth(origin.address, (authorizationUrl) => {
+  await authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter(), { credentialsRepository, authorizing: new OAuth() }).signInWithOAuth(origin.address, (authorizationUrl) => {
     shown.push(authorizationUrl);
     openInBrowser(authorizationUrl);
   });
 
-  const credential = JSON.parse(secrets.secrets.get(origin.address) ?? "");
+  const credential = JSON.parse(credentialsRepository.secrets.get(origin.address) ?? "");
   assert.equal(shown.length, 1);
   assert.match(shown[0] ?? "", /code_challenge=/);
   assert.equal(credential.method, "oauth");
@@ -51,25 +64,25 @@ test("an OAuth sign-in against an mcp origin ends with a credential in the store
 test("an expired credential is renewed on use, asking nothing, and the renewal kept; one the mcp origin refuses says to sign in again (FR-151)", async (t) => {
   const oauthTestServer = await anOAuthServer();
   t.after(() => oauthTestServer.server.close());
-  const secrets = new InMemorySecrets();
+  const credentialsRepository = new InMemoryCredentialsRepository();
   const oauth = new OAuth();
   const origin = mcpOriginAt(oauthTestServer.endpoint);
   const held = new InMemoryFileReaders({ ...charterFilesOf([origin]), "file:///repo/.cw/out/mcp-origins.json": JSON.stringify({ origins: [origin] }) });
-  await new McpConnecting(new URL("file:///repo/"), held, secrets, oauth, new YamlParser(), new InMemoryMcpServers()).signInWithOAuth(origin.address, openInBrowser);
+  await authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter(), { credentialsRepository, authorizing: oauth }).signInWithOAuth(origin.address, openInBrowser);
 
-  assert.equal(await credentialFor(secrets, oauth, origin), "access-1");
+  assert.equal(await accessTokenOf(credentialsRepository, oauth, origin), "access-1");
   assert.equal(oauthTestServer.issued.refresh_token, 0);
 
-  await expire(secrets, origin.address);
-  assert.equal(await credentialFor(secrets, oauth, origin), "access-renewed-1");
-  const renewedCredential = JSON.parse(secrets.secrets.get(origin.address) ?? "");
+  await expire(credentialsRepository, origin.address);
+  assert.equal(await accessTokenOf(credentialsRepository, oauth, origin), "access-renewed-1");
+  const renewedCredential = JSON.parse(credentialsRepository.secrets.get(origin.address) ?? "");
   assert.equal(renewedCredential.refreshToken, "refresh-1");
   assert.ok(Date.parse(renewedCredential.expiresAt) > Date.now());
   assert.equal(oauthTestServer.issued.authorization_code, 1);
 
   oauthTestServer.refusesRenewal = true;
-  await expire(secrets, origin.address);
-  await assert.rejects(credentialFor(secrets, oauth, origin), (raised: Error & { fix?: string }) => {
+  await expire(credentialsRepository, origin.address);
+  await assert.rejects(accessTokenOf(credentialsRepository, oauth, origin), (raised: Error & { fix?: string }) => {
     assert.match(raised.message, /expired/);
     assert.match(raised.fix ?? "", /cw mcp auth billing/);
     return true;
@@ -78,14 +91,14 @@ test("an expired credential is renewed on use, asking nothing, and the renewal k
 
 test("an mcp origin nobody signed in to is refused naming the command that signs in there (FR-151)", async () => {
   const origin = mcpOriginAt("https://nowhere.example/mcp");
-  await assert.rejects(credentialFor(new InMemorySecrets(), new InMemoryAuthorizing(), origin), { fix: /cw mcp auth billing/ });
+  await assert.rejects(accessTokenOf(new InMemoryCredentialsRepository(), new InMemoryAuthorizing(), origin), { fix: /cw mcp auth billing/ });
 });
 
 test("a token credential never expires as far as cw knows, and is used as kept", async () => {
-  const secrets = new InMemorySecrets();
+  const credentialsRepository = new InMemoryCredentialsRepository();
   const origin: McpOrigin = { ids: ["linear"], names: { "linear": "linear_0000" }, address: "https://mcp.linear.app/mcp", endpoint: "https://mcp.linear.app/mcp", auth: ["token"] };
-  await secrets.writeSecret(origin.address, JSON.stringify({ address: origin.address, method: "token", accessToken: "lin" }));
-  assert.equal(await credentialFor(secrets, new InMemoryAuthorizing(), origin), "lin");
+  await credentialsRepository.secrets.set(origin.address, JSON.stringify({ address: origin.address, method: "token", accessToken: "lin" }));
+  assert.equal(await accessTokenOf(credentialsRepository, new InMemoryAuthorizing(), origin), "lin");
 });
 
 test("a sign-in the developer refuses in the browser keeps nothing, and says so", async (t) => {
@@ -103,8 +116,8 @@ test("a sign-in the developer refuses in the browser keeps nothing, and says so"
 });
 
 test("a credential kept for an mcp origin now at plain http on another machine is not handed out (FR-149)", async () => {
-  const secrets = new InMemorySecrets();
+  const credentialsRepository = new InMemoryCredentialsRepository();
   const origin: McpOrigin = { ids: ["cleartext"], names: { "cleartext": "cleartext_0000" }, address: "http://mcp.example/mcp", endpoint: "http://mcp.example/mcp", auth: ["token"] };
-  await secrets.writeSecret(origin.address, JSON.stringify({ address: origin.address, method: "token", accessToken: "t" }));
-  await assert.rejects(credentialFor(secrets, new InMemoryAuthorizing(), origin), /plain http/);
+  await credentialsRepository.secrets.set(origin.address, JSON.stringify({ address: origin.address, method: "token", accessToken: "t" }));
+  await assert.rejects(accessTokenOf(credentialsRepository, new InMemoryAuthorizing(), origin), /plain http/);
 });

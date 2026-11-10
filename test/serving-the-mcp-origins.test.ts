@@ -1,13 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { McpConnecting } from "../src/hexagon/application/McpConnecting.js";
-import { DomainFault } from "../src/hexagon/domain/models/DomainFault.js";
-import type { McpOrigin } from "../src/hexagon/domain/models/output/common/McpOrigin.js";
-import { InMemoryAuthorizing } from "../src/zdriven/InMemoryAuthorizing.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryMcpServers } from "../src/zdriven/InMemoryMcpServers.js";
-import { InMemorySecrets } from "../src/zdriven/InMemorySecrets.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
+import type { McpOrigin } from "../src/module/charter/domain/models/projection/mcp-origin.js";
+import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryMcpServers } from "../src/module/shared/infra/in-memory/in-memory-mcp-servers.adapter.js";
+import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { answerOf, faultOf } from "./answer-of.js";
+import { buildingCharterOf } from "./use-cases-of.js";
 
 const OUT = "file:///repo/.cw/out/";
 const GITHUB = "https://api.githubcopilot.com/mcp/";
@@ -58,29 +60,29 @@ const mcpOriginsServed = ({ origins = ORIGINS as readonly McpOrigin[] | null } =
       ]),
     ),
   });
-  const secrets = new InMemorySecrets();
+  const credentialsRepository = new InMemoryCredentialsRepository();
   const authorizing = new InMemoryAuthorizing();
   const mcpServers = new InMemoryMcpServers();
   mcpServers.servers.set(GITHUB, { tools: ["get_file_contents", "search_code", "delete_repository"].map(toolNamed) });
   mcpServers.servers.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
-  const mcpConnectingApp = new McpConnecting(new URL("file:///repo/"), held, secrets, authorizing, new YamlParser(), mcpServers);
-  return { held, secrets, authorizing, mcpServers, mcpConnectingApp };
+  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), {}, new InMemoryReporter(), { mcpServers, credentialsRepository, authorizing });
+  return { held, credentialsRepository, authorizing, mcpServers, charterRuntimeApp };
 };
 
-const signIn = (secrets: InMemorySecrets, address: string, credential: Record<string, unknown> = {}) =>
-  secrets.writeSecret(address, JSON.stringify({ address, method: "token", accessToken: `${address} token`, ...credential }));
+const signIn = (credentialsRepository: InMemoryCredentialsRepository, address: string, credential: Record<string, unknown> = {}) =>
+  credentialsRepository.secrets.set(address, JSON.stringify({ address, method: "token", accessToken: `${address} token`, ...credential }));
 
 const signedInMcpOrigins = async () => {
   const mcpOrigins = mcpOriginsServed();
-  await signIn(mcpOrigins.secrets, GITHUB);
-  await signIn(mcpOrigins.secrets, LINEAR);
+  await signIn(mcpOrigins.credentialsRepository, GITHUB);
+  await signIn(mcpOrigins.credentialsRepository, LINEAR);
   return mcpOrigins;
 };
 
 test("the tools served are exactly the declared ones, each under its id's prefix (FR-153, SC-037)", async () => {
-  const { mcpConnectingApp } = await signedInMcpOrigins();
+  const { charterRuntimeApp } = await signedInMcpOrigins();
 
-  const servedTools = await mcpConnectingApp.tools();
+  const servedTools = answerOf(await charterRuntimeApp.tools());
 
   assert.deepEqual(
     servedTools.data.tools.map(({ data }) => data.name),
@@ -93,9 +95,9 @@ test("the tools served are exactly the declared ones, each under its id's prefix
 });
 
 test("a served tool's description names its mcp origin, and its input schema is the mcp origin's own (FR-153)", async () => {
-  const { mcpConnectingApp } = await signedInMcpOrigins();
+  const { charterRuntimeApp } = await signedInMcpOrigins();
 
-  const servedTools = await mcpConnectingApp.tools();
+  const servedTools = answerOf(await charterRuntimeApp.tools());
 
   const searchCode = servedTools.data.tools.find(({ data }) => data.name === servedName("github/billing", "search_code"));
   const listIssues = servedTools.data.tools.find(({ data }) => data.name === servedName("linear", "list_issues"));
@@ -105,73 +107,73 @@ test("a served tool's description names its mcp origin, and its input schema is 
 });
 
 test("a declared tool its mcp origin does not have is said, naming the mcp and the tool, and the rest are served (FR-153)", async () => {
-  const { mcpConnectingApp } = await signedInMcpOrigins();
+  const { charterRuntimeApp } = await signedInMcpOrigins();
 
-  const servedTools = await mcpConnectingApp.tools();
+  const servedTools = answerOf(await charterRuntimeApp.tools());
 
   assert.ok(servedTools.data.problems.some((problem) => problem.includes("linear") && problem.includes("create_issue")));
   assert.ok(servedTools.data.tools.some(({ data }) => data.name === servedName("linear", "list_issues")));
 });
 
 test("the tools are listed off what the build kept, reaching no mcp origin (EVAL-FR-031)", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
+  const { charterRuntimeApp, mcpServers } = await signedInMcpOrigins();
 
-  await mcpConnectingApp.tools();
+  await charterRuntimeApp.tools();
 
   assert.deepEqual(mcpServers.connected, []);
 });
 
 test("a call to a tool that was not served is refused, and reaches no mcp origin (FR-153, SC-037)", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
+  const { charterRuntimeApp, mcpServers } = await signedInMcpOrigins();
 
-  const undeclared = await mcpConnectingApp.call(servedName("github/billing", "delete_repository"), {});
-  const unknown = await mcpConnectingApp.call("nothing__at_all", {});
+  const undeclared = faultOf(await charterRuntimeApp.call(servedName("github/billing", "delete_repository"), {}));
+  const unknown = faultOf(await charterRuntimeApp.call("nothing__at_all", {}));
 
-  assert.equal(undeclared.data.isError, true);
-  assert.equal(unknown.data.isError, true);
+  assert.equal(undeclared.name, "UnknownToolFault");
+  assert.match(undeclared.message, /delete_repository/);
+  assert.equal(unknown.name, "UnknownToolFault");
+  assert.match(unknown.message, /nothing__at_all/);
   assert.deepEqual(mcpServers.calls, []);
 });
 
 test("a call reaches its mcp origin under the developer's own credential, and the answer comes back as it came (FR-154, SC-035)", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
+  const { charterRuntimeApp, mcpServers } = await signedInMcpOrigins();
   const mcpOriginAnswer = { content: [{ type: "text", text: "3 issues" }], isError: false, structuredContent: { count: 3 } };
   mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], answer: () => mcpOriginAnswer });
 
-  const toolAnswer = await mcpConnectingApp.call(servedName("linear", "list_issues"), { team: "core" });
+  const toolAnswer = answerOf(await charterRuntimeApp.call(servedName("linear", "list_issues"), { team: "core" }));
 
   assert.deepEqual(mcpServers.calls, [{ address: LINEAR, name: "list_issues", args: { team: "core" }, accessToken: `${LINEAR} token` }]);
   assert.deepEqual(toolAnswer.data, mcpOriginAnswer);
 });
 
 test("a call to an mcp origin not signed in to answers why, naming the command, and reaches it not (FR-154, SC-039)", async () => {
-  const { mcpConnectingApp, mcpServers, secrets } = mcpOriginsServed();
-  await signIn(secrets, GITHUB);
+  const { charterRuntimeApp, mcpServers, credentialsRepository } = mcpOriginsServed();
+  await signIn(credentialsRepository, GITHUB);
 
-  const servedTools = await mcpConnectingApp.tools();
-  const toolAnswer = await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
+  const servedTools = answerOf(await charterRuntimeApp.tools());
+  const toolFault = faultOf(await charterRuntimeApp.call(servedName("linear", "list_issues"), {}));
 
-  assert.equal(toolAnswer.data.isError, true);
-  assert.match(JSON.stringify(toolAnswer.data), /cw mcp auth linear/);
+  assert.match(`${toolFault.message} ${toolFault.fix}`, /cw mcp auth linear/);
   assert.ok(mcpServers.calls.every(({ address }) => address !== LINEAR));
   assert.ok(servedTools.data.tools.some(({ data }) => data.name === servedName("github/billing", "search_code")));
 });
 
 test("a call to an mcp origin that cannot be reached answers why, and every other mcp origin answers (FR-154, SC-039)", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
+  const { charterRuntimeApp, mcpServers } = await signedInMcpOrigins();
   mcpServers.servers.delete(GITHUB);
 
-  const unreachableAnswer = await mcpConnectingApp.call(servedName("github/billing", "search_code"), {});
-  const reachableAnswer = await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
+  const unreachableFault = faultOf(await charterRuntimeApp.call(servedName("github/billing", "search_code"), {}));
+  const reachableAnswer = answerOf(await charterRuntimeApp.call(servedName("linear", "list_issues"), {}));
 
-  assert.match(JSON.stringify(unreachableAnswer.data), /could not be reached/);
-  assert.equal(unreachableAnswer.data.isError, true);
+  assert.match(unreachableFault.message, /could not be reached/);
   assert.equal(reachableAnswer.data.isError, undefined);
 });
 
 test("an expired credential is renewed before the call, asking nobody, and the renewal is kept (FR-151)", async () => {
-  const { mcpConnectingApp, mcpServers, secrets, authorizing } = mcpOriginsServed();
-  await signIn(secrets, GITHUB);
-  await signIn(secrets, LINEAR, {
+  const { charterRuntimeApp, mcpServers, credentialsRepository, authorizing } = mcpOriginsServed();
+  await signIn(credentialsRepository, GITHUB);
+  await signIn(credentialsRepository, LINEAR, {
     method: "oauth",
     refreshToken: "refresh",
     expiresAt: new Date(Date.now() - 60_000).toISOString(),
@@ -179,78 +181,77 @@ test("an expired credential is renewed before the call, asking nobody, and the r
   });
   authorizing.renewedGrant = { accessToken: "renewed", refreshToken: "refresh-2", client: { clientId: "cw", issuer: LINEAR } };
 
-  await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
+  await charterRuntimeApp.call(servedName("linear", "list_issues"), {});
 
   assert.equal(mcpServers.calls.at(-1)?.accessToken, "renewed");
-  assert.equal(JSON.parse(secrets.secrets.get(LINEAR) ?? "").accessToken, "renewed");
+  assert.equal(JSON.parse(credentialsRepository.secrets.get(LINEAR) ?? "").accessToken, "renewed");
 });
 
 test("a call the mcp origin refuses with 401 is tried once more after a renewal (FR-151)", async () => {
-  const { mcpConnectingApp, mcpServers, secrets, authorizing } = mcpOriginsServed();
-  await signIn(secrets, GITHUB);
-  await signIn(secrets, LINEAR, { method: "oauth", refreshToken: "refresh", client: { clientId: "cw", issuer: LINEAR } });
+  const { charterRuntimeApp, mcpServers, credentialsRepository, authorizing } = mcpOriginsServed();
+  await signIn(credentialsRepository, GITHUB);
+  await signIn(credentialsRepository, LINEAR, { method: "oauth", refreshToken: "refresh", client: { clientId: "cw", issuer: LINEAR } });
   authorizing.renewedGrant = { accessToken: "renewed", client: { clientId: "cw", issuer: LINEAR } };
   mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], acceptsToken: (accessToken) => accessToken === "renewed" });
 
-  const toolAnswer = await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
+  const toolAnswer = answerOf(await charterRuntimeApp.call(servedName("linear", "list_issues"), {}));
 
   assert.deepEqual(mcpServers.calls.map(({ accessToken }) => accessToken), [`${LINEAR} token`, "renewed"]);
   assert.equal(toolAnswer.data.isError, undefined);
 });
 
 test("a 401 that no renewal gets past answers to sign in again, naming the command (FR-151)", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
+  const { charterRuntimeApp, mcpServers } = await signedInMcpOrigins();
   mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], acceptsToken: () => false });
 
-  const toolAnswer = await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
+  const toolFault = faultOf(await charterRuntimeApp.call(servedName("linear", "list_issues"), {}));
 
-  assert.equal(toolAnswer.data.isError, true);
-  assert.match(JSON.stringify(toolAnswer.data), /cw mcp auth linear/);
+  assert.match(`${toolFault.message} ${toolFault.fix}`, /cw mcp auth linear/);
   assert.equal(mcpServers.calls.length, 1);
 });
 
 test("no token appears in anything served, said or answered (SC-036)", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
+  const { charterRuntimeApp, mcpServers } = await signedInMcpOrigins();
   mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], acceptsToken: () => false });
 
-  const servedTools = await mcpConnectingApp.tools();
-  const toolAnswer = await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
+  const servedTools = answerOf(await charterRuntimeApp.tools());
+  const toolAnswer = await charterRuntimeApp.call(servedName("linear", "list_issues"), {});
 
   const everythingShown = JSON.stringify([servedTools, toolAnswer]);
   assert.ok(!everythingShown.includes(`${LINEAR} token`) && !everythingShown.includes(`${GITHUB} token`));
 });
 
 test("with no list of mcp origins, serving stops saying to build (FR-152)", async () => {
-  const { mcpConnectingApp } = mcpOriginsServed({ origins: null });
+  const { charterRuntimeApp } = mcpOriginsServed({ origins: null });
 
-  await assert.rejects(mcpConnectingApp.tools(), (raised: DomainFault) => raised instanceof DomainFault && /cw build/.test(raised.fix));
+  assert.match(faultOf(await charterRuntimeApp.tools()).fix, /cw build/);
 });
 
 test("a list of mcp origins written without names serves nothing of it, saying to build again (FR-145)", async () => {
-  const { mcpConnectingApp, secrets } = mcpOriginsServed({ origins: ORIGINS.map(({ names, ...origin }) => origin) as unknown as McpOrigin[] });
-  await signIn(secrets, GITHUB);
-  await signIn(secrets, LINEAR);
+  const { charterRuntimeApp, credentialsRepository } = mcpOriginsServed({ origins: ORIGINS.map(({ names, ...origin }) => origin) as unknown as McpOrigin[] });
+  await signIn(credentialsRepository, GITHUB);
+  await signIn(credentialsRepository, LINEAR);
 
-  const servedTools = await mcpConnectingApp.tools();
+  const servedTools = answerOf(await charterRuntimeApp.tools());
 
   assert.deepEqual(servedTools.data.tools, []);
   assert.ok(servedTools.data.problems.some((problem) => problem.includes("linear") && problem.includes("cw build")));
 });
 
 test("an mcp origin reached for a call is let go once it has answered", async () => {
-  const { mcpConnectingApp, mcpServers } = await signedInMcpOrigins();
+  const { charterRuntimeApp, mcpServers } = await signedInMcpOrigins();
 
-  await mcpConnectingApp.call(servedName("linear", "list_issues"), {});
+  await charterRuntimeApp.call(servedName("linear", "list_issues"), {});
 
   assert.deepEqual(mcpServers.closed, [LINEAR]);
 });
 
 test("MCP reads only the shared catalogue, since its primitives are shared", async () => {
-  const { held, mcpConnectingApp } = await signedInMcpOrigins();
+  const { held, charterRuntimeApp } = await signedInMcpOrigins();
   held.write(new URL(`${OUT}catalogue.claude.json`), "not json");
   held.write(new URL(`${OUT}catalogue.codex.json`), "not json");
   held.calls.length = 0;
-  const servedTools = await mcpConnectingApp.tools();
+  const servedTools = answerOf(await charterRuntimeApp.tools());
   assert.equal(servedTools.data.tools.length, 3);
   assert.ok(!held.calls.some((file) => file.includes("catalogue.claude.json") || file.includes("catalogue.codex.json")));
 });

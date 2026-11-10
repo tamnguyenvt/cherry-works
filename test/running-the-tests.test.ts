@@ -1,24 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/driver/cli/Commander.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { noMcpOriginsReached } from "./no-mcp-origins.js";
-import { noSessionsKept } from "./no-sessions.js";
-import { noEvaluationsRun } from "./no-evaluations.js";
-import { noSensorsRun } from "./no-sensors.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
-const root = new URL("file:///repo/.cw/charter/");
+const root = new URL("file:///repo/.cw/charter/primitive/");
 const at = (path: string) => new URL(path, root).href;
 const inRepo = (path: string) => new URL(path, "file:///repo/").href;
 
@@ -36,7 +30,7 @@ const settings = { [inRepo(".cw/settings.json")]: `${JSON.stringify({ agents: []
 /** One test file, written the way an author writes it, in the folder tests are
  *  read from. */
 const suite = (written: unknown, name = "suite"): Record<string, string> => ({
-  [inRepo(`.cw/test/${name}.json`)]: `${JSON.stringify(written, undefined, 2)}\n`,
+  [inRepo(`.cw/charter/test/${name}.json`)]: `${JSON.stringify(written, undefined, 2)}\n`,
 });
 
 /** Everything one run wrote, kept apart the way a pipeline reads it. */
@@ -64,18 +58,7 @@ const writing = async (work: () => Promise<number>) => {
 const commandLine = (files: Readonly<Record<string, string>>) => {
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources();
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const cli = new Commander(
-    {
-      cwd: repo,
-      version: "0.0.0",
-      charterAuthoringApp,
-      charterVendoringApp: new CharterVendoring(new URL(`file://${repo}/`), fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser()),
-      testAuthoringApp: new TestAuthoring(new URL(`file://${repo}/`), fileReaders, new InMemoryFileOutput(fileReaders)),
-      mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,
-    },
-    COMMANDS,
-  );
+  const cli = new Commander(commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), { charterAuthoringApp: authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher }), charterRuntimeApp: buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter()) }, repo), COMMANDS, );
   return (argv: readonly string[] = ["test"]) => writing(() => cli.run([...argv]));
 };
 
@@ -171,6 +154,20 @@ test("a touched file a posture denies is refused, and one no posture denies fail
   assert.match(result, /No posture denies this file\./);
 });
 
+test("a charter holding no posture refuses nothing, and a case expecting a refusal fails saying what to author", async () => {
+  const run = commandLine({
+    ...settings,
+    [at("guide/no-any/index.md")]: guide("no-any", ["src/**"]),
+    ...suite({ cases: [{ do: { touchFile: ".env" }, expect: { allow: false } }] }),
+  });
+
+  const { code, result } = await run();
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(result, /This charter holds no posture, so it refuses nothing\./);
+  assert.match(result, /Author a posture denying this file, or expect "allow": true\./);
+});
+
 test("a touched file no posture denies is allowed, and one a posture denies fails naming it", async () => {
   const run = commandLine({
     ...charter,
@@ -239,7 +236,7 @@ test("every case in the file is run, and the count is of all of them", async () 
 test("a test file that will not read is refused, naming it, and nothing is resolved (FR-009)", async () => {
   const run = commandLine({
     ...charter,
-    [inRepo(".cw/test/broken.json")]: "{ not json",
+    [inRepo(".cw/charter/test/broken.json")]: "{ not json",
     ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
   });
 
@@ -247,14 +244,14 @@ test("a test file that will not read is refused, naming it, and nothing is resol
 
   assert.equal(code, EXIT_FAILURE);
   assert.equal(result, "");
-  assert.match(problem, /\.cw\/test\/broken\.json\n  error: This file is not JSON/);
+  assert.match(problem, /\.cw\/charter\/test\/broken\.json\n  error: This file is not JSON/);
 });
 
 test("a repository that wrote no test is told so and passes", async () => {
   const { code, result } = await commandLine(charter)();
 
   assert.equal(code, EXIT_OK);
-  assert.match(result, /No tests: \.cw\/test\/ holds no case\./);
+  assert.match(result, /No tests: \.cw\/charter\/test\/ holds no case\./);
 });
 
 test("a charter with an error resolves nothing and says where to read what is wrong (FR-009)", async () => {
@@ -269,7 +266,7 @@ test("a charter with an error resolves nothing and says where to read what is wr
   assert.equal(code, EXIT_FAILURE);
   assert.equal(result, "");
   assert.match(problem, /Nothing was resolved\./);
-  assert.match(problem, /\.cw\/charter\/guide\/broken\/index\.md/);
+  assert.match(problem, /\.cw\/charter\/primitive\/guide\/broken\/index\.md/);
 });
 
 test("a body naming an mcp no layer holds is an error, and the tests do not run (FR-143)", async () => {

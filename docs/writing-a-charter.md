@@ -21,7 +21,7 @@ the repository is already initialized, start with `cw kinds guide`.
 `cw add` writes the primitive; it does not build it. `cw edit` opens the source
 in `$VISUAL` or `$EDITOR`.
 
-The guide lives at `.cw/charter/guide/explain-failures/index.md`. Give it a body
+The guide lives at `.cw/charter/primitive/guide/explain-failures/index.md`. Give it a body
 that says exactly what the agent should do:
 
 ```markdown
@@ -107,7 +107,7 @@ cw add skill review-a-change --header description="Review a change for correctne
 cw edit review-a-change
 ```
 
-For example, `.cw/charter/skill/review-a-change/index.md` can hold:
+For example, `.cw/charter/primitive/skill/review-a-change/index.md` can hold:
 
 ```markdown
 ---
@@ -177,7 +177,7 @@ update from its source. See [vendor sources](reference.md#vendor-sources).
 
 ## Test the scope, then inspect the output
 
-Add a file such as `.cw/test/authoring.json` to pin down when your guide is
+Add a file such as `.cw/charter/test/authoring.json` to pin down when your guide is
 selected:
 
 ```json

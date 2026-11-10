@@ -2,7 +2,7 @@
 
 A vendor source is a git repository that publishes rules, workflows or skills
 for other repositories to install with `cw vendor add`. You author the source;
-each consuming repository installs a copy under `.cw/vendor/` and builds it
+each consuming repository installs a copy under `.cw/charter/vendor/` and builds it
 for its own coding agent.
 
 This guide starts with a source holding one charter, then shows the layout
@@ -27,7 +27,7 @@ for in the source repository. Consumers choose their own agents; they install
 the authored charter, not the source repository's generated agent files.
 
 Write the first rule in
-`.cw/charter/guide/baseline-explain-failures/index.md`:
+`.cw/charter/primitive/guide/baseline-explain-failures/index.md`:
 
 ```markdown
 ---
@@ -78,16 +78,16 @@ that environment:
 - Keep assets inside each primitive's folder. Files elsewhere in the source
   repository are not shipped as primitive assets.
 - Publish no nested vendor dependencies. A source holding files under
-  `.cw/vendor/` is refused: vendoring is one level deep.
+  `.cw/charter/vendor/` is refused: vendoring is one level deep.
 
-For a single-charter source, `cw vendor add` installs `.cw/charter/` and the
+For a single-charter source, `cw vendor add` installs `.cw/charter/primitive/` and the
 root `README.md`. It does not install the source's `.cw/settings.json`, tests,
 evaluations or generated agent files. The README should explain what the
 charter provides, prerequisites, installation and upgrade instructions.
 
 ## 3. Test and publish a version
 
-Create `.cw/test/baseline.json`:
+Create `.cw/charter/test/baseline.json`:
 
 ```json
 {
@@ -134,7 +134,7 @@ cw doctor
 The installed rule is now at:
 
 ```text
-.cw/vendor/your-org/charter-baseline/guide/baseline-explain-failures/index.md
+.cw/charter/vendor/your-org/charter-baseline/guide/baseline-explain-failures/index.md
 ```
 
 Installation leaves files unstaged and does not build. Review and commit the
@@ -180,23 +180,23 @@ use this in place of installing the same primitives as a vendor.
 
 ## Optional: publish several charters in one repository
 
-Use `charters/<name>/.cw/charter/` when consumers should choose independent
+Use `charters/<name>/.cw/charter/primitive/` when consumers should choose independent
 packages:
 
 ```text
 charters/
 ├── baseline/
 │   ├── README.md
-│   └── .cw/charter/guide/baseline-explain-failures/index.md
+│   └── .cw/charter/primitive/guide/baseline-explain-failures/index.md
 └── reviews/
     ├── README.md
-    └── .cw/charter/skill/reviews-review-a-change/index.md
+    └── .cw/charter/primitive/skill/reviews-review-a-change/index.md
 ```
 
 Initialize and test each charter from its own folder, for example
 `charters/baseline/`. Keep ids unique across charters consumers will install
 together. A charter folder name must not be a primitive kind such as `guide`
-or `skill`. Each charter must hold its own `.cw/charter/` and no vendored files.
+or `skill`. Each charter must hold its own `.cw/charter/primitive/` and no vendored files.
 
 Consumers select one or more charters:
 
@@ -204,7 +204,7 @@ Consumers select one or more charters:
 cw vendor add your-org/charters --charter baseline --charter reviews --ref v1.0.0
 ```
 
-Each lands under `.cw/vendor/your-org/charters/<name>/`, with that charter's
+Each lands under `.cw/charter/vendor/your-org/charters/<name>/`, with that charter's
 README when present. It can be removed by that full installed name, such as
 `cw vendor remove your-org/charters/reviews`.
 
@@ -212,7 +212,7 @@ README when present. It can be removed by that full installed name, such as
 
 With neither `--charter` nor `--skill`, the first layout present wins:
 
-1. A root `.cw/charter/`: install that one charter.
+1. A root `.cw/charter/primitive/`: install that one charter.
 2. Otherwise, `charters/`: install every charter it holds.
 3. Otherwise, `skills/`: install every skill it holds, for compatibility with
    existing `npx skills` repositories.

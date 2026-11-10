@@ -1,20 +1,20 @@
+import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
-import { folderURL } from "../src/hexagon/domain/path.js";
-import { compile } from "../src/hexagon/domain/services/compile/compileService.js";
-import { Catalogue } from "../src/hexagon/domain/models/output/common/Catalogue.js";
+import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
+import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import type { Catalogue } from "../src/module/charter/domain/models/projection/catalogue.js";
 
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { CwAuthorSkill } from "../src/hexagon/domain/models/charter/builtin/CwAuthorSkill.js";
-import { CwSessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensCounterScript.js";
-import { CwSessionCostSkill } from "../src/hexagon/domain/models/charter/builtin/CwSessionCostSkill.js";
-import { CwSessionTokensSensor } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensSensor.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
+import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
+import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
+import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
+import { loadCharterRoot } from "./use-cases-of.js";
 
-const repo = new URL("file:///repo");
-const root = folderURL("file:///repo/.cw/charter/");
-const vendorRoot = folderURL("file:///repo/.cw/vendor/");
+const repo = new URL("file:///repo/");
+const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
+const vendorRoot = FolderAddress.urlOf("file:///repo/.cw/charter/vendor/");
 
 /** One authored file, holding what any of the kinds these tests use asks
  *  for. The body is what a real guide's body is like: the bulk of the file, and
@@ -59,28 +59,32 @@ const sessionCounterEntries = [
     id: "cw-session-cost",
     kind: "skill",
     description: new CwSessionCostSkill().headers.description,
-    file: ".cw/out/skill/cw-session-cost/index.md",
+    file: "$CW_OUT/skill/cw-session-cost/index.md",
   },
   {
     id: "cw-session-tokens-counter",
     kind: "script",
     description: new CwSessionTokensCounterScript().headers.description,
-    file: ".cw/out/script/cw-session-tokens-counter/index.md",
+    file: "$CW_OUT/script/cw-session-tokens-counter/index.md",
   },
   {
     id: "cw-session-tokens-counter-on-stop",
     kind: "sensor",
     description: new CwSessionTokensSensor().headers.description,
-    file: ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md",
+    file: "$CW_OUT/sensor/cw-session-tokens-counter-on-stop/index.md",
   },
 ];
 
-const load = (files: InMemoryFileReaders) => loadCharterRoot(repo, files, new YamlParser());
+const load = (files: InMemoryFileReaders) => loadCharterRoot(files);
 
 /** The listing this charter compiles to. Read off what compiling produces, since
  *  a listing is one of the things a charter is compiled into and there is no way
- *  to ask for it on its own (SC-004). */
-const catalogueOf = async (files: InMemoryFileReaders): Promise<Catalogue> => compile(await load(files), []).catalogue;
+ *  to ask for it on its own (SC-004); each entry's file under `$CW_OUT/`
+ *  (CORE-FR-221). */
+const catalogueOf = async (files: InMemoryFileReaders): Promise<Catalogue> => {
+  const { catalogue } = CompileService.compileCharterRoot(await load(files), []);
+  return catalogue;
+};
 
 /** The bytes a listing lands on disk as, which is what an agent pays to read
  *  (SC-005). */
@@ -95,17 +99,17 @@ test("the catalogue records what a primitive is called, what it is for, the file
     }),
   );
 
-  assert.deepEqual(catalogue.entries, [
-    { ...builtinEntry, file: ".cw/out/skill/cw-author/index.md" },
+  assert.deepEqual(catalogue.entries.map((catalogueEntry) => ({ ...catalogueEntry })), [
+    { ...builtinEntry, file: "$CW_OUT/skill/cw-author/index.md" },
     ...sessionCounterEntries.filter((catalogueEntry) => catalogueEntry.id !== CwSessionTokensSensor.id),
     {
       id: "no-any",
       kind: "guide",
       description: "What no-any is for, in one line.",
-      file: ".cw/out/guide/no-any/index.md",
+      file: "$CW_OUT/guide/no-any/index.md",
       globs: ["src/**/*.ts"],
     },
-  ].map((catalogueEntry) => ({ ...catalogueEntry, agentProvider: "all" })));
+  ].map((catalogueEntry) => ({ ...catalogueEntry, agentProviders: "all" })));
 });
 
 test("a header the author left out is left out, not recorded as nothing", async () => {
@@ -115,30 +119,29 @@ test("a header the author left out is left out, not recorded as nothing", async 
 
   const entry = catalogue.entries.find((one) => one.id === "no-any");
 
-  assert.deepEqual(Object.keys(entry!).sort(), ["agentProvider", "description", "file", "globs", "id", "kind"]);
+  assert.deepEqual(Object.keys(entry!).sort(), ["agentProviders", "description", "file", "globs", "id", "kind"]);
 });
 
 test("the output keeps shared entries in catalogue and restricted entries only in provider catalogues", async () => {
   const charter = await load(new InMemoryFileReaders());
-  const charterOutput = compile(charter, ["claude", "codex"]);
+  const charterOutput = CompileService.compileCharterRoot(charter, [new AgentProvider("claude"), new AgentProvider("codex")]);
   const sensorId = CwSessionTokensSensor.id;
 
-  assert.ok(charterOutput.catalogue.entries.every((catalogueEntry) => catalogueEntry.agentProvider === "all"));
+  assert.ok(charterOutput.catalogue.entries.every((catalogueEntry) => catalogueEntry.agentProviders === "all"));
   assert.ok(!charterOutput.catalogue.entries.some((catalogueEntry) => catalogueEntry.id === sensorId));
   assert.deepEqual(charterOutput.agentBasedCatalogues.claude?.entries.map((catalogueEntry) => catalogueEntry.id), [sensorId]);
   assert.deepEqual(charterOutput.agentBasedCatalogues.codex?.entries, []);
-  const sharedProjection = charterOutput.catalogue.projections[0]!;
-  assert.ok(!JSON.parse(sharedProjection.contents).some((catalogueEntry: { id: string }) => catalogueEntry.id === sensorId));
+  assert.ok(!JSON.parse(charterOutput.catalogue.text).some((catalogueEntry: { id: string }) => catalogueEntry.id === sensorId));
 });
 
 test("a vendored primitive is catalogued at its compiled file, as every layer's is (FR-140)", async () => {
-  const vendored = new URL("team/guide/no-any/index.md", vendorRoot);
+  const vendored = new URL("team/rules/root/primitive/guide/no-any/index.md", vendorRoot);
   const catalogue = await catalogueOf(new InMemoryFileReaders({ [vendored.href]: primitive("guide", "no-any") }));
 
   const entry = catalogue.entries.find((one) => one.kind === "guide");
 
   assert.equal(entry!.id, "no-any");
-  assert.equal(entry!.file, ".cw/out/guide/no-any/index.md");
+  assert.equal(entry!.file, "$CW_OUT/guide/no-any/index.md");
 });
 
 test("the same charter catalogues in the same order however its files were read", async () => {

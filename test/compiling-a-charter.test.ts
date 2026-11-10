@@ -1,24 +1,24 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
 import { putDownBy } from "./put-down-by.js";
-import { folderURL } from "../src/hexagon/domain/path.js";
-import { compile } from "../src/hexagon/domain/services/compile/compileService.js";
-import { shortenStringsOf } from "../src/hexagon/domain/models/helper.js";
-import type { AgentProvider } from "../src/hexagon/domain/models/AgentProvider.js";
+import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
+import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { ModelHelper } from "../src/module/charter/domain/helper.js";
+import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
+import { yamlFieldsOf } from "../src/module/charter/domain/libs/yaml.lib.js";
 
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { CwAuthorSkill } from "../src/hexagon/domain/models/charter/builtin/CwAuthorSkill.js";
-import { CwSessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensCounterScript.js";
-import { CwSessionCostSkill } from "../src/hexagon/domain/models/charter/builtin/CwSessionCostSkill.js";
-import { CwSessionTokensSensor } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensSensor.js";
-import { isStamped } from "../src/hexagon/domain/models/output/StampedDocument.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
+import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
+import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
+import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
+import { StampedDocument } from "../src/module/charter/domain/models/projection/stamped-document.js";
+import { loadCharterRoot } from "./use-cases-of.js";
 
-const CLAUDE: AgentProvider = "claude";
-const repo = new URL("file:///repo");
-const root = folderURL("file:///repo/.cw/charter/");
+const CLAUDE = new AgentProvider("claude");
+const repo = new URL("file:///repo/");
+const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
 
 const primitive = (kind: string, id: string, body = `The body of ${id}.`) =>
   [
@@ -84,8 +84,8 @@ const oneGuide = { [new URL("guide/no-any/index.md", root).href]: primitive("gui
  *  (SC-004). */
 const built = async (authored: Readonly<Record<string, string>>, agents: readonly AgentProvider[] = [CLAUDE]) => {
   const held = new InMemoryFileReaders(authored);
-  const charter = await loadCharterRoot(repo, held, new YamlParser());
-  const written = await putDownBy(repo, compile(charter, agents), held);
+  const charter = await loadCharterRoot(held);
+  const written = await putDownBy(charter, CompileService.compileCharterRoot(charter, agents), held);
 
   return {
     charter,
@@ -137,7 +137,7 @@ test("no listing and no projection can be produced without the others (SC-004)",
   // Not a test of what compiling returns but of what it offers: one call, one
   // list, and no argument that narrows it to a single file. The second argument
   // says which agents are installed, never which file is wanted.
-  assert.equal(compile.length, 2);
+  assert.equal(CompileService.compileCharterRoot.length, 2);
   assert.equal((await built(oneGuide)).written.length, 17);
 });
 
@@ -195,7 +195,7 @@ test("every primitive compiles to one document holding its headers, then its mix
 
   assert.match(document, /^---\nkind: guide\nid: no-any\n/);
   assert.match(document, /mixins: \["house-style"\]\n---\n\nLENT BODY\n\nOWN BODY\n/);
-  assert.ok(isStamped(document));
+  assert.ok(StampedDocument.isStamped(document));
 });
 
 test("a mixin at the end lends its body after its host's, and one at the start before it, each in the order the host named them", async () => {
@@ -219,6 +219,7 @@ test("what the engine brings compiles to a file on disk like any other primitive
 
   const catalogue: readonly { id: string; file: string }[] = JSON.parse(files[".cw/out/catalogue.json"] ?? "");
 
+  // Each file named from the repository's root, where the catalogue lands it.
   for (const { id, file } of catalogue) assert.ok(files[file], `${id} names ${file}, which was not written`);
   assert.match(files[".cw/out/skill/cw-author/index.md"] ?? "", /^---\nkind: skill\nid: cw-author\n/);
 });
@@ -287,12 +288,12 @@ test("a header YAML would read as something else is quoted in the compiled docum
   const document = files[".cw/out/sensor/on-stop/index.md"] ?? "";
   const [, headers = ""] = document.split("---\n");
 
-  assert.deepEqual(new YamlParser().parse(headers).run, run);
+  assert.deepEqual(yamlFieldsOf(headers).run, run);
 });
 
 test("an mcp origin is served under the first segment of its id and a hash of its id, the same on every build (FR-145)", () => {
   assert.deepEqual(
-    shortenStringsOf(["notion", "moneyforward/tax", "moneyforward/billing-service"]),
+    ModelHelper.shortenStringsOf(["notion", "moneyforward/tax", "moneyforward/billing-service"]),
     {
       "moneyforward/billing-service": "moneyforward_c3ae",
       "moneyforward/tax": "moneyforward_e2d3",
@@ -304,7 +305,7 @@ test("an mcp origin is served under the first segment of its id and a hash of it
 test("two mcp origins whose prefixes hash alike are told apart by a number, in the order they sort in (FR-145)", () => {
   // Both hash to `acme_3b85`; `place-1157` sorts before `place-5`.
   assert.deepEqual(
-    shortenStringsOf(["acme/place-5", "acme/place-1157"]),
+    ModelHelper.shortenStringsOf(["acme/place-5", "acme/place-1157"]),
     {
       "acme/place-1157": "acme_3b85",
       "acme/place-5": "acme_3b85_2",

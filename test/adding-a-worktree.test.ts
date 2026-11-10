@@ -7,8 +7,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import { GitWorktrees } from "../src/zdriven/GitWorktrees.js";
-import { AdapterFault } from "../src/hexagon/port/zdriven/ForKeepingWorktrees.js";
+import { GitWorktrees } from "../src/module/runtime/infra/git-worktrees.adapter.js";
+import { AdapterFault } from "../src/module/runtime/app/port/out/keeping-worktrees.port.js";
 
 const run = promisify(execFile);
 
@@ -23,10 +23,8 @@ test("a worktree holds the last commit and none of the work in hand, and once re
     await writeFile(join(repoFolder, "committed.md"), "edited since\n");
     await writeFile(join(repoFolder, "untracked.md"), "not added\n");
 
-    const gitWorktrees = new GitWorktrees();
-    const repo = pathToFileURL(`${repoFolder}/`);
-    const worktreeFolder = new URL(".worktrees/1/", repo);
-    await gitWorktrees.addWorktree(repo, worktreeFolder);
+    const gitWorktrees = new GitWorktrees(pathToFileURL(`${repoFolder}/`));
+    await gitWorktrees.addWorktree(".worktrees/1");
 
     const worktreePath = join(repoFolder, ".worktrees/1");
     assert.equal(await readFile(join(worktreePath, "committed.md"), "utf8"), "as committed\n");
@@ -36,18 +34,18 @@ test("a worktree holds the last commit and none of the work in hand, and once re
     const { stdout: statusText } = await run("git", ["status", "--porcelain"], { cwd: repoFolder });
     assert.equal(statusText.includes(".worktrees"), false);
 
-    await gitWorktrees.removeWorktree(repo, worktreeFolder);
+    await gitWorktrees.removeWorktree(".worktrees/1");
     assert.equal(existsSync(worktreePath), false);
     const { stdout: worktreeListText } = await run("git", ["worktree", "list"], { cwd: repoFolder });
     assert.equal(worktreeListText.trim().split("\n").length, 1);
 
     // A folder left by a run stopped halfway, git's record of it gone or not,
     // is removed all the same.
-    await gitWorktrees.addWorktree(repo, worktreeFolder);
+    await gitWorktrees.addWorktree(".worktrees/1");
     await rm(worktreePath, { recursive: true, force: true });
-    await gitWorktrees.removeWorktree(repo, worktreeFolder);
-    await gitWorktrees.addWorktree(repo, worktreeFolder);
-    await gitWorktrees.removeWorktree(repo, worktreeFolder);
+    await gitWorktrees.removeWorktree(".worktrees/1");
+    await gitWorktrees.addWorktree(".worktrees/1");
+    await gitWorktrees.removeWorktree(".worktrees/1");
     assert.equal(existsSync(worktreePath), false);
   } finally {
     await rm(repoFolder, { recursive: true, force: true });
@@ -60,7 +58,7 @@ test("a worktree of a repository with nothing committed is refused, saying to co
     await run("git", ["init", "-q"], { cwd: repoFolder });
     const repo = pathToFileURL(`${repoFolder}/`);
     await assert.rejects(
-      new GitWorktrees().addWorktree(repo, new URL(".worktrees/1/", repo)),
+      new GitWorktrees(repo).addWorktree(".worktrees/1"),
       (raised) => raised instanceof AdapterFault && /Commit what is to be evaluated first/.test(raised.fix),
     );
   } finally {
@@ -73,7 +71,7 @@ test("a worktree of a folder under no repository is refused in git's words, nami
   try {
     const repo = pathToFileURL(`${folder}/`);
     await assert.rejects(
-      new GitWorktrees().addWorktree(repo, new URL(".worktrees/1/", repo)),
+      new GitWorktrees(repo).addWorktree(".worktrees/1"),
       (adapterFault) => adapterFault instanceof AdapterFault && /not a git repository/.test(adapterFault.message) && /git init/.test(adapterFault.fix),
     );
     assert.deepEqual(await readdir(folder), []);
@@ -87,7 +85,7 @@ test("a worktree folder left in a folder under no repository is removed without 
   try {
     const repo = pathToFileURL(`${folder}/`);
     await mkdir(join(folder, "left"));
-    await new GitWorktrees().removeWorktree(repo, new URL("left/", repo));
+    await new GitWorktrees(repo).removeWorktree("left");
     assert.deepEqual(await readdir(folder), []);
   } finally {
     await rm(folder, { recursive: true, force: true });
@@ -101,7 +99,7 @@ test("a machine with no git is told to install it, not to run git init (CORE-FR-
     process.env.PATH = "";
     const repo = pathToFileURL(`${folder}/`);
     await assert.rejects(
-      new GitWorktrees().addWorktree(repo, new URL(".worktrees/1/", repo)),
+      new GitWorktrees(repo).addWorktree(".worktrees/1"),
       (adapterFault) => adapterFault instanceof AdapterFault && /install it/.test(adapterFault.fix) && !/git init/.test(adapterFault.fix),
     );
   } finally {

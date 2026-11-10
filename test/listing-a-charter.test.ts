@@ -1,43 +1,28 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/driver/cli/Commander.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { KINDS } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
-import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
-import { CwAuthorSkill } from "../src/hexagon/domain/models/charter/builtin/CwAuthorSkill.js";
-import { CwSessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensCounterScript.js";
-import { CwSessionTokensSensor } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensSensor.js";
-import { CwSessionCostSkill } from "../src/hexagon/domain/models/charter/builtin/CwSessionCostSkill.js";
-import { noMcpOriginsReached } from "./no-mcp-origins.js";
-import { noSessionsKept } from "./no-sessions.js";
-import { noEvaluationsRun } from "./no-evaluations.js";
-import { noSensorsRun } from "./no-sensors.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
+import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
+import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
+import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
+import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
+import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
 
-/** What installing a vendor is driven through: a context always carries every
- *  use case, and nothing here asks this one for anything. */
-const charterVendoringApp = new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), new InMemorySources(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
-
-/** What the test files are driven through, over an empty repository: nothing
- *  here asks it for anything. */
-const noTestFiles = new InMemoryFileReaders({});
-const testAuthoringApp = new TestAuthoring(new URL(`file://${repo}/`), noTestFiles, new InMemoryFileOutput(noTestFiles));
 
 
 /** Whose home the command line runs in: what is installed on this machine is
  *  detected under it, and nothing here asks. */
-const root = new URL("file:///repo/.cw/charter/");
+const root = new URL("file:///repo/.cw/charter/primitive/");
 
 /** One authored file, holding what the kind it declares requires. */
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
@@ -80,8 +65,9 @@ const writing = async (work: () => Promise<number>) => {
 /** The command line as a user meets it, over a charter held in memory. */
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[] = ["list"]) => {
   const readers = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);
+  const charterAuthoringApp = authoringCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const cli = new Commander(commandLineOf(readers, new InMemoryFileOutput(readers), { charterAuthoringApp, charterRuntimeApp }, repo), COMMANDS);
   return writing(() => cli.run(argv));
 };
 
@@ -121,7 +107,7 @@ test("every primitive is listed, ordered by id, with what it is for", async () =
 test("the full listing names the file each primitive was authored in, and the files it applies to (FR-140)", async () => {
   const { results } = await run(charter);
 
-  assert.match(results, /^ {2}\.cw\/charter\/guide\/no-any\/index\.md$/m);
+  assert.match(results, /^ {2}\.cw\/charter\/primitive\/guide\/no-any\/index\.md$/m);
   assert.match(results, /^ {2}globs: src\/\*\*\/\*\.ts$/m);
   // Every other header is read from the file the line above names.
   assert.doesNotMatch(results, /tags:/);
@@ -129,10 +115,10 @@ test("the full listing names the file each primitive was authored in, and the fi
 
 test("a listing is read off the charter, so every layer is named where it was authored, not where it compiled (FR-140)", async () => {
   const { results } = await run({
-    "file:///repo/.cw/vendor/team/guide/no-console/index.md": primitive("guide", "no-console"),
+    "file:///repo/.cw/charter/vendor/team/rules/root/primitive/guide/no-console/index.md": primitive("guide", "no-console"),
   });
 
-  assert.match(results, /^ {2}\.cw\/vendor\/team\/guide\/no-console\/index\.md$/m);
+  assert.match(results, /^ {2}\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/no-console\/index\.md$/m);
   assert.match(results, /^ {2}\(built into cw\)\/skill\/cw-author\/index\.md$/m);
   assert.doesNotMatch(results, /\.cw\/out\//);
 });
@@ -203,7 +189,7 @@ test("cw kinds says every kind and when each comes up, in a repository that auth
   assert.equal(code, EXIT_OK);
   assert.deepEqual(
     results.trim().split("\n").map((line) => line.split("  ")[0]),
-    [...KINDS],
+    [...Primitives.kinds],
   );
   assert.match(results, new RegExp(`guide {2}${GuidePrimitive.activatesWhen.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
 });

@@ -1,6 +1,6 @@
 # How to write evaluation cases
 
-Write JSON suites under `.cw/eval/`. Each suite has a nonempty `cases` array
+Write JSON suites under `.cw/charter/eval/`. Each suite has a nonempty `cases` array
 and may include a `description`. Each case has a nonempty `prompt` and an
 `expect` object with at least one expectation.
 

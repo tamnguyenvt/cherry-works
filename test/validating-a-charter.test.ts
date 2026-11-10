@@ -1,20 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { folderURL } from "../src/hexagon/domain/path.js";
-import { CharterRoot } from "../src/hexagon/domain/models/charter/CharterRoot.js";
-import { REPO_LAYER, VENDOR_LAYER } from "../src/hexagon/domain/models/charter/PrimitiveLayer.js";
-import { FaultsByFile } from "../src/hexagon/domain/models/DomainFault.js";
-import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
-import { MixinPrimitive } from "../src/hexagon/domain/models/charter/primitive/MixinPrimitive.js";
-import { CorpusPrimitive } from "../src/hexagon/domain/models/charter/primitive/CorpusPrimitive.js";
-import { McpPrimitive } from "../src/hexagon/domain/models/charter/primitive/McpPrimitive.js";
-import { AgentPrimitive } from "../src/hexagon/domain/models/charter/primitive/AgentPrimitive.js";
-import { PlaybookPrimitive } from "../src/hexagon/domain/models/charter/primitive/PlaybookPrimitive.js";
-import { SkillPrimitive } from "../src/hexagon/domain/models/charter/primitive/SkillPrimitive.js";
-import { PRIMITIVE_CLASSES, type Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
-import { compile } from "../src/hexagon/domain/services/compile/compileService.js";
+import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
+import { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
+import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.js";
+import { FaultsByFile } from "../src/module/shared/domain/models/domain.fault.js";
+import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
+import { MixinPrimitive } from "../src/module/charter/domain/models/primitive/mixin-primitive.js";
+import { CorpusPrimitive } from "../src/module/charter/domain/models/primitive/corpus-primitive.js";
+import { McpPrimitive } from "../src/module/charter/domain/models/primitive/mcp-primitive.js";
+import { AgentPrimitive } from "../src/module/charter/domain/models/primitive/agent-primitive.js";
+import { PlaybookPrimitive } from "../src/module/charter/domain/models/primitive/playbook-primitive.js";
+import { SkillPrimitive } from "../src/module/charter/domain/models/primitive/skill-primitive.js";
+import { type Primitive, Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
+import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 
-const root = folderURL("file:///repo/.cw/charter/");
+const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
 
 /** One primitive that has already been read, under the file it was read from:
  *  what validate is given, and what a file that came through reading clean
@@ -24,10 +24,7 @@ type Authored = Primitive;
 /** One authored primitive as the charter holds it: named as it was authored,
  *  whichever layer the file arrived in. */
 const layered = (vendor: string | undefined, file: string, primitive: Primitive): Authored =>
-  PRIMITIVE_CLASSES.find((one) => one.kind === primitive.kind)!.of(primitive.headers, primitive.body, [], {
-    name: vendor === undefined ? REPO_LAYER : VENDOR_LAYER,
-    charterFolder: file.slice(0, -`/${primitive.primitiveFolder}/index.md`.length),
-  });
+  Primitives.classes.find((primitiveClass) => primitiveClass.kind === primitive.kind)!.of(primitive.headers, primitive.body, [], vendor === undefined ? PrimitiveLayer.REPO : PrimitiveLayer.ofVendor(vendor), file);
 
 const at = (file: string) => new URL(file, root).href;
 
@@ -62,7 +59,7 @@ const corpus = (id: string, vendor?: string): Authored =>
 const mcp = (id: string, vendor?: string, headers: Record<string, unknown> = {}): Authored =>
   layered(
     vendor,
-    at(vendor === undefined ? `mcp/${id.replace(/\//g, "-")}/index.md` : `../vendor/${vendor}/mcp/${id.replace(/\//g, "-")}/index.md`),
+    at(vendor === undefined ? `mcp/${id}/index.md` : `../vendor/${vendor}/mcp/${id}/index.md`),
     McpPrimitive.of(
       { id, description: `The ${id} mcp origin.`, endpoint: "https://mcp.example.com/", auth: ["oauth"], tools: ["search"], ...headers },
       "Body.",
@@ -70,7 +67,7 @@ const mcp = (id: string, vendor?: string, headers: Record<string, unknown> = {})
   );
 
 /** Every mcp origin a charter's mcps reach, as a build writes them (FR-145). */
-const mcpOriginsOf = (charter: CharterRoot) => compile(charter, []).mcpOrigins.origins;
+const mcpOriginsOf = (charter: CharterRoot) => CompileService.compileCharterRoot(charter, []).mcpOrigins.origins;
 
 /** Every mcp of these, named in a guide's body so none is reported as unnamed. */
 const namedMcps = (...mcps: Authored[]): Authored[] => [
@@ -140,25 +137,25 @@ test("every problem in a run is reported, not only the first", () => {
 });
 
 test("a vendored layer is asked the same questions the repository's own is", () => {
-  const copied = guide("no-any", "vendor/team/guide/copied/index.md", {}, "team");
-  const faultsByFiles = faultsByFilesOf(guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team"), copied);
+  const copiedPrimitive = guide("no-any", "vendor/team/guide/copied/index.md", {}, "team");
+  const faultsByFiles = faultsByFilesOf(guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team"), copiedPrimitive);
 
-  assert.deepEqual(Object.keys(faultsByFiles), [copied.file]);
+  assert.deepEqual(Object.keys(faultsByFiles), [copiedPrimitive.uri]);
 });
 
 test("a vendor claiming an id this repository authored is a collision, naming both files", () => {
-  const copied = guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team");
-  const faultsByFiles = faultsByFilesOf(guide("no-any"), copied);
+  const copiedPrimitive = guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team");
+  const faultsByFiles = faultsByFilesOf(guide("no-any"), copiedPrimitive);
 
-  assert.deepEqual(Object.keys(faultsByFiles), [copied.file]);
+  assert.deepEqual(Object.keys(faultsByFiles), [copiedPrimitive.uri]);
   assert.match(messages(faultsByFiles), /"no-any" is already declared by .*guide\/no-any\/index\.md/);
 });
 
 test("two files claiming one id collide, wherever they were authored", () => {
-  const copied = guide("no-any", "vendor/team/guide/copied/index.md", {}, "team");
-  const faultsByFiles = faultsByFilesOf(guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team"), copied);
+  const copiedPrimitive = guide("no-any", "vendor/team/guide/copied/index.md", {}, "team");
+  const faultsByFiles = faultsByFilesOf(guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team"), copiedPrimitive);
 
-  assert.deepEqual(Object.keys(faultsByFiles), [copied.file]);
+  assert.deepEqual(Object.keys(faultsByFiles), [copiedPrimitive.uri]);
   assert.match(messages(faultsByFiles), /"no-any"/);
 });
 
@@ -305,7 +302,7 @@ test("a repository mcp and a vendor mcp at one endpoint and path are one mcp ori
     FaultsByFile.none,
   );
 
-  assert.deepEqual(mcpOriginsOf(charter), [
+  assert.deepEqual(mcpOriginsOf(charter).map((mcpOrigin) => ({ ...mcpOrigin })), [
     {
       ids: ["acme/code", "billing"],
       names: { "acme/code": "acme_4a92", "billing": "billing_4170" },

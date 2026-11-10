@@ -1,15 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import type { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import type { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
+import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { buildingCharterOf } from "./use-cases-of.js";
 
 const repo = new URL("file:///repo/");
-const root = new URL(".cw/charter/", repo);
+const root = new URL(".cw/charter/primitive/", repo);
 
 const primitive = (kind: string, id: string, headers: readonly string[] = [], body = `The body of ${id}.`) =>
   ["---", `kind: ${kind}`, `id: ${id}`, `description: What ${id} is for, in one line.`, ...headers, "---", "", body, ""].join(
@@ -30,8 +31,8 @@ const compilingFor = (...agents: readonly string[]) => ({
  *  claims (FR-022). */
 const previewing = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(repo, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  return { held, build: () => charterAuthoringApp.build(), preview: () => charterAuthoringApp.preview() };
+  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  return { held, build: () => charterRuntimeApp.build(), preview: () => charterRuntimeApp.preview() };
 };
 
 /** Every file of one repository and what it holds, to be compared with the same
@@ -42,16 +43,16 @@ const everything = async (held: InMemoryFileReaders) =>
 /** What one preview said about the files it named, path by change. */
 /** What a preview of a charter that does not hold says: nothing about any
  *  file. */
-const nothing: DataDTOs.PlanSummary["data"] = { added: [], edited: [], deleted: [], unchanged: [] };
+const nothing: CharterDTOs.PlanSummary["data"] = { added: [], edited: [], deleted: [], unchanged: [] };
 
 /** What a preview would do, where the charter held; and what stopped it, where
  *  it did not. */
-const planOf = (planSummaryDTO: DataDTOs.PlanSummary | DataDTOs.FaultsByFile) =>
+const planOf = (planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault) =>
   planSummaryDTO.type === "PlanSummary" ? planSummaryDTO.data : undefined;
-const faultsOf = (planSummaryDTO: DataDTOs.PlanSummary | DataDTOs.FaultsByFile) =>
+const faultsOf = (planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault) =>
   planSummaryDTO.type === "FaultsByFile" ? planSummaryDTO.data : undefined;
 
-const changed = ({ added, edited, deleted, unchanged }: DataDTOs.PlanSummary["data"]) =>
+const changed = ({ added, edited, deleted, unchanged }: CharterDTOs.PlanSummary["data"]) =>
   Object.fromEntries([
     ...added.map((path) => [path, "create"] as const),
     ...edited.map((path) => [path, "update"] as const),
@@ -180,5 +181,5 @@ test("a charter with an error previews nothing, and says which files (FR-009)", 
   const [previewed, faultsByFiles] = [planOf(planSummaryDTO), faultsOf(planSummaryDTO)];
 
   assert.deepEqual(changed(previewed ?? nothing), {});
-  assert.deepEqual(Object.keys(faultsByFiles?.files ?? {}), [".cw/charter/guide/no-any/index.md"]);
+  assert.deepEqual(Object.keys(faultsByFiles?.files ?? {}), ["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]);
 });

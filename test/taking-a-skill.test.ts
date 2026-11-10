@@ -1,25 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/driver/cli/Commander.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { primitiveOf } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { noMcpOriginsReached } from "./no-mcp-origins.js";
-import { noSessionsKept } from "./no-sessions.js";
-import { noEvaluationsRun } from "./no-evaluations.js";
-import { noSensorsRun } from "./no-sensors.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { authoringCharterOf, buildingCharterOf, testingCharterOf, readPrimitive, commandLineOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
-const takenAt = (path: string) => new URL(`.cw/vendor/mattpocock/skills/${path}`, repoPath).href;
+const takenAt = (path: string) => new URL(`.cw/charter/vendor/mattpocock/skills/root/primitive/${path}`, repoPath).href;
 
 const skillMd = (headers: readonly string[], body = "Do it.") => ["---", ...headers, "---", "", body, ""].join("\n");
 
@@ -51,12 +44,10 @@ async function running(argv: readonly string[], fileReaders: InMemoryFileReaders
     const context = {
       cwd: "/repo",
       version: "0.0.0",
-      charterAuthoringApp: new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
-      charterVendoringApp: new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser()),
-      testAuthoringApp: new TestAuthoring(repoPath, fileReaders, new InMemoryFileOutput(fileReaders)),
-      mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,
+      charterAuthoringApp: authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher }),
+      charterRuntimeApp: buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter()),
     };
-    const code = await new Commander(context, COMMANDS).run(argv);
+    const code = await new Commander(commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), context, context.cwd), COMMANDS).run(argv);
     return { code, commandOutput: commandOutput.join("") };
   } finally {
     streams.forEach((stream, index) => (stream.write = kept[index] as typeof stream.write));
@@ -73,9 +64,9 @@ function withSkillsPublished(sourceFiles: Record<string, string> = mattpocockSki
 }
 
 /** The primitive a taken skill's index.md reads back as. */
-const takenPrimitive = async (fileReaders: InMemoryFileReaders, skillId: string) => primitiveOf(await fileReaders.read(new URL(takenAt(`skill/${skillId}/index.md`))), new YamlParser());
+const takenPrimitive = async (fileReaders: InMemoryFileReaders, skillId: string) => readPrimitive(await fileReaders.read(new URL(takenAt(`skill/${skillId}/index.md`))));
 
-test("a skill named is taken from a skills repository into its owner and repository's vendor folder, and nothing is built (CORE-FR-184, CORE-FR-185, CORE-SC-049)", async () => {
+test("a skill named is taken from a skills repository into the root vendor folder of its owner and repository, and nothing is built (CORE-FR-184, CORE-FR-185, CORE-SC-049)", async () => {
   const { fileReaders, sourceFetcher } = withSkillsPublished();
 
   const { code, commandOutput } = await running(["vendor", "add", "mattpocock/skills", "--skill", "grill-me"], fileReaders, sourceFetcher);
@@ -85,7 +76,7 @@ test("a skill named is taken from a skills repository into its owner and reposit
   await assert.rejects(() => fileReaders.read(new URL(takenAt("skill/grilling/index.md"))), "only the skill named is taken");
   await assert.rejects(() => fileReaders.read(new URL(takenAt("skill/grill-me/SKILL.md"))), "the SKILL.md is converted, not kept beside it");
   assert.match(commandOutput, /grill-me/);
-  assert.match(commandOutput, /\.cw\/vendor\/mattpocock\/skills/);
+  assert.match(commandOutput, /\.cw\/charter\/vendor\/mattpocock\/skills\/root/);
   assert.match(commandOutput, /cw build/);
 });
 
@@ -167,22 +158,20 @@ test("taking one skill leaves the others in its folder as they were, and taking 
   assert.equal((await takenPrimitive(fileReaders, "grill-me")).headers.id, "grill-me");
 });
 
-test("a folder holding a charter takes no skill, and a folder holding taken skills takes no charter (CORE-FR-191)", async () => {
-  const charterHeld = withSkillsPublished(mattpocockSkills(), { [takenAt("README.md")]: "# A charter\n", [takenAt("guide/no-any/index.md")]: "x" });
+test("installing into root again writes the latest over what it held, a charter or skills alike", async () => {
+  const charterHeld = withSkillsPublished(mattpocockSkills(), { [takenAt("guide/no-any/index.md")]: "x" });
 
   const skillsOverCharter = await running(["vendor", "add", "mattpocock/skills"], charterHeld.fileReaders, charterHeld.sourceFetcher);
 
-  assert.equal(skillsOverCharter.code, EXIT_FAILURE);
-  assert.match(skillsOverCharter.commandOutput, /\.cw\/vendor\/mattpocock\/skills/);
-  await assert.rejects(() => charterHeld.fileReaders.read(new URL(takenAt("skill/grill-me/index.md"))));
+  assert.equal(skillsOverCharter.code, EXIT_OK);
+  assert.match(await charterHeld.fileReaders.read(new URL(takenAt("skill/grill-me/index.md"))), /id: grill-me/);
 
-  const skillsHeld = withSkillsPublished({ ".cw/charter/guide/no-any/index.md": "x" }, { [takenAt("skill/grill-me/index.md")]: "x" });
+  const skillsHeld = withSkillsPublished({ ".cw/charter/primitive/guide/no-any/index.md": "x" }, { [takenAt("skill/grill-me/index.md")]: "x" });
 
   const charterOverSkills = await running(["vendor", "add", "mattpocock/skills"], skillsHeld.fileReaders, skillsHeld.sourceFetcher);
 
-  assert.equal(charterOverSkills.code, EXIT_FAILURE);
-  assert.match(charterOverSkills.commandOutput, /\.cw\/vendor\/mattpocock\/skills/);
-  assert.deepEqual(skillsHeld.sourceFetcher.checkedOutFolders, []);
+  assert.equal(charterOverSkills.code, EXIT_OK);
+  await assert.rejects(() => skillsHeld.fileReaders.read(new URL(takenAt("skill/grill-me/index.md"))));
 });
 
 test("a SKILL.md with no description, a name that is no id, or a name two folders declare installs nothing, naming the files (CORE-FR-192)", async () => {
@@ -198,7 +187,7 @@ test("a SKILL.md with no description, a name that is no id, or a name two folder
 
     assert.equal(code, EXIT_FAILURE, namedFile);
     assert.match(commandOutput, new RegExp(namedFile.replace(/\./g, "\\.")), namedFile);
-    assert.deepEqual(await fileReaders.readFilesRecursively(new URL(".cw/vendor/", repoPath)), [], namedFile);
+    assert.deepEqual(await fileReaders.readFilesRecursively(new URL(".cw/charter/vendor/", repoPath)), [], namedFile);
   }
 });
 
@@ -223,21 +212,21 @@ test("a source that cannot be reached is refused in git's words, and work in han
 });
 
 test("a charter source given --skill takes only the skills named, and given none is installed whole, as before, its skill folders not taken (CORE-FR-193)", async () => {
-  const charterSource = { ".cw/charter/guide/no-any/index.md": "x", "skills/grill-me/SKILL.md": skillMd(["name: grill-me", "description: Grill."]) };
+  const charterSource = { ".cw/charter/primitive/guide/no-any/index.md": "x", "skills/grill-me/SKILL.md": skillMd(["name: grill-me", "description: Grill."]) };
   const withSkill = withSkillsPublished(charterSource);
 
   const takeOutcome = await running(["vendor", "add", "mattpocock/skills", "--skill", "grill-me"], withSkill.fileReaders, withSkill.sourceFetcher);
 
   assert.equal(takeOutcome.code, EXIT_OK, takeOutcome.commandOutput);
-  assert.deepEqual(withSkill.sourceFetcher.checkedOutFolders.map(({ fromFolder, intoSubFolder }) => [fromFolder, intoSubFolder]), [["skills/grill-me", ".cw/vendor/mattpocock/skills/skill/grill-me"]]);
+  assert.deepEqual(withSkill.sourceFetcher.checkedOutFolders.map(({ fromFolder, intoSubFolder }) => [fromFolder, intoSubFolder]), [["skills/grill-me", ".cw/charter/vendor/mattpocock/skills/root/primitive/skill/grill-me"]]);
 
   const withoutSkill = withSkillsPublished(charterSource);
 
   const installOutcome = await running(["vendor", "add", "mattpocock/skills"], withoutSkill.fileReaders, withoutSkill.sourceFetcher);
 
   assert.equal(installOutcome.code, EXIT_OK, installOutcome.commandOutput);
-  assert.deepEqual(withoutSkill.sourceFetcher.checkedOutFolders.map(({ fromFolder, intoSubFolder }) => [fromFolder, intoSubFolder]), [[".cw/charter", ".cw/vendor/mattpocock/skills"]]);
-  assert.equal(await withoutSkill.fileReaders.read(new URL(takenAt("README.md"))).catch(() => undefined), undefined, "the source published no README");
+  assert.deepEqual(withoutSkill.sourceFetcher.checkedOutFolders.map(({ fromFolder, intoSubFolder }) => [fromFolder, intoSubFolder]), [[".cw/charter/primitive", ".cw/charter/vendor/mattpocock/skills/root/primitive"]]);
+  assert.equal(await withoutSkill.fileReaders.read(new URL(".cw/charter/vendor/mattpocock/skills/root/README.md", repoPath)).catch(() => undefined), undefined, "no README is copied");
   await assert.rejects(() => withoutSkill.fileReaders.read(new URL(takenAt("skill/grill-me/index.md"))));
 });
 

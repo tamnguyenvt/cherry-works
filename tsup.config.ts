@@ -2,7 +2,7 @@ import { copyFile, readFile } from "node:fs/promises";
 import { defineConfig } from "tsup";
 import packageJson from "./package.json" with { type: "json" };
 
-const page = "src/driver/portal/page";
+const page = "src/presentation/portal/page";
 
 // Three entries in one package: the launcher that checks the Node it runs on,
 // the cw binary it hands over to, and the portal's page that binary serves.
@@ -19,6 +19,9 @@ export default defineConfig([
     entry: { main: "main.ts" },
     format: ["esm"],
     target: "node22",
+    // A fault is named by its class in what a caller is answered (SDK-FR-018),
+    // so the bundle keeps the names it would otherwise rename on a clash.
+    keepNames: true,
     // A `.mjs` under the engine's own layer is an asset it puts down, taken
     // as its text (scripts/moduleLoader.mjs does the same under tsx). Only
     // there: a dependency's `.mjs` is code.
@@ -26,7 +29,7 @@ export default defineConfig([
       {
         name: "builtin-asset-text",
         setup(build) {
-          build.onLoad({ filter: /\/src\/hexagon\/domain\/models\/charter\/builtin\/.+\.mjs$/ }, async ({ path }) => ({
+          build.onLoad({ filter: /\/src\/module\/charter\/domain\/builtin\/.+\.mjs$/ }, async ({ path }) => ({
             contents: await readFile(path, "utf8"),
             loader: "text",
           }));

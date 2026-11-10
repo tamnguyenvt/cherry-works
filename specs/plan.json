@@ -380,6 +380,188 @@
         "CORE Story 37",
         "CORE Story 38",
         "SDK Story 1"
+      ],
+      "evidence": {
+        "summary": "specs check exit 0; pnpm typecheck exit 0; pnpm test 816/816 pass, 0 fail (incl. lint:deps and build); git diff --check clean; quality report graded F with QC-01..QC-07 planned as CORE 40-43, SDK 5-7, EVAL 8",
+        "date": "2026-11-03"
+      }
+    },
+    {
+      "id": "CORE Story 40",
+      "title": "Read one consistent account of the charter's behaviour",
+      "dependsOn": [
+        "CORE Story 39"
+      ],
+      "evidence": {
+        "summary": "specs check exit 0; pnpm typecheck exit 0; pnpm test 827/827 pass, 0 fail (incl. lint:deps and build); git diff --check clean; four scenarios locked by test/reading-one-account-of-the-charter.test.ts; ADR-006 replaces ADR-001's catalogue sentence; review passed",
+        "date": "2026-11-05"
+      }
+    },
+    {
+      "id": "CORE Story 41",
+      "title": "Trace every acceptance scenario to its requirement",
+      "dependsOn": [
+        "CORE Story 40"
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck exit 0; pnpm test 830/830 pass, 0 fail (incl. lint:deps and build); specs check exit 0; specs.test.mjs 51 pass; git diff --check clean; three scenarios locked by test/tracing-every-scenario-to-its-requirement.test.ts, 10 FR and 1 edge case left to CORE Story 43; review passed",
+        "date": "2026-11-05"
+      }
+    },
+    {
+      "id": "SDK Story 5",
+      "title": "Receive every use-case failure as a DTO",
+      "dependsOn": [
+        "CORE Story 39",
+        "SDK Story 2"
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck passed; pnpm test 823/823 pass, 0 fail, lint:deps clean (280 modules, 997 dependencies) and the build included; node .cw/out/script/sdd-specs/specs.mjs check exit 0; git diff --check clean. By hand cw list --kind nonsense, cw explain nowhere and cw remove nope exit 1 with the person's message and fix and nothing on stdout; cw build reports unreadable frontmatter under .cw/charter/guide/bad/index.md; cw vendor add of https://reader:tok-very-secret@127.0.0.1:1/team/charter.git exits 1 naming https://127.0.0.1:1/team/charter.git with neither the user nor the token; an unreadable .cw/charter logs CharterAuthoring.list stopped on an internal fault and Caused by Error: EACCES and answers Something went wrong on our side; the portal answers that internal fault as HTTP 500 InternalFault with no EACCES in the body, and UnknownIdFault as HTTP 422, the EACCES only on the portal stderr. cw init logged nothing.",
+        "date": "2026-11-05"
+      }
+    },
+    {
+      "id": "CORE Story 42",
+      "title": "Keep the engine's architecture consistent with its charter",
+      "dependsOn": [
+        "CORE Story 39"
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck passed; pnpm test 844 tests, 841 passed, 0 failed, 3 skipped; lint:deps no violations; cw build, cw doctor and cw test 6 cases passed over the repositories wired in main.ts",
+        "date": "2026-11-06"
+      }
+    },
+    {
+      "id": "SDK Story 6",
+      "title": "Know what to do after a partial publication",
+      "dependsOn": [
+        "CORE Story 39",
+        "SDK Story 4"
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck passed; pnpm test 829/829 pass, 0 fail, 0 skipped, lint:deps and the build included; node .cw/out/script/sdd-specs/specs.mjs check exit 0; git diff --check clean. By hand over fake npm and git, scripts/release.ts printed Release refused: for a preflight failure, and Release failed during publication: naming what is on npm, the npm view confirmation and the recovery at 1.1.0 when cw and when the engine failed to publish; no registry was reached.",
+        "date": "2026-11-05"
+      }
+    },
+    {
+      "id": "SDK Story 7",
+      "title": "Read the release's conservative contract policy",
+      "dependsOn": [
+        "CORE Story 39",
+        "SDK Story 4"
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck passed; pnpm test 838 tests, 835 passed, 0 failed, 3 skipped; a manual release run refused an optional member, removal and patch-level addition, and passed comments and layout at 1.0.1",
+        "date": "2026-11-05"
+      }
+    },
+    {
+      "id": "EVAL Story 8",
+      "title": "Prove the pricing journeys and tokenizer accuracy",
+      "dependsOn": [
+        "CORE Story 39",
+        "EVAL Story 1",
+        "EVAL Story 4"
+      ],
+      "evidence": {
+        "summary": "pnpm test: 830 tests, 827 pass, 0 fail, 3 skipped; typecheck clean; tokenizer estimate 5,669 vs 5,565 exact (1.9%) at 94f4536, 2026-11-05T13:52Z; pricing skill 3/3 against the real claude",
+        "date": "2026-11-05"
+      }
+    },
+    {
+      "id": "CORE Story 44",
+      "title": "Keep a repository's state in a store of one's own",
+      "dependsOn": [
+        "CORE Story 42"
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck passed; pnpm test 851 tests, 848 passed, 0 failed, 3 skipped; lint:deps no violations; cw test 6 cases passed; the built cw answered init, add, build, context, doctor, remove, suite and sessions in a scratch repository",
+        "date": "2026-11-06"
+      }
+    },
+    {
+      "id": "CORE Story 45",
+      "title": "Find each rule of the engine beside the value it is about",
+      "dependsOn": [
+        "CORE Story 44"
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck passed; pnpm test 855 tests, 852 passed, 0 failed, 3 skipped; lint:deps no violations; cw test 6 cases passed; the built cw answered init, build, explain, context, doctor and remove in a scratch repository, and refused the agent \"gemini\"",
+        "date": "2026-11-06"
+      }
+    },
+    {
+      "id": "CORE Story 46",
+      "title": "Set the engine up with no address of the machine",
+      "dependsOn": [
+        "CORE Story 45"
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck passed; pnpm test 860 tests, 857 passed, 0 failed, 3 skipped; lint:deps no violations; cw test 6 cases passed; no use case, service, model or port holds an address, the adapters are set up on the repository's and the home's",
+        "date": "2026-11-06"
+      }
+    },
+    {
+      "id": "CORE Story 47",
+      "title": "Keep a charter in any layout and hand it over by layer and kind",
+      "dependsOn": [
+        "CORE Story 46"
+      ],
+      "evidence": {
+        "summary": "pnpm typecheck passed; pnpm test 870 tests, 867 passed, 0 failed, 3 skipped; lint:deps no violations (353 modules, 1232 dependencies); specs check passed; the stores hand RawPrimitive, RawTestSuite, RawEvalSuite and vendors by layer and kind, each with its store's uri, and the engine reads nothing off a path",
+        "date": "2026-11-07"
+      }
+    },
+    {
+      "id": "CORE Story 48",
+      "title": "Decide where a compiled charter lands for each host",
+      "dependsOn": [
+        "CORE Story 47"
+      ],
+      "evidence": {
+        "summary": "typecheck clean; lint:deps no violations; pnpm test 878 tests, 875 pass, 0 fail, 3 skipped; laid by FileCharterProjection, a charter of every kind matched what 008-sdk built byte for byte; cw build, doctor and kinds answered as before",
+        "date": "2026-11-07"
+      }
+    },
+    {
+      "id": "CORE Story 49",
+      "title": "Get answers made for the caller",
+      "dependsOn": [
+        "CORE Story 47"
+      ],
+      "evidence": {
+        "summary": "typecheck clean; lint:deps no violations; pnpm test 882 tests, 879 pass, 0 fail, 3 skipped; by hand cw init --agent claude, build, doctor, vendor list and test answered as before, nothing logged; the four driver ports AuthoringCharter, ProjectingCharter, TestingCharter, ReviewingSessions answer DTOs only",
+        "date": "2026-11-08"
+      }
+    },
+    {
+      "id": "CORE Story 52",
+      "title": "Replace any store or runner, and find the workspace in three parts",
+      "dependsOn": [
+        "CORE Story 47",
+        "CORE Story 49"
+      ],
+      "evidence": {
+        "summary": "typecheck clean; lint:deps no violations; pnpm test 894 tests, 891 pass, 0 fail, 3 skipped; build and engine build clean; cw test 6/6; specs check OK; by hand in a fresh repo cw init, cw build for claude and codex, cw sensor run with $CW_OUT resolved to .cw/out and cw doctor answered, nothing logged; an old-layout repository with unreadable settings refused naming cw-author",
+        "date": "2026-11-09"
+      }
+    },
+    {
+      "id": "CORE Story 43",
+      "title": "Quality cross-check of CORE Story 40, CORE Story 41, SDK Story 5, CORE Story 42, SDK Story 6",
+      "dependsOn": [
+        "CORE Story 40",
+        "CORE Story 41",
+        "SDK Story 5",
+        "CORE Story 42",
+        "SDK Story 6",
+        "CORE Story 44",
+        "CORE Story 45",
+        "CORE Story 46",
+        "CORE Story 47",
+        "CORE Story 48",
+        "CORE Story 49",
+        "CORE Story 52"
       ]
     }
   ]

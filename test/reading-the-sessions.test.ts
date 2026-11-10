@@ -5,28 +5,22 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { Commander } from "../src/driver/cli/Commander.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { SessionReviewing } from "../src/hexagon/application/SessionReviewing.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { CwSessionTokensCounterScript } from "../src/hexagon/domain/models/charter/builtin/CwSessionTokensCounterScript.js";
-import { FileReaders } from "../src/zdriven/FileReaders.js";
-import { InMemoryClock } from "../src/zdriven/InMemoryClock.js";
-import { SystemClock } from "../src/zdriven/SystemClock.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import type { ForReadingFiles } from "../src/hexagon/port/zdriven/ForReadingFiles.js";
-import type { ForTellingTime } from "../src/hexagon/port/zdriven/ForTellingTime.js";
-import { noMcpOriginsReached } from "./no-mcp-origins.js";
-import { noEvaluationsRun } from "./no-evaluations.js";
-import { noSensorsRun } from "./no-sensors.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
+import { FileReaders } from "../src/module/shared/infra/file-readers.adapter.js";
+import { InMemoryClock } from "../src/module/shared/infra/in-memory/in-memory-clock.adapter.js";
+import { SystemClock } from "../src/module/shared/infra/system-clock.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import type { ForReadingFiles } from "../src/module/shared/app/port/out/reading-files.port.js";
+import type { ForTellingTime } from "../src/module/shared/app/port/out/telling-time.port.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { authoringCharterOf, buildingCharterOf, reviewingSessionsOf, testingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///work/my-repo/");
 const homePath = new URL("file:///home/dev/");
@@ -77,15 +71,16 @@ const machineHolding = (logTexts: Readonly<Record<string, string>>, otherFiles: 
 };
 
 /** The command line over one repository and one home, the files of both held
- *  by one reader. */
-const cliOver = (fileReaders: ForReadingFiles, repo = repoPath, home = homePath, clock: ForTellingTime = new InMemoryClock(today)) => {
+ *  by one reader, set up on the repository and on the root of the home's
+ *  address as main.ts sets them up. */
+const cliOver = (fileReaders: InMemoryFileReaders | ((rootFolder: URL) => ForReadingFiles), repo = repoPath, home = homePath, clock: ForTellingTime = new InMemoryClock(today)) => {
+  const fileReaderAt = fileReaders instanceof InMemoryFileReaders ? (rootFolder: URL) => fileReaders.rootedAt(rootFolder) : fileReaders;
   const emptyFileReaders = new InMemoryFileReaders({});
   const sourceFetcher = new InMemorySources();
-  const charterAuthoringApp = new CharterAuthoring(repo, emptyFileReaders, new YamlParser(), new InMemoryFileOutput(emptyFileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const charterVendoringApp = new CharterVendoring(repo, emptyFileReaders, sourceFetcher, new InMemoryFileOutput(emptyFileReaders), new YamlParser());
-  const testAuthoringApp = new TestAuthoring(repo, emptyFileReaders, new InMemoryFileOutput(emptyFileReaders));
-  const sessionReviewingApp = new SessionReviewing(repo, home, fileReaders, clock);
-  return new Commander({ cwd: "/work/my-repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);
+  const charterAuthoringApp = authoringCharterOf(emptyFileReaders, new InMemoryFileOutput(emptyFileReaders), new InMemoryReporter(), { sourceFetcher });
+  const charterRuntimeApp = reviewingSessionsOf(repo, home, fileReaderAt(repo), fileReaderAt, clock, new InMemoryReporter());
+  const repoFileReader = fileReaderAt(repo);
+  return new Commander(commandLineOf(repoFileReader, new InMemoryFileOutput(new InMemoryFileReaders({})), { charterAuthoringApp, charterRuntimeApp }, "/work/my-repo"), COMMANDS);
 };
 
 /** What one command printed to each stream, and its exit status. */
@@ -192,7 +187,7 @@ test("a span longer than 31 days is refused before anything is read, saying how 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problem, /32 days/);
   assert.match(problem, /31/);
-  assert.deepEqual(fileReaders.calls, []);
+  assert.deepEqual(fileReaders.calls.filter((call) => !call.endsWith("/.cw/settings.json")), []);
 });
 
 test("a span that is no day is refused, saying how to write one (EVAL-FR-012)", async () => {
@@ -211,7 +206,7 @@ test("a day the calendar does not hold is refused (EVAL-FR-030)", async () => {
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problem, /"2026-02-31" is no day/);
-  assert.deepEqual(fileReaders.calls, []);
+  assert.deepEqual(fileReaders.calls.filter((call) => !call.endsWith("/.cw/settings.json")), []);
   assert.match((await printed(cliOver(fileReaders), ["sessions", "--until", "2026-13-01"])).problem, /"2026-13-01" is no day/);
 });
 
@@ -279,7 +274,7 @@ test("the summary reads what the counter kept when the agent stopped, on a disk 
       counterProcess.stdin.end(JSON.stringify({ session_id: "session-e", transcript_path: transcriptFile, cwd: repoFolder, hook_event_name: "Stop" }));
     });
 
-    const { text } = await printed(cliOver(new FileReaders(), pathToFileURL(`${repoFolder}/`), pathToFileURL(`${homeFolder}/`), new SystemClock()), ["sessions"]);
+    const { text } = await printed(cliOver((rootFolder) => new FileReaders(rootFolder), pathToFileURL(`${repoFolder}/`), pathToFileURL(`${homeFolder}/`), new SystemClock()), ["sessions"]);
 
     assert.deepEqual(
       listedSummary(text).flatMap((listed) => ("sessionId" in listed ? [listed] : [])),

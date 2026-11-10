@@ -35,7 +35,7 @@ for (const releaseMode of ["dry-run", "publish", "tests-fail", "publish-fails", 
       }
       if (releaseMode === "push-fails" || releaseMode === "publish-fails") {
         assert.equal(releaseCommands.some(([commandName, action]) => commandName === "git" && action === "reset"), false);
-        assert.match(releaseRun.stderr, /not published|publish failed/);
+        assert.match(releaseRun.stderr, /not published|could not be published/);
       }
       assert.match(finalReadmeText, /Keep this text\./);
     });

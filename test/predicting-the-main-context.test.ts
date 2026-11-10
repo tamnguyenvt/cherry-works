@@ -1,24 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { api } from "../src/driver/portal/routes.js";
-import { Commander } from "../src/driver/cli/Commander.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { CLAUDE_TOKEN_FACTOR } from "../src/hexagon/domain/services/context/claudeMainContextFactory.js";
-import { DataDTOs, OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { noMcpOriginsReached } from "./no-mcp-origins.js";
-import { noSessionsKept } from "./no-sessions.js";
-import { noEvaluationsRun } from "./no-evaluations.js";
-import { noSensorsRun } from "./no-sensors.js";
+import { api } from "../src/presentation/portal/portal.routes.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
+import { WorkspaceDTOs } from "../src/module/workspace/app/port/in/workspace.dto.js";
+import { ClaudeProjection } from "../src/plugin/claude/claude-projection.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
+import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
 
 const repoPath = new URL("file:///repo/");
 const at = (path: string) => new URL(path, repoPath).href;
@@ -31,31 +27,31 @@ const primitive = (kind: string, id: string, headers: readonly string[], body: s
  *  warning is said of it. */
 const holding = (settings: object = { agents: ["claude"] }) => ({
   [at(".cw/settings.json")]: `${JSON.stringify(settings)}\n`,
-  [at(".cw/charter/guide/plain-words/index.md")]: primitive(
+  [at(".cw/charter/primitive/guide/plain-words/index.md")]: primitive(
     "guide",
     "plain-words",
     ["description: Write in plain words."],
     "Write every sentence in plain words, whole, with no shorthand. ".repeat(20),
   ),
-  [at(".cw/charter/guide/no-any/index.md")]: primitive(
+  [at(".cw/charter/primitive/guide/no-any/index.md")]: primitive(
     "guide",
     "no-any",
     ["description: Reject the any type.", 'globs: ["src/**/*.ts"]'],
     "Never write any.",
   ),
-  [at(".cw/charter/skill/refactoring/index.md")]: primitive(
+  [at(".cw/charter/primitive/skill/refactoring/index.md")]: primitive(
     "skill",
     "refactoring",
     ["description: Change how code is structured without changing what it does.", 'triggers: ["refactor this"]'],
     "Refactor.",
   ),
-  [at(".cw/charter/agent/reviewer/index.md")]: primitive(
+  [at(".cw/charter/primitive/agent/reviewer/index.md")]: primitive(
     "agent",
     "reviewer",
     ["description: Review a diff.", 'tools: ["Read"]'],
     "Review.",
   ),
-  [at(".cw/test/guides.json")]: JSON.stringify({
+  [at(".cw/charter/test/guides.json")]: JSON.stringify({
     cases: [
       { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
       { do: { touchFile: "README.md" }, expect: { activate: "plain-words" } },
@@ -68,13 +64,12 @@ const holding = (settings: object = { agents: ["claude"] }) => ({
 const surfaces = (files: Readonly<Record<string, string>>, agentCli = new InMemoryAgentCli()) => {
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources();
-  const charterAuthoringApp = new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), {
+  const charterAuthoringApp = authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher });
+  const charterRuntimeApp = buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), {
     claude: agentCli,
-  });
-  const charterVendoringApp = new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser());
-  const testAuthoringApp = new TestAuthoring(repoPath, fileReaders, new InMemoryFileOutput(fileReaders));
-  const cli = new Commander({ cwd: "/repo", version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);
-  return { portalRoutes: api(charterAuthoringApp, charterVendoringApp, testAuthoringApp), fileReaders, cli };
+  }, new InMemoryReporter());
+  const cli = new Commander(commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), { charterAuthoringApp, charterRuntimeApp }, "/repo"), COMMANDS);
+  return { portalRoutes: api(wrapAppToShowPaths(charterAuthoringApp, "/repo"), wrapAppToShowPaths(charterRuntimeApp, "/repo"), workspaceSettingsLoaderOf(fileReaders)), fileReaders, cli };
 };
 
 /** What one command printed to each stream, and its exit status. */
@@ -125,7 +120,9 @@ test("the prediction lists what a session opens with, the largest first, with it
   assert.ok(tokensOf("refactoring") < 30);
 });
 
-test("the estimate is the tokenizer's count scaled to the agent's own (EVAL-SC-002)", async () => {
+// How close the scaled count comes to the real agent's (EVAL-SC-002) is
+// measured against the real `claude` by `pnpm tokenizer-accuracy`, never here.
+test("the estimate is the tokenizer's count scaled to the agent's own (EVAL-FR-002)", async () => {
   const agentCli = new InMemoryAgentCli();
   const { cli } = surfaces(holding(), agentCli);
   // The text a skill puts there, as the agent's command line was handed it.
@@ -136,7 +133,7 @@ test("the estimate is the tokenizer's count scaled to the agent's own (EVAL-SC-0
 
   // One token a word, here, scaled to claude's.
   const refactoringWords = refactoringPrompt.split(/\s+/).filter((word) => word !== "").length;
-  assert.equal(listedLoads(text).find(({ id }) => id === "refactoring")?.tokens, Math.round(refactoringWords * CLAUDE_TOKEN_FACTOR));
+  assert.equal(listedLoads(text).find(({ id }) => id === "refactoring")?.tokens, Math.round(refactoringWords * new ClaudeProjection(new InMemoryFileReaders()).tokenFactor));
 });
 
 test("a guide naming files is listed apart, as loaded when one is touched, and is not in the total (EVAL-FR-003)", async () => {
@@ -145,7 +142,7 @@ test("a guide naming files is listed apart, as loaded when one is touched, and i
   const answer = await portalRoutes.request("/charter/root/context");
 
   assert.equal(answer.status, 200);
-  const [mainContext] = DataDTOs.MainContexts.parse(await answer.json()).data.contexts;
+  const [mainContext] = CharterDTOs.MainContexts.parse(await answer.json()).data.contexts;
   assert.ok(mainContext !== undefined);
   assert.deepEqual(
     mainContext.data.fileLoads.map(({ data: { id, globs } }) => ({ id, globs })),
@@ -161,7 +158,7 @@ test("a guide naming files is listed apart, as loaded when one is touched, and i
 test("each mcp is counted by the names of the tools the server lists for it, and no schema (EVAL-FR-029)", async () => {
   const { portalRoutes } = surfaces({
     ...holding(),
-    [at(".cw/charter/mcp/linear/index.md")]: primitive(
+    [at(".cw/charter/primitive/mcp/linear/index.md")]: primitive(
       "mcp",
       "linear",
       ["description: Issues.", "endpoint: https://mcp.linear.app/mcp", "auth: [token]", "tools: [list_issues, create_issue]"],
@@ -171,7 +168,7 @@ test("each mcp is counted by the names of the tools the server lists for it, and
 
   const answer = await portalRoutes.request("/charter/root/context");
 
-  const [mainContext] = DataDTOs.MainContexts.parse(await answer.json()).data.contexts;
+  const [mainContext] = CharterDTOs.MainContexts.parse(await answer.json()).data.contexts;
   const linearLoad = mainContext?.data.sessionLoads.find(({ data: { id } }) => id === "linear");
   assert.equal(linearLoad?.data.kind, "mcp");
   assert.ok((linearLoad?.data.tokens ?? 0) > 0);
@@ -207,7 +204,7 @@ test("counted exactly with no command line installed is refused, saying the esti
 
 test("a build says the predicted total in one line (EVAL-FR-005)", async () => {
   const { cli, portalRoutes } = surfaces(holding());
-  const predicted = DataDTOs.MainContexts.parse(await (await portalRoutes.request("/charter/root/context")).json());
+  const predicted = CharterDTOs.MainContexts.parse(await (await portalRoutes.request("/charter/root/context")).json());
 
   const { code, text } = await printed(cli, ["build"]);
 
@@ -223,7 +220,7 @@ test("the health check warns once the total passes the repository's ceiling, nam
 
   const { text } = await printed(cli, ["doctor"]);
   const problemCountOf = async (routes: typeof portalRoutes) =>
-    OutcomeDTOs.DoctorOutcome.parse(await (await routes.request("/charter/root/health")).json()).data.problemCount;
+    CharterDTOs.DoctorOutcome.parse(await (await routes.request("/charter/root/health")).json()).data.problemCount;
 
   // A warning, as every other: said, and no question the more unwell for it.
   assert.equal(await problemCountOf(portalRoutes), await problemCountOf(underCeilingRoutes));
@@ -234,7 +231,7 @@ test("the health check is quiet under the 20,000 a repository setting none is he
   const { cli, portalRoutes } = surfaces(holding());
 
   const { text } = await printed(cli, ["doctor"]);
-  const doctorOutcome = OutcomeDTOs.DoctorOutcome.parse(await (await portalRoutes.request("/charter/root/health")).json());
+  const doctorOutcome = CharterDTOs.DoctorOutcome.parse(await (await portalRoutes.request("/charter/root/health")).json());
 
   assert.match(text, /✔ Context: {2}good \(claude opens a session with about [\d,]+ tokens, within the ceiling of 20,000\)\./);
   assert.equal(doctorOutcome.data.mainContextCeiling, 20_000);
@@ -245,14 +242,14 @@ test("the portal is given the same list and total the command prints, and the wh
   const { cli, portalRoutes } = surfaces(holding({ agents: ["claude"], mainContextCeiling: 30_000 }));
 
   const { text } = await printed(cli, ["context"]);
-  const [mainContext] = DataDTOs.MainContexts.parse(await (await portalRoutes.request("/charter/root/context")).json()).data.contexts;
-  const settings = DataDTOs.WorkspaceSettings.parse(await (await portalRoutes.request("/settings")).json());
+  const [mainContext] = CharterDTOs.MainContexts.parse(await (await portalRoutes.request("/charter/root/context")).json()).data.contexts;
+  const settings = WorkspaceDTOs.WorkspaceSettings.parse(await (await portalRoutes.request("/settings")).json());
 
   assert.deepEqual(
     listedLoads(text),
     [...mainContext!.data.sessionLoads, ...mainContext!.data.fileLoads].map(({ data: { tokens, kind, id } }) => ({ tokens, kind, id })),
   );
-  assert.deepEqual(settings.data, { agents: ["claude"], mainContextCeiling: 30_000 });
+  assert.deepEqual(settings.data, { isSetUp: true, agents: ["claude"], mainContextCeiling: 30_000 });
 });
 
 test("setup keeps the ceiling it is given, and the one already set when given none (EVAL-FR-006)", async () => {

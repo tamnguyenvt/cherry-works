@@ -41,7 +41,7 @@ cw build                   # generate the agent's files
 cw doctor                  # check the result
 ```
 
-Your rule lives at `.cw/charter/guide/no-any/index.md`. Edit that source and
+Your rule lives at `.cw/charter/primitive/guide/no-any/index.md`. Edit that source and
 rebuild when it changes. Review and commit `.cw/` together with the generated
 agent files.
 

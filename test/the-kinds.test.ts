@@ -1,53 +1,33 @@
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/driver/cli/Commander.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import {
-  KINDS,
-  isKind,
-  primitiveHeadersOf,
-  primitiveOf,
-} from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
-import { SIGNALS } from "../src/hexagon/domain/models/charter/primitive/SensorPrimitive.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { noMcpOriginsReached } from "./no-mcp-origins.js";
-import { noSessionsKept } from "./no-sessions.js";
-import { noEvaluationsRun } from "./no-evaluations.js";
-import { noSensorsRun } from "./no-sensors.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
+import { SensorPrimitive } from "../src/module/charter/domain/models/primitive/sensor-primitive.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { authoringCharterOf, buildingCharterOf, testingCharterOf, readPrimitive, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
 const repoPath = new URL("file:///repo/");
-
-/** What vendoring is driven through: a context always carries every use case,
- *  and nothing here asks this one for anything. */
-const charterVendoringApp = new CharterVendoring(repoPath, new InMemoryFileReaders({}), new InMemorySources(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
-
-/** What the test files are driven through, over an empty repository: nothing
- *  here asks it for anything. */
-const noTestFiles = new InMemoryFileReaders({});
-const testAuthoringApp = new TestAuthoring(repoPath, noTestFiles, new InMemoryFileOutput(noTestFiles));
 
 /** The command line as an author meets it, over a repository held in memory:
  *  the real command, the real service behind it, and what the terminal read. */
 const asking = async (argv: readonly string[]) => {
   const held = new InMemoryFileReaders({});
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
-    const code = await new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS).run(argv);
+    const code = await new Commander(commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo), COMMANDS).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -71,7 +51,7 @@ const headersNamedIn = (answer: string) =>
 const sampleShownIn = (answer: string) => answer.slice(answer.indexOf("kind: ")).trim();
 
 test("the set is exactly the kinds the charter format defines", () => {
-  assert.deepEqual([...KINDS].sort(), [
+  assert.deepEqual([...Primitives.kinds].sort(), [
     "agent",
     "corpus",
     "guide",
@@ -88,26 +68,26 @@ test("the set is exactly the kinds the charter format defines", () => {
 
 test("a command is refused as a kind the charter does not have: a skill is what is asked for by name (FR-001)", () => {
   assert.throws(
-    () => primitiveOf(["---", "kind: command", "id: release", "description: Cut a release.", "---", "", "Cut it."].join("\n"), new YamlParser()),
+    () => readPrimitive(["---", "kind: command", "id: release", "description: Cut a release.", "---", "", "Cut it."].join("\n")),
     (raised: AggregateError) => /"command" is not a kind the charter knows/.test(String(raised.errors[0]?.message)),
   );
 });
 
-test("isKind accepts only the closed set", () => {
-  for (const kind of KINDS) assert.ok(isKind(kind));
+test("Primitives.isKind accepts only the closed set", () => {
+  for (const kind of Primitives.kinds) assert.ok(Primitives.isKind(kind));
   for (const other of ["concern", "guides", "", "Guide", 7, null, undefined]) {
-    assert.equal(isKind(other), false, String(other));
+    assert.equal(Primitives.isKind(other), false, String(other));
   }
 });
 
 test("cw kinds <kind> names what that kind's contract requires, and no more (FR-001, FR-004)", async () => {
-  for (const kind of KINDS) {
+  for (const kind of Primitives.kinds) {
     const { code, results } = await asking(["kinds", kind]);
 
     assert.equal(code, EXIT_OK, kind);
     assert.deepEqual(
       headersNamedIn(results),
-      primitiveHeadersOf(kind)
+      Primitives.headersOf(kind)
         .filter(({ required }) => required)
         .map(({ field, shape }) => ({ field, shape })),
       kind,
@@ -116,12 +96,12 @@ test("cw kinds <kind> names what that kind's contract requires, and no more (FR-
 });
 
 test("a header read from a closed set carries its values, and no other header does (FR-118)", async () => {
-  for (const kind of KINDS)
-    for (const { field, allowedValues } of primitiveHeadersOf(kind))
+  for (const kind of Primitives.kinds)
+    for (const { field, allowedValues } of Primitives.headersOf(kind))
       assert.deepEqual(
         allowedValues,
         kind === "sensor" && field === "signal"
-          ? SIGNALS
+          ? SensorPrimitive.signals
           : kind === "mixin" && field === "position"
             ? ["start", "end"]
             : field === "disable-user-invocation" || field === "disable-model-invocation"
@@ -131,15 +111,15 @@ test("a header read from a closed set carries its values, and no other header do
       );
 
   const { results } = await asking(["kinds", "sensor"]);
-  assert.match(results, new RegExp(`signal\\s+line, one of ${SIGNALS.join(", ")}\n`));
+  assert.match(results, new RegExp(`signal\\s+line, one of ${SensorPrimitive.signals.join(", ")}\n`));
 });
 
 test("the sample it shows is a primitive of that kind, as an author writes one (FR-001)", async () => {
-  for (const kind of KINDS) {
+  for (const kind of Primitives.kinds) {
     const { results } = await asking(["kinds", kind]);
-    const read = primitiveOf(["---", sampleShownIn(results), "---", "", "What it has to say."].join("\n"), new YamlParser());
+    const samplePrimitive = readPrimitive(["---", sampleShownIn(results), "---", "", "What it has to say."].join("\n"));
 
-    assert.equal(read.kind, kind);
+    assert.equal(samplePrimitive.kind, kind);
   }
 });
 
@@ -152,7 +132,7 @@ test("an agent is shown holding an mcp origin under its tools, in the charter's 
 });
 
 test("the headers it names are the ones cw add takes, one flag apiece (FR-004, spec Story 2 scenario 4)", async () => {
-  for (const kind of KINDS) {
+  for (const kind of Primitives.kinds) {
     const { results } = await asking(["kinds", kind]);
     const flags = headersNamedIn(results).flatMap(({ field }) => [
       "--header",
@@ -164,7 +144,7 @@ test("the headers it names are the ones cw add takes, one flag apiece (FR-004, s
     const { code, held: files, problems } = await asking(["add", kind, "something", ...flags, ...shapeFlags]);
 
     assert.equal(code, EXIT_OK, `${kind}: ${problems}`);
-    assert.notEqual(await files.readIfThere(new URL(`.cw/charter/${kind}/something/index.md`, repoPath)), undefined, kind);
+    assert.notEqual(await files.readIfThere(new URL(`.cw/charter/primitive/${kind}/something/index.md`, repoPath)), undefined, kind);
   }
 });
 
@@ -174,7 +154,7 @@ test("cw kinds with no kind answers as it does today: one line per kind (FR-002)
   assert.equal(code, EXIT_OK);
   assert.deepEqual(
     results.trim().split("\n").map((line) => line.split("  ")[0]),
-    [...KINDS],
+    [...Primitives.kinds],
   );
 });
 
@@ -183,16 +163,15 @@ test("a word that is no kind is answered with every kind there is (FR-003)", asy
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"rule" is not a kind/);
-  for (const kind of KINDS) assert.match(problems, new RegExp(kind));
+  for (const kind of Primitives.kinds) assert.match(problems, new RegExp(kind));
 });
 
 /** One mcp file with these headers beside its id, description and tools, read
  *  the way a file of the charter is. */
 const mcpOf = (...headers: readonly string[]) =>
-  primitiveOf(
+  readPrimitive(
     ["---", "kind: mcp", "id: mfbs/billing", "description: Billing.", "tools: [search_code]", ...headers, "---", ""].join("\n"),
-    new YamlParser(),
-  );
+    );
 
 /** The one fault a refused file raised: what is wrong, and the sample it is
  *  fixed with. */
@@ -239,7 +218,7 @@ test("an mcp is refused a way of signing in its shape does not take (FR-142)", (
 
 test("an id longer than 40 characters is refused, so a host's names for it stay within what it takes (FR-157)", () => {
   const guideWithId = (id: string) =>
-    primitiveOf(["---", "kind: guide", `id: ${id}`, "description: About it.", "---", ""].join("\n"), new YamlParser());
+    readPrimitive(["---", "kind: guide", `id: ${id}`, "description: About it.", "---", ""].join("\n"));
 
   assert.equal(guideWithId(`team/${"a".repeat(35)}`).kind, "guide");
   assert.match(refusalOf(() => guideWithId(`team/${"a".repeat(36)}`)).message, /"id" is at most 40 characters/);

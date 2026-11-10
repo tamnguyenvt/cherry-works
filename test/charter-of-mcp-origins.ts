@@ -1,13 +1,13 @@
-import type { McpOrigin } from "../src/hexagon/domain/models/output/common/McpOrigin.js";
+import type { McpOrigin } from "../src/module/charter/domain/models/projection/mcp-origin.js";
 
 /** The mcp primitives that declare these mcp origins, one file per id under
- *  `.cw/charter/mcp/`, keyed by URL: what signing in reads (FR-148), where a
+ *  `.cw/charter/primitive/mcp/`, keyed by URL: what signing in reads (FR-148), where a
  *  build would have listed the same mcp origins in `.cw/out/mcp-origins.json`. */
 export function charterFilesOf(origins: readonly McpOrigin[], repoHref = "file:///repo/"): Record<string, string> {
   return Object.fromEntries(
     origins.flatMap(({ ids, endpoint, command, path, auth }) =>
       ids.map((id) => [
-        `${repoHref}.cw/charter/mcp/${id}/index.md`,
+        `${repoHref}.cw/charter/primitive/mcp/${id}/index.md`,
         [
           "---",
           "kind: mcp",

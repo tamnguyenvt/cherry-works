@@ -2,10 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { inTheBrowser } from "./in-the-browser.js";
 import { chipsOf, columnOf, rowsOf, shownKindOf } from "./listing-in-the-browser.js";
-import { KINDS } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
-import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
+import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
 
-const at = (path: string) => new URL(path, "file:///repo/.cw/charter/").href;
+const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
@@ -28,7 +28,7 @@ test("every kind the charter knows has a chip, carrying how many primitives of i
     // with what the repository authored.
     assert.deepEqual(
       await chipsOf(page),
-      KINDS.map((kind, index) => [kind, ["1", "1", "2", "0", "0", "0", "1", "1", "0", "1", "0"][index]]),
+      Primitives.kinds.map((kind, index) => [kind, ["1", "1", "2", "0", "0", "0", "1", "1", "0", "1", "0"][index]]),
     );
   });
 });
@@ -46,7 +46,7 @@ test("a guide is listed with what it is for, the file it is in, the globs it mat
 
     assert.equal(await row.locator("td").nth(0).innerText(), "no-any");
     assert.equal(await row.locator("td").nth(1).locator("div").nth(0).innerText(), "About no-any.");
-    assert.equal(await row.locator("td").nth(1).locator("div").nth(1).innerText(), ".cw/charter/guide/no-any/index.md");
+    assert.equal(await row.locator("td").nth(1).locator("div").nth(1).innerText(), ".cw/charter/primitive/guide/no-any/index.md");
     assert.equal(await row.getByRole("cell", { name: "Matching globs" }).innerText(), "src/**/*.ts");
     assert.equal(await row.getByRole("cell", { name: "Rationale" }).innerText(), "why");
     assert.equal(await row.getByRole("cell", { name: "Mixins" }).innerText(), "voice");
@@ -97,14 +97,14 @@ test("a charter the engine will not read shows every fault under its file in pla
 
     assert.match(await page.getByRole("alert").innerText(), /The engine will not read this charter/);
     const refusedFiles = page.getByRole("table", { name: "Refused files" });
-    assert.deepEqual(await refusedFiles.locator("tr td:first-child").allInnerTexts(), [".cw/charter/guide/broken/index.md"]);
+    assert.deepEqual(await refusedFiles.locator("tr td:first-child").allInnerTexts(), [".cw/charter/primitive/guide/broken/index.md"]);
     assert.ok((await refusedFiles.locator("tr td:nth-child(2) p").count()) > 0);
     assert.equal(await page.getByRole("radio").count(), 0);
   });
 });
 
 test("the repository's tab lists what was authored here and what the engine brings, and nothing vendored (FR-112)", async () => {
-  const vendored = new URL("guide/small-diffs/index.md", "file:///repo/.cw/vendor/acme/").href;
+  const vendored = new URL("guide/small-diffs/index.md", "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/").href;
   await inTheBrowser({ ...charter, [vendored]: primitive("guide", "small-diffs") }, async (page) => {
     await rowsOf(page).waitFor();
 

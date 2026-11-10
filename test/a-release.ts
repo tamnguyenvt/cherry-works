@@ -1,7 +1,8 @@
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
-import { chmod, copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface ReleaseFixture {
   /** The version package.json holds before the release. */
@@ -40,6 +41,8 @@ export async function inARelease(
     await mkdir(join(fixtureFolder, "packages/engine"), { recursive: true });
     await writeFile(join(fixtureFolder, "bin/package.json"), '{"type":"commonjs"}');
     await copyFile(new URL("../scripts/release.ts", import.meta.url), join(fixtureFolder, "scripts/release.ts"));
+    // The packages the script imports, as the repository installed them.
+    await symlink(fileURLToPath(new URL("../node_modules", import.meta.url)), join(fixtureFolder, "node_modules"));
     await writeFile(join(fixtureFolder, "package.json"), `{"name": "cherry-works", "version": "${releaseFixture.currentVersion}", "type": "module"}\n`);
     await writeFile(join(fixtureFolder, "README.md"), `# Fixture\n\nCurrent version: **${releaseFixture.currentVersion}**\n\nKeep this text.\n`);
     await writeFile(join(fixtureFolder, "built-contract.d.ts"), releaseFixture.builtContractText);

@@ -1,14 +1,14 @@
 import { chromium, type Page } from "playwright";
-import { startPortal } from "../src/driver/portal/server.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { startPortal } from "../src/presentation/portal/portal.server.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { startedPortalOf } from "./answer-of.js";
+import { authoringCharterOf, buildingCharterOf, testingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
+import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
 
 /** Clear of the default and of the other portal tests, so a portal left running
  *  here answers nothing they ask. */
@@ -38,15 +38,15 @@ export async function inTheBrowser(
 ): Promise<void> {
   const files = new InMemoryFileReaders(held);
   const repoPath = new URL("file:///repo/");
-  const engine = new CharterAuthoring(repoPath, files, new YamlParser(), new InMemoryFileOutput(files), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const charterVendoringApp = new CharterVendoring(repoPath, files, sourceFetcher, new InMemoryFileOutput(files), new YamlParser());
-  const testAuthoringApp = new TestAuthoring(repoPath, files, new InMemoryFileOutput(files));
-  const { address, server } = await startPortal(
-    new URL("../dist/portal/", import.meta.url),
-    engine,
-    charterVendoringApp,
-    testAuthoringApp,
-    PORT,
+  const charterAuthoringApp = authoringCharterOf(files, new InMemoryFileOutput(files), new InMemoryReporter(), { sourceFetcher });
+  const charterRuntimeApp = buildingCharterOf(files, new InMemoryFileOutput(files), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const { address, server } = startedPortalOf(
+    await startPortal(
+      new URL("../dist/portal/", import.meta.url),
+      { charterAuthoringApp: wrapAppToShowPaths(charterAuthoringApp, "/repo"), charterBuildingApp: wrapAppToShowPaths(charterRuntimeApp, "/repo") },
+      workspaceSettingsLoaderOf(files),
+      PORT,
+    ),
   );
   const browser = await chromium.launch();
   try {

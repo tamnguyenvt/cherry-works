@@ -8,7 +8,7 @@ register(
     encodeURIComponent(`
 import { readFile } from "node:fs/promises";
 export async function load(url, context, nextLoad) {
-  if (!/\\/src\\/hexagon\\/domain\\/models\\/charter\\/builtin\\/.+\\.mjs$/.test(url)) return nextLoad(url, context);
+  if (!/\\/src\\/module\\/charter\\/domain\\/builtin\\/.+\\.mjs$/.test(url)) return nextLoad(url, context);
   const assetText = await readFile(new URL(url), "utf8");
   return { format: "module", source: "export default " + JSON.stringify(assetText), shortCircuit: true };
 }`),

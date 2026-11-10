@@ -1,36 +1,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/driver/cli/Commander.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { OutcomeDTOs } from "../src/hexagon/port/driver/dtos/index.js";
-import { noMcpOriginsReached } from "./no-mcp-origins.js";
-import { noSessionsKept } from "./no-sessions.js";
-import { noEvaluationsRun } from "./no-evaluations.js";
-import { noSensorsRun } from "./no-sensors.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
 
-/** What installing a vendor is driven through: a context always carries every
- *  use case, and nothing here asks this one for anything. */
-const charterVendoringApp = new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), new InMemorySources(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
 
-/** What the test files are driven through, over an empty repository: nothing
- *  here asks it for anything. */
-const noTestFiles = new InMemoryFileReaders({});
-const testAuthoringApp = new TestAuthoring(new URL(`file://${repo}/`), noTestFiles, new InMemoryFileOutput(noTestFiles));
-
-const root = new URL("file:///repo/.cw/charter/");
-const vendored = new URL("file:///repo/.cw/vendor/acme/");
+const root = new URL("file:///repo/.cw/charter/primitive/");
+const vendored = new URL("file:///repo/.cw/charter/vendor/acme/charter/root/primitive/");
 
 /** One authored file, holding what the kind it declares requires. */
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
@@ -73,8 +58,9 @@ const writing = async (work: () => Promise<number>) => {
 /** The command line as a user meets it, over a charter held in memory. */
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[]) => {
   const readers = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
-  const cli = new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS);
+  const charterAuthoringApp = authoringCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const cli = new Commander(commandLineOf(readers, new InMemoryFileOutput(readers), { charterAuthoringApp, charterRuntimeApp }, repo), COMMANDS);
   return writing(() => cli.run(argv));
 };
 
@@ -89,7 +75,7 @@ test("an id is traced in one command to the file that declares it", async () => 
   assert.equal(code, EXIT_OK);
   assert.deepEqual(results, [
     "no-any  What no-any is for.",
-    "  .cw/charter/guide/no-any/index.md",
+    "  .cw/charter/primitive/guide/no-any/index.md",
     "  authored in this repository",
     "  comes up when a touched file matches one of its `globs`, or every turn where globs are not specified",
     "  declares tags: types",
@@ -125,10 +111,10 @@ test("what explaining finds reaches a driver as its DTO, saying when the primiti
   const readers = new InMemoryFileReaders({
     [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["rationale: gone"]),
   });
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = authoringCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryReporter());
 
   // Sent and read back, the way the portal's page will read it.
-  const explanationOutcomeDTO = OutcomeDTOs.ExplanationOutcome.parse(
+  const explanationOutcomeDTO = CharterDTOs.ExplanationOutcome.parse(
     JSON.parse(JSON.stringify(await charterAuthoringApp.explain("no-any"))),
   );
 
@@ -141,7 +127,7 @@ test("a vendored id is named the same way, and says which layer it came from", a
   const { code, results } = await run(charter, ["explain", "small-diffs"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^ {2}\.cw\/vendor\/acme\/guide\/small-diffs\/index\.md$/m);
+  assert.match(results, /^ {2}\.cw\/charter\/vendor\/acme\/charter\/root\/primitive\/guide\/small-diffs\/index\.md$/m);
   assert.match(results, /installed from a vendor/);
 });
 
@@ -243,7 +229,7 @@ test("a rationale citing a corpus the charter does not hold is named, and marked
 /** One test file, written the way an author writes it, in the folder tests are
  *  read from. */
 const suite = (written: unknown, name = "activation") => ({
-  [new URL(`.cw/test/${name}.json`, "file:///repo/").href]: `${JSON.stringify(written, undefined, 2)}\n`,
+  [new URL(`.cw/charter/test/${name}.json`, "file:///repo/").href]: `${JSON.stringify(written, undefined, 2)}\n`,
 });
 
 const pinnedDown = {
@@ -262,14 +248,14 @@ test("an explanation says which situations this repository wrote down about the 
   const { code, results } = await run(pinnedDown, ["explain", "no-any"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^ {2}pinned down by \.cw\/test\/activation\.json: touching src\/one\.ts activates no-any$/m);
+  assert.match(results, /^ {2}pinned down by \.cw\/charter\/test\/activation\.json: touching src\/one\.ts activates no-any$/m);
   assert.doesNotMatch(results, /\.env/);
 });
 
 test("a sensor is pinned down by the case that fires its signal", async () => {
   const { results } = await run(pinnedDown, ["explain", "no-secrets"]);
 
-  assert.match(results, /^ {2}pinned down by \.cw\/test\/activation\.json: firing event PreToolUse runs no-secrets$/m);
+  assert.match(results, /^ {2}pinned down by \.cw\/charter\/test\/activation\.json: firing event PreToolUse runs no-secrets$/m);
 });
 
 test("a primitive no case names is explained with no situation under it", async () => {
@@ -284,12 +270,12 @@ test("a primitive no case names is explained with no situation under it", async 
 
 test("a test file that will not read leaves the explanation standing", async () => {
   const { code, results } = await run(
-    { ...pinnedDown, [new URL(".cw/test/broken.json", "file:///repo/").href]: "not json at all" },
+    { ...pinnedDown, [new URL(".cw/charter/test/broken.json", "file:///repo/").href]: "not json at all" },
     ["explain", "no-any"],
   );
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^ {2}pinned down by \.cw\/test\/activation\.json: /m);
+  assert.match(results, /^ {2}pinned down by \.cw\/charter\/test\/activation\.json: /m);
   assert.doesNotMatch(results, /broken\.json/);
 });
 
@@ -322,6 +308,6 @@ test("a collision is the answer doctor gives, naming both files that claim the i
     ["doctor"],
   );
 
-  assert.match(results, /\.cw\/charter\/guide\/no-any\/index\.md/);
-  assert.match(results, /\.cw\/vendor\/acme\/guide\/no-any\/index\.md/);
+  assert.match(results, /\.cw\/charter\/primitive\/guide\/no-any\/index\.md/);
+  assert.match(results, /\.cw\/charter\/vendor\/acme\/charter\/root\/primitive\/guide\/no-any\/index\.md/);
 });

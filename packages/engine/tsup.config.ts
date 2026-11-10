@@ -1,4 +1,5 @@
 import { copyFile, readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { defineConfig } from "tsup";
 import packageJson from "../../package.json" with { type: "json" };
 
@@ -6,16 +7,31 @@ export default defineConfig({
   entry: { index: "packages/engine/index.ts" },
   format: ["esm"],
   target: "node22",
+  // A fault is named by its class in what a caller is answered (SDK-FR-018),
+  // so the bundle keeps the names it would otherwise rename on a clash.
+  keepNames: true,
   outDir: "packages/engine/dist",
   clean: true,
   dts: true,
-  external: ["picomatch", "zod"],
+  external: ["picomatch", "smol-toml", "yaml", "zod"],
   define: { ENGINE_VERSION: JSON.stringify(packageJson.version) },
   esbuildPlugins: [
     {
+      // Each module's module.ts names its adapters too, and the engine ships
+      // none of them (CORE-FR-228): an adapter is marked free of side effects,
+      // so what the engine does not use of it is left out of the bundle.
+      name: "adapters-left-out",
+      setup(build) {
+        build.onResolve({ filter: /^\.\/infra\/.+\.js$/ }, ({ path, resolveDir }) => ({
+          path: resolve(resolveDir, path.replace(/\.js$/, ".ts")),
+          sideEffects: false,
+        }));
+      },
+    },
+    {
       name: "builtin-asset-text",
       setup(build) {
-        build.onLoad({ filter: /\/src\/hexagon\/domain\/models\/charter\/builtin\/.+\.mjs$/ }, async ({ path }) => ({
+        build.onLoad({ filter: /\/src\/module\/charter\/domain\/builtin\/.+\.mjs$/ }, async ({ path }) => ({
           contents: await readFile(path, "utf8"),
           loader: "text",
         }));
@@ -36,7 +52,7 @@ export default defineConfig({
       types: "./index.d.ts",
       files: ["index.js", "index.d.ts"],
       scripts: { prepublishOnly: packageJson.scripts.prepublishOnly },
-      dependencies: { picomatch: packageJson.devDependencies.picomatch, zod: packageJson.devDependencies.zod },
+      dependencies: { picomatch: packageJson.devDependencies.picomatch, "smol-toml": packageJson.devDependencies["smol-toml"], yaml: packageJson.devDependencies.yaml, zod: packageJson.devDependencies.zod },
     }, undefined, 2) + "\n");
   },
 });

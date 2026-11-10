@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { inTheBrowser } from "./in-the-browser.js";
-import { GuidePrimitive } from "../src/hexagon/domain/models/charter/primitive/GuidePrimitive.js";
+import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
 
-const at = (path: string) => new URL(path, "file:///repo/.cw/charter/").href;
+const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
@@ -13,7 +13,7 @@ const charter = {
   [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: why", 'mixins: ["voice"]']),
   [at("corpus/why/index.md")]: primitive("corpus", "why"),
   [at("mixin/voice/index.md")]: primitive("mixin", "voice"),
-  "file:///repo/.cw/test/activation.json": `${JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] })}\n`,
+  "file:///repo/.cw/charter/test/activation.json": `${JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] })}\n`,
 };
 
 /** The text of each part of the dialog, under its title. */
@@ -35,8 +35,8 @@ test("a row's Explain opens what the engine says of it: when it comes up, what i
     assert.equal(sections["When it comes up"], GuidePrimitive.activatesWhen);
     assert.match(sections["What it pulls in"], /voice/);
     assert.match(sections["What it pulls in"], /why/);
-    assert.match(sections["Tested by"], /\.cw\/test\/activation\.jsontouching src\/one\.ts activates no-any/);
-    assert.match(sections["File"], /\.cw\/charter\/guide\/no-any\/index\.md in the repo layer/);
+    assert.match(sections["Tested by"], /\.cw\/charter\/test\/activation\.jsontouching src\/one\.ts activates no-any/);
+    assert.match(sections["File"], /\.cw\/charter\/primitive\/guide\/no-any\/index\.md in the repo layer/);
   });
 });
 

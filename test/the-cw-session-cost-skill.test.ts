@@ -1,16 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CwSessionCostSkill } from "../src/hexagon/domain/models/charter/builtin/CwSessionCostSkill.js";
-import { BUILTIN_PRIMITIVES } from "../src/hexagon/domain/models/charter/builtin/index.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
+import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
+import { BuiltinPrimitives } from "../src/module/charter/domain/builtin/index.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
 
 const cwSessionCostSkill = new CwSessionCostSkill();
 const skillBody = cwSessionCostSkill.body;
 
 test("the engine brings a skill that answers what the kept sessions cost, of its own layer (EVAL-FR-014)", () => {
-  assert.ok(BUILTIN_PRIMITIVES.some((builtinPrimitive) => builtinPrimitive.headers.id === "cw-session-cost"));
+  assert.ok(BuiltinPrimitives.all.some((builtinPrimitive) => builtinPrimitive.headers.id === "cw-session-cost"));
   assert.equal(cwSessionCostSkill.layerName, "builtin");
-  assert.equal(cwSessionCostSkill.file, "(built into cw)/skill/cw-session-cost/index.md");
+  assert.equal(cwSessionCostSkill.uri, "(built into cw)/skill/cw-session-cost/index.md");
   assert.ok(cwSessionCostSkill.headers.triggers.length > 0);
 });
 

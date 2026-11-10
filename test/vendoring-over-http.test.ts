@@ -1,16 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { api } from "../src/driver/portal/routes.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { api } from "../src/presentation/portal/portal.routes.js";
+import type { ForAuthoringCharter } from "../src/module/charter/app/port/in/authoring-charter.port.js";
+import { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { answerOf } from "./answer-of.js";
+import { authoringCharterOf, buildingCharterOf, testingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
+import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
 
 const repoPath = new URL("file:///repo/");
 
@@ -20,13 +21,13 @@ const guide = (id: string) => ["---", "kind: guide", `id: ${id}`, `description: 
  *  they install through, so a test reads what was asked of it (plan §12.2). */
 const portal = (files: Readonly<Record<string, string>> = {}, sourceFetcher = new InMemorySources()) => {
   const fileReaders = new InMemoryFileReaders(files);
-  const charterVendoringApp = new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser());
+  const charterAuthoringApp = authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher });
   const portalRoutes = api(
-    new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
-    charterVendoringApp,
-    new TestAuthoring(repoPath, fileReaders, new InMemoryFileOutput(fileReaders)),
+    wrapAppToShowPaths(charterAuthoringApp, "/repo"),
+    wrapAppToShowPaths(buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter()), "/repo"),
+    workspaceSettingsLoaderOf(fileReaders),
   );
-  return { portalRoutes, charterVendoringApp, sourceFetcher };
+  return { portalRoutes, charterAuthoringApp, sourceFetcher };
 };
 
 /** A write, sent the way the page sends one. */
@@ -37,13 +38,13 @@ const sending = (method: string, json: unknown) => ({
 });
 
 test("the vendors are sent as the folders installed() answers (FR-122)", async () => {
-  const { portalRoutes, charterVendoringApp } = portal({ [new URL(".cw/vendor/acme/guide/one/index.md", repoPath).href]: guide("one") });
+  const { portalRoutes, charterAuthoringApp } = portal({ [new URL(".cw/charter/vendor/acme/charter/root/primitive/guide/one/index.md", repoPath).href]: guide("one") });
 
   const answer = await portalRoutes.request("/vendors");
 
   assert.equal(answer.status, 200);
-  assert.deepEqual(await answer.json(), [".cw/vendor/acme"]);
-  assert.deepEqual(await charterVendoringApp.installed(), [".cw/vendor/acme"]);
+  assert.deepEqual(await answer.json(), { type: "VendorFolders", data: { folders: [".cw/charter/vendor/acme/charter/root"] } });
+  assert.deepEqual(answerOf(await charterAuthoringApp.vendors()).data.folders, ["file:///repo/.cw/charter/vendor/acme/charter/root"]);
 });
 
 test("a source posted is installed as cw vendor add installs it (Story 8 scenario 2)", async () => {
@@ -53,7 +54,7 @@ test("a source posted is installed as cw vendor add installs it (Story 8 scenari
 
   assert.equal(answer.status, 204);
   assert.deepEqual(sourceFetcher.fetchedSources, [{ source: "git@github.com:team/charter.git", version: "v1.2.0" }]);
-  assert.deepEqual(sourceFetcher.checkedOutFolders, [{ commit: "git@github.com:team/charter.git@v1.2.0", fromFolder: ".cw/charter", intoSubFolder: ".cw/vendor/team/charter" }]);
+  assert.deepEqual(sourceFetcher.checkedOutFolders, [{ commit: "git@github.com:team/charter.git@v1.2.0", fromFolder: ".cw/charter/primitive", intoSubFolder: ".cw/charter/vendor/team/charter/root/primitive" }]);
 });
 
 test("a source posted with no version is installed at its default", async () => {
@@ -75,7 +76,7 @@ test("a skills repository posted has every skill it holds installed, asking noth
   const answer = await portalRoutes.request("/vendors", sending("POST", { source: "team/skills" }));
 
   assert.equal(answer.status, 204);
-  assert.deepEqual(sourceFetcher.checkedOutFolders.map(({ intoSubFolder }) => intoSubFolder), [".cw/vendor/team/skills/skill/one", ".cw/vendor/team/skills/skill/two"]);
+  assert.deepEqual(sourceFetcher.checkedOutFolders.map(({ intoSubFolder }) => intoSubFolder), [".cw/charter/vendor/team/skills/root/primitive/skill/one", ".cw/charter/vendor/team/skills/root/primitive/skill/two"]);
 });
 
 test("a source holding no charter folder is refused, saying how to make it one", async () => {
@@ -86,62 +87,64 @@ test("a source holding no charter folder is refused, saying how to make it one",
   const answer = await portalRoutes.request("/vendors", sending("POST", { source: "team/notes" }));
 
   assert.equal(answer.status, 422);
-  const faultDTO = DataDTOs.Fault.parse(await answer.json());
+  const faultDTO = FaultDTOs.Fault.parse(await answer.json());
   assert.match(faultDTO.data.message, /no "\.cw\/charter"/);
   assert.deepEqual(sourceFetcher.checkedOutFolders, []);
 });
 
 /** One vendor installed at this folder, and work of the repository's beside it. */
 const filesHoldingVendor = (vendorName: string) => ({
-  [new URL(`.cw/vendor/${vendorName}/guide/one/index.md`, repoPath).href]: guide("one"),
+  [new URL(`.cw/charter/vendor/${vendorName}/primitive/guide/one/index.md`, repoPath).href]: guide("one"),
   [new URL("work.txt", repoPath).href]: "In hand.\n",
 });
 
-const installedVendors = async (charterVendoringApp: CharterVendoring) => [...(await charterVendoringApp.installed())];
+const installedVendors = async (charterAuthoringApp: ForAuthoringCharter) => [...answerOf(await charterAuthoringApp.vendors()).data.folders];
 
-test("a vendor deleted is taken away by its folder name (Story 8 scenario 5)", async () => {
-  const { portalRoutes, charterVendoringApp } = portal(filesHoldingVendor("charter"));
+test("a vendor an earlier version laid out in one folder is refused when deleted, saying to install it again (Story 8 scenario 5, FR-180)", async () => {
+  const { portalRoutes } = portal({ [new URL(".cw/charter/vendor/charter/guide/one/index.md", repoPath).href]: guide("one") });
 
   const answer = await portalRoutes.request("/vendors/charter", sending("DELETE", {}));
 
-  assert.equal(answer.status, 204);
-  assert.deepEqual(await installedVendors(charterVendoringApp), []);
+  assert.equal(answer.status, 422);
+  const faultDTO = FaultDTOs.Fault.parse(await answer.json());
+  assert.match(faultDTO.data.message, /\.cw\/charter\/vendor\/charter is laid out the way an earlier version installed a vendor/);
+  assert.match(faultDTO.data.fix, /install each source again with "cw vendor add"/);
 });
 
-test("a vendor under its owner is taken away by its folder name, owner and repository (FR-050)", async () => {
-  const { portalRoutes, charterVendoringApp } = portal(filesHoldingVendor("team/charter"));
+test("a vendor under its owner is taken away by its folder name, owner, repository and name (Story 8 scenario 5, FR-050)", async () => {
+  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingVendor("team/charter/root"));
 
-  const answer = await portalRoutes.request(`/vendors/${encodeURIComponent("team/charter")}`, sending("DELETE", {}));
+  const answer = await portalRoutes.request(`/vendors/${encodeURIComponent("team/charter/root")}`, sending("DELETE", {}));
 
   assert.equal(answer.status, 204);
-  assert.deepEqual(await installedVendors(charterVendoringApp), []);
+  assert.deepEqual(await installedVendors(charterAuthoringApp), []);
 });
 
 test("a name no vendor folder answers to is refused in the engine's words (CORE-FR-204)", async () => {
-  const { portalRoutes, charterVendoringApp } = portal(filesHoldingVendor("team/charter"));
+  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingVendor("team/charter/root"));
 
   const answer = await portalRoutes.request("/vendors/absent", sending("DELETE", {}));
 
   assert.equal(answer.status, 422);
-  assert.match(DataDTOs.Fault.parse(await answer.json()).data.message, /No vendor folder/);
-  assert.deepEqual(await installedVendors(charterVendoringApp), [".cw/vendor/team/charter"]);
+  assert.match(FaultDTOs.Fault.parse(await answer.json()).data.message, /No vendor folder/);
+  assert.deepEqual(await installedVendors(charterAuthoringApp), ["file:///repo/.cw/charter/vendor/team/charter/root"]);
 });
 
 test("a name that climbs out of the vendor folder is refused, and nothing is taken away (FR-044)", async () => {
-  const { portalRoutes, charterVendoringApp } = portal(filesHoldingVendor("team/charter"));
+  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingVendor("team/charter/root"));
 
   const answer = await portalRoutes.request("/vendors/..%2F..%2Fsrc", sending("DELETE", {}));
 
   assert.equal(answer.status, 422);
-  assert.deepEqual(await installedVendors(charterVendoringApp), [".cw/vendor/team/charter"]);
+  assert.deepEqual(await installedVendors(charterAuthoringApp), ["file:///repo/.cw/charter/vendor/team/charter/root"]);
 });
 
 test("a name that is no folder is refused in the engine's words, and nothing is taken away (FR-044)", async () => {
-  const { portalRoutes, charterVendoringApp } = portal(filesHoldingVendor("team/charter"));
+  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingVendor("team/charter/root"));
 
   const answer = await portalRoutes.request("/vendors/team%2F..", sending("DELETE", {}));
 
   assert.equal(answer.status, 422);
-  assert.match(DataDTOs.Fault.parse(await answer.json()).data.message, /Invalid path/);
-  assert.deepEqual(await installedVendors(charterVendoringApp), [".cw/vendor/team/charter"]);
+  assert.match(FaultDTOs.Fault.parse(await answer.json()).data.message, /No vendor folder is named/);
+  assert.deepEqual(await installedVendors(charterAuthoringApp), ["file:///repo/.cw/charter/vendor/team/charter/root"]);
 });

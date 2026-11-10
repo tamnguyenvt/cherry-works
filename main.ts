@@ -1,126 +1,34 @@
 #!/usr/bin/env node
 import { homedir } from "node:os";
-import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import packageJson from "./package.json" with { type: "json" };
-import { Commander } from "./src/driver/cli/Commander.js";
-import { CharterAuthoring } from "./src/hexagon/application/CharterAuthoring.js";
-import { CharterVendoring } from "./src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "./src/hexagon/application/TestAuthoring.js";
-import { McpConnecting } from "./src/hexagon/application/McpConnecting.js";
-import { SessionReviewing } from "./src/hexagon/application/SessionReviewing.js";
-import { CharterEvaluating } from "./src/hexagon/application/CharterEvaluating.js";
-import { SensorRunning } from "./src/hexagon/application/SensorRunning.js";
-import { FileReaders } from "./src/zdriven/FileReaders.js";
-import { TomlParser } from "./src/zdriven/TomlParser.js";
-import type { ForParsingToml } from "./src/hexagon/port/zdriven/ForParsingToml.js";
-import { YamlParser } from "./src/zdriven/YamlParser.js";
-import { FileOutput } from "./src/zdriven/FileOutput.js";
-import { GitSources } from "./src/zdriven/GitSources.js";
-import { GitWorktrees } from "./src/zdriven/GitWorktrees.js";
-import { OsSecrets } from "./src/zdriven/OsSecrets.js";
-import { OAuth } from "./src/zdriven/OAuth.js";
-import { McpClients } from "./src/zdriven/McpClients.js";
-import { Tiktoken } from "./src/zdriven/Tiktoken.js";
-import { CodexCli } from "./src/zdriven/CodexCli.js";
-import { ClaudeCli } from "./src/zdriven/ClaudeCli.js";
-import { Promptfoo } from "./src/zdriven/Promptfoo.js";
-import { ConsoleReporter } from "./src/zdriven/ConsoleReporter.js";
-import { SystemClock } from "./src/zdriven/SystemClock.js";
-import { Shell } from "./src/zdriven/Shell.js";
-import type { ForReadingFiles } from "./src/hexagon/port/zdriven/ForReadingFiles.js";
-import type { ForParsingYaml } from "./src/hexagon/port/zdriven/ForParsingYaml.js";
-import type { ForWritingFiles } from "./src/hexagon/port/zdriven/ForWritingFiles.js";
-import type { ForKeepingWorktrees } from "./src/hexagon/port/zdriven/ForKeepingWorktrees.js";
-import type { ForFetchingSources } from "./src/hexagon/port/zdriven/ForFetchingSources.js";
-import type { ForKeepingSecrets } from "./src/hexagon/port/zdriven/ForKeepingSecrets.js";
-import type { ForAuthorizing } from "./src/hexagon/port/zdriven/ForAuthorizing.js";
-import type { ForCallingMcpServers } from "./src/hexagon/port/zdriven/ForCallingMcpServers.js";
-import type { ForCountingTokens } from "./src/hexagon/port/zdriven/ForCountingTokens.js";
-import type { ForCheckingAgentCli, ForRunningAgentCli } from "./src/hexagon/port/zdriven/ForRunningAgentCli.js";
-import type { ForTellingTime } from "./src/hexagon/port/zdriven/ForTellingTime.js";
-import type { ForRunningPromptfoo } from "./src/hexagon/port/zdriven/ForRunningPromptfoo.js";
-import type { ForReportingProgress } from "./src/hexagon/port/zdriven/ForReportingProgress.js";
-import type { ForRunningShellCommands } from "./src/hexagon/port/zdriven/ForRunningShellCommands.js";
-import type { AgentProvider } from "./src/hexagon/port/driver/ForManagingCharter.js";
-import type { ForManagingCharter } from "./src/hexagon/port/driver/ForManagingCharter.js";
-import type { ForVendoringCharters } from "./src/hexagon/port/driver/ForVendoringCharters.js";
-import type { ForAuthoringTests } from "./src/hexagon/port/driver/ForAuthoringTests.js";
-import type { ForConnectingMcps } from "./src/hexagon/port/driver/ForConnectingMcps.js";
-import type { ForReviewingSessions } from "./src/hexagon/port/driver/ForReviewingSessions.js";
-import type { ForEvaluatingCharter } from "./src/hexagon/port/driver/ForEvaluatingCharter.js";
-import type { ForRunningSensors } from "./src/hexagon/port/driver/ForRunningSensors.js";
+import { Commander } from "./src/presentation/cli/cli.commander.js";
+import { composeEngine, composeWorkspace } from "./src/module/composition.js";
+import { FileReaders, FileOutput } from "./src/module/shared/module.js";
 
 /**
- * COMPOSITION ROOT — the one place that knows every concrete class.
- *
- * Each binding is declared as its port, never as the class, so the compiler
- * confirms that swapping an adapter needs no change inside the hexagon.
+ * COMPOSITION ROOT — where this command line is put together: the workspace
+ * module, which keeps the repository's settings, and the engine composed of
+ * the charter and runtime over the default adapters, set up on where it was
+ * run, for the settings the workspace module answers (CORE-FR-231).
  */
-const fileReader: ForReadingFiles = new FileReaders();
-const yamlParser: ForParsingYaml = new YamlParser();
-const tomlParser: ForParsingToml = new TomlParser();
-const fileWriter: ForWritingFiles = new FileOutput();
-const sourceFetcher: ForFetchingSources = new GitSources();
-const worktrees: ForKeepingWorktrees = new GitWorktrees();
-const secrets: ForKeepingSecrets = new OsSecrets();
-const authorizing: ForAuthorizing = new OAuth();
-const mcpServers: ForCallingMcpServers = new McpClients();
-const tokenCounter: ForCountingTokens = new Tiktoken();
-const clock: ForTellingTime = new SystemClock();
-const shell: ForRunningShellCommands = new Shell();
-/** Each agent's own command line, under the agent it runs: a second host is
- *  one more entry here. */
-const agentCliByProvider: Readonly<Partial<Record<AgentProvider, ForRunningAgentCli>>> = { claude: new ClaudeCli() };
 
-/** Where this was run, as the hexagon takes a repository: a directory, so it
- *  ends in a separator. */
-const repoPath = pathToFileURL(`${process.cwd()}/`);
+/** Where this was run, as the adapters take a repository: a directory, so it
+ *  ends in a separator. Known here and by the adapters set up on it, and by
+ *  nothing inside the hexagon (CORE-FR-217). */
+const repoFolder = pathToFileURL(`${process.cwd()}/`);
+/** The developer's home, which the sessions kept on this machine are under
+ *  (CORE-FR-218). */
+const homeFolder = pathToFileURL(`${homedir()}/`);
 
-const charterAuthoringApp: ForManagingCharter = new CharterAuthoring(
-  repoPath,
-  fileReader,
-  yamlParser,
-  fileWriter,
-  tokenCounter,
-  agentCliByProvider,
-  mcpServers,
-  secrets,
-  authorizing,
-  tomlParser,
-);
-
-const charterVendoringApp: ForVendoringCharters = new CharterVendoring(repoPath, fileReader, sourceFetcher, fileWriter, yamlParser);
-
-const testAuthoringApp: ForAuthoringTests = new TestAuthoring(repoPath, fileReader, fileWriter);
-
-const mcpConnectingApp: ForConnectingMcps = new McpConnecting(repoPath, fileReader, secrets, authorizing, yamlParser, mcpServers);
-
-/** The developer's home, which the sessions kept on this machine are under. */
-const homePath = pathToFileURL(`${homedir()}/`);
-
-const sessionReviewingApp: ForReviewingSessions = new SessionReviewing(repoPath, homePath, fileReader, clock);
-
-/** promptfoo, installed once under this engine's own folder in the developer's
- *  home, outside every repository (EVAL-FR-032). */
-const promptfooRunner: ForRunningPromptfoo = new Promptfoo(join(homedir(), ".cherry-works"));
-const progressReporter: ForReportingProgress = new ConsoleReporter();
-
-const codexCli: ForCheckingAgentCli = new CodexCli();
-const charterEvaluatingApp: ForEvaluatingCharter = new CharterEvaluating(repoPath, fileReader, yamlParser, fileWriter, worktrees, { ...agentCliByProvider, codex: codexCli }, promptfooRunner, progressReporter, tomlParser);
-
-const sensorRunningApp: ForRunningSensors = new SensorRunning(repoPath, fileReader, shell);
+const fileReader = new FileReaders(repoFolder);
+const fileWriter = new FileOutput(repoFolder);
 
 const cli = new Commander({
   cwd: process.cwd(),
   version: packageJson.version,
-  charterAuthoringApp,
-  charterVendoringApp,
-  testAuthoringApp,
-  mcpConnectingApp,
-  sessionReviewingApp,
-  charterEvaluatingApp,
-  sensorRunningApp,
+  workspaceApp: composeWorkspace(repoFolder, { fileReader, fileWriter }),
+  engineFactory: (workspaceSettings) => composeEngine(repoFolder, homeFolder, workspaceSettings, { fileReader, fileWriter }),
 });
 
 process.exitCode = await cli.run(process.argv.slice(2));

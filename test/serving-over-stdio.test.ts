@@ -8,8 +8,9 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { startMcpServer } from "../src/driver/mcp/server.js";
-import type { ForConnectingMcps } from "../src/hexagon/port/driver/ForConnectingMcps.js";
+import { startMcpServer } from "../src/presentation/mcp/mcp.server.js";
+import type { ForBuildingCharter } from "../src/module/charter/app/port/in/building-charter.port.js";
+import type { ForRunningCharter } from "../src/module/runtime/app/port/in/running-charter.port.js";
 
 const MAIN = fileURLToPath(new URL("../main.ts", import.meta.url));
 const STDIO_SERVER = fileURLToPath(new URL("./an-mcp-server-over-stdio.ts", import.meta.url));
@@ -20,10 +21,9 @@ const MODULE_LOADER = import.meta.resolve("../scripts/moduleLoader.mjs");
  *  record of every call forwarded. */
 const oneMcpOriginServed = () => {
   const calls: { name: string; args: unknown }[] = [];
-  const mcpConnectingApp: ForConnectingMcps = {
-    signInStatus: async () => [],
-    signInWithToken: async () => undefined,
-    signInWithOAuth: async () => undefined,
+  // The mcp server asks building the charter for its tools and its calls, and
+  // for nothing else.
+  const servingApp: Pick<ForBuildingCharter, "tools"> & Pick<ForRunningCharter, "call"> = {
     tools: async () => ({
       type: "ServedTools",
       data: {
@@ -36,13 +36,13 @@ const oneMcpOriginServed = () => {
       return { type: "ToolAnswer", data: { content: [{ type: "text", text: "3 issues" }], structuredContent: { count: 3 } } };
     },
   };
-  return { mcpConnectingApp, calls };
+  return { charterRuntimeApp: servingApp, calls };
 };
 
 test("the server lists what the mcp origins serve, and forwards a call to them, its answer returned as it came (FR-152, FR-153)", async (t) => {
-  const { mcpConnectingApp, calls } = oneMcpOriginServed();
+  const { charterRuntimeApp, calls } = oneMcpOriginServed();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-  await startMcpServer(mcpConnectingApp, serverTransport);
+  await startMcpServer(charterRuntimeApp, charterRuntimeApp, serverTransport);
   const client = new Client({ name: "an-agent", version: "0.0.0" });
   await client.connect(clientTransport);
   t.after(() => client.close());

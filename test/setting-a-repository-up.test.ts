@@ -1,34 +1,19 @@
-import { TomlParser } from "../src/zdriven/TomlParser.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/driver/cli/Commander.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { KINDS } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
-import { AGENT_PROVIDERS } from "../src/hexagon/domain/models/AgentProvider.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { noMcpOriginsReached } from "./no-mcp-origins.js";
-import { noSessionsKept } from "./no-sessions.js";
-import { noEvaluationsRun } from "./no-evaluations.js";
-import { noSensorsRun } from "./no-sensors.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { EXIT_FAILURE } from "../src/presentation/cli/commands/command.interface.js";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
+import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { faultTextOf } from "./answer-of.js";
+import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
-
-/** What installing a vendor is driven through: a context always carries every
- *  use case, and nothing here asks this one for anything. */
-const charterVendoringApp = new CharterVendoring(new URL(`file://${repo}/`), new InMemoryFileReaders({}), new InMemorySources(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
-
-/** What the test files are driven through, over an empty repository: nothing
- *  here asks it for anything. */
-const noTestFiles = new InMemoryFileReaders({});
-const testAuthoringApp = new TestAuthoring(new URL(`file://${repo}/`), noTestFiles, new InMemoryFileOutput(noTestFiles));
 
 
 const repoPath = new URL("file:///repo/");
@@ -41,14 +26,15 @@ const setUp = async (
   argv: readonly string[] = ["init"],
 ) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(new URL(`file://${repo}/`), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, undefined, undefined, undefined, new TomlParser());
+  const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter(), {});
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
-    const code = await new Commander({ cwd: repo, version: "0.0.0", charterAuthoringApp, charterVendoringApp, testAuthoringApp, mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun }, COMMANDS).run(argv);
+    const code = await new Commander(commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo), COMMANDS).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -64,7 +50,21 @@ test("setting up writes a directory per kind, so a charter has somewhere to be a
   const { code, held: files } = await setUp({}, ["init", "--agent", "claude"]);
 
   assert.equal(code, 0);
-  for (const kind of KINDS) assert.notEqual(await held(files, `.cw/charter/${kind}/.gitkeep`), undefined);
+  for (const kind of Primitives.kinds) assert.notEqual(await held(files, `.cw/charter/primitive/${kind}/.gitkeep`), undefined);
+});
+
+test("setting up writes the workspace's README, naming Cherry Works, the cw that set it up and how to author it, and keeps one already there", async () => {
+  const { code, held: files } = await setUp({}, ["init", "--agent", "claude"]);
+
+  assert.equal(code, 0);
+  const readmeText = (await held(files, ".cw/README.md")) ?? "";
+  assert.match(readmeText, /https:\/\/github\.com\/tamnguyenvt\/cherry-works/);
+  assert.match(readmeText, /set up with `cw` 0\.0\.0/);
+  assert.match(readmeText, /`\/cw-author`/);
+  assert.match(readmeText, /`cw portal`/);
+
+  const { held: keptFiles } = await setUp({ "file:///repo/.cw/README.md": "# Ours\n" }, ["init", "--agent", "claude"]);
+  assert.equal(await held(keptFiles, ".cw/README.md"), "# Ours\n");
 });
 
 test("what the repository answered is what its settings keep (FR-033, FR-037)", async () => {
@@ -95,15 +95,15 @@ test("with nobody to ask, Claude remains the default agent (FR-055)", async () =
 
   assert.equal(code, 0);
   assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["claude"] });
-  assert.match(results, new RegExp(`Compiling for: ${AGENT_PROVIDERS[0]}\\.`));
+  assert.match(results, /Compiling for: claude\./);
 });
 
-test("setup given no agent is refused by the engine, whatever drives it (FR-033)", async () => {
-  const held = new InMemoryFileReaders({});
-  const charterAuthoringApp = new CharterAuthoring(repoPath, held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, undefined, undefined, undefined, new TomlParser());
+test("setup given an agent this engine does not compile for is refused, and keeps nothing (FR-033)", async () => {
+  const { code, held: files, problems } = await setUp({}, ["init", "--agent", "gemini"]);
 
-  await assert.rejects(charterAuthoringApp.init({ agents: [] }), /no agent to compile for/);
-  assert.equal(await held.readIfThere(new URL(".cw/settings.json", repoPath)), undefined);
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(problems, /no agent called "gemini"/);
+  assert.equal(await held(files, ".cw/settings.json"), undefined);
 });
 
 test("what this repository already chose is the default the next run keeps (FR-038)", async () => {
@@ -126,7 +126,7 @@ test("setting up builds the charter, so the agent can author with the skill the 
 test("setting up again builds what is already authored (FR-057, FR-058)", async () => {
   const { code, held: files, results } = await setUp(
     {
-      [new URL(".cw/charter/guide/no-any/index.md", repoPath).href]:
+      [new URL(".cw/charter/primitive/guide/no-any/index.md", repoPath).href]:
         '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nBody.\n',
     },
     ["init", "--agent", "claude"],
@@ -139,7 +139,7 @@ test("setting up again builds what is already authored (FR-057, FR-058)", async 
 
 test("setting up over a charter that does not hold keeps what it configured, builds nothing and says so (FR-057)", async () => {
   const { code, held: files, problems } = await setUp(
-    { [new URL(".cw/charter/guide/broken/index.md", repoPath).href]: "---\nkind: guide\nid: broken\n---\n\nNo description.\n" },
+    { [new URL(".cw/charter/primitive/guide/broken/index.md", repoPath).href]: "---\nkind: guide\nid: broken\n---\n\nNo description.\n" },
     ["init", "--agent", "claude"],
   );
 
@@ -147,7 +147,7 @@ test("setting up over a charter that does not hold keeps what it configured, bui
   assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["claude"] });
   assert.equal(await held(files, ".cw/out/CHARTER.md"), undefined);
   assert.match(problems, /Nothing was built/);
-  assert.match(problems, /\.cw\/charter\/guide\/broken\/index\.md/);
+  assert.match(problems, /\.cw\/charter\/primitive\/guide\/broken\/index\.md/);
 });
 
 test("setting up authors nothing for what the engine brings: it is supplied on every read (FR-016, FR-020)", async () => {
@@ -162,7 +162,7 @@ test("setting up authors nothing for what the engine brings: it is supplied on e
 });
 
 test("setting up again discards nothing authored (FR-038)", async () => {
-  const authored = new URL(".cw/charter/guide/no-any/index.md", repoPath).href;
+  const authored = new URL(".cw/charter/primitive/guide/no-any/index.md", repoPath).href;
   const { code, held: files } = await setUp(
     { [authored]: "---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: [\"src/**/*.ts\"]\n---\n\nBody.\n" },
     ["init", "--agent", "claude"],
@@ -175,19 +175,19 @@ test("setting up again discards nothing authored (FR-038)", async () => {
   );
 });
 
-test("setting up has version control ignore the worktrees an evaluation runs in, in the workspace's own ignore file (EVAL-FR-021)", async () => {
+test("setting up has version control ignore the log, where an evaluation runs each case, in the workspace's own ignore file (EVAL-FR-021, CORE-FR-225)", async () => {
   const { code, held: files } = await setUp({}, ["init", "--agent", "claude"]);
 
   assert.equal(code, 0);
-  assert.equal(await held(files, ".cw/.gitignore"), "eval/.worktrees/\n");
+  assert.equal(await held(files, ".cw/.gitignore"), "log/\n");
 });
 
 test("setting up again keeps what the workspace's ignore file holds, and adds its line once (EVAL-FR-021, FR-038)", async () => {
   const { held: files } = await setUp({ [new URL(".cw/.gitignore", repoPath).href]: "vendor/*.log" }, ["init", "--agent", "claude"]);
-  assert.equal(await held(files, ".cw/.gitignore"), "vendor/*.log\neval/.worktrees/\n");
+  assert.equal(await held(files, ".cw/.gitignore"), "vendor/*.log\nlog/\n");
 
-  const { held: filesAgain } = await setUp({ [new URL(".cw/.gitignore", repoPath).href]: "vendor/*.log\neval/.worktrees/\n" }, ["init", "--agent", "claude"]);
-  assert.equal(await held(filesAgain, ".cw/.gitignore"), "vendor/*.log\neval/.worktrees/\n");
+  const { held: filesAgain } = await setUp({ [new URL(".cw/.gitignore", repoPath).href]: "vendor/*.log\nlog/\n" }, ["init", "--agent", "claude"]);
+  assert.equal(await held(filesAgain, ".cw/.gitignore"), "vendor/*.log\nlog/\n");
 });
 
 test("a build writes no ignore file: the workspace's is written once, at setup (EVAL-FR-021)", async () => {

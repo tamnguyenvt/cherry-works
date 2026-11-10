@@ -3,3 +3,16 @@ dist/
 *.tsbuildinfo
 .DS_Store
 .idea/
+.agents/
+.claude/
+.codex/
+AGENTS.md
+CLAUDE.md
+.mcp.json
+
+.cw/out/
+
+# The agent providers' files and the SDD workflow are kept out of this repository.
+.sdd/
+learning/
+specs/handoff/

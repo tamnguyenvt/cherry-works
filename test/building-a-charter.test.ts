@@ -1,18 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import type { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
-import { InMemoryMcpServers } from "../src/zdriven/InMemoryMcpServers.js";
-import { InMemorySecrets } from "../src/zdriven/InMemorySecrets.js";
-import { InMemoryAuthorizing } from "../src/zdriven/InMemoryAuthorizing.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import type { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
+import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryMcpServers } from "../src/module/shared/infra/in-memory/in-memory-mcp-servers.adapter.js";
+import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
+import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { faultTextOf } from "./answer-of.js";
+import { buildingCharterOf } from "./use-cases-of.js";
 
 const repo = new URL("file:///repo/");
-const root = new URL(".cw/charter/", repo);
+const root = new URL(".cw/charter/primitive/", repo);
 
 const primitive = (kind: string, id: string, headers: readonly string[] = [], body = `The body of ${id}.`) =>
   ["---", `kind: ${kind}`, `id: ${id}`, `description: What ${id} is for, in one line.`, ...headers, "---", "", body, ""].join(
@@ -50,31 +52,27 @@ const compilingFor = (...agents: readonly string[]) => ({
 /** A charter on files a test can both write into and read back out of: the
  *  build puts its files where the next build finds them, which is what makes a
  *  second build over a changed charter the real thing. */
-/** A build over these files; given `mcpServers` and `secrets`, it asks each
+/** A build over these files; given `mcpServers` and `credentialsRepository`, it asks each
  *  mcp origin for its tools through them (EVAL-FR-031), and otherwise asks none. */
-const building = (files: Readonly<Record<string, string>>, mcpServers?: InMemoryMcpServers, secrets?: InMemorySecrets) => {
+const building = (files: Readonly<Record<string, string>>, mcpServers?: InMemoryMcpServers, credentialsRepository?: InMemoryCredentialsRepository) => {
   const held = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(
-    repo,
-    held,
-    new YamlParser(),
+  const charterRuntimeApp = buildingCharterOf(held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
     { claude: new InMemoryAgentCli() },
-    mcpServers,
-    secrets,
-    mcpServers === undefined ? undefined : new InMemoryAuthorizing(),
+    new InMemoryReporter(),
+    mcpServers === undefined || credentialsRepository === undefined ? {} : { mcpServers, credentialsRepository, authorizing: new InMemoryAuthorizing() },
   );
-  return { held, build: () => charterAuthoringApp.build(), doctor: () => charterAuthoringApp.doctor() };
+  return { held, build: () => charterRuntimeApp.build(), doctor: () => charterRuntimeApp.doctor() };
 };
 
 /** Every file one build put down, whether it was there before or not. */
-const wrote = (built: DataDTOs.PlanSummary["data"]) => [...built.added, ...built.edited];
+const wrote = (built: CharterDTOs.PlanSummary["data"]) => [...built.added, ...built.edited];
 
 /** What a build did, where it did anything: a test asking for the files takes
  *  the charter holding for granted, and says so here rather than in every
  *  assertion after it. */
-const filesOf = (planSummaryDTO: DataDTOs.PlanSummary | DataDTOs.FaultsByFile): DataDTOs.PlanSummary["data"] => {
+const filesOf = (planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault): CharterDTOs.PlanSummary["data"] => {
   assert.ok(planSummaryDTO.type === "PlanSummary", "this build was refused, and the test expected it to run");
   return planSummaryDTO.data;
 };
@@ -300,8 +298,8 @@ test("a charter with an error builds nothing at all, and says which files (FR-00
   const planSummaryDTO = await build();
 
   assert.ok(planSummaryDTO.type === "FaultsByFile");
-  assert.deepEqual(Object.keys(planSummaryDTO.data.files), [".cw/charter/guide/no-any/index.md"]);
-  await assert.rejects(() => contentsOf(held, ".cw/out/CHARTER.md"));
+  assert.deepEqual(Object.keys(planSummaryDTO.data.files), ["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]);
+  await assert.rejects(() => contentsOf(held, "file:///repo/.cw/out/CHARTER.md"));
 });
 
 test("a skill no longer marked disable-user-invocation is a command again at the next build (CORE-FR-174)", async () => {
@@ -329,7 +327,7 @@ test("a disable-user-invocation that is neither true nor false stops the build u
     const planSummaryDTO = await build();
 
     assert.ok(planSummaryDTO.type === "FaultsByFile", kind);
-    assert.deepEqual(Object.keys(planSummaryDTO.data.files), [`.cw/charter/${kind}/ship/index.md`], kind);
+    assert.deepEqual(Object.keys(planSummaryDTO.data.files), [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`], kind);
     assert.match(JSON.stringify(planSummaryDTO.data.files), /written true or false/, kind);
     await assert.rejects(() => contentsOf(held, ".claude/skills/ship/SKILL.md"), kind);
   }
@@ -345,7 +343,7 @@ test("a disable-model-invocation that is neither true nor false stops the build 
     const planSummaryDTO = await build();
 
     assert.ok(planSummaryDTO.type === "FaultsByFile", kind);
-    assert.deepEqual(Object.keys(planSummaryDTO.data.files), [`.cw/charter/${kind}/ship/index.md`], kind);
+    assert.deepEqual(Object.keys(planSummaryDTO.data.files), [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`], kind);
     assert.match(JSON.stringify(planSummaryDTO.data.files), /written true or false/, kind);
     await assert.rejects(() => contentsOf(held, ".claude/skills/ship/SKILL.md"), kind);
   }
@@ -361,7 +359,7 @@ test("a skill nobody could open, kept from both the user and the agent, stops th
     const planSummaryDTO = await build();
 
     assert.ok(planSummaryDTO.type === "FaultsByFile", kind);
-    assert.deepEqual(Object.keys(planSummaryDTO.data.files), [`.cw/charter/${kind}/ship/index.md`], kind);
+    assert.deepEqual(Object.keys(planSummaryDTO.data.files), [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`], kind);
     assert.match(JSON.stringify(planSummaryDTO.data.files), /neither the user nor the agent/, kind);
     await assert.rejects(() => contentsOf(held, ".claude/skills/ship/SKILL.md"), kind);
   }
@@ -416,9 +414,9 @@ const toolNamed = (name: string) => ({ name, description: `${name} at linear`, i
 test("a build asks each mcp origin for its tools and keeps those its mcps declare, with what each takes, beside it (EVAL-FR-031)", async () => {
   const mcpServers = new InMemoryMcpServers();
   mcpServers.servers.set(LINEAR, { tools: ["create_issue", "list_issues", "delete_team"].map(toolNamed) });
-  const secrets = new InMemorySecrets();
-  await secrets.writeSecret(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }));
-  const { held, build } = building(linearDeclared, mcpServers, secrets);
+  const credentialsRepository = new InMemoryCredentialsRepository();
+  await credentialsRepository.secrets.set(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }));
+  const { held, build } = building(linearDeclared, mcpServers, credentialsRepository);
 
   filesOf(await build());
 
@@ -429,7 +427,7 @@ test("a build asks each mcp origin for its tools and keeps those its mcps declar
 });
 
 /** What a build that was refused says, under each file. */
-const faultsOf = (planSummaryDTO: DataDTOs.PlanSummary | DataDTOs.FaultsByFile) => {
+const faultsOf = (planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault) => {
   assert.ok(planSummaryDTO.type === "FaultsByFile", "this build ran, and the test expected it refused");
   return JSON.stringify(planSummaryDTO.data);
 };
@@ -437,7 +435,7 @@ const faultsOf = (planSummaryDTO: DataDTOs.PlanSummary | DataDTOs.FaultsByFile) 
 test("an mcp origin the build cannot ask for its tools stops the build, under the mcp's file, and writes nothing (EVAL-FR-031)", async () => {
   const mcpServers = new InMemoryMcpServers();
   mcpServers.servers.set(LINEAR, { tools: ["list_issues", "create_issue"].map(toolNamed) });
-  const { held, build } = building(linearDeclared, mcpServers, new InMemorySecrets());
+  const { held, build } = building(linearDeclared, mcpServers, new InMemoryCredentialsRepository());
 
   const faultsText = faultsOf(await build());
 
@@ -450,9 +448,9 @@ test("an mcp origin the build cannot ask for its tools stops the build, under th
 test("a tool an mcp declares that its mcp origin does not list stops the build, naming the tools it lists (EVAL-FR-031)", async () => {
   const mcpServers = new InMemoryMcpServers();
   mcpServers.servers.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
-  const secrets = new InMemorySecrets();
-  await secrets.writeSecret(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }));
-  const { build } = building(linearDeclared, mcpServers, secrets);
+  const credentialsRepository = new InMemoryCredentialsRepository();
+  await credentialsRepository.secrets.set(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }));
+  const { build } = building(linearDeclared, mcpServers, credentialsRepository);
 
   const faultsText = faultsOf(await build());
 
@@ -560,9 +558,9 @@ test("once compiled, an mcp origin, a script or a template a body names is a lin
       "Take the requirements from [github/billing](../../mcp/github/billing/index.md), run [check](../../script/check/index.md), and fill [note](../../template/note/index.md).",
     ),
   );
-  // Each link opens from the document holding it.
-  for (const [, target] of compiledDocument.matchAll(/\]\(((?:\.\.\/)+[^)]+)\)/g))
-    assert.notEqual(await held.readIfThere(new URL(target ?? "", new URL(".cw/out/guide/no-any/index.md", repo))), undefined, target);
+  // Each link opens from the document's own folder, where the build lays it.
+  for (const [, target] of compiledDocument.matchAll(/\]\((\.\.\/[^)]+)\)/g))
+    assert.notEqual(await held.readIfThere(new URL(target ?? "", new URL(".cw/out/guide/no-any/", repo))), undefined, target);
 });
 
 test("a name alone in a code span keeps the span as the link's text; one inside a longer span, a fenced block or a link is left as written (FR-147)", async () => {
@@ -647,7 +645,7 @@ test("a sensor's run naming a script no layer holds stops the build, under the s
 
   assert.ok(planSummaryDTO.type === "FaultsByFile");
   const [file, faults] = Object.entries(planSummaryDTO.data.files)[0] ?? [];
-  assert.equal(file, ".cw/charter/sensor/check-on-stop/index.md");
+  assert.equal(file, "file:///repo/.cw/charter/primitive/sensor/check-on-stop/index.md");
   assert.match(faults?.[0]?.data.message ?? "", /names "missing"/);
 });
 
@@ -695,7 +693,7 @@ test("an agent this engine cannot compile for stops the build before it reads a 
 
   // Raised rather than reported: settings this engine cannot act on leave it
   // nothing to build against, and the user is sent back to `cw init`.
-  await assert.rejects(build, /compiles for "nowhere"/);
+  assert.match(faultTextOf(await build()), /compiles for "nowhere"/);
 });
 
 test("what the charter speaks for is replaced; the rest of a host's settings is left alone (FR-018)", async () => {
@@ -737,5 +735,5 @@ test("a host's settings file is never taken away, however little the charter say
 test("settings that do not read stop the build before it reads a charter (FR-009)", async () => {
   const { build } = building({ [settingsFile]: "not json at all\n", [at("guide/no-any/index.md")]: guide("no-any") });
 
-  await assert.rejects(build, /not JSON/);
+  assert.match(faultTextOf(await build()), /not JSON/);
 });

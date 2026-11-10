@@ -1,11 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { primitiveOf, PRIMITIVE_CLASSES, type Primitive } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
-import { CharterPrimitiveFault } from "../src/hexagon/domain/models/DomainFault.js";
-import type { DomainFault } from "../src/hexagon/domain/models/DomainFault.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
+import { type Primitive, Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
+import { type DomainFault, FaultsByFile } from "../src/module/shared/domain/models/domain.fault.js";
+import { CharterPrimitiveFault } from "../src/module/charter/domain/models/charter.fault.js";
+import { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
+import { readPrimitive } from "./use-cases-of.js";
+import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
 
-const parser = new YamlParser();
 
 const guide = [
   "---",
@@ -30,12 +31,12 @@ const corpus = [
   "",
 ].join("\n");
 
-const primitive = (text: string): Primitive => primitiveOf(text, parser);
+const primitive = (text: string): Primitive => readPrimitive(text);
 
 /** Everything a reading refused this text for. */
 const faultsIn = (text: string): readonly DomainFault[] => {
   try {
-    primitiveOf(text, parser);
+    readPrimitive(text);
   } catch (raised) {
     assert.ok(raised instanceof AggregateError, String(raised));
     return raised.errors as readonly DomainFault[];
@@ -77,8 +78,8 @@ test("headers the kind refuses are one fault, showing the kind's sample", () => 
 });
 
 test("every kind's sample reads as that kind, since it is what a refused author is shown", () => {
-  for (const one of PRIMITIVE_CLASSES)
-    assert.equal(primitiveOf({ headers: { kind: one.kind, ...one.sample }, body: "" }).kind, one.kind);
+  for (const primitiveClass of Primitives.classes)
+    assert.equal(readPrimitive({ headers: { kind: primitiveClass.kind, ...primitiveClass.sample }, body: "" }).kind, primitiveClass.kind);
 });
 
 test("a guide that names no files still reads", () => {
@@ -104,8 +105,8 @@ test("an empty block declares no kind, and is refused for that first", () => {
 });
 
 test("frontmatter that is not a list of named headers is reported as such", () => {
-  assert.throws(() => primitiveOf("---\n- one\n- two\n---\n", parser), CharterPrimitiveFault);
-  assert.throws(() => primitiveOf("---\nid: [unclosed\n---\n", parser), CharterPrimitiveFault);
+  assert.throws(() => readPrimitive("---\n- one\n- two\n---\n"), CharterPrimitiveFault);
+  assert.throws(() => readPrimitive("---\nid: [unclosed\n---\n"), CharterPrimitiveFault);
 });
 
 test("a delimiter inside the body does not reopen the frontmatter", () => {
@@ -114,18 +115,22 @@ test("a delimiter inside the body does not reopen the frontmatter", () => {
 });
 
 test("the same text reads as the same primitive, every time", () => {
-  assert.deepEqual(primitiveOf(guide, parser), primitiveOf(guide, parser));
+  assert.deepEqual(readPrimitive(guide), readPrimitive(guide));
 });
 
-test("an agent's model is written <provider>:<model>, the provider one this engine compiles for", () => {
+test("an agent's model is written <provider>:<model>, the provider one of the agents the charter is compiled for", () => {
   const agentText = (model: string) =>
     ["---", "kind: agent", "id: locator", "description: Find the code.", 'tools: ["Read"]', `model: "${model}"`, "---", "", "Find it.", ""].join("\n");
 
   const agentPrimitive = primitive(agentText("claude:haiku-4-5"));
   assert.equal(agentPrimitive.kind === "agent" ? agentPrimitive.headers.model : undefined, "claude:haiku-4-5");
-  for (const model of ["haiku-4-5", "claude:", "unknown:gpt-5"]) {
+  for (const model of ["haiku-4-5", "claude:"]) {
     assert.match(messages(faultsIn(agentText(model))), /<provider>:<model>/, model);
   }
+  // Which agents there are is known where the charter is compiled, not where it is read.
+  const unknownModelPrimitive = primitive(agentText("unknown:gpt-5"));
+  const [agentFault] = Object.values(new CharterRoot([unknownModelPrimitive], FaultsByFile.none).agentFaultsByFilesOf(["claude", "codex"]).files).flat();
+  assert.match(agentFault?.message ?? "", /"model" names "unknown"/);
 });
 
 test("a mixin's position is start or end, and nothing else", () => {
@@ -138,9 +143,9 @@ test("a mixin's position is start or end, and nothing else", () => {
 });
 
 test("posture and sensor support agent-provider, with omitted and empty lists supporting all hosts", () => {
-  for (const primitiveClass of PRIMITIVE_CLASSES.filter((primitiveClass) => ["posture", "sensor"].includes(primitiveClass.kind))) {
+  for (const primitiveClass of Primitives.classes.filter((primitiveClass) => ["posture", "sensor"].includes(primitiveClass.kind))) {
     for (const agentProviders of [undefined, [], ["claude"], ["codex"], ["claude", "codex"]]) {
-      const charterPrimitive = primitiveOf({
+      const charterPrimitive = readPrimitive({
         headers: {
           kind: primitiveClass.kind,
           ...primitiveClass.sample,
@@ -148,9 +153,9 @@ test("posture and sensor support agent-provider, with omitted and empty lists su
         },
         body: "Provider-specific instructions.",
       });
-      for (const agent of ["claude", "codex"] as const)
-        assert.equal(charterPrimitive.supportsAgent(agent), !agentProviders?.length || agentProviders.includes(agent), primitiveClass.kind);
-      const rereadPrimitive = primitiveOf(charterPrimitive.toMarkdown(), parser);
+      for (const agent of [new AgentProvider("claude"), new AgentProvider("codex")])
+        assert.equal(charterPrimitive.supportsAgent(agent), !agentProviders?.length || agentProviders.includes(agent.name), primitiveClass.kind);
+      const rereadPrimitive = readPrimitive(charterPrimitive.toMarkdown());
       assert.ok(rereadPrimitive.kind === "posture" || rereadPrimitive.kind === "sensor");
       assert.deepEqual(rereadPrimitive.headers["agent-provider"], agentProviders);
     }
@@ -158,17 +163,19 @@ test("posture and sensor support agent-provider, with omitted and empty lists su
 });
 
 test("only posture and sensor accept agent-provider in authored files and authoring requests", () => {
-  for (const primitiveClass of PRIMITIVE_CLASSES) {
+  for (const primitiveClass of Primitives.classes) {
     const headers = { kind: primitiveClass.kind, ...primitiveClass.sample, "agent-provider": ["claude"] };
     if (["posture", "sensor"].includes(primitiveClass.kind)) {
-      for (const agentProviders of [["unknown"], "claude"]) assert.throws(() => primitiveOf({ headers: { ...headers, "agent-provider": agentProviders }, body: "" }));
+      assert.throws(() => readPrimitive({ headers: { ...headers, "agent-provider": "claude" }, body: "" }));
+      const unknownAgentPrimitive = readPrimitive({ headers: { ...headers, "agent-provider": ["unknown"] }, body: "" });
+      assert.equal(new CharterRoot([unknownAgentPrimitive], FaultsByFile.none).agentFaultsByFilesOf(["claude", "codex"]).isEmpty, false);
     } else {
-      assert.throws(() => primitiveOf({ headers, body: "" }));
-      const authoredPrimitive = primitiveOf({ headers: { kind: primitiveClass.kind, ...primitiveClass.sample }, body: "Shared." });
+      assert.throws(() => readPrimitive({ headers, body: "" }));
+      const authoredPrimitive = readPrimitive({ headers: { kind: primitiveClass.kind, ...primitiveClass.sample }, body: "Shared." });
       const fileText = authoredPrimitive.toMarkdown().replace("description:", "agent-provider: [claude]\ndescription:");
       assert.match(messages(faultsIn(fileText)), /holds no "agent-provider"/);
-      assert.equal(authoredPrimitive.supportsAgent("claude"), true);
-      assert.equal(authoredPrimitive.supportsAgent("codex"), true);
+      assert.equal(authoredPrimitive.supportsAgent(new AgentProvider("claude")), true);
+      assert.equal(authoredPrimitive.supportsAgent(new AgentProvider("codex")), true);
     }
   }
 });

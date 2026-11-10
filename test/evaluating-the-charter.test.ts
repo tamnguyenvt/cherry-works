@@ -1,27 +1,19 @@
 import prompts from "prompts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/driver/cli/Commander.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { CharterEvaluating } from "../src/hexagon/application/CharterEvaluating.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import type { PromptfooTestResult } from "../src/hexagon/port/zdriven/ForRunningPromptfoo.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryPromptfoo } from "../src/zdriven/InMemoryPromptfoo.js";
-import { InMemoryReporter } from "../src/zdriven/InMemoryReporter.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { InMemoryWorktrees } from "../src/zdriven/InMemoryWorktrees.js";
-import { TomlParser } from "../src/zdriven/TomlParser.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { noMcpOriginsReached } from "./no-mcp-origins.js";
-import { noSessionsKept } from "./no-sessions.js";
-import { noSensorsRun } from "./no-sensors.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import type { PromptfooTestResult } from "../src/module/runtime/app/port/out/running-promptfoo.port.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryPromptfoo } from "../src/module/runtime/infra/in-memory/in-memory-promptfoo.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import { InMemoryWorktrees } from "../src/module/runtime/infra/in-memory/in-memory-worktrees.adapter.js";
+import { authoringCharterOf, runningCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
 const at = (path: string) => new URL(path, repoPath).href;
@@ -33,26 +25,26 @@ const primitive = (kind: string, id: string, headers: readonly string[], body: s
  *  and the evaluation cases this repository wrote for it. */
 const holding = (evalCases: readonly object[]) => ({
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
-  [at(".cw/charter/skill/planning/index.md")]: primitive(
+  [at(".cw/charter/primitive/skill/planning/index.md")]: primitive(
     "skill",
     "planning",
     ["description: Plan a feature.", 'triggers: ["plan this feature"]'],
     "Plan it.",
   ),
-  [at(".cw/charter/skill/refactoring/index.md")]: primitive(
+  [at(".cw/charter/primitive/skill/refactoring/index.md")]: primitive(
     "skill",
     "refactoring",
     ["description: Change how code is structured.", 'triggers: ["refactor this"]'],
     "Refactor it.",
   ),
-  [at(".cw/charter/guide/plain-names/index.md")]: primitive(
+  [at(".cw/charter/primitive/guide/plain-names/index.md")]: primitive(
     "guide",
     "plain-names",
     ["description: Name a variable after what it holds.", 'globs: ["src/**/*.ts"]'],
     "Never name a variable `data`.",
   ),
-  [at(".cw/test/guides.json")]: JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "plain-names" } }] }),
-  [at(".cw/eval/skills.json")]: JSON.stringify({ cases: evalCases }),
+  [at(".cw/charter/test/guides.json")]: JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "plain-names" } }] }),
+  [at(".cw/charter/eval/skills.json")]: JSON.stringify({ cases: evalCases }),
 });
 
 /** How promptfoo graded one test: each assertion's pass and reason, and the
@@ -72,22 +64,8 @@ const surfaces = (files: Readonly<Record<string, string>>, promptfoo: InMemoryPr
   promptfoo.folderFiles = fileReaders;
   const fileOutput = new InMemoryFileOutput(fileReaders);
   const reporter = new InMemoryReporter();
-  const charterAuthoringApp = new CharterAuthoring(repoPath, fileReaders, new YamlParser(), fileOutput, new InMemoryTokenCounter(), { claude: agentCli });
-  const charterEvaluatingApp = new CharterEvaluating(repoPath, fileReaders, new YamlParser(), fileOutput, worktrees, { claude: agentCli, codex: agentCli }, promptfoo, reporter, new TomlParser());
-  const cli = new Commander(
-    {
-      cwd: "/repo",
-      version: "0.0.0",
-      charterAuthoringApp,
-      charterVendoringApp: new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser()),
-      testAuthoringApp: new TestAuthoring(repoPath, fileReaders, fileOutput),
-      mcpConnectingApp: noMcpOriginsReached,
-      sessionReviewingApp: noSessionsKept,
-      charterEvaluatingApp,
-      sensorRunningApp: noSensorsRun,
-    },
-    COMMANDS,
-  );
+  const charterRuntimeApp = runningCharterOf(fileReaders, reporter, { fileWriter: fileOutput, tokenCounter: new InMemoryTokenCounter(), worktrees, agentCliByProvider: { claude: agentCli, codex: agentCli }, promptfooRunner: promptfoo });
+  const cli = new Commander(commandLineOf(fileReaders, fileOutput, { charterAuthoringApp: authoringCharterOf(fileReaders, fileOutput, new InMemoryReporter(), { sourceFetcher }), charterRuntimeApp }, "/repo"), COMMANDS, );
   return { fileReaders, worktrees, reporter, cli };
 };
 
@@ -149,7 +127,7 @@ test("a guide is handed to the grader as written: what reads as a template in it
   const promptfoo = new InMemoryPromptfoo();
   const files = {
     ...holding([{ prompt: "write a parser", expect: { follow: "plain-names" } }]),
-    [at(".cw/charter/guide/plain-names/index.md")]: primitive(
+    [at(".cw/charter/primitive/guide/plain-names/index.md")]: primitive(
       "guide",
       "plain-names",
       ["description: Name a variable after what it holds.", 'globs: ["src/**/*.ts"]'],
@@ -213,7 +191,7 @@ test("every case passing passes the run, each case's tokens and the total said (
   assert.match(result, /2 cases passed, 10,000 tokens in all\./);
 });
 
-test("each case runs once in a worktree of its own under .cw/eval/.worktrees/ with its charter built, removed afterwards, the working tree left as it was (EVAL Story 6 scenario 5)", async () => {
+test("each case runs once in a worktree of its own under .cw/log/eval/worktrees/ with its charter built, removed afterwards, the working tree left as it was (EVAL Story 6 scenario 5)", async () => {
   const promptfoo = new InMemoryPromptfoo();
   const files = holding([
     { prompt: "plan this feature", expect: { invoke: "planning" } },
@@ -227,12 +205,12 @@ test("each case runs once in a worktree of its own under .cw/eval/.worktrees/ wi
   const [firstTest, secondTest] = promptfoo.evaluatedTests;
   assert.ok(firstTest !== undefined && secondTest !== undefined);
   // Each in a worktree of its own, where version control ignores it.
-  assert.notEqual(firstTest.workingFolder.href, secondTest.workingFolder.href);
-  assert.ok(firstTest.workingFolder.href.startsWith(at(".cw/eval/.worktrees/")));
+  assert.notEqual(firstTest.workingPath, secondTest.workingPath);
+  assert.ok(firstTest.workingPath.startsWith(".cw/log/eval/worktrees/"));
   // The charter was built in the worktree before promptfoo ran the agent there.
   assert.ok(firstTest.builtFiles.some((file) => file.endsWith(".claude/skills/planning/SKILL.md")));
   // Every worktree removed, and the working tree holding exactly what it held.
-  assert.deepEqual(worktrees.worktreeFolders, []);
+  assert.deepEqual(worktrees.worktreePaths, []);
   const heldNow = (await fileReaders.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort();
   assert.deepEqual(heldNow, Object.keys(files).sort());
 });
@@ -241,13 +219,13 @@ test("the worktrees a run stopped halfway left are removed when the next run sta
   const promptfoo = new InMemoryPromptfoo();
   const files = {
     ...holding([{ prompt: "plan this feature", expect: { invoke: "planning" } }]),
-    [at(".cw/eval/.worktrees/7/README.md")]: "left by a run stopped halfway\n",
+    [at(".cw/log/eval/worktrees/7/README.md")]: "left by a run stopped halfway\n",
   };
   const { fileReaders, cli } = surfaces(files, promptfoo);
 
   await printed(cli, ["eval"]);
 
-  assert.equal(await fileReaders.readIfThere(new URL(at(".cw/eval/.worktrees/7/README.md"))), undefined);
+  assert.equal(await fileReaders.readIfThere(new URL(at(".cw/log/eval/worktrees/7/README.md"))), undefined);
 });
 
 test("a run with the agent's command line not installed is refused before any case runs, saying what it needs (EVAL Story 6 scenario 6)", async () => {
@@ -288,7 +266,7 @@ test("a case naming a skill or a guide the charter does not hold refuses the run
   const { code, problem } = await printed(cli, ["eval"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(problem, /\.cw\/eval\/skills\.json/);
+  assert.match(problem, /\.cw\/charter\/eval\/skills\.json/);
   assert.match(problem, /holds no skill or playbook called "plannning"/);
   assert.match(problem, /"planning" is a skill, and a case follows a guide/);
   assert.equal(promptfoo.evaluatedTests.length, 0);
@@ -296,15 +274,15 @@ test("a case naming a skill or a guide the charter does not hold refuses the run
 
 test("an evaluation file that does not read refuses the run, and none written is said and passes", async () => {
   const promptfoo = new InMemoryPromptfoo();
-  const badFiles = { ...holding([]), [at(".cw/eval/skills.json")]: JSON.stringify({ cases: [{ prompt: "plan", expect: {} }] }) };
+  const badFiles = { ...holding([]), [at(".cw/charter/eval/skills.json")]: JSON.stringify({ cases: [{ prompt: "plan", expect: {} }] }) };
   const refused = await printed(surfaces(badFiles, promptfoo).cli, ["eval"]);
   assert.equal(refused.code, EXIT_FAILURE);
-  assert.match(refused.problem, /\.cw\/eval\/skills\.json/);
+  assert.match(refused.problem, /\.cw\/charter\/eval\/skills\.json/);
 
-  const { [at(".cw/eval/skills.json")]: _evalFile, ...withoutEvals } = holding([]);
+  const { [at(".cw/charter/eval/skills.json")]: _evalFile, ...withoutEvals } = holding([]);
   const { code, result } = await printed(surfaces(withoutEvals, promptfoo).cli, ["eval"]);
   assert.equal(code, EXIT_OK);
-  assert.match(result, /No evaluation: \.cw\/eval\/ holds no case as last committed\./);
+  assert.match(result, /No evaluation: \.cw\/charter\/eval\/ holds no case as last committed\./);
   assert.equal(promptfoo.evaluatedTests.length, 0);
 });
 
@@ -321,7 +299,7 @@ for (const agentName of ["claude", "codex"]) {
     assert.equal(promptfooRunner.evaluatedTests[0]?.agent, agentName);
     assert.deepEqual(promptfooRunner.evaluatedTests[0]?.assertions.map(({ type }) => type), ["skill-used", "agent-rubric", "javascript"]);
     assert.ok(promptfooRunner.evaluatedTests[0]?.builtFiles.some((filePath) => filePath.endsWith(agentName === "codex" ? ".agents/skills/planning/SKILL.md" : ".claude/skills/planning/SKILL.md")));
-    assert.deepEqual(worktrees.worktreeFolders, []);
+    assert.deepEqual(worktrees.worktreePaths, []);
     assert.deepEqual((await fileReaders.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort(), Object.keys(repositoryFiles).sort());
   });
   test(`a sole configured ${agentName} is selected automatically (EVAL Story 7 scenario 2)`, async () => {
@@ -404,7 +382,7 @@ test("eval prints retained promptfoo and agent session paths, and eval-analyze r
   promptfoo.resultByPrompt.set("plan", { ...promptfooResult(123), logPath: "/logs/case.json", sessionId: "session-one", sessionPath: "/sessions/session-one.jsonl" });
   promptfoo.savedLogs.push({
     logPath: "/logs/case.json", createdAt: "2026-10-31T02:00:00.000Z", agent: "codex", prompt: "plan",
-    workingFolderPath: "/repo/.cw/eval/.worktrees/1", outputPath: "/logs/output.json", stdoutPath: "/logs/stdout.log", stderrPath: "/logs/stderr.log",
+    workingFolderPath: "/repo/.cw/log/eval/worktrees/1", outputPath: "/logs/output.json", stdoutPath: "/logs/stdout.log", stderrPath: "/logs/stderr.log",
     success: false, totalTokens: 123, unmetReasons: ["Missing required skill(s): planning"], answer: "I read the instructions.",
     toolCalls: ['{"command":"cat instructions.md","exit_code":0}'], sessionId: "session-one", sessionPath: "/sessions/session-one.jsonl",
   });
@@ -444,7 +422,7 @@ test("a case outside a git repository is refused in git's words, naming git init
   assert.equal(code, EXIT_FAILURE);
   assert.match(problem, /not a git repository/);
   assert.match(problem, /git init/);
-  assert.deepEqual(worktrees.worktreeFolders, []);
+  assert.deepEqual(worktrees.worktreePaths, []);
   assert.deepEqual((await fileReaders.readFilesRecursively(repoPath)).map(({ file }) => file.href).sort(), Object.keys(files).sort());
 });
 
@@ -458,7 +436,7 @@ test("no case outside a git repository answers that there is none, as in a repos
 });
 
 test("a folder of notes and no case outside a git repository answers that there is none (CORE-FR-206)", async () => {
-  const { cli } = surfaces({ [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`, [at(".cw/eval/notes.md")]: "# Notes\n" }, new InMemoryPromptfoo(), new InMemoryAgentCli(), false);
+  const { cli } = surfaces({ [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`, [at(".cw/charter/eval/notes.md")]: "# Notes\n" }, new InMemoryPromptfoo(), new InMemoryAgentCli(), false);
 
   const commandOutput = await printed(cli, ["eval"]);
 
@@ -468,7 +446,7 @@ test("a folder of notes and no case outside a git repository answers that there 
 
 test("what a stopped run left, and no case, outside a git repository answers that there is none (CORE-FR-206)", async () => {
   const settingsFile = `${JSON.stringify({ agents: ["claude"] })}\n`;
-  const { cli } = surfaces({ [at(".cw/settings.json")]: settingsFile, [at(".cw/eval/.worktrees/7/.cw/settings.json")]: settingsFile }, new InMemoryPromptfoo(), new InMemoryAgentCli(), false);
+  const { cli } = surfaces({ [at(".cw/settings.json")]: settingsFile, [at(".cw/log/eval/worktrees/7/.cw/settings.json")]: settingsFile }, new InMemoryPromptfoo(), new InMemoryAgentCli(), false);
 
   const commandOutput = await printed(cli, ["eval"]);
 

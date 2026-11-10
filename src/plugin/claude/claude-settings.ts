@@ -1,0 +1,94 @@
+import { SettingBasedComponent } from "#module/charter/module.js";
+
+/** Events this compiler installs hooks for. This is the engine's supported
+ *  subset, not an exhaustive list of Claude Code's lifecycle events. */
+const CLAUDE_HOOK_EVENTS = [
+  "PreToolUse",
+  "PostToolUse",
+  "UserPromptSubmit",
+  "Stop",
+  "SubagentStop",
+  "PreCompact",
+  "SessionStart",
+  "SessionEnd",
+  "PermissionRequest",
+  "SubagentStart",
+  "PostCompact",
+] as const;
+
+/** One of them, read off the list rather than written out again. */
+export type ClaudeHookEvent = (typeof CLAUDE_HOOK_EVENTS)[number];
+
+/** Is this name one of them? What anything asks before writing a hook: a signal
+ *  read off a charter is a string until this says otherwise. */
+function isClaudeHookEvent(name: string): name is ClaudeHookEvent {
+  return (CLAUDE_HOOK_EVENTS as readonly string[]).includes(name);
+}
+
+/** What turns on this host's own tool search, so a session opens with each
+ *  tool's name and no schema, and the agent searches for a schema when it needs
+ *  one (EVAL-FR-016). */
+const CLAUDE_TOOL_SEARCH_ENV = { ENABLE_TOOL_SEARCH: "true" } as const;
+
+/** One command this host runs when an event fires. */
+export interface ClaudeHook {
+  readonly type: "command";
+  readonly command: string;
+}
+
+/**
+ * What one primitive asks of the settings this host runs on: what may and may
+ * not be run, or a command to run when one of this host's events fires.
+ *
+ * Both in one shape because claude reads both out of one file. Each field is
+ * optional and a primitive names the one it asks for: a posture the permissions,
+ * a sensor the hooks.
+ */
+export interface ClaudeSettingsFields {
+  readonly permissions?: {
+    readonly allow: readonly string[];
+    readonly deny: readonly string[];
+  };
+  readonly hooks?: Readonly<Partial<Record<ClaudeHookEvent, readonly { readonly hooks: readonly ClaudeHook[] }[]>>>;
+  /** Whatever else this host reads out of that file and this engine knows
+   *  nothing about — the model a repository set, its environment. Read and
+   *  written back untouched: what the repository set for itself is not this
+   *  engine's to take away (FR-020). */
+  readonly [field: string]: unknown;
+}
+
+/**
+ * The settings this host runs on: what the agent may and may not do, and what it
+ * runs when an event fires.
+ *
+ * The one kind here that is not a document. What claude reads is JSON, so this
+ * writes JSON — no frontmatter, no body, and none of the reasoning the primitive
+ * was authored with, because there is nowhere in that file to put it.
+ *
+ * One primitive, one fragment of that file. A repository with three postures and
+ * two sensors compiles five of these, all naming the same file, and merging them
+ * into the one settings claude reads is the projector's — the step after
+ * compiling, which is also where a settings file the repository already has is
+ * merged with rather than overwritten.
+ */
+export class ClaudeSettings extends SettingBasedComponent<ClaudeSettingsFields> {
+  static get hookEvents(): typeof CLAUDE_HOOK_EVENTS {
+    return CLAUDE_HOOK_EVENTS;
+  }
+
+  static readonly isHookEvent: typeof isClaudeHookEvent = isClaudeHookEvent;
+
+  static get toolSearchEnv(): typeof CLAUDE_TOOL_SEARCH_ENV {
+    return CLAUDE_TOOL_SEARCH_ENV;
+  }
+
+  static readonly kind = "settings" as const;
+  readonly kind = ClaudeSettings.kind;
+
+  /** Every posture and every sensor of the charter lands in the one file this
+   *  host reads its settings from. */
+  static of(settings: ClaudeSettingsFields): ClaudeSettings {
+    return new ClaudeSettings("claude", ClaudeSettings.kind, settings);
+  }
+
+}

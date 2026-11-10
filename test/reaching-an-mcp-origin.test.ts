@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
-import { AdapterFault, UnauthorizedMcpFault } from "../src/hexagon/port/zdriven/ForCallingMcpServers.js";
-import { McpClients } from "../src/zdriven/McpClients.js";
+import { AdapterFault, UnauthorizedMcpFault } from "../src/module/shared/app/port/out/calling-mcp-servers.port.js";
+import { McpClients } from "../src/module/shared/infra/mcp-clients.adapter.js";
 import { anMcpServer } from "./an-mcp-server.js";
 
 const STDIO_SERVER = fileURLToPath(new URL("./an-mcp-server-over-stdio.ts", import.meta.url));

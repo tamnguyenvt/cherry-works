@@ -5,16 +5,15 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { startPortal } from "../src/driver/portal/server.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { startPortal } from "../src/presentation/portal/portal.server.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { startedPortalOf } from "./answer-of.js";
+import { authoringCharterOf, buildingCharterOf, testingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
+import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
 
 /** Clear of the default, so a portal left running here does not answer. */
 const PORT = 47310;
@@ -30,22 +29,20 @@ async function builtPage(): Promise<URL> {
   return pathToFileURL(join(root, "portal") + "/");
 }
 
-/** The engine the routes are driven by, over an empty repository held in
- *  memory: what these tests ask about is the guards in front of the routes, and
- *  every one of them answers before a route is reached. */
-function engine(): CharterAuthoring {
+/** The three applications the routes are driven by, over one empty
+ *  repository held in memory: what these tests ask about is the guards in
+ *  front of the routes, and every one of them answers before a route is
+ *  reached. */
+function portalApps() {
   const held = new InMemoryFileReaders({});
-  return new CharterAuthoring(new URL("file:///repo/"), held, new YamlParser(), new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  return [
+    {
+      charterAuthoringApp: wrapAppToShowPaths(authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter()), "/repo"),
+      charterBuildingApp: wrapAppToShowPaths(buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter()), "/repo"),
+    },
+    workspaceSettingsLoaderOf(held),
+  ] as const;
 }
-
-/** The vendoring the routes are driven by beside the engine, over the same
- *  empty repository: no test here reaches a vendor route. */
-const charterVendoringApp = new CharterVendoring(new URL("file:///repo/"), new InMemoryFileReaders({}), new InMemorySources(), new InMemoryFileOutput(new InMemoryFileReaders({})), new YamlParser());
-
-/** What the test files are driven through, over an empty repository: nothing
- *  here asks it for anything. */
-const noTestFiles = new InMemoryFileReaders({});
-const testAuthoringApp = new TestAuthoring(new URL("file:///repo/"), noTestFiles, new InMemoryFileOutput(noTestFiles));
 
 /** One request with its path and `Host` as written: `fetch` would tidy a `..`
  *  away and set the `Host` itself. Each on a connection of its own, since a
@@ -73,7 +70,7 @@ function bearer(address: URL): http.OutgoingHttpHeaders {
 }
 
 test("the page is served from / on this machine's own address, and nothing beside it", async () => {
-  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
+  const { address, server } = startedPortalOf(await startPortal(await builtPage(), ...portalApps(), PORT));
   try {
     assert.equal(address.hostname, "127.0.0.1");
     const index = await fetch(address);
@@ -88,23 +85,23 @@ test("the page is served from / on this machine's own address, and nothing besid
 });
 
 test("the token of the run is asked for on the page's address and on every call to /api", async () => {
-  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
-  const other = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
+  const { address, server } = startedPortalOf(await startPortal(await builtPage(), ...portalApps(), PORT));
+  const otherPortal = startedPortalOf(await startPortal(await builtPage(), ...portalApps(), PORT));
   try {
     assert.equal(address.searchParams.get("t")?.length, 43);
-    assert.notEqual(address.searchParams.get("t"), other.address.searchParams.get("t"));
+    assert.notEqual(address.searchParams.get("t"), otherPortal.address.searchParams.get("t"));
     assert.equal((await send(address, "/")).statusCode, 401);
-    assert.equal((await send(address, `/${other.address.search}`)).statusCode, 401);
+    assert.equal((await send(address, `/${otherPortal.address.search}`)).statusCode, 401);
     assert.equal((await send(address, "/api/charter/root/primitives")).statusCode, 401);
-    assert.equal((await send(address, "/api/charter/root/primitives", { headers: bearer(other.address) })).statusCode, 401);
+    assert.equal((await send(address, "/api/charter/root/primitives", { headers: bearer(otherPortal.address) })).statusCode, 401);
   } finally {
     server.close();
-    other.server.close();
+    otherPortal.server.close();
   }
 });
 
 test("a Host other than this machine's address and port is refused", async () => {
-  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
+  const { address, server } = startedPortalOf(await startPortal(await builtPage(), ...portalApps(), PORT));
   const path = `/${address.search}`;
   try {
     assert.equal((await send(address, path, { headers: { host: `localhost:${address.port}` } })).statusCode, 200);
@@ -116,7 +113,7 @@ test("a Host other than this machine's address and port is refused", async () =>
 });
 
 test("every verb but GET is sent as JSON, and no CORS header answers another origin", async () => {
-  const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
+  const { address, server } = startedPortalOf(await startPortal(await builtPage(), ...portalApps(), PORT));
   const path = "/api/charter/root/primitives";
   try {
     const json = { ...bearer(address), "content-type": "application/json; charset=utf-8" };
@@ -140,7 +137,7 @@ test("a port that is taken gives way to the next free one", async () => {
   const taken = http.createServer();
   await new Promise<void>((resolve) => taken.listen(PORT, "127.0.0.1", resolve));
   try {
-    const { address, server } = await startPortal(await builtPage(), engine(), charterVendoringApp, testAuthoringApp, PORT);
+    const { address, server } = startedPortalOf(await startPortal(await builtPage(), ...portalApps(), PORT));
     assert.equal(address.port, String(PORT + 1));
     server.close();
   } finally {
@@ -150,5 +147,5 @@ test("a port that is taken gives way to the next free one", async () => {
 
 test("a page never built refuses to start, naming pnpm build", async () => {
   const unbuilt = pathToFileURL(`${await mkdtemp(join(tmpdir(), "cw-portal-"))}/`);
-  await assert.rejects(startPortal(unbuilt, engine(), charterVendoringApp, testAuthoringApp, PORT), { fix: /pnpm build/ });
+  assert.match(String(await startPortal(unbuilt, ...portalApps(), PORT)), /pnpm build/);
 });

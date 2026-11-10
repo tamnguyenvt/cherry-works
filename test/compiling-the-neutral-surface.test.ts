@@ -1,19 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
-import { folderURL } from "../src/hexagon/domain/path.js";
+import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
 import { putDownBy } from "./put-down-by.js";
-import { compile } from "../src/hexagon/domain/services/compile/compileService.js";
-import type { AgentProvider } from "../src/hexagon/domain/models/AgentProvider.js";
-import { PRIMITIVE_CLASSES } from "../src/hexagon/domain/models/charter/primitive/Primitive.js";
+import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { loadCharterRoot } from "./use-cases-of.js";
 
-const repo = new URL("file:///repo");
-const root = folderURL("file:///repo/.cw/charter/");
-const CLAUDE: AgentProvider = "claude";
+const repo = new URL("file:///repo/");
+const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
+const CLAUDE = new AgentProvider("claude");
 const CHARTER_MD = ".cw/out/CHARTER.md";
 
 const primitive = (kind: string, id: string, body: string, headers: readonly string[] = []) =>
@@ -34,7 +33,7 @@ const primitive = (kind: string, id: string, body: string, headers: readonly str
 const at = (path: string) => new URL(path, root).href;
 
 const load = (files: Readonly<Record<string, string>>, held = new InMemoryFileReaders(files)) =>
-  loadCharterRoot(repo, held, new YamlParser());
+  loadCharterRoot(held);
 
 /** What one of the files every reader shares holds, once this charter is put
  *  down. */
@@ -42,7 +41,7 @@ const written = async (files: Readonly<Record<string, string>>, path: string) =>
   const held = new InMemoryFileReaders(files);
   const charter = await load(files, held);
 
-  const put = await putDownBy(repo, compile(charter, [CLAUDE]), held);
+  const put = await putDownBy(charter, CompileService.compileCharterRoot(charter, [CLAUDE]), held);
   assert.ok(put.includes(path), `${path} is not among the files this charter was put down as`);
 
   return held.read(new URL(path, repo));
@@ -69,8 +68,9 @@ test("the charter file sends an agent to the catalogue first, and to no reduced 
 test("the charter file says, for every kind, when it applies (FR-001)", async () => {
   const contents = await written(oneGuide, CHARTER_MD);
 
-  for (const one of PRIMITIVE_CLASSES) {
-    assert.ok(contents.includes(`- **${one.kind}** — ${one.activatesWhen}.`), `${one.kind} is not said`);
+  // A place a kind's line names is written from the charter file's own folder, where it lands.
+  for (const one of Primitives.classes) {
+    assert.ok(contents.includes(`- **${one.kind}** — ${one.activatesWhen.replaceAll("$CW_OUT/", "./")}.`), `${one.kind} is not said`);
   }
 });
 

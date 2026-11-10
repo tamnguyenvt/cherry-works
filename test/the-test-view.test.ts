@@ -13,8 +13,8 @@ const suiteText = (written: unknown) => `${JSON.stringify(written, undefined, 2)
  *  an id the charter does not hold; and `posture.json`, all passing. */
 const withTwoFiles = () => ({
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: [] })}\n`,
-  [at(".cw/charter/guide/no-any/index.md")]: guide("no-any"),
-  [at(".cw/test/guides.json")]: suiteText({
+  [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
+  [at(".cw/charter/test/guides.json")]: suiteText({
     description: "The guides come up on code.",
     cases: [
       { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
@@ -22,7 +22,7 @@ const withTwoFiles = () => ({
       { do: { touchFile: "src/two.ts" }, expect: { activate: "gone" } },
     ],
   }),
-  [at(".cw/test/posture.json")]: suiteText({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { allow: true } }] }),
+  [at(".cw/charter/test/posture.json")]: suiteText({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { allow: true } }] }),
 });
 
 test("with no test file, the test view says so and where they live", async () => {
@@ -30,7 +30,7 @@ test("with no test file, the test view says so and where they live", async () =>
     await page.getByRole("tab", { name: "Test" }).click();
 
     await page.getByText("0 cases in 0 files").waitFor();
-    await page.getByText("No test file yet. Test files live in .cw/test/.").waitFor();
+    await page.getByText("No test file yet. Test files live in .cw/charter/test/.").waitFor();
   });
 });
 
@@ -89,14 +89,14 @@ test("a save that reads is written and clears the outcome; one that does not is 
     await page.getByRole("button", { name: "Save" }).click();
     await page.getByText("Refused, and nothing was written").waitFor();
     assert.match(await page.getByRole("dialog").innerText(), /not JSON[\s\S]*Write it as/);
-    assert.match((await files.readIfThere(new URL(at(".cw/test/posture.json")))) ?? "", /"allow": true/);
+    assert.match((await files.readIfThere(new URL(at(".cw/charter/test/posture.json")))) ?? "", /"allow": true/);
 
     const corrected = suiteText({ cases: [{ do: { touchFile: ".env" }, expect: { allow: true } }] });
     await text.fill(corrected);
     await page.getByRole("button", { name: "Save" }).click();
     await page.getByRole("dialog").waitFor({ state: "detached" });
     await page.getByText("4 cases in 2 files").waitFor();
-    assert.equal(await files.readIfThere(new URL(at(".cw/test/posture.json"))), corrected);
+    assert.equal(await files.readIfThere(new URL(at(".cw/charter/test/posture.json"))), corrected);
   });
 });
 
@@ -106,13 +106,13 @@ test("New test file writes one and opens its text; Delete file removes it (Story
     await page.getByRole("button", { name: "New test file" }).click();
 
     const dialog = page.getByRole("dialog");
-    await dialog.getByRole("heading", { name: ".cw/test/untitled-1.json" }).waitFor();
+    await dialog.getByRole("heading", { name: ".cw/charter/test/untitled-1.json" }).waitFor();
     assert.match(await page.getByLabel("Test file text").inputValue(), /"touchFile": "src\/one\.ts"/);
-    assert.ok(await files.readIfThere(new URL(at(".cw/test/untitled-1.json"))));
+    assert.ok(await files.readIfThere(new URL(at(".cw/charter/test/untitled-1.json"))));
 
     await dialog.getByRole("button", { name: "Delete file" }).click();
     await page.getByText("Test file deleted").waitFor();
-    assert.equal(await files.readIfThere(new URL(at(".cw/test/untitled-1.json"))), undefined);
+    assert.equal(await files.readIfThere(new URL(at(".cw/charter/test/untitled-1.json"))), undefined);
     assert.equal(await page.getByLabel("untitled-1.json", { exact: true }).count(), 0);
   });
 });

@@ -2,67 +2,37 @@
 
 **Created**: 2026-10-04
 
-**Updated**: 2026-10-30
+**Updated**: 2026-11-10
 
-**Input**: User description: "Phase 008, after Uber's efficient software factory: predict how many tokens the charter loads into the agent's main context; give the tokens a session used when it stops; let `cw mcp serve` search its tools rather than load them all; evaluate the charter against a real model with promptfoo and deepeval."
+**Input**: User description: "Phase 008, after Uber's efficient software factory: predict how many tokens the charter loads into the agent's main context; give the tokens a session used when it stops; let `cw mcp serve` search its tools…; evaluate the charter against a real model…"
 
-Then: "The summary of the sessions kept spans 31 days at most, the last 31 when none is named, and reads only the files that span needs."
+Then: "The summary of the sessions kept spans 31 days at most…"
 
-Then: "Evaluate the charter under promptfoo alone: drop the engine's own runner and deepeval."
+Then: "Evaluate the charter under promptfoo alone…"
 
-Then: "Upgrade cw eval to support Codex and --agent=<agent>; without it, use the sole configured agent or ask the developer to choose among several. Work directly on develop for this small feature."
+Then: "Upgrade cw eval to support Codex and --agent=<agent>; without it, use the sole configured agent or ask the developer to choose among several…"
+
+Then: "…prove pricing skill results and measure tokenizer accuracy."
 
 ## Overview
 
-A charter is paid for in tokens every turn an agent works under it, and it is only worth that price if the agent does what it says. This part lets the people who write and use a charter see both sides. An author learns, before anyone runs an agent, how much of the agent's main context the charter takes and which primitives take the most. A developer is told, when their agent stops, how many tokens the session has used. The mcp origins a charter reaches stop costing context for every tool they declare, by being searched rather than listed. And an author can put the charter in front of the real agent under promptfoo, and learn whether the right skill is invoked and a guide is followed, and what each case cost.
+A charter is paid for in tokens every turn an agent works under it, and is worth that price only if the agent does what it says. This part shows both sides. Before any agent runs, an author learns how much of the agent's main context the charter takes, and which primitives take the most. When their agent stops, a developer is told how many tokens the session has used. The tools of the mcp origins a charter reaches are searched rather than listed, so they stop costing context. And under promptfoo an author puts the charter in front of the real agent, and learns whether the right skill is invoked, whether a guide is followed, and what each case cost.
 
 ## Clarifications
 
 ### Session 2026-10-02
 
-- Q: How is the charter evaluated against a real model? → A: By a command of its own, apart from the self-regression tests, which stay deterministic and offline ([CORE-FR-084](spec-core.md#core-fr-084)).
-- Q: promptfoo, deepeval, or both? → A: Both.
-- Q: What does an evaluation check? → A: That the right skill is invoked for a prompt, that a guide is followed, and what each case cost in tokens.
-- Q: Claude Code already defers MCP tool schemas on its own; still give `cw mcp serve` a tool search? → A: Yes, so a host without one gains it too.
-
-### Session 2026-10-03
-
-- Q: How is the main-context prediction counted, with no offline Claude tokenizer? → A: Estimated offline by default, said to be an estimate; counted exactly through the model provider's token count when asked to and a key is at hand.
-- Q: Where is the prediction said, and is there a ceiling? → A: A command of its own lists it per primitive, largest first; a build says the total; the portal shows it; the health check warns above a ceiling the repository sets, 20,000 tokens when it sets none.
-- Q: How is a session's token use said when the agent stops, and is it kept? → A: Said to the developer only when the session crosses a mark, every 100,000 tokens by default, in one line the model is not sent; every stop is also kept as one line of a log on the developer's machine, never committed. Subagents are counted in.
-- Q: When does `cw mcp serve` search its tools rather than list them, and how does a found tool appear? → A: It does not search: it lists every tool under the name it always had, and the host's own tool search, which the build turns on, sends the agent each tool's name and its schema only once the agent searches for it. A subagent's hold on its tools ([CORE-FR-156](spec-core.md#core-fr-156)) still means what it says.
-- Q: What does an evaluation run against? → A: The real agent, run headless in a copy of the repository with its charter built; one case file runs by the engine alone, or under promptfoo or deepeval when one is named, on the developer's own key; a model judges what is said in words.
+- Q: Why is evaluating a command apart from the self-regression tests? → A: So those stay deterministic and offline ([CORE-FR-084](spec-core.md#core-fr-084), [EVAL-FR-020](#eval-fr-020)).
 
 ### Session 2026-10-04
 
-- Q: What does the main-context prediction count? → A: What the agent loads when a session opens, before anything is asked: the charter's always-loaded instructions, every guide that names no files in full, the name and description of each skill, playbook and subagent, and the tools `cw mcp serve` lists. A guide that names files is listed apart, as loaded when a file it names is touched, and is neither added to the total nor held to the ceiling.
-- Q: Where do evaluation cases live, and who writes them? → A: The repository writes them, in a folder of their own beside its tests, one file of cases each; a case puts a prompt to the agent and expects a skill invoked, a guide followed (judged by a model), and at most a number of tokens where it names one. They are not primitives, and a vendor's are not installed with it: a vendor evaluates itself in its own repository.
-- Q: When does an evaluation run fail? → A: Each case runs once, and a case that does not meet what it expects fails the run through its exit status; the report says each case's outcome and the tokens it used, and the run's total.
-- Q: How does a developer read the sessions kept? → A: A command sums the log up by day and by session, in tokens, the largest first, narrowed to a span of time when asked; a session is counted once, at the last stop it was kept at.
-- Q: Where do the prices a cost is reckoned at come from? → A: The engine counts tokens only and prices nothing. What tokens cost is a skill's to work out: a skill the engine brings analyses the kept log, at prices the developer types in or that it fetches, at the time, from the model provider's published price list.
-- Q: Does an evaluation need a framework to run? → A: No: the engine runs the cases itself ([EVAL Story 6](#eval-story-6---evaluate-the-charter-against-the-real-agent-under-promptfoo-priority-p3)); promptfoo or deepeval, named when the command is run, runs the same cases there too.
-- Q: Is an exact count made through a model provider key? → A: No: through the agent's own command line, run headless, which needs no key of its own; without that command line installed, an exact count is refused, saying the estimate needs nothing.
-- Q: How is the estimate made offline? → A: By a tokenizer that runs offline, said to be an estimate, rather than by text length.
-- Q: Does the main-context prediction count the tools the one server lists? → A: By their names, from [EVAL Story 5](#eval-story-5---search-tools-rather-than-load-them-all-into-context-priority-p2) on: the host's tool search sends each tool's name when a session opens, and its schema only once searched for ([EVAL-FR-029](#eval-fr-029)).
-- Q: Does the host's tool search wait for the schemas to pass a ceiling? → A: No: the build turns it always on wherever the charter reaches an mcp origin ([EVAL-FR-016](#eval-fr-016)).
-- Q: How is a subagent kept to the tools it holds? → A: By its host: the tools it lists are all it may call, their schemas deferred or not ([CORE-FR-156](spec-core.md#core-fr-156)).
-- Q: Does the server reach every mcp origin to list their tools? → A: No: the build asks each mcp origin for its tools and keeps them, with what each takes, beside it in the list of mcp origins; the server lists what was kept, reaches an mcp origin only for a call to one of its tools, and lets it go once it has answered. An mcp origin the build cannot reach or is not signed in to, and a tool an mcp declares that its mcp origin does not list, stops the build ([EVAL-FR-031](#eval-fr-031)).
-- Q: How far back does the summary of the sessions kept reach? → A: At most 31 days: the last 31, today among them, when no span is named; 31 from the day named, or up to it, when only one end is; a longer span is refused. Only the sessions kept within the span are read, however long the log has grown ([EVAL-FR-030](#eval-fr-030), [EVAL-SC-007](#eval-sc-007)).
+- Q: Why are a vendor's evaluation cases not installed with it? → A: A vendor evaluates itself, in its own repository ([EVAL-FR-020](#eval-fr-020)).
+- Q: Why is an exact count made through the agent's own command line, not a model provider key? → A: The command line needs no key of its own ([EVAL-FR-004](#eval-fr-004)).
 
 ### Session 2026-10-05
 
-- Q: Claude Code defers MCP tool schemas on its own: give `cw mcp serve` a tool search of its own, or lean on the host's? → A: The host's, which replaces the answer of 2026-10-02: the build turns it on, and the server lists every tool and keeps nothing between calls; a host without a tool search of its own is sent every schema, as before ([EVAL-FR-016](#eval-fr-016)).
-- Q: Does an evaluation need a key of its own? → A: No, which replaces "on the developer's own key" of 2026-10-03: it runs through the agent's own command line, on whatever it is signed in with, a key among them; it is refused only where that command line is not installed ([EVAL-FR-026](#eval-fr-026)).
-- Q: Where does a case run? → A: In a worktree of the last commit under `.cw/eval/.worktrees/`, git-ignored, removed after each case and swept at the start of each run, never in the working tree someone may be writing in; this replaces "a copy of the repository" of 2026-10-03 ([EVAL-FR-021](#eval-fr-021)).
-- Q: Which framework runs an evaluation? → A: promptfoo alone, fetched once onto the developer's machine; the engine runs and judges no case itself. This replaces "Both" of 2026-10-02 and "the engine runs the cases itself" of 2026-10-04 ([EVAL-FR-020](#eval-fr-020), [EVAL-FR-032](#eval-fr-032)).
-
-### Session 2026-10-30
-
-- Q: What happens when settings are missing or no agent is configured? → A: Refuse before any case runs and tell the developer to configure an agent; never choose a default ([EVAL-FR-035](#eval-fr-035)).
-
-- Q: May an explicitly selected agent be absent from the configured agents? → A: No. Refuse before any case runs and tell the developer to add that agent to the settings ([EVAL-FR-034](#eval-fr-034)).
-
-- Q: When several agents are configured and the evaluation cannot ask interactively, what happens? → A: Refuse before any case runs and require an explicit agent selection ([EVAL-FR-033](#eval-fr-033)).
+- Q: Does `cw mcp serve` search its tools itself? → A: No: the host's own tool search does, which the build turns on, and the server keeps nothing between calls; a host without a tool search of its own is sent every schema ([EVAL-FR-016](#eval-fr-016)).
+- Q: Why does a case run in a worktree of the last commit? → A: So it never runs in the working tree someone may be writing in ([EVAL-FR-021](#eval-fr-021)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -209,19 +179,38 @@ An author evaluates the same charter with Claude Code or Codex. They select an a
 
 ---
 
+### EVAL Story 8 - Prove the pricing journeys and tokenizer accuracy (Priority: P2)
+
+**Status**: Done
+
+An author can inspect evidence that using the pricing skill produces correct session and daily costs, names its published price source and time, and leaves an unknown model unpriced. The tokenizer accuracy claim is supported by a measurement against the real agent rather than a substitute's fixed answer.
+
+**Why this priority**: Instructions containing the right words do not alone prove the result promised to the developer.
+
+**Independent Test**: Use known session totals and typed prices, repeat with published prices while recording source and time, include an unknown model, and compare the estimate for one fixed charter with the real agent's exact count.
+
+**Acceptance Scenarios**:
+
+1. **Given** known session tokens and typed prices, **When** the skill is used, **Then** its session and daily costs match independently calculated expected amounts and name the prices used ([EVAL-FR-014](#eval-fr-014)).
+2. **Given** a request for published prices, **When** the skill is used, **Then** its answer uses those prices and records their source and reading time ([EVAL-FR-014](#eval-fr-014)).
+3. **Given** a model whose price is unknown, **When** the skill is used, **Then** its tokens are reported, its cost is explicitly unknown and it is excluded from priced totals with that exclusion stated ([EVAL-FR-015](#eval-fr-015)).
+4. **Given** one fixed charter and the supported real agent, **When** the estimate and exact count are measured, **Then** the estimate and the exact count differ by no more than 15%, and the measurement is recorded; a substitute's answer is not accepted as that measurement ([EVAL-FR-004](#eval-fr-004), [EVAL-SC-002](#eval-sc-002)).
+
+---
+
 ### Edge Cases
 
-- A charter holding nothing loaded when a session opens — the prediction says the total is none, and the health check is quiet.
-- A guide naming files that every file in the repository matches — it is still listed apart: what is predicted is what the host loads, not what it is likely to.
+- A charter holding nothing loaded when a session opens — the prediction says the total is none, and the health check is quiet ([EVAL-FR-002](#eval-fr-002), [EVAL-FR-006](#eval-fr-006)).
+- A guide naming files that every file in the repository matches — it is still listed apart: what is predicted is what the host loads, not what it is likely to ([EVAL-FR-003](#eval-fr-003)).
 - An exact count asked for with the agent's command line not installed — the prediction is refused, saying the estimate needs nothing ([EVAL-FR-004](#eval-fr-004)).
 - The agent's own record of a session changes shape between versions of the agent — the stop is let through untouched, and nothing is kept for it ([EVAL-FR-011](#eval-fr-011)).
 - A span named by one end only — 31 days from the day named, or up to it ([EVAL-FR-030](#eval-fr-030)).
-- A session the developer closes without the agent stopping — what was kept at its last stop is what the summary counts.
+- A session the developer closes without the agent stopping — what was kept at its last stop is what the summary counts ([EVAL-FR-012](#eval-fr-012), [EVAL-FR-008](#eval-fr-008)).
 - Two sessions stopping at once — each is kept as its own line, and neither is lost ([EVAL-FR-009](#eval-fr-009)).
-- An mcp origin that is down when the agent works — its tools are listed as the build kept them; calling one says the mcp origin is down, as before.
+- An mcp origin that is down when the agent works — its tools are listed as the build kept them; calling one says the mcp origin is down ([EVAL-FR-031](#eval-fr-031), [CORE-FR-154](spec-core.md#core-fr-154)).
 - A case whose prompt leads the agent to ask a question back — the case fails, saying the agent invoked no skill ([EVAL-FR-022](#eval-fr-022)).
-- A case naming a skill or a guide the charter does not hold — the run is refused before any case runs, naming it.
-- A charter or cases changed and not yet committed — not evaluated: the run is of the last commit.
+- A case naming a skill or a guide the charter does not hold — the run is refused before any case runs, naming it ([EVAL-FR-026](#eval-fr-026)).
+- A charter or cases changed and not yet committed — not evaluated: the run is of the last commit ([EVAL-FR-021](#eval-fr-021)).
 - A run stopped halfway — the worktrees it left are removed when the next run starts.
 
 ## Requirements *(mandatory)*
@@ -262,7 +251,7 @@ An author evaluates the same charter with Claude Code or Codex. They select an a
 **Evaluating the charter**
 
 - <a id="eval-fr-020"></a>**EVAL-FR-020**: The engine MUST run the evaluation cases a repository writes under promptfoo, running and judging none itself, in a folder of their own beside its tests, one file of cases each, by a command apart from the self-regression tests ([CORE-FR-084](spec-core.md#core-fr-084)). Evaluation cases are not primitives, and a vendor's are not installed with it.
-- <a id="eval-fr-021"></a>**EVAL-FR-021**: Each case MUST put its prompt to the real agent, run headless, once, in a worktree of the repository's last commit, kept under `.cw/eval/.worktrees/` which version control ignores, with its charter built; the worktree MUST be removed once the case has run, and the files of the repository's own working tree MUST be left as they were.
+- <a id="eval-fr-021"></a>**EVAL-FR-021**: Each case MUST put its prompt to the real agent, run headless, once, in a worktree of the repository's last commit, kept under the log, `.cw/log/`, which version control ignores, with its charter built; the worktree MUST be removed once the case has run, and the files of the repository's own working tree MUST be left as they were.
 - <a id="eval-fr-022"></a>**EVAL-FR-022**: A case expecting a skill MUST pass when the agent invoked it and fail otherwise, saying which skills it invoked, none among them.
 - <a id="eval-fr-023"></a>**EVAL-FR-023**: A case expecting a guide followed MUST be judged by promptfoo's model grader against that guide, on the developer's own sign-in or key, passing or failing with the grader's reason.
 - <a id="eval-fr-024"></a>**EVAL-FR-024**: A case naming a number of tokens MUST fail when the agent used more, saying how many.

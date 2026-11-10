@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { inTheBrowser } from "./in-the-browser.js";
 import { rowsOf } from "./listing-in-the-browser.js";
 
-const at = (path: string) => new URL(path, "file:///repo/.cw/charter/").href;
-const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/vendor/acme/").href;
+const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
+const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");

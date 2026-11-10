@@ -3,7 +3,8 @@
  * FR-137, plan §18.4, SDK-FR-015, SDK-FR-016). Everything that can fail, for
  * either package, runs before anything reaches the registry or the remote.
  * Once a push is attempted, keep the release commit and tag so the local
- * history cannot diverge from a partially updated remote.
+ * history cannot diverge from a partially updated remote. Publishing the two
+ * is not atomic: a failure after it begins says what is on npm (SDK-FR-019).
  *
  *   pnpm release <version>            check, then commit, tag, push and publish
  *   pnpm release <version> --dry-run  check only; package.json, README.md and
@@ -13,6 +14,7 @@ import { spawnSync } from "node:child_process";
 import { lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import ts from "typescript";
 
 const ROOT = join(import.meta.dirname, "..");
 const PACKAGE_JSON = join(ROOT, "package.json");
@@ -33,17 +35,33 @@ const INSTALLED_SIZE_LIMIT = 20 * 1024 * 1024;
  *  left changed behind it. */
 class ReleaseError extends Error {}
 
+/** A release that failed once publication began: what is on npm stays there
+ *  (SDK-FR-016, SDK-FR-019). */
+class PublicationError extends ReleaseError {}
+
 /** The engine's contract as a declarations file states it: each top-level
- *  declaration by its name, and each name the file exports, with comments and
- *  layout left out, so a comment reworded is no change to it. */
+ *  declaration by its name, and each name the file exports, as its TypeScript
+ *  tokens, so comments and layout are no change to it (SDK-FR-015). */
 function declarationByNameOf(declarationsText: string): Map<string, string> {
   const declarationByName = new Map<string, string>();
-  const statementTexts = declarationsText.replace(/^\s*\/\*[\s\S]*?\*\//gm, "").replace(/^\s*\/\/.*$/gm, "").split(/\n(?=[^\s})\]])/);
-  for (const statementText of statementTexts) {
-    const normalizedText = statementText.replace(/\s+/g, " ").trim();
+  const sourceFile = ts.createSourceFile("index.d.ts", declarationsText, ts.ScriptTarget.Latest, false);
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, ts.LanguageVariant.Standard);
+  for (const statement of sourceFile.statements) {
     // What an import brings in shows in the declarations that use it.
-    if (normalizedText === "" || normalizedText.startsWith("import ")) continue;
-    const exportListMatch = /^export \{(.*)\};?$/.exec(normalizedText);
+    if (ts.isImportDeclaration(statement)) continue;
+    const statementStart = statement.getStart(sourceFile);
+    // Each token of the statement, a template literal type scanned again
+    // after each substitution.
+    const tokenTexts: string[] = [];
+    const isTemplateBraces: boolean[] = [];
+    scanner.setText(declarationsText, statementStart, statement.end - statementStart);
+    for (let tokenKind = scanner.scan(); tokenKind !== ts.SyntaxKind.EndOfFileToken; tokenKind = scanner.scan()) {
+      if (tokenKind === ts.SyntaxKind.OpenBraceToken || tokenKind === ts.SyntaxKind.TemplateHead) isTemplateBraces.push(tokenKind === ts.SyntaxKind.TemplateHead);
+      else if (tokenKind === ts.SyntaxKind.CloseBraceToken && isTemplateBraces.pop() === true && scanner.reScanTemplateToken(false) === ts.SyntaxKind.TemplateMiddle) isTemplateBraces.push(true);
+      tokenTexts.push(scanner.getTokenText());
+    }
+    const normalizedText = tokenTexts.join(" ");
+    const exportListMatch = /^export \{(.*)\}(?: ;)?$/.exec(normalizedText);
     if (exportListMatch !== null) {
       for (const exportListEntry of exportListMatch[1]!.split(",")) {
         const exportText = exportListEntry.trim();
@@ -52,7 +70,9 @@ function declarationByNameOf(declarationsText: string): Map<string, string> {
       continue;
     }
     const declarationName = /^(?:export )?(?:declare )?(?:abstract )?(?:class|interface|type|const enum|const|let|var|function|namespace|enum) ([\w$]+)/.exec(normalizedText)?.[1];
-    if (declarationName === undefined) throw new ReleaseError(`the engine's declarations hold a statement the contract cannot name: ${normalizedText}`);
+    if (declarationName === undefined) {
+      throw new ReleaseError(`the engine's declarations hold a statement the contract cannot name: ${declarationsText.slice(statementStart, statement.end).replace(/\s+/g, " ")}`);
+    }
     const sameNameText = declarationByName.get(declarationName);
     declarationByName.set(declarationName, sameNameText === undefined ? normalizedText : `${sameNameText} ${normalizedText}`);
   }
@@ -164,7 +184,10 @@ try {
       const brokenNames = [...lastDeclarationByName].filter(([declarationName, declarationText]) => builtDeclarationByName.get(declarationName) !== declarationText).map(([declarationName]) => declarationName);
       const addedNames = [...builtDeclarationByName.keys()].filter((declarationName) => !lastDeclarationByName.has(declarationName));
       if (brokenNames.length > 0 && firstDifferenceIndex > 0) {
-        throw new ReleaseError(`${version} is not a new major, yet the engine's contract changes against ${currentVersion}: ${brokenNames.join(", ")}. Release ${currentParts[0]! + 1}.0.0.`);
+        const removedNames = brokenNames.filter((declarationName) => !builtDeclarationByName.has(declarationName));
+        const changedNames = brokenNames.filter((declarationName) => builtDeclarationByName.has(declarationName));
+        const breakingChangeTexts = [removedNames.length > 0 ? `removes ${removedNames.join(", ")}` : "", changedNames.length > 0 ? `changes ${changedNames.join(", ")}` : ""].filter((breakingChangeText) => breakingChangeText !== "");
+        throw new ReleaseError(`${version} is not a new major, yet against ${currentVersion} the engine's contract ${breakingChangeTexts.join(" and ")}. Release ${currentParts[0]! + 1}.0.0.`);
       }
       if (addedNames.length > 0 && firstDifferenceIndex === 2) {
         throw new ReleaseError(`${version} is a patch, yet the engine's contract adds ${addedNames.join(", ")}. Release ${currentParts[0]}.${currentParts[1]! + 1}.0.`);
@@ -248,10 +271,10 @@ try {
         throw new ReleaseError(`the push failed; ${version} was not published. The release commit and tag are kept. Check origin, then retry: git push origin ${RELEASE_BRANCH} v${version}`);
       }
       if (spawnSync("npm", ["publish", tarball], { cwd: ROOT, stdio: "inherit" }).status !== 0) {
-        throw new ReleaseError(`npm publish failed after ${RELEASE_BRANCH} and v${version} were pushed; neither package was published. The release commit and tag are kept. From that release commit, run "npm pack", then "npm publish <tarball>", then "pnpm build", "npm pack ./packages/engine/dist" and "npm publish <engine tarball> --access public" to retry.`);
+        throw new PublicationError(`${packageName} ${version} could not be published, so neither ${packageName} nor ${ENGINE_PACKAGE_NAME} was published. ${RELEASE_BRANCH} and v${version} were pushed; the release commit and tag are kept. Confirm what is on npm first with "npm view ${packageName}@${version} version" and "npm view ${ENGINE_PACKAGE_NAME}@${version} version". Then, to publish both at ${version}, from the release commit run "pnpm build", then "npm pack" and "npm publish <tarball>", then "npm pack ./packages/engine/dist" and "npm publish <engine tarball> --access public".`);
       }
       if (spawnSync("npm", ["publish", engineTarball, "--access", "public"], { cwd: ROOT, stdio: "inherit" }).status !== 0) {
-        throw new ReleaseError(`${packageName} ${version} was published, but ${ENGINE_PACKAGE_NAME} was not. From the release commit, run "pnpm build", then "npm pack ./packages/engine/dist", then "npm publish <tarball> --access public" to retry.`);
+        throw new PublicationError(`${packageName} ${version} was published and stays on npm; it is not unpublished. ${ENGINE_PACKAGE_NAME} ${version} was not published. Confirm what is on npm first with "npm view ${packageName}@${version} version" and "npm view ${ENGINE_PACKAGE_NAME}@${version} version". Then, to publish ${ENGINE_PACKAGE_NAME} at ${version}, from the release commit run "pnpm build", then "npm pack ./packages/engine/dist", then "npm publish <tarball> --access public".`);
       }
       console.info(`Released ${version}: pushed ${RELEASE_BRANCH} and v${version}, then published the checked ${packageName} and ${ENGINE_PACKAGE_NAME}.`);
     }
@@ -264,8 +287,8 @@ try {
     }
     await rm(workFolder, { recursive: true, force: true });
   }
-} catch (raised) {
-  if (!(raised instanceof ReleaseError)) throw raised;
-  console.error(`Release refused: ${raised.message}`);
+} catch (caughtError) {
+  if (!(caughtError instanceof ReleaseError)) throw caughtError;
+  console.error(`${caughtError instanceof PublicationError ? "Release failed during publication" : "Release refused"}: ${caughtError.message}`);
   process.exitCode = 1;
 }

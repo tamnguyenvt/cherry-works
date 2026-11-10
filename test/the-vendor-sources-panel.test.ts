@@ -1,22 +1,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { inTheBrowser } from "./in-the-browser.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 
-const at = (path: string) => new URL(path, "file:///repo/.cw/charter/").href;
-const vendoredAt = (vendor: string, path: string) => new URL(path, `file:///repo/.cw/vendor/${vendor}/`).href;
+const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
+const vendoredAt = (vendor: string, path: string) => new URL(path, `file:///repo/.cw/charter/vendor/${vendor}/primitive/`).href;
 
 const primitive = (kind: string, id: string) =>
   ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, "---", "", `The body of ${id}.`, ""].join("\n");
 
-/** A repository authoring one guide, and two vendors: `acme`, bringing two
- *  guides and a corpus, and `legacy`, bringing one guide. */
+/** A repository authoring one guide, and two vendors: `acme/charter/root`,
+ *  bringing two guides and a corpus, and `acme/charters/baseline`, bringing
+ *  one guide. */
 const withTwoVendors = () => ({
   [at("guide/no-any/index.md")]: primitive("guide", "no-any"),
-  [vendoredAt("acme", "guide/small-diffs/index.md")]: primitive("guide", "small-diffs"),
-  [vendoredAt("acme", "guide/one-question/index.md")]: primitive("guide", "one-question"),
-  [vendoredAt("acme", "corpus/why/index.md")]: primitive("corpus", "why"),
-  [vendoredAt("legacy", "guide/old/index.md")]: primitive("guide", "old"),
+  [vendoredAt("acme/charter/root", "guide/small-diffs/index.md")]: primitive("guide", "small-diffs"),
+  [vendoredAt("acme/charter/root", "guide/one-question/index.md")]: primitive("guide", "one-question"),
+  [vendoredAt("acme/charter/root", "corpus/why/index.md")]: primitive("corpus", "why"),
+  [vendoredAt("acme/charters/baseline", "guide/old/index.md")]: primitive("guide", "old"),
 });
 
 test("with no vendor installed, the vendor tab says so, and adding one lists the reserved directories (Story 8 scenario 1)", async () => {
@@ -35,13 +36,13 @@ test("with no vendor installed, the vendor tab says so, and adding one lists the
 test("each source installed shows its folder and its primitives by kind (Story 8 scenario 4)", async () => {
   await inTheBrowser(withTwoVendors(), async (page) => {
     await page.getByRole("tab", { name: "Vendor" }).click();
-    const acme = page.getByLabel(".cw/vendor/acme", { exact: true });
+    const acme = page.getByLabel(".cw/charter/vendor/acme/charter/root", { exact: true });
     await acme.waitFor();
 
-    assert.match(await acme.innerText(), /^acme\n\.cw\/vendor\/acme\/ · read-only/);
+    assert.match(await acme.innerText(), /^acme\/charter\/root\n\.cw\/charter\/vendor\/acme\/charter\/root\/ · read-only/);
     assert.deepEqual(await acme.getByLabel("Primitives by kind").locator("dt, dd").allInnerTexts(), ["corpus", "1", "guide", "2"]);
-    const legacy = page.getByLabel(".cw/vendor/legacy", { exact: true });
-    assert.deepEqual(await legacy.getByLabel("Primitives by kind").locator("dt, dd").allInnerTexts(), ["guide", "1"]);
+    const baseline = page.getByLabel(".cw/charter/vendor/acme/charters/baseline", { exact: true });
+    assert.deepEqual(await baseline.getByLabel("Primitives by kind").locator("dt, dd").allInnerTexts(), ["guide", "1"]);
   });
 });
 
@@ -58,7 +59,7 @@ test("a source added from the dialog is installed through the engine, and the di
       await page.getByText("Vendor source added").waitFor();
 
       assert.deepEqual(sourceFetcher.fetchedSources, [{ source: "git@github.com:team/charter.git", version: "v1.2.0" }]);
-      assert.deepEqual(sourceFetcher.checkedOutFolders.map(({ intoSubFolder }) => intoSubFolder), [".cw/vendor/team/charter"]);
+      assert.deepEqual(sourceFetcher.checkedOutFolders.map(({ intoSubFolder }) => intoSubFolder), [".cw/charter/vendor/team/charter/root/primitive"]);
       await page.getByRole("dialog").waitFor({ state: "detached" });
     },
     sourceFetcher,
@@ -84,16 +85,16 @@ test("a refused source stays in the dialog, in the engine's words (Story 8 scena
   );
 });
 
-test("Remove takes a source under its owner away by owner and repository (Story 8 scenario 5, FR-050)", async () => {
+test("Remove takes a source under its owner away by owner, repository and name (Story 8 scenario 5, FR-050)", async () => {
   const sourceFetcher = new InMemorySources();
   await inTheBrowser(
-    { ...withTwoVendors(), [vendoredAt("team/rules", "guide/one-rule/index.md")]: primitive("guide", "one-rule") },
+    { ...withTwoVendors(), [vendoredAt("team/rules/root", "guide/one-rule/index.md")]: primitive("guide", "one-rule") },
     async (page) => {
       await page.getByRole("tab", { name: "Vendor" }).click();
-      await page.getByLabel(".cw/vendor/team/rules", { exact: true }).getByRole("button", { name: "Remove" }).click();
+      await page.getByLabel(".cw/charter/vendor/team/rules/root", { exact: true }).getByRole("button", { name: "Remove" }).click();
       await page.getByText("Vendor source removed").waitFor();
 
-      await page.getByLabel(".cw/vendor/team/rules", { exact: true }).waitFor({ state: "detached" });
+      await page.getByLabel(".cw/charter/vendor/team/rules/root", { exact: true }).waitFor({ state: "detached" });
     },
     sourceFetcher,
   );
@@ -105,10 +106,10 @@ test("Remove takes the source away through the engine (Story 8 scenario 5)", asy
     withTwoVendors(),
     async (page) => {
       await page.getByRole("tab", { name: "Vendor" }).click();
-      await page.getByLabel(".cw/vendor/acme", { exact: true }).getByRole("button", { name: "Remove" }).click();
+      await page.getByLabel(".cw/charter/vendor/acme/charter/root", { exact: true }).getByRole("button", { name: "Remove" }).click();
       await page.getByText("Vendor source removed").waitFor();
 
-      await page.getByLabel(".cw/vendor/acme", { exact: true }).waitFor({ state: "detached" });
+      await page.getByLabel(".cw/charter/vendor/acme/charter/root", { exact: true }).waitFor({ state: "detached" });
     },
     sourceFetcher,
   );

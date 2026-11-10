@@ -94,7 +94,7 @@ own editable copy. See [vendor sources](reference.md#vendor-sources) and
 
 ## Run charter tests
 
-Open **Test** to see the files under `.cw/test/` and their cases. Create a test
+Open **Test** to see the files under `.cw/charter/test/` and their cases. Create a test
 file or open an existing file to edit its JSON, then click **Save**.
 
 Click **Run all tests**. The portal shows how many cases passed and the

@@ -1,12 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { testSuiteOf, type TestSuite } from "../src/hexagon/domain/models/test/TestSuite.js";
-import { DomainFault } from "../src/hexagon/domain/models/DomainFault.js";
+import { TestSuite } from "../src/module/charter/domain/models/test/test-suite.js";
+import { DomainFault } from "../src/module/shared/domain/models/domain.fault.js";
+import { TestSuiteFactory } from "../src/module/charter/domain/models/test/test-suite.factory.js";
 
 /** One test file, written the way an author writes it. */
 const file = (written: unknown) => JSON.stringify(written, null, 2);
-
-const read = (text: string): TestSuite => testSuiteOf(text);
 
 /** Every case of one suite as its author wrote it down: what a case holds is
  *  what these are about, and the case itself is what says the situation. */
@@ -16,7 +15,7 @@ const written = (suite: TestSuite) => suite.cases.map((each) => each.written);
  *  the one fault raised. */
 const refusing = (text: string): DomainFault => {
   try {
-    testSuiteOf(text);
+    TestSuiteFactory.create(text);
   } catch (raised) {
     assert.ok(raised instanceof DomainFault);
     return raised;
@@ -27,7 +26,7 @@ const refusing = (text: string): DomainFault => {
 const said = (fault: DomainFault) => `${fault.message}\n${fault.fix}`;
 
 test("a touched file is read with the primitive it is expected to bring up", () => {
-  const suite = read(
+  const suite = TestSuiteFactory.create(
     file({
       description: "Type guides must come up when application code is touched.",
       cases: [{ do: { touchFile: "src/services/user.ts" }, expect: { activate: "no-any" } }],
@@ -41,7 +40,7 @@ test("a touched file is read with the primitive it is expected to bring up", () 
 });
 
 test("a touched file is read with the permission it is expected to meet, either way", () => {
-  const suite = read(
+  const suite = TestSuiteFactory.create(
     file({
       cases: [
         { do: { touchFile: ".env" }, expect: { allow: false } },
@@ -57,13 +56,13 @@ test("a touched file is read with the permission it is expected to meet, either 
 });
 
 test("a raised event is read with the sensor it is expected to run", () => {
-  const suite = read(file({ cases: [{ when: "PreToolUse", expect: { run: "no-secrets" } }] }));
+  const suite = TestSuiteFactory.create(file({ cases: [{ when: "PreToolUse", expect: { run: "no-secrets" } }] }));
 
   assert.deepEqual(written(suite), [{ when: "PreToolUse", expect: { run: "no-secrets" } }]);
 });
 
 test("one file holds as many cases as it describes, in the order they are written", () => {
-  const suite = read(
+  const suite = TestSuiteFactory.create(
     file({
       cases: [
         { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },

@@ -29,7 +29,7 @@
     "packages/engine/**/*.ts"
   ],
   "exclude": [
-    "src/driver/portal/page/**",
+    "src/presentation/portal/page/**",
     "packages/engine/dist/**"
   ]
 }

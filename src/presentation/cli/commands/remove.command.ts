@@ -1,0 +1,71 @@
+import prompts from "prompts";
+import { REPO_LAYER } from "#module/charter/module.js";
+import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import { printFault } from "./helper.js";
+
+/** What `cw remove` takes: the id whose file goes, and whether the
+ *  question before it is already answered. */
+const OPTIONS = {
+  id: {
+    type: "string",
+    describe: 'What the primitive is named by across the whole charter, its id: "no-any"',
+  },
+  yes: {
+    type: "boolean",
+    alias: "y",
+    default: false,
+    describe: "Remove it without asking first, as a run with nobody at the terminal must",
+  },
+} as const satisfies OptionSpec;
+
+/**
+ * `cw remove`: take one primitive this repository authored away (FR-076,
+ * FR-109).
+ *
+ * Its file goes and nothing else does: what still names it is left for the next
+ * `cw doctor` to report, and nothing is compiled. Whoever is at the terminal is
+ * asked first, naming the file, since what goes is what somebody authored;
+ * `--yes` is that answer given ahead, and with nobody to ask and no `--yes`
+ * nothing is removed. A vendored or builtin primitive, and an id the
+ * charter holds nothing of, are refused by the engine before anything is asked
+ * (FR-077).
+ */
+export class RemoveCommand implements Command<typeof OPTIONS> {
+  readonly name = "remove <id>";
+  readonly summary = "Delete the file of one primitive this repository authored";
+  readonly options = OPTIONS;
+
+  async run({ charterAuthoringApp }: Context, { id, yes }: Options<typeof OPTIONS>): Promise<Outcome> {
+    const openedPrimitiveDTO = await charterAuthoringApp.open(id ?? "");
+    if (openedPrimitiveDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(openedPrimitiveDTO) };
+    const primitive = openedPrimitiveDTO.data;
+
+    // Only what this repository authored is asked about: anything else is
+    // refused by `remove` itself, and a question before a refusal asks nothing.
+    if (!yes && primitive.layerName === REPO_LAYER) {
+      if (!process.stdin.isTTY)
+        return {
+          code: EXIT_FAILURE,
+          problem: `Removing ${primitive.file} is asked first, and nobody is at the terminal to answer.\n  Run "cw remove ${primitive.id} --yes" to remove it without asking.\n`,
+        };
+      const { confirmed } = await prompts({
+        type: "confirm",
+        name: "confirmed",
+        message: `Remove ${primitive.file}?`,
+        initial: false,
+      });
+      if (confirmed !== true) return { code: EXIT_OK, result: "Nothing was removed.\n" };
+    }
+
+    const primitiveDTO = await charterAuthoringApp.remove(primitive.id);
+    if (primitiveDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(primitiveDTO) };
+    return {
+      code: EXIT_OK,
+      result: [
+        `Removed ${primitiveDTO.data.file}.`,
+        'Run "cw doctor" to see what still names it, then "cw build".',
+        "",
+      ].join("\n"),
+    };
+  }
+}

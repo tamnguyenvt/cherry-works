@@ -1,25 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/driver/cli/Commander.js";
-import { COMMANDS } from "../src/driver/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/driver/cli/commands/Command.js";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { TestAuthoring } from "../src/hexagon/application/TestAuthoring.js";
-import { loadCharterRoot } from "../src/hexagon/service/charterRepo.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { InMemorySources } from "../src/zdriven/InMemorySources.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { noMcpOriginsReached } from "./no-mcp-origins.js";
-import { noSessionsKept } from "./no-sessions.js";
-import { noEvaluationsRun } from "./no-evaluations.js";
-import { noSensorsRun } from "./no-sensors.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { answerOf } from "./answer-of.js";
+import { authoringCharterOf, buildingCharterOf, loadCharterRoot, testingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
-const pickedAt = (path: string) => new URL(`.cw/vendor/acme/charters/${path}`, repoPath).href;
+const pickedAt = (charterName: string, path: string) => new URL(`.cw/charter/vendor/acme/charters/${charterName}/primitive/${path}`, repoPath).href;
 
 const guide = (id: string) => ["---", "kind: guide", `id: ${id}`, `description: About ${id}.`, "---", "", "Body.", ""].join("\n");
 const skillMd = (name: string) => ["---", `name: ${name}`, `description: About ${name}.`, "---", "", "Do it.", ""].join("\n");
@@ -27,9 +21,9 @@ const skillMd = (name: string) => ["---", `name: ${name}`, `description: About $
 /** `acme/charters` as a source of many publishes it: `baseline` and `sdd`,
  *  each under `charters/` laid out as a single-charter source holds its one. */
 const acmeCharters = (): Record<string, string> => ({
-  "charters/baseline/.cw/charter/guide/small-diffs/index.md": guide("small-diffs"),
+  "charters/baseline/.cw/charter/primitive/guide/small-diffs/index.md": guide("small-diffs"),
   "charters/baseline/README.md": "# Baseline\n",
-  "charters/sdd/.cw/charter/guide/spec-first/index.md": guide("spec-first"),
+  "charters/sdd/.cw/charter/primitive/guide/spec-first/index.md": guide("spec-first"),
   "README.md": "# Charters\n",
 });
 
@@ -48,12 +42,10 @@ async function running(argv: readonly string[], fileReaders: InMemoryFileReaders
     const context = {
       cwd: "/repo",
       version: "0.0.0",
-      charterAuthoringApp: new CharterAuthoring(repoPath, fileReaders, new YamlParser(), new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }),
-      charterVendoringApp: new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser()),
-      testAuthoringApp: new TestAuthoring(repoPath, fileReaders, new InMemoryFileOutput(fileReaders)),
-      mcpConnectingApp: noMcpOriginsReached, sessionReviewingApp: noSessionsKept, charterEvaluatingApp: noEvaluationsRun, sensorRunningApp: noSensorsRun,
+      charterAuthoringApp: authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher }),
+      charterRuntimeApp: buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter()),
     };
-    const code = await new Commander(context, COMMANDS).run(argv);
+    const code = await new Commander(commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), context, context.cwd), COMMANDS).run(argv);
     return { code, commandOutput: commandOutput.join("") };
   } finally {
     streams.forEach((stream, index) => (stream.write = kept[index] as typeof stream.write));
@@ -77,35 +69,34 @@ test("a charter picked from a source of many lands in a vendor folder of its own
   const { code, commandOutput } = await running(["vendor", "add", "acme/charters", "--charter", "baseline"], fileReaders, sourceFetcher);
 
   assert.equal(code, EXIT_OK, commandOutput);
-  assert.deepEqual(checkedOutFolders(sourceFetcher), [["charters/baseline/.cw/charter", ".cw/vendor/acme/charters/baseline"]]);
-  assert.equal(await fileReaders.read(new URL(pickedAt("baseline/guide/small-diffs/index.md"))), guide("small-diffs"));
-  assert.equal(await fileReaders.read(new URL(pickedAt("baseline/README.md"))), "# Baseline\n", "the charter's own README, beside it");
-  await assert.rejects(() => fileReaders.read(new URL(pickedAt("sdd/guide/spec-first/index.md"))));
-  await assert.rejects(() => fileReaders.read(new URL(pickedAt("README.md"))), "the source's README is no charter's");
-  assert.match(commandOutput, /Installed acme\/charters under \.cw\/vendor\/acme\/charters\/baseline\.\n {2}guide small-diffs\n/);
+  assert.deepEqual(checkedOutFolders(sourceFetcher), [["charters/baseline/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/baseline/primitive"]]);
+  assert.equal(await fileReaders.read(new URL(pickedAt("baseline", "guide/small-diffs/index.md"))), guide("small-diffs"));
+  await assert.rejects(() => fileReaders.read(new URL(pickedAt("sdd", "guide/spec-first/index.md"))));
+  await assert.rejects(() => fileReaders.read(new URL(".cw/charter/vendor/acme/charters/baseline/README.md", repoPath)), "no README is copied, the charter's own nor the source's");
+  assert.match(commandOutput, /Installed acme\/charters under \.cw\/charter\/vendor\/acme\/charters\/baseline\.\n {2}guide small-diffs\n/);
 });
 
 test("each charter picked is a vendor of its own: listed, read, brought up to date, and removed on its own (CORE-FR-196)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished();
   await running(["vendor", "add", "acme/charters", "--charter", "baseline", "--charter", "sdd"], fileReaders, sourceFetcher);
-  const charterVendoringApp = new CharterVendoring(repoPath, fileReaders, sourceFetcher, new InMemoryFileOutput(fileReaders), new YamlParser());
+  const charterAuthoringApp = authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher });
 
-  assert.deepEqual(await charterVendoringApp.installed(), [".cw/vendor/acme/charters/baseline", ".cw/vendor/acme/charters/sdd"]);
-  const charterRoot = await loadCharterRoot(repoPath, fileReaders, new YamlParser());
+  assert.deepEqual(answerOf(await charterAuthoringApp.vendors()).data.folders, ["file:///repo/.cw/charter/vendor/acme/charters/baseline", "file:///repo/.cw/charter/vendor/acme/charters/sdd"]);
+  const charterRoot = await loadCharterRoot(fileReaders);
   assert.deepEqual(
-    charterRoot.primitives.filter(({ charterFolder }) => charterFolder.startsWith(".cw/vendor/")).map(({ headers, charterFolder }) => [headers.id, charterFolder]).sort(),
-    [["small-diffs", ".cw/vendor/acme/charters/baseline"], ["spec-first", ".cw/vendor/acme/charters/sdd"]],
+    charterRoot.primitives.filter(({ layer }) => layer.vendorName !== undefined).map(({ headers, layer }) => [headers.id, layer.vendorName]).sort(),
+    [["small-diffs", "acme/charters/baseline"], ["spec-first", "acme/charters/sdd"]],
   );
 
   sourceFetcher.checkedOutFolders.length = 0;
   await running(["vendor", "add", "acme/charters", "--charter", "baseline"], fileReaders, sourceFetcher);
-  assert.deepEqual(checkedOutFolders(sourceFetcher), [["charters/baseline/.cw/charter", ".cw/vendor/acme/charters/baseline"]]);
-  assert.equal(await fileReaders.read(new URL(pickedAt("sdd/guide/spec-first/index.md"))), guide("spec-first"), "sdd left as it was");
+  assert.deepEqual(checkedOutFolders(sourceFetcher), [["charters/baseline/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/baseline/primitive"]]);
+  assert.equal(await fileReaders.read(new URL(pickedAt("sdd", "guide/spec-first/index.md"))), guide("spec-first"), "sdd left as it was");
 
   const removeOutcome = await running(["vendor", "remove", "acme/charters/baseline"], fileReaders, sourceFetcher);
   assert.equal(removeOutcome.code, EXIT_OK, removeOutcome.commandOutput);
-  await assert.rejects(() => fileReaders.read(new URL(pickedAt("baseline/guide/small-diffs/index.md"))), "baseline is gone");
-  assert.equal(await fileReaders.read(new URL(pickedAt("sdd/guide/spec-first/index.md"))), guide("spec-first"), "sdd left as it was");
+  await assert.rejects(() => fileReaders.read(new URL(pickedAt("baseline", "guide/small-diffs/index.md"))), "baseline is gone");
+  assert.equal(await fileReaders.read(new URL(pickedAt("sdd", "guide/spec-first/index.md"))), guide("spec-first"), "sdd left as it was");
 });
 
 test("a source holding charters under charters/ alone, given neither flag, installs every charter it holds, asking nothing (CORE-FR-193)", async () => {
@@ -115,34 +106,34 @@ test("a source holding charters under charters/ alone, given neither flag, insta
 
   assert.equal(code, EXIT_OK, commandOutput);
   assert.deepEqual(checkedOutFolders(sourceFetcher), [
-    ["charters/baseline/.cw/charter", ".cw/vendor/acme/charters/baseline"],
-    ["charters/sdd/.cw/charter", ".cw/vendor/acme/charters/sdd"],
+    ["charters/baseline/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/baseline/primitive"],
+    ["charters/sdd/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/sdd/primitive"],
   ]);
 });
 
 test("a source of every shape gives its one charter with neither flag, skills alone with --skill, and both with both (CORE-FR-193)", async () => {
-  const everyShape = { ".cw/charter/guide/own/index.md": guide("own"), ...acmeCharters(), "skills/grill-me/SKILL.md": skillMd("grill-me") };
+  const everyShape = { ".cw/charter/primitive/guide/own/index.md": guide("own"), ...acmeCharters(), "skills/grill-me/SKILL.md": skillMd("grill-me") };
 
   const withNeither = withChartersPublished(everyShape);
   const ownCharter = await running(["vendor", "add", "acme/charters"], withNeither.fileReaders, withNeither.sourceFetcher);
   assert.equal(ownCharter.code, EXIT_OK, ownCharter.commandOutput);
-  assert.deepEqual(checkedOutFolders(withNeither.sourceFetcher), [[".cw/charter", ".cw/vendor/acme/charters"]]);
+  assert.deepEqual(checkedOutFolders(withNeither.sourceFetcher), [[".cw/charter/primitive", ".cw/charter/vendor/acme/charters/root/primitive"]]);
 
   const withSkill = withChartersPublished(everyShape);
   const skillsAlone = await running(["vendor", "add", "acme/charters", "--skill", "grill-me"], withSkill.fileReaders, withSkill.sourceFetcher);
   assert.equal(skillsAlone.code, EXIT_OK, skillsAlone.commandOutput);
-  assert.deepEqual(checkedOutFolders(withSkill.sourceFetcher), [["skills/grill-me", ".cw/vendor/acme/charters/skill/grill-me"]]);
+  assert.deepEqual(checkedOutFolders(withSkill.sourceFetcher), [["skills/grill-me", ".cw/charter/vendor/acme/charters/root/primitive/skill/grill-me"]]);
 
   const withBoth = withChartersPublished(everyShape);
   const bothOutcome = await running(["vendor", "add", "acme/charters", "--charter", "sdd", "--skill", "grill-me"], withBoth.fileReaders, withBoth.sourceFetcher);
   assert.equal(bothOutcome.code, EXIT_OK, bothOutcome.commandOutput);
   assert.deepEqual(checkedOutFolders(withBoth.sourceFetcher), [
-    ["charters/sdd/.cw/charter", ".cw/vendor/acme/charters/sdd"],
-    ["skills/grill-me", ".cw/vendor/acme/charters/skill/grill-me"],
+    ["charters/sdd/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/sdd/primitive"],
+    ["skills/grill-me", ".cw/charter/vendor/acme/charters/root/primitive/skill/grill-me"],
   ]);
   assert.deepEqual(
-    await new CharterVendoring(repoPath, withBoth.fileReaders, withBoth.sourceFetcher, new InMemoryFileOutput(withBoth.fileReaders), new YamlParser()).installed(),
-    [".cw/vendor/acme/charters", ".cw/vendor/acme/charters/sdd"],
+    answerOf(await authoringCharterOf(withBoth.fileReaders, new InMemoryFileOutput(withBoth.fileReaders), new InMemoryReporter(), { sourceFetcher: withBoth.sourceFetcher }).vendors()).data.folders,
+    ["file:///repo/.cw/charter/vendor/acme/charters/root", "file:///repo/.cw/charter/vendor/acme/charters/sdd"],
   );
 });
 
@@ -173,11 +164,18 @@ test("a flag for a shape the source does not hold is refused, taking nothing, sa
   assert.deepEqual(chartersOnly.sourceFetcher.checkedOutFolders, []);
 });
 
-test("a folder under charters/ named as a kind is, or holding no charter folder, is refused when picked, naming the folder (CORE-FR-197)", async () => {
-  for (const [name, sourceFiles] of [
-    ["guide", { ...acmeCharters(), "charters/guide/.cw/charter/guide/x/index.md": guide("x") }],
-    ["notes", { ...acmeCharters(), "charters/notes/README.md": "# Notes\n" }],
-  ] as const) {
+test("a folder under charters/ named as a kind is refused when picked, naming the folder (CORE-FR-197)", async () => {
+  const { fileReaders, sourceFetcher } = withChartersPublished({ ...acmeCharters(), "charters/guide/.cw/charter/primitive/guide/x/index.md": guide("x") });
+
+  const { code, commandOutput } = await running(["vendor", "add", "acme/charters", "--charter", "baseline", "--charter", "guide"], fileReaders, sourceFetcher);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(commandOutput, /charters\/guide/);
+  assert.deepEqual(sourceFetcher.checkedOutFolders, []);
+});
+
+test("a folder under charters/ holding no charter folder is refused when picked, naming the folder (CORE-FR-197)", async () => {
+  for (const [name, sourceFiles] of [["notes", { ...acmeCharters(), "charters/notes/README.md": "# Notes\n" }]] as const) {
     const { fileReaders, sourceFetcher } = withChartersPublished(sourceFiles);
 
     const { code, commandOutput } = await running(["vendor", "add", "acme/charters", "--charter", "baseline", "--charter", name], fileReaders, sourceFetcher);
@@ -189,7 +187,7 @@ test("a folder under charters/ named as a kind is, or holding no charter folder,
 });
 
 test("a charter picked that installed vendors of its own is refused, since vendoring is one level deep (FR-170)", async () => {
-  const { fileReaders, sourceFetcher } = withChartersPublished({ ...acmeCharters(), "charters/sdd/.cw/vendor/other/guide/x/index.md": guide("x") });
+  const { fileReaders, sourceFetcher } = withChartersPublished({ ...acmeCharters(), "charters/sdd/.cw/charter/vendor/other/guide/x/index.md": guide("x") });
 
   const { code, commandOutput } = await running(["vendor", "add", "acme/charters", "--charter", "sdd"], fileReaders, sourceFetcher);
 
@@ -198,16 +196,48 @@ test("a charter picked that installed vendors of its own is refused, since vendo
   assert.deepEqual(sourceFetcher.checkedOutFolders, []);
 });
 
-test("a folder holding the source's one charter takes no charter picked into it, and one holding charters picked takes no one charter (CORE-FR-191)", async () => {
-  const intoOwnCharter = withChartersPublished(acmeCharters(), { [pickedAt("guide/own/index.md")]: guide("own"), [pickedAt("README.md")]: "# Charters\n" });
-  const pickRefuseOutcome = await running(["vendor", "add", "acme/charters", "--charter", "baseline"], intoOwnCharter.fileReaders, intoOwnCharter.sourceFetcher);
-  assert.equal(pickRefuseOutcome.code, EXIT_FAILURE);
-  assert.match(pickRefuseOutcome.commandOutput, /\.cw\/vendor\/acme\/charters holds a charter/);
-  assert.deepEqual(intoOwnCharter.sourceFetcher.checkedOutFolders, []);
+test("the source's own charter and the charters picked from it are installed side by side, each a vendor of its own (CORE-FR-196)", async () => {
+  const intoOwnCharter = withChartersPublished(acmeCharters(), { [pickedAt("root", "guide/own/index.md")]: guide("own") });
+  const pickOutcome = await running(["vendor", "add", "acme/charters", "--charter", "baseline"], intoOwnCharter.fileReaders, intoOwnCharter.sourceFetcher);
+  assert.equal(pickOutcome.code, EXIT_OK, pickOutcome.commandOutput);
+  assert.deepEqual(checkedOutFolders(intoOwnCharter.sourceFetcher), [["charters/baseline/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/baseline/primitive"]]);
+  assert.deepEqual(
+    answerOf(await authoringCharterOf(intoOwnCharter.fileReaders, new InMemoryFileOutput(intoOwnCharter.fileReaders), new InMemoryReporter(), { sourceFetcher: intoOwnCharter.sourceFetcher }).vendors()).data.folders,
+    ["file:///repo/.cw/charter/vendor/acme/charters/baseline", "file:///repo/.cw/charter/vendor/acme/charters/root"],
+  );
 
-  const intoPicked = withChartersPublished({ ".cw/charter/guide/own/index.md": guide("own") }, { [pickedAt("baseline/guide/small-diffs/index.md")]: guide("small-diffs") });
-  const ownRefuseOutcome = await running(["vendor", "add", "acme/charters"], intoPicked.fileReaders, intoPicked.sourceFetcher);
-  assert.equal(ownRefuseOutcome.code, EXIT_FAILURE);
-  assert.match(ownRefuseOutcome.commandOutput, /\.cw\/vendor\/acme\/charters holds charters picked from acme\/charters/);
-  assert.deepEqual(intoPicked.sourceFetcher.checkedOutFolders, []);
+  const intoPicked = withChartersPublished({ ".cw/charter/primitive/guide/own/index.md": guide("own") }, { [pickedAt("baseline", "guide/small-diffs/index.md")]: guide("small-diffs") });
+  const ownOutcome = await running(["vendor", "add", "acme/charters"], intoPicked.fileReaders, intoPicked.sourceFetcher);
+  assert.equal(ownOutcome.code, EXIT_OK, ownOutcome.commandOutput);
+  assert.deepEqual(checkedOutFolders(intoPicked.sourceFetcher), [[".cw/charter/primitive", ".cw/charter/vendor/acme/charters/root/primitive"]]);
+  assert.equal(await intoPicked.fileReaders.read(new URL(pickedAt("baseline", "guide/small-diffs/index.md"))), guide("small-diffs"), "baseline left as it was");
+});
+
+test("installing into root again writes the latest over what it held, a charter or skills alike", async () => {
+  const everyShape = { ".cw/charter/primitive/guide/own/index.md": guide("own"), ...acmeCharters(), "skills/grill-me/SKILL.md": skillMd("grill-me") };
+  const rootFilePathsOf = async (fileReaders: InMemoryFileReaders) =>
+    (await fileReaders.readFilesRecursively(new URL(".cw/charter/vendor/acme/charters/root/", repoPath))).map(({ path }) => path).sort();
+
+  const intoOwnCharter = withChartersPublished(everyShape, { [pickedAt("root", "guide/own/index.md")]: guide("own") });
+  const skillOutcome = await running(["vendor", "add", "acme/charters", "--skill", "grill-me"], intoOwnCharter.fileReaders, intoOwnCharter.sourceFetcher);
+  assert.equal(skillOutcome.code, EXIT_OK);
+  assert.deepEqual(await rootFilePathsOf(intoOwnCharter.fileReaders), [
+    ".cw/charter/vendor/acme/charters/root/primitive/guide/own/index.md",
+    ".cw/charter/vendor/acme/charters/root/primitive/skill/grill-me/index.md",
+  ]);
+
+  const intoSkills = withChartersPublished(everyShape, { [pickedAt("root", "skill/grill-me/index.md")]: "---\nkind: skill\nid: grill-me\ndescription: About grill-me.\n---\n" });
+  const ownOutcome = await running(["vendor", "add", "acme/charters"], intoSkills.fileReaders, intoSkills.sourceFetcher);
+  assert.equal(ownOutcome.code, EXIT_OK);
+  assert.deepEqual(await rootFilePathsOf(intoSkills.fileReaders), [".cw/charter/vendor/acme/charters/root/primitive/guide/own/index.md"]);
+});
+
+test("a charter under charters/ named root is refused when picked, since root is the source's own charter's folder (CORE-FR-196)", async () => {
+  const { fileReaders, sourceFetcher } = withChartersPublished({ ...acmeCharters(), "charters/root/.cw/charter/primitive/guide/x/index.md": guide("x") });
+
+  const { code, commandOutput } = await running(["vendor", "add", "acme/charters", "--charter", "root"], fileReaders, sourceFetcher);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(commandOutput, /charters\/root" is named "root"/);
+  assert.deepEqual(sourceFetcher.checkedOutFolders, []);
 });

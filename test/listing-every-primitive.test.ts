@@ -1,15 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CharterAuthoring } from "../src/hexagon/application/CharterAuthoring.js";
-import { DataDTOs } from "../src/hexagon/port/driver/dtos/index.js";
-import { InMemoryFileReaders } from "../src/zdriven/InMemoryFileReaders.js";
-import { InMemoryFileOutput } from "../src/zdriven/InMemoryFileOutput.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { InMemoryTokenCounter } from "../src/zdriven/InMemoryTokenCounter.js";
-import { InMemoryAgentCli } from "../src/zdriven/InMemoryAgentCli.js";
+import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
+import { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { authoringCharterOf } from "./use-cases-of.js";
 
-const root = new URL("file:///repo/.cw/charter/");
-const vendored = new URL("file:///repo/.cw/vendor/acme/");
+const root = new URL("file:///repo/.cw/charter/primitive/");
+const vendored = new URL("file:///repo/.cw/charter/vendor/acme/charter/root/primitive/");
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
@@ -24,17 +23,17 @@ const charter = {
 
 const fullListOf = async (files: Readonly<Record<string, string>>, matching?: string) => {
   const readers = new InMemoryFileReaders(files);
-  const charterAuthoringApp = new CharterAuthoring(new URL("file:///repo/"), readers, new YamlParser(), new InMemoryFileOutput(readers), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() });
+  const charterAuthoringApp = authoringCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryReporter());
   return charterAuthoringApp.fullList(matching);
 };
 
-const idsIn = (answer: DataDTOs.Primitives | DataDTOs.FaultsByFile) => {
+const idsIn = (answer: CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault) => {
   assert.equal(answer.type, "Primitives");
-  return DataDTOs.Primitives.parse(answer).data.primitives.map(({ data }) => data.id);
+  return CharterDTOs.Primitives.parse(answer).data.primitives.map(({ data }) => data.id);
 };
 
 test("every primitive of every layer is listed by id, each under the layer it arrived in (FR-112)", async () => {
-  const answer = DataDTOs.Primitives.parse(await fullListOf(charter));
+  const answer = CharterDTOs.Primitives.parse(await fullListOf(charter));
 
   assert.deepEqual(
     answer.data.primitives.map(({ data: { id, layerName } }) => [id, layerName]),
@@ -51,10 +50,10 @@ test("every primitive of every layer is listed by id, each under the layer it ar
 });
 
 test("each primitive carries every header it declared, the ones the catalogue does not record included", async () => {
-  const answer = DataDTOs.Primitives.parse(await fullListOf(charter));
+  const answer = CharterDTOs.Primitives.parse(await fullListOf(charter));
   const sensor = answer.data.primitives.find(({ data }) => data.id === "lint")!;
 
-  assert.equal(sensor.data.file, ".cw/charter/sensor/lint/index.md");
+  assert.equal(sensor.data.file, "file:///repo/.cw/charter/primitive/sensor/lint/index.md");
   assert.equal(sensor.data.headers.signal, "PostToolUse");
   assert.equal(sensor.data.headers.run, "pnpm lint");
 });
@@ -62,7 +61,7 @@ test("each primitive carries every header it declared, the ones the catalogue do
 test("a word keeps only the primitives mentioning it, in a header value as much as in a description (FR-114)", async () => {
   assert.deepEqual(idsIn(await fullListOf(charter, "posttooluse")), ["lint"]);
   assert.deepEqual(idsIn(await fullListOf(charter, "About small")), ["small-diffs"]);
-  assert.deepEqual(idsIn(await fullListOf(charter, ".cw/vendor")), ["small-diffs"]);
+  assert.deepEqual(idsIn(await fullListOf(charter, "vendor")), ["small-diffs"]);
 });
 
 test("a word is found in the line saying when a primitive's kind comes up", async () => {
@@ -79,5 +78,5 @@ test("a charter with an error lists nothing and hands back what is wrong under i
   const answer = await fullListOf({ [new URL("guide/broken/index.md", root).href]: "not a primitive at all\n" });
 
   assert.equal(answer.type, "FaultsByFile");
-  assert.deepEqual(Object.keys(DataDTOs.FaultsByFile.parse(answer).data.files), [".cw/charter/guide/broken/index.md"]);
+  assert.deepEqual(Object.keys(FaultDTOs.FaultsByFile.parse(answer).data.files), ["file:///repo/.cw/charter/primitive/guide/broken/index.md"]);
 });

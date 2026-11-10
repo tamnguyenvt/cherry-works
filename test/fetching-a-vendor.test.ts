@@ -3,18 +3,21 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { chmod, mkdtemp, mkdir, readdir, readFile, readlink, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
-import { pathToFileURL } from "node:url";
-import { CharterVendoring } from "../src/hexagon/application/CharterVendoring.js";
-import { FileOutput } from "../src/zdriven/FileOutput.js";
-import { FileReaders } from "../src/zdriven/FileReaders.js";
-import { GitSources } from "../src/zdriven/GitSources.js";
-import { YamlParser } from "../src/zdriven/YamlParser.js";
-import { AdapterFault } from "../src/hexagon/port/zdriven/AdapterFault.js";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { FileOutput } from "../src/module/shared/infra/file-output.adapter.js";
+import { FileReaders } from "../src/module/shared/infra/file-readers.adapter.js";
+import { GitSources } from "../src/module/charter/infra/git-sources.adapter.js";
+import { AdapterFault } from "../src/module/shared/domain/models/adapter.fault.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { answerOf, faultTextOf } from "./answer-of.js";
+import { authoringCharterOf } from "./use-cases-of.js";
 
 const run = promisify(execFile);
-const gitSources = new GitSources();
+/** What is asked of a commit already fetched — its files, letting it go —
+ *  is the same whichever repository fetched it. */
+const gitSources = new GitSources(pathToFileURL(`${tmpdir()}/`));
 
 /** Git as a test runs it: an author of its own, nothing signed, so what is
  *  committed here does not depend on whose machine this is. */
@@ -37,8 +40,8 @@ async function temporary(t: { after(fn: () => unknown): void }, name: string): P
  *  any other, so the adapter is exercised whole without a network. */
 async function published(t: { after(fn: () => unknown): void }, body = "Reject any."): Promise<string> {
   const source = join(await temporary(t, "source"), "charter");
-  await mkdir(join(source, ".cw", "charter", "guide", "no-any"), { recursive: true });
-  await writeFile(join(source, ".cw", "charter", "guide", "no-any", "index.md"), `---\nkind: guide\n---\n\n${body}\n`);
+  await mkdir(join(source, ".cw", "charter", "primitive", "guide", "no-any"), { recursive: true });
+  await writeFile(join(source, ".cw", "charter", "primitive", "guide", "no-any", "index.md"), `---\nkind: guide\n---\n\n${body}\n`);
   await writeFile(join(source, "README.md"), "Not part of the charter.\n");
   await run("git", ["init", "-q", "-b", "main"], { cwd: source });
   await run("git", ["add", "."], { cwd: source });
@@ -62,17 +65,17 @@ async function repository(t: { after(fn: () => unknown): void }): Promise<string
 
 /** One source installed into one repository the way vendoring does it: the
  *  source fetched at this version, and its charter folder checked out at
- *  `.cw/vendor/charter`. Which folders those are is the hexagon's to decide; the
+ *  `.cw/charter/vendor/charter`. Which folders those are is the hexagon's to decide; the
  *  adapter is told. */
 async function installed(source: string, repo: string, version?: string): Promise<void> {
   const repoUrl = pathToFileURL(`${repo}/`);
-  const fetchedCommit = await gitSources.fetchCommit(source, repoUrl, version);
-  await gitSources.checkoutFolderAt(repoUrl, fetchedCommit, ".cw/charter", ".cw/vendor/charter");
+  const fetchedCommit = await new GitSources(repoUrl).fetchCommit(source, version);
+  await new GitSources(repoUrl).checkoutFolderAt(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter");
   await gitSources.forgetCommit(fetchedCommit);
 }
 
 /** What the vendored guide says in this repository, read off disk. */
-const vendored = (repo: string) => readFile(join(repo, ".cw", "vendor", "charter", "guide", "no-any", "index.md"), "utf8");
+const vendored = (repo: string) => readFile(join(repo, ".cw", "charter", "vendor", "charter", "guide", "no-any", "index.md"), "utf8");
 
 test("a source's charter folder checked out at its commit lands where it is told, left unstaged and uncommitted", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
@@ -81,7 +84,7 @@ test("a source's charter folder checked out at its commit lands where it is told
   await installed(source, repo);
 
   assert.match(await vendored(repo), /Reject any\./);
-  await assert.rejects(readFile(join(repo, ".cw", "vendor", "charter", "README.md")), "only the folder asked for lands");
+  await assert.rejects(readFile(join(repo, ".cw", "charter", "vendor", "charter", "README.md")), "only the folder asked for lands");
   const { stdout: headAfter } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
   assert.equal(headAfter, headBefore, "nothing is committed");
   const { stdout: stagedFiles } = await run("git", ["diff", "--cached", "--name-only"], { cwd: repo });
@@ -114,7 +117,7 @@ test("installing a source already there brings it up to date", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   await installed(source, repo);
 
-  await writeFile(join(source, ".cw", "charter", "guide", "no-any", "index.md"), "---\nkind: guide\n---\n\nReject it everywhere.\n");
+  await writeFile(join(source, ".cw", "charter", "primitive", "guide", "no-any", "index.md"), "---\nkind: guide\n---\n\nReject it everywhere.\n");
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "two");
 
@@ -138,17 +141,27 @@ test("installing again what is already committed there leaves nothing in hand", 
 test("a version the source has not got is refused in git's own words, fetching nothing", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
 
-  const fetchFault = await gitSources.fetchCommit(source, pathToFileURL(`${repo}/`), "v9.9.9").catch((gitFault: unknown) => gitFault);
+  const fetchFault = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit(source, "v9.9.9").catch((gitFault: unknown) => gitFault);
 
   assert.ok(fetchFault instanceof AdapterFault, String(fetchFault));
   assert.match(fetchFault.fix, /tag or branch/);
   await assert.rejects(vendored(repo));
 });
 
+test("a source refused with a user and password in its address names it without them, git's words whole in the cause (SDK-FR-018)", async (t) => {
+  const repo = await repository(t);
+
+  const fetchFault = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit("https://reader:tok-very-secret@127.0.0.1:1/team/charter.git").catch((gitFault: unknown) => gitFault);
+
+  assert.ok(fetchFault instanceof AdapterFault, String(fetchFault));
+  assert.match(fetchFault.message, /https:\/\/127\.0\.0\.1:1\/team\/charter\.git could not be fetched/);
+  assert.doesNotMatch(fetchFault.message, /tok-very-secret|reader/);
+});
+
 test("a source that cannot be reached is refused in git's own words", async (t) => {
   const repo = await repository(t);
 
-  const fetchFault = await gitSources.fetchCommit(join(repo, "nothing-here"), pathToFileURL(`${repo}/`)).catch((gitFault: unknown) => gitFault);
+  const fetchFault = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit(join(repo, "nothing-here")).catch((gitFault: unknown) => gitFault);
 
   assert.ok(fetchFault instanceof AdapterFault, String(fetchFault));
   assert.match(fetchFault.message, /repository|does not exist/);
@@ -167,7 +180,7 @@ test("a fetch leaves nothing in the repository's own object store, and what is f
   const [source, repo] = [await published(t), await repository(t)];
   const repoUrl = pathToFileURL(`${repo}/`);
 
-  const fetchedCommit = await gitSources.fetchCommit(source, repoUrl);
+  const fetchedCommit = await new GitSources(repoUrl).fetchCommit(source);
 
   await assert.rejects(readFile(join(repo, ".git", "FETCH_HEAD")));
   await gitSources.forgetCommit(fetchedCommit);
@@ -179,9 +192,9 @@ test("a source is reached under the repository's own git config (CORE Story 37 s
   await run("git", ["config", "--local", `url.${source}.insteadOf`, "cw-team:charter"], { cwd: repo });
   const repoUrl = pathToFileURL(`${repo}/`);
 
-  const fetchedCommit = await gitSources.fetchCommit("cw-team:charter", repoUrl);
+  const fetchedCommit = await new GitSources(repoUrl).fetchCommit("cw-team:charter");
   t.after(() => gitSources.forgetCommit(fetchedCommit));
-  await gitSources.checkoutFolderAt(repoUrl, fetchedCommit, ".cw/charter", ".cw/vendor/charter");
+  await new GitSources(repoUrl).checkoutFolderAt(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter");
 
   assert.match(await vendored(repo), /Reject any\./);
   const { stdout } = await run("git", ["status", "--porcelain"], { cwd: repo });
@@ -195,7 +208,7 @@ test("a repository's config that applies only where it stands reaches the fetch 
   const { stdout: repoGitFolder } = await run("git", ["rev-parse", "--absolute-git-dir"], { cwd: repo });
   await run("git", ["config", "--local", `includeIf.gitdir:${repoGitFolder.trim()}.path`, conditionalConfigFile], { cwd: repo });
 
-  const fetchedCommit = await gitSources.fetchCommit("cw-team:charter", pathToFileURL(`${repo}/`));
+  const fetchedCommit = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit("cw-team:charter");
   t.after(() => gitSources.forgetCommit(fetchedCommit));
 
   assert.ok((await gitSources.listFilesAt(fetchedCommit)).includes("README.md"));
@@ -206,7 +219,7 @@ test("a repository whose config includes a file by a relative path still fetches
   await run("git", ["config", "--file", join(repo, ".git", "cw-included-config"), `url.${source}.insteadOf`, "cw-team:charter"]);
   await run("git", ["config", "--local", "include.path", "cw-included-config"], { cwd: repo });
 
-  const fetchedCommit = await gitSources.fetchCommit("cw-team:charter", pathToFileURL(`${repo}/`));
+  const fetchedCommit = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit("cw-team:charter");
   t.after(() => gitSources.forgetCommit(fetchedCommit));
 
   assert.ok((await gitSources.listFilesAt(fetchedCommit)).includes("README.md"));
@@ -223,7 +236,7 @@ test("a global config reaches the fetch, read once (CORE Story 37 scenario 6)", 
     else process.env.GIT_CONFIG_GLOBAL = keptGlobal;
   });
 
-  const fetchedCommit = await gitSources.fetchCommit("cw-team:charter", pathToFileURL(`${repo}/`));
+  const fetchedCommit = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit("cw-team:charter");
   t.after(() => gitSources.forgetCommit(fetchedCommit));
 
   assert.ok((await gitSources.listFilesAt(fetchedCommit)).includes("README.md"));
@@ -237,23 +250,24 @@ test("a machine with no git is told git is what reaches a source (CORE-FR-205)",
     process.env.PATH = keptPath;
   });
 
-  const fetchFault = await gitSources.fetchCommit("team/charter", pathToFileURL(`${repo}/`)).catch((gitFault: unknown) => gitFault);
+  const fetchFault = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit("team/charter").catch((gitFault: unknown) => gitFault);
 
   assert.ok(fetchFault instanceof AdapterFault, String(fetchFault));
   assert.match(fetchFault.fix, /needs git: install it/);
 });
 
 /** Vendoring as `cw` runs it on a disk, into this folder. */
-const charterVendoringIn = (folder: string) => new CharterVendoring(pathToFileURL(`${folder}/`), new FileReaders(), gitSources, new FileOutput(), new YamlParser());
+const charterAuthoringIn = (folder: string) => authoringCharterOf(new FileReaders(pathToFileURL(`${folder}/`)), new FileOutput(pathToFileURL(`${folder}/`)), new InMemoryReporter(), { sourceFetcher: new GitSources(pathToFileURL(`${folder}/`)) });
 
 test("in a folder with no version control, a source is installed, then removed with its folder gone (CORE Story 37 scenarios 1, 2)", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
   await writeFile(join(folder, "work.txt"), "In hand.\n");
-  const charterVendoringApp = charterVendoringIn(folder);
+  const charterAuthoringApp = charterAuthoringIn(folder);
 
-  const [{ folder: installedFolder } = { folder: "" }] = (await charterVendoringApp.add(source)).data;
-  const vendorName = installedFolder.replace(".cw/vendor/", "");
-  await charterVendoringApp.remove(vendorName);
+  const [{ folder: installedUri } = { folder: "" }] = answerOf(await charterAuthoringApp.addVendor(source)).data;
+  const installedFolder = relative(folder, fileURLToPath(installedUri));
+  const vendorName = installedFolder.replace(".cw/charter/vendor/", "");
+  await charterAuthoringApp.removeVendor(vendorName);
 
   await assert.rejects(stat(join(folder, installedFolder)), "its folder is gone");
   assert.equal(await readFile(join(folder, "work.txt"), "utf8"), "In hand.\n");
@@ -261,8 +275,9 @@ test("in a folder with no version control, a source is installed, then removed w
 
 test("in a repository with work in hand, removing commits nothing and leaves that work as it was (CORE Story 37 scenario 2)", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
-  const charterVendoringApp = charterVendoringIn(repo);
-  const [{ folder: installedFolder } = { folder: "" }] = (await charterVendoringApp.add(source)).data;
+  const charterAuthoringApp = charterAuthoringIn(repo);
+  const [{ folder: installedUri } = { folder: "" }] = answerOf(await charterAuthoringApp.addVendor(source)).data;
+  const installedFolder = relative(repo, fileURLToPath(installedUri));
   await run("git", ["add", "."], { cwd: repo });
   await commit(repo, "vendored");
   await writeFile(join(repo, "README.md"), "two\n");
@@ -270,7 +285,7 @@ test("in a repository with work in hand, removing commits nothing and leaves tha
   await run("git", ["add", "staged.md"], { cwd: repo });
   const { stdout: headBefore } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
 
-  await charterVendoringApp.remove(installedFolder.replace(".cw/vendor/", ""));
+  await charterAuthoringApp.removeVendor(installedFolder.replace(".cw/charter/vendor/", ""));
 
   const { stdout: headAfter } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
   assert.equal(headAfter, headBefore, "nothing is committed");
@@ -282,67 +297,76 @@ test("in a repository with work in hand, removing commits nothing and leaves tha
 
 test("a folder held by nothing else goes up to the vendor folder, and never past it, whatever it held (CORE-FR-204)", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
-  const charterVendoringApp = charterVendoringIn(folder);
-  const [{ folder: installedFolder } = { folder: "" }] = (await charterVendoringApp.add(source)).data;
+  const charterAuthoringApp = charterAuthoringIn(folder);
+  const [{ folder: installedUri } = { folder: "" }] = answerOf(await charterAuthoringApp.addVendor(source)).data;
+  const installedFolder = relative(folder, fileURLToPath(installedUri));
   await symlink("nowhere", join(folder, installedFolder, "dangling"));
   await mkdir(join(folder, installedFolder, "empty"));
 
-  await charterVendoringApp.remove(installedFolder.replace(".cw/vendor/", ""));
+  await charterAuthoringApp.removeVendor(installedFolder.replace(".cw/charter/vendor/", ""));
 
-  await assert.rejects(stat(join(folder, ".cw", "vendor")), "the vendor folder left empty goes");
+  await assert.rejects(stat(join(folder, ".cw", "charter", "vendor")), "the vendor folder left empty goes");
   assert.ok((await stat(join(folder, ".cw"))).isDirectory(), "what is above it stays");
   assert.ok((await stat(folder)).isDirectory());
 });
 
 test("a folder holding a link beside the vendor stays (CORE-FR-204)", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
-  const charterVendoringApp = charterVendoringIn(folder);
-  const [{ folder: installedFolder } = { folder: "" }] = (await charterVendoringApp.add(source)).data;
+  const charterAuthoringApp = charterAuthoringIn(folder);
+  const [{ folder: installedUri } = { folder: "" }] = answerOf(await charterAuthoringApp.addVendor(source)).data;
+  const installedFolder = relative(folder, fileURLToPath(installedUri));
   const ownerFolder = join(folder, installedFolder, "..");
   await symlink("nowhere", join(ownerFolder, "link"));
 
-  await charterVendoringApp.remove(installedFolder.replace(".cw/vendor/", ""));
+  await charterAuthoringApp.removeVendor(installedFolder.replace(".cw/charter/vendor/", ""));
 
   assert.equal(await readlink(join(ownerFolder, "link")), "nowhere");
 });
 
 test("an owner's folder still holding a source stays", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
-  const charterVendoringApp = charterVendoringIn(folder);
-  const [{ folder: installedFolder } = { folder: "" }] = (await charterVendoringApp.add(source)).data;
+  const charterAuthoringApp = charterAuthoringIn(folder);
+  const [{ folder: installedUri } = { folder: "" }] = answerOf(await charterAuthoringApp.addVendor(source)).data;
+  const installedFolder = relative(folder, fileURLToPath(installedUri));
   const ownerFolder = join(folder, installedFolder, "..");
   await mkdir(join(ownerFolder, "other", "guide"), { recursive: true });
   await writeFile(join(ownerFolder, "other", "README.md"), "Other.\n");
 
-  await charterVendoringApp.remove(installedFolder.replace(".cw/vendor/", ""));
+  await charterAuthoringApp.removeVendor(installedFolder.replace(".cw/charter/vendor/", ""));
 
   assert.equal(await readFile(join(ownerFolder, "other", "README.md"), "utf8"), "Other.\n");
 });
 
 test("installing over a folder replaces it whole, and leaves no copy beside it (CORE-FR-205)", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
-  await mkdir(join(folder, ".cw", "vendor", "charter"), { recursive: true });
-  await writeFile(join(folder, ".cw", "vendor", "charter", "stale.md"), "From before.\n");
+  await mkdir(join(folder, ".cw", "charter", "vendor", "charter"), { recursive: true });
+  await writeFile(join(folder, ".cw", "charter", "vendor", "charter", "stale.md"), "From before.\n");
 
   await installed(source, folder);
 
-  await assert.rejects(readFile(join(folder, ".cw", "vendor", "charter", "stale.md")));
-  assert.deepEqual(await readdir(join(folder, ".cw", "vendor")), ["charter"]);
+  await assert.rejects(readFile(join(folder, ".cw", "charter", "vendor", "charter", "stale.md")));
+  assert.deepEqual(await readdir(join(folder, ".cw", "charter", "vendor")), ["charter"]);
 });
 
 test("a folder that cannot be written keeps what it held, with a fault saying so (CORE-FR-205)", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
   const folderUrl = pathToFileURL(`${folder}/`);
-  await mkdir(join(folder, ".cw", "vendor", "charter"), { recursive: true });
-  await writeFile(join(folder, ".cw", "vendor", "charter", "kept.md"), "Kept.\n");
-  const fetchedCommit = await gitSources.fetchCommit(source, folderUrl);
+  await mkdir(join(folder, ".cw", "charter", "vendor", "charter"), { recursive: true });
+  await writeFile(join(folder, ".cw", "charter", "vendor", "charter", "kept.md"), "Kept.\n");
+  const fetchedCommit = await new GitSources(folderUrl).fetchCommit(source);
   t.after(() => gitSources.forgetCommit(fetchedCommit));
-  await chmod(join(folder, ".cw", "vendor"), 0o555);
+  await chmod(join(folder, ".cw", "charter", "vendor"), 0o555);
 
-  await assert.rejects(gitSources.checkoutFolderAt(folderUrl, fetchedCommit, ".cw/charter", ".cw/vendor/charter"), AdapterFault);
-  await chmod(join(folder, ".cw", "vendor"), 0o755);
+  await assert.rejects(new GitSources(folderUrl).checkoutFolderAt(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter"), (raised: unknown) => {
+    assert.ok(raised instanceof AdapterFault);
+    assert.equal(raised.internal, false);
+    assert.match(raised.message, /could not be checked out/);
+    assert.doesNotMatch(raised.message, /EACCES|EPERM|Error:/);
+    return true;
+  });
+  await chmod(join(folder, ".cw", "charter", "vendor"), 0o755);
 
-  assert.equal(await readFile(join(folder, ".cw", "vendor", "charter", "kept.md"), "utf8"), "Kept.\n");
+  assert.equal(await readFile(join(folder, ".cw", "charter", "vendor", "charter", "kept.md"), "utf8"), "Kept.\n");
 });
 
 test("a folder that cannot be taken away is a fault with its fix, not a raw error", async (t) => {
@@ -350,21 +374,21 @@ test("a folder that cannot be taken away is a fault with its fix, not a raw erro
   await mkdir(join(folder, "locked", "inner"), { recursive: true });
   await chmod(join(folder, "locked"), 0o555);
 
-  await assert.rejects(new FileOutput().deleteFolder(pathToFileURL(`${folder}/locked/inner/`)), AdapterFault);
+  await assert.rejects(new FileOutput(pathToFileURL(`${folder}/`)).deleteFolder("locked/inner"), AdapterFault);
   await chmod(join(folder, "locked"), 0o755);
 });
 
 test("a checkout git refuses leaves what the folder held (CORE-FR-205)", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
   const folderUrl = pathToFileURL(`${folder}/`);
-  await mkdir(join(folder, ".cw", "vendor", "charter"), { recursive: true });
-  await writeFile(join(folder, ".cw", "vendor", "charter", "kept.md"), "Kept.\n");
-  const fetchedCommit = await gitSources.fetchCommit(source, folderUrl);
+  await mkdir(join(folder, ".cw", "charter", "vendor", "charter"), { recursive: true });
+  await writeFile(join(folder, ".cw", "charter", "vendor", "charter", "kept.md"), "Kept.\n");
+  const fetchedCommit = await new GitSources(folderUrl).fetchCommit(source);
   t.after(() => gitSources.forgetCommit(fetchedCommit));
 
-  await assert.rejects(gitSources.checkoutFolderAt(folderUrl, fetchedCommit, "no-such-folder", ".cw/vendor/charter"), AdapterFault);
+  await assert.rejects(new GitSources(folderUrl).checkoutFolderAt(fetchedCommit, "no-such-folder", ".cw/charter/vendor/charter"), AdapterFault);
 
-  assert.equal(await readFile(join(folder, ".cw", "vendor", "charter", "kept.md"), "utf8"), "Kept.\n");
+  assert.equal(await readFile(join(folder, ".cw", "charter", "vendor", "charter", "kept.md"), "utf8"), "Kept.\n");
 });
 
 /** A skills repository to take from: two skills, one with an asset two folders
@@ -389,7 +413,7 @@ test("a link a source holds carries no write out of its vendor folder (CORE-FR-0
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "two");
 
-  await charterVendoringIn(folder).add(source, undefined, ["grilling"]);
+  await charterAuthoringIn(folder).addVendor(source, undefined, ["grilling"]);
 
   assert.equal(await readFile(join(folder, "CLAUDE.md"), "utf8"), "Mine.\n");
 });
@@ -401,21 +425,21 @@ test("a link a source holds for its README carries no write out of its vendor fo
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "two");
 
-  await charterVendoringIn(folder).add(source);
+  await charterAuthoringIn(folder).addVendor(source);
 
   assert.equal(await readFile(join(folder, "CLAUDE.md"), "utf8"), "Mine.\n");
 });
 
 test("a link a source left on the way to a folder carries no later install through it (CORE Story 37 scenario 5)", async (t) => {
   const [source, folder] = [await publishedSkills(t), await temporary(t, "plain")];
-  const charterFile = join(folder, ".cw", "charter", "guide", "mine", "index.md");
+  const charterFile = join(folder, ".cw", "charter", "primitive", "guide", "mine", "index.md");
   await mkdir(join(charterFile, ".."), { recursive: true });
   await writeFile(charterFile, "Mine.\n");
-  const vendorFolder = join(folder, ".cw", "vendor", basename(dirname(source)), "skills");
+  const vendorFolder = join(folder, ".cw", "charter", "vendor", basename(dirname(source)), "skills", "root", "primitive");
   await mkdir(vendorFolder, { recursive: true });
-  await symlink("../../..", join(vendorFolder, "skill"));
+  await symlink("../../../../..", join(vendorFolder, "skill"));
 
-  await assert.rejects(charterVendoringIn(folder).add(source, undefined, ["grilling"]), /is a link/);
+  assert.match(faultTextOf(await charterAuthoringIn(folder).addVendor(source, undefined, ["grilling"])), /is a link/);
 
   assert.equal(await readFile(charterFile, "utf8"), "Mine.\n");
 });
@@ -429,27 +453,27 @@ test("a file a source names to climb out of a skill's folder lands inside it whe
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "two");
 
-  await charterVendoringIn(folder).inject(source, undefined, ["grilling"]);
+  await charterAuthoringIn(folder).injectVendor(source, undefined, ["grilling"]);
 
   assert.equal(await readFile(join(folder, "CLAUDE.md"), "utf8"), "Mine.\n");
 });
 
 test("in a folder with no version control, a skill is injected as in a repository, and installed there too (CORE Story 37 scenario 1)", async (t) => {
   const [source, folder] = [await publishedSkills(t), await temporary(t, "plain")];
-  const charterVendoringApp = charterVendoringIn(folder);
+  const charterAuthoringApp = charterAuthoringIn(folder);
 
-  await charterVendoringApp.inject(source, undefined, ["grilling"]);
-  await charterVendoringApp.add(source, undefined, ["grill-me"]);
+  await charterAuthoringApp.injectVendor(source, undefined, ["grilling"]);
+  await charterAuthoringApp.addVendor(source, undefined, ["grill-me"]);
 
-  assert.match(await readFile(join(folder, ".cw/charter/skill/grilling/index.md"), "utf8"), /Grill\./);
-  assert.equal((await charterVendoringApp.installed()).length, 1);
+  assert.match(await readFile(join(folder, ".cw/charter/primitive/skill/grilling/index.md"), "utf8"), /Grill\./);
+  assert.equal(answerOf(await charterAuthoringApp.vendors()).data.folders.length, 1);
 });
 
 test("a source fetched once is read at its commit: every file it holds, and what one holds (CORE-FR-185)", async (t) => {
   const [source, repo] = [await publishedSkills(t), await repository(t)];
   const repoUrl = pathToFileURL(`${repo}/`);
 
-  const fetchedCommit = await gitSources.fetchCommit(source, repoUrl);
+  const fetchedCommit = await new GitSources(repoUrl).fetchCommit(source);
 
   assert.deepEqual([...(await gitSources.listFilesAt(fetchedCommit))].sort(), [
     "skills/grill-me/SKILL.md",
@@ -462,20 +486,20 @@ test("a source fetched once is read at its commit: every file it holds, and what
 test("one folder of a commit fetched is checked out over a folder here, whole, left unstaged and uncommitted (CORE-FR-187, CORE-FR-189)", async (t) => {
   const [source, repo] = [await publishedSkills(t), await repository(t)];
   const repoUrl = pathToFileURL(`${repo}/`);
-  const fetchedCommit = await gitSources.fetchCommit(source, repoUrl);
-  const intoSubFolder = ".cw/vendor/team/skills/skill/grill-me";
+  const fetchedCommit = await new GitSources(repoUrl).fetchCommit(source);
+  const intoSubFolder = ".cw/charter/vendor/team/skills/root/primitive/skill/grill-me";
   await mkdir(join(repo, intoSubFolder), { recursive: true });
   await writeFile(join(repo, intoSubFolder, "stale.md"), "From before.\n");
-  await mkdir(join(repo, ".cw/vendor/team/skills/skill/grilling"), { recursive: true });
-  await writeFile(join(repo, ".cw/vendor/team/skills/skill/grilling/index.md"), "Kept.\n");
+  await mkdir(join(repo, ".cw/charter/vendor/team/skills/root/primitive/skill/grilling"), { recursive: true });
+  await writeFile(join(repo, ".cw/charter/vendor/team/skills/root/primitive/skill/grilling/index.md"), "Kept.\n");
   const { stdout: headBefore } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
 
-  await gitSources.checkoutFolderAt(repoUrl, fetchedCommit, "skills/grill-me", intoSubFolder);
+  await new GitSources(repoUrl).checkoutFolderAt(fetchedCommit, "skills/grill-me", intoSubFolder);
 
   assert.equal(await readFile(join(repo, intoSubFolder, "agents", "deep", "openai.yaml"), "utf8"), "model: x\n");
   assert.match(await readFile(join(repo, intoSubFolder, "SKILL.md"), "utf8"), /name: grill-me/);
   await assert.rejects(() => readFile(join(repo, intoSubFolder, "stale.md"), "utf8"), "what the folder held is replaced whole");
-  assert.equal(await readFile(join(repo, ".cw/vendor/team/skills/skill/grilling/index.md"), "utf8"), "Kept.\n", "a folder beside it is left as it was");
+  assert.equal(await readFile(join(repo, ".cw/charter/vendor/team/skills/root/primitive/skill/grilling/index.md"), "utf8"), "Kept.\n", "a folder beside it is left as it was");
   const { stdout: headAfter } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
   assert.equal(headAfter, headBefore, "nothing is committed");
   const { stdout: stagedFiles } = await run("git", ["diff", "--cached", "--name-only"], { cwd: repo });
