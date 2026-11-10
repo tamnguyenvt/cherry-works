@@ -1,4 +1,4 @@
-import { DocumentBasedComponent } from "#module/charter/module.js";
+import { DocumentBasedComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
 /** A skill's frontmatter: the name its directory carries, the description
  *  this host reads on every turn to decide whether to open the body, and,

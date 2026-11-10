@@ -1,4 +1,4 @@
-import { AgentProvider } from "#module/charter/module.js";
+import { AgentProvider } from "../../app/port/out/managing-local-agent-output.port.js";
 import { ClaudeAgent } from "./claude-agent.js";
 import { ClaudeEntryFile } from "./claude-entry-file.js";
 import { ClaudeRule } from "./claude-rule.js";

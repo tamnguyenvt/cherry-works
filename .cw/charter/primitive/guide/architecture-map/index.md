@@ -8,7 +8,7 @@ Map of `src/`. Before writing a new class, file or function, find its place
 here and extend what is already there. Every file is named
 `<kebab-subject>.<role>.ts` as [[hexagonal-naming]] says (`file-charter.repository.ts`);
 only the models and value objects under a module's `domain/` (`charter-root.ts`, `charter-folder.ts`), those a plugin keeps of
-its own (`plugin/claude/claude-rule.ts`), `helper.ts`, `index.ts` and
+its own (`charter/infra/claude/claude-rule.ts`), `helper.ts`, `index.ts` and
 `main.ts` keep their bare names.
 
 ## Layers (hexagonal; enforced by `pnpm lint:deps`)
@@ -28,7 +28,7 @@ its own (`plugin/claude/claude-rule.ts`), `helper.ts`, `index.ts` and
   module, which never read it (CORE-FR-231) — and the kernel they share,
   `shared/`, each laid out as `app/`, `domain/` and `infra/`
   (CORE-FR-222). `app/` and `domain/` import nothing outside the modules but
-  zod: no `node:*`, no adapter; they are the published engine. Any other
+  zod: no `node:*`, no adapter; they are the engine. Any other
   library is wrapped by a lib in `domain/libs/` — `globs.lib.ts`
   (picomatch), `yaml.lib.ts` (yaml, a primitive's frontmatter),
   `toml.lib.ts` (smol-toml, an agent's configuration) — the only files that
@@ -70,8 +70,8 @@ its own (`plugin/claude/claude-rule.ts`), `helper.ts`, `index.ts` and
   - `shared/infra/`: `FileReaders`, `FileOutput`,
     `McpClients`, `ConsoleReporter`, `SystemClock`, and `helper.ts`: a path
     read as an address, and a checkout's path.
-- `plugin/` — each agent the engine compiles for, outside the engine: one
-  folder per host, `claude/` and `codex/`, holding its projection,
+- `charter/infra/claude/`, `charter/infra/codex/` — each agent the engine
+  compiles for, one folder per host, holding its projection,
   `ClaudeProjection` and `CodexProjection` (`ForManagingLocalAgentOutput`,
   CORE-FR-221): its files, each at its place, how each goes over what is
   there, its stamped files taken away, its links, its main context and its
@@ -79,23 +79,30 @@ its own (`plugin/claude/claude-rule.ts`), `helper.ts`, `index.ts` and
   the charter's `ProviderComponent` ← `DocumentBasedComponent` |
   `SettingBasedComponent`, with each host's files (`ClaudeSkill`,
   `ClaudeRule`, `CodexConfig`…), its `<Host>ComponentFactory` and its
-  `<Host>MainContextFactory`; and its command line, `ClaudeCli` and
-  `CodexCli` (`ForRunningAgentCli`). `helper.ts`: a text with its paths
-  under `$CW_OUT` written from where it lands (`laidTextOf`), and a host's
-  settings and entry file written into (`mergedSettingsText`,
-  `mergedEntryFileText`). A plugin reaches the engine as a tool author's
-  adapter does: through a module's `module.ts` alone (`#module/<name>/module.js`),
-  never its inside; nothing of `module/` but the composition root names one
-  (enforced by `pnpm lint:deps`).
-- `module/composition.ts` — `composeEngine`, the charter and
-  runtime composed over the adapters they are handed, for the settings they
-  are handed, each adapter not handed the default (CORE-FR-230) — each
-  agent's projection among them, under its name in
-  `agentProjectionByProvider`, by default `ClaudeProjection` and
-  `CodexProjection` of `plugin/` (`AGENT_PROVIDERS`), and each agent's
-  command line in `agentCliByProvider`, `ClaudeCli` and `CodexCli` — and `composeWorkspace`, the
-  workspace module told the agents the engine compiles for; `main.ts` hands both to the command line, and `test/use-cases-of.ts` builds each application
-  as it does.
+  `<Host>MainContextFactory`; what they take of the charter comes through
+  that port alone. The charter's `infra/helper.ts` holds a text with its
+  paths under `$CW_OUT` written from where it lands (`laidTextOf`), and a
+  host's settings and entry file written into (`mergedSettingsText`,
+  `mergedEntryFileText`). Each host's command line, `ClaudeCli` and
+  `CodexCli`, built on `agent-cli.base.ts` (`AgentCli`), sits in
+  `runtime/infra/<host>/`.
+- `module/composition.ts` — `composeApplications`, handed the
+  `EnginePlugin`, every adapter the engine reaches the outside through, each
+  typed by its port and each the engine's own or written anew: under
+  `agentProvider`, each agent's projection (`ForManagingLocalAgentOutput`) and
+  command line (`ForCheckingAgentCli`), the `charterRepository`, and every
+  other store and runner; by default Claude's and Codex's,
+  `FileCharterRepository` and the adapters over files (CORE-FR-230). It
+  answers `{ engine, workspace }`: `composeEngine`, the charter and runtime
+  composed over that plugin for the settings they are handed; and
+  `composeWorkspace`, the workspace module told the agents the plugin is
+  handed for. `main.ts` hands both to the command
+  line, and `test/use-cases-of.ts` builds each application as it does.
+- `index.ts` — the library `cherry-works` exports (SDK-FR-002, SDK-FR-020):
+  what each `module.ts` lets a tool reach, `composition.ts`'s functions and
+  types, and the adapters the default plugin is built from, so a tool mixes
+  them with its own. It reaches a module only through its `module.ts`, as
+  `main.ts` does; what it exports is the contract a release compares.
 
 ## Inside `module/`
 
@@ -238,16 +245,15 @@ In each module:
 - A new output of the charter: a declarative model in `projection/` and a
   `<Model>Factory.create` beside it in `<model>.factory.ts`, called from `compileCharterRoot`.
 - A new file for a host: a class extending `DocumentBasedComponent` or
-  `SettingBasedComponent` in `plugin/<host>/`, listed in that host's
+  `SettingBasedComponent` in `charter/infra/<host>/`, listed in that host's
   `<host>-component.ts`, built in `<host>-component.factory.ts`, its place in
   the `<HOST>_PLACE_BY_KIND` of `<host>-projection.adapter.ts`.
 - A new host: no file of the engine changes but the composition root.
-  `plugin/<host>/` with its components, `<host>-component.factory.ts` and
-  `<host>-main-context.factory.ts` and `<host>-projection.adapter.ts`, an
-  `AgentProjection` answering `ForManagingLocalAgentOutput`, and
-  `<host>-cli.adapter.ts`, an adapter of `ForRunningAgentCli`; one entry
-  each in `agentProjectionByProvider` and `AGENT_PROVIDERS` of
-  `composeEngine`, and its command line under it in `agentCliByProvider`.
+  `charter/infra/<host>/` with its components, `<host>-component.factory.ts`
+  and `<host>-main-context.factory.ts` and `<host>-projection.adapter.ts`, an
+  `AgentProjection`, and `runtime/infra/<host>/<host>-cli.adapter.ts`, an
+  `AgentCli`; one entry in
+  the default `agentProvider` of `composeApplications`.
 - A new composite check: a fault in `CharterRoot.compositeFaultsByFiles`;
   a warning is `"warn"`, anything that could send an agent to something that is
   not there is an error.

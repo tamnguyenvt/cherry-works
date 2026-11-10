@@ -4,7 +4,7 @@ import { RunningCharter } from "../src/module/runtime/app/running-charter.use-ca
 import { BuildingCharter } from "../src/module/charter/app/building-charter.use-case.js";
 import type { ForBuildingCharter, AgentProviderName } from "../src/module/charter/app/port/in/building-charter.port.js";
 import type { ForRunningCharter } from "../src/module/runtime/app/port/in/running-charter.port.js";
-import { composeWorkspace } from "../src/module/composition.js";
+import { FileWorkspaceSettingsRepository, ManagingWorkspace } from "../src/module/workspace/module.js";
 import type { ForManagingWorkspace } from "../src/module/workspace/app/port/in/managing-workspace.port.js";
 import type { CommandLine, Context, EngineApps, WorkspaceSettings } from "../src/presentation/cli/commands/command.interface.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
@@ -30,8 +30,8 @@ import type { ForTellingTime } from "../src/module/shared/app/port/out/telling-t
 import type { ForWritingFiles } from "../src/module/shared/app/port/out/writing-files.port.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
 import { LocalRepoManipulator } from "../src/module/charter/infra/local-repo-manipulator.adapter.js";
-import { ClaudeProjection } from "../src/plugin/claude/claude-projection.adapter.js";
-import { CodexProjection } from "../src/plugin/codex/codex-projection.adapter.js";
+import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
+import { CodexProjection } from "../src/module/charter/infra/codex/codex-projection.adapter.js";
 import { FileSessionAnalysisRepository } from "../src/module/runtime/infra/file-session-analysis.repository.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
 import { buildCharterService } from "../src/module/charter/app/services/build-charter.service.js";
@@ -129,7 +129,7 @@ export type CharterRuntimeApps = ForBuildingCharter & ForRunningCharter;
  *  file, read and written as the command line has them read and written
  *  (CORE-FR-231). */
 export function workspaceAppOf(fileReader: ForReadingFiles, fileWriter: ForWritingFiles = unwritableFiles): ForManagingWorkspace {
-  return composeWorkspace(new URL("file:///repo/"), { fileReader, fileWriter, progressReporter: new InMemoryReporter() });
+  return new ManagingWorkspace(new FileWorkspaceSettingsRepository(fileReader, fileWriter), ["claude", "codex"], new InMemoryReporter());
 }
 
 /** The command line over the files a test holds and the applications it
@@ -140,11 +140,13 @@ export function commandLineOf(fileReader: ForReadingFiles, fileWriter: ForWritin
   return {
     cwd,
     version,
-    workspaceApp: workspaceAppOf(fileReader, fileWriter),
-    engineFactory: () => ({
-      charterAuthoringApp: engineApps.charterAuthoringApp,
-      charterBuildingApp: engineApps.charterBuildingApp ?? (charterRuntimeApps as ForBuildingCharter),
-      charterRuntimeApp: engineApps.charterRuntimeApp ?? (charterRuntimeApps as ForRunningCharter),
+    composeApplications: async () => ({
+      workspaceApp: workspaceAppOf(fileReader, fileWriter),
+      engineApp: {
+        charterAuthoringApp: engineApps.charterAuthoringApp,
+        charterBuildingApp: engineApps.charterBuildingApp ?? (charterRuntimeApps as ForBuildingCharter),
+        charterRuntimeApp: engineApps.charterRuntimeApp ?? (charterRuntimeApps as ForRunningCharter),
+      },
     }),
   };
 }
@@ -296,5 +298,11 @@ export function workspaceSettingsLoaderOf(fileReader: ForReadingFiles): () => Pr
 export function commandContextOf(engineApps: Partial<EngineApps> & Pick<EngineApps, "charterAuthoringApp">, cwd = "/repo"): Context {
   const emptyFileReaders = new InMemoryFileReaders({});
   const commandLine = commandLineOf(emptyFileReaders, unwritableFiles, engineApps, cwd);
-  return { ...commandLine, ...showPathsInApps(commandLine.engineFactory({ agents: [] }), cwd), workspaceSettings: { agents: [] } };
+  const charterRuntimeApps = (engineApps.charterBuildingApp ?? engineApps.charterRuntimeApp) as CharterRuntimeApps | undefined;
+  const engineApp = {
+    charterAuthoringApp: engineApps.charterAuthoringApp,
+    charterBuildingApp: engineApps.charterBuildingApp ?? (charterRuntimeApps as ForBuildingCharter),
+    charterRuntimeApp: engineApps.charterRuntimeApp ?? (charterRuntimeApps as ForRunningCharter),
+  };
+  return { ...commandLine, workspaceApp: workspaceAppOf(emptyFileReaders, unwritableFiles), ...showPathsInApps(engineApp, cwd), workspaceSettings: { agents: [] } };
 }

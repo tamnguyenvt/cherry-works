@@ -45,7 +45,7 @@ function operationsOf(portName: keyof typeof portFileUrlByPortName) {
 }
 
 test("the published package's driver ports are the modules' applications, each covering what it is given (CORE Story 49 scenario 1)", () => {
-  const engineIndexText = readFileSync(new URL("packages/engine/index.ts", repositoryUrl), "utf8");
+  const engineIndexText = readFileSync(new URL("src/index.ts", repositoryUrl), "utf8");
   const declaredDriverPortNames = new Set(
     ["charter", "runtime"].flatMap((moduleName) =>
       readdirSync(new URL(`${moduleName}/app/port/in/`, hexagonFolderUrl))
@@ -74,7 +74,7 @@ test("a driver port answers shapes made for the driver, and takes none of the do
     }
   // Every model a driven port names is public to the adapters behind it
   // (CORE-FR-223); the base of every fault stays the engine's.
-  const engineIndexText = readFileSync(new URL("packages/engine/index.ts", repositoryUrl), "utf8");
+  const engineIndexText = readFileSync(new URL("src/index.ts", repositoryUrl), "utf8");
   const exportedNames = new Set([...engineIndexText.matchAll(/^export \{ (.+) \} from /gm)].flatMap((exportMatch) => exportMatch[1]!.split(", ").map((exportedName) => exportedName.replace(/^type /, ""))));
   const drivenPortFolderUrls = ["charter", "runtime", "shared"].map((moduleName) => new URL(`${moduleName}/app/port/out/`, hexagonFolderUrl));
   const drivenModelNames = drivenPortFolderUrls
@@ -95,7 +95,7 @@ test("every command and the portal are handed the modules' applications and noth
 });
 
 test("the driver ports changed and the models made public are released only as a new major, the changelog naming each change (CORE Story 49 scenario 4)", async () => {
-  const builtContractText = readFileSync(new URL("packages/engine/dist/index.d.ts", repositoryUrl), "utf8");
+  const builtContractText = readFileSync(new URL("dist/index.d.ts", repositoryUrl), "utf8");
   // The contract as a release before the four applications recorded it: one of
   // the seven driver ports there, exported.
   const lastContractText = builtContractText

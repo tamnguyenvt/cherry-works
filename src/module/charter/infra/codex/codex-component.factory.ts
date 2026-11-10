@@ -1,5 +1,5 @@
-import { Catalogue, CharterFolder, CharterMd, StampedDocument, type CharterOutput, type CharterRoot } from "#module/charter/module.js";
-import { laidTextOf } from "#module/charter/module.js";
+import { Catalogue, CharterFolder, CharterMd, StampedDocument, type CharterOutput, type CharterRoot } from "../../app/port/out/managing-local-agent-output.port.js";
+import { laidTextOf } from "../helper.js";
 import { type CodexComponent, CodexComponents } from "./codex-component.js";
 import { CodexEntryFile } from "./codex-entry-file.js";
 import { CodexSkill } from "./codex-skill.js";

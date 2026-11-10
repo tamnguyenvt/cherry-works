@@ -37,21 +37,18 @@ the import rules; run it after any change that adds an import.
   settings and the credentials each by one of their own; nothing in the
   hexagon keeps anything itself (CORE-FR-228). A repository is wired in the
   composition root and handed to every use case that keeps that state.
-- `src/plugin/` is called out to as well: one folder per agent the engine
-  compiles for (`claude/`, `codex/`), holding the adapters only that agent
-  needs — its projection (`ForManagingLocalAgentOutput`) and its command line
-  (`ForRunningAgentCli`) — and what they share at its root
-  (`agent-projection.base.ts`, `helper.ts`). A plugin is not part of the
-  engine: it reaches a module through its `module.ts` alone, as a tool
-  author's adapter would (`plugin-enters-the-engine-through-module-ts`),
-  and no module but the composition root names one
-  (`engine-knows-no-plugin`).
+- Each agent the engine compiles for has a folder of its own in the
+  `infra/` of the module whose port it answers: its projection
+  (`AgentProjection`, `ForManagingLocalAgentOutput`) in `charter/infra/<agent>/`,
+  its command line (`AgentCli`, `ForCheckingAgentCli`) in
+  `runtime/infra/<agent>/`. They are adapters like any other, and are what
+  the composition root hands in as plugins.
 - `main.ts` / `main.js` is the composition root. Where the engine is
-  composed apart from it, as `composeEngine` in
+  composed apart from it, as `composeApplications` in
   `src/module/composition.ts`, that is the one place that names
   concrete classes, but for the one instance each service's file exports:
-  each adapter it is handed replaces the default, and each binding is
-  declared as its port type, not as the class (CORE-FR-230).
+  every adapter is handed in the one `EnginePlugin`, typed by its port,
+  the engine's own over files by default or one written anew (CORE-FR-230).
 
 ## Inside `src/module/`
 
@@ -90,8 +87,7 @@ imports. Each folder named below is a module's: `<module>/app/port/in/`,
   what a build laid is read back through the charter's repository,
   `ForManagingCharter`, by the same parts (CORE-FR-221). Their adapters,
   `LocalRepoManipulator` and `InMemoryLocalRepo`, are in its module's `infra/`;
-  `ClaudeProjection` and `CodexProjection` in their agent's plugin, under
-  `src/plugin/`.
+  `ClaudeProjection` and `CodexProjection` in `charter/infra/<agent>/`.
 - `app/` — one class per driver port implementing it: the
   application service of that conversation, extending `ApplicationService`
   of `application-service.base.ts`, which every operation answers through
@@ -175,10 +171,8 @@ Never turn `checkJs` off to make a change pass.
 |---|---|
 | `presentation/**` | `module/*/app/port/in/**`, `module/*/app/**`, its own folder |
 | `module/*/infra/**` | `app/port/out/**` of its module and of `shared/`, its own folder |
-| `plugin/**` | `module/*/module.ts`, `plugin/**`, node and its packages |
 | `module/*/{app,domain}/**` | `module/**`, zod, and a library only from `domain/libs/` |
 | `module/*/domain/**` | `module/*/domain/**` only |
-| `module/**` but `module/composition.ts` | nothing of `plugin/` |
 | `module/*/domain/**`, `module/*/app/services/**` | never `module/*/app/port/in/**` |
 | `module/*/app/port/in/*.dto.ts`, `dto.schema.ts` | other DTOs and the schema library |
 | `module/runtime/**` | of `module/charter/`, its driver ports alone |

@@ -6,7 +6,7 @@ import { COMMANDS } from "../src/presentation/cli/commands/index.js";
 import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
 import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
 import { WorkspaceDTOs } from "../src/module/workspace/app/port/in/workspace.dto.js";
-import { ClaudeProjection } from "../src/plugin/claude/claude-projection.adapter.js";
+import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";

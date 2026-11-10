@@ -39,22 +39,23 @@ primitive's compiled file. A catalogue entry holds its kind, its id, its descrip
 
 ## ADR-002: The engine's public contract is what its package exports
 
-**Date**: 2026-11-02 · **Status**: Accepted · **Story**: [SDK Story 2](spec-sdk.md#sdk-story-2---import-the-engine-from-a-package-of-its-own-priority-p1), [SDK Story 4](spec-sdk.md#sdk-story-4---publish-the-engine-with-every-release-priority-p2) ([SDK-FR-001](spec-sdk.md#sdk-fr-001), [SDK-FR-014](spec-sdk.md#sdk-fr-014), [SDK-FR-015](spec-sdk.md#sdk-fr-015), [SDK-FR-016](spec-sdk.md#sdk-fr-016))
+**Date**: 2026-11-02 · **Status**: Accepted · **Story**: [SDK Story 2](spec-sdk.md#sdk-story-2---import-the-engine-from-the-package-cw-comes-in-priority-p1), [SDK Story 4](spec-sdk.md#sdk-story-4---publish-the-engine-with-every-release-priority-p2) ([SDK-FR-001](spec-sdk.md#sdk-fr-001), [SDK-FR-014](spec-sdk.md#sdk-fr-014), [SDK-FR-015](spec-sdk.md#sdk-fr-015), [SDK-FR-016](spec-sdk.md#sdk-fr-016))
 
 ### Decision
 
-The engine is published as `@cherry-works/engine`, apart from `cherry-works`,
-which does not depend on it. What that package exports, with what it states an
-adapter owes the engine, is a public contract under semantic versioning from
-1.0.0; everything else is internal. The package and `cw` share one version
-number and one release.
+The engine is a library of `cherry-works` itself: the package that installs
+`cw` also exports the engine (`import … from "cherry-works"`), and no other
+package is published. What it exports, with what it states an adapter owes
+the engine, is a public contract under semantic versioning from 1.0.0,
+recorded in `contract.d.ts` and compared at each release; everything else is
+internal.
 
 ### Why
 
-- **A separate package keeps `cw` a bundle with no dependencies.**
+- **One package is one thing to install and to release**, and nothing can
+  be published halfway; its library, like `cw`, bundles what it uses.
 - **Integrators build on ports**, and a port changed in a minor release breaks
   an adapter whose author cannot be asked first.
-- **One number is one thing to trace.**
 
 ### Consequences
 

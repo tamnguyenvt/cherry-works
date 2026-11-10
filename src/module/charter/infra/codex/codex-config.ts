@@ -1,4 +1,4 @@
-import { ProviderComponent } from "#module/charter/module.js";
+import { ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
 /** Events supported by Codex command hooks, independent of charter signals. */
 const CODEX_HOOK_EVENTS = [

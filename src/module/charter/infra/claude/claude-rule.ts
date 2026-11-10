@@ -1,4 +1,4 @@
-import { DocumentBasedComponent } from "#module/charter/module.js";
+import { DocumentBasedComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
 /** A rule's frontmatter: the files that bring it up, where only some do. A rule
  *  declaring no `paths` is loaded at the start of every session. */

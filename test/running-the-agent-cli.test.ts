@@ -4,8 +4,8 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { CodexCli } from "../src/plugin/codex/codex-cli.adapter.js";
-import { ClaudeCli } from "../src/plugin/claude/claude-cli.adapter.js";
+import { CodexCli } from "../src/module/runtime/infra/codex/codex-cli.adapter.js";
+import { ClaudeCli } from "../src/module/runtime/infra/claude/claude-cli.adapter.js";
 import { AdapterFault } from "../src/module/runtime/app/port/out/running-agent-cli.port.js";
 
 /**

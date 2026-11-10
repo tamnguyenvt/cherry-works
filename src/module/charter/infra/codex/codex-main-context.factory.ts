@@ -1,5 +1,5 @@
-import type { CharterOutput, CharterRoot, MainContextText } from "#module/charter/module.js";
-import { laidTextOf } from "#module/charter/module.js";
+import type { CharterOutput, CharterRoot, MainContextText } from "../../app/port/out/managing-local-agent-output.port.js";
+import { laidTextOf } from "../helper.js";
 import { CodexComponents } from "./codex-component.js";
 import { CodexComponentFactory } from "./codex-component.factory.js";
 import { CodexEntryFile } from "./codex-entry-file.js";

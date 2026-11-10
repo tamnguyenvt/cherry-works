@@ -1,5 +1,5 @@
 import { pathFromCheckout } from "#module/shared/module.js";
-import { WritePlan, StampedDocument, mergedTomlText, type CharterOutput, type CharterRoot, type MainContextText, type ProviderComponent } from "#module/charter/module.js";
+import { WritePlan, StampedDocument, mergedTomlText, type CharterOutput, type CharterRoot, type MainContextText, type ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 import { mergedEntryFileText } from "../helper.js";
 import { AgentProjection } from "../agent-projection.base.js";
 import { CodexComponentFactory } from "./codex-component.factory.js";

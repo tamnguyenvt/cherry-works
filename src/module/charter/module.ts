@@ -41,3 +41,6 @@ export { OAuth } from "./infra/oauth.adapter.js";
 export { OUT_FOLDER, laidTextOf } from "./infra/helper.js";
 export { KeychainCredentialsRepository } from "./infra/keychain-credentials.repository.js";
 export { Tiktoken } from "./infra/tiktoken.adapter.js";
+export { AgentProjection } from "./infra/agent-projection.base.js";
+export { ClaudeProjection } from "./infra/claude/claude-projection.adapter.js";
+export { CodexProjection } from "./infra/codex/codex-projection.adapter.js";

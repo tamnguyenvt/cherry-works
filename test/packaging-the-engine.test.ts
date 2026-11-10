@@ -25,23 +25,25 @@ async function importedPackagesOf(builtFile: string): Promise<Set<string>> {
   );
 }
 
-test("what the engine imports is exactly what the package depends on (FR-129)", async () => {
+test("what cw and the library import is exactly what the package depends on (FR-129)", async () => {
   // Every dependency is bundled in, so a package with none is the expected one.
   const { dependencies = {} } = packageJson as { dependencies?: Record<string, string> };
   assert.deepEqual([...(await importedPackagesOf("dist/main.js"))].sort(), Object.keys(dependencies).sort());
+  assert.deepEqual([...(await importedPackagesOf("dist/index.js"))].sort(), Object.keys(dependencies).sort());
 });
 
 test("the launcher imports no package, so it loads on any Node (FR-128)", async () => {
   assert.deepEqual([...(await importedPackagesOf("dist/cw.js"))], []);
 });
 
-test("the package holds the program, the page, the README and the license, and nothing else of the repository (FR-130)", () => {
+test("the package holds the program, the page, the library, the README and the license, and nothing else of the repository (FR-130)", () => {
   const packDryRun = spawnSync("npm", ["pack", "--dry-run", "--json"], { cwd: root, encoding: "utf8" });
   assert.equal(packDryRun.status, 0, packDryRun.stderr);
   const packedPaths: string[] = JSON.parse(packDryRun.stdout)[0].files.map(({ path }: { path: string }) => path);
 
   assert.deepEqual(packedPaths.filter((path) => !path.startsWith("dist/")).sort(), ["LICENSE", "README.md", "package.json"]);
   assert.ok(packedPaths.includes("dist/cw.js") && packedPaths.includes("dist/main.js") && packedPaths.includes("dist/portal/index.html"));
+  assert.ok(packedPaths.includes("dist/index.js") && packedPaths.includes("dist/index.d.ts") && packedPaths.includes("dist/zod/index.d.ts"));
 });
 
 test("the package declares the MIT license it ships (FR-133)", async () => {
@@ -86,7 +88,9 @@ test("cw --help offers --version (FR-131)", () => {
   assert.match(helpRun.stdout, /--version\s+Show version number/);
 });
 
-test("a plain npm publish of the engine is refused as cw's is, so it goes out only by the release (SDK-FR-016)", async () => {
-  const enginePackageJson = JSON.parse(await readFile(new URL("packages/engine/dist/package.json", root), "utf8"));
-  assert.equal(enginePackageJson.scripts.prepublishOnly, packageJson.scripts.prepublishOnly);
+test("the library goes out in cw's own package, whose plain npm publish is refused, so it goes out only by the release (SDK-FR-016)", () => {
+  assert.deepEqual(packageJson.exports["."], { types: "./dist/index.d.ts", import: "./dist/index.js" });
+  assert.equal(packageJson.types, "./dist/index.d.ts");
+  assert.match(packageJson.scripts.prepublishOnly, /process\.exit\(1\)/);
+  assert.match(packageJson.scripts.prepublishOnly, /pnpm release <version>/);
 });

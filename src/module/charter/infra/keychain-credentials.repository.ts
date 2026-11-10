@@ -44,8 +44,9 @@ function commandOutput(command: string, args: readonly string[], stdin = ""): Pr
  */
 export class KeychainCredentialsRepository implements ForStoringCredentials {
   /** Which system's store to use: this process's, unless a test names
-   *  another. */
-  constructor(private readonly platform: NodeJS.Platform = process.platform) {}
+   *  another. Named as `process.platform` names it, and typed as a plain
+   *  string so a tool importing it type-checks without Node's own types. */
+  constructor(private readonly platform: string = process.platform) {}
 
   async readCredential(address: string): Promise<McpCredential | undefined> {
     const secret = await this.#readSecret(address);

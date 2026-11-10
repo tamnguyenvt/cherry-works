@@ -45,7 +45,7 @@ module.exports = {
       name: "driver-and-composition-enter-through-module-ts",
       severity: "error",
       comment:
-        "A driver, the composition root (src/module/composition.ts) and the entry point reach a module " +
+        "A driver, the composition root (src/module/composition.ts) and the entry points (main.ts, src/index.ts) reach a module " +
         "through its module.ts alone, whatever they take of it — an " +
         "application, a port, a DTO, an adapter.",
       from: { pathNot: "^src/module/[^/]+/" },
@@ -63,33 +63,12 @@ module.exports = {
       to: { path: "^src/module", pathNot: "^src/module/$1/(app/port/out/|infra/)|^src/module/shared/module\\.ts$" },
     },
     {
-      name: "plugin-enters-the-engine-through-module-ts",
-      severity: "error",
-      comment:
-        "An agent's plugin — its projection, its command line — sits outside " +
-        "the engine and reaches it as any tool author's adapter does: through " +
-        "a module's module.ts alone, beside the other files of src/plugin/ and " +
-        "the packages it runs with; never a module's inside, the composition " +
-        "root or a driver.",
-      from: { path: "^src/plugin/" },
-      to: { path: "^(src/|main\\.ts$)", pathNot: "^src/plugin/|^src/module/[^/]+/module\\.ts$" },
-    },
-    {
-      name: "engine-knows-no-plugin",
-      severity: "error",
-      comment:
-        "The engine is handed each agent's plugin where it is composed, and " +
-        "names none anywhere else (CORE-FR-221, CORE-FR-230).",
-      from: { path: "^src/module/", pathNot: "^src/module/composition\\.ts$" },
-      to: { path: "^src/plugin/" },
-    },
-    {
       name: "application-holds-no-adapter",
       severity: "error",
       comment:
-        "A module's application and domain are the published engine; its " +
-        "adapters are not, and are handed to it where it is composed " +
-        "(CORE-FR-228, CORE-FR-230).",
+        "A module's application and domain are the engine; its adapters, " +
+        "published beside it as defaults a tool may mix with its own, are " +
+        "handed to it where it is composed (CORE-FR-228, CORE-FR-230).",
       from: { path: "^src/module/[^/]+/(app|domain)/" },
       to: { path: "^src/module/[^/]+/infra/" },
     },
@@ -226,8 +205,10 @@ module.exports = {
     {
       name: "no-orphans",
       severity: "warn",
-      comment: "A module nothing imports is either dead or wired up wrong.",
-      from: { orphan: true, pathNot: "^main\\.ts$" },
+      comment:
+        "A module nothing imports is either dead or wired up wrong. The two " +
+        "entry points, cw's and the library's, are imported from outside.",
+      from: { orphan: true, pathNot: "^(main|src/index)\\.ts$" },
       to: {},
     },
   ],

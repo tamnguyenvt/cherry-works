@@ -40,14 +40,14 @@ export class InitCommand implements Command<typeof OPTIONS> {
   readonly summary = "Set this repository up under a charter";
   readonly options = OPTIONS;
 
-  async run({ workspaceApp, engineFactory, version }: Context, { agent, mainContextCeiling }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async run({ workspaceApp, composeApplications, version }: Context, { agent, mainContextCeiling }: Options<typeof OPTIONS>): Promise<Outcome> {
     const agents = await whichAgents(workspaceApp, agent);
     if (typeof agents === "string") return { code: EXIT_FAILURE, problem: agents };
     // No agent, one this engine does not compile for, and a ceiling that is
     // no whole number are the workspace module's to refuse (FR-033).
     const workspaceSettingsDTO = await workspaceApp.setUp(agents, version, mainContextCeiling);
     if (workspaceSettingsDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(workspaceSettingsDTO) };
-    const { charterAuthoringApp, charterBuildingApp } = engineFactory(workspaceSettingsDTO.data);
+    const { charterAuthoringApp, charterBuildingApp } = (await composeApplications()).engineApp;
     const charterLayoutDTO = await charterAuthoringApp.setUpCharter();
     if (charterLayoutDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(charterLayoutDTO) };
     const planSummaryDTO = await charterBuildingApp.build();

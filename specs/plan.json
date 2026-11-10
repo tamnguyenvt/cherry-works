@@ -337,7 +337,7 @@
     },
     {
       "id": "SDK Story 2",
-      "title": "Import the engine from a package of its own",
+      "title": "Import the engine from the package cw comes in",
       "dependsOn": [
         "CORE Story 35",
         "CORE Story 37",
@@ -433,7 +433,7 @@
     },
     {
       "id": "SDK Story 6",
-      "title": "Know what to do after a partial publication",
+      "title": "Know what to do after a failed publication",
       "dependsOn": [
         "CORE Story 39",
         "SDK Story 4"

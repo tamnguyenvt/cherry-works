@@ -1,4 +1,4 @@
-import { ProviderComponent, StampedDocument } from "#module/charter/module.js";
+import { ProviderComponent, StampedDocument } from "../../app/port/out/managing-local-agent-output.port.js";
 
 /** Instructions kept inside the repository's own entry file, at its root or
  *  in the folder a guide's globs name. */

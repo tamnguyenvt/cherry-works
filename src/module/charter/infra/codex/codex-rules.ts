@@ -1,4 +1,4 @@
-import { ProviderComponent, StampedDocument } from "#module/charter/module.js";
+import { ProviderComponent, StampedDocument } from "../../app/port/out/managing-local-agent-output.port.js";
 
 export interface CodexCommandRule {
   readonly pattern: readonly string[];

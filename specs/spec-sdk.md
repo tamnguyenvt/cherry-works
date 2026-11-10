@@ -8,11 +8,13 @@
 
 Then: "Return only DTOs from use cases; operators read error details through logs…"
 
+Then: "Delete the engine's own package and stop publishing it: publish only `cherry-works`, `cw` unchanged, and let a tool import the engine from it, with how `cw` composes it and the adapters it is composed of, so a tool mixes those with its own."
+
 ## Overview
 
 The engine was reached only through `cw`, or through a portal listening on 127.0.0.1 for one repository: a tool wanting the charter's rules had to shell out to a command, or write them again.
 
-The engine's rules stand apart from every adapter, so this part publishes them. A tool author installs one package, puts their own adapters behind its ports, and has the engine's use cases, each answering in data, its failures included: where the charter is kept and how it is reached are theirs to decide.
+The engine's rules stand apart from every adapter, so this part publishes them, as a library of `cherry-works`, the package `cw` is installed from. A tool author installs that one package, puts their own adapters behind its ports, or the ones `cw` is composed of, or both, and has the engine's use cases, each answering in data, its failures included: where the charter is kept and how it is reached are theirs to decide.
 
 It serves whoever writes a tool on the engine, not the developer using `cw`. What is published is a contract, and kept as one ([ADR-002](ADR.md#adr-002-the-engines-public-contract-is-what-its-package-exports)).
 
@@ -20,7 +22,7 @@ It serves whoever writes a tool on the engine, not the developer using `cw`. Wha
 
 ### Session 2026-11-02
 
-- Q: Why are the libraries the engine's rules use depended on, not bundled? → A: The types of what crosses the ports are made from one of them, so a tool author needs it anyway, and a fix to either reaches them without a release ([SDK-FR-006](#sdk-fr-006)).
+- Q: Why are the libraries the engine's rules use depended on, not bundled? → A: They were, while the engine had a package of its own; since 2026-11-10 it is a library of `cherry-works`, which bundles every library, and ships the types of the one the values crossing the ports are made from, so a tool installs nothing else ([SDK-FR-006](#sdk-fr-006)).
 - Q: Which use cases need git? → A: Evaluating, and reaching a source. Authoring, validating, building, testing, setting up and the health check need none, since nothing tells an edited vendor ([SDK-FR-003](#sdk-fr-003)).
 - Q: Why must a completed write be read back? → A: Setup writes and then builds from what it wrote. No use case relies on two writes landing together, so the adapter owes nothing more ([SDK-FR-008](#sdk-fr-008)).
 
@@ -46,26 +48,27 @@ A tool keeps its charters in a database, and names one with an address of its ow
 
 ---
 
-### SDK Story 2 - Import the engine from a package of its own (Priority: P1)
+### SDK Story 2 - Import the engine from the package cw comes in (Priority: P1)
 
 **Status**: Done
 
-A tool author installs `@cherry-works/engine`, and imports from it the use cases, the ports they are entered through, the ports they call out to, and the types that cross them. They ask it which version of the engine they hold. Nothing of the command line, the portal or the adapters comes with it, and what the engine keeps inside stays inside.
+A tool author installs `cherry-works`, and imports from it the use cases, the ports they are entered through, the ports they call out to, and the types that cross them, with how `cw` composes the engine and the adapters it is composed of. They ask it which version of the engine they hold. Nothing of the command line or the portal is exported, and what the engine keeps inside stays inside.
 
 **Why this priority**: It is what the phase is for, and every story after it is proved through it.
 
-**Independent Test**: Build the package, install what it packs into an empty folder, and from a type-checked script import a use case, a port and its response DTOs, and read the version. Confirm the packed files hold no command line, portal or adapter, and that importing anything internal fails.
+**Independent Test**: Build the package, install what it packs into an empty folder, and from a type-checked script import a use case, a port and its response DTOs, and read the version. Compose the engine as `cw` does with an adapter of the script's own among the shipped ones. Confirm the library holds no command line or portal, and that importing anything internal fails.
 
 **Acceptance Scenarios**:
 
 1. **Given** the installed package, **When** a TypeScript consumer imports the use cases and both sides' ports, **Then** they resolve with their types, and nothing else need be installed by hand ([SDK-FR-001](#sdk-fr-001), [SDK-FR-002](#sdk-fr-002), [SDK-FR-006](#sdk-fr-006)).
-2. **Given** the installed package, **When** its files are listed, **Then** it holds no command line, no portal, no adapter and no composition root ([SDK-FR-005](#sdk-fr-005)).
+2. **Given** the installed package, **When** the library's code is read, **Then** it holds the engine, its composition and the adapters `cw` is composed of, no command line and no portal, and imports no other package ([SDK-FR-005](#sdk-fr-005), [SDK-FR-006](#sdk-fr-006), [SDK-FR-020](#sdk-fr-020)).
 3. **Given** the installed package, **When** something the contract does not name is imported, **Then** the import fails ([SDK-FR-005](#sdk-fr-005), [SDK-FR-014](#sdk-fr-014)).
-4. **Given** the installed package, **When** its version is read, **Then** it is the version it was published as, and the same one `cw` of that release names ([SDK-FR-009](#sdk-fr-009)).
+4. **Given** the installed package, **When** the library's version is read, **Then** it is the version the package was published as, the one its `cw` names ([SDK-FR-009](#sdk-fr-009)).
 5. **Given** a use case stopped by a fault, **When** the tool receives its answer, **Then** the answer is a fault DTO rather than a raised exception; an internal fault is logged for the operator and its details are withheld from the answer ([SDK-FR-004](#sdk-fr-004), [SDK-FR-017](#sdk-fr-017), [SDK-FR-018](#sdk-fr-018)).
 6. **Given** a charter with something wrong in it, **When** a use case is asked of it, **Then** what is wrong comes back as data in the answer, by file ([SDK-FR-004](#sdk-fr-004)).
 7. **Given** the package imported where no builtin file could be read from disk, **When** the charter is read, **Then** the engine's own primitives and their assets are there ([SDK-FR-007](#sdk-fr-007)).
-8. **Given** `cherry-works` installed, **When** what it added is listed, **Then** it is what it was before this package existed ([SDK-FR-013](#sdk-fr-013)).
+8. **Given** `cherry-works` installed, **When** what it added is listed, **Then** it is that one package, holding `cw` and the library, and depending on no other ([SDK-FR-013](#sdk-fr-013)).
+9. **Given** the installed package, **When** a tool composes the engine as `cw` does, handing a plugin that mixes the adapters the package ships with its own, **Then** the script type-checks against the package alone, and the engine builds the charter and answers through the tool's own adapters ([SDK-FR-020](#sdk-fr-020), [SDK-FR-003](#sdk-fr-003)).
 
 ---
 
@@ -93,16 +96,16 @@ A tool author writes a reader and a writer over a map in memory, and hands them,
 
 **Status**: Done
 
-A maintainer releases one version. The package goes out with `cherry-works` at the same number, under the same checks, with neither published if a preflight check fails. A failure during publication is reported with the state reached and the recovery action. The first release of both is 1.0.0, and from then on a change that breaks the contract is a major one, written in the changelog.
+A maintainer releases one version. The library goes out inside `cherry-works`, at its number, under its checks, with nothing published if a preflight check fails. A failure during publication is reported with the state reached and the recovery action. The first release under the contract is 1.0.0, and from then on a change that breaks the contract is a major one, written in the changelog.
 
 **Why this priority**: A contract nobody can install promises nothing; it comes last because a publish cannot be taken back.
 
-**Independent Test**: Run a release dry-run and confirm it checks both packages at one version and publishes neither. Make the package fail a check, and confirm the release is refused for both. Remove something the contract names, and confirm the release is refused without a major version.
+**Independent Test**: Run a release dry-run and confirm it checks `cw` and the library in the one package and publishes nothing. Make the package fail a check, and confirm the release is refused. Remove something the contract names, and confirm the release is refused without a major version.
 
 **Acceptance Scenarios**:
 
-1. **Given** a release of one version, **When** it passes, **Then** both packages are published at that version ([SDK-FR-016](#sdk-fr-016)).
-2. **Given** a check of either package failing, **When** a release is asked for, **Then** nothing is published of either, and it says which ([SDK-FR-016](#sdk-fr-016)).
+1. **Given** a release of one version, **When** it passes, **Then** the one package, `cw` and the library in it, is published at that version ([SDK-FR-016](#sdk-fr-016)).
+2. **Given** a check of `cw` or of the library failing, **When** a release is asked for, **Then** nothing is published, and it says which check failed ([SDK-FR-016](#sdk-fr-016)).
 3. **Given** a contract narrowed or changed against the last release, **When** a version that is not a new major is released, **Then** it is refused, naming what changed ([SDK-FR-015](#sdk-fr-015), [SDK-SC-003](#sdk-sc-003)).
 4. **Given** a major release, **When** it is published, **Then** the changelog names each change that broke the contract ([SDK-FR-015](#sdk-fr-015)).
 
@@ -127,21 +130,21 @@ A tool author calls a use case and reads its answer in the same way whether it s
 
 ---
 
-### SDK Story 6 - Know what to do after a partial publication (Priority: P2)
+### SDK Story 6 - Know what to do after a failed publication (Priority: P2)
 
 **Status**: Done
 
-A maintainer knows that a failed preflight publishes neither package, while a failure after publishing begins can leave one package published. The release reports the state reached and how to finish the remaining publication at the same version.
+A maintainer knows that a failed preflight publishes nothing, while a publish that fails comes after the release commit and tag were pushed. The release reports the state reached and how to publish at the same version.
 
 **Why this priority**: The release instructions must describe the state a maintainer can actually meet.
 
-**Independent Test**: Refuse a preflight, fail the first publication, then fail the second after the first succeeds; inspect the publication state and recovery instructions in each case.
+**Independent Test**: Refuse a preflight, then fail the publication after the push; inspect the publication state and recovery instructions in each case.
 
 **Acceptance Scenarios**:
 
-1. **Given** a check of either package that fails before publication, **When** a release is requested, **Then** neither package is published and the failing check is named ([SDK-FR-016](#sdk-fr-016)).
-2. **Given** the first package has been published and the second publication fails, **When** the release reports the failure, **Then** it names what is already published and how to publish the remaining package at the same version ([SDK-FR-019](#sdk-fr-019)).
-3. **Given** publication fails before either package succeeds, **When** the release reports the failure, **Then** it states that neither package was published and names the recovery action ([SDK-FR-019](#sdk-fr-019)).
+1. **Given** a check that fails before publication, **When** a release is requested, **Then** nothing is published and the failing check is named ([SDK-FR-016](#sdk-fr-016)).
+2. **Given** the release commit and tag pushed and the publication failing, **When** the release reports the failure, **Then** it says they were pushed and are kept, and claims nothing rolled back ([SDK-FR-019](#sdk-fr-019)).
+3. **Given** the publication failing, **When** the release reports the failure, **Then** it states that nothing was published and how to publish at the same version ([SDK-FR-019](#sdk-fr-019)).
 
 ---
 
@@ -181,15 +184,15 @@ A tool author can tell which version a release requires from the policy the main
 
 **The package**
 
-- <a id="sdk-fr-001"></a>**SDK-FR-001**: The engine MUST be published as a package of its own, `@cherry-works/engine`, under the license `cherry-works` carries.
+- <a id="sdk-fr-001"></a>**SDK-FR-001**: The engine MUST be published as the library `cherry-works` exports, beside `cw` in that one package and under its license, and in no package of its own.
 - <a id="sdk-fr-002"></a>**SDK-FR-002**: The package MUST export the use cases, the ports they are entered through, the ports they call out to, and the type of every value that crosses them, bytes included.
 - <a id="sdk-fr-003"></a>**SDK-FR-003**: A tool MUST be able to compose a use case with adapters of its own and nothing else of this repository. Constructors MUST NOT be split by capability or make existing ports optional; composition MAY require the logging dependency needed by [SDK-FR-017](#sdk-fr-017). No use case may ask for a port it does not use: the authoring use case MUST NOT ask for version control or for fetching sources.
 - <a id="sdk-fr-004"></a>**SDK-FR-004**: Every failure of an operation called through a driver port MUST be returned by the use case as a fault DTO, including a failure raised by a driven adapter; no failure of that operation may escape as an exception for the calling adapter to catch. Charter validation findings MUST remain data grouped by file. A calling adapter MUST need no fault class to interpret an answer.
-- <a id="sdk-fr-005"></a>**SDK-FR-005**: The package MUST hold no command line, portal, adapter or composition root, and MUST export nothing of the domain models, the services or the specifications beyond what a port itself names or re-exports for the adapters answering it ([CORE-FR-223](spec-core.md#core-fr-223)).
-- <a id="sdk-fr-006"></a>**SDK-FR-006**: The libraries the engine's rules use MUST be declared as dependencies of the package, and installing it MUST add nothing beyond them.
+- <a id="sdk-fr-005"></a>**SDK-FR-005**: The library MUST hold no command line or portal, MUST export no driver, and MUST export nothing of the domain models, the services or the specifications beyond what a port itself names or re-exports for the adapters answering it ([CORE-FR-223](spec-core.md#core-fr-223)); the adapters it exports are those of [SDK-FR-020](#sdk-fr-020).
+- <a id="sdk-fr-006"></a>**SDK-FR-006**: The libraries the engine and its adapters use MUST be bundled into the package, the types its declarations name included, so installing it adds nothing else and a tool type-checks against it alone.
 - <a id="sdk-fr-007"></a>**SDK-FR-007**: The engine's builtin primitives and their assets MUST arrive within what is published, and MUST NOT be read from a disk at run time.
 - <a id="sdk-fr-008"></a>**SDK-FR-008**: The package MUST state what a file adapter owes the engine, as part of the contract: a completed write is read back by any later read; writes to one file arrive in the order made, and deletes may be asked at once; a file not there is no failure to read or delete; an empty file is a file; every file listed sits at an address under the folder asked of, escaped as a URL escapes it.
-- <a id="sdk-fr-009"></a>**SDK-FR-009**: The package MUST say the version of the engine it holds, as a value a tool reads, and that version MUST be the one it was published as.
+- <a id="sdk-fr-009"></a>**SDK-FR-009**: The library MUST say the version of the engine it holds, as a value a tool reads, and that version MUST be the one the package was published as, which its `cw` names.
 
 **Addresses**
 
@@ -199,11 +202,12 @@ A tool author can tell which version a release requires from the policy the main
 
 **`cw` and the release**
 
-- <a id="sdk-fr-013"></a>**SDK-FR-013**: `cherry-works` MUST NOT depend on the package, and what installing it adds MUST NOT grow by it.
+- <a id="sdk-fr-013"></a>**SDK-FR-013**: `cw` and the library MUST be one package, `cherry-works`, depending on no other, and `cw` MUST run as it did before the library was in it.
 - <a id="sdk-fr-014"></a>**SDK-FR-014**: The contract MUST be what the package exports and what [SDK-FR-008](#sdk-fr-008) states, and nothing else: anything reached any other way is internal, and MAY change in any release.
 - <a id="sdk-fr-015"></a>**SDK-FR-015**: The contract MUST follow semantic versioning from the first publish: removing an exported name or changing an existing declaration is a major version, adding a newly named declaration a minor one, and comments or layout alone no contract change. Every content change to an existing declaration, including a compatible optional addition, MUST be treated conservatively as breaking rather than subjected to semantic compatibility analysis. A release breaking the contract without a new major MUST be refused, and a patch adding a newly named declaration MUST be refused. A breaking change MUST be named in the changelog. The release compares only what the package exports: the duties [SDK-FR-008](#sdk-fr-008) states are prose, and whoever changes them versions and names the change by hand.
-- <a id="sdk-fr-016"></a>**SDK-FR-016**: The package and `cherry-works` MUST carry one version number and pass the checks of [CORE-FR-134](spec-core.md#core-fr-134) before either is published. A preflight check failing MUST publish neither. Publication proceeds in order; a failure after publication begins MUST be reported under [SDK-FR-019](#sdk-fr-019) rather than promised to be atomic. The first version of both published under this contract MUST be 1.0.0.
-- <a id="sdk-fr-019"></a>**SDK-FR-019**: A release that fails during publication MUST report which package publications succeeded, which failed and how the maintainer can finish the remaining publication at the same version; it MUST NOT claim that an already published package was rolled back.
+- <a id="sdk-fr-016"></a>**SDK-FR-016**: The library MUST go out only inside `cherry-works`, at its version, after the checks of [CORE-FR-134](spec-core.md#core-fr-134) and an import of the installed library pass. A preflight check failing MUST publish nothing. A failure of the publication MUST be reported under [SDK-FR-019](#sdk-fr-019). The first version published under this contract MUST be 1.0.0.
+- <a id="sdk-fr-019"></a>**SDK-FR-019**: A release that fails during publication MUST report that nothing was published, that the release commit and tag pushed are kept, and how the maintainer can publish at the same version; it MUST NOT claim that anything was rolled back.
+- <a id="sdk-fr-020"></a>**SDK-FR-020**: The library MUST export how `cw` composes the engine — over its own adapters, over a plugin a tool hands it, or for settings in hand — and the adapters `cw`'s plugin is built from, with the bases of an agent's projection and command line, so a tool composes the engine with them, with adapters of its own, or with both ([CORE-FR-230](spec-core.md#core-fr-230)).
 
 **Failures**
 
@@ -227,8 +231,8 @@ A tool author can tell which version a release requires from the policy the main
 ## Assumptions
 
 - A tool author works in TypeScript or JavaScript, on the Node version the engine requires.
-- The maintainer holds the `@cherry-works` scope on npm.
-- `cw` takes the first public version too, so the first release under this contract moves it from 0.9 to 1.0.0.
+- The maintainer holds the rights to publish `cherry-works` on npm.
+- `cw` and the library share the package's version, so the first release under this contract moves it from 0.9 to 1.0.0.
 - A tool without git takes on what git gave a repository: reviewing what changes, its history, and undoing a build. The engine does not supply them.
 
 ## Out of Scope
@@ -237,6 +241,6 @@ A tool author can tell which version a release requires from the policy the main
 - An entry point made for one integrator.
 - Any dependency on a central service.
 - Splitting a use case's constructor, or making its ports optional.
-- Publishing the command line, the portal or any adapter as a library.
+- Exporting the command line or the portal as a library.
 - Evaluating away from a real folder and git.
 - Changing the charter's format or validation rules, beyond what [CORE Story 38](spec-core.md#core-story-38---keep-a-binary-asset-whole-priority-p2) needs.

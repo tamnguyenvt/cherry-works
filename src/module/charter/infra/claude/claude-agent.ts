@@ -1,4 +1,4 @@
-import { DocumentBasedComponent } from "#module/charter/module.js";
+import { DocumentBasedComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
 /** A subagent's frontmatter: the name this host spawns it by, the line it is
  *  described by, the tools it holds — comma-separated, the way this host

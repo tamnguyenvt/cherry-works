@@ -434,6 +434,88 @@ stops the build.
 A subagent reaches only the mcp origins it lists under `tools`: `[[<id>]]` for every
 tool of an mcp origin, or `[[<id>]]:<tool>` for one of them.
 
+## The engine as a library
+
+`cherry-works` is also a library for TypeScript and JavaScript tools, on Node.js
+22 or later. Import from `cherry-works` the use cases, their driver and driven
+ports, DTO schemas and types, the faults an adapter raises, how `cw` composes
+the engine, and the adapters `cw` is composed of. `VERSION` is the package
+version, the one `cw --version` prints. The package is ESM and bundles every
+library it uses, their types included: installing it adds nothing else.
+
+```ts
+import { composeApplications, AgentCli, ClaudeProjection, FileReaders, VERSION } from "cherry-works";
+import type { EnginePlugin, ForRunningCharter, ForReadingFiles, ForReportingProgress, ForWritingFiles } from "cherry-works";
+```
+
+The engine is reached through its applications, each a use case and the
+driver port it implements: authoring the charter (`AuthoringCharter`, its
+primitives, vendors, test files, and signing in to its mcp origins), building
+it for each agent provider (`BuildingCharter`: the build, the health check,
+the context, the sensors and serving the mcp origins) and running it
+(`RunningCharter`: the tests, the evaluations and reviewing the sessions). A
+driver port answers DTOs alone, never a model of the domain.
+
+`composeApplications(repoFolder, homeFolder)` composes them as `cw` does, over
+the adapters it ships: Claude's and Codex's projection and command line, the
+charter kept as files, and every other adapter on the repository's address
+and the developer's home. Hand it an `EnginePlugin` to compose them over
+adapters of your own instead, or over the shipped ones mixed with yours —
+`FileReaders`, `FileOutput`, `GitSources`, `GitWorktrees`, `OAuth`,
+`McpClients`, `Tiktoken`, `SystemClock`, `Shell`, `ConsoleReporter`,
+`Promptfoo`, `KeychainCredentialsRepository`, `FileCharterRepository`,
+`ClaudeProjection`, `CodexProjection`, `ClaudeCli` and `CodexCli`; extend
+`AgentProjection` or `AgentCli` for an agent of your own. `composeEngine`
+takes the settings in hand instead of reading them from the repository, and
+`composeWorkspace` keeps a repository's settings. Or compose a use case
+yourself, with your adapters behind its driven ports.
+
+A `ForReportingProgress` is among them: it is where the use case logs an
+internal failure for whoever runs the tool. A use case takes no address: every
+path it hands a driven port is from the repository's root, such as
+`.cw/settings.json`, and the empty path is the root itself. Set your adapters
+up on the repository's address, and the sessions' on the developer's home; an
+address must have a hierarchical path ending in `/`, and its scheme belongs to
+your adapters. What keeps a repository's state is handed, and hands back, the
+engine's own models — `RawPrimitive`, `Primitive`, `RawTestSuite`,
+`TestSuite`, `RawEvalSuite`, `FetchedSource`, `FetchedVendor`,
+`InstalledVendor`, `McpCredential`, `McpClientRegistration`, `SessionLogs` — each kept
+thing known by its layer, kind and id or name, never by where it sits; its
+`uri` is your store's to give, in your own scheme, and the engine only says it
+back. Builtin primitives and their assets are embedded in the package.
+
+A use case never throws for a failure of what it was asked: every answer is a
+DTO, read by its `type`. Validation findings come back as data grouped by file.
+A fault that stops a use case comes back as a `Fault` DTO carrying `name`,
+`message`, `fix` and `severity`; no fault class is needed to read it.
+
+A fault is the system's own unless raised with `{ internal: false }`. Your
+adapters raise `AdapterFault`, and YAML parsers `CharterPrimitiveFault` for
+invalid notation: mark the ones the person using your tool can act on with
+`{ internal: false }`. Anything else a port raises, an internal fault
+included, is logged through `ForReportingProgress.problem` — its stack and
+causes, never the arguments of the call — and answered as `InternalFault`,
+in the system's own words. An internal fault's message and every cause under
+it are logged as they are, so an adapter puts no secret in either.
+
+Only the root exports and the file-adapter duties below are the public contract.
+Internal paths cannot be imported. The contract follows semantic versioning from
+the first public release, 1.0.0, read conservatively: removing an exported name
+or changing an existing declaration in any way, even adding an optional member to
+it, is a major version; adding a newly named declaration is a minor version; a
+change to comments or layout alone does not change the contract. No release
+judges whether a change to a declaration is compatible.
+
+A file adapter must read back a completed write on any later read, preserve the
+order of writes to one file, and allow deletes to be asked at once. Reading or
+deleting a missing file succeeds; an empty file remains a file. Every listed
+file is at a URL under the requested folder, with names escaped as URLs escape
+them, and `findFileAddress` names a file's address as the reader was set up on it. Binary reads and writes preserve every byte. Builds are not atomic: a
+failed write leaves earlier writes in place.
+
+From the repository root, run `pnpm build`, then `npm pack` to build and pack a
+local tarball holding both `cw` and the library.
+
 ## Development
 
 ### Install from a local checkout
@@ -466,46 +548,43 @@ pnpm cw <command>                       # run the CLI from source, without build
 ```
 
 A release is `pnpm release <version>`, run from a clean `develop` level with
-`origin/develop`. It releases `cherry-works` and `@cherry-works/engine` at one
-version, the first one 1.0.0, and refuses an npm account that does not maintain
-both, or, before the engine is first published, one outside the `@cherry-works`
-scope. It updates the version in `package.json` and the README's
-**Current version** line, runs the tests, then installs and checks the exact tarball of
-each package it would publish: `cw` on a fresh repository, the engine by
-importing its `VERSION`. A refused check of one package names it; the shared
-tests and build name both. Neither package is then published.
+`origin/develop`. It releases `cherry-works` — `cw` and the library — at one
+version, the first one under the library's contract 1.0.0, and refuses an npm
+account that does not maintain it. It updates the version in `package.json`
+and the README's **Current version** line, runs the tests, then installs and
+checks the exact tarball it would publish: `cw` on a fresh repository, and the
+library by importing its `VERSION`. A refused check names itself, and nothing
+is then published.
 
-The engine's built declarations are compared with
-`packages/engine/contract.d.ts`, the contract the last release recorded,
-declaration by declaration and token by token, so comments and layout are no
-change. The policy is conservative: an exported name removed or a declaration
-changed in any way, even by an optional member added to it, without a new major
-version is refused, naming each removal and each change apart; a newly named
-declaration added in a patch is refused too. Whether a change to a declaration
-is compatible is never judged. A major that changes the contract must name each
-changed declaration under its `## <version>` heading in `CHANGELOG.md`. The
-file-adapter duties in `packages/engine/README.md` are not compared: whoever
+The library's built declarations, `dist/index.d.ts`, are compared with
+`contract.d.ts` at the repository's root, the contract the last release
+recorded, declaration by declaration and token by token, so comments and
+layout are no change. The policy is conservative: an exported name removed or
+a declaration changed in any way, even by an optional member added to it,
+without a new major version is refused, naming each removal and each change
+apart; a newly named declaration added in a patch is refused too. Whether a
+change to a declaration is compatible is never judged. A major that changes the
+contract must name each changed declaration under its `## <version>` heading in
+`CHANGELOG.md`. The file-adapter duties in
+[The engine as a library](#the-engine-as-a-library) are not compared: whoever
 changes them versions the change and names it in the changelog by hand.
 `contract.d.ts` is generated by the release; do not edit it. An older release's
-contract is `git show v<version>:packages/engine/contract.d.ts`.
+contract is `git show v<version>:contract.d.ts`.
 
 Only after the checks pass does it write the contract, commit it with
 `package.json` and the README, tag `v<version>`, push `develop` and the tag,
-then publish `cw` and then the engine. `pnpm release <version> --dry-run` runs
-every check and restores all three files. A failed check also restores them,
-and is reported as `Release refused:`, naming the check; neither package is then
-published. If push fails, nothing is published. Once a push is attempted, the
-release commit and tag are kept, including when publishing fails.
+then publish `cherry-works`. `pnpm release <version> --dry-run` runs every
+check and restores all three files. A failed check also restores them, and is
+reported as `Release refused:`, naming the check; nothing is then published.
+If push fails, nothing is published. Once a push is attempted, the release
+commit and tag are kept, including when publishing fails.
 
-Publishing the two packages is not atomic. A failure once publishing has begun
-is reported as `Release failed during publication:`, naming what is on npm and
-how to publish the rest at the same version from the release commit. Since npm
-can fail after the registry took a package, it first asks you to confirm what is
-on npm with `npm view <package>@<version> version`, which prints the version
-only where it is published. When `cw` fails, neither package is published. When
-the engine fails after `cw`, `cw` stays published, since a published version is
-never unpublished; only the engine is left to publish. A plain `npm publish` is
-refused.
+A publish that fails is reported as `Release failed during publication:`,
+saying nothing was published and how to publish at the same version from the
+release commit. Since npm can fail after the registry took a package, it first
+asks you to confirm what is on npm with `npm view cherry-works@<version>
+version`, which prints the version only where it is published. A plain
+`npm publish` is refused.
 
 The engine follows a hexagonal layout of two modules. `src/module/charter/`
 keeps, tests and builds the charter; `src/module/runtime/` runs what it

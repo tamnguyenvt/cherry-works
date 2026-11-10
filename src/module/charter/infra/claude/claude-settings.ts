@@ -1,4 +1,4 @@
-import { SettingBasedComponent } from "#module/charter/module.js";
+import { SettingBasedComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
 /** Events this compiler installs hooks for. This is the engine's supported
  *  subset, not an exhaustive list of Claude Code's lifecycle events. */

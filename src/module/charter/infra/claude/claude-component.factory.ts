@@ -12,8 +12,8 @@ import {
   type CharterRoot,
   type CompiledPrimitive,
   type Primitive,
-} from "#module/charter/module.js";
-import { laidTextOf } from "#module/charter/module.js";
+} from "../../app/port/out/managing-local-agent-output.port.js";
+import { laidTextOf } from "../helper.js";
 import { type ClaudeComponent, ClaudeComponents } from "./claude-component.js";
 import { ClaudeAgent } from "./claude-agent.js";
 import { ClaudeRule } from "./claude-rule.js";

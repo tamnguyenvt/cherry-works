@@ -17,3 +17,6 @@ export { FileSessionAnalysisRepository } from "./infra/file-session-analysis.rep
 export { GitWorktrees } from "./infra/git-worktrees.adapter.js";
 export { Promptfoo } from "./infra/promptfoo.adapter.js";
 export { Shell } from "./infra/shell.adapter.js";
+export { AgentCli } from "./infra/agent-cli.base.js";
+export { ClaudeCli } from "./infra/claude/claude-cli.adapter.js";
+export { CodexCli } from "./infra/codex/codex-cli.adapter.js";

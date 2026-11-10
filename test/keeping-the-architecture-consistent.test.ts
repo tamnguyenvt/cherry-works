@@ -161,9 +161,8 @@ test("every file of src is named <kebab-subject>.<role>, but a model, a value ob
       const fileName = sourcePath.split("/").at(-1)!;
       // A model or a value object keeps its subject alone: its folder says what it is.
       // So does a model an adapter keeps of its own, in a folder of its
-      // module's infrastructure (`infra/<host>/`) or of its agent's plugin
-      // (`plugin/claude/`).
-      if (/^(module\/[\w-]+\/(domain|infra\/[\w-]+)|plugin\/[\w-]+)\//.test(sourcePath) && /^[a-z0-9]+(-[a-z0-9]+)*\.ts$/.test(fileName)) return false;
+      // module's infrastructure (`infra/<host>/`, `infra/claude/`).
+      if (/^module\/[\w-]+\/(domain|infra\/[\w-]+)\//.test(sourcePath) && /^[a-z0-9]+(-[a-z0-9]+)*\.ts$/.test(fileName)) return false;
       return sourcePath !== "module/composition.ts" && !["helper.ts", "index.ts", "module.ts", "AGENTS.md"].includes(fileName) && !/^[a-z0-9]+(-[a-z0-9]+)*\.[a-z]+(-[a-z]+)*\.(ts|mjs|d\.mts)$/.test(fileName);
     });
   assert.deepEqual(misnamedPaths, []);
@@ -182,10 +181,10 @@ test("each renamed use case answers through its driver port as it did (CORE Stor
 });
 
 test("the engine's contract names each use case as its driver port, and the changelog names the change (CORE Story 42 scenario 3)", () => {
-  const engineIndexText = readFileSync(new URL("packages/engine/index.ts", repositoryUrl), "utf8");
+  const engineIndexText = readFileSync(new URL("src/index.ts", repositoryUrl), "utf8");
   const changelogText = readFileSync(new URL("CHANGELOG.md", repositoryUrl), "utf8");
   for (const useCaseName of useCaseNames) {
-    assert.match(engineIndexText, new RegExp(`^export \\{ ${useCaseName} \\} from "\\.\\./\\.\\./src/module/[\\w-]+/module\\.js";$`, "m"));
+    assert.match(engineIndexText, new RegExp(`^export \\{ ${useCaseName} \\} from "\\./module/[\\w-]+/module\\.js";$`, "m"));
     assert.ok(changelogText.includes(`\`${useCaseName}\``), `CHANGELOG.md does not name ${useCaseName}`);
   }
 });

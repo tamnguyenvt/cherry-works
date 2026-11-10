@@ -1,5 +1,5 @@
-import { McpPrimitive, type CharterOutput, type CharterRoot, type MainContextText } from "#module/charter/module.js";
-import { laidTextOf } from "#module/charter/module.js";
+import { McpPrimitive, type CharterOutput, type CharterRoot, type MainContextText } from "../../app/port/out/managing-local-agent-output.port.js";
+import { laidTextOf } from "../helper.js";
 import { ClaudeComponents } from "./claude-component.js";
 import { ClaudeComponentFactory } from "./claude-component.factory.js";
 import { ClaudeAgent } from "./claude-agent.js";

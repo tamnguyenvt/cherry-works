@@ -1,4 +1,4 @@
-import type { CharterOutput, CharterRoot, MainContextText, ProviderComponent } from "#module/charter/module.js";
+import type { CharterOutput, CharterRoot, MainContextText, ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 import { mergedEntryFileText, mergedSettingsText } from "../helper.js";
 import { AgentProjection } from "../agent-projection.base.js";
 import { ClaudeComponentFactory } from "./claude-component.factory.js";

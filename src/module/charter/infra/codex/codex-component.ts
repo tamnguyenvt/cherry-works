@@ -1,4 +1,4 @@
-import { AgentProvider } from "#module/charter/module.js";
+import { AgentProvider } from "../../app/port/out/managing-local-agent-output.port.js";
 import { CodexAgent } from "./codex-agent.js";
 import { CodexEntryFile } from "./codex-entry-file.js";
 import { CodexConfig } from "./codex-config.js";

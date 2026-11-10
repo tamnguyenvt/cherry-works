@@ -1,4 +1,4 @@
-import { SettingBasedComponent } from "#module/charter/module.js";
+import { SettingBasedComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
 /** One server this host starts, as its MCP configuration names it. */
 export interface ClaudeMcpServer {

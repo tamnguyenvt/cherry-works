@@ -3,7 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { AdapterFault, type Answer, type ForRunningAgentCli } from "#module/runtime/module.js";
+import { AdapterFault, type Answer, type ForRunningAgentCli } from "../../app/port/out/running-agent-cli.port.js";
+import { AgentCli } from "../agent-cli.base.js";
 
 /** How many runs of `claude` are under way at once. */
 const PARALLEL_RUNNER_COUNT = 4;
@@ -19,7 +20,7 @@ const PARALLEL_RUNNER_COUNT = 4;
  * signed in with: no key of this engine's (EVAL-FR-004). At most
  * `PARALLEL_RUNNER_COUNT` run together.
  */
-export class ClaudeCli implements ForRunningAgentCli {
+export class ClaudeCli extends AgentCli implements ForRunningAgentCli {
   #runningCount = 0;
   readonly #queue: (() => void)[] = [];
 

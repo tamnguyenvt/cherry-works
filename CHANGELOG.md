@@ -4,11 +4,11 @@
 
 - **Breaking:** the workspace now keeps the charter under `.cw/charter/` (primitives in `.cw/charter/primitive/<kind>/`, with `test/`, `eval/` and `vendor/` beside them), the build under `.cw/out/` and the log under `.cw/log/`; a repository laid out the old way is refused until the `cw-author` skill moves it.
 - **Breaking:** paths inside `.cw/out/` are now written as `$CW_OUT/…`, which `CHARTER.md` explains and `cw sensor run` resolves.
-- **Breaking:** `@cherry-works/engine` is now two modules, charter (`AuthoringCharter`, `BuildingCharter`) and runtime (`RunningCharter`), replacing the former applications.
+- **Breaking:** `@cherry-works/engine` is no longer published: import the engine from `cherry-works` itself (`import { composeApplications } from "cherry-works"`); `cw` installs and runs as before.
 - **Breaking:** the applications no longer read a repository's settings: hand them the agents and the rest when you construct them.
 - **Breaking:** applications answer with `CharterDTOs`, `RuntimeDTOs` and `FaultDTOs`, each schema making a DTO with `of()`.
-- **Breaking:** `@cherry-works/engine` ships no adapter: hand it your own for its storage ports and one `ForProjectingAgent` per agent provider.
-- **Breaking:** `@cherry-works/engine` names where something is kept by its store's uri, such as `file:///repo/.cw/charter/primitive/guide/x/index.md`.
+- **Breaking:** the engine is two modules, charter (`AuthoringCharter`, `BuildingCharter`) and runtime (`RunningCharter`), replacing the former applications; compose them with `composeApplications`, handing one `EnginePlugin` of every adapter — each agent's projection and command line, the charter's store and the rest — the engine's own by default, any of it your own.
+- **Breaking:** the engine names where something is kept by its store's uri, such as `file:///repo/.cw/charter/primitive/guide/x/index.md`.
 
 ## 0.9.0 — 2026-10-30
 

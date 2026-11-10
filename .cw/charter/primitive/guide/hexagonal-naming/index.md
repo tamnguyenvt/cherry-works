@@ -26,7 +26,7 @@ layer a file is in before it is opened. Where it lives is
 | Domain service | `domain/services/`, never a model's folder: it works over several models | a class, `Service` last, of static methods named verb first for what they do over several models | `CompileService.compileCharterRoot()` | `compile.service.ts` |
 | DTO | `<module>/app/port/in/<module>.dto.ts` | `dto("<Model>", …)` or `dto("<Doing>Outcome", …)`, read as `<Module>DTOs.<Model>` | `OrderingDTOs.Order`, `OrderingDTOs.CheckoutOutcome`, `FaultDTOs.Fault` | `ordering.dto.ts` |
 | Driven port | `app/port/out/` | `For<Doing>`, in the adapter's words — see [[driven-port-speaks-its-adapter]] | `ForVerifyingSessionTokens` | `verifying-session-tokens.port.ts` |
-| Driven adapter | `infra/`, its in-memory twin in `infra/in-memory/`; an agent's own in `src/plugin/<agent>/` | the technology it speaks, then what it holds; its twin `InMemory<Port noun>` | `ClerkSessionTokens`, `InMemorySessionTokens` | `clerk-session-tokens.adapter.ts`, `in-memory-session-tokens.adapter.ts` |
+| Driven adapter | `infra/`, its in-memory twin in `infra/in-memory/`; an agent's own in `infra/<agent>/` | the technology it speaks, then what it holds; its twin `InMemory<Port noun>` | `ClerkSessionTokens`, `InMemorySessionTokens` | `clerk-session-tokens.adapter.ts`, `in-memory-session-tokens.adapter.ts` |
 | Driving adapter | `presentation/<entry point>/` | what it serves, in that entry point's words | `GreetCommand`, `cloudApi` | `greet.command.ts`, `cloud-api.server.ts` |
 | Fault | beside its base, below | `<What is wrong>Fault`, never `Error` | `IdentityServiceUnreachableFault` | its base's `<layer>.fault.ts` |
 
@@ -41,7 +41,7 @@ the role already says: `BuildCharterService` is `build-charter.service.ts`,
 keeps its subject alone, with no role: its folder says what it is
 (`charter-root.ts`, `charter-folder.ts`), and so does a model an adapter
 keeps of its own in a folder of its module's `infra/` or of its plugin
-(`plugin/claude/claude-rule.ts`). So do `helper.ts`, `index.ts` and the entry file
+(`charter/infra/claude/claude-rule.ts`). So do `helper.ts`, `index.ts` and the entry file
 `main.ts`. The
 other roles: `.repository`, `.base` (the class every use case, or every adapter of a kind, extends), `.constants` (a layout of names), `.specification`, `.lib`,
 `.script` (an asset put down as it is), `.schema` (`dto()`, what

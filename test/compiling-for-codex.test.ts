@@ -2,9 +2,9 @@ import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-p
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
-import { CodexEntryFile } from "../src/plugin/codex/codex-entry-file.js";
-import { CodexComponentFactory } from "../src/plugin/codex/codex-component.factory.js";
-import { CodexProjection } from "../src/plugin/codex/codex-projection.adapter.js";
+import { CodexEntryFile } from "../src/module/charter/infra/codex/codex-entry-file.js";
+import { CodexComponentFactory } from "../src/module/charter/infra/codex/codex-component.factory.js";
+import { CodexProjection } from "../src/module/charter/infra/codex/codex-projection.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 import { tomlTableOf, tomlTextOf } from "../src/module/charter/domain/libs/toml.lib.js";

@@ -1,11 +1,27 @@
 import { copyFile, readFile } from "node:fs/promises";
-import { defineConfig } from "tsup";
+import { defineConfig, type Options } from "tsup";
+
+type Plugin = NonNullable<Options["esbuildPlugins"]>[number];
 import packageJson from "./package.json" with { type: "json" };
 
 const page = "src/presentation/portal/page";
 
-// Three entries in one package: the launcher that checks the Node it runs on,
-// the cw binary it hands over to, and the portal's page that binary serves.
+/** A `.mjs` under the engine's own layer is an asset it puts down, taken as its
+ *  text (scripts/moduleLoader.mjs does the same under tsx). Only there: a
+ *  dependency's `.mjs` is code. */
+const builtinAssetText: Plugin = {
+  name: "builtin-asset-text",
+  setup(build) {
+    build.onLoad({ filter: /\/src\/module\/charter\/domain\/builtin\/.+\.mjs$/ }, async ({ path }) => ({
+      contents: await readFile(path, "utf8"),
+      loader: "text",
+    }));
+  },
+};
+
+// Four entries in one package: the launcher that checks the Node it runs on,
+// the cw binary it hands over to, the portal's page that binary serves, and
+// the library a tool imports from "cherry-works".
 export default defineConfig([
   {
     entry: { cw: "bin.ts" },
@@ -22,20 +38,7 @@ export default defineConfig([
     // A fault is named by its class in what a caller is answered (SDK-FR-018),
     // so the bundle keeps the names it would otherwise rename on a clash.
     keepNames: true,
-    // A `.mjs` under the engine's own layer is an asset it puts down, taken
-    // as its text (scripts/moduleLoader.mjs does the same under tsx). Only
-    // there: a dependency's `.mjs` is code.
-    esbuildPlugins: [
-      {
-        name: "builtin-asset-text",
-        setup(build) {
-          build.onLoad({ filter: /\/src\/module\/charter\/domain\/builtin\/.+\.mjs$/ }, async ({ path }) => ({
-            contents: await readFile(path, "utf8"),
-            loader: "text",
-          }));
-        },
-      },
-    ],
+    esbuildPlugins: [builtinAssetText],
     // Every dependency is bundled in, of each only what cw reaches: installing
     // cw then adds this file and nothing else (SC-029). Some of them are
     // CommonJS and require Node's own modules, which an ES module cannot do
@@ -43,9 +46,27 @@ export default defineConfig([
     noExternal: [/./],
     banner: { js: 'import { createRequire as createBannerRequire } from "node:module"; const require = createBannerRequire(import.meta.url);' },
     outDir: "dist",
-    // The page and the launcher write dist/ alongside; cleaning them here
-    // would race them.
-    clean: ["!portal/**", "!cw.js"],
+    // The page, the launcher and the library write dist/ alongside; cleaning
+    // them here would race them.
+    clean: ["!portal/**", "!cw.js", "!index.js", "!index.d.ts"],
+  },
+  {
+    entry: { index: "src/index.ts" },
+    format: ["esm"],
+    target: "node22",
+    // A fault is named by its class in what a caller is answered (SDK-FR-018).
+    keepNames: true,
+    esbuildPlugins: [builtinAssetText],
+    // Bundled as cw is, so importing it adds nothing else either (SC-029);
+    // its declarations take in the types of every library they name, so a
+    // tool type-checks with this package alone (SDK-FR-006).
+    noExternal: [/./],
+    banner: { js: 'import { createRequire as createBannerRequire } from "node:module"; const require = createBannerRequire(import.meta.url);' },
+    dts: true,
+    define: { ENGINE_VERSION: JSON.stringify(packageJson.version) },
+    outDir: "dist",
+    // cw's own entry cleans dist/ and leaves this one's files be.
+    clean: false,
   },
   {
     entry: { main: `${page}/main.tsx` },

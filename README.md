@@ -101,7 +101,9 @@ cw eval --agent codex       # evaluate with the real agent; spends tokens
   update a shared charter.
 - [Using the portal](docs/use-portal.md) — edit, test and build in your browser.
 - [Reference](docs/reference.md) — commands, host mappings, evaluations,
-  context costs, vendor sources and MCP configuration.
+  context costs, vendor sources, MCP configuration, and
+  [the engine as a library](docs/reference.md#the-engine-as-a-library) to
+  `import` from `cherry-works`.
 - [Development](docs/reference.md#development) — build from source, run checks
   and release.
 - [Changelog](CHANGELOG.md) — releases and changes.

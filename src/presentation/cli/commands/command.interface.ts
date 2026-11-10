@@ -20,27 +20,34 @@ export interface EngineApps {
  *  it: what the engine is composed for (CORE-FR-231). */
 export type WorkspaceSettings = Pick<WorkspaceDTOs.WorkspaceSettings["data"], "agents"> & Partial<Pick<WorkspaceDTOs.WorkspaceSettings["data"], "mainContextCeiling" | "sessionAnalysisFolder">>;
 
-/** What the command line is composed with: where it runs, the workspace
- *  module's application, and the engine composed for a repository's settings
- *  (CORE-FR-231). */
+/** The workspace module's application and the engine's, composed for the
+ *  settings the workspace held when they were composed (CORE-FR-231). */
+export interface Applications {
+  /** The repository's settings, read and kept by the workspace module
+   *  (CORE-FR-231). */
+  readonly workspaceApp: ForManagingWorkspace;
+  readonly engineApp: EngineApps;
+}
+
+/** What the command line is composed with: where it runs, and how the
+ *  applications are composed for a repository's settings (CORE-FR-231). */
 export interface CommandLine {
   readonly cwd: string;
   /** The version this `cw` was published as: a fact about the program the
    *  command line is part of, told to a use case only to say which `cw` set a
    *  workspace up. */
   readonly version: string;
-  /** The repository's settings, read and kept by the workspace module
-   *  (CORE-FR-231). */
-  readonly workspaceApp: ForManagingWorkspace;
-  /** The engine's applications, composed for these settings. */
-  readonly engineFactory: (workspaceSettings: WorkspaceSettings) => EngineApps;
+  /** The workspace module and the engine, composed for the settings the
+   *  repository holds now: before each command, and again by setup once it
+   *  writes them. */
+  readonly composeApplications: () => Promise<Applications>;
 }
 
 /** What every command is run with: where it runs, what the repository
  *  configured itself with, and the applications composed for it. Held by the
  *  command line and handed over at execution, so a command is a declaration
  *  and nothing it has to be constructed with. */
-export interface Context extends CommandLine, EngineApps {
+export interface Context extends CommandLine, EngineApps, Pick<Applications, "workspaceApp"> {
   /** What the repository configured itself with, as the command line read it
    *  before the command ran. */
   readonly workspaceSettings: WorkspaceSettings;

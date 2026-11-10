@@ -1,4 +1,4 @@
-import { ProviderComponent, StampedDocument } from "#module/charter/module.js";
+import { ProviderComponent, StampedDocument } from "../../app/port/out/managing-local-agent-output.port.js";
 
 /** TOML basic strings use the same escapes as JSON for these string values. */
 export class CodexAgent extends ProviderComponent {

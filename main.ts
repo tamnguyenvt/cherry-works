@@ -3,8 +3,7 @@ import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
 import packageJson from "./package.json" with { type: "json" };
 import { Commander } from "./src/presentation/cli/cli.commander.js";
-import { composeEngine, composeWorkspace } from "./src/module/composition.js";
-import { FileReaders, FileOutput } from "./src/module/shared/module.js";
+import { composeApplications } from "./src/module/composition.js";
 
 /**
  * COMPOSITION ROOT — where this command line is put together: the workspace
@@ -21,14 +20,10 @@ const repoFolder = pathToFileURL(`${process.cwd()}/`);
  *  (CORE-FR-218). */
 const homeFolder = pathToFileURL(`${homedir()}/`);
 
-const fileReader = new FileReaders(repoFolder);
-const fileWriter = new FileOutput(repoFolder);
-
 const cli = new Commander({
   cwd: process.cwd(),
   version: packageJson.version,
-  workspaceApp: composeWorkspace(repoFolder, { fileReader, fileWriter }),
-  engineFactory: (workspaceSettings) => composeEngine(repoFolder, homeFolder, workspaceSettings, { fileReader, fileWriter }),
+  composeApplications: () => composeApplications(repoFolder, homeFolder),
 });
 
 process.exitCode = await cli.run(process.argv.slice(2));

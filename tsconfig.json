@@ -25,11 +25,9 @@
     "test/**/*.ts",
     "scripts/**/*.ts",
     "main.ts",
-    "bin.ts",
-    "packages/engine/**/*.ts"
+    "bin.ts"
   ],
   "exclude": [
-    "src/presentation/portal/page/**",
-    "packages/engine/dist/**"
+    "src/presentation/portal/page/**"
   ]
 }

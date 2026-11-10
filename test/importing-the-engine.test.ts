@@ -2,6 +2,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,31 +12,32 @@ import packageJson from "../package.json" with { type: "json" };
 
 const repositoryUrl = new URL("../", import.meta.url);
 let consumerFolder: string;
-let enginePackageJson: { name: string; version: string; license: string; dependencies: Record<string, string>; exports: Record<string, unknown> };
+let libraryPackageJson: { name: string; version: string; license: string; dependencies?: Record<string, string>; exports: Record<string, unknown> };
 
 before(async () => {
   consumerFolder = await mkdtemp(join(tmpdir(), "cw-engine-consumer-"));
-  const packRun = spawnSync("npm", ["pack", "--json", "--pack-destination", consumerFolder], { cwd: new URL("packages/engine/dist/", repositoryUrl), encoding: "utf8" });
+  const packRun = spawnSync("npm", ["pack", "--json", "--pack-destination", consumerFolder], { cwd: repositoryUrl, encoding: "utf8" });
   assert.equal(packRun.status, 0, packRun.stderr || packRun.error?.message);
   const tarballName: string = JSON.parse(packRun.stdout)[0].filename;
   await writeFile(join(consumerFolder, "package.json"), '{"private":true,"type":"module"}\n');
   const installRun = spawnSync("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", join(consumerFolder, tarballName)], { cwd: consumerFolder, encoding: "utf8" });
   assert.equal(installRun.status, 0, installRun.stderr);
-  enginePackageJson = JSON.parse(await readFile(join(consumerFolder, "node_modules/@cherry-works/engine/package.json"), "utf8"));
-  // The engine holds no adapter (SDK-FR-005, CORE-FR-228): what keeps the
-  // charter and the settings, and what lays a build as files, are a tool
-  // author's to bring, as the driven adapters' package will (SDK Story 8),
-  // and so is each agent's projection, a plugin outside the engine. They are
-  // bundled here on their own, taking of the engine only its ports.
-  const adapterEntryPath = join(consumerFolder, "file-adapters.ts");
+  libraryPackageJson = JSON.parse(await readFile(join(consumerFolder, "node_modules/cherry-works/package.json"), "utf8"));
+  // The package hands a tool the adapters cw's plugin is built from, the
+  // charter's store and each agent's projection among them (SDK-FR-005), but
+  // not the one that lays a build as files, which the engine composes
+  // itself, nor one keeping credentials in memory: a tool author brings
+  // those, as these are, bundled on their own and taking of the engine only
+  // its ports.
+  const adapterEntryPath = join(consumerFolder, "own-adapters.ts");
   await writeFile(
     adapterEntryPath,
-    ["module/charter/infra/local-repo-manipulator.adapter", "module/charter/infra/file-charter.repository", "module/charter/infra/in-memory/in-memory-credentials.repository", "plugin/claude/claude-projection.adapter", "plugin/codex/codex-projection.adapter"]
+    ["module/charter/infra/local-repo-manipulator.adapter", "module/charter/infra/in-memory/in-memory-credentials.repository"]
       .map((adapterPath) => `export * from ${JSON.stringify(fileURLToPath(new URL(`src/${adapterPath}.ts`, repositoryUrl)))};\n`)
       .join(""),
   );
   await tsupBuild({
-    entry: { "file-charter-projection": adapterEntryPath },
+    entry: { "own-adapters": adapterEntryPath },
     outDir: consumerFolder,
     format: "esm",
     outExtension: () => ({ js: ".mjs" }),
@@ -44,15 +46,14 @@ before(async () => {
     clean: false,
     treeshake: true,
     // What an adapter takes of the engine — a module's application or domain,
-    // through the port it answers, or, for a plugin, through the module's
-    // module.ts — comes from the installed engine.
+    // through the port it answers — comes from the installed package.
     esbuildPlugins: [
       {
         name: "engine-port",
         setup: (pluginBuild) =>
           pluginBuild.onResolve({ filter: /^(#module\/|\.)/ }, ({ path: importedPath, resolveDir }) => {
             const resolvedPath = importedPath.startsWith("#module/") ? fileURLToPath(new URL(`src/module/${importedPath.slice("#module/".length)}`, repositoryUrl)) : resolve(resolveDir, importedPath);
-            if (/\/src\/module\/[\w-]+\/(app|domain)\//.test(resolvedPath)) return { path: "@cherry-works/engine", external: true };
+            if (/\/src\/module\/[\w-]+\/(app|domain)\//.test(resolvedPath)) return { path: "cherry-works", external: true };
             // A module's module.ts names every adapter of it: what an adapter
             // does not use of it is left out.
             if (/\/src\/module\/[\w-]+\/(module|infra\/[\w.-]+)\.js$/.test(resolvedPath)) return { path: resolvedPath.replace(/\.js$/, ".ts"), sideEffects: false };
@@ -62,12 +63,9 @@ before(async () => {
     ],
   });
   await writeFile(
-    join(consumerFolder, "file-charter-projection.d.mts"),
-    "import type { ForFetchingCharterSources, ForManagingLocalAgentOutput, ForReadingFiles, ForManagingCharter, ForStoringCredentials, ForManagingLocalOutput, ForWritingFiles } from '@cherry-works/engine';\n" +
-      "export interface ClaudeProjection extends ForManagingLocalAgentOutput {}\nexport declare class ClaudeProjection {\n  constructor(fileReader: ForReadingFiles);\n}\n" +
-      "export interface CodexProjection extends ForManagingLocalAgentOutput {}\nexport declare class CodexProjection {\n  constructor(fileReader: ForReadingFiles);\n}\n" +
+    join(consumerFolder, "own-adapters.d.mts"),
+    "import type { ForReadingFiles, ForStoringCredentials, ForManagingLocalOutput, ForWritingFiles } from 'cherry-works';\n" +
       "export interface LocalRepoManipulator extends ForManagingLocalOutput {}\nexport declare class LocalRepoManipulator {\n  constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles);\n}\n" +
-      "export interface FileCharterRepository extends ForManagingCharter {}\nexport declare class FileCharterRepository {\n  constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles, sourceFetcher: ForFetchingCharterSources);\n}\n" +
       "export interface InMemoryCredentialsRepository extends ForStoringCredentials {}\nexport declare class InMemoryCredentialsRepository {\n  constructor();\n}\n",
   );
 });
@@ -86,9 +84,10 @@ function runConsumerCode(consumerCode: string): string {
 
 test("an installed engine supplies use cases, both ports and every crossing type (SDK Story 2 scenario 1)", async () => {
   const consumerSource = `
-import { AuthoringCharter, BuildingCharter, RunningCharter, CharterDTOs, FaultDTOs, RuntimeDTOs, AdapterFault, CharterPrimitiveFault, UnauthorizedMcpFault, VERSION, buildCharterService, installCharterService, loadCharterService, loadMcpOriginsService } from '@cherry-works/engine';
-import { ClaudeProjection, CodexProjection, LocalRepoManipulator, FileCharterRepository, InMemoryCredentialsRepository } from './file-charter-projection.mjs';
-import type { ForAuthoringCharter, ForBuildingCharter, ForRunningCharter, ProjectionSettings, UnparsedHeaders, AgentProviderName, LayerName, ForReadingFiles, ReadFile, ListedFile, ForWritingFiles, ForCountingTokens, ForCheckingAgentCli, ForRunningAgentCli, Answer, PromptUsage, ForCallingMcpServers, McpServerAddress, UpstreamTool, ToolAnswer, McpServerConnection, ForStoringCredentials, ForAuthorizingMcpOrigins, OAuthGrant, ForFetchingCharterSources, ForKeepingWorktrees, ForRunningPromptfoo, PromptfooTest, PromptfooAssertion, PromptfooTestResult, PromptfooLog, ForReportingProgress, ForTellingTime, ForRunningShellCommands, ShellCommandResult, ForLoadingSessionAnalysis, McpOriginAddress, ForManagingLocalAgentOutput, MainContextText } from '@cherry-works/engine';
+import { AuthoringCharter, BuildingCharter, RunningCharter, CharterDTOs, FaultDTOs, RuntimeDTOs, AdapterFault, CharterPrimitiveFault, UnauthorizedMcpFault, VERSION, buildCharterService, installCharterService, loadCharterService, loadMcpOriginsService } from 'cherry-works';
+import { ClaudeProjection, CodexProjection, FileCharterRepository } from 'cherry-works';
+import { LocalRepoManipulator, InMemoryCredentialsRepository } from './own-adapters.mjs';
+import type { ForAuthoringCharter, ForBuildingCharter, ForRunningCharter, ProjectionSettings, UnparsedHeaders, AgentProviderName, LayerName, ForReadingFiles, ReadFile, ListedFile, ForWritingFiles, ForCountingTokens, ForCheckingAgentCli, ForRunningAgentCli, Answer, PromptUsage, ForCallingMcpServers, McpServerAddress, UpstreamTool, ToolAnswer, McpServerConnection, ForStoringCredentials, ForAuthorizingMcpOrigins, OAuthGrant, ForFetchingCharterSources, ForKeepingWorktrees, ForRunningPromptfoo, PromptfooTest, PromptfooAssertion, PromptfooTestResult, PromptfooLog, ForReportingProgress, ForTellingTime, ForRunningShellCommands, ShellCommandResult, ForLoadingSessionAnalysis, McpOriginAddress, ForManagingLocalAgentOutput, MainContextText } from 'cherry-works';
 const fileReader: ForReadingFiles = {
   async readFilesRecursively(): Promise<readonly ReadFile[]> { return []; },
   async readBytesRecursively(): Promise<readonly ReadFile<Uint8Array>[]> { return [{path: 'a', contents: new Uint8Array([255])}]; },
@@ -115,48 +114,53 @@ const faultSchema = FaultDTOs.Fault;
   await writeFile(join(consumerFolder, "consumer.ts"), consumerSource);
   const typecheckRun = spawnSync(process.execPath, [new URL("node_modules/typescript/bin/tsc", repositoryUrl).pathname, "--noEmit", "--strict", "--target", "ES2022", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--lib", "ES2023,DOM", "consumer.ts"], { cwd: consumerFolder, encoding: "utf8" });
   assert.equal(typecheckRun.status, 0, typecheckRun.stdout + typecheckRun.stderr);
-  assert.equal(enginePackageJson.name, "@cherry-works/engine");
-  assert.deepEqual(Object.keys(enginePackageJson.dependencies).sort(), ["picomatch", "smol-toml", "yaml", "zod"]);
-  assert.equal(enginePackageJson.license, packageJson.license);
-  assert.match(await readFile(join(consumerFolder, "node_modules/@cherry-works/engine/LICENSE"), "utf8"), /^MIT License\n/);
+  assert.equal(libraryPackageJson.name, "cherry-works");
+  // Every library is bundled in, its types too: nothing else is installed.
+  assert.equal(libraryPackageJson.dependencies, undefined);
+  assert.deepEqual((await readdir(join(consumerFolder, "node_modules"))).filter((installedName) => !installedName.startsWith(".")), ["cherry-works"]);
+  assert.equal(libraryPackageJson.license, packageJson.license);
+  assert.match(await readFile(join(consumerFolder, "node_modules/cherry-works/LICENSE"), "utf8"), /^MIT License\n/);
 });
 
-test("the installed engine holds no CLI, portal, adapter or composition root (SDK Story 2 scenario 2)", async () => {
-  const packageFiles = await readdir(join(consumerFolder, "node_modules/@cherry-works/engine"), { recursive: true });
-  assert.deepEqual(packageFiles.sort(), ["LICENSE", "README.md", "index.d.ts", "index.js", "package.json"]);
-  const engineCode = await readFile(join(consumerFolder, "node_modules/@cherry-works/engine/index.js"), "utf8");
-  assert.doesNotMatch(engineCode, /^\/\/ src\/(?:presentation\/|plugin\/|module\/composition\.ts|module\/[\w-]+\/infra\/)/m);
-  const engineSourceFile = ts.createSourceFile("index.js", engineCode, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
-  const importedPackages = engineSourceFile.statements.filter(ts.isImportDeclaration).map(importDeclaration => (importDeclaration.moduleSpecifier as ts.StringLiteral).text);
-  assert.deepEqual([...new Set(importedPackages)].sort(), ["picomatch", "smol-toml", "yaml", "zod"]);
+test("the installed library holds the engine and the adapters cw is composed of, but no command line or portal, and imports no package (SDK Story 2 scenario 2)", async () => {
+  const packageFiles = (await readdir(join(consumerFolder, "node_modules/cherry-works"), { recursive: true })).filter((packagePath) => !packagePath.startsWith("dist/zod/") && !packagePath.startsWith("dist/portal/"));
+  assert.deepEqual(packageFiles.sort(), ["LICENSE", "README.md", "dist", "dist/cw.js", "dist/index.d.ts", "dist/index.js", "dist/main.js", "dist/portal", "dist/zod", "package.json"]);
+  const libraryCode = await readFile(join(consumerFolder, "node_modules/cherry-works/dist/index.js"), "utf8");
+  assert.doesNotMatch(libraryCode, /^\/\/ (?:main\.ts|src\/presentation\/)/m);
+  for (const adapterPath of ["src/module/composition.ts", "src/module/charter/infra/file-charter.repository.ts", "src/module/charter/infra/claude/claude-projection.adapter.ts", "src/module/runtime/infra/codex/codex-cli.adapter.ts"]) assert.ok(libraryCode.includes(`\n// ${adapterPath}\n`), adapterPath);
+  const librarySourceFile = ts.createSourceFile("index.js", libraryCode, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const importedPackages = librarySourceFile.statements.filter(ts.isImportDeclaration).map(importDeclaration => (importDeclaration.moduleSpecifier as ts.StringLiteral).text);
+  assert.deepEqual([...new Set(importedPackages)].filter((importedPackage) => !importedPackage.startsWith("node:") && !builtinModules.includes(importedPackage)), []);
 });
 
-test("the engine refuses internal imports and exports only its public contract (SDK Story 2 scenario 3)", () => {
-  assert.deepEqual(Object.keys(enginePackageJson.exports), ["."]);
+test("the library refuses internal imports and exports only its public contract (SDK Story 2 scenario 3)", () => {
+  assert.deepEqual(Object.keys(libraryPackageJson.exports), [".", "./package.json"]);
   runConsumerCode(`
 import assert from 'node:assert/strict';
-import * as engine from '@cherry-works/engine';
-assert.deepEqual(Object.keys(engine).sort(), ['AdapterFault', 'AgentPrimitive', 'AgentProvider', 'AuthoringCharter', 'BUILTIN_LAYER', 'BasePrimitive', 'BuildCharterService', 'InstallCharterService', 'ProjectionPlan', 'BuiltSensors', 'Catalogue', 'CharterDTOs', 'CharterFolder', 'CharterMd', 'CharterPrimitiveFault', 'CopyPlan', 'DocumentBasedComponent', 'EVAL_DIRECTORY', 'EvalFolder', 'FaultDTOs', 'VendorRoot', 'VendorRootFactory', 'VendorSource', 'VendorSourceOrigin', 'GuidePrimitive', 'LoadCharterService', 'LoadMcpOriginsService', 'McpClientRegistration', 'McpCredential', 'McpOrigins', 'McpPrimitive', 'ModelHelper', 'OutputPart', 'WritePlan', 'PlaybookPrimitive', 'PosturePrimitive', 'PrimitiveLayer', 'Primitives', 'PrimitivesFolder', 'ProviderComponent', 'BuildingCharter', 'REPO_LAYER', 'RawEvalSuite', 'RawPrimitive', 'RawSourceSkill', 'RawVendorSource', 'RawTestSuite', 'RunningCharter', 'RuntimeDTOs', 'SensorPrimitive', 'SessionLogs', 'SettingBasedComponent', 'SkillPrimitive', 'SourceCharter', 'SourceSkill', 'StampedDocument', 'TEST_DIRECTORY', 'TestFolder', 'TestSuite', 'UnauthorizedMcpFault', 'VENDOR_LAYER', 'VERSION', 'VendorsFolder', 'buildCharterService', 'installCharterService', 'loadCharterService', 'loadMcpOriginsService', 'mergedTomlText'].sort());
+import * as engine from 'cherry-works';
+assert.deepEqual(Object.keys(engine).sort(), ['AdapterFault', 'AgentPrimitive', 'AgentProvider', 'AuthoringCharter', 'BUILTIN_LAYER', 'BasePrimitive', 'BuildCharterService', 'InstallCharterService', 'ProjectionPlan', 'BuiltSensors', 'Catalogue', 'CharterDTOs', 'CharterFolder', 'CharterMd', 'CharterPrimitiveFault', 'CopyPlan', 'DocumentBasedComponent', 'EVAL_DIRECTORY', 'EvalFolder', 'FaultDTOs', 'VendorRoot', 'VendorRootFactory', 'VendorSource', 'VendorSourceOrigin', 'GuidePrimitive', 'LoadCharterService', 'LoadMcpOriginsService', 'McpClientRegistration', 'McpCredential', 'McpOrigins', 'McpPrimitive', 'ModelHelper', 'OutputPart', 'WritePlan', 'PlaybookPrimitive', 'PosturePrimitive', 'PrimitiveLayer', 'Primitives', 'PrimitivesFolder', 'ProviderComponent', 'BuildingCharter', 'REPO_LAYER', 'RawEvalSuite', 'RawPrimitive', 'RawSourceSkill', 'RawVendorSource', 'RawTestSuite', 'RunningCharter', 'RuntimeDTOs', 'SensorPrimitive', 'SessionLogs', 'SettingBasedComponent', 'SkillPrimitive', 'SourceCharter', 'SourceSkill', 'StampedDocument', 'TEST_DIRECTORY', 'TestFolder', 'TestSuite', 'UnauthorizedMcpFault', 'VENDOR_LAYER', 'VERSION', 'VendorsFolder', 'buildCharterService', 'installCharterService', 'loadCharterService', 'loadMcpOriginsService', 'mergedTomlText',
+ 'composeApplications', 'composeEngine', 'composeWorkspace', 'FileReaders', 'FileOutput', 'GitSources', 'GitWorktrees', 'OAuth', 'McpClients', 'Tiktoken', 'SystemClock', 'Shell', 'ConsoleReporter', 'Promptfoo', 'KeychainCredentialsRepository', 'FileCharterRepository', 'AgentProjection', 'ClaudeProjection', 'CodexProjection', 'AgentCli', 'ClaudeCli', 'CodexCli'].sort());
 assert.deepEqual([engine.BUILTIN_LAYER, engine.REPO_LAYER, engine.VENDOR_LAYER], ['builtin', 'repo', 'vendor']);
 assert.deepEqual([engine.TEST_DIRECTORY, engine.EVAL_DIRECTORY], ['.cw/charter/test', '.cw/charter/eval']);
-for (const privateName of ['CharterRoot', 'WorkspaceSettingsSchema', 'folderURL', 'loadCharterRoot', 'RepoLayerPrimitive', 'BUILTIN_PRIMITIVES', 'FileCharterRepository', 'FileSettingsRepository', 'KeychainCredentialsRepository', 'composeEngine']) assert.equal(privateName in engine, false);
-for (const privatePath of ['domain/models/DomainFault', 'storage/FileCharterRepository', 'index.js', 'package.json', 'application/RunningCharter']) await assert.rejects(import('@cherry-works/engine/' + privatePath), {code: 'ERR_PACKAGE_PATH_NOT_EXPORTED'});
+for (const privateName of ['CharterRoot', 'WorkspaceSettingsSchema', 'folderURL', 'loadCharterRoot', 'RepoLayerPrimitive', 'BUILTIN_PRIMITIVES', 'FileSettingsRepository', 'LocalRepoManipulator', 'ManagingWorkspace', 'FileWorkspaceSettingsRepository', 'FileSessionAnalysisRepository', 'InMemoryFileReaders', 'Commander']) assert.equal(privateName in engine, false);
+for (const privatePath of ['domain/models/DomainFault', 'storage/FileCharterRepository', 'index.js', 'dist/index.js', 'dist/main.js', 'src/module/charter/module.js', 'application/RunningCharter']) await assert.rejects(import('cherry-works/' + privatePath), {code: 'ERR_PACKAGE_PATH_NOT_EXPORTED'});
 `);
 });
 
-test("the engine reports the version on its installed package and cw (SDK Story 2 scenario 4)", () => {
-  assert.equal(enginePackageJson.version, packageJson.version);
-  runConsumerCode(`import assert from 'node:assert/strict'; import { VERSION } from '@cherry-works/engine'; assert.equal(VERSION, ${JSON.stringify(packageJson.version)});`);
+test("the library reports the version of its installed package, the one cw names (SDK Story 2 scenario 4)", () => {
+  assert.equal(libraryPackageJson.version, packageJson.version);
+  runConsumerCode(`import assert from 'node:assert/strict'; import { VERSION } from 'cherry-works'; assert.equal(VERSION, ${JSON.stringify(packageJson.version)});`);
   const versionRun = spawnSync(process.execPath, ["dist/cw.js", "--version"], { cwd: repositoryUrl, encoding: "utf8" });
   assert.equal(versionRun.status, 0, versionRun.stderr);
-  assert.equal(versionRun.stdout, `${enginePackageJson.version}\n`);
+  assert.equal(versionRun.stdout, `${libraryPackageJson.version}\n`);
 });
 
 test("a consumer reads a use case's fault as a DTO, never as an exception (SDK Story 2 scenario 5)", () => {
   runConsumerCode(`
 import assert from 'node:assert/strict';
-import { AuthoringCharter, BuildingCharter, RunningCharter, buildCharterService, installCharterService, loadCharterService, loadMcpOriginsService } from '@cherry-works/engine';
-import { ClaudeProjection, CodexProjection, LocalRepoManipulator, FileCharterRepository, InMemoryCredentialsRepository } from './file-charter-projection.mjs';
+import { AuthoringCharter, BuildingCharter, RunningCharter, buildCharterService, installCharterService, loadCharterService, loadMcpOriginsService } from 'cherry-works';
+import { ClaudeProjection, CodexProjection, FileCharterRepository } from 'cherry-works';
+import { LocalRepoManipulator, InMemoryCredentialsRepository } from './own-adapters.mjs';
 const problems = [];
 const progressReporter = {report() {}, problem(text) {problems.push(text);}};
 const failingOutputWriter = new LocalRepoManipulator({async readIfThere() {throw new Error('Store unavailable.');}, async listFolders() {return [];}}, {});
@@ -175,8 +179,9 @@ assert.equal(problems.length, 1);
  *  keeping what the operator is told, and a store that can be made to fail. */
 const failureConsumerCode = String.raw`
 import assert from 'node:assert/strict';
-import { AuthoringCharter, BuildingCharter, RunningCharter, AdapterFault, CharterPrimitiveFault, buildCharterService, installCharterService, loadCharterService, loadMcpOriginsService } from '@cherry-works/engine';
-import { ClaudeProjection, CodexProjection, LocalRepoManipulator, FileCharterRepository, InMemoryCredentialsRepository } from './file-charter-projection.mjs';
+import { AuthoringCharter, BuildingCharter, RunningCharter, AdapterFault, CharterPrimitiveFault, buildCharterService, installCharterService, loadCharterService, loadMcpOriginsService } from 'cherry-works';
+import { ClaudeProjection, CodexProjection, FileCharterRepository } from 'cherry-works';
+import { LocalRepoManipulator, InMemoryCredentialsRepository } from './own-adapters.mjs';
 const fileTextByAddress = new Map([['memory://r/.cw/settings.json', '{"agents":["claude"]}']]);
 let storeFailure;
 const fileReader = {
@@ -272,7 +277,7 @@ assert.deepEqual(progressReporter.problems, []);
 
 test("a calling adapter covers every answer by its type, with no fault class (SDK Story 5 scenario 4)", () => {
   const consumerSource = `
-import type { FaultDTOs, ForAuthoringCharter, ForBuildingCharter, ForRunningCharter } from '@cherry-works/engine';
+import type { FaultDTOs, ForAuthoringCharter, ForBuildingCharter, ForRunningCharter } from 'cherry-works';
 type AnswerOf<Port> = { [Method in keyof Port]: Port[Method] extends (...args: never[]) => Promise<infer Answer> ? Answer : never }[keyof Port];
 type EveryAnswer = AnswerOf<ForAuthoringCharter> | AnswerOf<ForBuildingCharter> | AnswerOf<ForRunningCharter>;
 // Every operation of every driver port may answer a fault DTO, read by its type.
@@ -299,8 +304,9 @@ export { textOf, everyOperationAnswersFaults, noBareAnswer, type EveryAnswer };
 
 const charterConsumerCode = `
 import assert from 'node:assert/strict';
-import { AuthoringCharter, BuildingCharter, RunningCharter, buildCharterService, installCharterService, loadCharterService, loadMcpOriginsService } from '@cherry-works/engine';
-import { ClaudeProjection, CodexProjection, LocalRepoManipulator, FileCharterRepository, InMemoryCredentialsRepository } from './file-charter-projection.mjs';
+import { AuthoringCharter, BuildingCharter, RunningCharter, buildCharterService, installCharterService, loadCharterService, loadMcpOriginsService } from 'cherry-works';
+import { ClaudeProjection, CodexProjection, FileCharterRepository } from 'cherry-works';
+import { LocalRepoManipulator, InMemoryCredentialsRepository } from './own-adapters.mjs';
 const fileTextByAddress = new Map([['memory://r/.cw/settings.json', '{"agents":[]}']]);
 const fileReader = {
  async readIfThere(filePath) {return fileTextByAddress.get('memory://r/' + filePath);},
@@ -351,21 +357,78 @@ assert.ok(new TextDecoder().decode(scriptBytes).includes('appendFile'));
 `);
 });
 
-test("installing cw still adds its existing package with no engine dependency (SDK Story 2 scenario 8)", () => {
+test("installing cw adds its one package, the library within it, and depends on nothing (SDK Story 2 scenario 8)", () => {
   assert.equal("dependencies" in packageJson, false);
   const packRun = spawnSync("npm", ["pack", "--dry-run", "--json"], { cwd: repositoryUrl, encoding: "utf8" });
   assert.equal(packRun.status, 0, packRun.stderr);
   const packedPaths: string[] = JSON.parse(packRun.stdout)[0].files.map(({ path }: { path: string }) => path);
   assert.deepEqual(packedPaths.filter(packagePath => !packagePath.startsWith("dist/")).sort(), ["LICENSE", "README.md", "package.json"]);
-  assert.ok(packedPaths.every(packagePath => !packagePath.includes("engine/")));
+  assert.ok(packedPaths.every(packagePath => !packagePath.startsWith("packages/")));
+});
+
+test("a tool composes the engine as cw does, mixing the adapters the package ships with its own, type-checked against the package alone (SDK Story 2 scenario 9)", async () => {
+  const repoFolderPath = await mkdtemp(join(tmpdir(), "cw-library-repo-"));
+  try {
+    await mkdir(join(repoFolderPath, ".cw"));
+    await writeFile(join(repoFolderPath, ".cw/settings.json"), '{"agents":["claude"]}\n');
+    const consumerSource = `
+import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
+import { composeApplications, AgentCli, ClaudeProjection, FileCharterRepository, FileOutput, FileReaders, GitSources, GitWorktrees, KeychainCredentialsRepository, McpClients, OAuth, Promptfoo, Shell, SystemClock } from 'cherry-works';
+import type { EnginePlugin, ComposedApplications, ForCountingTokens, ForReportingProgress } from 'cherry-works';
+/** The tool's own agent command line, beside cw's projection for it. */
+class OwnAgentCli extends AgentCli {
+  async isInstalled(): Promise<boolean> { return true; }
+}
+const repoFolder: URL = pathToFileURL(${JSON.stringify(repoFolderPath)} + '/');
+const problemTexts: string[] = [];
+const progressReporter: ForReportingProgress = { report() {}, problem(problemText) { problemTexts.push(problemText); } };
+let countedTextCount = 0;
+const tokenCounter: ForCountingTokens = { countTokens(text) { countedTextCount++; return text.length; } };
+const pluginAdapters: EnginePlugin = {
+  agentProvider: { claude: { projection: new ClaudeProjection(new FileReaders(repoFolder)), cli: new OwnAgentCli() } },
+  charterRepository: new FileCharterRepository(new FileReaders(repoFolder), new FileOutput(repoFolder), new GitSources(repoFolder)),
+  fileReader: new FileReaders(repoFolder),
+  fileWriter: new FileOutput(repoFolder),
+  worktrees: new GitWorktrees(repoFolder),
+  authorizing: new OAuth(),
+  mcpServers: new McpClients(),
+  tokenCounter,
+  clock: new SystemClock(),
+  shell: new Shell(repoFolder),
+  progressReporter,
+  promptfooRunner: new Promptfoo(repoFolder, ${JSON.stringify(join(repoFolderPath, ".cherry-works"))}),
+  credentialsRepository: new KeychainCredentialsRepository(),
+};
+const { workspaceApp, engineApp }: ComposedApplications = await composeApplications(repoFolder, repoFolder, pluginAdapters);
+const settingsAnswer = await workspaceApp.settings();
+assert.equal(settingsAnswer.type, 'WorkspaceSettings', JSON.stringify(settingsAnswer));
+assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
+const buildAnswer = await engineApp.charterBuildingApp.build();
+assert.equal(buildAnswer.type, 'PlanSummary', JSON.stringify(buildAnswer));
+const mainContextAnswer = await engineApp.charterBuildingApp.predictMainContext();
+assert.equal(mainContextAnswer.type, 'MainContexts', JSON.stringify(mainContextAnswer));
+assert.ok(countedTextCount > 0);
+assert.deepEqual(problemTexts, []);
+`;
+    await writeFile(join(consumerFolder, "own-plugin.mts"), consumerSource);
+    const compileRun = spawnSync(process.execPath, [new URL("node_modules/typescript/bin/tsc", repositoryUrl).pathname, "--strict", "--target", "ES2022", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--lib", "ES2023,DOM", "--types", "node", "--typeRoots", new URL("node_modules/@types", repositoryUrl).pathname, "own-plugin.mts"], { cwd: consumerFolder, encoding: "utf8" });
+    assert.equal(compileRun.status, 0, compileRun.stdout + compileRun.stderr);
+    const consumerRun = spawnSync(process.execPath, ["own-plugin.mjs"], { cwd: consumerFolder, encoding: "utf8" });
+    assert.equal(consumerRun.status, 0, consumerRun.stdout + consumerRun.stderr);
+    assert.ok((await readFile(join(repoFolderPath, "CLAUDE.md"), "utf8")).length > 0);
+  } finally {
+    await rm(repoFolderPath, { recursive: true, force: true });
+  }
 });
 
 /** An integrator's adapters: no repository implementation is imported. The
  *  engine reads the headers itself. */
 const memoryAuthoringConsumerCode = String.raw`
 import assert from 'node:assert/strict';
-import { AuthoringCharter, BuildingCharter, RunningCharter, buildCharterService, installCharterService, loadCharterService, loadMcpOriginsService } from '@cherry-works/engine';
-import { ClaudeProjection, CodexProjection, LocalRepoManipulator, FileCharterRepository, InMemoryCredentialsRepository } from './file-charter-projection.mjs';
+import { AuthoringCharter, BuildingCharter, RunningCharter, buildCharterService, installCharterService, loadCharterService, loadMcpOriginsService } from 'cherry-works';
+import { ClaudeProjection, CodexProjection, FileCharterRepository } from 'cherry-works';
+import { LocalRepoManipulator, InMemoryCredentialsRepository } from './own-adapters.mjs';
 import filesystem from 'node:fs';
 import filesystemPromises from 'node:fs/promises';
 import childProcess from 'node:child_process';

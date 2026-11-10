@@ -8,8 +8,8 @@ import {
   type ForManagingLocalAgentOutput,
   type MainContextText,
   type ProviderComponent,
-} from "#module/charter/module.js";
-import { laidTextOf } from "#module/charter/module.js";
+} from "../app/port/out/managing-local-agent-output.port.js";
+import { laidTextOf } from "./helper.js";
 
 /**
  * What every agent's projection onto a repository's files does the same way:

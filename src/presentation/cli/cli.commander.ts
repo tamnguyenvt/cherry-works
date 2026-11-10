@@ -116,16 +116,20 @@ export class Commander {
  *  again (FR-037); a repository laid out the old way refuses every one, naming
  *  the skill that moves it (CORE-FR-226). */
 async function contextOf(commandLine: CommandLine, command: AnyCommand): Promise<Context | Outcome> {
-  const workspaceSettingsDTO = await commandLine.workspaceApp.settings();
+  const composeApplications = async () => {
+    const { workspaceApp, engineApp } = await commandLine.composeApplications();
+    return { workspaceApp, engineApp: showPathsInApps(engineApp, commandLine.cwd) };
+  };
+  const { workspaceApp, engineApp } = await composeApplications();
+  const workspaceSettingsDTO = await workspaceApp.settings();
   const workspaceSettings: WorkspaceSettings = workspaceSettingsDTO.type === "Fault" ? { agents: [] } : workspaceSettingsDTO.data;
-  const engineApps = showPathsInApps(commandLine.engineFactory(workspaceSettings), commandLine.cwd);
   // The layout first: a repository laid out the old way is told so whatever
   // its settings say, since moving it is what comes before anything else.
-  const layoutAnswer = await engineApps.charterAuthoringApp.layout();
+  const layoutAnswer = await engineApp.charterAuthoringApp.layout();
   if (layoutAnswer.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(layoutAnswer) };
   if (workspaceSettingsDTO.type === "Fault" && command.name !== "init")
     return { code: EXIT_FAILURE, problem: `${SETTINGS_FILE}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n` };
-  return { ...commandLine, ...engineApps, engineFactory: (settings) => showPathsInApps(commandLine.engineFactory(settings), commandLine.cwd), workspaceSettings };
+  return { ...commandLine, composeApplications, workspaceApp, ...engineApp, workspaceSettings };
 }
 
 /** The words one command is typed by, without the arguments it takes: the name

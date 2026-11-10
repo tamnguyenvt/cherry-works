@@ -1,4 +1,4 @@
-import { DocumentBasedComponent } from "#module/charter/module.js";
+import { DocumentBasedComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
 export interface CodexSkillHeaders {
   readonly name: string;
