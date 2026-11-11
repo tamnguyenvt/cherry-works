@@ -363,6 +363,28 @@ declare class DomainFault extends Error {
  *  be thrown this way. */
 declare function throwAggregateError(faults: readonly DomainFault[]): never;
 
+/** What is wrong, under the file it is wrong with. A file nothing is wrong with
+ *  is not in here at all. The one shape everything that reads a workspace
+ *  answers in, so what a charter got wrong and what its settings did are read
+ *  together without either being unwrapped first (FR-009). */
+declare class FaultsByFile {
+  #private;
+  /** Nothing wrong with any file. */
+  static readonly none: FaultsByFile;
+  constructor(files: Readonly<Record<string, readonly DomainFault[]>>);
+  /** Every fault, under the file it is wrong with. */
+  get files(): Readonly<Record<string, readonly DomainFault[]>>;
+  /** Is no file wrong at all? */
+  get isEmpty(): boolean;
+  /** These and the other's together, a file both name holding the faults of
+   *  both. */
+  with(other: FaultsByFile): FaultsByFile;
+  /** What is wrong badly enough to stop a build, under the file that has to
+   *  change. A file whose every fault is a warning is not in here at all
+   *  (FR-005). */
+  errors(): FaultsByFile;
+}
+
 /**
  * What a driven adapter raises when what stands behind its port refuses: git,
  * the credential store. Nothing is wrong with the charter; the message says

@@ -86,29 +86,25 @@ its own (`charter/infra/claude/claude-rule.ts`), `helper.ts`, `index.ts` and
   `mergedEntryFileText`). Each host's command line, `ClaudeCli` and
   `CodexCli`, built on `agent-cli.base.ts` (`AgentCli`), sits in
   `runtime/infra/<host>/`.
-- `module/composition.ts` — `composeApplications`, handed the
-  `EnginePlugin`, every adapter the engine reaches the outside through, each
+- `module/composition.ts` — `composeApplications`, handed a
+  `Partial<EngineAdapters>`, every adapter the engine reaches the outside through, each
   typed by its port and each the engine's own or written anew: under
   `agentProvider`, each agent's projection (`ForManagingLocalAgentOutput`) and
   command line (`ForCheckingAgentCli`), the `charterRepository`, and every
   other store and runner; by default Claude's and Codex's,
   `FileCharterRepository` and the adapters over files (CORE-FR-230). It
   answers `{ engine, workspace }`: `composeEngine`, the charter and runtime
-  composed over that plugin for the settings they are handed; and
-  `composeWorkspace`, the workspace module told the agents the plugin is
+  composed over those adapters for the settings they are handed; and
+  `composeWorkspace`, the workspace module told the agents a projection is
   handed for. Each adapter not handed is the engine's own, the charter's
   store and the projections set up over the file adapters handed. `main.ts`
   hands both to the command line, and `test/use-cases-of.ts` builds each
-  application as it does. `ReplaceableAdapters` is every adapter but the
-  charter's store and the agents' projections and command lines, with the
-  source fetcher that store reaches vendors through: what a tool outside the
-  repository may hand.
+  application as it does.
 - `index.ts` — the library `cherry-works` exports (SDK-FR-002, SDK-FR-020),
-  and nothing more: `composeApplications`, typed to take only a
-  `Partial<ReplaceableAdapters>`, and what it answers; the four driver ports
-  and their DTOs; `VERSION`; and the port of each adapter a tool may replace,
-  with the values crossing it. No use case, service, domain model or adapter
-  class. It reaches a module only through its `module.ts`, as `main.ts`
+  and nothing more: `composeApplications`, its `EngineAdapters`, and what it
+  answers; the four driver ports and their DTOs; `VERSION`; the port of every
+  adapter, with the models and values crossing it; and `cw`'s own adapters
+  and their abstract bases, for a tool to extend. No use case or service. It reaches a module only through its `module.ts`, as `main.ts`
   does; what it exports is the contract a release compares.
 
 ## Inside `module/`

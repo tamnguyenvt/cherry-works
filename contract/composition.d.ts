@@ -1,14 +1,26 @@
 // The library's declarations from composition, split from dist/index.d.ts for reading.
 
 /**
- * Every adapter the engine reaches the outside through that a tool outside
- * this repository may hand `composeApplications` in place of the engine's
- * own, with the source fetcher the charter's store kept as files reaches
- * vendors through. The charter's store and the agents' projections and
- * command lines are not among them: their ports name the domain's models
- * (CORE-FR-230, SDK-FR-020).
+ * Every adapter the engine reaches the outside through, each the engine's own
+ * or one a tool writes: each agent's projection and command line, under the
+ * agent it is for, the store that keeps the charter, the source fetcher that
+ * store reaches vendors through, and the rest (CORE-FR-230).
  */
-interface ReplaceableAdapters {
+interface EngineAdapters {
+  readonly agentProvider: {
+    readonly [provider: string]: {
+      /** What the agent reads of a charter, and where (CORE-FR-221). */
+      readonly projection: ForManagingLocalAgentOutput;
+      /** The agent's own command line (EVAL-FR-004). */
+      readonly cli: ForCheckingAgentCli;
+    };
+  };
+  /** The charter — its primitives, its vendors, its test and eval cases —
+   *  kept by one store (CORE-FR-228). */
+  readonly charterRepository: ForManagingCharter;
+  /** Where a vendor's source is fetched from, by the charter's store kept as
+   *  files (CORE-FR-205). */
+  readonly sourceFetcher: ForFetchingCharterSources;
   readonly fileReader: ForReadingFiles;
   readonly fileWriter: ForWritingFiles;
   readonly worktrees: ForKeepingWorktrees;
@@ -21,8 +33,6 @@ interface ReplaceableAdapters {
   readonly progressReporter: ForReportingProgress;
   readonly promptfooRunner: ForRunningPromptfoo;
   readonly credentialsRepository: ForStoringCredentials;
-  /** Where a vendor's source is fetched from (CORE-FR-205). */
-  readonly sourceFetcher: ForFetchingCharterSources;
 }
 
 /** The engine's two modules' applications, as the drivers reach them
@@ -41,13 +51,19 @@ interface ComposedApplications {
 }
 
 /**
- * The workspace module and the engine, each adapter handed replacing the
- * engine's own and every other one the engine's own (CORE-FR-230,
- * SDK-FR-020): the charter's store and the agents' projections are the
- * engine's, set up over the file adapters handed.
+ * The workspace module and the engine over the adapters handed, each one not
+ * handed being the engine's own — Claude's and Codex's, the charter kept as
+ * files, and every adapter over the repository's address and the developer's
+ * home's (CORE-FR-217, CORE-FR-218, CORE-FR-230). The charter's store and the
+ * agents' projections are set up over the file adapters handed, so files kept
+ * anywhere keep the charter there too, unless a store of the tool's own is
+ * handed (SDK-FR-020). The workspace first, then
+ * the engine for the settings it reads, a repository being set up for exactly
+ * the agents a projection is handed for (CORE-FR-221, CORE-FR-231). Settings that
+ * do not read yet, as before setup, compose an engine for no agent.
  */
-declare const composeApplications: (
+declare function composeApplications(
   repoFolder: URL,
   homeFolder: URL,
-  plugin?: Partial<ReplaceableAdapters>,
-) => Promise<ComposedApplications>;
+  engineAdapters?: Partial<EngineAdapters>,
+): Promise<ComposedApplications>;

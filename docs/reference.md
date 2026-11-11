@@ -438,7 +438,7 @@ tool of an mcp origin, or `[[<id>]]:<tool>` for one of them.
 
 `cherry-works` is also a library for TypeScript and JavaScript tools, on Node.js
 22 or later. It exports only what a tool needs: `composeApplications` and the
-types it takes and answers (`ReplaceableAdapters`, `ComposedApplications`,
+types it takes and answers (`EngineAdapters`, `ComposedApplications`,
 `ComposedEngine`); the four driver ports it answers through
 (`ForAuthoringCharter`, `ForBuildingCharter`, `ForRunningCharter`,
 `ForManagingWorkspace`) and their DTOs (`CharterDTOs`, `RuntimeDTOs`,
@@ -449,7 +449,7 @@ their types included: installing it adds nothing else.
 
 ```ts
 import { composeApplications, VERSION } from "cherry-works";
-import type { ReplaceableAdapters, ForReadingFiles, ForWritingFiles, ForReportingProgress } from "cherry-works";
+import type { EngineAdapters, ForReadingFiles, ForWritingFiles, ForReportingProgress } from "cherry-works";
 ```
 
 `composeApplications(repoFolder, homeFolder, adapters?)` composes the
@@ -464,21 +464,24 @@ alone, never a model of the domain. The engine is composed for the settings
 the repository holds when it is composed: compose again after setting a
 repository up.
 
-Hand only the adapters you replace, as a `Partial<ReplaceableAdapters>`;
-every other one is `cw`'s own. They are `fileReader` (`ForReadingFiles`),
-`fileWriter` (`ForWritingFiles`), `worktrees` (`ForKeepingWorktrees`),
-`authorizing` (`ForAuthorizingMcpOrigins`), `mcpServers`
-(`ForCallingMcpServers`), `tokenCounter` (`ForCountingTokens`), `clock`
-(`ForTellingTime`), `shell` (`ForRunningShellCommands`), `progressReporter`
-(`ForReportingProgress`), `promptfooRunner` (`ForRunningPromptfoo`),
-`credentialsRepository` (`ForStoringCredentials`) and `sourceFetcher`
-(`ForFetchingCharterSources`). The store that keeps the charter and Claude's
-and Codex's projections are always `cw`'s own, set up over the `fileReader`
-and `fileWriter` handed: hand file adapters over memory, at a `memory:`
-address, and a charter is authored and built with no disk. `cw`'s own
-`promptfooRunner` needs the developer's home at a `file:` address: elsewhere,
-hand one of your own. A store of your own for the charter, and a projection
-or command line of your own for an agent, are not offered.
+Hand only the adapters you replace, as a `Partial<EngineAdapters>`; every
+other one is `cw`'s own. They are `agentProvider` (each agent's projection,
+`ForManagingLocalAgentOutput`, and command line, `ForCheckingAgentCli`, under
+the agent's name), `charterRepository` (`ForManagingCharter`), `sourceFetcher`
+(`ForFetchingCharterSources`), `fileReader` (`ForReadingFiles`), `fileWriter`
+(`ForWritingFiles`), `worktrees` (`ForKeepingWorktrees`), `authorizing`
+(`ForAuthorizingMcpOrigins`), `mcpServers` (`ForCallingMcpServers`),
+`tokenCounter` (`ForCountingTokens`), `clock` (`ForTellingTime`), `shell`
+(`ForRunningShellCommands`), `progressReporter` (`ForReportingProgress`),
+`promptfooRunner` (`ForRunningPromptfoo`) and `credentialsRepository`
+(`ForStoringCredentials`). The agents a repository may be set up for are the
+keys of `agentProvider`. Where you hand no store or projection, `cw`'s own are
+set up over the `fileReader` and `fileWriter` handed: hand file adapters over
+memory, at a `memory:` address, and a charter is authored and built with no
+disk. `cw`'s own `promptfooRunner` needs the developer's home at a `file:`
+address: elsewhere, hand one of your own. `cw`'s own adapters and their
+abstract bases (`AgentProjection`, `AgentCli`) are exported for you to extend,
+with the models the charter's store and the projections speak in.
 
 A `ForReportingProgress` is where a use case logs an internal failure for
 whoever runs the tool. A use case takes no address: every path it hands a

@@ -79,8 +79,8 @@ function typecheckConsumerSource(consumerFileName: string, ...compilerFlags: str
 
 test("an installed engine supplies how to compose it, its driver ports, their DTOs, and every port a tool may replace with the types crossing it (SDK Story 2 scenario 1)", async () => {
   const consumerSource = `
-import { composeApplications, CharterDTOs, FaultDTOs, RuntimeDTOs, WorkspaceDTOs, AdapterFault, UnauthorizedMcpFault, McpCredential, McpClientRegistration, VERSION } from 'cherry-works';
-import type { ComposedApplications, ComposedEngine, ReplaceableAdapters, ForAuthoringCharter, ForBuildingCharter, ForRunningCharter, ForManagingWorkspace, ForReadingFiles, ReadFile, ListedFile, ForWritingFiles, ForReportingProgress, ForTellingTime, ForCountingTokens, ForRunningShellCommands, ShellCommandResult, ForKeepingWorktrees, ForRunningPromptfoo, PromptfooTest, PromptfooAssertion, PromptfooTestResult, PromptfooLog, ForCallingMcpServers, McpServerAddress, McpServerConnection, UpstreamTool, ToolAnswer, ForAuthorizingMcpOrigins, OAuthGrant, ForStoringCredentials, ForFetchingCharterSources } from 'cherry-works';
+import { composeApplications, CharterDTOs, FaultDTOs, RuntimeDTOs, WorkspaceDTOs, AdapterFault, UnauthorizedMcpFault, McpCredential, McpClientRegistration, VERSION, AgentCli, ClaudeProjection } from 'cherry-works';
+import type { ComposedApplications, ComposedEngine, EngineAdapters, ForManagingCharter, ForManagingLocalAgentOutput, ForAuthoringCharter, ForBuildingCharter, ForRunningCharter, ForManagingWorkspace, ForReadingFiles, ReadFile, ListedFile, ForWritingFiles, ForReportingProgress, ForTellingTime, ForCountingTokens, ForRunningShellCommands, ShellCommandResult, ForKeepingWorktrees, ForRunningPromptfoo, PromptfooTest, PromptfooAssertion, PromptfooTestResult, PromptfooLog, ForCallingMcpServers, McpServerAddress, McpServerConnection, UpstreamTool, ToolAnswer, ForAuthorizingMcpOrigins, OAuthGrant, ForStoringCredentials, ForFetchingCharterSources } from 'cherry-works';
 const fileReader: ForReadingFiles = {
   async readFilesRecursively(): Promise<readonly ReadFile[]> { return []; },
   async readBytesRecursively(): Promise<readonly ReadFile<Uint8Array>[]> { return [{path: 'a', contents: new Uint8Array([255])}]; },
@@ -110,12 +110,15 @@ const sourceFetcher: ForFetchingCharterSources = {
   async listFilesAt() { return []; }, async readFileAt() { return ''; }, async readBytesAt() { return new Uint8Array(); },
   async checkoutFolderAt() {}, async forgetCommit() {}
 };
-const replaceableAdapters: ReplaceableAdapters = { fileReader, fileWriter, worktrees, authorizing, mcpServers, tokenCounter, clock, shell, progressReporter, promptfooRunner, credentialsRepository, sourceFetcher };
-const composedApplications: ComposedApplications = await composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), replaceableAdapters);
+const replacedAdapters: Partial<EngineAdapters> = { fileReader, fileWriter, worktrees, authorizing, mcpServers, tokenCounter, clock, shell, progressReporter, promptfooRunner, credentialsRepository, sourceFetcher };
+const composedApplications: ComposedApplications = await composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), replacedAdapters);
 const filesReplacedApplications: Promise<ComposedApplications> = composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), { fileReader, fileWriter });
-// The charter's store is the engine's own: a tool hands none.
-// @ts-expect-error
-const ownStoreApplications = composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), { charterRepository: {} });
+// An agent's projection and command line, and the charter's store, may be a tool's own too.
+class OwnAgentCli extends AgentCli { async isInstalled() { return true; } }
+class OwnClaudeProjection extends ClaudeProjection {}
+const ownProjection: ForManagingLocalAgentOutput = new OwnClaudeProjection(fileReader);
+const ownAgentApplications = composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), { fileReader, fileWriter, agentProvider: { claude: { projection: ownProjection, cli: new OwnAgentCli() } } });
+const charterRepositoryOfOwn = (charterRepository: ForManagingCharter): Partial<EngineAdapters> => ({ charterRepository });
 const workspaceApp: ForManagingWorkspace = composedApplications.workspaceApp;
 const engineApp: ComposedEngine = composedApplications.engineApp;
 const charterAuthoringApp: ForAuthoringCharter = engineApp.charterAuthoringApp;
@@ -139,18 +142,16 @@ const engineVersion: string = VERSION;
   );
   assert.equal(libraryPackageJson.license, packageJson.license);
   assert.match(await readFile(join(consumerFolder, "node_modules/cherry-works/LICENSE"), "utf8"), /^MIT License\n/);
-  // The contract names no domain model the charter's store or an agent's
-  // projection is written in.
+  // The contract names the ports of the charter's store and of an agent, so a
+  // tool writes its own against them (CORE-FR-230).
   const contractText = await readFile(join(consumerFolder, "node_modules/cherry-works/dist/index.d.ts"), "utf8");
-  for (const internalName of [
-    "RawPrimitive",
-    "CharterRoot",
-    "ProjectionPlan",
+  for (const contractName of [
     "ForManagingCharter",
     "ForManagingLocalAgentOutput",
-    "FileCharterRepository",
+    "ForCheckingAgentCli",
+    "EngineAdapters",
   ])
-    assert.doesNotMatch(contractText, new RegExp(`\\b${internalName}\\b`), internalName);
+    assert.match(contractText, new RegExp(`\\b${contractName}\\b`), contractName);
 });
 
 test("the installed library holds the engine and the adapters cw is composed of, but no command line or portal, and imports no package (SDK Story 2 scenario 2)", async () => {
@@ -201,8 +202,8 @@ test("the library refuses internal imports and exports only its public contract 
   runConsumerCode(`
 import assert from 'node:assert/strict';
 import * as engine from 'cherry-works';
-assert.deepEqual(Object.keys(engine).sort(), ['AdapterFault', 'CharterDTOs', 'FaultDTOs', 'McpClientRegistration', 'McpCredential', 'RuntimeDTOs', 'UnauthorizedMcpFault', 'VERSION', 'WorkspaceDTOs', 'composeApplications'].sort());
-for (const privateName of ['AuthoringCharter', 'BuildingCharter', 'RunningCharter', 'buildCharterService', 'loadCharterService', 'RawPrimitive', 'Primitives', 'CharterFolder', 'BUILTIN_LAYER', 'TEST_DIRECTORY', 'ModelHelper', 'mergedTomlText', 'composeEngine', 'composeWorkspace', 'FileCharterRepository', 'AgentProjection', 'ClaudeProjection', 'CodexProjection', 'AgentCli', 'ClaudeCli', 'CodexCli', 'FileReaders', 'FileOutput', 'GitSources', 'Shell', 'Promptfoo', 'CharterRoot', 'WorkspaceSettingsSchema', 'folderURL', 'loadCharterRoot', 'RepoLayerPrimitive', 'BUILTIN_PRIMITIVES', 'FileSettingsRepository', 'LocalRepoManipulator', 'ManagingWorkspace', 'FileWorkspaceSettingsRepository', 'FileSessionAnalysisRepository', 'InMemoryFileReaders', 'Commander']) assert.equal(privateName in engine, false, privateName);
+for (const publicName of ['AdapterFault', 'CharterDTOs', 'FaultDTOs', 'McpClientRegistration', 'McpCredential', 'RuntimeDTOs', 'UnauthorizedMcpFault', 'VERSION', 'WorkspaceDTOs', 'composeApplications', 'FileCharterRepository', 'ClaudeProjection', 'CodexProjection', 'AgentProjection', 'AgentCli', 'ClaudeCli', 'CodexCli', 'RawPrimitive']) assert.equal(publicName in engine, true, publicName);
+for (const privateName of ['AuthoringCharter', 'BuildingCharter', 'RunningCharter', 'buildCharterService', 'loadCharterService', 'BUILTIN_LAYER', 'TEST_DIRECTORY', 'composeEngine', 'composeWorkspace', 'FileReaders', 'FileOutput', 'GitSources', 'Shell', 'Promptfoo', 'WorkspaceSettingsSchema', 'folderURL', 'loadCharterRoot', 'RepoLayerPrimitive', 'BUILTIN_PRIMITIVES', 'FileSettingsRepository', 'LocalRepoManipulator', 'ManagingWorkspace', 'FileWorkspaceSettingsRepository', 'FileSessionAnalysisRepository', 'InMemoryFileReaders', 'Commander']) assert.equal(privateName in engine, false, privateName);
 for (const privatePath of ['domain/models/DomainFault', 'storage/FileCharterRepository', 'index.js', 'dist/index.js', 'dist/main.js', 'src/module/charter/module.js', 'application/RunningCharter']) await assert.rejects(import('cherry-works/' + privatePath), {code: 'ERR_PACKAGE_PATH_NOT_EXPORTED'});
 `);
 });
@@ -488,14 +489,14 @@ test("a tool composes the engine as cw does, replacing some of its adapters with
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { composeApplications } from 'cherry-works';
-import type { ReplaceableAdapters, ComposedApplications, ForCountingTokens, ForReportingProgress } from 'cherry-works';
+import type { EngineAdapters, ComposedApplications, ForCountingTokens, ForReportingProgress } from 'cherry-works';
 const repoFolder: URL = pathToFileURL(${JSON.stringify(repoFolderPath)} + '/');
 const problemTexts: string[] = [];
 const progressReporter: ForReportingProgress = { report() {}, problem(problemText) { problemTexts.push(problemText); } };
 let countedTextCount = 0;
 const tokenCounter: ForCountingTokens = { countTokens(text) { countedTextCount++; return text.length; } };
 // Only what the tool replaces is handed: every other adapter is cw's own.
-const ownAdapters: Partial<ReplaceableAdapters> = { tokenCounter, progressReporter };
+const ownAdapters: Partial<EngineAdapters> = { tokenCounter, progressReporter };
 const { workspaceApp, engineApp }: ComposedApplications = await composeApplications(repoFolder, repoFolder, ownAdapters);
 const settingsAnswer = await workspaceApp.settings();
 assert.equal(settingsAnswer.type, 'WorkspaceSettings', JSON.stringify(settingsAnswer));

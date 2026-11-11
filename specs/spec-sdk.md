@@ -12,6 +12,8 @@ Then: "Delete the engine's own package and stop publishing it: publish only `che
 
 Then: "Export only what a user needs: `composeApplications`, handed only the adapters a tool replaces and merging them with `cw`'s own; the four driver ports and their DTOs; `VERSION`; and the ports of the adapters a tool may replace, with what crosses them. No use case, service, domain model or adapter class; the charter's store and the agents' projections and command lines are not public for now."
 
+Then: "Merge the adapters a tool may hand into one `EngineAdapters`, every one of them replaceable: the charter's store and each agent's projection and command line included."
+
 ## Overview
 
 The engine was reached only through `cw`, or through a portal listening on 127.0.0.1 for one repository: a tool wanting the charter's rules had to shell out to a command, or write them again.
@@ -30,7 +32,7 @@ It serves whoever writes a tool on the engine, not the developer using `cw`. Wha
 
 ### Session 2026-11-11
 
-- Q: Why may a tool not hand its own store for the charter, or its own projection or command line for an agent? → A: Their ports name the engine's domain models, which the package does not export; they stay `cw`'s own for now, set up over the file adapters a tool hands ([SDK-FR-020](#sdk-fr-020)).
+- Q: May a tool hand its own store for the charter, or its own projection or command line for an agent? → A: Yes: every adapter is one `EngineAdapters`, all replaceable; the models their ports name are exported with them, so changing one is a change to the contract ([SDK-FR-020](#sdk-fr-020)).
 - Q: Must a tool hand every adapter? → A: No: it hands only what it replaces, and `cw`'s own is composed for every other ([SDK-FR-003](#sdk-fr-003)).
 
 ## User Scenarios & Testing *(mandatory)*
@@ -214,7 +216,7 @@ A tool author can tell which version a release requires from the policy the main
 - <a id="sdk-fr-015"></a>**SDK-FR-015**: The contract MUST follow semantic versioning from the first publish: removing an exported name or changing an existing declaration is a major version, adding a newly named declaration a minor one, and comments or layout alone no contract change. Every content change to an existing declaration, including a compatible optional addition, MUST be treated conservatively as breaking rather than subjected to semantic compatibility analysis. A release breaking the contract without a new major MUST be refused, and a patch adding a newly named declaration MUST be refused. A breaking change MUST be named in the changelog. The release compares only what the package exports: the duties [SDK-FR-008](#sdk-fr-008) states are prose, and whoever changes them versions and names the change by hand.
 - <a id="sdk-fr-016"></a>**SDK-FR-016**: The library MUST go out only inside `cherry-works`, at its version, after the checks of [CORE-FR-134](spec-core.md#core-fr-134) and an import of the installed library pass. A preflight check failing MUST publish nothing. A failure of the publication MUST be reported under [SDK-FR-019](#sdk-fr-019). The first version published under this contract MUST be 1.0.0.
 - <a id="sdk-fr-019"></a>**SDK-FR-019**: A release that fails during publication MUST report that nothing was published, that the release commit and tag pushed are kept, and how the maintainer can publish at the same version; it MUST NOT claim that anything was rolled back.
-- <a id="sdk-fr-020"></a>**SDK-FR-020**: The library MUST export how `cw` composes the engine, taking only the adapters a tool replaces and composing `cw`'s own for every other ([CORE-FR-230](spec-core.md#core-fr-230)). A tool MAY replace every adapter but the store that keeps the charter and each agent's projection and command line, which stay `cw`'s own, the store and the projections set up over the file adapters the tool hands, so files kept anywhere keep the charter there too.
+- <a id="sdk-fr-020"></a>**SDK-FR-020**: The library MUST export how `cw` composes the engine, taking only the adapters a tool replaces and composing `cw`'s own for every other ([CORE-FR-230](spec-core.md#core-fr-230)). A tool MAY replace every adapter — the store that keeps the charter and each agent's projection and command line included — handed as one partial set of the engine's adapters; the library MUST export each adapter's port, the models it names, and `cw`'s own adapters for a tool to extend. Where a tool hands no store or projection, `cw`'s own are set up over the file adapters it hands, so files kept anywhere keep the charter there too.
 
 **Failures**
 
@@ -249,6 +251,5 @@ A tool author can tell which version a release requires from the policy the main
 - Any dependency on a central service.
 - Splitting a use case's constructor, or making its ports optional.
 - Exporting the command line or the portal as a library.
-- A tool's own charter store or agent projection, or an agent command line of its own, handed to the engine through the package: their ports name the domain's models.
 - Evaluating away from a real folder and git.
 - Changing the charter's format or validation rules, beyond what [CORE Story 38](spec-core.md#core-story-38---keep-a-binary-asset-whole-priority-p2) needs.

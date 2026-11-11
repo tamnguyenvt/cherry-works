@@ -100,6 +100,8 @@ cw eval --agent codex       # evaluate with the real agent; spends tokens
 - [Creating a vendor source](docs/creating-a-vendor.md) — publish, install and
   update a shared charter.
 - [Using the portal](docs/use-portal.md) — edit, test and build in your browser.
+- [Extending the engine](docs/extending-the-engine.md) — call the engine from
+  your own tool, and hand it adapters of your own.
 - [Reference](docs/reference.md) — commands, host mappings, evaluations,
   context costs, vendor sources, MCP configuration, and
   [the engine as a library](docs/reference.md#the-engine-as-a-library) to

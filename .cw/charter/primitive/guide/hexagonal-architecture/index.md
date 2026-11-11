@@ -47,7 +47,7 @@ the import rules; run it after any change that adds an import.
   composed apart from it, as `composeApplications` in
   `src/module/composition.ts`, that is the one place that names
   concrete classes, but for the one instance each service's file exports:
-  every adapter is handed in the one `EnginePlugin`, typed by its port,
+  every adapter is handed in one `EngineAdapters`, typed by its port,
   the engine's own over files by default or one written anew (CORE-FR-230).
 
 ## Inside `src/module/`

@@ -1,20 +1,68 @@
-import {
-  type ComposedApplications,
-  composeApplications as composeApplicationsOverPlugin,
-  type ReplaceableAdapters,
-} from "./module/composition.js";
-
+/** What a tool needs to write the charter's store, an agent's projection or
+ *  an agent's command line of its own, or to extend the engine's (CORE-FR-230). */
 export {
+  AgentPrimitive,
+  AgentProjection,
+  AgentProvider,
+  BasePrimitive,
+  BuiltSensors,
+  Catalogue,
   CharterDTOs,
+  CharterFolder,
+  CharterMd,
+  type CharterOutput,
+  type CharterRoot,
+  ClaudeProjection,
+  CodexProjection,
+  type CompiledPrimitive,
+  CopyPlan,
+  DocumentBasedComponent,
+  EvalFolder,
+  FileCharterRepository,
   type ForAuthoringCharter,
   type ForAuthorizingMcpOrigins,
   type ForBuildingCharter,
   type ForCountingTokens,
   type ForFetchingCharterSources,
+  type ForManagingCharter,
+  type ForManagingLocalAgentOutput,
   type ForStoringCredentials,
+  GuidePrimitive,
+  type MainContextText,
   McpClientRegistration,
   McpCredential,
+  McpPrimitive,
+  ModelHelper,
+  mergedTomlText,
   type OAuthGrant,
+  OutputPart,
+  PlaybookPrimitive,
+  PosturePrimitive,
+  type Primitive,
+  PrimitiveLayer,
+  Primitives,
+  PrimitivesFolder,
+  ProjectionPlan,
+  ProviderComponent,
+  RawEvalSuite,
+  RawPrimitive,
+  RawSourceSkill,
+  RawTestSuite,
+  RawVendorSource,
+  SensorPrimitive,
+  SettingBasedComponent,
+  SkillPrimitive,
+  SourceCharter,
+  SourceSkill,
+  StampedDocument,
+  TestFolder,
+  TestSuite,
+  VendorRoot,
+  VendorRootFactory,
+  VendorSource,
+  VendorSourceOrigin,
+  VendorsFolder,
+  WritePlan,
 } from "./module/charter/module.js";
 /**
  * What `cherry-works` lets a tool import, and nothing more (SDK-FR-002,
@@ -22,9 +70,20 @@ export {
  * answers through, with the DTOs they answer; and the ports of every adapter a
  * tool may hand in place of the engine's own, with the values they cross.
  */
-export type { ComposedApplications, ComposedEngine, ReplaceableAdapters } from "./module/composition.js";
 export {
+  type ComposedApplications,
+  type ComposedEngine,
+  composeApplications,
+  type EngineAdapters,
+} from "./module/composition.js";
+export {
+  AgentCli,
+  type Answer,
+  ClaudeCli,
+  CodexCli,
+  type ForCheckingAgentCli,
   type ForKeepingWorktrees,
+  type ForRunningAgentCli,
   type ForRunningCharter,
   type ForRunningPromptfoo,
   type ForRunningShellCommands,
@@ -32,6 +91,7 @@ export {
   type PromptfooLog,
   type PromptfooTest,
   type PromptfooTestResult,
+  type PromptUsage,
   RuntimeDTOs,
   type ShellCommandResult,
 } from "./module/runtime/module.js";
@@ -52,18 +112,6 @@ export {
   type UpstreamTool,
 } from "./module/shared/module.js";
 export { type ForManagingWorkspace, WorkspaceDTOs } from "./module/workspace/module.js";
-
-/**
- * The workspace module and the engine, each adapter handed replacing the
- * engine's own and every other one the engine's own (CORE-FR-230,
- * SDK-FR-020): the charter's store and the agents' projections are the
- * engine's, set up over the file adapters handed.
- */
-export const composeApplications: (
-  repoFolder: URL,
-  homeFolder: URL,
-  plugin?: Partial<ReplaceableAdapters>,
-) => Promise<ComposedApplications> = composeApplicationsOverPlugin;
 
 /** Replaced at build time with the version shared with cw. */
 declare const ENGINE_VERSION: string;

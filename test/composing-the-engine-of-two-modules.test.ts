@@ -11,7 +11,7 @@ import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-me
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
-import { composeApplications, composeEngine, type EnginePlugin } from "../src/module/composition.js";
+import { composeApplications, composeEngine, type EngineAdapters } from "../src/module/composition.js";
 import { AgentCli } from "../src/module/runtime/infra/agent-cli.base.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryPromptfoo } from "../src/module/runtime/infra/in-memory/in-memory-promptfoo.adapter.js";
@@ -87,7 +87,7 @@ function adaptersInMemory(files: Readonly<Record<string, string>>) {
  *  projection as this engine ships it, but its command line held in memory,
  *  so no test runs an agent installed on the machine, and the charter kept as
  *  files over them. */
-function pluginsInMemory(adapters: ReturnType<typeof adaptersInMemory>): EnginePlugin {
+function pluginsInMemory(adapters: ReturnType<typeof adaptersInMemory>): EngineAdapters {
   return {
     ...adapters,
     agentProvider: {
@@ -258,28 +258,27 @@ test("the published package composes the engine of its modules and the adapters 
   assert.ok(exportedPaths.length > 0);
   for (const exportedPath of exportedPaths)
     assert.match(exportedPath, /^module\/(?:(?:charter|runtime|shared|workspace)\/module|composition)\.js$/);
-  // No use case, store or runner is exported: the engine's own are composed
-  // in where a tool hands none (CORE-FR-228, SDK-FR-020).
+  // No use case is exported, nor how the engine is put together inside: a
+  // tool composes it through composeApplications alone (CORE-FR-228, SDK-FR-020).
   for (const internalName of [
     "AuthoringCharter",
     "BuildingCharter",
     "RunningCharter",
-    "FileCharterRepository",
-    "ClaudeProjection",
-    "CodexProjection",
-    "ClaudeCli",
-    "CodexCli",
-    "FileReaders",
-    "FileOutput",
     "composeEngine",
-    "EnginePlugin",
+    "composeWorkspace",
   ])
     assert.doesNotMatch(libraryIndexText, new RegExp(`^export \\{[^}]*\\b${internalName}\\b`, "m"), internalName);
-  // Read as one line, however the formatter wraps it.
-  assert.match(
-    libraryIndexText.replace(/\s+/g, " ").replace(/\( /g, "(").replace(/,? \)/g, ")"),
-    /export const composeApplications: \(repoFolder: URL, homeFolder: URL, plugin\?: Partial<ReplaceableAdapters>\) => Promise<ComposedApplications> = /,
-  );
+  // Every adapter may be handed, and the engine's own are there to extend (CORE-FR-230).
+  for (const exportedName of [
+    "composeApplications",
+    "EngineAdapters",
+    "FileCharterRepository",
+    "AgentProjection",
+    "AgentCli",
+  ])
+    assert.match(libraryIndexText, new RegExp(`^export \\{[^}]*\\b${exportedName}\\b`, "m"), exportedName);
+  const compositionText = readFileSync(new URL("src/module/composition.ts", repositoryUrl), "utf8");
+  assert.match(compositionText, /^ {2}engineAdapters: Partial<EngineAdapters> = \{\},$/m);
   // pnpm test builds first, so the library read is this working tree's.
   const builtLibraryText = readFileSync(new URL("dist/index.js", repositoryUrl), "utf8");
   assert.doesNotMatch(builtLibraryText, /^\/\/ (?:main\.ts|src\/presentation\/)/m);

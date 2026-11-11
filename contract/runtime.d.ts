@@ -1083,6 +1083,29 @@ interface ForKeepingWorktrees {
   removeWorktree(worktreePath: string): Promise<void>;
 }
 
+/** What an adapter answering this port raises when the command line refuses,
+ *  named again here so it names this port and nothing behind it. */
+
+/**
+ * DRIVEN PORT — an agent's own command line, run headless: one prompt asked,
+ * and the model's answer to it out. One adapter per agent's command line;
+ * the composition root hands each under the agent it runs (EVAL-FR-004).
+ *
+ * The prompt is run in a folder of its own holding nothing, so what the model
+ * was sent is the command line's own and the prompt, and nothing of whichever
+ * repository asked.
+ */
+interface ForCheckingAgentCli {
+  /** Is the command line installed on this machine? */
+  isInstalled(): Promise<boolean>;
+}
+
+interface ForRunningAgentCli extends ForCheckingAgentCli {
+  /** This prompt asked, and what the model answered: what it said, and the
+   *  usage the command line reports of what it was sent. */
+  ask(prompt: string): Promise<Answer>;
+}
+
 /** What an adapter answering this port raises when promptfoo cannot be
  *  installed or stops with an error, named again here so it names this port and
  *  nothing behind it. */
@@ -1121,6 +1144,20 @@ interface ForRunningShellCommands {
   /** Run `command` in the folder at `workingPath` from the repository through the shell, `stdin` written to it,
    *  and answer once it has exited. */
   runShellCommand(command: string, workingPath: string, stdin: string): Promise<ShellCommandResult>;
+}
+
+/** One prompt answered, as the command line reports it. */
+interface Answer {
+  readonly resultText: string;
+  readonly usage: PromptUsage;
+}
+
+/** The input side of one run's usage, as the command line reports it: tokens
+ *  sent fresh, written to the cache, and read from it. */
+interface PromptUsage {
+  readonly inputTokens: number;
+  readonly cacheCreationInputTokens: number;
+  readonly cacheReadInputTokens: number;
 }
 
 /** One promptfoo test, in promptfoo's own words. */
@@ -1183,4 +1220,36 @@ interface ShellCommandResult {
   readonly exitCode: number;
   readonly stdout: string;
   readonly stderr: string;
+}
+
+/**
+ * What every agent's own command line is to the engine: one it can ask
+ * whether it is installed. An agent that runs evaluations headless answers
+ * prompts as well (`ForRunningAgentCli`); what it runs and how is the agent's
+ * own.
+ */
+declare abstract class AgentCli implements ForCheckingAgentCli {
+  abstract isInstalled(): Promise<boolean>;
+}
+
+/**
+ * DRIVEN ADAPTER: Claude Code's own command line, `claude -p`, run headless.
+ *
+ * Each prompt is run in an empty folder of its own, with nothing loaded, so
+ * the model is sent Claude Code's own instructions and the prompt, and the
+ * same instructions on every run. A count is read off the JSON it prints, of
+ * the first message sent: a model answering at length can run on into a
+ * second, whose input the total adds again. It runs on whatever `claude` is
+ * signed in with: no key of this engine's (EVAL-FR-004). At most
+ * `PARALLEL_RUNNER_COUNT` run together.
+ */
+declare class ClaudeCli extends AgentCli implements ForRunningAgentCli {
+  #private;
+  isInstalled(): Promise<boolean>;
+  ask(prompt: string): Promise<Answer>;
+}
+
+/** Check the Codex CLI used by promptfoo without asking a model. */
+declare class CodexCli extends AgentCli {
+  isInstalled(): Promise<boolean>;
 }
