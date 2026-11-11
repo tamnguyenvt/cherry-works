@@ -1,8 +1,8 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { TestSuite } from "../src/module/charter/domain/models/test/test-suite.js";
-import { DomainFault } from "../src/module/shared/domain/models/domain.fault.js";
+import { test } from "node:test";
 import { TestSuiteFactory } from "../src/module/charter/domain/models/test/test-suite.factory.js";
+import type { TestSuite } from "../src/module/charter/domain/models/test/test-suite.js";
+import { DomainFault } from "../src/module/shared/domain/models/domain.fault.js";
 
 /** One test file, written the way an author writes it. */
 const file = (written: unknown) => JSON.stringify(written, null, 2);
@@ -34,9 +34,7 @@ test("a touched file is read with the primitive it is expected to bring up", () 
   );
 
   assert.equal(suite.description, "Type guides must come up when application code is touched.");
-  assert.deepEqual(written(suite), [
-    { do: { touchFile: "src/services/user.ts" }, expect: { activate: "no-any" } },
-  ]);
+  assert.deepEqual(written(suite), [{ do: { touchFile: "src/services/user.ts" }, expect: { activate: "no-any" } }]);
 });
 
 test("a touched file is read with the permission it is expected to meet, either way", () => {
@@ -97,7 +95,10 @@ test("a file describing no case is refused, since running it would assert nothin
 });
 
 test("a case putting both a touched file and an event is refused, since a case is one situation", () => {
-  assert.ok(refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, when: "Stop", expect: { activate: "no-any" } }] })) !== undefined);
+  assert.ok(
+    refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, when: "Stop", expect: { activate: "no-any" } }] })) !==
+      undefined,
+  );
 });
 
 test("a raised event expecting a permission is refused, since an event touches no file", () => {
@@ -105,7 +106,10 @@ test("a raised event expecting a permission is refused, since an event touches n
 });
 
 test("a case expecting both an activation and a permission is refused", () => {
-  assert.ok(refusing(file({ cases: [{ do: { touchFile: ".env" }, expect: { activate: "no-any", allow: false } }] })) !== undefined);
+  assert.ok(
+    refusing(file({ cases: [{ do: { touchFile: ".env" }, expect: { activate: "no-any", allow: false } }] })) !==
+      undefined,
+  );
 });
 
 test("a case raising an event nothing raises is refused", () => {
@@ -113,12 +117,19 @@ test("a case raising an event nothing raises is refused", () => {
 });
 
 test("an expectation that is not an id is refused, since nothing answers to it (FR-172)", () => {
-  assert.ok(refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] })) !== undefined);
-  assert.ok(refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "No Any" } }] })) !== undefined);
+  assert.ok(
+    refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] })) !==
+      undefined,
+  );
+  assert.ok(
+    refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "No Any" } }] })) !== undefined,
+  );
 });
 
 test("a field nothing reads is refused rather than passed over", () => {
-  assert.ok(refusing(
+  assert.ok(
+    refusing(
       file({ cases: [{ do: { touchFile: "src/one.ts", request: "add a field" }, expect: { activate: "no-any" } }] }),
-    ) !== undefined);
+    ) !== undefined,
+  );
 });

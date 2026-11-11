@@ -1,16 +1,30 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { inTheBrowser } from "./in-the-browser.js";
+import { test } from "node:test";
 import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
+import { inTheBrowser } from "./in-the-browser.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: About ${id}.`,
+    ...headers,
+    "---",
+    "",
+    `The body of ${id}.`,
+    "",
+  ].join("\n");
 
 /** A guide pulling in a mixin and citing a corpus, and a test case naming it. */
 const charter = {
-  [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: why", 'mixins: ["voice"]']),
+  [at("guide/no-any/index.md")]: primitive("guide", "no-any", [
+    'globs: ["src/**/*.ts"]',
+    "rationale: why",
+    'mixins: ["voice"]',
+  ]),
   [at("corpus/why/index.md")]: primitive("corpus", "why"),
   [at("mixin/voice/index.md")]: primitive("mixin", "voice"),
   "file:///repo/.cw/charter/test/activation.json": `${JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] })}\n`,
@@ -22,7 +36,9 @@ const sectionsOf = async (page: import("playwright").Page) =>
     await page
       .getByRole("dialog")
       .getByRole("region")
-      .evaluateAll((sections) => sections.map((section) => [section.getAttribute("aria-label"), section.querySelector("h3 + div")!.textContent])),
+      .evaluateAll((sections) =>
+        sections.map((section) => [section.getAttribute("aria-label"), section.querySelector("h3 + div")!.textContent]),
+      ),
   );
 
 test("a row's Explain opens what the engine says of it: when it comes up, what it pulls in, what names it (FR-029)", async () => {
@@ -41,20 +57,25 @@ test("a row's Explain opens what the engine says of it: when it comes up, what i
 });
 
 test("a sensor's explanation shows the signal it answers to and the command it runs", async () => {
-  await inTheBrowser({ [at("sensor/check/index.md")]: primitive("sensor", "check", ["signal: Stop", "run: pnpm lint"]) }, async (page) => {
-    await page.getByRole("radio", { name: "sensor" }).click();
-    await page.getByLabel("Explain check").click();
-    await page.getByRole("dialog").getByRole("region").first().waitFor();
+  await inTheBrowser(
+    { [at("sensor/check/index.md")]: primitive("sensor", "check", ["signal: Stop", "run: pnpm lint"]) },
+    async (page) => {
+      await page.getByRole("radio", { name: "sensor" }).click();
+      await page.getByLabel("Explain check").click();
+      await page.getByRole("dialog").getByRole("region").first().waitFor();
 
-    const declaredHeaders = await page
-      .getByRole("region", { name: "What it declares" })
-      .locator("dl > div")
-      .evaluateAll((rows) => rows.map((row) => [row.querySelector("dt")!.textContent, row.querySelector("dd")!.textContent]));
-    assert.deepEqual(declaredHeaders, [
-      ["signal", "Stop"],
-      ["run", "pnpm lint"],
-    ]);
-  });
+      const declaredHeaders = await page
+        .getByRole("region", { name: "What it declares" })
+        .locator("dl > div")
+        .evaluateAll((rows) =>
+          rows.map((row) => [row.querySelector("dt")!.textContent, row.querySelector("dd")!.textContent]),
+        );
+      assert.deepEqual(declaredHeaders, [
+        ["signal", "Stop"],
+        ["run", "pnpm lint"],
+      ]);
+    },
+  );
 });
 
 test("every id in an explanation opens its own (FR-116)", async () => {
@@ -72,7 +93,17 @@ test("a script's explanation names the primitives whose body names it (FR-163)",
   const naming = {
     [at("script/check/index.md")]: primitive("script", "check", ["executionPath: ./run.sh"]),
     [at("script/check/run.sh")]: "true\n",
-    [at("skill/release/index.md")]: ["---", "kind: skill", "id: release", "description: About release.", 'triggers: ["release"]', "---", "", "Run [[check]].", ""].join("\n"),
+    [at("skill/release/index.md")]: [
+      "---",
+      "kind: skill",
+      "id: release",
+      "description: About release.",
+      'triggers: ["release"]',
+      "---",
+      "",
+      "Run [[check]].",
+      "",
+    ].join("\n"),
   };
   await inTheBrowser(naming, async (page) => {
     await page.getByRole("radio", { name: "script" }).click();
@@ -84,12 +115,15 @@ test("a script's explanation names the primitives whose body names it (FR-163)",
 });
 
 test("a rationale no corpus answers to is said not to resolve", async () => {
-  await inTheBrowser({ [at("guide/no-any/index.md")]: primitive("guide", "no-any", ["rationale: gone"]) }, async (page) => {
-    await page.getByLabel("Explain no-any").click();
-    await page.getByRole("dialog").getByRole("region").first().waitFor();
+  await inTheBrowser(
+    { [at("guide/no-any/index.md")]: primitive("guide", "no-any", ["rationale: gone"]) },
+    async (page) => {
+      await page.getByLabel("Explain no-any").click();
+      await page.getByRole("dialog").getByRole("region").first().waitFor();
 
-    assert.equal((await sectionsOf(page))["What it pulls in"], "gone (does not resolve)");
-  });
+      assert.equal((await sectionsOf(page))["What it pulls in"], "gone (does not resolve)");
+    },
+  );
 });
 
 test("the dialog closes by its ×, by the overlay behind it, and by Escape", async () => {
@@ -103,7 +137,9 @@ test("the dialog closes by its ×, by the overlay behind it, and by Escape", asy
     await explain.click();
     // Clicked once the dialog has finished coming in, as a reader clicks: a
     // click while it is still animating in is not taken as one outside it.
-    await page.evaluate("Promise.all(document.querySelector('[role=dialog]').getAnimations().map((animation) => animation.finished))");
+    await page.evaluate(
+      "Promise.all(document.querySelector('[role=dialog]').getAnimations().map((animation) => animation.finished))",
+    );
     await page.mouse.click(5, 5);
     await page.getByRole("dialog").waitFor({ state: "detached" });
 

@@ -1,12 +1,12 @@
+import { DomainFault, type FaultsByFile } from "../../../shared/module.js";
 import { AgentProvider, type AgentProviderName } from "../../domain/models/agent/agent-provider.js";
 import type { CharterRoot } from "../../domain/models/charter/charter-root.js";
+import { PlanSummary, ProjectionPlan, type WritePlan } from "../../domain/models/projection/projection-plan.js";
 import { CompileService } from "../../domain/services/compile.service.js";
-import { loadMcpOriginsService, type LoadMcpOriginsService, type McpReaching } from "./load-mcp-origins.service.js";
-import { DomainFault, FaultsByFile } from "../../../shared/module.js";
-import type { ForManagingLocalOutput } from "../port/out/managing-local-output.port.js";
-import type { ForManagingLocalAgentOutput } from "../port/out/managing-local-agent-output.port.js";
 import type { ForManagingCharter } from "../port/out/managing-charter.port.js";
-import { ProjectionPlan, PlanSummary, type WritePlan } from "../../domain/models/projection/projection-plan.js";
+import type { ForManagingLocalAgentOutput } from "../port/out/managing-local-agent-output.port.js";
+import type { ForManagingLocalOutput } from "../port/out/managing-local-output.port.js";
+import { type LoadMcpOriginsService, loadMcpOriginsService, type McpReaching } from "./load-mcp-origins.service.js";
 
 /** Plans, previews and lays what a build of the charter puts down, through
  *  what lays the build's output and each agent's projection, which know where
@@ -55,13 +55,25 @@ export class BuildCharterService {
     mcpReaching: McpReaching | undefined,
     { refreshMcpOrigins }: { readonly refreshMcpOrigins: boolean },
   ): Promise<ProjectionPlan | FaultsByFile> {
-    const { toolsByOriginKey, faultsByFile } = await this.#loadMcpOriginsService.loadToolsByOriginKey(checkoutPath, charter, charterRepository, mcpReaching, refreshMcpOrigins);
+    const { toolsByOriginKey, faultsByFile } = await this.#loadMcpOriginsService.loadToolsByOriginKey(
+      checkoutPath,
+      charter,
+      charterRepository,
+      mcpReaching,
+      refreshMcpOrigins,
+    );
     if (!faultsByFile.isEmpty) return faultsByFile;
 
-    const charterOutput = CompileService.compileCharterRoot(charter, Object.keys(agentProjectionByProvider).map((agentName) => new AgentProvider(agentName)), toolsByOriginKey);
+    const charterOutput = CompileService.compileCharterRoot(
+      charter,
+      Object.keys(agentProjectionByProvider).map((agentName) => new AgentProvider(agentName)),
+      toolsByOriginKey,
+    );
     const buildPlans = await Promise.all([
       localRepo.createProjectionPlan(charterOutput, checkoutPath),
-      ...Object.values(agentProjectionByProvider).map((agentProjection) => agentProjection.createAgentProjectionPlan(charter, charterOutput, checkoutPath)),
+      ...Object.values(agentProjectionByProvider).map((agentProjection) =>
+        agentProjection.createAgentProjectionPlan(charter, charterOutput, checkoutPath),
+      ),
     ]);
     return new ProjectionPlan(
       buildPlans.flatMap((buildPlan) => buildPlan.warnings),
@@ -89,8 +101,12 @@ export class BuildCharterService {
   ): PlanSummary {
     return new PlanSummary(
       projectionPlan.filter((writePlan) => writePlan.heldContents === undefined).map((writePlan) => writePlan.path),
-      projectionPlan.filter((writePlan) => writePlan.heldContents !== undefined && !this.#isUnchanged(writePlan)).map((writePlan) => writePlan.path),
-      cleanupPlan.filter((cleanupFile) => !projectionPlan.some((projectionFile) => projectionFile.path === cleanupFile.path)).map((cleanupFile) => cleanupFile.path),
+      projectionPlan
+        .filter((writePlan) => writePlan.heldContents !== undefined && !this.#isUnchanged(writePlan))
+        .map((writePlan) => writePlan.path),
+      cleanupPlan
+        .filter((cleanupFile) => !projectionPlan.some((projectionFile) => projectionFile.path === cleanupFile.path))
+        .map((cleanupFile) => cleanupFile.path),
       projectionPlan.filter((writePlan) => this.#isUnchanged(writePlan)).map((writePlan) => writePlan.path),
       warnings,
     );
@@ -129,9 +145,17 @@ export class BuildCharterService {
   #isUnchanged(writePlan: WritePlan): boolean {
     const heldContents = writePlan.heldContents;
     const plannedContents = writePlan.contents;
-    if (typeof heldContents === "string" || typeof plannedContents === "string" || heldContents === undefined || plannedContents === undefined)
+    if (
+      typeof heldContents === "string" ||
+      typeof plannedContents === "string" ||
+      heldContents === undefined ||
+      plannedContents === undefined
+    )
       return heldContents === plannedContents;
-    return heldContents.length === plannedContents.length && heldContents.every((heldByte, index) => heldByte === plannedContents[index]);
+    return (
+      heldContents.length === plannedContents.length &&
+      heldContents.every((heldByte, index) => heldByte === plannedContents[index])
+    );
   }
 }
 

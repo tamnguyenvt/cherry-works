@@ -1,4 +1,12 @@
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { printFault } from "./helper.js";
 
 /** What `cw kinds` takes: which kind to be told about, or nothing.
@@ -51,7 +59,8 @@ export class KindsCommand implements Command<typeof OPTIONS> {
     // everywhere else, naming every kind there is, so what an author reads is
     // the same sentence whichever command they asked with.
     const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements(kind);
-    if (primitiveRequirementsDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(primitiveRequirementsDTO) };
+    if (primitiveRequirementsDTO.type === "Fault")
+      return { code: EXIT_FAILURE, problem: printFault(primitiveRequirementsDTO) };
     const primitiveRequirements = primitiveRequirementsDTO.data;
 
     // Only what the kind requires: a header it takes without requiring is one

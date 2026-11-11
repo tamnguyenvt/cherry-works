@@ -1,4 +1,9 @@
-import { AgentProvider, Catalogue, CharterMd, ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
+import {
+  AgentProvider,
+  Catalogue,
+  CharterMd,
+  ProviderComponent,
+} from "../../app/port/out/managing-local-agent-output.port.js";
 
 /**
  * The one line that gets the charter read at all: the section this charter keeps

@@ -1,18 +1,17 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { test } from "node:test";
 import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf } from "./use-cases-of.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
-
 
 const root = new URL("file:///repo/.cw/charter/primitive/");
 const vendored = new URL("file:///repo/.cw/charter/vendor/acme/charter/root/primitive/");
@@ -59,8 +58,17 @@ const writing = async (work: () => Promise<number>) => {
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[]) => {
   const readers = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
-  const cli = new Commander(commandLineOf(readers, new InMemoryFileOutput(readers), { charterAuthoringApp, charterRuntimeApp }, repo), COMMANDS);
+  const charterRuntimeApp = buildingCharterOf(
+    readers,
+    new InMemoryFileOutput(readers),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
+  const cli = new Commander(
+    commandLineOf(readers, new InMemoryFileOutput(readers), { charterAuthoringApp, charterRuntimeApp }, repo),
+    COMMANDS,
+  );
   return writing(() => cli.run(argv));
 };
 
@@ -73,21 +81,29 @@ test("an id is traced in one command to the file that declares it", async () => 
   const { code, results } = await run(charter, ["explain", "no-any"]);
 
   assert.equal(code, EXIT_OK);
-  assert.deepEqual(results, [
-    "no-any  What no-any is for.",
-    "  .cw/charter/primitive/guide/no-any/index.md",
-    "  authored in this repository",
-    "  comes up when a touched file matches one of its `globs`, or every turn where globs are not specified",
-    "  declares tags: types",
-    "  declares globs: src/**/*.ts",
-    "",
-  ].join("\n"));
+  assert.deepEqual(
+    results,
+    [
+      "no-any  What no-any is for.",
+      "  .cw/charter/primitive/guide/no-any/index.md",
+      "  authored in this repository",
+      "  comes up when a touched file matches one of its `globs`, or every turn where globs are not specified",
+      "  declares tags: types",
+      "  declares globs: src/**/*.ts",
+      "",
+    ].join("\n"),
+  );
 });
 
 test("an explanation says when the primitive comes up, in the words its kind says it in", async () => {
   const kinds = await run(charter, ["kinds"]);
   const sensor = await run(
-    { [new URL("sensor/no-secrets/index.md", root).href]: primitive("sensor", "no-secrets", ["signal: PreToolUse", 'run: "pnpm test"']) },
+    {
+      [new URL("sensor/no-secrets/index.md", root).href]: primitive("sensor", "no-secrets", [
+        "signal: PreToolUse",
+        'run: "pnpm test"',
+      ]),
+    },
     ["explain", "no-secrets"],
   );
 
@@ -98,7 +114,12 @@ test("an explanation says when the primitive comes up, in the words its kind say
 
 test("an explanation says what the primitive itself declared, so a sensor names the signal and the command it runs", async () => {
   const { results } = await run(
-    { [new URL("sensor/no-secrets/index.md", root).href]: primitive("sensor", "no-secrets", ["signal: PreToolUse", 'run: "pnpm test"']) },
+    {
+      [new URL("sensor/no-secrets/index.md", root).href]: primitive("sensor", "no-secrets", [
+        "signal: PreToolUse",
+        'run: "pnpm test"',
+      ]),
+    },
     ["explain", "no-secrets"],
   );
 
@@ -118,7 +139,10 @@ test("what explaining finds reaches a driver as its DTO, saying when the primiti
     JSON.parse(JSON.stringify(await charterAuthoringApp.explain("no-any"))),
   );
 
-  assert.equal(explanationOutcomeDTO.data.activatesWhen, "a touched file matches one of its `globs`, or every turn where globs are not specified");
+  assert.equal(
+    explanationOutcomeDTO.data.activatesWhen,
+    "a touched file matches one of its `globs`, or every turn where globs are not specified",
+  );
   assert.equal(explanationOutcomeDTO.data.rationale, undefined);
   assert.equal(explanationOutcomeDTO.data.primitive.data.headers.rationale, "gone");
 });
@@ -138,7 +162,10 @@ test("what is explained carries no body", async () => {
 });
 
 const related = {
-  [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["mixins: [typed]", "rationale: why-types"]),
+  [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", [
+    "mixins: [typed]",
+    "rationale: why-types",
+  ]),
   [new URL("mixin/typed/index.md", root).href]: primitive("mixin", "typed"),
   [new URL("corpus/why-types/index.md", vendored).href]: primitive("corpus", "why-types"),
 };
@@ -164,47 +191,83 @@ const saying = (kind: string, id: string, headers: readonly string[], body: stri
   ["---", `kind: ${kind}`, `id: ${id}`, `description: What ${id} is for.`, ...headers, "---", "", body, ""].join("\n");
 
 const naming = {
-  [new URL("script/check/index.md", root).href]: saying("script", "check", ["executionPath: ./run.sh"], "Fills [[note]]."),
+  [new URL("script/check/index.md", root).href]: saying(
+    "script",
+    "check",
+    ["executionPath: ./run.sh"],
+    "Fills [[note]].",
+  ),
   [new URL("script/check/run.sh", root).href]: "true\n",
   [new URL("template/note/index.md", root).href]: saying("template", "note", [], "# Release"),
-  [new URL("skill/release/index.md", root).href]: saying("skill", "release", ['triggers: ["release"]'], "Run [[check]], then [[check]] again."),
+  [new URL("skill/release/index.md", root).href]: saying(
+    "skill",
+    "release",
+    ['triggers: ["release"]'],
+    "Run [[check]], then [[check]] again.",
+  ),
   [new URL("guide/releasing/index.md", vendored).href]: saying("guide", "releasing", [], "Run [[check]]."),
-  [new URL("mcp/linear/index.md", root).href]: saying("mcp", "linear", ["endpoint: https://mcp.linear.app/mcp", "auth: [oauth]", "tools: [list_issues]"], ""),
-  [new URL("agent/triager/index.md", root).href]: saying("agent", "triager", ['tools: ["Read", "[[linear]]:list_issues"]'], "Triage."),
-  [new URL("playbook/triage/index.md", root).href]: saying("playbook", "triage", ['triggers: ["triage"]'], "Read [[linear]]."),
+  [new URL("mcp/linear/index.md", root).href]: saying(
+    "mcp",
+    "linear",
+    ["endpoint: https://mcp.linear.app/mcp", "auth: [oauth]", "tools: [list_issues]"],
+    "",
+  ),
+  [new URL("agent/triager/index.md", root).href]: saying(
+    "agent",
+    "triager",
+    ['tools: ["Read", "[[linear]]:list_issues"]'],
+    "Triage.",
+  ),
+  [new URL("playbook/triage/index.md", root).href]: saying(
+    "playbook",
+    "triage",
+    ['triggers: ["triage"]'],
+    "Read [[linear]].",
+  ),
 };
 
 test("an explanation says which primitives name a script or a template in their body (FR-163)", async () => {
   const script = await run(naming, ["explain", "check"]);
   assert.equal(script.code, EXIT_OK);
-  assert.deepEqual(script.results.split("\n").filter((line) => line.startsWith("  mentioned in ")), [
-    "  mentioned in release",
-    "  mentioned in releasing",
-  ]);
+  assert.deepEqual(
+    script.results.split("\n").filter((line) => line.startsWith("  mentioned in ")),
+    ["  mentioned in release", "  mentioned in releasing"],
+  );
 
   const template = await run(naming, ["explain", "note"]);
-  assert.deepEqual(template.results.split("\n").filter((line) => line.startsWith("  mentioned in ")), ["  mentioned in check"]);
+  assert.deepEqual(
+    template.results.split("\n").filter((line) => line.startsWith("  mentioned in ")),
+    ["  mentioned in check"],
+  );
 });
 
 test("an explanation says which primitives name an mcp origin, in a body or among an agent's tools (FR-144)", async () => {
   const { results } = await run(naming, ["explain", "linear"]);
 
-  assert.deepEqual(results.split("\n").filter((line) => line.startsWith("  mentioned in ")), [
-    "  mentioned in triager",
-    "  mentioned in triage",
-  ]);
+  assert.deepEqual(
+    results.split("\n").filter((line) => line.startsWith("  mentioned in ")),
+    ["  mentioned in triager", "  mentioned in triage"],
+  );
 });
 
 test("a script only a sensor runs is mentioned in that sensor, and is not warned about as one nothing names (FR-163)", async () => {
   const onlySensor = {
     [new URL("script/check/index.md", root).href]: saying("script", "check", ["executionPath: ./run.sh"], ""),
     [new URL("script/check/run.sh", root).href]: "true\n",
-    [new URL("sensor/check-on-stop/index.md", root).href]: saying("sensor", "check-on-stop", ["signal: Stop", 'run: "[[check]]"'], ""),
+    [new URL("sensor/check-on-stop/index.md", root).href]: saying(
+      "sensor",
+      "check-on-stop",
+      ["signal: Stop", 'run: "[[check]]"'],
+      "",
+    ),
     ...suite({ cases: [{ when: "Stop", expect: { run: "check-on-stop" } }] }),
   };
 
   const explained = await run(onlySensor, ["explain", "check"]);
-  assert.deepEqual(explained.results.split("\n").filter((line) => line.startsWith("  mentioned in ")), ["  mentioned in check-on-stop"]);
+  assert.deepEqual(
+    explained.results.split("\n").filter((line) => line.startsWith("  mentioned in ")),
+    ["  mentioned in check-on-stop"],
+  );
 
   const checked = await run(onlySensor, ["doctor"]);
   assert.doesNotMatch(checked.results, /No primitive names "check"/);
@@ -234,7 +297,10 @@ const suite = (written: unknown, name = "activation") => ({
 
 const pinnedDown = {
   [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any"),
-  [new URL("sensor/no-secrets/index.md", root).href]: primitive("sensor", "no-secrets", ["signal: PreToolUse", 'run: "pnpm test"']),
+  [new URL("sensor/no-secrets/index.md", root).href]: primitive("sensor", "no-secrets", [
+    "signal: PreToolUse",
+    'run: "pnpm test"',
+  ]),
   ...suite({
     cases: [
       { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
@@ -248,21 +314,27 @@ test("an explanation says which situations this repository wrote down about the 
   const { code, results } = await run(pinnedDown, ["explain", "no-any"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^ {2}pinned down by \.cw\/charter\/test\/activation\.json: touching src\/one\.ts activates no-any$/m);
+  assert.match(
+    results,
+    /^ {2}pinned down by \.cw\/charter\/test\/activation\.json: touching src\/one\.ts activates no-any$/m,
+  );
   assert.doesNotMatch(results, /\.env/);
 });
 
 test("a sensor is pinned down by the case that fires its signal", async () => {
   const { results } = await run(pinnedDown, ["explain", "no-secrets"]);
 
-  assert.match(results, /^ {2}pinned down by \.cw\/charter\/test\/activation\.json: firing event PreToolUse runs no-secrets$/m);
+  assert.match(
+    results,
+    /^ {2}pinned down by \.cw\/charter\/test\/activation\.json: firing event PreToolUse runs no-secrets$/m,
+  );
 });
 
 test("a primitive no case names is explained with no situation under it", async () => {
-  const { code, results } = await run({ ...pinnedDown, ...suite({ cases: [{ do: { touchFile: ".env" }, expect: { allow: false } }] }) }, [
-    "explain",
-    "no-any",
-  ]);
+  const { code, results } = await run(
+    { ...pinnedDown, ...suite({ cases: [{ do: { touchFile: ".env" }, expect: { allow: false } }] }) },
+    ["explain", "no-any"],
+  );
 
   assert.equal(code, EXIT_OK);
   assert.doesNotMatch(results, /pinned down by/);
@@ -290,7 +362,11 @@ test("an id the charter holds nothing of is refused, and sends the user to the l
 
 test("a charter with an error explains nothing and sends the user to doctor", async () => {
   const { code, results, problems } = await run(
-    { [new URL("guide/no-any/index.md", root).href]: ["---", "kind: guide", "id: no-any", "---", "", "Body.", ""].join("\n") },
+    {
+      [new URL("guide/no-any/index.md", root).href]: ["---", "kind: guide", "id: no-any", "---", "", "Body.", ""].join(
+        "\n",
+      ),
+    },
     ["explain", "no-any"],
   );
 

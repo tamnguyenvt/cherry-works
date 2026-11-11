@@ -67,11 +67,16 @@ function contentHashOf(content: string): string {
  *  frontmatter block, or nothing for a file that does not. */
 function frontmatterOf(markdown: string): { headers: Readonly<Record<string, unknown>>; body: string } | undefined {
   const lines = markdown.replace(/^\uFEFF/, "").split(/\r?\n/);
-  const frontmatterEnd = lines[0]?.trim() === "---" ? lines.findIndex((line, index) => index > 0 && line.trim() === "---") : -1;
+  const frontmatterEnd =
+    lines[0]?.trim() === "---" ? lines.findIndex((line, index) => index > 0 && line.trim() === "---") : -1;
   if (frontmatterEnd === -1) return undefined;
   return {
     headers: yamlFieldsOf(lines.slice(1, frontmatterEnd).join("\n")),
-    body: lines.slice(frontmatterEnd + 1).join("\n").replace(/^(\s*\n)+/, "").trimEnd(),
+    body: lines
+      .slice(frontmatterEnd + 1)
+      .join("\n")
+      .replace(/^(\s*\n)+/, "")
+      .trimEnd(),
   };
 }
 

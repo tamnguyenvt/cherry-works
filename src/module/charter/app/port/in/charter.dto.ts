@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { byType, dto, StringsSchema, FaultDTOs } from "../../../../shared/module.js";
+import { byType, dto, FaultDTOs, StringsSchema } from "../../../../shared/module.js";
 
 /**
  * What the charter module answers with, through authoring and projection:
@@ -382,7 +382,9 @@ const MainContextTextsSchema = dto(
       .array(
         z.object({
           agent: z.string(),
-          texts: z.array(z.object({ id: z.string(), kind: z.string(), text: z.string(), globs: StringsSchema.optional() })).readonly(),
+          texts: z
+            .array(z.object({ id: z.string(), kind: z.string(), text: z.string(), globs: StringsSchema.optional() }))
+            .readonly(),
         }),
       )
       .readonly(),
@@ -400,7 +402,12 @@ const EvalCasesSchema = dto(
         z.object({
           suiteName: z.string(),
           prompt: z.string(),
-          expect: z.object({ invoke: z.string().optional(), follow: z.string().optional(), read: z.string().optional(), maxTokens: z.number().optional() }),
+          expect: z.object({
+            invoke: z.string().optional(),
+            follow: z.string().optional(),
+            read: z.string().optional(),
+            maxTokens: z.number().optional(),
+          }),
           guideBody: z.string().optional(),
         }),
       )

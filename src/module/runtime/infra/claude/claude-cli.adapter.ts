@@ -63,10 +63,14 @@ export class ClaudeCli extends AgentCli implements ForRunningAgentCli {
       emptyFolder = await mkdtemp(join(tmpdir(), "cw-claude-"));
       const printedJson = await new Promise<string>((resolve, reject) => {
         // Nothing of its own loaded: no tool, no MCP server and no settings file.
-        const claudeProcess = spawn("claude", ["-p", "--output-format", "json", "--tools", "", "--strict-mcp-config", "--setting-sources", ""], {
-          cwd: emptyFolder,
-          stdio: ["pipe", "pipe", "pipe"],
-        });
+        const claudeProcess = spawn(
+          "claude",
+          ["-p", "--output-format", "json", "--tools", "", "--strict-mcp-config", "--setting-sources", ""],
+          {
+            cwd: emptyFolder,
+            stdio: ["pipe", "pipe", "pipe"],
+          },
+        );
         let stdout = "";
         let stderr = "";
         claudeProcess.stdout.on("data", (chunk) => (stdout += chunk));
@@ -76,16 +80,28 @@ export class ClaudeCli extends AgentCli implements ForRunningAgentCli {
           code === 0
             ? resolve(stdout)
             : reject(
-                new AdapterFault(`"claude -p" stopped with status ${code}.`, 'Check that "claude" runs and is signed in here.', {
-                  internal: false,
-                  cause: new Error(stderr.trim()),
-                }),
+                new AdapterFault(
+                  `"claude -p" stopped with status ${code}.`,
+                  'Check that "claude" runs and is signed in here.',
+                  {
+                    internal: false,
+                    cause: new Error(stderr.trim()),
+                  },
+                ),
               ),
         );
         claudeProcess.stdin.end(prompt);
       });
-      const { is_error: isError, result: resultText } = JSON.parse(printedJson) as { is_error?: boolean; result?: string };
-      if (isError === true) throw new AdapterFault(`"claude -p" answered with an error: ${resultText ?? ""}`.trim(), 'Check that "claude" runs and is signed in here.', { internal: false });
+      const { is_error: isError, result: resultText } = JSON.parse(printedJson) as {
+        is_error?: boolean;
+        result?: string;
+      };
+      if (isError === true)
+        throw new AdapterFault(
+          `"claude -p" answered with an error: ${resultText ?? ""}`.trim(),
+          'Check that "claude" runs and is signed in here.',
+          { internal: false },
+        );
       return printedJson;
     } finally {
       if (emptyFolder !== undefined) await rm(emptyFolder, { recursive: true, force: true });

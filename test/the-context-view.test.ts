@@ -1,11 +1,21 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { inTheBrowser } from "./in-the-browser.js";
 
 const at = (path: string) => new URL(path, "file:///repo/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[]) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: About ${id}.`,
+    ...headers,
+    "---",
+    "",
+    `The body of ${id}.`,
+    "",
+  ].join("\n");
 
 /** A repository compiling for claude, a guide on every turn and one loaded
  *  when a file it names is touched. */
@@ -28,6 +38,9 @@ test("the Context tab shows what a session opens with, the total against the cei
       await page.getByRole("table", { name: "Loaded when a file it names is touched, not in the total" }).innerText(),
       /no-any[\s\S]*src\/\*\*\/\*\.ts/,
     );
-    assert.match(await page.getByRole("heading", { level: 2 }).innerText(), /claude opens a session with [\d,]+ tokens of the charter, estimated · past the ceiling of 30/);
+    assert.match(
+      await page.getByRole("heading", { level: 2 }).innerText(),
+      /claude opens a session with [\d,]+ tokens of the charter, estimated · past the ceiling of 30/,
+    );
   });
 });

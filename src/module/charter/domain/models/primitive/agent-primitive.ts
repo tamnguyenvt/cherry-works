@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { BasePrimitive, type RequiredHeaders, type AssetFile } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
 import type { AgentProvider } from "../agent/agent-provider.js";
+import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
+import type { PrimitiveLayer } from "./primitive-layer.js";
 
 /** `<provider>:<model>`: the host the model is named for, then the model as
  *  that host names it. */
@@ -30,7 +30,9 @@ export class AgentPrimitive extends BasePrimitive {
      *  runs it on that host's default. */
     model: z
       .string()
-      .refine((model) => MODEL_REFERENCE.test(model), { message: `"model" is written <provider>:<model>: claude:haiku-4-5.` })
+      .refine((model) => MODEL_REFERENCE.test(model), {
+        message: `"model" is written <provider>:<model>: claude:haiku-4-5.`,
+      })
       .optional(),
   });
 
@@ -61,7 +63,19 @@ export class AgentPrimitive extends BasePrimitive {
   }
 
   /** One agent, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer, keptUri?: string): AgentPrimitive {
-    return new AgentPrimitive(BasePrimitive.headersOf(AgentPrimitive, AgentPrimitive.schema, record), body, assets, primitiveLayer, keptUri);
+  static of(
+    record: Readonly<Record<string, unknown>>,
+    body: string,
+    assets: readonly AssetFile[] = [],
+    primitiveLayer?: PrimitiveLayer,
+    keptUri?: string,
+  ): AgentPrimitive {
+    return new AgentPrimitive(
+      BasePrimitive.headersOf(AgentPrimitive, AgentPrimitive.schema, record),
+      body,
+      assets,
+      primitiveLayer,
+      keptUri,
+    );
   }
 }

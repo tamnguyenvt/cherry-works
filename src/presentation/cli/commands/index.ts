@@ -1,10 +1,11 @@
 import { AddCommand } from "./add.command.js";
 import { BuildCommand } from "./build.command.js";
+import type { AnyCommand } from "./command.interface.js";
 import { ContextCommand } from "./context.command.js";
 import { DoctorCommand } from "./doctor.command.js";
 import { EditCommand } from "./edit.command.js";
-import { EvalAnalyzeCommand } from "./eval-analyze.command.js";
 import { EvalCommand } from "./eval.command.js";
+import { EvalAnalyzeCommand } from "./eval-analyze.command.js";
 import { ExplainCommand } from "./explain.command.js";
 import { InitCommand } from "./init.command.js";
 import { KindsCommand } from "./kinds.command.js";
@@ -23,7 +24,6 @@ import { VendorAddCommand } from "./vendor-add.command.js";
 import { VendorInjectCommand } from "./vendor-inject.command.js";
 import { VendorListCommand } from "./vendor-list.command.js";
 import { VendorRemoveCommand } from "./vendor-remove.command.js";
-import type { AnyCommand } from "./command.interface.js";
 
 /** The command surface: what the command line offers, declared and nothing
  *  more. Each command is added here as it is built, and is given what it needs

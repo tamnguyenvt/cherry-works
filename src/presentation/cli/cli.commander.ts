@@ -1,8 +1,19 @@
 import yargs, { type Argv } from "yargs";
-import { printFault, showPathsInApps } from "./commands/helper.js";
 import { SETTINGS_FILE } from "#module/workspace/module.js";
+import {
+  type AnyCommand,
+  type CommandLine,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  EXIT_USAGE,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+  type WorkspaceSettings,
+} from "./commands/command.interface.js";
+import { printFault, showPathsInApps } from "./commands/helper.js";
 import { COMMANDS } from "./commands/index.js";
-import { EXIT_FAILURE, EXIT_OK, EXIT_USAGE, type AnyCommand, type CommandLine, type Context, type OptionSpec, type Options, type Outcome, type WorkspaceSettings } from "./commands/command.interface.js";
 
 /**
  * DRIVER ADAPTER: the command line.
@@ -80,7 +91,11 @@ export class Commander {
               describe: commands.map((groupedCommand) => wordsOf(groupedCommand.name)[1]).join(", "),
               builder: (child: Argv) =>
                 commands
-                  .reduce((parser, command) => this.#declaringCommand(parser, command, command.name.slice(head.length + 1), collect), child)
+                  .reduce(
+                    (parser, command) =>
+                      this.#declaringCommand(parser, command, command.name.slice(head.length + 1), collect),
+                    child,
+                  )
                   .demandCommand(1, ""),
               handler: () => undefined,
             });
@@ -122,13 +137,17 @@ async function contextOf(commandLine: CommandLine, command: AnyCommand): Promise
   };
   const { workspaceApp, engineApp } = await composeApplications();
   const workspaceSettingsDTO = await workspaceApp.settings();
-  const workspaceSettings: WorkspaceSettings = workspaceSettingsDTO.type === "Fault" ? { agents: [] } : workspaceSettingsDTO.data;
+  const workspaceSettings: WorkspaceSettings =
+    workspaceSettingsDTO.type === "Fault" ? { agents: [] } : workspaceSettingsDTO.data;
   // The layout first: a repository laid out the old way is told so whatever
   // its settings say, since moving it is what comes before anything else.
   const layoutAnswer = await engineApp.charterAuthoringApp.layout();
   if (layoutAnswer.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(layoutAnswer) };
   if (workspaceSettingsDTO.type === "Fault" && command.name !== "init")
-    return { code: EXIT_FAILURE, problem: `${SETTINGS_FILE}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n` };
+    return {
+      code: EXIT_FAILURE,
+      problem: `${SETTINGS_FILE}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`,
+    };
   return { ...commandLine, composeApplications, workspaceApp, ...engineApp, workspaceSettings };
 }
 

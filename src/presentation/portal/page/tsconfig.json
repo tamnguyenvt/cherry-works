@@ -1,24 +1,16 @@
 {
   "extends": "../../../../tsconfig.json",
   "compilerOptions": {
-    "lib": [
-      "ES2023",
-      "DOM"
-    ],
+    "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "types": ["node"],
     "paths": {
-      "@/page/*": [
-        "./*"
-      ]
+      "@/page/*": ["./*"]
     }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx"
-  ],
+  "include": ["**/*.ts", "**/*.tsx"],
   "exclude": []
 }

@@ -1,11 +1,11 @@
-import type { WorkspaceSettings } from "../../../domain/models/workspace-settings.js";
 import type { WorkspaceReadme } from "../../../domain/models/workspace-readme.js";
+import type { WorkspaceSettings } from "../../../domain/models/workspace-settings.js";
 
+export { WorkspaceReadme } from "../../../domain/models/workspace-readme.js";
 /** The model and the layout the settings are kept in, named again here so an
  *  adapter keeping them imports nothing of the hexagon but its port. */
 export { WorkspaceSettings } from "../../../domain/models/workspace-settings.js";
 export { SettingsFile } from "../../../domain/value-objects/settings-file.js";
-export { WorkspaceReadme } from "../../../domain/models/workspace-readme.js";
 
 /**
  * DRIVEN PORT — where a repository keeps its settings and the ignore file of

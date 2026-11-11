@@ -1,4 +1,4 @@
-import type { CharterDTOs, AgentProviderName } from "../../../../charter/module.js";
+import type { AgentProviderName } from "../../../../charter/module.js";
 import type { FaultDTOs } from "../../../../shared/module.js";
 import type { RuntimeDTOs } from "./runtime.dto.js";
 
@@ -27,7 +27,11 @@ export interface RuntimeSettings {
 export interface ForRunningCharter {
   /** The sensors of one signal, run as one hook, each to its end whatever the
    *  others do (CORE-FR-176 – CORE-FR-179). */
-  runSensors(signal: string, stdin: string, agent?: AgentProviderName): Promise<RuntimeDTOs.SensorRunOutcome | FaultDTOs.Fault>;
+  runSensors(
+    signal: string,
+    stdin: string,
+    agent?: AgentProviderName,
+  ): Promise<RuntimeDTOs.SensorRunOutcome | FaultDTOs.Fault>;
 
   /** One call forwarded to the mcp origin serving it, reached for this call
    *  alone and let go once it has answered (EVAL-FR-031, FR-154). */

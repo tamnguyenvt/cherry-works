@@ -1,5 +1,5 @@
 import { DEFAULT_PORT, startPortal } from "../../portal/portal.server.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type Outcome } from "./command.interface.js";
+import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
 
 const OPTIONS = {
   port: {
@@ -29,11 +29,18 @@ export class PortalCommand implements Command<typeof OPTIONS> {
   readonly summary = "Serve this repository's charter to a browser on this machine";
   readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp, charterBuildingApp, workspaceApp }: Context, { port }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async run(
+    { charterAuthoringApp, charterBuildingApp, workspaceApp }: Context,
+    { port }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
     // Setup writes the settings whatever it was answered: their absence is
     // what a repository never set up looks like (FR-037, CORE-FR-107).
     const workspaceSettingsDTO = await workspaceApp.settings();
-    if (workspaceSettingsDTO.type === "Fault" || !workspaceSettingsDTO.data.isSetUp) return { code: EXIT_FAILURE, problem: 'This repository was never set up under a charter.\n  Run "cw init" first.\n' };
+    if (workspaceSettingsDTO.type === "Fault" || !workspaceSettingsDTO.data.isSetUp)
+      return {
+        code: EXIT_FAILURE,
+        problem: 'This repository was never set up under a charter.\n  Run "cw init" first.\n',
+      };
     const startedPortal = await startPortal(
       new URL("./", import.meta.resolve("#portal/index.html")),
       { charterAuthoringApp, charterBuildingApp },

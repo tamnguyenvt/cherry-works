@@ -2,8 +2,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { CharterDTOs } from "#module/charter/module.js";
 import { useAddTestSuite, usePrimitives, useTestOutcome, useTestSuites } from "../queries.js";
-import { FaultAlert } from "./FaultAlert.js";
 import { useDialog } from "./Dialogs.js";
+import { FaultAlert } from "./FaultAlert.js";
 import { FaultsByFileTable } from "./FaultsByFileTable.js";
 import { Badge } from "./ui/badge.js";
 import { Button } from "./ui/button.js";
@@ -34,7 +34,8 @@ export function TestSuites() {
     primitivesQuery.data?.type === "Primitives" ? primitivesQuery.data.data.primitives.map(({ data }) => data.id) : [],
   );
   const testRunReport = testOutcomeQuery.data?.type === "TestRunReport" ? testOutcomeQuery.data : undefined;
-  const reportsOf = (name: string) => testRunReport?.data.testCaseReports.filter(({ data }) => data.suiteName === name) ?? [];
+  const reportsOf = (name: string) =>
+    testRunReport?.data.testCaseReports.filter(({ data }) => data.suiteName === name) ?? [];
   const caseCount = testSuites.reduce((count, { data }) => count + data.cases.length, 0);
   const failedCount = testRunReport?.data.testCaseReports.filter(({ data }) => !data.passed).length ?? 0;
 
@@ -47,7 +48,8 @@ export function TestSuites() {
 
   const addSuite = async () => {
     const testSuiteNameDTO = await addTestSuite.mutateAsync();
-    if (testSuiteNameDTO.type === "Fault") return void toast.error(testSuiteNameDTO.data.message, { description: testSuiteNameDTO.data.fix });
+    if (testSuiteNameDTO.type === "Fault")
+      return void toast.error(testSuiteNameDTO.data.message, { description: testSuiteNameDTO.data.fix });
     const { name } = testSuiteNameDTO.data;
     setOpenedName(name);
     open("testSuite", { name });
@@ -58,7 +60,11 @@ export function TestSuites() {
     <div className="space-y-2.5">
       <div
         className={`mb-[18px] flex flex-wrap items-center gap-[11px] rounded-xl border px-[15px] py-[13px] ${
-          testRunReport === undefined ? "" : failedCount > 0 ? "border-[#f6d9d9] bg-[#fef6f6]" : "border-[#dcf0e2] bg-[#f5fbf7]"
+          testRunReport === undefined
+            ? ""
+            : failedCount > 0
+              ? "border-[#f6d9d9] bg-[#fef6f6]"
+              : "border-[#dcf0e2] bg-[#f5fbf7]"
         }`}
         aria-label="Test summary"
       >
@@ -68,7 +74,8 @@ export function TestSuites() {
             : `${testRunReport.data.testCaseReports.length - failedCount} of ${testRunReport.data.testCaseReports.length} cases pass`}
         </span>
         <span className="min-w-0 flex-1 text-[11.5px] leading-[1.6] text-zinc-500">
-          A case names the file a change touches or the event it raises, then says what must come up. It runs nothing and asks no agent.
+          A case names the file a change touches or the event it raises, then says what must come up. It runs nothing
+          and asks no agent.
         </span>
         <Button variant="outline" disabled={addTestSuite.isPending} onClick={() => void addSuite()}>
           New test file
@@ -83,16 +90,23 @@ export function TestSuites() {
       )}
 
       {testSuites.length === 0 && (
-        <div className="rounded-xl border border-dashed px-[15px] py-3.5 text-[11.5px] leading-[1.6] text-zinc-500">No test file yet. Test files live in .cw/charter/test/.</div>
+        <div className="rounded-xl border border-dashed px-[15px] py-3.5 text-[11.5px] leading-[1.6] text-zinc-500">
+          No test file yet. Test files live in .cw/charter/test/.
+        </div>
       )}
 
       {testSuites.map(({ data: testSuite }) => {
         const testCaseReports = reportsOf(testSuite.name);
         const failedInSuite = testCaseReports.filter(({ data }) => !data.passed).length;
         return (
-          <section key={testSuite.name} className="overflow-hidden rounded-[14px] border bg-background" aria-label={testSuite.name}>
+          <section
+            key={testSuite.name}
+            className="overflow-hidden rounded-[14px] border bg-background"
+            aria-label={testSuite.name}
+          >
             <div className="flex items-baseline gap-2.5 px-[15px] py-3">
               <button
+                type="button"
                 className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-2.5 text-left"
                 aria-expanded={openedName === testSuite.name}
                 onClick={() => setOpenedName(openedName === testSuite.name ? null : testSuite.name)}
@@ -120,6 +134,7 @@ export function TestSuites() {
             {openedName === testSuite.name &&
               testSuite.cases.map(({ data: testCase }, index) => (
                 <TestCaseRow
+                  // biome-ignore lint/suspicious/noArrayIndexKey: a case has no identity but its place in the file.
                   key={index}
                   testCase={testCase}
                   testCaseReport={testCaseReports[index]}
@@ -150,7 +165,9 @@ function TestCaseRow({
   const unmet = testCaseReport?.data.unmet;
   const { id, expectation } = testCase;
   return (
-    <div className={`grid grid-cols-[minmax(150px,1fr)_minmax(0,1.4fr)_auto] items-baseline gap-3 border-t border-[#f7f7f8] px-[15px] py-2.5 ${unmet ? "bg-[#fef6f6]" : ""}`}>
+    <div
+      className={`grid grid-cols-[minmax(150px,1fr)_minmax(0,1.4fr)_auto] items-baseline gap-3 border-t border-[#f7f7f8] px-[15px] py-2.5 ${unmet ? "bg-[#fef6f6]" : ""}`}
+    >
       <span className="font-mono text-[10.5px]">{testCase.situation}</span>
       {unmet !== undefined ? (
         <span className="font-mono text-[10.5px] text-destructive">
@@ -164,13 +181,19 @@ function TestCaseRow({
             <>
               {expectation.slice(0, -id.length)}
               {isHeld ? (
-                <button className="cursor-pointer text-[#1d4ed8] underline underline-offset-2" onClick={() => onOpen(id)}>
+                <button
+                  type="button"
+                  className="cursor-pointer text-[#1d4ed8] underline underline-offset-2"
+                  onClick={() => onOpen(id)}
+                >
                   {id}
                 </button>
               ) : (
                 <>
                   <span className="underline decoration-dotted underline-offset-2">{id}</span>{" "}
-                  <Badge className="rounded-[5px] bg-zinc-100 px-1.5 py-0 font-sans text-[10px] font-normal text-zinc-500">not in the charter</Badge>
+                  <Badge className="rounded-[5px] bg-zinc-100 px-1.5 py-0 font-sans text-[10px] font-normal text-zinc-500">
+                    not in the charter
+                  </Badge>
                 </>
               )}
             </>
@@ -181,7 +204,11 @@ function TestCaseRow({
           written here. */}
       <Badge
         className={`rounded-[5px] px-[7px] py-0 text-[11.5px] font-bold tracking-[0.04em] [font-variant-caps:all-small-caps] ${
-          testCaseReport === undefined ? "bg-zinc-50 text-[#c4c4c8]" : testCaseReport.data.passed ? "bg-[#f0fdf4] text-[#15803d]" : "bg-[#fdeef0] text-[#b91c1c]"
+          testCaseReport === undefined
+            ? "bg-zinc-50 text-[#c4c4c8]"
+            : testCaseReport.data.passed
+              ? "bg-[#f0fdf4] text-[#15803d]"
+              : "bg-[#fdeef0] text-[#b91c1c]"
         }`}
       >
         {testCaseReport === undefined ? "not run" : testCaseReport.data.passed ? "pass" : "fail"}

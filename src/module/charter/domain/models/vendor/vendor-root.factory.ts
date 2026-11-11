@@ -1,7 +1,7 @@
-import { VendorRoot } from "./vendor-root.js";
 import { VendorsFolder } from "../charter/vendors-folder.js";
-import { Primitives } from "../primitive/primitive.js";
 import { VendorFault } from "../charter.fault.js";
+import { Primitives } from "../primitive/primitive.js";
+import { VendorRoot } from "./vendor-root.js";
 
 /** How deep a vendor's name goes: `<owner>/<repository>/<name>`. */
 const VENDOR_NAME_DEPTH = 3;
@@ -31,10 +31,19 @@ export class VendorRootFactory {
     const oldFolderNames = [
       ...new Set(
         pathsUnderVendor
-          .filter((filePath) => filePath.split("/")[VENDOR_NAME_DEPTH] !== VendorRoot.primitivesFolder || filePath.split("/").length <= VENDOR_NAME_DEPTH + 1)
+          .filter(
+            (filePath) =>
+              filePath.split("/")[VENDOR_NAME_DEPTH] !== VendorRoot.primitivesFolder ||
+              filePath.split("/").length <= VENDOR_NAME_DEPTH + 1,
+          )
           // A kind's folder right under the first is a vendor named by that
           // one folder alone; otherwise the owner and the repository name it.
-          .map((filePath) => filePath.split("/").slice(0, Primitives.isKind(filePath.split("/")[1]) ? 1 : 2).join("/")),
+          .map((filePath) =>
+            filePath
+              .split("/")
+              .slice(0, Primitives.isKind(filePath.split("/")[1]) ? 1 : 2)
+              .join("/"),
+          ),
       ),
     ].sort();
     if (oldFolderNames.length > 0)
@@ -44,7 +53,9 @@ export class VendorRootFactory {
         { internal: false },
       );
 
-    const vendorNames = [...new Set(pathsUnderVendor.map((filePath) => filePath.split("/").slice(0, VENDOR_NAME_DEPTH).join("/")))].sort();
+    const vendorNames = [
+      ...new Set(pathsUnderVendor.map((filePath) => filePath.split("/").slice(0, VENDOR_NAME_DEPTH).join("/"))),
+    ].sort();
     return new VendorRoot(
       vendorNames.map((vendorName) => ({ name: vendorName, uri: uriOf(`${VendorsFolder.path}/${vendorName}`) })),
     );

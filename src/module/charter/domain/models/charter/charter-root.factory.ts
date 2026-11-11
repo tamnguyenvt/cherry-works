@@ -1,16 +1,20 @@
-import { CharterRoot } from "./charter-root.js";
-import { PrimitiveFactory } from "../primitive/primitive.factory.js";
-import type { RawPrimitive } from "../primitive/raw-primitive.js";
-import type { Primitive } from "../primitive/primitive.js";
 import { DomainFault, FaultsByFile } from "../../../../shared/module.js";
-import { BasePrimitive } from "../primitive/base-primitive.js";
-import { type LayerName, PrimitiveLayer } from "../primitive/primitive-layer.js";
 import { CharterRootFault } from "../charter.fault.js";
+import { BasePrimitive } from "../primitive/base-primitive.js";
+import { PrimitiveFactory } from "../primitive/primitive.factory.js";
+import type { Primitive } from "../primitive/primitive.js";
+import { type LayerName, PrimitiveLayer } from "../primitive/primitive-layer.js";
+import type { RawPrimitive } from "../primitive/raw-primitive.js";
+import { CharterRoot } from "./charter-root.js";
 
 /** The order the layers are read in: the engine's first, so the first claim
  *  on an id is the one kept and a collision with it is filed against what its
  *  author can rename (plan §3.1). */
-const LAYER_ORDER: readonly LayerName[] = [PrimitiveLayer.BUILTIN.name, PrimitiveLayer.REPO.name, PrimitiveLayer.vendorName];
+const LAYER_ORDER: readonly LayerName[] = [
+  PrimitiveLayer.BUILTIN.name,
+  PrimitiveLayer.REPO.name,
+  PrimitiveLayer.vendorName,
+];
 
 /** Makes a repository's charter out of the primitives kept of it, and what
  *  the engine brings. */
@@ -41,7 +45,9 @@ export class CharterRootFactory {
     // they arrived in: a charter compiles to the same bytes however it was
     // kept (SC-007).
     for (const layerName of LAYER_ORDER)
-      for (const rawPrimitive of rawPrimitives.filter(({ layer }) => layer.name === layerName).sort((leftPrimitive, rightPrimitive) => leftPrimitive.uri.localeCompare(rightPrimitive.uri))) {
+      for (const rawPrimitive of rawPrimitives
+        .filter(({ layer }) => layer.name === layerName)
+        .sort((leftPrimitive, rightPrimitive) => leftPrimitive.uri.localeCompare(rightPrimitive.uri))) {
         layerNameByUri[rawPrimitive.uri] = rawPrimitive.layer.name;
         const folderUriOf = (kind: string, id: string) => rawPrimitive.folderUriOf?.(kind, id) ?? `${kind}/${id}/`;
         // A primitive is a folder holding its index.md; a markdown file of its own
@@ -85,7 +91,9 @@ export class CharterRootFactory {
           if (!(raisedValue instanceof AggregateError)) throw raisedValue;
           // A finding is a fault the person can correct. An internal fault in the
           // same aggregate would otherwise be shown under the file (SDK-FR-018).
-          const findingFaults = raisedValue.errors.filter((error): error is DomainFault => error instanceof DomainFault && !error.internal);
+          const findingFaults = raisedValue.errors.filter(
+            (error): error is DomainFault => error instanceof DomainFault && !error.internal,
+          );
           if (findingFaults.length !== raisedValue.errors.length) throw raisedValue;
           faultsByFile[rawPrimitive.uri] = findingFaults;
         }

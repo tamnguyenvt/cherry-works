@@ -1,7 +1,7 @@
 import prompts from "prompts";
-import { SETTINGS_FILE, type ForManagingWorkspace } from "#module/workspace/module.js";
-import { printFaultsByFile, printFault } from "./helper.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type Outcome } from "./command.interface.js";
+import { type ForManagingWorkspace, SETTINGS_FILE } from "#module/workspace/module.js";
+import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
+import { printFault, printFaultsByFile } from "./helper.js";
 
 const OPTIONS = {
   agent: {
@@ -40,7 +40,10 @@ export class InitCommand implements Command<typeof OPTIONS> {
   readonly summary = "Set this repository up under a charter";
   readonly options = OPTIONS;
 
-  async run({ workspaceApp, composeApplications, version }: Context, { agent, mainContextCeiling }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async run(
+    { workspaceApp, composeApplications, version }: Context,
+    { agent, mainContextCeiling }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
     const agents = await whichAgents(workspaceApp, agent);
     if (typeof agents === "string") return { code: EXIT_FAILURE, problem: agents };
     // No agent, one this engine does not compile for, and a ceiling that is
@@ -104,12 +107,12 @@ async function whichAgents(
   if (typed !== undefined) return [typed];
 
   const workspaceSettingsDTO = await workspaceApp.settings();
-  if (workspaceSettingsDTO.type === "Fault") return `${SETTINGS_FILE}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`;
+  if (workspaceSettingsDTO.type === "Fault")
+    return `${SETTINGS_FILE}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`;
   const agentsInSettings = workspaceSettingsDTO.data.agents;
   // Keep the repository's choice; new repositories default to Claude for
   // compatibility with earlier releases (FR-055).
-  const defaultAgents: readonly string[] =
-    agentsInSettings.length > 0 ? agentsInSettings : ["claude"];
+  const defaultAgents: readonly string[] = agentsInSettings.length > 0 ? agentsInSettings : ["claude"];
 
   // Nobody at the terminal is answered with what the settings already name,
   // which is what the prompt below would hand back on a return: a pipeline
@@ -129,7 +132,11 @@ async function whichAgents(
     // repository is already running under and a second run is rechoosing rather
     // than starting over (FR-038). Nothing named yet — a repository being set up
     // for the first time — arrives with Claude ticked (FR-055).
-    choices: workspaceApp.agentProviderNames.map((agentProviderName) => ({ title: agentProviderName, value: agentProviderName, selected: defaultAgents.includes(agentProviderName) })),
+    choices: workspaceApp.agentProviderNames.map((agentProviderName) => ({
+      title: agentProviderName,
+      value: agentProviderName,
+      selected: defaultAgents.includes(agentProviderName),
+    })),
     // Ticking none of them is not an answer: a charter compiles for at least one
     // agent, so the prompt holds the submit until one is ticked (FR-033).
     min: 1,

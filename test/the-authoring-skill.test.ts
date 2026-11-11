@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
 import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
@@ -24,7 +24,10 @@ test("every command the body names is one cw answers", () => {
 
   const namedCommands = [...skillBody.matchAll(/`cw ([a-z]+)/g)].map(([, name]) => name);
 
-  assert.deepEqual(namedCommands.filter((name) => !commandNames.includes(name ?? "")), []);
+  assert.deepEqual(
+    namedCommands.filter((name) => !commandNames.includes(name ?? "")),
+    [],
+  );
 });
 
 test("the body says the procedure in order: ask the kind, add with flags, build (FR-024)", () => {
@@ -32,8 +35,14 @@ test("the body says the procedure in order: ask the kind, add with flags, build 
 
   const positions = steps.map((step) => skillBody.indexOf(step));
 
-  assert.ok(positions.every((position) => position >= 0), `missing a step: ${JSON.stringify(positions)}`);
-  assert.deepEqual([...positions].sort((left, right) => left - right), positions);
+  assert.ok(
+    positions.every((position) => position >= 0),
+    `missing a step: ${JSON.stringify(positions)}`,
+  );
+  assert.deepEqual(
+    [...positions].sort((left, right) => left - right),
+    positions,
+  );
 });
 
 test("the body says whose it is, and what it does not cover (FR-025, FR-027)", () => {

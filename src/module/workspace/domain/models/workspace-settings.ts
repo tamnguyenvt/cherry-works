@@ -17,7 +17,10 @@ export class WorkspaceSettings {
     agents: z.array(z.string()),
     mainContextCeiling: z.number().int().positive().optional(),
     sessionContextMark: z.number().int().positive().optional(),
-    sessionAnalysisFolder: z.string().regex(/^(\/|~\/)/).optional(),
+    sessionAnalysisFolder: z
+      .string()
+      .regex(/^(\/|~\/)/)
+      .optional(),
   });
 
   constructor(

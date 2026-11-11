@@ -1,16 +1,16 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { startMcpServer } from "../src/presentation/mcp/mcp.server.js";
 import type { ForBuildingCharter } from "../src/module/charter/app/port/in/building-charter.port.js";
 import type { ForRunningCharter } from "../src/module/runtime/app/port/in/running-charter.port.js";
+import { startMcpServer } from "../src/presentation/mcp/mcp.server.js";
 
 const MAIN = fileURLToPath(new URL("../main.ts", import.meta.url));
 const STDIO_SERVER = fileURLToPath(new URL("./an-mcp-server-over-stdio.ts", import.meta.url));
@@ -27,13 +27,25 @@ const oneMcpOriginServed = () => {
     tools: async () => ({
       type: "ServedTools",
       data: {
-        tools: [{ type: "ServedTool", data: { name: "linear_1a2b__list_issues", description: "[linear] Lists issues.", inputSchema: { type: "object" } } }],
+        tools: [
+          {
+            type: "ServedTool",
+            data: {
+              name: "linear_1a2b__list_issues",
+              description: "[linear] Lists issues.",
+              inputSchema: { type: "object" },
+            },
+          },
+        ],
         problems: [],
       },
     }),
     call: async (name, args) => {
       calls.push({ name, args });
-      return { type: "ToolAnswer", data: { content: [{ type: "text", text: "3 issues" }], structuredContent: { count: 3 } } };
+      return {
+        type: "ToolAnswer",
+        data: { content: [{ type: "text", text: "3 issues" }], structuredContent: { count: 3 } },
+      };
     },
   };
   return { charterRuntimeApp: servingApp, calls };
@@ -50,7 +62,9 @@ test("the server lists what the mcp origins serve, and forwards a call to them, 
   const { tools } = await client.listTools();
   const toolAnswer = await client.callTool({ name: "linear_1a2b__list_issues", arguments: { team: "core" } });
 
-  assert.deepEqual(tools, [{ name: "linear_1a2b__list_issues", description: "[linear] Lists issues.", inputSchema: { type: "object" } }]);
+  assert.deepEqual(tools, [
+    { name: "linear_1a2b__list_issues", description: "[linear] Lists issues.", inputSchema: { type: "object" } },
+  ]);
   assert.deepEqual(calls, [{ name: "linear_1a2b__list_issues", args: { team: "core" } }]);
   assert.deepEqual(toolAnswer, { content: [{ type: "text", text: "3 issues" }], structuredContent: { count: 3 } });
 });
@@ -62,21 +76,32 @@ const aBuiltRepository = async () => {
   const command = { command: process.execPath, args: ["--import", TSX, STDIO_SERVER] };
   const address = [command.command, ...command.args].join(" ");
   await mkdir(join(repo, ".cw", "out", "mcp", "local"), { recursive: true });
-  await writeFile(join(repo, ".cw", "out", "mcp-origins.json"), JSON.stringify({
+  await writeFile(
+    join(repo, ".cw", "out", "mcp-origins.json"),
+    JSON.stringify({
       origins: [
         {
           ids: ["local"],
-          names: { "local": "local_0a1b" },
+          names: { local: "local_0a1b" },
           address,
           command,
           auth: [],
-          tools: [{ name: "echo", description: "Echo the text back.", inputSchema: { type: "object", properties: { text: { type: "string" } } } }],
+          tools: [
+            {
+              name: "echo",
+              description: "Echo the text back.",
+              inputSchema: { type: "object", properties: { text: { type: "string" } } },
+            },
+          ],
         },
       ],
-    }));
+    }),
+  );
   await writeFile(
     join(repo, ".cw", "out", "catalogue.json"),
-    JSON.stringify([{ kind: "mcp", id: "local", description: "A local mcp origin.", file: ".cw/out/mcp/local/index.md" }]),
+    JSON.stringify([
+      { kind: "mcp", id: "local", description: "A local mcp origin.", file: ".cw/out/mcp/local/index.md" },
+    ]),
   );
   await writeFile(
     join(repo, ".cw", "out", "mcp", "local", "index.md"),
@@ -88,7 +113,12 @@ const aBuiltRepository = async () => {
 test("cw mcp serve, started by an agent, serves a built repository's mcp origins over stdio and stops them with it (FR-152, FR-153)", async (t) => {
   const repo = await aBuiltRepository();
   t.after(() => rm(repo, { recursive: true, force: true }));
-  const transport = new StdioClientTransport({ command: process.execPath, args: ["--import", TSX, "--import", MODULE_LOADER, MAIN, "mcp", "serve"], cwd: repo, stderr: "pipe" });
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: ["--import", TSX, "--import", MODULE_LOADER, MAIN, "mcp", "serve"],
+    cwd: repo,
+    stderr: "pipe",
+  });
   const said: string[] = [];
   transport.stderr?.on("data", (chunk: Buffer) => said.push(chunk.toString()));
   const client = new Client({ name: "an-agent", version: "0.0.0" });
@@ -99,7 +129,10 @@ test("cw mcp serve, started by an agent, serves a built repository's mcp origins
   const undeclaredAnswer = await client.callTool({ name: "read_token", arguments: {} });
   await client.close();
 
-  assert.deepEqual(tools.map(({ name }) => name), ["local_0a1b__echo"]);
+  assert.deepEqual(
+    tools.map(({ name }) => name),
+    ["local_0a1b__echo"],
+  );
   assert.deepEqual(toolAnswer.content, [{ type: "text", text: "echo: hi" }]);
   assert.equal(undeclaredAnswer.isError, true);
   assert.match(said.join(""), /local declares "missing_tool"/);
@@ -109,7 +142,11 @@ test("cw mcp serve in a repository never built stops, saying to build (FR-152)",
   const repo = await mkdtemp(join(tmpdir(), "cw-serve-"));
   t.after(() => rm(repo, { recursive: true, force: true }));
 
-  const serveRun = spawnSync(process.execPath, ["--import", TSX, "--import", MODULE_LOADER, MAIN, "mcp", "serve"], { cwd: repo, encoding: "utf8", input: "" });
+  const serveRun = spawnSync(process.execPath, ["--import", TSX, "--import", MODULE_LOADER, MAIN, "mcp", "serve"], {
+    cwd: repo,
+    encoding: "utf8",
+    input: "",
+  });
 
   assert.equal(serveRun.status, 1);
   assert.equal(serveRun.stdout, "");

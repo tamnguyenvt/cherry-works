@@ -41,11 +41,7 @@ const FaultsSchema = dto(
 
 /** Every schema of this module's DTOs, under its name — the name it carries
  *  as `type` — in alphabetical order. */
-export const FaultDTOs = byType(
-  FaultSchema,
-  FaultsSchema,
-  FaultsByFileSchema,
-);
+export const FaultDTOs = byType(FaultSchema, FaultsSchema, FaultsByFileSchema);
 
 /** Every DTO's type, under its name: what its schema infers. */
 export namespace FaultDTOs {

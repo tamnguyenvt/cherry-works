@@ -1,11 +1,11 @@
-import { VendorSource, type SourceCharter } from "../../domain/models/vendor/vendor-source.js";
-import { VendorRoot } from "../../domain/models/vendor/vendor-root.js";
-import { CopyPlan, ProjectionPlan, WritePlan } from "../../domain/models/projection/projection-plan.js";
 import { CharterFolder } from "../../domain/models/charter/charter-folder.js";
 import { VendorsFolder } from "../../domain/models/charter/vendors-folder.js";
+import { VendorFault } from "../../domain/models/charter.fault.js";
 import { Primitives } from "../../domain/models/primitive/primitive.js";
 import { SkillPrimitive } from "../../domain/models/primitive/skill-primitive.js";
-import { VendorFault } from "../../domain/models/charter.fault.js";
+import { CopyPlan, ProjectionPlan, WritePlan } from "../../domain/models/projection/projection-plan.js";
+import { VendorRoot } from "../../domain/models/vendor/vendor-root.js";
+import { type SourceCharter, VendorSource } from "../../domain/models/vendor/vendor-source.js";
 import type { ForManagingCharter } from "../port/out/managing-charter.port.js";
 
 /** The name a source's own charter, and the skills taken from it, are
@@ -36,7 +36,11 @@ export class InstallCharterService {
    *
    * Whatever `root` held is written over by what is installed into it.
    */
-  filterSource(vendorSource: VendorSource, selectedSkillIds: readonly string[], selectedCharterNames: readonly string[]): VendorSource {
+  filterSource(
+    vendorSource: VendorSource,
+    selectedSkillIds: readonly string[],
+    selectedCharterNames: readonly string[],
+  ): VendorSource {
     const {
       origin: { sourceUri },
       ownCharter,
@@ -56,18 +60,35 @@ export class InstallCharterService {
         { internal: false },
       );
     if (selectedCharterNames.length > 0 && heldCharterNames.length === 0)
-      throw new VendorFault(`${sourceUri} holds no "${VendorSource.chartersFolder}/": it holds ${heldShapes.join(" and ")}.`, "Run this again without --charter.", { internal: false });
+      throw new VendorFault(
+        `${sourceUri} holds no "${VendorSource.chartersFolder}/": it holds ${heldShapes.join(" and ")}.`,
+        "Run this again without --charter.",
+        { internal: false },
+      );
     if (selectedSkillIds.length > 0 && !vendorSource.holdsSkills)
-      throw new VendorFault(`${sourceUri} holds no "${VendorSource.skillsFolder}/": it holds ${heldShapes.join(" and ")}.`, "Run this again without --skill.", { internal: false });
+      throw new VendorFault(
+        `${sourceUri} holds no "${VendorSource.skillsFolder}/": it holds ${heldShapes.join(" and ")}.`,
+        "Run this again without --skill.",
+        { internal: false },
+      );
 
     const isTakingOwnCharter = holdsOwnCharter && selectedCharterNames.length === 0 && selectedSkillIds.length === 0;
-    const pickedCharterNames = selectedCharterNames.length > 0 ? selectedCharterNames : !holdsOwnCharter && selectedSkillIds.length === 0 ? heldCharterNames : [];
+    const pickedCharterNames =
+      selectedCharterNames.length > 0
+        ? selectedCharterNames
+        : !holdsOwnCharter && selectedSkillIds.length === 0
+          ? heldCharterNames
+          : [];
     const isTakingSkills = selectedSkillIds.length > 0 || (!holdsOwnCharter && heldCharterNames.length === 0);
 
     // A charter that installed vendors of its own is refused (FR-170).
     const assertOneLevelDeep = (sourceCharter: SourceCharter) => {
       if (sourceCharter.holdsVendors)
-        throw new VendorFault(`${sourceUri} holds "${sourceCharter.vendorsUri}", and vendoring is one level deep.`, `Remove "${sourceCharter.vendorsUri}" from the source, or install a version without it.`, { internal: false });
+        throw new VendorFault(
+          `${sourceUri} holds "${sourceCharter.vendorsUri}", and vendoring is one level deep.`,
+          `Remove "${sourceCharter.vendorsUri}" from the source, or install a version without it.`,
+          { internal: false },
+        );
     };
 
     if (isTakingOwnCharter) {
@@ -76,30 +97,63 @@ export class InstallCharterService {
     }
 
     const unheldCharterNames = pickedCharterNames.filter((charterName) => !heldCharterNames.includes(charterName));
-    if (unheldCharterNames.length > 0) throw new VendorFault(`${sourceUri} holds no charter ${unheldCharterNames.join(", ")}.`, `Pick one it holds: ${heldCharterNames.join(", ")}.`, { internal: false });
+    if (unheldCharterNames.length > 0)
+      throw new VendorFault(
+        `${sourceUri} holds no charter ${unheldCharterNames.join(", ")}.`,
+        `Pick one it holds: ${heldCharterNames.join(", ")}.`,
+        { internal: false },
+      );
     const pickedCharters = vendorSource.charters.filter(({ name }) => pickedCharterNames.includes(name));
     for (const sourceCharter of pickedCharters) {
       if ((Primitives.kinds as readonly string[]).includes(sourceCharter.name))
-        throw new VendorFault(`"${sourceCharter.uri}" is named as a kind is, and a charter is never installed under a kind's name.`, `Rename "${sourceCharter.uri}" in the source, then pick it again.`, { internal: false });
+        throw new VendorFault(
+          `"${sourceCharter.uri}" is named as a kind is, and a charter is never installed under a kind's name.`,
+          `Rename "${sourceCharter.uri}" in the source, then pick it again.`,
+          { internal: false },
+        );
       if (sourceCharter.name === ROOT_NAME)
-        throw new VendorFault(`"${sourceCharter.uri}" is named "${ROOT_NAME}", and its vendor folder would be the one the source's own charter is installed in.`, `Rename "${sourceCharter.uri}" in the source, then pick it again.`, { internal: false });
+        throw new VendorFault(
+          `"${sourceCharter.uri}" is named "${ROOT_NAME}", and its vendor folder would be the one the source's own charter is installed in.`,
+          `Rename "${sourceCharter.uri}" in the source, then pick it again.`,
+          { internal: false },
+        );
       if (!sourceCharter.holdsCharter)
-        throw new VendorFault(`"${sourceCharter.uri}" holds no "${CharterFolder.path}".`, `Pick a charter whose folder holds "${CharterFolder.path}": ${heldCharterNames.filter((heldCharterName) => heldCharterName !== sourceCharter.name).join(", ")}.`, { internal: false });
+        throw new VendorFault(
+          `"${sourceCharter.uri}" holds no "${CharterFolder.path}".`,
+          `Pick a charter whose folder holds "${CharterFolder.path}": ${heldCharterNames.filter((heldCharterName) => heldCharterName !== sourceCharter.name).join(", ")}.`,
+          { internal: false },
+        );
       assertOneLevelDeep(sourceCharter);
     }
-    if (!isTakingSkills) return new VendorSource(vendorSource.origin, vendorSource.commit, undefined, pickedCharters, [], []);
+    if (!isTakingSkills)
+      return new VendorSource(vendorSource.origin, vendorSource.commit, undefined, pickedCharters, [], []);
 
     const [skillFault] = vendorSource.skillFaults;
     if (skillFault !== undefined) throw skillFault;
     const heldSkillIds = vendorSource.skills.map(({ convertedSkill }) => convertedSkill.headers.id);
-    const sharedIdSkills = vendorSource.skills.filter(({ convertedSkill }) => heldSkillIds.filter((skillId) => skillId === convertedSkill.headers.id).length > 1);
+    const sharedIdSkills = vendorSource.skills.filter(
+      ({ convertedSkill }) => heldSkillIds.filter((skillId) => skillId === convertedSkill.headers.id).length > 1,
+    );
     if (sharedIdSkills.length > 0)
-      throw new VendorFault(`${sharedIdSkills.map(({ uri }) => uri).join(", ")} declare one name, and a name is one skill.`, "Take the skills from a version of the source whose names are its own.", { internal: false });
+      throw new VendorFault(
+        `${sharedIdSkills.map(({ uri }) => uri).join(", ")} declare one name, and a name is one skill.`,
+        "Take the skills from a version of the source whose names are its own.",
+        { internal: false },
+      );
     const unheldSkillIds = selectedSkillIds.filter((skillId) => !heldSkillIds.includes(skillId));
-    if (unheldSkillIds.length > 0) throw new VendorFault(`${sourceUri} holds no skill ${unheldSkillIds.join(", ")}.`, `Take one it holds: ${heldSkillIds.join(", ")}.`, { internal: false });
+    if (unheldSkillIds.length > 0)
+      throw new VendorFault(
+        `${sourceUri} holds no skill ${unheldSkillIds.join(", ")}.`,
+        `Take one it holds: ${heldSkillIds.join(", ")}.`,
+        { internal: false },
+      );
     const pickedSkills = vendorSource.skills
-      .filter(({ convertedSkill }) => selectedSkillIds.length === 0 || selectedSkillIds.includes(convertedSkill.headers.id))
-      .sort((leftSkill, rightSkill) => leftSkill.convertedSkill.headers.id.localeCompare(rightSkill.convertedSkill.headers.id));
+      .filter(
+        ({ convertedSkill }) => selectedSkillIds.length === 0 || selectedSkillIds.includes(convertedSkill.headers.id),
+      )
+      .sort((leftSkill, rightSkill) =>
+        leftSkill.convertedSkill.headers.id.localeCompare(rightSkill.convertedSkill.headers.id),
+      );
     return new VendorSource(vendorSource.origin, vendorSource.commit, undefined, pickedCharters, pickedSkills, []);
   }
 
@@ -120,15 +174,24 @@ export class InstallCharterService {
    * it, and nothing else (CORE-FR-189).
    */
   planInstall(vendorSource: VendorSource): ProjectionPlan<WritePlan | CopyPlan> {
-    const primitivesFolderOf = (charterName: string) => `${VendorsFolder.path}/${vendorSource.origin.name}/${charterName}/${VendorRoot.primitivesFolder}`;
+    const primitivesFolderOf = (charterName: string) =>
+      `${VendorsFolder.path}/${vendorSource.origin.name}/${charterName}/${VendorRoot.primitivesFolder}`;
     const projectionPlan: (WritePlan | CopyPlan)[] = [];
     const cleanupPlan: WritePlan[] = [];
-    if (vendorSource.ownCharter !== undefined) projectionPlan.push(new CopyPlan(vendorSource.ownCharter.sourceFolder, primitivesFolderOf(ROOT_NAME)));
-    for (const { name, sourceFolder } of vendorSource.charters) projectionPlan.push(new CopyPlan(sourceFolder, primitivesFolderOf(name)));
+    if (vendorSource.ownCharter !== undefined)
+      projectionPlan.push(new CopyPlan(vendorSource.ownCharter.sourceFolder, primitivesFolderOf(ROOT_NAME)));
+    for (const { name, sourceFolder } of vendorSource.charters)
+      projectionPlan.push(new CopyPlan(sourceFolder, primitivesFolderOf(name)));
     for (const { convertedSkill, sourceFolder } of vendorSource.skills) {
       const skillFolder = `${primitivesFolderOf(ROOT_NAME)}/${SkillPrimitive.kind}/${convertedSkill.headers.id}`;
-      const [indexPath, skillFilePath] = [`${skillFolder}/${SkillPrimitive.index}`, `${skillFolder}/${VendorSource.skillFile}`];
-      projectionPlan.push(new CopyPlan(sourceFolder, skillFolder), new WritePlan(indexPath, indexPath, convertedSkill.toMarkdown()));
+      const [indexPath, skillFilePath] = [
+        `${skillFolder}/${SkillPrimitive.index}`,
+        `${skillFolder}/${VendorSource.skillFile}`,
+      ];
+      projectionPlan.push(
+        new CopyPlan(sourceFolder, skillFolder),
+        new WritePlan(indexPath, indexPath, convertedSkill.toMarkdown()),
+      );
       cleanupPlan.push(new WritePlan(skillFilePath, skillFilePath));
     }
     return new ProjectionPlan([], cleanupPlan, projectionPlan);
@@ -136,7 +199,11 @@ export class InstallCharterService {
 
   /** The plan put down off the commit of the source it was planned from, in
    *  order, then what it takes away. */
-  async executePlan(vendorSource: VendorSource, projectionPlan: ProjectionPlan<WritePlan | CopyPlan>, charterRepository: ForManagingCharter): Promise<void> {
+  async executePlan(
+    vendorSource: VendorSource,
+    projectionPlan: ProjectionPlan<WritePlan | CopyPlan>,
+    charterRepository: ForManagingCharter,
+  ): Promise<void> {
     await charterRepository.storeVendor(vendorSource, projectionPlan);
   }
 }

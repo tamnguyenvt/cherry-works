@@ -1,5 +1,5 @@
-import { WorkspaceSettings } from "./workspace-settings.js";
 import { SettingsFault } from "./workspace.fault.js";
+import { WorkspaceSettings } from "./workspace-settings.js";
 
 /** Makes a repository's settings out of the text it keeps them in. */
 export class WorkspaceSettingsFactory {
@@ -15,10 +15,17 @@ export class WorkspaceSettingsFactory {
     try {
       settingsJson = JSON.parse(settingsText);
     } catch {
-      throw new SettingsFault(`These are this repository's own settings and this is not JSON.`, `Correct it, or delete it and run "cw init" to write it again.`, { internal: false });
+      throw new SettingsFault(
+        `These are this repository's own settings and this is not JSON.`,
+        `Correct it, or delete it and run "cw init" to write it again.`,
+        { internal: false },
+      );
     }
     const settingsParseResult = WorkspaceSettings.schema.safeParse(settingsJson);
-    if (!settingsParseResult.success || !settingsParseResult.data.agents.every((agentName) => supportedAgents.includes(agentName)))
+    if (
+      !settingsParseResult.success ||
+      !settingsParseResult.data.agents.every((agentName) => supportedAgents.includes(agentName))
+    )
       throw WorkspaceSettingsFactory.#findSettingsFault(settingsJson, supportedAgents);
     const { agents, mainContextCeiling, sessionAnalysisFolder } = settingsParseResult.data;
     return new WorkspaceSettings(agents, mainContextCeiling, sessionAnalysisFolder);
@@ -28,7 +35,11 @@ export class WorkspaceSettingsFactory {
    *  that does not, and the next move. */
   static #findSettingsFault(settingsJson: unknown, supportedAgents: readonly string[]): SettingsFault {
     if (typeof settingsJson !== "object" || settingsJson === null || Array.isArray(settingsJson))
-      return new SettingsFault(`These are this repository's own settings and this holds something other than a set of fields.`, `Write it as an object, as in { "agents": ["claude"] }.`, { internal: false });
+      return new SettingsFault(
+        `These are this repository's own settings and this holds something other than a set of fields.`,
+        `Write it as an object, as in { "agents": ["claude"] }.`,
+        { internal: false },
+      );
 
     const { agents, mainContextCeiling, sessionContextMark, sessionAnalysisFolder } = settingsJson as {
       agents?: unknown;
@@ -37,9 +48,14 @@ export class WorkspaceSettingsFactory {
       sessionAnalysisFolder?: unknown;
     };
     if (!Array.isArray(agents))
-      return new SettingsFault(`"agents" is what this repository compiles its charter for, and it is not a list of names here.`, `Write it as a list of names, as in { "agents": ["claude"] }.`, { internal: false });
+      return new SettingsFault(
+        `"agents" is what this repository compiles its charter for, and it is not a list of names here.`,
+        `Write it as a list of names, as in { "agents": ["claude"] }.`,
+        { internal: false },
+      );
 
-    const isSupported = (agentName: unknown): boolean => typeof agentName === "string" && supportedAgents.includes(agentName);
+    const isSupported = (agentName: unknown): boolean =>
+      typeof agentName === "string" && supportedAgents.includes(agentName);
     if (!agents.every(isSupported))
       return new SettingsFault(
         `This says it compiles for ${agents

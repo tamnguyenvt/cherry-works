@@ -1,5 +1,13 @@
 import type { CharterDTOs } from "#module/charter/module.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { printFault } from "./helper.js";
 
 /** What `cw list` takes: which kind to narrow to, and how much of each
@@ -57,9 +65,7 @@ export class ListCommand implements Command<typeof OPTIONS> {
 
     return {
       code: EXIT_OK,
-      result: isMin
-        ? `${entries.map(surveyed).join("\n")}\n`
-        : `${entries.map(inFull).join("\n")}\n`,
+      result: isMin ? `${entries.map(surveyed).join("\n")}\n` : `${entries.map(inFull).join("\n")}\n`,
     };
   }
 }

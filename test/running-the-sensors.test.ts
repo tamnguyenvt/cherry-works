@@ -1,16 +1,16 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import type { ShellCommandResult } from "../src/module/runtime/app/port/out/running-shell-commands.port.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryShellCommands } from "../src/module/runtime/infra/in-memory/in-memory-shell-commands.adapter.js";
-import type { ShellCommandResult } from "../src/module/runtime/app/port/out/running-shell-commands.port.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { answerOf } from "./answer-of.js";
 import { buildingCharterOf } from "./use-cases-of.js";
@@ -25,7 +25,18 @@ const at = (path: string) => new URL(path, root).href;
 const inRepo = (path: string) => new URL(path, repo).href;
 
 const sensor = (id: string, signal: string, run: string) =>
-  ["---", "kind: sensor", `id: ${id}`, `description: What ${id} is for, in one line.`, `signal: ${signal}`, `run: ${JSON.stringify(run)}`, "---", "", `The body of ${id}.`, ""].join("\n");
+  [
+    "---",
+    "kind: sensor",
+    `id: ${id}`,
+    `description: What ${id} is for, in one line.`,
+    `signal: ${signal}`,
+    `run: ${JSON.stringify(run)}`,
+    "---",
+    "",
+    `The body of ${id}.`,
+    "",
+  ].join("\n");
 
 /** The engine's own sensor, which every build carries on `Stop`. */
 const SESSION_COUNTER_COMMAND = 'node ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs"';
@@ -35,14 +46,37 @@ const hookEntry = (command: string) => ({ hooks: [{ type: "command", command }] 
 
 /** A charter built and run on the same files, each command answered as the
  *  test says, and the engine's own sensor answering nothing. */
-const aRepository = (files: Readonly<Record<string, string>>, resultByCommand: Readonly<Record<string, ShellCommandResult>> = {}) => {
-  const held = new InMemoryFileReaders({ [inRepo(".cw/settings.json")]: JSON.stringify({ agents: ["claude"] }), ...files });
-  const shell = new InMemoryShellCommands({ [SESSION_COUNTER_COMMAND]: { exitCode: 0, stdout: "", stderr: "" }, ...resultByCommand });
-  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), {
-    claude: new InMemoryAgentCli(),
-  }, new InMemoryReporter(), { shell });
-  const claudeSettings = async () => JSON.parse((await held.readIfThere(new URL(".claude/settings.json", repo))) ?? "{}");
-  return { held, shell, build: () => charterRuntimeApp.build(), runSensors: charterRuntimeApp.runSensors.bind(charterRuntimeApp), claudeSettings };
+const aRepository = (
+  files: Readonly<Record<string, string>>,
+  resultByCommand: Readonly<Record<string, ShellCommandResult>> = {},
+) => {
+  const held = new InMemoryFileReaders({
+    [inRepo(".cw/settings.json")]: JSON.stringify({ agents: ["claude"] }),
+    ...files,
+  });
+  const shell = new InMemoryShellCommands({
+    [SESSION_COUNTER_COMMAND]: { exitCode: 0, stdout: "", stderr: "" },
+    ...resultByCommand,
+  });
+  const charterRuntimeApp = buildingCharterOf(
+    held,
+    new InMemoryFileOutput(held),
+    new InMemoryTokenCounter(),
+    {
+      claude: new InMemoryAgentCli(),
+    },
+    new InMemoryReporter(),
+    { shell },
+  );
+  const claudeSettings = async () =>
+    JSON.parse((await held.readIfThere(new URL(".claude/settings.json", repo))) ?? "{}");
+  return {
+    held,
+    shell,
+    build: () => charterRuntimeApp.build(),
+    runSensors: charterRuntimeApp.runSensors.bind(charterRuntimeApp),
+    claudeSettings,
+  };
 };
 
 test("a host is given one command per signal its sensors name, and none of the sensors' own (CORE-FR-175, CORE-SC-047)", async () => {
@@ -59,13 +93,22 @@ test("a host is given one command per signal its sensors name, and none of the s
     Stop: [hookEntry("cw sensor run Stop --agent claude")],
   });
   const settingsText = (await held.readIfThere(new URL(".claude/settings.json", repo))) ?? "";
-  for (const sensorCommand of ["echo a", "echo b", "./bin/guard", SESSION_COUNTER_COMMAND]) assert.ok(!settingsText.includes(sensorCommand.replaceAll('"', '\\"')));
+  for (const sensorCommand of ["echo a", "echo b", "./bin/guard", SESSION_COUNTER_COMMAND])
+    assert.ok(!settingsText.includes(sensorCommand.replaceAll('"', '\\"')));
 });
 
 test("each sensor's command is built into the output, in order of id, its scripts written as their built files (CORE-FR-169, CORE-FR-179)", async () => {
   const { held, build } = aRepository({
     [at("sensor/check-on-stop/index.md")]: sensor("check-on-stop", "Stop", "[[release/check]] --strict"),
-    [at("script/release/check/index.md")]: ["---", "kind: script", "id: release/check", "description: Checks a release.", "executionPath: ./bin/run.sh", "---", ""].join("\n"),
+    [at("script/release/check/index.md")]: [
+      "---",
+      "kind: script",
+      "id: release/check",
+      "description: Checks a release.",
+      "executionPath: ./bin/run.sh",
+      "---",
+      "",
+    ].join("\n"),
     [at("script/release/check/bin/run.sh")]: "#!/usr/bin/env bash\n",
   });
 
@@ -74,7 +117,12 @@ test("each sensor's command is built into the output, in order of id, its script
   assert.deepEqual(JSON.parse((await held.readIfThere(new URL(".cw/out/sensors.json", repo))) ?? "{}"), {
     sensors: [
       { id: "check-on-stop", signal: "Stop", command: ".cw/out/script/release/check/bin/run.sh --strict" },
-      { id: "cw-session-tokens-counter-on-stop", signal: "Stop", command: SESSION_COUNTER_COMMAND, "agent-provider": ["claude"] },
+      {
+        id: "cw-session-tokens-counter-on-stop",
+        signal: "Stop",
+        command: SESSION_COUNTER_COMMAND,
+        "agent-provider": ["claude"],
+      },
     ],
   });
 });
@@ -95,14 +143,19 @@ test("the hooks under a signal the charter's sensors name are the charter's whol
 });
 
 test("a signal whose last sensor is removed keeps the command the last build wrote, which runs nothing (CORE-FR-175, CORE-FR-176)", async () => {
-  const { held, shell, build, runSensors, claudeSettings } = aRepository({ [at("sensor/guard/index.md")]: sensor("guard", "PreToolUse", "./bin/guard") });
+  const { held, shell, build, runSensors, claudeSettings } = aRepository({
+    [at("sensor/guard/index.md")]: sensor("guard", "PreToolUse", "./bin/guard"),
+  });
   await build();
   held.remove(new URL("sensor/guard/index.md", root));
 
   await build();
   const sensorRunOutcome = answerOf(await runSensors("PreToolUse", "{}"));
 
-  assert.deepEqual((await claudeSettings()).hooks, { PreToolUse: [hookEntry("cw sensor run PreToolUse --agent claude")], Stop: [hookEntry("cw sensor run Stop --agent claude")] });
+  assert.deepEqual((await claudeSettings()).hooks, {
+    PreToolUse: [hookEntry("cw sensor run PreToolUse --agent claude")],
+    Stop: [hookEntry("cw sensor run Stop --agent claude")],
+  });
   assert.deepEqual(sensorRunOutcome.data, { exitCode: 0, answer: "", problem: "" });
   assert.deepEqual(shell.runs, []);
 });
@@ -116,7 +169,10 @@ test("the sensors of one signal run all at once, each given the same event (CORE
 
   await runSensors("Stop", '{"hook_event_name":"Stop"}');
 
-  assert.deepEqual(shell.runs.map(({ command }) => command).sort(), [SESSION_COUNTER_COMMAND, "echo a", "echo b"].sort());
+  assert.deepEqual(
+    shell.runs.map(({ command }) => command).sort(),
+    [SESSION_COUNTER_COMMAND, "echo a", "echo b"].sort(),
+  );
   assert.ok(shell.runs.every(({ stdin }) => stdin === '{"hook_event_name":"Stop"}'));
   // Every one was started before any had answered.
   assert.equal(shell.mostRunningAtOnce, 3);
@@ -129,7 +185,10 @@ test("one sensor exiting 2 makes the command exit 2 with its error, and the othe
       [at("sensor/gate/index.md")]: sensor("gate", "Stop", "./gate"),
       [at("sensor/say-a/index.md")]: sensor("say-a", "Stop", "echo a"),
     },
-    { "./gate": { exitCode: 2, stdout: "", stderr: "a release is open\n" }, "echo a": { exitCode: 0, stdout: "a\n", stderr: "" } },
+    {
+      "./gate": { exitCode: 2, stdout: "", stderr: "a release is open\n" },
+      "echo a": { exitCode: 0, stdout: "a\n", stderr: "" },
+    },
   );
   await build();
 
@@ -162,7 +221,10 @@ test("one sensor exiting 1 makes the command exit 1, and the other still runs to
       [at("sensor/broken/index.md")]: sensor("broken", "Stop", "./broken"),
       [at("sensor/say-a/index.md")]: sensor("say-a", "Stop", "echo a"),
     },
-    { "./broken": { exitCode: 1, stdout: "", stderr: "no such file\n" }, "echo a": { exitCode: 0, stdout: "a\n", stderr: "" } },
+    {
+      "./broken": { exitCode: 1, stdout: "", stderr: "no such file\n" },
+      "echo a": { exitCode: 0, stdout: "a\n", stderr: "" },
+    },
   );
   await build();
 
@@ -198,12 +260,25 @@ test("sensors answering in the host's structured form are combined as the host c
     {
       "./allow": {
         exitCode: 0,
-        stdout: JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "allow", permissionDecisionReason: "read only" } }),
+        stdout: JSON.stringify({
+          hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "allow",
+            permissionDecisionReason: "read only",
+          },
+        }),
         stderr: "",
       },
       "./deny": {
         exitCode: 0,
-        stdout: JSON.stringify({ systemMessage: "denied", hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: "touches a secret" } }),
+        stdout: JSON.stringify({
+          systemMessage: "denied",
+          hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "deny",
+            permissionDecisionReason: "touches a secret",
+          },
+        }),
         stderr: "",
       },
       "./note": { exitCode: 0, stdout: "checked\n", stderr: "" },
@@ -216,22 +291,49 @@ test("sensors answering in the host's structured form are combined as the host c
   assert.equal(sensorRunOutcome.data.exitCode, 0);
   assert.deepEqual(JSON.parse(sensorRunOutcome.data.answer), {
     systemMessage: "denied\nchecked",
-    hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: "touches a secret" },
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: "touches a secret",
+    },
   });
 });
 
 test("a PermissionRequest denial wins over an earlier allowance without carrying its input override", async () => {
-  const { build, runSensors } = aRepository({
-    [at("sensor/allow/index.md")]: sensor("allow", "PermissionRequest", "./allow"),
-    [at("sensor/deny/index.md")]: sensor("deny", "PermissionRequest", "./deny"),
-  }, {
-    "./allow": { exitCode: 0, stderr: "", stdout: JSON.stringify({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow", updatedInput: { command: "echo allowed" } } } }) },
-    "./deny": { exitCode: 0, stderr: "", stdout: JSON.stringify({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "deny", message: "blocked by the charter", interrupt: true } } }) },
-  });
+  const { build, runSensors } = aRepository(
+    {
+      [at("sensor/allow/index.md")]: sensor("allow", "PermissionRequest", "./allow"),
+      [at("sensor/deny/index.md")]: sensor("deny", "PermissionRequest", "./deny"),
+    },
+    {
+      "./allow": {
+        exitCode: 0,
+        stderr: "",
+        stdout: JSON.stringify({
+          hookSpecificOutput: {
+            hookEventName: "PermissionRequest",
+            decision: { behavior: "allow", updatedInput: { command: "echo allowed" } },
+          },
+        }),
+      },
+      "./deny": {
+        exitCode: 0,
+        stderr: "",
+        stdout: JSON.stringify({
+          hookSpecificOutput: {
+            hookEventName: "PermissionRequest",
+            decision: { behavior: "deny", message: "blocked by the charter", interrupt: true },
+          },
+        }),
+      },
+    },
+  );
   assert.equal((await build()).type, "PlanSummary");
   const outcome = answerOf(await runSensors("PermissionRequest", "{}"));
   assert.deepEqual(JSON.parse(outcome.data.answer).hookSpecificOutput.decision, {
-    behavior: "deny", message: "blocked by the charter", interrupt: true,
+    behavior: "deny",
+    message: "blocked by the charter",
+    interrupt: true,
   });
 });
 
@@ -243,8 +345,18 @@ test("a block and context from two sensors both reach the host (CORE-FR-178)", a
       [at("sensor/plain/index.md")]: sensor("plain", "UserPromptSubmit", "./plain"),
     },
     {
-      "./block": { exitCode: 0, stdout: JSON.stringify({ decision: "block", reason: "no secrets in prompts" }), stderr: "" },
-      "./context": { exitCode: 0, stdout: JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: "on branch main" } }), stderr: "" },
+      "./block": {
+        exitCode: 0,
+        stdout: JSON.stringify({ decision: "block", reason: "no secrets in prompts" }),
+        stderr: "",
+      },
+      "./context": {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: "on branch main" },
+        }),
+        stderr: "",
+      },
       "./plain": { exitCode: 0, stdout: "today is Thursday\n", stderr: "" },
     },
   );
@@ -260,7 +372,9 @@ test("a block and context from two sensors both reach the host (CORE-FR-178)", a
 });
 
 test("a sensor changed in the charter and not built runs as last built (CORE-FR-179)", async () => {
-  const { held, shell, build, runSensors } = aRepository({ [at("sensor/say-a/index.md")]: sensor("say-a", "Stop", "echo a") });
+  const { held, shell, build, runSensors } = aRepository({
+    [at("sensor/say-a/index.md")]: sensor("say-a", "Stop", "echo a"),
+  });
   await build();
   held.write(new URL("sensor/say-a/index.md", root), sensor("say-a", "Stop", "echo changed"));
 
@@ -281,13 +395,16 @@ test("a signal no sensor names runs nothing, writes nothing, and exits 0 (CORE-F
 });
 
 test("Codex runs a signal once through the shared runner, passes its payload and excludes the Claude counter", async () => {
-  const { shell, build, runSensors } = aRepository({
-    [at("sensor/check/index.md")]: sensor("check", "Stop", "echo check"),
-    [at("sensor/gate/index.md")]: sensor("gate", "Stop", "echo gate"),
-  }, {
-    "echo check": { exitCode: 0, stdout: '{"decision":"block","reason":"check failed"}', stderr: "" },
-    "echo gate": { exitCode: 2, stdout: "", stderr: "blocked" },
-  });
+  const { shell, build, runSensors } = aRepository(
+    {
+      [at("sensor/check/index.md")]: sensor("check", "Stop", "echo check"),
+      [at("sensor/gate/index.md")]: sensor("gate", "Stop", "echo gate"),
+    },
+    {
+      "echo check": { exitCode: 0, stdout: '{"decision":"block","reason":"check failed"}', stderr: "" },
+      "echo gate": { exitCode: 2, stdout: "", stderr: "blocked" },
+    },
+  );
   await build();
   const payload = '{"hook_event_name":"Stop","turn_id":"turn-1"}';
   const outcome = answerOf(await runSensors("Stop", payload, "codex"));
@@ -307,7 +424,11 @@ test("cw sensor run, started by the host, runs a built signal's sensors in the s
     join(repoFolder, ".cw", "out", "sensors.json"),
     JSON.stringify({
       sensors: [
-        { id: "gate", signal: "Stop", command: "cat > /dev/null; if [ -f release.lock ]; then echo 'a release is open' >&2; exit 2; fi" },
+        {
+          id: "gate",
+          signal: "Stop",
+          command: "cat > /dev/null; if [ -f release.lock ]; then echo 'a release is open' >&2; exit 2; fi",
+        },
         { id: "say-a", signal: "Stop", command: "grep -q '\"Stop\"' && echo a" },
         { id: "say-b", signal: "Stop", command: "grep -q '\"Stop\"' && echo b" },
       ],
@@ -324,16 +445,31 @@ test("cw sensor run, started by the host, runs a built signal's sensors in the s
   await writeFile(join(repoFolder, "release.lock"), "");
   const lockedRun = runSignal();
 
-  assert.deepEqual({ status: openRun.status, stdout: openRun.stdout, stderr: openRun.stderr }, { status: 0, stdout: "a\nb\n", stderr: "" });
-  assert.deepEqual({ status: lockedRun.status, stdout: lockedRun.stdout, stderr: lockedRun.stderr }, { status: 2, stdout: "a\nb\n", stderr: "a release is open\n" });
+  assert.deepEqual(
+    { status: openRun.status, stdout: openRun.stdout, stderr: openRun.stderr },
+    { status: 0, stdout: "a\nb\n", stderr: "" },
+  );
+  assert.deepEqual(
+    { status: lockedRun.status, stdout: lockedRun.stdout, stderr: lockedRun.stderr },
+    { status: 2, stdout: "a\nb\n", stderr: "a release is open\n" },
+  );
 });
 
 test("sensors run only for their declared provider from the built snapshot", async () => {
   const { held, shell, build, runSensors, claudeSettings } = aRepository({
     [at("sensor/shared/index.md")]: sensor("shared", "SessionStart", "echo shared"),
-    [at("sensor/claude-only/index.md")]: sensor("claude-only", "SessionStart", "echo claude").replace("signal:", "agent-provider: [claude]\nsignal:"),
-    [at("sensor/codex-only/index.md")]: sensor("codex-only", "SessionStart", "echo codex").replace("signal:", "agent-provider: [codex]\nsignal:"),
-    [at("sensor/codex-event/index.md")]: sensor("codex-event", "PreCompact", "echo compact").replace("signal:", "agent-provider: [codex]\nsignal:"),
+    [at("sensor/claude-only/index.md")]: sensor("claude-only", "SessionStart", "echo claude").replace(
+      "signal:",
+      "agent-provider: [claude]\nsignal:",
+    ),
+    [at("sensor/codex-only/index.md")]: sensor("codex-only", "SessionStart", "echo codex").replace(
+      "signal:",
+      "agent-provider: [codex]\nsignal:",
+    ),
+    [at("sensor/codex-event/index.md")]: sensor("codex-event", "PreCompact", "echo compact").replace(
+      "signal:",
+      "agent-provider: [codex]\nsignal:",
+    ),
   });
   assert.equal((await build()).type, "PlanSummary");
   assert.equal((await claudeSettings()).hooks.PreCompact, undefined);

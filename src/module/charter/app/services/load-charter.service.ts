@@ -1,7 +1,7 @@
 import { BuiltinPrimitives } from "../../domain/builtin/index.js";
-import { CharterRoot } from "../../domain/models/charter/charter-root.js";
-import type { ForManagingCharter } from "../port/out/managing-charter.port.js";
 import { CharterRootFactory } from "../../domain/models/charter/charter-root.factory.js";
+import type { CharterRoot } from "../../domain/models/charter/charter-root.js";
+import type { ForManagingCharter } from "../port/out/managing-charter.port.js";
 
 /** Reads a repository's charter, every use case the same way. */
 export class LoadCharterService {
@@ -12,8 +12,14 @@ export class LoadCharterService {
    * is the repository's to know (FR-023, CORE-FR-213). Read off a checkout of
    * the repository instead, such as a worktree, where `checkoutPath` names one.
    */
-  async loadCharterRoot(charterRepository: Pick<ForManagingCharter, "loadCharter">, checkoutPath?: string): Promise<CharterRoot> {
-    return CharterRootFactory.create([...BuiltinPrimitives.rawPrimitivesOf(), ...(await charterRepository.loadCharter(checkoutPath))]);
+  async loadCharterRoot(
+    charterRepository: Pick<ForManagingCharter, "loadCharter">,
+    checkoutPath?: string,
+  ): Promise<CharterRoot> {
+    return CharterRootFactory.create([
+      ...BuiltinPrimitives.rawPrimitivesOf(),
+      ...(await charterRepository.loadCharter(checkoutPath)),
+    ]);
   }
 }
 

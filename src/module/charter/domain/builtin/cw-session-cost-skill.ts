@@ -1,5 +1,5 @@
-import { SkillPrimitive, type SkillHeaders } from "../models/primitive/skill-primitive.js";
 import { PrimitiveLayer } from "../models/primitive/primitive-layer.js";
+import { type SkillHeaders, SkillPrimitive } from "../models/primitive/skill-primitive.js";
 
 /** What the sessions kept on this machine cost, reckoned by the agent at prices
  *  it is given or reads at the time, so the engine itself prices nothing
@@ -8,13 +8,9 @@ export class CwSessionCostSkill extends SkillPrimitive {
   constructor() {
     const skillHeaders: SkillHeaders = {
       id: "cw-session-cost",
-      description: "Answer what the sessions kept on this machine cost, per session and per day, at prices the developer types in or the model provider publishes.",
-      triggers: [
-        "what did the sessions cost",
-        "how much did last week cost",
-        "price the sessions",
-        "session cost",
-      ],
+      description:
+        "Answer what the sessions kept on this machine cost, per session and per day, at prices the developer types in or the model provider publishes.",
+      triggers: ["what did the sessions cost", "how much did last week cost", "price the sessions", "session cost"],
     };
     super(
       skillHeaders,

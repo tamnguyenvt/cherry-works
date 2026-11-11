@@ -1,10 +1,19 @@
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { printFault } from "./helper.js";
 
 const OPTIONS = {
   since: {
     type: "string",
-    describe: "Count the sessions whose last stop is on or after this day, YYYY-MM-DD; 31 days from it unless --until says",
+    describe:
+      "Count the sessions whose last stop is on or after this day, YYYY-MM-DD; 31 days from it unless --until says",
   },
   until: {
     type: "string",
@@ -62,14 +71,21 @@ export class SessionsCommand implements Command<typeof OPTIONS> {
     return {
       code: EXIT_OK,
       result: [
-        ...Object.entries(dailySessionSummary).flatMap(([day, { data: { sessions: daySessions, sessionCount: daySessionCount, totalTokens: dayTokens } }]) => [
-          `${day}  ${tokensText(dayTokens)} tokens, ${daySessionCount} session${daySessionCount === 1 ? "" : "s"}`,
-          ...daySessions.map(({ sessionId, lastStopAt, model, totalTokens: sessionTokens }) => {
-            const stopDate = new Date(lastStopAt);
-            const stopTime = `${String(stopDate.getHours()).padStart(2, "0")}:${String(stopDate.getMinutes()).padStart(2, "0")}`;
-            return `  ${tokensText(sessionTokens).padStart(11)}  ${model}  ${sessionId}  last stop ${stopTime}`;
-          }),
-        ]),
+        ...Object.entries(dailySessionSummary).flatMap(
+          ([
+            day,
+            {
+              data: { sessions: daySessions, sessionCount: daySessionCount, totalTokens: dayTokens },
+            },
+          ]) => [
+            `${day}  ${tokensText(dayTokens)} tokens, ${daySessionCount} session${daySessionCount === 1 ? "" : "s"}`,
+            ...daySessions.map(({ sessionId, lastStopAt, model, totalTokens: sessionTokens }) => {
+              const stopDate = new Date(lastStopAt);
+              const stopTime = `${String(stopDate.getHours()).padStart(2, "0")}:${String(stopDate.getMinutes()).padStart(2, "0")}`;
+              return `  ${tokensText(sessionTokens).padStart(11)}  ${model}  ${sessionId}  last stop ${stopTime}`;
+            }),
+          ],
+        ),
         `${tokensText(totalTokens)} tokens in all, ${sessionCount} session${sessionCount === 1 ? "" : "s"}, from ${sinceDay} until ${untilDay}.`,
         "",
       ].join("\n"),

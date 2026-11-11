@@ -1,9 +1,9 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { chmod, mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -37,10 +37,30 @@ const UNKNOWN_MODEL = "acme-large-2";
 /** Four sessions over two days, of two priced models and one no provider
  *  prices, each at its last stop. */
 const keptSessions: readonly { sessionId: string; day: string; model: string; tokens: TokensByKind }[] = [
-  { sessionId: "session-alpha", day: firstDay, model: "claude-opus-5-5", tokens: { input: 1_200_000, output: 300_000, cacheWrite: 500_000, cacheRead: 4_000_000 } },
-  { sessionId: "session-beta", day: firstDay, model: "claude-haiku-5-5", tokens: { input: 800_000, output: 150_000, cacheWrite: 0, cacheRead: 2_500_000 } },
-  { sessionId: "session-gamma", day: secondDay, model: "claude-opus-5-5", tokens: { input: 400_000, output: 90_000, cacheWrite: 120_000, cacheRead: 1_600_000 } },
-  { sessionId: "session-delta", day: secondDay, model: UNKNOWN_MODEL, tokens: { input: 300_000, output: 60_000, cacheWrite: 0, cacheRead: 900_000 } },
+  {
+    sessionId: "session-alpha",
+    day: firstDay,
+    model: "claude-opus-5-5",
+    tokens: { input: 1_200_000, output: 300_000, cacheWrite: 500_000, cacheRead: 4_000_000 },
+  },
+  {
+    sessionId: "session-beta",
+    day: firstDay,
+    model: "claude-haiku-5-5",
+    tokens: { input: 800_000, output: 150_000, cacheWrite: 0, cacheRead: 2_500_000 },
+  },
+  {
+    sessionId: "session-gamma",
+    day: secondDay,
+    model: "claude-opus-5-5",
+    tokens: { input: 400_000, output: 90_000, cacheWrite: 120_000, cacheRead: 1_600_000 },
+  },
+  {
+    sessionId: "session-delta",
+    day: secondDay,
+    model: UNKNOWN_MODEL,
+    tokens: { input: 300_000, output: 60_000, cacheWrite: 0, cacheRead: 900_000 },
+  },
 ];
 
 /** The prices the developer types in, in dollars per million tokens. */
@@ -72,7 +92,13 @@ type SkillAnswer = {
  *  `1200K`, `0.50` for `0.5`, after a `$` where it must be dollars; never as
  *  part of a longer number. */
 const writtenNumberPattern = (count: number, isDollars = false) => {
-  const writtenCounts = [String(count), count.toLocaleString("en-US"), count.toFixed(2), `${count / 1_000_000}M`, `${count / 1_000}K`].map((writtenCount) => writtenCount.replaceAll(".", "\\."));
+  const writtenCounts = [
+    String(count),
+    count.toLocaleString("en-US"),
+    count.toFixed(2),
+    `${count / 1_000_000}M`,
+    `${count / 1_000}K`,
+  ].map((writtenCount) => writtenCount.replaceAll(".", "\\."));
   return new RegExp(`(?<![\\d.,])${isDollars ? "\\$" : ""}(?:${writtenCounts.join("|")})(?![\\d]|[.,]\\d)`, "i");
 };
 
@@ -93,11 +119,14 @@ const assertUnpricedSessionSaid = (answerText: string) => {
   const unknownSessionTokenCounts = Object.values(unknownSession.tokens).filter((count) => count > 0);
   const unknownSessionTotal = Object.values(unknownSession.tokens).reduce((sum, count) => sum + count, 0);
   assert.ok(
-    unknownSessionTokenCounts.every((count) => writtenNumberPattern(count).test(proseOf(answerText))) || writtenNumberPattern(unknownSessionTotal).test(proseOf(answerText)),
+    unknownSessionTokenCounts.every((count) => writtenNumberPattern(count).test(proseOf(answerText))) ||
+      writtenNumberPattern(unknownSessionTotal).test(proseOf(answerText)),
     `the tokens of ${unknownSession.sessionId} are not given`,
   );
   assert.ok(
-    answerLines.some((line) => namesUnknownSession(line) && /left out|exclud|not (?:included|counted|in the total)/i.test(line)),
+    answerLines.some(
+      (line) => namesUnknownSession(line) && /left out|exclud|not (?:included|counted|in the total)/i.test(line),
+    ),
     `no line says ${unknownSession.sessionId} is left out of the totals`,
   );
 };
@@ -107,20 +136,32 @@ const assertUnpricedSessionSaid = (answerText: string) => {
 const sessionCostOf = (tokens: TokensByKind, priceByModel: Readonly<Record<string, PriceByKind>>, model: string) => {
   const price = priceByModel[model];
   if (price === undefined || price === null) return undefined;
-  return (tokens.input * price.input + tokens.output * price.output + tokens.cacheWrite * price.cacheWrite + tokens.cacheRead * price.cacheRead) / 1_000_000;
+  return (
+    (tokens.input * price.input +
+      tokens.output * price.output +
+      tokens.cacheWrite * price.cacheWrite +
+      tokens.cacheRead * price.cacheRead) /
+    1_000_000
+  );
 };
 
 /** Each session's, each day's and the span's cost at these prices. */
 const expectedCostsOf = (priceByModel: Readonly<Record<string, PriceByKind>>) => {
-  const costBySessionId = new Map(keptSessions.map(({ sessionId, tokens, model }) => [sessionId, sessionCostOf(tokens, priceByModel, model)]));
+  const costBySessionId = new Map(
+    keptSessions.map(({ sessionId, tokens, model }) => [sessionId, sessionCostOf(tokens, priceByModel, model)]),
+  );
   const costByDay = new Map<string, number>();
-  for (const { sessionId, day } of keptSessions) costByDay.set(day, (costByDay.get(day) ?? 0) + (costBySessionId.get(sessionId) ?? 0));
+  for (const { sessionId, day } of keptSessions)
+    costByDay.set(day, (costByDay.get(day) ?? 0) + (costBySessionId.get(sessionId) ?? 0));
   return { costBySessionId, costByDay, totalCost: [...costByDay.values()].reduce((sum, dayCost) => sum + dayCost, 0) };
 };
 
 /** Within half a cent: the skill gives four places, and rounds. */
 const assertSameAmount = (actualCost: unknown, expectedCost: number, label: string) =>
-  assert.ok(typeof actualCost === "number" && Math.abs(actualCost - expectedCost) <= 0.005, `${label}: ${actualCost} is not ${expectedCost.toFixed(4)}`);
+  assert.ok(
+    typeof actualCost === "number" && Math.abs(actualCost - expectedCost) <= 0.005,
+    `${label}: ${actualCost} is not ${expectedCost.toFixed(4)}`,
+  );
 
 /**
  * A repository whose agent holds the skill and whose sessions are the ones
@@ -138,15 +179,33 @@ const skillAnswerOf = async (prompt: string) => {
     const binFolder = join(machineFolder, "bin");
     await mkdir(join(repoFolder, ".cw"), { recursive: true });
     await mkdir(binFolder, { recursive: true });
-    await writeFile(join(repoFolder, ".cw/settings.json"), JSON.stringify({ agents: ["claude"], sessionAnalysisFolder: sessionsFolder }));
+    await writeFile(
+      join(repoFolder, ".cw/settings.json"),
+      JSON.stringify({ agents: ["claude"], sessionAnalysisFolder: sessionsFolder }),
+    );
     for (const { sessionId, day, model, tokens } of keptSessions) {
       const sessionAnalysisLineOf = (time: string, scale: number) => {
-        const scaledTokens = { input: tokens.input * scale, output: tokens.output * scale, cacheWrite: tokens.cacheWrite * scale, cacheRead: tokens.cacheRead * scale };
-        return JSON.stringify({ time, sessionId, repository: repoFolder, model, tokens: scaledTokens, total: Object.values(scaledTokens).reduce((sum, count) => sum + count, 0) });
+        const scaledTokens = {
+          input: tokens.input * scale,
+          output: tokens.output * scale,
+          cacheWrite: tokens.cacheWrite * scale,
+          cacheRead: tokens.cacheRead * scale,
+        };
+        return JSON.stringify({
+          time,
+          sessionId,
+          repository: repoFolder,
+          model,
+          tokens: scaledTokens,
+          total: Object.values(scaledTokens).reduce((sum, count) => sum + count, 0),
+        });
       };
       await mkdir(join(sessionsFolder, sessionId), { recursive: true });
       // An earlier stop, which the summary counts the session past.
-      await writeFile(join(sessionsFolder, sessionId, "session-analysis.jsonl"), `${sessionAnalysisLineOf(`${day}T11:00:00.000Z`, 0.5)}\n${sessionAnalysisLineOf(`${day}T12:00:00.000Z`, 1)}\n`);
+      await writeFile(
+        join(sessionsFolder, sessionId, "session-analysis.jsonl"),
+        `${sessionAnalysisLineOf(`${day}T11:00:00.000Z`, 0.5)}\n${sessionAnalysisLineOf(`${day}T12:00:00.000Z`, 1)}\n`,
+      );
     }
     await writeFile(join(binFolder, "cw"), `#!/bin/sh\nexec "${process.execPath}" "${builtCwFile}" "$@"\n`);
     await chmod(join(binFolder, "cw"), 0o755);
@@ -158,38 +217,72 @@ const skillAnswerOf = async (prompt: string) => {
     const printedEvents = await new Promise<string>((resolve, reject) => {
       const claudeProcess = spawn(
         "claude",
-        ["-p", "--output-format", "stream-json", "--verbose", "--strict-mcp-config", "--setting-sources", "project", "--allowedTools", "Skill", "Bash(cw sessions:*)", "Bash(date:*)", "WebFetch"],
-        { cwd: repoFolder, env: { ...process.env, PATH: `${binFolder}:${process.env.PATH}` }, stdio: ["pipe", "pipe", "pipe"] },
+        [
+          "-p",
+          "--output-format",
+          "stream-json",
+          "--verbose",
+          "--strict-mcp-config",
+          "--setting-sources",
+          "project",
+          "--allowedTools",
+          "Skill",
+          "Bash(cw sessions:*)",
+          "Bash(date:*)",
+          "WebFetch",
+        ],
+        {
+          cwd: repoFolder,
+          env: { ...process.env, PATH: `${binFolder}:${process.env.PATH}` },
+          stdio: ["pipe", "pipe", "pipe"],
+        },
       );
       let stdout = "";
       let stderr = "";
       claudeProcess.stdout.on("data", (chunk) => (stdout += chunk));
       claudeProcess.stderr.on("data", (chunk) => (stderr += chunk));
       claudeProcess.on("error", reject);
-      claudeProcess.on("close", (code) => (code === 0 ? resolve(stdout) : reject(new Error(`claude -p stopped with status ${code}: ${stderr.trim()}`))));
+      claudeProcess.on("close", (code) =>
+        code === 0 ? resolve(stdout) : reject(new Error(`claude -p stopped with status ${code}: ${stderr.trim()}`)),
+      );
       claudeProcess.stdin.end(`${prompt}\n\n${ANSWER_SHAPE}`);
     });
     const runEndedAt = new Date();
-    type StreamEvent = { type: string; result?: string; message?: { content?: { type: string; name?: string; input?: { url?: string } }[] } };
+    type StreamEvent = {
+      type: string;
+      result?: string;
+      message?: { content?: { type: string; name?: string; input?: { url?: string } }[] };
+    };
     const streamEvents = printedEvents
       .split("\n")
       .filter((line) => line.trim() !== "")
       .map((line) => JSON.parse(line) as StreamEvent);
     const answerText = streamEvents.find(({ type }) => type === "result")?.result ?? "";
     const fetchedUrls = streamEvents.flatMap(({ type, message }) =>
-      type === "assistant" ? (message?.content ?? []).flatMap(({ type: contentType, name, input }) => (contentType === "tool_use" && name === "WebFetch" && input?.url !== undefined ? [input.url] : [])) : [],
+      type === "assistant"
+        ? (message?.content ?? []).flatMap(({ type: contentType, name, input }) =>
+            contentType === "tool_use" && name === "WebFetch" && input?.url !== undefined ? [input.url] : [],
+          )
+        : [],
     );
     const answerJson = [...answerText.matchAll(/```json\s*([\s\S]*?)```/g)].at(-1)?.[1];
     assert.ok(answerJson !== undefined, `the skill ended on no json block:\n${answerText}`);
-    console.log(`# the skill answered, ${runStartedAt.toISOString()} – ${runEndedAt.toISOString()}, having fetched ${JSON.stringify(fetchedUrls)}:\n${answerText.replace(/^/gm, "# ")}`);
+    console.log(
+      `# the skill answered, ${runStartedAt.toISOString()} – ${runEndedAt.toISOString()}, having fetched ${JSON.stringify(fetchedUrls)}:\n${answerText.replace(/^/gm, "# ")}`,
+    );
     return { answerText, skillAnswer: JSON.parse(answerJson) as SkillAnswer, fetchedUrls, runStartedAt, runEndedAt };
   } finally {
     await rm(machineFolder, { recursive: true, force: true });
   }
 };
 
-const typedPricesPrompt = `What did the sessions cost? Use these prices I type in, in US dollars per million tokens: ${Object.entries(typedPriceByModel)
-  .map(([model, { input, output, cacheWrite, cacheRead }]) => `${model}: input ${input}, output ${output}, cacheWrite ${cacheWrite}, cacheRead ${cacheRead}`)
+const typedPricesPrompt = `What did the sessions cost? Use these prices I type in, in US dollars per million tokens: ${Object.entries(
+  typedPriceByModel,
+)
+  .map(
+    ([model, { input, output, cacheWrite, cacheRead }]) =>
+      `${model}: input ${input}, output ${output}, cacheWrite ${cacheWrite}, cacheRead ${cacheRead}`,
+  )
   .join("; ")}.`;
 
 /** Where Anthropic publishes its prices. */
@@ -198,49 +291,90 @@ const PUBLISHED_PRICE_SOURCE_PATTERN = /^https:\/\/(platform\.claude\.com|docs\.
 /** One run with typed prices, which scenarios 1 and 3 both read. */
 let typedPricesRun: ReturnType<typeof skillAnswerOf> | undefined;
 
-test("at prices typed in, each session's and each day's cost is its tokens times those prices, and the prices are named (EVAL-FR-014)", { skip: skipReason, timeout: RUN_TIMEOUT_MS }, async () => {
-  const { answerText, skillAnswer } = await (typedPricesRun ??= skillAnswerOf(typedPricesPrompt));
+test("at prices typed in, each session's and each day's cost is its tokens times those prices, and the prices are named (EVAL-FR-014)", {
+  skip: skipReason,
+  timeout: RUN_TIMEOUT_MS,
+}, async () => {
+  typedPricesRun ??= skillAnswerOf(typedPricesPrompt);
+  const { answerText, skillAnswer } = await typedPricesRun;
   const { costBySessionId, costByDay, totalCost } = expectedCostsOf(typedPriceByModel);
 
   for (const [model, typedPrice] of Object.entries(typedPriceByModel)) {
     assert.deepEqual(skillAnswer.prices[model], typedPrice);
-    for (const dollars of Object.values(typedPrice)) assert.match(proseOf(answerText), writtenNumberPattern(dollars, true), `the price ${dollars} of ${model} is not named`);
+    for (const dollars of Object.values(typedPrice))
+      assert.match(
+        proseOf(answerText),
+        writtenNumberPattern(dollars, true),
+        `the price ${dollars} of ${model} is not named`,
+      );
   }
   assert.equal(skillAnswer.priceSource, null);
   for (const [sessionId, sessionCost] of costBySessionId) {
     if (sessionCost === undefined) continue;
-    assertSameAmount(skillAnswer.sessions.find((session) => session.sessionId === sessionId)?.cost, sessionCost, sessionId);
+    assertSameAmount(
+      skillAnswer.sessions.find((session) => session.sessionId === sessionId)?.cost,
+      sessionCost,
+      sessionId,
+    );
   }
-  for (const [day, dayCost] of costByDay) assertSameAmount(skillAnswer.days.find((answeredDay) => answeredDay.day === day)?.cost, dayCost, day);
+  for (const [day, dayCost] of costByDay)
+    assertSameAmount(skillAnswer.days.find((answeredDay) => answeredDay.day === day)?.cost, dayCost, day);
   assertSameAmount(skillAnswer.total, totalCost, "total");
 });
 
-test("a session of a model no price is known for keeps its tokens, has its cost said to be unknown, and is left out of the totals, which say so (EVAL-FR-015)", { skip: skipReason, timeout: RUN_TIMEOUT_MS }, async () => {
-  const { answerText, skillAnswer } = await (typedPricesRun ??= skillAnswerOf(typedPricesPrompt));
+test("a session of a model no price is known for keeps its tokens, has its cost said to be unknown, and is left out of the totals, which say so (EVAL-FR-015)", {
+  skip: skipReason,
+  timeout: RUN_TIMEOUT_MS,
+}, async () => {
+  typedPricesRun ??= skillAnswerOf(typedPricesPrompt);
+  const { answerText, skillAnswer } = await typedPricesRun;
 
   assertUnpricedSessionSaid(answerText);
-  assertSameAmount(skillAnswer.total, expectedCostsOf(typedPriceByModel).totalCost, "total without the unpriced session");
+  assertSameAmount(
+    skillAnswer.total,
+    expectedCostsOf(typedPriceByModel).totalCost,
+    "total without the unpriced session",
+  );
 });
 
-test("at published prices, the costs are at the prices the skill read, and it says where and when it read them (EVAL-FR-014)", { skip: skipReason, timeout: RUN_TIMEOUT_MS }, async () => {
-  const { answerText, skillAnswer, fetchedUrls, runStartedAt, runEndedAt } = await skillAnswerOf("What did the sessions cost? Use the model provider's published prices as they stand today.");
+test("at published prices, the costs are at the prices the skill read, and it says where and when it read them (EVAL-FR-014)", {
+  skip: skipReason,
+  timeout: RUN_TIMEOUT_MS,
+}, async () => {
+  const { answerText, skillAnswer, fetchedUrls, runStartedAt, runEndedAt } = await skillAnswerOf(
+    "What did the sessions cost? Use the model provider's published prices as they stand today.",
+  );
 
   assert.match(skillAnswer.priceSource ?? "", PUBLISHED_PRICE_SOURCE_PATTERN);
-  assert.ok(fetchedUrls.includes(skillAnswer.priceSource!), `${skillAnswer.priceSource} was never fetched: ${JSON.stringify(fetchedUrls)}`);
+  assert.ok(
+    fetchedUrls.includes(skillAnswer.priceSource!),
+    `${skillAnswer.priceSource} was never fetched: ${JSON.stringify(fetchedUrls)}`,
+  );
   const pricesReadAtMs = Date.parse(skillAnswer.pricesReadAt ?? "");
   // Read during the run, to the minute.
-  assert.ok(pricesReadAtMs >= runStartedAt.getTime() - 60_000 && pricesReadAtMs <= runEndedAt.getTime() + 60_000, `read at ${skillAnswer.pricesReadAt}, outside the run`);
+  assert.ok(
+    pricesReadAtMs >= runStartedAt.getTime() - 60_000 && pricesReadAtMs <= runEndedAt.getTime() + 60_000,
+    `read at ${skillAnswer.pricesReadAt}, outside the run`,
+  );
   for (const model of ["claude-opus-5-5", "claude-haiku-5-5"]) {
     const price = skillAnswer.prices[model];
-    assert.ok(price !== undefined && Object.values(price).every((dollars) => typeof dollars === "number" && dollars > 0), `no published price of ${model}`);
+    assert.ok(
+      price !== undefined && Object.values(price).every((dollars) => typeof dollars === "number" && dollars > 0),
+      `no published price of ${model}`,
+    );
   }
   assert.ok(!skillAnswer.prices[UNKNOWN_MODEL], `${UNKNOWN_MODEL} was given a price`);
   const { costBySessionId, costByDay, totalCost } = expectedCostsOf(skillAnswer.prices);
   for (const [sessionId, sessionCost] of costBySessionId) {
     if (sessionCost === undefined) continue;
-    assertSameAmount(skillAnswer.sessions.find((session) => session.sessionId === sessionId)?.cost, sessionCost, sessionId);
+    assertSameAmount(
+      skillAnswer.sessions.find((session) => session.sessionId === sessionId)?.cost,
+      sessionCost,
+      sessionId,
+    );
   }
-  for (const [day, dayCost] of costByDay) assertSameAmount(skillAnswer.days.find((answeredDay) => answeredDay.day === day)?.cost, dayCost, day);
+  for (const [day, dayCost] of costByDay)
+    assertSameAmount(skillAnswer.days.find((answeredDay) => answeredDay.day === day)?.cost, dayCost, day);
   assertSameAmount(skillAnswer.total, totalCost, "total");
   assertUnpricedSessionSaid(answerText);
 });

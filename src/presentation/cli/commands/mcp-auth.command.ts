@@ -1,7 +1,15 @@
 import prompts from "prompts";
 import type { CharterDTOs } from "#module/charter/module.js";
 import type { FaultDTOs } from "#module/shared/module.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { printFault } from "./helper.js";
 
 /** What `cw mcp auth` takes: one id to sign in again for, or whether to
@@ -49,7 +57,12 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
             ? "No mcp in the charter takes a sign-in.\n"
             : signInStatuses
                 .map(({ address, ids, signedIn, method }) =>
-                  [address, `  ${ids.join(", ")}`, `  ${signedIn ? `signed in by ${method}` : "not signed in"}`, ""].join("\n"),
+                  [
+                    address,
+                    `  ${ids.join(", ")}`,
+                    `  ${signedIn ? `signed in by ${method}` : "not signed in"}`,
+                    "",
+                  ].join("\n"),
                 )
                 .join(""),
       };
@@ -94,7 +107,10 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
               type: "select",
               name: "method",
               message: "Sign in how?",
-              choices: auth.map((one) => ({ title: one === "oauth" ? "in the browser (OAuth)" : "with a token", value: one })),
+              choices: auth.map((one) => ({
+                title: one === "oauth" ? "in the browser (OAuth)" : "with a token",
+                value: one,
+              })),
             })
           : { method: auth[0] };
       let signInStatusDTO: CharterDTOs.SignInStatus | FaultDTOs.Fault;

@@ -18,7 +18,8 @@ export interface EngineApps {
 
 /** What a repository configured itself with, as the workspace module answers
  *  it: what the engine is composed for (CORE-FR-231). */
-export type WorkspaceSettings = Pick<WorkspaceDTOs.WorkspaceSettings["data"], "agents"> & Partial<Pick<WorkspaceDTOs.WorkspaceSettings["data"], "mainContextCeiling" | "sessionAnalysisFolder">>;
+export type WorkspaceSettings = Pick<WorkspaceDTOs.WorkspaceSettings["data"], "agents"> &
+  Partial<Pick<WorkspaceDTOs.WorkspaceSettings["data"], "mainContextCeiling" | "sessionAnalysisFolder">>;
 
 /** The workspace module's application and the engine's, composed for the
  *  settings the workspace held when they were composed (CORE-FR-231). */
@@ -70,11 +71,7 @@ export interface Outcome {
 export type OptionType = "string" | "number" | "boolean";
 
 /** What one of those is worth once parsed. */
-type Valued<Type extends OptionType> = Type extends "string"
-  ? string
-  : Type extends "number"
-    ? number
-    : boolean;
+type Valued<Type extends OptionType> = Type extends "string" ? string : Type extends "number" ? number : boolean;
 
 /** One argument, declared as data rather than as a call into a parser: a
  *  command says what it takes, and turning that into flags is the command
@@ -141,6 +138,7 @@ export interface Command<Spec extends OptionSpec = NoOptions> {
  *  arguments are its own, and a list cannot name one type for all of them. The
  *  type is checked where a command is written and where its arguments are read
  *  — the two places it says anything. */
+// biome-ignore lint/suspicious/noExplicitAny: a command of any options, each declaring its own.
 export type AnyCommand = Command<any>;
 
 export const EXIT_OK = 0;

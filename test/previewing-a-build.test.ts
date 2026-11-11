@@ -1,11 +1,11 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { test } from "node:test";
 import type { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
-import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { buildingCharterOf } from "./use-cases-of.js";
 
@@ -13,9 +13,17 @@ const repo = new URL("file:///repo/");
 const root = new URL(".cw/charter/primitive/", repo);
 
 const primitive = (kind: string, id: string, headers: readonly string[] = [], body = `The body of ${id}.`) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: What ${id} is for, in one line.`, ...headers, "---", "", body, ""].join(
-    "\n",
-  );
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: What ${id} is for, in one line.`,
+    ...headers,
+    "---",
+    "",
+    body,
+    "",
+  ].join("\n");
 
 const guide = (id: string, body?: string) => primitive("guide", id, ['globs: ["src/**/*.ts"]'], body);
 
@@ -31,7 +39,13 @@ const compilingFor = (...agents: readonly string[]) => ({
  *  claims (FR-022). */
 const previewing = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
-  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(
+    held,
+    new InMemoryFileOutput(held),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
   return { held, build: () => charterRuntimeApp.build(), preview: () => charterRuntimeApp.preview() };
 };
 
@@ -92,7 +106,10 @@ test("a repository that has never been built would have every file created (FR-0
 });
 
 test("a repository built from the charter as it stands has every file unchanged (SC-007)", async () => {
-  const { held, build, preview } = previewing({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
+  const { held, build, preview } = previewing({
+    ...compilingFor("claude"),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+  });
   await build();
   const before = await everything(held);
 
@@ -103,7 +120,10 @@ test("a repository built from the charter as it stands has every file unchanged 
 });
 
 test("a rule edited since the last build would be updated, and its listings with it (FR-022)", async () => {
-  const { held, build, preview } = previewing({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
+  const { held, build, preview } = previewing({
+    ...compilingFor("claude"),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+  });
   await build();
   held.write(new URL("guide/no-any/index.md", root), guide("no-any", "Never write `any`."));
 
@@ -158,7 +178,10 @@ test("a projection whose primitive is gone would be deleted, and is not (FR-020,
 test("a host's settings file the charter has nothing more to say to is unchanged (FR-018)", async () => {
   const { held, build, preview } = previewing({
     ...compilingFor("claude"),
-    [at("posture/sandboxed/index.md")]: primitive("posture", "sandboxed", ['allow: ["Read(**)"]', 'deny: ["Bash(rm:*)"]']),
+    [at("posture/sandboxed/index.md")]: primitive("posture", "sandboxed", [
+      'allow: ["Read(**)"]',
+      'deny: ["Bash(rm:*)"]',
+    ]),
     [inRepo(".claude/settings.json")]: `${JSON.stringify({ model: "opus" })}\n`,
   });
   await build();
@@ -181,5 +204,7 @@ test("a charter with an error previews nothing, and says which files (FR-009)", 
   const [previewed, faultsByFiles] = [planOf(planSummaryDTO), faultsOf(planSummaryDTO)];
 
   assert.deepEqual(changed(previewed ?? nothing), {});
-  assert.deepEqual(Object.keys(faultsByFiles?.files ?? {}), ["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]);
+  assert.deepEqual(Object.keys(faultsByFiles?.files ?? {}), [
+    "file:///repo/.cw/charter/primitive/guide/no-any/index.md",
+  ]);
 });

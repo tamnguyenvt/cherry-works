@@ -51,18 +51,8 @@
         ".agents/skills/team-review/SKILL.md",
         ".agents/skills/team-review/agents/openai.yaml"
       ],
-      "edited": [
-        "CLAUDE.md",
-        ".claude/settings.json",
-        ".mcp.json",
-        "AGENTS.md",
-        ".codex/config.toml"
-      ],
-      "deleted": [
-        ".cw/out/guide/gone/index.md",
-        ".claude/rules/gone.md",
-        "old/AGENTS.md"
-      ],
+      "edited": ["CLAUDE.md", ".claude/settings.json", ".mcp.json", "AGENTS.md", ".codex/config.toml"],
+      "deleted": [".cw/out/guide/gone/index.md", ".claude/rules/gone.md", "old/AGENTS.md"],
       "unchanged": [],
       "warnings": [
         "Codex agent reviewer: feature flags reduce capabilities, but individual tools and MCP servers still inherit the parent scope; the tool whitelist is not fully enforceable.",

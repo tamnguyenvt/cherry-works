@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { SensorPrimitive } from "../primitive/sensor-primitive.js";
 import { BasePrimitive } from "../primitive/base-primitive.js";
+import { SensorPrimitive } from "../primitive/sensor-primitive.js";
 
 /** The id a case expects to come up, written as a primitive declares it
  *  (FR-172): bare, never `<kind>:<id>`. */
@@ -27,10 +27,7 @@ const ExpectedIdSchema = BasePrimitive.headersSchema().shape.id;
 const TestCaseSchema = z.union([
   z.strictObject({
     do: z.strictObject({ touchFile: z.string().min(1) }),
-    expect: z.union([
-      z.strictObject({ activate: ExpectedIdSchema }),
-      z.strictObject({ allow: z.boolean() }),
-    ]),
+    expect: z.union([z.strictObject({ activate: ExpectedIdSchema }), z.strictObject({ allow: z.boolean() })]),
   }),
   z.strictObject({
     when: z.enum(SensorPrimitive.signals),

@@ -1,19 +1,33 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
+import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { inTheBrowser } from "./in-the-browser.js";
 import { chipsOf, columnOf, rowsOf, shownKindOf } from "./listing-in-the-browser.js";
-import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
-import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: About ${id}.`,
+    ...headers,
+    "---",
+    "",
+    `The body of ${id}.`,
+    "",
+  ].join("\n");
 
 /** A charter with something of three kinds and nothing of the five others: what
  *  a reader meets, and what a chip with no primitives behind it has to survive. */
 const charter = {
-  [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', "rationale: why", 'mixins: ["voice"]']),
+  [at("guide/no-any/index.md")]: primitive("guide", "no-any", [
+    'globs: ["src/**/*.ts"]',
+    "rationale: why",
+    'mixins: ["voice"]',
+  ]),
   [at("corpus/why/index.md")]: primitive("corpus", "why"),
   [at("mixin/voice/index.md")]: primitive("mixin", "voice"),
 };
@@ -46,7 +60,10 @@ test("a guide is listed with what it is for, the file it is in, the globs it mat
 
     assert.equal(await row.locator("td").nth(0).innerText(), "no-any");
     assert.equal(await row.locator("td").nth(1).locator("div").nth(0).innerText(), "About no-any.");
-    assert.equal(await row.locator("td").nth(1).locator("div").nth(1).innerText(), ".cw/charter/primitive/guide/no-any/index.md");
+    assert.equal(
+      await row.locator("td").nth(1).locator("div").nth(1).innerText(),
+      ".cw/charter/primitive/guide/no-any/index.md",
+    );
     assert.equal(await row.getByRole("cell", { name: "Matching globs" }).innerText(), "src/**/*.ts");
     assert.equal(await row.getByRole("cell", { name: "Rationale" }).innerText(), "why");
     assert.equal(await row.getByRole("cell", { name: "Mixins" }).innerText(), "voice");
@@ -97,20 +114,26 @@ test("a charter the engine will not read shows every fault under its file in pla
 
     assert.match(await page.getByRole("alert").innerText(), /The engine will not read this charter/);
     const refusedFiles = page.getByRole("table", { name: "Refused files" });
-    assert.deepEqual(await refusedFiles.locator("tr td:first-child").allInnerTexts(), [".cw/charter/primitive/guide/broken/index.md"]);
+    assert.deepEqual(await refusedFiles.locator("tr td:first-child").allInnerTexts(), [
+      ".cw/charter/primitive/guide/broken/index.md",
+    ]);
     assert.ok((await refusedFiles.locator("tr td:nth-child(2) p").count()) > 0);
     assert.equal(await page.getByRole("radio").count(), 0);
   });
 });
 
 test("the repository's tab lists what was authored here and what the engine brings, and nothing vendored (FR-112)", async () => {
-  const vendored = new URL("guide/small-diffs/index.md", "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/").href;
+  const vendored = new URL("guide/small-diffs/index.md", "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/")
+    .href;
   await inTheBrowser({ ...charter, [vendored]: primitive("guide", "small-diffs") }, async (page) => {
     await rowsOf(page).waitFor();
 
     assert.deepEqual(await columnOf(page, 1).allInnerTexts(), ["no-any"]);
     await page.getByRole("radio", { name: "skill" }).click();
     await page.getByRole("table", { name: "skill primitives" }).waitFor();
-    assert.deepEqual(await columnOf(page, 2).locator("div:nth-child(2)").allInnerTexts(), ["(built into cw)/skill/cw-author/index.md", "(built into cw)/skill/cw-session-cost/index.md"]);
+    assert.deepEqual(await columnOf(page, 2).locator("div:nth-child(2)").allInnerTexts(), [
+      "(built into cw)/skill/cw-author/index.md",
+      "(built into cw)/skill/cw-session-cost/index.md",
+    ]);
   });
 });

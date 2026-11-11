@@ -1,15 +1,21 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE } from "../src/presentation/cli/commands/command.interface.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { test } from "node:test";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf, workspaceAppOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { EXIT_FAILURE } from "../src/presentation/cli/commands/command.interface.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import {
+  authoringCharterOf,
+  buildingCharterOf,
+  commandLineOf,
+  workspaceAppOf,
+  workspaceSettingsLoaderOf,
+} from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
 
@@ -20,15 +26,29 @@ const repoPath = new URL("file:///repo/");
 const portal = async (files: Readonly<Record<string, string>>) => {
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources();
-  const charterAuthoringApp = authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher });
-  const charterRuntimeApp = buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const charterAuthoringApp = authoringCharterOf(
+    fileReaders,
+    new InMemoryFileOutput(fileReaders),
+    new InMemoryReporter(),
+    { sourceFetcher },
+  );
+  const charterRuntimeApp = buildingCharterOf(
+    fileReaders,
+    new InMemoryFileOutput(fileReaders),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
-    const code = await new Commander(commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), { charterAuthoringApp, charterRuntimeApp }), COMMANDS).run(["portal"]);
+    const code = await new Commander(
+      commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), { charterAuthoringApp, charterRuntimeApp }),
+      COMMANDS,
+    ).run(["portal"]);
     return { code, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -60,5 +80,3 @@ test("a folder with no version control never set up is refused, naming cw init a
   assert.match(problems, /cw init/);
   assert.doesNotMatch(problems, /git/);
 });
-
-

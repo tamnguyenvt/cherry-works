@@ -17,7 +17,6 @@ export interface ForCheckingAgentCli {
 }
 
 export interface ForRunningAgentCli extends ForCheckingAgentCli {
-
   /** This prompt asked, and what the model answered: what it said, and the
    *  usage the command line reports of what it was sent. */
   ask(prompt: string): Promise<Answer>;

@@ -1,8 +1,8 @@
-import type { CharterRoot } from "../charter/charter-root.js";
-import { McpPrimitive } from "../primitive/mcp-primitive.js";
-import { McpAuthMethod } from "../mcp/mcp-auth-method.js";
 import type { ShortStrings } from "../../helper.js";
-import { McpOrigin, type McpToolDefinition, McpOrigins } from "./mcp-origin.js";
+import type { CharterRoot } from "../charter/charter-root.js";
+import { McpAuthMethod } from "../mcp/mcp-auth-method.js";
+import { McpPrimitive } from "../primitive/mcp-primitive.js";
+import { McpOrigin, McpOrigins, type McpToolDefinition } from "./mcp-origin.js";
 
 /** Makes the list of mcp origins a build writes. */
 export class McpOriginsFactory {
@@ -23,7 +23,9 @@ export class McpOriginsFactory {
     toolsByOriginKey: ReadonlyMap<string, readonly McpToolDefinition[]> = new Map(),
   ): readonly McpOrigin[] {
     const mcpsByKey = new Map<string, McpPrimitive[]>();
-    for (const primitive of [...charter.primitives].sort((leftPrimitive, rightPrimitive) => (leftPrimitive.headers.id < rightPrimitive.headers.id ? -1 : 1))) {
+    for (const primitive of [...charter.primitives].sort((leftPrimitive, rightPrimitive) =>
+      leftPrimitive.headers.id < rightPrimitive.headers.id ? -1 : 1,
+    )) {
       if (!(primitive instanceof McpPrimitive)) continue;
       const key = McpOrigins.originKeyOf({ address: primitive.address, path: primitive.headers.path });
       mcpsByKey.set(key, [...(mcpsByKey.get(key) ?? []), primitive]);
@@ -34,21 +36,31 @@ export class McpOriginsFactory {
       .map(([key, mcpsAtOrigin]) => {
         const [firstMcp] = mcpsAtOrigin as [(typeof mcpsAtOrigin)[number], ...typeof mcpsAtOrigin];
         const { endpoint, command, args = [], path } = firstMcp.headers;
-        const tokenEnv = mcpsAtOrigin.find((mcpPrimitive) => mcpPrimitive.headers.tokenEnv !== undefined)?.headers.tokenEnv;
+        const tokenEnv = mcpsAtOrigin.find((mcpPrimitive) => mcpPrimitive.headers.tokenEnv !== undefined)?.headers
+          .tokenEnv;
         const auths = new Set(mcpsAtOrigin.flatMap((mcpPrimitive) => mcpPrimitive.headers.auth ?? []));
         const declaredTools = new Set(mcpsAtOrigin.flatMap((mcpPrimitive) => mcpPrimitive.headers.tools));
         const listedTools = toolsByOriginKey.get(key);
 
         return new McpOrigin({
           ids: mcpsAtOrigin.map((mcpPrimitive) => mcpPrimitive.headers.id),
-          names: Object.fromEntries(mcpsAtOrigin.map((mcpPrimitive) => [mcpPrimitive.headers.id, shortMcpIds[mcpPrimitive.headers.id] as string])),
+          names: Object.fromEntries(
+            mcpsAtOrigin.map((mcpPrimitive) => [
+              mcpPrimitive.headers.id,
+              shortMcpIds[mcpPrimitive.headers.id] as string,
+            ]),
+          ),
           address: firstMcp.address,
           ...(endpoint === undefined ? {} : { endpoint }),
-          ...(command === undefined ? {} : { command: { command, args, ...(tokenEnv === undefined ? {} : { tokenEnv }) } }),
+          ...(command === undefined
+            ? {}
+            : { command: { command, args, ...(tokenEnv === undefined ? {} : { tokenEnv }) } }),
           ...(path === undefined ? {} : { path }),
           auth: McpAuthMethod.names.filter((auth) => auths.has(auth)),
           ...(listedTools !== undefined && {
-            tools: listedTools.filter(({ name }) => declaredTools.has(name)).sort((leftTool, rightTool) => leftTool.name.localeCompare(rightTool.name)),
+            tools: listedTools
+              .filter(({ name }) => declaredTools.has(name))
+              .sort((leftTool, rightTool) => leftTool.name.localeCompare(rightTool.name)),
           }),
         });
       });

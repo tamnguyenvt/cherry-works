@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { BasePrimitive, type RequiredHeaders, type AssetFile } from "./base-primitive.js";
+import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.js";
 
 /** Know-how loaded when a request matches its triggers (FR-004). */
@@ -19,22 +19,25 @@ export class SkillPrimitive extends BasePrimitive {
   /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = super.headersSchema().extend({
-    triggers: BasePrimitive.goodArraySchema,
-    /** Whether it is kept out of the commands its host offers the user, being a
-     *  step of something else; the agent still opens it (CORE-FR-173). */
-    "disable-user-invocation": BasePrimitive.flagSchema.optional(),
-    /** Whether the agent is kept from opening it by itself, its description
-     *  matching what is asked; the user still runs it as a command (CORE-FR-181). */
-    "disable-model-invocation": BasePrimitive.flagSchema.optional(),
-  }).superRefine((headers, context) => {
-    // Kept from both, nobody could open it (CORE-FR-183).
-    if (headers["disable-user-invocation"] === true && headers["disable-model-invocation"] === true)
-      context.addIssue({
-        code: "custom",
-        message: `This skill declares both "disable-user-invocation: true" and "disable-model-invocation: true", so neither the user nor the agent could open it; drop one.`,
-      });
-  });
+  static override readonly schema = super
+    .headersSchema()
+    .extend({
+      triggers: BasePrimitive.goodArraySchema,
+      /** Whether it is kept out of the commands its host offers the user, being a
+       *  step of something else; the agent still opens it (CORE-FR-173). */
+      "disable-user-invocation": BasePrimitive.flagSchema.optional(),
+      /** Whether the agent is kept from opening it by itself, its description
+       *  matching what is asked; the user still runs it as a command (CORE-FR-181). */
+      "disable-model-invocation": BasePrimitive.flagSchema.optional(),
+    })
+    .superRefine((headers, context) => {
+      // Kept from both, nobody could open it (CORE-FR-183).
+      if (headers["disable-user-invocation"] === true && headers["disable-model-invocation"] === true)
+        context.addIssue({
+          code: "custom",
+          message: `This skill declares both "disable-user-invocation: true" and "disable-model-invocation: true", so neither the user nor the agent could open it; drop one.`,
+        });
+    });
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -55,7 +58,19 @@ export class SkillPrimitive extends BasePrimitive {
   }
 
   /** One skill, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer, keptUri?: string): SkillPrimitive {
-    return new SkillPrimitive(BasePrimitive.headersOf(SkillPrimitive, SkillPrimitive.schema, record), body, assets, primitiveLayer, keptUri);
+  static of(
+    record: Readonly<Record<string, unknown>>,
+    body: string,
+    assets: readonly AssetFile[] = [],
+    primitiveLayer?: PrimitiveLayer,
+    keptUri?: string,
+  ): SkillPrimitive {
+    return new SkillPrimitive(
+      BasePrimitive.headersOf(SkillPrimitive, SkillPrimitive.schema, record),
+      body,
+      assets,
+      primitiveLayer,
+      keptUri,
+    );
   }
 }

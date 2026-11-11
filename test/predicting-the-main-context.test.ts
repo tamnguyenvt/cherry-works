@@ -1,20 +1,20 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { api } from "../src/presentation/portal/portal.routes.js";
-import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { test } from "node:test";
 import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
-import { WorkspaceDTOs } from "../src/module/workspace/app/port/in/workspace.dto.js";
 import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
-import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
+import { WorkspaceDTOs } from "../src/module/workspace/app/port/in/workspace.dto.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { api } from "../src/presentation/portal/portal.routes.js";
+import { authoringCharterOf, buildingCharterOf, commandLineOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
 const at = (path: string) => new URL(path, repoPath).href;
@@ -64,12 +64,39 @@ const holding = (settings: object = { agents: ["claude"] }) => ({
 const surfaces = (files: Readonly<Record<string, string>>, agentCli = new InMemoryAgentCli()) => {
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources();
-  const charterAuthoringApp = authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher });
-  const charterRuntimeApp = buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), {
-    claude: agentCli,
-  }, new InMemoryReporter());
-  const cli = new Commander(commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), { charterAuthoringApp, charterRuntimeApp }, "/repo"), COMMANDS);
-  return { portalRoutes: api(wrapAppToShowPaths(charterAuthoringApp, "/repo"), wrapAppToShowPaths(charterRuntimeApp, "/repo"), workspaceSettingsLoaderOf(fileReaders)), fileReaders, cli };
+  const charterAuthoringApp = authoringCharterOf(
+    fileReaders,
+    new InMemoryFileOutput(fileReaders),
+    new InMemoryReporter(),
+    { sourceFetcher },
+  );
+  const charterRuntimeApp = buildingCharterOf(
+    fileReaders,
+    new InMemoryFileOutput(fileReaders),
+    new InMemoryTokenCounter(),
+    {
+      claude: agentCli,
+    },
+    new InMemoryReporter(),
+  );
+  const cli = new Commander(
+    commandLineOf(
+      fileReaders,
+      new InMemoryFileOutput(fileReaders),
+      { charterAuthoringApp, charterRuntimeApp },
+      "/repo",
+    ),
+    COMMANDS,
+  );
+  return {
+    portalRoutes: api(
+      wrapAppToShowPaths(charterAuthoringApp, "/repo"),
+      wrapAppToShowPaths(charterRuntimeApp, "/repo"),
+      workspaceSettingsLoaderOf(fileReaders),
+    ),
+    fileReaders,
+    cli,
+  };
 };
 
 /** What one command printed to each stream, and its exit status. */
@@ -133,7 +160,10 @@ test("the estimate is the tokenizer's count scaled to the agent's own (EVAL-FR-0
 
   // One token a word, here, scaled to claude's.
   const refactoringWords = refactoringPrompt.split(/\s+/).filter((word) => word !== "").length;
-  assert.equal(listedLoads(text).find(({ id }) => id === "refactoring")?.tokens, Math.round(refactoringWords * new ClaudeProjection(new InMemoryFileReaders()).tokenFactor));
+  assert.equal(
+    listedLoads(text).find(({ id }) => id === "refactoring")?.tokens,
+    Math.round(refactoringWords * new ClaudeProjection(new InMemoryFileReaders()).tokenFactor),
+  );
 });
 
 test("a guide naming files is listed apart, as loaded when one is touched, and is not in the total (EVAL-FR-003)", async () => {
@@ -161,7 +191,12 @@ test("each mcp is counted by the names of the tools the server lists for it, and
     [at(".cw/charter/primitive/mcp/linear/index.md")]: primitive(
       "mcp",
       "linear",
-      ["description: Issues.", "endpoint: https://mcp.linear.app/mcp", "auth: [token]", "tools: [list_issues, create_issue]"],
+      [
+        "description: Issues.",
+        "endpoint: https://mcp.linear.app/mcp",
+        "auth: [token]",
+        "tools: [list_issues, create_issue]",
+      ],
       "Read the issues.",
     ),
   });
@@ -231,9 +266,14 @@ test("the health check is quiet under the 20,000 a repository setting none is he
   const { cli, portalRoutes } = surfaces(holding());
 
   const { text } = await printed(cli, ["doctor"]);
-  const doctorOutcome = CharterDTOs.DoctorOutcome.parse(await (await portalRoutes.request("/charter/root/health")).json());
+  const doctorOutcome = CharterDTOs.DoctorOutcome.parse(
+    await (await portalRoutes.request("/charter/root/health")).json(),
+  );
 
-  assert.match(text, /✔ Context: {2}good \(claude opens a session with about [\d,]+ tokens, within the ceiling of 20,000\)\./);
+  assert.match(
+    text,
+    /✔ Context: {2}good \(claude opens a session with about [\d,]+ tokens, within the ceiling of 20,000\)\./,
+  );
   assert.equal(doctorOutcome.data.mainContextCeiling, 20_000);
   assert.equal(doctorOutcome.data.mainContexts[0]?.agent, "claude");
 });
@@ -242,12 +282,18 @@ test("the portal is given the same list and total the command prints, and the wh
   const { cli, portalRoutes } = surfaces(holding({ agents: ["claude"], mainContextCeiling: 30_000 }));
 
   const { text } = await printed(cli, ["context"]);
-  const [mainContext] = CharterDTOs.MainContexts.parse(await (await portalRoutes.request("/charter/root/context")).json()).data.contexts;
+  const [mainContext] = CharterDTOs.MainContexts.parse(
+    await (await portalRoutes.request("/charter/root/context")).json(),
+  ).data.contexts;
   const settings = WorkspaceDTOs.WorkspaceSettings.parse(await (await portalRoutes.request("/settings")).json());
 
   assert.deepEqual(
     listedLoads(text),
-    [...mainContext!.data.sessionLoads, ...mainContext!.data.fileLoads].map(({ data: { tokens, kind, id } }) => ({ tokens, kind, id })),
+    [...mainContext!.data.sessionLoads, ...mainContext!.data.fileLoads].map(({ data: { tokens, kind, id } }) => ({
+      tokens,
+      kind,
+      id,
+    })),
   );
   assert.deepEqual(settings.data, { isSetUp: true, agents: ["claude"], mainContextCeiling: 30_000 });
 });
@@ -256,10 +302,16 @@ test("setup keeps the ceiling it is given, and the one already set when given no
   const { cli, fileReaders } = surfaces(holding());
 
   assert.equal((await printed(cli, ["init", "--agent", "claude", "--mainContextCeiling", "5000"])).code, EXIT_OK);
-  assert.deepEqual(JSON.parse((await fileReaders.readIfThere(new URL(".cw/settings.json", repoPath)))!), { agents: ["claude"], mainContextCeiling: 5000 });
+  assert.deepEqual(JSON.parse((await fileReaders.readIfThere(new URL(".cw/settings.json", repoPath)))!), {
+    agents: ["claude"],
+    mainContextCeiling: 5000,
+  });
 
   assert.equal((await printed(cli, ["init", "--agent", "claude"])).code, EXIT_OK);
-  assert.deepEqual(JSON.parse((await fileReaders.readIfThere(new URL(".cw/settings.json", repoPath)))!), { agents: ["claude"], mainContextCeiling: 5000 });
+  assert.deepEqual(JSON.parse((await fileReaders.readIfThere(new URL(".cw/settings.json", repoPath)))!), {
+    agents: ["claude"],
+    mainContextCeiling: 5000,
+  });
 });
 
 test("a repository compiling for no agent is told nothing is loaded", async () => {

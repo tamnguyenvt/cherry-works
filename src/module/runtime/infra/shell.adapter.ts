@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import type { ForRunningShellCommands, ShellCommandResult } from "../app/port/out/running-shell-commands.port.js";
 import { FolderAddress, type FolderURL, urlAt } from "../../shared/module.js";
+import type { ForRunningShellCommands, ShellCommandResult } from "../app/port/out/running-shell-commands.port.js";
 
 /** DRIVEN ADAPTER: the system shell, as a host runs a hook's command. */
 export class Shell implements ForRunningShellCommands {
@@ -17,7 +17,11 @@ export class Shell implements ForRunningShellCommands {
 
   runShellCommand(command: string, workingPath: string, stdin: string): Promise<ShellCommandResult> {
     return new Promise((resolve) => {
-      const childProcess = spawn(command, { shell: true, cwd: fileURLToPath(workingPath === "" ? this.#repoFolder : urlAt(this.#repoFolder, `${workingPath}/`)), stdio: "pipe" });
+      const childProcess = spawn(command, {
+        shell: true,
+        cwd: fileURLToPath(workingPath === "" ? this.#repoFolder : urlAt(this.#repoFolder, `${workingPath}/`)),
+        stdio: "pipe",
+      });
       const stdoutChunks: Buffer[] = [];
       const stderrChunks: Buffer[] = [];
       childProcess.stdout.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
@@ -25,7 +29,11 @@ export class Shell implements ForRunningShellCommands {
       // A shell that cannot start is a command that failed, said as one.
       childProcess.on("error", (raised) => resolve({ exitCode: 1, stdout: "", stderr: `${raised.message}\n` }));
       childProcess.on("close", (exitCode) =>
-        resolve({ exitCode: exitCode ?? 1, stdout: Buffer.concat(stdoutChunks).toString(), stderr: Buffer.concat(stderrChunks).toString() }),
+        resolve({
+          exitCode: exitCode ?? 1,
+          stdout: Buffer.concat(stdoutChunks).toString(),
+          stderr: Buffer.concat(stderrChunks).toString(),
+        }),
       );
       // A command that exits without reading its input closes it under us.
       childProcess.stdin.on("error", () => undefined);

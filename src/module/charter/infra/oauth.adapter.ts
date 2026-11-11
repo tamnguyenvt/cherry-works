@@ -4,7 +4,11 @@ import type { AddressInfo } from "node:net";
 import { auth, type OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import { OAuthError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import type { OAuthClientInformationMixed, OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
-import { AdapterFault, type ForAuthorizingMcpOrigins, type OAuthGrant } from "../app/port/out/authorizing-mcp-origins.port.js";
+import {
+  AdapterFault,
+  type ForAuthorizingMcpOrigins,
+  type OAuthGrant,
+} from "../app/port/out/authorizing-mcp-origins.port.js";
 
 /** How long a sign-in waits for the developer to come back from the browser. */
 const CALLBACK_TIMEOUT_MS = 5 * 60_000;
@@ -42,7 +46,14 @@ export class OAuth implements ForAuthorizingMcpOrigins {
     let callbackTimeout: NodeJS.Timeout | undefined;
     const authorizationCode = new Promise<string>((resolve, reject) => {
       callbackTimeout = setTimeout(
-        () => reject(new AdapterFault(`Nobody came back from signing in to ${endpoint} in time.`, 'Run "cw mcp auth" again, and open the address it prints.', { internal: false })),
+        () =>
+          reject(
+            new AdapterFault(
+              `Nobody came back from signing in to ${endpoint} in time.`,
+              'Run "cw mcp auth" again, and open the address it prints.',
+              { internal: false },
+            ),
+          ),
         this.#callbackTimeoutMs,
       );
       callbackServer.on("request", (request, response) => {
@@ -56,7 +67,13 @@ export class OAuth implements ForAuthorizingMcpOrigins {
           .end(signedIn ? "Signed in. Go back to the terminal.\n" : "Not signed in. Go back to the terminal.\n");
         if (signedIn) return resolve(callbackCode);
         const callbackError = callbackUrl.searchParams.get("error");
-        reject(new AdapterFault(`Signing in to ${endpoint} came back without an authorization${callbackError ? `: ${callbackError}` : ""}.`, 'Run "cw mcp auth" again.', { internal: false }));
+        reject(
+          new AdapterFault(
+            `Signing in to ${endpoint} came back without an authorization${callbackError ? `: ${callbackError}` : ""}.`,
+            'Run "cw mcp auth" again.',
+            { internal: false },
+          ),
+        );
       });
     });
     // Awaited only once the address is shown: a sign-in failing before then
@@ -65,7 +82,12 @@ export class OAuth implements ForAuthorizingMcpOrigins {
 
     try {
       const oauthSession: OAuthSession = {};
-      const provider = this.#providerOver(oauthSession, redirectUrl, (authorizationUrl) => showAuthorizationUrl(authorizationUrl.href), state);
+      const provider = this.#providerOver(
+        oauthSession,
+        redirectUrl,
+        (authorizationUrl) => showAuthorizationUrl(authorizationUrl.href),
+        state,
+      );
       if ((await auth(provider, { serverUrl: endpoint })) === "REDIRECT")
         await auth(provider, { serverUrl: endpoint, authorizationCode: await authorizationCode });
       return oauthGrantOf(endpoint, oauthSession);
@@ -73,7 +95,7 @@ export class OAuth implements ForAuthorizingMcpOrigins {
       if (raisedValue instanceof AdapterFault) throw raisedValue;
       throw new AdapterFault(
         `Signing in to ${endpoint} failed.`,
-        "Check the address is reachable and offers an OAuth sign-in, then run \"cw mcp auth\" again.",
+        'Check the address is reachable and offers an OAuth sign-in, then run "cw mcp auth" again.',
         // What the SDK said stays in the cause, for the log alone (SDK-FR-018).
         { internal: false, cause: raisedValue },
       );
@@ -87,7 +109,11 @@ export class OAuth implements ForAuthorizingMcpOrigins {
   async renew(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined> {
     const { clientId, clientSecret, issuer } = oauthGrant.client;
     const oauthSession: OAuthSession = {
-      clientInformation: { client_id: clientId, ...(clientSecret !== undefined && { client_secret: clientSecret }), issuer },
+      clientInformation: {
+        client_id: clientId,
+        ...(clientSecret !== undefined && { client_secret: clientSecret }),
+        issuer,
+      },
       tokens: {
         access_token: oauthGrant.accessToken,
         token_type: "Bearer",
@@ -159,11 +185,15 @@ export class OAuth implements ForAuthorizingMcpOrigins {
 /** What a finished flow saved, as the grant it ends with. */
 function oauthGrantOf(endpoint: string, { clientInformation, tokens }: OAuthSession): OAuthGrant {
   if (clientInformation === undefined || tokens === undefined)
-    throw new AdapterFault(`Signing in to ${endpoint} ended without a token.`, 'Run "cw mcp auth" again.', { internal: false });
+    throw new AdapterFault(`Signing in to ${endpoint} ended without a token.`, 'Run "cw mcp auth" again.', {
+      internal: false,
+    });
   return {
     accessToken: tokens.access_token,
     ...(tokens.refresh_token !== undefined && { refreshToken: tokens.refresh_token }),
-    ...(tokens.expires_in !== undefined && { expiresAt: new Date(Date.now() + tokens.expires_in * 1000).toISOString() }),
+    ...(tokens.expires_in !== undefined && {
+      expiresAt: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+    }),
     client: {
       clientId: clientInformation.client_id,
       ...(clientInformation.client_secret !== undefined && { clientSecret: clientInformation.client_secret }),

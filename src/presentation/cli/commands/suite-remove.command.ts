@@ -1,5 +1,13 @@
 import { TEST_DIRECTORY } from "#module/charter/module.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { printFault } from "./helper.js";
 
 const OPTIONS = {

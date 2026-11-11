@@ -1,9 +1,9 @@
 import { z } from "zod";
-import type { AgentProvider } from "../agent/agent-provider.js";
 import { DomainFault } from "../../../../shared/module.js";
 import { ModelHelper } from "../../helper.js";
-import { type LayerName, PrimitiveLayer } from "./primitive-layer.js";
+import type { AgentProvider } from "../agent/agent-provider.js";
 import { CharterPrimitiveFault } from "../charter.fault.js";
+import { type LayerName, PrimitiveLayer } from "./primitive-layer.js";
 
 /** One file of a primitive's folder beside its `index.md`: the path it has in
  *  that folder, and the bytes it holds, never decoded, so it is copied whole
@@ -47,7 +47,9 @@ const GoodArraySchema = z.array(GoodLineSchema).min(1).readonly();
  *  the line an author typed at `cw add` or in the portal. */
 const FlagSchema = z
   .unknown()
-  .refine((value) => [true, false, "true", "false"].includes(value as never), { message: "A yes or no header is written true or false." })
+  .refine((value) => [true, false, "true", "false"].includes(value as never), {
+    message: "A yes or no header is written true or false.",
+  })
   .transform((value) => value === true || value === "true");
 
 export type CommonHeaders = Readonly<z.infer<ReturnType<typeof BasePrimitive.headersSchema>>>;
@@ -170,7 +172,9 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    *  (FR-015). */
   get uri(): string {
     if (this.#keptUri !== undefined) return this.#keptUri;
-    return this.layerName === PrimitiveLayer.BUILTIN.name ? `(built into cw)/${this.kind}/${this.headers.id}/${this.index}` : "";
+    return this.layerName === PrimitiveLayer.BUILTIN.name
+      ? `(built into cw)/${this.kind}/${this.headers.id}/${this.index}`
+      : "";
   }
 
   /** Whether a word someone searched for is anywhere a reader would look for
@@ -183,7 +187,15 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
       value === undefined ? [] : Array.isArray(value) ? value : [String(value)],
     );
     const loweredWord = word.toLowerCase();
-    return [this.headers.id, this.kind, this.activatesWhen, `${this.primitiveFolder}/${this.index}`, this.layerName, this.layer.vendorName ?? "", ...headerValues].some((searchedText) => searchedText.toLowerCase().includes(loweredWord));
+    return [
+      this.headers.id,
+      this.kind,
+      this.activatesWhen,
+      `${this.primitiveFolder}/${this.index}`,
+      this.layerName,
+      this.layer.vendorName ?? "",
+      ...headerValues,
+    ].some((searchedText) => searchedText.toLowerCase().includes(loweredWord));
   }
 
   /** Whether this primitive is available to a host. No restriction means all. */
@@ -205,7 +217,6 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
   get index(): string {
     return BasePrimitive.index;
   }
-
 
   /** When a reader of this charter is to open a primitive of its kind at all:
    *  the line its kind's class declares, in the words `cw kinds` says it in
@@ -264,18 +275,22 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
     const body = [...startMixins.map((mixin) => mixin.body), this.body, ...endMixins.map((mixin) => mixin.body)]
       .filter((one) => one.trim() !== "")
       .join("\n\n");
-    return [
-      DELIMITER,
-      ...Object.entries({ kind: this.kind, ...this.headers }).map(([field, value]) => `${field}: ${ModelHelper.formatFrontmatterValue(value)}`),
-      DELIMITER,
-      "",
-      idReplacer(body),
-    ]
-      .join("\n")
-      // One newline at the end and no blank line before it, whether or not
-      // there is a body yet: a file just written and one written over a body
-      // its author has since filled in end the same way.
-      .replace(/\n*$/, "\n");
+    return (
+      [
+        DELIMITER,
+        ...Object.entries({ kind: this.kind, ...this.headers }).map(
+          ([field, value]) => `${field}: ${ModelHelper.formatFrontmatterValue(value)}`,
+        ),
+        DELIMITER,
+        "",
+        idReplacer(body),
+      ]
+        .join("\n")
+        // One newline at the end and no blank line before it, whether or not
+        // there is a body yet: a file just written and one written over a body
+        // its author has since filled in end the same way.
+        .replace(/\n*$/, "\n")
+    );
   }
 
   /**
@@ -314,9 +329,9 @@ export type RequiredHeaders = Readonly<Record<string, "line" | "list">>;
  */
 function headersOf<Schema extends z.ZodType>(
   sampledKind: {
-  readonly kind: string;
-  readonly sample: Readonly<Record<string, unknown>>;
-},
+    readonly kind: string;
+    readonly sample: Readonly<Record<string, unknown>>;
+  },
   headerSchema: Schema,
   record: Readonly<Record<string, unknown>>,
 ): Readonly<z.infer<Schema>> {
@@ -324,8 +339,12 @@ function headersOf<Schema extends z.ZodType>(
   if (parsed.success) return parsed.data;
 
   const { kind, sample } = sampledKind;
-  const refinementMessages = parsed.error.issues.filter((issue) => issue.code === "custom").map((issue) => issue.message);
-  const sampleLines = Object.entries({ kind, ...sample }).map(([field, value]) => `${field}: ${ModelHelper.formatFrontmatterValue(value)}`);
+  const refinementMessages = parsed.error.issues
+    .filter((issue) => issue.code === "custom")
+    .map((issue) => issue.message);
+  const sampleLines = Object.entries({ kind, ...sample }).map(
+    ([field, value]) => `${field}: ${ModelHelper.formatFrontmatterValue(value)}`,
+  );
   return DomainFault.throwAggregate([
     new CharterPrimitiveFault(
       refinementMessages.length > 0 ? refinementMessages.join(" ") : `These headers are not what a ${kind} holds.`,

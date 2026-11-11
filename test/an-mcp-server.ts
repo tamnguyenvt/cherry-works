@@ -8,7 +8,11 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 /** The tools every test mcp origin has: `echo` answers what it was handed, and
  *  `fail` answers an error of its own, which is still the mcp origin's answer. */
 export const TEST_TOOLS = [
-  { name: "echo", description: "Answers what it was handed.", inputSchema: { type: "object", properties: { text: { type: "string" } } } },
+  {
+    name: "echo",
+    description: "Answers what it was handed.",
+    inputSchema: { type: "object", properties: { text: { type: "string" } } },
+  },
   { name: "fail", description: "Answers an error of its own.", inputSchema: { type: "object", properties: {} } },
 ];
 
@@ -31,7 +35,9 @@ export function aTestMcpServer(): Server {
  * answering any other with `401`. Stateless: each request is its own session,
  * with no session id. Records the `Authorization` header of every request.
  */
-export async function anMcpServer(acceptedToken: string): Promise<{ endpoint: string; server: HttpServer; authorizations: (string | undefined)[] }> {
+export async function anMcpServer(
+  acceptedToken: string,
+): Promise<{ endpoint: string; server: HttpServer; authorizations: (string | undefined)[] }> {
   const authorizations: (string | undefined)[] = [];
   const server = createServer(async (request, response) => {
     authorizations.push(request.headers.authorization);

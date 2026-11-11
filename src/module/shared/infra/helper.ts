@@ -1,5 +1,5 @@
-import { AdapterFault } from "../app/port/out/writing-files.port.js";
 import { FolderAddress } from "../app/port/out/folder-address.port.js";
+import { AdapterFault } from "../app/port/out/writing-files.port.js";
 
 /** A file's text, decoded where it was written as bytes, as a disk would. */
 export function decodeContents(contents: string | Uint8Array): string {
@@ -19,7 +19,11 @@ export function encodeContents(contents: string | Uint8Array): Uint8Array {
 export function urlAt(folder: URL, path: string): URL {
   const pathUrl = new URL(path.split("/").map(encodeURIComponent).join("/"), folder);
   if (path.startsWith("/") || !pathUrl.href.startsWith(folderHrefOf(folder)))
-    throw new AdapterFault(`"${path}" is no path inside the folder this was set up on.`, "Name a path from that folder, with no leading \"/\" and no \"..\" out of it.", { internal: false });
+    throw new AdapterFault(
+      `"${path}" is no path inside the folder this was set up on.`,
+      'Name a path from that folder, with no leading "/" and no ".." out of it.',
+      { internal: false },
+    );
   return pathUrl;
 }
 
@@ -28,7 +32,10 @@ export function urlAt(folder: URL, path: string): URL {
 export function pathFrom(folder: URL, url: URL): string {
   const folderHref = folderHrefOf(folder);
   if (!url.href.startsWith(folderHref))
-    throw new AdapterFault(`"${FolderAddress.addressOf(url).href}" is not under "${FolderAddress.addressOf(folder).href}".`, "Name an address inside the folder the adapter was set up on.");
+    throw new AdapterFault(
+      `"${FolderAddress.addressOf(url).href}" is not under "${FolderAddress.addressOf(folder).href}".`,
+      "Name an address inside the folder the adapter was set up on.",
+    );
   return decodeURIComponent(url.href.slice(folderHref.length)).replace(/\/$/, "");
 }
 
@@ -50,7 +57,6 @@ export function filePathOf(checkoutPath: string, path: string): string {
 export function pathFromCheckout(checkoutPath: string, filePath: string): string {
   return checkoutPath === "" ? filePath : filePath.slice(checkoutPath.length + 1);
 }
-
 
 /** The path a checkout's files are read under, ending in its separator, or
  *  nothing where the checkout is the repository itself. */

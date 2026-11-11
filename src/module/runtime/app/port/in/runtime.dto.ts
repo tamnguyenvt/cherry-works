@@ -35,15 +35,33 @@ const EvalRunReportSchema = dto(
 );
 
 /** Saved promptfoo case diagnostics, including verified agent session locations. */
-const EvalLogAnalysisSchema = dto("EvalLogAnalysis", z.object({
-  logs: z.array(z.object({
-    logPath: z.string(), createdAt: z.string(), agent: z.string(),
-    prompt: z.string(), workingFolderPath: z.string(), outputPath: z.string(),
-    stdoutPath: z.string(), stderrPath: z.string(), success: z.boolean(), totalTokens: z.number(),
-    unmetReasons: z.array(z.string()).readonly(), answer: z.string(), toolCalls: z.array(z.string()).readonly(),
-    sessionId: z.string().optional(), sessionPath: z.string().optional(), error: z.string().optional(),
-  })).readonly(),
-}));
+const EvalLogAnalysisSchema = dto(
+  "EvalLogAnalysis",
+  z.object({
+    logs: z
+      .array(
+        z.object({
+          logPath: z.string(),
+          createdAt: z.string(),
+          agent: z.string(),
+          prompt: z.string(),
+          workingFolderPath: z.string(),
+          outputPath: z.string(),
+          stdoutPath: z.string(),
+          stderrPath: z.string(),
+          success: z.boolean(),
+          totalTokens: z.number(),
+          unmetReasons: z.array(z.string()).readonly(),
+          answer: z.string(),
+          toolCalls: z.array(z.string()).readonly(),
+          sessionId: z.string().optional(),
+          sessionPath: z.string().optional(),
+          error: z.string().optional(),
+        }),
+      )
+      .readonly(),
+  }),
+);
 
 /** What a call answered: the mcp origin's answer as it came, or an error answer
  *  saying why no mcp origin was reached (FR-154). */

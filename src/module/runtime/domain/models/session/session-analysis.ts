@@ -1,6 +1,6 @@
 import type { SessionAnalysisLine } from "./session-analysis-line.js";
-import { type SessionSpan, SessionSpans } from "./session-span.js";
 import type { SessionAnalysisSummary } from "./session-analysis-summary.js";
+import { type SessionSpan, SessionSpans } from "./session-span.js";
 
 /**
  * The stops of the sessions kept for one repository, as they were read off
@@ -31,8 +31,17 @@ export class SessionAnalysis {
         const stopDay = SessionSpans.localDayOf(new Date(lastAnalysisLine.time));
         return stopDay >= span.since && stopDay <= span.until;
       })
-      .map(({ sessionId, model, time, tokens, total }) => ({ sessionId, model, lastStopAt: time, tokens, totalTokens: total }))
-      .sort((session, otherSession) => otherSession.totalTokens - session.totalTokens || session.sessionId.localeCompare(otherSession.sessionId));
+      .map(({ sessionId, model, time, tokens, total }) => ({
+        sessionId,
+        model,
+        lastStopAt: time,
+        tokens,
+        totalTokens: total,
+      }))
+      .sort(
+        (session, otherSession) =>
+          otherSession.totalTokens - session.totalTokens || session.sessionId.localeCompare(otherSession.sessionId),
+      );
     return {
       span,
       sessions,
@@ -44,11 +53,16 @@ export class SessionAnalysis {
   /** Each day of the span a session's last stop fell on, summarized as a span
    *  of that day alone, the largest day first (EVAL-FR-012). */
   summarizeByDay(span: SessionSpan): Readonly<Record<string, SessionAnalysisSummary>> {
-    const stopDays = [...new Set(this.summarize(span).sessions.map(({ lastStopAt }) => SessionSpans.localDayOf(new Date(lastStopAt))))];
+    const stopDays = [
+      ...new Set(this.summarize(span).sessions.map(({ lastStopAt }) => SessionSpans.localDayOf(new Date(lastStopAt)))),
+    ];
     return Object.fromEntries(
       stopDays
         .map((stopDay) => [stopDay, this.summarize({ since: stopDay, until: stopDay })] as const)
-        .sort(([stopDay, daySummary], [otherStopDay, otherDaySummary]) => otherDaySummary.totalTokens - daySummary.totalTokens || otherStopDay.localeCompare(stopDay)),
+        .sort(
+          ([stopDay, daySummary], [otherStopDay, otherDaySummary]) =>
+            otherDaySummary.totalTokens - daySummary.totalTokens || otherStopDay.localeCompare(stopDay),
+        ),
     );
   }
 }

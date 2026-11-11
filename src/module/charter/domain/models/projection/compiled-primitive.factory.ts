@@ -1,11 +1,11 @@
 import type { CharterRoot } from "../charter/charter-root.js";
+import { BasePrimitive } from "../primitive/base-primitive.js";
 import { MixinPrimitive } from "../primitive/mixin-primitive.js";
 import type { Primitive } from "../primitive/primitive.js";
 import { ScriptPrimitive } from "../primitive/script-primitive.js";
 import { CompiledPrimitive } from "./compiled-primitive.js";
-import { StampedDocument } from "./stamped-document.js";
-import { BasePrimitive } from "../primitive/base-primitive.js";
 import { OutputPart } from "./output-part.js";
+import { StampedDocument } from "./stamped-document.js";
 
 /** What a body is read through to find the names in it: a fenced block, a link
  *  and a code span are each taken whole, so a name inside one is seen as part

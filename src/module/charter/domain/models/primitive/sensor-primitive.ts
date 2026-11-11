@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { type RequiredHeaders, type AssetFile, BasePrimitive } from "./base-primitive.js";
 import { AgentBasedPrimitive } from "./agent-based-primitive.js";
+import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.js";
 
 /** The events a charter knows how to be raised by, and the only ones a sensor
@@ -70,7 +70,19 @@ export class SensorPrimitive extends AgentBasedPrimitive {
   };
 
   /** One sensor, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer, keptUri?: string): SensorPrimitive {
-    return new SensorPrimitive(BasePrimitive.headersOf(SensorPrimitive, SensorPrimitive.schema, record), body, assets, primitiveLayer, keptUri);
+  static of(
+    record: Readonly<Record<string, unknown>>,
+    body: string,
+    assets: readonly AssetFile[] = [],
+    primitiveLayer?: PrimitiveLayer,
+    keptUri?: string,
+  ): SensorPrimitive {
+    return new SensorPrimitive(
+      BasePrimitive.headersOf(SensorPrimitive, SensorPrimitive.schema, record),
+      body,
+      assets,
+      primitiveLayer,
+      keptUri,
+    );
   }
 }

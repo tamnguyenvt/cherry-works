@@ -9,19 +9,25 @@ import { Table, TableBody, TableCell, TableRow } from "./ui/table.js";
  *  (FR-115, FR-121). */
 export function FaultsByFileTable({ faultsByFile, label }: { faultsByFile: FaultDTOs.FaultsByFile; label: string }) {
   const hasError = (faults: readonly FaultDTOs.Fault[]) => faults.some(({ data }) => data.severity === "error");
-  const files = Object.entries(faultsByFile.data.files).sort(([, one], [, another]) => Number(hasError(another)) - Number(hasError(one)));
+  const files = Object.entries(faultsByFile.data.files).sort(
+    ([, one], [, another]) => Number(hasError(another)) - Number(hasError(one)),
+  );
   return (
     <div className="overflow-hidden rounded-[14px] border bg-background">
       <Table aria-label={label}>
         <TableBody>
           {files.map(([file, faults]) => (
             <TableRow key={file} className="border-zinc-100 align-top hover:bg-transparent">
-              <TableCell className={`w-[210px] py-[11px] pl-4 font-mono text-[11.5px] font-bold whitespace-normal break-all ${hasError(faults) ? "text-destructive" : ""}`}>
+              <TableCell
+                className={`w-[210px] py-[11px] pl-4 font-mono text-[11.5px] font-bold whitespace-normal break-all ${hasError(faults) ? "text-destructive" : ""}`}
+              >
                 {file}
               </TableCell>
               <TableCell className="space-y-1.5 py-[11px] pr-4 whitespace-normal">
                 {[...faults]
-                  .sort((one, another) => Number(another.data.severity === "error") - Number(one.data.severity === "error"))
+                  .sort(
+                    (one, another) => Number(another.data.severity === "error") - Number(one.data.severity === "error"),
+                  )
                   .map(({ data: { severity, message, fix } }) => (
                     <p key={message} className="text-xs leading-[1.55] text-zinc-700">
                       {/* Drawn in capitals by the font rather than by the text, so

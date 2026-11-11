@@ -1,9 +1,9 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
 import { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { authoringCharterOf } from "./use-cases-of.js";
 
@@ -11,7 +11,17 @@ const root = new URL("file:///repo/.cw/charter/primitive/");
 const vendored = new URL("file:///repo/.cw/charter/vendor/acme/charter/root/primitive/");
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: About ${id}.`,
+    ...headers,
+    "---",
+    "",
+    `The body of ${id}.`,
+    "",
+  ].join("\n");
 
 /** One primitive of each layer, and a sensor whose signal and command are
  *  headers the catalogue does not record. */
@@ -78,5 +88,7 @@ test("a charter with an error lists nothing and hands back what is wrong under i
   const answer = await fullListOf({ [new URL("guide/broken/index.md", root).href]: "not a primitive at all\n" });
 
   assert.equal(answer.type, "FaultsByFile");
-  assert.deepEqual(Object.keys(FaultDTOs.FaultsByFile.parse(answer).data.files), ["file:///repo/.cw/charter/primitive/guide/broken/index.md"]);
+  assert.deepEqual(Object.keys(FaultDTOs.FaultsByFile.parse(answer).data.files), [
+    "file:///repo/.cw/charter/primitive/guide/broken/index.md",
+  ]);
 });

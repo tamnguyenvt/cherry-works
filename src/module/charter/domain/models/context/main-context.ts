@@ -49,7 +49,9 @@ export class MainContext {
     loads: readonly MainContextLoad[],
     readonly isExact: boolean,
   ) {
-    const loadsLargestFirst = [...loads].sort((one, other) => other.tokens - one.tokens || one.id.localeCompare(other.id));
+    const loadsLargestFirst = [...loads].sort(
+      (one, other) => other.tokens - one.tokens || one.id.localeCompare(other.id),
+    );
     this.sessionLoads = loadsLargestFirst.filter((load) => load.globs === undefined);
     this.fileLoads = loadsLargestFirst.filter((load) => load.globs !== undefined);
   }

@@ -1,6 +1,6 @@
 import type { ForWritingFiles } from "../../app/port/out/writing-files.port.js";
-import type { InMemoryFileReaders } from "./in-memory-file-readers.adapter.js";
 import { urlAt } from "../helper.js";
+import type { InMemoryFileReaders } from "./in-memory-file-readers.adapter.js";
 
 /** Files written into memory, into the same map they are read back out of: what
  *  a test builds a charter with without touching a disk, and the second
@@ -15,7 +15,11 @@ export class InMemoryFileOutput implements ForWritingFiles {
   /** Every file last written as executable, for a test asking which. */
   readonly executables = new Set<string>();
 
-  async write(filePath: string, contents: string | Uint8Array, options: { readonly executable?: boolean } = {}): Promise<void> {
+  async write(
+    filePath: string,
+    contents: string | Uint8Array,
+    options: { readonly executable?: boolean } = {},
+  ): Promise<void> {
     const file = urlAt(this.files.rootFolder, filePath);
     this.files.write(file, contents);
     if (options.executable === true) this.executables.add(file.href);
@@ -27,7 +31,8 @@ export class InMemoryFileOutput implements ForWritingFiles {
   }
 
   async deleteFolder(folderPath: string): Promise<void> {
-    for (const { path } of await this.files.readFilesRecursively(folderPath)) this.files.remove(urlAt(this.files.rootFolder, path));
+    for (const { path } of await this.files.readFilesRecursively(folderPath))
+      this.files.remove(urlAt(this.files.rootFolder, path));
   }
 
   /** A folder here is only the files under it, so an empty one is not there. */

@@ -1,12 +1,12 @@
-import { PrimitiveLayer } from "../../domain/models/primitive/primitive-layer.js";
-import { RawPrimitive } from "../../domain/models/primitive/raw-primitive.js";
-import { PrimitiveFactory } from "../../domain/models/primitive/primitive.factory.js";
-import { McpOriginTools } from "../../domain/models/projection/mcp-origin-tools.js";
-import { OutputPart } from "../../domain/models/projection/output-part.js";
 import { DomainFault, FaultsByFile, type ForCallingMcpServers } from "../../../shared/module.js";
 import type { CharterRoot } from "../../domain/models/charter/charter-root.js";
 import { McpPrimitive } from "../../domain/models/primitive/mcp-primitive.js";
-import { McpOrigins, McpOrigin } from "../../domain/models/projection/mcp-origin.js";
+import { PrimitiveFactory } from "../../domain/models/primitive/primitive.factory.js";
+import { PrimitiveLayer } from "../../domain/models/primitive/primitive-layer.js";
+import { RawPrimitive } from "../../domain/models/primitive/raw-primitive.js";
+import { McpOrigin, McpOrigins } from "../../domain/models/projection/mcp-origin.js";
+import { McpOriginTools } from "../../domain/models/projection/mcp-origin-tools.js";
+import { OutputPart } from "../../domain/models/projection/output-part.js";
 import { CompileService } from "../../domain/services/compile.service.js";
 import type { ForManagingCharter } from "../port/out/managing-charter.port.js";
 
@@ -41,16 +41,25 @@ export class LoadMcpOriginsService {
     const mcpOriginsPlace = laidCharterLoader.findPlace(McpOrigins.outputPart);
     const contents = await laidCharterLoader.loadLaidText(McpOrigins.outputPart, checkoutPath);
     if (contents === undefined)
-      throw new DomainFault(`There is no ${mcpOriginsPlace}, so no mcp origin has been listed yet.`, 'Run "cw build" first.', { internal: false });
+      throw new DomainFault(
+        `There is no ${mcpOriginsPlace}, so no mcp origin has been listed yet.`,
+        'Run "cw build" first.',
+        { internal: false },
+      );
 
     try {
       const mcpOriginsJson: unknown = JSON.parse(contents);
       const origins = (mcpOriginsJson as { origins?: unknown }).origins;
-      if (Array.isArray(origins)) return new McpOrigins((origins as readonly McpOrigin[]).map((origin) => new McpOrigin(origin)));
+      if (Array.isArray(origins))
+        return new McpOrigins((origins as readonly McpOrigin[]).map((origin) => new McpOrigin(origin)));
     } catch {
       // Said below, as any list that does not read is.
     }
-    throw new DomainFault(`${mcpOriginsPlace} does not hold a list of mcp origins.`, 'Run "cw build" to write it again.', { internal: false });
+    throw new DomainFault(
+      `${mcpOriginsPlace} does not hold a list of mcp origins.`,
+      'Run "cw build" to write it again.',
+      { internal: false },
+    );
   }
 
   /**
@@ -74,7 +83,16 @@ export class LoadMcpOriginsService {
       const compiledDocument = await laidCharterLoader.loadLaidText(compiledMcpPart);
       if (compiledDocument === undefined) continue;
       try {
-        const primitive = PrimitiveFactory.create(new RawPrimitive(PrimitiveLayer.REPO, McpPrimitive.kind, id, compiledDocument, [], laidCharterLoader.findPlace(compiledMcpPart)));
+        const primitive = PrimitiveFactory.create(
+          new RawPrimitive(
+            PrimitiveLayer.REPO,
+            McpPrimitive.kind,
+            id,
+            compiledDocument,
+            [],
+            laidCharterLoader.findPlace(compiledMcpPart),
+          ),
+        );
         if (primitive instanceof McpPrimitive) toolsById.set(id, primitive.headers.tools);
       } catch {
         // Said by the caller, as a missing one is.
@@ -106,12 +124,20 @@ export class LoadMcpOriginsService {
         ({ origins }) => origins,
         () => [],
       );
-      const toolsByOriginKey = new Map(keptOrigins.flatMap((origin) => (origin.tools === undefined ? [] : [[McpOrigins.originKeyOf(origin), origin.tools] as const])));
+      const toolsByOriginKey = new Map(
+        keptOrigins.flatMap((origin) =>
+          origin.tools === undefined ? [] : [[McpOrigins.originKeyOf(origin), origin.tools] as const],
+        ),
+      );
       return new McpOriginTools(toolsByOriginKey, FaultsByFile.none);
     }
 
     const { mcpServers, loadAccessToken } = mcpReaching;
-    const mcpPrimitiveById = new Map(charter.primitives.flatMap((primitive) => (primitive instanceof McpPrimitive ? [[primitive.headers.id, primitive] as const] : [])));
+    const mcpPrimitiveById = new Map(
+      charter.primitives.flatMap((primitive) =>
+        primitive instanceof McpPrimitive ? [[primitive.headers.id, primitive] as const] : [],
+      ),
+    );
     const mcpOriginResults = await Promise.all(
       CompileService.compileCharterRoot(charter, []).mcpOrigins.origins.map(async (origin) => {
         const mcpPrimitives = origin.ids.flatMap((id) => mcpPrimitiveById.get(id) ?? []);
@@ -119,7 +145,11 @@ export class LoadMcpOriginsService {
           const accessToken = origin.auth.length > 0 ? await loadAccessToken(origin, false) : undefined;
           const connection = await mcpServers.connect(origin, accessToken, LIST_TIMEOUT_MS);
           await connection.close();
-          const listedTools = connection.tools.map(({ name, description, inputSchema }) => ({ name, description: description ?? "", inputSchema }));
+          const listedTools = connection.tools.map(({ name, description, inputSchema }) => ({
+            name,
+            description: description ?? "",
+            inputSchema,
+          }));
           const listedToolNames = new Set(listedTools.map(({ name }) => name));
           const faultsByFile = new FaultsByFile(
             Object.fromEntries(
@@ -139,14 +169,30 @@ export class LoadMcpOriginsService {
         } catch (raisedValue) {
           // A fault of the system's own is logged and never said (SDK-FR-017).
           if (!(raisedValue instanceof DomainFault) || raisedValue.internal) throw raisedValue;
-          const fault = new DomainFault(`The build could not ask ${origin.address} for its tools: ${raisedValue.message}`, raisedValue.fix, { internal: false });
-          return { key: McpOrigins.originKeyOf(origin), faultsByFile: new FaultsByFile(Object.fromEntries(mcpPrimitives.map((mcpPrimitive) => [mcpPrimitive.uri, [fault]]))) };
+          const fault = new DomainFault(
+            `The build could not ask ${origin.address} for its tools: ${raisedValue.message}`,
+            raisedValue.fix,
+            { internal: false },
+          );
+          return {
+            key: McpOrigins.originKeyOf(origin),
+            faultsByFile: new FaultsByFile(
+              Object.fromEntries(mcpPrimitives.map((mcpPrimitive) => [mcpPrimitive.uri, [fault]])),
+            ),
+          };
         }
       }),
     );
     return new McpOriginTools(
-      new Map(mcpOriginResults.flatMap(({ key, listedTools }) => (listedTools === undefined ? [] : [[key, listedTools] as const]))),
-      mcpOriginResults.reduce((faultsByFile, mcpOriginResult) => faultsByFile.with(mcpOriginResult.faultsByFile), FaultsByFile.none),
+      new Map(
+        mcpOriginResults.flatMap(({ key, listedTools }) =>
+          listedTools === undefined ? [] : [[key, listedTools] as const],
+        ),
+      ),
+      mcpOriginResults.reduce(
+        (faultsByFile, mcpOriginResult) => faultsByFile.with(mcpOriginResult.faultsByFile),
+        FaultsByFile.none,
+      ),
     );
   }
 }

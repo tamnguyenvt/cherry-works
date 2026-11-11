@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BasePrimitive, type RequiredHeaders, type AssetFile } from "./base-primitive.js";
+import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.js";
 
 /** Headers and body reused by other primitives. A leaf: it lends its body to
@@ -41,7 +41,19 @@ export class MixinPrimitive extends BasePrimitive {
   };
 
   /** One mixin, or every fault its headers have (FR-004, FR-006). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer, keptUri?: string): MixinPrimitive {
-    return new MixinPrimitive(BasePrimitive.headersOf(MixinPrimitive, MixinPrimitive.schema, record), body, assets, primitiveLayer, keptUri);
+  static of(
+    record: Readonly<Record<string, unknown>>,
+    body: string,
+    assets: readonly AssetFile[] = [],
+    primitiveLayer?: PrimitiveLayer,
+    keptUri?: string,
+  ): MixinPrimitive {
+    return new MixinPrimitive(
+      BasePrimitive.headersOf(MixinPrimitive, MixinPrimitive.schema, record),
+      body,
+      assets,
+      primitiveLayer,
+      keptUri,
+    );
   }
 }

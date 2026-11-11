@@ -1,9 +1,9 @@
 import type { AgentProviderName } from "../agent/agent-provider.js";
+import type { BuiltSensors } from "./built-sensor.js";
 import type { Catalogue } from "./catalogue.js";
 import type { CharterMd } from "./charter-md.js";
 import type { CompiledPrimitive } from "./compiled-primitive.js";
 import type { McpOrigins } from "./mcp-origin.js";
-import type { BuiltSensors } from "./built-sensor.js";
 /** One part of what a charter compiles to: what it is, its text, and, for a
  *  compiled primitive, its assets (CORE-FR-220). */
 export type CompiledPart = Catalogue | CharterMd | CompiledPrimitive | McpOrigins | BuiltSensors;
@@ -31,6 +31,13 @@ export class CharterOutput {
 
   /** Every part of it, in the order a build lays them (FR-020, FR-021). */
   get compiledParts(): readonly CompiledPart[] {
-    return [this.catalogue, ...Object.values(this.agentBasedCatalogues), this.mcpOrigins, this.builtSensors, this.charterMd, ...this.compiledPrimitives];
+    return [
+      this.catalogue,
+      ...Object.values(this.agentBasedCatalogues),
+      this.mcpOrigins,
+      this.builtSensors,
+      this.charterMd,
+      ...this.compiledPrimitives,
+    ];
   }
 }

@@ -1,14 +1,14 @@
+import { type DomainFault, FaultsByFile } from "../../../../shared/module.js";
 import { covers } from "../../libs/globs.lib.js";
-import type { Primitive } from "../primitive/primitive.js";
-import { DomainFault, FaultsByFile } from "../../../../shared/module.js";
-import { McpPrimitive } from "../primitive/mcp-primitive.js";
-import { ScriptPrimitive } from "../primitive/script-primitive.js";
-import { BasePrimitive } from "../primitive/base-primitive.js";
-import type { LayerName } from "../primitive/primitive-layer.js";
-import { AgentPrimitive } from "../primitive/agent-primitive.js";
-import { SensorPrimitive } from "../primitive/sensor-primitive.js";
-import { AgentBasedPrimitive } from "../primitive/agent-based-primitive.js";
 import { CharterPrimitiveFault, CharterRootFault } from "../charter.fault.js";
+import { AgentBasedPrimitive } from "../primitive/agent-based-primitive.js";
+import { AgentPrimitive } from "../primitive/agent-primitive.js";
+import { BasePrimitive } from "../primitive/base-primitive.js";
+import { McpPrimitive } from "../primitive/mcp-primitive.js";
+import type { Primitive } from "../primitive/primitive.js";
+import type { LayerName } from "../primitive/primitive-layer.js";
+import { ScriptPrimitive } from "../primitive/script-primitive.js";
+import { SensorPrimitive } from "../primitive/sensor-primitive.js";
 
 /**
  * One charter, read: what the engine brings, what this repository authored,
@@ -64,12 +64,23 @@ export class CharterRoot {
     const faultsByFile: Record<string, readonly DomainFault[]> = {};
     for (const primitive of this.primitives) {
       const namedAgents = [
-        ...(primitive instanceof AgentBasedPrimitive ? (primitive.headers["agent-provider"] ?? []).map((agentName) => ["agent-provider", agentName] as const) : []),
-        ...(primitive instanceof AgentPrimitive && primitive.modelProvider !== undefined ? [["model", primitive.modelProvider] as const] : []),
+        ...(primitive instanceof AgentBasedPrimitive
+          ? (primitive.headers["agent-provider"] ?? []).map((agentName) => ["agent-provider", agentName] as const)
+          : []),
+        ...(primitive instanceof AgentPrimitive && primitive.modelProvider !== undefined
+          ? [["model", primitive.modelProvider] as const]
+          : []),
       ];
       const faults = namedAgents
         .filter(([, agentName]) => !agentNames.includes(agentName))
-        .map(([header, agentName]) => new CharterPrimitiveFault(`"${header}" names "${agentName}", an agent this charter is compiled for none of.`, `Name any of: ${agentNames.join(", ")}.`, { internal: false }));
+        .map(
+          ([header, agentName]) =>
+            new CharterPrimitiveFault(
+              `"${header}" names "${agentName}", an agent this charter is compiled for none of.`,
+              `Name any of: ${agentNames.join(", ")}.`,
+              { internal: false },
+            ),
+        );
       if (faults.length > 0) faultsByFile[primitive.uri] = faults;
     }
     return new FaultsByFile(faultsByFile);
@@ -116,7 +127,9 @@ export class CharterRoot {
 
   /** Every primitive naming one, as `[[<id>]]` (FR-144, FR-163, FR-172). */
   mentionersOf(referencedPrimitive: Primitive): readonly Primitive[] {
-    return this.primitives.filter((mentioner) => this.idsMentionedIn(mentioner).includes(referencedPrimitive.headers.id));
+    return this.primitives.filter((mentioner) =>
+      this.idsMentionedIn(mentioner).includes(referencedPrimitive.headers.id),
+    );
   }
 
   /** The ids one primitive names as `[[<id>]]`, whether the charter holds them
@@ -126,8 +139,12 @@ export class CharterRoot {
   private idsMentionedIn(one: Primitive): readonly string[] {
     return [
       ...[...one.body.matchAll(BasePrimitive.referencePattern)].map(([, id]) => id!),
-      ...(one instanceof AgentPrimitive ? one.headers.tools.flatMap((tool) => tool.match(BasePrimitive.toolReferencePattern)?.[1] ?? []) : []),
-      ...(one instanceof SensorPrimitive ? [...one.headers.run.matchAll(BasePrimitive.referencePattern)].map(([, id]) => id!) : []),
+      ...(one instanceof AgentPrimitive
+        ? one.headers.tools.flatMap((tool) => tool.match(BasePrimitive.toolReferencePattern)?.[1] ?? [])
+        : []),
+      ...(one instanceof SensorPrimitive
+        ? [...one.headers.run.matchAll(BasePrimitive.referencePattern)].map(([, id]) => id!)
+        : []),
     ];
   }
 
@@ -263,7 +280,10 @@ export class CharterRoot {
 
       // What a script runs is one of its own assets, and nothing anywhere
       // else: a build copies those and no other (FR-165).
-      if (primitive instanceof ScriptPrimitive && !primitive.assets.some((assetFile) => primitive.isExecutionFile(assetFile.file)))
+      if (
+        primitive instanceof ScriptPrimitive &&
+        !primitive.assets.some((assetFile) => primitive.isExecutionFile(assetFile.file))
+      )
         addFault(
           primitiveUri,
           new CharterRootFault(
@@ -291,7 +311,11 @@ export class CharterRoot {
             );
           // An mcp origin no layer holds is already said above, as any name nothing
           // holds is.
-          else if (mcpPrimitive instanceof McpPrimitive && mcpTool !== undefined && !mcpPrimitive.headers.tools.includes(mcpTool))
+          else if (
+            mcpPrimitive instanceof McpPrimitive &&
+            mcpTool !== undefined &&
+            !mcpPrimitive.headers.tools.includes(mcpTool)
+          )
             addFault(
               primitiveUri,
               new CharterRootFault(
@@ -325,7 +349,10 @@ export class CharterRoot {
         );
       // A kind reached only by being named — an mcp origin, a script, a template —
       // is dead weight where nothing names it (FR-144, FR-163).
-      if ((primitive.kind === "mcp" || primitive.kind === "script" || primitive.kind === "template") && !referencedIds.has(id))
+      if (
+        (primitive.kind === "mcp" || primitive.kind === "script" || primitive.kind === "template") &&
+        !referencedIds.has(id)
+      )
         addFault(
           primitiveUri,
           new CharterRootFault(

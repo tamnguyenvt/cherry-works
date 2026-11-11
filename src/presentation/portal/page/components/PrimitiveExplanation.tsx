@@ -24,7 +24,11 @@ export function PrimitiveExplanation({ id, onExplain }: { id: string; onExplain:
       </ExplanationSection>
     );
   if (answered.type === "FaultsByFile")
-    return <ExplanationSection title="Not read">The engine will not read this charter, so there is nothing to explain.</ExplanationSection>;
+    return (
+      <ExplanationSection title="Not read">
+        The engine will not read this charter, so there is nothing to explain.
+      </ExplanationSection>
+    );
 
   const { primitive, activatesWhen, useMixins, rationale, hosts, citers, mentioners, testCasesByFile } = answered.data;
   const { kind, description, file, layerName, headers } = primitive.data;
@@ -40,7 +44,8 @@ export function PrimitiveExplanation({ id, onExplain }: { id: string; onExplain:
   );
   // A rationale the charter holds no corpus for is still what the author
   // wrote, so it is said, and said not to resolve, rather than left out.
-  const unresolvedRationale = rationale === undefined && typeof headers.rationale === "string" ? headers.rationale : undefined;
+  const unresolvedRationale =
+    rationale === undefined && typeof headers.rationale === "string" ? headers.rationale : undefined;
   const testCases = Object.entries(testCasesByFile.data);
   // What this one primitive declared, beside what its kind says of all of
   // them: "the harness runs what it says to `run`" is read with what it says.
@@ -122,7 +127,8 @@ export function PrimitiveExplanation({ id, onExplain }: { id: string; onExplain:
         )}
       </ExplanationSection>
       <ExplanationSection title="File">
-        <span className="font-mono text-[11.5px] text-foreground">{file}</span> <span className="text-zinc-500">in the {layerName} layer</span>
+        <span className="font-mono text-[11.5px] text-foreground">{file}</span>{" "}
+        <span className="text-zinc-500">in the {layerName} layer</span>
       </ExplanationSection>
     </div>
   );

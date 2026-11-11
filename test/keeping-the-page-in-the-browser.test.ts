@@ -1,7 +1,7 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { rm, writeFile } from "node:fs/promises";
+import { test } from "node:test";
 
 const root = new URL("../", import.meta.url);
 
@@ -19,7 +19,10 @@ async function cruisePage(name: string, text: string): Promise<{ status: number 
 }
 
 test("a page file that imports node:fs fails the dependency rules", async () => {
-  const run = await cruisePage("probe-fs", 'import { readFileSync } from "node:fs";\nexport const read = readFileSync;\n');
+  const run = await cruisePage(
+    "probe-fs",
+    'import { readFileSync } from "node:fs";\nexport const read = readFileSync;\n',
+  );
 
   assert.notEqual(run.status, 0);
   assert.match(run.stdout, /page-is-browser-code/);

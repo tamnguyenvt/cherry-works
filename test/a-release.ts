@@ -1,4 +1,4 @@
-import { spawnSync, type SpawnSyncReturns } from "node:child_process";
+import { type SpawnSyncReturns, spawnSync } from "node:child_process";
 import { chmod, copyFile, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -40,11 +40,19 @@ export async function inARelease(
     await copyFile(new URL("../scripts/release.ts", import.meta.url), join(fixtureFolder, "scripts/release.ts"));
     // The packages the script imports, as the repository installed them.
     await symlink(fileURLToPath(new URL("../node_modules", import.meta.url)), join(fixtureFolder, "node_modules"));
-    await writeFile(join(fixtureFolder, "package.json"), `{"name": "cherry-works", "version": "${releaseFixture.currentVersion}", "type": "module"}\n`);
-    await writeFile(join(fixtureFolder, "README.md"), `# Fixture\n\nCurrent version: **${releaseFixture.currentVersion}**\n\nKeep this text.\n`);
+    await writeFile(
+      join(fixtureFolder, "package.json"),
+      `{"name": "cherry-works", "version": "${releaseFixture.currentVersion}", "type": "module"}\n`,
+    );
+    await writeFile(
+      join(fixtureFolder, "README.md"),
+      `# Fixture\n\nCurrent version: **${releaseFixture.currentVersion}**\n\nKeep this text.\n`,
+    );
     await writeFile(join(fixtureFolder, "built-contract.d.ts"), releaseFixture.builtContractText);
-    if (releaseFixture.lastContractText !== undefined) await writeFile(join(fixtureFolder, "contract.d.ts"), releaseFixture.lastContractText);
-    if (releaseFixture.changelogText !== undefined) await writeFile(join(fixtureFolder, "CHANGELOG.md"), releaseFixture.changelogText);
+    if (releaseFixture.lastContractText !== undefined)
+      await writeFile(join(fixtureFolder, "contract.d.ts"), releaseFixture.lastContractText);
+    if (releaseFixture.changelogText !== undefined)
+      await writeFile(join(fixtureFolder, "CHANGELOG.md"), releaseFixture.changelogText);
     const commandScript = `#!${process.execPath}
 const fs = require('node:fs');
 const path = require('node:path');
@@ -106,11 +114,25 @@ if (commandName === 'pnpm') {
       await writeFile(commandPath, commandScript);
       await chmod(commandPath, 0o755);
     }
-    const releaseRun = spawnSync(process.execPath, ["--import", import.meta.resolve("tsx"), join(fixtureFolder, "scripts/release.ts"), releaseFixture.nextVersion, ...(releaseFixture.releaseMode === "dry-run" ? ["--dry-run"] : [])], {
-      cwd: fixtureFolder,
-      encoding: "utf8",
-      env: { ...process.env, PATH: `${join(fixtureFolder, "bin")}:${process.env.PATH}`, CW_RELEASE_TEST_MODE: releaseFixture.releaseMode },
-    });
+    const releaseRun = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        import.meta.resolve("tsx"),
+        join(fixtureFolder, "scripts/release.ts"),
+        releaseFixture.nextVersion,
+        ...(releaseFixture.releaseMode === "dry-run" ? ["--dry-run"] : []),
+      ],
+      {
+        cwd: fixtureFolder,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${join(fixtureFolder, "bin")}:${process.env.PATH}`,
+          CW_RELEASE_TEST_MODE: releaseFixture.releaseMode,
+        },
+      },
+    );
     await readReleaseRun(releaseRun, fixtureFolder);
   } finally {
     await rm(fixtureFolder, { recursive: true, force: true });

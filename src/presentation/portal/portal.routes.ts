@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import { type ForAuthoringCharter, type ForBuildingCharter, CharterDTOs } from "#module/charter/module.js";
+import { CharterDTOs, type ForAuthoringCharter, type ForBuildingCharter } from "#module/charter/module.js";
 import { ApplicationService, FaultDTOs } from "#module/shared/module.js";
 import { WorkspaceDTOs } from "#module/workspace/module.js";
 
@@ -46,8 +46,12 @@ export function api(
   app.use("*", async (c, next) => {
     await next();
     if (c.res.status !== 422) return;
-    const faultDTO = await c.res.clone().json().catch(() => undefined) as Partial<FaultDTOs.Fault> | undefined;
-    if (faultDTO?.type === "Fault" && faultDTO.data?.name === "InternalFault") c.res = new Response(c.res.body, { status: 500, headers: c.res.headers });
+    const faultDTO = (await c.res
+      .clone()
+      .json()
+      .catch(() => undefined)) as Partial<FaultDTOs.Fault> | undefined;
+    if (faultDTO?.type === "Fault" && faultDTO.data?.name === "InternalFault")
+      c.res = new Response(c.res.body, { status: 500, headers: c.res.headers });
   });
   // What is left to catch here is hono's own.
   app.onError((raised, c) => {
@@ -73,7 +77,9 @@ export function api(
       }),
       async (c) => {
         const doctorOutcomeDTO = await charterBuildingApp.doctor();
-        return doctorOutcomeDTO.type === "Fault" ? c.json(doctorOutcomeDTO, 422) : c.json(doctorOutcomeDTO.data.faultsByFile, 200);
+        return doctorOutcomeDTO.type === "Fault"
+          ? c.json(doctorOutcomeDTO, 422)
+          : c.json(doctorOutcomeDTO.data.faultsByFile, 200);
       },
     )
     .openapi(
@@ -102,13 +108,18 @@ export function api(
         request: { params: z.object({ id: z.string() }) },
         responses: {
           200: json(CharterDTOs.ExplanationOutcome, "What the engine says of one primitive"),
-          422: json(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold, or holds nothing of it"),
+          422: json(
+            z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]),
+            "The charter does not hold, or holds nothing of it",
+          ),
         },
       }),
       async (c) => {
         const { id } = c.req.valid("param");
         const explanationOutcomeDTO = await charterAuthoringApp.explain(id);
-        return explanationOutcomeDTO.type === "ExplanationOutcome" ? c.json(explanationOutcomeDTO, 200) : c.json(explanationOutcomeDTO, 422);
+        return explanationOutcomeDTO.type === "ExplanationOutcome"
+          ? c.json(explanationOutcomeDTO, 200)
+          : c.json(explanationOutcomeDTO, 422);
       },
     )
     .openapi(
@@ -131,14 +142,19 @@ export function api(
             ...json(CharterDTOs.Primitive, "The primitive written"),
             headers: z.object({ Location: z.string() }),
           },
-          422: json(z.union([FaultDTOs.Faults, FaultDTOs.Fault]), "The answers the kind refused, or an id already claimed"),
+          422: json(
+            z.union([FaultDTOs.Faults, FaultDTOs.Fault]),
+            "The answers the kind refused, or an id already claimed",
+          ),
         },
       }),
       async (c) => {
         const { kind, id, headers, body } = c.req.valid("json");
         const primitiveDTO = await charterAuthoringApp.add(kind, id, headers, body);
         if (primitiveDTO.type !== "Primitive") return c.json(primitiveDTO, 422);
-        return c.json(primitiveDTO, 201, { Location: `/api/charter/root/primitives/${encodeURIComponent(primitiveDTO.data.id)}` });
+        return c.json(primitiveDTO, 201, {
+          Location: `/api/charter/root/primitives/${encodeURIComponent(primitiveDTO.data.id)}`,
+        });
       },
     )
     .openapi(
@@ -180,7 +196,10 @@ export function api(
         responses: {
           200: json(CharterDTOs.Primitive, "The primitive written"),
           412: json(FaultDTOs.Fault, "The file changed on disk after it was opened"),
-          422: json(z.union([FaultDTOs.Faults, FaultDTOs.Fault]), "The answers the kind refused, or a primitive this repository did not author"),
+          422: json(
+            z.union([FaultDTOs.Faults, FaultDTOs.Fault]),
+            "The answers the kind refused, or a primitive this repository did not author",
+          ),
         },
       }),
       async (c) => {
@@ -191,7 +210,8 @@ export function api(
         const openedHash = /^"(.*)"$/.exec(c.req.valid("header")["if-match"] ?? "")?.[1] ?? "";
         const { headers, body } = c.req.valid("json");
         const primitiveDTO = await charterAuthoringApp.rewrite(id, headers, body, openedHash);
-        if (primitiveDTO.type === "Fault" && primitiveDTO.data.name === "PrimitiveChangedFault") return c.json(primitiveDTO, 412);
+        if (primitiveDTO.type === "Fault" && primitiveDTO.data.name === "PrimitiveChangedFault")
+          return c.json(primitiveDTO, 412);
         return primitiveDTO.type === "Primitive" ? c.json(primitiveDTO, 200) : c.json(primitiveDTO, 422);
       },
     )
@@ -238,7 +258,9 @@ export function api(
       }),
       async (c) => {
         const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements(c.req.valid("param").kind);
-        return primitiveRequirementsDTO.type === "Fault" ? c.json(primitiveRequirementsDTO, 422) : c.json(primitiveRequirementsDTO, 200);
+        return primitiveRequirementsDTO.type === "Fault"
+          ? c.json(primitiveRequirementsDTO, 422)
+          : c.json(primitiveRequirementsDTO, 200);
       },
     )
     .openapi(
@@ -261,7 +283,10 @@ export function api(
         path: "/charter/root/build",
         responses: {
           200: json(CharterDTOs.PlanSummary, "What the build wrote and deleted"),
-          422: json(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold, and nothing was written"),
+          422: json(
+            z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]),
+            "The charter does not hold, and nothing was written",
+          ),
         },
       }),
       async (c) => {
@@ -288,7 +313,10 @@ export function api(
         method: "get",
         path: "/charter/root/context",
         responses: {
-          200: json(CharterDTOs.MainContexts, "What the charter puts into each agent's main context, estimated, as cw context lists it"),
+          200: json(
+            CharterDTOs.MainContexts,
+            "What the charter puts into each agent's main context, estimated, as cw context lists it",
+          ),
           422: json(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold"),
         },
       }),
@@ -308,7 +336,9 @@ export function api(
       }),
       async (c) => {
         const workspaceSettingsDTO = await loadWorkspaceSettings();
-        return workspaceSettingsDTO.type === "Fault" ? c.json(workspaceSettingsDTO, 422) : c.json(workspaceSettingsDTO, 200);
+        return workspaceSettingsDTO.type === "Fault"
+          ? c.json(workspaceSettingsDTO, 422)
+          : c.json(workspaceSettingsDTO, 200);
       },
     )
     .openapi(
@@ -357,8 +387,13 @@ export function api(
         },
       }),
       async (c) => {
-        const testSuiteNameDTO = await charterAuthoringApp.writeSuite(c.req.valid("param").name, c.req.valid("json").text);
-        return testSuiteNameDTO.type === "TestSuiteName" ? c.json(testSuiteNameDTO, 200) : c.json(testSuiteNameDTO, 422);
+        const testSuiteNameDTO = await charterAuthoringApp.writeSuite(
+          c.req.valid("param").name,
+          c.req.valid("json").text,
+        );
+        return testSuiteNameDTO.type === "TestSuiteName"
+          ? c.json(testSuiteNameDTO, 200)
+          : c.json(testSuiteNameDTO, 422);
       },
     )
     .openapi(
@@ -383,12 +418,17 @@ export function api(
         path: "/test-suites/outcome",
         responses: {
           200: json(CharterDTOs.TestRunReport, "How every case came out"),
-          422: json(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold, or a test file does not read"),
+          422: json(
+            z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]),
+            "The charter does not hold, or a test file does not read",
+          ),
         },
       }),
       async (c) => {
         const testRunReportDTO = await charterAuthoringApp.test();
-        return testRunReportDTO.type === "TestRunReport" ? c.json(testRunReportDTO, 200) : c.json(testRunReportDTO, 422);
+        return testRunReportDTO.type === "TestRunReport"
+          ? c.json(testRunReportDTO, 200)
+          : c.json(testRunReportDTO, 422);
       },
     )
     .openapi(
@@ -402,7 +442,9 @@ export function api(
       }),
       async (c) => {
         const vendorFoldersDTO = await charterAuthoringApp.vendors();
-        return vendorFoldersDTO.type === "VendorFolders" ? c.json(vendorFoldersDTO, 200) : c.json(vendorFoldersDTO, 422);
+        return vendorFoldersDTO.type === "VendorFolders"
+          ? c.json(vendorFoldersDTO, 200)
+          : c.json(vendorFoldersDTO, 422);
       },
     )
     .openapi(
@@ -416,8 +458,14 @@ export function api(
           ),
         },
         responses: {
-          204: { description: "The source is installed — a charter whole, or every skill of a skills repository — left unstaged" },
-          422: json(FaultDTOs.Fault, "No git on the machine, a source holding neither a charter nor a skill, or what git refused"),
+          204: {
+            description:
+              "The source is installed — a charter whole, or every skill of a skills repository — left unstaged",
+          },
+          422: json(
+            FaultDTOs.Fault,
+            "No git on the machine, a source holding neither a charter nor a skill, or what git refused",
+          ),
         },
       }),
       async (c) => {

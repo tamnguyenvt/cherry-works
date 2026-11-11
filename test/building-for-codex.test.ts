@@ -1,20 +1,28 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
-import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { test } from "node:test";
 import { StampedDocument } from "../src/module/charter/domain/models/projection/stamped-document.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { faultTextOf } from "./answer-of.js";
 import { buildingCharterOf } from "./use-cases-of.js";
 
 const repo = new URL("file:///repo/");
 const inRepo = (path: string) => new URL(path, repo);
-const primitiveText = (kind: string, id: string, headers = "") => `---\nkind: ${kind}\nid: ${id}\ndescription: Instructions for ${id}.\n${headers}---\n\nFollow ${id}.\n`;
+const primitiveText = (kind: string, id: string, headers = "") =>
+  `---\nkind: ${kind}\nid: ${id}\ndescription: Instructions for ${id}.\n${headers}---\n\nFollow ${id}.\n`;
 
 const building = (files: Readonly<Record<string, string>> = {}) => {
   const held = new InMemoryFileReaders({ [inRepo(".cw/settings.json").href]: '{"agents":["codex"]}', ...files });
-  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), {}, new InMemoryReporter(), {});
+  const charterRuntimeApp = buildingCharterOf(
+    held,
+    new InMemoryFileOutput(held),
+    new InMemoryTokenCounter(),
+    {},
+    new InMemoryReporter(),
+    {},
+  );
   return { held, charterRuntimeApp };
 };
 
@@ -59,11 +67,27 @@ test("a Claude-only build does not clean nested Codex instructions", async () =>
 
 test("Codex builds guides, skills, playbooks and model-specific agents without Claude files", async () => {
   const { held, charterRuntimeApp } = building({
-    [inRepo(".cw/charter/primitive/guide/types/index.md").href]: primitiveText("guide", "types", 'globs: ["src/**/*.ts"]\n'),
+    [inRepo(".cw/charter/primitive/guide/types/index.md").href]: primitiveText(
+      "guide",
+      "types",
+      'globs: ["src/**/*.ts"]\n',
+    ),
     [inRepo(".cw/charter/primitive/guide/general/index.md").href]: primitiveText("guide", "general"),
-    [inRepo(".cw/charter/primitive/skill/team/review/index.md").href]: primitiveText("skill", "team/review", 'triggers: ["review"]\n'),
-    [inRepo(".cw/charter/primitive/playbook/ship/index.md").href]: primitiveText("playbook", "ship", 'triggers: ["ship"]\n'),
-    [inRepo(".cw/charter/primitive/agent/reviewer/index.md").href]: primitiveText("agent", "reviewer", 'tools: ["Read"]\nmodel: codex:gpt-5\n'),
+    [inRepo(".cw/charter/primitive/skill/team/review/index.md").href]: primitiveText(
+      "skill",
+      "team/review",
+      'triggers: ["review"]\n',
+    ),
+    [inRepo(".cw/charter/primitive/playbook/ship/index.md").href]: primitiveText(
+      "playbook",
+      "ship",
+      'triggers: ["ship"]\n',
+    ),
+    [inRepo(".cw/charter/primitive/agent/reviewer/index.md").href]: primitiveText(
+      "agent",
+      "reviewer",
+      'tools: ["Read"]\nmodel: codex:gpt-5\n',
+    ),
   });
   const built = await charterRuntimeApp.build();
   assert.equal(built.type, "PlanSummary");
@@ -73,7 +97,10 @@ test("Codex builds guides, skills, playbooks and model-specific agents without C
   assert.match(entryText, /Follow general\./);
   assert.doesNotMatch(entryText, /Follow types\./);
   assert.match(await held.read(inRepo(".agents/skills/team-review/SKILL.md")), /name: team-review/);
-  assert.match(await held.read(inRepo(".agents/skills/ship/SKILL.md")), /Read and follow .cw\/out\/playbook\/ship\/index.md/);
+  assert.match(
+    await held.read(inRepo(".agents/skills/ship/SKILL.md")),
+    /Read and follow .cw\/out\/playbook\/ship\/index.md/,
+  );
   const agentText = await held.read(inRepo(".codex/agents/reviewer.toml"));
   assert.match(agentText, /model = "gpt-5"/);
   assert.match(agentText, /developer_instructions = "Read and follow/);
@@ -110,11 +137,17 @@ test("Codex preserves repository instructions and configuration, and a second bu
 test("embedded guides include mixins, keep links rooted correctly and count their body once", async () => {
   const guideFile = inRepo(".cw/charter/primitive/guide/team/general/index.md");
   const { held, charterRuntimeApp } = building({
-    [guideFile.href]: primitiveText("guide", "team/general", "globs: []\nmixins: [opening]\n") + '\nRead [[reference]] and [asset](./notes.md). Keep `./notes.md` literal.\n',
+    [guideFile.href]:
+      primitiveText("guide", "team/general", "globs: []\nmixins: [opening]\n") +
+      "\nRead [[reference]] and [asset](./notes.md). Keep `./notes.md` literal.\n",
     [inRepo(".cw/charter/primitive/guide/team/general/notes.md").href]: "Guide asset.",
     [inRepo(".cw/charter/primitive/mixin/opening/index.md").href]: primitiveText("mixin", "opening"),
     [inRepo(".cw/charter/primitive/corpus/reference/index.md").href]: primitiveText("corpus", "reference"),
-    [inRepo(".cw/charter/primitive/guide/scoped/index.md").href]: primitiveText("guide", "scoped", 'globs: ["src/**"]\n'),
+    [inRepo(".cw/charter/primitive/guide/scoped/index.md").href]: primitiveText(
+      "guide",
+      "scoped",
+      'globs: ["src/**"]\n',
+    ),
   });
   assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
   const entryText = await held.read(inRepo("AGENTS.md"));
@@ -130,8 +163,14 @@ test("embedded guides include mixins, keep links rooted correctly and count thei
     const codexContext = context.data.contexts[0]!.data;
     const entryLoad = codexContext.sessionLoads.find((load) => load.data.id === "AGENTS.md")!;
     assert.equal(entryLoad.data.tokens, new InMemoryTokenCounter().countTokens(entryText));
-    assert.equal(codexContext.sessionLoads.some((load) => load.data.id === "team/general"), false);
-    assert.equal(codexContext.fileLoads.some((load) => load.data.id === "src/AGENTS.md"), true);
+    assert.equal(
+      codexContext.sessionLoads.some((load) => load.data.id === "team/general"),
+      false,
+    );
+    assert.equal(
+      codexContext.fileLoads.some((load) => load.data.id === "src/AGENTS.md"),
+      true,
+    );
   }
   held.remove(guideFile);
   held.remove(inRepo(".cw/charter/primitive/guide/team/general/notes.md"));
@@ -140,7 +179,8 @@ test("embedded guides include mixins, keep links rooted correctly and count thei
 });
 
 test("Codex merges its MCP fields into an existing cw table without replacing user extensions", async () => {
-  const configText = '[mcp_servers."cw"]\ncommand = "custom"\nargs = ["old"]\nstartup_timeout_sec = 30\n[mcp_servers.cw.env]\nKEEP = "yes"\n';
+  const configText =
+    '[mcp_servers."cw"]\ncommand = "custom"\nargs = ["old"]\nstartup_timeout_sec = 30\n[mcp_servers.cw.env]\nKEEP = "yes"\n';
   const { held, charterRuntimeApp } = building({ [inRepo(".codex/config.toml").href]: configText });
   assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
   const config = await held.read(inRepo(".codex/config.toml"));
@@ -163,7 +203,11 @@ test("Codex invocation policies and cleanup leave handwritten skills alone", asy
   const skillFile = inRepo(".cw/charter/primitive/skill/review/index.md");
   const { held, charterRuntimeApp } = building({
     [skillFile.href]: primitiveText("skill", "review", 'triggers: ["review"]\ndisable-model-invocation: true\n'),
-    [inRepo(".cw/charter/primitive/skill/internal/index.md").href]: primitiveText("skill", "internal", 'triggers: ["internal"]\ndisable-user-invocation: true\n'),
+    [inRepo(".cw/charter/primitive/skill/internal/index.md").href]: primitiveText(
+      "skill",
+      "internal",
+      'triggers: ["internal"]\ndisable-user-invocation: true\n',
+    ),
     [inRepo(".agents/skills/handwritten/SKILL.md").href]: "Keep this skill.\n",
   });
   await charterRuntimeApp.build();
@@ -189,8 +233,12 @@ test("Codex context estimates work offline and exact counting reports its unsupp
 test("Codex translates only literal Bash prefixes, with native deny precedence and visible fallbacks", async () => {
   const postureFile = inRepo(".cw/charter/primitive/posture/git/index.md");
   const { held, charterRuntimeApp } = building({
-    [postureFile.href]: primitiveText("posture", "git", 'allow: ["Bash(git push:*)", "Bash(git status)", "Bash(npm run test*)"]\ndeny: ["Bash(git push --force:*)", "Read(.env)", "Bash(git *:*)", "Bash(git status && echo:*)"]\n'),
-    [inRepo(".codex/rules/handwritten.rules").href]: '# My own rules.\n',
+    [postureFile.href]: primitiveText(
+      "posture",
+      "git",
+      'allow: ["Bash(git push:*)", "Bash(git status)", "Bash(npm run test*)"]\ndeny: ["Bash(git push --force:*)", "Read(.env)", "Bash(git *:*)", "Bash(git status && echo:*)"]\n',
+    ),
+    [inRepo(".codex/rules/handwritten.rules").href]: "# My own rules.\n",
   });
   assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
   const rulesText = await held.read(inRepo(".codex/rules/cw.rules"));
@@ -198,25 +246,34 @@ test("Codex translates only literal Bash prefixes, with native deny precedence a
   assert.match(rulesText, /pattern = \["git","push","--force"\], decision = "forbidden"/);
   assert.equal((rulesText.match(/prefix_rule\(/g) ?? []).length, 2);
   const entryText = await held.read(inRepo("AGENTS.md"));
-  for (const permission of ['Bash(git status)', 'Bash(npm run test*)', 'Bash(git *:*)', 'Bash(git status && echo:*)']) {
+  for (const permission of ["Bash(git status)", "Bash(npm run test*)", "Bash(git *:*)", "Bash(git status && echo:*)"]) {
     assert.ok(entryText.includes(`Permission ${JSON.stringify(permission)}`));
   }
   held.remove(postureFile);
   assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
   assert.equal(await held.readIfThere(inRepo(".codex/rules/cw.rules")), undefined);
-  assert.equal(await held.read(inRepo(".codex/rules/handwritten.rules")), '# My own rules.\n');
+  assert.equal(await held.read(inRepo(".codex/rules/handwritten.rules")), "# My own rules.\n");
 });
 
 test("Codex installs native sensors with compiled script paths and preserves existing hook groups", async () => {
   const stopFile = inRepo(".cw/charter/primitive/sensor/check-stop/index.md");
   const startFile = inRepo(".cw/charter/primitive/sensor/check-start/index.md");
-  const configText = '[mcp_servers.other]\ncommand = "other"\n\n[[hooks.Stop]]\n[[hooks.Stop.hooks]]\ntype = "command"\ncommand = "echo user hook"\n';
+  const configText =
+    '[mcp_servers.other]\ncommand = "other"\n\n[[hooks.Stop]]\n[[hooks.Stop.hooks]]\ntype = "command"\ncommand = "echo user hook"\n';
   const { held, charterRuntimeApp } = building({
     [inRepo(".codex/config.toml").href]: configText,
-    [stopFile.href]: primitiveText("sensor", "check-stop", 'signal: Stop\nrun: \'node "[[team/check]]"\'\n'),
-    [inRepo(".cw/charter/primitive/sensor/check-stop-two/index.md").href]: primitiveText("sensor", "check-stop-two", 'signal: Stop\nrun: echo second\n'),
-    [startFile.href]: primitiveText("sensor", "check-start", 'signal: SessionStart\nrun: echo start\n'),
-    [inRepo(".cw/charter/primitive/script/team/check/index.md").href]: primitiveText("script", "team/check", 'executionPath: ./run.mjs\n'),
+    [stopFile.href]: primitiveText("sensor", "check-stop", "signal: Stop\nrun: 'node \"[[team/check]]\"'\n"),
+    [inRepo(".cw/charter/primitive/sensor/check-stop-two/index.md").href]: primitiveText(
+      "sensor",
+      "check-stop-two",
+      "signal: Stop\nrun: echo second\n",
+    ),
+    [startFile.href]: primitiveText("sensor", "check-start", "signal: SessionStart\nrun: echo start\n"),
+    [inRepo(".cw/charter/primitive/script/team/check/index.md").href]: primitiveText(
+      "script",
+      "team/check",
+      "executionPath: ./run.mjs\n",
+    ),
     [inRepo(".cw/charter/primitive/script/team/check/run.mjs").href]: 'process.stdout.write("{}");\n',
   });
   assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
@@ -225,7 +282,11 @@ test("Codex installs native sensors with compiled script paths and preserves exi
   assert.match(builtConfigText, /command = "echo user hook"/);
   assert.match(builtConfigText, /\[\[hooks.SessionStart\]\]/);
   assert.equal((builtConfigText.match(/\[\[hooks.Stop\]\]/g) ?? []).length, 2);
-  assert.ok(builtConfigText.includes(JSON.stringify('cd -- "$(git rev-parse --show-toplevel)" && cw sensor run Stop --agent codex')));
+  assert.ok(
+    builtConfigText.includes(
+      JSON.stringify('cd -- "$(git rev-parse --show-toplevel)" && cw sensor run Stop --agent codex'),
+    ),
+  );
   assert.doesNotMatch(builtConfigText, /cw-session-tokens-counter/);
   const rebuilt = await charterRuntimeApp.build();
   assert.equal(rebuilt.type, "PlanSummary");
@@ -244,7 +305,11 @@ test("Codex installs native sensors with compiled script paths and preserves exi
 test("Codex filesystem posture merges a native profile and preserves it until manually removed", async () => {
   const postureFile = inRepo(".cw/charter/primitive/posture/files/index.md");
   const { held, charterRuntimeApp } = building({
-    [postureFile.href]: primitiveText("posture", "files", 'allow: ["Read(docs/**)", "Write(src/**)", "Write(.env)"]\ndeny: ["Read(.env)", "Edit(vendor/**)", "**/credentials.json", "/absolute/secrets"]\n'),
+    [postureFile.href]: primitiveText(
+      "posture",
+      "files",
+      'allow: ["Read(docs/**)", "Write(src/**)", "Write(.env)"]\ndeny: ["Read(.env)", "Edit(vendor/**)", "**/credentials.json", "/absolute/secrets"]\n',
+    ),
     [inRepo(".codex/config.toml").href]: 'model = "custom"\n[mcp_servers.other]\ncommand = "other"\n',
   });
   const built = await charterRuntimeApp.build();
@@ -271,7 +336,7 @@ test("Codex filesystem posture merges a native profile and preserves it until ma
 test("directory guide files preserve user sections, condition narrower globs, rebase links and retire stale sections", async () => {
   const guideFile = inRepo(".cw/charter/primitive/guide/types/index.md");
   const { held, charterRuntimeApp } = building({
-    [guideFile.href]: primitiveText("guide", "types", 'globs: ["src/module/**/*.ts", "main.ts"]\n') + '\nRead [[reason]].\n',
+    [guideFile.href]: `${primitiveText("guide", "types", 'globs: ["src/module/**/*.ts", "main.ts"]\n')}\nRead [[reason]].\n`,
     [inRepo(".cw/charter/primitive/corpus/reason/index.md").href]: primitiveText("corpus", "reason"),
     [inRepo("src/module/AGENTS.md").href]: "# Authored instructions\nKeep me.\n",
   });
@@ -291,7 +356,11 @@ test("directory guide files preserve user sections, condition narrower globs, re
 test("removed events are no longer accepted as charter sensor signals", async () => {
   for (const signal of ["Notification", "Interrupt"]) {
     const { held, charterRuntimeApp } = building({
-      [inRepo(".cw/charter/primitive/sensor/notify/index.md").href]: primitiveText("sensor", "notify", `signal: ${signal}\nrun: echo notify\n`),
+      [inRepo(".cw/charter/primitive/sensor/notify/index.md").href]: primitiveText(
+        "sensor",
+        "notify",
+        `signal: ${signal}\nrun: echo notify\n`,
+      ),
     });
     for (const outcome of [await charterRuntimeApp.preview(), await charterRuntimeApp.build()]) {
       assert.equal(outcome.type, "FaultsByFile");
@@ -305,13 +374,16 @@ test("removed events are no longer accepted as charter sensor signals", async ()
 test("Codex uses a fixed large instruction byte limit and remains stable", async () => {
   const { held, charterRuntimeApp } = building({
     [inRepo(".codex/config.toml").href]: "project_doc_max_bytes = 131072\n",
-    [inRepo(".cw/charter/primitive/guide/types/index.md").href]: primitiveText("guide", "types", 'globs: ["src/**"]\n') + "Large generated guide.\n".repeat(2000),
+    [inRepo(".cw/charter/primitive/guide/types/index.md").href]:
+      primitiveText("guide", "types", 'globs: ["src/**"]\n') + "Large generated guide.\n".repeat(2000),
   });
   assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
   const config = await held.read(inRepo(".codex/config.toml"));
   const byteLimit = Number(config.match(/project_doc_max_bytes = (\d+)/)?.[1]);
   assert.equal(byteLimit, 1_048_576);
-  const combinedBytes = new TextEncoder().encode(await held.read(inRepo("AGENTS.md"))).length + new TextEncoder().encode(await held.read(inRepo("src/AGENTS.md"))).length;
+  const combinedBytes =
+    new TextEncoder().encode(await held.read(inRepo("AGENTS.md"))).length +
+    new TextEncoder().encode(await held.read(inRepo("src/AGENTS.md"))).length;
   assert.ok(byteLimit > combinedBytes);
   const rebuilt = await charterRuntimeApp.build();
   if (rebuilt.type === "PlanSummary") assert.deepEqual(rebuilt.data.edited, []);
@@ -321,12 +393,18 @@ test("shared lifecycle events compile to the signal runner for both Claude and C
   for (const signal of ["PermissionRequest", "SubagentStart", "PostCompact"]) {
     const { held, charterRuntimeApp } = building({
       [inRepo(".cw/settings.json").href]: '{"agents":["claude","codex"]}',
-      [inRepo(".cw/charter/primitive/sensor/check/index.md").href]: primitiveText("sensor", "check", `signal: ${signal}\nrun: "true"\n`),
+      [inRepo(".cw/charter/primitive/sensor/check/index.md").href]: primitiveText(
+        "sensor",
+        "check",
+        `signal: ${signal}\nrun: "true"\n`,
+      ),
     });
     assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
     assert.ok((await held.read(inRepo(".codex/config.toml"))).includes(`cw sensor run ${signal} --agent codex`));
     const claudeSettings = JSON.parse(await held.read(inRepo(".claude/settings.json")));
-    assert.deepEqual(claudeSettings.hooks[signal], [{ hooks: [{ type: "command", command: `cw sensor run ${signal} --agent claude` }] }]);
+    assert.deepEqual(claudeSettings.hooks[signal], [
+      { hooks: [{ type: "command", command: `cw sensor run ${signal} --agent claude` }] },
+    ]);
   }
 });
 
@@ -334,15 +412,45 @@ test("only posture and sensor are scoped, while guides, skills and agents are sh
   const { held, charterRuntimeApp } = building({
     [inRepo(".cw/settings.json").href]: '{"agents":["claude","codex"]}',
     [inRepo(".cw/charter/primitive/guide/shared-guide/index.md").href]: primitiveText("guide", "shared-guide"),
-    [inRepo(".cw/charter/primitive/skill/shared-skill/index.md").href]: primitiveText("skill", "shared-skill", 'triggers: [test]\n'),
-    [inRepo(".cw/charter/primitive/agent/shared-agent/index.md").href]: primitiveText("agent", "shared-agent", 'tools: [Read]\n'),
-    ...Object.fromEntries(["claude", "codex"].flatMap((agent) => [
-      [inRepo(`.cw/charter/primitive/sensor/${agent}-sensor/index.md`).href, primitiveText("sensor", `${agent}-sensor`, `agent-provider: [${agent}]\nsignal: ${agent === "claude" ? "SessionStart" : "SessionEnd"}\nrun: echo ${agent}\n`)],
-      [inRepo(`.cw/charter/primitive/posture/${agent}-posture/index.md`).href, primitiveText("posture", `${agent}-posture`, `agent-provider: [${agent}]\nallow: ["Bash(echo ${agent}:*)"]\ndeny: ["Bash(echo deny-${agent}:*)"]\n`)],
-    ])),
+    [inRepo(".cw/charter/primitive/skill/shared-skill/index.md").href]: primitiveText(
+      "skill",
+      "shared-skill",
+      "triggers: [test]\n",
+    ),
+    [inRepo(".cw/charter/primitive/agent/shared-agent/index.md").href]: primitiveText(
+      "agent",
+      "shared-agent",
+      "tools: [Read]\n",
+    ),
+    ...Object.fromEntries(
+      ["claude", "codex"].flatMap((agent) => [
+        [
+          inRepo(`.cw/charter/primitive/sensor/${agent}-sensor/index.md`).href,
+          primitiveText(
+            "sensor",
+            `${agent}-sensor`,
+            `agent-provider: [${agent}]\nsignal: ${agent === "claude" ? "SessionStart" : "SessionEnd"}\nrun: echo ${agent}\n`,
+          ),
+        ],
+        [
+          inRepo(`.cw/charter/primitive/posture/${agent}-posture/index.md`).href,
+          primitiveText(
+            "posture",
+            `${agent}-posture`,
+            `agent-provider: [${agent}]\nallow: ["Bash(echo ${agent}:*)"]\ndeny: ["Bash(echo deny-${agent}:*)"]\n`,
+          ),
+        ],
+      ]),
+    ),
   });
   assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
-  for (const file of [".claude/rules/shared-guide.md", ".claude/skills/shared-skill/SKILL.md", ".claude/agents/shared-agent.md", ".agents/skills/shared-skill/SKILL.md", ".codex/agents/shared-agent.toml"])
+  for (const file of [
+    ".claude/rules/shared-guide.md",
+    ".claude/skills/shared-skill/SKILL.md",
+    ".claude/agents/shared-agent.md",
+    ".agents/skills/shared-skill/SKILL.md",
+    ".codex/agents/shared-agent.toml",
+  ])
     assert.ok(await held.readIfThere(inRepo(file)), file);
   assert.match(await held.read(inRepo("AGENTS.md")), /Follow shared-guide/);
   const claudeSettings = JSON.parse(await held.read(inRepo(".claude/settings.json")));
@@ -356,7 +464,10 @@ test("only posture and sensor are scoped, while guides, skills and agents are sh
   const commonEntries = JSON.parse(await held.read(inRepo(".cw/out/catalogue.json"))) as { id: string }[];
   assert.ok(commonEntries.some((entry) => entry.id === "shared-skill"));
   for (const agent of ["claude", "codex"]) {
-    const providerEntries = JSON.parse(await held.read(inRepo(`.cw/out/catalogue.${agent}.json`))) as { kind: string; id: string }[];
+    const providerEntries = JSON.parse(await held.read(inRepo(`.cw/out/catalogue.${agent}.json`))) as {
+      kind: string;
+      id: string;
+    }[];
     assert.ok(providerEntries.every((entry) => ["posture", "sensor"].includes(entry.kind)));
     assert.ok(!providerEntries.some((entry) => entry.id.startsWith(agent === "claude" ? "codex-" : "claude-")));
   }
@@ -367,8 +478,16 @@ test("shared entries appear once in the common catalogue and provider catalogues
     [inRepo(".cw/settings.json").href]: '{"agents":["claude","codex"]}',
     [inRepo(".cw/out/catalog.json").href]: '[{"id":"obsolete"}]',
     [inRepo(".cw/charter/primitive/guide/shared/index.md").href]: primitiveText("guide", "shared"),
-    [inRepo(".cw/charter/primitive/sensor/empty-list/index.md").href]: primitiveText("sensor", "empty-list", "agent-provider: []\nsignal: Stop\nrun: echo empty\n"),
-    [inRepo(".cw/charter/primitive/posture/all-providers/index.md").href]: primitiveText("posture", "all-providers", 'agent-provider: [claude, codex]\nallow: ["Bash(echo:*)"]\ndeny: ["Bash(echo secret:*)"]\n'),
+    [inRepo(".cw/charter/primitive/sensor/empty-list/index.md").href]: primitiveText(
+      "sensor",
+      "empty-list",
+      "agent-provider: []\nsignal: Stop\nrun: echo empty\n",
+    ),
+    [inRepo(".cw/charter/primitive/posture/all-providers/index.md").href]: primitiveText(
+      "posture",
+      "all-providers",
+      'agent-provider: [claude, codex]\nallow: ["Bash(echo:*)"]\ndeny: ["Bash(echo secret:*)"]\n',
+    ),
   });
   assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
   assert.equal(await held.readIfThere(inRepo(".cw/out/catalog.json")), undefined);
@@ -385,7 +504,10 @@ test("shared entries appear once in the common catalogue and provider catalogues
     const catalogueText = await held.read(inRepo(`.cw/out/catalogue.${agent}.json`));
     const catalogueEntries = JSON.parse(catalogueText) as { id: string }[];
     assert.ok(!catalogueEntries.some((entry) => commonEntries.some((commonEntry) => commonEntry.id === entry.id)));
-    assert.equal(catalogueEntries.some((entry) => entry.id === "cw-session-tokens-counter-on-stop"), agent === "claude");
+    assert.equal(
+      catalogueEntries.some((entry) => entry.id === "cw-session-tokens-counter-on-stop"),
+      agent === "claude",
+    );
     assert.ok(catalogueEntries.some((entry) => entry.id === "all-providers"));
     assert.doesNotMatch(catalogueText, /agent-provider/);
   }

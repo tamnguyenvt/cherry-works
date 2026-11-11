@@ -1,6 +1,11 @@
-import type { CharterOutput, CharterRoot, MainContextText, ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
-import { mergedEntryFileText, mergedSettingsText } from "../helper.js";
+import type {
+  CharterOutput,
+  CharterRoot,
+  MainContextText,
+  ProviderComponent,
+} from "../../app/port/out/managing-local-agent-output.port.js";
 import { AgentProjection } from "../agent-projection.base.js";
+import { mergedEntryFileText, mergedSettingsText } from "../helper.js";
 import { ClaudeComponentFactory } from "./claude-component.factory.js";
 import { ClaudeMainContextFactory } from "./claude-main-context.factory.js";
 
@@ -51,7 +56,11 @@ export class ClaudeProjection extends AgentProjection {
     return CLAUDE_PLACE_BY_KIND[component.kind]!(component.id);
   }
 
-  protected override contentsOf(component: ProviderComponent, laidText: string, currentText: string | undefined): string {
+  protected override contentsOf(
+    component: ProviderComponent,
+    laidText: string,
+    currentText: string | undefined,
+  ): string {
     switch (component.kind) {
       case "settings":
       case "mcp-config":

@@ -1,4 +1,10 @@
-import { ProjectionPlan, WritePlan, type CharterOutput, type ForManagingLocalOutput, type OutputPart } from "../../app/port/out/managing-local-output.port.js";
+import {
+  type CharterOutput,
+  type ForManagingLocalOutput,
+  type OutputPart,
+  ProjectionPlan,
+  WritePlan,
+} from "../../app/port/out/managing-local-output.port.js";
 
 /** A compiled charter laid in memory: each part at its path inside the
  *  output, and every output it was handed and plan it laid kept, for a test
@@ -31,7 +37,8 @@ export class InMemoryLocalRepo implements ForManagingLocalOutput {
 
   async writePlan(buildPlan: ProjectionPlan): Promise<void> {
     this.laidPlans.push(buildPlan);
-    for (const { path, contents } of buildPlan.projectionPlan) if (typeof contents === "string") this.textByPlace.set(path, contents);
+    for (const { path, contents } of buildPlan.projectionPlan)
+      if (typeof contents === "string") this.textByPlace.set(path, contents);
   }
 
   async loadLaidText(outputPart: OutputPart): Promise<string | undefined> {

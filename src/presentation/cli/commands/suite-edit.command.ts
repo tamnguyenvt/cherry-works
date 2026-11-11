@@ -1,6 +1,14 @@
 import { TEST_DIRECTORY } from "#module/charter/module.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { editInEditor, printFault } from "./helper.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
 
 const OPTIONS = {
   name: {
@@ -26,12 +34,18 @@ export class SuiteEditCommand implements Command<typeof OPTIONS> {
     const testSuitesDTO = await charterAuthoringApp.suites();
     if (testSuitesDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(testSuitesDTO) };
     if (!testSuitesDTO.data.testSuites.some((testSuite) => testSuite.data.name === name))
-      return { code: EXIT_FAILURE, problem: `${TEST_DIRECTORY}/ holds no test file called "${name ?? ""}".\n  Run "cw suite add" to write a new one.\n` };
+      return {
+        code: EXIT_FAILURE,
+        problem: `${TEST_DIRECTORY}/ holds no test file called "${name ?? ""}".\n  Run "cw suite add" to write a new one.\n`,
+      };
 
     const file = `${TEST_DIRECTORY}/${name}`;
     const problem = await editInEditor(cwd, file);
     if (problem !== undefined) return { code: EXIT_FAILURE, problem };
 
-    return { code: EXIT_OK, result: [`Closed ${file}.`, 'Run "cw test" to see how its cases come out.', ""].join("\n") };
+    return {
+      code: EXIT_OK,
+      result: [`Closed ${file}.`, 'Run "cw test" to see how its cases come out.', ""].join("\n"),
+    };
   }
 }

@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { inTheBrowser } from "./in-the-browser.js";
 
 test("the header reads as the mockup draws it: the brand, the search, Build and Doctor", async () => {
@@ -9,7 +9,9 @@ test("the header reads as the mockup draws it: the brand, the search, Build and 
     assert.match(await header.innerText(), /^Cherry Works/);
     assert.equal(await header.getByPlaceholder("Search everything").count(), 1);
     assert.deepEqual(
-      await header.getByRole("button").evaluateAll((buttons) => buttons.map((one) => one.getAttribute("aria-label") ?? one.textContent)),
+      await header
+        .getByRole("button")
+        .evaluateAll((buttons) => buttons.map((one) => one.getAttribute("aria-label") ?? one.textContent)),
       ["Build", "Doctor"],
     );
   });
@@ -23,7 +25,10 @@ test("the four tabs are shown, the repository charter first, and the one clicked
     await page.getByRole("tab", { name: "Vendor" }).click();
 
     assert.equal(await page.getByRole("tab", { selected: true }).innerText(), "Vendor");
-    assert.equal(await page.getByRole("tabpanel").getAttribute("aria-labelledby"), await page.getByRole("tab", { name: "Vendor" }).getAttribute("id"));
+    assert.equal(
+      await page.getByRole("tabpanel").getAttribute("aria-labelledby"),
+      await page.getByRole("tab", { name: "Vendor" }).getAttribute("id"),
+    );
   });
 });
 

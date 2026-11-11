@@ -29,7 +29,10 @@ module.exports = {
         "strings, YAML, TOML — so nothing else of it imports one, and a parser " +
         "is swapped in one file. They import nothing else outside the modules.",
       from: { path: "^src/module/[^/]+/domain/libs/" },
-      to: { pathNot: "^src/module/[^/]+/(app|domain)/|^src/module/[^/]+/module\\.ts$|node_modules/.*/(lodash-es|picomatch|zod|yaml|smol-toml)/" },
+      to: {
+        pathNot:
+          "^src/module/[^/]+/(app|domain)/|^src/module/[^/]+/module\\.ts$|node_modules/.*/(lodash-es|picomatch|zod|yaml|smol-toml)/",
+      },
     },
     {
       name: "module-is-entered-through-module-ts",
@@ -80,7 +83,10 @@ module.exports = {
         "They import zod, the other DTO files and dto() through the kernel's " +
         "module.ts, and nothing else.",
       from: { path: "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$" },
-      to: { pathNot: "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$|^src/module/shared/module\\.ts$|node_modules/.*/zod/" },
+      to: {
+        pathNot:
+          "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$|^src/module/shared/module\\.ts$|node_modules/.*/zod/",
+      },
     },
     {
       name: "page-is-browser-code",
@@ -173,9 +179,7 @@ module.exports = {
     {
       name: "shared-belongs-to-no-module",
       severity: "error",
-      comment:
-        "The kernel every module reads holds what is none's: it imports " +
-        "nothing of any (CORE-FR-222).",
+      comment: "The kernel every module reads holds what is none's: it imports " + "nothing of any (CORE-FR-222).",
       from: { path: "^src/module/shared/" },
       to: { path: "^src/module/(charter|runtime|workspace)/" },
     },

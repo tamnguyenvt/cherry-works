@@ -1,5 +1,5 @@
-import { SkillPrimitive, type SkillHeaders } from "../models/primitive/skill-primitive.js";
 import { PrimitiveLayer } from "../models/primitive/primitive-layer.js";
+import { type SkillHeaders, SkillPrimitive } from "../models/primitive/skill-primitive.js";
 
 /** How a primitive of this charter is authored, brought by the engine to every
  *  repository it governs (FR-022). Its triggers are the requests to write one
@@ -9,12 +9,7 @@ export class CwAuthorSkill extends SkillPrimitive {
     const skillHeaders: SkillHeaders = {
       id: "cw-author",
       description: "Author a new primitive of this repository's charter, asking cw what its kind requires.",
-      triggers: [
-        "write a rule",
-        "add a standard",
-        "write a skill",
-        "author a primitive of the charter",
-      ],
+      triggers: ["write a rule", "add a standard", "write a skill", "author a primitive of the charter"],
     };
     super(
       skillHeaders,

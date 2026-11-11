@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { BasePrimitive, type RequiredHeaders, type AssetFile } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
 import { McpAuthMethod } from "../mcp/mcp-auth-method.js";
+import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
+import type { PrimitiveLayer } from "./primitive-layer.js";
 
 /**
  * Whether a developer's credential may be sent to this endpoint: `https`, or
@@ -14,7 +14,10 @@ import { McpAuthMethod } from "../mcp/mcp-auth-method.js";
 function isSecureEndpoint(endpoint: string): boolean {
   if (!URL.canParse(endpoint)) return false;
   const endpointURL = new URL(endpoint);
-  return endpointURL.protocol === "https:" || (endpointURL.protocol === "http:" && ["127.0.0.1", "localhost"].includes(endpointURL.hostname));
+  return (
+    endpointURL.protocol === "https:" ||
+    (endpointURL.protocol === "http:" && ["127.0.0.1", "localhost"].includes(endpointURL.hostname))
+  );
 }
 
 /**
@@ -43,46 +46,55 @@ export class McpPrimitive extends BasePrimitive {
   /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
-  static override readonly schema = super.headersSchema().extend({
-    /** Reached over HTTP. Plain `http` only to this machine, for a server under
-     *  test: anything else would send a developer's credential in the clear. */
-    endpoint: BasePrimitive.goodLineSchema
-      .refine(isSecureEndpoint, {
-        message: `"endpoint" is an https:// URL, or http:// to 127.0.0.1 or localhost for a server under test.`,
-      })
-      .optional(),
-    /** Started as a local process, spoken to over its standard input and output. */
-    command: BasePrimitive.goodLineSchema.optional(),
-    args: z.array(BasePrimitive.goodLineSchema).readonly().optional(),
-    auth: z.array(z.enum(McpAuthMethod.names)).min(1).readonly().optional(),
-    /** The environment variable a command reads its token from. */
-    tokenEnv: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).optional(),
-    /** The mcp origin inside that server: a repository, a database, a channel. */
-    path: BasePrimitive.goodLineSchema.optional(),
-    /** The server's tools the agent may use there, by the server's own names. */
-    tools: BasePrimitive.goodArraySchema,
-  }).superRefine((headers, context) => {
-    const addFault = (message: string) => context.addIssue({ code: "custom", message });
-    const { endpoint, command, args, auth, tokenEnv } = headers;
+  static override readonly schema = super
+    .headersSchema()
+    .extend({
+      /** Reached over HTTP. Plain `http` only to this machine, for a server under
+       *  test: anything else would send a developer's credential in the clear. */
+      endpoint: BasePrimitive.goodLineSchema
+        .refine(isSecureEndpoint, {
+          message: `"endpoint" is an https:// URL, or http:// to 127.0.0.1 or localhost for a server under test.`,
+        })
+        .optional(),
+      /** Started as a local process, spoken to over its standard input and output. */
+      command: BasePrimitive.goodLineSchema.optional(),
+      args: z.array(BasePrimitive.goodLineSchema).readonly().optional(),
+      auth: z.array(z.enum(McpAuthMethod.names)).min(1).readonly().optional(),
+      /** The environment variable a command reads its token from. */
+      tokenEnv: z
+        .string()
+        .regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
+        .optional(),
+      /** The mcp origin inside that server: a repository, a database, a channel. */
+      path: BasePrimitive.goodLineSchema.optional(),
+      /** The server's tools the agent may use there, by the server's own names. */
+      tools: BasePrimitive.goodArraySchema,
+    })
+    .superRefine((headers, context) => {
+      const addFault = (message: string) => context.addIssue({ code: "custom", message });
+      const { endpoint, command, args, auth, tokenEnv } = headers;
 
-    if (endpoint !== undefined && command !== undefined)
-      return addFault(`This declares both "endpoint" and "command"; an mcp is one server, reached one way.`);
-    if (endpoint === undefined && command === undefined)
-      return addFault(`This declares neither "endpoint" nor "command", so there is no server to reach.`);
+      if (endpoint !== undefined && command !== undefined)
+        return addFault(`This declares both "endpoint" and "command"; an mcp is one server, reached one way.`);
+      if (endpoint === undefined && command === undefined)
+        return addFault(`This declares neither "endpoint" nor "command", so there is no server to reach.`);
 
-    if (endpoint !== undefined) {
-      if (auth === undefined) addFault(`An endpoint says how a developer signs in to it: "auth" of oauth, token or both.`);
-      if (args !== undefined) addFault(`"args" are a command's; an endpoint takes none.`);
-      if (tokenEnv !== undefined) addFault(`"tokenEnv" is where a command reads its token; an endpoint takes none.`);
-      return;
-    }
+      if (endpoint !== undefined) {
+        if (auth === undefined)
+          addFault(`An endpoint says how a developer signs in to it: "auth" of oauth, token or both.`);
+        if (args !== undefined) addFault(`"args" are a command's; an endpoint takes none.`);
+        if (tokenEnv !== undefined) addFault(`"tokenEnv" is where a command reads its token; an endpoint takes none.`);
+        return;
+      }
 
-    const takesToken = auth !== undefined;
-    if (takesToken && (auth.length !== 1 || auth[0] !== "token"))
-      addFault(`A command signs in by token alone: "auth: [token]", or no "auth" for one that takes none.`);
-    if (takesToken && tokenEnv === undefined) addFault(`A command taking a token names where it reads it: "tokenEnv".`);
-    if (!takesToken && tokenEnv !== undefined) addFault(`"tokenEnv" is read only by a command taking a token: add "auth: [token]", or drop it.`);
-  });
+      const takesToken = auth !== undefined;
+      if (takesToken && (auth.length !== 1 || auth[0] !== "token"))
+        addFault(`A command signs in by token alone: "auth: [token]", or no "auth" for one that takes none.`);
+      if (takesToken && tokenEnv === undefined)
+        addFault(`A command taking a token names where it reads it: "tokenEnv".`);
+      if (!takesToken && tokenEnv !== undefined)
+        addFault(`"tokenEnv" is read only by a command taking a token: add "auth: [token]", or drop it.`);
+    });
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
@@ -125,8 +137,20 @@ export class McpPrimitive extends BasePrimitive {
 
   /** One mcp, or every fault its headers have, shown the sample of the shape
    *  it declared (FR-004, FR-142). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer, keptUri?: string): McpPrimitive {
+  static of(
+    record: Readonly<Record<string, unknown>>,
+    body: string,
+    assets: readonly AssetFile[] = [],
+    primitiveLayer?: PrimitiveLayer,
+    keptUri?: string,
+  ): McpPrimitive {
     const nearerSample = record.command === undefined ? McpPrimitive.sample : McpPrimitive.commandSample;
-    return new McpPrimitive(BasePrimitive.headersOf({ kind: McpPrimitive.kind, sample: nearerSample }, McpPrimitive.schema, record), body, assets, primitiveLayer, keptUri);
+    return new McpPrimitive(
+      BasePrimitive.headersOf({ kind: McpPrimitive.kind, sample: nearerSample }, McpPrimitive.schema, record),
+      body,
+      assets,
+      primitiveLayer,
+      keptUri,
+    );
   }
 }

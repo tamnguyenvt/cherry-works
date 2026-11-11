@@ -28,20 +28,34 @@ function localDayOf(moment: Date): string {
  * ending before it starts, and one longer than 31 days are raised.
  */
 function sessionSpanOf(today: Date, since?: string, until?: string): SessionSpan {
+  // A day the calendar does not hold, as 2026-02-31, is read as another
+  // rather than refused, so it is held to the day it reads back as.
   for (const spanDay of [since, until])
-    // A day the calendar does not hold, as 2026-02-31, is read as another
-    // rather than refused, so it is held to the day it reads back as.
-    if (spanDay !== undefined && !(/^\d{4}-\d{2}-\d{2}$/.test(spanDay) && !Number.isNaN(Date.parse(spanDay)) && new Date(Date.parse(spanDay)).toISOString().slice(0, 10) === spanDay))
-      throw new DomainFault(`"${spanDay}" is no day.`, `Write a day as YYYY-MM-DD, as in "2026-10-01".`, { internal: false });
+    if (
+      spanDay !== undefined &&
+      !(
+        /^\d{4}-\d{2}-\d{2}$/.test(spanDay) &&
+        !Number.isNaN(Date.parse(spanDay)) &&
+        new Date(Date.parse(spanDay)).toISOString().slice(0, 10) === spanDay
+      )
+    )
+      throw new DomainFault(`"${spanDay}" is no day.`, `Write a day as YYYY-MM-DD, as in "2026-10-01".`, {
+        internal: false,
+      });
 
   // Days counted on the calendar alone: a date with no time is midnight UTC,
   // so adding whole days to one never crosses a clock change.
-  const dayShiftedBy = (day: string, dayCount: number) => new Date(Date.parse(day) + dayCount * DAY_MS).toISOString().slice(0, 10);
+  const dayShiftedBy = (day: string, dayCount: number) =>
+    new Date(Date.parse(day) + dayCount * DAY_MS).toISOString().slice(0, 10);
   const untilDay = until ?? (since === undefined ? localDayOf(today) : dayShiftedBy(since, MAX_SESSION_SPAN_DAYS - 1));
   const sinceDay = since ?? dayShiftedBy(untilDay, -(MAX_SESSION_SPAN_DAYS - 1));
 
   if (sinceDay > untilDay)
-    throw new DomainFault(`The span ends on ${untilDay}, before it starts on ${sinceDay}.`, `Write the earlier day after --since and the later after --until.`, { internal: false });
+    throw new DomainFault(
+      `The span ends on ${untilDay}, before it starts on ${sinceDay}.`,
+      `Write the earlier day after --since and the later after --until.`,
+      { internal: false },
+    );
   const spanDayCount = (Date.parse(untilDay) - Date.parse(sinceDay)) / DAY_MS + 1;
   if (spanDayCount > MAX_SESSION_SPAN_DAYS)
     throw new DomainFault(
@@ -61,7 +75,10 @@ const SPAN_MARGIN_MS = DAY_MS;
  *  its last stop, so one written outside these is never read (EVAL-SC-007). */
 function logWindowOf(span: SessionSpan): { readonly writtenFromMs: number; readonly writtenUntilMs: number } {
   // The span's last day ends a day after it starts.
-  return { writtenFromMs: Date.parse(span.since) - SPAN_MARGIN_MS, writtenUntilMs: Date.parse(span.until) + DAY_MS + SPAN_MARGIN_MS };
+  return {
+    writtenFromMs: Date.parse(span.since) - SPAN_MARGIN_MS,
+    writtenUntilMs: Date.parse(span.until) + DAY_MS + SPAN_MARGIN_MS,
+  };
 }
 
 /** The days a summary of the sessions spans, and the logs that may hold a stop within them. */

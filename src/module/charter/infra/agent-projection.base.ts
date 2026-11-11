@@ -1,13 +1,13 @@
 import { type ForReadingFiles, filePathOf, pathFromCheckout } from "#module/shared/module.js";
 import {
-  ProjectionPlan,
-  WritePlan,
-  StampedDocument,
   type CharterOutput,
   type CharterRoot,
   type ForManagingLocalAgentOutput,
   type MainContextText,
+  ProjectionPlan,
   type ProviderComponent,
+  StampedDocument,
+  WritePlan,
 } from "../app/port/out/managing-local-agent-output.port.js";
 import { laidTextOf } from "./helper.js";
 
@@ -44,7 +44,12 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
   /** What a file is once this build's part is written over `currentText`,
    *  what is there now: the charter's part alone, where the file is the
    *  charter's. */
-  protected contentsOf(_component: ProviderComponent, laidText: string, _currentText: string | undefined, _place: string): string {
+  protected contentsOf(
+    _component: ProviderComponent,
+    laidText: string,
+    _currentText: string | undefined,
+    _place: string,
+  ): string {
     return laidText;
   }
 
@@ -54,12 +59,22 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
     return [];
   }
 
-  async createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput, checkoutPath = ""): Promise<ProjectionPlan> {
+  async createAgentProjectionPlan(
+    charter: CharterRoot,
+    charterOutput: CharterOutput,
+    checkoutPath = "",
+  ): Promise<ProjectionPlan> {
     const components = this.componentsOf(charter, charterOutput);
-    const [cleanupPlan, layingPlan] = await Promise.all([this.#planCleanup(checkoutPath), this.#planWriting(checkoutPath, components)]);
+    const [cleanupPlan, layingPlan] = await Promise.all([
+      this.#planCleanup(checkoutPath),
+      this.#planWriting(checkoutPath, components),
+    ]);
     // A file the last build wrote and this one takes only part of — an entry
     // file whose own text stays — is written back as that text.
-    const preservedFiles = cleanupPlan.filter((writePlan) => writePlan.contents !== undefined && !layingPlan.some((layingFile) => layingFile.path === writePlan.path));
+    const preservedFiles = cleanupPlan.filter(
+      (writePlan) =>
+        writePlan.contents !== undefined && !layingPlan.some((layingFile) => layingFile.path === writePlan.path),
+    );
     return new ProjectionPlan(
       components.flatMap((component) => component.warnings),
       cleanupPlan,
@@ -87,7 +102,9 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
    *  the stamp is what tells it from one written by hand there — and what
    *  else it left for this agent (FR-020). */
   async #planCleanup(checkoutPath: string): Promise<readonly WritePlan[]> {
-    const folderFileLists = await Promise.all(this.ownedFolders.map((folderPath) => this.fileReader.readFilesRecursively(filePathOf(checkoutPath, folderPath))));
+    const folderFileLists = await Promise.all(
+      this.ownedFolders.map((folderPath) => this.fileReader.readFilesRecursively(filePathOf(checkoutPath, folderPath))),
+    );
     return [
       ...folderFileLists
         .flat()

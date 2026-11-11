@@ -1,5 +1,4 @@
-import type { AgentProvider } from "../agent/agent-provider.js";
-import type { AgentProviderName } from "../agent/agent-provider.js";
+import type { AgentProvider, AgentProviderName } from "../agent/agent-provider.js";
 import { OutputPart } from "./output-part.js";
 
 /** One sensor as a build leaves it: its id, the signal it fires on, and the
@@ -32,10 +31,12 @@ export class BuiltSensors {
 
   /** Select only sensors that support the host raising the signal. */
   forAgent(agent: AgentProvider): BuiltSensors {
-    return new BuiltSensors(this.sensors.filter((builtSensor) => {
-      const agentProviders = builtSensor["agent-provider"];
-      return agentProviders === undefined || agentProviders.length === 0 || agentProviders.includes(agent.name);
-    }));
+    return new BuiltSensors(
+      this.sensors.filter((builtSensor) => {
+        const agentProviders = builtSensor["agent-provider"];
+        return agentProviders === undefined || agentProviders.length === 0 || agentProviders.includes(agent.name);
+      }),
+    );
   }
 
   /** What it is among the parts of a build's output: the whole charter's,
@@ -72,10 +73,10 @@ function keptBuiltSensorsOf(sensorsText: string | undefined): BuiltSensors {
   try {
     const sensorsJson: unknown = JSON.parse(sensorsText ?? "{}");
     const sensors = (sensorsJson as { sensors?: unknown }).sensors;
-    if (Array.isArray(sensors)) return new BuiltSensors((sensors as readonly BuiltSensor[]).map((builtSensor) => new BuiltSensor(builtSensor)));
+    if (Array.isArray(sensors))
+      return new BuiltSensors((sensors as readonly BuiltSensor[]).map((builtSensor) => new BuiltSensor(builtSensor)));
   } catch {
     // Said below, as no list is.
   }
   return new BuiltSensors([]);
 }
-

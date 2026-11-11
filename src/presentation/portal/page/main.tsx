@@ -1,15 +1,15 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CharterListing } from "./components/CharterListing.js";
 import { CharterSearch } from "./components/CharterSearch.js";
-import { MainContextListing } from "./components/MainContextListing.js";
 import { DialogProvider, useDialog } from "./components/Dialogs.js";
+import { MainContextListing } from "./components/MainContextListing.js";
 import { TestSuites } from "./components/TestSuites.js";
-import { VendorSources } from "./components/VendorSources.js";
 import { Button } from "./components/ui/button.js";
 import { Toaster } from "./components/ui/sonner.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs.js";
+import { VendorSources } from "./components/VendorSources.js";
 
 /** The tabs of plan §12.5, in the order the mockup draws them. */
 const TABS = [
@@ -92,7 +92,10 @@ function Portal() {
           <TabsContent value="repo" className={SHEET}>
             <CharterListing layerNames={["repo", "builtin"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
-          <TabsContent value="vendor" className={`${SHEET} grid items-start gap-4 md:has-[>section]:grid-cols-[210px_minmax(0,1fr)]`}>
+          <TabsContent
+            value="vendor"
+            className={`${SHEET} grid items-start gap-4 md:has-[>section]:grid-cols-[210px_minmax(0,1fr)]`}
+          >
             <VendorSources />
             <CharterListing layerNames={["vendor"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>

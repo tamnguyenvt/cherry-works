@@ -1,12 +1,17 @@
-import { McpPrimitive, type CharterOutput, type CharterRoot, type MainContextText } from "../../app/port/out/managing-local-agent-output.port.js";
+import {
+  type CharterOutput,
+  type CharterRoot,
+  type MainContextText,
+  McpPrimitive,
+} from "../../app/port/out/managing-local-agent-output.port.js";
 import { laidTextOf } from "../helper.js";
-import { ClaudeComponents } from "./claude-component.js";
-import { ClaudeComponentFactory } from "./claude-component.factory.js";
 import { ClaudeAgent } from "./claude-agent.js";
+import { ClaudeComponentFactory } from "./claude-component.factory.js";
+import { ClaudeComponents } from "./claude-component.js";
 import { ClaudeEntryFile } from "./claude-entry-file.js";
+import { ClaudeMcpConfig } from "./claude-mcp-config.js";
 import { ClaudeRule } from "./claude-rule.js";
 import { ClaudeSkill } from "./claude-skill.js";
-import { ClaudeMcpConfig } from "./claude-mcp-config.js";
 
 /** Makes what claude's main context holds of a charter. */
 export class ClaudeMainContextFactory {
@@ -25,38 +30,59 @@ export class ClaudeMainContextFactory {
    * alone, under the mcp: the host's tool search, which the build turns on,
    * sends a schema only once the agent searches for it (EVAL-FR-029).
    */
-  static create(charter: CharterRoot, charterOutput: CharterOutput, placeOf: (claudeComponent: ClaudeEntryFile | ClaudeRule) => string): readonly MainContextText[] {
+  static create(
+    charter: CharterRoot,
+    charterOutput: CharterOutput,
+    placeOf: (claudeComponent: ClaudeEntryFile | ClaudeRule) => string,
+  ): readonly MainContextText[] {
     const { charterMd, compiledPrimitives, mcpOrigins } = charterOutput;
     const claudeComponents = ClaudeComponentFactory.create(charter, charterOutput);
     const servedPrefixById = new Map(mcpOrigins.origins.flatMap(({ names }) => Object.entries(names)));
-    const compiledPrimitiveById = new Map(compiledPrimitives.map((compiledPrimitive) => [compiledPrimitive.id, compiledPrimitive]));
+    const compiledPrimitiveById = new Map(
+      compiledPrimitives.map((compiledPrimitive) => [compiledPrimitive.id, compiledPrimitive]),
+    );
     const entryFile = claudeComponents.find((claudeComponent) => claudeComponent instanceof ClaudeEntryFile);
 
     return [
-      ...(entryFile === undefined ? [] : [{ id: placeOf(entryFile), kind: "charter", text: laidTextOf(entryFile.text, placeOf(entryFile)) }]),
+      ...(entryFile === undefined
+        ? []
+        : [{ id: placeOf(entryFile), kind: "charter", text: laidTextOf(entryFile.text, placeOf(entryFile)) }]),
       { id: "CHARTER.md", kind: "charter", text: charterMd.text },
-      ...charter.primitives.filter((primitive) => primitive.supportsAgent(ClaudeComponents.agentProvider)).flatMap((primitive): MainContextText[] => {
-        const claudeComponent = claudeComponents.find(
-          (providerComponent) =>
-            (providerComponent instanceof ClaudeRule || providerComponent instanceof ClaudeSkill || providerComponent instanceof ClaudeAgent) &&
-            providerComponent.name === primitive.normId,
-        );
-        const { id } = primitive.headers;
-        if (primitive instanceof McpPrimitive) {
-          const toolNames = primitive.headers.tools.map((tool) => `mcp__${ClaudeMcpConfig.cwMcpName}__${servedPrefixById.get(id)}__${tool}`);
-          return [{ id, kind: primitive.kind, text: toolNames.join("\n") }];
-        }
-        if (claudeComponent instanceof ClaudeRule) {
-          const { paths } = claudeComponent.headers;
-          const compiledPrimitive = compiledPrimitiveById.get(id);
-          return [{ id, kind: primitive.kind, text: `${laidTextOf(claudeComponent.text, placeOf(claudeComponent))}${compiledPrimitive?.text ?? ""}`, ...(paths === undefined ? {} : { globs: paths }) }];
-        }
-        if (claudeComponent instanceof ClaudeSkill || claudeComponent instanceof ClaudeAgent) {
-          const { name, description } = claudeComponent.headers;
-          return [{ id, kind: primitive.kind, text: `${name}: ${description}` }];
-        }
-        return [];
-      }),
+      ...charter.primitives
+        .filter((primitive) => primitive.supportsAgent(ClaudeComponents.agentProvider))
+        .flatMap((primitive): MainContextText[] => {
+          const claudeComponent = claudeComponents.find(
+            (providerComponent) =>
+              (providerComponent instanceof ClaudeRule ||
+                providerComponent instanceof ClaudeSkill ||
+                providerComponent instanceof ClaudeAgent) &&
+              providerComponent.name === primitive.normId,
+          );
+          const { id } = primitive.headers;
+          if (primitive instanceof McpPrimitive) {
+            const toolNames = primitive.headers.tools.map(
+              (tool) => `mcp__${ClaudeMcpConfig.cwMcpName}__${servedPrefixById.get(id)}__${tool}`,
+            );
+            return [{ id, kind: primitive.kind, text: toolNames.join("\n") }];
+          }
+          if (claudeComponent instanceof ClaudeRule) {
+            const { paths } = claudeComponent.headers;
+            const compiledPrimitive = compiledPrimitiveById.get(id);
+            return [
+              {
+                id,
+                kind: primitive.kind,
+                text: `${laidTextOf(claudeComponent.text, placeOf(claudeComponent))}${compiledPrimitive?.text ?? ""}`,
+                ...(paths === undefined ? {} : { globs: paths }),
+              },
+            ];
+          }
+          if (claudeComponent instanceof ClaudeSkill || claudeComponent instanceof ClaudeAgent) {
+            const { name, description } = claudeComponent.headers;
+            return [{ id, kind: primitive.kind, text: `${name}: ${description}` }];
+          }
+          return [];
+        }),
     ];
   }
 

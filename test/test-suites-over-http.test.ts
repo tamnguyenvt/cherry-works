@@ -1,22 +1,32 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { api } from "../src/presentation/portal/portal.routes.js";
+import { test } from "node:test";
 import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
-import { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
+import { api } from "../src/presentation/portal/portal.routes.js";
+import { authoringCharterOf, buildingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
 const at = (path: string) => new URL(path, repoPath).href;
 
 const guide = (id: string) =>
-  ["---", "kind: guide", `id: ${id}`, `description: About ${id}.`, 'globs: ["src/**/*.ts"]', "---", "", "Body.", ""].join("\n");
+  [
+    "---",
+    "kind: guide",
+    `id: ${id}`,
+    `description: About ${id}.`,
+    'globs: ["src/**/*.ts"]',
+    "---",
+    "",
+    "Body.",
+    "",
+  ].join("\n");
 
 const suiteText = (written: unknown) => `${JSON.stringify(written, undefined, 2)}\n`;
 
@@ -36,10 +46,30 @@ const withOnePassingOneFailing = () => ({
 const portal = (files: Readonly<Record<string, string>>) => {
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources();
-  const charterAuthoringApp = authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher });
-  const charterRuntimeApp = buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
-  const portalRoutes = api(wrapAppToShowPaths(charterAuthoringApp, "/repo"), wrapAppToShowPaths(charterRuntimeApp, "/repo"), workspaceSettingsLoaderOf(fileReaders));
-  return { portalRoutes, charterAuthoringApp, charterRuntimeApp, fileAt: (path: string) => fileReaders.readIfThere(new URL(path, repoPath)) };
+  const charterAuthoringApp = authoringCharterOf(
+    fileReaders,
+    new InMemoryFileOutput(fileReaders),
+    new InMemoryReporter(),
+    { sourceFetcher },
+  );
+  const charterRuntimeApp = buildingCharterOf(
+    fileReaders,
+    new InMemoryFileOutput(fileReaders),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
+  const portalRoutes = api(
+    wrapAppToShowPaths(charterAuthoringApp, "/repo"),
+    wrapAppToShowPaths(charterRuntimeApp, "/repo"),
+    workspaceSettingsLoaderOf(fileReaders),
+  );
+  return {
+    portalRoutes,
+    charterAuthoringApp,
+    charterRuntimeApp,
+    fileAt: (path: string) => fileReaders.readIfThere(new URL(path, repoPath)),
+  };
 };
 
 /** A write, sent the way the page sends one. */

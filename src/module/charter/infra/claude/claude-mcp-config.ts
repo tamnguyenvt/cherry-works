@@ -15,7 +15,9 @@ export interface ClaudeMcpServer {
  * same however many mcp origins there are — none included — and shows the agent only
  * the tools the charter declares (plan §19).
  */
-export class ClaudeMcpConfig extends SettingBasedComponent<{ readonly mcpServers: Readonly<Record<string, ClaudeMcpServer>> }> {
+export class ClaudeMcpConfig extends SettingBasedComponent<{
+  readonly mcpServers: Readonly<Record<string, ClaudeMcpServer>>;
+}> {
   static readonly kind = "mcp-config" as const;
   readonly kind = ClaudeMcpConfig.kind;
 

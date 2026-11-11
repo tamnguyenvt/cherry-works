@@ -1,24 +1,22 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
-import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
-import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
+import { test } from "node:test";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
+import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
-import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
+import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf } from "./use-cases-of.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
-
-
 
 /** Whose home the command line runs in: what is installed on this machine is
  *  detected under it, and nothing here asks. */
@@ -66,8 +64,17 @@ const writing = async (work: () => Promise<number>) => {
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[] = ["list"]) => {
   const readers = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
-  const cli = new Commander(commandLineOf(readers, new InMemoryFileOutput(readers), { charterAuthoringApp, charterRuntimeApp }, repo), COMMANDS);
+  const charterRuntimeApp = buildingCharterOf(
+    readers,
+    new InMemoryFileOutput(readers),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
+  const cli = new Commander(
+    commandLineOf(readers, new InMemoryFileOutput(readers), { charterAuthoringApp, charterRuntimeApp }, repo),
+    COMMANDS,
+  );
   return writing(() => cli.run(argv));
 };
 
@@ -91,9 +98,7 @@ test("every primitive is listed, ordered by id, with what it is for", async () =
 
   assert.equal(code, EXIT_OK);
   assert.deepEqual(
-    results
-      .split("\n")
-      .filter((line) => !line.startsWith(" ") && line !== ""),
+    results.split("\n").filter((line) => !line.startsWith(" ") && line !== ""),
     [
       `cw-author  ${new CwAuthorSkill().headers.description}`,
       ...sessionCounterLines,
@@ -115,7 +120,10 @@ test("the full listing names the file each primitive was authored in, and the fi
 
 test("a listing is read off the charter, so every layer is named where it was authored, not where it compiled (FR-140)", async () => {
   const { results } = await run({
-    "file:///repo/.cw/charter/vendor/team/rules/root/primitive/guide/no-console/index.md": primitive("guide", "no-console"),
+    "file:///repo/.cw/charter/vendor/team/rules/root/primitive/guide/no-console/index.md": primitive(
+      "guide",
+      "no-console",
+    ),
   });
 
   assert.match(results, /^ {2}\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/no-console\/index\.md$/m);
@@ -127,14 +135,17 @@ test("--min says what an agent surveys by, and nothing else", async () => {
   const { code, results } = await run(charter, ["list", "--min"]);
 
   assert.equal(code, EXIT_OK);
-  assert.deepEqual(results, [
-    `cw-author  ${new CwAuthorSkill().headers.description}`,
-    ...sessionCounterLines,
-    "no-any  What no-any is for.",
-    "type-safety  What type-safety is for.",
-    "writing-tests  What writing-tests is for.",
-    "",
-  ].join("\n"));
+  assert.deepEqual(
+    results,
+    [
+      `cw-author  ${new CwAuthorSkill().headers.description}`,
+      ...sessionCounterLines,
+      "no-any  What no-any is for.",
+      "type-safety  What type-safety is for.",
+      "writing-tests  What writing-tests is for.",
+      "",
+    ].join("\n"),
+  );
 });
 
 test("no listing carries a body", async () => {
@@ -168,7 +179,9 @@ test("a word that is no kind is refused, naming it and the kinds it could have b
 
 test("a charter with an error lists nothing and sends the user to doctor", async () => {
   const { code, results, problems } = await run({
-    [new URL("guide/no-any/index.md", root).href]: ["---", "kind: guide", "id: no-any", "---", "", "Body.", ""].join("\n"),
+    [new URL("guide/no-any/index.md", root).href]: ["---", "kind: guide", "id: no-any", "---", "", "Body.", ""].join(
+      "\n",
+    ),
   });
 
   assert.equal(code, EXIT_FAILURE);
@@ -180,7 +193,10 @@ test("a repository that authored nothing is listed what the engine brings (FR-01
   const { code, results } = await run({}, ["list", "--min"]);
 
   assert.equal(code, EXIT_OK);
-  assert.equal(results, [`cw-author  ${new CwAuthorSkill().headers.description}`, ...sessionCounterLines, ""].join("\n"));
+  assert.equal(
+    results,
+    [`cw-author  ${new CwAuthorSkill().headers.description}`, ...sessionCounterLines, ""].join("\n"),
+  );
 });
 
 test("cw kinds says every kind and when each comes up, in a repository that authored none of them", async () => {
@@ -188,7 +204,10 @@ test("cw kinds says every kind and when each comes up, in a repository that auth
 
   assert.equal(code, EXIT_OK);
   assert.deepEqual(
-    results.trim().split("\n").map((line) => line.split("  ")[0]),
+    results
+      .trim()
+      .split("\n")
+      .map((line) => line.split("  ")[0]),
     [...Primitives.kinds],
   );
   assert.match(results, new RegExp(`guide {2}${GuidePrimitive.activatesWhen.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));

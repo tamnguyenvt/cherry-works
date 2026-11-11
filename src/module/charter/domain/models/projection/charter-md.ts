@@ -25,8 +25,8 @@ import type { StampedDocument } from "./stamped-document.js";
  * is a host's to hand its agent, in that host's own kind.
  */
 export class CharterMd {
-  static readonly type = "charter-md" as const
-  readonly type = CharterMd.type
+  static readonly type = "charter-md" as const;
+  readonly type = CharterMd.type;
 
   constructor(
     /** This file as a reader opens it: the stamp saying this engine wrote it,

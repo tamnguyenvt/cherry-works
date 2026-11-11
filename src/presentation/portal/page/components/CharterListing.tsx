@@ -3,8 +3,8 @@ import type { CharterDTOs } from "#module/charter/module.js";
 import type { FaultDTOs } from "#module/shared/module.js";
 import { useKinds, usePrimitives } from "../queries.js";
 import { useDialog } from "./Dialogs.js";
-import { FaultsByFileTable } from "./FaultsByFileTable.js";
 import { FaultAlert } from "./FaultAlert.js";
+import { FaultsByFileTable } from "./FaultsByFileTable.js";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert.js";
 import { Badge } from "./ui/badge.js";
 import { Button } from "./ui/button.js";
@@ -52,7 +52,9 @@ export function CharterListing({
   if (listing.type === "Fault") return <FaultAlert fault={listing} />;
 
   const primitives = listing.data.primitives.filter(({ data }) => layerNames.includes(data.layerName));
-  const counts = new Map(Object.keys(kinds).map((one) => [one, primitives.filter(({ data }) => data.kind === one).length]));
+  const counts = new Map(
+    Object.keys(kinds).map((one) => [one, primitives.filter(({ data }) => data.kind === one).length]),
+  );
   // What is shown until a chip is picked: the first kind anything was authored
   // of, so a reader lands on a table rather than on an empty state, and the
   // first kind there is where these layerNames hold nothing at all.
@@ -90,20 +92,26 @@ export function CharterListing({
             className={`group/chip h-auto cursor-pointer gap-1.5 rounded-[9px] border bg-background px-2.5 py-1.5 text-[11.5px] font-medium text-zinc-700 capitalize hover:bg-background hover:text-zinc-700 data-[state=on]:border-foreground data-[state=on]:bg-foreground data-[state=on]:font-semibold data-[state=on]:text-white ${count === 0 && one !== shown ? "opacity-50" : ""}`}
           >
             {one}
-            <Badge className="rounded-none bg-transparent p-0 font-mono text-[10px] font-normal text-zinc-400 group-data-[state=on]/chip:text-white/70">{count}</Badge>
+            <Badge className="rounded-none bg-transparent p-0 font-mono text-[10px] font-normal text-zinc-400 group-data-[state=on]/chip:text-white/70">
+              {count}
+            </Badge>
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
 
       <p className="mb-2.5 flex items-baseline gap-2 px-0.5">
-        <span className="shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">Activates when</span>
+        <span className="shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">
+          Activates when
+        </span>
         <span className="text-xs leading-normal text-zinc-700" aria-label="Activates when">
           {kinds[shown]}
         </span>
       </p>
 
       {listed.length === 0 ? (
-        <p className="rounded-[14px] border p-[22px] text-center text-[12.5px] text-zinc-400">No {shown} in this charter yet.</p>
+        <p className="rounded-[14px] border p-[22px] text-center text-[12.5px] text-zinc-400">
+          No {shown} in this charter yet.
+        </p>
       ) : (
         <Rows kind={shown} listed={listed} />
       )}
@@ -118,7 +126,9 @@ function CharterFaults({ faultsByFile }: { faultsByFile: FaultDTOs.FaultsByFile 
   return (
     <div className="space-y-3.5">
       <Alert variant="destructive" className="rounded-xl border-[#f6d9d9] bg-[#fef6f6]">
-        <AlertTitle className="text-[12.5px] font-bold text-foreground">The engine will not read this charter</AlertTitle>
+        <AlertTitle className="text-[12.5px] font-bold text-foreground">
+          The engine will not read this charter
+        </AlertTitle>
         <AlertDescription>
           {files.length} file{files.length === 1 ? " is" : "s are"} refused, so there is no listing to show. Fix
           {files.length === 1 ? " it" : " them"} and the charter comes back.
@@ -172,7 +182,10 @@ function Rows({ kind, listed }: { kind: string; listed: CharterDTOs.Primitives["
           {listed.map(({ data: { id, description, file, headers } }) => {
             const globs = namedIn(headers.globs);
             return (
-              <TableRow key={id} className="group/row border-[#f7f7f8] align-top hover:bg-zinc-50 [&>td]:px-[15px] [&>td]:py-3">
+              <TableRow
+                key={id}
+                className="group/row border-[#f7f7f8] align-top hover:bg-zinc-50 [&>td]:px-[15px] [&>td]:py-3"
+              >
                 <TableCell className="truncate">
                   <Button
                     variant="link"
@@ -220,7 +233,17 @@ function Rows({ kind, listed }: { kind: string; listed: CharterDTOs.Primitives["
 /** One cell of what a primitive named — globs, a rationale, mixins — or the
  *  word for having named none, said plainly where nothing being there is worth
  *  noticing and quietly where it is ordinary. */
-function Chips({ named, none, said, label }: { named: readonly string[] | undefined; none: string; said: boolean; label: string }) {
+function Chips({
+  named,
+  none,
+  said,
+  label,
+}: {
+  named: readonly string[] | undefined;
+  none: string;
+  said: boolean;
+  label: string;
+}) {
   return (
     <TableCell aria-label={label}>
       <div className="flex min-w-0 flex-wrap content-start justify-end gap-1">
@@ -228,7 +251,11 @@ function Chips({ named, none, said, label }: { named: readonly string[] | undefi
           <span className={`text-[10.5px] ${said ? "text-destructive" : "text-zinc-300"}`}>{none}</span>
         ) : (
           named.map((one) => (
-            <Badge key={one} title={one} className="block max-w-full truncate rounded-[5px] bg-zinc-100 px-1.5 py-0.5 font-mono text-[10px] font-normal text-zinc-700">
+            <Badge
+              key={one}
+              title={one}
+              className="block max-w-full truncate rounded-[5px] bg-zinc-100 px-1.5 py-0.5 font-mono text-[10px] font-normal text-zinc-700"
+            >
               {one}
             </Badge>
           ))

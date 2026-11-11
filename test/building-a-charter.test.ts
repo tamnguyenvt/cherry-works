@@ -1,14 +1,14 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { test } from "node:test";
 import type { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
-import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
+import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryMcpServers } from "../src/module/shared/infra/in-memory/in-memory-mcp-servers.adapter.js";
-import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
-import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { faultTextOf } from "./answer-of.js";
 import { buildingCharterOf } from "./use-cases-of.js";
@@ -17,9 +17,17 @@ const repo = new URL("file:///repo/");
 const root = new URL(".cw/charter/primitive/", repo);
 
 const primitive = (kind: string, id: string, headers: readonly string[] = [], body = `The body of ${id}.`) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: What ${id} is for, in one line.`, ...headers, "---", "", body, ""].join(
-    "\n",
-  );
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: What ${id} is for, in one line.`,
+    ...headers,
+    "---",
+    "",
+    body,
+    "",
+  ].join("\n");
 
 const guide = (id: string, body?: string) => primitive("guide", id, ['globs: ["src/**/*.ts"]'], body);
 const posture = (id: string, allow: string, deny: string) =>
@@ -54,14 +62,21 @@ const compilingFor = (...agents: readonly string[]) => ({
  *  second build over a changed charter the real thing. */
 /** A build over these files; given `mcpServers` and `credentialsRepository`, it asks each
  *  mcp origin for its tools through them (EVAL-FR-031), and otherwise asks none. */
-const building = (files: Readonly<Record<string, string>>, mcpServers?: InMemoryMcpServers, credentialsRepository?: InMemoryCredentialsRepository) => {
+const building = (
+  files: Readonly<Record<string, string>>,
+  mcpServers?: InMemoryMcpServers,
+  credentialsRepository?: InMemoryCredentialsRepository,
+) => {
   const held = new InMemoryFileReaders(files);
-  const charterRuntimeApp = buildingCharterOf(held,
+  const charterRuntimeApp = buildingCharterOf(
+    held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
     { claude: new InMemoryAgentCli() },
     new InMemoryReporter(),
-    mcpServers === undefined || credentialsRepository === undefined ? {} : { mcpServers, credentialsRepository, authorizing: new InMemoryAuthorizing() },
+    mcpServers === undefined || credentialsRepository === undefined
+      ? {}
+      : { mcpServers, credentialsRepository, authorizing: new InMemoryAuthorizing() },
   );
   return { held, build: () => charterRuntimeApp.build(), doctor: () => charterRuntimeApp.doctor() };
 };
@@ -72,7 +87,9 @@ const wrote = (built: CharterDTOs.PlanSummary["data"]) => [...built.added, ...bu
 /** What a build did, where it did anything: a test asking for the files takes
  *  the charter holding for granted, and says so here rather than in every
  *  assertion after it. */
-const filesOf = (planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault): CharterDTOs.PlanSummary["data"] => {
+const filesOf = (
+  planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault,
+): CharterDTOs.PlanSummary["data"] => {
   assert.ok(planSummaryDTO.type === "PlanSummary", "this build was refused, and the test expected it to run");
   return planSummaryDTO.data;
 };
@@ -103,14 +120,22 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
   ]);
   assert.deepEqual(built.deleted, []);
   assert.ok((await contentsOf(held, ".cw/out/guide/no-any/index.md")).includes("The body of no-any."));
-  assert.ok((await contentsOf(held, ".claude/rules/no-any.md")).includes("Read and follow .cw/out/guide/no-any/index.md."));
+  assert.ok(
+    (await contentsOf(held, ".claude/rules/no-any.md")).includes("Read and follow .cw/out/guide/no-any/index.md."),
+  );
 });
 
 test("an id holding / is built as one file in its kind's folder, each / as -, and into a host file named the same way (FR-141)", async () => {
-  const { held, build } = building({ ...compilingFor("claude"), [at("guide/mfbs/no-any/index.md")]: guide("mfbs/no-any") });
+  const { held, build } = building({
+    ...compilingFor("claude"),
+    [at("guide/mfbs/no-any/index.md")]: guide("mfbs/no-any"),
+  });
 
   const built = filesOf(await build());
-  const catalogue = JSON.parse(await contentsOf(held, ".cw/out/catalogue.json")) as readonly { id: string; file: string }[];
+  const catalogue = JSON.parse(await contentsOf(held, ".cw/out/catalogue.json")) as readonly {
+    id: string;
+    file: string;
+  }[];
 
   assert.ok(built.added.includes(".cw/out/guide/mfbs/no-any/index.md"));
   assert.ok(built.added.includes(".claude/rules/mfbs-no-any.md"));
@@ -136,7 +161,10 @@ test("a skill an earlier engine brought and this one does not is taken away by t
   // What an engine that once shipped another skill left behind: compiled and
   // stamped the way this one compiles its own.
   const builtinSkillFile = await contentsOf(held, ".claude/skills/cw-author/SKILL.md");
-  held.write(new URL(".claude/skills/cw-retired/SKILL.md", repo), builtinSkillFile.replaceAll("cw-author", "cw-retired"));
+  held.write(
+    new URL(".claude/skills/cw-retired/SKILL.md", repo),
+    builtinSkillFile.replaceAll("cw-author", "cw-retired"),
+  );
 
   const built = filesOf(await build());
 
@@ -171,7 +199,9 @@ test("a compiled file someone edited by hand is written back over (FR-020)", asy
 
   await build();
 
-  assert.ok((await contentsOf(held, ".claude/rules/no-any.md")).includes("Read and follow .cw/out/guide/no-any/index.md."));
+  assert.ok(
+    (await contentsOf(held, ".claude/rules/no-any.md")).includes("Read and follow .cw/out/guide/no-any/index.md."),
+  );
 });
 
 test("a file the charter never wrote is left alone, wherever it sits", async () => {
@@ -194,7 +224,10 @@ test("every posture lands in the one settings file its host reads, merged (FR-01
     ...compilingFor("claude"),
     [at("posture/sandboxed/index.md")]: posture("sandboxed", "Read(**)", "Bash(rm:*)"),
     [at("posture/no-network/index.md")]: posture("no-network", "Read(**)", "WebFetch"),
-    [at("sensor/ci-failed/index.md")]: primitive("sensor", "ci-failed", ["signal: PostToolUse", "run: ./bin/report-ci"]),
+    [at("sensor/ci-failed/index.md")]: primitive("sensor", "ci-failed", [
+      "signal: PostToolUse",
+      "run: ./bin/report-ci",
+    ]),
   });
 
   const built = filesOf(await build());
@@ -205,7 +238,10 @@ test("every posture lands in the one settings file its host reads, merged (FR-01
     // In the order the files sort in: `posture/no-network/index.md` before
     // `posture/sandboxed/index.md`.
     permissions: { allow: ["Read(**)"], deny: ["WebFetch", "Bash(rm:*)"] },
-    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "cw sensor run PostToolUse --agent claude" }] }], Stop: [sessionCounterStopHook] },
+    hooks: {
+      PostToolUse: [{ hooks: [{ type: "command", command: "cw sensor run PostToolUse --agent claude" }] }],
+      Stop: [sessionCounterStopHook],
+    },
   });
 });
 
@@ -254,9 +290,12 @@ test("a section already in the entry file is written in place, and stays one sec
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: guide("no-any"),
-    [inRepo("CLAUDE.md")]: ["<!-- CHERRYWORKS START -->", "What an older build put here.", "<!-- CHERRYWORKS END -->", ""].join(
-      "\n",
-    ),
+    [inRepo("CLAUDE.md")]: [
+      "<!-- CHERRYWORKS START -->",
+      "What an older build put here.",
+      "<!-- CHERRYWORKS END -->",
+      "",
+    ].join("\n"),
   });
 
   await build();
@@ -298,7 +337,9 @@ test("a charter with an error builds nothing at all, and says which files (FR-00
   const planSummaryDTO = await build();
 
   assert.ok(planSummaryDTO.type === "FaultsByFile");
-  assert.deepEqual(Object.keys(planSummaryDTO.data.files), ["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]);
+  assert.deepEqual(Object.keys(planSummaryDTO.data.files), [
+    "file:///repo/.cw/charter/primitive/guide/no-any/index.md",
+  ]);
   await assert.rejects(() => contentsOf(held, "file:///repo/.cw/out/CHARTER.md"));
 });
 
@@ -306,7 +347,10 @@ test("a skill no longer marked disable-user-invocation is a command again at the
   const skillFile = at("skill/ship-review/index.md");
   const { held, build } = building({
     ...compilingFor("claude"),
-    [skillFile]: primitive("skill", "ship-review", ['triggers: ["review the release"]', "disable-user-invocation: true"]),
+    [skillFile]: primitive("skill", "ship-review", [
+      'triggers: ["review the release"]',
+      "disable-user-invocation: true",
+    ]),
   });
   filesOf(await build());
   assert.match(await contentsOf(held, ".claude/skills/ship-review/SKILL.md"), /\nuser-invocable: false\n/);
@@ -321,13 +365,20 @@ test("a disable-user-invocation that is neither true nor false stops the build u
   for (const kind of ["skill", "playbook"]) {
     const { held, build } = building({
       ...compilingFor("claude"),
-      [at(`${kind}/ship/index.md`)]: primitive(kind, "ship", ['triggers: ["ship this"]', "disable-user-invocation: maybe"]),
+      [at(`${kind}/ship/index.md`)]: primitive(kind, "ship", [
+        'triggers: ["ship this"]',
+        "disable-user-invocation: maybe",
+      ]),
     });
 
     const planSummaryDTO = await build();
 
     assert.ok(planSummaryDTO.type === "FaultsByFile", kind);
-    assert.deepEqual(Object.keys(planSummaryDTO.data.files), [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`], kind);
+    assert.deepEqual(
+      Object.keys(planSummaryDTO.data.files),
+      [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`],
+      kind,
+    );
     assert.match(JSON.stringify(planSummaryDTO.data.files), /written true or false/, kind);
     await assert.rejects(() => contentsOf(held, ".claude/skills/ship/SKILL.md"), kind);
   }
@@ -337,13 +388,20 @@ test("a disable-model-invocation that is neither true nor false stops the build 
   for (const kind of ["skill", "playbook"]) {
     const { held, build } = building({
       ...compilingFor("claude"),
-      [at(`${kind}/ship/index.md`)]: primitive(kind, "ship", ['triggers: ["ship this"]', "disable-model-invocation: maybe"]),
+      [at(`${kind}/ship/index.md`)]: primitive(kind, "ship", [
+        'triggers: ["ship this"]',
+        "disable-model-invocation: maybe",
+      ]),
     });
 
     const planSummaryDTO = await build();
 
     assert.ok(planSummaryDTO.type === "FaultsByFile", kind);
-    assert.deepEqual(Object.keys(planSummaryDTO.data.files), [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`], kind);
+    assert.deepEqual(
+      Object.keys(planSummaryDTO.data.files),
+      [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`],
+      kind,
+    );
     assert.match(JSON.stringify(planSummaryDTO.data.files), /written true or false/, kind);
     await assert.rejects(() => contentsOf(held, ".claude/skills/ship/SKILL.md"), kind);
   }
@@ -353,13 +411,21 @@ test("a skill nobody could open, kept from both the user and the agent, stops th
   for (const kind of ["skill", "playbook"]) {
     const { held, build } = building({
       ...compilingFor("claude"),
-      [at(`${kind}/ship/index.md`)]: primitive(kind, "ship", ['triggers: ["ship this"]', "disable-model-invocation: true", "disable-user-invocation: true"]),
+      [at(`${kind}/ship/index.md`)]: primitive(kind, "ship", [
+        'triggers: ["ship this"]',
+        "disable-model-invocation: true",
+        "disable-user-invocation: true",
+      ]),
     });
 
     const planSummaryDTO = await build();
 
     assert.ok(planSummaryDTO.type === "FaultsByFile", kind);
-    assert.deepEqual(Object.keys(planSummaryDTO.data.files), [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`], kind);
+    assert.deepEqual(
+      Object.keys(planSummaryDTO.data.files),
+      [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`],
+      kind,
+    );
     assert.match(JSON.stringify(planSummaryDTO.data.files), /neither the user nor the agent/, kind);
     await assert.rejects(() => contentsOf(held, ".claude/skills/ship/SKILL.md"), kind);
   }
@@ -369,7 +435,12 @@ test("a body naming [[<id>]] no layer holds stops the build (FR-143, FR-162)", a
   for (const mentionedReference of ["[[missing]]", "[[team/missing]]"]) {
     const { build } = building({
       ...compilingFor("claude"),
-      [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], `Take the requirements from ${mentionedReference}.`),
+      [at("guide/no-any/index.md")]: primitive(
+        "guide",
+        "no-any",
+        ['globs: ["src/**/*.ts"]'],
+        `Take the requirements from ${mentionedReference}.`,
+      ),
     });
 
     const planSummaryDTO = await build();
@@ -407,15 +478,26 @@ test("a build writes every mcp origin the charter's mcps reach to mcp-origins.js
 
 const LINEAR = "https://mcp.linear.app/mcp";
 const linearDeclared = {
-  [at("mcp/linear/index.md")]: primitive("mcp", "linear", [`endpoint: ${LINEAR}`, "auth: [token]", "tools: [list_issues, create_issue]"]),
+  [at("mcp/linear/index.md")]: primitive("mcp", "linear", [
+    `endpoint: ${LINEAR}`,
+    "auth: [token]",
+    "tools: [list_issues, create_issue]",
+  ]),
 };
-const toolNamed = (name: string) => ({ name, description: `${name} at linear`, inputSchema: { type: "object", properties: { team: { type: "string" } } } });
+const toolNamed = (name: string) => ({
+  name,
+  description: `${name} at linear`,
+  inputSchema: { type: "object", properties: { team: { type: "string" } } },
+});
 
 test("a build asks each mcp origin for its tools and keeps those its mcps declare, with what each takes, beside it (EVAL-FR-031)", async () => {
   const mcpServers = new InMemoryMcpServers();
   mcpServers.servers.set(LINEAR, { tools: ["create_issue", "list_issues", "delete_team"].map(toolNamed) });
   const credentialsRepository = new InMemoryCredentialsRepository();
-  await credentialsRepository.secrets.set(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }));
+  await credentialsRepository.secrets.set(
+    LINEAR,
+    JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }),
+  );
   const { held, build } = building(linearDeclared, mcpServers, credentialsRepository);
 
   filesOf(await build());
@@ -449,7 +531,10 @@ test("a tool an mcp declares that its mcp origin does not list stops the build, 
   const mcpServers = new InMemoryMcpServers();
   mcpServers.servers.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
   const credentialsRepository = new InMemoryCredentialsRepository();
-  await credentialsRepository.secrets.set(LINEAR, JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }));
+  await credentialsRepository.secrets.set(
+    LINEAR,
+    JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }),
+  );
   const { build } = building(linearDeclared, mcpServers, credentialsRepository);
 
   const faultsText = faultsOf(await build());
@@ -463,7 +548,9 @@ test("without the mcp origins to ask, a build keeps the tools the last build kep
   const keptTools = [toolNamed("create_issue"), toolNamed("list_issues")];
   const { held, build } = building({
     ...linearDeclared,
-    [new URL(".cw/out/mcp-origins.json", repo).href]: JSON.stringify({ origins: [{ ids: ["linear"], address: LINEAR, endpoint: LINEAR, auth: ["token"], tools: keptTools }] }),
+    [new URL(".cw/out/mcp-origins.json", repo).href]: JSON.stringify({
+      origins: [{ ids: ["linear"], address: LINEAR, endpoint: LINEAR, auth: ["token"], tools: keptTools }],
+    }),
   });
 
   filesOf(await build());
@@ -484,8 +571,13 @@ test("a charter with an mcp gives the host one cw entry, beside the repository's
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Read [[billing]]."),
-    [at("mcp/billing/index.md")]: primitive("mcp", "billing", ["endpoint: https://mcp.example.com/", "auth: [oauth]", "tools: [search]"]),
-    [inRepo(".mcp.json")]: `${JSON.stringify({ mcpServers: { mine: { command: "my-server", args: ["--stdio"] } } }, undefined, 2)}\n`,
+    [at("mcp/billing/index.md")]: primitive("mcp", "billing", [
+      "endpoint: https://mcp.example.com/",
+      "auth: [oauth]",
+      "tools: [search]",
+    ]),
+    [inRepo(".mcp.json")]:
+      `${JSON.stringify({ mcpServers: { mine: { command: "my-server", args: ["--stdio"] } } }, undefined, 2)}\n`,
   });
 
   filesOf(await build());
@@ -503,7 +595,9 @@ test("the cw entry is written before the charter holds any mcp, so an mcp origin
 
   filesOf(await build());
 
-  assert.deepEqual(JSON.parse(await contentsOf(held, ".mcp.json")), { mcpServers: { cw: { command: "cw", args: ["mcp", "serve"] } } });
+  assert.deepEqual(JSON.parse(await contentsOf(held, ".mcp.json")), {
+    mcpServers: { cw: { command: "cw", args: ["mcp", "serve"] } },
+  });
 });
 
 test("a repository compiling for no agent has no MCP configuration written for it (FR-146)", async () => {
@@ -518,7 +612,8 @@ test("what the repository set in the host's settings is kept beside the charter'
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("posture/sandboxed/index.md")]: posture("sandboxed", "Read(**)", "Bash(rm:*)"),
-    [inRepo(".claude/settings.json")]: `${JSON.stringify({ model: "opus", permissions: { additionalDirectories: ["../shared"] } })}\n`,
+    [inRepo(".claude/settings.json")]:
+      `${JSON.stringify({ model: "opus", permissions: { additionalDirectories: ["../shared"] } })}\n`,
   });
 
   filesOf(await build());
@@ -545,7 +640,11 @@ test("once compiled, an mcp origin, a script or a template a body names is a lin
       ['globs: ["src/**/*.ts"]'],
       "Take the requirements from [[github/billing]], run [[check]], and fill [[note]].",
     ),
-    [at("mcp/github/billing/index.md")]: primitive("mcp", "github/billing", ["endpoint: https://api.githubcopilot.com/mcp/", "auth: [oauth]", "tools: [search_code]"]),
+    [at("mcp/github/billing/index.md")]: primitive("mcp", "github/billing", [
+      "endpoint: https://api.githubcopilot.com/mcp/",
+      "auth: [oauth]",
+      "tools: [search_code]",
+    ]),
     ...script("check"),
     [at("template/note/index.md")]: primitive("template", "note", [], "Released."),
   });
@@ -560,7 +659,11 @@ test("once compiled, an mcp origin, a script or a template a body names is a lin
   );
   // Each link opens from the document's own folder, where the build lays it.
   for (const [, target] of compiledDocument.matchAll(/\]\((\.\.\/[^)]+)\)/g))
-    assert.notEqual(await held.readIfThere(new URL(target ?? "", new URL(".cw/out/guide/no-any/", repo))), undefined, target);
+    assert.notEqual(
+      await held.readIfThere(new URL(target ?? "", new URL(".cw/out/guide/no-any/", repo))),
+      undefined,
+      target,
+    );
 });
 
 test("a name alone in a code span keeps the span as the link's text; one inside a longer span, a fenced block or a link is left as written (FR-147)", async () => {
@@ -575,7 +678,10 @@ test("a name alone in a code span keeps the span as the link's text; one inside 
     "",
     "Then [[check]] again.",
   ].join("\n");
-  const { held, build } = building({ [at("skill/release/index.md")]: primitive("skill", "release", ['triggers: ["release"]'], body), ...script("check") });
+  const { held, build } = building({
+    [at("skill/release/index.md")]: primitive("skill", "release", ['triggers: ["release"]'], body),
+    ...script("check"),
+  });
 
   filesOf(await build());
 
@@ -599,13 +705,22 @@ test("a name alone in a code span keeps the span as the link's text; one inside 
 test("a mixin's body lent to a primitive holds its links as that primitive's document reads them, and a placeholder is left as written (FR-147)", async () => {
   const { held, build } = building({
     [at("mixin/checked/index.md")]: primitive("mixin", "checked", [], "Always run [[check]], never [[<id>]]."),
-    [at("skill/release/index.md")]: primitive("skill", "release", ['triggers: ["release"]', 'mixins: ["checked"]'], "Tag it."),
+    [at("skill/release/index.md")]: primitive(
+      "skill",
+      "release",
+      ['triggers: ["release"]', 'mixins: ["checked"]'],
+      "Tag it.",
+    ),
     ...script("check"),
   });
 
   filesOf(await build());
 
-  assert.ok((await contentsOf(held, ".cw/out/skill/release/index.md")).includes("Always run [check](../../script/check/index.md), never [[<id>]]."));
+  assert.ok(
+    (await contentsOf(held, ".cw/out/skill/release/index.md")).includes(
+      "Always run [check](../../script/check/index.md), never [[<id>]].",
+    ),
+  );
 });
 
 test("a template's body names a script as a link, as any compiled document does (FR-147)", async () => {
@@ -617,29 +732,41 @@ test("a template's body names a script as a link, as any compiled document does 
 
   filesOf(await build());
 
-  assert.ok((await contentsOf(held, ".cw/out/template/note/index.md")).includes("Checked by [check](../../script/check/index.md)."));
+  assert.ok(
+    (await contentsOf(held, ".cw/out/template/note/index.md")).includes(
+      "Checked by [check](../../script/check/index.md).",
+    ),
+  );
 });
 test("a sensor's run naming a script is, in the command built for it, the built file's path from the repository's root (FR-169)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
-    [at("sensor/check-on-stop/index.md")]: primitive("sensor", "check-on-stop", ["signal: Stop", 'run: "[[release/check]] --strict"']),
+    [at("sensor/check-on-stop/index.md")]: primitive("sensor", "check-on-stop", [
+      "signal: Stop",
+      'run: "[[release/check]] --strict"',
+    ]),
     [at("script/release/check/index.md")]: primitive("script", "release/check", ["executionPath: ./bin/run.sh"], ""),
     [at("script/release/check/bin/run.sh")]: "#!/usr/bin/env bash\n",
   });
 
   filesOf(await build());
 
-  assert.deepEqual(JSON.parse(await contentsOf(held, ".claude/settings.json")).hooks, { Stop: [sessionCounterStopHook] });
+  assert.deepEqual(JSON.parse(await contentsOf(held, ".claude/settings.json")).hooks, {
+    Stop: [sessionCounterStopHook],
+  });
   assert.ok(
     JSON.parse(await contentsOf(held, ".cw/out/sensors.json")).sensors.some(
-      ({ id, command }: { id: string; command: string }) => id === "check-on-stop" && command === ".cw/out/script/release/check/bin/run.sh --strict",
+      ({ id, command }: { id: string; command: string }) =>
+        id === "check-on-stop" && command === ".cw/out/script/release/check/bin/run.sh --strict",
     ),
   );
   assert.notEqual(await held.readIfThere(new URL(".cw/out/script/release/check/bin/run.sh", repo)), undefined);
 });
 
 test("a sensor's run naming a script no layer holds stops the build, under the sensor's file (FR-162)", async () => {
-  const { build } = building({ [at("sensor/check-on-stop/index.md")]: primitive("sensor", "check-on-stop", ["signal: Stop", 'run: "[[missing]]"']) });
+  const { build } = building({
+    [at("sensor/check-on-stop/index.md")]: primitive("sensor", "check-on-stop", ["signal: Stop", 'run: "[[missing]]"']),
+  });
 
   const planSummaryDTO = await build();
 

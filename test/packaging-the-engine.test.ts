@@ -1,10 +1,10 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import packageJson from "../package.json" with { type: "json" };
 
@@ -15,13 +15,24 @@ const root = new URL("../", import.meta.url);
  *  first, so the file read is this working tree's. */
 async function importedPackagesOf(builtFile: string): Promise<Set<string>> {
   const builtSource = await readFile(new URL(builtFile, root), "utf8");
-  const importSpecifiers = [...builtSource.matchAll(/^import\s[^;]*?\sfrom\s+"([^"]+)";/gm), ...builtSource.matchAll(/^import\s+"([^"]+)";/gm)].map(
-    ([, specifier]) => specifier!,
-  );
+  const importSpecifiers = [
+    ...builtSource.matchAll(/^import\s[^;]*?\sfrom\s+"([^"]+)";/gm),
+    ...builtSource.matchAll(/^import\s+"([^"]+)";/gm),
+  ].map(([, specifier]) => specifier!);
   return new Set(
     importSpecifiers
-      .filter((specifier) => !specifier.startsWith(".") && !specifier.startsWith("node:") && !builtinModules.includes(specifier.split("/")[0]!))
-      .map((specifier) => specifier.split("/").slice(0, specifier.startsWith("@") ? 2 : 1).join("/")),
+      .filter(
+        (specifier) =>
+          !specifier.startsWith(".") &&
+          !specifier.startsWith("node:") &&
+          !builtinModules.includes(specifier.split("/")[0]!),
+      )
+      .map((specifier) =>
+        specifier
+          .split("/")
+          .slice(0, specifier.startsWith("@") ? 2 : 1)
+          .join("/"),
+      ),
   );
 }
 
@@ -41,9 +52,21 @@ test("the package holds the program, the page, the library, the README and the l
   assert.equal(packDryRun.status, 0, packDryRun.stderr);
   const packedPaths: string[] = JSON.parse(packDryRun.stdout)[0].files.map(({ path }: { path: string }) => path);
 
-  assert.deepEqual(packedPaths.filter((path) => !path.startsWith("dist/")).sort(), ["LICENSE", "README.md", "package.json"]);
-  assert.ok(packedPaths.includes("dist/cw.js") && packedPaths.includes("dist/main.js") && packedPaths.includes("dist/portal/index.html"));
-  assert.ok(packedPaths.includes("dist/index.js") && packedPaths.includes("dist/index.d.ts") && packedPaths.includes("dist/zod/index.d.ts"));
+  assert.deepEqual(packedPaths.filter((path) => !path.startsWith("dist/")).sort(), [
+    "LICENSE",
+    "README.md",
+    "package.json",
+  ]);
+  assert.ok(
+    packedPaths.includes("dist/cw.js") &&
+      packedPaths.includes("dist/main.js") &&
+      packedPaths.includes("dist/portal/index.html"),
+  );
+  assert.ok(
+    packedPaths.includes("dist/index.js") &&
+      packedPaths.includes("dist/index.d.ts") &&
+      packedPaths.includes("dist/zod/index.d.ts"),
+  );
 });
 
 test("the package declares the MIT license it ships (FR-133)", async () => {
@@ -56,9 +79,15 @@ test("on a Node older than the one it needs, cw names that version and does noth
   // loaded first can answer for it: the launcher reads what an old Node says.
   const oldNodeFolder = await mkdtemp(join(tmpdir(), "cw-old-node-"));
   const oldNode = pathToFileURL(join(oldNodeFolder, "old-node.mjs"));
-  await writeFile(oldNode, 'Object.defineProperty(process, "versions", { value: { ...process.versions, node: "18.20.0" } });\n');
+  await writeFile(
+    oldNode,
+    'Object.defineProperty(process, "versions", { value: { ...process.versions, node: "18.20.0" } });\n',
+  );
   try {
-    const launcherRun = spawnSync(process.execPath, ["--import", oldNode.href, "dist/cw.js", "--help"], { cwd: root, encoding: "utf8" });
+    const launcherRun = spawnSync(process.execPath, ["--import", oldNode.href, "dist/cw.js", "--help"], {
+      cwd: root,
+      encoding: "utf8",
+    });
 
     assert.equal(launcherRun.status, 1);
     assert.equal(launcherRun.stdout, "");

@@ -1,5 +1,5 @@
-import { RepoFolder } from "./repo-folder.js";
 import { CharterFolder } from "./charter-folder.js";
+import { RepoFolder } from "./repo-folder.js";
 
 /** What this repository installed from someone else, one folder per vendor,
  *  `<owner>/<repository>` (FR-023, FR-024, FR-050), under the charter

@@ -1,16 +1,16 @@
-import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
-import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { test } from "node:test";
 import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { SensorPrimitive } from "../src/module/charter/domain/models/primitive/sensor-primitive.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, readPrimitive, commandLineOf } from "./use-cases-of.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { authoringCharterOf, buildingCharterOf, commandLineOf, readPrimitive } from "./use-cases-of.js";
 
 const repo = "/repo";
 const repoPath = new URL("file:///repo/");
@@ -20,14 +20,23 @@ const repoPath = new URL("file:///repo/");
 const asking = async (argv: readonly string[]) => {
   const held = new InMemoryFileReaders({});
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(
+    held,
+    new InMemoryFileOutput(held),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
-    const code = await new Commander(commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo), COMMANDS).run(argv);
+    const code = await new Commander(
+      commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo),
+      COMMANDS,
+    ).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -39,12 +48,10 @@ const asking = async (argv: readonly string[]) => {
  *  author reads it: one indented line per header, its name and its shape, and
  *  the values it may hold where the set is closed. */
 const headersNamedIn = (answer: string) =>
-  answer
-    .split("\n")
-    .flatMap((line) => {
-      const named = /^ {2}(\S+)\s+(line|list)(?:, one of .+)?$/.exec(line);
-      return named === null ? [] : [{ field: named[1]!, shape: named[2]! }];
-    });
+  answer.split("\n").flatMap((line) => {
+    const named = /^ {2}(\S+)\s+(line|list)(?:, one of .+)?$/.exec(line);
+    return named === null ? [] : [{ field: named[1]!, shape: named[2]! }];
+  });
 
 /** The frontmatter block of the sample the answer showed, as an author would
  *  copy it into a file. */
@@ -68,7 +75,10 @@ test("the set is exactly the kinds the charter format defines", () => {
 
 test("a command is refused as a kind the charter does not have: a skill is what is asked for by name (FR-001)", () => {
   assert.throws(
-    () => readPrimitive(["---", "kind: command", "id: release", "description: Cut a release.", "---", "", "Cut it."].join("\n")),
+    () =>
+      readPrimitive(
+        ["---", "kind: command", "id: release", "description: Cut a release.", "---", "", "Cut it."].join("\n"),
+      ),
     (raised: AggregateError) => /"command" is not a kind the charter knows/.test(String(raised.errors[0]?.message)),
   );
 });
@@ -140,11 +150,16 @@ test("the headers it names are the ones cw add takes, one flag apiece (FR-004, s
     ]);
     // An mcp is told which server it is beside what it requires: which shape
     // it takes is its author's choice, so neither is required (plan §19.1).
-    const shapeFlags = kind === "mcp" ? ["--header", "endpoint=https://mcp.example.com/", "--header", "auth=oauth"] : [];
+    const shapeFlags =
+      kind === "mcp" ? ["--header", "endpoint=https://mcp.example.com/", "--header", "auth=oauth"] : [];
     const { code, held: files, problems } = await asking(["add", kind, "something", ...flags, ...shapeFlags]);
 
     assert.equal(code, EXIT_OK, `${kind}: ${problems}`);
-    assert.notEqual(await files.readIfThere(new URL(`.cw/charter/primitive/${kind}/something/index.md`, repoPath)), undefined, kind);
+    assert.notEqual(
+      await files.readIfThere(new URL(`.cw/charter/primitive/${kind}/something/index.md`, repoPath)),
+      undefined,
+      kind,
+    );
   }
 });
 
@@ -153,7 +168,10 @@ test("cw kinds with no kind answers as it does today: one line per kind (FR-002)
 
   assert.equal(code, EXIT_OK);
   assert.deepEqual(
-    results.trim().split("\n").map((line) => line.split("  ")[0]),
+    results
+      .trim()
+      .split("\n")
+      .map((line) => line.split("  ")[0]),
     [...Primitives.kinds],
   );
 });
@@ -170,8 +188,17 @@ test("a word that is no kind is answered with every kind there is (FR-003)", asy
  *  the way a file of the charter is. */
 const mcpOf = (...headers: readonly string[]) =>
   readPrimitive(
-    ["---", "kind: mcp", "id: mfbs/billing", "description: Billing.", "tools: [search_code]", ...headers, "---", ""].join("\n"),
-    );
+    [
+      "---",
+      "kind: mcp",
+      "id: mfbs/billing",
+      "description: Billing.",
+      "tools: [search_code]",
+      ...headers,
+      "---",
+      "",
+    ].join("\n"),
+  );
 
 /** The one fault a refused file raised: what is wrong, and the sample it is
  *  fixed with. */
@@ -187,14 +214,27 @@ const refusalOf = (read: () => unknown) => {
 };
 
 test("an mcp is read in either shape the data model writes (FR-142)", () => {
-  assert.equal(mcpOf("endpoint: https://api.githubcopilot.com/mcp/", "auth: [oauth, token]", "path: moneyforward/billing").kind, "mcp");
-  assert.equal(mcpOf("command: npx", 'args: ["-y", "@modelcontextprotocol/server-github"]', "tokenEnv: GITHUB_TOKEN", "auth: [token]").kind, "mcp");
+  assert.equal(
+    mcpOf("endpoint: https://api.githubcopilot.com/mcp/", "auth: [oauth, token]", "path: moneyforward/billing").kind,
+    "mcp",
+  );
+  assert.equal(
+    mcpOf(
+      "command: npx",
+      'args: ["-y", "@modelcontextprotocol/server-github"]',
+      "tokenEnv: GITHUB_TOKEN",
+      "auth: [token]",
+    ).kind,
+    "mcp",
+  );
   assert.equal(mcpOf("command: ./local-server").kind, "mcp");
   assert.equal(mcpOf("endpoint: http://127.0.0.1:8080/mcp", "auth: [token]").kind, "mcp");
 });
 
 test("an mcp declaring both shapes, or neither, is refused with the sample of the one it was nearer (FR-142)", () => {
-  const bothShapesRefusal = refusalOf(() => mcpOf("endpoint: https://mcp.example.com/", "command: npx", "auth: [token]"));
+  const bothShapesRefusal = refusalOf(() =>
+    mcpOf("endpoint: https://mcp.example.com/", "command: npx", "auth: [token]"),
+  );
   assert.match(bothShapesRefusal.message, /both "endpoint" and "command"/);
   assert.match(bothShapesRefusal.fix, /command: npx/);
 
@@ -213,7 +253,10 @@ test("a command taking a token without naming where it reads it is refused with 
 test("an mcp is refused a way of signing in its shape does not take (FR-142)", () => {
   assert.match(refusalOf(() => mcpOf("command: npx", "auth: [oauth]", "tokenEnv: TOKEN")).message, /by token alone/);
   assert.match(refusalOf(() => mcpOf("endpoint: https://mcp.example.com/")).message, /"auth"/);
-  assert.match(refusalOf(() => mcpOf("endpoint: https://mcp.example.com/", "auth: [password]")).message, /not what a mcp holds/);
+  assert.match(
+    refusalOf(() => mcpOf("endpoint: https://mcp.example.com/", "auth: [password]")).message,
+    /not what a mcp holds/,
+  );
 });
 
 test("an id longer than 40 characters is refused, so a host's names for it stay within what it takes (FR-157)", () => {
@@ -227,6 +270,9 @@ test("an id longer than 40 characters is refused, so a host's names for it stay 
 test("an endpoint in the clear is refused unless it is this machine (FR-142)", () => {
   assert.match(refusalOf(() => mcpOf("endpoint: http://mcp.example.com/", "auth: [oauth]")).message, /https:\/\/ URL/);
   // What is reached is the host the URL names, not the text it opens with.
-  assert.match(refusalOf(() => mcpOf('endpoint: "http://localhost:1@mcp.example.com/"', "auth: [oauth]")).message, /https:\/\/ URL/);
+  assert.match(
+    refusalOf(() => mcpOf('endpoint: "http://localhost:1@mcp.example.com/"', "auth: [oauth]")).message,
+    /https:\/\/ URL/,
+  );
   assert.match(refusalOf(() => mcpOf("endpoint: not a url", "auth: [oauth]")).message, /https:\/\/ URL/);
 });

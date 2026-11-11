@@ -1,6 +1,6 @@
 import type { z } from "zod";
-import { type RequiredHeaders, type AssetFile, BasePrimitive } from "./base-primitive.js";
 import { AgentBasedPrimitive } from "./agent-based-primitive.js";
+import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.js";
 
 /** What the agent may and may not do, as permission lists (FR-004). */
@@ -39,7 +39,19 @@ export class PosturePrimitive extends AgentBasedPrimitive {
   };
 
   /** One posture, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer, keptUri?: string): PosturePrimitive {
-    return new PosturePrimitive(BasePrimitive.headersOf(PosturePrimitive, PosturePrimitive.schema, record), body, assets, primitiveLayer, keptUri);
+  static of(
+    record: Readonly<Record<string, unknown>>,
+    body: string,
+    assets: readonly AssetFile[] = [],
+    primitiveLayer?: PrimitiveLayer,
+    keptUri?: string,
+  ): PosturePrimitive {
+    return new PosturePrimitive(
+      BasePrimitive.headersOf(PosturePrimitive, PosturePrimitive.schema, record),
+      body,
+      assets,
+      primitiveLayer,
+      keptUri,
+    );
   }
 }

@@ -1,9 +1,9 @@
-import { useCallback } from "react";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView, keymap } from "@codemirror/view";
 import { Marked } from "marked";
+import { useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.js";
 
 /**
@@ -18,12 +18,14 @@ const bodyMarkdown = new Marked({
     html: ({ text }) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"),
   },
   walkTokens: (token) => {
-    if ((token.type === "link" || token.type === "image") && /^\s*(javascript|vbscript|data):/i.test(token.href)) token.href = "#";
+    if ((token.type === "link" || token.type === "image") && /^\s*(javascript|vbscript|data):/i.test(token.href))
+      token.href = "#";
   },
 });
 
 /** One of Source and Preview, drawn as a segment of the switch between them. */
-const SEGMENT = "h-auto flex-none cursor-pointer rounded-md px-[11px] py-[5px] text-[11.5px] font-semibold text-zinc-500 data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.08)]";
+const SEGMENT =
+  "h-auto flex-none cursor-pointer rounded-md px-[11px] py-[5px] text-[11.5px] font-semibold text-zinc-500 data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.08)]";
 
 /**
  * One primitive's body, as its source or as it reads rendered (FR-119).
@@ -35,7 +37,10 @@ const SEGMENT = "h-auto flex-none cursor-pointer rounded-md px-[11px] py-[5px] t
  */
 export function PrimitiveBody({ body, onChange }: { body: string; onChange?: (body: string) => void }) {
   return (
-    <Tabs defaultValue={onChange === undefined ? "preview" : "source"} className="gap-0 overflow-hidden rounded-xl border bg-background">
+    <Tabs
+      defaultValue={onChange === undefined ? "preview" : "source"}
+      className="gap-0 overflow-hidden rounded-xl border bg-background"
+    >
       <div className="flex items-center gap-2.5 border-b border-[#f0f0f0] px-[13px] py-[9px]">
         <span className="text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">Body</span>
         <span className="font-mono text-[10.5px] text-zinc-400">markdown</span>
@@ -54,6 +59,7 @@ export function PrimitiveBody({ body, onChange }: { body: string; onChange?: (bo
       <TabsContent value="preview">
         <div
           className="min-h-32 px-[18px] py-4 text-[12.5px] leading-[1.65] text-zinc-700 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:font-mono [&_code]:text-xs [&_h1]:mb-[7px] [&_h1]:text-[15px] [&_h1]:font-bold [&_h1]:text-foreground [&_h2]:mt-4 [&_h2]:mb-[7px] [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:text-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_ul]:list-disc"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: the author's own body, previewed on their own machine.
           dangerouslySetInnerHTML={{ __html: bodyMarkdown.parse(body, { async: false }) }}
         />
       </TabsContent>
@@ -67,6 +73,7 @@ export function PrimitiveBody({ body, onChange }: { body: string; onChange?: (bo
 function BodySource({ body, onChange }: { body: string; onChange: ((body: string) => void) | undefined }) {
   // One callback for the life of this editor, so it is mounted once rather
   // than on every render.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the body is read once, when the editor mounts.
   const mountEditor = useCallback((parent: HTMLDivElement) => {
     const editorView = new EditorView({
       parent,

@@ -1,14 +1,14 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import { GitWorktrees } from "../src/module/runtime/infra/git-worktrees.adapter.js";
 import { AdapterFault } from "../src/module/runtime/app/port/out/keeping-worktrees.port.js";
+import { GitWorktrees } from "../src/module/runtime/infra/git-worktrees.adapter.js";
 
 const run = promisify(execFile);
 
@@ -72,7 +72,10 @@ test("a worktree of a folder under no repository is refused in git's words, nami
     const repo = pathToFileURL(`${folder}/`);
     await assert.rejects(
       new GitWorktrees(repo).addWorktree(".worktrees/1"),
-      (adapterFault) => adapterFault instanceof AdapterFault && /not a git repository/.test(adapterFault.message) && /git init/.test(adapterFault.fix),
+      (adapterFault) =>
+        adapterFault instanceof AdapterFault &&
+        /not a git repository/.test(adapterFault.message) &&
+        /git init/.test(adapterFault.fix),
     );
     assert.deepEqual(await readdir(folder), []);
   } finally {
@@ -100,7 +103,10 @@ test("a machine with no git is told to install it, not to run git init (CORE-FR-
     const repo = pathToFileURL(`${folder}/`);
     await assert.rejects(
       new GitWorktrees(repo).addWorktree(".worktrees/1"),
-      (adapterFault) => adapterFault instanceof AdapterFault && /install it/.test(adapterFault.fix) && !/git init/.test(adapterFault.fix),
+      (adapterFault) =>
+        adapterFault instanceof AdapterFault &&
+        /install it/.test(adapterFault.fix) &&
+        !/git init/.test(adapterFault.fix),
     );
   } finally {
     process.env.PATH = keptPath;

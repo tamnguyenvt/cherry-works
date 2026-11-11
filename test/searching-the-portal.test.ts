@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { inTheBrowser } from "./in-the-browser.js";
 import { rowsOf } from "./listing-in-the-browser.js";
 
@@ -7,7 +7,17 @@ const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/"
 const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: About ${id}.`,
+    ...headers,
+    "---",
+    "",
+    `The body of ${id}.`,
+    "",
+  ].join("\n");
 
 /** A primitive of each layer that mentions "lint", and one that does not. */
 const charter = {
@@ -23,7 +33,9 @@ test("a word typed in the search lists what mentions it in every layer under the
     await page.getByRole("option").nth(1).waitFor();
 
     assert.deepEqual(
-      await page.getByRole("option").evaluateAll((options) => options.map((option) => option.getAttribute("data-value"))),
+      await page
+        .getByRole("option")
+        .evaluateAll((options) => options.map((option) => option.getAttribute("data-value"))),
       ["check", "lint-clean"],
     );
     // The listing under the tabs is left as it was.

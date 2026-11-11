@@ -1,5 +1,16 @@
+import {
+  AdapterFault,
+  BasePrimitive,
+  CharterFolder,
+  type ForReadingFiles,
+  OutputPart,
+  type PrimitiveLayer,
+  Primitives,
+  RawPrimitive,
+  type ReadFile,
+  VendorSource,
+} from "../app/port/out/managing-charter.port.js";
 import { McpClientRegistration, McpCredential } from "../app/port/out/storing-credentials.port.js";
-import { AdapterFault, BasePrimitive, CharterFolder, Primitives, RawPrimitive, VendorSource, type ForReadingFiles, OutputPart, type PrimitiveLayer, type ReadFile } from "../app/port/out/managing-charter.port.js";
 
 /** How many folders under `skills/` a skill's folder may sit, as `npx skills`
  *  walks it: `skills/<name>/`, `skills/<group>/<name>/`, and one group more
@@ -32,10 +43,16 @@ export function oldLayoutPathsOf(paths: readonly string[], sourcePrefix = ""): r
   const oldPaths = paths.flatMap((path) => {
     if (!path.startsWith(sourcePrefix)) return [];
     const repoPath = path.slice(sourcePrefix.length);
-    const oldFolderPath = OLD_LAYOUT_FOLDER_PATHS.find((folderPath) => repoPath === folderPath || repoPath.startsWith(`${folderPath}/`));
+    const oldFolderPath = OLD_LAYOUT_FOLDER_PATHS.find(
+      (folderPath) => repoPath === folderPath || repoPath.startsWith(`${folderPath}/`),
+    );
     if (oldFolderPath !== undefined) return [`${sourcePrefix}${oldFolderPath}/`];
-    const [kindName] = repoPath.startsWith(`${CharterFolder.path}/`) ? repoPath.slice(`${CharterFolder.path}/`.length).split("/") : [];
-    return kindName !== undefined && Primitives.isKind(kindName) ? [`${sourcePrefix}${CharterFolder.path}/${kindName}/`] : [];
+    const [kindName] = repoPath.startsWith(`${CharterFolder.path}/`)
+      ? repoPath.slice(`${CharterFolder.path}/`.length).split("/")
+      : [];
+    return kindName !== undefined && Primitives.isKind(kindName)
+      ? [`${sourcePrefix}${CharterFolder.path}/${kindName}/`]
+      : [];
   });
   return [...new Set(oldPaths)].sort();
 }
@@ -47,16 +64,32 @@ export async function assertNewLayout(fileReader: ForReadingFiles, checkoutFolde
     fileReader.listFolders(`${checkoutFolderPath}.cw`),
     fileReader.listFolders(`${checkoutFolderPath}${CharterFolder.path}`),
   ]);
-  const oldPaths = oldLayoutPathsOf([...workspaceFolderPaths, ...charterFolderPaths].map((folderPath) => `${folderPath}/`), checkoutFolderPath);
+  const oldPaths = oldLayoutPathsOf(
+    [...workspaceFolderPaths, ...charterFolderPaths].map((folderPath) => `${folderPath}/`),
+    checkoutFolderPath,
+  );
   if (oldPaths.length > 0) throw createOldLayoutFault("This repository", oldPaths);
 }
 
-export function rawPrimitivesOf(keptFiles: readonly ReadFile<Uint8Array>[], layerFolder: string, primitiveLayer: PrimitiveLayer, findFileAddress: (path: string) => string): readonly RawPrimitive[] {
-  const filesInKindFolders = keptFiles.filter(({ path }) => Primitives.kinds.some((kind) => path.startsWith(`${layerFolder}${kind}/`)));
+export function rawPrimitivesOf(
+  keptFiles: readonly ReadFile<Uint8Array>[],
+  layerFolder: string,
+  primitiveLayer: PrimitiveLayer,
+  findFileAddress: (path: string) => string,
+): readonly RawPrimitive[] {
+  const filesInKindFolders = keptFiles.filter(({ path }) =>
+    Primitives.kinds.some((kind) => path.startsWith(`${layerFolder}${kind}/`)),
+  );
   const primitiveFolderOf = (indexPath: string) => indexPath.slice(0, -BasePrimitive.index.length);
   const indexFiles = filesInKindFolders.filter(({ path }) => path.endsWith(`/${BasePrimitive.index}`));
-  const primitiveIndexFiles = indexFiles.filter(({ path }) => !indexFiles.some((otherIndexFile) => otherIndexFile.path !== path && path.startsWith(primitiveFolderOf(otherIndexFile.path))));
-  const isUnderAPrimitive = (path: string) => primitiveIndexFiles.some((indexFile) => path.startsWith(primitiveFolderOf(indexFile.path)));
+  const primitiveIndexFiles = indexFiles.filter(
+    ({ path }) =>
+      !indexFiles.some(
+        (otherIndexFile) => otherIndexFile.path !== path && path.startsWith(primitiveFolderOf(otherIndexFile.path)),
+      ),
+  );
+  const isUnderAPrimitive = (path: string) =>
+    primitiveIndexFiles.some((indexFile) => path.startsWith(primitiveFolderOf(indexFile.path)));
   const kindOf = (pathInLayer: string) => pathInLayer.slice(0, pathInLayer.indexOf("/"));
   const idOf = (pathInLayer: string) => pathInLayer.slice(pathInLayer.indexOf("/") + 1);
   const folderUriOf = (kind: string, id: string) => findFileAddress(`${layerFolder}${kind}/${id}/`);
@@ -67,21 +100,45 @@ export function rawPrimitivesOf(keptFiles: readonly ReadFile<Uint8Array>[], laye
       const pathInLayer = primitiveFolderOf(path).slice(layerFolder.length, -1);
       const assets = filesInKindFolders
         .filter((assetFile) => assetFile.path !== path && assetFile.path.startsWith(primitiveFolderOf(path)))
-        .map((assetFile) => ({ file: assetFile.path.slice(primitiveFolderOf(path).length), contents: assetFile.contents }));
-      return new RawPrimitive(primitiveLayer, kindOf(pathInLayer), idOf(pathInLayer), contents, assets, findFileAddress(path), true, folderUriOf);
+        .map((assetFile) => ({
+          file: assetFile.path.slice(primitiveFolderOf(path).length),
+          contents: assetFile.contents,
+        }));
+      return new RawPrimitive(
+        primitiveLayer,
+        kindOf(pathInLayer),
+        idOf(pathInLayer),
+        contents,
+        assets,
+        findFileAddress(path),
+        true,
+        folderUriOf,
+      );
     }),
     ...filesInKindFolders
       .filter(({ path }) => path.endsWith(".md") && !isUnderAPrimitive(path))
       .map(({ path, contents }) => {
         const pathInLayer = path.slice(layerFolder.length, -".md".length);
-        return new RawPrimitive(primitiveLayer, kindOf(pathInLayer), idOf(pathInLayer), contents, [], findFileAddress(path), false, folderUriOf);
+        return new RawPrimitive(
+          primitiveLayer,
+          kindOf(pathInLayer),
+          idOf(pathInLayer),
+          contents,
+          [],
+          findFileAddress(path),
+          false,
+          folderUriOf,
+        );
       }),
   ];
 }
 
 export function skillFilesOf(sourcePaths: readonly string[]): readonly string[] {
   const skillFolders = sourcePaths
-    .filter((sourcePath) => sourcePath.startsWith(`${VendorSource.skillsFolder}/`) && sourcePath.endsWith(`/${VendorSource.skillFile}`))
+    .filter(
+      (sourcePath) =>
+        sourcePath.startsWith(`${VendorSource.skillsFolder}/`) && sourcePath.endsWith(`/${VendorSource.skillFile}`),
+    )
     .map((skillFile) => skillFile.slice(0, -`/${VendorSource.skillFile}`.length))
     .filter((skillFolder) => {
       const folderNames = skillFolder.split("/");
@@ -124,9 +181,17 @@ export function placeOfPart(outputPart: OutputPart): string {
 export function credentialOfSecret(secret: string): McpCredential | undefined {
   try {
     const keptCredential: unknown = JSON.parse(secret);
-    if (keptCredential === null || typeof keptCredential !== "object" || typeof (keptCredential as { accessToken?: unknown }).accessToken !== "string") return undefined;
+    if (
+      keptCredential === null ||
+      typeof keptCredential !== "object" ||
+      typeof (keptCredential as { accessToken?: unknown }).accessToken !== "string"
+    )
+      return undefined;
     const { client: keptClient, ...keptFields } = keptCredential as McpCredential;
-    return new McpCredential({ ...keptFields, ...(keptClient === undefined ? {} : { client: new McpClientRegistration(keptClient) }) });
+    return new McpCredential({
+      ...keptFields,
+      ...(keptClient === undefined ? {} : { client: new McpClientRegistration(keptClient) }),
+    });
   } catch {
     return undefined;
   }
@@ -142,7 +207,8 @@ export function credentialOfSecret(secret: string): McpCredential | undefined {
  * asks for goes.
  */
 export function mergedSettingsText(currentText: string | undefined, charterText: string): string {
-  const isPlainObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+  const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
   const mergedJSON = (heldValue: unknown, charterValue: unknown): unknown =>
     isPlainObject(heldValue) && isPlainObject(charterValue)
       ? Object.fromEntries(
@@ -166,12 +232,15 @@ export function mergedEntryFileText(currentText: string | undefined, sectionText
   const sectionLines = sectionText.trimEnd().split("\n");
   // Escaped, because a marker is a comment and a comment holds characters
   // a regular expression reads as its own.
-  const [startPattern, endPattern] = [sectionLines.at(0) ?? "", sectionLines.at(-1) ?? ""].map((line) => line.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const [startPattern, endPattern] = [sectionLines.at(0) ?? "", sectionLines.at(-1) ?? ""].map((line) =>
+    line.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  );
   const sectionPattern = new RegExp(`${startPattern}[\\s\\S]*?${endPattern}\\n?`, "g");
 
   // Nothing of this build's is in that file yet: the section goes after
   // whatever is there, and an empty file is the section alone.
-  if (heldText.match(sectionPattern) === null) return heldText === "" ? sectionText : `${heldText.replace(/\n*$/, "\n")}\n${sectionText}`;
+  if (heldText.match(sectionPattern) === null)
+    return heldText === "" ? sectionText : `${heldText.replace(/\n*$/, "\n")}\n${sectionText}`;
 
   // A file carrying the marker more than once — a merge conflict resolved
   // by keeping both sides — comes back with one, so a second build over it

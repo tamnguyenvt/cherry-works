@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { BasePrimitive, type RequiredHeaders, type AssetFile } from "./base-primitive.js";
+import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.js";
 
 /** A file the agent fills or copies, written as its body. Beyond the common
@@ -21,7 +21,8 @@ export class TemplatePrimitive extends BasePrimitive {
   static override readonly schema = super.headersSchema().extend({});
 
   /** When a reader of this charter is to open this kind at all (FR-002). */
-  static readonly activatesWhen = "a primitive names it as `[[<id>]]` — a file the agent fills or copies, written as its body";
+  static readonly activatesWhen =
+    "a primitive names it as `[[<id>]]` — a file the agent fills or copies, written as its body";
 
   /** A template as an author writes one: what a refused header is fixed with. */
   static readonly sample: TemplateHeaders = {
@@ -30,7 +31,19 @@ export class TemplatePrimitive extends BasePrimitive {
   };
 
   /** One template, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer, keptUri?: string): TemplatePrimitive {
-    return new TemplatePrimitive(BasePrimitive.headersOf(TemplatePrimitive, TemplatePrimitive.schema, record), body, assets, primitiveLayer, keptUri);
+  static of(
+    record: Readonly<Record<string, unknown>>,
+    body: string,
+    assets: readonly AssetFile[] = [],
+    primitiveLayer?: PrimitiveLayer,
+    keptUri?: string,
+  ): TemplatePrimitive {
+    return new TemplatePrimitive(
+      BasePrimitive.headersOf(TemplatePrimitive, TemplatePrimitive.schema, record),
+      body,
+      assets,
+      primitiveLayer,
+      keptUri,
+    );
   }
 }

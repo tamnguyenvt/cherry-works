@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { access } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { type ServerType, serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { bearerAuth } from "hono/bearer-auth";
-import { serve, type ServerType } from "@hono/node-server";
-import { serveStatic } from "@hono/node-server/serve-static";
 import type { ForAuthoringCharter, ForBuildingCharter } from "#module/charter/module.js";
 import type { FaultDTOs } from "#module/shared/module.js";
 import type { WorkspaceDTOs } from "#module/workspace/module.js";
@@ -27,18 +27,30 @@ export const DEFAULT_PORT = 9927;
  */
 export async function startPortal(
   page: URL,
-  { charterAuthoringApp, charterBuildingApp }: { readonly charterAuthoringApp: ForAuthoringCharter; readonly charterBuildingApp: ForBuildingCharter },
+  {
+    charterAuthoringApp,
+    charterBuildingApp,
+  }: { readonly charterAuthoringApp: ForAuthoringCharter; readonly charterBuildingApp: ForBuildingCharter },
   loadWorkspaceSettings: () => Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>,
   port = DEFAULT_PORT,
 ): Promise<{ address: URL; server: ServerType } | string> {
-  const isPageBuilt = await access(new URL("index.html", page)).then(() => true, () => false);
+  const isPageBuilt = await access(new URL("index.html", page)).then(
+    () => true,
+    () => false,
+  );
   if (!isPageBuilt) return `The portal's page is not built.\n  Run "pnpm build", then start the portal again.\n`;
 
   const token = randomBytes(32).toString("base64url");
   for (let candidatePort = port; ; candidatePort++) {
     try {
       const address = new URL(`http://127.0.0.1:${candidatePort}/?t=${token}`);
-      return { address, server: await listen(portal(page, charterAuthoringApp, charterBuildingApp, loadWorkspaceSettings, token, candidatePort), candidatePort) };
+      return {
+        address,
+        server: await listen(
+          portal(page, charterAuthoringApp, charterBuildingApp, loadWorkspaceSettings, token, candidatePort),
+          candidatePort,
+        ),
+      };
     } catch (raised) {
       if ((raised as NodeJS.ErrnoException).code !== "EADDRINUSE" || candidatePort === 65535) throw raised;
     }
@@ -73,7 +85,8 @@ function portal(
       await next();
     })
     .use("/", async (c, next) => {
-      if (c.req.query("t") !== token) return c.text('Open the address "cw portal" printed: this one has no token.', 401);
+      if (c.req.query("t") !== token)
+        return c.text('Open the address "cw portal" printed: this one has no token.', 401);
       await next();
     })
     .use("/api/*", bearerAuth({ token }))

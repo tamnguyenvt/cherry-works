@@ -16,7 +16,10 @@ export class RawPrimitive {
     /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
      *  the headers and body an author answered, where no file is written yet
      *  (FR-011). */
-    readonly contents: string | Uint8Array | { readonly headers: Readonly<Record<string, unknown>>; readonly body: string },
+    readonly contents:
+      | string
+      | Uint8Array
+      | { readonly headers: Readonly<Record<string, unknown>>; readonly body: string },
     readonly assets: readonly AssetFile[],
     readonly uri: string,
     /** Whether it is kept as a primitive is, apart with its assets: a

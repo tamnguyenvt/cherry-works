@@ -1,8 +1,8 @@
+import { DomainFault, FaultsByFile } from "../../../../shared/module.js";
 import { EvalRoot } from "./eval-root.js";
+import { EvalSuiteFactory } from "./eval-suite.factory.js";
 import type { EvalSuite } from "./eval-suite.js";
 import type { RawEvalSuite } from "./raw-eval-suite.js";
-import { DomainFault, FaultsByFile } from "../../../../shared/module.js";
-import { EvalSuiteFactory } from "./eval-suite.factory.js";
 
 /** Makes a repository's evaluation cases out of the suites it keeps. */
 export class EvalRootFactory {
@@ -14,7 +14,9 @@ export class EvalRootFactory {
     const faultsByFile: Record<string, readonly DomainFault[]> = {};
     const suiteNameByFile = Object.fromEntries(rawEvalSuites.map(({ uri, name }) => [uri, name]));
     const suiteTextByFile = Object.fromEntries(rawEvalSuites.map(({ uri, text }) => [uri, text]));
-    for (const { uri, text } of [...rawEvalSuites].sort((leftEvalSuite, rightEvalSuite) => leftEvalSuite.uri.localeCompare(rightEvalSuite.uri))) {
+    for (const { uri, text } of [...rawEvalSuites].sort((leftEvalSuite, rightEvalSuite) =>
+      leftEvalSuite.uri.localeCompare(rightEvalSuite.uri),
+    )) {
       try {
         suitesByFile[uri] = EvalSuiteFactory.create(text);
       } catch (suiteError) {

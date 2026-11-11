@@ -1,11 +1,21 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { inTheBrowser } from "./in-the-browser.js";
 
 const at = (path: string) => new URL(path, "file:///repo/").href;
 
 const guide = (id: string) =>
-  ["---", "kind: guide", `id: ${id}`, `description: About ${id}.`, 'globs: ["src/**/*.ts"]', "---", "", "Body.", ""].join("\n");
+  [
+    "---",
+    "kind: guide",
+    `id: ${id}`,
+    `description: About ${id}.`,
+    'globs: ["src/**/*.ts"]',
+    "---",
+    "",
+    "Body.",
+    "",
+  ].join("\n");
 
 const suiteText = (written: unknown) => `${JSON.stringify(written, undefined, 2)}\n`;
 
@@ -22,7 +32,9 @@ const withTwoFiles = () => ({
       { do: { touchFile: "src/two.ts" }, expect: { activate: "gone" } },
     ],
   }),
-  [at(".cw/charter/test/posture.json")]: suiteText({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { allow: true } }] }),
+  [at(".cw/charter/test/posture.json")]: suiteText({
+    cases: [{ do: { touchFile: "src/one.ts" }, expect: { allow: true } }],
+  }),
 });
 
 test("with no test file, the test view says so and where they live", async () => {

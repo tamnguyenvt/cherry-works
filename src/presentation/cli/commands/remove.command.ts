@@ -1,6 +1,14 @@
 import prompts from "prompts";
 import { REPO_LAYER } from "#module/charter/module.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { printFault } from "./helper.js";
 
 /** What `cw remove` takes: the id whose file goes, and whether the

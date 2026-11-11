@@ -1,4 +1,4 @@
-import { TestCaseFault } from "../charter.fault.js";
+import type { TestCaseFault } from "../charter.fault.js";
 
 /**
  * How one case came out: the test file it is in, the situation it put, said as

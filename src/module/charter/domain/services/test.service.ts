@@ -1,12 +1,12 @@
-import { TestCaseReport } from "../models/test/test-run-report.js";
-import type { CharterRoot } from "../models/charter/charter-root.js";
-import { PrimitiveLayer } from "../models/primitive/primitive-layer.js";
-import { FaultsByFile, type DomainFault } from "../../../shared/module.js";
-import type { TestCase } from "../models/test/test-case.js";
-import type { TestSuite } from "../models/test/test-suite.js";
-import type { TestRoot } from "../models/test/test-root.js";
+import { type DomainFault, FaultsByFile } from "../../../shared/module.js";
 import { matches } from "../libs/globs.lib.js";
+import type { CharterRoot } from "../models/charter/charter-root.js";
 import { TestCaseFault } from "../models/charter.fault.js";
+import { PrimitiveLayer } from "../models/primitive/primitive-layer.js";
+import type { TestCase } from "../models/test/test-case.js";
+import type { TestRoot } from "../models/test/test-root.js";
+import { TestCaseReport } from "../models/test/test-run-report.js";
+import type { TestSuite } from "../models/test/test-suite.js";
 
 /** Resolves the self-regression cases against a charter, and checks them. */
 export class TestService {
@@ -33,14 +33,23 @@ export class TestService {
    * touch.
    */
   static validateTestRoot(charter: CharterRoot, testRoot: TestRoot): FaultsByFile {
-    const testedIds = new Set<string | undefined>(Object.values(testRoot.suitesByFile).flatMap((testSuite) => testSuite.cases.map((testCase) => testCase.activatedId)));
+    const testedIds = new Set<string | undefined>(
+      Object.values(testRoot.suitesByFile).flatMap((testSuite) =>
+        testSuite.cases.map((testCase) => testCase.activatedId),
+      ),
+    );
     const faultsByFiles: Record<string, readonly DomainFault[]> = {};
     for (const primitive of charter.primitives) {
       const { uri: primitiveUri } = primitive;
       const { id } = primitive.headers;
       // The engine's own are tested where the engine is, as a vendor's are in its
       // own repository.
-      if ((primitive.kind !== "guide" && primitive.kind !== "sensor") || testedIds.has(id) || primitive.layerName === PrimitiveLayer.BUILTIN.name) continue;
+      if (
+        (primitive.kind !== "guide" && primitive.kind !== "sensor") ||
+        testedIds.has(id) ||
+        primitive.layerName === PrimitiveLayer.BUILTIN.name
+      )
+        continue;
       faultsByFiles[primitiveUri] = [
         new TestCaseFault(
           `No test case names "${id}", so nothing notices when it stops coming up where it should.`,
@@ -61,21 +70,36 @@ export class TestService {
   static runCase(charter: CharterRoot, suiteName: string, testCase: TestCase): TestCaseReport {
     const writtenCase = testCase.written;
     if ("when" in writtenCase) {
-      return new TestCaseReport(suiteName, testCase.describe(), TestService.#findSensorFault(charter, writtenCase.when, writtenCase.expect.run));
+      return new TestCaseReport(
+        suiteName,
+        testCase.describe(),
+        TestService.#findSensorFault(charter, writtenCase.when, writtenCase.expect.run),
+      );
     }
 
     if ("do" in writtenCase) {
       const { touchFile } = writtenCase.do;
       if ("activate" in writtenCase.expect) {
-        return new TestCaseReport(suiteName, testCase.describe(), TestService.#findActivationFault(charter, touchFile, writtenCase.expect.activate));
+        return new TestCaseReport(
+          suiteName,
+          testCase.describe(),
+          TestService.#findActivationFault(charter, touchFile, writtenCase.expect.activate),
+        );
       }
       if ("allow" in writtenCase.expect) {
-        return new TestCaseReport(suiteName, testCase.describe(), TestService.#findPostureFault(charter, touchFile, writtenCase.expect.allow));
+        return new TestCaseReport(
+          suiteName,
+          testCase.describe(),
+          TestService.#findPostureFault(charter, touchFile, writtenCase.expect.allow),
+        );
       }
     }
 
     // The schema lets no other case through; one that reached here is the engine's fault.
-    throw new TestCaseFault("This case puts no situation the charter answers.", 'Write it with "do" and "expect.activate" or "expect.allow", or with "when" and "expect.run".');
+    throw new TestCaseFault(
+      "This case puts no situation the charter answers.",
+      'Write it with "do" and "expect.activate" or "expect.allow", or with "when" and "expect.run".',
+    );
   }
 
   /** Why a touched file did not bring this guide up, or nothing where it did.
@@ -138,11 +162,9 @@ export class TestService {
       );
     return denyingPostures.length > 0
       ? undefined
-      : new TestCaseFault(
-          `No posture denies this file.`,
-          `Add it to a posture's "deny", or expect "allow": true.`,
-          { internal: false },
-        );
+      : new TestCaseFault(`No posture denies this file.`, `Add it to a posture's "deny", or expect "allow": true.`, {
+          internal: false,
+        });
   }
 
   /** Why a raised event did not run this sensor, or nothing where it did. */

@@ -58,5 +58,9 @@ export interface ForCallingMcpServers {
    * Raises an `AdapterFault` naming the address where the mcp origin cannot be
    * reached or started, or does not answer in time.
    */
-  connect(mcpServerAddress: McpServerAddress, accessToken: string | undefined, timeoutMs: number): Promise<McpServerConnection>;
+  connect(
+    mcpServerAddress: McpServerAddress,
+    accessToken: string | undefined,
+    timeoutMs: number,
+  ): Promise<McpServerConnection>;
 }

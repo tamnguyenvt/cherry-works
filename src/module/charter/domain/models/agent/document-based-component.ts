@@ -56,7 +56,13 @@ export abstract class DocumentBasedComponent<Headers extends object = NoHeaders>
         // this host to read, and there is none to write.
         ...(headerEntries.length === 0
           ? []
-          : [["---", ...headerEntries.map(([field, value]) => `${field}: ${ModelHelper.formatFrontmatterValue(value)}`), "---"].join("\n")]),
+          : [
+              [
+                "---",
+                ...headerEntries.map(([field, value]) => `${field}: ${ModelHelper.formatFrontmatterValue(value)}`),
+                "---",
+              ].join("\n"),
+            ]),
         body,
       ]
         .filter((block) => block !== "")

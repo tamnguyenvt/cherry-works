@@ -1,6 +1,11 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { CallToolRequestSchema, ListToolsRequestSchema, type CallToolResult, type Tool } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolRequestSchema,
+  type CallToolResult,
+  ListToolsRequestSchema,
+  type Tool,
+} from "@modelcontextprotocol/sdk/types.js";
 import type { ForBuildingCharter } from "#module/charter/module.js";
 import type { ForRunningCharter } from "#module/runtime/module.js";
 
@@ -28,17 +33,17 @@ export async function startMcpServer(
     if (servedToolsDTO.type === "Fault") throw new Error(`${servedToolsDTO.data.message} ${servedToolsDTO.data.fix}`);
     return { tools: servedToolsDTO.data.tools.map(({ data }) => data as Tool) };
   });
-  server.setRequestHandler(
-    CallToolRequestSchema,
-    async ({ params }) => {
-      const toolAnswerDTO = await charterRuntimeApp.call(params.name, params.arguments ?? {});
-      // A fault of the call is the tool's own error, which the host reads as
-      // the result. A list that fails is still a protocol error, above.
-      if (toolAnswerDTO.type === "Fault")
-        return { content: [{ type: "text", text: `${toolAnswerDTO.data.message} ${toolAnswerDTO.data.fix}` }], isError: true };
-      return toolAnswerDTO.data as CallToolResult;
-    },
-  );
+  server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
+    const toolAnswerDTO = await charterRuntimeApp.call(params.name, params.arguments ?? {});
+    // A fault of the call is the tool's own error, which the host reads as
+    // the result. A list that fails is still a protocol error, above.
+    if (toolAnswerDTO.type === "Fault")
+      return {
+        content: [{ type: "text", text: `${toolAnswerDTO.data.message} ${toolAnswerDTO.data.fix}` }],
+        isError: true,
+      };
+    return toolAnswerDTO.data as CallToolResult;
+  });
   const serverClosed = new Promise<void>((resolve) => (server.onclose = resolve));
   await server.connect(transport);
   return { serverClosed };

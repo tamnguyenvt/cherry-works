@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
 import { BuiltinPrimitives } from "../src/module/charter/domain/builtin/index.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
@@ -19,16 +19,25 @@ test("the body reads the sessions through the summary, by a command cw answers w
 
   assert.match(skillBody, /`cw sessions --json`/);
   const namedCommands = [...skillBody.matchAll(/`cw ([a-z]+)/g)].map(([, name]) => name);
-  assert.deepEqual(namedCommands.filter((name) => !COMMANDS.some((command) => command.name.split(" ")[0] === name)), []);
-  const namedOptions = [...skillBody.matchAll(/`cw sessions[^`]*`/g)].flatMap(([commandLine]) => [...commandLine.matchAll(/--([a-z]+)/g)].map(([, option]) => option));
-  assert.deepEqual(namedOptions.filter((option) => !(option! in sessionsCommand.options)), []);
+  assert.deepEqual(
+    namedCommands.filter((name) => !COMMANDS.some((command) => command.name.split(" ")[0] === name)),
+    [],
+  );
+  const namedOptions = [...skillBody.matchAll(/`cw sessions[^`]*`/g)].flatMap(([commandLine]) =>
+    [...commandLine.matchAll(/--([a-z]+)/g)].map(([, option]) => option),
+  );
+  assert.deepEqual(
+    namedOptions.filter((option) => !(option! in sessionsCommand.options)),
+    [],
+  );
 });
 
 test("the body asks for typed or published prices, and names the prices used and where and when they were read (EVAL-FR-014)", () => {
   assert.match(skillBody, /type/i);
   assert.match(skillBody, /published/);
   assert.match(skillBody, /where and when/);
-  for (const tokenKind of ["input", "output", "cacheWrite", "cacheRead"]) assert.match(skillBody, new RegExp(`\`${tokenKind}\``));
+  for (const tokenKind of ["input", "output", "cacheWrite", "cacheRead"])
+    assert.match(skillBody, new RegExp(`\`${tokenKind}\``));
   assert.match(skillBody, /each session/);
   assert.match(skillBody, /each day/);
 });

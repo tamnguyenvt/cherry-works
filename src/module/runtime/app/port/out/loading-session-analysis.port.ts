@@ -17,5 +17,9 @@ export interface ForLoadingSessionAnalysis {
    * (CORE-FR-218). Each session keeps one folder of its own, its log directly
    * in it; a folder that is not there holds none.
    */
-  loadSessionLogs(sessionAnalysisFolder: string | undefined, writtenFromMs: number, writtenUntilMs: number): Promise<SessionLogs>;
+  loadSessionLogs(
+    sessionAnalysisFolder: string | undefined,
+    writtenFromMs: number,
+    writtenUntilMs: number,
+  ): Promise<SessionLogs>;
 }

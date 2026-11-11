@@ -1,6 +1,14 @@
 import { BUILTIN_LAYER } from "#module/charter/module.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { editInEditor, printFault } from "./helper.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
 
 /** What `cw edit` takes: the id whose file is opened. */
 const OPTIONS = {
@@ -41,7 +49,11 @@ export class EditCommand implements Command<typeof OPTIONS> {
 
     return {
       code: EXIT_OK,
-      result: [`Closed ${primitive.file}.`, 'Run "cw doctor" to see that the charter still holds, then "cw build".', ""].join("\n"),
+      result: [
+        `Closed ${primitive.file}.`,
+        'Run "cw doctor" to see that the charter still holds, then "cw build".',
+        "",
+      ].join("\n"),
     };
   }
 }

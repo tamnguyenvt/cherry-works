@@ -54,7 +54,11 @@ export interface PromptfooAssertion {
 export interface PromptfooTestResult {
   readonly success: boolean;
   readonly totalTokens: number;
-  readonly componentResults: readonly { readonly assertionType: string; readonly pass: boolean; readonly reason: string }[];
+  readonly componentResults: readonly {
+    readonly assertionType: string;
+    readonly pass: boolean;
+    readonly reason: string;
+  }[];
   readonly error?: string;
   readonly logPath?: string;
   readonly sessionId?: string;

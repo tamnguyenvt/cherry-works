@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { BasePrimitive, type RequiredHeaders, type AssetFile } from "./base-primitive.js";
+import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.js";
 
 /** A standard the agent is held to. Its body is loaded when a touched file
@@ -24,7 +24,8 @@ export class GuidePrimitive extends BasePrimitive {
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
    *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen = "a touched file matches one of its `globs`, or every turn where globs are not specified";
+  static readonly activatesWhen =
+    "a touched file matches one of its `globs`, or every turn where globs are not specified";
 
   /** A guide as an author writes one: what a refused header is fixed with. */
   static readonly sample: GuideHeaders = {
@@ -36,7 +37,19 @@ export class GuidePrimitive extends BasePrimitive {
   };
 
   /** One guide, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer, keptUri?: string): GuidePrimitive {
-    return new GuidePrimitive(BasePrimitive.headersOf(GuidePrimitive, GuidePrimitive.schema, record), body, assets, primitiveLayer, keptUri);
+  static of(
+    record: Readonly<Record<string, unknown>>,
+    body: string,
+    assets: readonly AssetFile[] = [],
+    primitiveLayer?: PrimitiveLayer,
+    keptUri?: string,
+  ): GuidePrimitive {
+    return new GuidePrimitive(
+      BasePrimitive.headersOf(GuidePrimitive, GuidePrimitive.schema, record),
+      body,
+      assets,
+      primitiveLayer,
+      keptUri,
+    );
   }
 }

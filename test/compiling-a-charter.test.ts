@@ -1,19 +1,17 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { putDownBy } from "./put-down-by.js";
-import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
-import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
-import { ModelHelper } from "../src/module/charter/domain/helper.js";
-import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
-import { yamlFieldsOf } from "../src/module/charter/domain/libs/yaml.lib.js";
-
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { test } from "node:test";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
-import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
+import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
+import { ModelHelper } from "../src/module/charter/domain/helper.js";
+import { yamlFieldsOf } from "../src/module/charter/domain/libs/yaml.lib.js";
+import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
 import { StampedDocument } from "../src/module/charter/domain/models/projection/stamped-document.js";
+import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { putDownBy } from "./put-down-by.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 
 const CLAUDE = new AgentProvider("claude");
@@ -200,7 +198,17 @@ test("every primitive compiles to one document holding its headers, then its mix
 
 test("a mixin at the end lends its body after its host's, and one at the start before it, each in the order the host named them", async () => {
   const mixinText = (id: string, position: string) =>
-    ["---", "kind: mixin", `id: ${id}`, "description: What every rule here shares.", ...(position === "" ? [] : [`position: ${position}`]), "---", "", id.toUpperCase(), ""].join("\n");
+    [
+      "---",
+      "kind: mixin",
+      `id: ${id}`,
+      "description: What every rule here shares.",
+      ...(position === "" ? [] : [`position: ${position}`]),
+      "---",
+      "",
+      id.toUpperCase(),
+      "",
+    ].join("\n");
   const { files } = await built({
     [new URL("mixin/opening/index.md", root).href]: mixinText("opening", ""),
     [new URL("mixin/closing/index.md", root).href]: mixinText("closing", "end"),
@@ -292,23 +300,17 @@ test("a header YAML would read as something else is quoted in the compiled docum
 });
 
 test("an mcp origin is served under the first segment of its id and a hash of its id, the same on every build (FR-145)", () => {
-  assert.deepEqual(
-    ModelHelper.shortenStringsOf(["notion", "moneyforward/tax", "moneyforward/billing-service"]),
-    {
-      "moneyforward/billing-service": "moneyforward_c3ae",
-      "moneyforward/tax": "moneyforward_e2d3",
-      "notion": "notion_8d57",
-    },
-  );
+  assert.deepEqual(ModelHelper.shortenStringsOf(["notion", "moneyforward/tax", "moneyforward/billing-service"]), {
+    "moneyforward/billing-service": "moneyforward_c3ae",
+    "moneyforward/tax": "moneyforward_e2d3",
+    notion: "notion_8d57",
+  });
 });
 
 test("two mcp origins whose prefixes hash alike are told apart by a number, in the order they sort in (FR-145)", () => {
   // Both hash to `acme_3b85`; `place-1157` sorts before `place-5`.
-  assert.deepEqual(
-    ModelHelper.shortenStringsOf(["acme/place-5", "acme/place-1157"]),
-    {
-      "acme/place-1157": "acme_3b85",
-      "acme/place-5": "acme_3b85_2",
-    },
-  );
+  assert.deepEqual(ModelHelper.shortenStringsOf(["acme/place-5", "acme/place-1157"]), {
+    "acme/place-1157": "acme_3b85",
+    "acme/place-5": "acme_3b85_2",
+  });
 });

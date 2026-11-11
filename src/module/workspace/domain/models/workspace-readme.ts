@@ -1,4 +1,3 @@
-
 /** Where the charter's own home of Cherry Works is published. */
 const CHERRY_WORKS_URL = "https://github.com/tamnguyenvt/cherry-works";
 

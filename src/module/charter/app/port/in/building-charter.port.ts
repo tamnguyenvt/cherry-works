@@ -1,6 +1,6 @@
+import type { FaultDTOs } from "../../../../shared/module.js";
 import type { AgentProviderName } from "../../../domain/models/agent/agent-provider.js";
 import type { CharterDTOs } from "./charter.dto.js";
-import type { FaultDTOs } from "../../../../shared/module.js";
 
 /*
  * What a driver reads or says beside the DTOs themselves, named again here: a

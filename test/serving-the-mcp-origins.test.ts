@@ -1,13 +1,13 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import type { McpOrigin } from "../src/module/charter/domain/models/projection/mcp-origin.js";
 import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
+import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryMcpServers } from "../src/module/shared/infra/in-memory/in-memory-mcp-servers.adapter.js";
-import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
-import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { answerOf, faultOf } from "./answer-of.js";
 import { buildingCharterOf } from "./use-cases-of.js";
 
@@ -15,19 +15,28 @@ const OUT = "file:///repo/.cw/out/";
 const GITHUB = "https://api.githubcopilot.com/mcp/";
 const LINEAR = "https://mcp.linear.app/mcp";
 
-
 /** What each mcp declares, as its compiled document under `.cw/out/` holds it. */
 const COMPILED_MCPS = {
-  "github/billing": { file: ".cw/out/mcp/github/billing/index.md", headers: `endpoint: ${GITHUB}\npath: acme/billing\nauth: [oauth, token]\ntools: [get_file_contents, search_code]` },
-  "linear": { file: ".cw/out/mcp/linear/index.md", headers: `endpoint: ${LINEAR}\nauth: [token]\ntools: [list_issues, create_issue]` },
+  "github/billing": {
+    file: ".cw/out/mcp/github/billing/index.md",
+    headers: `endpoint: ${GITHUB}\npath: acme/billing\nauth: [oauth, token]\ntools: [get_file_contents, search_code]`,
+  },
+  linear: {
+    file: ".cw/out/mcp/linear/index.md",
+    headers: `endpoint: ${LINEAR}\nauth: [token]\ntools: [list_issues, create_issue]`,
+  },
 } as const;
 
 /** The names the build wrote into the list of mcp origins, which the server
  *  serves under rather than making its own. */
-const SERVED_PREFIXES = { "github/billing": "github_aaaa", "linear": "linear_bbbb" } as const;
+const SERVED_PREFIXES = { "github/billing": "github_aaaa", linear: "linear_bbbb" } as const;
 const servedName = (id: keyof typeof COMPILED_MCPS, tool: string) => `${SERVED_PREFIXES[id]}__${tool}`;
 
-const toolNamed = (name: string) => ({ name, description: `${name} at its mcp origin`, inputSchema: { type: "object", properties: {} } });
+const toolNamed = (name: string) => ({
+  name,
+  description: `${name} at its mcp origin`,
+  inputSchema: { type: "object", properties: {} },
+});
 
 /** Two mcp origins at two addresses, each declared by one mcp, with the tools the
  *  build kept of each: Linear's lacks one it was declared with, as a list
@@ -42,7 +51,14 @@ const ORIGINS: readonly McpOrigin[] = [
     auth: ["oauth", "token"],
     tools: ["get_file_contents", "search_code"].map(toolNamed),
   },
-  { ids: ["linear"], names: { "linear": "linear_bbbb" }, address: LINEAR, endpoint: LINEAR, auth: ["token"], tools: ["list_issues"].map(toolNamed) },
+  {
+    ids: ["linear"],
+    names: { linear: "linear_bbbb" },
+    address: LINEAR,
+    endpoint: LINEAR,
+    auth: ["token"],
+    tools: ["list_issues"].map(toolNamed),
+  },
 ];
 
 /** A built repository with both mcp origins listed and both signed in to by token;
@@ -65,12 +81,26 @@ const mcpOriginsServed = ({ origins = ORIGINS as readonly McpOrigin[] | null } =
   const mcpServers = new InMemoryMcpServers();
   mcpServers.servers.set(GITHUB, { tools: ["get_file_contents", "search_code", "delete_repository"].map(toolNamed) });
   mcpServers.servers.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
-  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), {}, new InMemoryReporter(), { mcpServers, credentialsRepository, authorizing });
+  const charterRuntimeApp = buildingCharterOf(
+    held,
+    new InMemoryFileOutput(held),
+    new InMemoryTokenCounter(),
+    {},
+    new InMemoryReporter(),
+    { mcpServers, credentialsRepository, authorizing },
+  );
   return { held, credentialsRepository, authorizing, mcpServers, charterRuntimeApp };
 };
 
-const signIn = (credentialsRepository: InMemoryCredentialsRepository, address: string, credential: Record<string, unknown> = {}) =>
-  credentialsRepository.secrets.set(address, JSON.stringify({ address, method: "token", accessToken: `${address} token`, ...credential }));
+const signIn = (
+  credentialsRepository: InMemoryCredentialsRepository,
+  address: string,
+  credential: Record<string, unknown> = {},
+) =>
+  credentialsRepository.secrets.set(
+    address,
+    JSON.stringify({ address, method: "token", accessToken: `${address} token`, ...credential }),
+  );
 
 const signedInMcpOrigins = async () => {
   const mcpOrigins = mcpOriginsServed();
@@ -99,7 +129,9 @@ test("a served tool's description names its mcp origin, and its input schema is 
 
   const servedTools = answerOf(await charterRuntimeApp.tools());
 
-  const searchCode = servedTools.data.tools.find(({ data }) => data.name === servedName("github/billing", "search_code"));
+  const searchCode = servedTools.data.tools.find(
+    ({ data }) => data.name === servedName("github/billing", "search_code"),
+  );
   const listIssues = servedTools.data.tools.find(({ data }) => data.name === servedName("linear", "list_issues"));
   assert.equal(searchCode?.data.description, "[github/billing — acme/billing] search_code at its mcp origin");
   assert.equal(listIssues?.data.description, "[linear] list_issues at its mcp origin");
@@ -111,7 +143,9 @@ test("a declared tool its mcp origin does not have is said, naming the mcp and t
 
   const servedTools = answerOf(await charterRuntimeApp.tools());
 
-  assert.ok(servedTools.data.problems.some((problem) => problem.includes("linear") && problem.includes("create_issue")));
+  assert.ok(
+    servedTools.data.problems.some((problem) => problem.includes("linear") && problem.includes("create_issue")),
+  );
   assert.ok(servedTools.data.tools.some(({ data }) => data.name === servedName("linear", "list_issues")));
 });
 
@@ -138,12 +172,18 @@ test("a call to a tool that was not served is refused, and reaches no mcp origin
 
 test("a call reaches its mcp origin under the developer's own credential, and the answer comes back as it came (FR-154, SC-035)", async () => {
   const { charterRuntimeApp, mcpServers } = await signedInMcpOrigins();
-  const mcpOriginAnswer = { content: [{ type: "text", text: "3 issues" }], isError: false, structuredContent: { count: 3 } };
+  const mcpOriginAnswer = {
+    content: [{ type: "text", text: "3 issues" }],
+    isError: false,
+    structuredContent: { count: 3 },
+  };
   mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], answer: () => mcpOriginAnswer });
 
   const toolAnswer = answerOf(await charterRuntimeApp.call(servedName("linear", "list_issues"), { team: "core" }));
 
-  assert.deepEqual(mcpServers.calls, [{ address: LINEAR, name: "list_issues", args: { team: "core" }, accessToken: `${LINEAR} token` }]);
+  assert.deepEqual(mcpServers.calls, [
+    { address: LINEAR, name: "list_issues", args: { team: "core" }, accessToken: `${LINEAR} token` },
+  ]);
   assert.deepEqual(toolAnswer.data, mcpOriginAnswer);
 });
 
@@ -179,7 +219,11 @@ test("an expired credential is renewed before the call, asking nobody, and the r
     expiresAt: new Date(Date.now() - 60_000).toISOString(),
     client: { clientId: "cw", issuer: LINEAR },
   });
-  authorizing.renewedGrant = { accessToken: "renewed", refreshToken: "refresh-2", client: { clientId: "cw", issuer: LINEAR } };
+  authorizing.renewedGrant = {
+    accessToken: "renewed",
+    refreshToken: "refresh-2",
+    client: { clientId: "cw", issuer: LINEAR },
+  };
 
   await charterRuntimeApp.call(servedName("linear", "list_issues"), {});
 
@@ -190,13 +234,23 @@ test("an expired credential is renewed before the call, asking nobody, and the r
 test("a call the mcp origin refuses with 401 is tried once more after a renewal (FR-151)", async () => {
   const { charterRuntimeApp, mcpServers, credentialsRepository, authorizing } = mcpOriginsServed();
   await signIn(credentialsRepository, GITHUB);
-  await signIn(credentialsRepository, LINEAR, { method: "oauth", refreshToken: "refresh", client: { clientId: "cw", issuer: LINEAR } });
+  await signIn(credentialsRepository, LINEAR, {
+    method: "oauth",
+    refreshToken: "refresh",
+    client: { clientId: "cw", issuer: LINEAR },
+  });
   authorizing.renewedGrant = { accessToken: "renewed", client: { clientId: "cw", issuer: LINEAR } };
-  mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], acceptsToken: (accessToken) => accessToken === "renewed" });
+  mcpServers.servers.set(LINEAR, {
+    tools: [toolNamed("list_issues")],
+    acceptsToken: (accessToken) => accessToken === "renewed",
+  });
 
   const toolAnswer = answerOf(await charterRuntimeApp.call(servedName("linear", "list_issues"), {}));
 
-  assert.deepEqual(mcpServers.calls.map(({ accessToken }) => accessToken), [`${LINEAR} token`, "renewed"]);
+  assert.deepEqual(
+    mcpServers.calls.map(({ accessToken }) => accessToken),
+    [`${LINEAR} token`, "renewed"],
+  );
   assert.equal(toolAnswer.data.isError, undefined);
 });
 
@@ -228,7 +282,9 @@ test("with no list of mcp origins, serving stops saying to build (FR-152)", asyn
 });
 
 test("a list of mcp origins written without names serves nothing of it, saying to build again (FR-145)", async () => {
-  const { charterRuntimeApp, credentialsRepository } = mcpOriginsServed({ origins: ORIGINS.map(({ names, ...origin }) => origin) as unknown as McpOrigin[] });
+  const { charterRuntimeApp, credentialsRepository } = mcpOriginsServed({
+    origins: ORIGINS.map(({ names, ...origin }) => origin) as unknown as McpOrigin[],
+  });
   await signIn(credentialsRepository, GITHUB);
   await signIn(credentialsRepository, LINEAR);
 
@@ -253,5 +309,7 @@ test("MCP reads only the shared catalogue, since its primitives are shared", asy
   held.calls.length = 0;
   const servedTools = answerOf(await charterRuntimeApp.tools());
   assert.equal(servedTools.data.tools.length, 3);
-  assert.ok(!held.calls.some((file) => file.includes("catalogue.claude.json") || file.includes("catalogue.codex.json")));
+  assert.ok(
+    !held.calls.some((file) => file.includes("catalogue.claude.json") || file.includes("catalogue.codex.json")),
+  );
 });

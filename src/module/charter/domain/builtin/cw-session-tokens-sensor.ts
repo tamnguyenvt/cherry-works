@@ -1,5 +1,5 @@
-import { SensorPrimitive, type SensorHeaders } from "../models/primitive/sensor-primitive.js";
 import { PrimitiveLayer } from "../models/primitive/primitive-layer.js";
+import { type SensorHeaders, SensorPrimitive } from "../models/primitive/sensor-primitive.js";
 
 /** What runs `cw-session-tokens-counter` each time the agent stops, so a built
  *  charter counts every session with nothing written by the repository

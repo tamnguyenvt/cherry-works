@@ -1,14 +1,25 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { inTheBrowser } from "./in-the-browser.js";
 import { chipsOf, columnOf, rowsOf } from "./listing-in-the-browser.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
 const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/").href;
-const vendoredPickedAt = (path: string) => new URL(path, "file:///repo/.cw/charter/vendor/acme/charters/baseline/primitive/").href;
+const vendoredPickedAt = (path: string) =>
+  new URL(path, "file:///repo/.cw/charter/vendor/acme/charters/baseline/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: About ${id}.`,
+    ...headers,
+    "---",
+    "",
+    `The body of ${id}.`,
+    "",
+  ].join("\n");
 
 test("the vendor tab lists what vendors installed, and nothing authored here (FR-112)", async () => {
   const charter = {
@@ -20,7 +31,10 @@ test("the vendor tab lists what vendors installed, and nothing authored here (FR
     await rowsOf(page).waitFor();
 
     assert.deepEqual(await columnOf(page, 1).allInnerTexts(), ["small-diffs"]);
-    assert.equal(await columnOf(page, 2).locator("div").nth(1).innerText(), ".cw/charter/vendor/acme/charter/root/primitive/guide/small-diffs/index.md");
+    assert.equal(
+      await columnOf(page, 2).locator("div").nth(1).innerText(),
+      ".cw/charter/vendor/acme/charter/root/primitive/guide/small-diffs/index.md",
+    );
     assert.deepEqual((await chipsOf(page))[0], ["guide", "1"]);
   });
 });

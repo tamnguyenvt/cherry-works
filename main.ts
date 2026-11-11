@@ -2,8 +2,8 @@
 import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
 import packageJson from "./package.json" with { type: "json" };
-import { Commander } from "./src/presentation/cli/cli.commander.js";
 import { composeApplications } from "./src/module/composition.js";
+import { Commander } from "./src/presentation/cli/cli.commander.js";
 
 /**
  * COMPOSITION ROOT — where this command line is put together: the workspace

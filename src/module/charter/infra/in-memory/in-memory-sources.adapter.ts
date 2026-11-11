@@ -1,5 +1,5 @@
+import { decodeContents, encodeContents, type InMemoryFileReaders, urlAt } from "../../../shared/module.js";
 import { AdapterFault, type ForFetchingCharterSources } from "../../app/port/out/fetching-charter-sources.port.js";
-import { type InMemoryFileReaders, decodeContents, encodeContents, urlAt } from "../../../shared/module.js";
 
 /** Sources held in memory: a test publishes what each holds, and nothing shells
  *  out. The second implementation that earns `ForFetchingCharterSources` its place
@@ -42,15 +42,28 @@ export class InMemorySources implements ForFetchingCharterSources {
    *  nothing is fetched, so nothing else names it. */
   #listSourceFiles(commit: string): Record<string, string | Uint8Array> {
     const source = commit.split("@")[0] ?? commit;
-    const publishedCharter = { ".cw/charter/primitive/guide/published/index.md": "---\nkind: guide\nid: published\ndescription: Published.\n---\n", "README.md": "# Published\n" };
+    const publishedCharter = {
+      ".cw/charter/primitive/guide/published/index.md":
+        "---\nkind: guide\nid: published\ndescription: Published.\n---\n",
+      "README.md": "# Published\n",
+    };
     if (this.sourcesWithoutSubFolder.includes(source)) return { "README.md": "# Notes\n" };
-    if (this.sourcesHoldingRefusedFolder.includes(source)) return { ...publishedCharter, ".cw/charter/vendor/other/guide/x/index.md": "x" };
+    if (this.sourcesHoldingRefusedFolder.includes(source))
+      return { ...publishedCharter, ".cw/charter/vendor/other/guide/x/index.md": "x" };
     return this.sourceFilesBySource[source] ?? publishedCharter;
   }
 
   async fetchCommit(source: string, version?: string): Promise<string> {
-    if (this.hasNoGit) throw new AdapterFault("spawn git ENOENT", "Reaching a source needs git: install it, and run this again.", { internal: false });
-    if (this.unreachableSources.includes(source)) throw new AdapterFault(`${source} could not be fetched.`, "Check the address, and that you can reach it from here.", { internal: false });
+    if (this.hasNoGit)
+      throw new AdapterFault("spawn git ENOENT", "Reaching a source needs git: install it, and run this again.", {
+        internal: false,
+      });
+    if (this.unreachableSources.includes(source))
+      throw new AdapterFault(
+        `${source} could not be fetched.`,
+        "Check the address, and that you can reach it from here.",
+        { internal: false },
+      );
     this.fetchedSources.push({ source, ...(version === undefined ? {} : { version }) });
     return version === undefined ? source : `${source}@${version}`;
   }
@@ -61,13 +74,15 @@ export class InMemorySources implements ForFetchingCharterSources {
 
   async readFileAt(commit: string, path: string): Promise<string> {
     const contents = this.#listSourceFiles(commit)[path];
-    if (contents === undefined) throw new AdapterFault(`${commit} has no "${path}".`, "Read a file the commit holds.", { internal: false });
+    if (contents === undefined)
+      throw new AdapterFault(`${commit} has no "${path}".`, "Read a file the commit holds.", { internal: false });
     return decodeContents(contents);
   }
 
   async readBytesAt(commit: string, path: string): Promise<Uint8Array> {
     const contents = this.#listSourceFiles(commit)[path];
-    if (contents === undefined) throw new AdapterFault(`${commit} has no "${path}".`, "Read a file the commit holds.", { internal: false });
+    if (contents === undefined)
+      throw new AdapterFault(`${commit} has no "${path}".`, "Read a file the commit holds.", { internal: false });
     return encodeContents(contents);
   }
 
@@ -77,7 +92,8 @@ export class InMemorySources implements ForFetchingCharterSources {
     this.checkedOutFolders.push({ commit, fromFolder, intoSubFolder });
     if (this.files === undefined) return;
     const intoFolder = urlAt(this.files.rootFolder, `${intoSubFolder}/`);
-    for (const { path } of await this.files.readFilesRecursively(intoSubFolder)) this.files.remove(urlAt(this.files.rootFolder, path));
+    for (const { path } of await this.files.readFilesRecursively(intoSubFolder))
+      this.files.remove(urlAt(this.files.rootFolder, path));
     const fromPrefix = fromFolder === "" ? "" : `${fromFolder}/`;
     for (const [path, contents] of Object.entries(this.#listSourceFiles(commit)))
       if (path.startsWith(fromPrefix)) this.files.write(urlAt(intoFolder, path.slice(fromPrefix.length)), contents);

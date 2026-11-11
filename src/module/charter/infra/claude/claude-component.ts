@@ -1,8 +1,8 @@
 import { AgentProvider } from "../../app/port/out/managing-local-agent-output.port.js";
 import { ClaudeAgent } from "./claude-agent.js";
 import { ClaudeEntryFile } from "./claude-entry-file.js";
-import { ClaudeRule } from "./claude-rule.js";
 import { ClaudeMcpConfig } from "./claude-mcp-config.js";
+import { ClaudeRule } from "./claude-rule.js";
 import { ClaudeSettings } from "./claude-settings.js";
 import { ClaudeSkill } from "./claude-skill.js";
 

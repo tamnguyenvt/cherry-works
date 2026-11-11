@@ -1,5 +1,5 @@
-import { RepoFolder } from "./repo-folder.js";
 import { CharterFolder } from "./charter-folder.js";
+import { RepoFolder } from "./repo-folder.js";
 
 /** The situations this repository pins its charter down with, one file of cases
  *  each (FR-047), under the charter (CORE-FR-224). Apart from the primitives: a

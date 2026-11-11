@@ -50,7 +50,9 @@ export class OutputPart {
       // The folder this names is written as it is named.
       const resolvedUrl = new URL(suffix, `https://charter.invalid/${this.path}`);
       const encodedFolder = new URL(".", `https://charter.invalid/${this.path}`).pathname;
-      const resolvedPath = resolvedUrl.pathname.startsWith(encodedFolder) ? `${partFolder}${resolvedUrl.pathname.slice(encodedFolder.length)}` : resolvedUrl.pathname.slice(1);
+      const resolvedPath = resolvedUrl.pathname.startsWith(encodedFolder)
+        ? `${partFolder}${resolvedUrl.pathname.slice(encodedFolder.length)}`
+        : resolvedUrl.pathname.slice(1);
       return `${OUT_FOLDER_TOKEN}/${resolvedPath}${resolvedUrl.search}${resolvedUrl.hash}`;
     }
     return `${OUT_FOLDER_TOKEN}/${suffix === "" ? this.path : `${partFolder}${suffix}`}`;

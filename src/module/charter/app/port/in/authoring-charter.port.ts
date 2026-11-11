@@ -1,8 +1,8 @@
-import { PrimitiveLayer } from "../../../domain/models/primitive/primitive-layer.js";
-import { TestFolder } from "../../../domain/models/charter/test-folder.js";
-import { EvalFolder } from "../../../domain/models/charter/eval-folder.js";
-import type { CharterDTOs } from "./charter.dto.js";
 import type { FaultDTOs } from "../../../../shared/module.js";
+import { EvalFolder } from "../../../domain/models/charter/eval-folder.js";
+import { TestFolder } from "../../../domain/models/charter/test-folder.js";
+import { PrimitiveLayer } from "../../../domain/models/primitive/primitive-layer.js";
+import type { CharterDTOs } from "./charter.dto.js";
 
 /*
  * What a driver reads or says beside the DTOs themselves — the words a
@@ -243,10 +243,20 @@ export interface ForAuthoringCharter {
    * there, each skill with the headers its `SKILL.md` declared that were left
    * out (CORE-FR-186).
    */
-  addVendor(sourceUri: string, version?: string, selectedSkillIds?: readonly string[], selectedCharterNames?: readonly string[]): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
+  addVendor(
+    sourceUri: string,
+    version?: string,
+    selectedSkillIds?: readonly string[],
+    selectedCharterNames?: readonly string[],
+  ): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
 
   /** Copy source primitives into the own charter, unstaged, refusing collisions before writing (CORE-FR-198–200). */
-  injectVendor(sourceUri: string, version?: string, selectedSkillIds?: readonly string[], selectedCharterNames?: readonly string[]): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
+  injectVendor(
+    sourceUri: string,
+    version?: string,
+    selectedSkillIds?: readonly string[],
+    selectedCharterNames?: readonly string[],
+  ): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
 
   /**
    * Take one installed charter away, named by the folder it was installed as
@@ -351,7 +361,10 @@ export interface ForAuthoringCharter {
    * Refused, keeping nothing, for an address no mcp origin is at or one that takes
    * no OAuth sign-in. What comes back is the address, signed in.
    */
-  signInWithOAuth(address: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<CharterDTOs.SignInStatus | FaultDTOs.Fault>;
+  signInWithOAuth(
+    address: string,
+    showAuthorizationUrl: (authorizationUrl: string) => void,
+  ): Promise<CharterDTOs.SignInStatus | FaultDTOs.Fault>;
 
   /**
    * Every situation this repository wrote down, resolved against its charter
@@ -381,5 +394,8 @@ export interface ForAuthoringCharter {
    * renewed, is answered as a fault naming the command that signs in again; one
    * at plain `http` on another machine is refused before anything is read.
    */
-  accessToken(mcpOriginAddress: McpOriginAddress, isRefused: boolean): Promise<CharterDTOs.AccessToken | FaultDTOs.Fault>;
+  accessToken(
+    mcpOriginAddress: McpOriginAddress,
+    isRefused: boolean,
+  ): Promise<CharterDTOs.AccessToken | FaultDTOs.Fault>;
 }

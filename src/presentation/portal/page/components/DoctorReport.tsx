@@ -1,9 +1,9 @@
+import { DIALOG_FOOTER } from "../lib/utils.js";
 import { useBuild, useHealth } from "../queries.js";
 import type { BuildAnswer } from "./CharterBuild.js";
 import { FaultAlert } from "./FaultAlert.js";
 import { FaultsByFileTable } from "./FaultsByFileTable.js";
 import { Button } from "./ui/button.js";
-import { DIALOG_FOOTER } from "../lib/utils.js";
 
 /**
  * The health check, as `cw doctor` gives it (FR-121): the four answers —
@@ -20,13 +20,11 @@ export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
 
   if (healthQuery.data === undefined) return null;
   if (healthQuery.data.type === "Fault") return <FaultAlert fault={healthQuery.data} />;
-  const { agents, errorCount, warnCount, pendingCount, faultsByFile, problemCount, mainContexts, mainContextCeiling } = healthQuery.data.data;
+  const { agents, errorCount, warnCount, pendingCount, faultsByFile, problemCount, mainContexts, mainContextCeiling } =
+    healthQuery.data.data;
 
   const healthAnswers = [
-    [
-      "Agents",
-      agents.length === 0 ? "none chosen, so only the neutral surface is compiled." : `${agents.join(", ")}.`,
-    ],
+    ["Agents", agents.length === 0 ? "none chosen, so only the neutral surface is compiled." : `${agents.join(", ")}.`],
     [
       "Charter",
       errorCount > 0
@@ -54,7 +52,12 @@ export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
 
   // The strip is tinted by the worst of what the engine found: red for an
   // error, amber for a warning, green for neither.
-  const [stripTint, dotTint] = errorCount > 0 ? ["bg-[#fef6f6]", "bg-[#b91c1c]"] : warnCount > 0 ? ["bg-[#fffbeb]", "bg-[#b45309]"] : ["bg-[#f5fbf7]", "bg-[#16a34a]"];
+  const [stripTint, dotTint] =
+    errorCount > 0
+      ? ["bg-[#fef6f6]", "bg-[#b91c1c]"]
+      : warnCount > 0
+        ? ["bg-[#fffbeb]", "bg-[#b45309]"]
+        : ["bg-[#f5fbf7]", "bg-[#16a34a]"];
 
   return (
     <div className="-mt-[18px] space-y-4">
@@ -66,16 +69,26 @@ export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
       </div>
       <dl className="overflow-hidden rounded-[11px] border border-[#f0f0f0]" aria-label="Health">
         {healthAnswers.map(([question, answer]) => (
-          <div key={`${question} ${answer}`} className="flex items-baseline gap-3 border-b border-zinc-100 px-[13px] py-2.5 last:border-b-0">
-            <dt className="w-[118px] shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">{question}</dt>
+          <div
+            key={`${question} ${answer}`}
+            className="flex items-baseline gap-3 border-b border-zinc-100 px-[13px] py-2.5 last:border-b-0"
+          >
+            <dt className="w-[118px] shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">
+              {question}
+            </dt>
             <dd className="text-xs">{answer}</dd>
           </div>
         ))}
       </dl>
-      {Object.keys(faultsByFile.data.files).length > 0 && <FaultsByFileTable faultsByFile={faultsByFile} label="Faults" />}
+      {Object.keys(faultsByFile.data.files).length > 0 && (
+        <FaultsByFileTable faultsByFile={faultsByFile} label="Faults" />
+      )}
       {pendingCount !== null && pendingCount > 0 && (
         <div className={DIALOG_FOOTER}>
-          <Button disabled={buildMutation.isPending} onClick={() => buildMutation.mutate(undefined, { onSuccess: onBuilt })}>
+          <Button
+            disabled={buildMutation.isPending}
+            onClick={() => buildMutation.mutate(undefined, { onSuccess: onBuilt })}
+          >
             Build
           </Button>
         </div>

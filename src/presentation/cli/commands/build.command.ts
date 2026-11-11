@@ -1,5 +1,13 @@
-import { printFaultsByFile, printFault } from "./helper.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
+import { printFault, printFaultsByFile } from "./helper.js";
 
 /** What `cw build` takes: whether the build lands, or is only said. One flag
  *  rather than a command of its own, because what is asked for is the same

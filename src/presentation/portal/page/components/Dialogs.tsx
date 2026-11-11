@@ -1,10 +1,10 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, useContext, useState } from "react";
 import { toast } from "sonner";
-import { BuildOutcome, BuildPreview, type BuildAnswer } from "./CharterBuild.js";
+import { AddVendorSource } from "./AddVendorSource.js";
+import { type BuildAnswer, BuildOutcome, BuildPreview } from "./CharterBuild.js";
 import { DoctorReport } from "./DoctorReport.js";
 import { PrimitiveExplanation } from "./PrimitiveExplanation.js";
 import { PrimitiveForm } from "./PrimitiveForm.js";
-import { AddVendorSource } from "./AddVendorSource.js";
 import { TestSuiteEditor } from "./TestSuiteEditor.js";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog.js";
 
@@ -15,7 +15,10 @@ declare const CW_VERSION: string;
  *  `useDialog` hands out: the one way to open a dialog — by its name, with the
  *  params that dialog is rendered by — and to close it. */
 type DialogHelpers = {
-  open: <Name extends keyof typeof DIALOGS>(name: Name, params: Parameters<(typeof DIALOGS)[Name]["render"]>[0]) => void;
+  open: <Name extends keyof typeof DIALOGS>(
+    name: Name,
+    params: Parameters<(typeof DIALOGS)[Name]["render"]>[0],
+  ) => void;
   close: () => void;
 };
 
@@ -80,7 +83,9 @@ const DIALOGS = {
     title: () => "Add vendor source",
     context: () => "",
     holdsDraft: true,
-    render: (_params: Record<string, never>, { close }: DialogHelpers) => <AddVendorSource onDone={toastWritten(close)} onClose={close} />,
+    render: (_params: Record<string, never>, { close }: DialogHelpers) => (
+      <AddVendorSource onDone={toastWritten(close)} onClose={close} />
+    ),
   },
   /** One test file's text, to save or delete (FR-090, FR-092). */
   testSuite: {
@@ -152,8 +157,12 @@ export function DialogProvider({ children }: { children: ReactNode }) {
             onEscapeKeyDown={(event) => dialog.holdsDraft && event.preventDefault()}
           >
             <DialogHeader className="flex-row items-baseline gap-2.5 border-b border-[#f0f0f0] py-[15px] pr-12 pl-[18px]">
-              <DialogTitle className="text-[14.5px] font-bold tracking-[-0.01em]">{dialog.title(shown.params)}</DialogTitle>
-              <DialogDescription className="font-mono text-[11px] text-zinc-400">{dialog.context(shown.params)}</DialogDescription>
+              <DialogTitle className="text-[14.5px] font-bold tracking-[-0.01em]">
+                {dialog.title(shown.params)}
+              </DialogTitle>
+              <DialogDescription className="font-mono text-[11px] text-zinc-400">
+                {dialog.context(shown.params)}
+              </DialogDescription>
             </DialogHeader>
             {/* What a dialog renders scrolls under its header; a row of buttons
                 it ends on is drawn as its footer (`DIALOG_FOOTER`), and a strip or

@@ -24,13 +24,19 @@ export async function anOAuthServer(): Promise<OAuthTestServer> {
   const server = createServer();
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  const oauthTestServer: OAuthTestServer = { endpoint: `${base}/mcp`, server, refusesRenewal: false, issued: { authorization_code: 0, refresh_token: 0 } };
+  const oauthTestServer: OAuthTestServer = {
+    endpoint: `${base}/mcp`,
+    server,
+    refusesRenewal: false,
+    issued: { authorization_code: 0, refresh_token: 0 },
+  };
 
   server.on("request", async (request, response) => {
     const requestUrl = new URL(request.url ?? "/", base);
     let body = "";
     for await (const chunk of request) body += chunk;
-    const answerJson = (status: number, json: unknown) => response.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(json));
+    const answerJson = (status: number, json: unknown) =>
+      response.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(json));
 
     if (requestUrl.pathname.startsWith("/.well-known/oauth-protected-resource"))
       return answerJson(200, { resource: oauthTestServer.endpoint, authorization_servers: [base] });
@@ -57,14 +63,25 @@ export async function anOAuthServer(): Promise<OAuthTestServer> {
     if (requestUrl.pathname === "/token") {
       const form = new URLSearchParams(body);
       if (form.get("grant_type") === "authorization_code") {
-        const verifier = createHash("sha256").update(form.get("code_verifier") ?? "").digest("base64url");
+        const verifier = createHash("sha256")
+          .update(form.get("code_verifier") ?? "")
+          .digest("base64url");
         if (challenges.get(form.get("code") ?? "") !== verifier) return answerJson(400, { error: "invalid_grant" });
         oauthTestServer.issued.authorization_code += 1;
-        return answerJson(200, { access_token: "access-1", token_type: "Bearer", expires_in: 3600, refresh_token: "refresh-1" });
+        return answerJson(200, {
+          access_token: "access-1",
+          token_type: "Bearer",
+          expires_in: 3600,
+          refresh_token: "refresh-1",
+        });
       }
       if (oauthTestServer.refusesRenewal) return answerJson(400, { error: "invalid_grant" });
       oauthTestServer.issued.refresh_token += 1;
-      return answerJson(200, { access_token: `access-renewed-${oauthTestServer.issued.refresh_token}`, token_type: "Bearer", expires_in: 3600 });
+      return answerJson(200, {
+        access_token: `access-renewed-${oauthTestServer.issued.refresh_token}`,
+        token_type: "Bearer",
+        expires_in: 3600,
+      });
     }
     answerJson(404, {});
   });

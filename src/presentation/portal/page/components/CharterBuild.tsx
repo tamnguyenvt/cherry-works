@@ -1,12 +1,12 @@
 import type { CharterDTOs } from "#module/charter/module.js";
 import type { FaultDTOs } from "#module/shared/module.js";
+import { DIALOG_FOOTER } from "../lib/utils.js";
 import { useBuild, useBuildPreview } from "../queries.js";
 import { FaultAlert } from "./FaultAlert.js";
 import { FaultsByFileTable } from "./FaultsByFileTable.js";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert.js";
 import { Button } from "./ui/button.js";
 import { Table, TableBody, TableCell, TableRow } from "./ui/table.js";
-import { DIALOG_FOOTER } from "../lib/utils.js";
 
 /** What a build answered: what it wrote and deleted, or the faults that
  *  refused it. */
@@ -41,12 +41,16 @@ export function BuildPreview({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
         <i className="size-2 shrink-0 rounded-full bg-[#1d4ed8]" />
         <span className="text-[12.5px] font-bold">Nothing was written</span>
         <p className="min-w-0 text-[11.5px] leading-normal text-zinc-500" aria-label="Plan counts">
-          {planTargets.length} file{planTargets.length === 1 ? "" : "s"}: {added.length} create, {edited.length} update, {deleted.length} delete,{" "}
-          {unchanged.length} unchanged.
+          {planTargets.length} file{planTargets.length === 1 ? "" : "s"}: {added.length} create, {edited.length} update,{" "}
+          {deleted.length} delete, {unchanged.length} unchanged.
         </p>
       </div>
       <div className="-mx-5">
-        {(planSummaryDTO.data.warnings ?? []).map((warning) => <p key={warning} role="status" className="px-4 py-2 text-sm text-amber-800">Warning: {warning}</p>)}
+        {(planSummaryDTO.data.warnings ?? []).map((warning) => (
+          <p key={warning} role="status" className="px-4 py-2 text-sm text-amber-800">
+            Warning: {warning}
+          </p>
+        ))}
         <Table aria-label="Build plan">
           <TableBody>
             {planTargets.map(([change, path]) => (
@@ -56,7 +60,10 @@ export function BuildPreview({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
         </Table>
       </div>
       <div className={DIALOG_FOOTER}>
-        <Button disabled={buildMutation.isPending} onClick={() => buildMutation.mutate(undefined, { onSuccess: onBuilt })}>
+        <Button
+          disabled={buildMutation.isPending}
+          onClick={() => buildMutation.mutate(undefined, { onSuccess: onBuilt })}
+        >
           Build
         </Button>
       </div>
@@ -77,14 +84,22 @@ export function BuildOutcome({ buildAnswer }: { buildAnswer: BuildAnswer }) {
       <div className="-mx-5 flex items-center gap-2.5 border-b border-[#f0f0f0] bg-[#f5fbf7] px-4 py-3.5">
         <i className="size-2 shrink-0 rounded-full bg-[#16a34a]" />
         <p className="text-[12.5px] font-bold" aria-label="Build counts">
-          Built {writtenPaths.length} file{writtenPaths.length === 1 ? "" : "s"}: {added.length} added, {edited.length} changed, {deleted.length} deleted.
+          Built {writtenPaths.length} file{writtenPaths.length === 1 ? "" : "s"}: {added.length} added, {edited.length}{" "}
+          changed, {deleted.length} deleted.
         </p>
       </div>
       <div className="-mx-5">
-        {(buildAnswer.data.warnings ?? []).map((warning) => <p key={warning} role="status" className="px-4 py-2 text-sm text-amber-800">Warning: {warning}</p>)}
+        {(buildAnswer.data.warnings ?? []).map((warning) => (
+          <p key={warning} role="status" className="px-4 py-2 text-sm text-amber-800">
+            Warning: {warning}
+          </p>
+        ))}
         <Table aria-label="Build written">
           <TableBody>
-            {[...writtenPaths.map((path) => ["wrote", path] as const), ...deleted.map((path) => ["deleted", path] as const)].map(([pathChange, path]) => (
+            {[
+              ...writtenPaths.map((path) => ["wrote", path] as const),
+              ...deleted.map((path) => ["deleted", path] as const),
+            ].map(([pathChange, path]) => (
               <PathRow key={path} pathChange={pathChange} path={path} />
             ))}
           </TableBody>
@@ -111,7 +126,11 @@ function PathRow({ pathChange, path }: { pathChange: string; path: string }) {
   return (
     <TableRow className="border-zinc-100 hover:bg-transparent">
       <TableCell className="w-28 py-[11px] pl-4">
-        <span className={`rounded-[5px] px-[7px] py-0.5 text-[9.5px] font-bold tracking-[0.04em] uppercase ${PATH_CHANGE_COLORS[pathChange]}`}>{pathChange}</span>
+        <span
+          className={`rounded-[5px] px-[7px] py-0.5 text-[9.5px] font-bold tracking-[0.04em] uppercase ${PATH_CHANGE_COLORS[pathChange]}`}
+        >
+          {pathChange}
+        </span>
       </TableCell>
       <TableCell className="py-[11px] pr-4 font-mono text-[11.5px] font-bold">{path}</TableCell>
     </TableRow>

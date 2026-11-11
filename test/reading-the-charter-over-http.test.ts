@@ -1,41 +1,68 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { api } from "../src/presentation/portal/portal.routes.js";
+import { test } from "node:test";
 import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
-import { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
-import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
-import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
+import { api } from "../src/presentation/portal/portal.routes.js";
+import { authoringCharterOf, buildingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
-const repo = new URL("file:///repo/");
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: About ${id}.`,
+    ...headers,
+    "---",
+    "",
+    `The body of ${id}.`,
+    "",
+  ].join("\n");
 
-const guide = (id: string, headers: readonly string[] = []) => primitive("guide", id, ['globs: ["src/**/*.ts"]', ...headers]);
+const guide = (id: string, headers: readonly string[] = []) =>
+  primitive("guide", id, ['globs: ["src/**/*.ts"]', ...headers]);
 
 /** The routes over one repository held in memory, asked the way the page asks
  *  them: the app's own `request`, so what is tested is the route and its status
  *  rather than the guards the server wraps it in (plan §6, tested there). */
-const portal = (files: Readonly<Record<string, string>>, fileReaders = new InMemoryFileReaders(files), progressReporter = new InMemoryReporter()) => {
+const portal = (
+  files: Readonly<Record<string, string>>,
+  fileReaders = new InMemoryFileReaders(files),
+  progressReporter = new InMemoryReporter(),
+) => {
   const sourceFetcher = new InMemorySources();
-  const charterAuthoringApp = authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), progressReporter, { sourceFetcher });
-  const charterRuntimeApp = buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, progressReporter);
-  return api(wrapAppToShowPaths(charterAuthoringApp, "/repo"), wrapAppToShowPaths(charterRuntimeApp, "/repo"), workspaceSettingsLoaderOf(fileReaders));
+  const charterAuthoringApp = authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), progressReporter, {
+    sourceFetcher,
+  });
+  const charterRuntimeApp = buildingCharterOf(
+    fileReaders,
+    new InMemoryFileOutput(fileReaders),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    progressReporter,
+  );
+  return api(
+    wrapAppToShowPaths(charterAuthoringApp, "/repo"),
+    wrapAppToShowPaths(charterRuntimeApp, "/repo"),
+    workspaceSettingsLoaderOf(fileReaders),
+  );
 };
 
 test("the listing is sent as every primitive the charter read, each under its layer (FR-112)", async () => {
-  const answer = await portal({ [at("guide/no-any/index.md")]: guide("no-any"), [at("corpus/why/index.md")]: primitive("corpus", "why") }).request(
-    "/charter/root/primitives",
-  );
+  const answer = await portal({
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    [at("corpus/why/index.md")]: primitive("corpus", "why"),
+  }).request("/charter/root/primitives");
 
   assert.equal(answer.status, 200);
   // Parsed by its schema, which is how the page reads it.
@@ -55,23 +82,31 @@ test("the listing is sent as every primitive the charter read, each under its la
 });
 
 test("a word sent with the listing narrows it to what mentions the word, and an empty one narrows nothing (FR-114)", async () => {
-  const portalRoutes = portal({ [at("guide/no-any/index.md")]: guide("no-any"), [at("corpus/why/index.md")]: primitive("corpus", "why") });
+  const portalRoutes = portal({
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    [at("corpus/why/index.md")]: primitive("corpus", "why"),
+  });
 
-  const narrowed = CharterDTOs.Primitives.parse(await (await portalRoutes.request("/charter/root/primitives?matching=WHY")).json());
+  const narrowed = CharterDTOs.Primitives.parse(
+    await (await portalRoutes.request("/charter/root/primitives?matching=WHY")).json(),
+  );
   assert.deepEqual(
     narrowed.data.primitives.map((one) => one.data.id),
     ["why"],
   );
 
-  const unnarrowed = CharterDTOs.Primitives.parse(await (await portalRoutes.request("/charter/root/primitives?matching=")).json());
+  const unnarrowed = CharterDTOs.Primitives.parse(
+    await (await portalRoutes.request("/charter/root/primitives?matching=")).json(),
+  );
   // The two authored, and the four the engine brings.
   assert.equal(unnarrowed.data.primitives.length, 6);
 });
 
 test("one primitive is explained by kind and id, with when it comes up (FR-029, FR-116)", async () => {
-  const answer = await portal({ [at("guide/no-any/index.md")]: guide("no-any", ["rationale: why"]), [at("corpus/why/index.md")]: primitive("corpus", "why") }).request(
-    "/charter/root/primitives/no-any/explanation",
-  );
+  const answer = await portal({
+    [at("guide/no-any/index.md")]: guide("no-any", ["rationale: why"]),
+    [at("corpus/why/index.md")]: primitive("corpus", "why"),
+  }).request("/charter/root/primitives/no-any/explanation");
 
   assert.equal(answer.status, 200);
   const { data } = CharterDTOs.ExplanationOutcome.parse(await answer.json());
@@ -94,7 +129,9 @@ test("a charter with an error explains nothing and hands back what is wrong unde
   );
 
   assert.equal(answer.status, 422);
-  assert.deepEqual(Object.keys(FaultDTOs.FaultsByFile.parse(await answer.json()).data.files), [".cw/charter/primitive/guide/no-any/index.md"]);
+  assert.deepEqual(Object.keys(FaultDTOs.FaultsByFile.parse(await answer.json()).data.files), [
+    ".cw/charter/primitive/guide/no-any/index.md",
+  ]);
 });
 
 test("every kind is sent with the line saying when it comes up, whatever the charter holds (FR-010)", async () => {
@@ -107,7 +144,9 @@ test("every kind is sent with the line saying when it comes up, whatever the cha
 });
 
 test("a charter with an error lists nothing and hands back what is wrong under its file (FR-013)", async () => {
-  const answer = await portal({ [at("guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }).request("/charter/root/primitives");
+  const answer = await portal({ [at("guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }).request(
+    "/charter/root/primitives",
+  );
 
   assert.equal(answer.status, 422);
   const { type, data } = FaultDTOs.FaultsByFile.parse(await answer.json());
@@ -119,19 +158,27 @@ test("what validating found is sent as it stands, a charter that holds having no
   const holds = await portal({
     [at("guide/no-any/index.md")]: guide("no-any"),
     // A guide no test case names is a warning (FR-014); this one is named.
-    "file:///repo/.cw/charter/test/no-any.json": JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
+    "file:///repo/.cw/charter/test/no-any.json": JSON.stringify({
+      cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }],
+    }),
   }).request("/charter/root/faults");
 
   assert.equal(holds.status, 200);
   assert.deepEqual(FaultDTOs.FaultsByFile.parse(await holds.json()).data.files, {});
 
-  const wrong = await portal({ [at("guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }).request("/charter/root/faults");
+  const wrong = await portal({ [at("guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }).request(
+    "/charter/root/faults",
+  );
 
   // Read even where the charter does not hold: what is wrong is what this route
   // is for, so it is the answer and not a refusal.
   assert.equal(wrong.status, 200);
   const { data } = FaultDTOs.FaultsByFile.parse(await wrong.json());
-  assert.ok(data.files[".cw/charter/primitive/guide/no-any/index.md"]?.some(({ data: { message } }) => /the mixin "nowhere"/.test(message)));
+  assert.ok(
+    data.files[".cw/charter/primitive/guide/no-any/index.md"]?.some(({ data: { message } }) =>
+      /the mixin "nowhere"/.test(message),
+    ),
+  );
 });
 
 test("the charter is read again on every call, so what changed on disk is what the next call sends (FR-110)", async () => {

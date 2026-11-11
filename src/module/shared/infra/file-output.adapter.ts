@@ -1,6 +1,6 @@
 import { chmod, mkdir, rm, rmdir, writeFile } from "node:fs/promises";
-import { AdapterFault, type ForWritingFiles } from "../app/port/out/writing-files.port.js";
 import { FolderAddress, type FolderURL } from "../app/port/out/folder-address.port.js";
+import { AdapterFault, type ForWritingFiles } from "../app/port/out/writing-files.port.js";
 import { urlAt } from "./helper.js";
 
 /** DRIVEN ADAPTER: the filesystem, written to. What the charter compiles to,
@@ -23,7 +23,11 @@ export class FileOutput implements ForWritingFiles {
     this.#rootFolder = FolderAddress.urlOf(rootFolder);
   }
 
-  async write(filePath: string, contents: string | Uint8Array, options: { readonly executable?: boolean } = {}): Promise<void> {
+  async write(
+    filePath: string,
+    contents: string | Uint8Array,
+    options: { readonly executable?: boolean } = {},
+  ): Promise<void> {
     const file = urlAt(this.#rootFolder, filePath);
     try {
       await mkdir(new URL(".", file), { recursive: true });
@@ -35,7 +39,11 @@ export class FileOutput implements ForWritingFiles {
     } catch (writeError) {
       // Said in this adapter's words, what the disk said kept as the cause for
       // the log alone (SDK-FR-018).
-      throw new AdapterFault(`"${file.pathname}" could not be written.`, `Check that "${file.pathname}" can be written, and run this again.`, { internal: false, cause: writeError });
+      throw new AdapterFault(
+        `"${file.pathname}" could not be written.`,
+        `Check that "${file.pathname}" can be written, and run this again.`,
+        { internal: false, cause: writeError },
+      );
     }
   }
 
@@ -46,7 +54,11 @@ export class FileOutput implements ForWritingFiles {
   async deleteFolder(folderPath: string): Promise<void> {
     const folder = urlAt(this.#rootFolder, `${folderPath}/`);
     await rm(folder, { recursive: true, force: true }).catch((rmError: unknown) => {
-      throw new AdapterFault(`"${folder.pathname}" could not be deleted.`, `Check that "${folder.pathname}" can be written, and run this again.`, { internal: false, cause: rmError });
+      throw new AdapterFault(
+        `"${folder.pathname}" could not be deleted.`,
+        `Check that "${folder.pathname}" can be written, and run this again.`,
+        { internal: false, cause: rmError },
+      );
     });
   }
 
@@ -54,7 +66,11 @@ export class FileOutput implements ForWritingFiles {
     const folder = urlAt(this.#rootFolder, `${folderPath}/`);
     await rmdir(folder).catch((rmdirError: NodeJS.ErrnoException) => {
       if (rmdirError.code !== "ENOTEMPTY" && rmdirError.code !== "EEXIST" && rmdirError.code !== "ENOENT")
-        throw new AdapterFault(`"${folder.pathname}" could not be deleted.`, `Check that "${folder.pathname}" can be written, and run this again.`, { internal: false, cause: rmdirError });
+        throw new AdapterFault(
+          `"${folder.pathname}" could not be deleted.`,
+          `Check that "${folder.pathname}" can be written, and run this again.`,
+          { internal: false, cause: rmdirError },
+        );
     });
   }
 }

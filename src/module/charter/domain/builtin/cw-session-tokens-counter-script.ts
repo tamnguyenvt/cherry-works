@@ -1,5 +1,5 @@
-import { ScriptPrimitive, type ScriptHeaders } from "../models/primitive/script-primitive.js";
 import { PrimitiveLayer } from "../models/primitive/primitive-layer.js";
+import { type ScriptHeaders, ScriptPrimitive } from "../models/primitive/script-primitive.js";
 // Its text, not the module: it runs on the developer's machine when the agent
 // stops, never here.
 import sessionTokensCounterMjs from "./scripts/session-tokens-counter.script.mjs";
@@ -10,7 +10,8 @@ export class CwSessionTokensCounterScript extends ScriptPrimitive {
   constructor() {
     const scriptHeaders: ScriptHeaders = {
       id: "cw-session-tokens-counter",
-      description: "Count the session's tokens when the agent stops, keep them on this machine, and say so at every mark.",
+      description:
+        "Count the session's tokens when the agent stops, keep them on this machine, and say so at every mark.",
       executionPath: "./sessionTokensCounter.mjs",
     };
     super(

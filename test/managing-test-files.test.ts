@@ -1,27 +1,37 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { test } from "node:test";
+import { TestSuiteFactory } from "../src/module/charter/domain/models/test/test-suite.factory.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
 import { SuiteAddCommand } from "../src/presentation/cli/commands/suite-add.command.js";
 import { SuiteEditCommand } from "../src/presentation/cli/commands/suite-edit.command.js";
 import { SuiteRemoveCommand } from "../src/presentation/cli/commands/suite-remove.command.js";
-import { EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
-import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
-import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { answerOf, faultTextOf, faultOf } from "./answer-of.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandContextOf } from "./use-cases-of.js";
-import { TestSuiteFactory } from "../src/module/charter/domain/models/test/test-suite.factory.js";
+import { answerOf, faultOf, faultTextOf } from "./answer-of.js";
+import { authoringCharterOf, buildingCharterOf, commandContextOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
 const at = (path: string) => new URL(path, repoPath).href;
 
 const guide = (id: string, globs: readonly string[]) =>
-  ["---", "kind: guide", `id: ${id}`, `description: About ${id}.`, `globs: ${JSON.stringify(globs)}`, "---", "", "Body.", ""].join("\n");
+  [
+    "---",
+    "kind: guide",
+    `id: ${id}`,
+    `description: About ${id}.`,
+    `globs: ${JSON.stringify(globs)}`,
+    "---",
+    "",
+    "Body.",
+    "",
+  ].join("\n");
 
 const settings = { [at(".cw/settings.json")]: `${JSON.stringify({ agents: [] })}\n` };
 
@@ -48,14 +58,25 @@ const withTwoFiles = () => ({
 const authoring = (files: Readonly<Record<string, string>> = {}) => {
   const held = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
-  return { charterAuthoringApp, charterRuntimeApp, fileAt: (path: string) => held.readIfThere(new URL(path, repoPath)) };
+  const charterRuntimeApp = buildingCharterOf(
+    held,
+    new InMemoryFileOutput(held),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
+  return {
+    charterAuthoringApp,
+    charterRuntimeApp,
+    fileAt: (path: string) => held.readIfThere(new URL(path, repoPath)),
+  };
 };
 
-const contextOver = ({ charterAuthoringApp, charterRuntimeApp }: ReturnType<typeof authoring>) => (commandContextOf({
-  charterAuthoringApp,
-  charterRuntimeApp,
-  }));
+const contextOver = ({ charterAuthoringApp, charterRuntimeApp }: ReturnType<typeof authoring>) =>
+  commandContextOf({
+    charterAuthoringApp,
+    charterRuntimeApp,
+  });
 
 test("suites() lists each file with its name, text and cases said, and one that does not read with its fault (FR-124)", async () => {
   const files = withTwoFiles();
@@ -93,8 +114,12 @@ test("a run names the test file each case came from (FR-125)", async () => {
   const { charterAuthoringApp } = authoring({
     ...settings,
     [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any", ["src/**/*.ts"]),
-    [at(".cw/charter/test/one.json")]: suiteText({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
-    [at(".cw/charter/test/two.json")]: suiteText({ cases: [{ do: { touchFile: "docs/a.md" }, expect: { activate: "no-any" } }] }),
+    [at(".cw/charter/test/one.json")]: suiteText({
+      cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }],
+    }),
+    [at(".cw/charter/test/two.json")]: suiteText({
+      cases: [{ do: { touchFile: "docs/a.md" }, expect: { activate: "no-any" } }],
+    }),
   });
 
   const testRunReportDTO = answerOf(await charterAuthoringApp.test());
@@ -122,7 +147,11 @@ test("addSuite() writes untitled-1.json, then untitled-2.json, each one case tha
 });
 
 test("addSuite() takes the first free number", async () => {
-  const { charterAuthoringApp } = authoring({ ...settings, [at(".cw/charter/test/untitled-1.json")]: "{}", [at(".cw/charter/test/untitled-3.json")]: "{}" });
+  const { charterAuthoringApp } = authoring({
+    ...settings,
+    [at(".cw/charter/test/untitled-1.json")]: "{}",
+    [at(".cw/charter/test/untitled-3.json")]: "{}",
+  });
 
   assert.equal(answerOf(await charterAuthoringApp.addSuite()).data.name, "untitled-2.json");
 });
@@ -154,9 +183,18 @@ test("writeSuite() and removeSuite() refuse a name that is no test file (FR-090,
   const { charterAuthoringApp, fileAt } = authoring(withTwoFiles());
   const text = suiteText({ cases: [{ when: "Stop", expect: { run: "test" } }] });
 
-  assert.match(faultTextOf(await charterAuthoringApp.writeSuite("missing.json", text)), /holds no test file called "missing.json"/);
-  assert.match(faultTextOf(await charterAuthoringApp.writeSuite("../charter/guide/no-any/index.md", text)), /holds no test file/);
-  assert.match(faultTextOf(await charterAuthoringApp.removeSuite("../charter/guide/no-any/index.md")), /holds no test file/);
+  assert.match(
+    faultTextOf(await charterAuthoringApp.writeSuite("missing.json", text)),
+    /holds no test file called "missing.json"/,
+  );
+  assert.match(
+    faultTextOf(await charterAuthoringApp.writeSuite("../charter/guide/no-any/index.md", text)),
+    /holds no test file/,
+  );
+  assert.match(
+    faultTextOf(await charterAuthoringApp.removeSuite("../charter/guide/no-any/index.md")),
+    /holds no test file/,
+  );
 
   assert.equal(await fileAt(".cw/charter/test/missing.json"), undefined);
   assert.ok(await fileAt(".cw/charter/primitive/guide/no-any/index.md"));
@@ -183,7 +221,10 @@ test("cw suite add writes a new test file and says how to edit it (FR-091)", asy
   const outcome = await new SuiteAddCommand().run(contextOver(repoInMemory));
 
   assert.equal(outcome.code, EXIT_OK);
-  assert.match(outcome.result ?? "", /Wrote \.cw\/charter\/test\/untitled-1\.json\.\nRun "cw suite edit untitled-1\.json"/);
+  assert.match(
+    outcome.result ?? "",
+    /Wrote \.cw\/charter\/test\/untitled-1\.json\.\nRun "cw suite edit untitled-1\.json"/,
+  );
   assert.ok(await fileAt(".cw/charter/test/untitled-1.json"));
 });
 
@@ -207,8 +248,14 @@ test("cw suite edit refuses a name that is no test file, and with no editor set 
   process.env.EDITOR = "";
   const context = contextOver(authoring(withTwoFiles()));
 
-  assert.match((await new SuiteEditCommand().run(context, { name: "missing.json" })).problem ?? "", /holds no test file called "missing.json"/);
-  assert.match((await new SuiteEditCommand().run(context, { name: "shapes.json" })).problem ?? "", /Neither \$VISUAL nor \$EDITOR is set/);
+  assert.match(
+    (await new SuiteEditCommand().run(context, { name: "missing.json" })).problem ?? "",
+    /holds no test file called "missing.json"/,
+  );
+  assert.match(
+    (await new SuiteEditCommand().run(context, { name: "shapes.json" })).problem ?? "",
+    /Neither \$VISUAL nor \$EDITOR is set/,
+  );
 });
 
 test("cw suite edit hands the test file to $VISUAL and writes nothing itself (FR-090, FR-109)", async (t) => {

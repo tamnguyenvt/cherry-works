@@ -1,7 +1,7 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { AdapterFault, UnauthorizedMcpFault } from "../src/module/shared/app/port/out/calling-mcp-servers.port.js";
 import { McpClients } from "../src/module/shared/infra/mcp-clients.adapter.js";
@@ -12,7 +12,11 @@ const STDIO_SERVER = fileURLToPath(new URL("./an-mcp-server-over-stdio.ts", impo
 /** The test mcp origin over stdio, as an mcp declaring a command names it. */
 const aLocalMcpOrigin = (tokenEnv?: string) => ({
   address: `node --import tsx ${STDIO_SERVER}`,
-  command: { command: process.execPath, args: ["--import", "tsx", STDIO_SERVER], ...(tokenEnv !== undefined && { tokenEnv }) },
+  command: {
+    command: process.execPath,
+    args: ["--import", "tsx", STDIO_SERVER],
+    ...(tokenEnv !== undefined && { tokenEnv }),
+  },
 });
 
 const textOf = (toolAnswer: Readonly<Record<string, unknown>>) => (toolAnswer.content as { text: string }[])[0]?.text;
@@ -21,20 +25,33 @@ test("an mcp origin at an endpoint lists its tools, and a call reaches it with t
   const mcpTestServer = await anMcpServer("dev-token");
   t.after(() => mcpTestServer.server.close());
 
-  const connection = await new McpClients().connect({ address: mcpTestServer.endpoint, endpoint: mcpTestServer.endpoint }, "dev-token", 5_000);
+  const connection = await new McpClients().connect(
+    { address: mcpTestServer.endpoint, endpoint: mcpTestServer.endpoint },
+    "dev-token",
+    5_000,
+  );
   t.after(() => connection.close());
   const toolAnswer = await connection.callTool("echo", { text: "hello" }, "dev-token");
 
-  assert.deepEqual(connection.tools.map(({ name }) => name), ["echo", "fail"]);
+  assert.deepEqual(
+    connection.tools.map(({ name }) => name),
+    ["echo", "fail"],
+  );
   assert.equal(connection.tools[0]?.description, "Answers what it was handed.");
   assert.equal(textOf(toolAnswer), "echo: hello");
-  assert.ok(mcpTestServer.authorizations.length > 0 && mcpTestServer.authorizations.every((one) => one === "Bearer dev-token"));
+  assert.ok(
+    mcpTestServer.authorizations.length > 0 && mcpTestServer.authorizations.every((one) => one === "Bearer dev-token"),
+  );
 });
 
 test("an mcp origin's own error answer comes back as an answer, not a fault", async (t) => {
   const mcpTestServer = await anMcpServer("dev-token");
   t.after(() => mcpTestServer.server.close());
-  const connection = await new McpClients().connect({ address: mcpTestServer.endpoint, endpoint: mcpTestServer.endpoint }, "dev-token", 5_000);
+  const connection = await new McpClients().connect(
+    { address: mcpTestServer.endpoint, endpoint: mcpTestServer.endpoint },
+    "dev-token",
+    5_000,
+  );
   t.after(() => connection.close());
 
   const toolAnswer = await connection.callTool("fail", {}, "dev-token");
@@ -46,7 +63,11 @@ test("an mcp origin's own error answer comes back as an answer, not a fault", as
 test("each call carries the token it is handed, so a renewed one is sent from then on", async (t) => {
   const mcpTestServer = await anMcpServer("renewed-token");
   t.after(() => mcpTestServer.server.close());
-  const connection = await new McpClients().connect({ address: mcpTestServer.endpoint, endpoint: mcpTestServer.endpoint }, "renewed-token", 5_000);
+  const connection = await new McpClients().connect(
+    { address: mcpTestServer.endpoint, endpoint: mcpTestServer.endpoint },
+    "renewed-token",
+    5_000,
+  );
   t.after(() => connection.close());
 
   await assert.rejects(connection.callTool("echo", {}, "old-token"), UnauthorizedMcpFault);
@@ -60,7 +81,11 @@ test("an mcp origin refusing the credential when it is reached is an Unauthorize
   t.after(() => mcpTestServer.server.close());
 
   await assert.rejects(
-    new McpClients().connect({ address: mcpTestServer.endpoint, endpoint: mcpTestServer.endpoint }, "someone-else", 5_000),
+    new McpClients().connect(
+      { address: mcpTestServer.endpoint, endpoint: mcpTestServer.endpoint },
+      "someone-else",
+      5_000,
+    ),
     UnauthorizedMcpFault,
   );
 });
@@ -112,10 +137,14 @@ test("a command's process is stopped when its mcp origin is let go", async () =>
 });
 
 test("a command that does not exist is an AdapterFault naming its address", async () => {
-  const missingMcpOrigin = { address: "no-such-command-anywhere --serve", command: { command: "no-such-command-anywhere", args: ["--serve"] } };
+  const missingMcpOrigin = {
+    address: "no-such-command-anywhere --serve",
+    command: { command: "no-such-command-anywhere", args: ["--serve"] },
+  };
 
   await assert.rejects(
     new McpClients().connect(missingMcpOrigin, undefined, 5_000),
-    (raised: AdapterFault) => raised instanceof AdapterFault && raised.message.includes("no-such-command-anywhere --serve"),
+    (raised: AdapterFault) =>
+      raised instanceof AdapterFault && raised.message.includes("no-such-command-anywhere --serve"),
   );
 });

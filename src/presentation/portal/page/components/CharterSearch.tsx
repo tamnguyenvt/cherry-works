@@ -41,7 +41,9 @@ export function CharterSearch({ onPick }: { onPick: (primitive: CharterDTOs.Prim
           onMouseDown={(event) => event.preventDefault()}
         >
           {listing?.type === "FaultsByFile" && (
-            <p className="px-3 py-3.5 text-xs text-zinc-400">The engine will not read this charter, so there is nothing to search.</p>
+            <p className="px-3 py-3.5 text-xs text-zinc-400">
+              The engine will not read this charter, so there is nothing to search.
+            </p>
           )}
           {listing?.type === "Fault" && (
             <p className="px-3 py-3.5 text-xs text-zinc-400">
@@ -50,9 +52,13 @@ export function CharterSearch({ onPick }: { onPick: (primitive: CharterDTOs.Prim
           )}
           {listing?.type === "Primitives" && (
             <>
-              <CommandEmpty className="px-3 py-3.5 text-xs text-zinc-400">Nothing in the charter says that.</CommandEmpty>
+              <CommandEmpty className="px-3 py-3.5 text-xs text-zinc-400">
+                Nothing in the charter says that.
+              </CommandEmpty>
               {listing.data.primitives.length > 0 && (
-                <CommandGroup heading={`${listing.data.primitives.length} primitive${listing.data.primitives.length === 1 ? "" : "s"}`}>
+                <CommandGroup
+                  heading={`${listing.data.primitives.length} primitive${listing.data.primitives.length === 1 ? "" : "s"}`}
+                >
                   {listing.data.primitives.map((primitive) => {
                     const { id, kind, description, layerName, headers } = primitive.data;
                     return (
@@ -66,7 +72,9 @@ export function CharterSearch({ onPick }: { onPick: (primitive: CharterDTOs.Prim
                           onPick(primitive);
                         }}
                       >
-                        <span className="font-mono text-[9.5px] font-bold tracking-[0.03em] text-zinc-500 uppercase">{kind}</span>
+                        <span className="font-mono text-[9.5px] font-bold tracking-[0.03em] text-zinc-500 uppercase">
+                          {kind}
+                        </span>
                         <span className="min-w-0">
                           <span className="block truncate font-mono text-xs text-foreground">
                             <Highlighted text={String(headers.id)} word={word} />
@@ -75,7 +83,11 @@ export function CharterSearch({ onPick }: { onPick: (primitive: CharterDTOs.Prim
                             <Highlighted text={description} word={word} />
                           </span>
                         </span>
-                        <Badge className={`rounded-[5px] px-1.5 py-0.5 font-mono text-[9.5px] font-bold tracking-[0.03em] ${LAYER_COLORS[layerName]}`}>{layerName}</Badge>
+                        <Badge
+                          className={`rounded-[5px] px-1.5 py-0.5 font-mono text-[9.5px] font-bold tracking-[0.03em] ${LAYER_COLORS[layerName]}`}
+                        >
+                          {layerName}
+                        </Badge>
                       </CommandItem>
                     );
                   })}

@@ -437,52 +437,58 @@ tool of an mcp origin, or `[[<id>]]:<tool>` for one of them.
 ## The engine as a library
 
 `cherry-works` is also a library for TypeScript and JavaScript tools, on Node.js
-22 or later. Import from `cherry-works` the use cases, their driver and driven
-ports, DTO schemas and types, the faults an adapter raises, how `cw` composes
-the engine, and the adapters `cw` is composed of. `VERSION` is the package
-version, the one `cw --version` prints. The package is ESM and bundles every
-library it uses, their types included: installing it adds nothing else.
+22 or later. It exports only what a tool needs: `composeApplications` and the
+types it takes and answers (`ReplaceableAdapters`, `ComposedApplications`,
+`ComposedEngine`); the four driver ports it answers through
+(`ForAuthoringCharter`, `ForBuildingCharter`, `ForRunningCharter`,
+`ForManagingWorkspace`) and their DTOs (`CharterDTOs`, `RuntimeDTOs`,
+`WorkspaceDTOs`, `FaultDTOs`); `VERSION`, the package version, the one
+`cw --version` prints; and the port of each adapter you may replace, with the
+values crossing it. The package is ESM and bundles every library it uses,
+their types included: installing it adds nothing else.
 
 ```ts
-import { composeApplications, AgentCli, ClaudeProjection, FileReaders, VERSION } from "cherry-works";
-import type { EnginePlugin, ForRunningCharter, ForReadingFiles, ForReportingProgress, ForWritingFiles } from "cherry-works";
+import { composeApplications, VERSION } from "cherry-works";
+import type { ReplaceableAdapters, ForReadingFiles, ForWritingFiles, ForReportingProgress } from "cherry-works";
 ```
 
-The engine is reached through its applications, each a use case and the
-driver port it implements: authoring the charter (`AuthoringCharter`, its
-primitives, vendors, test files, and signing in to its mcp origins), building
-it for each agent provider (`BuildingCharter`: the build, the health check,
-the context, the sensors and serving the mcp origins) and running it
-(`RunningCharter`: the tests, the evaluations and reviewing the sessions). A
-driver port answers DTOs alone, never a model of the domain.
+`composeApplications(repoFolder, homeFolder, adapters?)` composes the
+workspace and the engine as `cw` does. It answers `workspaceApp`, which keeps
+a repository's settings, and `engineApp`, whose applications are authoring
+the charter (`charterAuthoringApp`: its primitives, vendors, test files, and
+signing in to its mcp origins), building it for each agent provider
+(`charterBuildingApp`: the build, the health check, the context, the sensors
+and serving the mcp origins) and running it (`charterRuntimeApp`: the tests,
+the evaluations and reviewing the sessions). A driver port answers DTOs
+alone, never a model of the domain. The engine is composed for the settings
+the repository holds when it is composed: compose again after setting a
+repository up.
 
-`composeApplications(repoFolder, homeFolder)` composes them as `cw` does, over
-the adapters it ships: Claude's and Codex's projection and command line, the
-charter kept as files, and every other adapter on the repository's address
-and the developer's home. Hand it an `EnginePlugin` to compose them over
-adapters of your own instead, or over the shipped ones mixed with yours —
-`FileReaders`, `FileOutput`, `GitSources`, `GitWorktrees`, `OAuth`,
-`McpClients`, `Tiktoken`, `SystemClock`, `Shell`, `ConsoleReporter`,
-`Promptfoo`, `KeychainCredentialsRepository`, `FileCharterRepository`,
-`ClaudeProjection`, `CodexProjection`, `ClaudeCli` and `CodexCli`; extend
-`AgentProjection` or `AgentCli` for an agent of your own. `composeEngine`
-takes the settings in hand instead of reading them from the repository, and
-`composeWorkspace` keeps a repository's settings. Or compose a use case
-yourself, with your adapters behind its driven ports.
+Hand only the adapters you replace, as a `Partial<ReplaceableAdapters>`;
+every other one is `cw`'s own. They are `fileReader` (`ForReadingFiles`),
+`fileWriter` (`ForWritingFiles`), `worktrees` (`ForKeepingWorktrees`),
+`authorizing` (`ForAuthorizingMcpOrigins`), `mcpServers`
+(`ForCallingMcpServers`), `tokenCounter` (`ForCountingTokens`), `clock`
+(`ForTellingTime`), `shell` (`ForRunningShellCommands`), `progressReporter`
+(`ForReportingProgress`), `promptfooRunner` (`ForRunningPromptfoo`),
+`credentialsRepository` (`ForStoringCredentials`) and `sourceFetcher`
+(`ForFetchingCharterSources`). The store that keeps the charter and Claude's
+and Codex's projections are always `cw`'s own, set up over the `fileReader`
+and `fileWriter` handed: hand file adapters over memory, at a `memory:`
+address, and a charter is authored and built with no disk. `cw`'s own
+`promptfooRunner` needs the developer's home at a `file:` address: elsewhere,
+hand one of your own. A store of your own for the charter, and a projection
+or command line of your own for an agent, are not offered.
 
-A `ForReportingProgress` is among them: it is where the use case logs an
-internal failure for whoever runs the tool. A use case takes no address: every
-path it hands a driven port is from the repository's root, such as
-`.cw/settings.json`, and the empty path is the root itself. Set your adapters
-up on the repository's address, and the sessions' on the developer's home; an
-address must have a hierarchical path ending in `/`, and its scheme belongs to
-your adapters. What keeps a repository's state is handed, and hands back, the
-engine's own models — `RawPrimitive`, `Primitive`, `RawTestSuite`,
-`TestSuite`, `RawEvalSuite`, `FetchedSource`, `FetchedVendor`,
-`InstalledVendor`, `McpCredential`, `McpClientRegistration`, `SessionLogs` — each kept
-thing known by its layer, kind and id or name, never by where it sits; its
-`uri` is your store's to give, in your own scheme, and the engine only says it
-back. Builtin primitives and their assets are embedded in the package.
+A `ForReportingProgress` is where a use case logs an internal failure for
+whoever runs the tool. A use case takes no address: every path it hands a
+driven port is from the repository's root, such as `.cw/settings.json`, and
+the empty path is the root itself. Set your adapters up on the repository's
+address; an address must have a hierarchical path ending in `/`, and its
+scheme belongs to your adapters. A credential store is handed, and hands
+back, `McpCredential`, and a sign-in answers an `OAuthGrant` holding an
+`McpClientRegistration`; both classes are exported. Builtin primitives and
+their assets are embedded in the package.
 
 A use case never throws for a failure of what it was asked: every answer is a
 DTO, read by its `type`. Validation findings come back as data grouped by file.
@@ -490,8 +496,8 @@ A fault that stops a use case comes back as a `Fault` DTO carrying `name`,
 `message`, `fix` and `severity`; no fault class is needed to read it.
 
 A fault is the system's own unless raised with `{ internal: false }`. Your
-adapters raise `AdapterFault`, and YAML parsers `CharterPrimitiveFault` for
-invalid notation: mark the ones the person using your tool can act on with
+adapters raise `AdapterFault`, and an mcp client `UnauthorizedMcpFault` where
+an mcp origin refuses its credential: mark the ones the person using your tool can act on with
 `{ internal: false }`. Anything else a port raises, an internal fault
 included, is logged through `ForReportingProgress.problem` — its stack and
 causes, never the arguments of the call — and answered as `InternalFault`,

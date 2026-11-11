@@ -1,4 +1,12 @@
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { printFault } from "./helper.js";
 
 const OPTIONS = {
@@ -30,11 +38,7 @@ export class VendorRemoveCommand implements Command<typeof OPTIONS> {
 
     return {
       code: EXIT_OK,
-      result: [
-        `Removed ${folder}.`,
-        'Run "cw build" to compile this charter without it.',
-        "",
-      ].join("\n"),
+      result: [`Removed ${folder}.`, 'Run "cw build" to compile this charter without it.', ""].join("\n"),
     };
   }
 }

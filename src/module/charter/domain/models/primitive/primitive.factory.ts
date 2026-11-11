@@ -1,9 +1,9 @@
 import { DomainFault } from "../../../../shared/module.js";
 import { yamlFieldsOf } from "../../libs/yaml.lib.js";
+import { CharterPrimitiveFault } from "../charter.fault.js";
 import { BasePrimitive } from "./base-primitive.js";
 import { type Primitive, Primitives } from "./primitive.js";
 import type { RawPrimitive } from "./raw-primitive.js";
-import { CharterPrimitiveFault } from "../charter.fault.js";
 
 /** Makes one primitive out of what was handed in raw. */
 export class PrimitiveFactory {
@@ -61,7 +61,11 @@ export class PrimitiveFactory {
       // The blank lines between the headers and the body, and the whitespace at
       // its end, are the file's; the indentation of its first line is the body's,
       // which its compiled document keeps (FR-139).
-      body = lines.slice(closingLineIndex + 1).join("\n").replace(/^(\s*\n)+/, "").trimEnd();
+      body = lines
+        .slice(closingLineIndex + 1)
+        .join("\n")
+        .replace(/^(\s*\n)+/, "")
+        .trimEnd();
     } else {
       ({ headers, body } = contents);
     }
@@ -83,11 +87,13 @@ export class PrimitiveFactory {
     const kind = headers.kind;
     const kindClass = Primitives.classes.find((primitiveClass) => primitiveClass.kind === kind)!;
     if (Object.hasOwn(headers, "agent-provider") && !Object.hasOwn(kindClass.schema.shape, "agent-provider"))
-      DomainFault.throwAggregate([new CharterPrimitiveFault(
-        `A ${kind} holds no "agent-provider".`,
-        'Use "agent-provider" only on posture and sensor primitives.',
-        { internal: false },
-      )]);
+      DomainFault.throwAggregate([
+        new CharterPrimitiveFault(
+          `A ${kind} holds no "agent-provider".`,
+          'Use "agent-provider" only on posture and sensor primitives.',
+          { internal: false },
+        ),
+      ]);
     if (!isAnswered) return kindClass.of(headers, body, rawPrimitive.assets, rawPrimitive.layer, rawPrimitive.uri);
 
     const headerFields = Primitives.headersOf(kind).map((header) => header.field);
@@ -109,7 +115,8 @@ export class PrimitiveFactory {
       if (!(raisedValue instanceof AggregateError)) throw raisedValue;
       schemaFaults = raisedValue.errors as readonly DomainFault[];
     }
-    if (primitive === undefined || unknownHeaderFaults.length > 0) DomainFault.throwAggregate([...unknownHeaderFaults, ...schemaFaults]);
+    if (primitive === undefined || unknownHeaderFaults.length > 0)
+      DomainFault.throwAggregate([...unknownHeaderFaults, ...schemaFaults]);
     return primitive;
   }
 

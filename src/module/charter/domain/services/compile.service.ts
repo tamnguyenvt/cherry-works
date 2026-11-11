@@ -1,17 +1,17 @@
+import { ModelHelper } from "../helper.js";
 import type { AgentProvider } from "../models/agent/agent-provider.js";
 import type { CharterRoot } from "../models/charter/charter-root.js";
 import { McpPrimitive } from "../models/primitive/mcp-primitive.js";
 import { Primitives } from "../models/primitive/primitive.js";
-import { ModelHelper } from "../helper.js";
-import { CharterOutput } from "../models/projection/charter-output.js";
-import { McpOrigins, type McpToolDefinition } from "../models/projection/mcp-origin.js";
+import { BuiltSensors } from "../models/projection/built-sensor.js";
+import { BuiltSensorsFactory } from "../models/projection/built-sensors.factory.js";
 import { CatalogueFactory } from "../models/projection/catalogue.factory.js";
 import { Catalogue } from "../models/projection/catalogue.js";
 import { CharterMdFactory } from "../models/projection/charter-md.factory.js";
+import { CharterOutput } from "../models/projection/charter-output.js";
 import { CompiledPrimitiveFactory } from "../models/projection/compiled-primitive.factory.js";
+import { McpOrigins, type McpToolDefinition } from "../models/projection/mcp-origin.js";
 import { McpOriginsFactory } from "../models/projection/mcp-origins.factory.js";
-import { BuiltSensorsFactory } from "../models/projection/built-sensors.factory.js";
-import { BuiltSensors } from "../models/projection/built-sensor.js";
 /** Compiles a charter into what its readers and its hosts are given. */
 export class CompileService {
   /**
@@ -51,23 +51,40 @@ export class CompileService {
     // mcps come and go (FR-145). Written into `mcp-origins.json` beside each
     // mcp origin, so the server, which reads no charter, serves under these.
     const shortMcpIds = ModelHelper.shortenStringsOf(
-      charter.primitives.filter((primitive) => primitive.kind === McpPrimitive.kind).map((mcpPrimitive) => mcpPrimitive.headers.id),
+      charter.primitives
+        .filter((primitive) => primitive.kind === McpPrimitive.kind)
+        .map((mcpPrimitive) => mcpPrimitive.headers.id),
     );
     // In the order ids sort in, as the catalogue lists them, so the same
     // charter is put down in the same order however its files were read (SC-007).
     const compiledPrimitiveByPrimitive = new Map(
       [...charter.primitives]
-        .sort((leftPrimitive, rightPrimitive) => (leftPrimitive.headers.id < rightPrimitive.headers.id ? -1 : leftPrimitive.headers.id > rightPrimitive.headers.id ? 1 : 0))
+        .sort((leftPrimitive, rightPrimitive) =>
+          leftPrimitive.headers.id < rightPrimitive.headers.id
+            ? -1
+            : leftPrimitive.headers.id > rightPrimitive.headers.id
+              ? 1
+              : 0,
+        )
         .map((primitive) => [primitive, CompiledPrimitiveFactory.create(charter, primitive)] as const),
     );
     // What `cw sensor run` runs, each sensor's command as built: written once,
     // read by every host given one command per signal (FR-175, FR-179).
     const builtSensors = new BuiltSensors(BuiltSensorsFactory.create(charter, compiledPrimitiveByPrimitive));
-    const allCatalogue = CatalogueFactory.create(charter, (primitive) => compiledPrimitiveByPrimitive.get(primitive)!.outputPart.linkOf());
-    const agentBasedCatalogues = Object.fromEntries(agents.map((agentProvider) => [
-      agentProvider.name,
-      new Catalogue(allCatalogue.entries.filter(({ agentProviders }) => agentProviders !== "all" && agentProviders.includes(agentProvider.name)), agentProvider),
-    ]));
+    const allCatalogue = CatalogueFactory.create(charter, (primitive) =>
+      compiledPrimitiveByPrimitive.get(primitive)!.outputPart.linkOf(),
+    );
+    const agentBasedCatalogues = Object.fromEntries(
+      agents.map((agentProvider) => [
+        agentProvider.name,
+        new Catalogue(
+          allCatalogue.entries.filter(
+            ({ agentProviders }) => agentProviders !== "all" && agentProviders.includes(agentProvider.name),
+          ),
+          agentProvider,
+        ),
+      ]),
+    );
     return new CharterOutput(
       // What an agent opens from the catalogue is the primitive as it compiled,
       // not the file its author wrote: the whole body in one place, under the

@@ -1,16 +1,16 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import prompts from "prompts";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
-import { test } from "node:test";
-import assert from "node:assert/strict";
-import prompts from "prompts";
-import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE } from "../src/presentation/cli/commands/command.interface.js";
-import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, readPrimitive, commandLineOf } from "./use-cases-of.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { EXIT_FAILURE } from "../src/presentation/cli/commands/command.interface.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { authoringCharterOf, buildingCharterOf, commandLineOf, readPrimitive } from "./use-cases-of.js";
 
 const repo = "/repo";
 const repoPath = new URL("file:///repo/");
@@ -25,7 +25,13 @@ const adding = async (
 ) => {
   const held = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(
+    held,
+    new InMemoryFileOutput(held),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write, tty: process.stdin.isTTY };
@@ -36,7 +42,10 @@ const adding = async (
   process.stdin.isTTY = answers !== undefined;
   if (answers !== undefined) prompts.inject(answers);
   try {
-    const code = await new Commander(commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo), COMMANDS).run(argv);
+    const code = await new Commander(
+      commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo),
+      COMMANDS,
+    ).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -65,7 +74,13 @@ const flagging = (kind: (typeof Primitives.kinds)[number]) =>
 /** A value the kind will accept wherever the field is one it checks the worth
  *  of, and a plain word everywhere else. */
 const valued = (field: string) =>
-  field === "signal" ? "SessionStart" : field === "extension" ? "sh" : field === "executionPath" ? "./something/run.sh" : `what ${field} holds`;
+  field === "signal"
+    ? "SessionStart"
+    : field === "extension"
+      ? "sh"
+      : field === "executionPath"
+        ? "./something/run.sh"
+        : `what ${field} holds`;
 
 test("a kind is asked what it requires, and nothing else (FR-004, FR-039)", () => {
   for (const one of Primitives.classes)
@@ -128,11 +143,11 @@ test("a word that is no kind is refused, naming every kind there is (FR-001, FR-
 });
 
 test("an answer its kind refuses is said before any file is written (FR-004, FR-039)", async () => {
-  const { code, problems, held: files } = await adding(["add", "sensor", "on-stop"], [
-    "what description holds",
-    "NotAnEvent",
-    "pnpm test",
-  ]);
+  const {
+    code,
+    problems,
+    held: files,
+  } = await adding(["add", "sensor", "on-stop"], ["what description holds", "NotAnEvent", "pnpm test"]);
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /not what a sensor holds/);
@@ -141,10 +156,10 @@ test("an answer its kind refuses is said before any file is written (FR-004, FR-
 });
 
 test("a list answer holds the names typed, each trimmed and a blank one dropped (FR-039)", async () => {
-  const { code, held: files } = await adding(["add", "skill", "refactoring"], [
-    "what description holds",
-    [" refactor ", "", "  "],
-  ]);
+  const { code, held: files } = await adding(
+    ["add", "skill", "refactoring"],
+    ["what description holds", [" refactor ", "", "  "]],
+  );
   const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/skill/refactoring/index.md")) ?? "");
 
   assert.equal(code, 0);
@@ -152,7 +167,11 @@ test("a list answer holds the names typed, each trimmed and a blank one dropped 
 });
 
 test("a list answer left empty is refused once, as the list it should hold (FR-004, FR-039)", async () => {
-  const { code, problems, held: files } = await adding(["add", "skill", "refactoring"], ["what description holds", [""]]);
+  const {
+    code,
+    problems,
+    held: files,
+  } = await adding(["add", "skill", "refactoring"], ["what description holds", [""]]);
 
   assert.equal(code, EXIT_FAILURE);
   assert.equal(problems.match(/not what a skill holds/g)?.length, 1);
@@ -172,7 +191,11 @@ test("a file that is already there is never written over (FR-039)", async () => 
     headers: { kind: "guide", id: "no-any", description: "Authored.", globs: ["src/**/*.ts"] },
     body: "BODY",
   }).toMarkdown();
-  const { code, problems, held: files } = await adding(["add", "guide", "no-any"], answering("guide"), {
+  const {
+    code,
+    problems,
+    held: files,
+  } = await adding(["add", "guide", "no-any"], answering("guide"), {
     "file:///repo/.cw/charter/primitive/guide/no-any/index.md": authoredText,
   });
 
@@ -187,7 +210,10 @@ test("what is typed as flags is the file that is written from answers, word for 
     const answered = await adding(["add", kind, "something"], answering(kind));
 
     assert.equal(typed.code, 0);
-    assert.equal(await held(typed.held, `.cw/charter/primitive/${kind}/something/index.md`), await held(answered.held, `.cw/charter/primitive/${kind}/something/index.md`));
+    assert.equal(
+      await held(typed.held, `.cw/charter/primitive/${kind}/something/index.md`),
+      await held(answered.held, `.cw/charter/primitive/${kind}/something/index.md`),
+    );
   }
 });
 
@@ -203,23 +229,31 @@ test("a header typed as a flag is an answer, so nothing is asked at a terminal e
 
 test("a list header typed twice holds both, in the order they were typed (FR-007)", async () => {
   const { code, held: files } = await adding([
-    "add", "skill", "refactoring",
-    "--header", "description=what description holds",
-    "--header", "triggers=extract",
-    "--header", "triggers=inline",
+    "add",
+    "skill",
+    "refactoring",
+    "--header",
+    "description=what description holds",
+    "--header",
+    "triggers=extract",
+    "--header",
+    "triggers=inline",
   ]);
   const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/skill/refactoring/index.md")) ?? "");
 
   assert.equal(code, 0);
-  assert.deepEqual("triggers" in keptPrimitive.headers ? keptPrimitive.headers.triggers : undefined, ["extract", "inline"]);
+  assert.deepEqual("triggers" in keptPrimitive.headers ? keptPrimitive.headers.triggers : undefined, [
+    "extract",
+    "inline",
+  ]);
 });
 
 test("a header holding one line is refused where it was typed twice, naming it (FR-007)", async () => {
-  const { code, problems, held: files } = await adding([
-    "add", "guide", "no-any",
-    "--header", "description=one",
-    "--header", "description=another",
-  ]);
+  const {
+    code,
+    problems,
+    held: files,
+  } = await adding(["add", "guide", "no-any", "--header", "description=one", "--header", "description=another"]);
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"description" holds one line, and was typed 2 times/);
@@ -236,8 +270,11 @@ test("a flag naming nothing to put a value under is refused, quoting it (FR-008)
 
 test("a value holding an = is kept whole, everything after the first one (FR-008)", async () => {
   const { code, held: files } = await adding([
-    "add", "guide", "no-any",
-    "--header", "description=Reject a = where an == was meant.",
+    "add",
+    "guide",
+    "no-any",
+    "--header",
+    "description=Reject a = where an == was meant.",
   ]);
   const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/guide/no-any/index.md")) ?? "");
 
@@ -246,10 +283,18 @@ test("a value holding an = is kept whole, everything after the first one (FR-008
 });
 
 test("a header the kind does not take is named, and nothing is written (FR-011)", async () => {
-  const { code, problems, held: files } = await adding([
-    "add", "guide", "no-any",
-    "--header", "description=what description holds",
-    "--header", "signal=SessionStart",
+  const {
+    code,
+    problems,
+    held: files,
+  } = await adding([
+    "add",
+    "guide",
+    "no-any",
+    "--header",
+    "description=what description holds",
+    "--header",
+    "signal=SessionStart",
   ]);
 
   assert.equal(code, EXIT_FAILURE);
@@ -269,7 +314,15 @@ test("a header the kind requires and nobody answered is refused in the same word
 });
 
 test("adding a script says the file it runs was written too, so its author knows where to write it (FR-167)", async () => {
-  const { code, results } = await adding(["add", "script", "release/check", "--header", "description=Check the changelog.", "--header", "executionPath=./run.sh"]);
+  const { code, results } = await adding([
+    "add",
+    "script",
+    "release/check",
+    "--header",
+    "description=Check the changelog.",
+    "--header",
+    "executionPath=./run.sh",
+  ]);
 
   assert.equal(code, 0);
   assert.deepEqual(results.split("\n").slice(0, 2), [

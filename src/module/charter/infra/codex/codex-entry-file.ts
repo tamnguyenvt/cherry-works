@@ -9,12 +9,16 @@ export class CodexEntryFile extends ProviderComponent {
    *  `""`. One in a folder is the build's alone, and stamped so. */
   static of(document: string, folder = ""): CodexEntryFile {
     const sectionText = folder === "" ? document : new StampedDocument(document).text.trimEnd();
-    return new CodexEntryFile("codex", "charter", folder, `<!-- CHERRYWORKS START -->\n${sectionText}\n<!-- CHERRYWORKS END -->\n`);
+    return new CodexEntryFile(
+      "codex",
+      "charter",
+      folder,
+      `<!-- CHERRYWORKS START -->\n${sectionText}\n<!-- CHERRYWORKS END -->\n`,
+    );
   }
 
   /** The folder it is for, from the repository's root; the root's is `""`. */
   get folder(): string {
     return this.id;
   }
-
 }

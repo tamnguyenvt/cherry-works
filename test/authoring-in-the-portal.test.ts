@@ -1,17 +1,27 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import type { Page } from "playwright";
-import { inTheBrowser } from "./in-the-browser.js";
-import { columnOf } from "./listing-in-the-browser.js";
 import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { SensorPrimitive } from "../src/module/charter/domain/models/primitive/sensor-primitive.js";
 import type { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { inTheBrowser } from "./in-the-browser.js";
+import { columnOf } from "./listing-in-the-browser.js";
 import { readPrimitive } from "./use-cases-of.js";
 
 const at = (path: string) => new URL(path, "file:///repo/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", `The body of ${id}.`, ""].join("\n");
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: About ${id}.`,
+    ...headers,
+    "---",
+    "",
+    `The body of ${id}.`,
+    "",
+  ].join("\n");
 
 const guide = (id: string) => primitive("guide", id, ['globs: ["src/**/*.ts"]']);
 
@@ -39,11 +49,27 @@ test("New asks the kind, the id and every header the kind takes, each in its sha
     await startingNew(page, "guide");
 
     assert.equal(await page.getByRole("dialog").getByLabel("kind", { exact: true }).innerText(), "guide");
-    assert.deepEqual(await rowLabelsOf(page), ["kind", "id", ...Primitives.headersOf("guide").map(({ field }) => field)]);
+    assert.deepEqual(await rowLabelsOf(page), [
+      "kind",
+      "id",
+      ...Primitives.headersOf("guide").map(({ field }) => field),
+    ]);
     // A list is a box per entry, with a way to add the next.
-    assert.equal(await page.getByRole("dialog").getByLabel(/^globs \d+$/).count(), 1);
+    assert.equal(
+      await page
+        .getByRole("dialog")
+        .getByLabel(/^globs \d+$/)
+        .count(),
+      1,
+    );
     await page.getByRole("button", { name: "Add globs" }).click();
-    assert.equal(await page.getByRole("dialog").getByLabel(/^globs \d+$/).count(), 2);
+    assert.equal(
+      await page
+        .getByRole("dialog")
+        .getByLabel(/^globs \d+$/)
+        .count(),
+      2,
+    );
     assert.equal(await page.getByRole("dialog").locator(".cm-content").count(), 1);
 
     // A header read from a closed set is chosen, not typed.
@@ -87,7 +113,10 @@ test("creating a script writes its index.md in the folders its id names, and an 
     // Said where the script itself is to be written.
     await page.getByText(/\.\/run\.sh beside it is the file it runs/).waitFor();
 
-    assert.match((await fileIn(files, ".cw/charter/primitive/script/release/check/index.md")) ?? "", /^executionPath: \.\/run\.sh$/m);
+    assert.match(
+      (await fileIn(files, ".cw/charter/primitive/script/release/check/index.md")) ?? "",
+      /^executionPath: \.\/run\.sh$/m,
+    );
     assert.equal(await fileIn(files, ".cw/charter/primitive/script/release/check/run.sh"), "");
   });
 });
@@ -98,14 +127,20 @@ test("answers the kind refuses, and an id already claimed, are shown in the engi
     await page.getByRole("dialog").getByLabel("id", { exact: true }).fill("Not A Slug");
     await page.getByRole("button", { name: "Create primitive" }).click();
     await page.getByRole("dialog").getByRole("alert").waitFor();
-    assert.match(await page.getByRole("dialog").getByRole("alert").innerText(), /These headers are not what a guide holds/);
+    assert.match(
+      await page.getByRole("dialog").getByRole("alert").innerText(),
+      /These headers are not what a guide holds/,
+    );
 
     await page.getByRole("dialog").getByLabel("id", { exact: true }).fill("no-any");
     await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Again.");
     await page.getByRole("dialog").getByLabel("globs 1", { exact: true }).fill("src/**");
     await page.getByRole("button", { name: "Create primitive" }).click();
     await page.getByRole("dialog").getByRole("alert").filter({ hasText: "already there" }).waitFor();
-    assert.match(await page.getByRole("dialog").getByRole("alert").innerText(), /declared by \.cw\/charter\/primitive\/guide\/no-any\/index\.md/);
+    assert.match(
+      await page.getByRole("dialog").getByRole("alert").innerText(),
+      /declared by \.cw\/charter\/primitive\/guide\/no-any\/index\.md/,
+    );
 
     assert.equal(await fileIn(files, ".cw/charter/primitive/guide/not-a-slug/index.md"), undefined);
     assert.equal(await fileIn(files, ".cw/charter/primitive/guide/no-any/index.md"), guide("no-any"));
@@ -119,13 +154,19 @@ test("an existing primitive opens locked to its id, saves over its file and dele
 
     assert.equal(await page.getByRole("dialog").getByLabel("kind", { exact: true }).count(), 0);
     assert.equal(await page.getByRole("dialog").getByLabel("id", { exact: true }).count(), 0);
-    assert.match(await page.getByRole("dialog").innerText(), /rename by creating a new primitive and deleting this one/);
+    assert.match(
+      await page.getByRole("dialog").innerText(),
+      /rename by creating a new primitive and deleting this one/,
+    );
     assert.equal(await page.getByRole("dialog").getByLabel("globs 1", { exact: true }).inputValue(), "src/**/*.ts");
 
     await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Never any.");
     await page.getByRole("button", { name: "Save" }).click();
     await page.getByText("Primitive saved").waitFor();
-    assert.match((await fileIn(files, ".cw/charter/primitive/guide/no-any/index.md")) ?? "", /description: Never any\.[\s\S]*The body of no-any\.\n$/);
+    assert.match(
+      (await fileIn(files, ".cw/charter/primitive/guide/no-any/index.md")) ?? "",
+      /description: Never any\.[\s\S]*The body of no-any\.\n$/,
+    );
 
     await page.getByRole("dialog").waitFor({ state: "detached" });
     await opening(page, "no-any");
@@ -137,19 +178,25 @@ test("an existing primitive opens locked to its id, saves over its file and dele
 });
 
 test("a primitive whose id holds / opens, saves and deletes like any other (FR-141)", async () => {
-  await inTheBrowser({ [at(".cw/charter/primitive/guide/mfbs/no-any/index.md")]: guide("mfbs/no-any") }, async (page, files) => {
-    await opening(page, "mfbs/no-any");
-    await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Never any.");
-    await page.getByRole("button", { name: "Save" }).click();
-    await page.getByText("Primitive saved").waitFor();
-    assert.match((await fileIn(files, ".cw/charter/primitive/guide/mfbs/no-any/index.md")) ?? "", /description: Never any\./);
+  await inTheBrowser(
+    { [at(".cw/charter/primitive/guide/mfbs/no-any/index.md")]: guide("mfbs/no-any") },
+    async (page, files) => {
+      await opening(page, "mfbs/no-any");
+      await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Never any.");
+      await page.getByRole("button", { name: "Save" }).click();
+      await page.getByText("Primitive saved").waitFor();
+      assert.match(
+        (await fileIn(files, ".cw/charter/primitive/guide/mfbs/no-any/index.md")) ?? "",
+        /description: Never any\./,
+      );
 
-    await page.getByRole("dialog").waitFor({ state: "detached" });
-    await opening(page, "mfbs/no-any");
-    await page.getByRole("button", { name: "Delete" }).click();
-    await page.getByText("Primitive deleted").waitFor();
-    assert.equal(await fileIn(files, ".cw/charter/primitive/guide/mfbs/no-any/index.md"), undefined);
-  });
+      await page.getByRole("dialog").waitFor({ state: "detached" });
+      await opening(page, "mfbs/no-any");
+      await page.getByRole("button", { name: "Delete" }).click();
+      await page.getByText("Primitive deleted").waitFor();
+      assert.equal(await fileIn(files, ".cw/charter/primitive/guide/mfbs/no-any/index.md"), undefined);
+    },
+  );
 });
 
 test("a save over a file changed on disk is refused naming it, and the other change stays (Story 6 scenario 9)", async () => {
@@ -163,28 +210,47 @@ test("a save over a file changed on disk is refused naming it, and the other cha
     await page.getByRole("button", { name: "Save" }).click();
     await page.getByRole("dialog").getByRole("alert").waitFor();
 
-    assert.match(await page.getByRole("dialog").getByRole("alert").innerText(), /\.cw\/charter\/primitive\/guide\/no-any\/index\.md changed on disk/);
+    assert.match(
+      await page.getByRole("dialog").getByRole("alert").innerText(),
+      /\.cw\/charter\/primitive\/guide\/no-any\/index\.md changed on disk/,
+    );
     assert.equal(await fileIn(files, ".cw/charter/primitive/guide/no-any/index.md"), changedOnDisk);
   });
 });
 
 test("a vendored primitive opens read-only, saying how to differ from it (Story 6 scenario 7)", async () => {
-  await inTheBrowser({ [at(".cw/charter/vendor/team/rules/root/primitive/guide/theirs/index.md")]: guide("theirs") }, async (page) => {
-    await page.getByRole("tab", { name: "Vendor" }).click();
-    await opening(page, "theirs");
-    const note = page.getByRole("dialog").getByRole("alert");
-    await note.waitFor();
+  await inTheBrowser(
+    { [at(".cw/charter/vendor/team/rules/root/primitive/guide/theirs/index.md")]: guide("theirs") },
+    async (page) => {
+      await page.getByRole("tab", { name: "Vendor" }).click();
+      await opening(page, "theirs");
+      const note = page.getByRole("dialog").getByRole("alert");
+      await note.waitFor();
 
-    assert.match(await note.innerText(), /author a primitive of your own under an id of its own/);
-    assert.match(await page.getByRole("dialog").innerText(), /\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/theirs\/index\.md/);
-    assert.equal(await page.getByRole("button", { name: "Save" }).count(), 0);
-    assert.equal(await page.getByRole("button", { name: "Delete" }).count(), 0);
-  });
+      assert.match(await note.innerText(), /author a primitive of your own under an id of its own/);
+      assert.match(
+        await page.getByRole("dialog").innerText(),
+        /\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/theirs\/index\.md/,
+      );
+      assert.equal(await page.getByRole("button", { name: "Save" }).count(), 0);
+      assert.equal(await page.getByRole("button", { name: "Delete" }).count(), 0);
+    },
+  );
 });
 
 test("Preview renders the body, raw HTML shown as text rather than run (FR-119)", async () => {
   const body = "# Heading\n\n<img src=x onerror=\"document.title='ran'\">";
-  const withHtml = ["---", "kind: guide", "id: no-any", "description: About.", 'globs: ["src/**"]', "---", "", body, ""].join("\n");
+  const withHtml = [
+    "---",
+    "kind: guide",
+    "id: no-any",
+    "description: About.",
+    'globs: ["src/**"]',
+    "---",
+    "",
+    body,
+    "",
+  ].join("\n");
   await inTheBrowser({ [at(".cw/charter/primitive/guide/no-any/index.md")]: withHtml }, async (page) => {
     await opening(page, "no-any");
     const source = page.getByRole("dialog").locator(".cm-content");

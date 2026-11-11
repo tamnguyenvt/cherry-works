@@ -1,5 +1,5 @@
-import { TestSuite } from "./test-suite.js";
 import { TestSuiteFault } from "../charter.fault.js";
+import { TestSuite } from "./test-suite.js";
 
 /** Makes the suite one test file holds. */
 export class TestSuiteFactory {
@@ -32,7 +32,10 @@ export class TestSuiteFactory {
     }
 
     const parsedSuite = TestSuite.schema.safeParse(parsedJson);
-    if (!parsedSuite.success) throw new TestSuiteFault(`This file is not written as a suite of cases.`, `Write it as ${TestSuite.sampleText}`, { internal: false });
+    if (!parsedSuite.success)
+      throw new TestSuiteFault(`This file is not written as a suite of cases.`, `Write it as ${TestSuite.sampleText}`, {
+        internal: false,
+      });
 
     return new TestSuite(parsedSuite.data.description, parsedSuite.data.cases, text);
   }

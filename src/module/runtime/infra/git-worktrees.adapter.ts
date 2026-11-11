@@ -1,9 +1,9 @@
 import { execFile } from "node:child_process";
 import { rm } from "node:fs/promises";
-import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
-import { AdapterFault, type ForKeepingWorktrees } from "../app/port/out/keeping-worktrees.port.js";
+import { promisify } from "node:util";
 import { FolderAddress, type FolderURL, urlAt } from "../../shared/module.js";
+import { AdapterFault, type ForKeepingWorktrees } from "../app/port/out/keeping-worktrees.port.js";
 
 const runGit = promisify(execFile);
 
@@ -32,14 +32,24 @@ export class GitWorktrees implements ForKeepingWorktrees {
   async addWorktree(worktreePath: string): Promise<void> {
     const worktreeFolder = urlAt(this.#repoFolder, `${worktreePath}/`);
     try {
-      await runGit("git", ["worktree", "add", "--quiet", "--detach", "--force", fileURLToPath(worktreeFolder), "HEAD"], { cwd: fileURLToPath(this.#repoFolder) });
+      await runGit(
+        "git",
+        ["worktree", "add", "--quiet", "--detach", "--force", fileURLToPath(worktreeFolder), "HEAD"],
+        { cwd: fileURLToPath(this.#repoFolder) },
+      );
     } catch (gitError) {
-      if ((gitError as NodeJS.ErrnoException).code === "ENOENT") throw new AdapterFault("git is not installed here.", "Evaluating needs git: install it, and run this again.", { internal: false, cause: gitError });
+      if ((gitError as NodeJS.ErrnoException).code === "ENOENT")
+        throw new AdapterFault("git is not installed here.", "Evaluating needs git: install it, and run this again.", {
+          internal: false,
+          cause: gitError,
+        });
       // Refused in git's own words (CORE-FR-206): what git says of the
       // person's own repository is theirs to read.
       throw new AdapterFault(
         `${gitError}`,
-        (await this.#isRepository(this.#repoFolder)) ? "Commit what is to be evaluated first: a worktree holds the last commit." : 'Evaluating needs a git repository: run "git init" here and commit what is to be evaluated.',
+        (await this.#isRepository(this.#repoFolder))
+          ? "Commit what is to be evaluated first: a worktree holds the last commit."
+          : 'Evaluating needs a git repository: run "git init" here and commit what is to be evaluated.',
         { internal: false, cause: gitError },
       );
     }
@@ -51,7 +61,9 @@ export class GitWorktrees implements ForKeepingWorktrees {
   async removeWorktree(worktreePath: string): Promise<void> {
     const worktreeFolder = urlAt(this.#repoFolder, `${worktreePath}/`);
     const repoFolderPath = fileURLToPath(this.#repoFolder);
-    await runGit("git", ["worktree", "remove", "--force", "--force", fileURLToPath(worktreeFolder)], { cwd: repoFolderPath }).catch(() => undefined);
+    await runGit("git", ["worktree", "remove", "--force", "--force", fileURLToPath(worktreeFolder)], {
+      cwd: repoFolderPath,
+    }).catch(() => undefined);
     await rm(fileURLToPath(worktreeFolder), { recursive: true, force: true });
     if (await this.#isRepository(this.#repoFolder)) await runGit("git", ["worktree", "prune"], { cwd: repoFolderPath });
   }

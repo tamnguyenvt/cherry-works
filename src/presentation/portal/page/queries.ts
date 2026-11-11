@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { client } from "./client.js";
 import type { InferRequestType } from "hono/client";
+import { client } from "./client.js";
 
 /**
  * Every route the page reads or writes through, one hook each (plan §12.5).
@@ -42,7 +42,8 @@ export function usePrimitives(matching?: string) {
 export function useExplanation(id: string) {
   return useQuery({
     queryKey: ["explanation", id],
-    queryFn: async () => (await client.charter.root.primitives[":id"].explanation.$get({ param: { id: encodeURIComponent(id) } })).json(),
+    queryFn: async () =>
+      (await client.charter.root.primitives[":id"].explanation.$get({ param: { id: encodeURIComponent(id) } })).json(),
   });
 }
 
@@ -61,7 +62,9 @@ export function usePrimitive(id: string | undefined) {
     gcTime: 0,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const response = await client.charter.root.primitives[":id"].$get({ param: { id: encodeURIComponent(id ?? "") } });
+      const response = await client.charter.root.primitives[":id"].$get({
+        param: { id: encodeURIComponent(id ?? "") },
+      });
       return { answer: await response.json(), entityTag: response.headers.get("ETag") ?? "" };
     },
   });
@@ -85,7 +88,8 @@ function useWritten() {
   return async () => {
     await queryClient.resetQueries({ queryKey: ["testOutcome"] });
     await queryClient.invalidateQueries({
-      predicate: ({ queryKey }) => queryKey[0] !== "kinds" && queryKey[0] !== "requirements" && queryKey[0] !== "testOutcome",
+      predicate: ({ queryKey }) =>
+        queryKey[0] !== "kinds" && queryKey[0] !== "requirements" && queryKey[0] !== "testOutcome",
     });
   };
 }
@@ -107,7 +111,12 @@ export function useRewritePrimitive() {
   const written = useWritten();
   return useMutation({
     mutationFn: async (request: InferRequestType<(typeof client.charter.root.primitives)[":id"]["$put"]>) =>
-      (await client.charter.root.primitives[":id"].$put({ ...request, param: { id: encodeURIComponent(request.param.id) } })).json(),
+      (
+        await client.charter.root.primitives[":id"].$put({
+          ...request,
+          param: { id: encodeURIComponent(request.param.id) },
+        })
+      ).json(),
     onSuccess: written,
   });
 }
@@ -175,7 +184,8 @@ export function useBuild() {
   const written = useWritten();
   return useMutation({
     // Sent as JSON though it carries none, as a delete is (plan §12.4).
-    mutationFn: async () => (await client.charter.root.build.$post({}, { headers: { "Content-Type": "application/json" } })).json(),
+    mutationFn: async () =>
+      (await client.charter.root.build.$post({}, { headers: { "Content-Type": "application/json" } })).json(),
     onSuccess: written,
   });
 }
@@ -210,7 +220,10 @@ export function useRemoveVendor() {
       // Sent as JSON though it carries none, as a delete is (plan §12.4). The
       // client fills the path as it is given it, and an owner's `/` would end
       // the name there (FR-050).
-      const response = await client.vendors[":name"].$delete({ param: { name: encodeURIComponent(name) } }, { headers: { "Content-Type": "application/json" } });
+      const response = await client.vendors[":name"].$delete(
+        { param: { name: encodeURIComponent(name) } },
+        { headers: { "Content-Type": "application/json" } },
+      );
       return response.status === 422 ? response.json() : null;
     },
     onSuccess: written,
@@ -240,7 +253,8 @@ export function useAddTestSuite() {
   const written = useWritten();
   return useMutation({
     // Sent as JSON though it carries none, as a delete is (plan §12.4).
-    mutationFn: async () => (await client["test-suites"].$post({}, { headers: { "Content-Type": "application/json" } })).json(),
+    mutationFn: async () =>
+      (await client["test-suites"].$post({}, { headers: { "Content-Type": "application/json" } })).json(),
     onSuccess: written,
   });
 }
@@ -266,7 +280,10 @@ export function useRemoveTestSuite() {
   return useMutation({
     mutationFn: async (name: string) => {
       // Sent as JSON though it carries none, as a delete is (plan §12.4).
-      const response = await client["test-suites"][":name"].$delete({ param: { name } }, { headers: { "Content-Type": "application/json" } });
+      const response = await client["test-suites"][":name"].$delete(
+        { param: { name } },
+        { headers: { "Content-Type": "application/json" } },
+      );
       return response.status === 422 ? response.json() : null;
     },
     onSuccess: written,

@@ -1,14 +1,14 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { test } from "node:test";
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { buildingCharterOf } from "./use-cases-of.js";
 
@@ -16,30 +16,54 @@ const repo = new URL("file:///repo/");
 const inRepo = (path: string) => new URL(path, repo).href;
 
 test("a built charter runs the engine's own counter when the agent stops (EVAL-FR-008)", async () => {
-  const fileReaders = new InMemoryFileReaders({ [inRepo(".cw/settings.json")]: JSON.stringify({ agents: ["claude"] }) });
+  const fileReaders = new InMemoryFileReaders({
+    [inRepo(".cw/settings.json")]: JSON.stringify({ agents: ["claude"] }),
+  });
   const fileOutput = new InMemoryFileOutput(fileReaders);
-  const charterRuntimeApp = buildingCharterOf(fileReaders, fileOutput, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(
+    fileReaders,
+    fileOutput,
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
 
   await charterRuntimeApp.build();
 
   const claudeSettings = JSON.parse((await fileReaders.readIfThere(new URL(".claude/settings.json", repo))) ?? "{}");
-  const stopCommands = (claudeSettings.hooks?.Stop ?? []).flatMap((entry: { hooks: { command: string }[] }) => entry.hooks.map((hook) => hook.command));
+  const stopCommands = (claudeSettings.hooks?.Stop ?? []).flatMap((entry: { hooks: { command: string }[] }) =>
+    entry.hooks.map((hook) => hook.command),
+  );
   assert.deepEqual(stopCommands, ["cw sensor run Stop --agent claude"]);
   const sensorsJson = JSON.parse((await fileReaders.readIfThere(new URL(".cw/out/sensors.json", repo))) ?? "{}");
   assert.deepEqual(sensorsJson.sensors, [
-    { id: "cw-session-tokens-counter-on-stop", "agent-provider": ["claude"], signal: "Stop", command: 'node ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs"' },
+    {
+      id: "cw-session-tokens-counter-on-stop",
+      "agent-provider": ["claude"],
+      signal: "Stop",
+      command: 'node ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs"',
+    },
   ]);
   assert.ok(fileOutput.executables.has(inRepo(".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs")));
 });
 
 /** One line of a Claude Code transcript: an assistant message and its usage. */
-const assistantLine = (messageId: string, usage: { input: number; output: number; cacheWrite?: number; cacheRead?: number }, model = "claude-opus-5-5") =>
+const assistantLine = (
+  messageId: string,
+  usage: { input: number; output: number; cacheWrite?: number; cacheRead?: number },
+  model = "claude-opus-5-5",
+) =>
   JSON.stringify({
     type: "assistant",
     message: {
       id: messageId,
       model,
-      usage: { input_tokens: usage.input, output_tokens: usage.output, cache_creation_input_tokens: usage.cacheWrite ?? 0, cache_read_input_tokens: usage.cacheRead ?? 0 },
+      usage: {
+        input_tokens: usage.input,
+        output_tokens: usage.output,
+        cache_creation_input_tokens: usage.cacheWrite ?? 0,
+        cache_read_input_tokens: usage.cacheRead ?? 0,
+      },
     },
   });
 
@@ -53,31 +77,50 @@ async function aMachine(settings: object = { agents: ["claude"] }) {
   await mkdir(join(repoFolder, ".cw"), { recursive: true });
   await mkdir(homeFolder, { recursive: true });
   await writeFile(join(repoFolder, ".cw/settings.json"), JSON.stringify(settings));
-  const counterAsset = new CwSessionTokensCounterScript().assets.find((assetFile) => assetFile.file === "sessionTokensCounter.mjs");
+  const counterAsset = new CwSessionTokensCounterScript().assets.find(
+    (assetFile) => assetFile.file === "sessionTokensCounter.mjs",
+  );
   assert.ok(counterAsset);
   const counterFile = join(machineFolder, "sessionTokensCounter.mjs");
   await writeFile(counterFile, counterAsset.contents);
 
   /** Write a session's transcript, its subagents' beside it. */
-  const writeSession = async (sessionId: string, lines: readonly string[], subagentLinesById: Readonly<Record<string, readonly string[]>> = {}) => {
+  const writeSession = async (
+    sessionId: string,
+    lines: readonly string[],
+    subagentLinesById: Readonly<Record<string, readonly string[]>> = {},
+  ) => {
     await mkdir(join(transcriptsFolder, sessionId, "subagents"), { recursive: true });
-    await writeFile(join(transcriptsFolder, `${sessionId}.jsonl`), lines.join("\n") + "\n");
+    await writeFile(join(transcriptsFolder, `${sessionId}.jsonl`), `${lines.join("\n")}\n`);
     for (const [agentId, subagentLines] of Object.entries(subagentLinesById))
-      await writeFile(join(transcriptsFolder, sessionId, "subagents", `agent-${agentId}.jsonl`), subagentLines.join("\n") + "\n");
+      await writeFile(
+        join(transcriptsFolder, sessionId, "subagents", `agent-${agentId}.jsonl`),
+        `${subagentLines.join("\n")}\n`,
+      );
   };
 
   /** Stop the agent once, as Claude Code runs a Stop hook: the event on
    *  standard input, from the repository. */
   const stopOutputOf = (sessionId: string) =>
     new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
-      const counterProcess = spawn(process.execPath, [counterFile], { cwd: repoFolder, env: { ...process.env, HOME: homeFolder }, stdio: ["pipe", "pipe", "pipe"] });
+      const counterProcess = spawn(process.execPath, [counterFile], {
+        cwd: repoFolder,
+        env: { ...process.env, HOME: homeFolder },
+        stdio: ["pipe", "pipe", "pipe"],
+      });
       let stdout = "";
       let stderr = "";
       counterProcess.stdout.on("data", (chunk) => (stdout += chunk));
       counterProcess.stderr.on("data", (chunk) => (stderr += chunk));
       counterProcess.on("close", (code) => resolve({ code, stdout, stderr }));
       counterProcess.stdin.end(
-        JSON.stringify({ session_id: sessionId, transcript_path: join(transcriptsFolder, `${sessionId}.jsonl`), cwd: repoFolder, hook_event_name: "Stop", stop_hook_active: false }),
+        JSON.stringify({
+          session_id: sessionId,
+          transcript_path: join(transcriptsFolder, `${sessionId}.jsonl`),
+          cwd: repoFolder,
+          hook_event_name: "Stop",
+          stop_hook_active: false,
+        }),
       );
     });
 
@@ -86,11 +129,26 @@ async function aMachine(settings: object = { agents: ["claude"] }) {
   /** Every line kept, of every session's own folder. */
   const sessionLines = async (sessionsFolder = defaultSessionsFolder) => {
     const sessionIds = await readdir(sessionsFolder).catch(() => []);
-    const logTexts = await Promise.all(sessionIds.map((sessionId) => readFile(join(sessionsFolder, sessionId, "session-analysis.jsonl"), "utf8")));
-    return logTexts.flatMap((logText) => logText.split("\n").filter((line) => line !== "").map((line) => JSON.parse(line)));
+    const logTexts = await Promise.all(
+      sessionIds.map((sessionId) => readFile(join(sessionsFolder, sessionId, "session-analysis.jsonl"), "utf8")),
+    );
+    return logTexts.flatMap((logText) =>
+      logText
+        .split("\n")
+        .filter((line) => line !== "")
+        .map((line) => JSON.parse(line)),
+    );
   };
 
-  return { machineFolder, homeFolder, repoFolder, writeSession, stopOutputOf, sessionLines, removeMachineFolder: () => rm(machineFolder, { recursive: true, force: true }) };
+  return {
+    machineFolder,
+    homeFolder,
+    repoFolder,
+    writeSession,
+    stopOutputOf,
+    sessionLines,
+    removeMachineFolder: () => rm(machineFolder, { recursive: true, force: true }),
+  };
 }
 
 test("each stop is kept as one line outside the repository, by kind, subagents counted in, a message counted once (EVAL-FR-008, EVAL-FR-009)", async () => {
@@ -105,7 +163,15 @@ test("each stop is kept as one line outside the repository, by kind, subagents c
         assistantLine("msg-1", { input: 10, output: 5, cacheWrite: 100, cacheRead: 1000 }),
         assistantLine("msg-2", { input: 1, output: 20, cacheRead: 1100 }),
       ],
-      { one: [assistantLine("msg-sub", { input: 3, output: 7, cacheWrite: 50, cacheRead: 200 }, "claude-haiku-4-5-20251001")] },
+      {
+        one: [
+          assistantLine(
+            "msg-sub",
+            { input: 3, output: 7, cacheWrite: 50, cacheRead: 200 },
+            "claude-haiku-4-5-20251001",
+          ),
+        ],
+      },
     );
 
     const stopOutput = await machine.stopOutputOf("session-a");
@@ -142,7 +208,9 @@ test("each session is kept in a folder of its own, named by its id, and an id th
     assert.deepEqual((await readdir(sessionsFolder)).sort(), ["session-h", "session-i"]);
     const sessionHText = await readFile(join(sessionsFolder, "session-h", "session-analysis.jsonl"), "utf8");
     assert.equal(sessionHText.split("\n").filter((line) => line !== "").length, 2);
-    assert.deepEqual(await readdir(join(machine.homeFolder, ".cherry-works")), [machine.repoFolder.replace(/[^A-Za-z0-9]/g, "-")]);
+    assert.deepEqual(await readdir(join(machine.homeFolder, ".cherry-works")), [
+      machine.repoFolder.replace(/[^A-Za-z0-9]/g, "-"),
+    ]);
   } finally {
     await machine.removeMachineFolder();
   }
@@ -156,7 +224,10 @@ test("the log is kept, by default, in a folder of the repository's own under ~/.
     await machine.stopOutputOf("session-g");
 
     assert.deepEqual(await machine.sessionLines(), []);
-    assert.equal((await machine.sessionLines(join(machine.homeFolder, "elsewhere/sessions")))[0].sessionId, "session-g");
+    assert.equal(
+      (await machine.sessionLines(join(machine.homeFolder, "elsewhere/sessions")))[0].sessionId,
+      "session-g",
+    );
   } finally {
     await machine.removeMachineFolder();
   }
@@ -183,7 +254,10 @@ test("crossing a mark shows the developer one line, which the model is not sent,
     await machine.writeSession("session-c", [assistantLine("msg-1", { input: 10, output: 10, cacheRead: 90_000 })]);
     assert.equal((await machine.stopOutputOf("session-c")).stdout, "");
 
-    await machine.writeSession("session-c", [assistantLine("msg-1", { input: 10, output: 10, cacheRead: 90_000 }), assistantLine("msg-2", { input: 10, output: 10, cacheRead: 95_000 })]);
+    await machine.writeSession("session-c", [
+      assistantLine("msg-1", { input: 10, output: 10, cacheRead: 90_000 }),
+      assistantLine("msg-2", { input: 10, output: 10, cacheRead: 95_000 }),
+    ]);
     const crossingOutput = await machine.stopOutputOf("session-c");
 
     // Claude Code shows `systemMessage` to the developer and sends the model
@@ -224,7 +298,9 @@ test("a record that cannot be read lets the agent stop, with nothing shown and n
   try {
     await machine.writeSession("session-e", ["not json at all", assistantLine("msg-1", { input: 600, output: 600 })]);
     const unreadOutput = await machine.stopOutputOf("session-e");
-    await machine.writeSession("session-f", [JSON.stringify({ type: "assistant", message: { id: "msg-1", usage: { tokens: 12 } } })]);
+    await machine.writeSession("session-f", [
+      JSON.stringify({ type: "assistant", message: { id: "msg-1", usage: { tokens: 12 } } }),
+    ]);
     const reshapedOutput = await machine.stopOutputOf("session-f");
     const missingOutput = await machine.stopOutputOf("session-never-written");
 
@@ -243,11 +319,15 @@ test("two sessions stopping at once are each kept, neither lost (EVAL-FR-009)", 
   const machine = await aMachine();
   try {
     const sessionIds = Array.from({ length: 8 }, (_, index) => `session-${index}`);
-    for (const sessionId of sessionIds) await machine.writeSession(sessionId, [assistantLine("msg-1", { input: 1, output: 1 })]);
+    for (const sessionId of sessionIds)
+      await machine.writeSession(sessionId, [assistantLine("msg-1", { input: 1, output: 1 })]);
 
     await Promise.all(sessionIds.map((sessionId) => machine.stopOutputOf(sessionId)));
 
-    assert.deepEqual((await machine.sessionLines()).map((sessionLine) => sessionLine.sessionId).sort(), [...sessionIds].sort());
+    assert.deepEqual(
+      (await machine.sessionLines()).map((sessionLine) => sessionLine.sessionId).sort(),
+      [...sessionIds].sort(),
+    );
   } finally {
     await machine.removeMachineFolder();
   }

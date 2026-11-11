@@ -1,5 +1,12 @@
 import { text } from "node:stream/consumers";
-import { EXIT_FAILURE, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { printFault } from "./helper.js";
 
 const OPTIONS = {
@@ -24,9 +31,15 @@ export class SensorRunCommand implements Command<typeof OPTIONS> {
   readonly summary = "Run every sensor of a signal, as the host's one hook for it";
   readonly options = OPTIONS;
 
-  async run({ charterRuntimeApp, workspaceApp }: Context, { signal, agent }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async run(
+    { charterRuntimeApp, workspaceApp }: Context,
+    { signal, agent }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
     if (agent !== undefined && !workspaceApp.agentProviderNames.includes(agent))
-      return { code: EXIT_FAILURE, problem: `Unknown sensor host "${agent}".\n  Name any of: ${workspaceApp.agentProviderNames.join(", ")}.\n` };
+      return {
+        code: EXIT_FAILURE,
+        problem: `Unknown sensor host "${agent}".\n  Name any of: ${workspaceApp.agentProviderNames.join(", ")}.\n`,
+      };
     // Typed at a terminal, there is no event to wait for.
     const stdin = process.stdin.isTTY ? "" : await text(process.stdin);
     const sensorRunOutcomeDTO = await charterRuntimeApp.runSensors(signal ?? "", stdin, agent);

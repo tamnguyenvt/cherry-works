@@ -1,11 +1,11 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { test } from "node:test";
 import type { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
-import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { answerOf, faultTextOf } from "./answer-of.js";
 import { authoringCharterOf, buildingCharterOf } from "./use-cases-of.js";
@@ -17,14 +17,28 @@ const at = (path: string) => new URL(path, root).href;
 const inRepo = (path: string) => new URL(path, repo).href;
 
 const primitive = (kind: string, id: string, headers: readonly string[], body: string) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: What ${id} is for, in one line.`, ...headers, "---", "", body, ""].join("\n");
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: What ${id} is for, in one line.`,
+    ...headers,
+    "---",
+    "",
+    body,
+    "",
+  ].join("\n");
 
 const runFile = ["#!/usr/bin/env bash", "set -euo pipefail", 'grep -q "## $1" CHANGELOG.md'].join("\n");
 const releaseNote = ["# Release {{version}}", "", "  - indented on purpose"].join("\n");
 
 /** A script as it is kept: its index.md, and its assets beside it, of which
  *  `run.sh` is the one that runs. */
-const script = (id: string, assets: Readonly<Record<string, string>> = { "run.sh": runFile }, body = "Takes the version as its one argument.") => ({
+const script = (
+  id: string,
+  assets: Readonly<Record<string, string>> = { "run.sh": runFile },
+  body = "Takes the version as its one argument.",
+) => ({
   [at(`script/${id}/index.md`)]: primitive("script", id, ["executionPath: ./run.sh"], body),
   ...Object.fromEntries(Object.entries(assets).map(([path, contents]) => [at(`script/${id}/${path}`), contents])),
 });
@@ -38,16 +52,26 @@ const building = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
   const fileOutput = new InMemoryFileOutput(held);
   const charterAuthoringApp = authoringCharterOf(held, fileOutput, new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(held, fileOutput, new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(
+    held,
+    fileOutput,
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
   return { held, fileOutput, charterAuthoringApp, charterRuntimeApp, build: () => charterRuntimeApp.build() };
 };
 
-const filesOf = (planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault): CharterDTOs.PlanSummary["data"] => {
+const filesOf = (
+  planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault,
+): CharterDTOs.PlanSummary["data"] => {
   assert.ok(planSummaryDTO.type === "PlanSummary", "this build was refused, and the test expected it to run");
   return planSummaryDTO.data;
 };
 
-const faultsOf = (planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault): FaultDTOs.FaultsByFile["data"] => {
+const faultsOf = (
+  planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault,
+): FaultDTOs.FaultsByFile["data"] => {
   assert.ok(planSummaryDTO.type === "FaultsByFile", "this build ran, and the test expected it to be refused");
   return planSummaryDTO.data;
 };
@@ -73,7 +97,11 @@ test("a template is compiled like any other primitive, its headers then its body
 });
 test("every asset of a primitive is copied beside its compiled document byte for byte, whatever its kind (FR-168)", async () => {
   const { held, build } = building({
-    ...script("check-changelog", { "run.sh": runFile, "lib/versions.sh": "latest() { :; }\n", "README.md": "How it is laid out.\n" }),
+    ...script("check-changelog", {
+      "run.sh": runFile,
+      "lib/versions.sh": "latest() { :; }\n",
+      "README.md": "How it is laid out.\n",
+    }),
     [at("skill/release/index.md")]: skillNaming("[[check-changelog]]"),
     [at("skill/release/checklist.md")]: "1. Check the changelog.\n",
   });
@@ -118,7 +146,10 @@ test("the catalogue names each primitive's compiled file, and a listing the inde
 
   await build();
 
-  const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalogue.json", repo))) as { id: string; file: string }[];
+  const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalogue.json", repo))) as {
+    id: string;
+    file: string;
+  }[];
   assert.equal(catalogue.find((entry) => entry.id === "check")?.file, ".cw/out/script/check/index.md");
   assert.equal(catalogue.find((entry) => entry.id === "note")?.file, ".cw/out/template/note/index.md");
   const listing = answerOf(await charterAuthoringApp.fullList());
@@ -136,7 +167,10 @@ test("an id holding / is a folder in the charter and in the output alike (FR-141
   filesOf(await build());
 
   assert.equal(await held.read(new URL(".cw/out/script/release/check/run.sh", repo)), runFile);
-  assert.match(await held.read(new URL(".cw/out/script/release/check/index.md", repo)), /^executionPath: \.\/run\.sh$/m);
+  assert.match(
+    await held.read(new URL(".cw/out/script/release/check/index.md", repo)),
+    /^executionPath: \.\/run\.sh$/m,
+  );
 });
 
 test("an asset edited and not built leaves its copy as the last build left it, and the preview says what a build would write (FR-166)", async () => {
@@ -170,7 +204,13 @@ test("a primitive deleted from the charter has its copies deleted by the next bu
 });
 
 test("a script whose executionPath is missing, not a path from its index.md, leaves its folder, or holds what a shell would read is refused with the kind's sample (FR-165)", async () => {
-  for (const headers of [[], ["executionPath: run.sh"], ["executionPath: ./lib/../run.sh"], ["executionPath: /usr/bin/env"], ["executionPath: ./run.sh;id"]]) {
+  for (const headers of [
+    [],
+    ["executionPath: run.sh"],
+    ["executionPath: ./lib/../run.sh"],
+    ["executionPath: /usr/bin/env"],
+    ["executionPath: ./run.sh;id"],
+  ]) {
     const { build } = building({
       [at("script/check/index.md")]: primitive("script", "check", headers, ""),
       [at("script/check/run.sh")]: runFile,
@@ -212,7 +252,12 @@ test("a script or a template no primitive names is a warning, and the build stil
 
 test("a vendor's assets are copied into the repository's output folder like ones it authored", async () => {
   const { held, build } = building({
-    [inRepo(".cw/charter/vendor/team/rules/root/primitive/script/check/index.md")]: primitive("script", "check", ["executionPath: ./run.sh"], ""),
+    [inRepo(".cw/charter/vendor/team/rules/root/primitive/script/check/index.md")]: primitive(
+      "script",
+      "check",
+      ["executionPath: ./run.sh"],
+      "",
+    ),
     [inRepo(".cw/charter/vendor/team/rules/root/primitive/script/check/run.sh")]: runFile,
     [at("skill/release/index.md")]: skillNaming("[[check]]"),
   });
@@ -237,7 +282,12 @@ test("asking a script what it requires names its executionPath (Story 24 scenari
 test("a script is added as its index.md and an empty asset at its executionPath (FR-167)", async () => {
   const { held, charterAuthoringApp } = building({});
 
-  const primitiveDTO = answerOf(await charterAuthoringApp.add("script", "release/check", { description: "Check the changelog.", executionPath: "./run.sh" }));
+  const primitiveDTO = answerOf(
+    await charterAuthoringApp.add("script", "release/check", {
+      description: "Check the changelog.",
+      executionPath: "./run.sh",
+    }),
+  );
 
   assert.equal(primitiveDTO.type, "Primitive");
   assert.match(await held.read(new URL(at("script/release/check/index.md"))), /^kind: script\nid: release\/check\n/m);
@@ -245,10 +295,15 @@ test("a script is added as its index.md and an empty asset at its executionPath 
 });
 
 test("a primitive added inside another's folder, or around one, is refused and nothing is written (FR-167)", async () => {
-  const { held, charterAuthoringApp } = building({ [at("skill/team/review/index.md")]: primitive("skill", "team/review", ['triggers: ["review"]'], "") });
+  const { held, charterAuthoringApp } = building({
+    [at("skill/team/review/index.md")]: primitive("skill", "team/review", ['triggers: ["review"]'], ""),
+  });
 
   for (const id of ["team/review/strict", "team"])
-    assert.match(faultTextOf(await charterAuthoringApp.add("skill", id, { description: "Mine.", triggers: ["mine"] })), /skill\/team\/review\/index\.md is a primitive/);
+    assert.match(
+      faultTextOf(await charterAuthoringApp.add("skill", id, { description: "Mine.", triggers: ["mine"] })),
+      /skill\/team\/review\/index\.md is a primitive/,
+    );
   assert.equal(await held.readIfThere(new URL(at("skill/team/review/strict/index.md"))), undefined);
   assert.equal(await held.readIfThere(new URL(at("skill/team/index.md"))), undefined);
 });
@@ -272,5 +327,8 @@ test("a template asks for nothing beyond what every primitive does (FR-158)", as
 
   const primitiveRequirementsDTO = answerOf(await charterAuthoringApp.listPrimitiveRequirements("template"));
 
-  assert.deepEqual(primitiveRequirementsDTO.data.headers.filter((header) => header.data.required).map((header) => header.data.field), ["description"]);
+  assert.deepEqual(
+    primitiveRequirementsDTO.data.headers.filter((header) => header.data.required).map((header) => header.data.field),
+    ["description"],
+  );
 });

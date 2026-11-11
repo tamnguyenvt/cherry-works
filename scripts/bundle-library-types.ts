@@ -22,12 +22,21 @@ await cp(zodFolder, ZOD_TYPES_FOLDER, {
   // Zod's sources are not its declarations, and its code is in the bundle.
   filter: (sourcePath) => {
     const zodPath = relative(zodFolder, sourcePath);
-    return zodPath === "" || zodPath === "LICENSE" || (zodPath !== "src" && !zodPath.startsWith(`src${sep}`) && (!zodPath.includes(".") || zodPath.endsWith(".d.ts")));
+    return (
+      zodPath === "" ||
+      zodPath === "LICENSE" ||
+      (zodPath !== "src" && !zodPath.startsWith(`src${sep}`) && (!zodPath.includes(".") || zodPath.endsWith(".d.ts")))
+    );
   },
 });
 
 const libraryTypesText = await readFile(LIBRARY_D_TS, "utf8");
-const importedPackageNames = [...libraryTypesText.matchAll(/^import [^;]* from '([^.'][^']*)';$/gm)].map(([, packageName]) => packageName!);
+const importedPackageNames = [...libraryTypesText.matchAll(/^import [^;]* from '([^.'][^']*)';$/gm)].map(
+  ([, packageName]) => packageName!,
+);
 const foreignPackageNames = importedPackageNames.filter((packageName) => packageName !== "zod");
-if (foreignPackageNames.length > 0) throw new Error(`dist/index.d.ts imports ${foreignPackageNames.join(", ")}, which a tool importing cherry-works has not installed.`);
+if (foreignPackageNames.length > 0)
+  throw new Error(
+    `dist/index.d.ts imports ${foreignPackageNames.join(", ")}, which a tool importing cherry-works has not installed.`,
+  );
 await writeFile(LIBRARY_D_TS, libraryTypesText.replaceAll(/^(import [^;]* from )'zod';$/gm, "$1'./zod/index.js';"));

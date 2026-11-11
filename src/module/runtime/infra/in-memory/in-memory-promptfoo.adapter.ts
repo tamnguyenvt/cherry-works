@@ -1,5 +1,10 @@
-import type { ForRunningPromptfoo, PromptfooTest, PromptfooTestResult, PromptfooLog } from "../../app/port/out/running-promptfoo.port.js";
 import type { InMemoryFileReaders } from "../../../shared/module.js";
+import type {
+  ForRunningPromptfoo,
+  PromptfooLog,
+  PromptfooTest,
+  PromptfooTestResult,
+} from "../../app/port/out/running-promptfoo.port.js";
 
 /**
  * promptfoo held in memory: installed or not, as a test says, and each test
@@ -34,7 +39,8 @@ export class InMemoryPromptfoo implements ForRunningPromptfoo {
   }
 
   async evaluate(promptfooTest: PromptfooTest): Promise<PromptfooTestResult> {
-    const folderReadFiles = this.folderFiles === undefined ? [] : await this.folderFiles.readFilesRecursively(promptfooTest.workingPath);
+    const folderReadFiles =
+      this.folderFiles === undefined ? [] : await this.folderFiles.readFilesRecursively(promptfooTest.workingPath);
     this.evaluatedTests.push({ ...promptfooTest, builtFiles: folderReadFiles.map(({ path }) => path) });
     return this.resultByPrompt.get(promptfooTest.prompt) ?? { success: true, totalTokens: 0, componentResults: [] };
   }

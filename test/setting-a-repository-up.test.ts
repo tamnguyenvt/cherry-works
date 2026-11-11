@@ -1,40 +1,44 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE } from "../src/presentation/cli/commands/command.interface.js";
+import { test } from "node:test";
 import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
-import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { faultTextOf } from "./answer-of.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf } from "./use-cases-of.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { EXIT_FAILURE } from "../src/presentation/cli/commands/command.interface.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
-
 
 const repoPath = new URL("file:///repo/");
 
 /** The command line as a user meets it, over a repository held in memory: the
  *  real `cw init`, the real service behind it, and files a test can read back
  *  out of. */
-const setUp = async (
-  files: Readonly<Record<string, string>> = {},
-  argv: readonly string[] = ["init"],
-) => {
+const setUp = async (files: Readonly<Record<string, string>> = {}, argv: readonly string[] = ["init"]) => {
   const held = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter(), {});
+  const charterRuntimeApp = buildingCharterOf(
+    held,
+    new InMemoryFileOutput(held),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+    {},
+  );
   const results: string[] = [];
   const problems: string[] = [];
   const kept = { out: process.stdout.write, err: process.stderr.write };
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
-    const code = await new Commander(commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo), COMMANDS).run(argv);
+    const code = await new Commander(
+      commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo),
+      COMMANDS,
+    ).run(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -50,7 +54,8 @@ test("setting up writes a directory per kind, so a charter has somewhere to be a
   const { code, held: files } = await setUp({}, ["init", "--agent", "claude"]);
 
   assert.equal(code, 0);
-  for (const kind of Primitives.kinds) assert.notEqual(await held(files, `.cw/charter/primitive/${kind}/.gitkeep`), undefined);
+  for (const kind of Primitives.kinds)
+    assert.notEqual(await held(files, `.cw/charter/primitive/${kind}/.gitkeep`), undefined);
 });
 
 test("setting up writes the workspace's README, naming Cherry Works, the cw that set it up and how to author it, and keeps one already there", async () => {
@@ -124,7 +129,11 @@ test("setting up builds the charter, so the agent can author with the skill the 
 });
 
 test("setting up again builds what is already authored (FR-057, FR-058)", async () => {
-  const { code, held: files, results } = await setUp(
+  const {
+    code,
+    held: files,
+    results,
+  } = await setUp(
     {
       [new URL(".cw/charter/primitive/guide/no-any/index.md", repoPath).href]:
         '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nBody.\n',
@@ -138,8 +147,15 @@ test("setting up again builds what is already authored (FR-057, FR-058)", async 
 });
 
 test("setting up over a charter that does not hold keeps what it configured, builds nothing and says so (FR-057)", async () => {
-  const { code, held: files, problems } = await setUp(
-    { [new URL(".cw/charter/primitive/guide/broken/index.md", repoPath).href]: "---\nkind: guide\nid: broken\n---\n\nNo description.\n" },
+  const {
+    code,
+    held: files,
+    problems,
+  } = await setUp(
+    {
+      [new URL(".cw/charter/primitive/guide/broken/index.md", repoPath).href]:
+        "---\nkind: guide\nid: broken\n---\n\nNo description.\n",
+    },
     ["init", "--agent", "claude"],
   );
 
@@ -164,14 +180,14 @@ test("setting up authors nothing for what the engine brings: it is supplied on e
 test("setting up again discards nothing authored (FR-038)", async () => {
   const authored = new URL(".cw/charter/primitive/guide/no-any/index.md", repoPath).href;
   const { code, held: files } = await setUp(
-    { [authored]: "---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: [\"src/**/*.ts\"]\n---\n\nBody.\n" },
+    { [authored]: '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nBody.\n' },
     ["init", "--agent", "claude"],
   );
 
   assert.equal(code, 0);
   assert.equal(
     await files.readIfThere(new URL(authored)),
-    "---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: [\"src/**/*.ts\"]\n---\n\nBody.\n",
+    '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nBody.\n',
   );
 });
 
@@ -183,15 +199,25 @@ test("setting up has version control ignore the log, where an evaluation runs ea
 });
 
 test("setting up again keeps what the workspace's ignore file holds, and adds its line once (EVAL-FR-021, FR-038)", async () => {
-  const { held: files } = await setUp({ [new URL(".cw/.gitignore", repoPath).href]: "vendor/*.log" }, ["init", "--agent", "claude"]);
+  const { held: files } = await setUp({ [new URL(".cw/.gitignore", repoPath).href]: "vendor/*.log" }, [
+    "init",
+    "--agent",
+    "claude",
+  ]);
   assert.equal(await held(files, ".cw/.gitignore"), "vendor/*.log\nlog/\n");
 
-  const { held: filesAgain } = await setUp({ [new URL(".cw/.gitignore", repoPath).href]: "vendor/*.log\nlog/\n" }, ["init", "--agent", "claude"]);
+  const { held: filesAgain } = await setUp({ [new URL(".cw/.gitignore", repoPath).href]: "vendor/*.log\nlog/\n" }, [
+    "init",
+    "--agent",
+    "claude",
+  ]);
   assert.equal(await held(filesAgain, ".cw/.gitignore"), "vendor/*.log\nlog/\n");
 });
 
 test("a build writes no ignore file: the workspace's is written once, at setup (EVAL-FR-021)", async () => {
-  const { held: files } = await setUp({ [new URL(".cw/settings.json", repoPath).href]: '{ "agents": ["claude"] }\n' }, ["build"]);
+  const { held: files } = await setUp({ [new URL(".cw/settings.json", repoPath).href]: '{ "agents": ["claude"] }\n' }, [
+    "build",
+  ]);
 
   assert.equal(await held(files, ".cw/.gitignore"), undefined);
 });

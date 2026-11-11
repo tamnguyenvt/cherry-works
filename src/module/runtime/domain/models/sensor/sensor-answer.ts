@@ -34,10 +34,15 @@ function signalAnswerOf(signal: string, sensorAnswers: readonly SensorAnswer[]):
   const blockingAnswers = sensorAnswers.filter((sensorAnswer) => sensorAnswer.exitCode === 2);
   const failedAnswers = sensorAnswers.filter((sensorAnswer) => sensorAnswer.exitCode !== 0);
   const exitCode = blockingAnswers.length > 0 ? 2 : (failedAnswers[0]?.exitCode ?? 0);
-  const stderr = (blockingAnswers.length > 0 ? blockingAnswers : failedAnswers).map((sensorAnswer) => sensorAnswer.stderr).join("");
+  const stderr = (blockingAnswers.length > 0 ? blockingAnswers : failedAnswers)
+    .map((sensorAnswer) => sensorAnswer.stderr)
+    .join("");
 
-  const answerTexts = sensorAnswers.map((sensorAnswer) => sensorAnswer.stdout.trim()).filter((answerText) => answerText !== "");
-  const isPlainObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+  const answerTexts = sensorAnswers
+    .map((sensorAnswer) => sensorAnswer.stdout.trim())
+    .filter((answerText) => answerText !== "");
+  const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
   const structuredAnswers = answerTexts.map((answerText) => {
     try {
       const answerJSON: unknown = JSON.parse(answerText);
@@ -52,7 +57,8 @@ function signalAnswerOf(signal: string, sensorAnswers: readonly SensorAnswer[]):
   const plainTexts = answerTexts.filter((_answerText, index) => structuredAnswers[index] === undefined);
   const answerJSONs = structuredAnswers.filter((structuredAnswer) => structuredAnswer !== undefined);
   const hookSpecificOutputs = answerJSONs.map((answerJSON) => answerJSON["hookSpecificOutput"]).filter(isPlainObject);
-  const joinedTextOf = (values: readonly unknown[]) => values.filter((value) => typeof value === "string" && value !== "").join("\n");
+  const joinedTextOf = (values: readonly unknown[]) =>
+    values.filter((value) => typeof value === "string" && value !== "").join("\n");
 
   // Any field no rule below speaks for is the first sensor's that set it.
   const combinedAnswer: Record<string, unknown> = Object.assign({}, ...[...answerJSONs].reverse());
@@ -63,21 +69,29 @@ function signalAnswerOf(signal: string, sensorAnswers: readonly SensorAnswer[]):
     combinedAnswer["continue"] = false;
     combinedAnswer["stopReason"] = joinedTextOf(stoppingAnswers.map((answerJSON) => answerJSON["stopReason"]));
   }
-  if ("suppressOutput" in combinedAnswer) combinedAnswer["suppressOutput"] = answerJSONs.every((answerJSON) => answerJSON["suppressOutput"] === true);
+  if ("suppressOutput" in combinedAnswer)
+    combinedAnswer["suppressOutput"] = answerJSONs.every((answerJSON) => answerJSON["suppressOutput"] === true);
   const blockingJSONs = answerJSONs.filter((answerJSON) => answerJSON["decision"] === "block");
   if (blockingJSONs.length > 0) {
     combinedAnswer["decision"] = "block";
     combinedAnswer["reason"] = joinedTextOf(blockingJSONs.map((answerJSON) => answerJSON["reason"]));
   }
   const isContextSignal = CONTEXT_SIGNALS.includes(signal);
-  const systemMessage = joinedTextOf([...answerJSONs.map((answerJSON) => answerJSON["systemMessage"]), ...(isContextSignal ? [] : plainTexts)]);
+  const systemMessage = joinedTextOf([
+    ...answerJSONs.map((answerJSON) => answerJSON["systemMessage"]),
+    ...(isContextSignal ? [] : plainTexts),
+  ]);
   if (systemMessage !== "") combinedAnswer["systemMessage"] = systemMessage;
 
-  const permissionDecision = PERMISSION_DECISIONS.find((rankedDecision) => hookSpecificOutputs.some((hookSpecificOutput) => hookSpecificOutput["permissionDecision"] === rankedDecision));
+  const permissionDecision = PERMISSION_DECISIONS.find((rankedDecision) =>
+    hookSpecificOutputs.some((hookSpecificOutput) => hookSpecificOutput["permissionDecision"] === rankedDecision),
+  );
   if (permissionDecision !== undefined) {
     combinedHookSpecificOutput["permissionDecision"] = permissionDecision;
     combinedHookSpecificOutput["permissionDecisionReason"] = joinedTextOf(
-      hookSpecificOutputs.filter((hookSpecificOutput) => hookSpecificOutput["permissionDecision"] === permissionDecision).map((hookSpecificOutput) => hookSpecificOutput["permissionDecisionReason"]),
+      hookSpecificOutputs
+        .filter((hookSpecificOutput) => hookSpecificOutput["permissionDecision"] === permissionDecision)
+        .map((hookSpecificOutput) => hookSpecificOutput["permissionDecisionReason"]),
     );
   }
   // Claude's PermissionRequest uses a nested decision, unlike PreToolUse's
@@ -98,9 +112,13 @@ function signalAnswerOf(signal: string, sensorAnswers: readonly SensorAnswer[]):
       };
     }
   }
-  const additionalContext = joinedTextOf([...hookSpecificOutputs.map((hookSpecificOutput) => hookSpecificOutput["additionalContext"]), ...(isContextSignal ? plainTexts : [])]);
+  const additionalContext = joinedTextOf([
+    ...hookSpecificOutputs.map((hookSpecificOutput) => hookSpecificOutput["additionalContext"]),
+    ...(isContextSignal ? plainTexts : []),
+  ]);
   if (additionalContext !== "") combinedHookSpecificOutput["additionalContext"] = additionalContext;
-  if (Object.keys(combinedHookSpecificOutput).length > 0) combinedAnswer["hookSpecificOutput"] = { ...combinedHookSpecificOutput, hookEventName: signal };
+  if (Object.keys(combinedHookSpecificOutput).length > 0)
+    combinedAnswer["hookSpecificOutput"] = { ...combinedHookSpecificOutput, hookEventName: signal };
 
   return { exitCode, stdout: `${JSON.stringify(combinedAnswer)}\n`, stderr };
 }

@@ -1,17 +1,25 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
-import { test } from "node:test";
-import assert from "node:assert/strict";
-import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK, EXIT_USAGE, type Command, type Context, type OptionSpec, type Options, type Outcome } from "../src/presentation/cli/commands/command.interface.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf } from "./use-cases-of.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  EXIT_USAGE,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "../src/presentation/cli/commands/command.interface.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
-
 
 /** Whose home the command line runs in: what is installed on this machine is
  *  detected under it, and nothing here asks. */
@@ -38,7 +46,13 @@ const pinningDown = (id: string) => ({
  *  reaches for it — which is the point of the split (FR-041). */
 const applicationsOver = (files: InMemoryFileReaders) => ({
   charterAuthoringApp: authoringCharterOf(files, new InMemoryFileOutput(files), new InMemoryReporter()),
-  charterRuntimeApp: buildingCharterOf(files, new InMemoryFileOutput(files), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter()),
+  charterRuntimeApp: buildingCharterOf(
+    files,
+    new InMemoryFileOutput(files),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  ),
 });
 
 /** A charter nothing asks about: what a command that never validates is given,
@@ -83,7 +97,10 @@ const writing = async (work: () => Promise<number>): Promise<{ code: number; wri
  *  wrong with it — there is no second command saying the same thing. */
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[] = ["doctor"]) => {
   const heldFiles = new InMemoryFileReaders(files);
-  const cli = new Commander(commandLineOf(heldFiles, new InMemoryFileOutput(heldFiles), applicationsOver(heldFiles), repo), COMMANDS);
+  const cli = new Commander(
+    commandLineOf(heldFiles, new InMemoryFileOutput(heldFiles), applicationsOver(heldFiles), repo),
+    COMMANDS,
+  );
   return writing(() => cli.run(argv));
 };
 
@@ -132,7 +149,8 @@ test("a file is named as the user would type it, under the repository they ran i
 test("what is wrong with the charter as a whole fails the run too", async () => {
   const { code, written } = await run({
     [new URL("guide/no-any/index.md", root).href]: guide("no-any"),
-    [new URL("file:///repo/.cw/charter/vendor/acme/charter/root/primitive/guide/no-any/index.md").href]: guide("no-any"),
+    [new URL("file:///repo/.cw/charter/vendor/acme/charter/root/primitive/guide/no-any/index.md").href]:
+      guide("no-any"),
   });
 
   assert.equal(code, EXIT_FAILURE);
@@ -190,7 +208,10 @@ class CountingCommand implements Command<Count> {
 }
 
 test("a command reads the options it declared, under the types it declared", async () => {
-  const cli = new Commander(commandLineOf(new InMemoryFileReaders({}), new InMemoryFileOutput(new InMemoryFileReaders({})), unread, repo), [new CountingCommand()]);
+  const cli = new Commander(
+    commandLineOf(new InMemoryFileReaders({}), new InMemoryFileOutput(new InMemoryFileReaders({})), unread, repo),
+    [new CountingCommand()],
+  );
 
   const { code, written } = await writing(() => cli.run(["count", "--times", "3"]));
 
@@ -199,7 +220,10 @@ test("a command reads the options it declared, under the types it declared", asy
 });
 
 test("an option a command declared a default for arrives without being typed", async () => {
-  const cli = new Commander(commandLineOf(new InMemoryFileReaders({}), new InMemoryFileOutput(new InMemoryFileReaders({})), unread, repo), [new CountingCommand()]);
+  const cli = new Commander(
+    commandLineOf(new InMemoryFileReaders({}), new InMemoryFileOutput(new InMemoryFileReaders({})), unread, repo),
+    [new CountingCommand()],
+  );
 
   const { written } = await writing(() => cli.run(["count"]));
 

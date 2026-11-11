@@ -1,6 +1,14 @@
 import prompts from "prompts";
 import type { CharterDTOs } from "#module/charter/module.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { parseKVParams, printFault } from "./helper.js";
 
 /** What `cw add` takes: which kind of primitive, what it is to be named, and
@@ -46,9 +54,14 @@ export class AddCommand implements Command<typeof OPTIONS> {
 
   async run({ charterAuthoringApp }: Context, { kind, id, header }: Options<typeof OPTIONS>): Promise<Outcome> {
     const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements(kind ?? "");
-    if (primitiveRequirementsDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(primitiveRequirementsDTO) };
+    if (primitiveRequirementsDTO.type === "Fault")
+      return { code: EXIT_FAILURE, problem: printFault(primitiveRequirementsDTO) };
     const primitiveHeaders = primitiveRequirementsDTO.data.headers.map((primitiveHeader) => primitiveHeader.data);
-    const listFields = new Set(primitiveHeaders.filter((primitiveHeader) => primitiveHeader.shape === "list").map((primitiveHeader) => primitiveHeader.field));
+    const listFields = new Set(
+      primitiveHeaders
+        .filter((primitiveHeader) => primitiveHeader.shape === "list")
+        .map((primitiveHeader) => primitiveHeader.field),
+    );
 
     // Typed headers are answers already, so there is nothing left to ask: the
     // two paths reach `add` with the same record, and what refuses a bad one is
@@ -66,7 +79,9 @@ export class AddCommand implements Command<typeof OPTIONS> {
     // be a question with no wrong answer.
     const typedHeaders = header.length > 0 ? parseKVParams(header, "header") : undefined;
     if (typeof typedHeaders === "string") return { code: EXIT_FAILURE, problem: typedHeaders };
-    const repeatedField = Object.entries(typedHeaders ?? {}).find(([field, values]) => !listFields.has(field) && values.length > 1)?.[0];
+    const repeatedField = Object.entries(typedHeaders ?? {}).find(
+      ([field, values]) => !listFields.has(field) && values.length > 1,
+    )?.[0];
     if (repeatedField !== undefined)
       return {
         code: EXIT_FAILURE,
@@ -74,7 +89,12 @@ export class AddCommand implements Command<typeof OPTIONS> {
       };
     const answers =
       typedHeaders !== undefined
-        ? Object.fromEntries(Object.entries(typedHeaders).map(([field, values]) => [field, listFields.has(field) ? values : values[0] ?? ""]))
+        ? Object.fromEntries(
+            Object.entries(typedHeaders).map(([field, values]) => [
+              field,
+              listFields.has(field) ? values : (values[0] ?? ""),
+            ]),
+          )
         : await this.#answered(
             primitiveHeaders.filter((primitiveHeader) => primitiveHeader.required),
             kind ?? "",
@@ -140,7 +160,8 @@ export class AddCommand implements Command<typeof OPTIONS> {
             },
       ),
     );
-    if (required.some((requiredHeader) => answers[requiredHeader.field] === undefined)) return 'This was stopped before it had its answers, so nothing was written.\n  Run "cw add" again.\n';
+    if (required.some((requiredHeader) => answers[requiredHeader.field] === undefined))
+      return 'This was stopped before it had its answers, so nothing was written.\n  Run "cw add" again.\n';
 
     return answers;
   }

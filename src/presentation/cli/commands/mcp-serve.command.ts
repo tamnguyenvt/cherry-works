@@ -1,6 +1,6 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { startMcpServer } from "../../mcp/mcp.server.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Outcome } from "./command.interface.js";
+import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from "./command.interface.js";
 import { printFault } from "./helper.js";
 
 /**

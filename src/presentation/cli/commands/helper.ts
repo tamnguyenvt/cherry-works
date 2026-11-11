@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import type { EngineApps } from "./command.interface.js";
 import type { FaultDTOs } from "#module/shared/module.js";
+import type { EngineApps } from "./command.interface.js";
 
 /**
  * One repeatable `k=v` flag, read into the record it was typed as: every
@@ -31,8 +31,10 @@ export function parseKVParams(typed: readonly string[], paramName: string): Reco
   const params: Record<string, string[]> = Object.create(null);
   for (const typedParam of typed) {
     const separatorIndex = typedParam.indexOf("=");
-    if (separatorIndex <= 0) return `"--${paramName} ${typedParam}" names nothing to put a value under.\n  Type each one as --${paramName} name=value, once per name.\n`;
-    (params[typedParam.slice(0, separatorIndex)] ??= []).push(typedParam.slice(separatorIndex + 1));
+    if (separatorIndex <= 0)
+      return `"--${paramName} ${typedParam}" names nothing to put a value under.\n  Type each one as --${paramName} name=value, once per name.\n`;
+    const paramKey = typedParam.slice(0, separatorIndex);
+    params[paramKey] = [...(params[paramKey] ?? []), typedParam.slice(separatorIndex + 1)];
   }
   return params;
 }
@@ -76,7 +78,8 @@ function lines({ data: { severity, message, fix } }: FaultDTOs.Fault): readonly 
  */
 export async function editInEditor(cwd: string, file: string): Promise<string | undefined> {
   const editorCommand = process.env.VISUAL || process.env.EDITOR;
-  if (!editorCommand) return 'Neither $VISUAL nor $EDITOR is set, so there is no editor to open it in.\n  Set one, as in "export EDITOR=vim".\n';
+  if (!editorCommand)
+    return 'Neither $VISUAL nor $EDITOR is set, so there is no editor to open it in.\n  Set one, as in "export EDITOR=vim".\n';
 
   // The file is handed over as "$1" rather than written into the command, so
   // a path with a space in it is one argument.
@@ -108,8 +111,10 @@ export function showPathsFromFolder<Answer>(answer: Answer, folderPath: string):
       return escapedPath;
     }
   };
-  const showPathsInText = (text: string) => text.replace(addressPattern, (_address, escapedPath: string) => pathOf(escapedPath));
-  const showPathOf = (address: string) => (address.startsWith(folderHref) ? pathOf(address.slice(folderHref.length)) : address);
+  const showPathsInText = (text: string) =>
+    text.replace(addressPattern, (_address, escapedPath: string) => pathOf(escapedPath));
+  const showPathOf = (address: string) =>
+    address.startsWith(folderHref) ? pathOf(address.slice(folderHref.length)) : address;
   /** Where something is kept is said under these keys alone, and as a key
    *  where answers are grouped by file. */
   const keptKeys = ["file", "folder", "folders"];
@@ -121,8 +126,20 @@ export function showPathsFromFolder<Answer>(answer: Answer, folderPath: string):
     if (Array.isArray(value)) return value.map((element) => showPathsIn(element, valueKey));
     // What a DTO holds is read as its fields, a value of the domain handed on
     // in one included; bytes, a date or a collection is said as it is.
-    if (value !== null && typeof value === "object" && !ArrayBuffer.isView(value) && !(value instanceof Date) && !(value instanceof Map) && !(value instanceof Set))
-      return Object.fromEntries(Object.entries(value).map(([key, entryValue]) => [showPathOf(key), showPathsIn(entryValue, key.startsWith(folderHref) ? undefined : key)]));
+    if (
+      value !== null &&
+      typeof value === "object" &&
+      !ArrayBuffer.isView(value) &&
+      !(value instanceof Date) &&
+      !(value instanceof Map) &&
+      !(value instanceof Set)
+    )
+      return Object.fromEntries(
+        Object.entries(value).map(([key, entryValue]) => [
+          showPathOf(key),
+          showPathsIn(entryValue, key.startsWith(folderHref) ? undefined : key),
+        ]),
+      );
     return value;
   };
   return showPathsIn(answer, undefined) as Answer;
@@ -138,7 +155,8 @@ export function wrapAppToShowPaths<App extends object>(app: App, folderPath: str
       if (typeof member !== "function") return member;
       return async (...args: unknown[]) => {
         const answer: unknown = await member.apply(target, args);
-        const isToolAnswer = answer !== null && typeof answer === "object" && (answer as { type?: unknown }).type === "ToolAnswer";
+        const isToolAnswer =
+          answer !== null && typeof answer === "object" && (answer as { type?: unknown }).type === "ToolAnswer";
         return isToolAnswer ? answer : showPathsFromFolder(answer, folderPath);
       };
     },

@@ -1,4 +1,12 @@
-import { AdapterFault, UnauthorizedMcpFault, type ForCallingMcpServers, type McpServerAddress, type McpServerConnection, type ToolAnswer, type UpstreamTool } from "../../app/port/out/calling-mcp-servers.port.js";
+import {
+  AdapterFault,
+  type ForCallingMcpServers,
+  type McpServerAddress,
+  type McpServerConnection,
+  type ToolAnswer,
+  UnauthorizedMcpFault,
+  type UpstreamTool,
+} from "../../app/port/out/calling-mcp-servers.port.js";
 
 /** One mcp origin a test stands up: what it lists, and what it answers a call with.
  *  `acceptsToken` says which token it lets through; any other is a `401`. */
@@ -15,12 +23,18 @@ export interface InMemoryMcpServer {
 export class InMemoryMcpServers implements ForCallingMcpServers {
   readonly servers = new Map<string, InMemoryMcpServer>();
   readonly connected: { readonly address: string; readonly accessToken: string | undefined }[] = [];
-  readonly calls: { readonly address: string; readonly name: string; readonly args: unknown; readonly accessToken: string | undefined }[] = [];
+  readonly calls: {
+    readonly address: string;
+    readonly name: string;
+    readonly args: unknown;
+    readonly accessToken: string | undefined;
+  }[] = [];
   readonly closed: string[] = [];
 
   async connect({ address }: McpServerAddress, accessToken: string | undefined): Promise<McpServerConnection> {
     const server = this.servers.get(address);
-    if (server === undefined) throw new AdapterFault(`${address} could not be reached.`, "Check the mcp origin is up.", { internal: false });
+    if (server === undefined)
+      throw new AdapterFault(`${address} could not be reached.`, "Check the mcp origin is up.", { internal: false });
     this.connected.push({ address, accessToken });
     return {
       tools: server.tools,

@@ -1,10 +1,11 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { inTheBrowser } from "./in-the-browser.js";
+import { test } from "node:test";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import { inTheBrowser } from "./in-the-browser.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
-const vendoredAt = (vendor: string, path: string) => new URL(path, `file:///repo/.cw/charter/vendor/${vendor}/primitive/`).href;
+const vendoredAt = (vendor: string, path: string) =>
+  new URL(path, `file:///repo/.cw/charter/vendor/${vendor}/primitive/`).href;
 
 const primitive = (kind: string, id: string) =>
   ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, "---", "", `The body of ${id}.`, ""].join("\n");
@@ -39,8 +40,16 @@ test("each source installed shows its folder and its primitives by kind (Story 8
     const acme = page.getByLabel(".cw/charter/vendor/acme/charter/root", { exact: true });
     await acme.waitFor();
 
-    assert.match(await acme.innerText(), /^acme\/charter\/root\n\.cw\/charter\/vendor\/acme\/charter\/root\/ · read-only/);
-    assert.deepEqual(await acme.getByLabel("Primitives by kind").locator("dt, dd").allInnerTexts(), ["corpus", "1", "guide", "2"]);
+    assert.match(
+      await acme.innerText(),
+      /^acme\/charter\/root\n\.cw\/charter\/vendor\/acme\/charter\/root\/ · read-only/,
+    );
+    assert.deepEqual(await acme.getByLabel("Primitives by kind").locator("dt, dd").allInnerTexts(), [
+      "corpus",
+      "1",
+      "guide",
+      "2",
+    ]);
     const baseline = page.getByLabel(".cw/charter/vendor/acme/charters/baseline", { exact: true });
     assert.deepEqual(await baseline.getByLabel("Primitives by kind").locator("dt, dd").allInnerTexts(), ["guide", "1"]);
   });
@@ -58,8 +67,13 @@ test("a source added from the dialog is installed through the engine, and the di
       await page.getByRole("button", { name: "Add source" }).click();
       await page.getByText("Vendor source added").waitFor();
 
-      assert.deepEqual(sourceFetcher.fetchedSources, [{ source: "git@github.com:team/charter.git", version: "v1.2.0" }]);
-      assert.deepEqual(sourceFetcher.checkedOutFolders.map(({ intoSubFolder }) => intoSubFolder), [".cw/charter/vendor/team/charter/root/primitive"]);
+      assert.deepEqual(sourceFetcher.fetchedSources, [
+        { source: "git@github.com:team/charter.git", version: "v1.2.0" },
+      ]);
+      assert.deepEqual(
+        sourceFetcher.checkedOutFolders.map(({ intoSubFolder }) => intoSubFolder),
+        [".cw/charter/vendor/team/charter/root/primitive"],
+      );
       await page.getByRole("dialog").waitFor({ state: "detached" });
     },
     sourceFetcher,
@@ -91,7 +105,10 @@ test("Remove takes a source under its owner away by owner, repository and name (
     { ...withTwoVendors(), [vendoredAt("team/rules/root", "guide/one-rule/index.md")]: primitive("guide", "one-rule") },
     async (page) => {
       await page.getByRole("tab", { name: "Vendor" }).click();
-      await page.getByLabel(".cw/charter/vendor/team/rules/root", { exact: true }).getByRole("button", { name: "Remove" }).click();
+      await page
+        .getByLabel(".cw/charter/vendor/team/rules/root", { exact: true })
+        .getByRole("button", { name: "Remove" })
+        .click();
       await page.getByText("Vendor source removed").waitFor();
 
       await page.getByLabel(".cw/charter/vendor/team/rules/root", { exact: true }).waitFor({ state: "detached" });
@@ -106,7 +123,10 @@ test("Remove takes the source away through the engine (Story 8 scenario 5)", asy
     withTwoVendors(),
     async (page) => {
       await page.getByRole("tab", { name: "Vendor" }).click();
-      await page.getByLabel(".cw/charter/vendor/acme/charter/root", { exact: true }).getByRole("button", { name: "Remove" }).click();
+      await page
+        .getByLabel(".cw/charter/vendor/acme/charter/root", { exact: true })
+        .getByRole("button", { name: "Remove" })
+        .click();
       await page.getByText("Vendor source removed").waitFor();
 
       await page.getByLabel(".cw/charter/vendor/acme/charter/root", { exact: true }).waitFor({ state: "detached" });

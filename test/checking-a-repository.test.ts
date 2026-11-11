@@ -1,16 +1,16 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { test } from "node:test";
 import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf } from "./use-cases-of.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
 const root = new URL("file:///repo/.cw/charter/primitive/");
@@ -71,7 +71,30 @@ const writing = async (work: () => Promise<number>): Promise<{ code: number; wri
 const commandLine = (files: Readonly<Record<string, string>>) => {
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources();
-  const cli = new Commander(commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), { charterAuthoringApp: authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher }), charterRuntimeApp: buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter()) }, repo, "1.2.3"), COMMANDS);
+  const cli = new Commander(
+    commandLineOf(
+      fileReaders,
+      new InMemoryFileOutput(fileReaders),
+      {
+        charterAuthoringApp: authoringCharterOf(
+          fileReaders,
+          new InMemoryFileOutput(fileReaders),
+          new InMemoryReporter(),
+          { sourceFetcher },
+        ),
+        charterRuntimeApp: buildingCharterOf(
+          fileReaders,
+          new InMemoryFileOutput(fileReaders),
+          new InMemoryTokenCounter(),
+          { claude: new InMemoryAgentCli() },
+          new InMemoryReporter(),
+        ),
+      },
+      repo,
+      "1.2.3",
+    ),
+    COMMANDS,
+  );
   return { fileReaders, sourceFetcher, run: (argv: readonly string[]) => writing(() => cli.run(argv)) };
 };
 
@@ -110,7 +133,10 @@ test("a repository that has never been built is out of date, and fails (FR-040)"
 });
 
 test("staleness is the preview run, not a record kept of the last build (FR-040)", async () => {
-  const { fileReaders, run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
+  const { fileReaders, run } = commandLine({
+    ...compilingFor("claude"),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+  });
   await run(["build"]);
   fileReaders.write(new URL("guide/no-any/index.md", root), guide("no-any", "Never write `any`."));
 
@@ -145,10 +171,18 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
   });
-  const charterRuntimeApp = buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(
+    fileReaders,
+    new InMemoryFileOutput(fileReaders),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
 
   // Sent and read back, the way the portal's page will read it.
-  const doctorOutcomeDTO = CharterDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterRuntimeApp.doctor())));
+  const doctorOutcomeDTO = CharterDTOs.DoctorOutcome.parse(
+    JSON.parse(JSON.stringify(await charterRuntimeApp.doctor())),
+  );
   const { errorCount, warnCount, pendingCount, faultsByFile } = doctorOutcomeDTO.data;
 
   assert.equal(doctorOutcomeDTO.type, "DoctorOutcome");
@@ -158,7 +192,11 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
   // has no build to count what it would still change.
   assert.deepEqual([errorCount, warnCount, pendingCount], [1, 0, null]);
   assert.deepEqual(Object.keys(faultsByFile.data.files), ["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]);
-  assert.ok(faultsByFile.data.files["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]?.some(({ data: { message } }) => /This pulls in the mixin "nowhere"/.test(message)));
+  assert.ok(
+    faultsByFile.data.files["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]?.some(({ data: { message } }) =>
+      /This pulls in the mixin "nowhere"/.test(message),
+    ),
+  );
 });
 
 test("a repository compiling for no agent is told what that means, and passes (FR-019, FR-040)", async () => {
@@ -184,7 +222,13 @@ test("what doctor reports is a result, never a problem", async () => {
 /** What `doctor()` answers over these files, read back as the portal reads it. */
 const doctorOf = async (files: Readonly<Record<string, string>>) => {
   const fileReaders = new InMemoryFileReaders({ ...compilingFor("claude"), ...files });
-  const charterRuntimeApp = buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(
+    fileReaders,
+    new InMemoryFileOutput(fileReaders),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
   return CharterDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterRuntimeApp.doctor()))).data;
 };
 
@@ -199,9 +243,18 @@ test("a guide and a sensor no test case names are each a warning under their own
   });
 
   assert.deepEqual([errorCount, warnCount], [0, 2]);
-  assert.deepEqual(Object.keys(faultsByFile.data.files).sort(), ["file:///repo/.cw/charter/primitive/guide/no-any/index.md", "file:///repo/.cw/charter/primitive/sensor/lint/index.md"]);
-  assert.match(messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/guide/no-any/index.md").join(), /warn: No test case names "no-any"/);
-  assert.match(messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/sensor/lint/index.md").join(), /warn: No test case names "lint"/);
+  assert.deepEqual(Object.keys(faultsByFile.data.files).sort(), [
+    "file:///repo/.cw/charter/primitive/guide/no-any/index.md",
+    "file:///repo/.cw/charter/primitive/sensor/lint/index.md",
+  ]);
+  assert.match(
+    messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/guide/no-any/index.md").join(),
+    /warn: No test case names "no-any"/,
+  );
+  assert.match(
+    messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/sensor/lint/index.md").join(),
+    /warn: No test case names "lint"/,
+  );
 });
 
 test("a guide and a sensor a test case names raise no warning (FR-014)", async () => {
@@ -209,17 +262,24 @@ test("a guide and a sensor a test case names raise no warning (FR-014)", async (
     [at("guide/no-any/index.md")]: guide("no-any"),
     [at("sensor/lint/index.md")]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
     ...pinningDown("no-any"),
-    [inRepo(".cw/charter/test/lint.json")]: JSON.stringify({ cases: [{ when: "PostToolUse", expect: { run: "lint" } }] }),
+    [inRepo(".cw/charter/test/lint.json")]: JSON.stringify({
+      cases: [{ when: "PostToolUse", expect: { run: "lint" } }],
+    }),
   });
 
   assert.equal(warnCount, 0);
 });
 
 test("a guide naming no files is a rule like any other, so a test case is asked for it too (FR-014)", async () => {
-  const { warnCount, faultsByFile } = await doctorOf({ [at("guide/plain-words/index.md")]: primitive("guide", "plain-words") });
+  const { warnCount, faultsByFile } = await doctorOf({
+    [at("guide/plain-words/index.md")]: primitive("guide", "plain-words"),
+  });
 
   assert.equal(warnCount, 1);
-  assert.match(messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/guide/plain-words/index.md").join("\n"), /No test case names "plain-words"/);
+  assert.match(
+    messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/guide/plain-words/index.md").join("\n"),
+    /No test case names "plain-words"/,
+  );
 });
 
 test("a vendor's warnings are left out, since it is tested in its own repository, and the repository's own are kept (FR-014)", async () => {
@@ -239,7 +299,10 @@ test("a vendor's warnings are left out, since it is tested in its own repository
 test("a vendor's error is still said, since it stops the build (FR-014)", async () => {
   const { run } = commandLine({
     ...compilingFor("claude"),
-    [inRepo(".cw/charter/vendor/team/rules/root/primitive/guide/no-class/index.md")]: primitive("guide", "no-class", ['globs: ["src/**/*.ts"]', "rationale: absent"]),
+    [inRepo(".cw/charter/vendor/team/rules/root/primitive/guide/no-class/index.md")]: primitive("guide", "no-class", [
+      'globs: ["src/**/*.ts"]',
+      "rationale: absent",
+    ]),
     [inRepo(".cw/charter/vendor/team/rules/root/primitive/guide/broken/index.md")]: "---\nkind: guide\n---\n",
   });
 
@@ -262,7 +325,10 @@ test("a guide warned about twice keeps both warnings under its file", async () =
 });
 
 test("a test file that does not read raises no warning of its own; cw test names it", async () => {
-  const { faultsByFile } = await doctorOf({ [at("guide/no-any/index.md")]: guide("no-any"), [inRepo(".cw/charter/test/broken.json")]: "not json" });
+  const { faultsByFile } = await doctorOf({
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    [inRepo(".cw/charter/test/broken.json")]: "not json",
+  });
 
   assert.deepEqual(Object.keys(faultsByFile.data.files), ["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]);
 });
@@ -286,9 +352,16 @@ test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-14
   const { errorCount, warnCount, faultsByFile } = await doctorOf({
     ...pinningDown("no-any"),
     [at("guide/no-any/index.md")]: guide("no-any"),
-    [at("mcp/mfbs/billing/index.md")]: primitive("mcp", "mfbs/billing", ["endpoint: https://mcp.example.com/", "auth: [oauth]", "tools: [search_code]"]),
+    [at("mcp/mfbs/billing/index.md")]: primitive("mcp", "mfbs/billing", [
+      "endpoint: https://mcp.example.com/",
+      "auth: [oauth]",
+      "tools: [search_code]",
+    ]),
   });
 
   assert.deepEqual([errorCount, warnCount], [0, 1]);
-  assert.match(messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/mcp/mfbs/billing/index.md").join(), /warn: No primitive names "mfbs\/billing" in its body/);
+  assert.match(
+    messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/mcp/mfbs/billing/index.md").join(),
+    /warn: No primitive names "mfbs\/billing" in its body/,
+  );
 });

@@ -1,7 +1,7 @@
-import { readdir, readFile, stat } from "node:fs/promises";
 import type { Dirent } from "node:fs";
-import type { ForReadingFiles, ListedFile, ReadFile } from "../app/port/out/reading-files.port.js";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { FolderAddress, type FolderURL } from "../app/port/out/folder-address.port.js";
+import type { ForReadingFiles, ListedFile, ReadFile } from "../app/port/out/reading-files.port.js";
 import { pathFrom, urlAt } from "./helper.js";
 
 /** DRIVEN ADAPTER: the filesystem. The charter as it was authored, on a disk.
@@ -26,11 +26,21 @@ export class FileReaders implements ForReadingFiles {
   }
 
   async readFilesRecursively(folderPath: string): Promise<readonly ReadFile[]> {
-    return Promise.all((await this.#filesUnder(this.#folderUrlOf(folderPath))).map(async (file) => ({ path: pathFrom(this.#rootFolder, file), contents: await readFile(file, "utf8") })));
+    return Promise.all(
+      (await this.#filesUnder(this.#folderUrlOf(folderPath))).map(async (file) => ({
+        path: pathFrom(this.#rootFolder, file),
+        contents: await readFile(file, "utf8"),
+      })),
+    );
   }
 
   async readBytesRecursively(folderPath: string): Promise<readonly ReadFile<Uint8Array>[]> {
-    return Promise.all((await this.#filesUnder(this.#folderUrlOf(folderPath))).map(async (file) => ({ path: pathFrom(this.#rootFolder, file), contents: new Uint8Array(await readFile(file)) })));
+    return Promise.all(
+      (await this.#filesUnder(this.#folderUrlOf(folderPath))).map(async (file) => ({
+        path: pathFrom(this.#rootFolder, file),
+        contents: new Uint8Array(await readFile(file)),
+      })),
+    );
   }
 
   async listFiles(folderPath: string): Promise<readonly ListedFile[]> {
@@ -47,7 +57,9 @@ export class FileReaders implements ForReadingFiles {
 
   async listFolders(folderPath: string): Promise<readonly string[]> {
     const folder = this.#folderUrlOf(folderPath);
-    return (await entriesOf(folder)).filter((entry) => entry.isDirectory()).map((entry) => pathFrom(this.#rootFolder, under(folder, entry.name)));
+    return (await entriesOf(folder))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => pathFrom(this.#rootFolder, under(folder, entry.name)));
   }
 
   findFileAddress(filePath: string): string {
@@ -80,7 +92,11 @@ export class FileReaders implements ForReadingFiles {
   /** Every file under one folder, at any depth. */
   async #filesUnder(folder: URL): Promise<readonly URL[]> {
     const fileLists = await Promise.all(
-      (await entriesOf(folder)).map(async (entry) => (entry.isDirectory() ? this.#filesUnder(under(folder, entry.name)) : [new URL(encodeURIComponent(entry.name), folder)])),
+      (await entriesOf(folder)).map(async (entry) =>
+        entry.isDirectory()
+          ? this.#filesUnder(under(folder, entry.name))
+          : [new URL(encodeURIComponent(entry.name), folder)],
+      ),
     );
     return fileLists.flat();
   }

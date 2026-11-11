@@ -1,30 +1,33 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
-import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { test } from "node:test";
 import { ModelHelper } from "../src/module/charter/domain/helper.js";
-import { putDownBy } from "./put-down-by.js";
 import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
-
+import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { putDownBy } from "./put-down-by.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 
 const CLAUDE = new AgentProvider("claude");
 const repo = new URL("file:///repo/");
 const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
-const vendorRoot = FolderAddress.urlOf("file:///repo/.cw/charter/vendor/");
 
 const primitive = (kind: string, id: string, body: string, headers: readonly string[] = []) =>
-  ["---", `kind: ${kind}`, `id: ${id}`, `description: What ${id} is for, in one line.`, ...headers, "---", "", body, ""].join(
-    "\n",
-  );
+  [
+    "---",
+    `kind: ${kind}`,
+    `id: ${id}`,
+    `description: What ${id} is for, in one line.`,
+    ...headers,
+    "---",
+    "",
+    body,
+    "",
+  ].join("\n");
 
 const at = (path: string) => new URL(path, root).href;
-const vendored = (path: string) => new URL(`acme/charter/root/primitive/${path}`, vendorRoot).href;
 
-const load = (files: Readonly<Record<string, string>>, held = new InMemoryFileReaders(files)) =>
-  loadCharterRoot(held);
+const load = (files: Readonly<Record<string, string>>, held = new InMemoryFileReaders(files)) => loadCharterRoot(held);
 
 /** Everything this charter is put down as, under the path each file was written
  *  at. */
@@ -73,8 +76,13 @@ test("each charter kind this host has a kind for lands where that host reads it 
       'triggers: ["a refactor is asked for"]',
     ]),
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", "Never write `any`.", ['globs: ["src/**/*.ts"]']),
-    [at("playbook/release/index.md")]: primitive("playbook", "release", "How a release runs.", ['triggers: ["a release"]']),
-    [at("sensor/ci-failed/index.md")]: primitive("sensor", "ci-failed", "CI went red.", ["signal: PostToolUse", "run: ./bin/report-ci"]),
+    [at("playbook/release/index.md")]: primitive("playbook", "release", "How a release runs.", [
+      'triggers: ["a release"]',
+    ]),
+    [at("sensor/ci-failed/index.md")]: primitive("sensor", "ci-failed", "CI went red.", [
+      "signal: PostToolUse",
+      "run: ./bin/report-ci",
+    ]),
     [at("posture/sandboxed/index.md")]: primitive("posture", "sandboxed", "What may be run unattended.", [
       'allow: ["Read(**)"]',
       'deny: ["Bash(rm:*)"]',
@@ -135,8 +143,12 @@ test("a guide and a skill of the same id stay two files, each named by its id al
 
 test("an id holding / names a host file with it written as -, a role's too (FR-141)", async () => {
   const files = await projected({
-    [at("agent/release/ship/index.md")]: primitive("agent", "release/ship", "Run the build, then push.", ['tools: ["Bash"]']),
-    [at("skill/mfbs/refactoring/index.md")]: primitive("skill", "mfbs/refactoring", "How this team refactors.", ['triggers: ["a refactor"]']),
+    [at("agent/release/ship/index.md")]: primitive("agent", "release/ship", "Run the build, then push.", [
+      'tools: ["Bash"]',
+    ]),
+    [at("skill/mfbs/refactoring/index.md")]: primitive("skill", "mfbs/refactoring", "How this team refactors.", [
+      'triggers: ["a refactor"]',
+    ]),
   });
 
   assert.ok(".claude/agents/release-ship.md" in files);
@@ -166,7 +178,9 @@ test("a skill points three folders up, from inside the folder its SKILL.md sits 
     [at("skill/review/index.md")]: primitive("skill", "review", "Review the diff.", ["triggers: [review this]"]),
   });
 
-  assert.ok(files[".claude/skills/review/SKILL.md"]?.includes("Read and follow @../../../.cw/out/skill/review/index.md.\n"));
+  assert.ok(
+    files[".claude/skills/review/SKILL.md"]?.includes("Read and follow @../../../.cw/out/skill/review/index.md.\n"),
+  );
 });
 
 test("a compiled file says this engine wrote it, so an edit goes to the charter (FR-020)", async () => {
@@ -181,7 +195,9 @@ test("a compiled file says this engine wrote it, so an edit goes to the charter 
 
 test("a role carries the tools it may use, on the one line claude reads them from", async () => {
   const files = await projected({
-    [at("agent/reviewer/index.md")]: primitive("agent", "reviewer", "Review the diff.", ['tools: ["Read", "Grep", "Bash"]']),
+    [at("agent/reviewer/index.md")]: primitive("agent", "reviewer", "Review the diff.", [
+      'tools: ["Read", "Grep", "Bash"]',
+    ]),
   });
 
   const contents = files[".claude/agents/reviewer.md"] ?? "";
@@ -191,7 +207,10 @@ test("a role carries the tools it may use, on the one line claude reads them fro
 
 test("a role carries the model its charter names for this host, and none where it names none", async () => {
   const files = await projected({
-    [at("agent/locator/index.md")]: primitive("agent", "locator", "Find the code.", ['tools: ["Read"]', "model: claude:haiku-4-5"]),
+    [at("agent/locator/index.md")]: primitive("agent", "locator", "Find the code.", [
+      'tools: ["Read"]',
+      "model: claude:haiku-4-5",
+    ]),
     [at("agent/reviewer/index.md")]: primitive("agent", "reviewer", "Review the diff.", ['tools: ["Read"]']),
   });
 
@@ -201,12 +220,27 @@ test("a role carries the model its charter names for this host, and none where i
 
 test("a role holds each mcp it lists, whole or one tool, under the name this host is given it by, and no mcp origin its body only names (FR-156)", async () => {
   const files = await projected({
-    [at("mcp/linear/index.md")]: primitive("mcp", "linear", "Issues.", ["endpoint: https://mcp.linear.app/mcp", "auth: [token]", "tools: [list_issues, create_issue]"]),
-    [at("mcp/github/billing/index.md")]: primitive("mcp", "github/billing", "Code.", ["endpoint: https://api.githubcopilot.com/mcp/", "auth: [oauth]", "tools: [search_code, get_file_contents]"]),
-    [at("mcp/sentry/index.md")]: primitive("mcp", "sentry", "Errors.", ["endpoint: https://mcp.sentry.dev/mcp", "auth: [oauth]", "tools: [list_errors]"]),
-    [at("agent/fraud-scanner/index.md")]: primitive("agent", "fraud-scanner", "Read the issues, and the errors in [[sentry]].", [
-      'tools: ["Read", "[[linear]]", "[[github/billing]]:search_code"]',
+    [at("mcp/linear/index.md")]: primitive("mcp", "linear", "Issues.", [
+      "endpoint: https://mcp.linear.app/mcp",
+      "auth: [token]",
+      "tools: [list_issues, create_issue]",
     ]),
+    [at("mcp/github/billing/index.md")]: primitive("mcp", "github/billing", "Code.", [
+      "endpoint: https://api.githubcopilot.com/mcp/",
+      "auth: [oauth]",
+      "tools: [search_code, get_file_contents]",
+    ]),
+    [at("mcp/sentry/index.md")]: primitive("mcp", "sentry", "Errors.", [
+      "endpoint: https://mcp.sentry.dev/mcp",
+      "auth: [oauth]",
+      "tools: [list_errors]",
+    ]),
+    [at("agent/fraud-scanner/index.md")]: primitive(
+      "agent",
+      "fraud-scanner",
+      "Read the issues, and the errors in [[sentry]].",
+      ['tools: ["Read", "[[linear]]", "[[github/billing]]:search_code"]'],
+    ),
   });
 
   const servedNames = ModelHelper.shortenStringsOf(["linear", "github/billing", "sentry"]);
@@ -222,9 +256,15 @@ test("a role holds each mcp it lists, whole or one tool, under the name this hos
 
 test("a charter reaching an mcp origin turns the host's own tool search on, and one reaching none leaves the settings alone (EVAL-FR-016)", async () => {
   const reachingFiles = await projected({
-    [at("mcp/linear/index.md")]: primitive("mcp", "linear", "Issues.", ["endpoint: https://mcp.linear.app/mcp", "auth: [token]", "tools: [list_issues]"]),
+    [at("mcp/linear/index.md")]: primitive("mcp", "linear", "Issues.", [
+      "endpoint: https://mcp.linear.app/mcp",
+      "auth: [token]",
+      "tools: [list_issues]",
+    ]),
   });
-  const reachingNoneFiles = await projected({ [at("skill/refactoring/index.md")]: primitive("skill", "refactoring", "How this repository refactors.", []) });
+  const reachingNoneFiles = await projected({
+    [at("skill/refactoring/index.md")]: primitive("skill", "refactoring", "How this repository refactors.", []),
+  });
 
   assert.deepEqual(JSON.parse(reachingFiles[".claude/settings.json"] ?? "{}").env, { ENABLE_TOOL_SEARCH: "true" });
   assert.equal(JSON.parse(reachingNoneFiles[".claude/settings.json"] ?? "{}").env, undefined);
@@ -255,7 +295,10 @@ test("a sensor compiles to a hook this host runs: the event, and the command (FR
 
   assert.deepEqual(Object.keys(files), [".claude/settings.json", builtinSkill, cwSessionCostSkill]);
   assert.deepEqual(JSON.parse(files[".claude/settings.json"] ?? ""), {
-    hooks: { PostToolUse: [{ hooks: [{ type: "command", command: "cw sensor run PostToolUse --agent claude" }] }], Stop: [sessionCounterStopHook] },
+    hooks: {
+      PostToolUse: [{ hooks: [{ type: "command", command: "cw sensor run PostToolUse --agent claude" }] }],
+      Stop: [sessionCounterStopHook],
+    },
   });
 });
 
@@ -275,14 +318,27 @@ test("a playbook is loaded the way a skill is, since this host has one kind for 
 
 test("a skill or a playbook marked disable-user-invocation is no command the user types, and still a skill the agent opens (CORE-FR-173, CORE-FR-174)", async () => {
   const files = await projected({
-    [at("playbook/ship/index.md")]: primitive("playbook", "ship", "Run [[ship-review]], then tag.", ['triggers: ["ship this"]', "disable-user-invocation: false"]),
-    [at("skill/ship-review/index.md")]: primitive("skill", "ship-review", "Review what ships.", ['triggers: ["review the release"]', "disable-user-invocation: true"]),
-    [at("playbook/hotfix-step/index.md")]: primitive("playbook", "hotfix-step", "One step of a hotfix.", ['triggers: ["patch it"]', "disable-user-invocation: true"]),
+    [at("playbook/ship/index.md")]: primitive("playbook", "ship", "Run [[ship-review]], then tag.", [
+      'triggers: ["ship this"]',
+      "disable-user-invocation: false",
+    ]),
+    [at("skill/ship-review/index.md")]: primitive("skill", "ship-review", "Review what ships.", [
+      'triggers: ["review the release"]',
+      "disable-user-invocation: true",
+    ]),
+    [at("playbook/hotfix-step/index.md")]: primitive("playbook", "hotfix-step", "One step of a hotfix.", [
+      'triggers: ["patch it"]',
+      "disable-user-invocation: true",
+    ]),
     [at("skill/explain/index.md")]: primitive("skill", "explain", "Explain the code.", ['triggers: ["explain this"]']),
   });
 
   for (const hiddenSkillFile of [".claude/skills/ship-review/SKILL.md", ".claude/skills/hotfix-step/SKILL.md"]) {
-    assert.match(files[hiddenSkillFile] ?? "", /^---\nname: [a-z-]+\ndescription: .+\nuser-invocable: false\n---\n/, hiddenSkillFile);
+    assert.match(
+      files[hiddenSkillFile] ?? "",
+      /^---\nname: [a-z-]+\ndescription: .+\nuser-invocable: false\n---\n/,
+      hiddenSkillFile,
+    );
     assert.match(files[hiddenSkillFile] ?? "", /Read and follow @/, hiddenSkillFile);
   }
   for (const commandSkillFile of [".claude/skills/ship/SKILL.md", ".claude/skills/explain/SKILL.md"])
@@ -291,14 +347,27 @@ test("a skill or a playbook marked disable-user-invocation is no command the use
 
 test("a skill or a playbook marked disable-model-invocation is a command the agent does not open by itself (CORE-FR-181, CORE-FR-182)", async () => {
   const files = await projected({
-    [at("skill/grill/index.md")]: primitive("skill", "grill", "Interview the user.", ['triggers: ["grill me"]', "disable-model-invocation: true"]),
-    [at("playbook/release/index.md")]: primitive("playbook", "release", "Cut a release.", ['triggers: ["release it"]', "disable-model-invocation: true"]),
-    [at("skill/review/index.md")]: primitive("skill", "review", "Review the change.", ['triggers: ["review this"]', "disable-model-invocation: false"]),
+    [at("skill/grill/index.md")]: primitive("skill", "grill", "Interview the user.", [
+      'triggers: ["grill me"]',
+      "disable-model-invocation: true",
+    ]),
+    [at("playbook/release/index.md")]: primitive("playbook", "release", "Cut a release.", [
+      'triggers: ["release it"]',
+      "disable-model-invocation: true",
+    ]),
+    [at("skill/review/index.md")]: primitive("skill", "review", "Review the change.", [
+      'triggers: ["review this"]',
+      "disable-model-invocation: false",
+    ]),
     [at("skill/explain/index.md")]: primitive("skill", "explain", "Explain the code.", ['triggers: ["explain this"]']),
   });
 
   for (const userOnlySkillFile of [".claude/skills/grill/SKILL.md", ".claude/skills/release/SKILL.md"]) {
-    assert.match(files[userOnlySkillFile] ?? "", /^---\nname: [a-z-]+\ndescription: .+\ndisable-model-invocation: true\n---\n/, userOnlySkillFile);
+    assert.match(
+      files[userOnlySkillFile] ?? "",
+      /^---\nname: [a-z-]+\ndescription: .+\ndisable-model-invocation: true\n---\n/,
+      userOnlySkillFile,
+    );
     assert.doesNotMatch(files[userOnlySkillFile] ?? "", /user-invocable/, userOnlySkillFile);
   }
   for (const agentSkillFile of [".claude/skills/review/SKILL.md", ".claude/skills/explain/SKILL.md"])

@@ -1,8 +1,8 @@
-import { TestSuiteFactory } from "./test-suite.factory.js";
 import { DomainFault, FaultsByFile } from "../../../../shared/module.js";
-import { TestRoot } from "./test-root.js";
 import type { RawTestSuite } from "./raw-test-suite.js";
-import { TestSuite } from "./test-suite.js";
+import { TestRoot } from "./test-root.js";
+import { TestSuiteFactory } from "./test-suite.factory.js";
+import type { TestSuite } from "./test-suite.js";
 
 /** Makes one repository's self-regression tests out of the suites it keeps. */
 export class TestRootFactory {
@@ -21,7 +21,9 @@ export class TestRootFactory {
     const suiteNameByFile = Object.fromEntries(rawTestSuites.map(({ uri, name }) => [uri, name]));
     // Read in the order the paths sort in, whatever order they arrived in, so two
     // runs over one repository report in the same order (SC-007).
-    for (const { uri, text } of [...rawTestSuites].sort((leftTestSuite, rightTestSuite) => leftTestSuite.uri.localeCompare(rightTestSuite.uri))) {
+    for (const { uri, text } of [...rawTestSuites].sort((leftTestSuite, rightTestSuite) =>
+      leftTestSuite.uri.localeCompare(rightTestSuite.uri),
+    )) {
       try {
         suitesByFile[uri] = TestSuiteFactory.create(text);
       } catch (suiteError) {

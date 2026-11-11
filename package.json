@@ -47,14 +47,17 @@
   "scripts": {
     "build": "tsup && node --import tsx scripts/bundle-library-types.ts && tailwindcss -i src/presentation/portal/page/styles.css -o dist/portal/styles.css --minify",
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/presentation/portal/page",
-    "test": "pnpm run lint:deps && pnpm run build && node --import tsx --import ./scripts/moduleLoader.mjs --test \"test/**/*.test.ts\"",
+    "test": "pnpm run lint:deps && pnpm run lint && pnpm run build && node --import tsx --import ./scripts/moduleLoader.mjs --test \"test/**/*.test.ts\"",
     "cw": "node --import tsx --import ./scripts/moduleLoader.mjs main.ts",
     "lint:deps": "depcruise src main.ts",
+    "lint": "biome check",
+    "format": "biome check --write",
     "release": "node --import tsx scripts/release.ts",
     "tokenizer-accuracy": "node --import tsx scripts/tokenizer-accuracy.ts",
     "prepublishOnly": "node -e \"console.error('Publish with \\\"pnpm release <version>\\\", which checks the package first.'); process.exit(1)\""
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.6",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/language": "^6.12.4",

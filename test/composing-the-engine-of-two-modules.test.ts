@@ -1,33 +1,31 @@
+import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
-import assert from "node:assert/strict";
 import ts from "typescript";
-import { composeApplications, composeEngine, type EnginePlugin } from "../src/module/composition.js";
-import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
-import { AgentCli } from "../src/module/runtime/infra/agent-cli.base.js";
+import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
 import { CodexProjection } from "../src/module/charter/infra/codex/codex-projection.adapter.js";
-import { InMemoryClock } from "../src/module/shared/infra/in-memory/in-memory-clock.adapter.js";
-import { InMemoryMcpServers } from "../src/module/shared/infra/in-memory/in-memory-mcp-servers.adapter.js";
-import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
-import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
-import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
-import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
-import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
-import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
 import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { composeApplications, composeEngine, type EnginePlugin } from "../src/module/composition.js";
+import { AgentCli } from "../src/module/runtime/infra/agent-cli.base.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryPromptfoo } from "../src/module/runtime/infra/in-memory/in-memory-promptfoo.adapter.js";
 import { InMemoryShellCommands } from "../src/module/runtime/infra/in-memory/in-memory-shell-commands.adapter.js";
 import { InMemoryWorktrees } from "../src/module/runtime/infra/in-memory/in-memory-worktrees.adapter.js";
-import { InMemoryPromptfoo } from "../src/module/runtime/infra/in-memory/in-memory-promptfoo.adapter.js";
-import type { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
 import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { InMemoryClock } from "../src/module/shared/infra/in-memory/in-memory-clock.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryMcpServers } from "../src/module/shared/infra/in-memory/in-memory-mcp-servers.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { type CommandLine, EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK, type CommandLine } from "../src/presentation/cli/commands/command.interface.js";
-import type { WorkspaceSettings } from "../src/presentation/cli/commands/command.interface.js";
 import { answerOf } from "./answer-of.js";
 
 const repositoryUrl = new URL("../", import.meta.url);
@@ -36,8 +34,9 @@ const repoFolder = new URL("file:///repo/");
 const homeFolder = new URL("file:///home/");
 const repoFileUrlOf = (path: string) => new URL(path, repoFolder).href;
 
-const keptGuideText = "---\nkind: guide\nid: kept-guide\ndescription: A guide kept by its kind and id.\nglobs: [\"src/**/*.ts\"]\n---\nKeep it.\n";
-const keptSkillText = "---\nkind: skill\nid: kept-skill\ndescription: Keep it.\ntriggers: [\"keep it\"]\n---\nKeep it.\n";
+const keptGuideText =
+  '---\nkind: guide\nid: kept-guide\ndescription: A guide kept by its kind and id.\nglobs: ["src/**/*.ts"]\n---\nKeep it.\n';
+const keptSkillText = '---\nkind: skill\nid: kept-skill\ndescription: Keep it.\ntriggers: ["keep it"]\n---\nKeep it.\n';
 const publishedText = "---\nkind: guide\nid: published\ndescription: Published.\n---\n";
 const testSuiteText = `${JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "kept-guide" } }] })}\n`;
 const evalSuiteText = `${JSON.stringify({ cases: [{ prompt: "keep it", expect: { invoke: "kept-skill" } }] })}\n`;
@@ -100,22 +99,40 @@ function pluginsInMemory(adapters: ReturnType<typeof adaptersInMemory>): EngineP
 }
 
 /** Every file under `folderUrl`, by its path from there. */
-const filePathsUnder = (folderUrl: URL) => readdirSync(folderUrl, { recursive: true, encoding: "utf8" }).filter((filePath) => filePath.endsWith(".ts"));
+const filePathsUnder = (folderUrl: URL) =>
+  readdirSync(folderUrl, { recursive: true, encoding: "utf8" }).filter((filePath) => filePath.endsWith(".ts"));
 
 /** Each module specifier a source file imports or re-exports. */
 function importedSpecifiersOf(fileUrl: URL): readonly string[] {
   const sourceFile = ts.createSourceFile(fileUrl.pathname, readFileSync(fileUrl, "utf8"), ts.ScriptTarget.Latest, true);
   return sourceFile.statements
-    .filter((statement): statement is ts.ImportDeclaration | ts.ExportDeclaration => ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement))
-    .flatMap((statement) => (statement.moduleSpecifier !== undefined && ts.isStringLiteral(statement.moduleSpecifier) ? [statement.moduleSpecifier.text] : []));
+    .filter(
+      (statement): statement is ts.ImportDeclaration | ts.ExportDeclaration =>
+        ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement),
+    )
+    .flatMap((statement) =>
+      statement.moduleSpecifier !== undefined && ts.isStringLiteral(statement.moduleSpecifier)
+        ? [statement.moduleSpecifier.text]
+        : [],
+    );
 }
 
 /** What each module's driver port declares, by operation. */
 function operationNamesOf(portFileUrl: URL, portName: string): readonly string[] {
-  const sourceFile = ts.createSourceFile(portFileUrl.pathname, readFileSync(portFileUrl, "utf8"), ts.ScriptTarget.Latest, true);
-  const portInterface = sourceFile.statements.find((statement): statement is ts.InterfaceDeclaration => ts.isInterfaceDeclaration(statement) && statement.name.text === portName);
+  const sourceFile = ts.createSourceFile(
+    portFileUrl.pathname,
+    readFileSync(portFileUrl, "utf8"),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const portInterface = sourceFile.statements.find(
+    (statement): statement is ts.InterfaceDeclaration =>
+      ts.isInterfaceDeclaration(statement) && statement.name.text === portName,
+  );
   assert.ok(portInterface, `${portFileUrl.pathname} declares no ${portName}`);
-  return portInterface.members.filter(ts.isMethodSignature).map((methodSignature) => methodSignature.name.getText(sourceFile));
+  return portInterface.members
+    .filter(ts.isMethodSignature)
+    .map((methodSignature) => methodSignature.name.getText(sourceFile));
 }
 
 /** The command line over the adapters handed, as main.ts composes it: the
@@ -137,7 +154,11 @@ async function printedBy(commandLine: CommandLine, argv: readonly string[]) {
   process.stdout.write = ((text: string) => (stdoutTexts.push(String(text)), true)) as typeof originalWriteByStream.out;
   process.stderr.write = ((text: string) => (stderrTexts.push(String(text)), true)) as typeof originalWriteByStream.err;
   try {
-    return { code: await new Commander(commandLine, COMMANDS).run(argv), result: stdoutTexts.join(""), problem: stderrTexts.join("") };
+    return {
+      code: await new Commander(commandLine, COMMANDS).run(argv),
+      result: stdoutTexts.join(""),
+      problem: stderrTexts.join(""),
+    };
   } finally {
     process.stdout.write = originalWriteByStream.out;
     process.stderr.write = originalWriteByStream.err;
@@ -147,47 +168,118 @@ async function printedBy(commandLine: CommandLine, argv: readonly string[]) {
 const claudeSettings = { enabledAgents: ["claude"] };
 
 test("the engine's modules are charter, with its applications authoring and projection, runtime, and the workspace, each with an application, a domain and its adapters (CORE Story 52 scenario 1)", () => {
-  assert.deepEqual(readdirSync(moduleFolderUrl, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map(({ name }) => name).sort(), ["charter", "runtime", "shared", "workspace"]);
+  assert.deepEqual(
+    readdirSync(moduleFolderUrl, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map(({ name }) => name)
+      .sort(),
+    ["charter", "runtime", "shared", "workspace"],
+  );
   for (const moduleName of ["charter", "runtime", "workspace"])
-    for (const layerName of ["app", "app/port/in", "app/port/out", "domain", "infra"]) assert.ok(existsSync(new URL(`${moduleName}/${layerName}/`, moduleFolderUrl)), `${moduleName} has no ${layerName}`);
+    for (const layerName of ["app", "app/port/in", "app/port/out", "domain", "infra"])
+      assert.ok(
+        existsSync(new URL(`${moduleName}/${layerName}/`, moduleFolderUrl)),
+        `${moduleName} has no ${layerName}`,
+      );
   assert.equal(existsSync(new URL("src/zdriven/", repositoryUrl)), false, "src/zdriven/ is still there");
 
-  const authoringOperationNames = operationNamesOf(new URL("charter/app/port/in/authoring-charter.port.ts", moduleFolderUrl), "ForAuthoringCharter");
-  for (const operationName of ["add", "addVendor", "suites", "evalSuites", "signInWithToken", "test", "accessToken"]) assert.ok(authoringOperationNames.includes(operationName), `ForAuthoringCharter declares no ${operationName}`);
-  const projectingOperationNames = operationNamesOf(new URL("charter/app/port/in/building-charter.port.ts", moduleFolderUrl), "ForBuildingCharter");
-  for (const operationName of ["build", "preview", "doctor", "predictMainContext", "tools", "declaredTools", "sensorCommands"]) assert.ok(projectingOperationNames.includes(operationName), `ForBuildingCharter declares no ${operationName}`);
-  const runningOperationNames = operationNamesOf(new URL("runtime/app/port/in/running-charter.port.ts", moduleFolderUrl), "ForRunningCharter");
-  assert.deepEqual([...runningOperationNames].sort(), ["analyze", "call", "countMainContext", "evaluate", "runSensors", "sessionSummary"]);
-  const managingOperationNames = operationNamesOf(new URL("workspace/app/port/in/managing-workspace.port.ts", moduleFolderUrl), "ForManagingWorkspace");
+  const authoringOperationNames = operationNamesOf(
+    new URL("charter/app/port/in/authoring-charter.port.ts", moduleFolderUrl),
+    "ForAuthoringCharter",
+  );
+  for (const operationName of ["add", "addVendor", "suites", "evalSuites", "signInWithToken", "test", "accessToken"])
+    assert.ok(authoringOperationNames.includes(operationName), `ForAuthoringCharter declares no ${operationName}`);
+  const projectingOperationNames = operationNamesOf(
+    new URL("charter/app/port/in/building-charter.port.ts", moduleFolderUrl),
+    "ForBuildingCharter",
+  );
+  for (const operationName of [
+    "build",
+    "preview",
+    "doctor",
+    "predictMainContext",
+    "tools",
+    "declaredTools",
+    "sensorCommands",
+  ])
+    assert.ok(projectingOperationNames.includes(operationName), `ForBuildingCharter declares no ${operationName}`);
+  const runningOperationNames = operationNamesOf(
+    new URL("runtime/app/port/in/running-charter.port.ts", moduleFolderUrl),
+    "ForRunningCharter",
+  );
+  assert.deepEqual([...runningOperationNames].sort(), [
+    "analyze",
+    "call",
+    "countMainContext",
+    "evaluate",
+    "runSensors",
+    "sessionSummary",
+  ]);
+  const managingOperationNames = operationNamesOf(
+    new URL("workspace/app/port/in/managing-workspace.port.ts", moduleFolderUrl),
+    "ForManagingWorkspace",
+  );
   assert.deepEqual([...managingOperationNames].sort(), ["setUp", "settings"]);
 });
 
 test("runtime asks the charter only through charter's applications, and charter asks nothing of runtime (CORE Story 52 scenario 2)", () => {
   for (const filePath of filePathsUnder(new URL("charter/", moduleFolderUrl)))
-    for (const specifier of importedSpecifiersOf(new URL(`charter/${filePath}`, moduleFolderUrl))) assert.doesNotMatch(specifier, /runtime\//, `charter/${filePath} imports ${specifier}`);
+    for (const specifier of importedSpecifiersOf(new URL(`charter/${filePath}`, moduleFolderUrl)))
+      assert.doesNotMatch(specifier, /runtime\//, `charter/${filePath} imports ${specifier}`);
   for (const filePath of filePathsUnder(new URL("runtime/", moduleFolderUrl)))
     for (const specifier of importedSpecifiersOf(new URL(`runtime/${filePath}`, moduleFolderUrl)))
-      assert.ok(!/\/charter\//.test(specifier) || /\/charter\/module\.js$/.test(specifier), `runtime/${filePath} imports ${specifier}`);
+      assert.ok(
+        !/\/charter\//.test(specifier) || /\/charter\/module\.js$/.test(specifier),
+        `runtime/${filePath} imports ${specifier}`,
+      );
   // What runtime takes of the charter's module.ts is its applications' ports and what they answer with.
   for (const filePath of filePathsUnder(new URL("runtime/", moduleFolderUrl)))
-    for (const importMatch of readFileSync(new URL(`runtime/${filePath}`, moduleFolderUrl), "utf8").matchAll(/^import (?:type )?\{ ([^}]+) \} from "[^"]*\/charter\/module\.js";$/gm))
+    for (const importMatch of readFileSync(new URL(`runtime/${filePath}`, moduleFolderUrl), "utf8").matchAll(
+      /^import (?:type )?\{ ([^}]+) \} from "[^"]*\/charter\/module\.js";$/gm,
+    ))
       for (const importedName of importMatch[1]!.split(", ").map((name) => name.replace(/^type /, "")))
-        assert.ok(["ForAuthoringCharter", "ForBuildingCharter", "CharterDTOs", "AgentProviderName"].includes(importedName), `runtime/${filePath} takes ${importedName} of the charter`);
+        assert.ok(
+          ["ForAuthoringCharter", "ForBuildingCharter", "CharterDTOs", "AgentProviderName"].includes(importedName),
+          `runtime/${filePath} takes ${importedName} of the charter`,
+        );
   for (const filePath of filePathsUnder(new URL("shared/", moduleFolderUrl)))
-    for (const specifier of importedSpecifiersOf(new URL(`shared/${filePath}`, moduleFolderUrl))) assert.doesNotMatch(specifier, /\/(charter|runtime)\//, `shared/${filePath} imports ${specifier}`);
+    for (const specifier of importedSpecifiersOf(new URL(`shared/${filePath}`, moduleFolderUrl)))
+      assert.doesNotMatch(specifier, /\/(charter|runtime)\//, `shared/${filePath} imports ${specifier}`);
   const runningCharterText = readFileSync(new URL("runtime/app/running-charter.use-case.ts", moduleFolderUrl), "utf8");
   assert.match(runningCharterText, /\bForBuildingCharter\b[^;]*from "\.\.\/\.\.\/charter\/module\.js";/);
   assert.match(runningCharterText, /\bForAuthoringCharter\b[^;]*from "\.\.\/\.\.\/charter\/module\.js";/);
 });
 
-test("the published package holds the modules' applications and domains, and beside them the adapters cw's plugin is built from, but no command line or portal (CORE Story 52 scenario 3)", () => {
+test("the published package composes the engine of its modules and the adapters cw's plugin is built from, exporting only how to compose it and the ports a tool may replace, and no command line or portal (CORE Story 52 scenario 3)", () => {
   const libraryIndexText = readFileSync(new URL("src/index.ts", repositoryUrl), "utf8");
-  const exportedPaths = [...libraryIndexText.matchAll(/^export .* from "\.\/([^"]+)";$/gm)].map((exportMatch) => exportMatch[1]!);
+  const exportedPaths = [...libraryIndexText.matchAll(/^export .* from "\.\/([^"]+)";$/gm)].map(
+    (exportMatch) => exportMatch[1]!,
+  );
   assert.ok(exportedPaths.length > 0);
-  for (const exportedPath of exportedPaths) assert.match(exportedPath, /^module\/(?:(?:charter|runtime|shared)\/module|composition)\.js$/);
-  for (const useCaseName of ["AuthoringCharter", "BuildingCharter", "RunningCharter"]) assert.match(libraryIndexText, new RegExp(`export \\{ ${useCaseName} \\}`));
-  for (const adapterName of ["FileCharterRepository", "ClaudeProjection", "CodexProjection", "ClaudeCli", "CodexCli", "FileReaders", "FileOutput"]) assert.match(libraryIndexText, new RegExp(`^export \\{[^}]*\\b${adapterName}\\b`, "m"));
-  assert.doesNotMatch(libraryIndexText, /module\/workspace\//);
+  for (const exportedPath of exportedPaths)
+    assert.match(exportedPath, /^module\/(?:(?:charter|runtime|shared|workspace)\/module|composition)\.js$/);
+  // No use case, store or runner is exported: the engine's own are composed
+  // in where a tool hands none (CORE-FR-228, SDK-FR-020).
+  for (const internalName of [
+    "AuthoringCharter",
+    "BuildingCharter",
+    "RunningCharter",
+    "FileCharterRepository",
+    "ClaudeProjection",
+    "CodexProjection",
+    "ClaudeCli",
+    "CodexCli",
+    "FileReaders",
+    "FileOutput",
+    "composeEngine",
+    "EnginePlugin",
+  ])
+    assert.doesNotMatch(libraryIndexText, new RegExp(`^export \\{[^}]*\\b${internalName}\\b`, "m"), internalName);
+  // Read as one line, however the formatter wraps it.
+  assert.match(
+    libraryIndexText.replace(/\s+/g, " ").replace(/\( /g, "(").replace(/,? \)/g, ")"),
+    /export const composeApplications: \(repoFolder: URL, homeFolder: URL, plugin\?: Partial<ReplaceableAdapters>\) => Promise<ComposedApplications> = /,
+  );
   // pnpm test builds first, so the library read is this working tree's.
   const builtLibraryText = readFileSync(new URL("dist/index.js", repositoryUrl), "utf8");
   assert.doesNotMatch(builtLibraryText, /^\/\/ (?:main\.ts|src\/presentation\/)/m);
@@ -205,27 +297,38 @@ test("an engine composed with a plugin of the author's own builds and evaluates 
     }
   }
   const ownAdapters = adaptersInMemory(filesInThreeParts);
-  const ownEngine = composeEngine(
-    repoFolder,
-    homeFolder,
-    claudeSettings,
-    { ...pluginsInMemory(ownAdapters), agentProvider: { claude: { projection: new OwnClaudeProjection(ownAdapters.fileReader), cli: new OwnAgentCli() } } },
-  );
+  const ownEngine = composeEngine(repoFolder, homeFolder, claudeSettings, {
+    ...pluginsInMemory(ownAdapters),
+    agentProvider: { claude: { projection: new OwnClaudeProjection(ownAdapters.fileReader), cli: new OwnAgentCli() } },
+  });
   const shippedAdapters = adaptersInMemory(filesInThreeParts);
   const shippedPlugins = pluginsInMemory(shippedAdapters);
-  const shippedEngine = composeEngine(repoFolder, homeFolder, claudeSettings, { ...shippedPlugins, agentProvider: { claude: shippedPlugins.agentProvider["claude"]! } });
+  const shippedEngine = composeEngine(repoFolder, homeFolder, claudeSettings, {
+    ...shippedPlugins,
+    agentProvider: { claude: shippedPlugins.agentProvider["claude"]! },
+  });
 
-  assert.equal(JSON.stringify(await ownEngine.charterBuildingApp.build()), JSON.stringify(await shippedEngine.charterBuildingApp.build()));
-  assert.equal(JSON.stringify(await ownEngine.charterRuntimeApp.evaluate()), JSON.stringify(await shippedEngine.charterRuntimeApp.evaluate()));
+  assert.equal(
+    JSON.stringify(await ownEngine.charterBuildingApp.build()),
+    JSON.stringify(await shippedEngine.charterBuildingApp.build()),
+  );
+  assert.equal(
+    JSON.stringify(await ownEngine.charterRuntimeApp.evaluate()),
+    JSON.stringify(await shippedEngine.charterRuntimeApp.evaluate()),
+  );
   assert.deepEqual(askedAgentNames, ["claude"]);
 });
 
 test("the eval cases are listed, added, rewritten and removed by the one store that keeps the charter, as the test cases are (CORE Story 52 scenario 5)", async () => {
   const adapters = adaptersInMemory(filesInThreeParts);
   const { charterAuthoringApp } = composeEngine(repoFolder, homeFolder, claudeSettings, pluginsInMemory(adapters));
-  const evalFilePathsOf = async () => (await adapters.fileReader.readFilesRecursively(".cw/charter/eval")).map(({ path }) => path).sort();
+  const evalFilePathsOf = async () =>
+    (await adapters.fileReader.readFilesRecursively(".cw/charter/eval")).map(({ path }) => path).sort();
 
-  assert.deepEqual(answerOf(await charterAuthoringApp.evalSuites()).data.evalSuites.map(({ data }) => data.name), ["skills.json"]);
+  assert.deepEqual(
+    answerOf(await charterAuthoringApp.evalSuites()).data.evalSuites.map(({ data }) => data.name),
+    ["skills.json"],
+  );
   const addedName = answerOf(await charterAuthoringApp.addEvalSuite()).data.name;
   assert.deepEqual(await evalFilePathsOf(), [`.cw/charter/eval/${addedName}`, ".cw/charter/eval/skills.json"].sort());
   const rewrittenText = `${JSON.stringify({ cases: [{ prompt: "rewrite it", expect: { follow: "kept-guide" } }] })}\n`;
@@ -236,11 +339,20 @@ test("the eval cases are listed, added, rewritten and removed by the one store t
 });
 
 test("every command and the portal are handed the applications of the modules and nothing else (CORE Story 52 scenario 6)", () => {
-  const contextText = readFileSync(new URL("src/presentation/cli/commands/command.interface.ts", repositoryUrl), "utf8");
-  assert.deepEqual([...contextText.matchAll(/^ {2}readonly \w+App: (For\w+);$/gm)].map((appMatch) => appMatch[1]!).sort(), ["ForAuthoringCharter", "ForBuildingCharter", "ForManagingWorkspace", "ForRunningCharter"]);
+  const contextText = readFileSync(
+    new URL("src/presentation/cli/commands/command.interface.ts", repositoryUrl),
+    "utf8",
+  );
+  assert.deepEqual(
+    [...contextText.matchAll(/^ {2}readonly \w+App: (For\w+);$/gm)].map((appMatch) => appMatch[1]!).sort(),
+    ["ForAuthoringCharter", "ForBuildingCharter", "ForManagingWorkspace", "ForRunningCharter"],
+  );
   const portalRoutesText = readFileSync(new URL("src/presentation/portal/portal.routes.ts", repositoryUrl), "utf8");
   assert.deepEqual(
-    [...portalRoutesText.matchAll(/^import (?:type )?\{ ([^}]+) \} from "#module\/[\w-]+\/module\.js";$/gm)].flatMap((importMatch) => importMatch[1]!.split(", ").map((importedName) => importedName.replace(/^type /, ""))).filter((importedName) => importedName.startsWith("For")).sort(),
+    [...portalRoutesText.matchAll(/^import (?:type )?\{ ([^}]+) \} from "#module\/[\w-]+\/module\.js";$/gm)]
+      .flatMap((importMatch) => importMatch[1]!.split(", ").map((importedName) => importedName.replace(/^type /, "")))
+      .filter((importedName) => importedName.startsWith("For"))
+      .sort(),
     ["ForAuthoringCharter", "ForBuildingCharter"],
   );
   const mainText = readFileSync(new URL("main.ts", repositoryUrl), "utf8");
@@ -257,15 +369,24 @@ test("a repository set up holds the charter with its primitives, tests, eval cas
   const keptPaths = (await adapters.fileReader.readBytesRecursively(".cw")).map(({ path }) => path);
   assert.ok(keptPaths.includes(".cw/settings.json"));
   assert.ok(keptPaths.some((path) => path.startsWith(".cw/charter/primitive/guide/")));
-  for (const partPath of [".cw/charter/test/", ".cw/charter/eval/", ".cw/charter/vendor/", ".cw/out/"]) assert.ok(keptPaths.some((path) => path.startsWith(partPath)), `nothing under ${partPath}`);
-  assert.deepEqual(keptPaths.filter((path) => /^\.cw\/(?:test|eval|vendor)\//.test(path)), []);
+  for (const partPath of [".cw/charter/test/", ".cw/charter/eval/", ".cw/charter/vendor/", ".cw/out/"])
+    assert.ok(
+      keptPaths.some((path) => path.startsWith(partPath)),
+      `nothing under ${partPath}`,
+    );
+  assert.deepEqual(
+    keptPaths.filter((path) => /^\.cw\/(?:test|eval|vendor)\//.test(path)),
+    [],
+  );
   assert.match((await adapters.fileReader.readIfThere(".cw/.gitignore")) ?? "", /^log\/$/m);
 });
 
 test("every command refuses a repository laid out the old way, naming the authoring skill (CORE Story 52 scenario 8)", async () => {
   // Every command, each argument it requires given a value: the refusal comes
   // before any of them is run.
-  for (const argv of COMMANDS.map((command) => command.name.split(" ").map((commandWord) => (commandWord.startsWith("<") ? "x" : commandWord)))) {
+  for (const argv of COMMANDS.map((command) =>
+    command.name.split(" ").map((commandWord) => (commandWord.startsWith("<") ? "x" : commandWord)),
+  )) {
     const { code, problem } = await printedBy(commandLineOver(adaptersInMemory(filesLaidOutTheOldWay)), argv);
     assert.equal(code, EXIT_FAILURE, argv.join(" "));
     assert.match(problem, /laid out the old way/, argv.join(" "));
@@ -294,7 +415,9 @@ test("a vendor source laid out the old way is refused, naming the source and the
 test("following the authoring skill moves a repository laid out the old way, and the build is the same byte for byte (CORE Story 52 scenario 10)", async () => {
   const skillBody = new CwAuthorSkill().body;
   const movedPathPairs = [...skillBody.matchAll(/^- `([^`]+)` → `([^`]+)`/gm)].flatMap(([, oldPath, newPath]) =>
-    oldPath!.includes("<kind>") ? Primitives.kinds.map((kind) => [oldPath!.replace("<kind>", kind), newPath!.replace("<kind>", kind)] as const) : [[oldPath!, newPath!] as const],
+    oldPath!.includes("<kind>")
+      ? Primitives.kinds.map((kind) => [oldPath!.replace("<kind>", kind), newPath!.replace("<kind>", kind)] as const)
+      : [[oldPath!, newPath!] as const],
   );
   assert.ok(movedPathPairs.length >= 4, skillBody);
 
@@ -302,15 +425,24 @@ test("following the authoring skill moves a repository laid out the old way, and
     Object.entries(filesLaidOutTheOldWay).map(([fileUrl, contents]) => {
       const filePath = fileUrl.slice(repoFolder.href.length);
       const movedPathPair = movedPathPairs.find(([oldPath]) => filePath.startsWith(oldPath));
-      return [repoFileUrlOf(movedPathPair === undefined ? filePath : `${movedPathPair[1]}${filePath.slice(movedPathPair[0].length)}`), contents];
+      return [
+        repoFileUrlOf(
+          movedPathPair === undefined ? filePath : `${movedPathPair[1]}${filePath.slice(movedPathPair[0].length)}`,
+        ),
+        contents,
+      ];
     }),
   );
   assert.deepEqual(Object.keys(movedFiles).sort(), Object.keys(filesInThreeParts).sort());
 
   const builtFilesOf = async (files: Readonly<Record<string, string>>) => {
     const adapters = adaptersInMemory(files);
-    answerOf(await composeEngine(repoFolder, homeFolder, claudeSettings, pluginsInMemory(adapters)).charterBuildingApp.build());
-    return (await adapters.fileReader.readBytesRecursively("")).filter(({ path }) => !path.startsWith(".cw/charter/") && path !== ".cw/settings.json");
+    answerOf(
+      await composeEngine(repoFolder, homeFolder, claudeSettings, pluginsInMemory(adapters)).charterBuildingApp.build(),
+    );
+    return (await adapters.fileReader.readBytesRecursively("")).filter(
+      ({ path }) => !path.startsWith(".cw/charter/") && path !== ".cw/settings.json",
+    );
   };
   assert.deepEqual(await builtFilesOf(movedFiles), await builtFilesOf(filesInThreeParts));
 });
@@ -343,12 +475,24 @@ test("the workspace module keeps which agents are enabled in .cw/settings.json, 
   };
 
   assert.equal((await printedBy(recordingCommandLine, ["init", "--agent", "codex"])).code, EXIT_OK);
-  assert.deepEqual(JSON.parse((await adapters.fileReader.readIfThere(".cw/settings.json")) ?? "{}"), { agents: ["codex"] });
+  assert.deepEqual(JSON.parse((await adapters.fileReader.readIfThere(".cw/settings.json")) ?? "{}"), {
+    agents: ["codex"],
+  });
   const { code, result } = await printedBy(recordingCommandLine, ["doctor"]);
   assert.equal(code, EXIT_OK, result);
   assert.deepEqual(composedAgentNames.at(-1), ["codex"]);
   assert.match(result, /codex/);
 
-  for (const filePath of readdirSync(moduleFolderUrl, { recursive: true, encoding: "utf8" }).filter((path) => /^(?:charter|runtime)\//.test(path) && path.endsWith(".ts") && !path.includes("/infra/") && !path.includes("/builtin/")))
-    assert.doesNotMatch(readFileSync(new URL(filePath, moduleFolderUrl), "utf8"), /settings\.json/, `${filePath} names the settings file`);
+  for (const filePath of readdirSync(moduleFolderUrl, { recursive: true, encoding: "utf8" }).filter(
+    (path) =>
+      /^(?:charter|runtime)\//.test(path) &&
+      path.endsWith(".ts") &&
+      !path.includes("/infra/") &&
+      !path.includes("/builtin/"),
+  ))
+    assert.doesNotMatch(
+      readFileSync(new URL(filePath, moduleFolderUrl), "utf8"),
+      /settings\.json/,
+      `${filePath} names the settings file`,
+    );
 });

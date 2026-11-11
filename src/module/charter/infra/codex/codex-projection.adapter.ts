@@ -1,7 +1,15 @@
 import { pathFromCheckout } from "#module/shared/module.js";
-import { WritePlan, StampedDocument, mergedTomlText, type CharterOutput, type CharterRoot, type MainContextText, type ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
-import { mergedEntryFileText } from "../helper.js";
+import {
+  type CharterOutput,
+  type CharterRoot,
+  type MainContextText,
+  mergedTomlText,
+  type ProviderComponent,
+  StampedDocument,
+  WritePlan,
+} from "../../app/port/out/managing-local-agent-output.port.js";
 import { AgentProjection } from "../agent-projection.base.js";
+import { mergedEntryFileText } from "../helper.js";
 import { CodexComponentFactory } from "./codex-component.factory.js";
 import { CodexMainContextFactory } from "./codex-main-context.factory.js";
 import { CodexRules } from "./codex-rules.js";
@@ -52,7 +60,12 @@ export class CodexProjection extends AgentProjection {
     return CODEX_PLACE_BY_KIND[component.kind]!(component.id);
   }
 
-  protected override contentsOf(component: ProviderComponent, laidText: string, currentText: string | undefined, place: string): string {
+  protected override contentsOf(
+    component: ProviderComponent,
+    laidText: string,
+    currentText: string | undefined,
+    place: string,
+  ): string {
     switch (component.kind) {
       case "config":
         return mergedTomlText(currentText, laidText, place);
@@ -80,7 +93,12 @@ export class CodexProjection extends AgentProjection {
         if (contents !== undefined && StampedDocument.isStamped(contents)) {
           const userText = contents.replace(SECTION_PATTERN, "");
           entryCleanupPlan.push(
-            new WritePlan(pathFromCheckout(checkoutPath, filePath), filePath, contents.includes("<!-- CHERRYWORKS START -->") && userText.trim() !== "" ? userText : undefined, contents),
+            new WritePlan(
+              pathFromCheckout(checkoutPath, filePath),
+              filePath,
+              contents.includes("<!-- CHERRYWORKS START -->") && userText.trim() !== "" ? userText : undefined,
+              contents,
+            ),
           );
         }
         nextEntryFolderPaths.push(...(await this.fileReader.listFolders(entryFolderPath)));

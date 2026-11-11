@@ -1,11 +1,11 @@
 import { execFile } from "node:child_process";
 import { cp, lstat, mkdir, mkdtemp, rename, rm } from "node:fs/promises";
 import { devNull, tmpdir } from "node:os";
-import { promisify } from "node:util";
-import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { AdapterFault, type ForFetchingCharterSources } from "../app/port/out/fetching-charter-sources.port.js";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { FolderAddress, type FolderURL } from "../../shared/module.js";
+import { AdapterFault, type ForFetchingCharterSources } from "../app/port/out/fetching-charter-sources.port.js";
 
 const runGit = promisify(execFile);
 
@@ -38,30 +38,68 @@ export class GitSources implements ForFetchingCharterSources {
    *  no such command is a machine without git, not a source out of reach. */
   async fetchCommit(source: string, version?: string): Promise<string> {
     const storeFolder = await mkdtemp(join(tmpdir(), "cw-source-")).catch((storeError: unknown) => {
-      throw new AdapterFault("A temporary folder for the source could not be made.", "Check that the temporary folder can be written.", { internal: false, cause: storeError });
+      throw new AdapterFault(
+        "A temporary folder for the source could not be made.",
+        "Check that the temporary folder can be written.",
+        { internal: false, cause: storeError },
+      );
     });
     try {
       await runGit("git", ["init", "--quiet", "--bare", storeFolder]);
     } catch (gitError) {
       await rm(storeFolder, { recursive: true, force: true });
-      if ((gitError as NodeJS.ErrnoException).code === "ENOENT") throw new AdapterFault("git is not installed here.", "Reaching a source needs git: install it, and run this again.", { internal: false, cause: gitError });
-      throw new AdapterFault("git could not set up a store for the source.", "Check that the temporary folder can be written.", { internal: false, cause: gitError });
+      if ((gitError as NodeJS.ErrnoException).code === "ENOENT")
+        throw new AdapterFault(
+          "git is not installed here.",
+          "Reaching a source needs git: install it, and run this again.",
+          { internal: false, cause: gitError },
+        );
+      throw new AdapterFault(
+        "git could not set up a store for the source.",
+        "Check that the temporary folder can be written.",
+        { internal: false, cause: gitError },
+      );
     }
     try {
       const repoFolder = fileURLToPath(this.#repoFolder);
       // Read where the repository is, so what only applies there applies, every
       // scope at once and includes already expanded: a key with no value is a
       // `true`, and what says how a repository is laid out is the store's own.
-      const { stdout: repoConfigText } = await runGit("git", ["config", "--list", "--null"], { cwd: repoFolder }).catch((configError: unknown) => {
-        throw new AdapterFault("This repository's git config could not be read.", "Check this repository's git config, and run this again.", { internal: false, cause: configError });
-      });
+      const { stdout: repoConfigText } = await runGit("git", ["config", "--list", "--null"], { cwd: repoFolder }).catch(
+        (configError: unknown) => {
+          throw new AdapterFault(
+            "This repository's git config could not be read.",
+            "Check this repository's git config, and run this again.",
+            { internal: false, cause: configError },
+          );
+        },
+      );
       const repoConfigEntries = repoConfigText
         .split("\0")
         .filter((configEntry) => configEntry !== "")
-        .map((configEntry) => (configEntry.includes("\n") ? [configEntry.slice(0, configEntry.indexOf("\n")), configEntry.slice(configEntry.indexOf("\n") + 1)] : [configEntry, "true"]))
+        .map((configEntry) =>
+          configEntry.includes("\n")
+            ? [configEntry.slice(0, configEntry.indexOf("\n")), configEntry.slice(configEntry.indexOf("\n") + 1)]
+            : [configEntry, "true"],
+        )
         .filter(([configKey]) => !/^(core\.(bare|worktree)|extensions\.|include\.|includeif\.)/i.test(configKey ?? ""));
-      const repoConfigEnv = Object.fromEntries(repoConfigEntries.flatMap(([configKey, configValue], index) => [[`GIT_CONFIG_KEY_${index}`, configKey], [`GIT_CONFIG_VALUE_${index}`, configValue]]));
-      await runGit("git", ["fetch", "--quiet", "--no-tags", "--", source, version ?? "HEAD"], { cwd: repoFolder, env: { ...process.env, ...repoConfigEnv, GIT_CONFIG_COUNT: String(repoConfigEntries.length), GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: devNull, GIT_DIR: storeFolder } });
+      const repoConfigEnv = Object.fromEntries(
+        repoConfigEntries.flatMap(([configKey, configValue], index) => [
+          [`GIT_CONFIG_KEY_${index}`, configKey],
+          [`GIT_CONFIG_VALUE_${index}`, configValue],
+        ]),
+      );
+      await runGit("git", ["fetch", "--quiet", "--no-tags", "--", source, version ?? "HEAD"], {
+        cwd: repoFolder,
+        env: {
+          ...process.env,
+          ...repoConfigEnv,
+          GIT_CONFIG_COUNT: String(repoConfigEntries.length),
+          GIT_CONFIG_NOSYSTEM: "1",
+          GIT_CONFIG_GLOBAL: devNull,
+          GIT_DIR: storeFolder,
+        },
+      });
       return storeFolder;
     } catch (gitError) {
       await rm(storeFolder, { recursive: true, force: true });
@@ -69,7 +107,9 @@ export class GitSources implements ForFetchingCharterSources {
       // Said without the user and password an address may carry: git's words
       // name the address, and they are sent on to whoever asked, while what git
       // said whole stays in the cause.
-      const shownSource = URL.canParse(source) ? Object.assign(new URL(source), { username: "", password: "" }).href : source;
+      const shownSource = URL.canParse(source)
+        ? Object.assign(new URL(source), { username: "", password: "" }).href
+        : source;
       throw new AdapterFault(
         `${shownSource} could not be fetched: ${`${gitError}`.replaceAll(source, shownSource)}`,
         version === undefined
@@ -86,19 +126,37 @@ export class GitSources implements ForFetchingCharterSources {
    *  path holding a newline or a quote is read as it is. */
   async listFilesAt(storeFolder: string): Promise<readonly string[]> {
     try {
-      const { stdout } = await runGit("git", ["ls-tree", "-r", "-z", "--name-only", FETCHED_REF], { cwd: storeFolder, env: { ...process.env, GIT_DIR: storeFolder }, maxBuffer: 64 * 1024 * 1024 });
+      const { stdout } = await runGit("git", ["ls-tree", "-r", "-z", "--name-only", FETCHED_REF], {
+        cwd: storeFolder,
+        env: { ...process.env, GIT_DIR: storeFolder },
+        maxBuffer: 64 * 1024 * 1024,
+      });
       return stdout.split("\0").filter((path) => path !== "");
     } catch (gitError) {
-      throw new AdapterFault("The fetched source could not be listed.", "Fetch the source again, and check it can be read.", { internal: false, cause: gitError });
+      throw new AdapterFault(
+        "The fetched source could not be listed.",
+        "Fetch the source again, and check it can be read.",
+        { internal: false, cause: gitError },
+      );
     }
   }
 
   /** `git show FETCH_HEAD:<path>`. */
   async readFileAt(storeFolder: string, path: string): Promise<string> {
     try {
-      return (await runGit("git", ["show", `${FETCHED_REF}:${path}`], { cwd: storeFolder, env: { ...process.env, GIT_DIR: storeFolder }, maxBuffer: 64 * 1024 * 1024 })).stdout;
+      return (
+        await runGit("git", ["show", `${FETCHED_REF}:${path}`], {
+          cwd: storeFolder,
+          env: { ...process.env, GIT_DIR: storeFolder },
+          maxBuffer: 64 * 1024 * 1024,
+        })
+      ).stdout;
     } catch (gitError) {
-      throw new AdapterFault(`The fetched source has no readable "${path}".`, `Check that the source holds "${path}", and that it is under 64 MiB.`, { internal: false, cause: gitError });
+      throw new AdapterFault(
+        `The fetched source has no readable "${path}".`,
+        `Check that the source holds "${path}", and that it is under 64 MiB.`,
+        { internal: false, cause: gitError },
+      );
     }
   }
 
@@ -107,9 +165,22 @@ export class GitSources implements ForFetchingCharterSources {
    *  (CORE-FR-207). */
   async readBytesAt(storeFolder: string, path: string): Promise<Uint8Array> {
     try {
-      return new Uint8Array((await runGit("git", ["cat-file", "blob", `${FETCHED_REF}:${path}`], { cwd: storeFolder, env: { ...process.env, GIT_DIR: storeFolder }, maxBuffer: 64 * 1024 * 1024, encoding: "buffer" })).stdout);
+      return new Uint8Array(
+        (
+          await runGit("git", ["cat-file", "blob", `${FETCHED_REF}:${path}`], {
+            cwd: storeFolder,
+            env: { ...process.env, GIT_DIR: storeFolder },
+            maxBuffer: 64 * 1024 * 1024,
+            encoding: "buffer",
+          })
+        ).stdout,
+      );
     } catch (gitError) {
-      throw new AdapterFault(`The fetched source has no readable "${path}".`, `Check that the source holds "${path}", and that it is under 64 MiB.`, { internal: false, cause: gitError });
+      throw new AdapterFault(
+        `The fetched source has no readable "${path}".`,
+        `Check that the source holds "${path}", and that it is under 64 MiB.`,
+        { internal: false, cause: gitError },
+      );
     }
   }
 
@@ -130,14 +201,29 @@ export class GitSources implements ForFetchingCharterSources {
       const stepPath = intoFolderNames.slice(0, index + 1).join("/");
       const stepStats = await lstat(join(repoFolder, stepPath)).catch(() => undefined);
       if (stepStats === undefined) break;
-      if (stepStats.isSymbolicLink()) throw new AdapterFault(`"${stepPath}" is a link, and nothing is written through one.`, `Delete "${stepPath}", and run this again.`, { internal: false });
+      if (stepStats.isSymbolicLink())
+        throw new AdapterFault(
+          `"${stepPath}" is a link, and nothing is written through one.`,
+          `Delete "${stepPath}", and run this again.`,
+          { internal: false },
+        );
     }
-    const checkoutEnv = { ...process.env, GIT_DIR: storeFolder, GIT_WORK_TREE: checkoutFolder, GIT_INDEX_FILE: join(storeFolder, "cw-checkout-index") };
+    const checkoutEnv = {
+      ...process.env,
+      GIT_DIR: storeFolder,
+      GIT_WORK_TREE: checkoutFolder,
+      GIT_INDEX_FILE: join(storeFolder, "cw-checkout-index"),
+    };
     try {
-      for (const staleFolder of [checkoutFolder, copyFolder, previousFolder]) await rm(staleFolder, { recursive: true, force: true });
+      for (const staleFolder of [checkoutFolder, copyFolder, previousFolder])
+        await rm(staleFolder, { recursive: true, force: true });
       await rm(checkoutEnv.GIT_INDEX_FILE, { force: true });
       await mkdir(checkoutFolder);
-      await runGit("git", ["read-tree", `--prefix=${intoSubFolder}/`, fromFolder === "" ? FETCHED_REF : `${FETCHED_REF}:${fromFolder}`], { cwd: checkoutFolder, env: checkoutEnv });
+      await runGit(
+        "git",
+        ["read-tree", `--prefix=${intoSubFolder}/`, fromFolder === "" ? FETCHED_REF : `${FETCHED_REF}:${fromFolder}`],
+        { cwd: checkoutFolder, env: checkoutEnv },
+      );
       await runGit("git", ["checkout-index", "--all", "--force"], { cwd: checkoutFolder, env: checkoutEnv });
       await cp(join(checkoutFolder, intoSubFolder), copyFolder, { recursive: true, verbatimSymlinks: true });
       await rename(intoFolder, previousFolder).catch((renameError: NodeJS.ErrnoException) => {
@@ -147,12 +233,25 @@ export class GitSources implements ForFetchingCharterSources {
     } catch (checkoutError) {
       await rm(copyFolder, { recursive: true, force: true });
       await rename(previousFolder, intoFolder).catch((renameError: NodeJS.ErrnoException) => {
-        if (renameError.code !== "ENOENT") throw new AdapterFault(`What "${intoSubFolder}" held could not be put back.`, `What "${intoSubFolder}" held is in "${intoSubFolder}.cw-previous": put it back by hand.`, { internal: false, cause: renameError });
+        if (renameError.code !== "ENOENT")
+          throw new AdapterFault(
+            `What "${intoSubFolder}" held could not be put back.`,
+            `What "${intoSubFolder}" held is in "${intoSubFolder}.cw-previous": put it back by hand.`,
+            { internal: false, cause: renameError },
+          );
       });
-      throw new AdapterFault(`"${intoSubFolder}" could not be checked out.`, `Check that "${intoSubFolder}" can be written, and run this again.`, { internal: false, cause: checkoutError });
+      throw new AdapterFault(
+        `"${intoSubFolder}" could not be checked out.`,
+        `Check that "${intoSubFolder}" can be written, and run this again.`,
+        { internal: false, cause: checkoutError },
+      );
     }
     await rm(previousFolder, { recursive: true, force: true }).catch((rmError: unknown) => {
-      throw new AdapterFault(`"${intoSubFolder}.cw-previous" could not be deleted.`, `"${intoSubFolder}" is in place: delete "${intoSubFolder}.cw-previous" beside it.`, { internal: false, cause: rmError });
+      throw new AdapterFault(
+        `"${intoSubFolder}.cw-previous" could not be deleted.`,
+        `"${intoSubFolder}" is in place: delete "${intoSubFolder}.cw-previous" beside it.`,
+        { internal: false, cause: rmError },
+      );
     });
   }
 

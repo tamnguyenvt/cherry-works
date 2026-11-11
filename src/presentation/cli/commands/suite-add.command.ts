@@ -1,5 +1,5 @@
 import { TEST_DIRECTORY } from "#module/charter/module.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Outcome } from "./command.interface.js";
+import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from "./command.interface.js";
 import { printFault } from "./helper.js";
 
 /**
@@ -16,7 +16,11 @@ export class SuiteAddCommand implements Command {
     const { name } = testSuiteNameDTO.data;
     return {
       code: EXIT_OK,
-      result: [`Wrote ${TEST_DIRECTORY}/${name}.`, `Run "cw suite edit ${name}" to write its cases, then "cw test".`, ""].join("\n"),
+      result: [
+        `Wrote ${TEST_DIRECTORY}/${name}.`,
+        `Run "cw suite edit ${name}" to write its cases, then "cw test".`,
+        "",
+      ].join("\n"),
     };
   }
 }

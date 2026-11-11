@@ -1,6 +1,6 @@
 import type { FaultDTOs } from "../../../../shared/module.js";
-import type { WorkspaceDTOs } from "./workspace.dto.js";
 import { SettingsFile } from "../../../domain/value-objects/settings-file.js";
+import type { WorkspaceDTOs } from "./workspace.dto.js";
 
 /** Where a repository keeps its settings, from its root, the way a driver
  *  names the file a settings fault is about. */
@@ -35,5 +35,9 @@ export interface ForManagingWorkspace {
    * No agent, an agent this engine compiles for none of, and a ceiling that
    * is no whole number above 0 are refused, nothing kept (FR-033).
    */
-  setUp(agents: readonly string[], cwVersion: string, mainContextCeiling?: number): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
+  setUp(
+    agents: readonly string[],
+    cwVersion: string,
+    mainContextCeiling?: number,
+  ): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
 }

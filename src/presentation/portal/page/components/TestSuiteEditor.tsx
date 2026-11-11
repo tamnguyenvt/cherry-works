@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { FaultDTOs } from "#module/shared/module.js";
+import { DIALOG_FOOTER } from "../lib/utils.js";
 import { useRemoveTestSuite, useTestSuites, useWriteTestSuite } from "../queries.js";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert.js";
 import { Button } from "./ui/button.js";
-import { DIALOG_FOOTER } from "../lib/utils.js";
 
 /**
  * One test file's text, to correct and save, or to delete (FR-090, FR-092).
@@ -20,12 +20,17 @@ export function TestSuiteEditor({
   onClose: () => void;
 }) {
   const testSuitesQuery = useTestSuites();
-  const testSuite = testSuitesQuery.data?.type === "TestSuites" ? testSuitesQuery.data.data.testSuites.find(({ data }) => data.name === name) : undefined;
+  const testSuite =
+    testSuitesQuery.data?.type === "TestSuites"
+      ? testSuitesQuery.data.data.testSuites.find(({ data }) => data.name === name)
+      : undefined;
   // The text is read once, when the file is first in the listing: a listing
   // asked again while it is being edited does not write over what was typed. A
   // file that does not read has none to show, and opens empty.
   if (testSuite === undefined) return null;
-  return <TestSuiteText key={name} name={name} initialText={testSuite.data.text ?? ""} onDone={onDone} onClose={onClose} />;
+  return (
+    <TestSuiteText key={name} name={name} initialText={testSuite.data.text ?? ""} onDone={onDone} onClose={onClose} />
+  );
 }
 
 function TestSuiteText({
@@ -59,8 +64,8 @@ function TestSuiteText({
   return (
     <div className="space-y-3">
       <p className="text-xs leading-[1.65] text-zinc-600 [&_code]:font-mono">
-        A case is one situation — a touched file (<code>do.touchFile</code>) or a raised event (<code>when</code>) — and expects one thing:{" "}
-        <code>activate</code>, <code>run</code> or <code>allow</code>.
+        A case is one situation — a touched file (<code>do.touchFile</code>) or a raised event (<code>when</code>) — and
+        expects one thing: <code>activate</code>, <code>run</code> or <code>allow</code>.
       </p>
       <textarea
         aria-label="Test file text"
@@ -79,7 +84,9 @@ function TestSuiteText({
           </AlertDescription>
         </Alert>
       )}
-      <p className="text-[11.5px] leading-[1.6] text-zinc-400">Read only when tests run — never compiled, never read by an agent.</p>
+      <p className="text-[11.5px] leading-[1.6] text-zinc-400">
+        Read only when tests run — never compiled, never read by an agent.
+      </p>
       <div className={DIALOG_FOOTER}>
         <Button disabled={writeTestSuite.isPending} onClick={() => void saveText()}>
           Save
@@ -87,7 +94,12 @@ function TestSuiteText({
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="destructive" className="ml-auto" disabled={removeTestSuite.isPending} onClick={() => void deleteFile()}>
+        <Button
+          variant="destructive"
+          className="ml-auto"
+          disabled={removeTestSuite.isPending}
+          onClick={() => void deleteFile()}
+        >
           Delete file
         </Button>
       </div>

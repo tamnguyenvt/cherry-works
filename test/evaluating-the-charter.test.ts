@@ -1,19 +1,19 @@
-import prompts from "prompts";
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { test } from "node:test";
+import prompts from "prompts";
+import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import type { PromptfooTestResult } from "../src/module/runtime/app/port/out/running-promptfoo.port.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryPromptfoo } from "../src/module/runtime/infra/in-memory/in-memory-promptfoo.adapter.js";
+import { InMemoryWorktrees } from "../src/module/runtime/infra/in-memory/in-memory-worktrees.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryPromptfoo } from "../src/module/runtime/infra/in-memory/in-memory-promptfoo.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
-import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
-import { InMemoryWorktrees } from "../src/module/runtime/infra/in-memory/in-memory-worktrees.adapter.js";
-import { authoringCharterOf, runningCharterOf, commandLineOf } from "./use-cases-of.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { authoringCharterOf, commandLineOf, runningCharterOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
 const at = (path: string) => new URL(path, repoPath).href;
@@ -43,13 +43,18 @@ const holding = (evalCases: readonly object[]) => ({
     ["description: Name a variable after what it holds.", 'globs: ["src/**/*.ts"]'],
     "Never name a variable `data`.",
   ),
-  [at(".cw/charter/test/guides.json")]: JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "plain-names" } }] }),
+  [at(".cw/charter/test/guides.json")]: JSON.stringify({
+    cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "plain-names" } }],
+  }),
   [at(".cw/charter/eval/skills.json")]: JSON.stringify({ cases: evalCases }),
 });
 
 /** How promptfoo graded one test: each assertion's pass and reason, and the
  *  tokens the agent used. */
-const promptfooResult = (totalTokens: number, componentResults: PromptfooTestResult["componentResults"] = []): PromptfooTestResult => ({
+const promptfooResult = (
+  totalTokens: number,
+  componentResults: PromptfooTestResult["componentResults"] = [],
+): PromptfooTestResult => ({
   success: componentResults.every(({ pass }) => pass),
   totalTokens,
   componentResults,
@@ -57,15 +62,37 @@ const promptfooResult = (totalTokens: number, componentResults: PromptfooTestRes
 
 /** The command line over one repository held in memory, promptfoo and the
  *  agent's command line answering as a test says. */
-const surfaces = (files: Readonly<Record<string, string>>, promptfoo: InMemoryPromptfoo, agentCli = new InMemoryAgentCli(), isVersioned = true) => {
+const surfaces = (
+  files: Readonly<Record<string, string>>,
+  promptfoo: InMemoryPromptfoo,
+  agentCli = new InMemoryAgentCli(),
+  isVersioned = true,
+) => {
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources(fileReaders);
   const worktrees = new InMemoryWorktrees(fileReaders, isVersioned);
   promptfoo.folderFiles = fileReaders;
   const fileOutput = new InMemoryFileOutput(fileReaders);
   const reporter = new InMemoryReporter();
-  const charterRuntimeApp = runningCharterOf(fileReaders, reporter, { fileWriter: fileOutput, tokenCounter: new InMemoryTokenCounter(), worktrees, agentCliByProvider: { claude: agentCli, codex: agentCli }, promptfooRunner: promptfoo });
-  const cli = new Commander(commandLineOf(fileReaders, fileOutput, { charterAuthoringApp: authoringCharterOf(fileReaders, fileOutput, new InMemoryReporter(), { sourceFetcher }), charterRuntimeApp }, "/repo"), COMMANDS, );
+  const charterRuntimeApp = runningCharterOf(fileReaders, reporter, {
+    fileWriter: fileOutput,
+    tokenCounter: new InMemoryTokenCounter(),
+    worktrees,
+    agentCliByProvider: { claude: agentCli, codex: agentCli },
+    promptfooRunner: promptfoo,
+  });
+  const cli = new Commander(
+    commandLineOf(
+      fileReaders,
+      fileOutput,
+      {
+        charterAuthoringApp: authoringCharterOf(fileReaders, fileOutput, new InMemoryReporter(), { sourceFetcher }),
+        charterRuntimeApp,
+      },
+      "/repo",
+    ),
+    COMMANDS,
+  );
   return { fileReaders, worktrees, reporter, cli };
 };
 
@@ -87,10 +114,19 @@ const printed = async (cli: Commander, argv: readonly string[]) => {
 
 test("a case expecting a skill is handed to promptfoo as skill-used, and passes or fails as promptfoo grades it, saying which skills were invoked (EVAL Story 6 scenario 1)", async () => {
   const promptfoo = new InMemoryPromptfoo();
-  promptfoo.resultByPrompt.set("plan this feature: export", promptfooResult(1_200, [{ assertionType: "skill-used", pass: true, reason: "All required skills used" }]));
+  promptfoo.resultByPrompt.set(
+    "plan this feature: export",
+    promptfooResult(1_200, [{ assertionType: "skill-used", pass: true, reason: "All required skills used" }]),
+  );
   promptfoo.resultByPrompt.set(
     "refactor this file",
-    promptfooResult(800, [{ assertionType: "skill-used", pass: false, reason: "Missing required skill(s): refactoring. Actual skills: planning" }]),
+    promptfooResult(800, [
+      {
+        assertionType: "skill-used",
+        pass: false,
+        reason: "Missing required skill(s): refactoring. Actual skills: planning",
+      },
+    ]),
   );
   const { cli } = surfaces(
     holding([
@@ -105,13 +141,19 @@ test("a case expecting a skill is handed to promptfoo as skill-used, and passes 
   assert.deepEqual(promptfoo.evaluatedTests[0]?.assertions, [{ type: "skill-used", value: "planning" }]);
   assert.equal(code, EXIT_FAILURE);
   assert.match(result, /pass\s+1,200 tokens\s+plan this feature: export/);
-  assert.match(result, /FAIL\s+800 tokens\s+refactor this file\n\s+Missing required skill\(s\): refactoring\. Actual skills: planning/);
+  assert.match(
+    result,
+    /FAIL\s+800 tokens\s+refactor this file\n\s+Missing required skill\(s\): refactoring\. Actual skills: planning/,
+  );
   assert.match(result, /1 of 2 cases failed, 2,000 tokens in all\./);
 });
 
 test("a case expecting a guide followed is handed to promptfoo as an agent-rubric with the guide, and fails with the grader's reason (EVAL Story 6 scenario 2)", async () => {
   const promptfoo = new InMemoryPromptfoo();
-  promptfoo.resultByPrompt.set("write a parser", promptfooResult(1_000, [{ assertionType: "agent-rubric", pass: false, reason: "It names a variable data." }]));
+  promptfoo.resultByPrompt.set(
+    "write a parser",
+    promptfooResult(1_000, [{ assertionType: "agent-rubric", pass: false, reason: "It names a variable data." }]),
+  );
   const { cli } = surfaces(holding([{ prompt: "write a parser", expect: { follow: "plain-names" } }]), promptfoo);
 
   const { code, result } = await printed(cli, ["eval"]);
@@ -120,7 +162,10 @@ test("a case expecting a guide followed is handed to promptfoo as an agent-rubri
   assert.equal(rubricAssertion?.type, "agent-rubric");
   assert.match(rubricAssertion?.value ?? "", /Never name a variable `data`\./);
   assert.equal(code, EXIT_FAILURE);
-  assert.match(result, /FAIL\s+1,000 tokens\s+write a parser\n\s+"plain-names" was not followed: It names a variable data\./);
+  assert.match(
+    result,
+    /FAIL\s+1,000 tokens\s+write a parser\n\s+"plain-names" was not followed: It names a variable data\./,
+  );
 });
 
 test("a guide is handed to the grader as written: what reads as a template in it is not rendered", async () => {
@@ -139,14 +184,23 @@ test("a guide is handed to the grader as written: what reads as a template in it
   await printed(cli, ["eval"]);
 
   const [rubricAssertion] = promptfoo.evaluatedTests[0]?.assertions ?? [];
-  assert.match(rubricAssertion?.value ?? "", /\{% raw %\}Never write `\{\{ data \}\}` or `\{% for data in items %\}`\.\{% endraw %\}/);
+  assert.match(
+    rubricAssertion?.value ?? "",
+    /\{% raw %\}Never write `\{\{ data \}\}` or `\{% for data in items %\}`\.\{% endraw %\}/,
+  );
 });
 
 test("a case naming a number of tokens is handed to promptfoo as a check of the tokens the agent used, and fails saying how many (EVAL Story 6 scenario 3)", async () => {
   const promptfoo = new InMemoryPromptfoo();
   promptfoo.resultByPrompt.set(
     "plan this feature",
-    promptfooResult(30_000, [{ assertionType: "javascript", pass: false, reason: "The agent used 30000 tokens, more than the 20000 this case allows." }]),
+    promptfooResult(30_000, [
+      {
+        assertionType: "javascript",
+        pass: false,
+        reason: "The agent used 30000 tokens, more than the 20000 this case allows.",
+      },
+    ]),
   );
   const { cli } = surfaces(holding([{ prompt: "plan this feature", expect: { maxTokens: 20_000 } }]), promptfoo);
 
@@ -162,7 +216,12 @@ test("a case naming a number of tokens is handed to promptfoo as a check of the 
 
 test("a case promptfoo could not run fails with promptfoo's error", async () => {
   const promptfoo = new InMemoryPromptfoo();
-  promptfoo.resultByPrompt.set("plan this feature", { success: false, totalTokens: 0, componentResults: [], error: "Error calling Claude Agent SDK: not signed in" });
+  promptfoo.resultByPrompt.set("plan this feature", {
+    success: false,
+    totalTokens: 0,
+    componentResults: [],
+    error: "Error calling Claude Agent SDK: not signed in",
+  });
   const { cli } = surfaces(holding([{ prompt: "plan this feature", expect: { invoke: "planning" } }]), promptfoo);
 
   const { code, result } = await printed(cli, ["eval"]);
@@ -173,8 +232,14 @@ test("a case promptfoo could not run fails with promptfoo's error", async () => 
 
 test("every case passing passes the run, each case's tokens and the total said (EVAL Story 6 scenario 4)", async () => {
   const promptfoo = new InMemoryPromptfoo();
-  promptfoo.resultByPrompt.set("plan this feature", promptfooResult(4_000, [{ assertionType: "skill-used", pass: true, reason: "ok" }]));
-  promptfoo.resultByPrompt.set("refactor this", promptfooResult(6_000, [{ assertionType: "skill-used", pass: true, reason: "ok" }]));
+  promptfoo.resultByPrompt.set(
+    "plan this feature",
+    promptfooResult(4_000, [{ assertionType: "skill-used", pass: true, reason: "ok" }]),
+  );
+  promptfoo.resultByPrompt.set(
+    "refactor this",
+    promptfooResult(6_000, [{ assertionType: "skill-used", pass: true, reason: "ok" }]),
+  );
   const { cli } = surfaces(
     holding([
       { prompt: "plan this feature", expect: { invoke: "planning", maxTokens: 5_000 } },
@@ -230,7 +295,11 @@ test("the worktrees a run stopped halfway left are removed when the next run sta
 
 test("a run with the agent's command line not installed is refused before any case runs, saying what it needs (EVAL Story 6 scenario 6)", async () => {
   const promptfoo = new InMemoryPromptfoo();
-  const { cli } = surfaces(holding([{ prompt: "plan this feature", expect: { invoke: "planning" } }]), promptfoo, new InMemoryAgentCli(false));
+  const { cli } = surfaces(
+    holding([{ prompt: "plan this feature", expect: { invoke: "planning" } }]),
+    promptfoo,
+    new InMemoryAgentCli(false),
+  );
 
   const { code, problem } = await printed(cli, ["eval"]);
 
@@ -274,7 +343,10 @@ test("a case naming a skill or a guide the charter does not hold refuses the run
 
 test("an evaluation file that does not read refuses the run, and none written is said and passes", async () => {
   const promptfoo = new InMemoryPromptfoo();
-  const badFiles = { ...holding([]), [at(".cw/charter/eval/skills.json")]: JSON.stringify({ cases: [{ prompt: "plan", expect: {} }] }) };
+  const badFiles = {
+    ...holding([]),
+    [at(".cw/charter/eval/skills.json")]: JSON.stringify({ cases: [{ prompt: "plan", expect: {} }] }),
+  };
   const refused = await printed(surfaces(badFiles, promptfoo).cli, ["eval"]);
   assert.equal(refused.code, EXIT_FAILURE);
   assert.match(refused.problem, /\.cw\/charter\/eval\/skills\.json/);
@@ -289,22 +361,43 @@ test("an evaluation file that does not read refuses the run, and none written is
 for (const agentName of ["claude", "codex"]) {
   test(`explicit ${agentName} runs unchanged expectations and identifies the agent (EVAL Story 7 scenarios 1, 8)`, async () => {
     const promptfooRunner = new InMemoryPromptfoo();
-    promptfooRunner.resultByPrompt.set("plan", promptfooResult(123, [{ assertionType: "skill-used", pass: false, reason: "Missing skill: planning" }]));
-    const repositoryFiles = { ...holding([{ prompt: "plan", expect: { invoke: "planning", follow: "plain-names", maxTokens: 100 } }]), [at(".cw/settings.json")]: JSON.stringify({ agents: ["claude", "codex"] }) };
+    promptfooRunner.resultByPrompt.set(
+      "plan",
+      promptfooResult(123, [{ assertionType: "skill-used", pass: false, reason: "Missing skill: planning" }]),
+    );
+    const repositoryFiles = {
+      ...holding([{ prompt: "plan", expect: { invoke: "planning", follow: "plain-names", maxTokens: 100 } }]),
+      [at(".cw/settings.json")]: JSON.stringify({ agents: ["claude", "codex"] }),
+    };
     const { cli, worktrees, fileReaders } = surfaces(repositoryFiles, promptfooRunner);
     const commandOutput = await printed(cli, ["eval", `--agent=${agentName}`]);
     assert.equal(commandOutput.code, EXIT_FAILURE);
     assert.match(commandOutput.result, new RegExp(`Agent: ${agentName}`));
     assert.match(commandOutput.result, /123 tokens/);
     assert.equal(promptfooRunner.evaluatedTests[0]?.agent, agentName);
-    assert.deepEqual(promptfooRunner.evaluatedTests[0]?.assertions.map(({ type }) => type), ["skill-used", "agent-rubric", "javascript"]);
-    assert.ok(promptfooRunner.evaluatedTests[0]?.builtFiles.some((filePath) => filePath.endsWith(agentName === "codex" ? ".agents/skills/planning/SKILL.md" : ".claude/skills/planning/SKILL.md")));
+    assert.deepEqual(
+      promptfooRunner.evaluatedTests[0]?.assertions.map(({ type }) => type),
+      ["skill-used", "agent-rubric", "javascript"],
+    );
+    assert.ok(
+      promptfooRunner.evaluatedTests[0]?.builtFiles.some((filePath) =>
+        filePath.endsWith(
+          agentName === "codex" ? ".agents/skills/planning/SKILL.md" : ".claude/skills/planning/SKILL.md",
+        ),
+      ),
+    );
     assert.deepEqual(worktrees.worktreePaths, []);
-    assert.deepEqual((await fileReaders.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort(), Object.keys(repositoryFiles).sort());
+    assert.deepEqual(
+      (await fileReaders.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort(),
+      Object.keys(repositoryFiles).sort(),
+    );
   });
   test(`a sole configured ${agentName} is selected automatically (EVAL Story 7 scenario 2)`, async () => {
     const promptfooRunner = new InMemoryPromptfoo();
-    const repositoryFiles = { ...holding([{ prompt: "plan", expect: { invoke: "planning" } }]), [at(".cw/settings.json")]: JSON.stringify({ agents: [agentName] }) };
+    const repositoryFiles = {
+      ...holding([{ prompt: "plan", expect: { invoke: "planning" } }]),
+      [at(".cw/settings.json")]: JSON.stringify({ agents: [agentName] }),
+    };
     const commandOutput = await printed(surfaces(repositoryFiles, promptfooRunner).cli, ["eval"]);
     assert.equal(commandOutput.code, EXIT_OK);
     assert.equal(promptfooRunner.evaluatedTests[0]?.agent, agentName);
@@ -324,7 +417,10 @@ for (const selectionCase of [
     const repositoryFiles = { ...holding([{ prompt: "plan", expect: { invoke: "planning" } }]) };
     if (selectionCase.agents === undefined) delete repositoryFiles[at(".cw/settings.json")];
     else repositoryFiles[at(".cw/settings.json")] = JSON.stringify({ agents: selectionCase.agents });
-    const commandOutput = await printed(surfaces(repositoryFiles, promptfooRunner, new InMemoryAgentCli(selectionCase.isInstalled ?? true)).cli, selectionCase.argv);
+    const commandOutput = await printed(
+      surfaces(repositoryFiles, promptfooRunner, new InMemoryAgentCli(selectionCase.isInstalled ?? true)).cli,
+      selectionCase.argv,
+    );
     assert.equal(commandOutput.code, EXIT_FAILURE);
     assert.match(commandOutput.problem, selectionCase.expectedProblem);
     assert.equal(promptfooRunner.evaluatedTests.length, 0);
@@ -339,7 +435,10 @@ for (const selectedAgent of ["codex", undefined]) {
     prompts.inject([selectedAgent]);
     try {
       const promptfooRunner = new InMemoryPromptfoo();
-      const repositoryFiles = { ...holding([{ prompt: "plan", expect: { invoke: "planning" } }]), [at(".cw/settings.json")]: JSON.stringify({ agents: ["claude", "codex"] }) };
+      const repositoryFiles = {
+        ...holding([{ prompt: "plan", expect: { invoke: "planning" } }]),
+        [at(".cw/settings.json")]: JSON.stringify({ agents: ["claude", "codex"] }),
+      };
       const commandOutput = await printed(surfaces(repositoryFiles, promptfooRunner).cli, ["eval"]);
       assert.equal(commandOutput.code, selectedAgent === undefined ? EXIT_FAILURE : EXIT_OK);
       assert.equal(promptfooRunner.evaluatedTests.length, selectedAgent === undefined ? 0 : 1);
@@ -361,14 +460,29 @@ test("invalid agent is refused even when there are no cases", async () => {
 
 test("a read-only expectation is accepted and handed to promptfoo without requiring an invocation", async () => {
   const promptfoo = new InMemoryPromptfoo();
-  const { cli } = surfaces(holding([{ prompt: "verify this branch", expect: { read: ".cw/out/skill/planning/index.md" } }]), promptfoo);
+  const { cli } = surfaces(
+    holding([{ prompt: "verify this branch", expect: { read: ".cw/out/skill/planning/index.md" } }]),
+    promptfoo,
+  );
   const { code } = await printed(cli, ["eval"]);
   assert.equal(code, EXIT_OK);
-  assert.deepEqual(promptfoo.evaluatedTests[0]?.assertions, [{ type: "file-read", value: ".cw/out/skill/planning/index.md" }]);
+  assert.deepEqual(promptfoo.evaluatedTests[0]?.assertions, [
+    { type: "file-read", value: ".cw/out/skill/planning/index.md" },
+  ]);
 });
 
 test("read expectations reject absolute, traversal, empty and control-character paths before running an agent", async () => {
-  for (const filePath of ["", "/etc/passwd", "../secret", "a/../secret", "a/./file", "a//file", "C:/secret", "a\\file", "a\nfile"]) {
+  for (const filePath of [
+    "",
+    "/etc/passwd",
+    "../secret",
+    "a/../secret",
+    "a/./file",
+    "a//file",
+    "C:/secret",
+    "a\\file",
+    "a\nfile",
+  ]) {
     const promptfoo = new InMemoryPromptfoo();
     const { cli } = surfaces(holding([{ prompt: "read", expect: { read: filePath } }]), promptfoo);
     const { code } = await printed(cli, ["eval"]);
@@ -379,12 +493,28 @@ test("read expectations reject absolute, traversal, empty and control-character 
 
 test("eval prints retained promptfoo and agent session paths, and eval-analyze reads saved evidence without evaluating", async () => {
   const promptfoo = new InMemoryPromptfoo();
-  promptfoo.resultByPrompt.set("plan", { ...promptfooResult(123), logPath: "/logs/case.json", sessionId: "session-one", sessionPath: "/sessions/session-one.jsonl" });
+  promptfoo.resultByPrompt.set("plan", {
+    ...promptfooResult(123),
+    logPath: "/logs/case.json",
+    sessionId: "session-one",
+    sessionPath: "/sessions/session-one.jsonl",
+  });
   promptfoo.savedLogs.push({
-    logPath: "/logs/case.json", createdAt: "2026-10-31T02:00:00.000Z", agent: "codex", prompt: "plan",
-    workingFolderPath: "/repo/.cw/log/eval/worktrees/1", outputPath: "/logs/output.json", stdoutPath: "/logs/stdout.log", stderrPath: "/logs/stderr.log",
-    success: false, totalTokens: 123, unmetReasons: ["Missing required skill(s): planning"], answer: "I read the instructions.",
-    toolCalls: ['{"command":"cat instructions.md","exit_code":0}'], sessionId: "session-one", sessionPath: "/sessions/session-one.jsonl",
+    logPath: "/logs/case.json",
+    createdAt: "2026-10-31T02:00:00.000Z",
+    agent: "codex",
+    prompt: "plan",
+    workingFolderPath: "/repo/.cw/log/eval/worktrees/1",
+    outputPath: "/logs/output.json",
+    stdoutPath: "/logs/stdout.log",
+    stderrPath: "/logs/stderr.log",
+    success: false,
+    totalTokens: 123,
+    unmetReasons: ["Missing required skill(s): planning"],
+    answer: "I read the instructions.",
+    toolCalls: ['{"command":"cat instructions.md","exit_code":0}'],
+    sessionId: "session-one",
+    sessionPath: "/sessions/session-one.jsonl",
   });
   const { cli } = surfaces(holding([{ prompt: "plan", expect: { invoke: "planning" } }]), promptfoo);
   const evalOutput = await printed(cli, ["eval"]);
@@ -423,11 +553,19 @@ test("a case outside a git repository is refused in git's words, naming git init
   assert.match(problem, /not a git repository/);
   assert.match(problem, /git init/);
   assert.deepEqual(worktrees.worktreePaths, []);
-  assert.deepEqual((await fileReaders.readFilesRecursively(repoPath)).map(({ file }) => file.href).sort(), Object.keys(files).sort());
+  assert.deepEqual(
+    (await fileReaders.readFilesRecursively(repoPath)).map(({ file }) => file.href).sort(),
+    Object.keys(files).sort(),
+  );
 });
 
 test("no case outside a git repository answers that there is none, as in a repository (CORE-FR-206)", async () => {
-  const { cli } = surfaces({ [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n` }, new InMemoryPromptfoo(), new InMemoryAgentCli(), false);
+  const { cli } = surfaces(
+    { [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n` },
+    new InMemoryPromptfoo(),
+    new InMemoryAgentCli(),
+    false,
+  );
 
   const commandOutput = await printed(cli, ["eval"]);
 
@@ -436,7 +574,15 @@ test("no case outside a git repository answers that there is none, as in a repos
 });
 
 test("a folder of notes and no case outside a git repository answers that there is none (CORE-FR-206)", async () => {
-  const { cli } = surfaces({ [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`, [at(".cw/charter/eval/notes.md")]: "# Notes\n" }, new InMemoryPromptfoo(), new InMemoryAgentCli(), false);
+  const { cli } = surfaces(
+    {
+      [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
+      [at(".cw/charter/eval/notes.md")]: "# Notes\n",
+    },
+    new InMemoryPromptfoo(),
+    new InMemoryAgentCli(),
+    false,
+  );
 
   const commandOutput = await printed(cli, ["eval"]);
 
@@ -446,7 +592,12 @@ test("a folder of notes and no case outside a git repository answers that there 
 
 test("what a stopped run left, and no case, outside a git repository answers that there is none (CORE-FR-206)", async () => {
   const settingsFile = `${JSON.stringify({ agents: ["claude"] })}\n`;
-  const { cli } = surfaces({ [at(".cw/settings.json")]: settingsFile, [at(".cw/log/eval/worktrees/7/.cw/settings.json")]: settingsFile }, new InMemoryPromptfoo(), new InMemoryAgentCli(), false);
+  const { cli } = surfaces(
+    { [at(".cw/settings.json")]: settingsFile, [at(".cw/log/eval/worktrees/7/.cw/settings.json")]: settingsFile },
+    new InMemoryPromptfoo(),
+    new InMemoryAgentCli(),
+    false,
+  );
 
   const commandOutput = await printed(cli, ["eval"]);
 

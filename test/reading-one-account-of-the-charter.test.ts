@@ -1,6 +1,6 @@
+import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import assert from "node:assert/strict";
 
 const coreSpecText = readFileSync(new URL("../specs/spec-core.md", import.meta.url), "utf8");
 const evalSpecText = readFileSync(new URL("../specs/spec-eval.md", import.meta.url), "utf8");
@@ -13,7 +13,10 @@ const sectionTextOf = (specText: string, heading: string): string => {
   const headingRank = heading.match(/^#+/)?.[0].length ?? 0;
   const restText = specText.slice(startIndex + heading.length);
   const nextHeadingIndex = restText.search(new RegExp(`\\n#{1,${headingRank}} `));
-  return specText.slice(startIndex, startIndex + heading.length + (nextHeadingIndex < 0 ? restText.length : nextHeadingIndex));
+  return specText.slice(
+    startIndex,
+    startIndex + heading.length + (nextHeadingIndex < 0 ? restText.length : nextHeadingIndex),
+  );
 };
 
 const storyTextOf = (heading: string): string => sectionTextOf(coreSpecText, heading);
@@ -26,10 +29,16 @@ const requirementTextOf = (requirementId: string): string => {
 
 test("a story or an edge case about mixins and ids agrees with a body-only mixin and one id (CORE Story 40 scenario 1)", () => {
   const story26Text = storyTextOf("### CORE Story 26 -");
-  const story26Scenario2Text = story26Text.slice(story26Text.indexOf("2. **Given** a guide and a skill of one id"), story26Text.indexOf("\n3. **Given**"));
+  const story26Scenario2Text = story26Text.slice(
+    story26Text.indexOf("2. **Given** a guide and a skill of one id"),
+    story26Text.indexOf("\n3. **Given**"),
+  );
   const mixinEdgeCaseText = coreSpecText.slice(coreSpecText.indexOf("- A mixin and its host"));
   const keptApartAnswerText = coreSpecText.slice(coreSpecText.indexOf("what keeps them apart now?"));
-  const mcpNameAnswerText = coreSpecText.slice(coreSpecText.indexOf("Is the name of an `mcp` primitive its address?"), coreSpecText.indexOf("Is an mcp origin only"));
+  const mcpNameAnswerText = coreSpecText.slice(
+    coreSpecText.indexOf("Is the name of an `mcp` primitive its address?"),
+    coreSpecText.indexOf("Is an mcp origin only"),
+  );
 
   assert.match(story26Scenario2Text, /collision two files claiming one id always are, naming both/);
   assert.equal(story26Scenario2Text.includes("they are two files, each in its host's folder for its kind"), false);
@@ -42,15 +51,22 @@ test("a story or an edge case about mixins and ids agrees with a body-only mixin
   assert.equal(mixinEdgeCaseText.slice(0, 500).includes("the host wins"), false);
   assert.equal(mixinEdgeCaseText.slice(0, 500).includes("the values merge"), false);
   assert.match(requirementTextOf("CORE-FR-006"), /No field is merged: a mixin lends text, not fields/);
-  assert.match(requirementTextOf("CORE-FR-015"), /An id MUST name one primitive in the whole charter, whatever its kind/);
+  assert.match(
+    requirementTextOf("CORE-FR-015"),
+    /An id MUST name one primitive in the whole charter, whatever its kind/,
+  );
 });
 
 test("health reporting and a guide with no globs agree on the three questions and a valid guide (CORE Story 40 scenario 2)", () => {
   const story6Text = storyTextOf("### CORE Story 6 -");
   const story7Text = storyTextOf("### CORE Story 7 -");
-  const threeAnswersText = "which agents the repository chose, whether validation passes, and whether compiled output is out of date";
+  const threeAnswersText =
+    "which agents the repository chose, whether validation passes, and whether compiled output is out of date";
 
-  const guideSentenceLineText = story6Text.slice(story6Text.indexOf("A guide with no globs is valid"), story6Text.indexOf("\n", story6Text.indexOf("A guide with no globs is valid")));
+  const guideSentenceLineText = story6Text.slice(
+    story6Text.indexOf("A guide with no globs is valid"),
+    story6Text.indexOf("\n", story6Text.indexOf("A guide with no globs is valid")),
+  );
 
   assert.equal(story6Text.includes("a guide with no glob,"), false);
   assert.match(story6Text, /A guide with no globs is valid/);
@@ -63,14 +79,23 @@ test("health reporting and a guide with no globs agree on the three questions an
   assert.equal(story7Text.includes(threeAnswersText), false);
   assert.equal(requirementTextOf("CORE-FR-121").includes(threeAnswersText), false);
   assert.match(story7Text, /the same answers `cw doctor` gives \(\[CORE-FR-080\]\(#core-fr-080\)\)/);
-  assert.match(requirementTextOf("CORE-FR-121"), /the same answers `cw doctor` reports \(\[CORE-FR-080\]\(#core-fr-080\)\)/);
+  assert.match(
+    requirementTextOf("CORE-FR-121"),
+    /the same answers `cw doctor` reports \(\[CORE-FR-080\]\(#core-fr-080\)\)/,
+  );
   assert.equal(requirementTextOf("CORE-FR-121").includes("four answers"), false);
   // The main context each chosen agent opens with is said beside the
   // answers, in the portal as in `cw doctor` (EVAL-FR-006).
-  assert.match(story7Text, /main context each chosen agent opens a session with, against the ceiling \(\[EVAL-FR-006\]/);
+  assert.match(
+    story7Text,
+    /main context each chosen agent opens a session with, against the ceiling \(\[EVAL-FR-006\]/,
+  );
   assert.match(story7Text, /the same main-context line per chosen agent \(\[EVAL-FR-006\]/);
   assert.match(requirementTextOf("CORE-FR-121"), /the same main-context line for each chosen agent \(\[EVAL-FR-006\]/);
-  assert.match(requirementTextOf("CORE-FR-080"), /which agents the repository chose, whether validation passes, and whether compiled output is out of date/);
+  assert.match(
+    requirementTextOf("CORE-FR-080"),
+    /which agents the repository chose, whether validation passes, and whether compiled output is out of date/,
+  );
   assert.match(requirementTextOf("CORE-FR-081"), /say so rather than fail when the repository chose no agent/);
   assert.match(requirementTextOf("CORE-FR-081"), /MUST ask every one of its questions/);
   assert.match(requirementTextOf("CORE-FR-113"), /when that kind comes up, read off that kind's own contract/);
@@ -80,14 +105,23 @@ test("scope describes a primitive's folder, its binary assets and keeping a skil
   const outOfScopeText = sectionTextOf(coreSpecText, "## Out of Scope");
   const skillFolderAnswerText = coreSpecText.slice(coreSpecText.indexOf("Does a skill become a folder"));
   const story4Text = storyTextOf("### CORE Story 4 -");
-  const story4Scenario1Text = story4Text.slice(story4Text.indexOf("1. **Given** an initialized repository"), story4Text.indexOf("\n2. **Given**"));
-  const primitiveEntityText = coreSpecText.slice(coreSpecText.indexOf("- **Primitive**:"), coreSpecText.indexOf("\n", coreSpecText.indexOf("- **Primitive**:")));
+  const story4Scenario1Text = story4Text.slice(
+    story4Text.indexOf("1. **Given** an initialized repository"),
+    story4Text.indexOf("\n2. **Given**"),
+  );
+  const primitiveEntityText = coreSpecText.slice(
+    coreSpecText.indexOf("- **Primitive**:"),
+    coreSpecText.indexOf("\n", coreSpecText.indexOf("- **Primitive**:")),
+  );
 
   assert.equal(outOfScopeText.includes("A skill kept as a folder holding its own files"), false);
   assert.equal(outOfScopeText.includes("kept as a template or among a script's files"), false);
   assert.equal(outOfScopeText.includes("Keeping a skill or a playbook from the agent itself"), false);
   assert.match(outOfScopeText, /A skill is a folder of its `index\.md` and its assets/);
-  assert.match(outOfScopeText, /A binary file kept as an asset of a primitive, a script's files included, is copied whole/);
+  assert.match(
+    outOfScopeText,
+    /A binary file kept as an asset of a primitive, a script's files included, is copied whole/,
+  );
   assert.match(outOfScopeText, /kept from the agent with `disable-model-invocation: true`/);
   assert.match(skillFolderAnswerText, /It is a folder, as every primitive is/);
   assert.equal(coreSpecText.includes("A primitive is a markdown file with headers"), false);
@@ -112,17 +146,40 @@ test("MCP serving and the catalogue agree on one entry, saved tools, a call and 
   const noMcpEdgeCaseText = coreSpecText.slice(coreSpecText.indexOf("- A charter that declares no `mcp` primitive"));
   const unreachableEdgeCaseText = coreSpecText.slice(coreSpecText.indexOf("- An mcp origin the build cannot reach"));
   const story19OpeningText = story19Text.slice(0, story19Text.indexOf("**Why this priority**"));
-  const story19IndependentTestText = story19Text.slice(story19Text.indexOf("**Independent Test**"), story19Text.indexOf("**Acceptance Scenarios**"));
-  const story19Scenario1Text = story19Text.slice(story19Text.indexOf("1. **Given** a built charter"), story19Text.indexOf("\n2. **Given**"));
-  const story19Scenario6Text = story19Text.slice(story19Text.indexOf("6. **Given** a tool an mcp declares"), story19Text.indexOf("\n7. **Given**"));
-  const story20Scenario4Text = story20Text.slice(story20Text.indexOf("4. **Given** an `agent` whose `tools` lists an mcp"));
+  const story19IndependentTestText = story19Text.slice(
+    story19Text.indexOf("**Independent Test**"),
+    story19Text.indexOf("**Acceptance Scenarios**"),
+  );
+  const story19Scenario1Text = story19Text.slice(
+    story19Text.indexOf("1. **Given** a built charter"),
+    story19Text.indexOf("\n2. **Given**"),
+  );
+  const story19Scenario6Text = story19Text.slice(
+    story19Text.indexOf("6. **Given** a tool an mcp declares"),
+    story19Text.indexOf("\n7. **Given**"),
+  );
+  const story20Scenario4Text = story20Text.slice(
+    story20Text.indexOf("4. **Given** an `agent` whose `tools` lists an mcp"),
+  );
   const story27Scenario5Text = story27Text.slice(story27Text.indexOf("5. **Given** the catalogue"));
-  const ontologyAnswerText = coreSpecText.slice(coreSpecText.indexOf("modelled as an ontology"), coreSpecText.indexOf("Does `cw` run a gateway"));
-  const fewerOriginsAnswerText = coreSpecText.slice(coreSpecText.indexOf("Can a run be held to fewer"), coreSpecText.indexOf("### Session 2026-09-30"));
-  const nameBecomesAnswerText = coreSpecText.slice(coreSpecText.indexOf("What does a name become where it is read?"), coreSpecText.indexOf("Which bodies are rewritten?"));
+  const ontologyAnswerText = coreSpecText.slice(
+    coreSpecText.indexOf("modelled as an ontology"),
+    coreSpecText.indexOf("Does `cw` run a gateway"),
+  );
+  const fewerOriginsAnswerText = coreSpecText.slice(
+    coreSpecText.indexOf("Can a run be held to fewer"),
+    coreSpecText.indexOf("### Session 2026-09-30"),
+  );
+  const nameBecomesAnswerText = coreSpecText.slice(
+    coreSpecText.indexOf("What does a name become where it is read?"),
+    coreSpecText.indexOf("Which bodies are rewritten?"),
+  );
   const evalRequirementStartIndex = evalSpecText.indexOf("**EVAL-FR-031**:");
   assert.notEqual(evalRequirementStartIndex, -1, "EVAL-FR-031");
-  const evalRequirementText = evalSpecText.slice(evalRequirementStartIndex, evalSpecText.indexOf("\n", evalRequirementStartIndex));
+  const evalRequirementText = evalSpecText.slice(
+    evalRequirementStartIndex,
+    evalSpecText.indexOf("\n", evalRequirementStartIndex),
+  );
 
   assert.equal(coreSpecText.includes("catalog.json"), false);
   assert.match(story16Text, /catalogue\.json/);
@@ -134,7 +191,10 @@ test("MCP serving and the catalogue agree on one entry, saved tools, a call and 
   assert.equal(catalogueAnswerText.includes("the same fields"), false);
   assert.match(noMcpEdgeCaseText, /the build still writes the one `cw` entry/);
   assert.equal(coreSpecText.includes("fails to start and is left out"), false);
-  assert.match(sectionTextOf(coreSpecText, "### Edge Cases"), /each stops the build, naming the mcp's file, and writes nothing/);
+  assert.match(
+    sectionTextOf(coreSpecText, "### Edge Cases"),
+    /each stops the build, naming the mcp's file, and writes nothing/,
+  );
   assert.equal(story19Text.includes("when the server starts"), false);
   assert.equal(story19Text.includes("stops it when the server stops"), false);
   assert.match(story19Text, /no mcp origin is reached/);
@@ -154,7 +214,10 @@ test("MCP serving and the catalogue agree on one entry, saved tools, a call and 
   const unreachableEdgeCaseLineText = unreachableEdgeCaseText.slice(0, unreachableEdgeCaseText.indexOf("\n"));
   assert.match(unreachableEdgeCaseLineText, /not signed in to/);
   assert.equal(unreachableEdgeCaseLineText.includes("and a command"), false);
-  assert.match(unreachableEdgeCaseLineText, /or a command that is not installed, each stops the build, naming the mcp's file, and writes nothing/);
+  assert.match(
+    unreachableEdgeCaseLineText,
+    /or a command that is not installed, each stops the build, naming the mcp's file, and writes nothing/,
+  );
   assert.match(ontologyAnswerText, /there is no header for it/);
   assert.match(ontologyAnswerText, /\[\[<id>\]\]/);
   assert.equal(ontologyAnswerText.includes("one header naming"), false);
@@ -168,7 +231,10 @@ test("MCP serving and the catalogue agree on one entry, saved tools, a call and 
   assert.equal(story20Text.includes("answers nothing"), false);
   assert.match(story20Text, /must sign in/);
   assert.equal(story20Scenario4Text.includes("`mcp:`"), false);
-  assert.match(story20Scenario4Text, /a `\[\[…\]\]` entry written neither as `\[\[<id>\]\]` nor as `\[\[<id>\]\]:<tool>`/);
+  assert.match(
+    story20Scenario4Text,
+    /a `\[\[…\]\]` entry written neither as `\[\[<id>\]\]` nor as `\[\[<id>\]\]:<tool>`/,
+  );
   assert.match(story27Scenario5Text, /known by its id alone/);
   assert.equal(story27Scenario5Text.includes("known by its kind and its id"), false);
   assert.match(story27Scenario5Text, /its kind, its description, its file and its globs/);
@@ -188,10 +254,16 @@ test("MCP serving and the catalogue agree on one entry, saved tools, a call and 
   assert.equal(coreSpecText.includes("the way it names the corpus it cites"), false);
   // Listing without reaching an origin is EVAL-FR-031's to say, cited here and not said again.
   assert.equal(requirementTextOf("CORE-FR-154").includes("listing reaches no mcp origin"), false);
-  assert.match(requirementTextOf("CORE-FR-154"), /answers why and the next move \(\[EVAL-FR-031\]\(spec-eval\.md#eval-fr-031\)\)\.$/);
+  assert.match(
+    requirementTextOf("CORE-FR-154"),
+    /answers why and the next move \(\[EVAL-FR-031\]\(spec-eval\.md#eval-fr-031\)\)\.$/,
+  );
   assert.equal(requirementTextOf("CORE-FR-154").includes("listing leaves them out"), false);
   assert.match(requirementTextOf("CORE-FR-025"), /its kind, its id, its description/);
-  assert.match(adrText, /kind, its id, its description, the file its body is in, and the files it applies to where it names any/);
+  assert.match(
+    adrText,
+    /kind, its id, its description, the file its body is in, and the files it applies to where it names any/,
+  );
   assert.equal(adrText.includes("Kind and id remain the only name"), false);
   assert.equal(storyTextOf("### CORE Story 27 -").includes("holds no identity"), false);
   assert.match(storyTextOf("### CORE Story 27 -"), /each catalogue entry is known by its id alone, with no `kind:id`/);

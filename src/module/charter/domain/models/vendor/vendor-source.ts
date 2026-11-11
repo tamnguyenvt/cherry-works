@@ -1,8 +1,8 @@
-import type { RawPrimitive } from "../primitive/raw-primitive.js";
-import type { AssetFile } from "../primitive/base-primitive.js";
-import type { SkillPrimitive } from "../primitive/skill-primitive.js";
-import { ModelHelper } from "../../helper.js";
 import type { DomainFault } from "../../../../shared/module.js";
+import { ModelHelper } from "../../helper.js";
+import type { AssetFile } from "../primitive/base-primitive.js";
+import type { RawPrimitive } from "../primitive/raw-primitive.js";
+import type { SkillPrimitive } from "../primitive/skill-primitive.js";
 import type { VendorSourceOrigin } from "./vendor-source-origin.js";
 
 /** The folder a source of many charters keeps them in, one folder each named

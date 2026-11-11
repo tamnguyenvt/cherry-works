@@ -1,5 +1,5 @@
-import { OutputPart } from "./output-part.js";
 import type { McpAuthMethodName } from "../mcp/mcp-auth-method.js";
+import { OutputPart } from "./output-part.js";
 
 /** One tool as an mcp origin lists it: its name, what it does, and what it takes. */
 export interface McpToolDefinition {

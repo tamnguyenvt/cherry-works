@@ -96,13 +96,20 @@ its own (`charter/infra/claude/claude-rule.ts`), `helper.ts`, `index.ts` and
   answers `{ engine, workspace }`: `composeEngine`, the charter and runtime
   composed over that plugin for the settings they are handed; and
   `composeWorkspace`, the workspace module told the agents the plugin is
-  handed for. `main.ts` hands both to the command
-  line, and `test/use-cases-of.ts` builds each application as it does.
-- `index.ts` — the library `cherry-works` exports (SDK-FR-002, SDK-FR-020):
-  what each `module.ts` lets a tool reach, `composition.ts`'s functions and
-  types, and the adapters the default plugin is built from, so a tool mixes
-  them with its own. It reaches a module only through its `module.ts`, as
-  `main.ts` does; what it exports is the contract a release compares.
+  handed for. Each adapter not handed is the engine's own, the charter's
+  store and the projections set up over the file adapters handed. `main.ts`
+  hands both to the command line, and `test/use-cases-of.ts` builds each
+  application as it does. `ReplaceableAdapters` is every adapter but the
+  charter's store and the agents' projections and command lines, with the
+  source fetcher that store reaches vendors through: what a tool outside the
+  repository may hand.
+- `index.ts` — the library `cherry-works` exports (SDK-FR-002, SDK-FR-020),
+  and nothing more: `composeApplications`, typed to take only a
+  `Partial<ReplaceableAdapters>`, and what it answers; the four driver ports
+  and their DTOs; `VERSION`; and the port of each adapter a tool may replace,
+  with the values crossing it. No use case, service, domain model or adapter
+  class. It reaches a module only through its `module.ts`, as `main.ts`
+  does; what it exports is the contract a release compares.
 
 ## Inside `module/`
 

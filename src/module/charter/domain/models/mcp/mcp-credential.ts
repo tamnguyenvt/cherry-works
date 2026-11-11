@@ -6,7 +6,11 @@ export class McpClientRegistration {
   readonly clientSecret?: string;
   readonly issuer: string;
 
-  constructor({ clientId, clientSecret, issuer }: Pick<McpClientRegistration, "clientId" | "issuer"> & Partial<Pick<McpClientRegistration, "clientSecret">>) {
+  constructor({
+    clientId,
+    clientSecret,
+    issuer,
+  }: Pick<McpClientRegistration, "clientId" | "issuer"> & Partial<Pick<McpClientRegistration, "clientSecret">>) {
     this.clientId = clientId;
     if (clientSecret !== undefined) this.clientSecret = clientSecret;
     this.issuer = issuer;
@@ -27,7 +31,15 @@ export class McpCredential {
   readonly expiresAt?: string;
   readonly client?: McpClientRegistration;
 
-  constructor({ address, method, accessToken, refreshToken, expiresAt, client }: Pick<McpCredential, "address" | "method" | "accessToken"> & Partial<Pick<McpCredential, "refreshToken" | "expiresAt" | "client">>) {
+  constructor({
+    address,
+    method,
+    accessToken,
+    refreshToken,
+    expiresAt,
+    client,
+  }: Pick<McpCredential, "address" | "method" | "accessToken"> &
+    Partial<Pick<McpCredential, "refreshToken" | "expiresAt" | "client">>) {
     this.address = address;
     this.method = method;
     this.accessToken = accessToken;

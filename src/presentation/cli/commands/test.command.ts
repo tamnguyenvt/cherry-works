@@ -1,6 +1,6 @@
-import { TEST_DIRECTORY, type CharterDTOs } from "#module/charter/module.js";
-import { printFaultsByFile, printFault } from "./helper.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type Options, type Outcome } from "./command.interface.js";
+import { type CharterDTOs, TEST_DIRECTORY } from "#module/charter/module.js";
+import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
+import { printFault, printFaultsByFile } from "./helper.js";
 
 /**
  * `cw test`: put every situation this repository wrote down to its charter, and
@@ -63,6 +63,8 @@ export class TestCommand implements Command {
 function lines(one: CharterDTOs.TestCaseReport): readonly string[] {
   return [
     `  ${one.data.passed ? "pass" : "FAIL"}  ${one.data.situation}`,
-    ...(one.data.unmet === undefined ? [] : [`          ${one.data.unmet.data.message}`, `          ${one.data.unmet.data.fix}`]),
+    ...(one.data.unmet === undefined
+      ? []
+      : [`          ${one.data.unmet.data.message}`, `          ${one.data.unmet.data.fix}`]),
   ];
 }

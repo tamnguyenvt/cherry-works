@@ -1,5 +1,5 @@
-import type { ForReadingFiles, ListedFile, ReadFile } from "../../app/port/out/reading-files.port.js";
 import { FolderAddress, type FolderURL } from "../../app/port/out/folder-address.port.js";
+import type { ForReadingFiles, ListedFile, ReadFile } from "../../app/port/out/reading-files.port.js";
 import { decodeContents, encodeContents, pathFrom, urlAt } from "../helper.js";
 
 /** Files held in memory: the text or the bytes of each, keyed by its URL, as
@@ -29,7 +29,11 @@ export class InMemoryFileReaders implements ForReadingFiles {
   /** The same files, every path from another folder: what a test reads a
    *  home's files through, beside the repository's. */
   rootedAt(rootFolder: URL): InMemoryFileReaders {
-    return Object.assign(new InMemoryFileReaders({}, rootFolder), { contentsByFile: this.contentsByFile, modifiedAtByFile: this.modifiedAtByFile, calls: this.calls });
+    return Object.assign(new InMemoryFileReaders({}, rootFolder), {
+      contentsByFile: this.contentsByFile,
+      modifiedAtByFile: this.modifiedAtByFile,
+      calls: this.calls,
+    });
   }
 
   /** Author or replace one file, modified now unless a test says when. */
@@ -48,13 +52,23 @@ export class InMemoryFileReaders implements ForReadingFiles {
   async readFilesRecursively(folderPath: string | URL): Promise<readonly (ReadFile & { readonly file: URL })[]> {
     const folder = this.#folderUrlOf(folderPath);
     this.calls.push(`files under ${folder.href}`);
-    return this.#filesUnder(folder).map(([file, contents]) => ({ path: pathFrom(this.rootFolder, new URL(file)), file: new URL(file), contents: decodeContents(contents) }));
+    return this.#filesUnder(folder).map(([file, contents]) => ({
+      path: pathFrom(this.rootFolder, new URL(file)),
+      file: new URL(file),
+      contents: decodeContents(contents),
+    }));
   }
 
-  async readBytesRecursively(folderPath: string | URL): Promise<readonly (ReadFile<Uint8Array> & { readonly file: URL })[]> {
+  async readBytesRecursively(
+    folderPath: string | URL,
+  ): Promise<readonly (ReadFile<Uint8Array> & { readonly file: URL })[]> {
     const folder = this.#folderUrlOf(folderPath);
     this.calls.push(`bytes under ${folder.href}`);
-    return this.#filesUnder(folder).map(([file, contents]) => ({ path: pathFrom(this.rootFolder, new URL(file)), file: new URL(file), contents: encodeContents(contents) }));
+    return this.#filesUnder(folder).map(([file, contents]) => ({
+      path: pathFrom(this.rootFolder, new URL(file)),
+      file: new URL(file),
+      contents: encodeContents(contents),
+    }));
   }
 
   async listFiles(folderPath: string | URL): Promise<readonly ListedFile[]> {
@@ -62,7 +76,10 @@ export class InMemoryFileReaders implements ForReadingFiles {
     this.calls.push(`listed files under ${folder.href}`);
     return this.#filesUnder(folder)
       .filter(([file]) => !file.slice(folder.href.length).includes("/"))
-      .map(([file]) => ({ path: pathFrom(this.rootFolder, new URL(file)), modifiedAt: this.modifiedAtByFile.get(file) ?? new Date() }));
+      .map(([file]) => ({
+        path: pathFrom(this.rootFolder, new URL(file)),
+        modifiedAt: this.modifiedAtByFile.get(file) ?? new Date(),
+      }));
   }
 
   async listFolders(folderPath: string | URL): Promise<readonly string[]> {

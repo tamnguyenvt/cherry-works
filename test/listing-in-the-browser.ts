@@ -7,7 +7,9 @@ import type { Page } from "playwright";
 export const chipsOf = (page: Page) =>
   page
     .getByRole("radio")
-    .evaluateAll((chips) => chips.map((chip) => [chip.getAttribute("aria-label"), chip.querySelector('[data-slot="badge"]')?.textContent]));
+    .evaluateAll((chips) =>
+      chips.map((chip) => [chip.getAttribute("aria-label"), chip.querySelector('[data-slot="badge"]')?.textContent]),
+    );
 
 /** The kind whose chip is on. */
 export const shownKindOf = (page: Page) => page.getByRole("radio", { checked: true }).getAttribute("aria-label");

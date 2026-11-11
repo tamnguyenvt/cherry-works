@@ -1,15 +1,15 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { test } from "node:test";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, commandLineOf } from "./use-cases-of.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
 const root = new URL("file:///repo/.cw/charter/primitive/");
@@ -20,8 +20,7 @@ const primitive = (kind: string, id: string, headers: readonly string[] = [], bo
   ["---", `kind: ${kind}`, `id: ${id}`, `description: About ${id}.`, ...headers, "---", "", body, ""].join("\n");
 
 const guide = (id: string, globs: readonly string[]) => primitive("guide", id, [`globs: ${JSON.stringify(globs)}`]);
-const sensor = (id: string, signal: string) =>
-  primitive("sensor", id, [`signal: ${signal}`, 'run: "pnpm test"']);
+const sensor = (id: string, signal: string) => primitive("sensor", id, [`signal: ${signal}`, 'run: "pnpm test"']);
 const posture = (id: string, deny: readonly string[]) =>
   primitive("posture", id, ['allow: ["src/**"]', `deny: ${JSON.stringify(deny)}`]);
 
@@ -58,7 +57,29 @@ const writing = async (work: () => Promise<number>) => {
 const commandLine = (files: Readonly<Record<string, string>>) => {
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources();
-  const cli = new Commander(commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), { charterAuthoringApp: authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher }), charterRuntimeApp: buildingCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter()) }, repo), COMMANDS, );
+  const cli = new Commander(
+    commandLineOf(
+      fileReaders,
+      new InMemoryFileOutput(fileReaders),
+      {
+        charterAuthoringApp: authoringCharterOf(
+          fileReaders,
+          new InMemoryFileOutput(fileReaders),
+          new InMemoryReporter(),
+          { sourceFetcher },
+        ),
+        charterRuntimeApp: buildingCharterOf(
+          fileReaders,
+          new InMemoryFileOutput(fileReaders),
+          new InMemoryTokenCounter(),
+          { claude: new InMemoryAgentCli() },
+          new InMemoryReporter(),
+        ),
+      },
+      repo,
+    ),
+    COMMANDS,
+  );
   return (argv: readonly string[] = ["test"]) => writing(() => cli.run([...argv]));
 };
 
@@ -244,7 +265,7 @@ test("a test file that will not read is refused, naming it, and nothing is resol
 
   assert.equal(code, EXIT_FAILURE);
   assert.equal(result, "");
-  assert.match(problem, /\.cw\/charter\/test\/broken\.json\n  error: This file is not JSON/);
+  assert.match(problem, /\.cw\/charter\/test\/broken\.json\n {2}error: This file is not JSON/);
 });
 
 test("a repository that wrote no test is told so and passes", async () => {
@@ -272,7 +293,12 @@ test("a charter with an error resolves nothing and says where to read what is wr
 test("a body naming an mcp no layer holds is an error, and the tests do not run (FR-143)", async () => {
   const run = commandLine({
     ...charter,
-    [at("guide/billing/index.md")]: primitive("guide", "billing", ['globs: ["src/**/*.ts"]'], "Take the requirements from [[missing]]."),
+    [at("guide/billing/index.md")]: primitive(
+      "guide",
+      "billing",
+      ['globs: ["src/**/*.ts"]'],
+      "Take the requirements from [[missing]].",
+    ),
     ...suite({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
   });
 

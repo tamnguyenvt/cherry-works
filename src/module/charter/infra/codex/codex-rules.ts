@@ -17,10 +17,18 @@ export class CodexRules extends ProviderComponent {
   static readonly path = ".codex/rules/cw.rules";
 
   static of(rules: readonly CodexCommandRule[]): CodexRules {
-    return new CodexRules("codex", "charter", CodexRules.kind, [
-      `# ${StampedDocument.stampText}. Do not edit; edit the charter and build again.`,
-      ...rules.map((rule) => `prefix_rule(pattern = ${JSON.stringify(rule.pattern)}, decision = ${JSON.stringify(rule.decision)}, justification = ${JSON.stringify(rule.justification)})`),
-      "",
-    ].join("\n"));
+    return new CodexRules(
+      "codex",
+      "charter",
+      CodexRules.kind,
+      [
+        `# ${StampedDocument.stampText}. Do not edit; edit the charter and build again.`,
+        ...rules.map(
+          (rule) =>
+            `prefix_rule(pattern = ${JSON.stringify(rule.pattern)}, decision = ${JSON.stringify(rule.decision)}, justification = ${JSON.stringify(rule.justification)})`,
+        ),
+        "",
+      ].join("\n"),
+    );
   }
 }

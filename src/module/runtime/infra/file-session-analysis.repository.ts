@@ -1,5 +1,5 @@
 import { FolderAddress, type FolderURL, type ForReadingFiles } from "../../shared/module.js";
-import { SessionLogs, type ForLoadingSessionAnalysis } from "../app/port/out/loading-session-analysis.port.js";
+import { type ForLoadingSessionAnalysis, SessionLogs } from "../app/port/out/loading-session-analysis.port.js";
 
 /** Reads the session logs kept as files, a folder per session. */
 export class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis {
@@ -25,15 +25,32 @@ export class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis 
     this.#fileReader = fileReaderAt(new URL("/", this.#homeFolder));
   }
 
-  async loadSessionLogs(sessionAnalysisFolder: string | undefined, writtenFromMs: number, writtenUntilMs: number): Promise<SessionLogs> {
+  async loadSessionLogs(
+    sessionAnalysisFolder: string | undefined,
+    writtenFromMs: number,
+    writtenUntilMs: number,
+  ): Promise<SessionLogs> {
     const sessionsFolder = SessionsFolder.of(this.#repoFolder, this.#homeFolder, sessionAnalysisFolder).url;
-    const sessionsFolderPath = decodeURIComponent(sessionsFolder.href.slice(new URL("/", this.#homeFolder).href.length)).replace(/\/$/, "");
+    const sessionsFolderPath = decodeURIComponent(
+      sessionsFolder.href.slice(new URL("/", this.#homeFolder).href.length),
+    ).replace(/\/$/, "");
     // Each session keeps one folder of its own, its log directly in it: only
     // those are looked in, whatever else the folder holds.
-    const listedLogFiles = (await Promise.all((await this.#fileReader.listFolders(sessionsFolderPath)).map((sessionFolderPath) => this.#fileReader.listFiles(sessionFolderPath)))).flat();
+    const listedLogFiles = (
+      await Promise.all(
+        (
+          await this.#fileReader.listFolders(sessionsFolderPath)
+        ).map((sessionFolderPath) => this.#fileReader.listFiles(sessionFolderPath)),
+      )
+    ).flat();
     const logTexts = await Promise.all(
       listedLogFiles
-        .filter(({ path, modifiedAt }) => path.endsWith(`/${SessionsFolder.logFile}`) && modifiedAt.getTime() >= writtenFromMs && modifiedAt.getTime() <= writtenUntilMs)
+        .filter(
+          ({ path, modifiedAt }) =>
+            path.endsWith(`/${SessionsFolder.logFile}`) &&
+            modifiedAt.getTime() >= writtenFromMs &&
+            modifiedAt.getTime() <= writtenUntilMs,
+        )
         .map(({ path }) => this.#fileReader.readIfThere(path)),
     );
     return new SessionLogs(
@@ -72,21 +89,42 @@ class SessionsFolder {
   static of(repoFolder: FolderURL, homeFolder: FolderURL, sessionAnalysisFolder?: string): SessionsFolder {
     if (sessionAnalysisFolder === undefined) {
       const repoPath = FolderAddress.localPathOf(repoFolder);
-      if (repoPath !== undefined) return new SessionsFolder(FolderAddress.urlOf(new URL(`.cherry-works/${repoPath.replace(/\/$/, "").replace(/[^A-Za-z0-9]/g, "-")}/`, homeFolder)));
+      if (repoPath !== undefined)
+        return new SessionsFolder(
+          FolderAddress.urlOf(
+            new URL(`.cherry-works/${repoPath.replace(/\/$/, "").replace(/[^A-Za-z0-9]/g, "-")}/`, homeFolder),
+          ),
+        );
       const repoAddress = FolderAddress.addressOf(repoFolder).href.replace(/\/$/, "");
       // A serialised URL is ASCII, so two hex digits a character keep any two addresses apart, where a dash would not.
-      const repoName = repoAddress.replace(/[^A-Za-z0-9]/g, (character) => `_${character.charCodeAt(0).toString(16).padStart(2, "0")}`);
-      if (repoName.length <= REPO_NAME_LIMIT) return new SessionsFolder(FolderAddress.urlOf(new URL(`.cherry-works/${repoName}/`, homeFolder)));
+      const repoName = repoAddress.replace(
+        /[^A-Za-z0-9]/g,
+        (character) => `_${character.charCodeAt(0).toString(16).padStart(2, "0")}`,
+      );
+      if (repoName.length <= REPO_NAME_LIMIT)
+        return new SessionsFolder(FolderAddress.urlOf(new URL(`.cherry-works/${repoName}/`, homeFolder)));
       // Past what a disk takes for a folder name, the name is cut and an FNV-1a hash of the whole address keeps it apart.
       let repoAddressHash = 0xcbf29ce484222325n;
-      for (const character of repoAddress) repoAddressHash = BigInt.asUintN(64, (repoAddressHash ^ BigInt(character.charCodeAt(0))) * 0x100000001b3n);
-      return new SessionsFolder(FolderAddress.urlOf(new URL(`.cherry-works/${repoName.slice(0, REPO_NAME_LIMIT - 17)}_${repoAddressHash.toString(16).padStart(16, "0")}/`, homeFolder)));
+      for (const character of repoAddress)
+        repoAddressHash = BigInt.asUintN(64, (repoAddressHash ^ BigInt(character.charCodeAt(0))) * 0x100000001b3n);
+      return new SessionsFolder(
+        FolderAddress.urlOf(
+          new URL(
+            `.cherry-works/${repoName.slice(0, REPO_NAME_LIMIT - 17)}_${repoAddressHash.toString(16).padStart(16, "0")}/`,
+            homeFolder,
+          ),
+        ),
+      );
     }
-    const sessionsFolderPath = sessionAnalysisFolder.endsWith("/") ? sessionAnalysisFolder : `${sessionAnalysisFolder}/`;
-    return new SessionsFolder(FolderAddress.urlOf(
-      sessionsFolderPath.startsWith("~/")
-        ? new URL(sessionsFolderPath.slice(2).split("/").map(encodeURIComponent).join("/"), homeFolder)
-        : new URL(`.${sessionsFolderPath.split("/").map(encodeURIComponent).join("/")}`, new URL("/", homeFolder)),
-    ));
+    const sessionsFolderPath = sessionAnalysisFolder.endsWith("/")
+      ? sessionAnalysisFolder
+      : `${sessionAnalysisFolder}/`;
+    return new SessionsFolder(
+      FolderAddress.urlOf(
+        sessionsFolderPath.startsWith("~/")
+          ? new URL(sessionsFolderPath.slice(2).split("/").map(encodeURIComponent).join("/"), homeFolder)
+          : new URL(`.${sessionsFolderPath.split("/").map(encodeURIComponent).join("/")}`, new URL("/", homeFolder)),
+      ),
+    );
   }
 }

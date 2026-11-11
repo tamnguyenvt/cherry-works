@@ -90,5 +90,4 @@ export class ClaudeSettings extends SettingBasedComponent<ClaudeSettingsFields> 
   static of(settings: ClaudeSettingsFields): ClaudeSettings {
     return new ClaudeSettings("claude", ClaudeSettings.kind, settings);
   }
-
 }

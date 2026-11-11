@@ -1,7 +1,7 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Tiktoken } from "../src/module/charter/infra/tiktoken.adapter.js";
+import { test } from "node:test";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { Tiktoken } from "../src/module/charter/infra/tiktoken.adapter.js";
 
 test("the tokenizer on this machine counts a text's tokens, with no key and no network (EVAL-FR-001, EVAL-SC-001)", () => {
   const tokenCounter = new Tiktoken();

@@ -1,7 +1,15 @@
 import prompts from "prompts";
 import { EVAL_DIRECTORY } from "#module/charter/module.js";
-import { printFaultsByFile, printFault } from "./helper.js";
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
+import { printFault, printFaultsByFile } from "./helper.js";
 
 const OPTIONS = {
   agent: { type: "string", describe: "Evaluate with a configured agent: claude or codex" },
@@ -22,7 +30,10 @@ export class EvalCommand implements Command<typeof OPTIONS> {
   readonly summary = `Put every case in ${EVAL_DIRECTORY}/ to the real agent under promptfoo`;
   readonly options = OPTIONS;
 
-  async run({ charterRuntimeApp, workspaceSettings }: Context, { agent: requestedAgent }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async run(
+    { charterRuntimeApp, workspaceSettings }: Context,
+    { agent: requestedAgent }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
     let selectedAgent = requestedAgent;
     if (selectedAgent === undefined) {
       const configuredAgents = [...new Set(workspaceSettings.agents)];
@@ -33,13 +44,15 @@ export class EvalCommand implements Command<typeof OPTIONS> {
           message: "Which agent should evaluate this charter?",
           choices: configuredAgents.map((agentName) => ({ title: agentName, value: agentName })),
         });
-        if (promptAnswer.agent === undefined) return { code: EXIT_FAILURE, problem: "Evaluation cancelled. No case was run.\n" };
+        if (promptAnswer.agent === undefined)
+          return { code: EXIT_FAILURE, problem: "Evaluation cancelled. No case was run.\n" };
         selectedAgent = promptAnswer.agent;
       }
     }
     const evalRunReportDTO = await charterRuntimeApp.evaluate(selectedAgent);
     if (evalRunReportDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(evalRunReportDTO) };
-    if (evalRunReportDTO.type === "FaultsByFile") return { code: EXIT_FAILURE, problem: `No case was run.\n\n${printFaultsByFile(evalRunReportDTO)}` };
+    if (evalRunReportDTO.type === "FaultsByFile")
+      return { code: EXIT_FAILURE, problem: `No case was run.\n\n${printFaultsByFile(evalRunReportDTO)}` };
 
     const { evalCaseReports, totalTokens } = evalRunReportDTO.data;
     if (evalCaseReports.length === 0)
@@ -54,13 +67,15 @@ export class EvalCommand implements Command<typeof OPTIONS> {
       code: failedCount === 0 ? EXIT_OK : EXIT_FAILURE,
       result: [
         `Agent: ${evalRunReportDTO.data.agent}`,
-        ...evalCaseReports.flatMap(({ data: { passed, tokens, prompt, unmetReasons, logPath, sessionId, sessionPath } }) => [
-          `  ${passed ? "pass" : "FAIL"}  ${`${tokens.toLocaleString("en-US")} tokens`.padStart(14)}  ${prompt.split("\n")[0]}`,
-          ...unmetReasons.map((unmetReason) => `          ${unmetReason}`),
-          ...(logPath === undefined ? [] : [`          Log: ${logPath}`]),
-          ...(sessionId === undefined ? [] : [`          Agent session: ${sessionId}`]),
-          ...(sessionPath === undefined ? [] : [`          Session log: ${sessionPath}`]),
-        ]),
+        ...evalCaseReports.flatMap(
+          ({ data: { passed, tokens, prompt, unmetReasons, logPath, sessionId, sessionPath } }) => [
+            `  ${passed ? "pass" : "FAIL"}  ${`${tokens.toLocaleString("en-US")} tokens`.padStart(14)}  ${prompt.split("\n")[0]}`,
+            ...unmetReasons.map((unmetReason) => `          ${unmetReason}`),
+            ...(logPath === undefined ? [] : [`          Log: ${logPath}`]),
+            ...(sessionId === undefined ? [] : [`          Agent session: ${sessionId}`]),
+            ...(sessionPath === undefined ? [] : [`          Session log: ${sessionPath}`]),
+          ],
+        ),
         "",
         `${failedCount === 0 ? `${evalCaseReports.length} ${casesWord} passed` : `${failedCount} of ${evalCaseReports.length} ${casesWord} failed`}, ${totalTokens.toLocaleString("en-US")} tokens in all.`,
         "",

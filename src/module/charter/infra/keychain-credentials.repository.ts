@@ -1,5 +1,9 @@
 import { spawn } from "node:child_process";
-import { AdapterFault, type ForStoringCredentials, type McpCredential } from "../app/port/out/storing-credentials.port.js";
+import {
+  AdapterFault,
+  type ForStoringCredentials,
+  type McpCredential,
+} from "../app/port/out/storing-credentials.port.js";
 import { credentialOfSecret } from "./helper.js";
 
 /** Every secret `cw` keeps is under this service, one account per key
@@ -65,7 +69,9 @@ export class KeychainCredentialsRepository implements ForStoringCredentials {
         : await commandOutput("secret-tool", ["lookup", "service", SERVICE, "account", key]);
     if (commandOutputOfRead.code === 0) return commandOutputOfRead.stdout.replace(/\n$/, "");
     const nothingThere =
-      this.platform === "darwin" ? commandOutputOfRead.code === MACOS_NOT_FOUND : commandOutputOfRead.stderr.trim() === "";
+      this.platform === "darwin"
+        ? commandOutputOfRead.code === MACOS_NOT_FOUND
+        : commandOutputOfRead.stderr.trim() === "";
     if (nothingThere) return undefined;
     this.throwFault("read", key, commandOutputOfRead.stderr);
   }
@@ -75,7 +81,11 @@ export class KeychainCredentialsRepository implements ForStoringCredentials {
     // `security -i` reads the key between double quotes, which it cannot
     // escape out of. An address never holds one.
     if (this.platform === "darwin" && /["\\\n]/.test(key)) {
-      throw new AdapterFault(`The key "${key}" cannot be kept in the keychain.`, "Name the mcp origin by an address without quotes, backslashes or line breaks.", { internal: false });
+      throw new AdapterFault(
+        `The key "${key}" cannot be kept in the keychain.`,
+        "Name the mcp origin by an address without quotes, backslashes or line breaks.",
+        { internal: false },
+      );
     }
     const commandOutputOfWrite =
       this.platform === "darwin"

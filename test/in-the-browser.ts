@@ -1,14 +1,14 @@
 import { chromium, type Page } from "playwright";
-import { startPortal } from "../src/presentation/portal/portal.server.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { startedPortalOf } from "./answer-of.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
+import { startPortal } from "../src/presentation/portal/portal.server.js";
+import { startedPortalOf } from "./answer-of.js";
+import { authoringCharterOf, buildingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
 /** Clear of the default and of the other portal tests, so a portal left running
  *  here answers nothing they ask. */
@@ -37,13 +37,23 @@ export async function inTheBrowser(
   sourceFetcher: InMemorySources = new InMemorySources(),
 ): Promise<void> {
   const files = new InMemoryFileReaders(held);
-  const repoPath = new URL("file:///repo/");
-  const charterAuthoringApp = authoringCharterOf(files, new InMemoryFileOutput(files), new InMemoryReporter(), { sourceFetcher });
-  const charterRuntimeApp = buildingCharterOf(files, new InMemoryFileOutput(files), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter());
+  const charterAuthoringApp = authoringCharterOf(files, new InMemoryFileOutput(files), new InMemoryReporter(), {
+    sourceFetcher,
+  });
+  const charterRuntimeApp = buildingCharterOf(
+    files,
+    new InMemoryFileOutput(files),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
   const { address, server } = startedPortalOf(
     await startPortal(
       new URL("../dist/portal/", import.meta.url),
-      { charterAuthoringApp: wrapAppToShowPaths(charterAuthoringApp, "/repo"), charterBuildingApp: wrapAppToShowPaths(charterRuntimeApp, "/repo") },
+      {
+        charterAuthoringApp: wrapAppToShowPaths(charterAuthoringApp, "/repo"),
+        charterBuildingApp: wrapAppToShowPaths(charterRuntimeApp, "/repo"),
+      },
       workspaceSettingsLoaderOf(files),
       PORT,
     ),

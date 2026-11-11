@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { OutputPart } from "../projection/output-part.js";
-import { BasePrimitive, type RequiredHeaders, type AssetFile } from "./base-primitive.js";
+import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.js";
 
 /** Files the agent or a sensor runs, kept as real files beside the script's
@@ -23,9 +23,19 @@ export class ScriptPrimitive extends BasePrimitive {
      *  inside its folder, no segment of which climbs out again. Letters, digits,
      *  `.`, `_` and `-` only: it is written into commands a shell reads
      *  (FR-169). */
-    executionPath: z.string().regex(/^\.\/[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/).refine((executionPath) => !executionPath.split("/").slice(1).some((segment) => segment === "." || segment === ".."), {
-      message: `"executionPath" stays inside the script's own folder: no segment of it is "." or "..".`,
-    }),
+    executionPath: z
+      .string()
+      .regex(/^\.\/[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/)
+      .refine(
+        (executionPath) =>
+          !executionPath
+            .split("/")
+            .slice(1)
+            .some((segment) => segment === "." || segment === ".."),
+        {
+          message: `"executionPath" stays inside the script's own folder: no segment of it is "." or "..".`,
+        },
+      ),
   });
 
   /** When a reader of this charter is to open this kind at all (FR-002): where
@@ -42,8 +52,20 @@ export class ScriptPrimitive extends BasePrimitive {
   };
 
   /** One script, or every fault its headers have (FR-004). */
-  static of(record: Readonly<Record<string, unknown>>, body: string, assets: readonly AssetFile[] = [], primitiveLayer?: PrimitiveLayer, keptUri?: string): ScriptPrimitive {
-    return new ScriptPrimitive(BasePrimitive.headersOf(ScriptPrimitive, ScriptPrimitive.schema, record), body, assets, primitiveLayer, keptUri);
+  static of(
+    record: Readonly<Record<string, unknown>>,
+    body: string,
+    assets: readonly AssetFile[] = [],
+    primitiveLayer?: PrimitiveLayer,
+    keptUri?: string,
+  ): ScriptPrimitive {
+    return new ScriptPrimitive(
+      BasePrimitive.headersOf(ScriptPrimitive, ScriptPrimitive.schema, record),
+      body,
+      assets,
+      primitiveLayer,
+      keptUri,
+    );
   }
 
   /** The asset that runs, as a path inside its folder: `run.sh` of

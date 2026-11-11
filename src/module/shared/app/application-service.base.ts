@@ -35,7 +35,10 @@ export abstract class ApplicationService {
    *  whatever stopped it: nothing it raises reaches the caller (SDK-FR-004).
    *  An internal fault is logged first, and answered in the system's own words
    *  (SDK-FR-017, SDK-FR-018). */
-  protected async answerWithFaultDTO<Answer>(operationName: string, operationAnswer: () => Promise<Answer>): Promise<Answer | FaultDTOs.Fault> {
+  protected async answerWithFaultDTO<Answer>(
+    operationName: string,
+    operationAnswer: () => Promise<Answer>,
+  ): Promise<Answer | FaultDTOs.Fault> {
     try {
       return await operationAnswer();
     } catch (raisedValue) {
@@ -51,11 +54,19 @@ export abstract class ApplicationService {
           // A cause seen before ends the chain: one that leads back to itself would
           // otherwise never let the caller be answered (SDK-FR-004).
           const seenCauses = new Set<unknown>([fault]);
-          for (let cause = fault.cause; cause !== undefined && !seenCauses.has(cause); cause = cause instanceof Error ? cause.cause : undefined) {
+          for (
+            let cause = fault.cause;
+            cause !== undefined && !seenCauses.has(cause);
+            cause = cause instanceof Error ? cause.cause : undefined
+          ) {
             seenCauses.add(cause);
-            causeTexts.push(`Caused by: ${cause instanceof Error ? (cause.stack ?? `${cause.name}: ${cause.message}`) : String(cause)}\n`);
+            causeTexts.push(
+              `Caused by: ${cause instanceof Error ? (cause.stack ?? `${cause.name}: ${cause.message}`) : String(cause)}\n`,
+            );
           }
-          this.progressReporter.problem(`${operationName} stopped on an internal fault.\n${fault.stack ?? `${fault.name}: ${fault.message}`}\n  ${fault.fix}\n${causeTexts.join("")}`);
+          this.progressReporter.problem(
+            `${operationName} stopped on an internal fault.\n${fault.stack ?? `${fault.name}: ${fault.message}`}\n  ${fault.fix}\n${causeTexts.join("")}`,
+          );
         }
       } catch {}
       return fault.internal ? ApplicationService.internalFaultDTO : this.findingDTOOf(fault);
@@ -65,7 +76,9 @@ export abstract class ApplicationService {
   /** What the other module's application answered, a fault among it raised
    *  again here: the person's as theirs, and the system's own as the system's,
    *  in the words the module answering said it in (CORE-FR-229, SDK-FR-017). */
-  protected answeredDTOOf<Answer extends { readonly type: string }>(moduleAnswer: Answer | FaultDTOs.Fault): Exclude<Answer, FaultDTOs.Fault> {
+  protected answeredDTOOf<Answer extends { readonly type: string }>(
+    moduleAnswer: Answer | FaultDTOs.Fault,
+  ): Exclude<Answer, FaultDTOs.Fault> {
     if (moduleAnswer.type !== "Fault") return moduleAnswer as Exclude<Answer, FaultDTOs.Fault>;
     const { name, message, fix, severity } = (moduleAnswer as FaultDTOs.Fault).data;
     throw new DomainFault(message, fix, { severity, internal: name === ApplicationService.internalFaultDTO.data.name });
@@ -83,7 +96,12 @@ export abstract class ApplicationService {
    *  from the repository — the path an author would type. */
   protected faultsByFileDTOOf(faultsByFile: FaultsByFile): FaultDTOs.FaultsByFile {
     return FaultDTOs.FaultsByFile.of({
-      files: Object.fromEntries(Object.entries(faultsByFile.files).map(([file, faults]) => [file, faults.map((fault) => this.findingDTOOf(fault))])),
+      files: Object.fromEntries(
+        Object.entries(faultsByFile.files).map(([file, faults]) => [
+          file,
+          faults.map((fault) => this.findingDTOOf(fault)),
+        ]),
+      ),
     });
   }
 

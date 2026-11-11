@@ -1,6 +1,12 @@
 import { type ForReadingFiles, type ForWritingFiles, filePathOf, pathFromCheckout } from "../../shared/module.js";
-import { McpOrigins, ProjectionPlan, WritePlan, type CharterOutput, type ForManagingLocalOutput } from "../app/port/out/managing-local-output.port.js";
-import { OUT_FOLDER, laidTextOf, placeOfPart } from "./helper.js";
+import {
+  type CharterOutput,
+  type ForManagingLocalOutput,
+  McpOrigins,
+  ProjectionPlan,
+  WritePlan,
+} from "../app/port/out/managing-local-output.port.js";
+import { laidTextOf, OUT_FOLDER, placeOfPart } from "./helper.js";
 
 /**
  * DRIVEN ADAPTER: a build's output laid onto the repository as files, under
@@ -18,7 +24,10 @@ export class LocalRepoManipulator implements ForManagingLocalOutput {
   }
 
   async createProjectionPlan(charterOutput: CharterOutput, checkoutPath = ""): Promise<ProjectionPlan> {
-    const [cleanupPlan, layingPlan] = await Promise.all([this.#planCleanup(checkoutPath), this.#planWriting(checkoutPath, charterOutput)]);
+    const [cleanupPlan, layingPlan] = await Promise.all([
+      this.#planCleanup(checkoutPath),
+      this.#planWriting(checkoutPath, charterOutput),
+    ]);
     return new ProjectionPlan([], cleanupPlan, layingPlan);
   }
 
@@ -26,7 +35,10 @@ export class LocalRepoManipulator implements ForManagingLocalOutput {
     // Taking away first and writing second, so nothing written has to be
     // compared with what was there.
     await Promise.all(buildPlan.cleanupPlan.map((cleanupFile) => this.#fileWriter.delete(cleanupFile.filePath)));
-    for (const layingFile of buildPlan.projectionPlan) await this.#fileWriter.write(layingFile.filePath, layingFile.contents ?? "", { executable: layingFile.isExecutable === true });
+    for (const layingFile of buildPlan.projectionPlan)
+      await this.#fileWriter.write(layingFile.filePath, layingFile.contents ?? "", {
+        executable: layingFile.isExecutable === true,
+      });
   }
 
   /**
@@ -45,8 +57,13 @@ export class LocalRepoManipulator implements ForManagingLocalOutput {
       // any other file's from the repository's root, where a command runs.
       // What the mcp origins listed is laid in their own words (CORE-FR-221).
       const isOwnWords = compiledPart.outputPart.path === McpOrigins.outputPart.path;
-      const laidText = isOwnWords ? compiledPart.text : laidTextOf(compiledPart.text, partPath.endsWith(".md") ? partPath : undefined);
-      writePlanByPath.set(partPath, new WritePlan(partPath, filePath, laidText, await this.#fileReader.readIfThere(filePath), false));
+      const laidText = isOwnWords
+        ? compiledPart.text
+        : laidTextOf(compiledPart.text, partPath.endsWith(".md") ? partPath : undefined);
+      writePlanByPath.set(
+        partPath,
+        new WritePlan(partPath, filePath, laidText, await this.#fileReader.readIfThere(filePath), false),
+      );
 
       // A compiled primitive's assets, beside its document, as the bytes they
       // hold and compared with the bytes there now, so a file no text says is
@@ -56,7 +73,16 @@ export class LocalRepoManipulator implements ForManagingLocalOutput {
       for (const { file, contents: assetBytes, executable } of compiledPart.assets) {
         const assetPath = `${partFolder}${file}`;
         const assetFilePath = filePathOf(checkoutPath, assetPath);
-        writePlanByPath.set(assetPath, new WritePlan(assetPath, assetFilePath, assetBytes, await this.#fileReader.readBytesIfThere(assetFilePath), executable));
+        writePlanByPath.set(
+          assetPath,
+          new WritePlan(
+            assetPath,
+            assetFilePath,
+            assetBytes,
+            await this.#fileReader.readBytesIfThere(assetFilePath),
+            executable,
+          ),
+        );
       }
     }
 
@@ -67,6 +93,8 @@ export class LocalRepoManipulator implements ForManagingLocalOutput {
    *  else writes (FR-020). */
   async #planCleanup(checkoutPath: string): Promise<readonly WritePlan[]> {
     const outFiles = await this.#fileReader.readFilesRecursively(filePathOf(checkoutPath, OUT_FOLDER));
-    return outFiles.map(({ path, contents }) => new WritePlan(pathFromCheckout(checkoutPath, path), path, undefined, contents));
+    return outFiles.map(
+      ({ path, contents }) => new WritePlan(pathFromCheckout(checkoutPath, path), path, undefined, contents),
+    );
   }
 }

@@ -2,6 +2,7 @@ import { copyFile, readFile } from "node:fs/promises";
 import { defineConfig, type Options } from "tsup";
 
 type Plugin = NonNullable<Options["esbuildPlugins"]>[number];
+
 import packageJson from "./package.json" with { type: "json" };
 
 const page = "src/presentation/portal/page";
@@ -44,7 +45,9 @@ export default defineConfig([
     // CommonJS and require Node's own modules, which an ES module cannot do
     // unless handed a require.
     noExternal: [/./],
-    banner: { js: 'import { createRequire as createBannerRequire } from "node:module"; const require = createBannerRequire(import.meta.url);' },
+    banner: {
+      js: 'import { createRequire as createBannerRequire } from "node:module"; const require = createBannerRequire(import.meta.url);',
+    },
     outDir: "dist",
     // The page, the launcher and the library write dist/ alongside; cleaning
     // them here would race them.
@@ -61,7 +64,9 @@ export default defineConfig([
     // its declarations take in the types of every library they name, so a
     // tool type-checks with this package alone (SDK-FR-006).
     noExternal: [/./],
-    banner: { js: 'import { createRequire as createBannerRequire } from "node:module"; const require = createBannerRequire(import.meta.url);' },
+    banner: {
+      js: 'import { createRequire as createBannerRequire } from "node:module"; const require = createBannerRequire(import.meta.url);',
+    },
     dts: true,
     define: { ENGINE_VERSION: JSON.stringify(packageJson.version) },
     outDir: "dist",

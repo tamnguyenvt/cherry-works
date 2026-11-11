@@ -1,25 +1,25 @@
-import { useState, type ReactNode } from "react";
-import { X } from "lucide-react";
 import type { InferRequestType } from "hono/client";
+import { X } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import type { CharterDTOs } from "#module/charter/module.js";
 import type { FaultDTOs } from "#module/shared/module.js";
 import type { client } from "../client.js";
-import { PrimitiveBody } from "./PrimitiveBody.js";
+import { DIALOG_FOOTER } from "../lib/utils.js";
 import {
   useAddPrimitive,
   useKinds,
+  usePrimitive,
   usePrimitiveRequirements,
   usePrimitives,
-  usePrimitive,
   useRemovePrimitive,
   useRewritePrimitive,
 } from "../queries.js";
+import { PrimitiveBody } from "./PrimitiveBody.js";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert.js";
 import { Button } from "./ui/button.js";
 import { Input } from "./ui/input.js";
 import { Label } from "./ui/label.js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select.js";
-import { DIALOG_FOOTER } from "../lib/utils.js";
 
 /**
  * One primitive, new or opened, in the shape its kind takes (FR-117, FR-118).
@@ -45,13 +45,17 @@ export function PrimitiveForm({
   const { data: openedAnswer } = usePrimitive(id);
 
   if (id === undefined)
-    return <PrimitiveEditor openedPrimitive={null} entityTag="" newKind={newKind ?? ""} onDone={onDone} onClose={onClose} />;
+    return (
+      <PrimitiveEditor openedPrimitive={null} entityTag="" newKind={newKind ?? ""} onDone={onDone} onClose={onClose} />
+    );
   if (openedAnswer === undefined) return null;
 
   const { answer, entityTag } = openedAnswer;
   if (answer.type === "Fault") return <Refusals faults={[answer]} />;
   if (answer.data.layerName !== "repo") return <ReadOnlyPrimitive openedPrimitive={answer} />;
-  return <PrimitiveEditor openedPrimitive={answer} entityTag={entityTag} newKind="" onDone={onDone} onClose={onClose} />;
+  return (
+    <PrimitiveEditor openedPrimitive={answer} entityTag={entityTag} newKind="" onDone={onDone} onClose={onClose} />
+  );
 }
 
 /**
@@ -85,7 +89,9 @@ function PrimitiveEditor({
   const primitive = openedPrimitive?.data;
   const [kind, setKind] = useState(primitive?.kind ?? newKind);
   const [id, setId] = useState(primitive === undefined ? "" : String(primitive.headers.id));
-  const [answers, setAnswers] = useState<InferRequestType<typeof client.charter.root.primitives.$post>["json"]["headers"]>(() =>
+  const [answers, setAnswers] = useState<
+    InferRequestType<typeof client.charter.root.primitives.$post>["json"]["headers"]
+  >(() =>
     Object.fromEntries(
       Object.entries(primitive?.headers ?? {})
         .filter(([field]) => field !== "id")
@@ -107,7 +113,9 @@ function PrimitiveEditor({
   // The corpus a rationale may cite is whatever the charter holds of it now; a
   // charter the engine will not read offers none.
   const corpusIds =
-    listing?.type === "Primitives" ? listing.data.primitives.filter(({ data }) => data.kind === "corpus").map(({ data }) => data.id) : [];
+    listing?.type === "Primitives"
+      ? listing.data.primitives.filter(({ data }) => data.kind === "corpus").map(({ data }) => data.id)
+      : [];
 
   // Only what the kind takes is sent, and nothing left blank: a header answered
   // with nothing is a header not answered.
@@ -115,7 +123,9 @@ function PrimitiveEditor({
     headers.flatMap(({ data: { field } }) => {
       const answer = answers[field];
       const trimmedAnswer =
-        typeof answer === "string" ? answer.trim() : (answer ?? []).map((entry) => entry.trim()).filter((entry) => entry !== "");
+        typeof answer === "string"
+          ? answer.trim()
+          : (answer ?? []).map((entry) => entry.trim()).filter((entry) => entry !== "");
       return trimmedAnswer.length === 0 ? [] : [[field, trimmedAnswer]];
     }),
   );
@@ -168,7 +178,13 @@ function PrimitiveEditor({
               </Select>
             </FormRow>
             <FormRow label="id" htmlFor="primitive-id">
-              <Input id="primitive-id" value={id} placeholder="no-any" spellCheck={false} onChange={(event) => setId(event.currentTarget.value)} />
+              <Input
+                id="primitive-id"
+                value={id}
+                placeholder="no-any"
+                spellCheck={false}
+                onChange={(event) => setId(event.currentTarget.value)}
+              />
             </FormRow>
           </>
         ) : (
@@ -251,8 +267,14 @@ function ReadOnlyPrimitive({ openedPrimitive }: { openedPrimitive: CharterDTOs.P
   return (
     <div className="space-y-3.5">
       <Alert className="rounded-xl border-[#7c3aed33] bg-[#f6f2ff]">
-        <AlertTitle className="text-[12.5px] font-bold">{layerName === "vendor" ? "Installed from a vendor, and read-only here." : "Built into cw, and read-only here."}</AlertTitle>
-        <AlertDescription className="text-[11.5px] text-zinc-600">To differ from it, author a primitive of your own under an id of its own.</AlertDescription>
+        <AlertTitle className="text-[12.5px] font-bold">
+          {layerName === "vendor"
+            ? "Installed from a vendor, and read-only here."
+            : "Built into cw, and read-only here."}
+        </AlertTitle>
+        <AlertDescription className="text-[11.5px] text-zinc-600">
+          To differ from it, author a primitive of your own under an id of its own.
+        </AlertDescription>
       </Alert>
       <div className={FORM_ROWS}>
         <FormRow label="kind">
@@ -281,10 +303,23 @@ function ReadOnlyPrimitive({ openedPrimitive }: { openedPrimitive: CharterDTOs.P
 const FORM_ROWS = "overflow-hidden rounded-[11px] border border-[#f0f0f0] bg-background divide-y divide-zinc-100";
 
 /** One row of the form: the header's name, what answers it, and a hint. */
-function FormRow({ label, htmlFor, hint, children }: { label: string; htmlFor?: string; hint?: string | undefined; children: ReactNode }) {
+function FormRow({
+  label,
+  htmlFor,
+  hint,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  hint?: string | undefined;
+  children: ReactNode;
+}) {
   return (
     <div className="flex items-center gap-3 px-[13px] py-2.5">
-      <Label htmlFor={htmlFor} className="w-[118px] shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">
+      <Label
+        htmlFor={htmlFor}
+        className="w-[118px] shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase"
+      >
         {label}
       </Label>
       <div className="min-w-0 flex-1">{children}</div>
@@ -295,18 +330,29 @@ function FormRow({ label, htmlFor, hint, children }: { label: string; htmlFor?: 
 
 /** A list answered a box per entry, so one glob is changed on its own; one
  *  empty box where there are none yet. */
-function ListAnswer({ field, entries, onChange }: { field: string; entries: readonly string[]; onChange: (entries: string[]) => void }) {
+function ListAnswer({
+  field,
+  entries,
+  onChange,
+}: {
+  field: string;
+  entries: readonly string[];
+  onChange: (entries: string[]) => void;
+}) {
   const shownEntries = entries.length === 0 ? [""] : entries;
   return (
     <div className="flex flex-col gap-1.5">
       {shownEntries.map((entry, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: an entry being typed has no identity but its place.
         <div key={index} className="flex items-center gap-1.5">
           <Input
             id={index === 0 ? `header-${field}` : undefined}
             aria-label={`${field} ${index + 1}`}
             spellCheck={false}
             value={entry}
-            onChange={(event) => onChange(shownEntries.map((one, at) => (at === index ? event.currentTarget.value : one)))}
+            onChange={(event) =>
+              onChange(shownEntries.map((one, at) => (at === index ? event.currentTarget.value : one)))
+            }
           />
           {shownEntries.length > 1 && (
             <Button

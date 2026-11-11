@@ -1,19 +1,19 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import http from "node:http";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import http from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { test } from "node:test";
 import { pathToFileURL } from "node:url";
-import { startPortal } from "../src/presentation/portal/portal.server.js";
-import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
-import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { startedPortalOf } from "./answer-of.js";
-import { authoringCharterOf, buildingCharterOf, testingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
+import { startPortal } from "../src/presentation/portal/portal.server.js";
+import { startedPortalOf } from "./answer-of.js";
+import { authoringCharterOf, buildingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
 /** Clear of the default, so a portal left running here does not answer. */
 const PORT = 47310;
@@ -26,7 +26,7 @@ async function builtPage(): Promise<URL> {
   await mkdir(join(root, "portal"));
   await writeFile(join(root, "portal", "index.html"), "<!doctype html><title>Cherry Works</title>");
   await writeFile(join(root, "portal", "main.js"), "render();");
-  return pathToFileURL(join(root, "portal") + "/");
+  return pathToFileURL(`${join(root, "portal")}/`);
 }
 
 /** The three applications the routes are driven by, over one empty
@@ -37,8 +37,20 @@ function portalApps() {
   const held = new InMemoryFileReaders({});
   return [
     {
-      charterAuthoringApp: wrapAppToShowPaths(authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter()), "/repo"),
-      charterBuildingApp: wrapAppToShowPaths(buildingCharterOf(held, new InMemoryFileOutput(held), new InMemoryTokenCounter(), { claude: new InMemoryAgentCli() }, new InMemoryReporter()), "/repo"),
+      charterAuthoringApp: wrapAppToShowPaths(
+        authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter()),
+        "/repo",
+      ),
+      charterBuildingApp: wrapAppToShowPaths(
+        buildingCharterOf(
+          held,
+          new InMemoryFileOutput(held),
+          new InMemoryTokenCounter(),
+          { claude: new InMemoryAgentCli() },
+          new InMemoryReporter(),
+        ),
+        "/repo",
+      ),
     },
     workspaceSettingsLoaderOf(held),
   ] as const;
@@ -93,7 +105,10 @@ test("the token of the run is asked for on the page's address and on every call 
     assert.equal((await send(address, "/")).statusCode, 401);
     assert.equal((await send(address, `/${otherPortal.address.search}`)).statusCode, 401);
     assert.equal((await send(address, "/api/charter/root/primitives")).statusCode, 401);
-    assert.equal((await send(address, "/api/charter/root/primitives", { headers: bearer(otherPortal.address) })).statusCode, 401);
+    assert.equal(
+      (await send(address, "/api/charter/root/primitives", { headers: bearer(otherPortal.address) })).statusCode,
+      401,
+    );
   } finally {
     server.close();
     otherPortal.server.close();

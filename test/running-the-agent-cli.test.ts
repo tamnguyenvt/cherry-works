@@ -1,12 +1,12 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { CodexCli } from "../src/module/runtime/infra/codex/codex-cli.adapter.js";
-import { ClaudeCli } from "../src/module/runtime/infra/claude/claude-cli.adapter.js";
+import { test } from "node:test";
 import { AdapterFault } from "../src/module/runtime/app/port/out/running-agent-cli.port.js";
+import { ClaudeCli } from "../src/module/runtime/infra/claude/claude-cli.adapter.js";
+import { CodexCli } from "../src/module/runtime/infra/codex/codex-cli.adapter.js";
 
 /**
  * A `claude` of the test's own, put first on the PATH: it answers `--version`,
@@ -128,7 +128,10 @@ test("a run that stops with an error, or is answered as one, is raised and frees
       assert.match(`${raised.cause}`, /boom/);
       return true;
     });
-    await assert.rejects(claudeCli.ask("error"), (raised) => raised instanceof AdapterFault && /Not logged in/.test(raised.message));
+    await assert.rejects(
+      claudeCli.ask("error"),
+      (raised) => raised instanceof AdapterFault && /Not logged in/.test(raised.message),
+    );
     // Every place freed: five more run, and none waits forever.
     await Promise.all(Array.from({ length: 5 }, () => claudeCli.ask("after")));
   });
@@ -139,7 +142,10 @@ test("Codex availability checks only its CLI without spending model tokens", asy
     const codexCli = new CodexCli();
     assert.equal(await codexCli.isInstalled(), false);
     const executableFilePath = join(temporaryFolderPath, "codex");
-    await writeFile(executableFilePath, '#!/usr/bin/env node\nif (process.argv.join(" ").endsWith("--version")) process.exit(0); process.exit(2);\n');
+    await writeFile(
+      executableFilePath,
+      '#!/usr/bin/env node\nif (process.argv.join(" ").endsWith("--version")) process.exit(0); process.exit(2);\n',
+    );
     await chmod(executableFilePath, 0o755);
     assert.equal(await codexCli.isInstalled(), true);
   });

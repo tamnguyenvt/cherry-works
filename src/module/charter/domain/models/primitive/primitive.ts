@@ -1,18 +1,18 @@
 import { z } from "zod";
+import { ModelHelper } from "../../helper.js";
+import { CharterPrimitiveFault } from "../charter.fault.js";
 import { AgentPrimitive } from "./agent-primitive.js";
+import { BasePrimitive } from "./base-primitive.js";
 import { CorpusPrimitive } from "./corpus-primitive.js";
 import { GuidePrimitive } from "./guide-primitive.js";
 import { McpPrimitive } from "./mcp-primitive.js";
 import { MixinPrimitive } from "./mixin-primitive.js";
 import { PlaybookPrimitive } from "./playbook-primitive.js";
 import { PosturePrimitive } from "./posture-primitive.js";
+import { ScriptPrimitive } from "./script-primitive.js";
 import { SensorPrimitive } from "./sensor-primitive.js";
 import { SkillPrimitive } from "./skill-primitive.js";
-import { ScriptPrimitive } from "./script-primitive.js";
 import { TemplatePrimitive } from "./template-primitive.js";
-import { BasePrimitive } from "./base-primitive.js";
-import { ModelHelper } from "../../helper.js";
-import { CharterPrimitiveFault } from "../charter.fault.js";
 
 /** The classes, one per kind. Adding a kind is a file beside them and a line here; what
  *  the kinds are is read back off this list rather than written down twice. */
@@ -67,9 +67,7 @@ function isKind(value: unknown): value is Kind {
 }
 
 /** Which class reads each kind. */
-const CLASS_OF = new Map<Kind, (typeof PRIMITIVE_CLASSES)[number]>(
-  PRIMITIVE_CLASSES.map((one) => [one.kind, one]),
-);
+const CLASS_OF = new Map<Kind, (typeof PRIMITIVE_CLASSES)[number]>(PRIMITIVE_CLASSES.map((one) => [one.kind, one]));
 
 /** One header a kind's author may answer for: the shape the answer takes,
  *  whether a file written without it is refused, and — where the kind reads it
@@ -85,7 +83,8 @@ export class PrimitiveHeader {
      *  sensor's `signal` — so it is chosen rather than typed (FR-118). A header
      *  whose set is open has none. */
     readonly allowedValues?: readonly string[],
-  ) {}}
+  ) {}
+}
 
 /**
  * Every header one kind takes: what every primitive declares, and what this
@@ -119,7 +118,11 @@ function primitiveHeadersOf(kind: Kind): readonly PrimitiveHeader[] {
         field,
         heldType instanceof z.ZodArray ? "list" : "line",
         field in required,
-        heldType instanceof z.ZodEnum ? (heldType.options as readonly string[]) : heldType === BasePrimitive.flagSchema ? ["true", "false"] : undefined,
+        heldType instanceof z.ZodEnum
+          ? (heldType.options as readonly string[])
+          : heldType === BasePrimitive.flagSchema
+            ? ["true", "false"]
+            : undefined,
       );
     });
 }

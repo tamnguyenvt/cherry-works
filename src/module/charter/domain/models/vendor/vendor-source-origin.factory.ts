@@ -1,5 +1,5 @@
-import { VendorSourceOrigin } from "./vendor-source-origin.js";
 import { VendorFault } from "../charter.fault.js";
+import { VendorSourceOrigin } from "./vendor-source-origin.js";
 
 /** Makes the origin of a vendor out of the source as it was typed. */
 export class VendorSourceOriginFactory {
@@ -21,7 +21,11 @@ export class VendorSourceOriginFactory {
       .replace(/^[^/\\:@]+@[^/\\:]+:/, "");
     const folderNames = addressPath.split(/[/\\]/).filter(Boolean).slice(-2);
     if (folderNames.length < 2 || folderNames.some((folderName) => folderName === "." || folderName === ".."))
-      throw new VendorFault(`Invalid path "${sourceUri}".`, "Use correct git path, naming its owner and its repository.", { internal: false });
+      throw new VendorFault(
+        `Invalid path "${sourceUri}".`,
+        "Use correct git path, naming its owner and its repository.",
+        { internal: false },
+      );
     return new VendorSourceOrigin(sourceUri, folderNames.join("/"));
   }
 

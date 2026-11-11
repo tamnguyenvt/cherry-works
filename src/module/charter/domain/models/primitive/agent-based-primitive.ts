@@ -5,7 +5,9 @@ import { BasePrimitive } from "./base-primitive.js";
 export type AgentBasedHeaders = Readonly<z.infer<ReturnType<typeof AgentBasedPrimitive.headersSchema>>>;
 
 /** Shared provider selection for posture and sensor primitives. */
-export abstract class AgentBasedPrimitive<Headers extends AgentBasedHeaders = AgentBasedHeaders> extends BasePrimitive<Headers> {
+export abstract class AgentBasedPrimitive<
+  Headers extends AgentBasedHeaders = AgentBasedHeaders,
+> extends BasePrimitive<Headers> {
   static override headersSchema() {
     return super.headersSchema().extend({
       "agent-provider": z.array(z.string().min(1)).readonly().optional(),

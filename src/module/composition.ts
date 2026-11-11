@@ -1,73 +1,69 @@
 import { fileURLToPath } from "node:url";
 import {
   AuthoringCharter,
-  buildCharterService,
-  installCharterService,
-  LocalRepoManipulator,
-  FileCharterRepository,
-  GitSources,
-  loadCharterService,
-  loadMcpOriginsService,
-  OAuth,
   BuildingCharter,
+  buildCharterService,
   ClaudeProjection,
   CodexProjection,
-  KeychainCredentialsRepository,
-  Tiktoken,
+  FileCharterRepository,
   type ForAuthoringCharter,
   type ForAuthorizingMcpOrigins,
   type ForBuildingCharter,
   type ForCountingTokens,
+  type ForFetchingCharterSources,
   type ForManagingCharter,
   type ForManagingLocalAgentOutput,
   type ForStoringCredentials,
+  GitSources,
+  installCharterService,
+  KeychainCredentialsRepository,
+  LocalRepoManipulator,
+  loadCharterService,
+  loadMcpOriginsService,
+  OAuth,
+  Tiktoken,
 } from "#module/charter/module.js";
 import {
-  FileSessionAnalysisRepository,
-  GitWorktrees,
-  Promptfoo,
-  RunningCharter,
-  Shell,
   ClaudeCli,
   CodexCli,
+  FileSessionAnalysisRepository,
   type ForCheckingAgentCli,
   type ForKeepingWorktrees,
   type ForRunningCharter,
   type ForRunningPromptfoo,
   type ForRunningShellCommands,
+  GitWorktrees,
+  Promptfoo,
+  RunningCharter,
+  Shell,
 } from "#module/runtime/module.js";
-import { FileWorkspaceSettingsRepository, ManagingWorkspace, type ForManagingWorkspace } from "#module/workspace/module.js";
 import {
   ConsoleReporter,
   FileOutput,
   FileReaders,
-  McpClients,
-  SystemClock,
   type ForCallingMcpServers,
   type ForReadingFiles,
   type ForReportingProgress,
   type ForTellingTime,
   type ForWritingFiles,
+  McpClients,
+  SystemClock,
 } from "#module/shared/module.js";
+import {
+  FileWorkspaceSettingsRepository,
+  type ForManagingWorkspace,
+  ManagingWorkspace,
+} from "#module/workspace/module.js";
 
 /**
- * Everything plugged into the engine where it is composed: each agent's
- * projection and command line, under the agent it is for, the store that
- * keeps the charter, and every other adapter the engine reaches the outside
- * through. Each one may be the engine's own or written anew (CORE-FR-230).
+ * Every adapter the engine reaches the outside through that a tool outside
+ * this repository may hand `composeApplications` in place of the engine's
+ * own, with the source fetcher the charter's store kept as files reaches
+ * vendors through. The charter's store and the agents' projections and
+ * command lines are not among them: their ports name the domain's models
+ * (CORE-FR-230, SDK-FR-020).
  */
-export interface EnginePlugin {
-  readonly agentProvider: {
-    readonly [provider: string]: {
-      /** What the agent reads of a charter, and where (CORE-FR-221). */
-      readonly projection: ForManagingLocalAgentOutput;
-      /** The agent's own command line (EVAL-FR-004). */
-      readonly cli: ForCheckingAgentCli;
-    };
-  };
-  /** The charter — its primitives, its vendors, its test and eval cases —
-   *  kept by one store (CORE-FR-228). */
-  readonly charterRepository: ForManagingCharter;
+export interface ReplaceableAdapters {
   readonly fileReader: ForReadingFiles;
   readonly fileWriter: ForWritingFiles;
   readonly worktrees: ForKeepingWorktrees;
@@ -80,6 +76,28 @@ export interface EnginePlugin {
   readonly progressReporter: ForReportingProgress;
   readonly promptfooRunner: ForRunningPromptfoo;
   readonly credentialsRepository: ForStoringCredentials;
+  /** Where a vendor's source is fetched from (CORE-FR-205). */
+  readonly sourceFetcher: ForFetchingCharterSources;
+}
+
+/**
+ * Everything plugged into the engine where it is composed: each agent's
+ * projection and command line, under the agent it is for, the store that
+ * keeps the charter, and every other adapter the engine reaches the outside
+ * through. Each one may be the engine's own or written anew (CORE-FR-230).
+ */
+export interface EnginePlugin extends Omit<ReplaceableAdapters, "sourceFetcher"> {
+  readonly agentProvider: {
+    readonly [provider: string]: {
+      /** What the agent reads of a charter, and where (CORE-FR-221). */
+      readonly projection: ForManagingLocalAgentOutput;
+      /** The agent's own command line (EVAL-FR-004). */
+      readonly cli: ForCheckingAgentCli;
+    };
+  };
+  /** The charter — its primitives, its vendors, its test and eval cases —
+   *  kept by one store (CORE-FR-228). */
+  readonly charterRepository: ForManagingCharter;
 }
 
 /** What a repository configured itself with that the applications are
@@ -109,7 +127,8 @@ export function composeEngine(
   engineSettings: EngineSettings,
   pluginAdapters: EnginePlugin,
 ): ComposedEngine {
-  const { agentProvider, charterRepository, fileReader, fileWriter, clock, progressReporter, mcpServers } = pluginAdapters;
+  const { agentProvider, charterRepository, fileReader, fileWriter, clock, progressReporter, mcpServers } =
+    pluginAdapters;
 
   const charterAuthoringApp: ForAuthoringCharter = new AuthoringCharter(
     loadCharterService,
@@ -128,7 +147,12 @@ export function composeEngine(
     new LocalRepoManipulator(fileReader, fileWriter),
     Object.fromEntries(Object.entries(agentProvider).map(([agentName, { projection }]) => [agentName, projection])),
     pluginAdapters.tokenCounter,
-    { agents: engineSettings.enabledAgents, ...(engineSettings.mainContextCeiling === undefined ? {} : { mainContextCeiling: engineSettings.mainContextCeiling }) },
+    {
+      agents: engineSettings.enabledAgents,
+      ...(engineSettings.mainContextCeiling === undefined
+        ? {}
+        : { mainContextCeiling: engineSettings.mainContextCeiling }),
+    },
     progressReporter,
     charterAuthoringApp,
     mcpServers,
@@ -146,7 +170,12 @@ export function composeEngine(
     // itself.
     new FileSessionAnalysisRepository((rootFolder) => new FileReaders(rootFolder), repoFolder, homeFolder),
     clock,
-    { agents: engineSettings.enabledAgents, ...(engineSettings.sessionAnalysisFolder === undefined ? {} : { sessionAnalysisFolder: engineSettings.sessionAnalysisFolder }) },
+    {
+      agents: engineSettings.enabledAgents,
+      ...(engineSettings.sessionAnalysisFolder === undefined
+        ? {}
+        : { sessionAnalysisFolder: engineSettings.sessionAnalysisFolder }),
+    },
     progressReporter,
     mcpServers,
   );
@@ -159,7 +188,11 @@ export function composeWorkspace(
   supportedAgentProviders: readonly string[],
   pluginAdapters: Pick<EnginePlugin, "fileReader" | "fileWriter" | "progressReporter">,
 ): ForManagingWorkspace {
-  return new ManagingWorkspace(new FileWorkspaceSettingsRepository(pluginAdapters.fileReader, pluginAdapters.fileWriter), supportedAgentProviders, pluginAdapters.progressReporter);
+  return new ManagingWorkspace(
+    new FileWorkspaceSettingsRepository(pluginAdapters.fileReader, pluginAdapters.fileWriter),
+    supportedAgentProviders,
+    pluginAdapters.progressReporter,
+  );
 }
 
 /** The workspace module, which keeps a repository's settings, and the engine
@@ -170,43 +203,55 @@ export interface ComposedApplications {
 }
 
 /**
- * The workspace module and the engine over the plugins handed — by default
- * Claude's and Codex's, the charter kept as files, and every adapter over the
- * repository's address and the developer's home's (CORE-FR-217,
- * CORE-FR-218): the workspace first, then the engine for the settings it
- * reads, a repository being set up for exactly the agents a plugin is handed
- * for (CORE-FR-221, CORE-FR-231). Settings that do not read yet, as before
- * setup, compose an engine for no agent.
+ * The workspace module and the engine over the plugins handed, each one not
+ * handed being the engine's own — Claude's and Codex's, the charter kept as
+ * files, and every adapter over the repository's address and the developer's
+ * home's (CORE-FR-217, CORE-FR-218, CORE-FR-230). The charter's store and the
+ * agents' projections are set up over the file adapters handed, so files kept
+ * anywhere keep the charter there too (SDK-FR-020). The workspace first, then
+ * the engine for the settings it reads, a repository being set up for exactly
+ * the agents a plugin is handed for (CORE-FR-221, CORE-FR-231). Settings that
+ * do not read yet, as before setup, compose an engine for no agent.
  */
 export async function composeApplications(
   repoFolder: URL,
   homeFolder: URL,
-  pluginAdapters: EnginePlugin = {
-    agentProvider: {
-      claude: { projection: new ClaudeProjection(new FileReaders(repoFolder)), cli: new ClaudeCli() },
-      codex: { projection: new CodexProjection(new FileReaders(repoFolder)), cli: new CodexCli() },
+  handedAdapters: Partial<EnginePlugin & ReplaceableAdapters> = {},
+): Promise<ComposedApplications> {
+  const fileReader = handedAdapters.fileReader ?? new FileReaders(repoFolder);
+  const fileWriter = handedAdapters.fileWriter ?? new FileOutput(repoFolder);
+  const pluginAdapters: EnginePlugin = {
+    agentProvider: handedAdapters.agentProvider ?? {
+      claude: { projection: new ClaudeProjection(fileReader), cli: new ClaudeCli() },
+      codex: { projection: new CodexProjection(fileReader), cli: new CodexCli() },
     },
-    charterRepository: new FileCharterRepository(new FileReaders(repoFolder), new FileOutput(repoFolder), new GitSources(repoFolder)),
-    fileReader: new FileReaders(repoFolder),
-    fileWriter: new FileOutput(repoFolder),
-    worktrees: new GitWorktrees(repoFolder),
-    authorizing: new OAuth(),
-    mcpServers: new McpClients(),
-    tokenCounter: new Tiktoken(),
-    clock: new SystemClock(),
-    shell: new Shell(repoFolder),
-    progressReporter: new ConsoleReporter(),
+    charterRepository:
+      handedAdapters.charterRepository ??
+      new FileCharterRepository(fileReader, fileWriter, handedAdapters.sourceFetcher ?? new GitSources(repoFolder)),
+    fileReader,
+    fileWriter,
+    worktrees: handedAdapters.worktrees ?? new GitWorktrees(repoFolder),
+    authorizing: handedAdapters.authorizing ?? new OAuth(),
+    mcpServers: handedAdapters.mcpServers ?? new McpClients(),
+    tokenCounter: handedAdapters.tokenCounter ?? new Tiktoken(),
+    clock: handedAdapters.clock ?? new SystemClock(),
+    shell: handedAdapters.shell ?? new Shell(repoFolder),
+    progressReporter: handedAdapters.progressReporter ?? new ConsoleReporter(),
     // promptfoo, installed once under this engine's own folder in the
     // developer's home, outside every repository (EVAL-FR-032).
-    promptfooRunner: new Promptfoo(repoFolder, fileURLToPath(new URL(".cherry-works", homeFolder))),
-    credentialsRepository: new KeychainCredentialsRepository(),
-  },
-): Promise<ComposedApplications> {
+    promptfooRunner:
+      handedAdapters.promptfooRunner ?? new Promptfoo(repoFolder, fileURLToPath(new URL(".cherry-works", homeFolder))),
+    credentialsRepository: handedAdapters.credentialsRepository ?? new KeychainCredentialsRepository(),
+  };
   const workspaceApp = composeWorkspace(Object.keys(pluginAdapters.agentProvider), pluginAdapters);
   const workspaceSettingsDTO = await workspaceApp.settings();
   const engineSettings: EngineSettings =
     workspaceSettingsDTO.type === "Fault"
       ? { enabledAgents: [] }
-      : { enabledAgents: workspaceSettingsDTO.data.agents, mainContextCeiling: workspaceSettingsDTO.data.mainContextCeiling, sessionAnalysisFolder: workspaceSettingsDTO.data.sessionAnalysisFolder };
+      : {
+          enabledAgents: workspaceSettingsDTO.data.agents,
+          mainContextCeiling: workspaceSettingsDTO.data.mainContextCeiling,
+          sessionAnalysisFolder: workspaceSettingsDTO.data.sessionAnalysisFolder,
+        };
   return { workspaceApp, engineApp: composeEngine(repoFolder, homeFolder, engineSettings, pluginAdapters) };
 }

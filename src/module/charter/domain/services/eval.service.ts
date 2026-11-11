@@ -1,7 +1,7 @@
+import { type DomainFault, FaultsByFile } from "../../../shared/module.js";
 import type { CharterRoot } from "../models/charter/charter-root.js";
-import { FaultsByFile, type DomainFault } from "../../../shared/module.js";
-import type { EvalRoot } from "../models/eval/eval-root.js";
 import { EvalSuiteFault } from "../models/charter.fault.js";
+import type { EvalRoot } from "../models/eval/eval-root.js";
 
 /** Checks the evaluation cases against a charter. */
 export class EvalService {
@@ -22,15 +22,31 @@ export class EvalService {
             ? []
             : [
                 skillPrimitive === undefined
-                  ? new EvalSuiteFault(`This charter holds no skill or playbook called "${skillId}".`, `Author it, or correct the name. "cw list skill" says every skill this charter holds.`, { internal: false })
-                  : new EvalSuiteFault(`"${skillId}" is a ${skillPrimitive.kind}, and a case invokes a skill or a playbook.`, `Name a skill or a playbook under "invoke".`, { internal: false }),
+                  ? new EvalSuiteFault(
+                      `This charter holds no skill or playbook called "${skillId}".`,
+                      `Author it, or correct the name. "cw list skill" says every skill this charter holds.`,
+                      { internal: false },
+                    )
+                  : new EvalSuiteFault(
+                      `"${skillId}" is a ${skillPrimitive.kind}, and a case invokes a skill or a playbook.`,
+                      `Name a skill or a playbook under "invoke".`,
+                      { internal: false },
+                    ),
               ]),
           ...(guideId === undefined || guidePrimitive?.kind === "guide"
             ? []
             : [
                 guidePrimitive === undefined
-                  ? new EvalSuiteFault(`This charter holds no guide called "${guideId}".`, `Author it, or correct the name. "cw list guide" says every guide this charter holds.`, { internal: false })
-                  : new EvalSuiteFault(`"${guideId}" is a ${guidePrimitive.kind}, and a case follows a guide.`, `Name a guide under "follow".`, { internal: false }),
+                  ? new EvalSuiteFault(
+                      `This charter holds no guide called "${guideId}".`,
+                      `Author it, or correct the name. "cw list guide" says every guide this charter holds.`,
+                      { internal: false },
+                    )
+                  : new EvalSuiteFault(
+                      `"${guideId}" is a ${guidePrimitive.kind}, and a case follows a guide.`,
+                      `Name a guide under "follow".`,
+                      { internal: false },
+                    ),
               ]),
         ];
       });

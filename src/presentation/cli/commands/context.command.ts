@@ -1,4 +1,12 @@
-import { EXIT_FAILURE, EXIT_OK, type Command, type Context, type OptionSpec, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { printFault } from "./helper.js";
 
 const OPTIONS = {
@@ -23,8 +31,13 @@ export class ContextCommand implements Command<typeof OPTIONS> {
   readonly summary = "Say how many tokens the charter puts into the agent's main context";
   readonly options = OPTIONS;
 
-  async run({ charterBuildingApp, charterRuntimeApp }: Context, { exact: isExactAsked }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const mainContextsDTO = isExactAsked ? await charterRuntimeApp.countMainContext() : await charterBuildingApp.predictMainContext();
+  async run(
+    { charterBuildingApp, charterRuntimeApp }: Context,
+    { exact: isExactAsked }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
+    const mainContextsDTO = isExactAsked
+      ? await charterRuntimeApp.countMainContext()
+      : await charterBuildingApp.predictMainContext();
     if (mainContextsDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(mainContextsDTO) };
 
     if (mainContextsDTO.type === "FaultsByFile") {
@@ -37,10 +50,18 @@ export class ContextCommand implements Command<typeof OPTIONS> {
 
     const { contexts } = mainContextsDTO.data;
     if (contexts.length === 0)
-      return { code: EXIT_OK, result: 'No agent is chosen, so no agent loads anything of the charter. Run "cw init" to choose one.\n' };
+      return {
+        code: EXIT_OK,
+        result: 'No agent is chosen, so no agent loads anything of the charter. Run "cw init" to choose one.\n',
+      };
 
-    const loadLineOf = ({ data: { tokens, kind, id, globs } }: (typeof contexts)[number]["data"]["sessionLoads"][number]) =>
-      [`  ${tokens.toLocaleString("en-US").padStart(7)}  ${kind.padEnd(8)} ${id}`, ...(globs === undefined ? [] : [`  ${globs.join(", ")}`])].join("");
+    const loadLineOf = ({
+      data: { tokens, kind, id, globs },
+    }: (typeof contexts)[number]["data"]["sessionLoads"][number]) =>
+      [
+        `  ${tokens.toLocaleString("en-US").padStart(7)}  ${kind.padEnd(8)} ${id}`,
+        ...(globs === undefined ? [] : [`  ${globs.join(", ")}`]),
+      ].join("");
 
     return {
       code: EXIT_OK,
@@ -49,7 +70,9 @@ export class ContextCommand implements Command<typeof OPTIONS> {
           `${agent} opens a session with:`,
           ...sessionLoads.map(loadLineOf),
           `  ${totalTokens.toLocaleString("en-US")} tokens in all, ${isExact ? `counted exactly by ${agent}` : "estimated"}.`,
-          ...(fileLoads.length === 0 ? [] : ["", "Loaded when a file it names is touched, not in the total:", ...fileLoads.map(loadLineOf)]),
+          ...(fileLoads.length === 0
+            ? []
+            : ["", "Loaded when a file it names is touched, not in the total:", ...fileLoads.map(loadLineOf)]),
           "",
         ])
         .join("\n"),

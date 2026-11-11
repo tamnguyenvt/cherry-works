@@ -1,5 +1,4 @@
-import type { AgentProvider } from "../agent/agent-provider.js";
-import type { AgentProviderName } from "../agent/agent-provider.js";
+import type { AgentProvider, AgentProviderName } from "../agent/agent-provider.js";
 import { OutputPart } from "./output-part.js";
 
 /**
@@ -21,7 +20,10 @@ import { OutputPart } from "./output-part.js";
  */
 export class Catalogue {
   /** Entries in the order they are to be listed: by id (SC-007). */
-  constructor(readonly entries: readonly CatalogueEntry[], readonly agent?: AgentProvider) {}
+  constructor(
+    readonly entries: readonly CatalogueEntry[],
+    readonly agent?: AgentProvider,
+  ) {}
 
   /** What a catalogue is among the parts of a build's output: the listing
    *  every host shares, or one host's own (FR-011). */
@@ -39,7 +41,11 @@ export class Catalogue {
   get text(): string {
     const agentName = this.agent?.name;
     const catalogueEntries = this.entries
-      .filter((catalogueEntry) => (agentName === undefined ? catalogueEntry.agentProviders === "all" : catalogueEntry.agentProviders !== "all" && catalogueEntry.agentProviders.includes(agentName)))
+      .filter((catalogueEntry) =>
+        agentName === undefined
+          ? catalogueEntry.agentProviders === "all"
+          : catalogueEntry.agentProviders !== "all" && catalogueEntry.agentProviders.includes(agentName),
+      )
       .map(({ agentProviders, ...catalogueEntry }) => catalogueEntry);
     return `${JSON.stringify(catalogueEntries, undefined, 2)}\n`;
   }
@@ -52,7 +58,10 @@ export class Catalogue {
    * put in, which is the order by id they were made in.
    */
   filterByKind(kind: string): Catalogue {
-    return new Catalogue(this.entries.filter((one) => one.kind === kind), this.agent);
+    return new Catalogue(
+      this.entries.filter((one) => one.kind === kind),
+      this.agent,
+    );
   }
 }
 

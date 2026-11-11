@@ -1,14 +1,14 @@
 import type { CharterOutput } from "../../../domain/models/projection/charter-output.js";
 import type { ProjectionPlan } from "../../../domain/models/projection/projection-plan.js";
 
+export { AdapterFault } from "../../../../shared/module.js";
 /** The models the local files are planned and written in, named again here so
  *  an adapter keeping them imports nothing of the hexagon but its port. */
 export type { CharterOutput, CompiledPart } from "../../../domain/models/projection/charter-output.js";
-export { ProjectionPlan, WritePlan } from "../../../domain/models/projection/projection-plan.js";
-export { OutputPart } from "../../../domain/models/projection/output-part.js";
 export { McpOrigins } from "../../../domain/models/projection/mcp-origin.js";
+export { OutputPart } from "../../../domain/models/projection/output-part.js";
+export { ProjectionPlan, WritePlan } from "../../../domain/models/projection/projection-plan.js";
 export { StampedDocument } from "../../../domain/models/projection/stamped-document.js";
-export { AdapterFault } from "../../../../shared/module.js";
 
 /**
  * The local files a build checks and writes: it lays a build's output onto a
