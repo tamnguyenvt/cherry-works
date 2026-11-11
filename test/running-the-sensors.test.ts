@@ -150,7 +150,7 @@ test("a signal whose last sensor is removed keeps the command the last build wro
   held.remove(new URL("sensor/guard/index.md", root));
 
   await build();
-  const sensorRunOutcome = answerOf(await runSensors("PreToolUse", "{}"));
+  const sensorRunOutcome = answerOf(await runSensors("PreToolUse", "{}", "claude"));
 
   assert.deepEqual((await claudeSettings()).hooks, {
     PreToolUse: [hookEntry("cw sensor run PreToolUse --agent claude")],
@@ -167,7 +167,7 @@ test("the sensors of one signal run all at once, each given the same event (CORE
   });
   await build();
 
-  await runSensors("Stop", '{"hook_event_name":"Stop"}');
+  await runSensors("Stop", '{"hook_event_name":"Stop"}', "claude");
 
   assert.deepEqual(
     shell.runs.map(({ command }) => command).sort(),
@@ -192,7 +192,7 @@ test("one sensor exiting 2 makes the command exit 2 with its error, and the othe
   );
   await build();
 
-  const sensorRunOutcome = answerOf(await runSensors("Stop", "{}"));
+  const sensorRunOutcome = answerOf(await runSensors("Stop", "{}", "claude"));
 
   assert.equal(sensorRunOutcome.data.exitCode, 2);
   assert.equal(sensorRunOutcome.data.problem, "a release is open\n");
@@ -209,7 +209,7 @@ test("two sensors both exiting 2 give the error of each, in order of id (CORE-FR
   );
   await build();
 
-  const sensorRunOutcome = answerOf(await runSensors("Stop", "{}"));
+  const sensorRunOutcome = answerOf(await runSensors("Stop", "{}", "claude"));
 
   assert.equal(sensorRunOutcome.data.exitCode, 2);
   assert.equal(sensorRunOutcome.data.problem, "a\nb\n");
@@ -228,7 +228,7 @@ test("one sensor exiting 1 makes the command exit 1, and the other still runs to
   );
   await build();
 
-  const sensorRunOutcome = answerOf(await runSensors("Stop", "{}"));
+  const sensorRunOutcome = answerOf(await runSensors("Stop", "{}", "claude"));
 
   assert.equal(sensorRunOutcome.data.exitCode, 1);
   assert.equal(sensorRunOutcome.data.problem, "no such file\n");
@@ -245,7 +245,7 @@ test("sensors answering in plain text reach the host as one answer, in order of 
   );
   await build();
 
-  const sensorRunOutcome = answerOf(await runSensors("Stop", "{}"));
+  const sensorRunOutcome = answerOf(await runSensors("Stop", "{}", "claude"));
 
   assert.deepEqual(sensorRunOutcome.data, { exitCode: 0, answer: "a\nb\n", problem: "" });
 });
@@ -286,7 +286,7 @@ test("sensors answering in the host's structured form are combined as the host c
   );
   await build();
 
-  const sensorRunOutcome = answerOf(await runSensors("PreToolUse", "{}"));
+  const sensorRunOutcome = answerOf(await runSensors("PreToolUse", "{}", "claude"));
 
   assert.equal(sensorRunOutcome.data.exitCode, 0);
   assert.deepEqual(JSON.parse(sensorRunOutcome.data.answer), {
@@ -329,7 +329,7 @@ test("a PermissionRequest denial wins over an earlier allowance without carrying
     },
   );
   assert.equal((await build()).type, "PlanSummary");
-  const outcome = answerOf(await runSensors("PermissionRequest", "{}"));
+  const outcome = answerOf(await runSensors("PermissionRequest", "{}", "claude"));
   assert.deepEqual(JSON.parse(outcome.data.answer).hookSpecificOutput.decision, {
     behavior: "deny",
     message: "blocked by the charter",
@@ -362,7 +362,7 @@ test("a block and context from two sensors both reach the host (CORE-FR-178)", a
   );
   await build();
 
-  const sensorRunOutcome = answerOf(await runSensors("UserPromptSubmit", "{}"));
+  const sensorRunOutcome = answerOf(await runSensors("UserPromptSubmit", "{}", "claude"));
 
   assert.deepEqual(JSON.parse(sensorRunOutcome.data.answer), {
     decision: "block",
@@ -378,7 +378,7 @@ test("a sensor changed in the charter and not built runs as last built (CORE-FR-
   await build();
   held.write(new URL("sensor/say-a/index.md", root), sensor("say-a", "Stop", "echo changed"));
 
-  await runSensors("Stop", "{}");
+  await runSensors("Stop", "{}", "claude");
 
   assert.ok(shell.runs.some(({ command }) => command === "echo a"));
   assert.ok(!shell.runs.some(({ command }) => command === "echo changed"));
@@ -388,7 +388,7 @@ test("a signal no sensor names runs nothing, writes nothing, and exits 0 (CORE-F
   const { shell, build, runSensors } = aRepository({});
   await build();
 
-  const sensorRunOutcome = answerOf(await runSensors("PreCompact", "{}"));
+  const sensorRunOutcome = answerOf(await runSensors("PreCompact", "{}", "claude"));
 
   assert.deepEqual(sensorRunOutcome.data, { exitCode: 0, answer: "", problem: "" });
   assert.deepEqual(shell.runs, []);

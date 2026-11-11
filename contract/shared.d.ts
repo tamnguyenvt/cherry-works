@@ -458,3 +458,87 @@ interface ReadFile<Contents extends string | Uint8Array = string> {
   readonly path: string;
   readonly contents: Contents;
 }
+
+/** DRIVEN ADAPTER: the terminal. Results on stdout, problems on stderr, so a
+ *  pipeline can separate what it asked for from what went wrong. */
+declare class ConsoleReporter implements ForReportingProgress {
+  report(text: string): void;
+  problem(text: string): void;
+}
+
+/** DRIVEN ADAPTER: the filesystem, written to. What the charter compiles to,
+ *  put where a host will look for it.
+ *
+ *  The directories are made on the way: a projection lands in `.claude/skills/`
+ *  whether anything has been built here before or not, and the hexagon names a
+ *  path rather than a sequence of directories to create.
+ *
+ *  Set up on one folder, the repository's root, and every path it is handed
+ *  is from there (CORE-FR-217). */
+declare class FileOutput implements ForWritingFiles {
+  #private;
+  constructor(
+    /** The folder every path is from: refused here unless it names one
+     *  (SDK-FR-010). */
+    rootFolder: URL,
+  );
+  write(
+    filePath: string,
+    contents: string | Uint8Array,
+    options?: {
+      readonly executable?: boolean;
+    },
+  ): Promise<void>;
+  delete(filePath: string): Promise<void>;
+  deleteFolder(folderPath: string): Promise<void>;
+  deleteEmptyFolder(folderPath: string): Promise<void>;
+}
+
+/** DRIVEN ADAPTER: the filesystem. The charter as it was authored, on a disk.
+ *
+ *  A directory that is not there is no files rather than a failure: a charter
+ *  holding some of the kind directories and not the rest is a charter, and the
+ *  rest are authored the day someone needs them. Anything else the disk refuses — a
+ *  permission, a broken link — is raised, since that is a repository to fix and
+ *  not a charter to report on.
+ *
+ *  Set up on one folder, the repository's root, and every path it is asked
+ *  is from there (CORE-FR-217). */
+declare class FileReaders implements ForReadingFiles {
+  #private;
+  constructor(
+    /** The folder every path is from: refused here unless it names one
+     *  (SDK-FR-010). */
+    rootFolder: URL,
+  );
+  readFilesRecursively(folderPath: string): Promise<readonly ReadFile[]>;
+  readBytesRecursively(folderPath: string): Promise<readonly ReadFile<Uint8Array>[]>;
+  listFiles(folderPath: string): Promise<readonly ListedFile[]>;
+  listFolders(folderPath: string): Promise<readonly string[]>;
+  findFileAddress(filePath: string): string;
+  readIfThere(filePath: string): Promise<string | undefined>;
+  readBytesIfThere(filePath: string): Promise<Uint8Array | undefined>;
+}
+
+/**
+ * DRIVEN ADAPTER: the mcp origins a charter declares, reached over the SDK's own
+ * client — Streamable HTTP to an endpoint, standard input and output to a local
+ * command it starts.
+ *
+ * An mcp origin at an endpoint is sent the token each call is handed as a bearer
+ * credential, so a renewal takes effect at the next call. A local command is
+ * handed its token once, in the variable its mcp names and in no other way, and
+ * is stopped when its mcp origin is let go. Its standard error is the server's own.
+ */
+declare class McpClients implements ForCallingMcpServers {
+  connect(
+    { address, endpoint, command }: McpServerAddress,
+    accessToken: string | undefined,
+    timeoutMs: number,
+  ): Promise<McpServerConnection>;
+}
+
+/** DRIVEN ADAPTER: the system clock. */
+declare class SystemClock implements ForTellingTime {
+  now(): Date;
+}

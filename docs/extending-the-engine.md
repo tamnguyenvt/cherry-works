@@ -55,11 +55,13 @@ It answers `workspaceApp` and `engineApp`:
 | `workspaceApp` | `ForManagingWorkspace` | reads and writes `.cw/settings.json`: which agents a repository builds for |
 | `engineApp.charterAuthoringApp` | `ForAuthoringCharter` | primitives, vendors, test and eval files, the tests, signing in to mcp origins |
 | `engineApp.charterBuildingApp` | `ForBuildingCharter` | the build, its preview, the health check, the context, the sensors |
-| `engineApp.charterRuntimeApp` | `ForRunningCharter` | runs evaluations, executes sensors, and serves the mcp gateway |
+| `engineApp.charterRuntimeApp` | `ForRunningCharter` | runs evaluations, executes sensors for the agent you name, and serves the mcp gateway |
 
-The engine is composed for the settings the repository holds **at the moment
-it is composed**. After `workspaceApp.setUp(…)` writes new settings, compose
-again to get an engine for them.
+The engine is composed for the settings the repository holds **when one of
+`engineApp`'s applications is first called**; composing itself reads nothing,
+at an address of any scheme. Settings naming no agent yet, as before setup,
+are read again on the next call; once they name one, `workspaceApp.setUp(…)`
+writing new settings needs composing again to get an engine for them.
 
 ```ts
 import { homedir } from "node:os";
@@ -132,6 +134,9 @@ Every adapter you may hand, as a `Partial<EngineAdapters>`:
 |---|---|---|
 | `agentProvider` | `{ [agent]: { projection: ForManagingLocalAgentOutput, cli: ForCheckingAgentCli } }` | Claude Code's and Codex's: `ClaudeProjection`, `CodexProjection`, `ClaudeCli`, `CodexCli` |
 | `charterRepository` | `ForManagingCharter` | `FileCharterRepository`: the charter as files under `.cw/charter/` |
+| `workspaceSettingsRepository` | `ForStoringWorkspaceSettings` | `FileWorkspaceSettingsRepository`: `.cw/settings.json`, through the file adapters |
+| `sessionAnalysisRepository` | `ForLoadingSessionAnalysis` | `FileSessionAnalysisRepository`: the session logs under the home |
+| `localOutput` | `ForManagingLocalOutput` | `LocalRepoManipulator`: lays a build's output into `.cw/out/`, through the file adapters |
 | `fileReader` | `ForReadingFiles` | the repository's files on disk |
 | `fileWriter` | `ForWritingFiles` | the repository's files on disk |
 | `sourceFetcher` | `ForFetchingCharterSources` | git, to fetch a vendor's source |
@@ -172,9 +177,30 @@ const { engineApp } = await composeApplications(repoFolder, homeFolder, {
 
 `charterRepository` keeps the charter's primitives, vendors, test and eval
 cases. `cw`'s own keeps them as files, through the file adapters; hand your own
-`ForManagingCharter` to keep them in a database instead. The models its
-methods take and answer, such as `RawPrimitive` and `VendorRoot`, are exported
-with it.
+`ForManagingCharter` to keep them in a database instead, or extend
+`FileCharterRepository`. The models its methods take and answer, such as
+`RawPrimitive` and `VendorRoot`, are exported with it.
+
+Every adapter of `cw`'s in the table above is exported, for a tool to extend
+rather than write anew: an extension is handed as any other adapter.
+
+```ts
+import { FileCharterRepository, FileOutput, FileReaders, GitSources } from "cherry-works";
+import type { RawPrimitive } from "cherry-works";
+
+class LoggedCharterRepository extends FileCharterRepository {
+  override async loadCharter(checkoutPath?: string): Promise<readonly RawPrimitive[]> {
+    myLogger.info("reading the charter");
+    return super.loadCharter(checkoutPath);
+  }
+}
+
+const fileReader = new FileReaders(repoFolder);
+const fileWriter = new FileOutput(repoFolder);
+const { engineApp } = await composeApplications(repoFolder, homeFolder, {
+  charterRepository: new LoggedCharterRepository(fileReader, fileWriter, new GitSources(repoFolder)),
+});
+```
 
 ### Keep the files somewhere else
 
@@ -191,11 +217,7 @@ const homeFolder = new URL("memory:/home/");
 const fileReader: ForReadingFiles = new MapFileReader(repoFolder, fileBytesByPath);
 const fileWriter: ForWritingFiles = new MapFileWriter(fileBytesByPath);
 
-const { engineApp } = await composeApplications(repoFolder, homeFolder, {
-  fileReader,
-  fileWriter,
-  promptfooRunner, // cw's own needs a home at a file: address
-});
+const { engineApp } = await composeApplications(repoFolder, homeFolder, { fileReader, fileWriter });
 ```
 
 What an adapter receives:

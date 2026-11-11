@@ -118,7 +118,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
   async runSensors(
     signal: string,
     stdin: string,
-    agentProviderName: AgentProviderName = "claude",
+    agentProviderName: AgentProviderName,
   ): Promise<RuntimeDTOs.SensorRunOutcome | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("RunningCharter.runSensors", async () => {
       const { commands } = this.answeredDTOOf(

@@ -11,8 +11,10 @@ import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-me
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { LocalRepoManipulator } from "../src/module/charter/infra/local-repo-manipulator.adapter.js";
 import { composeApplications, composeEngine, type EngineAdapters } from "../src/module/composition.js";
 import { AgentCli } from "../src/module/runtime/infra/agent-cli.base.js";
+import { FileSessionAnalysisRepository } from "../src/module/runtime/infra/file-session-analysis.repository.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryPromptfoo } from "../src/module/runtime/infra/in-memory/in-memory-promptfoo.adapter.js";
 import { InMemoryShellCommands } from "../src/module/runtime/infra/in-memory/in-memory-shell-commands.adapter.js";
@@ -23,6 +25,7 @@ import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memo
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryMcpServers } from "../src/module/shared/infra/in-memory/in-memory-mcp-servers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { FileWorkspaceSettingsRepository } from "../src/module/workspace/infra/file-workspace-settings.repository.js";
 import { Commander } from "../src/presentation/cli/cli.commander.js";
 import { type CommandLine, EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
@@ -95,6 +98,13 @@ function pluginsInMemory(adapters: ReturnType<typeof adaptersInMemory>): EngineA
       codex: { projection: new CodexProjection(adapters.fileReader), cli: new InMemoryAgentCli() },
     },
     charterRepository: new FileCharterRepository(adapters.fileReader, adapters.fileWriter, adapters.sourceFetcher),
+    sessionAnalysisRepository: new FileSessionAnalysisRepository(
+      (rootFolder) => new InMemoryFileReaders({}, rootFolder),
+      repoFolder,
+      homeFolder,
+    ),
+    workspaceSettingsRepository: new FileWorkspaceSettingsRepository(adapters.fileReader, adapters.fileWriter),
+    localOutput: new LocalRepoManipulator(adapters.fileReader, adapters.fileWriter),
   };
 }
 
@@ -252,7 +262,7 @@ test("runtime asks the charter only through charter's applications, and charter 
 
 test("the published package composes the engine of its modules and the adapters cw's plugin is built from, exporting only how to compose it and the ports a tool may replace, and no command line or portal (CORE Story 52 scenario 3)", () => {
   const libraryIndexText = readFileSync(new URL("src/index.ts", repositoryUrl), "utf8");
-  const exportedPaths = [...libraryIndexText.matchAll(/^export .* from "\.\/([^"]+)";$/gm)].map(
+  const exportedPaths = [...libraryIndexText.matchAll(/^export [^;]* from "\.\/([^"]+)";$/gm)].map(
     (exportMatch) => exportMatch[1]!,
   );
   assert.ok(exportedPaths.length > 0);
@@ -296,13 +306,13 @@ test("an engine composed with a plugin of the author's own builds and evaluates 
     }
   }
   const ownAdapters = adaptersInMemory(filesInThreeParts);
-  const ownEngine = composeEngine(repoFolder, homeFolder, claudeSettings, {
+  const ownEngine = composeEngine(claudeSettings, {
     ...pluginsInMemory(ownAdapters),
     agentProvider: { claude: { projection: new OwnClaudeProjection(ownAdapters.fileReader), cli: new OwnAgentCli() } },
   });
   const shippedAdapters = adaptersInMemory(filesInThreeParts);
   const shippedPlugins = pluginsInMemory(shippedAdapters);
-  const shippedEngine = composeEngine(repoFolder, homeFolder, claudeSettings, {
+  const shippedEngine = composeEngine(claudeSettings, {
     ...shippedPlugins,
     agentProvider: { claude: shippedPlugins.agentProvider["claude"]! },
   });
@@ -320,7 +330,7 @@ test("an engine composed with a plugin of the author's own builds and evaluates 
 
 test("the eval cases are listed, added, rewritten and removed by the one store that keeps the charter, as the test cases are (CORE Story 52 scenario 5)", async () => {
   const adapters = adaptersInMemory(filesInThreeParts);
-  const { charterAuthoringApp } = composeEngine(repoFolder, homeFolder, claudeSettings, pluginsInMemory(adapters));
+  const { charterAuthoringApp } = composeEngine(claudeSettings, pluginsInMemory(adapters));
   const evalFilePathsOf = async () =>
     (await adapters.fileReader.readFilesRecursively(".cw/charter/eval")).map(({ path }) => path).sort();
 
@@ -392,14 +402,14 @@ test("every command refuses a repository laid out the old way, naming the author
     assert.match(problem, /cw-author/, argv.join(" "));
   }
   const oldWayAdapters = adaptersInMemory(filesLaidOutTheOldWay);
-  const { charterBuildingApp } = composeEngine(repoFolder, homeFolder, claudeSettings, pluginsInMemory(oldWayAdapters));
+  const { charterBuildingApp } = composeEngine(claudeSettings, pluginsInMemory(oldWayAdapters));
   assert.match(JSON.stringify(await charterBuildingApp.build()), /laid out the old way/);
 });
 
 test("a vendor source laid out the old way is refused, naming the source and the authoring skill, and nothing is installed (CORE Story 52 scenario 9)", async () => {
   const adapters = adaptersInMemory(filesInThreeParts);
   adapters.sourceFetcher.sourceFilesBySource["team/old"] = { ".cw/charter/guide/published/index.md": publishedText };
-  const { charterAuthoringApp } = composeEngine(repoFolder, homeFolder, claudeSettings, pluginsInMemory(adapters));
+  const { charterAuthoringApp } = composeEngine(claudeSettings, pluginsInMemory(adapters));
 
   const vendorAddAnswer = await charterAuthoringApp.addVendor("team/old");
 
@@ -436,9 +446,7 @@ test("following the authoring skill moves a repository laid out the old way, and
 
   const builtFilesOf = async (files: Readonly<Record<string, string>>) => {
     const adapters = adaptersInMemory(files);
-    answerOf(
-      await composeEngine(repoFolder, homeFolder, claudeSettings, pluginsInMemory(adapters)).charterBuildingApp.build(),
-    );
+    answerOf(await composeEngine(claudeSettings, pluginsInMemory(adapters)).charterBuildingApp.build());
     return (await adapters.fileReader.readBytesRecursively("")).filter(
       ({ path }) => !path.startsWith(".cw/charter/") && path !== ".cw/settings.json",
     );
@@ -448,7 +456,7 @@ test("following the authoring skill moves a repository laid out the old way, and
 
 test("an evaluation keeps each case's working copy and what its run leaves under the log, which version control ignores (CORE Story 52 scenario 11)", async () => {
   const adapters = adaptersInMemory({ ...filesInThreeParts, [repoFileUrlOf(".cw/.gitignore")]: "log/\n" });
-  const { charterRuntimeApp } = composeEngine(repoFolder, homeFolder, claudeSettings, pluginsInMemory(adapters));
+  const { charterRuntimeApp } = composeEngine(claudeSettings, pluginsInMemory(adapters));
 
   answerOf(await charterRuntimeApp.evaluate());
 

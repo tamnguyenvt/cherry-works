@@ -42,7 +42,8 @@ export class SensorRunCommand implements Command<typeof OPTIONS> {
       };
     // Typed at a terminal, there is no event to wait for.
     const stdin = process.stdin.isTTY ? "" : await text(process.stdin);
-    const sensorRunOutcomeDTO = await charterRuntimeApp.runSensors(signal ?? "", stdin, agent);
+    // A hook written before hooks named their agent is Claude's.
+    const sensorRunOutcomeDTO = await charterRuntimeApp.runSensors(signal ?? "", stdin, agent ?? "claude");
     if (sensorRunOutcomeDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(sensorRunOutcomeDTO) };
     const { data: sensorRunOutcome } = sensorRunOutcomeDTO;
     return { code: sensorRunOutcome.exitCode, result: sensorRunOutcome.answer, problem: sensorRunOutcome.problem };

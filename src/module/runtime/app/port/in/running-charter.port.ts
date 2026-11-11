@@ -26,11 +26,12 @@ export interface RuntimeSettings {
  */
 export interface ForRunningCharter {
   /** The sensors of one signal, run as one hook, each to its end whatever the
-   *  others do (CORE-FR-176 – CORE-FR-179). */
+   *  others do (CORE-FR-176 – CORE-FR-179), for the agent named: the engine
+   *  assumes none (CORE-FR-233). */
   runSensors(
     signal: string,
     stdin: string,
-    agent?: AgentProviderName,
+    agentProviderName: AgentProviderName,
   ): Promise<RuntimeDTOs.SensorRunOutcome | FaultDTOs.Fault>;
 
   /** One call forwarded to the mcp origin serving it, reached for this call

@@ -182,7 +182,7 @@ A tool author can tell which version a release requires from the policy the main
 
 ### SDK Story 8 - Compose the engine anywhere, from cw's own adapters and one's own (Priority: P1)
 
-**Status**: Todo
+**Status**: Done
 
 A tool author imports `cw`'s own store and an agent's projection from `cherry-works`, extends them, and hands the extended ones where the engine is composed; or hands a sessions store, a settings store and a local output of their own, and the use cases that use them answer through them. Composed at a repository and a home that are not on a disk, with nothing handed, the engine is composed. Running a signal's sensors, the tool names the agent they run for. What the package exports is exactly what the contract says: the composition, the driver ports and their DTOs, the port of every adapter with the models it names, and `cw`'s own adapters — and nothing else.
 

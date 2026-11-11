@@ -4,7 +4,8 @@
  * Every adapter the engine reaches the outside through, each the engine's own
  * or one a tool writes: each agent's projection and command line, under the
  * agent it is for, the store that keeps the charter, the source fetcher that
- * store reaches vendors through, and the rest (CORE-FR-230).
+ * store reaches vendors through, the sessions, the settings, the local output,
+ * and the rest (CORE-FR-230, SDK-FR-020).
  */
 interface EngineAdapters {
   readonly agentProvider: {
@@ -21,6 +22,12 @@ interface EngineAdapters {
   /** Where a vendor's source is fetched from, by the charter's store kept as
    *  files (CORE-FR-205). */
   readonly sourceFetcher: ForFetchingCharterSources;
+  /** Where a repository's sessions are read from (EVAL-FR-009). */
+  readonly sessionAnalysisRepository: ForLoadingSessionAnalysis;
+  /** Where a repository keeps its settings (CORE-FR-231). */
+  readonly workspaceSettingsRepository: ForStoringWorkspaceSettings;
+  /** What lays a build's output onto the repository (CORE-FR-221). */
+  readonly localOutput: ForManagingLocalOutput;
   readonly fileReader: ForReadingFiles;
   readonly fileWriter: ForWritingFiles;
   readonly worktrees: ForKeepingWorktrees;
@@ -44,7 +51,8 @@ interface ComposedEngine {
 }
 
 /** The workspace module, which keeps a repository's settings, and the engine
- *  composed for the settings it held when they were composed. */
+ *  composed for the settings it holds when one of the engine's applications is
+ *  first called. */
 interface ComposedApplications {
   readonly workspaceApp: ForManagingWorkspace;
   readonly engineApp: ComposedEngine;
@@ -57,10 +65,12 @@ interface ComposedApplications {
  * home's (CORE-FR-217, CORE-FR-218, CORE-FR-230). The charter's store and the
  * agents' projections are set up over the file adapters handed, so files kept
  * anywhere keep the charter there too, unless a store of the tool's own is
- * handed (SDK-FR-020). The workspace first, then
- * the engine for the settings it reads, a repository being set up for exactly
- * the agents a projection is handed for (CORE-FR-221, CORE-FR-231). Settings that
- * do not read yet, as before setup, compose an engine for no agent.
+ * handed (SDK-FR-020). The workspace first, then the engine for the settings
+ * it reads, a repository being set up for exactly the agents a projection is
+ * handed for (CORE-FR-221, CORE-FR-231). Settings that do not read yet, as
+ * before setup, compose an engine for no agent. They are read when one of the
+ * engine's applications is first called, so composing reaches no disk, at an
+ * address of any scheme (SDK-FR-011).
  */
 declare function composeApplications(
   repoFolder: URL,

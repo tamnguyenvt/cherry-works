@@ -79,15 +79,16 @@ const RUNS_FOLDER = ".cw/log/eval/runs";
 const WORKTREES_FOLDER = ".cw/log/eval/worktrees";
 
 export class Promptfoo implements ForRunningPromptfoo {
-  readonly installFolderPath: string;
   readonly #repoFolder: FolderURL;
+  readonly #cherryWorksFolder: FolderURL;
 
-  /** `repoFolder`: the repository every working path is from, refused unless
-   *  it names a folder (SDK-FR-010); `cherryWorksFolderPath`: this engine's own
-   *  folder on the machine. */
+  /** `repoFolder`: the repository every working path is from, and
+   *  `cherryWorksFolder`: this engine's own folder on the machine, each
+   *  refused unless it names a folder (SDK-FR-010), and turned into a path
+   *  only when promptfoo is reached (SDK-FR-011). */
   constructor(
     repoFolder: URL,
-    cherryWorksFolderPath: string,
+    cherryWorksFolder: URL,
     private readonly agentSessionFolders: readonly string[] = [
       join(process.env.CODEX_HOME ?? join(homedir(), ".codex"), "sessions"),
       join(process.env.CODEX_HOME ?? join(homedir(), ".codex"), "archived_sessions"),
@@ -95,7 +96,11 @@ export class Promptfoo implements ForRunningPromptfoo {
     ],
   ) {
     this.#repoFolder = FolderAddress.urlOf(repoFolder);
-    this.installFolderPath = join(cherryWorksFolderPath, "promptfoo", PROMPTFOO_VERSION);
+    this.#cherryWorksFolder = FolderAddress.urlOf(cherryWorksFolder);
+  }
+
+  get installFolderPath(): string {
+    return join(fileURLToPath(this.#cherryWorksFolder), "promptfoo", PROMPTFOO_VERSION);
   }
 
   async isInstalled(): Promise<boolean> {

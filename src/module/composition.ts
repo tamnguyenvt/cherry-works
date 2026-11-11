@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import {
   AuthoringCharter,
   BuildingCharter,
@@ -13,6 +12,7 @@ import {
   type ForFetchingCharterSources,
   type ForManagingCharter,
   type ForManagingLocalAgentOutput,
+  type ForManagingLocalOutput,
   type ForStoringCredentials,
   GitSources,
   installCharterService,
@@ -29,6 +29,7 @@ import {
   FileSessionAnalysisRepository,
   type ForCheckingAgentCli,
   type ForKeepingWorktrees,
+  type ForLoadingSessionAnalysis,
   type ForRunningCharter,
   type ForRunningPromptfoo,
   type ForRunningShellCommands,
@@ -52,6 +53,7 @@ import {
 import {
   FileWorkspaceSettingsRepository,
   type ForManagingWorkspace,
+  type ForStoringWorkspaceSettings,
   ManagingWorkspace,
 } from "#module/workspace/module.js";
 
@@ -59,7 +61,8 @@ import {
  * Every adapter the engine reaches the outside through, each the engine's own
  * or one a tool writes: each agent's projection and command line, under the
  * agent it is for, the store that keeps the charter, the source fetcher that
- * store reaches vendors through, and the rest (CORE-FR-230).
+ * store reaches vendors through, the sessions, the settings, the local output,
+ * and the rest (CORE-FR-230, SDK-FR-020).
  */
 export interface EngineAdapters {
   readonly agentProvider: {
@@ -76,6 +79,12 @@ export interface EngineAdapters {
   /** Where a vendor's source is fetched from, by the charter's store kept as
    *  files (CORE-FR-205). */
   readonly sourceFetcher: ForFetchingCharterSources;
+  /** Where a repository's sessions are read from (EVAL-FR-009). */
+  readonly sessionAnalysisRepository: ForLoadingSessionAnalysis;
+  /** Where a repository keeps its settings (CORE-FR-231). */
+  readonly workspaceSettingsRepository: ForStoringWorkspaceSettings;
+  /** What lays a build's output onto the repository (CORE-FR-221). */
+  readonly localOutput: ForManagingLocalOutput;
   readonly fileReader: ForReadingFiles;
   readonly fileWriter: ForWritingFiles;
   readonly worktrees: ForKeepingWorktrees;
@@ -112,13 +121,10 @@ export interface ComposedEngine {
  * composed with (CORE-FR-230).
  */
 export function composeEngine(
-  repoFolder: URL,
-  homeFolder: URL,
   engineSettings: EngineSettings,
-  engineAdapters: Omit<EngineAdapters, "sourceFetcher">,
+  engineAdapters: Omit<EngineAdapters, "sourceFetcher" | "workspaceSettingsRepository">,
 ): ComposedEngine {
-  const { agentProvider, charterRepository, fileReader, fileWriter, clock, progressReporter, mcpServers } =
-    engineAdapters;
+  const { agentProvider, charterRepository, fileReader, clock, progressReporter, mcpServers } = engineAdapters;
 
   const charterAuthoringApp: ForAuthoringCharter = new AuthoringCharter(
     loadCharterService,
@@ -134,7 +140,7 @@ export function composeEngine(
     loadCharterService,
     loadMcpOriginsService,
     charterRepository,
-    new LocalRepoManipulator(fileReader, fileWriter),
+    engineAdapters.localOutput,
     Object.fromEntries(Object.entries(agentProvider).map(([agentName, { projection }]) => [agentName, projection])),
     engineAdapters.tokenCounter,
     {
@@ -155,10 +161,7 @@ export function composeEngine(
     engineAdapters.shell,
     engineAdapters.worktrees,
     engineAdapters.promptfooRunner,
-    // The sessions are read off the home's, wherever under it the
-    // repository's settings keep them: the repository sets that reader up
-    // itself.
-    new FileSessionAnalysisRepository((rootFolder) => new FileReaders(rootFolder), repoFolder, homeFolder),
+    engineAdapters.sessionAnalysisRepository,
     clock,
     {
       agents: engineSettings.enabledAgents,
@@ -176,17 +179,18 @@ export function composeEngine(
  *  settings against the agents the engine is plugged into (CORE-FR-231). */
 export function composeWorkspace(
   supportedAgentProviders: readonly string[],
-  engineAdapters: Pick<EngineAdapters, "fileReader" | "fileWriter" | "progressReporter">,
+  engineAdapters: Pick<EngineAdapters, "workspaceSettingsRepository" | "progressReporter">,
 ): ForManagingWorkspace {
   return new ManagingWorkspace(
-    new FileWorkspaceSettingsRepository(engineAdapters.fileReader, engineAdapters.fileWriter),
+    engineAdapters.workspaceSettingsRepository,
     supportedAgentProviders,
     engineAdapters.progressReporter,
   );
 }
 
 /** The workspace module, which keeps a repository's settings, and the engine
- *  composed for the settings it held when they were composed. */
+ *  composed for the settings it holds when one of the engine's applications is
+ *  first called. */
 export interface ComposedApplications {
   readonly workspaceApp: ForManagingWorkspace;
   readonly engineApp: ComposedEngine;
@@ -199,10 +203,12 @@ export interface ComposedApplications {
  * home's (CORE-FR-217, CORE-FR-218, CORE-FR-230). The charter's store and the
  * agents' projections are set up over the file adapters handed, so files kept
  * anywhere keep the charter there too, unless a store of the tool's own is
- * handed (SDK-FR-020). The workspace first, then
- * the engine for the settings it reads, a repository being set up for exactly
- * the agents a projection is handed for (CORE-FR-221, CORE-FR-231). Settings that
- * do not read yet, as before setup, compose an engine for no agent.
+ * handed (SDK-FR-020). The workspace first, then the engine for the settings
+ * it reads, a repository being set up for exactly the agents a projection is
+ * handed for (CORE-FR-221, CORE-FR-231). Settings that do not read yet, as
+ * before setup, compose an engine for no agent. They are read when one of the
+ * engine's applications is first called, so composing reaches no disk, at an
+ * address of any scheme (SDK-FR-011).
  */
 export async function composeApplications(
   repoFolder: URL,
@@ -211,7 +217,7 @@ export async function composeApplications(
 ): Promise<ComposedApplications> {
   const fileReader = engineAdapters.fileReader ?? new FileReaders(repoFolder);
   const fileWriter = engineAdapters.fileWriter ?? new FileOutput(repoFolder);
-  const defaultedAdapters: Omit<EngineAdapters, "sourceFetcher"> = {
+  const defaultedEngineAdapters: Omit<EngineAdapters, "sourceFetcher"> = {
     agentProvider: engineAdapters.agentProvider ?? {
       claude: { projection: new ClaudeProjection(fileReader), cli: new ClaudeCli() },
       codex: { projection: new CodexProjection(fileReader), cli: new CodexCli() },
@@ -219,6 +225,15 @@ export async function composeApplications(
     charterRepository:
       engineAdapters.charterRepository ??
       new FileCharterRepository(fileReader, fileWriter, engineAdapters.sourceFetcher ?? new GitSources(repoFolder)),
+    // The sessions are read off the home's, wherever under it the
+    // repository's settings keep them: the repository sets that reader up
+    // itself.
+    sessionAnalysisRepository:
+      engineAdapters.sessionAnalysisRepository ??
+      new FileSessionAnalysisRepository((rootFolder) => new FileReaders(rootFolder), repoFolder, homeFolder),
+    workspaceSettingsRepository:
+      engineAdapters.workspaceSettingsRepository ?? new FileWorkspaceSettingsRepository(fileReader, fileWriter),
+    localOutput: engineAdapters.localOutput ?? new LocalRepoManipulator(fileReader, fileWriter),
     fileReader,
     fileWriter,
     worktrees: engineAdapters.worktrees ?? new GitWorktrees(repoFolder),
@@ -230,19 +245,54 @@ export async function composeApplications(
     progressReporter: engineAdapters.progressReporter ?? new ConsoleReporter(),
     // promptfoo, installed once under this engine's own folder in the
     // developer's home, outside every repository (EVAL-FR-032).
-    promptfooRunner:
-      engineAdapters.promptfooRunner ?? new Promptfoo(repoFolder, fileURLToPath(new URL(".cherry-works", homeFolder))),
+    promptfooRunner: engineAdapters.promptfooRunner ?? new Promptfoo(repoFolder, new URL(".cherry-works/", homeFolder)),
     credentialsRepository: engineAdapters.credentialsRepository ?? new KeychainCredentialsRepository(),
   };
-  const workspaceApp = composeWorkspace(Object.keys(defaultedAdapters.agentProvider), defaultedAdapters);
-  const workspaceSettingsDTO = await workspaceApp.settings();
-  const engineSettings: EngineSettings =
-    workspaceSettingsDTO.type === "Fault"
-      ? { enabledAgents: [] }
-      : {
-          enabledAgents: workspaceSettingsDTO.data.agents,
-          mainContextCeiling: workspaceSettingsDTO.data.mainContextCeiling,
-          sessionAnalysisFolder: workspaceSettingsDTO.data.sessionAnalysisFolder,
-        };
-  return { workspaceApp, engineApp: composeEngine(repoFolder, homeFolder, engineSettings, defaultedAdapters) };
+  const workspaceApp = composeWorkspace(Object.keys(defaultedEngineAdapters.agentProvider), defaultedEngineAdapters);
+  // Kept once composed for settings naming an agent: settings naming none or
+  // not reading, as before setup, are read again on the next call.
+  let composedEngine: ComposedEngine | undefined;
+  const composeEngineForSettings = async (): Promise<ComposedEngine> => {
+    if (composedEngine !== undefined) return composedEngine;
+    const workspaceSettingsDTO = await workspaceApp.settings();
+    const engineSettings: EngineSettings =
+      workspaceSettingsDTO.type === "Fault"
+        ? { enabledAgents: [] }
+        : {
+            enabledAgents: workspaceSettingsDTO.data.agents,
+            mainContextCeiling: workspaceSettingsDTO.data.mainContextCeiling,
+            sessionAnalysisFolder: workspaceSettingsDTO.data.sessionAnalysisFolder,
+          };
+    const settingsComposedEngine = composeEngine(engineSettings, defaultedEngineAdapters);
+    if (engineSettings.enabledAgents.length > 0) composedEngine ??= settingsComposedEngine;
+    return composedEngine ?? settingsComposedEngine;
+  };
+  // Each application answers the operations of its use case, all of them
+  // asynchronous, through the engine once it is composed; it has nothing else.
+  const composeEngineApp = <AppName extends keyof ComposedEngine>(
+    appName: AppName,
+    useCasePrototype: object,
+  ): ComposedEngine[AppName] =>
+    Object.fromEntries(
+      Object.getOwnPropertyNames(useCasePrototype)
+        .filter((operationName) => operationName !== "constructor")
+        .map((operationName) => [
+          operationName,
+          async (...operationArguments: unknown[]) => {
+            const engineApp = (await composeEngineForSettings())[appName] as unknown as Record<
+              string,
+              (...operationArguments: unknown[]) => unknown
+            >;
+            return engineApp[operationName]!.apply(engineApp, operationArguments);
+          },
+        ]),
+    ) as unknown as ComposedEngine[AppName];
+  return {
+    workspaceApp,
+    engineApp: {
+      charterAuthoringApp: composeEngineApp("charterAuthoringApp", AuthoringCharter.prototype),
+      charterBuildingApp: composeEngineApp("charterBuildingApp", BuildingCharter.prototype),
+      charterRuntimeApp: composeEngineApp("charterRuntimeApp", RunningCharter.prototype),
+    },
+  };
 }

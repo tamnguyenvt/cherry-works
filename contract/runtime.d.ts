@@ -1022,11 +1022,12 @@ declare namespace RuntimeDTOs {
  */
 interface ForRunningCharter {
   /** The sensors of one signal, run as one hook, each to its end whatever the
-   *  others do (CORE-FR-176 – CORE-FR-179). */
+   *  others do (CORE-FR-176 – CORE-FR-179), for the agent named: the engine
+   *  assumes none (CORE-FR-233). */
   runSensors(
     signal: string,
     stdin: string,
-    agent?: AgentProviderName,
+    agentProviderName: AgentProviderName,
   ): Promise<RuntimeDTOs.SensorRunOutcome | FaultDTOs.Fault>;
   /** One call forwarded to the mcp origin serving it, reached for this call
    *  alone and let go once it has answered (EVAL-FR-031, FR-154). */
@@ -1252,4 +1253,101 @@ declare class ClaudeCli extends AgentCli implements ForRunningAgentCli {
 /** Check the Codex CLI used by promptfoo without asking a model. */
 declare class CodexCli extends AgentCli {
   isInstalled(): Promise<boolean>;
+}
+
+/** The logs of a repository's sessions as what keeps them read them: the name
+ *  of the folder they were read from, for the review to say (CORE-FR-218),
+ *  and each log's text. */
+declare class SessionLogs {
+  readonly sessionsFolder: string;
+  readonly logTexts: readonly string[];
+  constructor(sessionsFolder: string, logTexts: readonly string[]);
+}
+
+/** Reads the logs `cw-session-tokens-counter` keeps, one per session. */
+interface ForLoadingSessionAnalysis {
+  /**
+   * The text of every session's log under the folder this repository's
+   * sessions are kept in, last written from `writtenFromMs` until
+   * `writtenUntilMs`, in milliseconds since the epoch (EVAL-FR-009,
+   * EVAL-SC-007), with the name of that folder. Which folder that is — the
+   * `sessionAnalysisFolder` the repository's settings name, or else one under
+   * the developer's home named after the repository — is the adapter's to
+   * find, since where the repository and the home are is its alone
+   * (CORE-FR-218). Each session keeps one folder of its own, its log directly
+   * in it; a folder that is not there holds none.
+   */
+  loadSessionLogs(
+    sessionAnalysisFolder: string | undefined,
+    writtenFromMs: number,
+    writtenUntilMs: number,
+  ): Promise<SessionLogs>;
+}
+
+/** Reads the session logs kept as files, a folder per session. */
+declare class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis {
+  #private;
+  constructor(
+    /** What reads files under a folder, set up here on the root of the home's
+     *  address, so a folder the settings name anywhere under it is reached and
+     *  no reader set up anywhere else is handed in. */
+    fileReaderAt: (rootFolder: URL) => ForReadingFiles,
+    /** The repository whose sessions are read, which names the folder they are
+     *  kept in where its settings name none. */
+    repoFolder: URL,
+    /** The developer's home folder, which the sessions are kept under unless
+     *  the repository names a folder of its own. Each refused here unless it
+     *  names a folder (SDK-FR-010). */
+    homeFolder: URL,
+  );
+  loadSessionLogs(
+    sessionAnalysisFolder: string | undefined,
+    writtenFromMs: number,
+    writtenUntilMs: number,
+  ): Promise<SessionLogs>;
+}
+
+/** DRIVEN ADAPTER: git worktrees, as the command everyone already has. */
+declare class GitWorktrees implements ForKeepingWorktrees {
+  #private;
+  constructor(
+    /** The repository this works in, every path it is handed from its root:
+     *  refused here unless it names a folder (SDK-FR-010). */
+    repoFolder: URL,
+  );
+  /** `git worktree add --detach` at `HEAD`, forced over a record of one
+   *  left at that folder by a run stopped halfway. */
+  addWorktree(worktreePath: string): Promise<void>;
+  /** `git worktree remove --force`, then the folder removed whatever git
+   *  said, and `git worktree prune` for a record whose folder is gone, which a
+   *  folder under no repository has none of. */
+  removeWorktree(worktreePath: string): Promise<void>;
+}
+
+declare class Promptfoo implements ForRunningPromptfoo {
+  #private;
+  private readonly agentSessionFolders;
+  /** `repoFolder`: the repository every working path is from, and
+   *  `cherryWorksFolder`: this engine's own folder on the machine, each
+   *  refused unless it names a folder (SDK-FR-010), and turned into a path
+   *  only when promptfoo is reached (SDK-FR-011). */
+  constructor(repoFolder: URL, cherryWorksFolder: URL, agentSessionFolders?: readonly string[]);
+  get installFolderPath(): string;
+  isInstalled(): Promise<boolean>;
+  install(): Promise<void>;
+  evaluate({ agent, description, prompt, workingPath, assertions }: PromptfooTest): Promise<PromptfooTestResult>;
+  /** Resolve only existing local session files, never manufacture a path from an id. */
+  private findSessionLog;
+  readLogs(logFilePath?: string): Promise<readonly PromptfooLog[]>;
+}
+
+/** DRIVEN ADAPTER: the system shell, as a host runs a hook's command. */
+declare class Shell implements ForRunningShellCommands {
+  #private;
+  constructor(
+    /** The repository this works in, every path it is handed from its root:
+     *  refused here unless it names a folder (SDK-FR-010). */
+    repoFolder: URL,
+  );
+  runShellCommand(command: string, workingPath: string, stdin: string): Promise<ShellCommandResult>;
 }

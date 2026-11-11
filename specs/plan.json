@@ -568,7 +568,11 @@
       "title": "Compose the engine anywhere, from cw's own adapters and one's own",
       "dependsOn": [
         "CORE Story 43"
-      ]
+      ],
+      "evidence": {
+        "summary": "biome, typecheck; pnpm test 905 tests, 902 passed, 0 failed, 3 skipped; specs check passed; contract.d.ts equals the build",
+        "date": "2026-11-11"
+      }
     },
     {
       "id": "CORE Story 53",

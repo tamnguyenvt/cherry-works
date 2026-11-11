@@ -1,5 +1,10 @@
-/** What a tool needs to write the charter's store, an agent's projection or
- *  an agent's command line of its own, or to extend the engine's (CORE-FR-230). */
+/**
+ * What `cherry-works` lets a tool import, and nothing more (SDK-FR-002,
+ * SDK-FR-005, SDK-FR-020): how to compose the engine and the applications it
+ * answers through, with the DTOs they answer; the ports of every adapter a
+ * tool may hand in place of the engine's own, with the values they cross; and
+ * the engine's own adapters, for a tool to extend.
+ */
 export {
   AgentPrimitive,
   AgentProjection,
@@ -14,6 +19,7 @@ export {
   type CharterRoot,
   ClaudeProjection,
   CodexProjection,
+  type CompiledPart,
   type CompiledPrimitive,
   CopyPlan,
   DocumentBasedComponent,
@@ -26,14 +32,20 @@ export {
   type ForFetchingCharterSources,
   type ForManagingCharter,
   type ForManagingLocalAgentOutput,
+  type ForManagingLocalOutput,
   type ForStoringCredentials,
+  GitSources,
   GuidePrimitive,
+  KeychainCredentialsRepository,
+  LocalRepoManipulator,
   type MainContextText,
   McpClientRegistration,
   McpCredential,
+  McpOrigins,
   McpPrimitive,
   ModelHelper,
   mergedTomlText,
+  OAuth,
   type OAuthGrant,
   OutputPart,
   PlaybookPrimitive,
@@ -57,6 +69,7 @@ export {
   StampedDocument,
   TestFolder,
   TestSuite,
+  Tiktoken,
   VendorRoot,
   VendorRootFactory,
   VendorSource,
@@ -64,12 +77,6 @@ export {
   VendorsFolder,
   WritePlan,
 } from "./module/charter/module.js";
-/**
- * What `cherry-works` lets a tool import, and nothing more (SDK-FR-002,
- * SDK-FR-005, SDK-FR-020): how to compose the engine and the applications it
- * answers through, with the DTOs they answer; and the ports of every adapter a
- * tool may hand in place of the engine's own, with the values they cross.
- */
 export {
   type ComposedApplications,
   type ComposedEngine,
@@ -81,37 +88,56 @@ export {
   type Answer,
   ClaudeCli,
   CodexCli,
+  FileSessionAnalysisRepository,
   type ForCheckingAgentCli,
   type ForKeepingWorktrees,
+  type ForLoadingSessionAnalysis,
   type ForRunningAgentCli,
   type ForRunningCharter,
   type ForRunningPromptfoo,
   type ForRunningShellCommands,
+  GitWorktrees,
+  Promptfoo,
   type PromptfooAssertion,
   type PromptfooLog,
   type PromptfooTest,
   type PromptfooTestResult,
   type PromptUsage,
   RuntimeDTOs,
+  SessionLogs,
+  Shell,
   type ShellCommandResult,
 } from "./module/runtime/module.js";
 export {
   AdapterFault,
+  ConsoleReporter,
   FaultDTOs,
+  FileOutput,
+  FileReaders,
   type ForCallingMcpServers,
   type ForReadingFiles,
   type ForReportingProgress,
   type ForTellingTime,
   type ForWritingFiles,
   type ListedFile,
+  McpClients,
   type McpServerAddress,
   type McpServerConnection,
   type ReadFile,
+  SystemClock,
   type ToolAnswer,
   UnauthorizedMcpFault,
   type UpstreamTool,
 } from "./module/shared/module.js";
-export { type ForManagingWorkspace, WorkspaceDTOs } from "./module/workspace/module.js";
+export {
+  FileWorkspaceSettingsRepository,
+  type ForManagingWorkspace,
+  type ForStoringWorkspaceSettings,
+  SettingsFile,
+  WorkspaceDTOs,
+  WorkspaceReadme,
+  WorkspaceSettings,
+} from "./module/workspace/module.js";
 
 /** Replaced at build time with the version shared with cw. */
 declare const ENGINE_VERSION: string;

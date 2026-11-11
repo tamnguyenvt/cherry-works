@@ -26,9 +26,11 @@ for (const agentName of ["claude", "codex"] as const) {
         agentName === "codex" ? "rollout-test-session.jsonl" : "test-session.jsonl",
       );
       await writeFile(sessionFilePath, "{}\n");
-      const promptfooRunner = new Promptfoo(pathToFileURL(`${temporaryFolderPath}/`), temporaryFolderPath, [
-        sessionFolderPath,
-      ]);
+      const promptfooRunner = new Promptfoo(
+        pathToFileURL(`${temporaryFolderPath}/`),
+        pathToFileURL(`${temporaryFolderPath}/`),
+        [sessionFolderPath],
+      );
       const executableFolderPath = join(promptfooRunner.installFolderPath, "node_modules", ".bin");
       await mkdir(executableFolderPath, { recursive: true });
       const executableFilePath = join(executableFolderPath, "promptfoo");
@@ -96,7 +98,7 @@ for (const agentName of ["claude", "codex"] as const) {
         (
           await new Promptfoo(
             pathToFileURL(`${join(temporaryFolderPath, "unrelated")}/`),
-            temporaryFolderPath,
+            pathToFileURL(`${temporaryFolderPath}/`),
             [],
           ).readLogs()
         ).length,
@@ -182,7 +184,11 @@ test("file-read assertions grade successful tool evidence, not mentions, failure
 test("a promptfoo process error preserves stderr and a readable failure log even without an agent session", async () => {
   const temporaryFolderPath = await mkdtemp(join(tmpdir(), "cw-promptfoo-error-"));
   try {
-    const promptfooRunner = new Promptfoo(pathToFileURL(`${temporaryFolderPath}/`), temporaryFolderPath, []);
+    const promptfooRunner = new Promptfoo(
+      pathToFileURL(`${temporaryFolderPath}/`),
+      pathToFileURL(`${temporaryFolderPath}/`),
+      [],
+    );
     const executableFolderPath = join(promptfooRunner.installFolderPath, "node_modules", ".bin");
     await mkdir(executableFolderPath, { recursive: true });
     const executableFilePath = join(executableFolderPath, "promptfoo");

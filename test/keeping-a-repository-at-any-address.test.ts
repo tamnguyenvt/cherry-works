@@ -120,7 +120,7 @@ const adaptersOn = (repo: URL) => ({
   GitSources: () => new GitSources(repo),
   GitWorktrees: () => new GitWorktrees(repo),
   Shell: () => new Shell(repo),
-  Promptfoo: () => new Promptfoo(repo, "/tmp/cw"),
+  Promptfoo: () => new Promptfoo(repo, new URL("memory://home/.cherry-works/")),
   InMemoryFileReaders: () => new InMemoryFileReaders({}, repo),
   FileSessionAnalysisRepository: () =>
     new FileSessionAnalysisRepository(

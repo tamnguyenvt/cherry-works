@@ -203,7 +203,7 @@ test("the library refuses internal imports and exports only its public contract 
 import assert from 'node:assert/strict';
 import * as engine from 'cherry-works';
 for (const publicName of ['AdapterFault', 'CharterDTOs', 'FaultDTOs', 'McpClientRegistration', 'McpCredential', 'RuntimeDTOs', 'UnauthorizedMcpFault', 'VERSION', 'WorkspaceDTOs', 'composeApplications', 'FileCharterRepository', 'ClaudeProjection', 'CodexProjection', 'AgentProjection', 'AgentCli', 'ClaudeCli', 'CodexCli', 'RawPrimitive']) assert.equal(publicName in engine, true, publicName);
-for (const privateName of ['AuthoringCharter', 'BuildingCharter', 'RunningCharter', 'buildCharterService', 'loadCharterService', 'BUILTIN_LAYER', 'TEST_DIRECTORY', 'composeEngine', 'composeWorkspace', 'FileReaders', 'FileOutput', 'GitSources', 'Shell', 'Promptfoo', 'WorkspaceSettingsSchema', 'folderURL', 'loadCharterRoot', 'RepoLayerPrimitive', 'BUILTIN_PRIMITIVES', 'FileSettingsRepository', 'LocalRepoManipulator', 'ManagingWorkspace', 'FileWorkspaceSettingsRepository', 'FileSessionAnalysisRepository', 'InMemoryFileReaders', 'Commander']) assert.equal(privateName in engine, false, privateName);
+for (const privateName of ['AuthoringCharter', 'BuildingCharter', 'RunningCharter', 'buildCharterService', 'loadCharterService', 'BUILTIN_LAYER', 'TEST_DIRECTORY', 'composeEngine', 'composeWorkspace', 'WorkspaceSettingsSchema', 'folderURL', 'loadCharterRoot', 'RepoLayerPrimitive', 'BUILTIN_PRIMITIVES', 'FileSettingsRepository', 'ManagingWorkspace', 'InMemoryFileReaders', 'Commander']) assert.equal(privateName in engine, false, privateName);
 for (const privatePath of ['domain/models/DomainFault', 'storage/FileCharterRepository', 'index.js', 'dist/index.js', 'dist/main.js', 'src/module/charter/module.js', 'application/RunningCharter']) await assert.rejects(import('cherry-works/' + privatePath), {code: 'ERR_PACKAGE_PATH_NOT_EXPORTED'});
 `);
 });
@@ -284,10 +284,12 @@ const credentialsRepository = { async readCredential(address) { return credentia
 const evaluatingRefusal = () => new AdapterFault('Evaluating runs an agent in a real folder.', 'Evaluate with cw.', { internal: false });
 const promptfooRunner = { installFolderPath: '', async isInstalled() { return false; }, async install() { throw evaluatingRefusal(); }, async evaluate() { throw evaluatingRefusal(); }, async readLogs() { return []; } };
 /** The engine composed over these adapters, for the agents the settings kept
- *  name, written first where some are named. */
+ *  name, written first where some are named: called once, so it is composed
+ *  for them before a test makes the store fail. */
 async function composeOverMemory(settingsAgents, replacedAdapters = {}) {
  if (settingsAgents !== undefined) await fileWriter.write('.cw/settings.json', JSON.stringify({ agents: settingsAgents }));
  const { engineApp } = await composeApplications(repositoryAddress, homeAddress, { fileReader, fileWriter, tokenCounter, progressReporter, credentialsRepository, promptfooRunner, ...replacedAdapters });
+ await engineApp.charterAuthoringApp.kinds();
  return engineApp;
 }
 `;
@@ -741,6 +743,332 @@ assert.equal(completedWriteAddresses.length, 1);
 assert.ok(fileBytesByAddress.has(completedWriteAddresses[0]));
 assert.equal((await charterBuildingApp.build()).type, 'PlanSummary');
 assert.equal(forbiddenCallCount, 0);
+`,
+  );
+});
+
+/** Every name a declaration file exports, in order of name. */
+function exportedNamesOf(declarationText: string): readonly string[] {
+  const declarationFile = ts.createSourceFile("index.d.ts", declarationText, ts.ScriptTarget.Latest);
+  return declarationFile.statements
+    .filter(ts.isExportDeclaration)
+    .flatMap((exportDeclaration) =>
+      exportDeclaration.exportClause !== undefined && ts.isNamedExports(exportDeclaration.exportClause)
+        ? exportDeclaration.exportClause.elements.map((exportSpecifier) => exportSpecifier.name.text)
+        : [],
+    )
+    .sort();
+}
+
+/** Every adapter cw is composed of, each one a tool may extend. */
+const CW_ADAPTER_NAMES = [
+  "AgentCli",
+  "AgentProjection",
+  "ClaudeCli",
+  "ClaudeProjection",
+  "CodexCli",
+  "CodexProjection",
+  "ConsoleReporter",
+  "FileCharterRepository",
+  "FileOutput",
+  "FileReaders",
+  "FileSessionAnalysisRepository",
+  "FileWorkspaceSettingsRepository",
+  "GitSources",
+  "GitWorktrees",
+  "KeychainCredentialsRepository",
+  "LocalRepoManipulator",
+  "McpClients",
+  "OAuth",
+  "Promptfoo",
+  "Shell",
+  "SystemClock",
+  "Tiktoken",
+];
+
+/** What a port names that is no model: the helpers a projection lays its
+ *  files with, and what makes a vendor's root, kept for a tool to extend
+ *  cw's own adapters with. */
+const PORT_NAMED_HELPER_NAMES = ["ModelHelper", "mergedTomlText", "VendorRootFactory"];
+
+test("the installed package exports exactly what its contract names: the composition, the driver ports and their DTOs, each adapter's port with the models it names, and cw's own adapters (SDK Story 8 scenario 1)", async () => {
+  const installedNames = exportedNamesOf(
+    await readFile(join(consumerFolder, "node_modules/cherry-works/dist/index.d.ts"), "utf8"),
+  );
+  assert.deepEqual(installedNames, exportedNamesOf(await readFile(new URL("contract.d.ts", repositoryUrl), "utf8")));
+  // Each name is what its declaring file says it is: the composition, a driver
+  // port or its DTO, an adapter's port or a model it names, or one of cw's own
+  // adapters — never a use case, a service, a driver or a portal.
+  const declaringPathsByName = new Map<string, string[]>();
+  for (const sourcePath of await readdir(new URL("src/module/", repositoryUrl), { recursive: true }))
+    if (sourcePath.endsWith(".ts"))
+      for (const declarationMatch of (
+        await readFile(new URL(`src/module/${sourcePath}`, repositoryUrl), "utf8")
+      ).matchAll(
+        /^export (?:declare )?(?:abstract |async )?(?:class|interface|type|const|function|namespace|enum) (\w+)/gm,
+      ))
+        declaringPathsByName.set(declarationMatch[1]!, [
+          ...(declaringPathsByName.get(declarationMatch[1]!) ?? []),
+          sourcePath,
+        ]);
+  for (const installedName of installedNames.filter((installedName) => installedName !== "VERSION")) {
+    const declaringPaths = declaringPathsByName.get(installedName) ?? [];
+    assert.ok(
+      declaringPaths.some(
+        (declaringPath) =>
+          declaringPath === "composition.ts" ||
+          /\/app\/port\/(?:in|out)\/|\/domain\/(?:models|value-objects)\//.test(declaringPath) ||
+          PORT_NAMED_HELPER_NAMES.includes(installedName) ||
+          (/\/infra\//.test(declaringPath) && CW_ADAPTER_NAMES.includes(installedName)),
+      ),
+      `${installedName} is declared in ${declaringPaths.join(", ") || "no module"}`,
+    );
+  }
+  for (const contractName of [
+    "composeApplications",
+    "EngineAdapters",
+    "ForAuthoringCharter",
+    "ForBuildingCharter",
+    "ForRunningCharter",
+    "ForManagingWorkspace",
+    "CharterDTOs",
+    "ForLoadingSessionAnalysis",
+    "SessionLogs",
+    "ForStoringWorkspaceSettings",
+    "WorkspaceSettings",
+    "WorkspaceReadme",
+    "ForManagingLocalOutput",
+    "CompiledPart",
+    "McpOrigins",
+    ...CW_ADAPTER_NAMES,
+  ])
+    assert.ok(installedNames.includes(contractName), contractName);
+  for (const internalName of [
+    "AuthoringCharter",
+    "BuildingCharter",
+    "RunningCharter",
+    "ManagingWorkspace",
+    "ApplicationService",
+    "BuildCharterService",
+    "buildCharterService",
+    "loadCharterService",
+    "installCharterService",
+    "loadMcpOriginsService",
+    "CompileService",
+    "TestService",
+    "EvalService",
+    "composeEngine",
+    "composeWorkspace",
+    "Commander",
+    "InMemoryFileReaders",
+  ])
+    assert.ok(!installedNames.includes(internalName), internalName);
+  runConsumerCode(`
+import assert from 'node:assert/strict';
+import * as engine from 'cherry-works';
+for (const adapterName of ${JSON.stringify(CW_ADAPTER_NAMES)}) assert.equal(typeof engine[adapterName], 'function', adapterName);
+`);
+});
+
+test("a tool extends cw's own charter store and an agent's projection, imported from the package, and a build answers through the extensions (SDK Story 8 scenario 2)", async () => {
+  const repoFolderPath = await mkdtemp(join(tmpdir(), "cw-extended-repo-"));
+  try {
+    await mkdir(join(repoFolderPath, ".cw"));
+    await writeFile(join(repoFolderPath, ".cw/settings.json"), '{"agents":["claude"]}\n');
+    const consumerSource = `
+import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
+import { composeApplications, ClaudeCli, ClaudeProjection, FileCharterRepository, FileOutput, FileReaders, GitSources } from 'cherry-works';
+import type { CharterOutput, CharterRoot, ProjectionPlan, RawPrimitive } from 'cherry-works';
+const repoFolder: URL = pathToFileURL(${JSON.stringify(repoFolderPath)} + '/');
+class CountingCharterRepository extends FileCharterRepository {
+  loadedCharterCount = 0;
+  override async loadCharter(checkoutPath?: string): Promise<readonly RawPrimitive[]> {
+    this.loadedCharterCount++;
+    return super.loadCharter(checkoutPath);
+  }
+}
+class CountingClaudeProjection extends ClaudeProjection {
+  plannedProjectionCount = 0;
+  override async createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput, checkoutPath?: string): Promise<ProjectionPlan> {
+    this.plannedProjectionCount++;
+    return super.createAgentProjectionPlan(charter, charterOutput, checkoutPath);
+  }
+}
+const fileReader = new FileReaders(repoFolder);
+const fileWriter = new FileOutput(repoFolder);
+const charterRepository = new CountingCharterRepository(fileReader, fileWriter, new GitSources(repoFolder));
+const claudeProjection = new CountingClaudeProjection(fileReader);
+const { engineApp } = await composeApplications(repoFolder, repoFolder, {
+  fileReader,
+  fileWriter,
+  charterRepository,
+  agentProvider: { claude: { projection: claudeProjection, cli: new ClaudeCli() } },
+});
+assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
+const buildAnswer = await engineApp.charterBuildingApp.build();
+assert.equal(buildAnswer.type, 'PlanSummary', JSON.stringify(buildAnswer));
+assert.ok(charterRepository.loadedCharterCount > 0);
+assert.equal(claudeProjection.plannedProjectionCount, 1);
+`;
+    await writeFile(join(consumerFolder, "extended-adapters.mts"), consumerSource);
+    const compileRun = spawnSync(
+      process.execPath,
+      [
+        new URL("node_modules/typescript/bin/tsc", repositoryUrl).pathname,
+        "--strict",
+        "--target",
+        "ES2022",
+        "--module",
+        "NodeNext",
+        "--moduleResolution",
+        "NodeNext",
+        "--lib",
+        "ES2023,DOM",
+        "--types",
+        "node",
+        "--typeRoots",
+        new URL("node_modules/@types", repositoryUrl).pathname,
+        "extended-adapters.mts",
+      ],
+      { cwd: consumerFolder, encoding: "utf8" },
+    );
+    assert.equal(compileRun.status, 0, compileRun.stdout + compileRun.stderr);
+    const consumerRun = spawnSync(process.execPath, ["extended-adapters.mjs"], {
+      cwd: consumerFolder,
+      encoding: "utf8",
+    });
+    assert.equal(consumerRun.status, 0, consumerRun.stdout + consumerRun.stderr);
+    assert.ok((await readFile(join(repoFolderPath, "CLAUDE.md"), "utf8")).length > 0);
+  } finally {
+    await rm(repoFolderPath, { recursive: true, force: true });
+  }
+});
+
+test("the engine is composed at memory: addresses with no adapter handed, with no failure and no file-system call (SDK Story 8 scenario 3)", () => {
+  runConsumerCode(String.raw`
+import assert from 'node:assert/strict';
+import filesystem from 'node:fs';
+import filesystemPromises from 'node:fs/promises';
+import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+import { composeApplications } from 'cherry-works';
+const forbiddenCallNames = [];
+for (const externalModule of [filesystem, filesystemPromises, childProcess]) {
+ for (const methodName of Object.keys(externalModule)) {
+  const originalMethod = externalModule[methodName];
+  if (typeof originalMethod === 'function') externalModule[methodName] = function (...callArguments) {
+   forbiddenCallNames.push(methodName);
+   return originalMethod.apply(this, callArguments);
+  };
+ }
+}
+syncBuiltinESMExports();
+const { workspaceApp, engineApp } = await composeApplications(new URL('memory:/repo/'), new URL('memory:/home/'));
+assert.deepEqual(forbiddenCallNames, []);
+assert.deepEqual(workspaceApp.agentProviderNames, ['claude', 'codex']);
+assert.deepEqual(Object.keys(engineApp), ['charterAuthoringApp', 'charterBuildingApp', 'charterRuntimeApp']);
+`);
+});
+
+test("an engine composed before setup reads the settings again on its next call, and keeps the engine once they read (SDK Story 8 scenario 3, SDK-FR-011)", () => {
+  runConsumerCode(
+    memoryConsumerCode +
+      String.raw`
+const { workspaceApp, engineApp } = await composeApplications(repositoryAddress, homeAddress, { fileReader, fileWriter, tokenCounter, progressReporter, credentialsRepository, promptfooRunner });
+assert.equal(engineApp.charterBuildingApp.toJSON, undefined);
+assert.equal('build' in engineApp.charterBuildingApp, true);
+assert.equal('toJSON' in engineApp.charterBuildingApp, false);
+const claudeEntryAddress = new URL('CLAUDE.md', repositoryAddress).href;
+const codexEntryAddress = new URL('AGENTS.md', repositoryAddress).href;
+assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
+assert.equal((await engineApp.charterBuildingApp.build()).type, 'PlanSummary');
+assert.equal(fileBytesByAddress.has(claudeEntryAddress), false);
+assert.equal((await workspaceApp.setUp(['claude'], '1.0.0')).type, 'WorkspaceSettings');
+assert.equal((await engineApp.charterBuildingApp.build()).type, 'PlanSummary');
+assert.ok(fileBytesByAddress.has(claudeEntryAddress));
+await fileWriter.write('.cw/settings.json', JSON.stringify({ agents: ['codex'] }));
+const keptBuildAnswer = await engineApp.charterBuildingApp.build();
+assert.equal(keptBuildAnswer.type, 'PlanSummary', JSON.stringify(keptBuildAnswer));
+assert.ok(fileBytesByAddress.has(claudeEntryAddress));
+assert.equal(fileBytesByAddress.has(codexEntryAddress), false);
+`,
+  );
+});
+
+test("a sessions store, a settings store and a local output of a tool's own are what the use cases using them answer through (SDK Story 8 scenario 4)", () => {
+  runConsumerCode(
+    memoryConsumerCode +
+      String.raw`
+import { LocalRepoManipulator, SessionLogs } from 'cherry-works';
+const keptSettingsTexts = [];
+const workspaceSettingsRepository = {
+ async loadSettingsText() { return keptSettingsTexts.at(-1); },
+ async saveSettings(workspaceSettings) { keptSettingsTexts.push(JSON.stringify({ agents: workspaceSettings.agents })); },
+ async keepLogIgnored() {},
+ async keepReadme() {},
+};
+const loadedSessionFolders = [];
+const sessionAnalysisRepository = {
+ async loadSessionLogs(sessionAnalysisFolder) {
+  loadedSessionFolders.push(sessionAnalysisFolder);
+  return new SessionLogs('own-sessions', []);
+ },
+};
+class CountingLocalOutput extends LocalRepoManipulator {
+ writtenPlanCount = 0;
+ async writePlan(projectionPlan) {
+  this.writtenPlanCount++;
+  return super.writePlan(projectionPlan);
+ }
+}
+const localOutput = new CountingLocalOutput(fileReader, fileWriter);
+const { workspaceApp, engineApp } = await composeApplications(repositoryAddress, homeAddress, { fileReader, fileWriter, tokenCounter, progressReporter, credentialsRepository, promptfooRunner, workspaceSettingsRepository, sessionAnalysisRepository, localOutput });
+const setUpAnswer = await workspaceApp.setUp(['claude'], '1.0.0');
+assert.equal(setUpAnswer.type, 'WorkspaceSettings', JSON.stringify(setUpAnswer));
+assert.deepEqual(keptSettingsTexts, ['{"agents":["claude"]}']);
+assert.equal(fileBytesByAddress.has(new URL('.cw/settings.json', repositoryAddress).href), false);
+assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
+const buildAnswer = await engineApp.charterBuildingApp.build();
+assert.equal(buildAnswer.type, 'PlanSummary', JSON.stringify(buildAnswer));
+assert.equal(localOutput.writtenPlanCount, 1);
+assert.ok(fileBytesByAddress.has(new URL('CLAUDE.md', repositoryAddress).href));
+const sessionReviewAnswer = await engineApp.charterRuntimeApp.sessionSummary();
+assert.equal(sessionReviewAnswer.type, 'SessionReviewOutcome', JSON.stringify(sessionReviewAnswer));
+assert.equal(sessionReviewAnswer.data.sessionsFolder, 'own-sessions');
+assert.equal(loadedSessionFolders.length, 1);
+assert.deepEqual(progressReporter.problems, []);
+`,
+  );
+});
+
+test("the contract recorded for the first release under it says how it was made, and that nothing has been published under it yet (SDK Story 8 scenario 5)", async () => {
+  const [contractHeaderLine] = (await readFile(new URL("contract.d.ts", repositoryUrl), "utf8")).split("\n");
+  assert.match(contractHeaderLine ?? "", /dist\/index\.d\.ts/);
+  assert.match(contractHeaderLine ?? "", /Nothing has been published under it yet\./);
+});
+
+test("running a signal's sensors names the agent they run for, and the engine assumes none (SDK Story 8 scenario 6)", async () => {
+  const consumerSource = `
+import type { ForRunningCharter } from 'cherry-works';
+declare const charterRuntimeApp: ForRunningCharter;
+await charterRuntimeApp.runSensors('Stop', '{}', 'codex');
+// @ts-expect-error The agent the sensors run for is named.
+await charterRuntimeApp.runSensors('Stop', '{}');
+`;
+  await writeFile(join(consumerFolder, "named-agent.ts"), consumerSource);
+  typecheckConsumerSource("named-agent.ts");
+  runConsumerCode(
+    memoryConsumerCode +
+      String.raw`
+const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = await composeOverMemory(['claude']);
+assert.equal((await charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
+assert.equal((await charterBuildingApp.build()).type, 'PlanSummary');
+const unnamedAnswer = await charterRuntimeApp.runSensors('NoSensorSignal', '{}');
+assert.equal(unnamedAnswer.type, 'Fault', JSON.stringify(unnamedAnswer));
+assert.notEqual(unnamedAnswer.data.name, 'InternalFault');
+assert.deepEqual(progressReporter.problems, []);
+assert.equal((await charterRuntimeApp.runSensors('NoSensorSignal', '{}', 'claude')).type, 'SensorRunOutcome');
 `,
   );
 });

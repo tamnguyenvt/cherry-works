@@ -819,8 +819,8 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
     charterOutputWriterOf(new InMemoryFileReaders({ "file:///repo/.cw/out/sensors.json": sensorsText })),
   );
   assert.equal(
-    answerTextOf(await keptSensorsApp.runSensors("Stop", "{}")),
-    answerTextOf(await filesSensorsApp.runSensors("Stop", "{}")),
+    answerTextOf(await keptSensorsApp.runSensors("Stop", "{}", "claude")),
+    answerTextOf(await filesSensorsApp.runSensors("Stop", "{}", "claude")),
   );
 });
 

@@ -6396,3 +6396,141 @@ declare class FileCharterRepository implements ForManagingCharter {
   findPlace(outputPart: OutputPart): string;
   findOutputFolder(): string;
 }
+
+/**
+ * The local files a build checks and writes: it lays a build's output onto a
+ * repository, wherever it lays it, and writes every file a build planned: where the output lands is its own to know,
+ * never the engine's, which knows a part by its path inside the output, under
+ * `$CW_OUT/` (CORE-FR-220, CORE-FR-221). What each agent reads is
+ * that agent's projection's, `ForManagingLocalAgentOutput`.
+ *
+ * What the build laid is read back through the charter's repository,
+ * `ForManagingCharter`, never off a path the engine knows (CORE-FR-222).
+ */
+interface ForManagingLocalOutput {
+  /**
+   * What laying this output would do, decided and not yet done (FR-020,
+   * FR-022): each place it would write, with what it would hold and what it
+   * holds now, and each place the last build left in the output that this one
+   * would take away or write again. Reads, and only reads. Under
+   * `checkoutPath`, a checkout of the repository such as a worktree, where one
+   * is named.
+   */
+  createProjectionPlan(charterOutput: CharterOutput, checkoutPath?: string): Promise<ProjectionPlan>;
+  /** That plan carried out, every agent's files in it: what the last build
+   *  left taken away, then this one written (FR-020, FR-021). */
+  writePlan(plan: ProjectionPlan): Promise<void>;
+}
+
+/**
+ * DRIVEN ADAPTER: git, as the command everyone already has.
+ *
+ * Each fetch lands in a store of its own, a temporary bare repository, so the
+ * folder installed into need not be a repository and its own object store and
+ * index are never touched, if it is one. That store's folder is the commit this
+ * adapter answers: it holds the one commit fetched, under `FETCH_HEAD`. The
+ * fetch still reads the repository's own git config, where the folder is in one,
+ * so a source is reached as `git fetch` run there would reach it (CORE-FR-205).
+ * Handing it over takes git 2.31 or later.
+ */
+declare class GitSources implements ForFetchingCharterSources {
+  #private;
+  constructor(
+    /** The repository this works in, every path it is handed from its root:
+     *  refused here unless it names a folder (SDK-FR-010). */
+    repoFolder: URL,
+  );
+  /** `git init --bare` first, as nothing else needs a folder: a refusal with
+   *  no such command is a machine without git, not a source out of reach. */
+  fetchCommit(source: string, version?: string): Promise<string>;
+  /** `git ls-tree -r`, the paths split on the NUL `-z` ends each with, so a
+   *  path holding a newline or a quote is read as it is. */
+  listFilesAt(storeFolder: string): Promise<readonly string[]>;
+  /** `git show FETCH_HEAD:<path>`. */
+  readFileAt(storeFolder: string, path: string): Promise<string>;
+  /** `git cat-file blob FETCH_HEAD:<path>`, its output taken as bytes: the
+   *  blob as it was committed, with no textconv a user's own git config sets
+   *  (CORE-FR-207). */
+  readBytesAt(storeFolder: string, path: string): Promise<Uint8Array>;
+  /** `git read-tree --prefix` into an index of the store's, and `checkout-index`
+   *  into a work tree of the store's, then a copy beside the folder, swapped with
+   *  it once whole, the folder put back if the swap fails. The
+   *  repository's own index, and what is staged in it, is never read from or
+   *  written to. */
+  checkoutFolderAt(storeFolder: string, fromFolder: string, intoSubFolder: string): Promise<void>;
+  /** A store left behind is only a temporary folder, and never worth reporting
+   *  a source that landed as one that failed. */
+  forgetCommit(storeFolder: string): Promise<void>;
+}
+
+/**
+ * DRIVEN ADAPTER: each mcp origin's credential kept as one JSON secret under
+ * its address, in the operating system's own credential store, reached by
+ * the command each system ships — `security` on macOS, `secret-tool` on Linux
+ * (FR-149).
+ *
+ * The secret goes in on standard input, so it never shows in a process
+ * listing. `security add-generic-password` takes a password only as an
+ * argument, so on macOS the whole command is written to `security -i`, the
+ * secret as hex through `-X`. What a command prints while writing is never
+ * repeated in a fault: it could echo what it was given.
+ *
+ * Any other platform refuses every call, naming the two it supports.
+ */
+declare class KeychainCredentialsRepository implements ForStoringCredentials {
+  #private;
+  private readonly platform;
+  /** Which system's store to use: this process's, unless a test names
+   *  another. Named as `process.platform` names it, and typed as a plain
+   *  string so a tool importing it type-checks without Node's own types. */
+  constructor(platform?: string);
+  readCredential(address: string): Promise<McpCredential | undefined>;
+  writeCredential(credential: McpCredential): Promise<void>;
+  /** macOS and Linux have a store this knows; anything else is refused
+   *  before a command runs. */
+  private refuseUnsupportedPlatform;
+  private throwFault;
+}
+
+/**
+ * DRIVEN ADAPTER: a build's output laid onto the repository as files, under
+ * `.cw/out/`, which nothing else writes, each part as the build compiled it
+ * (CORE-FR-221); and every file a build planned, each agent's own among them,
+ * written.
+ */
+declare class LocalRepoManipulator implements ForManagingLocalOutput {
+  #private;
+  constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles);
+  createProjectionPlan(charterOutput: CharterOutput, checkoutPath?: string): Promise<ProjectionPlan>;
+  writePlan(buildPlan: ProjectionPlan): Promise<void>;
+}
+
+/**
+ * DRIVEN ADAPTER: OAuth against one MCP server, over the SDK's own client —
+ * discovery, dynamic registration, PKCE and renewal are its (plan §19.5).
+ *
+ * A sign-in listens on `127.0.0.1` at a port the system picks, for the one
+ * request the browser comes back with, and closes. The address to open is
+ * handed to the caller, never opened here (plan §15). Nothing is kept here:
+ * the grant goes back to the caller, and the credential store is its business.
+ */
+declare class OAuth implements ForAuthorizingMcpOrigins {
+  #private;
+  constructor(callbackTimeoutMs?: number);
+  authorize(endpoint: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<OAuthGrant>;
+  renew(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined>;
+}
+
+/**
+ * DRIVEN ADAPTER: js-tiktoken, a tokenizer that runs offline, with
+ * `o200k_base`. Not the tokenizer of the model an agent runs on, which is not
+ * published; near enough to stand in for it, and said to be an estimate
+ * wherever it is used (EVAL-FR-002).
+ *
+ * The encoding is loaded the first time a text is counted, not when this is
+ * made: a command that counts nothing pays nothing for it.
+ */
+declare class Tiktoken implements ForCountingTokens {
+  #private;
+  countTokens(text: string): number;
+}
