@@ -2,13 +2,13 @@
 
 ## Unreleased
 
-- **Breaking:** the workspace now keeps the charter under `.cw/charter/` (primitives in `.cw/charter/primitive/<kind>/`, with `test/`, `eval/` and `vendor/` beside them), the build under `.cw/out/` and the log under `.cw/log/`; a repository laid out the old way is refused until the `cw-author` skill moves it.
-- **Breaking:** paths inside `.cw/out/` are now written as `$CW_OUT/…`, which `CHARTER.md` explains and `cw sensor run` resolves.
-- **Breaking:** `@cherry-works/engine` is no longer published: import the engine from `cherry-works` itself (`import { composeApplications } from "cherry-works"`); `cw` installs and runs as before.
-- **Breaking:** the applications no longer read a repository's settings: hand them the agents and the rest when you construct them.
-- **Breaking:** applications answer with `CharterDTOs`, `RuntimeDTOs` and `FaultDTOs`, each schema making a DTO with `of()`.
-- **Breaking:** the engine is two modules, charter (`AuthoringCharter`, `BuildingCharter`) and runtime (`RunningCharter`), replacing the former applications; compose them with `composeApplications`, handing one `EnginePlugin` of every adapter — each agent's projection and command line, the charter's store and the rest — the engine's own by default, any of it your own.
-- **Breaking:** the engine names where something is kept by its store's uri, such as `file:///repo/.cw/charter/primitive/guide/x/index.md`.
+- The Cherry Works engine can now be customized with adapters of your own: `import { composeApplications } from "cherry-works"` and hand it the adapters you replace — where files are kept, the charter's store, each agent's projection and command line, and the rest. See [Extending the engine](docs/extending-the-engine.md).
+- **Breaking:** the workspace under `.cw/` is now laid out in three parts:
+  - `.cw/charter/` — what you write: the primitives in `primitive/<kind>/`, the tests in `test/`, the evaluation cases in `eval/`, and the vendor sources you install in `vendor/`. Commit it.
+  - `.cw/out/` — what `cw build` generates from the charter and what the agent reads. Never edit it; build again.
+  - `.cw/log/` — what `cw` records while it works, such as each evaluation's working copy and its results. Version control ignores it.
+
+  A repository laid out the old way is refused until the `cw-author` skill moves it.
 
 ## 0.9.0 — 2026-10-30
 
