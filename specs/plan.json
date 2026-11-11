@@ -513,17 +513,6 @@
       }
     },
     {
-      "id": "CORE Story 48",
-      "title": "Decide where a compiled charter lands for each host",
-      "dependsOn": [
-        "CORE Story 47"
-      ],
-      "evidence": {
-        "summary": "typecheck clean; lint:deps no violations; pnpm test 878 tests, 875 pass, 0 fail, 3 skipped; laid by FileCharterProjection, a charter of every kind matched what 008-sdk built byte for byte; cw build, doctor and kinds answered as before",
-        "date": "2026-11-07"
-      }
-    },
-    {
       "id": "CORE Story 49",
       "title": "Get answers made for the caller",
       "dependsOn": [
@@ -535,11 +524,24 @@
       }
     },
     {
+      "id": "CORE Story 48",
+      "title": "Decide where a compiled charter lands for each host",
+      "dependsOn": [
+        "CORE Story 47",
+        "CORE Story 49"
+      ],
+      "evidence": {
+        "summary": "typecheck clean; lint:deps no violations; pnpm test 878 tests, 875 pass, 0 fail, 3 skipped; laid by FileCharterProjection, a charter of every kind matched what 008-sdk built byte for byte; cw build, doctor and kinds answered as before",
+        "date": "2026-11-07"
+      }
+    },
+    {
       "id": "CORE Story 52",
       "title": "Replace any store or runner, and find the workspace in three parts",
       "dependsOn": [
         "CORE Story 47",
-        "CORE Story 49"
+        "CORE Story 49",
+        "CORE Story 48"
       ],
       "evidence": {
         "summary": "typecheck clean; lint:deps no violations; pnpm test 894 tests, 891 pass, 0 fail, 3 skipped; build and engine build clean; cw test 6/6; specs check OK; by hand in a fresh repo cw init, cw build for claude and codex, cw sensor run with $CW_OUT resolved to .cw/out and cw doctor answered, nothing logged; an old-layout repository with unreadable settings refused naming cw-author",
@@ -554,14 +556,59 @@
         "CORE Story 41",
         "SDK Story 5",
         "CORE Story 42",
-        "SDK Story 6",
-        "CORE Story 44",
-        "CORE Story 45",
-        "CORE Story 46",
-        "CORE Story 47",
-        "CORE Story 48",
-        "CORE Story 49",
-        "CORE Story 52"
+        "SDK Story 6"
+      ],
+      "evidence": {
+        "summary": "quality pass grade F (QC-08 to QC-16), repair stories accepted; typecheck, pnpm test 895 pass 0 fail 3 skipped (CW_REAL_AGENT), script tests 82 pass, specs check passed",
+        "date": "2026-11-11"
+      }
+    },
+    {
+      "id": "SDK Story 8",
+      "title": "Compose the engine anywhere, from cw's own adapters and one's own",
+      "dependsOn": [
+        "CORE Story 43"
+      ]
+    },
+    {
+      "id": "CORE Story 53",
+      "title": "Keep the whole engine to its naming and fault guides",
+      "dependsOn": [
+        "CORE Story 43"
+      ]
+    },
+    {
+      "id": "SDK Story 10",
+      "title": "Trust the evidence of every rewritten Done story",
+      "dependsOn": [
+        "CORE Story 43",
+        "SDK Story 8"
+      ]
+    },
+    {
+      "id": "CORE Story 56",
+      "title": "Prove by running what no test runs yet",
+      "dependsOn": [
+        "CORE Story 43",
+        "SDK Story 8"
+      ]
+    },
+    {
+      "id": "EVAL Story 9",
+      "title": "Prove the pricing journeys again after the workspace moved",
+      "dependsOn": [
+        "CORE Story 43"
+      ]
+    },
+    {
+      "id": "CORE Story 55",
+      "title": "Quality cross-check of SDK Story 8, CORE Story 53, SDK Story 10, CORE Story 56, EVAL Story 9",
+      "dependsOn": [
+        "SDK Story 8",
+        "CORE Story 53",
+        "SDK Story 10",
+        "CORE Story 56",
+        "EVAL Story 9"
       ]
     }
   ]

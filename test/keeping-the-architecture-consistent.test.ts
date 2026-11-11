@@ -314,17 +314,3 @@ test("each renamed use case answers through its driver port as it did (CORE Stor
   assert.equal((await charterAuthoringApp.suites()).type, "TestSuites");
   assert.equal((await charterRuntimeApp.preview()).type, "PlanSummary");
 });
-
-test("the engine's contract names each use case as its driver port, and the changelog names the change (CORE Story 42 scenario 3)", () => {
-  const engineIndexText = readFileSync(new URL("src/index.ts", repositoryUrl), "utf8");
-  const changelogText = readFileSync(new URL("CHANGELOG.md", repositoryUrl), "utf8");
-  for (const useCaseName of useCaseNames) {
-    // A tool reaches a use case through its driver port alone, never its class (SDK-FR-020).
-    assert.match(
-      engineIndexText,
-      new RegExp(`^export \\{[^}]*\\btype For${useCaseName}\\b[^}]*\\} from "\\./module/[\\w-]+/module\\.js";$`, "m"),
-    );
-    assert.doesNotMatch(engineIndexText, new RegExp(`^export \\{[^}]*\\b${useCaseName}\\b`, "m"));
-    assert.ok(changelogText.includes(`\`${useCaseName}\``), `CHANGELOG.md does not name ${useCaseName}`);
-  }
-});

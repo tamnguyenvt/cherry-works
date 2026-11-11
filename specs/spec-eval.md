@@ -198,6 +198,23 @@ An author can inspect evidence that using the pricing skill produces correct ses
 
 ---
 
+### EVAL Story 9 - Prove the pricing journeys again after the workspace moved (Priority: P3)
+
+**Status**: Todo
+
+An author reads evidence of the pricing journeys and the tokenizer's accuracy made after the workspace was split into the charter, the output and the log, measured on the charter alone.
+
+**Why this priority**: The recorded runs predate the move, and the accuracy measurement still counts the eval cases and the log as part of the charter.
+
+**Independent Test**: Run the three pricing journeys with the real agent and the tokenizer accuracy measurement on a fixed charter, and record each run.
+
+**Acceptance Scenarios**:
+
+1. **Given** the workspace in its three parts, **When** the three pricing journeys run with the real agent, **Then** each answers as [EVAL Story 8](#eval-story-8---prove-the-pricing-journeys-and-tokenizer-accuracy-priority-p2) states, and the run is recorded ([EVAL-FR-014](#eval-fr-014), [EVAL-FR-015](#eval-fr-015)).
+2. **Given** one fixed charter, **When** the estimate and the exact count are measured, **Then** what is measured is the charter alone — no eval case and no log — and the two differ by no more than 15%, recorded ([EVAL-SC-002](#eval-sc-002)).
+
+---
+
 ### Edge Cases
 
 - A charter holding nothing loaded when a session opens — the prediction says the total is none, and the health check is quiet ([EVAL-FR-002](#eval-fr-002), [EVAL-FR-006](#eval-fr-006)).
@@ -211,7 +228,7 @@ An author can inspect evidence that using the pricing skill produces correct ses
 - A case whose prompt leads the agent to ask a question back — the case fails, saying the agent invoked no skill ([EVAL-FR-022](#eval-fr-022)).
 - A case naming a skill or a guide the charter does not hold — the run is refused before any case runs, naming it ([EVAL-FR-026](#eval-fr-026)).
 - A charter or cases changed and not yet committed — not evaluated: the run is of the last commit ([EVAL-FR-021](#eval-fr-021)).
-- A run stopped halfway — the worktrees it left are removed when the next run starts.
+- A run stopped halfway — the worktrees it left are removed when the next run starts ([EVAL-FR-021](#eval-fr-021)).
 
 ## Requirements *(mandatory)*
 
@@ -251,7 +268,7 @@ An author can inspect evidence that using the pricing skill produces correct ses
 **Evaluating the charter**
 
 - <a id="eval-fr-020"></a>**EVAL-FR-020**: The engine MUST run the evaluation cases a repository writes under promptfoo, running and judging none itself, in a folder of their own beside its tests, one file of cases each, by a command apart from the self-regression tests ([CORE-FR-084](spec-core.md#core-fr-084)). Evaluation cases are not primitives, and a vendor's are not installed with it.
-- <a id="eval-fr-021"></a>**EVAL-FR-021**: Each case MUST put its prompt to the real agent, run headless, once, in a worktree of the repository's last commit, kept under the log, `.cw/log/`, which version control ignores, with its charter built; the worktree MUST be removed once the case has run, and the files of the repository's own working tree MUST be left as they were.
+- <a id="eval-fr-021"></a>**EVAL-FR-021**: Each case MUST put its prompt to the real agent, run headless, once, in a worktree of the repository's last commit, kept under the log, `.cw/log/`, which version control ignores, with its charter built; the worktree MUST be removed once the case has run, and any a run stopped halfway left MUST be removed when the next run starts; the files of the repository's own working tree MUST be left as they were.
 - <a id="eval-fr-022"></a>**EVAL-FR-022**: A case expecting a skill MUST pass when the agent invoked it and fail otherwise, saying which skills it invoked, none among them.
 - <a id="eval-fr-023"></a>**EVAL-FR-023**: A case expecting a guide followed MUST be judged by promptfoo's model grader against that guide, on the developer's own sign-in or key, passing or failing with the grader's reason.
 - <a id="eval-fr-024"></a>**EVAL-FR-024**: A case naming a number of tokens MUST fail when the agent used more, saying how many.
