@@ -2,13 +2,21 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { AuthoringCharter } from "../src/module/charter/app/authoring-charter.use-case.js";
-import type { ForManagingLocalOutput } from "../src/module/charter/app/port/out/managing-local-output.port.js";
+import type { ForManagingLocalAgentOutput } from "../src/module/charter/app/port/out/managing-local-agent-output.port.js";
+import type {
+  CharterOutput,
+  ForManagingLocalOutput,
+  OutputPart,
+} from "../src/module/charter/app/port/out/managing-local-output.port.js";
 import { installCharterService } from "../src/module/charter/app/services/install-charter.service.js";
 import { loadCharterService } from "../src/module/charter/app/services/load-charter.service.js";
 import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
 import { CompiledPrimitive } from "../src/module/charter/domain/models/projection/compiled-primitive.js";
 import { McpOrigin, McpOrigins } from "../src/module/charter/domain/models/projection/mcp-origin.js";
+import { ProjectionPlan, WritePlan } from "../src/module/charter/domain/models/projection/projection-plan.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
+import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
 import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
 import { InMemoryLocalRepo } from "../src/module/charter/infra/in-memory/in-memory-local-repo.adapter.js";
@@ -60,12 +68,13 @@ const authoringCharterOver = (heldFileReaders: InMemoryFileReaders) => {
   );
 };
 
-test("a compiled charter's parts each name their id, kind and part, their path inside the output, their text and assets, and no place the output lands at (CORE-FR-220)", async () => {
+test("a compiled charter's parts each name their id, kind and part, their path inside the output, their text and assets; a part for one host alone names that host in its path, and none names where the output lands (CORE-FR-220, CORE Story 48 scenario 1)", async () => {
+  const hostNames = ["claude", "codex"];
   const charterRoot = await loadCharterRoot(new InMemoryFileReaders(charterOfEveryKind));
-  const charterOutput = CompileService.compileCharterRoot(charterRoot, [
-    new AgentProvider("claude"),
-    new AgentProvider("codex"),
-  ]);
+  const charterOutput = CompileService.compileCharterRoot(
+    charterRoot,
+    hostNames.map((hostName) => new AgentProvider(hostName)),
+  );
 
   assert.ok(charterOutput.compiledParts.length > 0);
   for (const compiledPart of charterOutput.compiledParts) {
@@ -82,10 +91,43 @@ test("a compiled charter's parts each name their id, kind and part, their path i
     for (const outputPlace of OUTPUT_PLACES)
       assert.ok(!compiledPart.text.includes(outputPlace), `${part} ${id} names ${outputPlace}`);
   }
-  const compiledScript = charterOutput.compiledParts.find(
-    (compiledPart) => compiledPart instanceof CompiledPrimitive && compiledPart.id === "check",
+  // A part for one host alone names that host in its path; a part every host
+  // reads names none.
+  const hostCatalogues = Object.entries(charterOutput.agentBasedCatalogues);
+  assert.deepEqual(hostCatalogues.map(([hostName]) => hostName).sort(), hostNames);
+  for (const [hostName, hostCatalogue] of hostCatalogues)
+    assert.ok(hostCatalogue.outputPart.path.includes(hostName), `${hostCatalogue.outputPart.path} names ${hostName}`);
+  const hostCatalogueSet = new Set<unknown>(hostCatalogues.map(([, hostCatalogue]) => hostCatalogue));
+  for (const sharedPart of charterOutput.compiledParts.filter((compiledPart) => !hostCatalogueSet.has(compiledPart)))
+    for (const hostName of hostNames)
+      assert.ok(!sharedPart.outputPart.path.includes(hostName), `${sharedPart.outputPart.path} names ${hostName}`);
+  // Every primitive with files beside its document carries each of them, as
+  // its author kept it, among its assets.
+  const primitiveFolderUrl = "file:///repo/.cw/charter/primitive/";
+  const compiledPrimitives = charterOutput.compiledParts.filter(
+    (compiledPart): compiledPart is CompiledPrimitive => compiledPart instanceof CompiledPrimitive,
   );
-  assert.ok(compiledScript instanceof CompiledPrimitive);
+  const assetPrimitiveIds = new Set<string>();
+  for (const [fileUrl, keptContents] of Object.entries(charterOfEveryKind)) {
+    const assetMatch = fileUrl.startsWith(primitiveFolderUrl)
+      ? decodeURIComponent(fileUrl.slice(primitiveFolderUrl.length)).match(/^([^/]+)\/(.+?)\/([^/]+)$/)
+      : null;
+    if (assetMatch === null || assetMatch[3] === "index.md") continue;
+    const [, assetKind, assetPrimitiveId, assetFile] = assetMatch;
+    assetPrimitiveIds.add(`${assetKind}/${assetPrimitiveId}`);
+    const assetPrimitive = compiledPrimitives.find(
+      (compiledPrimitive) => compiledPrimitive.kind === assetKind && compiledPrimitive.id === assetPrimitiveId,
+    );
+    const compiledAsset = assetPrimitive?.assets.find(({ file }) => file === assetFile);
+    assert.ok(compiledAsset !== undefined, `${assetKind} ${assetPrimitiveId} carries ${assetFile}`);
+    assert.deepEqual(
+      compiledAsset.contents,
+      typeof keptContents === "string" ? new TextEncoder().encode(keptContents) : keptContents,
+    );
+  }
+  assert.deepEqual([...assetPrimitiveIds].sort(), ["guide/general", "script/check"]);
+  const compiledScript = compiledPrimitives.find((compiledPrimitive) => compiledPrimitive.id === "check");
+  assert.ok(compiledScript !== undefined);
   assert.deepEqual(
     compiledScript.assets.map(({ file, executable }) => [file, executable]),
     [
@@ -111,7 +153,7 @@ test("the engine's own code names no place of the build's output or of a host (C
   }
 });
 
-test("laid onto a repository, a charter leaves the build's output, its paths written from where each file lands, and every host's folders as laid before, byte for byte (CORE-FR-221, CORE-SC-063, CORE Story 52 scenario 13)", async () => {
+test("laid onto a repository, a charter leaves the build's output, its paths written from where each file lands, and every host's folders as laid before, byte for byte (CORE-FR-221, CORE-SC-063, CORE Story 48 scenario 2, CORE Story 52 scenario 13)", async () => {
   const heldFileReaders = new InMemoryFileReaders(charterOfEveryKind);
   const charterRuntimeApp = projectingCharterOver(
     heldFileReaders,
@@ -167,41 +209,154 @@ test("an output writer of a tool author's own is handed the whole of what the ch
   );
 });
 
-test("the mcp origins are served from what the build put out, read back through the charter's repository (CORE-FR-221, CORE-FR-222)", async () => {
-  const origin = {
-    ids: ["local"],
-    names: { local: "local" },
-    address: "node",
-    command: { command: "node", args: [] },
-    auth: [],
-    tools: [{ name: "echo", description: "Echoes.", inputSchema: { type: "object" } }],
-  };
-  const laidFileReaders = new InMemoryFileReaders({
-    "file:///repo/.cw/out/mcp-origins.json": `${JSON.stringify({ origins: [origin] })}\n`,
-    "file:///repo/.cw/out/mcp/local/index.md":
-      "---\nkind: mcp\nid: local\ndescription: A local mcp origin.\ncommand: node\ntools: [echo]\n---\n\nEcho.\n",
+test("a projection of a tool author's own, handed for an agent, is handed the same output cw's own projection is, and decides where each part lands (CORE-FR-221, CORE Story 48 scenario 3)", async () => {
+  /** What a projection was handed by each build, recorded beside what it does. */
+  const handedCharterOutputs: { readonly projectionName: string; readonly charterOutput: CharterOutput }[] = [];
+  const recordingProjectionOf = (
+    projectionName: string,
+    agentProjection: ForManagingLocalAgentOutput,
+  ): ForManagingLocalAgentOutput => ({
+    tokenFactor: agentProjection.tokenFactor,
+    mainContextTextsOf: (charter, charterOutput) => agentProjection.mainContextTextsOf(charter, charterOutput),
+    createAgentProjectionPlan: async (charter, charterOutput, checkoutPath) => {
+      handedCharterOutputs.push({ projectionName, charterOutput });
+      return agentProjection.createAgentProjectionPlan(charter, charterOutput, checkoutPath);
+    },
   });
-  const charterRuntimeApp = runningCharterOf(laidFileReaders, new InMemoryReporter(), {
-    fileWriter: new InMemoryFileOutput(laidFileReaders),
+  // The author's own lays each part under a folder of its choosing, its path
+  // inside the output kept.
+  const ownProjection: ForManagingLocalAgentOutput = {
+    tokenFactor: 1,
+    mainContextTextsOf: () => [],
+    createAgentProjectionPlan: async (_charter, charterOutput) =>
+      new ProjectionPlan(
+        [],
+        [],
+        charterOutput.compiledParts.map(({ outputPart, text }) => {
+          const ownPlace = `own-agent/${outputPart.path}`;
+          return new WritePlan(ownPlace, ownPlace, text);
+        }),
+      ),
+  };
+  const laidLocalRepoOf = async (agentProjection: ForManagingLocalAgentOutput) => {
+    const heldFileReaders = new InMemoryFileReaders(charterOfEveryKind);
+    const recordingLocalRepo = new InMemoryLocalRepo();
+    const charterRuntimeApp = runningCharterOf(heldFileReaders, new InMemoryReporter(), {
+      fileWriter: new InMemoryFileOutput(heldFileReaders),
+      tokenCounter: new InMemoryTokenCounter(),
+      shell: new InMemoryShellCommands(),
+      localRepo: recordingLocalRepo,
+      workspaceSettings: { agents: ["claude"] },
+      agentProjectionByProvider: { claude: agentProjection },
+    });
+    assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
+    return recordingLocalRepo;
+  };
+
+  await laidLocalRepoOf(
+    recordingProjectionOf("cw's own", new ClaudeProjection(new InMemoryFileReaders(charterOfEveryKind))),
+  );
+  const ownLocalRepo = await laidLocalRepoOf(recordingProjectionOf("the author's own", ownProjection));
+
+  const [cwHandedRecord, ownHandedRecord] = handedCharterOutputs;
+  assert.deepEqual(
+    handedCharterOutputs.map(({ projectionName }) => projectionName),
+    ["cw's own", "the author's own"],
+  );
+  assert.deepEqual(ownHandedRecord?.charterOutput, cwHandedRecord?.charterOutput);
+  // What the author's projection decided is what the build lays.
+  const [laidPlan] = ownLocalRepo.laidPlans;
+  assert.ok(laidPlan !== undefined);
+  const laidPaths = laidPlan.projectionPlan.map(({ path }) => path);
+  for (const { outputPart } of ownHandedRecord!.charterOutput.compiledParts)
+    assert.ok(laidPaths.includes(`own-agent/${outputPart.path}`), `laid own-agent/${outputPart.path}`);
+});
+
+test("the mcp origins are served from what the build put out, read back from where an output writer of a tool author's own laid it (CORE-FR-221, CORE-FR-222, CORE Story 48 scenario 4)", async () => {
+  const heldFileReaders = new InMemoryFileReaders(charterOfEveryKind);
+  const fileWriter = new InMemoryFileOutput(heldFileReaders);
+  // The output is laid in memory, nowhere the engine or cw's own would look,
+  // and the charter's repository reads it back from there.
+  const ownLocalRepo = new InMemoryLocalRepo();
+  class OwnLaidCharterRepository extends FileCharterRepository {
+    override async loadLaidText(outputPart: OutputPart): Promise<string | undefined> {
+      return ownLocalRepo.loadLaidText(outputPart);
+    }
+  }
+  const mcpServers = new InMemoryMcpServers();
+  mcpServers.servers.set("node", {
+    tools: [{ name: "echo", description: "Echoes.", inputSchema: { type: "object" } }],
+  });
+  const charterRuntimeApp = runningCharterOf(heldFileReaders, new InMemoryReporter(), {
+    fileWriter,
     tokenCounter: new InMemoryTokenCounter(),
     shell: new InMemoryShellCommands(),
-    localRepo: new InMemoryLocalRepo(),
-    workspaceSettings: { agents: [] },
-    mcpServers: new InMemoryMcpServers(),
+    localRepo: ownLocalRepo,
+    charterRepository: new OwnLaidCharterRepository(heldFileReaders, fileWriter, new InMemorySources()),
+    workspaceSettings: { agents: ["claude"] },
+    agentProjectionByProvider: { claude: new ClaudeProjection(heldFileReaders) },
+    mcpServers,
     credentialsRepository: new InMemoryCredentialsRepository(),
     authorizing: new InMemoryAuthorizing(),
     clock: new InMemoryClock(new Date("2026-11-07T00:00:00Z")),
   });
 
+  assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
+  const laidOriginsText = ownLocalRepo.textByPlace.get("mcp-origins.json");
+  assert.ok(laidOriginsText !== undefined, "the build laid the mcp origins");
+  const [laidOrigin] = (JSON.parse(laidOriginsText) as { origins: { names: Record<string, string> }[] }).origins;
+  assert.equal(await heldFileReaders.readIfThere(".cw/out/mcp-origins.json"), undefined);
+
   const servedTools = await charterRuntimeApp.tools();
 
   assert.equal(servedTools.type, "ServedTools");
-  if (servedTools.type === "ServedTools")
+  if (servedTools.type === "ServedTools") {
     assert.deepEqual(
       servedTools.data.tools.map(({ data }) => data.name),
-      ["local__echo"],
+      [`${laidOrigin?.names.local}__echo`],
     );
-  if (servedTools.type === "ServedTools") assert.deepEqual(servedTools.data.problems, []);
+    assert.deepEqual(servedTools.data.problems, []);
+  }
+});
+
+test("built with projections of a tool author's own, under any agent's name, the engine writes nothing outside the build's output but what each projection lays (CORE-FR-221, CORE Story 52 scenario 13)", async () => {
+  const contentsByPathOf = async (heldFileReaders: InMemoryFileReaders) =>
+    Object.fromEntries(
+      (await heldFileReaders.readBytesRecursively("")).map(({ path, contents }) => [path, contents] as const),
+    );
+  /** A projection laying one file of its own, named for the agent it is
+   *  handed under. */
+  const ownProjectionOf = (agentName: string): ForManagingLocalAgentOutput => ({
+    tokenFactor: 1,
+    mainContextTextsOf: () => [],
+    createAgentProjectionPlan: async () =>
+      new ProjectionPlan([], [], [new WritePlan(`.${agentName}/rules.md`, `.${agentName}/rules.md`, "Own.\n")]),
+  });
+  // The charter names claude, so a projection is handed under that name; the
+  // other is a name no part of cw knows.
+  const agentProjectionByProvider = { claude: ownProjectionOf("claude"), quill: ownProjectionOf("quill") };
+  const heldFileReaders = new InMemoryFileReaders(charterOfEveryKind);
+  const contentsByPathBefore = await contentsByPathOf(heldFileReaders);
+  const charterRuntimeApp = runningCharterOf(heldFileReaders, new InMemoryReporter(), {
+    fileWriter: new InMemoryFileOutput(heldFileReaders),
+    tokenCounter: new InMemoryTokenCounter(),
+    shell: new InMemoryShellCommands(),
+    workspaceSettings: { agents: Object.keys(agentProjectionByProvider) },
+    agentProjectionByProvider,
+  });
+
+  const planSummaryDTO = await charterRuntimeApp.build();
+
+  assert.equal(planSummaryDTO.type, "PlanSummary", JSON.stringify(planSummaryDTO));
+  const contentsByPathAfter = await contentsByPathOf(heldFileReaders);
+  const changedPaths = Object.keys(contentsByPathAfter)
+    .filter(
+      (path) =>
+        !(path in contentsByPathBefore) ||
+        !Buffer.from(contentsByPathAfter[path]!).equals(Buffer.from(contentsByPathBefore[path]!)),
+    )
+    .filter((path) => !path.startsWith(".cw/out/"));
+  assert.deepEqual(changedPaths.sort(), [".claude/rules.md", ".quill/rules.md"]);
 });
 
 test("a search reads when a kind comes up as the domain says it, its paths under $CW_OUT/ (FR-114, CORE-FR-221)", async () => {

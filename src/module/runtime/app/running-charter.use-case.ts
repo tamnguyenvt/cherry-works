@@ -364,7 +364,14 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
         sessionCount,
         totalTokens,
       }: SessionAnalysisSummary): RuntimeDTOs.SessionSummary =>
-        RuntimeDTOs.SessionSummary.of({ span, sessions, sessionCount, totalTokens });
+        // The span copied out of its model, so the caller is answered plain data
+        // (CORE-FR-223).
+        RuntimeDTOs.SessionSummary.of({
+          span: { since: span.since, until: span.until },
+          sessions,
+          sessionCount,
+          totalTokens,
+        });
       return RuntimeDTOs.SessionReviewOutcome.of({
         sessionsFolder: sessionAnalysis.sessionsFolder,
         sessionSummary: sessionSummaryDTOOf(sessionAnalysis.summarize(sessionSpan)),

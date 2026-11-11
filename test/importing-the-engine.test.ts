@@ -79,8 +79,8 @@ function typecheckConsumerSource(consumerFileName: string, ...compilerFlags: str
 
 test("an installed engine supplies how to compose it, its driver ports, their DTOs, and every port a tool may replace with the types crossing it (SDK Story 2 scenario 1)", async () => {
   const consumerSource = `
-import { composeApplications, CharterDTOs, FaultDTOs, RuntimeDTOs, WorkspaceDTOs, AdapterFault, UnauthorizedMcpFault, McpCredential, McpClientRegistration, VERSION, AgentCli, ClaudeProjection } from 'cherry-works';
-import type { ComposedApplications, ComposedEngine, EngineAdapters, ForManagingCharter, ForManagingLocalAgentOutput, ForAuthoringCharter, ForBuildingCharter, ForRunningCharter, ForManagingWorkspace, ForReadingFiles, ReadFile, ListedFile, ForWritingFiles, ForReportingProgress, ForTellingTime, ForCountingTokens, ForRunningShellCommands, ShellCommandResult, ForKeepingWorktrees, ForRunningPromptfoo, PromptfooTest, PromptfooAssertion, PromptfooTestResult, PromptfooLog, ForCallingMcpServers, McpServerAddress, McpServerConnection, UpstreamTool, ToolAnswer, ForAuthorizingMcpOrigins, OAuthGrant, ForStoringCredentials, ForFetchingCharterSources } from 'cherry-works';
+import { composeApplications, CharterDTOs, FaultDTOs, RuntimeDTOs, WorkspaceDTOs, AdapterFault, UnauthorizedMcpFault, McpCredential, McpClientRegistration, VERSION, AgentCli, ClaudeProjection, LocalRepoManipulator, SessionLogs, WorkspaceSettings, WorkspaceReadme } from 'cherry-works';
+import type { ComposedApplications, ComposedEngine, EngineAdapters, ForManagingCharter, ForManagingLocalAgentOutput, ForManagingLocalOutput, ForLoadingSessionAnalysis, ForStoringWorkspaceSettings, ForCheckingAgentCli, CharterOutput, ProjectionPlan, ForAuthoringCharter, ForBuildingCharter, ForRunningCharter, ForManagingWorkspace, ForReadingFiles, ReadFile, ListedFile, ForWritingFiles, ForReportingProgress, ForTellingTime, ForCountingTokens, ForRunningShellCommands, ShellCommandResult, ForKeepingWorktrees, ForRunningPromptfoo, PromptfooTest, PromptfooAssertion, PromptfooTestResult, PromptfooLog, ForCallingMcpServers, McpServerAddress, McpServerConnection, UpstreamTool, ToolAnswer, ForAuthorizingMcpOrigins, OAuthGrant, ForStoringCredentials, ForFetchingCharterSources } from 'cherry-works';
 const fileReader: ForReadingFiles = {
   async readFilesRecursively(): Promise<readonly ReadFile[]> { return []; },
   async readBytesRecursively(): Promise<readonly ReadFile<Uint8Array>[]> { return [{path: 'a', contents: new Uint8Array([255])}]; },
@@ -110,7 +110,20 @@ const sourceFetcher: ForFetchingCharterSources = {
   async listFilesAt() { return []; }, async readFileAt() { return ''; }, async readBytesAt() { return new Uint8Array(); },
   async checkoutFolderAt() {}, async forgetCommit() {}
 };
-const replacedAdapters: Partial<EngineAdapters> = { fileReader, fileWriter, worktrees, authorizing, mcpServers, tokenCounter, clock, shell, progressReporter, promptfooRunner, credentialsRepository, sourceFetcher };
+const sessionAnalysisRepository: ForLoadingSessionAnalysis = { async loadSessionLogs(sessionAnalysisFolder, writtenFromMs, writtenUntilMs): Promise<SessionLogs> { return new SessionLogs(sessionAnalysisFolder ?? 'sessions', []); } };
+let workspaceSettingsText: string | undefined;
+const workspaceSettingsRepository: ForStoringWorkspaceSettings = {
+  async loadSettingsText() { return workspaceSettingsText; },
+  async saveSettings(workspaceSettings: WorkspaceSettings) { workspaceSettingsText = JSON.stringify(workspaceSettings); },
+  async keepLogIgnored() {}, async keepReadme(workspaceReadme: WorkspaceReadme) {}
+};
+const ownLocalOutput = new LocalRepoManipulator(fileReader, fileWriter);
+const localOutput: ForManagingLocalOutput = {
+  createProjectionPlan(charterOutput: CharterOutput, checkoutPath?: string): Promise<ProjectionPlan> { return ownLocalOutput.createProjectionPlan(charterOutput, checkoutPath); },
+  writePlan(projectionPlan: ProjectionPlan) { return ownLocalOutput.writePlan(projectionPlan); }
+};
+const agentCli: ForCheckingAgentCli = { async isInstalled() { return false; } };
+const replacedAdapters: Partial<EngineAdapters> = { fileReader, fileWriter, worktrees, authorizing, mcpServers, tokenCounter, clock, shell, progressReporter, promptfooRunner, credentialsRepository, sourceFetcher, sessionAnalysisRepository, workspaceSettingsRepository, localOutput, agentProvider: { claude: { projection: new ClaudeProjection(fileReader), cli: agentCli } } };
 const composedApplications: ComposedApplications = await composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), replacedAdapters);
 const filesReplacedApplications: Promise<ComposedApplications> = composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), { fileReader, fileWriter });
 // An agent's projection and command line, and the charter's store, may be a tool's own too.
@@ -172,6 +185,30 @@ test("the installed library holds the engine and the adapters cw is composed of,
   ]);
   const libraryCode = await readFile(join(consumerFolder, "node_modules/cherry-works/dist/index.js"), "utf8");
   assert.doesNotMatch(libraryCode, /^\/\/ (?:main\.ts|src\/presentation\/)/m);
+  // The library reaches no other file of the package, the command line's and
+  // the portal's included, and bundles neither the parser the command line
+  // reads its arguments with nor the server the portal answers on.
+  assert.deepEqual([...libraryCode.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*)["'](\.{1,2}\/[^"']*)["']/g)], []);
+  assert.doesNotMatch(libraryCode, /node_modules\/\.pnpm\/(?:yargs|hono)@/);
+  // Every adapter cw composes the engine of, where a tool hands none, is in
+  // the library for a tool to extend.
+  const compositionSource = await readFile(new URL("src/module/composition.ts", repositoryUrl), "utf8");
+  const composingSource = compositionSource.slice(
+    compositionSource.indexOf("export async function composeApplications"),
+  );
+  const defaultAdapterNames = [
+    ...new Set([...composingSource.matchAll(/\bnew ([A-Z]\w+)\(/g)].map(([, adapterName]) => adapterName!)),
+  ].filter((adapterName) => adapterName !== "URL");
+  assert.ok(defaultAdapterNames.length >= 20, defaultAdapterNames.join(", "));
+  runConsumerCode(`
+import assert from 'node:assert/strict';
+import * as engine from 'cherry-works';
+for (const adapterName of ${JSON.stringify(defaultAdapterNames)}) {
+  assert.equal(typeof engine[adapterName], 'function', adapterName);
+  const ExtendedAdapter = class extends engine[adapterName] {};
+  assert.equal(Object.getPrototypeOf(ExtendedAdapter.prototype), engine[adapterName].prototype, adapterName);
+}
+`);
   for (const adapterPath of [
     "src/module/composition.ts",
     "src/module/charter/infra/file-charter.repository.ts",
@@ -303,7 +340,10 @@ storeFailure = new Error('Store unavailable.');
 const sensorRunAnswer = await charterBuildingApp.sensorCommands('Stop', 'claude');
 assert.equal(sensorRunAnswer.type, 'Fault');
 assert.equal(sensorRunAnswer.data.name, 'InternalFault');
+// The operator's log holds what went wrong; the answer withholds it.
 assert.equal(progressReporter.problems.length, 1);
+assert.match(progressReporter.problems[0], /Store unavailable\./);
+assert.doesNotMatch(JSON.stringify(sensorRunAnswer), /Store unavailable/);
 `,
   );
 });
@@ -480,6 +520,17 @@ test("installing cw adds its one package, the library within it, and depends on 
     "package.json",
   ]);
   assert.ok(packedPaths.every((packagePath) => !packagePath.startsWith("packages/")));
+  // That one package holds cw and the library: installed, both are there.
+  const installedPackageJson = libraryPackageJson as typeof libraryPackageJson & { bin?: Record<string, string> };
+  assert.deepEqual(installedPackageJson.bin, { cw: "./dist/cw.js" });
+  const installedCwRun = spawnSync(process.execPath, ["node_modules/cherry-works/dist/cw.js", "--version"], {
+    cwd: consumerFolder,
+    encoding: "utf8",
+  });
+  assert.equal(installedCwRun.stdout, `${libraryPackageJson.version}\n`, installedCwRun.stderr);
+  runConsumerCode(
+    "import assert from 'node:assert/strict'; import { composeApplications } from 'cherry-works'; assert.equal(typeof composeApplications, 'function');",
+  );
 });
 
 test("a tool composes the engine as cw does, replacing some of its adapters with its own, type-checked against the package alone (SDK Story 2 scenario 9)", async () => {

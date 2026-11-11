@@ -98,6 +98,13 @@ test("a release that passes publishes cherry-works, cw and its library, at its v
       const recordedRelease = JSON.parse(await readFile(join(fixtureFolder, "recorded-release.json"), "utf8"));
       assert.ok(recordedRelease.arguments.includes("contract.d.ts"));
       assert.equal(recordedRelease.contract, GENERATED_LINE + LAST_CONTRACT);
+      // At that version: the package packed, the release commit and its tag
+      // all name it.
+      assert.equal(JSON.parse(await readFile(join(fixtureFolder, "packed-package.json"), "utf8")).version, "1.1.0");
+      assert.equal(JSON.parse(recordedRelease.packageJson).version, "1.1.0");
+      assert.ok(recordedRelease.arguments.includes("package.json"));
+      const tagCommand = releaseCommands.find(([commandName, action]) => commandName === "git" && action === "tag");
+      assert.equal(tagCommand?.at(-1), "v1.1.0");
       assert.match(releaseRun.stdout, /published the checked cherry-works\.$/m);
     },
   );
@@ -178,6 +185,24 @@ test("the tests failing name the package, and publish nothing (SDK Story 4 scena
       assert.equal(releaseRun.status, 1);
       assert.match(releaseRun.stderr, /^Release refused: the tests or the build of cherry-works fail\.$/m);
       assertNothingReleased(await releaseCommandsIn(fixtureFolder));
+    },
+  );
+});
+
+test("an installed cw naming another version publishes nothing, and names that check (SDK Story 4 scenario 2)", async () => {
+  await inARelease(
+    {
+      currentVersion: "1.0.0",
+      nextVersion: "1.1.0",
+      releaseMode: "cw-version-wrong",
+      builtContractText: LAST_CONTRACT,
+      lastContractText: LAST_CONTRACT,
+    },
+    async (releaseRun, fixtureFolder) => {
+      assert.equal(releaseRun.status, 1);
+      assert.match(releaseRun.stderr, /^Release refused: the installed cw --version prints "0\.0\.0", not 1\.1\.0\.$/m);
+      assertNothingReleased(await releaseCommandsIn(fixtureFolder));
+      assert.equal(JSON.parse(await readFile(join(fixtureFolder, "package.json"), "utf8")).version, "1.0.0");
     },
   );
 });

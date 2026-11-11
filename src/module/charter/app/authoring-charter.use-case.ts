@@ -140,8 +140,18 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
 
       const catalogue = CatalogueFactory.create(charter, (primitive) => primitive.uri);
       return CharterDTOs.Catalogue.of({
+        // Each entry copied out of its model, so the caller is answered plain
+        // data (CORE-FR-223).
         entries: (kind === undefined ? catalogue : catalogue.filterByKind(kind)).entries.map(
-          CharterDTOs.CatalogueEntry.of,
+          ({ agentProviders, id, kind: entryKind, description, file, globs }) =>
+            CharterDTOs.CatalogueEntry.of({
+              agentProviders,
+              id,
+              kind: entryKind,
+              description,
+              file,
+              ...(globs === undefined ? {} : { globs }),
+            }),
         ),
       });
     });

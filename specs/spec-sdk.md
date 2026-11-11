@@ -203,7 +203,7 @@ A tool author imports `cw`'s own store and an agent's projection from `cherry-wo
 
 ### SDK Story 10 - Trust the evidence of every rewritten Done story (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 A maintainer reads the evidence of each `Done` story and knows it proves the scenarios as they now read: SDK Stories 2, 4 and 6 and CORE Stories 13, 48, 49 and 52 were rewritten after their evidence, and their scenarios are run again and their evidence recorded anew.
 

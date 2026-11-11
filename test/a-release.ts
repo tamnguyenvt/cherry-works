@@ -11,7 +11,7 @@ export interface ReleaseFixture {
   nextVersion: string;
   /** What the fake commands do: `dry-run`, `publish` and `unpublished`
    *  pass, the last with the package never published; `tests-fail`,
-   *  `install-fails`, `library-version-wrong`, `maintainer-denied`,
+   *  `install-fails`, `cw-version-wrong`, `library-version-wrong`, `maintainer-denied`,
    *  `already-published`, `commit-fails`, `publish-fails` and `push-fails`
    *  fail where they say. */
   releaseMode: string;
@@ -26,7 +26,8 @@ export interface ReleaseFixture {
 /** A release run by `scripts/release.ts` itself in a folder of its own, with
  *  git, npm and pnpm put in place by fakes: no registry, remote or real
  *  release is reached. Each fake command it ran is in `release-commands.jsonl`,
- *  and the files the release commit recorded in `recorded-release.json`. The
+ *  the package.json it packed in `packed-package.json`, and the files the
+ *  release commit recorded in `recorded-release.json`. The
  *  folder is taken away whatever `readReleaseRun` does. */
 export async function inARelease(
   releaseFixture: ReleaseFixture,
@@ -79,13 +80,16 @@ if (commandName === 'pnpm') {
   if (commandArguments[0] === 'view' && commandArguments[2] === 'version' && releaseMode === 'already-published') {
     console.info(commandArguments[1].split('@').at(-1));
   }
-  if (commandArguments[0] === 'pack') console.info(JSON.stringify([{ filename: 'fixture.tgz' }]));
+  if (commandArguments[0] === 'pack') {
+    fs.copyFileSync(path.join(fixtureFolder, 'package.json'), path.join(fixtureFolder, 'packed-package.json'));
+    console.info(JSON.stringify([{ filename: 'fixture.tgz' }]));
+  }
   if (commandArguments[0] === 'install') {
     if (releaseMode === 'install-fails') process.exit(1);
     const installFolder = commandArguments[commandArguments.indexOf('--prefix') + 1];
     const installedCw = path.join(installFolder, 'node_modules/.bin/cw');
     fs.mkdirSync(path.dirname(installedCw), { recursive: true });
-    fs.writeFileSync(installedCw, '#!${process.execPath}\\nif (process.argv[2] === "--version") console.info("' + packageVersion + '");\\n');
+    fs.writeFileSync(installedCw, '#!${process.execPath}\\nif (process.argv[2] === "--version") console.info("' + (releaseMode === 'cw-version-wrong' ? '0.0.0' : packageVersion) + '");\\n');
     fs.chmodSync(installedCw, 0o755);
     const libraryFolder = path.join(installFolder, 'node_modules/cherry-works');
     fs.mkdirSync(libraryFolder, { recursive: true });
@@ -104,6 +108,7 @@ if (commandName === 'pnpm') {
     fs.writeFileSync('recorded-release.json', JSON.stringify({
       arguments: commandArguments,
       readme: fs.readFileSync('README.md', 'utf8'),
+      packageJson: fs.readFileSync('package.json', 'utf8'),
       contract: fs.existsSync(contractFile) ? fs.readFileSync(contractFile, 'utf8') : null,
     }));
   }
