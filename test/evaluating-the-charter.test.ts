@@ -3,6 +3,7 @@ import { test } from "node:test";
 import prompts from "prompts";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import type { ForKeepingWorktrees } from "../src/module/runtime/app/port/out/keeping-worktrees.port.js";
 import type { PromptfooTestResult } from "../src/module/runtime/app/port/out/running-promptfoo.port.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryPromptfoo } from "../src/module/runtime/infra/in-memory/in-memory-promptfoo.adapter.js";
@@ -67,10 +68,14 @@ const surfaces = (
   promptfoo: InMemoryPromptfoo,
   agentCli = new InMemoryAgentCli(),
   isVersioned = true,
+  worktreesOf: (
+    fileReaders: InMemoryFileReaders,
+  ) => ForKeepingWorktrees & { readonly worktreePaths: readonly string[] } = (fileReaders) =>
+    new InMemoryWorktrees(fileReaders, isVersioned),
 ) => {
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources(fileReaders);
-  const worktrees = new InMemoryWorktrees(fileReaders, isVersioned);
+  const worktrees = worktreesOf(fileReaders);
   promptfoo.folderFiles = fileReaders;
   const fileOutput = new InMemoryFileOutput(fileReaders);
   const reporter = new InMemoryReporter();
@@ -104,7 +109,7 @@ const printed = async (cli: Commander, argv: readonly string[]) => {
   process.stdout.write = ((chunk: string) => results.push(chunk) > 0) as typeof process.stdout.write;
   process.stderr.write = ((chunk: string) => problems.push(chunk) > 0) as typeof process.stderr.write;
   try {
-    const code = await cli.run(argv);
+    const code = await cli.runCommandLine(argv);
     return { code, result: results.join(""), problem: problems.join("") };
   } finally {
     process.stdout.write = stdoutWrite;
@@ -276,8 +281,60 @@ test("each case runs once in a worktree of its own under .cw/log/eval/worktrees/
   assert.ok(firstTest.builtFiles.some((file) => file.endsWith(".claude/skills/planning/SKILL.md")));
   // Every worktree removed, and the working tree holding exactly what it held.
   assert.deepEqual(worktrees.worktreePaths, []);
-  const heldNow = (await fileReaders.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort();
+  const heldNow = (await fileReaders.readFilesRecursively(new URL("file:///")))
+    .map(({ fileUrl }) => fileUrl.href)
+    .sort();
   assert.deepEqual(heldNow, Object.keys(files).sort());
+});
+
+test("a charter changed and not yet committed is evaluated as it stands: each case's worktree of the last commit is built from it, the working tree left as it was (EVAL Story 6 scenario 5, CORE Story 53 scenario 5, EVAL-FR-021)", async () => {
+  const promptfoo = new InMemoryPromptfoo();
+  const files = holding([{ prompt: "plan this feature", expect: { invoke: "planning" } }]);
+  // The last commit holds the settings and nothing of the charter: the
+  // planning skill and its case are written since, and not committed.
+  const committedPaths = [".cw/settings.json"];
+  /** Worktrees of a last commit that holds only what `committedPaths` names. */
+  class LastCommitWorktrees implements ForKeepingWorktrees {
+    readonly worktreePaths: string[] = [];
+    constructor(private readonly fileReaders: InMemoryFileReaders) {}
+    async addWorktree(worktreePath: string): Promise<void> {
+      for (const committedPath of committedPaths)
+        this.fileReaders.writeFile(
+          new URL(`${worktreePath}/${committedPath}`, repoPath),
+          (await this.fileReaders.readIfThere(new URL(committedPath, repoPath))) ?? "",
+        );
+      this.worktreePaths.push(worktreePath);
+    }
+    async removeWorktree(worktreePath: string): Promise<void> {
+      for (const { path } of await this.fileReaders.readFilesRecursively(worktreePath))
+        this.fileReaders.removeFile(new URL(path, repoPath));
+      this.worktreePaths.splice(this.worktreePaths.indexOf(worktreePath), 1);
+    }
+  }
+  const { fileReaders, worktrees, cli } = surfaces(
+    files,
+    promptfoo,
+    new InMemoryAgentCli(),
+    true,
+    (heldFiles) => new LastCommitWorktrees(heldFiles),
+  );
+
+  const { code } = await printed(cli, ["eval"]);
+
+  assert.equal(code, EXIT_OK);
+  const [evaluatedTest] = promptfoo.evaluatedTests;
+  assert.ok(evaluatedTest !== undefined);
+  // The case was read off the store as it stands, and the worktree, which
+  // held none of the charter, was built from it.
+  assert.equal(evaluatedTest.prompt, "plan this feature");
+  assert.ok(
+    evaluatedTest.builtFiles.some((builtFilePath) => builtFilePath.endsWith(".claude/skills/planning/SKILL.md")),
+  );
+  assert.deepEqual(worktrees.worktreePaths, []);
+  const heldFileHrefs = (await fileReaders.readFilesRecursively(new URL("file:///")))
+    .map(({ fileUrl: heldFileUrl }) => heldFileUrl.href)
+    .sort();
+  assert.deepEqual(heldFileHrefs, Object.keys(files).sort());
 });
 
 test("the worktrees a run stopped halfway left are removed when the next run starts", async () => {
@@ -354,7 +411,7 @@ test("an evaluation file that does not read refuses the run, and none written is
   const { [at(".cw/charter/eval/skills.json")]: _evalFile, ...withoutEvals } = holding([]);
   const { code, result } = await printed(surfaces(withoutEvals, promptfoo).cli, ["eval"]);
   assert.equal(code, EXIT_OK);
-  assert.match(result, /No evaluation: \.cw\/charter\/eval\/ holds no case as last committed\./);
+  assert.match(result, /No evaluation: \.cw\/charter\/eval\/ holds no case\./);
   assert.equal(promptfoo.evaluatedTests.length, 0);
 });
 
@@ -388,7 +445,7 @@ for (const agentName of ["claude", "codex"]) {
     );
     assert.deepEqual(worktrees.worktreePaths, []);
     assert.deepEqual(
-      (await fileReaders.readFilesRecursively(new URL("file:///"))).map(({ file }) => file.href).sort(),
+      (await fileReaders.readFilesRecursively(new URL("file:///"))).map(({ fileUrl }) => fileUrl.href).sort(),
       Object.keys(repositoryFiles).sort(),
     );
   });
@@ -554,9 +611,21 @@ test("a case outside a git repository is refused in git's words, naming git init
   assert.match(problem, /git init/);
   assert.deepEqual(worktrees.worktreePaths, []);
   assert.deepEqual(
-    (await fileReaders.readFilesRecursively(repoPath)).map(({ file }) => file.href).sort(),
+    (await fileReaders.readFilesRecursively(repoPath)).map(({ fileUrl }) => fileUrl.href).sort(),
     Object.keys(files).sort(),
   );
+});
+
+test("outside a git repository, git refuses before the agent's command line is asked for or promptfoo installed (CORE-FR-206, CORE Story 53 scenario 4)", async () => {
+  const promptfoo = new InMemoryPromptfoo(false);
+  const files = holding([{ prompt: "plan this feature", expect: { invoke: "planning" } }]);
+  const { cli } = surfaces(files, promptfoo, new InMemoryAgentCli(false), false);
+
+  const { code, problem } = await printed(cli, ["eval"]);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(problem, /not a git repository/);
+  assert.equal(promptfoo.installCount, 0);
 });
 
 test("no case outside a git repository answers that there is none, as in a repository (CORE-FR-206)", async () => {

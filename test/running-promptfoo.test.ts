@@ -36,7 +36,7 @@ for (const agentName of ["claude", "codex"] as const) {
       const executableFilePath = join(executableFolderPath, "promptfoo");
       await writeFile(executableFilePath, FAKE_PROMPTFOO);
       await chmod(executableFilePath, 0o755);
-      const testReport = await promptfooRunner.evaluate({
+      const testReport = await promptfooRunner.evaluateTest({
         agent: agentName,
         description: "planning",
         prompt: "plan",
@@ -198,7 +198,7 @@ test("a promptfoo process error preserves stderr and a readable failure log even
     );
     await chmod(executableFilePath, 0o755);
     await assert.rejects(
-      promptfooRunner.evaluate({
+      promptfooRunner.evaluateTest({
         agent: "codex",
         description: "error",
         prompt: "read",

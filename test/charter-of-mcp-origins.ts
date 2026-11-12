@@ -1,4 +1,4 @@
-import type { McpOrigin } from "../src/module/charter/domain/models/projection/mcp-origin.js";
+import type { McpOrigin } from "../src/module/charter/domain/models/charter-output/mcp-origin.js";
 
 /** The mcp primitives that declare these mcp origins, one file per id under
  *  `.cw/charter/primitive/mcp/`, keyed by URL: what signing in reads (FR-148), where a

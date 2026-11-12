@@ -99,7 +99,7 @@ test("the charter is read again when the tab is shown again, so a file written m
   await inTheBrowser(charter, async (page, files) => {
     await rowsOf(page).waitFor();
 
-    files.write(new URL(at("guide/no-casts/index.md")), primitive("guide", "no-casts", ['globs: ["src/**/*.ts"]']));
+    files.writeFile(new URL(at("guide/no-casts/index.md")), primitive("guide", "no-casts", ['globs: ["src/**/*.ts"]']));
     await page.getByRole("tab", { name: "Vendor" }).click();
     await page.getByRole("tab", { name: "Repo Charter" }).click();
     await rowsOf(page).nth(1).waitFor();

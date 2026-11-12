@@ -75,7 +75,7 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
     commandLineOf(readers, new InMemoryFileOutput(readers), { charterAuthoringApp, charterRuntimeApp }, repo),
     COMMANDS,
   );
-  return writing(() => cli.run(argv));
+  return writing(() => cli.runCommandLine(argv));
 };
 
 /** The lines the engine's own session primitives are listed by, in every

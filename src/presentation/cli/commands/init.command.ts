@@ -1,5 +1,5 @@
 import prompts from "prompts";
-import { type ForManagingWorkspace, SETTINGS_FILE } from "#module/workspace/module.js";
+import { type ForManagingWorkspace, SETTINGS_FILE_PATH } from "#module/workspace/module.js";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
 import { printFault, printFaultsByFile } from "./helper.js";
 
@@ -40,21 +40,22 @@ export class InitCommand implements Command<typeof OPTIONS> {
   readonly summary = "Set this repository up under a charter";
   readonly options = OPTIONS;
 
-  async run(
+  async runCommand(
     { workspaceApp, composeApplications, version }: Context,
     { agent, mainContextCeiling }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    const agents = await whichAgents(workspaceApp, agent);
-    if (typeof agents === "string") return { code: EXIT_FAILURE, problem: agents };
+    const agents = await pickAgents(workspaceApp, agent);
+    if (typeof agents === "string") return { exitCode: EXIT_FAILURE, problemText: agents };
     // No agent, one this engine does not compile for, and a ceiling that is
     // no whole number are the workspace module's to refuse (FR-033).
-    const workspaceSettingsDTO = await workspaceApp.setUp(agents, version, mainContextCeiling);
-    if (workspaceSettingsDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(workspaceSettingsDTO) };
+    const workspaceSettingsDTO = await workspaceApp.setUpWorkspace(agents, version, mainContextCeiling);
+    if (workspaceSettingsDTO.type === "Fault")
+      return { exitCode: EXIT_FAILURE, problemText: printFault(workspaceSettingsDTO) };
     const { charterAuthoringApp, charterBuildingApp } = (await composeApplications()).engineApp;
     const charterLayoutDTO = await charterAuthoringApp.setUpCharter();
-    if (charterLayoutDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(charterLayoutDTO) };
-    const planSummaryDTO = await charterBuildingApp.build();
-    if (planSummaryDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(planSummaryDTO) };
+    if (charterLayoutDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(charterLayoutDTO) };
+    const planSummaryDTO = await charterBuildingApp.buildCharter();
+    if (planSummaryDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(planSummaryDTO) };
     const setUpLines = ["Set up this repository under a charter.", `Compiling for: ${agents.join(", ")}.`];
 
     // Set up either way; a charter already here that does not hold is not
@@ -62,20 +63,20 @@ export class InitCommand implements Command<typeof OPTIONS> {
     if (planSummaryDTO.type === "FaultsByFile") {
       const noOfFiles = Object.keys(planSummaryDTO.data.files).length;
       return {
-        code: EXIT_FAILURE,
-        result: [...setUpLines, ""].join("\n"),
-        problem: `Nothing was built: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
+        exitCode: EXIT_FAILURE,
+        resultText: [...setUpLines, ""].join("\n"),
+        problemText: `Nothing was built: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
       };
     }
 
-    const { added, edited } = planSummaryDTO.data;
-    const writtenFileCount = added.length + edited.length;
+    const { added: addedPaths, edited: editedPaths } = planSummaryDTO.data;
+    const writtenFileCount = addedPaths.length + editedPaths.length;
     return {
-      code: EXIT_OK,
-      result: [
+      exitCode: EXIT_OK,
+      resultText: [
         ...setUpLines,
         ...(planSummaryDTO.data.warnings ?? []).map((warning) => `Warning: ${warning}`),
-        `Built ${writtenFileCount} file${writtenFileCount === 1 ? "" : "s"}: ${added.length} added, ${edited.length} changed.`,
+        `Built ${writtenFileCount} file${writtenFileCount === 1 ? "" : "s"}: ${addedPaths.length} added, ${editedPaths.length} changed.`,
         'Author your first rule under .cw/charter/primitive/guide/, or ask your agent to write one, then run "cw build".',
         "",
       ].join("\n"),
@@ -100,15 +101,15 @@ export class InitCommand implements Command<typeof OPTIONS> {
  * default, so that run is refused, naming the flag that answers it: what comes
  * back then is what to report, in place of the agents.
  */
-async function whichAgents(
+async function pickAgents(
   workspaceApp: ForManagingWorkspace,
-  typed: string | undefined,
+  typedAgent: string | undefined,
 ): Promise<readonly string[] | string> {
-  if (typed !== undefined) return [typed];
+  if (typedAgent !== undefined) return [typedAgent];
 
-  const workspaceSettingsDTO = await workspaceApp.settings();
+  const workspaceSettingsDTO = await workspaceApp.readWorkspaceSettings();
   if (workspaceSettingsDTO.type === "Fault")
-    return `${SETTINGS_FILE}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`;
+    return `${SETTINGS_FILE_PATH}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`;
   const agentsInSettings = workspaceSettingsDTO.data.agents;
   // Keep the repository's choice; new repositories default to Claude for
   // compatibility with earlier releases (FR-055).

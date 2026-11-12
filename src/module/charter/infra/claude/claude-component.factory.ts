@@ -4,22 +4,24 @@ import {
   BuiltSensors,
   type CharterOutput,
   type CharterRoot,
-  type CompiledPrimitive,
+  CompiledPrimitive,
   GuidePrimitive,
+  McpOrigins,
   McpPrimitive,
+  outputPath,
   PlaybookPrimitive,
   PosturePrimitive,
   type Primitive,
   SensorPrimitive,
   SkillPrimitive,
 } from "../../app/port/out/managing-local-agent-output.port.js";
-import { laidTextOf } from "../helper.js";
+import { resolveLaidText } from "../helper.js";
 import { ClaudeAgent } from "./claude-agent.js";
 import { type ClaudeComponent, ClaudeComponents } from "./claude-component.js";
 import { ClaudeEntryFile } from "./claude-entry-file.js";
 import { ClaudeMcpConfig } from "./claude-mcp-config.js";
 import { ClaudeRule } from "./claude-rule.js";
-import { ClaudeSettings, type ClaudeSettingsFields } from "./claude-settings.js";
+import { type ClaudeHookEvent, ClaudeSettings, type ClaudeSettingsFields } from "./claude-settings.js";
 import { ClaudeSkill } from "./claude-skill.js";
 
 /** Makes every file this engine puts down for claude. */
@@ -40,21 +42,25 @@ export class ClaudeComponentFactory {
    *
    * Three kinds project nothing of their own. A `corpus` is cited rather than
    * loaded, a `mixin` has no life of its own — its body is written into each host
-   * that pulls it in, which `toMarkdown` does when `compile` hands it the mixins — and an `mcp` is reached through
+   * that pulls it in, which `writeMarkdown` does when `compile` hands it the mixins — and an `mcp` is reached through
    * `cw mcp serve` rather than read: the one entry of the host's MCP
    * configuration that starts it, written whether the charter holds an mcp origin yet or
    * not, since the server reads which mcp origins there are when it starts (FR-146).
    */
   static create(charter: CharterRoot, charterOutput: CharterOutput): readonly ClaudeComponent[] {
     const claudeAgent = ClaudeComponents.agentProvider;
+    const compiledPrimitives = charterOutput.charterOutputItems.filter(
+      (charterOutputItem): charterOutputItem is CompiledPrimitive => charterOutputItem instanceof CompiledPrimitive,
+    );
     const compiledPrimitiveById = new Map(
-      charterOutput.compiledPrimitives.map((compiledPrimitive) => [compiledPrimitive.id, compiledPrimitive]),
+      compiledPrimitives.map((compiledPrimitive) => [compiledPrimitive.id, compiledPrimitive]),
     );
     // The name each mcp is served under, as the build listed it (FR-145).
+    const mcpOrigins = charterOutput.findCharterOutputItem(McpOrigins);
     const shortMcpIds: Readonly<Record<string, string>> = Object.fromEntries(
-      charterOutput.mcpOrigins.origins.flatMap(({ names }) => Object.entries(names)),
+      mcpOrigins.origins.flatMap(({ names }) => Object.entries(names)),
     );
-    const builtSensors = charterOutput.builtSensors.forAgent(claudeAgent);
+    const builtSensors = charterOutput.findCharterOutputItem(BuiltSensors).filterForAgent(claudeAgent);
     // Does this primitive ask something of the settings this host runs on, rather
     // than compile to a file of its own? A posture says what may be run, a sensor
     // what runs when an event fires, and this host reads both out of one file.
@@ -74,7 +80,7 @@ export class ClaudeComponentFactory {
         primitive instanceof McpPrimitive ? [[primitive.headers.id, primitive.headers.tools] as const] : [],
       ),
     );
-    const agentToolsOf = (agent: AgentPrimitive) =>
+    const listAgentTools = (agent: AgentPrimitive) =>
       agent.headers.tools.flatMap((tool) => {
         const [, mcpId, mcpTool] = tool.match(BasePrimitive.toolReferencePattern) ?? [];
         if (mcpId === undefined) return [tool];
@@ -86,17 +92,29 @@ export class ClaudeComponentFactory {
     return [
       // The section of `CLAUDE.md` that sends this host to the charter at all
       // (FR-051).
-      ClaudeEntryFile.of(),
+      new ClaudeEntryFile(ClaudeComponentFactory.#composeEntryFileSection()),
       ...(settingPrimitives.length === 0 && toolsByMcpId.size === 0
         ? []
-        : [ClaudeSettings.of(ClaudeComponentFactory.#claudeSettingsOf(charter, builtSensors, settingPrimitives))]),
-      ClaudeMcpConfig.of(),
+        : [
+            new ClaudeSettings(
+              "claude",
+              ClaudeSettings.kind,
+              ClaudeComponentFactory.#createClaudeSettings(charter, builtSensors, settingPrimitives),
+            ),
+          ]),
+      // The one entry the charter speaks for, under `mcpServers`, in the file
+      // this agent starts a project's servers from. That file is the
+      // repository's too, so the entry is written into it, and never taken
+      // away (FR-146).
+      new ClaudeMcpConfig("claude", ClaudeMcpConfig.kind, {
+        mcpServers: { [ClaudeMcpConfig.cwMcpName]: { command: "cw", args: ["mcp", "serve"] } },
+      }),
       ...documentPrimitives.flatMap(
         (documentPrimitive) =>
-          ClaudeComponentFactory.#claudeDocumentComponentOf(
+          ClaudeComponentFactory.#createClaudeDocumentComponent(
             documentPrimitive,
             compiledPrimitiveById.get(documentPrimitive.headers.id)!,
-            documentPrimitive instanceof AgentPrimitive ? agentToolsOf(documentPrimitive) : undefined,
+            documentPrimitive instanceof AgentPrimitive ? listAgentTools(documentPrimitive) : undefined,
           ) ?? [],
       ),
     ];
@@ -115,7 +133,7 @@ export class ClaudeComponentFactory {
    * What the repository set for itself is not here at all: that is on disk, and
    * reading it together with this is the projection's (FR-020).
    */
-  static #claudeSettingsOf(
+  static #createClaudeSettings(
     charter: CharterRoot,
     builtSensors: BuiltSensors,
     settingPrimitives: readonly Primitive[],
@@ -133,7 +151,9 @@ export class ClaudeComponentFactory {
     // be a hook that never fires, and the charter still names the event for
     // whichever host does raise it. In the order the events' names sort in, so the
     // same charter writes the same file (SC-007).
-    const hookEvents = builtSensors.signals.filter(ClaudeSettings.isHookEvent).sort();
+    const hookEvents = builtSensors.signals
+      .filter((signal): signal is ClaudeHookEvent => (ClaudeSettings.hookEvents as readonly string[]).includes(signal))
+      .sort();
 
     return {
       ...(allowedPermissions.size === 0 && deniedPermissions.size === 0
@@ -150,7 +170,7 @@ export class ClaudeComponentFactory {
                     hooks: [
                       {
                         type: "command",
-                        command: BuiltSensors.runCommandOf(hookEvent, ClaudeComponents.agentProvider),
+                        command: builtSensors.getRunCommand(hookEvent, ClaudeComponents.agentProvider),
                       },
                     ],
                   },
@@ -178,7 +198,7 @@ export class ClaudeComponentFactory {
    * is handed `agentTools`: its tools as this host names them, each mcp origin it
    * holds written as that mcp origin's tools (FR-156).
    */
-  static #claudeDocumentComponentOf(
+  static #createClaudeDocumentComponent(
     documentPrimitive: Primitive,
     compiledPrimitive: CompiledPrimitive,
     agentTools?: readonly string[],
@@ -187,7 +207,7 @@ export class ClaudeComponentFactory {
     // `/skill-<id>`; one id names one primitive whatever its kind, so no two
     // land on one name here (FR-015, FR-171).
     const name = documentPrimitive.normId;
-    const compiledDocumentLink = compiledPrimitive.outputPart.linkOf();
+    const compiledDocumentLink = outputPath.getLink(compiledPrimitive);
     const pointerText = `Read and follow @${compiledDocumentLink}.\n`;
 
     switch (documentPrimitive.kind) {
@@ -201,20 +221,25 @@ export class ClaudeComponentFactory {
         // naming files is pointed to from the repository's root instead, and
         // read only once one of them is touched.
         const { globs = [] } = documentPrimitive.headers;
-        if (globs.length === 0) return ClaudeRule.of(name, {}, `@${compiledDocumentLink}\n`);
-        return ClaudeRule.of(
+        if (globs.length === 0) return new ClaudeRule("claude", "guide", name, {}, `@${compiledDocumentLink}\n`);
+        return new ClaudeRule(
+          "claude",
+          "guide",
           name,
           { paths: globs },
-          `Read and follow ${laidTextOf(compiledPrimitive.outputPart.linkOf())}.\n`,
+          `Read and follow ${resolveLaidText(outputPath.getLink(compiledPrimitive))}.\n`,
         );
       }
       case AgentPrimitive.kind: {
         const { tools } = documentPrimitive.headers;
         const claudeModel = documentPrimitive.modelOf(ClaudeComponents.agentProvider);
-        return ClaudeAgent.of(
+        return new ClaudeAgent(
+          "claude",
+          "agent",
           name,
           {
-            description: documentPrimitive.description(),
+            name,
+            description: documentPrimitive.composeDescription(),
             tools: (agentTools ?? tools).join(", "),
             ...(claudeModel === undefined ? {} : { model: claudeModel }),
           },
@@ -229,11 +254,13 @@ export class ClaudeComponentFactory {
       // kept out of the agent's own reach (CORE-FR-182).
       case SkillPrimitive.kind:
       case PlaybookPrimitive.kind:
-        return ClaudeSkill.of(
+        return new ClaudeSkill(
+          "claude",
           documentPrimitive.kind,
           name,
           {
-            description: documentPrimitive.description(),
+            name,
+            description: documentPrimitive.composeDescription(),
             ...(documentPrimitive.headers["disable-user-invocation"] === true ? { "user-invocable": false } : {}),
             ...(documentPrimitive.headers["disable-model-invocation"] === true
               ? { "disable-model-invocation": true }
@@ -244,6 +271,17 @@ export class ClaudeComponentFactory {
       default:
         return undefined;
     }
+  }
+
+  /** The section of `CLAUDE.md`, said the same for every charter: where the
+   *  orientation is, from where the file lands (FR-019). */
+  static #composeEntryFileSection(): string {
+    return `<!-- CHERRYWORKS START -->\n${[
+      "## Charter",
+      `This repository is governed by a charter. Read [CHARTER.md](${outputPath.getLinkTo(outputPath.charterMdFileName)}) before anything else here, and work under what it says.`,
+      `Find primitives in [catalogue.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName())}) and [catalogue.claude.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName(ClaudeComponents.agentProvider.name))}).`,
+      "It is generated from the charter under `.cw/charter/`: do not edit it, edit the primitive behind it.",
+    ].join("\n\n")}\n<!-- CHERRYWORKS END -->\n`;
   }
 
   private constructor() {}

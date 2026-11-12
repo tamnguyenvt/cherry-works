@@ -1,6 +1,6 @@
-import { DomainFault } from "../../../../shared/module.js";
+import { MissingIndexTextFault } from "../charter.fault.js";
 import type { AssetFile } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
+import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** One primitive as it is handed in, raw — kept, or answered by an author —
  *  before the engine reads it: its layer, the kind and id it is kept under, its index.md as text or as
@@ -37,6 +37,6 @@ export class RawPrimitive {
   get text(): string {
     if (typeof this.contents === "string") return this.contents;
     if (this.contents instanceof Uint8Array) return new TextDecoder("utf-8", { ignoreBOM: true }).decode(this.contents);
-    throw new DomainFault("Answers hold no index.md to read as text.", "Read the headers and body answered.");
+    throw new MissingIndexTextFault("Answers hold no index.md to read as text.", "Read the headers and body answered.");
   }
 }

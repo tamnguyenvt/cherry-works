@@ -529,7 +529,7 @@
     },
     {
       "id": "CORE Story 48",
-      "title": "Decide where a compiled charter lands for each host",
+      "title": "Decide where a compiled charter lands for each agent",
       "dependsOn": [
         "CORE Story 47",
         "CORE Story 49"
@@ -583,7 +583,11 @@
       "title": "Keep the whole engine to its naming and fault guides",
       "dependsOn": [
         "CORE Story 43"
-      ]
+      ],
+      "evidence": {
+        "summary": "943 tests, 940 pass, 0 fail, 3 skipped; typecheck, lint:deps and biome clean; review round 40 passed",
+        "date": "2026-11-12"
+      }
     },
     {
       "id": "SDK Story 10",

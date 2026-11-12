@@ -22,8 +22,4 @@ export interface ClaudeRuleHeaders {
 export class ClaudeRule extends DocumentBasedComponent<ClaudeRuleHeaders> {
   static readonly kind = "rule" as const;
   readonly kind = ClaudeRule.kind;
-
-  static of(name: string, headers: ClaudeRuleHeaders, body: string): ClaudeRule {
-    return new ClaudeRule("claude", "guide", name, headers, body);
-  }
 }

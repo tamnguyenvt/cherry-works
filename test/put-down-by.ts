@@ -1,7 +1,8 @@
 import { buildCharterService } from "../src/module/charter/app/services/build-charter.service.js";
 import type { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
-import type { CharterOutput } from "../src/module/charter/domain/models/projection/charter-output.js";
-import { ProjectionPlan } from "../src/module/charter/domain/models/projection/projection-plan.js";
+import { Catalogue } from "../src/module/charter/domain/models/charter-output/catalogue.js";
+import type { CharterOutput } from "../src/module/charter/domain/models/charter-output/charter-output.js";
+import { ProjectionPlan } from "../src/module/charter/domain/models/charter-output/projection-plan.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import type { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { agentProjectionByProviderOf, charterOutputWriterOf } from "./use-cases-of.js";
@@ -21,12 +22,14 @@ export async function putDownBy(
   const buildPlans = [
     await localRepo.createProjectionPlan(output),
     ...(await Promise.all(
-      Object.keys(output.agentBasedCatalogues).map((agentName) =>
-        agentProjectionByProvider[agentName]!.createAgentProjectionPlan(charter, output),
+      output.charterOutputItems.flatMap((charterOutputItem) =>
+        charterOutputItem instanceof Catalogue && charterOutputItem.agent !== undefined
+          ? [agentProjectionByProvider[charterOutputItem.agent.name]!.createAgentProjectionPlan(charter, output)]
+          : [],
       ),
     )),
   ];
-  const projectionPlan = buildPlans.flatMap((buildPlan) => buildPlan.projectionPlan);
+  const projectionPlan = buildPlans.flatMap((buildPlan) => buildPlan.writePlans);
   await localRepo.writePlan(
     new ProjectionPlan(
       buildPlans.flatMap((buildPlan) => buildPlan.warnings),
@@ -35,6 +38,6 @@ export async function putDownBy(
     ),
   );
 
-  const { added, edited, unchanged } = buildCharterService.previewPlan([], projectionPlan);
-  return [...added, ...edited, ...unchanged];
+  const { addedPaths, editedPaths, unchangedPaths } = buildCharterService.previewPlan([], projectionPlan);
+  return [...addedPaths, ...editedPaths, ...unchangedPaths];
 }

@@ -48,8 +48,8 @@ const EvalSuiteSchema = z.strictObject({
   cases: z.array(EvalCaseSchema).min(1),
 });
 
-/** One evaluation file, as `EvalSuiteSchema` read it: what it is about, and
- *  the cases it evaluates. Made by `EvalSuiteFactory.create` and by nothing
+/** One evaluation file, as `EvalSuiteSchema` read it: what it is about, the
+ *  cases it evaluates, and the body it was read from, as its author wrote it. Made by `EvalSuiteFactory.create` and by nothing
  *  else. */
 export class EvalSuite {
   static get schema(): typeof EvalSuiteSchema {
@@ -63,6 +63,7 @@ export class EvalSuite {
   constructor(
     readonly description: string | undefined,
     readonly cases: readonly EvalCase[],
+    readonly body: string,
   ) {}
 }
 

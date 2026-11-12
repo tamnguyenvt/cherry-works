@@ -13,12 +13,15 @@ export class VendorListCommand implements Command {
   readonly name = "vendor list";
   readonly summary = "List the folders this repository installed charters as";
 
-  async run({ charterAuthoringApp }: Context): Promise<Outcome> {
-    const vendorFoldersDTO = await charterAuthoringApp.vendors();
-    if (vendorFoldersDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(vendorFoldersDTO) };
+  async runCommand({ charterAuthoringApp }: Context): Promise<Outcome> {
+    const vendorFoldersDTO = await charterAuthoringApp.listVendors();
+    if (vendorFoldersDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(vendorFoldersDTO) };
     const { folders } = vendorFoldersDTO.data;
     if (folders.length === 0)
-      return { code: EXIT_OK, result: 'No vendor source is installed. Run "cw vendor add <source>" to install one.\n' };
-    return { code: EXIT_OK, result: `${folders.join("\n")}\n` };
+      return {
+        exitCode: EXIT_OK,
+        resultText: 'No vendor source is installed. Run "cw vendor add <source>" to install one.\n',
+      };
+    return { exitCode: EXIT_OK, resultText: `${folders.join("\n")}\n` };
   }
 }

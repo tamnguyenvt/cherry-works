@@ -101,7 +101,7 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
     commandLineOf(heldFiles, new InMemoryFileOutput(heldFiles), applicationsOver(heldFiles), repo),
     COMMANDS,
   );
-  return writing(() => cli.run(argv));
+  return writing(() => cli.runCommandLine(argv));
 };
 
 test("a charter with nothing wrong passes, and says so", async () => {
@@ -200,10 +200,10 @@ class CountingCommand implements Command<Count> {
   readonly summary = "Say a number back";
   readonly options = COUNTED;
 
-  run(_context: Context, options: Options<Count>): Outcome {
+  runCommand(_context: Context, options: Options<Count>): Outcome {
     // A number, and the compiler knows it: no cast, no field of unknown, and
     // no parser named anywhere in this file.
-    return { code: EXIT_OK, result: `${options.times + 1}\n` };
+    return { exitCode: EXIT_OK, resultText: `${options.times + 1}\n` };
   }
 }
 
@@ -213,7 +213,7 @@ test("a command reads the options it declared, under the types it declared", asy
     [new CountingCommand()],
   );
 
-  const { code, written } = await writing(() => cli.run(["count", "--times", "3"]));
+  const { code, written } = await writing(() => cli.runCommandLine(["count", "--times", "3"]));
 
   assert.equal(code, EXIT_OK);
   assert.deepEqual(written.results, ["4\n"]);
@@ -225,7 +225,7 @@ test("an option a command declared a default for arrives without being typed", a
     [new CountingCommand()],
   );
 
-  const { written } = await writing(() => cli.run(["count"]));
+  const { written } = await writing(() => cli.runCommandLine(["count"]));
 
   assert.deepEqual(written.results, ["2\n"]);
 });

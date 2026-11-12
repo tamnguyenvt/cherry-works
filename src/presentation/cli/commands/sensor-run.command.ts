@@ -31,21 +31,26 @@ export class SensorRunCommand implements Command<typeof OPTIONS> {
   readonly summary = "Run every sensor of a signal, as the host's one hook for it";
   readonly options = OPTIONS;
 
-  async run(
+  async runCommand(
     { charterRuntimeApp, workspaceApp }: Context,
     { signal, agent }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     if (agent !== undefined && !workspaceApp.agentProviderNames.includes(agent))
       return {
-        code: EXIT_FAILURE,
-        problem: `Unknown sensor host "${agent}".\n  Name any of: ${workspaceApp.agentProviderNames.join(", ")}.\n`,
+        exitCode: EXIT_FAILURE,
+        problemText: `Unknown sensor host "${agent}".\n  Name any of: ${workspaceApp.agentProviderNames.join(", ")}.\n`,
       };
     // Typed at a terminal, there is no event to wait for.
     const stdin = process.stdin.isTTY ? "" : await text(process.stdin);
     // A hook written before hooks named their agent is Claude's.
     const sensorRunOutcomeDTO = await charterRuntimeApp.runSensors(signal ?? "", stdin, agent ?? "claude");
-    if (sensorRunOutcomeDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(sensorRunOutcomeDTO) };
+    if (sensorRunOutcomeDTO.type === "Fault")
+      return { exitCode: EXIT_FAILURE, problemText: printFault(sensorRunOutcomeDTO) };
     const { data: sensorRunOutcome } = sensorRunOutcomeDTO;
-    return { code: sensorRunOutcome.exitCode, result: sensorRunOutcome.answer, problem: sensorRunOutcome.problem };
+    return {
+      exitCode: sensorRunOutcome.exitCode,
+      resultText: sensorRunOutcome.answer,
+      problemText: sensorRunOutcome.problem,
+    };
   }
 }

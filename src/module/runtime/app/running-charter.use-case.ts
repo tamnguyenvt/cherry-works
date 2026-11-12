@@ -1,5 +1,7 @@
-import type { AgentProviderName, CharterDTOs, ForAuthoringCharter, ForBuildingCharter } from "../../charter/module.js";
+import type { CharterDTOs, ForAuthoringCharter, ForBuildingCharter } from "../../charter/module.js";
 import {
+  AgentProvider,
+  type AgentProviderName,
   ApplicationService,
   type FaultDTOs,
   type ForCallingMcpServers,
@@ -8,35 +10,30 @@ import {
   type ForTellingTime,
   UnauthorizedMcpFault,
 } from "../../shared/module.js";
+import { EVAL_WORKTREES_FOLDER_PATH } from "../domain/constants.js";
 import { EvalCaseReport, EvalRunReport } from "../domain/models/eval/eval-run-report.js";
 import {
-  AgentCliMissingFault,
-  ExactCountUnsupportedFault,
-  McpCredentialFault,
-  McpServersMissingFault,
+  MissingAgentCliFault,
+  MissingMcpServersFault,
+  RefusedMcpCredentialFault,
   UnknownToolFault,
+  UnsupportedExactCountFault,
 } from "../domain/models/runtime.fault.js";
 import { SensorAnswers } from "../domain/models/sensor/sensor-answer.js";
 import { SessionAnalysisFactory } from "../domain/models/session/session-analysis.factory.js";
 import type { SessionAnalysisSummary } from "../domain/models/session/session-analysis-summary.js";
-import { SessionSpans } from "../domain/models/session/session-span.js";
+import { SessionSpanFactory } from "../domain/models/session/session-span.factory.js";
 import { EvalService } from "../domain/services/eval.service.js";
-import { LogFolder } from "../domain/value-objects/log-folder.js";
 import type { ForRunningCharter, RuntimeSettings } from "./port/in/running-charter.port.js";
 import { RuntimeDTOs } from "./port/in/runtime.dto.js";
 import type { ForKeepingWorktrees } from "./port/out/keeping-worktrees.port.js";
 import type { ForLoadingSessionAnalysis } from "./port/out/loading-session-analysis.port.js";
-import type { Answer, ForCheckingAgentCli, ForRunningAgentCli } from "./port/out/running-agent-cli.port.js";
+import type { ForCheckingAgentCli, ForRunningAgentCli, PromptUsage } from "./port/out/running-agent-cli.port.js";
 import type { ForRunningPromptfoo, PromptfooAssertion } from "./port/out/running-promptfoo.port.js";
 import type { ForRunningShellCommands } from "./port/out/running-shell-commands.port.js";
 
 /** How long one mcp origin has to answer when the server starts (FR-154). */
 const CONNECT_TIMEOUT_MS = 10_000;
-
-/** The tokens one agent was sent for one answer, its command line's own
- *  instructions among them. */
-const countTokensFromAnswer = ({ usage: { inputTokens, cacheCreationInputTokens, cacheReadInputTokens } }: Answer) =>
-  inputTokens + cacheCreationInputTokens + cacheReadInputTokens;
 
 /**
  * APPLICATION SERVICE — running what the charter built: the sensors of a
@@ -52,7 +49,7 @@ const countTokensFromAnswer = ({ usage: { inputTokens, cacheCreationInputTokens,
  * it is handed when it is composed (CORE-FR-231).
  */
 export class RunningCharter extends ApplicationService implements ForRunningCharter {
-  readonly #charterAuthoringApp: Pick<ForAuthoringCharter, "accessToken" | "evalSuites">;
+  readonly #charterAuthoringApp: Pick<ForAuthoringCharter, "getAccessToken" | "listEvalSuites">;
   readonly #charterBuildingApp: ForBuildingCharter;
   readonly #fileReader: ForReadingFiles;
   readonly #agentCliByProvider: Readonly<Partial<Record<AgentProviderName, ForCheckingAgentCli | ForRunningAgentCli>>>;
@@ -67,7 +64,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
   constructor(
     /** Charter authoring's application: the developer's token to an mcp
      *  origin, renewed where it has expired, and the evaluation files kept. */
-    charterAuthoringApp: Pick<ForAuthoringCharter, "accessToken" | "evalSuites">,
+    charterAuthoringApp: Pick<ForAuthoringCharter, "getAccessToken" | "listEvalSuites">,
     /** Charter projecting's application: what the last build laid, a build
      *  into a working copy, and the evaluation cases. */
     charterBuildingApp: ForBuildingCharter,
@@ -122,13 +119,13 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
   ): Promise<RuntimeDTOs.SensorRunOutcome | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("RunningCharter.runSensors", async () => {
       const { commands } = this.answeredDTOOf(
-        await this.#charterBuildingApp.sensorCommands(signal, agentProviderName),
+        await this.#charterBuildingApp.listSensorCommands(signal, agentProviderName),
       ).data;
       // Each runs to its end whatever the others do: one failing stops none.
       const sensorAnswers = await Promise.all(
         commands.map((command) => this.#shell.runShellCommand(command, "", stdin)),
       );
-      const signalAnswer = SensorAnswers.signalAnswerOf(signal, sensorAnswers);
+      const signalAnswer = new SensorAnswers(signal, sensorAnswers).signalAnswer;
       return RuntimeDTOs.SensorRunOutcome.of({
         exitCode: signalAnswer.exitCode,
         answer: signalAnswer.stdout,
@@ -143,32 +140,35 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
    * the credential store, so nothing it does can change the repository
    * (FR-149).
    */
-  async call(name: string, args: Readonly<Record<string, unknown>>): Promise<RuntimeDTOs.ToolAnswer | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("RunningCharter.call", async () => {
+  async callTool(
+    servedToolName: string,
+    toolArguments: Readonly<Record<string, unknown>>,
+  ): Promise<RuntimeDTOs.ToolAnswer | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("RunningCharter.callTool", async () => {
       const mcpServers = this.#mcpServers;
       if (mcpServers === undefined)
-        throw new McpServersMissingFault(
+        throw new MissingMcpServersFault(
           "This engine was set up with no way to reach an mcp origin.",
           "Set it up with the MCP servers.",
         );
-      const declaredTool = this.answeredDTOOf(await this.#charterBuildingApp.declaredTools()).data.tools.find(
-        ({ data: { servedName } }) => servedName === name,
+      const declaredTool = this.answeredDTOOf(await this.#charterBuildingApp.listDeclaredTools()).data.tools.find(
+        ({ data: { servedName } }) => servedName === servedToolName,
       );
       if (declaredTool === undefined)
-        throw new UnknownToolFault(`"${name}" is not a tool this server serves.`, "Call one it listed.", {
+        throw new UnknownToolFault(`"${servedToolName}" is not a tool this server serves.`, "Call one it listed.", {
           internal: false,
         });
 
       const { origin, mcpId, tool } = declaredTool.data;
       const createCredentialRefusedFault = () =>
-        new McpCredentialFault(
+        new RefusedMcpCredentialFault(
           `${origin.address} refused your credential.`,
           `Run "cw mcp auth ${mcpId}" at a terminal to sign in there again.`,
           { internal: false },
         );
       const loadAccessToken = async (isRefused: boolean) =>
         this.answeredDTOOf(
-          await this.#charterAuthoringApp.accessToken(
+          await this.#charterAuthoringApp.getAccessToken(
             { address: origin.address, ...(origin.endpoint === undefined ? {} : { endpoint: origin.endpoint }), mcpId },
             isRefused,
           ),
@@ -179,7 +179,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
         origin.endpoint === undefined ? Promise.resolve(undefined) : loadAccessToken(isRefused);
       try {
         const connectToken = origin.auth.length > 0 ? await loadAccessToken(false) : undefined;
-        const connection = await mcpServers.connect(
+        const connection = await mcpServers.connectServer(
           {
             address: origin.address,
             ...(origin.endpoint === undefined ? {} : { endpoint: origin.endpoint }),
@@ -197,16 +197,18 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
           CONNECT_TIMEOUT_MS,
         );
         try {
-          return RuntimeDTOs.ToolAnswer.of(await connection.callTool(tool, args, await loadCallAccessToken(false)));
+          return RuntimeDTOs.ToolAnswer.of(
+            await connection.callTool(tool, toolArguments, await loadCallAccessToken(false)),
+          );
         } catch (raisedValue) {
           if (!(raisedValue instanceof UnauthorizedMcpFault)) throw raisedValue;
           // Refused once: renewed and tried again. A second refusal is the
           // developer's to sign in again.
           const renewedToken = await loadCallAccessToken(true);
           if (renewedToken === undefined) throw createCredentialRefusedFault();
-          return RuntimeDTOs.ToolAnswer.of(await connection.callTool(tool, args, renewedToken));
+          return RuntimeDTOs.ToolAnswer.of(await connection.callTool(tool, toolArguments, renewedToken));
         } finally {
-          await connection.close();
+          await connection.closeConnection();
         }
       } catch (raisedValue) {
         if (raisedValue instanceof UnauthorizedMcpFault) throw createCredentialRefusedFault();
@@ -224,28 +226,28 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
    */
   async countMainContext(): Promise<RuntimeDTOs.MainContexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("RunningCharter.countMainContext", async () => {
-      const mainContextTextsAnswer = await this.#charterBuildingApp.mainContextTexts();
+      const mainContextTextsAnswer = await this.#charterBuildingApp.readMainContextTexts();
       if (mainContextTextsAnswer.type === "FaultsByFile") return mainContextTextsAnswer;
       const mainContexts: RuntimeDTOs.MainContext[] = [];
       for (const { agent, texts } of this.answeredDTOOf(mainContextTextsAnswer).data.agents) {
         const agentCli = this.#agentCliByProvider[agent];
-        if (agentCli === undefined || !("ask" in agentCli))
-          throw new ExactCountUnsupportedFault(
+        if (agentCli === undefined || !("askAgent" in agentCli))
+          throw new UnsupportedExactCountFault(
             `Counting exactly is not supported for ${agent} yet.`,
             'Run "cw context" without --exact: the estimate needs nothing.',
             { internal: false },
           );
         if (!(await agentCli.isInstalled()))
-          throw new AgentCliMissingFault(
+          throw new MissingAgentCliFault(
             `Counting exactly runs ${agent}'s own command line, and it is not installed here.`,
             'Run "cw context" without --exact: the estimate needs nothing.',
             { internal: false },
           );
-        const ownTokens = countTokensFromAnswer(await agentCli.ask("."));
+        const ownTokens = this.#countAnswerTokens((await agentCli.askAgent(".")).usage);
         const mainContextLoads = await Promise.all(
           texts.map(async ({ text, ...mainContextText }) => ({
             ...mainContextText,
-            tokens: Math.max(0, countTokensFromAnswer(await agentCli.ask(text)) - ownTokens),
+            tokens: Math.max(0, this.#countAnswerTokens((await agentCli.askAgent(text)).usage) - ownTokens),
           })),
         );
         const mainContextLoadsLargestFirst = [...mainContextLoads].sort(
@@ -268,44 +270,45 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
     });
   }
 
-  async evaluate(
-    requestedAgent?: string,
+  async evaluateCharter(
+    requestedAgentProviderName?: string,
   ): Promise<RuntimeDTOs.EvalRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("RunningCharter.evaluate", async () => {
+    return this.answerWithFaultDTO("RunningCharter.evaluateCharter", async () => {
       const agentProviderName = EvalService.selectEvaluationAgent(
         this.#runtimeSettings.agents,
         Object.keys(this.#agentCliByProvider),
-        requestedAgent,
+        requestedAgentProviderName,
       );
 
       // A repository that wrote no case is told so, and nothing is written or
       // added: no version control is needed to say so.
-      if (this.answeredDTOOf(await this.#charterAuthoringApp.evalSuites()).data.evalSuites.length === 0)
-        return this.#evalRunReportDTOOf(new EvalRunReport([], agentProviderName));
+      if (this.answeredDTOOf(await this.#charterAuthoringApp.listEvalSuites()).data.evalSuites.length === 0)
+        return this.#evalRunReportDTOOf(new EvalRunReport([], new AgentProvider(agentProviderName)));
 
       // What a run stopped halfway left is swept (EVAL-FR-021).
-      for (const leftWorktreePath of await this.#fileReader.listFolders(LogFolder.evalWorktreesPath))
+      for (const leftWorktreePath of await this.#fileReader.listFolders(EVAL_WORKTREES_FOLDER_PATH))
         await this.#worktrees.removeWorktree(leftWorktreePath);
 
-      // What is evaluated is the last commit: its charter and its cases are read
-      // off a worktree of it, so what is checked and what the agent meets are one.
-      const headWorktreePath = `${LogFolder.evalWorktreesPath}/head`;
-      await this.#worktrees.addWorktree(headWorktreePath);
-      let evalCasesAnswer: Awaited<ReturnType<ForBuildingCharter["evalCases"]>>;
-      try {
-        evalCasesAnswer = await this.#charterBuildingApp.evalCases(headWorktreePath);
-      } finally {
-        await this.#worktrees.removeWorktree(headWorktreePath);
-      }
+      // What is evaluated is the charter and its cases as the store holds them
+      // now, committed or not: each case's worktree is built from the same.
+      const evalCasesAnswer = await this.#charterBuildingApp.listEvalCases();
       // Everything that would stop a case is said before the first one spends
       // anything (EVAL-FR-026).
       if (evalCasesAnswer.type === "FaultsByFile") return evalCasesAnswer;
       const { cases } = this.answeredDTOOf(evalCasesAnswer).data;
-      // None committed is a report of no case.
-      if (cases.length === 0) return this.#evalRunReportDTOOf(new EvalRunReport([], agentProviderName));
+      // No case kept is a report of no case.
+      if (cases.length === 0)
+        return this.#evalRunReportDTOOf(new EvalRunReport([], new AgentProvider(agentProviderName)));
+
+      // Version control is asked before the agent's command line is asked
+      // for or promptfoo installed: a folder under no repository, or with
+      // nothing committed, is refused in git's words (CORE-FR-206).
+      const probeWorktreePath = `${EVAL_WORKTREES_FOLDER_PATH}/probe`;
+      await this.#worktrees.addWorktree(probeWorktreePath);
+      await this.#worktrees.removeWorktree(probeWorktreePath);
 
       if (!(await this.#agentCliByProvider[agentProviderName]?.isInstalled()))
-        throw new AgentCliMissingFault(
+        throw new MissingAgentCliFault(
           `Evaluating puts every case to ${agentProviderName}'s own command line, and it is not installed here.`,
           `Install ${agentProviderName}'s command line and sign in, then run "cw eval --agent=${agentProviderName}" again.`,
           { internal: false },
@@ -313,10 +316,10 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
 
       // Installed once, the first time a run needs it (EVAL-FR-032).
       if (!(await this.#promptfooRunner.isInstalled())) {
-        this.progressReporter.report(
+        this.progressReporter.reportProgress(
           `Installing promptfoo once into ${this.#promptfooRunner.installFolderPath} (about 2.5 GB)...\n`,
         );
-        await this.#promptfooRunner.install();
+        await this.#promptfooRunner.installPromptfoo();
       }
 
       // One case at a time, each in a worktree of its own: what one case's agent
@@ -324,10 +327,10 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
       // be writing in.
       const evalCaseReports: EvalCaseReport[] = [];
       for (const [caseIndex, evalCase] of cases.entries()) {
-        const caseWorktreePath = `${LogFolder.evalWorktreesPath}/${caseIndex + 1}`;
+        const caseWorktreePath = `${EVAL_WORKTREES_FOLDER_PATH}/${caseIndex + 1}`;
         await this.#worktrees.addWorktree(caseWorktreePath);
         try {
-          const buildAnswer = await this.#charterBuildingApp.buildInto(caseWorktreePath);
+          const buildAnswer = await this.#charterBuildingApp.buildCharterInto(caseWorktreePath);
           if (buildAnswer.type === "FaultsByFile") return buildAnswer;
           this.answeredDTOOf(buildAnswer);
           evalCaseReports.push(await this.#runWithPromptfoo(caseWorktreePath, evalCase, agentProviderName));
@@ -335,22 +338,21 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
           await this.#worktrees.removeWorktree(caseWorktreePath);
         }
       }
-      return this.#evalRunReportDTOOf(new EvalRunReport(evalCaseReports, agentProviderName));
+      return this.#evalRunReportDTOOf(new EvalRunReport(evalCaseReports, new AgentProvider(agentProviderName)));
     });
   }
 
-  async analyze(logFilePath?: string): Promise<RuntimeDTOs.EvalLogAnalysis | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("RunningCharter.analyze", async () => {
+  async analyzeEvalLog(logFilePath?: string): Promise<RuntimeDTOs.EvalLogAnalysis | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("RunningCharter.analyzeEvalLog", async () => {
       return RuntimeDTOs.EvalLogAnalysis.of({ logs: await this.#promptfooRunner.readLogs(logFilePath) });
     });
   }
 
-  async sessionSummary(since?: string, until?: string): Promise<RuntimeDTOs.SessionReviewOutcome | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("RunningCharter.sessionSummary", async () => {
-      const sessionSpan = SessionSpans.of(this.#clock.now(), since, until);
-      const { writtenFromMs, writtenUntilMs } = SessionSpans.logWindowOf(sessionSpan);
+  async summarizeSessions(since?: string, until?: string): Promise<RuntimeDTOs.SessionReviewOutcome | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("RunningCharter.summarizeSessions", async () => {
+      const sessionSpan = SessionSpanFactory.create(this.#clock.tellTime(), since, until);
+      const { writtenFromMs, writtenUntilMs } = sessionSpan.logWindow;
       const { sessionsFolder, logTexts } = await this.#sessionAnalysisRepository.loadSessionLogs(
-        this.#runtimeSettings.sessionAnalysisFolder,
         writtenFromMs,
         writtenUntilMs,
       );
@@ -374,7 +376,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
         });
       return RuntimeDTOs.SessionReviewOutcome.of({
         sessionsFolder: sessionAnalysis.sessionsFolder,
-        sessionSummary: sessionSummaryDTOOf(sessionAnalysis.summarize(sessionSpan)),
+        sessionSummary: sessionSummaryDTOOf(sessionAnalysis.summarizeSessions(sessionSpan)),
         dailySessionSummary: Object.fromEntries(
           Object.entries(sessionAnalysis.summarizeByDay(sessionSpan)).map(([day, daySummary]) => [
             day,
@@ -426,7 +428,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
           ]),
     ];
     const { success, totalTokens, componentResults, error, logPath, sessionId, sessionPath } =
-      await this.#promptfooRunner.evaluate({
+      await this.#promptfooRunner.evaluateTest({
         agent: agentProviderName,
         description: `${suiteName}: ${prompt}`,
         prompt,
@@ -442,6 +444,12 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
     if (!success && unmetReasons.length === 0)
       unmetReasons.push(error ?? "promptfoo failed this case without saying why.");
     return new EvalCaseReport(suiteName, prompt, totalTokens, unmetReasons, logPath, sessionId, sessionPath);
+  }
+
+  /** The tokens one agent was sent for one answer, its command line's own
+   *  instructions among them, whichever kind each was sent as (EVAL-FR-004). */
+  #countAnswerTokens({ inputTokens, cacheCreationInputTokens, cacheReadInputTokens }: PromptUsage): number {
+    return inputTokens + cacheCreationInputTokens + cacheReadInputTokens;
   }
 
   /** How every evaluation case came out, and the tokens of them all. */
@@ -461,7 +469,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
           }),
       ),
       totalTokens: evalRunReport.totalTokens,
-      agent: evalRunReport.agent,
+      agent: evalRunReport.agent.name,
     });
   }
 }

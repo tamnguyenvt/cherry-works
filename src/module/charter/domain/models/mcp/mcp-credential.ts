@@ -1,21 +1,5 @@
-/** What an mcp origin's authorization server registered `cw` as, and which
- *  server that was: a registration is presented to the server it came from
- *  and no other. */
-export class McpClientRegistration {
-  readonly clientId: string;
-  readonly clientSecret?: string;
-  readonly issuer: string;
-
-  constructor({
-    clientId,
-    clientSecret,
-    issuer,
-  }: Pick<McpClientRegistration, "clientId" | "issuer"> & Partial<Pick<McpClientRegistration, "clientSecret">>) {
-    this.clientId = clientId;
-    if (clientSecret !== undefined) this.clientSecret = clientSecret;
-    this.issuer = issuer;
-  }
-}
+import type { McpAuthMethod } from "./mcp-auth-method.value-object.js";
+import type { McpClientRegistration } from "./mcp-client-registration.js";
 
 /**
  * One developer's sign-in at one address, as the credential store keeps it.
@@ -25,7 +9,7 @@ export class McpClientRegistration {
  */
 export class McpCredential {
   readonly address: string;
-  readonly method: "oauth" | "token";
+  readonly method: McpAuthMethod;
   readonly accessToken: string;
   readonly refreshToken?: string;
   readonly expiresAt?: string;

@@ -1,4 +1,4 @@
-import { DomainFault } from "./domain.fault.js";
+import { DomainFault, UnfaultedRaiseFault } from "./domain.fault.js";
 
 /** Makes a fault out of whatever was raised. */
 export class DomainFaultFactory {
@@ -7,7 +7,7 @@ export class DomainFaultFactory {
    *  message and a next move (SDK-FR-004). */
   static create(raisedValue: unknown): DomainFault {
     if (raisedValue instanceof DomainFault) return raisedValue;
-    return new DomainFault(
+    return new UnfaultedRaiseFault(
       `What was raised is no fault: ${raisedValue instanceof Error ? raisedValue.name : typeof raisedValue}.`,
       "Read its cause in the log, and fix what raised it.",
       { cause: raisedValue },

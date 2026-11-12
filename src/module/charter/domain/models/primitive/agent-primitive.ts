@@ -1,7 +1,7 @@
 import { z } from "zod";
-import type { AgentProvider } from "../agent/agent-provider.js";
+import type { AgentProvider } from "#module/shared/module.js";
 import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
+import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** `<provider>:<model>`: the host the model is named for, then the model as
  *  that host names it. */

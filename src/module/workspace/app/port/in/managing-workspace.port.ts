@@ -1,10 +1,5 @@
 import type { FaultDTOs } from "../../../../shared/module.js";
-import { SettingsFile } from "../../../domain/value-objects/settings-file.js";
 import type { WorkspaceDTOs } from "./workspace.dto.js";
-
-/** Where a repository keeps its settings, from its root, the way a driver
- *  names the file a settings fault is about. */
-export const SETTINGS_FILE = SettingsFile.path;
 
 /**
  * DRIVER PORT — managing the workspace: what a repository configured itself
@@ -15,7 +10,7 @@ export const SETTINGS_FILE = SettingsFile.path;
  * Every answer is a DTO, told apart from the others it may be by its `type`;
  * whatever stops an operation is among them, a `FaultDTOs.Fault`, and never
  * thrown (SDK-FR-004, SDK-FR-017, SDK-FR-018). Settings that do not read are
- * a `SettingsFault`, saying what to correct (FR-037).
+ * an `InvalidSettingsFault`, saying what to correct (FR-037).
  */
 export interface ForManagingWorkspace {
   /** The agents a repository may name in its settings: the ones the engine
@@ -24,7 +19,7 @@ export interface ForManagingWorkspace {
 
   /** The settings the repository keeps; none is a repository never set up,
    *  which compiles for no agent (FR-019). */
-  settings(): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
+  readWorkspaceSettings(): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
 
   /**
    * The repository set up for these agents (FR-032 – FR-038): its settings
@@ -35,7 +30,7 @@ export interface ForManagingWorkspace {
    * No agent, an agent this engine compiles for none of, and a ceiling that
    * is no whole number above 0 are refused, nothing kept (FR-033).
    */
-  setUp(
+  setUpWorkspace(
     agents: readonly string[],
     cwVersion: string,
     mainContextCeiling?: number,

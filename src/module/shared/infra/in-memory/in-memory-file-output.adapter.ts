@@ -1,5 +1,5 @@
 import type { ForWritingFiles } from "../../app/port/out/writing-files.port.js";
-import { urlAt } from "../helper.js";
+import { resolveFileUrl } from "../helper.js";
 import type { InMemoryFileReaders } from "./in-memory-file-readers.adapter.js";
 
 /** Files written into memory, into the same map they are read back out of: what
@@ -10,29 +10,29 @@ import type { InMemoryFileReaders } from "./in-memory-file-readers.adapter.js";
  *  files — which is how a projection with no primitive left behind it, and a
  *  compiled file someone edited by hand, are watched. */
 export class InMemoryFileOutput implements ForWritingFiles {
-  constructor(private readonly files: InMemoryFileReaders) {}
+  constructor(private readonly fileReaders: InMemoryFileReaders) {}
 
   /** Every file last written as executable, for a test asking which. */
   readonly executables = new Set<string>();
 
-  async write(
+  async writeFile(
     filePath: string,
     contents: string | Uint8Array,
-    options: { readonly executable?: boolean } = {},
+    options: { readonly isExecutable?: boolean } = {},
   ): Promise<void> {
-    const file = urlAt(this.files.rootFolder, filePath);
-    this.files.write(file, contents);
-    if (options.executable === true) this.executables.add(file.href);
-    else this.executables.delete(file.href);
+    const fileUrl = resolveFileUrl(this.fileReaders.rootFolder, filePath);
+    this.fileReaders.writeFile(fileUrl, contents);
+    if (options.isExecutable === true) this.executables.add(fileUrl.href);
+    else this.executables.delete(fileUrl.href);
   }
 
-  async delete(filePath: string): Promise<void> {
-    this.files.remove(urlAt(this.files.rootFolder, filePath));
+  async deleteFile(filePath: string): Promise<void> {
+    this.fileReaders.removeFile(resolveFileUrl(this.fileReaders.rootFolder, filePath));
   }
 
   async deleteFolder(folderPath: string): Promise<void> {
-    for (const { path } of await this.files.readFilesRecursively(folderPath))
-      this.files.remove(urlAt(this.files.rootFolder, path));
+    for (const { path } of await this.fileReaders.readFilesRecursively(folderPath))
+      this.fileReaders.removeFile(resolveFileUrl(this.fileReaders.rootFolder, path));
   }
 
   /** A folder here is only the files under it, so an empty one is not there. */

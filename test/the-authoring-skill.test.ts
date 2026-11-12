@@ -54,6 +54,6 @@ test("the body says whose it is, and what it does not cover (FR-025, FR-027)", (
 test("the skill the engine brings is of the engine's layer, at the name that layer gives its files (FR-015, FR-018)", () => {
   const cwAuthorSkill = new CwAuthorSkill();
 
-  assert.equal(cwAuthorSkill.layerName, "builtin");
+  assert.equal(cwAuthorSkill.layer.name, "builtin");
   assert.equal(cwAuthorSkill.uri, "(built into cw)/skill/cw-author/index.md");
 });

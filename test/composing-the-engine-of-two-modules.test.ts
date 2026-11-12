@@ -13,8 +13,8 @@ import { Primitives } from "../src/module/charter/domain/models/primitive/primit
 import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
 import { CodexProjection } from "../src/module/charter/infra/codex/codex-projection.adapter.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
-import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
+import { InMemoryOAuthAuthorizer } from "../src/module/charter/infra/in-memory/in-memory-oauth-authorizer.adapter.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { LocalRepoManipulator } from "../src/module/charter/infra/local-repo-manipulator.adapter.js";
@@ -112,7 +112,7 @@ function adaptersInMemory(files: Readonly<Record<string, string>>) {
     sourceFetcher,
     worktrees: new InMemoryWorktrees(fileReader),
     credentialsRepository: new InMemoryCredentialsRepository(),
-    authorizing: new InMemoryAuthorizing(),
+    oauthAuthorizer: new InMemoryOAuthAuthorizer(),
     tokenCounter: new InMemoryTokenCounter(),
     shell: new InMemoryShellCommands({}),
     progressReporter: new InMemoryReporter(),
@@ -130,8 +130,8 @@ function pluginsInMemory(adapters: ReturnType<typeof adaptersInMemory>): EngineA
   return {
     ...adapters,
     agentProvider: {
-      claude: { projection: new ClaudeProjection(adapters.fileReader), cli: new InMemoryAgentCli() },
-      codex: { projection: new CodexProjection(adapters.fileReader), cli: new InMemoryAgentCli() },
+      claude: { projection: new ClaudeProjection(adapters.fileReader), agentCli: new InMemoryAgentCli() },
+      codex: { projection: new CodexProjection(adapters.fileReader), agentCli: new InMemoryAgentCli() },
     },
     charterRepository: new FileCharterRepository(adapters.fileReader, adapters.fileWriter, adapters.sourceFetcher),
     sessionAnalysisRepository: new FileSessionAnalysisRepository(
@@ -183,7 +183,7 @@ async function printedBy(commandLine: CommandLine, argv: readonly string[]) {
   process.stderr.write = ((text: string) => (stderrTexts.push(String(text)), true)) as typeof originalWriteByStream.err;
   try {
     return {
-      code: await new Commander(commandLine, COMMANDS).run(argv),
+      code: await new Commander(commandLine, COMMANDS).runCommandLine(argv),
       result: stdoutTexts.join(""),
       problem: stderrTexts.join(""),
     };
@@ -201,18 +201,18 @@ const claudeSettings = { enabledAgents: ["claude"] };
 async function operationAnswersOf({ workspaceApp, engineApp }: ComposedApplications) {
   const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = engineApp;
   const operationByName: Readonly<Record<string, () => Promise<unknown>>> = {
-    settings: () => workspaceApp.settings(),
-    list: () => charterAuthoringApp.list(),
+    readWorkspaceSettings: () => workspaceApp.readWorkspaceSettings(),
+    listCatalogue: () => charterAuthoringApp.listCatalogue(),
     signInWithOAuth: () => charterAuthoringApp.signInWithOAuth(billingEndpoint, () => {}),
-    signInStatus: () => charterAuthoringApp.signInStatus(),
-    build: () => charterBuildingApp.build(),
+    listSignInStatuses: () => charterAuthoringApp.listSignInStatuses(),
+    buildCharter: () => charterBuildingApp.buildCharter(),
     predictMainContext: () => charterBuildingApp.predictMainContext(),
     addVendor: () => charterAuthoringApp.addVendor("team/kept"),
     runSensors: () => charterRuntimeApp.runSensors("Stop", "", "claude"),
-    call: () => charterRuntimeApp.call("billing_get_file_contents", {}),
-    evaluate: () => charterRuntimeApp.evaluate(),
-    sessionSummary: () => charterRuntimeApp.sessionSummary(),
-    analyze: () => charterRuntimeApp.analyze(),
+    callTool: () => charterRuntimeApp.callTool("billing_get_file_contents", {}),
+    evaluateCharter: () => charterRuntimeApp.evaluateCharter(),
+    summarizeSessions: () => charterRuntimeApp.summarizeSessions(),
+    analyzeEvalLog: () => charterRuntimeApp.analyzeEvalLog(),
     countMainContext: () => charterRuntimeApp.countMainContext(),
   };
   const operationAnswers: { operationName: string; answer: unknown }[] = [];
@@ -249,45 +249,45 @@ test("the engine's modules are charter, with its applications authoring and proj
   // Keeping and testing: its primitives, vendors, test and eval cases, signing
   // in to its mcp origins, and testing it.
   for (const operationName of [
-    "add",
-    "rewrite",
-    "remove",
+    "addPrimitive",
+    "rewritePrimitive",
+    "removePrimitive",
     "addVendor",
     "removeVendor",
-    "suites",
-    "writeSuite",
-    "evalSuites",
+    "listTestSuites",
+    "writeTestSuite",
+    "listEvalSuites",
     "writeEvalSuite",
     "signInWithToken",
     "signInWithOAuth",
-    "accessToken",
-    "test",
+    "getAccessToken",
+    "testCharter",
   ])
     assert.ok(authoringOperationNames.includes(operationName), `authoring answers no ${operationName}`);
   // Building onto each agent provider, with its preview, health check,
   // estimated main context and the tools its mcp origins serve; and what
   // running asks of it.
   assert.deepEqual([...buildingOperationNames].sort(), [
-    "build",
-    "buildInto",
-    "declaredTools",
-    "doctor",
-    "evalCases",
-    "mainContextTexts",
+    "buildCharter",
+    "buildCharterInto",
+    "diagnoseCharter",
+    "listDeclaredTools",
+    "listEvalCases",
+    "listSensorCommands",
+    "listServedTools",
     "predictMainContext",
-    "preview",
-    "sensorCommands",
-    "tools",
+    "previewCharterBuild",
+    "readMainContextTexts",
   ]);
   // Running: its sensors, the calls forwarded, its evaluations, the exact
   // count of the main context, and the sessions and logs.
   assert.deepEqual([...runningOperationNames].sort(), [
-    "analyze",
-    "call",
+    "analyzeEvalLog",
+    "callTool",
     "countMainContext",
-    "evaluate",
+    "evaluateCharter",
     "runSensors",
-    "sessionSummary",
+    "summarizeSessions",
   ]);
   for (const operationName of runningOperationNames)
     assert.ok(
@@ -298,7 +298,7 @@ test("the engine's modules are charter, with its applications authoring and proj
     Object.getOwnPropertyNames(Object.getPrototypeOf(workspaceApp))
       .filter((operationName) => operationName !== "constructor")
       .sort(),
-    ["setUp", "settings"],
+    ["readWorkspaceSettings", "setUpWorkspace"],
   );
 });
 
@@ -324,18 +324,18 @@ test("runtime asks the charter only through charter's applications, in answers m
     agentProvider: {
       claude: {
         projection: engineAdapters.agentProvider["claude"]!.projection,
-        cli: runtimeAdapterOf("cli", new InMemoryAgentCli()),
+        agentCli: runtimeAdapterOf("cli", new InMemoryAgentCli()),
       },
     },
   });
   answerOf(await charterAuthoringApp.signInWithOAuth(billingEndpoint, () => {}));
-  answerOf(await charterBuildingApp.build());
-  answerOf(await charterBuildingApp.preview());
-  answerOf(await charterBuildingApp.doctor());
-  answerOf(await charterAuthoringApp.test());
+  answerOf(await charterBuildingApp.buildCharter());
+  answerOf(await charterBuildingApp.previewCharterBuild());
+  answerOf(await charterBuildingApp.diagnoseCharter());
+  answerOf(await charterAuthoringApp.testCharter());
   answerOf(await charterBuildingApp.predictMainContext());
-  answerOf(await charterBuildingApp.sensorCommands("Stop", "claude"));
-  answerOf(await charterBuildingApp.declaredTools());
+  answerOf(await charterBuildingApp.listSensorCommands("Stop", "claude"));
+  answerOf(await charterBuildingApp.listDeclaredTools());
   assert.deepEqual(runtimeReachedNames, []);
 
   // Running composed over the charter's two applications, each operation it
@@ -372,17 +372,17 @@ test("runtime asks the charter only through charter's applications, in answers m
   );
 
   answerOf(await charterRuntimeApp.runSensors("Stop", "", "claude"));
-  await charterRuntimeApp.call("billing_get_file_contents", {});
-  answerOf(await charterRuntimeApp.evaluate());
+  await charterRuntimeApp.callTool("billing_get_file_contents", {});
+  answerOf(await charterRuntimeApp.evaluateCharter());
   await charterRuntimeApp.countMainContext();
 
   assert.deepEqual([...new Set(charterAnswers.map(({ operationName }) => operationName))].sort(), [
-    "buildInto",
-    "declaredTools",
-    "evalCases",
-    "evalSuites",
-    "mainContextTexts",
-    "sensorCommands",
+    "buildCharterInto",
+    "listDeclaredTools",
+    "listEvalCases",
+    "listEvalSuites",
+    "listSensorCommands",
+    "readMainContextTexts",
   ]);
   // Each operationAnswer is a DTO made for the caller: it reads back through its own
   // schema whole, plain data and nothing of the charter's own model.
@@ -413,7 +413,7 @@ const OWN_ADAPTER_CLASS_NAMES_BY_KEY = {
   fileReader: ["FileReaders"],
   fileWriter: ["FileOutput"],
   worktrees: ["GitWorktrees"],
-  authorizing: ["OAuth"],
+  oauthAuthorizer: ["OAuth"],
   mcpServers: ["McpClients"],
   tokenCounter: ["Tiktoken"],
   clock: ["SystemClock"],
@@ -539,10 +539,15 @@ test("an engine composed with a plugin of the author's own builds and evaluates 
   const askedAgentNames: string[] = [];
   const projectedCheckoutPaths: (string | undefined)[] = [];
   class OwnClaudeProjection extends ClaudeProjection {
+    // An extending class builds itself over a checkout (EVAL-FR-021).
+    override createCheckoutProjection(checkoutFolder: string): OwnClaudeProjection {
+      return new OwnClaudeProjection(this.fileReader, checkoutFolder);
+    }
+
     override async createAgentProjectionPlan(
       ...projectionArguments: Parameters<ClaudeProjection["createAgentProjectionPlan"]>
     ) {
-      projectedCheckoutPaths.push(projectionArguments[2]);
+      projectedCheckoutPaths.push(this.checkoutFolder);
       return super.createAgentProjectionPlan(...projectionArguments);
     }
   }
@@ -555,7 +560,9 @@ test("an engine composed with a plugin of the author's own builds and evaluates 
   const ownAdapters = adaptersInMemory(filesInThreeParts);
   const ownEngine = composeEngine(claudeSettings, {
     ...pluginsInMemory(ownAdapters),
-    agentProvider: { claude: { projection: new OwnClaudeProjection(ownAdapters.fileReader), cli: new OwnAgentCli() } },
+    agentProvider: {
+      claude: { projection: new OwnClaudeProjection(ownAdapters.fileReader), agentCli: new OwnAgentCli() },
+    },
   });
   const shippedAdapters = adaptersInMemory(filesInThreeParts);
   const shippedPlugins = pluginsInMemory(shippedAdapters);
@@ -565,14 +572,14 @@ test("an engine composed with a plugin of the author's own builds and evaluates 
   });
 
   assert.equal(
-    JSON.stringify(await ownEngine.charterBuildingApp.build()),
-    JSON.stringify(await shippedEngine.charterBuildingApp.build()),
+    JSON.stringify(await ownEngine.charterBuildingApp.buildCharter()),
+    JSON.stringify(await shippedEngine.charterBuildingApp.buildCharter()),
   );
   // The build was laid by the author's own projection, onto the repository.
   assert.deepEqual(projectedCheckoutPaths, [""]);
   assert.equal(
-    JSON.stringify(await ownEngine.charterRuntimeApp.evaluate()),
-    JSON.stringify(await shippedEngine.charterRuntimeApp.evaluate()),
+    JSON.stringify(await ownEngine.charterRuntimeApp.evaluateCharter()),
+    JSON.stringify(await shippedEngine.charterRuntimeApp.evaluateCharter()),
   );
   // Each case was built into its working copy by it, and run by its own command line.
   assert.deepEqual(projectedCheckoutPaths, ["", ".cw/log/eval/worktrees/1"]);
@@ -586,7 +593,7 @@ test("the eval cases are listed, added, rewritten and removed by the one store t
     (await adapters.fileReader.readFilesRecursively(".cw/charter/eval")).map(({ path }) => path).sort();
 
   assert.deepEqual(
-    answerOf(await charterAuthoringApp.evalSuites()).data.evalSuites.map(({ data }) => data.name),
+    answerOf(await charterAuthoringApp.listEvalSuites()).data.evalSuites.map(({ data }) => data.name),
     ["skills.json"],
   );
   const addedName = answerOf(await charterAuthoringApp.addEvalSuite()).data.name;
@@ -654,7 +661,7 @@ test("every command refuses a repository laid out the old way, naming the author
   }
   const oldWayAdapters = adaptersInMemory(filesLaidOutTheOldWay);
   const { charterBuildingApp } = composeEngine(claudeSettings, pluginsInMemory(oldWayAdapters));
-  assert.match(JSON.stringify(await charterBuildingApp.build()), /laid out the old way/);
+  assert.match(JSON.stringify(await charterBuildingApp.buildCharter()), /laid out the old way/);
 });
 
 test("a vendor source laid out the old way is refused, naming the source and the authoring skill, and nothing is installed (CORE Story 52 scenario 9)", async () => {
@@ -720,7 +727,7 @@ test("following the authoring skill moves a repository laid out the old way, and
 
   const builtFilesOf = async (files: Readonly<Record<string, string>>) => {
     const adapters = adaptersInMemory(files);
-    answerOf(await composeEngine(claudeSettings, pluginsInMemory(adapters)).charterBuildingApp.build());
+    answerOf(await composeEngine(claudeSettings, pluginsInMemory(adapters)).charterBuildingApp.buildCharter());
     return (await adapters.fileReader.readBytesRecursively("")).filter(
       ({ path }) => !path.startsWith(".cw/charter/") && path !== ".cw/settings.json",
     );
@@ -744,7 +751,7 @@ test("an evaluation keeps each case's working copy and what its run leaves under
 
   const adapters = adaptersInMemory({ ...filesInThreeParts, [repoFileUrlOf(".cw/.gitignore")]: setUpGitignoreText });
   const { charterRuntimeApp } = composeEngine(claudeSettings, pluginsInMemory(adapters));
-  answerOf(await charterRuntimeApp.evaluate());
+  answerOf(await charterRuntimeApp.evaluateCharter());
   const [evaluatedTest] = adapters.promptfooRunner.evaluatedTests;
   assert.match(evaluatedTest?.workingPath ?? "", /^\.cw\/log\/eval\/worktrees\//);
 
@@ -765,7 +772,7 @@ test("an evaluation keeps each case's working copy and what its run leaves under
     await writeFile(promptfooFilePath, FAKE_PROMPTFOO);
     await chmod(promptfooFilePath, 0o755);
 
-    const promptfooTestResult = await promptfooRunner.evaluate({
+    const promptfooTestResult = await promptfooRunner.evaluateTest({
       agent: "claude",
       description: "skills.json: keep it",
       prompt: "keep it",
@@ -796,7 +803,7 @@ test("the workspace module keeps which agents are enabled in .cw/settings.json, 
     ...commandLine,
     composeApplications: async () => {
       const applications = await commandLine.composeApplications();
-      const workspaceSettingsDTO = await applications.workspaceApp.settings();
+      const workspaceSettingsDTO = await applications.workspaceApp.readWorkspaceSettings();
       composedAgentNames.push(workspaceSettingsDTO.type === "Fault" ? [] : workspaceSettingsDTO.data.agents);
       return applications;
     },
@@ -858,8 +865,8 @@ test("neither the charter nor runtime reads or writes .cw/settings.json: run, ea
 
   // The settings were read by the workspace's store and handed on: the build
   // was for the agent they name.
-  assert.deepEqual(answerOf(await composedApplications.workspaceApp.settings()).data.agents, ["claude"]);
-  const buildAnswer = operationAnswers.find(({ operationName }) => operationName === "build")?.answer;
+  assert.deepEqual(answerOf(await composedApplications.workspaceApp.readWorkspaceSettings()).data.agents, ["claude"]);
+  const buildAnswer = operationAnswers.find(({ operationName }) => operationName === "buildCharter")?.answer;
   assert.equal((buildAnswer as { type?: string }).type, "PlanSummary", JSON.stringify(buildAnswer));
   assert.ok((buildAnswer as CharterDTOs.PlanSummary).data.added.some((addedPath) => addedPath.startsWith(".claude/")));
   assert.ok(reachedFilePaths.length > 0);

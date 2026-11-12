@@ -46,13 +46,17 @@ const previewing = (files: Readonly<Record<string, string>>) => {
     { claude: new InMemoryAgentCli() },
     new InMemoryReporter(),
   );
-  return { held, build: () => charterRuntimeApp.build(), preview: () => charterRuntimeApp.preview() };
+  return {
+    held,
+    build: () => charterRuntimeApp.buildCharter(),
+    preview: () => charterRuntimeApp.previewCharterBuild(),
+  };
 };
 
 /** Every file of one repository and what it holds, to be compared with the same
  *  after a preview: what a preview must leave exactly as it found it. */
 const everything = async (held: InMemoryFileReaders) =>
-  (await held.readFilesRecursively(repo)).map(({ file, contents }) => `${file.href} ${contents}`).sort();
+  (await held.readFilesRecursively(repo)).map(({ fileUrl, contents }) => `${fileUrl.href} ${contents}`).sort();
 
 /** What one preview said about the files it named, path by change. */
 /** What a preview of a charter that does not hold says: nothing about any
@@ -125,7 +129,7 @@ test("a rule edited since the last build would be updated, and its listings with
     [at("guide/no-any/index.md")]: guide("no-any"),
   });
   await build();
-  held.write(new URL("guide/no-any/index.md", root), guide("no-any", "Never write `any`."));
+  held.writeFile(new URL("guide/no-any/index.md", root), guide("no-any", "Never write `any`."));
 
   const previewed = planOf(await preview());
 
@@ -166,13 +170,13 @@ test("a projection whose primitive is gone would be deleted, and is not (FR-020,
     [at("agent/ship/index.md")]: primitive("agent", "ship", ['tools: ["Bash"]']),
   });
   await build();
-  held.remove(new URL("agent/ship/index.md", root));
+  held.removeFile(new URL("agent/ship/index.md", root));
 
   const previewed = planOf(await preview());
 
   assert.equal(changed(previewed ?? nothing)[".claude/agents/ship.md"], "delete");
   // Said, and still there: nothing is taken away until a build takes it.
-  assert.ok(await held.read(new URL(".claude/agents/ship.md", repo)));
+  assert.ok(await held.readFile(new URL(".claude/agents/ship.md", repo)));
 });
 
 test("a host's settings file the charter has nothing more to say to is unchanged (FR-018)", async () => {

@@ -1,5 +1,5 @@
 import type { SessionAnalysisLine } from "./session-analysis-line.js";
-import type { SessionSpan } from "./session-span.js";
+import type { SessionSpan } from "./session-span.value-object.js";
 
 /**
  * The sessions kept within a span, summed up (EVAL-FR-012): each session

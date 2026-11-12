@@ -38,7 +38,7 @@ const setUp = async (files: Readonly<Record<string, string>> = {}, argv: readonl
     const code = await new Commander(
       commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo),
       COMMANDS,
-    ).run(argv);
+    ).runCommandLine(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -172,7 +172,7 @@ test("setting up authors nothing for what the engine brings: it is supplied on e
   assert.equal(code, 0);
   const repositoryFiles = await files.readFilesRecursively(new URL(".cw/charter/", repoPath));
   assert.deepEqual(
-    repositoryFiles.map(({ file }) => file.href).filter((href) => href.includes("cw-author")),
+    repositoryFiles.map(({ fileUrl }) => fileUrl.href).filter((href) => href.includes("cw-author")),
     [],
   );
 });

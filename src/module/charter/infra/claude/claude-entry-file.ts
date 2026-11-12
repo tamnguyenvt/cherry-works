@@ -1,9 +1,4 @@
-import {
-  AgentProvider,
-  Catalogue,
-  CharterMd,
-  ProviderComponent,
-} from "../../app/port/out/managing-local-agent-output.port.js";
+import { ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
 /**
  * The one line that gets the charter read at all: the section this charter keeps
@@ -25,21 +20,8 @@ export class ClaudeEntryFile extends ProviderComponent {
   static readonly kind = "entry-file" as const;
   readonly kind = ClaudeEntryFile.kind;
 
-  private constructor(document: string) {
+  constructor(document: string) {
     // The repository's own, at its root: its id is that folder.
     super("claude", "charter", "", document);
-  }
-
-  /** The section, said the same for every charter: where the orientation is,
-   *  from where the file lands (FR-019). */
-  static of(): ClaudeEntryFile {
-    return new ClaudeEntryFile(
-      `<!-- CHERRYWORKS START -->\n${[
-        "## Charter",
-        `This repository is governed by a charter. Read [CHARTER.md](${CharterMd.outputPart.linkOf()}) before anything else here, and work under what it says.`,
-        `Find primitives in [catalogue.json](${Catalogue.outputPartOf().linkOf()}) and [catalogue.claude.json](${Catalogue.outputPartOf(new AgentProvider("claude")).linkOf()}).`,
-        "It is generated from the charter under `.cw/charter/`: do not edit it, edit the primitive behind it.",
-      ].join("\n\n")}\n<!-- CHERRYWORKS END -->\n`,
-    );
   }
 }

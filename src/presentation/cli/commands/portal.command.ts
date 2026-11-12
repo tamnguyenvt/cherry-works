@@ -29,25 +29,25 @@ export class PortalCommand implements Command<typeof OPTIONS> {
   readonly summary = "Serve this repository's charter to a browser on this machine";
   readonly options = OPTIONS;
 
-  async run(
+  async runCommand(
     { charterAuthoringApp, charterBuildingApp, workspaceApp }: Context,
     { port }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     // Setup writes the settings whatever it was answered: their absence is
     // what a repository never set up looks like (FR-037, CORE-FR-107).
-    const workspaceSettingsDTO = await workspaceApp.settings();
+    const workspaceSettingsDTO = await workspaceApp.readWorkspaceSettings();
     if (workspaceSettingsDTO.type === "Fault" || !workspaceSettingsDTO.data.isSetUp)
       return {
-        code: EXIT_FAILURE,
-        problem: 'This repository was never set up under a charter.\n  Run "cw init" first.\n',
+        exitCode: EXIT_FAILURE,
+        problemText: 'This repository was never set up under a charter.\n  Run "cw init" first.\n',
       };
     const startedPortal = await startPortal(
       new URL("./", import.meta.resolve("#portal/index.html")),
       { charterAuthoringApp, charterBuildingApp },
-      () => workspaceApp.settings(),
+      () => workspaceApp.readWorkspaceSettings(),
       port,
     );
-    if (typeof startedPortal === "string") return { code: EXIT_FAILURE, problem: startedPortal };
-    return { code: EXIT_OK, result: `The portal is at ${startedPortal.address}\nPress Ctrl+C to stop it.\n` };
+    if (typeof startedPortal === "string") return { exitCode: EXIT_FAILURE, problemText: startedPortal };
+    return { exitCode: EXIT_OK, resultText: `The portal is at ${startedPortal.address}\nPress Ctrl+C to stop it.\n` };
   }
 }

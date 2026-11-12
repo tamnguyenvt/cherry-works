@@ -4,5 +4,5 @@
  */
 export interface ForTellingTime {
   /** This moment. */
-  now(): Date;
+  tellTime(): Date;
 }

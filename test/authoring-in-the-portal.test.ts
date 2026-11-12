@@ -94,7 +94,7 @@ test("creating writes the file cw add writes, with the body typed, and the listi
     const expectedMarkdown = readPrimitive({
       headers: { kind: "guide", id: "no-any", description: "Never write any.", globs: ["src/**/*.ts"] },
       body: "Use unknown.",
-    }).toMarkdown();
+    }).writeMarkdown();
     assert.equal(await fileIn(files, ".cw/charter/primitive/guide/no-any/index.md"), expectedMarkdown);
     await page.getByRole("button", { name: "no-any", exact: true }).waitFor();
     // Nothing was compiled (Story 6 scenario 8).
@@ -204,7 +204,7 @@ test("a save over a file changed on disk is refused naming it, and the other cha
     await opening(page, "no-any");
     await page.getByRole("dialog").getByLabel("description", { exact: true }).waitFor();
     const changedOnDisk = guide("no-any").replace("About no-any.", "Changed elsewhere.");
-    files.write(new URL(at(".cw/charter/primitive/guide/no-any/index.md")), changedOnDisk);
+    files.writeFile(new URL(at(".cw/charter/primitive/guide/no-any/index.md")), changedOnDisk);
 
     await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Mine.");
     await page.getByRole("button", { name: "Save" }).click();

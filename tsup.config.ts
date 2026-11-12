@@ -8,7 +8,7 @@ import packageJson from "./package.json" with { type: "json" };
 const page = "src/presentation/portal/page";
 
 /** A `.mjs` under the engine's own layer is an asset it puts down, taken as its
- *  text (scripts/moduleLoader.mjs does the same under tsx). Only there: a
+ *  text (scripts/module-loader.mjs does the same under tsx). Only there: a
  *  dependency's `.mjs` is code. */
 const builtinAssetText: Plugin = {
   name: "builtin-asset-text",

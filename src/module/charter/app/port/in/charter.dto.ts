@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { byType, dto, FaultDTOs, StringsSchema } from "../../../../shared/module.js";
+import { dto, FaultDTOs, groupByType, StringsSchema } from "../../../../shared/module.js";
 
 /**
  * What the charter module answers with, through authoring and projection:
@@ -391,7 +391,7 @@ const MainContextTextsSchema = dto(
   }),
 );
 
-/** Every evaluation case of a checkout, checked against its charter: its
+/** Every evaluation case the store holds now, committed or not, checked against its charter: its
  *  file's name, its prompt, what it expects, and the body of the guide it
  *  follows, where it follows one. */
 const EvalCasesSchema = dto(
@@ -480,7 +480,7 @@ const VendorAddOutcomeSchema = dto(
 
 /** Every schema of this module's DTOs, under its name — the name it carries
  *  as `type` — in alphabetical order. */
-export const CharterDTOs = byType(
+export const CharterDTOs = groupByType(
   AccessTokenSchema,
   CatalogueSchema,
   CatalogueEntrySchema,

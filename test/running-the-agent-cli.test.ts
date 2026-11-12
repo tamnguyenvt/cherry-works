@@ -84,7 +84,7 @@ test("the command line is installed where `claude` answers, and not where it is 
 
 test("an answer holds what the model said, and its usage read off the first message sent, not the total a long answer adds a second one to (EVAL-FR-004)", async () => {
   await withFakeClaude(async () => {
-    assert.deepEqual(await new ClaudeCli().ask("hello"), {
+    assert.deepEqual(await new ClaudeCli().askAgent("hello"), {
       resultText: "Answered: hello",
       usage: { inputTokens: 1, cacheCreationInputTokens: 105, cacheReadInputTokens: 0 },
     });
@@ -94,8 +94,8 @@ test("an answer holds what the model said, and its usage read off the first mess
 test("each prompt runs in an empty folder of its own, taken away afterwards", async () => {
   await withFakeClaude(async (fakeFolder) => {
     const claudeCli = new ClaudeCli();
-    await claudeCli.ask("one");
-    await claudeCli.ask("two");
+    await claudeCli.askAgent("one");
+    await claudeCli.askAgent("two");
 
     const [firstRun, secondRun] = await runsOf(fakeFolder);
     assert.ok(firstRun !== undefined && secondRun !== undefined);
@@ -108,7 +108,7 @@ test("each prompt runs in an empty folder of its own, taken away afterwards", as
 test("no more than four prompts run at once, however many are asked for together", async () => {
   await withFakeClaude(async (fakeFolder) => {
     const claudeCli = new ClaudeCli();
-    await Promise.all(Array.from({ length: 10 }, (_, index) => claudeCli.ask(`prompt ${index}`)));
+    await Promise.all(Array.from({ length: 10 }, (_, index) => claudeCli.askAgent(`prompt ${index}`)));
 
     const runs = await runsOf(fakeFolder);
     assert.equal(runs.length, 10);
@@ -120,7 +120,7 @@ test("a run that stops with an error, or is answered as one, is raised and frees
   await withFakeClaude(async () => {
     const claudeCli = new ClaudeCli();
 
-    await assert.rejects(claudeCli.ask("fail"), (raised: unknown) => {
+    await assert.rejects(claudeCli.askAgent("fail"), (raised: unknown) => {
       assert.ok(raised instanceof AdapterFault);
       assert.equal(raised.internal, false);
       assert.match(raised.message, /status 2\./);
@@ -129,11 +129,11 @@ test("a run that stops with an error, or is answered as one, is raised and frees
       return true;
     });
     await assert.rejects(
-      claudeCli.ask("error"),
+      claudeCli.askAgent("error"),
       (raised) => raised instanceof AdapterFault && /Not logged in/.test(raised.message),
     );
     // Every place freed: five more run, and none waits forever.
-    await Promise.all(Array.from({ length: 5 }, () => claudeCli.ask("after")));
+    await Promise.all(Array.from({ length: 5 }, () => claudeCli.askAgent("after")));
   });
 });
 

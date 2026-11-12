@@ -1,7 +1,17 @@
 /** What an adapter answering this port raises when promptfoo cannot be
  *  installed or stops with an error, named again here so it names this port and
  *  nothing behind it. */
-export { AdapterFault } from "../../../../shared/module.js";
+export {
+  AdapterFault,
+  FailedEvaluationCaseFault,
+  FailedPromptfooEvalFault,
+  FailedPromptfooInstallFault,
+  InvalidEvaluationLogFault,
+  MissingPromptfooResultFault,
+  UnreadableEvaluationLogFault,
+  UnreadableEvaluationRunsFault,
+  UnreadableSessionFolderFault,
+} from "../../../../shared/module.js";
 
 /**
  * DRIVEN PORT — promptfoo, the evaluation framework a charter is evaluated
@@ -14,7 +24,7 @@ export interface ForRunningPromptfoo {
   isInstalled(): Promise<boolean>;
 
   /** Install it once into a folder of its own, outside every repository. */
-  install(): Promise<void>;
+  installPromptfoo(): Promise<void>;
 
   /** Where it is installed, as the developer would find it. */
   readonly installFolderPath: string;
@@ -23,7 +33,7 @@ export interface ForRunningPromptfoo {
    *  headless, in the working folder, with the project's settings and skills
    *  and edits accepted, on whatever it is signed in with; and how it came
    *  out. A run promptfoo itself fails raises an `AdapterFault`. */
-  evaluate(promptfooTest: PromptfooTest): Promise<PromptfooTestResult>;
+  evaluateTest(promptfooTest: PromptfooTest): Promise<PromptfooTestResult>;
 
   /** Read saved promptfoo artifacts without invoking an agent. With no path,
    * list the latest twenty case logs belonging to this repository. */

@@ -12,24 +12,28 @@ import type { ForManagingLocalOutput } from "../src/module/charter/app/port/out/
 import type { ForStoringCredentials } from "../src/module/charter/app/port/out/storing-credentials.port.js";
 import { buildCharterService } from "../src/module/charter/app/services/build-charter.service.js";
 import { loadCharterService } from "../src/module/charter/app/services/load-charter.service.js";
+import { outputPath } from "../src/module/charter/domain/constants.js";
+import { CharterOutput } from "../src/module/charter/domain/models/charter-output/charter-output.js";
+import { ProjectionPlan, WritePlan } from "../src/module/charter/domain/models/charter-output/projection-plan.js";
 import { RawEvalSuite } from "../src/module/charter/domain/models/eval/raw-eval-suite.js";
 import type { McpCredential } from "../src/module/charter/domain/models/mcp/mcp-credential.js";
 import { McpPrimitive } from "../src/module/charter/domain/models/primitive/mcp-primitive.js";
-import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.js";
+import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
 import { RawPrimitive } from "../src/module/charter/domain/models/primitive/raw-primitive.js";
-import { CopyPlan, ProjectionPlan, WritePlan } from "../src/module/charter/domain/models/projection/projection-plan.js";
 import { RawTestSuite } from "../src/module/charter/domain/models/test/raw-test-suite.js";
 import { RawVendorSource } from "../src/module/charter/domain/models/vendor/raw-vendor-source.js";
 import { VendorRoot } from "../src/module/charter/domain/models/vendor/vendor-root.js";
-import { SourceCharter } from "../src/module/charter/domain/models/vendor/vendor-source.js";
-import { VendorSourceOrigin } from "../src/module/charter/domain/models/vendor/vendor-source-origin.js";
+import { SourceCharter, VendorSource } from "../src/module/charter/domain/models/vendor/vendor-source.js";
+import { VendorSourceOrigin } from "../src/module/charter/domain/models/vendor/vendor-source-origin.value-object.js";
+import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
-import { OUT_FOLDER, placeOfPart } from "../src/module/charter/infra/helper.js";
-import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
+import { findItemPlace, OUT_FOLDER } from "../src/module/charter/infra/helper.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
 import { InMemoryLocalRepo } from "../src/module/charter/infra/in-memory/in-memory-local-repo.adapter.js";
+import { InMemoryOAuthAuthorizer } from "../src/module/charter/infra/in-memory/in-memory-oauth-authorizer.adapter.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { LocalRepoManipulator } from "../src/module/charter/infra/local-repo-manipulator.adapter.js";
 import { SessionLogs } from "../src/module/runtime/domain/models/session/session-logs.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryPromptfoo } from "../src/module/runtime/infra/in-memory/in-memory-promptfoo.adapter.js";
@@ -106,18 +110,18 @@ function charterKeptWithNoPath(): {
     rawPrimitiveOf(PrimitiveLayer.REPO, "guide", "broken-guide", brokenGuideText),
   );
   const charterRepository: ForManagingCharter = {
-    async loadLaidText() {
+    async readBuiltOutputItem() {
       // What a build laid is the output writer's, kept elsewhere: this store
       // has read none of it back.
       return undefined;
     },
-    findPlace(outputPart) {
-      // Laid where the files' output writer lays it, so a part is named the
+    describeItemPlace(itemPath) {
+      // Laid where the files' output writer lays it, so an item is named the
       // same whichever store keeps the charter.
-      return placeOfPart(outputPart);
+      return findItemPlace(itemPath);
     },
-    findOutputFolder() {
-      return OUT_FOLDER;
+    resolveOutputLinks(laidText) {
+      return laidText.replaceAll(outputPath.cwOutFolderPlaceholder, OUT_FOLDER);
     },
     async loadCharter() {
       return [...rawPrimitiveByKey.values()];
@@ -143,7 +147,7 @@ function charterKeptWithNoPath(): {
           rawPrimitive.layer,
           rawPrimitive.kind,
           rawPrimitive.id,
-          primitive.toMarkdown(),
+          primitive.writeMarkdown(),
           rawPrimitive.assets,
         ),
       );
@@ -154,7 +158,7 @@ function charterKeptWithNoPath(): {
     async fetchVendorSource() {
       throw new Error("Nothing is fetched here.");
     },
-    async cleanupVendorSource() {},
+    async removeTempSource() {},
     async loadVendorRoot() {
       return new VendorRoot([]);
     },
@@ -195,7 +199,7 @@ function charterAuthoringAppOver(
   return authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), {
     charterRepository,
     credentialsRepository,
-    authorizing: new InMemoryAuthorizing(),
+    oauthAuthorizer: new InMemoryOAuthAuthorizer(),
   });
 }
 
@@ -317,8 +321,8 @@ test("a charter kept with no path is validated, listed, written and tested as th
   );
 
   const [keptDoctorOutcome, filesDoctorOutcome] = [
-    answerOf(await keptBuildingApp.doctor()),
-    answerOf(await filesBuildingApp.doctor()),
+    answerOf(await keptBuildingApp.diagnoseCharter()),
+    answerOf(await filesBuildingApp.diagnoseCharter()),
   ];
   assert.deepEqual(Object.keys(keptDoctorOutcome.data.faultsByFile.data.files), ["db://charter:guide/broken-guide"]);
   assert.deepEqual(Object.keys(filesDoctorOutcome.data.faultsByFile.data.files), [
@@ -331,16 +335,16 @@ test("a charter kept with no path is validated, listed, written and tested as th
 
   // With the broken guide mended in both, each builds, tests and lists the same charter.
   rawPrimitiveByKey.delete("guide/broken-guide");
-  fileReaders.remove(new URL("file:///repo/.cw/charter/primitive/guide/broken-guide/index.md"));
+  fileReaders.removeFile(new URL("file:///repo/.cw/charter/primitive/guide/broken-guide/index.md"));
   const [keptPlanSummary, filesPlanSummary] = [
-    answerTyped<CharterDTOs.PlanSummary>(await keptBuildingApp.build(), "PlanSummary"),
-    answerTyped<CharterDTOs.PlanSummary>(await filesBuildingApp.build(), "PlanSummary"),
+    answerTyped<CharterDTOs.PlanSummary>(await keptBuildingApp.buildCharter(), "PlanSummary"),
+    answerTyped<CharterDTOs.PlanSummary>(await filesBuildingApp.buildCharter(), "PlanSummary"),
   ];
   assert.deepEqual(keptPlanSummary, filesPlanSummary);
   assert.ok(keptPlanSummary.data.added.includes(".cw/out/guide/kept-guide/index.md"));
   const [keptTestRunReport, filesTestRunReport] = [
-    answerTyped<CharterDTOs.TestRunReport>(await keptAuthoringApp.test(), "TestRunReport"),
-    answerTyped<CharterDTOs.TestRunReport>(await filesAuthoringApp.test(), "TestRunReport"),
+    answerTyped<CharterDTOs.TestRunReport>(await keptAuthoringApp.testCharter(), "TestRunReport"),
+    answerTyped<CharterDTOs.TestRunReport>(await filesAuthoringApp.testCharter(), "TestRunReport"),
   ];
   assert.deepEqual(
     JSON.stringify(keptTestRunReport).replaceAll("db://test:", "file:///repo/.cw/charter/test/"),
@@ -348,8 +352,8 @@ test("a charter kept with no path is validated, listed, written and tested as th
   );
 
   const [keptPrimitives, filesPrimitives] = [
-    answerTyped<CharterDTOs.Primitives>(await keptAuthoringApp.fullList(), "Primitives"),
-    answerTyped<CharterDTOs.Primitives>(await filesAuthoringApp.fullList(), "Primitives"),
+    answerTyped<CharterDTOs.Primitives>(await keptAuthoringApp.listPrimitives(), "Primitives"),
+    answerTyped<CharterDTOs.Primitives>(await filesAuthoringApp.listPrimitives(), "Primitives"),
   ];
   const primitiveKeysOf = (primitivesAnswer: typeof keptPrimitives) =>
     primitivesAnswer.data.primitives.map(({ data }) => `${data.layerName} ${data.kind} ${data.id}`).sort();
@@ -360,12 +364,17 @@ test("a charter kept with no path is validated, listed, written and tested as th
   );
 
   const addedPrimitive = answerTyped<CharterDTOs.Primitive>(
-    await keptAuthoringApp.add("guide", "added-guide", { description: "A guide added by its kind and id." }, "Added."),
+    await keptAuthoringApp.addPrimitive(
+      "guide",
+      "added-guide",
+      { description: "A guide added by its kind and id." },
+      "Added.",
+    ),
     "Primitive",
   );
   assert.equal(addedPrimitive.data.file, "db://charter:guide/added-guide");
   assert.equal(rawPrimitiveByKey.get("guide/added-guide")?.kind, "guide");
-  answerOf(await keptAuthoringApp.remove("added-guide"));
+  answerOf(await keptAuthoringApp.removePrimitive("added-guide"));
   assert.equal(rawPrimitiveByKey.has("guide/added-guide"), false);
 });
 
@@ -394,7 +403,6 @@ test("a build's plan is the domain's own, every file in it one of its planned fi
   const charterRoot = await loadCharterService.loadCharterRoot(charterKeptAsFiles(fileReaders));
 
   const buildPlan = await buildCharterService.planBuild(
-    "",
     charterRoot,
     { claude: agentProjectionByProviderOf(fileReaders).claude! },
     charterOutputWriterOf(fileReaders),
@@ -404,10 +412,8 @@ test("a build's plan is the domain's own, every file in it one of its planned fi
   );
 
   assert.ok(buildPlan instanceof ProjectionPlan, JSON.stringify(buildPlan));
-  assert.ok(buildPlan.projectionPlan.length > 0 && buildPlan.cleanupPlan.length > 0);
-  assert.ok(
-    [...buildPlan.cleanupPlan, ...buildPlan.projectionPlan].every((writePlan) => writePlan instanceof WritePlan),
-  );
+  assert.ok(buildPlan.writePlans.length > 0 && buildPlan.cleanupPlan.length > 0);
+  assert.ok([...buildPlan.cleanupPlan, ...buildPlan.writePlans].every((writePlan) => writePlan instanceof WritePlan));
 });
 
 test("settings naming an agent this engine compiles for none under are refused, and nothing is composed for them (CORE Story 45)", async () => {
@@ -415,7 +421,7 @@ test("settings naming an agent this engine compiles for none under are refused, 
     "file:///repo/.cw/settings.json": `${JSON.stringify({ agents: ["gemini"] })}\n`,
   });
 
-  const workspaceSettingsDTO = await workspaceAppOf(fileReaders).settings();
+  const workspaceSettingsDTO = await workspaceAppOf(fileReaders).readWorkspaceSettings();
   assert.equal(workspaceSettingsDTO.type, "Fault");
   assert.match(
     workspaceSettingsDTO.type === "Fault" ? workspaceSettingsDTO.data.message : "",
@@ -446,7 +452,7 @@ test("a link kept under the charter folder is a file of it, so no primitive is w
 
 test("every other use case answers through stores of a tool's own that keep no path (CORE Story 47 scenario 2, CORE-SC-062)", async () => {
   const { charterRepository } = charterKeptWithNoPath();
-  const mcpText = McpPrimitive.of(McpPrimitive.sample, "Read the billing service.").toMarkdown();
+  const mcpText = McpPrimitive.of(McpPrimitive.sample, "Read the billing service.").writeMarkdown();
   await charterRepository.addPrimitive(
     new RawPrimitive(PrimitiveLayer.REPO, "mcp", McpPrimitive.sample.id, mcpText, [], ""),
   );
@@ -465,13 +471,13 @@ test("every other use case answers through stores of a tool's own that keep no p
       keptTextByName.delete(name);
     },
   });
-  const addedSuiteName = answerOf(await testsApp.addSuite());
-  answerOf(await testsApp.writeSuite(addedSuiteName.data.name, testSuiteText));
+  const addedSuiteName = answerOf(await testsApp.addTestSuite());
+  answerOf(await testsApp.writeTestSuite(addedSuiteName.data.name, testSuiteText));
   assert.deepEqual(
-    answerOf(await testsApp.suites()).data.testSuites.map(({ data }) => data.name),
+    answerOf(await testsApp.listTestSuites()).data.testSuites.map(({ data }) => data.name),
     [addedSuiteName.data.name],
   );
-  answerOf(await testsApp.removeSuite(addedSuiteName.data.name));
+  answerOf(await testsApp.removeTestSuite(addedSuiteName.data.name));
   assert.equal(keptTextByName.size, 0);
 
   // Vendors, by name.
@@ -489,7 +495,7 @@ test("every other use case answers through stores of a tool's own that keep no p
       installedVendorNames.delete(vendorName);
     },
   });
-  assert.deepEqual(answerOf(await vendoringApp.vendors()).data.folders, ["db://vendor:team/charter/root"]);
+  assert.deepEqual(answerOf(await vendoringApp.listVendors()).data.folders, ["db://vendor:team/charter/root"]);
   assert.deepEqual(
     answerOf(await vendoringApp.removeVendor("team/charter/root")).data.folder,
     "db://vendor:team/charter/root",
@@ -506,7 +512,7 @@ test("every other use case answers through stores of a tool's own that keep no p
     },
   };
   const mcpApp = charterAuthoringAppOver(charterRepository, { credentialsRepository });
-  const [signInStatus] = answerOf(await mcpApp.signInStatus()).data.signInStatuses;
+  const [signInStatus] = answerOf(await mcpApp.listSignInStatuses()).data.signInStatuses;
   answerOf(await mcpApp.signInWithToken(signInStatus!.data.address, "a token"));
   assert.equal(credentialByAddress.get(signInStatus!.data.address)?.accessToken, "a token");
 
@@ -520,7 +526,7 @@ test("every other use case answers through stores of a tool's own that keep no p
     },
     clock: new InMemoryClock(new Date("2026-11-07T00:00:00Z")),
   });
-  assert.equal(answerOf(await sessionsApp.sessionSummary()).data.sessionsFolder, "db://sessions");
+  assert.equal(answerOf(await sessionsApp.summarizeSessions()).data.sessionsFolder, "db://sessions");
 
   // Evaluation cases, by name: none kept, nothing run.
   const evalFileReaders = new InMemoryFileReaders({});
@@ -534,7 +540,7 @@ test("every other use case answers through stores of a tool's own that keep no p
     settingsKeptInMemory(),
     evalFileReaders,
   );
-  assert.notEqual((await evaluatingApp.evaluate()).type, "Fault");
+  assert.notEqual((await evaluatingApp.evaluateCharter()).type, "Fault");
 });
 
 test("the command line says where something is kept as the path from where it runs, and leaves what a primitive says as written (CORE Story 47, CORE-FR-214)", () => {
@@ -585,7 +591,7 @@ test("the command line says where to move a primitive kept where its kind and id
     "/repo",
   );
 
-  const doctorText = JSON.stringify(await filesBuildingApp.doctor());
+  const doctorText = JSON.stringify(await filesBuildingApp.diagnoseCharter());
   assert.match(doctorText, /Move it to \\".cw\/charter\/primitive\/guide\/kept-guide\/index.md\\"\./);
   assert.match(
     doctorText,
@@ -601,14 +607,14 @@ test("what an mcp origin's tool answered is forwarded as it answered, addresses 
   const toolAnswer = { type: "ToolAnswer", data: { file: "file:///repo/x.md", message: "Kept at file:///repo/x.md." } };
   const mcpApp = wrapAppToShowPaths(
     {
-      async call() {
+      async callTool() {
         return toolAnswer;
       },
     },
     "/repo",
   );
 
-  assert.deepEqual(await mcpApp.call(), toolAnswer);
+  assert.deepEqual(await mcpApp.callTool(), toolAnswer);
 });
 
 test("a word searched for is never found in where the repository sits on the machine (FR-114, CORE-FR-214)", async () => {
@@ -627,32 +633,103 @@ test("a word searched for is never found in where the repository sits on the mac
   );
 
   assert.deepEqual(
-    answerTyped<CharterDTOs.Primitives>(await filesAuthoringApp.fullList("somewhere"), "Primitives").data.primitives,
+    answerTyped<CharterDTOs.Primitives>(await filesAuthoringApp.listPrimitives("somewhere"), "Primitives").data
+      .primitives,
     [],
   );
   assert.deepEqual(
     answerTyped<CharterDTOs.Primitives>(
-      await filesAuthoringApp.fullList("guide/kept-guide"),
+      await filesAuthoringApp.listPrimitives("guide/kept-guide"),
       "Primitives",
     ).data.primitives.map(({ data }) => data.id),
     ["kept-guide"],
   );
 });
 
-test("a checkout's primitives and cases are kept where they sit in the repository, the checkout being gone once read (EVAL-FR-021)", async () => {
-  const checkoutFolder = ".cw/log/eval/worktrees/head";
-  const fileReaders = new InMemoryFileReaders({
-    [`file:///repo/${checkoutFolder}/.cw/charter/primitive/guide/kept-guide/index.md`]: keptGuideText,
-    [`file:///repo/${checkoutFolder}/.cw/charter/eval/cases.json`]: "{}",
-  });
+test("an output extended with a constructor and a private field of its own builds itself over a checkout by overriding createCheckoutOutput (CORE Story 53 scenario 2)", async () => {
+  const checkoutFolder = ".cw/log/eval/worktrees/1";
+  const fileReaders = new InMemoryFileReaders({});
+  class CountedLocalOutput extends LocalRepoManipulator {
+    readonly #fileReaders: InMemoryFileReaders;
+    #planCount = 0;
 
-  assert.deepEqual(
-    (await charterKeptAsFiles(fileReaders).loadCharter(checkoutFolder)).map(({ uri }) => uri),
-    ["file:///repo/.cw/charter/primitive/guide/kept-guide/index.md"],
+    constructor(
+      readonly outputTag: string,
+      fileReaders: InMemoryFileReaders,
+      checkoutFolder = "",
+    ) {
+      super(fileReaders, new InMemoryFileOutput(fileReaders), checkoutFolder);
+      this.#fileReaders = fileReaders;
+    }
+
+    override createCheckoutOutput(checkoutFolder: string): CountedLocalOutput {
+      return new CountedLocalOutput(this.outputTag, this.#fileReaders, checkoutFolder);
+    }
+
+    override async createProjectionPlan(charterOutput: CharterOutput) {
+      this.#planCount += 1;
+      return super.createProjectionPlan(charterOutput);
+    }
+
+    get planCount(): number {
+      return this.#planCount;
+    }
+  }
+  const countedOutput = new CountedLocalOutput("counted", fileReaders);
+
+  const checkoutOutput = countedOutput.createCheckoutOutput(checkoutFolder);
+  const projectionPlan = await checkoutOutput.createProjectionPlan(new CharterOutput());
+
+  assert.ok(checkoutOutput instanceof CountedLocalOutput);
+  assert.equal(checkoutOutput.outputTag, "counted");
+  assert.equal(checkoutOutput.planCount, 1);
+  assert.ok(projectionPlan.writePlans.every(({ filePath }) => filePath.startsWith(`${checkoutFolder}/`)));
+});
+
+test("an output or a projection extended with a constructor of its own, and no override, is refused a checkout before anything is laid (EVAL-FR-021, CORE Story 53 scenario 2)", () => {
+  const fileReaders = new InMemoryFileReaders({});
+  class TaggedLocalOutput extends LocalRepoManipulator {
+    constructor(
+      readonly outputTag: string,
+      outputFileReaders: InMemoryFileReaders,
+    ) {
+      super(outputFileReaders, new InMemoryFileOutput(outputFileReaders));
+    }
+  }
+  class TaggedClaudeProjection extends ClaudeProjection {
+    constructor(
+      readonly projectionTag: string,
+      projectionFileReaders: InMemoryFileReaders,
+    ) {
+      super(projectionFileReaders);
+    }
+  }
+
+  // One whose added argument comes last, the checkout landing where it would.
+  class OptionedLocalOutput extends LocalRepoManipulator {
+    constructor(
+      outputFileReaders: InMemoryFileReaders,
+      checkoutFolder = "",
+      readonly outputOption = "kept",
+    ) {
+      super(outputFileReaders, new InMemoryFileOutput(outputFileReaders), checkoutFolder);
+    }
+  }
+  assert.throws(
+    () => new OptionedLocalOutput(fileReaders, "", "chosen").createCheckoutOutput(".cw/log/eval/worktrees/1"),
+    (raisedValue: Error) => raisedValue.name === "UnbuiltCheckoutAdapterFault",
   );
-  assert.deepEqual(
-    (await charterKeptAsFiles(fileReaders).loadEvalSuites(checkoutFolder)).map(({ name, uri }) => [name, uri]),
-    [["cases.json", "file:///repo/.cw/charter/eval/cases.json"]],
+  assert.throws(
+    () => new TaggedLocalOutput("tagged", fileReaders).createCheckoutOutput(".cw/log/eval/worktrees/1"),
+    (raisedValue: Error & { fix?: string }) =>
+      raisedValue.name === "UnbuiltCheckoutAdapterFault" &&
+      /Override createCheckoutOutput in TaggedLocalOutput/.test(raisedValue.fix ?? ""),
+  );
+  assert.throws(
+    () => new TaggedClaudeProjection("tagged", fileReaders).createCheckoutProjection(".cw/log/eval/worktrees/1"),
+    (raisedValue: Error & { fix?: string }) =>
+      raisedValue.name === "UnbuiltCheckoutAdapterFault" &&
+      /Override createCheckoutProjection in TaggedClaudeProjection/.test(raisedValue.fix ?? ""),
   );
 });
 
@@ -699,25 +776,38 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
   );
 
   assert.equal(
-    answerTextOf(await keptAuthoringApp.explain("kept-guide")),
-    answerTextOf(await filesAuthoringApp.explain("kept-guide")),
+    answerTextOf(await keptAuthoringApp.explainPrimitive("kept-guide")),
+    answerTextOf(await filesAuthoringApp.explainPrimitive("kept-guide")),
   );
-  assert.equal(answerTextOf(await keptBuildingApp.preview()), answerTextOf(await filesBuildingApp.preview()));
+  assert.equal(
+    answerTextOf(await keptBuildingApp.previewCharterBuild()),
+    answerTextOf(await filesBuildingApp.previewCharterBuild()),
+  );
   assert.equal(
     answerTextOf(await keptBuildingApp.predictMainContext()),
     answerTextOf(await filesBuildingApp.predictMainContext()),
   );
   const [keptOpenedPrimitive, filesOpenedPrimitive] = [
-    answerTyped<CharterDTOs.Primitive>(await keptAuthoringApp.open("kept-guide"), "Primitive"),
-    answerTyped<CharterDTOs.Primitive>(await filesAuthoringApp.open("kept-guide"), "Primitive"),
+    answerTyped<CharterDTOs.Primitive>(await keptAuthoringApp.openPrimitive("kept-guide"), "Primitive"),
+    answerTyped<CharterDTOs.Primitive>(await filesAuthoringApp.openPrimitive("kept-guide"), "Primitive"),
   ];
   const rewrittenHeaders = { description: "A guide kept and rewritten.", globs: ["src/**/*.ts"] };
   assert.equal(
     answerTextOf(
-      await keptAuthoringApp.rewrite("kept-guide", rewrittenHeaders, "Rewritten.", keptOpenedPrimitive.data.hash),
+      await keptAuthoringApp.rewritePrimitive(
+        "kept-guide",
+        rewrittenHeaders,
+        "Rewritten.",
+        keptOpenedPrimitive.data.hash,
+      ),
     ),
     answerTextOf(
-      await filesAuthoringApp.rewrite("kept-guide", rewrittenHeaders, "Rewritten.", filesOpenedPrimitive.data.hash),
+      await filesAuthoringApp.rewritePrimitive(
+        "kept-guide",
+        rewrittenHeaders,
+        "Rewritten.",
+        filesOpenedPrimitive.data.hash,
+      ),
     ),
   );
   assert.match(rawPrimitiveByKey.get("guide/kept-guide")?.text ?? "", /Rewritten\./);
@@ -745,11 +835,13 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
     async fetchVendorSource() {
       return rawVendorSource;
     },
-    async storeVendor(_vendorSource, { projectionPlan }) {
-      // The vendor each folder copied lands in: `.cw/charter/vendor/<name>/primitive`.
-      for (const copyPlan of projectionPlan)
-        if (copyPlan instanceof CopyPlan)
-          installedVendorUris.push(`db://vendor:${copyPlan.destinationPath.split("/").slice(3, 6).join("/")}`);
+    async storeVendor(vendorSource) {
+      // Each charter of the source is a vendor of its own, under the origin's name.
+      for (const charterName of [
+        ...(vendorSource.ownCharter === undefined ? [] : [VendorSource.ownCharterName]),
+        ...vendorSource.charters.map(({ name }) => name),
+      ])
+        installedVendorUris.push(`db://vendor:${vendorSource.origin.name}/${charterName}`);
     },
   });
   const filesVendoringApp = authoringCharterOf(fileReaders, fileOutput, new InMemoryReporter(), {
@@ -798,13 +890,13 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
     settingsKeptInMemory(),
     keptFileReaders,
     keptPromptfoo,
-  ).evaluate();
+  ).evaluateCharter();
   const filesEvalRunReport = await evaluatingAppOver(
     charterKeptAsFiles(fileReaders, fileOutput),
     { agents: ["claude"] },
     fileReaders,
     filesPromptfoo,
-  ).evaluate();
+  ).evaluateCharter();
   assert.equal(keptEvalRunReport.type, "EvalRunReport", JSON.stringify(keptEvalRunReport));
   assert.equal(answerTextOf(keptEvalRunReport), answerTextOf(filesEvalRunReport));
   assert.deepEqual(keptPromptfoo.evaluatedTests, filesPromptfoo.evaluatedTests);

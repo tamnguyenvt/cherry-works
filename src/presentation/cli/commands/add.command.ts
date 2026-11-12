@@ -52,10 +52,10 @@ export class AddCommand implements Command<typeof OPTIONS> {
   readonly summary = "Write a new primitive of one kind, holding what that kind requires";
   readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { kind, id, header }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async runCommand({ charterAuthoringApp }: Context, { kind, id, header }: Options<typeof OPTIONS>): Promise<Outcome> {
     const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements(kind ?? "");
     if (primitiveRequirementsDTO.type === "Fault")
-      return { code: EXIT_FAILURE, problem: printFault(primitiveRequirementsDTO) };
+      return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveRequirementsDTO) };
     const primitiveHeaders = primitiveRequirementsDTO.data.headers.map((primitiveHeader) => primitiveHeader.data);
     const listFields = new Set(
       primitiveHeaders
@@ -64,28 +64,28 @@ export class AddCommand implements Command<typeof OPTIONS> {
     );
 
     // Typed headers are answers already, so there is nothing left to ask: the
-    // two paths reach `add` with the same record, and what refuses a bad one is
+    // two paths reach `addPrimitive` with the same record, and what refuses a bad one is
     // the engine, in the same words whichever way it was answered. Each is read
     // as the kind holds it — a list keeps every value in the order it was typed,
     // and a line typed twice is refused naming the header (FR-007). Which of
     // them take a list is the engine's answer, and the same contract a file is
     // refused against, so nothing here holds a list of its own to fall behind a
     // kind that grows or renames a header. A name the kind never named has no
-    // shape to be read by, so it goes on as a line and `add` refuses it in the
+    // shape to be read by, so it goes on as a line and `addPrimitive` refuses it in the
     // words it refuses a typed-in one with (FR-011, FR-012).
     //
     // Only the required ones are asked at a terminal: a header a kind takes
     // without requiring is one an author leaves out, and a prompt for it would
     // be a question with no wrong answer.
     const typedHeaders = header.length > 0 ? parseKVParams(header, "header") : undefined;
-    if (typeof typedHeaders === "string") return { code: EXIT_FAILURE, problem: typedHeaders };
+    if (typeof typedHeaders === "string") return { exitCode: EXIT_FAILURE, problemText: typedHeaders };
     const repeatedField = Object.entries(typedHeaders ?? {}).find(
       ([field, values]) => !listFields.has(field) && values.length > 1,
     )?.[0];
     if (repeatedField !== undefined)
       return {
-        code: EXIT_FAILURE,
-        problem: `"${repeatedField}" holds one line, and was typed ${typedHeaders?.[repeatedField]?.length} times.\n  Type "--header ${repeatedField}=..." once.\n`,
+        exitCode: EXIT_FAILURE,
+        problemText: `"${repeatedField}" holds one line, and was typed ${typedHeaders?.[repeatedField]?.length} times.\n  Type "--header ${repeatedField}=..." once.\n`,
       };
     const answers =
       typedHeaders !== undefined
@@ -95,23 +95,23 @@ export class AddCommand implements Command<typeof OPTIONS> {
               listFields.has(field) ? values : (values[0] ?? ""),
             ]),
           )
-        : await this.#answered(
+        : await this.#askHeaderAnswers(
             primitiveHeaders.filter((primitiveHeader) => primitiveHeader.required),
             kind ?? "",
           );
-    if (typeof answers === "string") return { code: EXIT_FAILURE, problem: answers };
-    const primitiveDTO = await charterAuthoringApp.add(kind ?? "", id ?? "", answers);
+    if (typeof answers === "string") return { exitCode: EXIT_FAILURE, problemText: answers };
+    const primitiveDTO = await charterAuthoringApp.addPrimitive(kind ?? "", id ?? "", answers);
 
-    if (primitiveDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(primitiveDTO) };
+    if (primitiveDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveDTO) };
     if (primitiveDTO.type === "Faults")
       return {
-        code: EXIT_FAILURE,
-        problem: primitiveDTO.data.faults.map(({ data: { message, fix } }) => `${message}\n  ${fix}\n`).join(""),
+        exitCode: EXIT_FAILURE,
+        problemText: primitiveDTO.data.faults.map(({ data: { message, fix } }) => `${message}\n  ${fix}\n`).join(""),
       };
 
     return {
-      code: EXIT_OK,
-      result: [
+      exitCode: EXIT_OK,
+      resultText: [
         `Wrote ${primitiveDTO.data.file}.`,
         // A script's author is sent to the file that runs, which was written
         // empty beside it (FR-167).
@@ -137,18 +137,18 @@ export class AddCommand implements Command<typeof OPTIONS> {
    * that out later (FR-035 is setup's, and this asks for what nothing can default).
    * What comes back then is what to report, in place of the answers.
    */
-  async #answered(
-    required: readonly CharterDTOs.PrimitiveHeader["data"][],
+  async #askHeaderAnswers(
+    requiredHeaders: readonly CharterDTOs.PrimitiveHeader["data"][],
     kind: string,
   ): Promise<Record<string, string | readonly string[]> | string> {
     if (!process.stdin.isTTY)
-      return `A ${kind} requires ${required.map((requiredHeader) => `"${requiredHeader.field}"`).join(", ")}, and nobody is at the terminal to answer.\n  Run "cw add" where you can answer, or author the file under the charter yourself.\n`;
+      return `A ${kind} requires ${requiredHeaders.map((requiredHeader) => `"${requiredHeader.field}"`).join(", ")}, and nobody is at the terminal to answer.\n  Run "cw add" where you can answer, or author the file under the charter yourself.\n`;
 
     // One question per header, asked as what it holds: one line of text, or a list
     // of names typed with commas between its entries, which is what the file
     // holds it as.
     const answers = await prompts(
-      required.map(({ field, shape }) =>
+      requiredHeaders.map(({ field, shape }) =>
         shape === "line"
           ? { type: "text" as const, name: field, message: `${field}?` }
           : {
@@ -156,11 +156,12 @@ export class AddCommand implements Command<typeof OPTIONS> {
               name: field,
               message: `${field}?`,
               // `prompts` hands an answer left empty back as [""].
-              format: (entries: readonly string[]) => entries.map((one) => one.trim()).filter((one) => one !== ""),
+              format: (entries: readonly string[]) =>
+                entries.map((answerLine) => answerLine.trim()).filter((answerLine) => answerLine !== ""),
             },
       ),
     );
-    if (required.some((requiredHeader) => answers[requiredHeader.field] === undefined))
+    if (requiredHeaders.some((requiredHeader) => answers[requiredHeader.field] === undefined))
       return 'This was stopped before it had its answers, so nothing was written.\n  Run "cw add" again.\n';
 
     return answers;

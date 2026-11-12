@@ -82,7 +82,7 @@ test("suites() lists each file with its name, text and cases said, and one that 
   const files = withTwoFiles();
   const { charterAuthoringApp } = authoring(files);
 
-  const { testSuites } = answerOf(await charterAuthoringApp.suites()).data;
+  const { testSuites } = answerOf(await charterAuthoringApp.listTestSuites()).data;
 
   assert.deepEqual(
     testSuites.map(({ data }) => data.name),
@@ -107,7 +107,7 @@ test("suites() lists each file with its name, text and cases said, and one that 
 });
 
 test("suites() is empty for a repository with no test folder (FR-124)", async () => {
-  assert.deepEqual(answerOf(await authoring(settings).charterAuthoringApp.suites()).data.testSuites, []);
+  assert.deepEqual(answerOf(await authoring(settings).charterAuthoringApp.listTestSuites()).data.testSuites, []);
 });
 
 test("a run names the test file each case came from (FR-125)", async () => {
@@ -122,7 +122,7 @@ test("a run names the test file each case came from (FR-125)", async () => {
     }),
   });
 
-  const testRunReportDTO = answerOf(await charterAuthoringApp.test());
+  const testRunReportDTO = answerOf(await charterAuthoringApp.testCharter());
 
   assert.equal(testRunReportDTO.type, "TestRunReport");
   if (testRunReportDTO.type !== "TestRunReport") return;
@@ -135,42 +135,42 @@ test("a run names the test file each case came from (FR-125)", async () => {
   );
 });
 
-test("addSuite() writes untitled-1.json, then untitled-2.json, each one case that reads (FR-091)", async () => {
+test("addTestSuite() writes untitled-1.json, then untitled-2.json, each one case that reads (FR-091)", async () => {
   const { charterAuthoringApp, fileAt } = authoring(settings);
 
-  assert.equal(answerOf(await charterAuthoringApp.addSuite()).data.name, "untitled-1.json");
-  assert.equal(answerOf(await charterAuthoringApp.addSuite()).data.name, "untitled-2.json");
+  assert.equal(answerOf(await charterAuthoringApp.addTestSuite()).data.name, "untitled-1.json");
+  assert.equal(answerOf(await charterAuthoringApp.addTestSuite()).data.name, "untitled-2.json");
 
   const untitledSuiteText = (await fileAt(".cw/charter/test/untitled-2.json")) ?? "";
   assert.equal(TestSuiteFactory.create(untitledSuiteText).cases.length, 1);
   assert.equal(await fileAt(".cw/charter/test/untitled-1.json"), untitledSuiteText);
 });
 
-test("addSuite() takes the first free number", async () => {
+test("addTestSuite() takes the first free number", async () => {
   const { charterAuthoringApp } = authoring({
     ...settings,
     [at(".cw/charter/test/untitled-1.json")]: "{}",
     [at(".cw/charter/test/untitled-3.json")]: "{}",
   });
 
-  assert.equal(answerOf(await charterAuthoringApp.addSuite()).data.name, "untitled-2.json");
+  assert.equal(answerOf(await charterAuthoringApp.addTestSuite()).data.name, "untitled-2.json");
 });
 
-test("writeSuite() writes text that reads as a suite (FR-090)", async () => {
+test("writeTestSuite() writes text that reads as a suite (FR-090)", async () => {
   const { charterAuthoringApp, fileAt } = authoring(withTwoFiles());
   const text = suiteText({ cases: [{ when: "Stop", expect: { run: "test" } }] });
 
-  assert.equal(answerOf(await charterAuthoringApp.writeSuite("broken.json", text)).data.name, "broken.json");
+  assert.equal(answerOf(await charterAuthoringApp.writeTestSuite("broken.json", text)).data.name, "broken.json");
 
   assert.equal(await fileAt(".cw/charter/test/broken.json"), text);
 });
 
-test("writeSuite() refuses text that is not JSON or not a suite, with the sample, and writes nothing (FR-090)", async () => {
+test("writeTestSuite() refuses text that is not JSON or not a suite, with the sample, and writes nothing (FR-090)", async () => {
   const files = withTwoFiles();
   const { charterAuthoringApp, fileAt } = authoring(files);
 
-  assert.match(faultTextOf(await charterAuthoringApp.writeSuite("shapes.json", "{ nope")), /not JSON[\s\S]*/);
-  const { message, fix } = faultOf(await charterAuthoringApp.writeSuite("shapes.json", suiteText({ cases: [] })));
+  assert.match(faultTextOf(await charterAuthoringApp.writeTestSuite("shapes.json", "{ nope")), /not JSON[\s\S]*/);
+  const { message, fix } = faultOf(await charterAuthoringApp.writeTestSuite("shapes.json", suiteText({ cases: [] })));
   assert.match(message, /not written as a suite/);
   // The sample it is refused with reads as a suite itself.
   const sample = fix.replace(/^Write it as /, "");
@@ -179,20 +179,20 @@ test("writeSuite() refuses text that is not JSON or not a suite, with the sample
   assert.equal(await fileAt(".cw/charter/test/shapes.json"), files[at(".cw/charter/test/shapes.json")]);
 });
 
-test("writeSuite() and removeSuite() refuse a name that is no test file (FR-090, FR-092)", async () => {
+test("writeTestSuite() and removeTestSuite() refuse a name that is no test file (FR-090, FR-092)", async () => {
   const { charterAuthoringApp, fileAt } = authoring(withTwoFiles());
   const text = suiteText({ cases: [{ when: "Stop", expect: { run: "test" } }] });
 
   assert.match(
-    faultTextOf(await charterAuthoringApp.writeSuite("missing.json", text)),
+    faultTextOf(await charterAuthoringApp.writeTestSuite("missing.json", text)),
     /holds no test file called "missing.json"/,
   );
   assert.match(
-    faultTextOf(await charterAuthoringApp.writeSuite("../charter/guide/no-any/index.md", text)),
+    faultTextOf(await charterAuthoringApp.writeTestSuite("../charter/guide/no-any/index.md", text)),
     /holds no test file/,
   );
   assert.match(
-    faultTextOf(await charterAuthoringApp.removeSuite("../charter/guide/no-any/index.md")),
+    faultTextOf(await charterAuthoringApp.removeTestSuite("../charter/guide/no-any/index.md")),
     /holds no test file/,
   );
 
@@ -200,10 +200,10 @@ test("writeSuite() and removeSuite() refuse a name that is no test file (FR-090,
   assert.ok(await fileAt(".cw/charter/primitive/guide/no-any/index.md"));
 });
 
-test("removeSuite() deletes one test file, and nothing else (FR-092)", async () => {
+test("removeTestSuite() deletes one test file, and nothing else (FR-092)", async () => {
   const { charterAuthoringApp, fileAt } = authoring(withTwoFiles());
 
-  assert.equal(answerOf(await charterAuthoringApp.removeSuite("shapes.json")).data.name, "shapes.json");
+  assert.equal(answerOf(await charterAuthoringApp.removeTestSuite("shapes.json")).data.name, "shapes.json");
 
   assert.equal(await fileAt(".cw/charter/test/shapes.json"), undefined);
   assert.ok(await fileAt(".cw/charter/test/broken.json"));
@@ -218,11 +218,11 @@ test("cw suite add writes a new test file and says how to edit it (FR-091)", asy
   const repoInMemory = authoring(settings);
   const { fileAt } = repoInMemory;
 
-  const outcome = await new SuiteAddCommand().run(contextOver(repoInMemory));
+  const outcome = await new SuiteAddCommand().runCommand(contextOver(repoInMemory));
 
-  assert.equal(outcome.code, EXIT_OK);
+  assert.equal(outcome.exitCode, EXIT_OK);
   assert.match(
-    outcome.result ?? "",
+    outcome.resultText ?? "",
     /Wrote \.cw\/charter\/test\/untitled-1\.json\.\nRun "cw suite edit untitled-1\.json"/,
   );
   assert.ok(await fileAt(".cw/charter/test/untitled-1.json"));
@@ -232,9 +232,9 @@ test("cw suite remove deletes the test file named (FR-092)", async () => {
   const repoInMemory = authoring(withTwoFiles());
   const { fileAt } = repoInMemory;
 
-  const outcome = await new SuiteRemoveCommand().run(contextOver(repoInMemory), { name: "shapes.json" });
+  const outcome = await new SuiteRemoveCommand().runCommand(contextOver(repoInMemory), { name: "shapes.json" });
 
-  assert.equal(outcome.result, "Removed .cw/charter/test/shapes.json.\n");
+  assert.equal(outcome.resultText, "Removed .cw/charter/test/shapes.json.\n");
   assert.equal(await fileAt(".cw/charter/test/shapes.json"), undefined);
 });
 
@@ -249,11 +249,11 @@ test("cw suite edit refuses a name that is no test file, and with no editor set 
   const context = contextOver(authoring(withTwoFiles()));
 
   assert.match(
-    (await new SuiteEditCommand().run(context, { name: "missing.json" })).problem ?? "",
+    (await new SuiteEditCommand().runCommand(context, { name: "missing.json" })).problemText ?? "",
     /holds no test file called "missing.json"/,
   );
   assert.match(
-    (await new SuiteEditCommand().run(context, { name: "shapes.json" })).problem ?? "",
+    (await new SuiteEditCommand().runCommand(context, { name: "shapes.json" })).problemText ?? "",
     /Neither \$VISUAL nor \$EDITOR is set/,
   );
 });
@@ -272,9 +272,9 @@ test("cw suite edit hands the test file to $VISUAL and writes nothing itself (FR
   const repoInMemory = authoring(files);
   const { fileAt } = repoInMemory;
 
-  const outcome = await new SuiteEditCommand().run(contextOver(repoInMemory), { name: "shapes.json" });
+  const outcome = await new SuiteEditCommand().runCommand(contextOver(repoInMemory), { name: "shapes.json" });
 
-  assert.equal(outcome.code, EXIT_OK);
+  assert.equal(outcome.exitCode, EXIT_OK);
   assert.equal(await readFile(handedOver, "utf8"), "/repo/.cw/charter/test/shapes.json");
   assert.equal(await fileAt(".cw/charter/test/shapes.json"), files[at(".cw/charter/test/shapes.json")]);
 });

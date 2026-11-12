@@ -1,268 +1,143 @@
-// The library's declarations from charter, split from dist/index.d.ts for reading.
+// Recorded from dist/index.d.ts as "pnpm build" leaves it, the contract 1.0.0 is to be the first release under: the declarations of its charter module. Nothing has been published under it yet. Do not edit: "pnpm release" writes it again from the library it publishes.
+/** The name of an agent a charter is compiled for, as a file, a DTO or a
+ *  command line writes it: whichever names the projections the engine was
+ *  composed with answer to, never a list of its own (CORE-FR-221). */
+type AgentProviderName = string;
+
+/** One agent a charter is compiled for, by its name: what it reads of a
+ *  charter, and where, is its projection's (FR-018, CORE-FR-221). */
+declare class AgentProvider {
+    readonly name: AgentProviderName;
+    constructor(name: AgentProviderName);
+    toString(): AgentProviderName;
+    /** Written as its name, wherever a model holding it is written as JSON. */
+    toJSON(): AgentProviderName;
+}
 
 /** Every schema of this module's DTOs, under its name — the name it carries
  *  as `type` — in alphabetical order. */
 declare const CharterDTOs: {
-  PrimitiveKinds: z.ZodObject<
-    {
-      type: z.ZodLiteral<"PrimitiveKinds">;
-      data: z.ZodRecord<z.ZodString, z.ZodString>;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: Record<string, string>) => {
-      type: "PrimitiveKinds";
-      data: Record<string, string>;
-    };
-  };
-  CatalogueEntry: z.ZodObject<
-    {
-      type: z.ZodLiteral<"CatalogueEntry">;
-      data: z.ZodObject<
-        {
-          agentProviders: z.ZodUnion<readonly [z.ZodLiteral<"all">, z.ZodReadonly<z.ZodArray<z.ZodString>>]>;
-          id: z.ZodString;
-          kind: z.ZodString;
-          description: z.ZodString;
-          file: z.ZodString;
-          globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      agentProviders: readonly string[] | "all";
-      id: string;
-      kind: string;
-      description: string;
-      file: string;
-      globs?: readonly string[] | undefined;
-    }) => {
-      type: "CatalogueEntry";
-      data: {
-        agentProviders: readonly string[] | "all";
-        id: string;
-        kind: string;
-        description: string;
-        file: string;
-        globs?: readonly string[] | undefined;
-      };
-    };
-  };
-  Catalogue: z.ZodObject<
-    {
-      type: z.ZodLiteral<"Catalogue">;
-      data: z.ZodObject<
-        {
-          entries: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"CatalogueEntry">;
-                  data: z.ZodObject<
-                    {
-                      agentProviders: z.ZodUnion<
-                        readonly [z.ZodLiteral<"all">, z.ZodReadonly<z.ZodArray<z.ZodString>>]
-                      >;
-                      id: z.ZodString;
-                      kind: z.ZodString;
-                      description: z.ZodString;
-                      file: z.ZodString;
-                      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  agentProviders: readonly string[] | "all";
-                  id: string;
-                  kind: string;
-                  description: string;
-                  file: string;
-                  globs?: readonly string[] | undefined;
-                }) => {
-                  type: "CatalogueEntry";
-                  data: {
-                    agentProviders: readonly string[] | "all";
-                    id: string;
-                    kind: string;
-                    description: string;
-                    file: string;
-                    globs?: readonly string[] | undefined;
-                  };
-                };
-              }
-            >
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      entries: readonly {
-        type: "CatalogueEntry";
-        data: {
-          agentProviders: readonly string[] | "all";
-          id: string;
-          kind: string;
-          description: string;
-          file: string;
-          globs?: readonly string[] | undefined;
+    PrimitiveKinds: z.ZodObject<{
+        type: z.ZodLiteral<"PrimitiveKinds">;
+        data: z.ZodRecord<z.ZodString, z.ZodString>;
+    }, z.core.$strip> & {
+        of: (dataValue: Record<string, string>) => {
+            type: "PrimitiveKinds";
+            data: Record<string, string>;
         };
-      }[];
-    }) => {
-      type: "Catalogue";
-      data: {
-        entries: readonly {
-          type: "CatalogueEntry";
-          data: {
+    };
+    CatalogueEntry: z.ZodObject<{
+        type: z.ZodLiteral<"CatalogueEntry">;
+        data: z.ZodObject<{
+            agentProviders: z.ZodUnion<readonly [z.ZodLiteral<"all">, z.ZodReadonly<z.ZodArray<z.ZodString>>]>;
+            id: z.ZodString;
+            kind: z.ZodString;
+            description: z.ZodString;
+            file: z.ZodString;
+            globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
             agentProviders: readonly string[] | "all";
             id: string;
             kind: string;
             description: string;
             file: string;
             globs?: readonly string[] | undefined;
-          };
-        }[];
-      };
+        }) => {
+            type: "CatalogueEntry";
+            data: {
+                agentProviders: readonly string[] | "all";
+                id: string;
+                kind: string;
+                description: string;
+                file: string;
+                globs?: readonly string[] | undefined;
+            };
+        };
     };
-  };
-  Primitive: z.ZodObject<
-    {
-      type: z.ZodLiteral<"Primitive">;
-      data: z.ZodObject<
-        {
-          id: z.ZodString;
-          kind: z.ZodString;
-          description: z.ZodString;
-          file: z.ZodString;
-          layerName: z.ZodEnum<{
-            repo: "repo";
-            vendor: "vendor";
-            builtin: "builtin";
-          }>;
-          headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
-          body: z.ZodString;
-          hash: z.ZodString;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      id: string;
-      kind: string;
-      description: string;
-      file: string;
-      layerName: "repo" | "vendor" | "builtin";
-      headers: Record<string, string | readonly string[]>;
-      body: string;
-      hash: string;
-    }) => {
-      type: "Primitive";
-      data: {
-        id: string;
-        kind: string;
-        description: string;
-        file: string;
-        layerName: "repo" | "vendor" | "builtin";
-        headers: Record<string, string | readonly string[]>;
-        body: string;
-        hash: string;
-      };
-    };
-  };
-  Primitives: z.ZodObject<
-    {
-      type: z.ZodLiteral<"Primitives">;
-      data: z.ZodObject<
-        {
-          primitives: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"Primitive">;
-                  data: z.ZodObject<
-                    {
-                      id: z.ZodString;
-                      kind: z.ZodString;
-                      description: z.ZodString;
-                      file: z.ZodString;
-                      layerName: z.ZodEnum<{
-                        repo: "repo";
-                        vendor: "vendor";
-                        builtin: "builtin";
-                      }>;
-                      headers: z.ZodRecord<
-                        z.ZodString,
-                        z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>
-                      >;
-                      body: z.ZodString;
-                      hash: z.ZodString;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
+    Catalogue: z.ZodObject<{
+        type: z.ZodLiteral<"Catalogue">;
+        data: z.ZodObject<{
+            entries: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"CatalogueEntry">;
+                data: z.ZodObject<{
+                    agentProviders: z.ZodUnion<readonly [z.ZodLiteral<"all">, z.ZodReadonly<z.ZodArray<z.ZodString>>]>;
+                    id: z.ZodString;
+                    kind: z.ZodString;
+                    description: z.ZodString;
+                    file: z.ZodString;
+                    globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
                 of: (dataValue: {
-                  id: string;
-                  kind: string;
-                  description: string;
-                  file: string;
-                  layerName: "repo" | "vendor" | "builtin";
-                  headers: Record<string, string | readonly string[]>;
-                  body: string;
-                  hash: string;
-                }) => {
-                  type: "Primitive";
-                  data: {
+                    agentProviders: readonly string[] | "all";
                     id: string;
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
-                    headers: Record<string, string | readonly string[]>;
-                    body: string;
-                    hash: string;
-                  };
+                    globs?: readonly string[] | undefined;
+                }) => {
+                    type: "CatalogueEntry";
+                    data: {
+                        agentProviders: readonly string[] | "all";
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        globs?: readonly string[] | undefined;
+                    };
                 };
-              }
-            >
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      primitives: readonly {
-        type: "Primitive";
-        data: {
-          id: string;
-          kind: string;
-          description: string;
-          file: string;
-          layerName: "repo" | "vendor" | "builtin";
-          headers: Record<string, string | readonly string[]>;
-          body: string;
-          hash: string;
+            }>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            entries: readonly {
+                type: "CatalogueEntry";
+                data: {
+                    agentProviders: readonly string[] | "all";
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    globs?: readonly string[] | undefined;
+                };
+            }[];
+        }) => {
+            type: "Catalogue";
+            data: {
+                entries: readonly {
+                    type: "CatalogueEntry";
+                    data: {
+                        agentProviders: readonly string[] | "all";
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        globs?: readonly string[] | undefined;
+                    };
+                }[];
+            };
         };
-      }[];
-    }) => {
-      type: "Primitives";
-      data: {
-        primitives: readonly {
-          type: "Primitive";
-          data: {
+    };
+    Primitive: z.ZodObject<{
+        type: z.ZodLiteral<"Primitive">;
+        data: z.ZodObject<{
+            id: z.ZodString;
+            kind: z.ZodString;
+            description: z.ZodString;
+            file: z.ZodString;
+            layerName: z.ZodEnum<{
+                repo: "repo";
+                vendor: "vendor";
+                builtin: "builtin";
+            }>;
+            headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
+            body: z.ZodString;
+            hash: z.ZodString;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
             id: string;
             kind: string;
             description: string;
@@ -271,2409 +146,9 @@ declare const CharterDTOs: {
             headers: Record<string, string | readonly string[]>;
             body: string;
             hash: string;
-          };
-        }[];
-      };
-    };
-  };
-  PlanSummary: z.ZodObject<
-    {
-      type: z.ZodLiteral<"PlanSummary">;
-      data: z.ZodObject<
-        {
-          added: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-          edited: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-          deleted: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-          unchanged: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-          warnings: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      added: readonly string[];
-      edited: readonly string[];
-      deleted: readonly string[];
-      unchanged: readonly string[];
-      warnings?: readonly string[] | undefined;
-    }) => {
-      type: "PlanSummary";
-      data: {
-        added: readonly string[];
-        edited: readonly string[];
-        deleted: readonly string[];
-        unchanged: readonly string[];
-        warnings?: readonly string[] | undefined;
-      };
-    };
-  };
-  PrimitiveHeader: z.ZodObject<
-    {
-      type: z.ZodLiteral<"PrimitiveHeader">;
-      data: z.ZodObject<
-        {
-          field: z.ZodString;
-          shape: z.ZodEnum<{
-            line: "line";
-            list: "list";
-          }>;
-          required: z.ZodBoolean;
-          allowedValues: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      field: string;
-      shape: "line" | "list";
-      required: boolean;
-      allowedValues?: readonly string[] | undefined;
-    }) => {
-      type: "PrimitiveHeader";
-      data: {
-        field: string;
-        shape: "line" | "list";
-        required: boolean;
-        allowedValues?: readonly string[] | undefined;
-      };
-    };
-  };
-  PrimitiveRequirements: z.ZodObject<
-    {
-      type: z.ZodLiteral<"PrimitiveRequirements">;
-      data: z.ZodObject<
-        {
-          headers: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"PrimitiveHeader">;
-                  data: z.ZodObject<
-                    {
-                      field: z.ZodString;
-                      shape: z.ZodEnum<{
-                        line: "line";
-                        list: "list";
-                      }>;
-                      required: z.ZodBoolean;
-                      allowedValues: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  field: string;
-                  shape: "line" | "list";
-                  required: boolean;
-                  allowedValues?: readonly string[] | undefined;
-                }) => {
-                  type: "PrimitiveHeader";
-                  data: {
-                    field: string;
-                    shape: "line" | "list";
-                    required: boolean;
-                    allowedValues?: readonly string[] | undefined;
-                  };
-                };
-              }
-            >
-          >;
-          sample: z.ZodString;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      headers: readonly {
-        type: "PrimitiveHeader";
-        data: {
-          field: string;
-          shape: "line" | "list";
-          required: boolean;
-          allowedValues?: readonly string[] | undefined;
-        };
-      }[];
-      sample: string;
-    }) => {
-      type: "PrimitiveRequirements";
-      data: {
-        headers: readonly {
-          type: "PrimitiveHeader";
-          data: {
-            field: string;
-            shape: "line" | "list";
-            required: boolean;
-            allowedValues?: readonly string[] | undefined;
-          };
-        }[];
-        sample: string;
-      };
-    };
-  };
-  TestCasesByFile: z.ZodObject<
-    {
-      type: z.ZodLiteral<"TestCasesByFile">;
-      data: z.ZodRecord<z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: Record<string, readonly string[]>) => {
-      type: "TestCasesByFile";
-      data: Record<string, readonly string[]>;
-    };
-  };
-  TestCaseReport: z.ZodObject<
-    {
-      type: z.ZodLiteral<"TestCaseReport">;
-      data: z.ZodObject<
-        {
-          suiteName: z.ZodString;
-          situation: z.ZodString;
-          passed: z.ZodBoolean;
-          unmet: z.ZodOptional<
-            z.ZodObject<
-              {
-                type: z.ZodLiteral<"Fault">;
-                data: z.ZodObject<
-                  {
-                    name: z.ZodString;
-                    message: z.ZodString;
-                    fix: z.ZodString;
-                    severity: z.ZodEnum<{
-                      error: "error";
-                      warn: "warn";
-                    }>;
-                  },
-                  z.core.$strip
-                >;
-              },
-              z.core.$strip
-            > & {
-              of: (dataValue: { name: string; message: string; fix: string; severity: "error" | "warn" }) => {
-                type: "Fault";
-                data: {
-                  name: string;
-                  message: string;
-                  fix: string;
-                  severity: "error" | "warn";
-                };
-              };
-            }
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      suiteName: string;
-      situation: string;
-      passed: boolean;
-      unmet?:
-        | {
-            type: "Fault";
+        }) => {
+            type: "Primitive";
             data: {
-              name: string;
-              message: string;
-              fix: string;
-              severity: "error" | "warn";
-            };
-          }
-        | undefined;
-    }) => {
-      type: "TestCaseReport";
-      data: {
-        suiteName: string;
-        situation: string;
-        passed: boolean;
-        unmet?:
-          | {
-              type: "Fault";
-              data: {
-                name: string;
-                message: string;
-                fix: string;
-                severity: "error" | "warn";
-              };
-            }
-          | undefined;
-      };
-    };
-  };
-  TestRunReport: z.ZodObject<
-    {
-      type: z.ZodLiteral<"TestRunReport">;
-      data: z.ZodObject<
-        {
-          testCaseReports: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"TestCaseReport">;
-                  data: z.ZodObject<
-                    {
-                      suiteName: z.ZodString;
-                      situation: z.ZodString;
-                      passed: z.ZodBoolean;
-                      unmet: z.ZodOptional<
-                        z.ZodObject<
-                          {
-                            type: z.ZodLiteral<"Fault">;
-                            data: z.ZodObject<
-                              {
-                                name: z.ZodString;
-                                message: z.ZodString;
-                                fix: z.ZodString;
-                                severity: z.ZodEnum<{
-                                  error: "error";
-                                  warn: "warn";
-                                }>;
-                              },
-                              z.core.$strip
-                            >;
-                          },
-                          z.core.$strip
-                        > & {
-                          of: (dataValue: {
-                            name: string;
-                            message: string;
-                            fix: string;
-                            severity: "error" | "warn";
-                          }) => {
-                            type: "Fault";
-                            data: {
-                              name: string;
-                              message: string;
-                              fix: string;
-                              severity: "error" | "warn";
-                            };
-                          };
-                        }
-                      >;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  suiteName: string;
-                  situation: string;
-                  passed: boolean;
-                  unmet?:
-                    | {
-                        type: "Fault";
-                        data: {
-                          name: string;
-                          message: string;
-                          fix: string;
-                          severity: "error" | "warn";
-                        };
-                      }
-                    | undefined;
-                }) => {
-                  type: "TestCaseReport";
-                  data: {
-                    suiteName: string;
-                    situation: string;
-                    passed: boolean;
-                    unmet?:
-                      | {
-                          type: "Fault";
-                          data: {
-                            name: string;
-                            message: string;
-                            fix: string;
-                            severity: "error" | "warn";
-                          };
-                        }
-                      | undefined;
-                  };
-                };
-              }
-            >
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      testCaseReports: readonly {
-        type: "TestCaseReport";
-        data: {
-          suiteName: string;
-          situation: string;
-          passed: boolean;
-          unmet?:
-            | {
-                type: "Fault";
-                data: {
-                  name: string;
-                  message: string;
-                  fix: string;
-                  severity: "error" | "warn";
-                };
-              }
-            | undefined;
-        };
-      }[];
-    }) => {
-      type: "TestRunReport";
-      data: {
-        testCaseReports: readonly {
-          type: "TestCaseReport";
-          data: {
-            suiteName: string;
-            situation: string;
-            passed: boolean;
-            unmet?:
-              | {
-                  type: "Fault";
-                  data: {
-                    name: string;
-                    message: string;
-                    fix: string;
-                    severity: "error" | "warn";
-                  };
-                }
-              | undefined;
-          };
-        }[];
-      };
-    };
-  };
-  TestCase: z.ZodObject<
-    {
-      type: z.ZodLiteral<"TestCase">;
-      data: z.ZodObject<
-        {
-          situation: z.ZodString;
-          expectation: z.ZodString;
-          id: z.ZodOptional<z.ZodString>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: { situation: string; expectation: string; id?: string | undefined }) => {
-      type: "TestCase";
-      data: {
-        situation: string;
-        expectation: string;
-        id?: string | undefined;
-      };
-    };
-  };
-  TestSuite: z.ZodObject<
-    {
-      type: z.ZodLiteral<"TestSuite">;
-      data: z.ZodObject<
-        {
-          name: z.ZodString;
-          text: z.ZodOptional<z.ZodString>;
-          description: z.ZodOptional<z.ZodString>;
-          cases: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"TestCase">;
-                  data: z.ZodObject<
-                    {
-                      situation: z.ZodString;
-                      expectation: z.ZodString;
-                      id: z.ZodOptional<z.ZodString>;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: { situation: string; expectation: string; id?: string | undefined }) => {
-                  type: "TestCase";
-                  data: {
-                    situation: string;
-                    expectation: string;
-                    id?: string | undefined;
-                  };
-                };
-              }
-            >
-          >;
-          fault: z.ZodOptional<
-            z.ZodObject<
-              {
-                type: z.ZodLiteral<"Fault">;
-                data: z.ZodObject<
-                  {
-                    name: z.ZodString;
-                    message: z.ZodString;
-                    fix: z.ZodString;
-                    severity: z.ZodEnum<{
-                      error: "error";
-                      warn: "warn";
-                    }>;
-                  },
-                  z.core.$strip
-                >;
-              },
-              z.core.$strip
-            > & {
-              of: (dataValue: { name: string; message: string; fix: string; severity: "error" | "warn" }) => {
-                type: "Fault";
-                data: {
-                  name: string;
-                  message: string;
-                  fix: string;
-                  severity: "error" | "warn";
-                };
-              };
-            }
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      name: string;
-      cases: readonly {
-        type: "TestCase";
-        data: {
-          situation: string;
-          expectation: string;
-          id?: string | undefined;
-        };
-      }[];
-      text?: string | undefined;
-      description?: string | undefined;
-      fault?:
-        | {
-            type: "Fault";
-            data: {
-              name: string;
-              message: string;
-              fix: string;
-              severity: "error" | "warn";
-            };
-          }
-        | undefined;
-    }) => {
-      type: "TestSuite";
-      data: {
-        name: string;
-        cases: readonly {
-          type: "TestCase";
-          data: {
-            situation: string;
-            expectation: string;
-            id?: string | undefined;
-          };
-        }[];
-        text?: string | undefined;
-        description?: string | undefined;
-        fault?:
-          | {
-              type: "Fault";
-              data: {
-                name: string;
-                message: string;
-                fix: string;
-                severity: "error" | "warn";
-              };
-            }
-          | undefined;
-      };
-    };
-  };
-  TestSuites: z.ZodObject<
-    {
-      type: z.ZodLiteral<"TestSuites">;
-      data: z.ZodObject<
-        {
-          testSuites: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"TestSuite">;
-                  data: z.ZodObject<
-                    {
-                      name: z.ZodString;
-                      text: z.ZodOptional<z.ZodString>;
-                      description: z.ZodOptional<z.ZodString>;
-                      cases: z.ZodReadonly<
-                        z.ZodArray<
-                          z.ZodObject<
-                            {
-                              type: z.ZodLiteral<"TestCase">;
-                              data: z.ZodObject<
-                                {
-                                  situation: z.ZodString;
-                                  expectation: z.ZodString;
-                                  id: z.ZodOptional<z.ZodString>;
-                                },
-                                z.core.$strip
-                              >;
-                            },
-                            z.core.$strip
-                          > & {
-                            of: (dataValue: { situation: string; expectation: string; id?: string | undefined }) => {
-                              type: "TestCase";
-                              data: {
-                                situation: string;
-                                expectation: string;
-                                id?: string | undefined;
-                              };
-                            };
-                          }
-                        >
-                      >;
-                      fault: z.ZodOptional<
-                        z.ZodObject<
-                          {
-                            type: z.ZodLiteral<"Fault">;
-                            data: z.ZodObject<
-                              {
-                                name: z.ZodString;
-                                message: z.ZodString;
-                                fix: z.ZodString;
-                                severity: z.ZodEnum<{
-                                  error: "error";
-                                  warn: "warn";
-                                }>;
-                              },
-                              z.core.$strip
-                            >;
-                          },
-                          z.core.$strip
-                        > & {
-                          of: (dataValue: {
-                            name: string;
-                            message: string;
-                            fix: string;
-                            severity: "error" | "warn";
-                          }) => {
-                            type: "Fault";
-                            data: {
-                              name: string;
-                              message: string;
-                              fix: string;
-                              severity: "error" | "warn";
-                            };
-                          };
-                        }
-                      >;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  name: string;
-                  cases: readonly {
-                    type: "TestCase";
-                    data: {
-                      situation: string;
-                      expectation: string;
-                      id?: string | undefined;
-                    };
-                  }[];
-                  text?: string | undefined;
-                  description?: string | undefined;
-                  fault?:
-                    | {
-                        type: "Fault";
-                        data: {
-                          name: string;
-                          message: string;
-                          fix: string;
-                          severity: "error" | "warn";
-                        };
-                      }
-                    | undefined;
-                }) => {
-                  type: "TestSuite";
-                  data: {
-                    name: string;
-                    cases: readonly {
-                      type: "TestCase";
-                      data: {
-                        situation: string;
-                        expectation: string;
-                        id?: string | undefined;
-                      };
-                    }[];
-                    text?: string | undefined;
-                    description?: string | undefined;
-                    fault?:
-                      | {
-                          type: "Fault";
-                          data: {
-                            name: string;
-                            message: string;
-                            fix: string;
-                            severity: "error" | "warn";
-                          };
-                        }
-                      | undefined;
-                  };
-                };
-              }
-            >
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      testSuites: readonly {
-        type: "TestSuite";
-        data: {
-          name: string;
-          cases: readonly {
-            type: "TestCase";
-            data: {
-              situation: string;
-              expectation: string;
-              id?: string | undefined;
-            };
-          }[];
-          text?: string | undefined;
-          description?: string | undefined;
-          fault?:
-            | {
-                type: "Fault";
-                data: {
-                  name: string;
-                  message: string;
-                  fix: string;
-                  severity: "error" | "warn";
-                };
-              }
-            | undefined;
-        };
-      }[];
-    }) => {
-      type: "TestSuites";
-      data: {
-        testSuites: readonly {
-          type: "TestSuite";
-          data: {
-            name: string;
-            cases: readonly {
-              type: "TestCase";
-              data: {
-                situation: string;
-                expectation: string;
-                id?: string | undefined;
-              };
-            }[];
-            text?: string | undefined;
-            description?: string | undefined;
-            fault?:
-              | {
-                  type: "Fault";
-                  data: {
-                    name: string;
-                    message: string;
-                    fix: string;
-                    severity: "error" | "warn";
-                  };
-                }
-              | undefined;
-          };
-        }[];
-      };
-    };
-  };
-  TestSuiteName: z.ZodObject<
-    {
-      type: z.ZodLiteral<"TestSuiteName">;
-      data: z.ZodObject<
-        {
-          name: z.ZodString;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: { name: string }) => {
-      type: "TestSuiteName";
-      data: {
-        name: string;
-      };
-    };
-  };
-  EvalCase: z.ZodObject<
-    {
-      type: z.ZodLiteral<"EvalCase">;
-      data: z.ZodObject<
-        {
-          prompt: z.ZodString;
-          invoke: z.ZodOptional<z.ZodString>;
-          follow: z.ZodOptional<z.ZodString>;
-          read: z.ZodOptional<z.ZodString>;
-          maxTokens: z.ZodOptional<z.ZodNumber>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      prompt: string;
-      invoke?: string | undefined;
-      follow?: string | undefined;
-      read?: string | undefined;
-      maxTokens?: number | undefined;
-    }) => {
-      type: "EvalCase";
-      data: {
-        prompt: string;
-        invoke?: string | undefined;
-        follow?: string | undefined;
-        read?: string | undefined;
-        maxTokens?: number | undefined;
-      };
-    };
-  };
-  EvalSuite: z.ZodObject<
-    {
-      type: z.ZodLiteral<"EvalSuite">;
-      data: z.ZodObject<
-        {
-          name: z.ZodString;
-          text: z.ZodOptional<z.ZodString>;
-          description: z.ZodOptional<z.ZodString>;
-          cases: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"EvalCase">;
-                  data: z.ZodObject<
-                    {
-                      prompt: z.ZodString;
-                      invoke: z.ZodOptional<z.ZodString>;
-                      follow: z.ZodOptional<z.ZodString>;
-                      read: z.ZodOptional<z.ZodString>;
-                      maxTokens: z.ZodOptional<z.ZodNumber>;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  prompt: string;
-                  invoke?: string | undefined;
-                  follow?: string | undefined;
-                  read?: string | undefined;
-                  maxTokens?: number | undefined;
-                }) => {
-                  type: "EvalCase";
-                  data: {
-                    prompt: string;
-                    invoke?: string | undefined;
-                    follow?: string | undefined;
-                    read?: string | undefined;
-                    maxTokens?: number | undefined;
-                  };
-                };
-              }
-            >
-          >;
-          fault: z.ZodOptional<
-            z.ZodObject<
-              {
-                type: z.ZodLiteral<"Fault">;
-                data: z.ZodObject<
-                  {
-                    name: z.ZodString;
-                    message: z.ZodString;
-                    fix: z.ZodString;
-                    severity: z.ZodEnum<{
-                      error: "error";
-                      warn: "warn";
-                    }>;
-                  },
-                  z.core.$strip
-                >;
-              },
-              z.core.$strip
-            > & {
-              of: (dataValue: { name: string; message: string; fix: string; severity: "error" | "warn" }) => {
-                type: "Fault";
-                data: {
-                  name: string;
-                  message: string;
-                  fix: string;
-                  severity: "error" | "warn";
-                };
-              };
-            }
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      name: string;
-      cases: readonly {
-        type: "EvalCase";
-        data: {
-          prompt: string;
-          invoke?: string | undefined;
-          follow?: string | undefined;
-          read?: string | undefined;
-          maxTokens?: number | undefined;
-        };
-      }[];
-      text?: string | undefined;
-      description?: string | undefined;
-      fault?:
-        | {
-            type: "Fault";
-            data: {
-              name: string;
-              message: string;
-              fix: string;
-              severity: "error" | "warn";
-            };
-          }
-        | undefined;
-    }) => {
-      type: "EvalSuite";
-      data: {
-        name: string;
-        cases: readonly {
-          type: "EvalCase";
-          data: {
-            prompt: string;
-            invoke?: string | undefined;
-            follow?: string | undefined;
-            read?: string | undefined;
-            maxTokens?: number | undefined;
-          };
-        }[];
-        text?: string | undefined;
-        description?: string | undefined;
-        fault?:
-          | {
-              type: "Fault";
-              data: {
-                name: string;
-                message: string;
-                fix: string;
-                severity: "error" | "warn";
-              };
-            }
-          | undefined;
-      };
-    };
-  };
-  EvalSuites: z.ZodObject<
-    {
-      type: z.ZodLiteral<"EvalSuites">;
-      data: z.ZodObject<
-        {
-          evalSuites: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"EvalSuite">;
-                  data: z.ZodObject<
-                    {
-                      name: z.ZodString;
-                      text: z.ZodOptional<z.ZodString>;
-                      description: z.ZodOptional<z.ZodString>;
-                      cases: z.ZodReadonly<
-                        z.ZodArray<
-                          z.ZodObject<
-                            {
-                              type: z.ZodLiteral<"EvalCase">;
-                              data: z.ZodObject<
-                                {
-                                  prompt: z.ZodString;
-                                  invoke: z.ZodOptional<z.ZodString>;
-                                  follow: z.ZodOptional<z.ZodString>;
-                                  read: z.ZodOptional<z.ZodString>;
-                                  maxTokens: z.ZodOptional<z.ZodNumber>;
-                                },
-                                z.core.$strip
-                              >;
-                            },
-                            z.core.$strip
-                          > & {
-                            of: (dataValue: {
-                              prompt: string;
-                              invoke?: string | undefined;
-                              follow?: string | undefined;
-                              read?: string | undefined;
-                              maxTokens?: number | undefined;
-                            }) => {
-                              type: "EvalCase";
-                              data: {
-                                prompt: string;
-                                invoke?: string | undefined;
-                                follow?: string | undefined;
-                                read?: string | undefined;
-                                maxTokens?: number | undefined;
-                              };
-                            };
-                          }
-                        >
-                      >;
-                      fault: z.ZodOptional<
-                        z.ZodObject<
-                          {
-                            type: z.ZodLiteral<"Fault">;
-                            data: z.ZodObject<
-                              {
-                                name: z.ZodString;
-                                message: z.ZodString;
-                                fix: z.ZodString;
-                                severity: z.ZodEnum<{
-                                  error: "error";
-                                  warn: "warn";
-                                }>;
-                              },
-                              z.core.$strip
-                            >;
-                          },
-                          z.core.$strip
-                        > & {
-                          of: (dataValue: {
-                            name: string;
-                            message: string;
-                            fix: string;
-                            severity: "error" | "warn";
-                          }) => {
-                            type: "Fault";
-                            data: {
-                              name: string;
-                              message: string;
-                              fix: string;
-                              severity: "error" | "warn";
-                            };
-                          };
-                        }
-                      >;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  name: string;
-                  cases: readonly {
-                    type: "EvalCase";
-                    data: {
-                      prompt: string;
-                      invoke?: string | undefined;
-                      follow?: string | undefined;
-                      read?: string | undefined;
-                      maxTokens?: number | undefined;
-                    };
-                  }[];
-                  text?: string | undefined;
-                  description?: string | undefined;
-                  fault?:
-                    | {
-                        type: "Fault";
-                        data: {
-                          name: string;
-                          message: string;
-                          fix: string;
-                          severity: "error" | "warn";
-                        };
-                      }
-                    | undefined;
-                }) => {
-                  type: "EvalSuite";
-                  data: {
-                    name: string;
-                    cases: readonly {
-                      type: "EvalCase";
-                      data: {
-                        prompt: string;
-                        invoke?: string | undefined;
-                        follow?: string | undefined;
-                        read?: string | undefined;
-                        maxTokens?: number | undefined;
-                      };
-                    }[];
-                    text?: string | undefined;
-                    description?: string | undefined;
-                    fault?:
-                      | {
-                          type: "Fault";
-                          data: {
-                            name: string;
-                            message: string;
-                            fix: string;
-                            severity: "error" | "warn";
-                          };
-                        }
-                      | undefined;
-                  };
-                };
-              }
-            >
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      evalSuites: readonly {
-        type: "EvalSuite";
-        data: {
-          name: string;
-          cases: readonly {
-            type: "EvalCase";
-            data: {
-              prompt: string;
-              invoke?: string | undefined;
-              follow?: string | undefined;
-              read?: string | undefined;
-              maxTokens?: number | undefined;
-            };
-          }[];
-          text?: string | undefined;
-          description?: string | undefined;
-          fault?:
-            | {
-                type: "Fault";
-                data: {
-                  name: string;
-                  message: string;
-                  fix: string;
-                  severity: "error" | "warn";
-                };
-              }
-            | undefined;
-        };
-      }[];
-    }) => {
-      type: "EvalSuites";
-      data: {
-        evalSuites: readonly {
-          type: "EvalSuite";
-          data: {
-            name: string;
-            cases: readonly {
-              type: "EvalCase";
-              data: {
-                prompt: string;
-                invoke?: string | undefined;
-                follow?: string | undefined;
-                read?: string | undefined;
-                maxTokens?: number | undefined;
-              };
-            }[];
-            text?: string | undefined;
-            description?: string | undefined;
-            fault?:
-              | {
-                  type: "Fault";
-                  data: {
-                    name: string;
-                    message: string;
-                    fix: string;
-                    severity: "error" | "warn";
-                  };
-                }
-              | undefined;
-          };
-        }[];
-      };
-    };
-  };
-  EvalSuiteName: z.ZodObject<
-    {
-      type: z.ZodLiteral<"EvalSuiteName">;
-      data: z.ZodObject<
-        {
-          name: z.ZodString;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: { name: string }) => {
-      type: "EvalSuiteName";
-      data: {
-        name: string;
-      };
-    };
-  };
-  VendorFolder: z.ZodObject<
-    {
-      type: z.ZodLiteral<"VendorFolder">;
-      data: z.ZodObject<
-        {
-          folder: z.ZodString;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: { folder: string }) => {
-      type: "VendorFolder";
-      data: {
-        folder: string;
-      };
-    };
-  };
-  VendorFolders: z.ZodObject<
-    {
-      type: z.ZodLiteral<"VendorFolders">;
-      data: z.ZodObject<
-        {
-          folders: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: { folders: readonly string[] }) => {
-      type: "VendorFolders";
-      data: {
-        folders: readonly string[];
-      };
-    };
-  };
-  SignInStatus: z.ZodObject<
-    {
-      type: z.ZodLiteral<"SignInStatus">;
-      data: z.ZodObject<
-        {
-          address: z.ZodString;
-          ids: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-          auth: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodEnum<{
-                oauth: "oauth";
-                token: "token";
-              }>
-            >
-          >;
-          signedIn: z.ZodBoolean;
-          method: z.ZodOptional<
-            z.ZodEnum<{
-              oauth: "oauth";
-              token: "token";
-            }>
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      address: string;
-      ids: readonly string[];
-      auth: readonly ("oauth" | "token")[];
-      signedIn: boolean;
-      method?: "oauth" | "token" | undefined;
-    }) => {
-      type: "SignInStatus";
-      data: {
-        address: string;
-        ids: readonly string[];
-        auth: readonly ("oauth" | "token")[];
-        signedIn: boolean;
-        method?: "oauth" | "token" | undefined;
-      };
-    };
-  };
-  SignInStatuses: z.ZodObject<
-    {
-      type: z.ZodLiteral<"SignInStatuses">;
-      data: z.ZodObject<
-        {
-          signInStatuses: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"SignInStatus">;
-                  data: z.ZodObject<
-                    {
-                      address: z.ZodString;
-                      ids: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-                      auth: z.ZodReadonly<
-                        z.ZodArray<
-                          z.ZodEnum<{
-                            oauth: "oauth";
-                            token: "token";
-                          }>
-                        >
-                      >;
-                      signedIn: z.ZodBoolean;
-                      method: z.ZodOptional<
-                        z.ZodEnum<{
-                          oauth: "oauth";
-                          token: "token";
-                        }>
-                      >;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  address: string;
-                  ids: readonly string[];
-                  auth: readonly ("oauth" | "token")[];
-                  signedIn: boolean;
-                  method?: "oauth" | "token" | undefined;
-                }) => {
-                  type: "SignInStatus";
-                  data: {
-                    address: string;
-                    ids: readonly string[];
-                    auth: readonly ("oauth" | "token")[];
-                    signedIn: boolean;
-                    method?: "oauth" | "token" | undefined;
-                  };
-                };
-              }
-            >
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      signInStatuses: readonly {
-        type: "SignInStatus";
-        data: {
-          address: string;
-          ids: readonly string[];
-          auth: readonly ("oauth" | "token")[];
-          signedIn: boolean;
-          method?: "oauth" | "token" | undefined;
-        };
-      }[];
-    }) => {
-      type: "SignInStatuses";
-      data: {
-        signInStatuses: readonly {
-          type: "SignInStatus";
-          data: {
-            address: string;
-            ids: readonly string[];
-            auth: readonly ("oauth" | "token")[];
-            signedIn: boolean;
-            method?: "oauth" | "token" | undefined;
-          };
-        }[];
-      };
-    };
-  };
-  ServedTool: z.ZodObject<
-    {
-      type: z.ZodLiteral<"ServedTool">;
-      data: z.ZodObject<
-        {
-          name: z.ZodString;
-          description: z.ZodString;
-          inputSchema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: { name: string; description: string; inputSchema: Record<string, unknown> }) => {
-      type: "ServedTool";
-      data: {
-        name: string;
-        description: string;
-        inputSchema: Record<string, unknown>;
-      };
-    };
-  };
-  ServedTools: z.ZodObject<
-    {
-      type: z.ZodLiteral<"ServedTools">;
-      data: z.ZodObject<
-        {
-          tools: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"ServedTool">;
-                  data: z.ZodObject<
-                    {
-                      name: z.ZodString;
-                      description: z.ZodString;
-                      inputSchema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: { name: string; description: string; inputSchema: Record<string, unknown> }) => {
-                  type: "ServedTool";
-                  data: {
-                    name: string;
-                    description: string;
-                    inputSchema: Record<string, unknown>;
-                  };
-                };
-              }
-            >
-          >;
-          problems: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      tools: readonly {
-        type: "ServedTool";
-        data: {
-          name: string;
-          description: string;
-          inputSchema: Record<string, unknown>;
-        };
-      }[];
-      problems: readonly string[];
-    }) => {
-      type: "ServedTools";
-      data: {
-        tools: readonly {
-          type: "ServedTool";
-          data: {
-            name: string;
-            description: string;
-            inputSchema: Record<string, unknown>;
-          };
-        }[];
-        problems: readonly string[];
-      };
-    };
-  };
-  VendorPrimitive: z.ZodObject<
-    {
-      type: z.ZodLiteral<"VendorPrimitive">;
-      data: z.ZodObject<
-        {
-          kind: z.ZodString;
-          id: z.ZodString;
-          description: z.ZodString;
-          leftOutHeaders: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: { kind: string; id: string; description: string; leftOutHeaders: readonly string[] }) => {
-      type: "VendorPrimitive";
-      data: {
-        kind: string;
-        id: string;
-        description: string;
-        leftOutHeaders: readonly string[];
-      };
-    };
-  };
-  MainContextLoad: z.ZodObject<
-    {
-      type: z.ZodLiteral<"MainContextLoad">;
-      data: z.ZodObject<
-        {
-          id: z.ZodString;
-          kind: z.ZodString;
-          tokens: z.ZodNumber;
-          globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: { id: string; kind: string; tokens: number; globs?: readonly string[] | undefined }) => {
-      type: "MainContextLoad";
-      data: {
-        id: string;
-        kind: string;
-        tokens: number;
-        globs?: readonly string[] | undefined;
-      };
-    };
-  };
-  MainContext: z.ZodObject<
-    {
-      type: z.ZodLiteral<"MainContext">;
-      data: z.ZodObject<
-        {
-          agent: z.ZodString;
-          isExact: z.ZodBoolean;
-          sessionLoads: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"MainContextLoad">;
-                  data: z.ZodObject<
-                    {
-                      id: z.ZodString;
-                      kind: z.ZodString;
-                      tokens: z.ZodNumber;
-                      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  id: string;
-                  kind: string;
-                  tokens: number;
-                  globs?: readonly string[] | undefined;
-                }) => {
-                  type: "MainContextLoad";
-                  data: {
-                    id: string;
-                    kind: string;
-                    tokens: number;
-                    globs?: readonly string[] | undefined;
-                  };
-                };
-              }
-            >
-          >;
-          fileLoads: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"MainContextLoad">;
-                  data: z.ZodObject<
-                    {
-                      id: z.ZodString;
-                      kind: z.ZodString;
-                      tokens: z.ZodNumber;
-                      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  id: string;
-                  kind: string;
-                  tokens: number;
-                  globs?: readonly string[] | undefined;
-                }) => {
-                  type: "MainContextLoad";
-                  data: {
-                    id: string;
-                    kind: string;
-                    tokens: number;
-                    globs?: readonly string[] | undefined;
-                  };
-                };
-              }
-            >
-          >;
-          totalTokens: z.ZodNumber;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      agent: string;
-      isExact: boolean;
-      sessionLoads: readonly {
-        type: "MainContextLoad";
-        data: {
-          id: string;
-          kind: string;
-          tokens: number;
-          globs?: readonly string[] | undefined;
-        };
-      }[];
-      fileLoads: readonly {
-        type: "MainContextLoad";
-        data: {
-          id: string;
-          kind: string;
-          tokens: number;
-          globs?: readonly string[] | undefined;
-        };
-      }[];
-      totalTokens: number;
-    }) => {
-      type: "MainContext";
-      data: {
-        agent: string;
-        isExact: boolean;
-        sessionLoads: readonly {
-          type: "MainContextLoad";
-          data: {
-            id: string;
-            kind: string;
-            tokens: number;
-            globs?: readonly string[] | undefined;
-          };
-        }[];
-        fileLoads: readonly {
-          type: "MainContextLoad";
-          data: {
-            id: string;
-            kind: string;
-            tokens: number;
-            globs?: readonly string[] | undefined;
-          };
-        }[];
-        totalTokens: number;
-      };
-    };
-  };
-  MainContexts: z.ZodObject<
-    {
-      type: z.ZodLiteral<"MainContexts">;
-      data: z.ZodObject<
-        {
-          contexts: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"MainContext">;
-                  data: z.ZodObject<
-                    {
-                      agent: z.ZodString;
-                      isExact: z.ZodBoolean;
-                      sessionLoads: z.ZodReadonly<
-                        z.ZodArray<
-                          z.ZodObject<
-                            {
-                              type: z.ZodLiteral<"MainContextLoad">;
-                              data: z.ZodObject<
-                                {
-                                  id: z.ZodString;
-                                  kind: z.ZodString;
-                                  tokens: z.ZodNumber;
-                                  globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-                                },
-                                z.core.$strip
-                              >;
-                            },
-                            z.core.$strip
-                          > & {
-                            of: (dataValue: {
-                              id: string;
-                              kind: string;
-                              tokens: number;
-                              globs?: readonly string[] | undefined;
-                            }) => {
-                              type: "MainContextLoad";
-                              data: {
-                                id: string;
-                                kind: string;
-                                tokens: number;
-                                globs?: readonly string[] | undefined;
-                              };
-                            };
-                          }
-                        >
-                      >;
-                      fileLoads: z.ZodReadonly<
-                        z.ZodArray<
-                          z.ZodObject<
-                            {
-                              type: z.ZodLiteral<"MainContextLoad">;
-                              data: z.ZodObject<
-                                {
-                                  id: z.ZodString;
-                                  kind: z.ZodString;
-                                  tokens: z.ZodNumber;
-                                  globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-                                },
-                                z.core.$strip
-                              >;
-                            },
-                            z.core.$strip
-                          > & {
-                            of: (dataValue: {
-                              id: string;
-                              kind: string;
-                              tokens: number;
-                              globs?: readonly string[] | undefined;
-                            }) => {
-                              type: "MainContextLoad";
-                              data: {
-                                id: string;
-                                kind: string;
-                                tokens: number;
-                                globs?: readonly string[] | undefined;
-                              };
-                            };
-                          }
-                        >
-                      >;
-                      totalTokens: z.ZodNumber;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  agent: string;
-                  isExact: boolean;
-                  sessionLoads: readonly {
-                    type: "MainContextLoad";
-                    data: {
-                      id: string;
-                      kind: string;
-                      tokens: number;
-                      globs?: readonly string[] | undefined;
-                    };
-                  }[];
-                  fileLoads: readonly {
-                    type: "MainContextLoad";
-                    data: {
-                      id: string;
-                      kind: string;
-                      tokens: number;
-                      globs?: readonly string[] | undefined;
-                    };
-                  }[];
-                  totalTokens: number;
-                }) => {
-                  type: "MainContext";
-                  data: {
-                    agent: string;
-                    isExact: boolean;
-                    sessionLoads: readonly {
-                      type: "MainContextLoad";
-                      data: {
-                        id: string;
-                        kind: string;
-                        tokens: number;
-                        globs?: readonly string[] | undefined;
-                      };
-                    }[];
-                    fileLoads: readonly {
-                      type: "MainContextLoad";
-                      data: {
-                        id: string;
-                        kind: string;
-                        tokens: number;
-                        globs?: readonly string[] | undefined;
-                      };
-                    }[];
-                    totalTokens: number;
-                  };
-                };
-              }
-            >
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      contexts: readonly {
-        type: "MainContext";
-        data: {
-          agent: string;
-          isExact: boolean;
-          sessionLoads: readonly {
-            type: "MainContextLoad";
-            data: {
-              id: string;
-              kind: string;
-              tokens: number;
-              globs?: readonly string[] | undefined;
-            };
-          }[];
-          fileLoads: readonly {
-            type: "MainContextLoad";
-            data: {
-              id: string;
-              kind: string;
-              tokens: number;
-              globs?: readonly string[] | undefined;
-            };
-          }[];
-          totalTokens: number;
-        };
-      }[];
-    }) => {
-      type: "MainContexts";
-      data: {
-        contexts: readonly {
-          type: "MainContext";
-          data: {
-            agent: string;
-            isExact: boolean;
-            sessionLoads: readonly {
-              type: "MainContextLoad";
-              data: {
-                id: string;
-                kind: string;
-                tokens: number;
-                globs?: readonly string[] | undefined;
-              };
-            }[];
-            fileLoads: readonly {
-              type: "MainContextLoad";
-              data: {
-                id: string;
-                kind: string;
-                tokens: number;
-                globs?: readonly string[] | undefined;
-              };
-            }[];
-            totalTokens: number;
-          };
-        }[];
-      };
-    };
-  };
-  AccessToken: z.ZodObject<
-    {
-      type: z.ZodLiteral<"AccessToken">;
-      data: z.ZodObject<
-        {
-          accessToken: z.ZodString;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: { accessToken: string }) => {
-      type: "AccessToken";
-      data: {
-        accessToken: string;
-      };
-    };
-  };
-  DeclaredTool: z.ZodObject<
-    {
-      type: z.ZodLiteral<"DeclaredTool">;
-      data: z.ZodObject<
-        {
-          servedName: z.ZodString;
-          tool: z.ZodString;
-          mcpId: z.ZodString;
-          origin: z.ZodObject<
-            {
-              address: z.ZodString;
-              endpoint: z.ZodOptional<z.ZodString>;
-              command: z.ZodOptional<
-                z.ZodObject<
-                  {
-                    command: z.ZodString;
-                    args: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-                    tokenEnv: z.ZodOptional<z.ZodString>;
-                  },
-                  z.core.$strip
-                >
-              >;
-              path: z.ZodOptional<z.ZodString>;
-              auth: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-            },
-            z.core.$strip
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      servedName: string;
-      tool: string;
-      mcpId: string;
-      origin: {
-        address: string;
-        auth: readonly string[];
-        endpoint?: string | undefined;
-        command?:
-          | {
-              command: string;
-              args: readonly string[];
-              tokenEnv?: string | undefined;
-            }
-          | undefined;
-        path?: string | undefined;
-      };
-    }) => {
-      type: "DeclaredTool";
-      data: {
-        servedName: string;
-        tool: string;
-        mcpId: string;
-        origin: {
-          address: string;
-          auth: readonly string[];
-          endpoint?: string | undefined;
-          command?:
-            | {
-                command: string;
-                args: readonly string[];
-                tokenEnv?: string | undefined;
-              }
-            | undefined;
-          path?: string | undefined;
-        };
-      };
-    };
-  };
-  DeclaredTools: z.ZodObject<
-    {
-      type: z.ZodLiteral<"DeclaredTools">;
-      data: z.ZodObject<
-        {
-          tools: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"DeclaredTool">;
-                  data: z.ZodObject<
-                    {
-                      servedName: z.ZodString;
-                      tool: z.ZodString;
-                      mcpId: z.ZodString;
-                      origin: z.ZodObject<
-                        {
-                          address: z.ZodString;
-                          endpoint: z.ZodOptional<z.ZodString>;
-                          command: z.ZodOptional<
-                            z.ZodObject<
-                              {
-                                command: z.ZodString;
-                                args: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-                                tokenEnv: z.ZodOptional<z.ZodString>;
-                              },
-                              z.core.$strip
-                            >
-                          >;
-                          path: z.ZodOptional<z.ZodString>;
-                          auth: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-                        },
-                        z.core.$strip
-                      >;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  servedName: string;
-                  tool: string;
-                  mcpId: string;
-                  origin: {
-                    address: string;
-                    auth: readonly string[];
-                    endpoint?: string | undefined;
-                    command?:
-                      | {
-                          command: string;
-                          args: readonly string[];
-                          tokenEnv?: string | undefined;
-                        }
-                      | undefined;
-                    path?: string | undefined;
-                  };
-                }) => {
-                  type: "DeclaredTool";
-                  data: {
-                    servedName: string;
-                    tool: string;
-                    mcpId: string;
-                    origin: {
-                      address: string;
-                      auth: readonly string[];
-                      endpoint?: string | undefined;
-                      command?:
-                        | {
-                            command: string;
-                            args: readonly string[];
-                            tokenEnv?: string | undefined;
-                          }
-                        | undefined;
-                      path?: string | undefined;
-                    };
-                  };
-                };
-              }
-            >
-          >;
-          problems: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      tools: readonly {
-        type: "DeclaredTool";
-        data: {
-          servedName: string;
-          tool: string;
-          mcpId: string;
-          origin: {
-            address: string;
-            auth: readonly string[];
-            endpoint?: string | undefined;
-            command?:
-              | {
-                  command: string;
-                  args: readonly string[];
-                  tokenEnv?: string | undefined;
-                }
-              | undefined;
-            path?: string | undefined;
-          };
-        };
-      }[];
-      problems: readonly string[];
-    }) => {
-      type: "DeclaredTools";
-      data: {
-        tools: readonly {
-          type: "DeclaredTool";
-          data: {
-            servedName: string;
-            tool: string;
-            mcpId: string;
-            origin: {
-              address: string;
-              auth: readonly string[];
-              endpoint?: string | undefined;
-              command?:
-                | {
-                    command: string;
-                    args: readonly string[];
-                    tokenEnv?: string | undefined;
-                  }
-                | undefined;
-              path?: string | undefined;
-            };
-          };
-        }[];
-        problems: readonly string[];
-      };
-    };
-  };
-  SensorCommands: z.ZodObject<
-    {
-      type: z.ZodLiteral<"SensorCommands">;
-      data: z.ZodObject<
-        {
-          commands: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: { commands: readonly string[] }) => {
-      type: "SensorCommands";
-      data: {
-        commands: readonly string[];
-      };
-    };
-  };
-  MainContextTexts: z.ZodObject<
-    {
-      type: z.ZodLiteral<"MainContextTexts">;
-      data: z.ZodObject<
-        {
-          agents: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  agent: z.ZodString;
-                  texts: z.ZodReadonly<
-                    z.ZodArray<
-                      z.ZodObject<
-                        {
-                          id: z.ZodString;
-                          kind: z.ZodString;
-                          text: z.ZodString;
-                          globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-                        },
-                        z.core.$strip
-                      >
-                    >
-                  >;
-                },
-                z.core.$strip
-              >
-            >
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      agents: readonly {
-        agent: string;
-        texts: readonly {
-          id: string;
-          kind: string;
-          text: string;
-          globs?: readonly string[] | undefined;
-        }[];
-      }[];
-    }) => {
-      type: "MainContextTexts";
-      data: {
-        agents: readonly {
-          agent: string;
-          texts: readonly {
-            id: string;
-            kind: string;
-            text: string;
-            globs?: readonly string[] | undefined;
-          }[];
-        }[];
-      };
-    };
-  };
-  EvalCases: z.ZodObject<
-    {
-      type: z.ZodLiteral<"EvalCases">;
-      data: z.ZodObject<
-        {
-          cases: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  suiteName: z.ZodString;
-                  prompt: z.ZodString;
-                  expect: z.ZodObject<
-                    {
-                      invoke: z.ZodOptional<z.ZodString>;
-                      follow: z.ZodOptional<z.ZodString>;
-                      read: z.ZodOptional<z.ZodString>;
-                      maxTokens: z.ZodOptional<z.ZodNumber>;
-                    },
-                    z.core.$strip
-                  >;
-                  guideBody: z.ZodOptional<z.ZodString>;
-                },
-                z.core.$strip
-              >
-            >
-          >;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      cases: readonly {
-        suiteName: string;
-        prompt: string;
-        expect: {
-          invoke?: string | undefined;
-          follow?: string | undefined;
-          read?: string | undefined;
-          maxTokens?: number | undefined;
-        };
-        guideBody?: string | undefined;
-      }[];
-    }) => {
-      type: "EvalCases";
-      data: {
-        cases: readonly {
-          suiteName: string;
-          prompt: string;
-          expect: {
-            invoke?: string | undefined;
-            follow?: string | undefined;
-            read?: string | undefined;
-            maxTokens?: number | undefined;
-          };
-          guideBody?: string | undefined;
-        }[];
-      };
-    };
-  };
-  CharterLayout: z.ZodObject<
-    {
-      type: z.ZodLiteral<"CharterLayout">;
-      data: z.ZodObject<
-        {
-          charterUri: z.ZodString;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: { charterUri: string }) => {
-      type: "CharterLayout";
-      data: {
-        charterUri: string;
-      };
-    };
-  };
-  DoctorOutcome: z.ZodObject<
-    {
-      type: z.ZodLiteral<"DoctorOutcome">;
-      data: z.ZodObject<
-        {
-          agents: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-          errorCount: z.ZodNumber;
-          warnCount: z.ZodNumber;
-          pendingCount: z.ZodNullable<z.ZodNumber>;
-          faultsByFile: z.ZodObject<
-            {
-              type: z.ZodLiteral<"FaultsByFile">;
-              data: z.ZodObject<
-                {
-                  files: z.ZodRecord<
-                    z.ZodString,
-                    z.ZodReadonly<
-                      z.ZodArray<
-                        z.ZodObject<
-                          {
-                            type: z.ZodLiteral<"Fault">;
-                            data: z.ZodObject<
-                              {
-                                name: z.ZodString;
-                                message: z.ZodString;
-                                fix: z.ZodString;
-                                severity: z.ZodEnum<{
-                                  error: "error";
-                                  warn: "warn";
-                                }>;
-                              },
-                              z.core.$strip
-                            >;
-                          },
-                          z.core.$strip
-                        > & {
-                          of: (dataValue: {
-                            name: string;
-                            message: string;
-                            fix: string;
-                            severity: "error" | "warn";
-                          }) => {
-                            type: "Fault";
-                            data: {
-                              name: string;
-                              message: string;
-                              fix: string;
-                              severity: "error" | "warn";
-                            };
-                          };
-                        }
-                      >
-                    >
-                  >;
-                },
-                z.core.$strip
-              >;
-            },
-            z.core.$strip
-          > & {
-            of: (dataValue: {
-              files: Record<
-                string,
-                readonly {
-                  type: "Fault";
-                  data: {
-                    name: string;
-                    message: string;
-                    fix: string;
-                    severity: "error" | "warn";
-                  };
-                }[]
-              >;
-            }) => {
-              type: "FaultsByFile";
-              data: {
-                files: Record<
-                  string,
-                  readonly {
-                    type: "Fault";
-                    data: {
-                      name: string;
-                      message: string;
-                      fix: string;
-                      severity: "error" | "warn";
-                    };
-                  }[]
-                >;
-              };
-            };
-          };
-          problemCount: z.ZodNumber;
-          mainContexts: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  agent: z.ZodString;
-                  totalTokens: z.ZodNumber;
-                },
-                z.core.$strip
-              >
-            >
-          >;
-          mainContextCeiling: z.ZodNumber;
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      agents: readonly string[];
-      errorCount: number;
-      warnCount: number;
-      pendingCount: number | null;
-      faultsByFile: {
-        type: "FaultsByFile";
-        data: {
-          files: Record<
-            string,
-            readonly {
-              type: "Fault";
-              data: {
-                name: string;
-                message: string;
-                fix: string;
-                severity: "error" | "warn";
-              };
-            }[]
-          >;
-        };
-      };
-      problemCount: number;
-      mainContexts: readonly {
-        agent: string;
-        totalTokens: number;
-      }[];
-      mainContextCeiling: number;
-    }) => {
-      type: "DoctorOutcome";
-      data: {
-        agents: readonly string[];
-        errorCount: number;
-        warnCount: number;
-        pendingCount: number | null;
-        faultsByFile: {
-          type: "FaultsByFile";
-          data: {
-            files: Record<
-              string,
-              readonly {
-                type: "Fault";
-                data: {
-                  name: string;
-                  message: string;
-                  fix: string;
-                  severity: "error" | "warn";
-                };
-              }[]
-            >;
-          };
-        };
-        problemCount: number;
-        mainContexts: readonly {
-          agent: string;
-          totalTokens: number;
-        }[];
-        mainContextCeiling: number;
-      };
-    };
-  };
-  ExplanationOutcome: z.ZodObject<
-    {
-      type: z.ZodLiteral<"ExplanationOutcome">;
-      data: z.ZodObject<
-        {
-          primitive: z.ZodObject<
-            {
-              type: z.ZodLiteral<"Primitive">;
-              data: z.ZodObject<
-                {
-                  id: z.ZodString;
-                  kind: z.ZodString;
-                  description: z.ZodString;
-                  file: z.ZodString;
-                  layerName: z.ZodEnum<{
-                    repo: "repo";
-                    vendor: "vendor";
-                    builtin: "builtin";
-                  }>;
-                  headers: z.ZodRecord<
-                    z.ZodString,
-                    z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>
-                  >;
-                  body: z.ZodString;
-                  hash: z.ZodString;
-                },
-                z.core.$strip
-              >;
-            },
-            z.core.$strip
-          > & {
-            of: (dataValue: {
-              id: string;
-              kind: string;
-              description: string;
-              file: string;
-              layerName: "repo" | "vendor" | "builtin";
-              headers: Record<string, string | readonly string[]>;
-              body: string;
-              hash: string;
-            }) => {
-              type: "Primitive";
-              data: {
                 id: string;
                 kind: string;
                 description: string;
@@ -2682,154 +157,58 @@ declare const CharterDTOs: {
                 headers: Record<string, string | readonly string[]>;
                 body: string;
                 hash: string;
-              };
             };
-          };
-          activatesWhen: z.ZodString;
-          useMixins: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"Primitive">;
-                  data: z.ZodObject<
-                    {
-                      id: z.ZodString;
-                      kind: z.ZodString;
-                      description: z.ZodString;
-                      file: z.ZodString;
-                      layerName: z.ZodEnum<{
-                        repo: "repo";
-                        vendor: "vendor";
-                        builtin: "builtin";
-                      }>;
-                      headers: z.ZodRecord<
-                        z.ZodString,
-                        z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>
-                      >;
-                      body: z.ZodString;
-                      hash: z.ZodString;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  id: string;
-                  kind: string;
-                  description: string;
-                  file: string;
-                  layerName: "repo" | "vendor" | "builtin";
-                  headers: Record<string, string | readonly string[]>;
-                  body: string;
-                  hash: string;
-                }) => {
-                  type: "Primitive";
-                  data: {
-                    id: string;
-                    kind: string;
-                    description: string;
-                    file: string;
-                    layerName: "repo" | "vendor" | "builtin";
-                    headers: Record<string, string | readonly string[]>;
-                    body: string;
-                    hash: string;
-                  };
-                };
-              }
-            >
-          >;
-          rationale: z.ZodOptional<
-            z.ZodObject<
-              {
+        };
+    };
+    Primitives: z.ZodObject<{
+        type: z.ZodLiteral<"Primitives">;
+        data: z.ZodObject<{
+            primitives: z.ZodReadonly<z.ZodArray<z.ZodObject<{
                 type: z.ZodLiteral<"Primitive">;
-                data: z.ZodObject<
-                  {
+                data: z.ZodObject<{
                     id: z.ZodString;
                     kind: z.ZodString;
                     description: z.ZodString;
                     file: z.ZodString;
                     layerName: z.ZodEnum<{
-                      repo: "repo";
-                      vendor: "vendor";
-                      builtin: "builtin";
+                        repo: "repo";
+                        vendor: "vendor";
+                        builtin: "builtin";
                     }>;
-                    headers: z.ZodRecord<
-                      z.ZodString,
-                      z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>
-                    >;
+                    headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
                     body: z.ZodString;
                     hash: z.ZodString;
-                  },
-                  z.core.$strip
-                >;
-              },
-              z.core.$strip
-            > & {
-              of: (dataValue: {
-                id: string;
-                kind: string;
-                description: string;
-                file: string;
-                layerName: "repo" | "vendor" | "builtin";
-                headers: Record<string, string | readonly string[]>;
-                body: string;
-                hash: string;
-              }) => {
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                }) => {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                };
+            }>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            primitives: readonly {
                 type: "Primitive";
                 data: {
-                  id: string;
-                  kind: string;
-                  description: string;
-                  file: string;
-                  layerName: "repo" | "vendor" | "builtin";
-                  headers: Record<string, string | readonly string[]>;
-                  body: string;
-                  hash: string;
-                };
-              };
-            }
-          >;
-          hosts: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"Primitive">;
-                  data: z.ZodObject<
-                    {
-                      id: z.ZodString;
-                      kind: z.ZodString;
-                      description: z.ZodString;
-                      file: z.ZodString;
-                      layerName: z.ZodEnum<{
-                        repo: "repo";
-                        vendor: "vendor";
-                        builtin: "builtin";
-                      }>;
-                      headers: z.ZodRecord<
-                        z.ZodString,
-                        z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>
-                      >;
-                      body: z.ZodString;
-                      hash: z.ZodString;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  id: string;
-                  kind: string;
-                  description: string;
-                  file: string;
-                  layerName: "repo" | "vendor" | "builtin";
-                  headers: Record<string, string | readonly string[]>;
-                  body: string;
-                  hash: string;
-                }) => {
-                  type: "Primitive";
-                  data: {
                     id: string;
                     kind: string;
                     description: string;
@@ -2838,434 +217,2480 @@ declare const CharterDTOs: {
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
-                  };
                 };
-              }
-            >
-          >;
-          citers: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"Primitive">;
-                  data: z.ZodObject<
-                    {
-                      id: z.ZodString;
-                      kind: z.ZodString;
-                      description: z.ZodString;
-                      file: z.ZodString;
-                      layerName: z.ZodEnum<{
-                        repo: "repo";
-                        vendor: "vendor";
-                        builtin: "builtin";
-                      }>;
-                      headers: z.ZodRecord<
-                        z.ZodString,
-                        z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>
-                      >;
-                      body: z.ZodString;
-                      hash: z.ZodString;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  id: string;
-                  kind: string;
-                  description: string;
-                  file: string;
-                  layerName: "repo" | "vendor" | "builtin";
-                  headers: Record<string, string | readonly string[]>;
-                  body: string;
-                  hash: string;
-                }) => {
-                  type: "Primitive";
-                  data: {
-                    id: string;
-                    kind: string;
-                    description: string;
-                    file: string;
-                    layerName: "repo" | "vendor" | "builtin";
-                    headers: Record<string, string | readonly string[]>;
-                    body: string;
-                    hash: string;
-                  };
-                };
-              }
-            >
-          >;
-          mentioners: z.ZodReadonly<
-            z.ZodArray<
-              z.ZodObject<
-                {
-                  type: z.ZodLiteral<"Primitive">;
-                  data: z.ZodObject<
-                    {
-                      id: z.ZodString;
-                      kind: z.ZodString;
-                      description: z.ZodString;
-                      file: z.ZodString;
-                      layerName: z.ZodEnum<{
-                        repo: "repo";
-                        vendor: "vendor";
-                        builtin: "builtin";
-                      }>;
-                      headers: z.ZodRecord<
-                        z.ZodString,
-                        z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>
-                      >;
-                      body: z.ZodString;
-                      hash: z.ZodString;
-                    },
-                    z.core.$strip
-                  >;
-                },
-                z.core.$strip
-              > & {
-                of: (dataValue: {
-                  id: string;
-                  kind: string;
-                  description: string;
-                  file: string;
-                  layerName: "repo" | "vendor" | "builtin";
-                  headers: Record<string, string | readonly string[]>;
-                  body: string;
-                  hash: string;
-                }) => {
-                  type: "Primitive";
-                  data: {
-                    id: string;
-                    kind: string;
-                    description: string;
-                    file: string;
-                    layerName: "repo" | "vendor" | "builtin";
-                    headers: Record<string, string | readonly string[]>;
-                    body: string;
-                    hash: string;
-                  };
-                };
-              }
-            >
-          >;
-          testCasesByFile: z.ZodObject<
-            {
-              type: z.ZodLiteral<"TestCasesByFile">;
-              data: z.ZodRecord<z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-            },
-            z.core.$strip
-          > & {
-            of: (dataValue: Record<string, readonly string[]>) => {
-              type: "TestCasesByFile";
-              data: Record<string, readonly string[]>;
-            };
-          };
-        },
-        z.core.$strip
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (dataValue: {
-      primitive: {
-        type: "Primitive";
-        data: {
-          id: string;
-          kind: string;
-          description: string;
-          file: string;
-          layerName: "repo" | "vendor" | "builtin";
-          headers: Record<string, string | readonly string[]>;
-          body: string;
-          hash: string;
-        };
-      };
-      activatesWhen: string;
-      useMixins: readonly {
-        type: "Primitive";
-        data: {
-          id: string;
-          kind: string;
-          description: string;
-          file: string;
-          layerName: "repo" | "vendor" | "builtin";
-          headers: Record<string, string | readonly string[]>;
-          body: string;
-          hash: string;
-        };
-      }[];
-      hosts: readonly {
-        type: "Primitive";
-        data: {
-          id: string;
-          kind: string;
-          description: string;
-          file: string;
-          layerName: "repo" | "vendor" | "builtin";
-          headers: Record<string, string | readonly string[]>;
-          body: string;
-          hash: string;
-        };
-      }[];
-      citers: readonly {
-        type: "Primitive";
-        data: {
-          id: string;
-          kind: string;
-          description: string;
-          file: string;
-          layerName: "repo" | "vendor" | "builtin";
-          headers: Record<string, string | readonly string[]>;
-          body: string;
-          hash: string;
-        };
-      }[];
-      mentioners: readonly {
-        type: "Primitive";
-        data: {
-          id: string;
-          kind: string;
-          description: string;
-          file: string;
-          layerName: "repo" | "vendor" | "builtin";
-          headers: Record<string, string | readonly string[]>;
-          body: string;
-          hash: string;
-        };
-      }[];
-      testCasesByFile: {
-        type: "TestCasesByFile";
-        data: Record<string, readonly string[]>;
-      };
-      rationale?:
-        | {
-            type: "Primitive";
+            }[];
+        }) => {
+            type: "Primitives";
             data: {
-              id: string;
-              kind: string;
-              description: string;
-              file: string;
-              layerName: "repo" | "vendor" | "builtin";
-              headers: Record<string, string | readonly string[]>;
-              body: string;
-              hash: string;
+                primitives: readonly {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                }[];
             };
-          }
-        | undefined;
-    }) => {
-      type: "ExplanationOutcome";
-      data: {
-        primitive: {
-          type: "Primitive";
-          data: {
-            id: string;
-            kind: string;
-            description: string;
-            file: string;
-            layerName: "repo" | "vendor" | "builtin";
-            headers: Record<string, string | readonly string[]>;
-            body: string;
-            hash: string;
-          };
         };
-        activatesWhen: string;
-        useMixins: readonly {
-          type: "Primitive";
-          data: {
-            id: string;
-            kind: string;
-            description: string;
-            file: string;
-            layerName: "repo" | "vendor" | "builtin";
-            headers: Record<string, string | readonly string[]>;
-            body: string;
-            hash: string;
-          };
-        }[];
-        hosts: readonly {
-          type: "Primitive";
-          data: {
-            id: string;
-            kind: string;
-            description: string;
-            file: string;
-            layerName: "repo" | "vendor" | "builtin";
-            headers: Record<string, string | readonly string[]>;
-            body: string;
-            hash: string;
-          };
-        }[];
-        citers: readonly {
-          type: "Primitive";
-          data: {
-            id: string;
-            kind: string;
-            description: string;
-            file: string;
-            layerName: "repo" | "vendor" | "builtin";
-            headers: Record<string, string | readonly string[]>;
-            body: string;
-            hash: string;
-          };
-        }[];
-        mentioners: readonly {
-          type: "Primitive";
-          data: {
-            id: string;
-            kind: string;
-            description: string;
-            file: string;
-            layerName: "repo" | "vendor" | "builtin";
-            headers: Record<string, string | readonly string[]>;
-            body: string;
-            hash: string;
-          };
-        }[];
-        testCasesByFile: {
-          type: "TestCasesByFile";
-          data: Record<string, readonly string[]>;
+    };
+    PlanSummary: z.ZodObject<{
+        type: z.ZodLiteral<"PlanSummary">;
+        data: z.ZodObject<{
+            added: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+            edited: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+            deleted: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+            unchanged: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+            warnings: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            added: readonly string[];
+            edited: readonly string[];
+            deleted: readonly string[];
+            unchanged: readonly string[];
+            warnings?: readonly string[] | undefined;
+        }) => {
+            type: "PlanSummary";
+            data: {
+                added: readonly string[];
+                edited: readonly string[];
+                deleted: readonly string[];
+                unchanged: readonly string[];
+                warnings?: readonly string[] | undefined;
+            };
         };
-        rationale?:
-          | {
-              type: "Primitive";
-              data: {
+    };
+    PrimitiveHeader: z.ZodObject<{
+        type: z.ZodLiteral<"PrimitiveHeader">;
+        data: z.ZodObject<{
+            field: z.ZodString;
+            shape: z.ZodEnum<{
+                line: "line";
+                list: "list";
+            }>;
+            required: z.ZodBoolean;
+            allowedValues: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            field: string;
+            shape: "line" | "list";
+            required: boolean;
+            allowedValues?: readonly string[] | undefined;
+        }) => {
+            type: "PrimitiveHeader";
+            data: {
+                field: string;
+                shape: "line" | "list";
+                required: boolean;
+                allowedValues?: readonly string[] | undefined;
+            };
+        };
+    };
+    PrimitiveRequirements: z.ZodObject<{
+        type: z.ZodLiteral<"PrimitiveRequirements">;
+        data: z.ZodObject<{
+            headers: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"PrimitiveHeader">;
+                data: z.ZodObject<{
+                    field: z.ZodString;
+                    shape: z.ZodEnum<{
+                        line: "line";
+                        list: "list";
+                    }>;
+                    required: z.ZodBoolean;
+                    allowedValues: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    field: string;
+                    shape: "line" | "list";
+                    required: boolean;
+                    allowedValues?: readonly string[] | undefined;
+                }) => {
+                    type: "PrimitiveHeader";
+                    data: {
+                        field: string;
+                        shape: "line" | "list";
+                        required: boolean;
+                        allowedValues?: readonly string[] | undefined;
+                    };
+                };
+            }>>;
+            sample: z.ZodString;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            headers: readonly {
+                type: "PrimitiveHeader";
+                data: {
+                    field: string;
+                    shape: "line" | "list";
+                    required: boolean;
+                    allowedValues?: readonly string[] | undefined;
+                };
+            }[];
+            sample: string;
+        }) => {
+            type: "PrimitiveRequirements";
+            data: {
+                headers: readonly {
+                    type: "PrimitiveHeader";
+                    data: {
+                        field: string;
+                        shape: "line" | "list";
+                        required: boolean;
+                        allowedValues?: readonly string[] | undefined;
+                    };
+                }[];
+                sample: string;
+            };
+        };
+    };
+    TestCasesByFile: z.ZodObject<{
+        type: z.ZodLiteral<"TestCasesByFile">;
+        data: z.ZodRecord<z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip> & {
+        of: (dataValue: Record<string, readonly string[]>) => {
+            type: "TestCasesByFile";
+            data: Record<string, readonly string[]>;
+        };
+    };
+    TestCaseReport: z.ZodObject<{
+        type: z.ZodLiteral<"TestCaseReport">;
+        data: z.ZodObject<{
+            suiteName: z.ZodString;
+            situation: z.ZodString;
+            passed: z.ZodBoolean;
+            unmet: z.ZodOptional<z.ZodObject<{
+                type: z.ZodLiteral<"Fault">;
+                data: z.ZodObject<{
+                    name: z.ZodString;
+                    message: z.ZodString;
+                    fix: z.ZodString;
+                    severity: z.ZodEnum<{
+                        error: "error";
+                        warn: "warn";
+                    }>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    name: string;
+                    message: string;
+                    fix: string;
+                    severity: "error" | "warn";
+                }) => {
+                    type: "Fault";
+                    data: {
+                        name: string;
+                        message: string;
+                        fix: string;
+                        severity: "error" | "warn";
+                    };
+                };
+            }>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            suiteName: string;
+            situation: string;
+            passed: boolean;
+            unmet?: {
+                type: "Fault";
+                data: {
+                    name: string;
+                    message: string;
+                    fix: string;
+                    severity: "error" | "warn";
+                };
+            } | undefined;
+        }) => {
+            type: "TestCaseReport";
+            data: {
+                suiteName: string;
+                situation: string;
+                passed: boolean;
+                unmet?: {
+                    type: "Fault";
+                    data: {
+                        name: string;
+                        message: string;
+                        fix: string;
+                        severity: "error" | "warn";
+                    };
+                } | undefined;
+            };
+        };
+    };
+    TestRunReport: z.ZodObject<{
+        type: z.ZodLiteral<"TestRunReport">;
+        data: z.ZodObject<{
+            testCaseReports: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"TestCaseReport">;
+                data: z.ZodObject<{
+                    suiteName: z.ZodString;
+                    situation: z.ZodString;
+                    passed: z.ZodBoolean;
+                    unmet: z.ZodOptional<z.ZodObject<{
+                        type: z.ZodLiteral<"Fault">;
+                        data: z.ZodObject<{
+                            name: z.ZodString;
+                            message: z.ZodString;
+                            fix: z.ZodString;
+                            severity: z.ZodEnum<{
+                                error: "error";
+                                warn: "warn";
+                            }>;
+                        }, z.core.$strip>;
+                    }, z.core.$strip> & {
+                        of: (dataValue: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        }) => {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        };
+                    }>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    suiteName: string;
+                    situation: string;
+                    passed: boolean;
+                    unmet?: {
+                        type: "Fault";
+                        data: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        };
+                    } | undefined;
+                }) => {
+                    type: "TestCaseReport";
+                    data: {
+                        suiteName: string;
+                        situation: string;
+                        passed: boolean;
+                        unmet?: {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        } | undefined;
+                    };
+                };
+            }>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            testCaseReports: readonly {
+                type: "TestCaseReport";
+                data: {
+                    suiteName: string;
+                    situation: string;
+                    passed: boolean;
+                    unmet?: {
+                        type: "Fault";
+                        data: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        };
+                    } | undefined;
+                };
+            }[];
+        }) => {
+            type: "TestRunReport";
+            data: {
+                testCaseReports: readonly {
+                    type: "TestCaseReport";
+                    data: {
+                        suiteName: string;
+                        situation: string;
+                        passed: boolean;
+                        unmet?: {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        } | undefined;
+                    };
+                }[];
+            };
+        };
+    };
+    TestCase: z.ZodObject<{
+        type: z.ZodLiteral<"TestCase">;
+        data: z.ZodObject<{
+            situation: z.ZodString;
+            expectation: z.ZodString;
+            id: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            situation: string;
+            expectation: string;
+            id?: string | undefined;
+        }) => {
+            type: "TestCase";
+            data: {
+                situation: string;
+                expectation: string;
+                id?: string | undefined;
+            };
+        };
+    };
+    TestSuite: z.ZodObject<{
+        type: z.ZodLiteral<"TestSuite">;
+        data: z.ZodObject<{
+            name: z.ZodString;
+            text: z.ZodOptional<z.ZodString>;
+            description: z.ZodOptional<z.ZodString>;
+            cases: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"TestCase">;
+                data: z.ZodObject<{
+                    situation: z.ZodString;
+                    expectation: z.ZodString;
+                    id: z.ZodOptional<z.ZodString>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    situation: string;
+                    expectation: string;
+                    id?: string | undefined;
+                }) => {
+                    type: "TestCase";
+                    data: {
+                        situation: string;
+                        expectation: string;
+                        id?: string | undefined;
+                    };
+                };
+            }>>;
+            fault: z.ZodOptional<z.ZodObject<{
+                type: z.ZodLiteral<"Fault">;
+                data: z.ZodObject<{
+                    name: z.ZodString;
+                    message: z.ZodString;
+                    fix: z.ZodString;
+                    severity: z.ZodEnum<{
+                        error: "error";
+                        warn: "warn";
+                    }>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    name: string;
+                    message: string;
+                    fix: string;
+                    severity: "error" | "warn";
+                }) => {
+                    type: "Fault";
+                    data: {
+                        name: string;
+                        message: string;
+                        fix: string;
+                        severity: "error" | "warn";
+                    };
+                };
+            }>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            name: string;
+            cases: readonly {
+                type: "TestCase";
+                data: {
+                    situation: string;
+                    expectation: string;
+                    id?: string | undefined;
+                };
+            }[];
+            text?: string | undefined;
+            description?: string | undefined;
+            fault?: {
+                type: "Fault";
+                data: {
+                    name: string;
+                    message: string;
+                    fix: string;
+                    severity: "error" | "warn";
+                };
+            } | undefined;
+        }) => {
+            type: "TestSuite";
+            data: {
+                name: string;
+                cases: readonly {
+                    type: "TestCase";
+                    data: {
+                        situation: string;
+                        expectation: string;
+                        id?: string | undefined;
+                    };
+                }[];
+                text?: string | undefined;
+                description?: string | undefined;
+                fault?: {
+                    type: "Fault";
+                    data: {
+                        name: string;
+                        message: string;
+                        fix: string;
+                        severity: "error" | "warn";
+                    };
+                } | undefined;
+            };
+        };
+    };
+    TestSuites: z.ZodObject<{
+        type: z.ZodLiteral<"TestSuites">;
+        data: z.ZodObject<{
+            testSuites: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"TestSuite">;
+                data: z.ZodObject<{
+                    name: z.ZodString;
+                    text: z.ZodOptional<z.ZodString>;
+                    description: z.ZodOptional<z.ZodString>;
+                    cases: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                        type: z.ZodLiteral<"TestCase">;
+                        data: z.ZodObject<{
+                            situation: z.ZodString;
+                            expectation: z.ZodString;
+                            id: z.ZodOptional<z.ZodString>;
+                        }, z.core.$strip>;
+                    }, z.core.$strip> & {
+                        of: (dataValue: {
+                            situation: string;
+                            expectation: string;
+                            id?: string | undefined;
+                        }) => {
+                            type: "TestCase";
+                            data: {
+                                situation: string;
+                                expectation: string;
+                                id?: string | undefined;
+                            };
+                        };
+                    }>>;
+                    fault: z.ZodOptional<z.ZodObject<{
+                        type: z.ZodLiteral<"Fault">;
+                        data: z.ZodObject<{
+                            name: z.ZodString;
+                            message: z.ZodString;
+                            fix: z.ZodString;
+                            severity: z.ZodEnum<{
+                                error: "error";
+                                warn: "warn";
+                            }>;
+                        }, z.core.$strip>;
+                    }, z.core.$strip> & {
+                        of: (dataValue: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        }) => {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        };
+                    }>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    name: string;
+                    cases: readonly {
+                        type: "TestCase";
+                        data: {
+                            situation: string;
+                            expectation: string;
+                            id?: string | undefined;
+                        };
+                    }[];
+                    text?: string | undefined;
+                    description?: string | undefined;
+                    fault?: {
+                        type: "Fault";
+                        data: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        };
+                    } | undefined;
+                }) => {
+                    type: "TestSuite";
+                    data: {
+                        name: string;
+                        cases: readonly {
+                            type: "TestCase";
+                            data: {
+                                situation: string;
+                                expectation: string;
+                                id?: string | undefined;
+                            };
+                        }[];
+                        text?: string | undefined;
+                        description?: string | undefined;
+                        fault?: {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        } | undefined;
+                    };
+                };
+            }>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            testSuites: readonly {
+                type: "TestSuite";
+                data: {
+                    name: string;
+                    cases: readonly {
+                        type: "TestCase";
+                        data: {
+                            situation: string;
+                            expectation: string;
+                            id?: string | undefined;
+                        };
+                    }[];
+                    text?: string | undefined;
+                    description?: string | undefined;
+                    fault?: {
+                        type: "Fault";
+                        data: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        };
+                    } | undefined;
+                };
+            }[];
+        }) => {
+            type: "TestSuites";
+            data: {
+                testSuites: readonly {
+                    type: "TestSuite";
+                    data: {
+                        name: string;
+                        cases: readonly {
+                            type: "TestCase";
+                            data: {
+                                situation: string;
+                                expectation: string;
+                                id?: string | undefined;
+                            };
+                        }[];
+                        text?: string | undefined;
+                        description?: string | undefined;
+                        fault?: {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        } | undefined;
+                    };
+                }[];
+            };
+        };
+    };
+    TestSuiteName: z.ZodObject<{
+        type: z.ZodLiteral<"TestSuiteName">;
+        data: z.ZodObject<{
+            name: z.ZodString;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            name: string;
+        }) => {
+            type: "TestSuiteName";
+            data: {
+                name: string;
+            };
+        };
+    };
+    EvalCase: z.ZodObject<{
+        type: z.ZodLiteral<"EvalCase">;
+        data: z.ZodObject<{
+            prompt: z.ZodString;
+            invoke: z.ZodOptional<z.ZodString>;
+            follow: z.ZodOptional<z.ZodString>;
+            read: z.ZodOptional<z.ZodString>;
+            maxTokens: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            prompt: string;
+            invoke?: string | undefined;
+            follow?: string | undefined;
+            read?: string | undefined;
+            maxTokens?: number | undefined;
+        }) => {
+            type: "EvalCase";
+            data: {
+                prompt: string;
+                invoke?: string | undefined;
+                follow?: string | undefined;
+                read?: string | undefined;
+                maxTokens?: number | undefined;
+            };
+        };
+    };
+    EvalSuite: z.ZodObject<{
+        type: z.ZodLiteral<"EvalSuite">;
+        data: z.ZodObject<{
+            name: z.ZodString;
+            text: z.ZodOptional<z.ZodString>;
+            description: z.ZodOptional<z.ZodString>;
+            cases: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"EvalCase">;
+                data: z.ZodObject<{
+                    prompt: z.ZodString;
+                    invoke: z.ZodOptional<z.ZodString>;
+                    follow: z.ZodOptional<z.ZodString>;
+                    read: z.ZodOptional<z.ZodString>;
+                    maxTokens: z.ZodOptional<z.ZodNumber>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    prompt: string;
+                    invoke?: string | undefined;
+                    follow?: string | undefined;
+                    read?: string | undefined;
+                    maxTokens?: number | undefined;
+                }) => {
+                    type: "EvalCase";
+                    data: {
+                        prompt: string;
+                        invoke?: string | undefined;
+                        follow?: string | undefined;
+                        read?: string | undefined;
+                        maxTokens?: number | undefined;
+                    };
+                };
+            }>>;
+            fault: z.ZodOptional<z.ZodObject<{
+                type: z.ZodLiteral<"Fault">;
+                data: z.ZodObject<{
+                    name: z.ZodString;
+                    message: z.ZodString;
+                    fix: z.ZodString;
+                    severity: z.ZodEnum<{
+                        error: "error";
+                        warn: "warn";
+                    }>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    name: string;
+                    message: string;
+                    fix: string;
+                    severity: "error" | "warn";
+                }) => {
+                    type: "Fault";
+                    data: {
+                        name: string;
+                        message: string;
+                        fix: string;
+                        severity: "error" | "warn";
+                    };
+                };
+            }>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            name: string;
+            cases: readonly {
+                type: "EvalCase";
+                data: {
+                    prompt: string;
+                    invoke?: string | undefined;
+                    follow?: string | undefined;
+                    read?: string | undefined;
+                    maxTokens?: number | undefined;
+                };
+            }[];
+            text?: string | undefined;
+            description?: string | undefined;
+            fault?: {
+                type: "Fault";
+                data: {
+                    name: string;
+                    message: string;
+                    fix: string;
+                    severity: "error" | "warn";
+                };
+            } | undefined;
+        }) => {
+            type: "EvalSuite";
+            data: {
+                name: string;
+                cases: readonly {
+                    type: "EvalCase";
+                    data: {
+                        prompt: string;
+                        invoke?: string | undefined;
+                        follow?: string | undefined;
+                        read?: string | undefined;
+                        maxTokens?: number | undefined;
+                    };
+                }[];
+                text?: string | undefined;
+                description?: string | undefined;
+                fault?: {
+                    type: "Fault";
+                    data: {
+                        name: string;
+                        message: string;
+                        fix: string;
+                        severity: "error" | "warn";
+                    };
+                } | undefined;
+            };
+        };
+    };
+    EvalSuites: z.ZodObject<{
+        type: z.ZodLiteral<"EvalSuites">;
+        data: z.ZodObject<{
+            evalSuites: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"EvalSuite">;
+                data: z.ZodObject<{
+                    name: z.ZodString;
+                    text: z.ZodOptional<z.ZodString>;
+                    description: z.ZodOptional<z.ZodString>;
+                    cases: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                        type: z.ZodLiteral<"EvalCase">;
+                        data: z.ZodObject<{
+                            prompt: z.ZodString;
+                            invoke: z.ZodOptional<z.ZodString>;
+                            follow: z.ZodOptional<z.ZodString>;
+                            read: z.ZodOptional<z.ZodString>;
+                            maxTokens: z.ZodOptional<z.ZodNumber>;
+                        }, z.core.$strip>;
+                    }, z.core.$strip> & {
+                        of: (dataValue: {
+                            prompt: string;
+                            invoke?: string | undefined;
+                            follow?: string | undefined;
+                            read?: string | undefined;
+                            maxTokens?: number | undefined;
+                        }) => {
+                            type: "EvalCase";
+                            data: {
+                                prompt: string;
+                                invoke?: string | undefined;
+                                follow?: string | undefined;
+                                read?: string | undefined;
+                                maxTokens?: number | undefined;
+                            };
+                        };
+                    }>>;
+                    fault: z.ZodOptional<z.ZodObject<{
+                        type: z.ZodLiteral<"Fault">;
+                        data: z.ZodObject<{
+                            name: z.ZodString;
+                            message: z.ZodString;
+                            fix: z.ZodString;
+                            severity: z.ZodEnum<{
+                                error: "error";
+                                warn: "warn";
+                            }>;
+                        }, z.core.$strip>;
+                    }, z.core.$strip> & {
+                        of: (dataValue: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        }) => {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        };
+                    }>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    name: string;
+                    cases: readonly {
+                        type: "EvalCase";
+                        data: {
+                            prompt: string;
+                            invoke?: string | undefined;
+                            follow?: string | undefined;
+                            read?: string | undefined;
+                            maxTokens?: number | undefined;
+                        };
+                    }[];
+                    text?: string | undefined;
+                    description?: string | undefined;
+                    fault?: {
+                        type: "Fault";
+                        data: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        };
+                    } | undefined;
+                }) => {
+                    type: "EvalSuite";
+                    data: {
+                        name: string;
+                        cases: readonly {
+                            type: "EvalCase";
+                            data: {
+                                prompt: string;
+                                invoke?: string | undefined;
+                                follow?: string | undefined;
+                                read?: string | undefined;
+                                maxTokens?: number | undefined;
+                            };
+                        }[];
+                        text?: string | undefined;
+                        description?: string | undefined;
+                        fault?: {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        } | undefined;
+                    };
+                };
+            }>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            evalSuites: readonly {
+                type: "EvalSuite";
+                data: {
+                    name: string;
+                    cases: readonly {
+                        type: "EvalCase";
+                        data: {
+                            prompt: string;
+                            invoke?: string | undefined;
+                            follow?: string | undefined;
+                            read?: string | undefined;
+                            maxTokens?: number | undefined;
+                        };
+                    }[];
+                    text?: string | undefined;
+                    description?: string | undefined;
+                    fault?: {
+                        type: "Fault";
+                        data: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        };
+                    } | undefined;
+                };
+            }[];
+        }) => {
+            type: "EvalSuites";
+            data: {
+                evalSuites: readonly {
+                    type: "EvalSuite";
+                    data: {
+                        name: string;
+                        cases: readonly {
+                            type: "EvalCase";
+                            data: {
+                                prompt: string;
+                                invoke?: string | undefined;
+                                follow?: string | undefined;
+                                read?: string | undefined;
+                                maxTokens?: number | undefined;
+                            };
+                        }[];
+                        text?: string | undefined;
+                        description?: string | undefined;
+                        fault?: {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        } | undefined;
+                    };
+                }[];
+            };
+        };
+    };
+    EvalSuiteName: z.ZodObject<{
+        type: z.ZodLiteral<"EvalSuiteName">;
+        data: z.ZodObject<{
+            name: z.ZodString;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            name: string;
+        }) => {
+            type: "EvalSuiteName";
+            data: {
+                name: string;
+            };
+        };
+    };
+    VendorFolder: z.ZodObject<{
+        type: z.ZodLiteral<"VendorFolder">;
+        data: z.ZodObject<{
+            folder: z.ZodString;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            folder: string;
+        }) => {
+            type: "VendorFolder";
+            data: {
+                folder: string;
+            };
+        };
+    };
+    VendorFolders: z.ZodObject<{
+        type: z.ZodLiteral<"VendorFolders">;
+        data: z.ZodObject<{
+            folders: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            folders: readonly string[];
+        }) => {
+            type: "VendorFolders";
+            data: {
+                folders: readonly string[];
+            };
+        };
+    };
+    SignInStatus: z.ZodObject<{
+        type: z.ZodLiteral<"SignInStatus">;
+        data: z.ZodObject<{
+            address: z.ZodString;
+            ids: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+            auth: z.ZodReadonly<z.ZodArray<z.ZodEnum<{
+                oauth: "oauth";
+                token: "token";
+            }>>>;
+            signedIn: z.ZodBoolean;
+            method: z.ZodOptional<z.ZodEnum<{
+                oauth: "oauth";
+                token: "token";
+            }>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            address: string;
+            ids: readonly string[];
+            auth: readonly ("oauth" | "token")[];
+            signedIn: boolean;
+            method?: "oauth" | "token" | undefined;
+        }) => {
+            type: "SignInStatus";
+            data: {
+                address: string;
+                ids: readonly string[];
+                auth: readonly ("oauth" | "token")[];
+                signedIn: boolean;
+                method?: "oauth" | "token" | undefined;
+            };
+        };
+    };
+    SignInStatuses: z.ZodObject<{
+        type: z.ZodLiteral<"SignInStatuses">;
+        data: z.ZodObject<{
+            signInStatuses: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"SignInStatus">;
+                data: z.ZodObject<{
+                    address: z.ZodString;
+                    ids: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+                    auth: z.ZodReadonly<z.ZodArray<z.ZodEnum<{
+                        oauth: "oauth";
+                        token: "token";
+                    }>>>;
+                    signedIn: z.ZodBoolean;
+                    method: z.ZodOptional<z.ZodEnum<{
+                        oauth: "oauth";
+                        token: "token";
+                    }>>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    address: string;
+                    ids: readonly string[];
+                    auth: readonly ("oauth" | "token")[];
+                    signedIn: boolean;
+                    method?: "oauth" | "token" | undefined;
+                }) => {
+                    type: "SignInStatus";
+                    data: {
+                        address: string;
+                        ids: readonly string[];
+                        auth: readonly ("oauth" | "token")[];
+                        signedIn: boolean;
+                        method?: "oauth" | "token" | undefined;
+                    };
+                };
+            }>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            signInStatuses: readonly {
+                type: "SignInStatus";
+                data: {
+                    address: string;
+                    ids: readonly string[];
+                    auth: readonly ("oauth" | "token")[];
+                    signedIn: boolean;
+                    method?: "oauth" | "token" | undefined;
+                };
+            }[];
+        }) => {
+            type: "SignInStatuses";
+            data: {
+                signInStatuses: readonly {
+                    type: "SignInStatus";
+                    data: {
+                        address: string;
+                        ids: readonly string[];
+                        auth: readonly ("oauth" | "token")[];
+                        signedIn: boolean;
+                        method?: "oauth" | "token" | undefined;
+                    };
+                }[];
+            };
+        };
+    };
+    ServedTool: z.ZodObject<{
+        type: z.ZodLiteral<"ServedTool">;
+        data: z.ZodObject<{
+            name: z.ZodString;
+            description: z.ZodString;
+            inputSchema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            name: string;
+            description: string;
+            inputSchema: Record<string, unknown>;
+        }) => {
+            type: "ServedTool";
+            data: {
+                name: string;
+                description: string;
+                inputSchema: Record<string, unknown>;
+            };
+        };
+    };
+    ServedTools: z.ZodObject<{
+        type: z.ZodLiteral<"ServedTools">;
+        data: z.ZodObject<{
+            tools: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"ServedTool">;
+                data: z.ZodObject<{
+                    name: z.ZodString;
+                    description: z.ZodString;
+                    inputSchema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    name: string;
+                    description: string;
+                    inputSchema: Record<string, unknown>;
+                }) => {
+                    type: "ServedTool";
+                    data: {
+                        name: string;
+                        description: string;
+                        inputSchema: Record<string, unknown>;
+                    };
+                };
+            }>>;
+            problems: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            tools: readonly {
+                type: "ServedTool";
+                data: {
+                    name: string;
+                    description: string;
+                    inputSchema: Record<string, unknown>;
+                };
+            }[];
+            problems: readonly string[];
+        }) => {
+            type: "ServedTools";
+            data: {
+                tools: readonly {
+                    type: "ServedTool";
+                    data: {
+                        name: string;
+                        description: string;
+                        inputSchema: Record<string, unknown>;
+                    };
+                }[];
+                problems: readonly string[];
+            };
+        };
+    };
+    VendorPrimitive: z.ZodObject<{
+        type: z.ZodLiteral<"VendorPrimitive">;
+        data: z.ZodObject<{
+            kind: z.ZodString;
+            id: z.ZodString;
+            description: z.ZodString;
+            leftOutHeaders: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            kind: string;
+            id: string;
+            description: string;
+            leftOutHeaders: readonly string[];
+        }) => {
+            type: "VendorPrimitive";
+            data: {
+                kind: string;
+                id: string;
+                description: string;
+                leftOutHeaders: readonly string[];
+            };
+        };
+    };
+    MainContextLoad: z.ZodObject<{
+        type: z.ZodLiteral<"MainContextLoad">;
+        data: z.ZodObject<{
+            id: z.ZodString;
+            kind: z.ZodString;
+            tokens: z.ZodNumber;
+            globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            id: string;
+            kind: string;
+            tokens: number;
+            globs?: readonly string[] | undefined;
+        }) => {
+            type: "MainContextLoad";
+            data: {
                 id: string;
                 kind: string;
-                description: string;
-                file: string;
-                layerName: "repo" | "vendor" | "builtin";
-                headers: Record<string, string | readonly string[]>;
-                body: string;
-                hash: string;
-              };
-            }
-          | undefined;
-      };
+                tokens: number;
+                globs?: readonly string[] | undefined;
+            };
+        };
     };
-  };
-  VendorAddOutcome: z.ZodObject<
-    {
-      type: z.ZodLiteral<"VendorAddOutcome">;
-      data: z.ZodReadonly<
-        z.ZodArray<
-          z.ZodObject<
-            {
-              folder: z.ZodString;
-              primitives: z.ZodReadonly<
-                z.ZodArray<
-                  z.ZodObject<
-                    {
-                      type: z.ZodLiteral<"VendorPrimitive">;
-                      data: z.ZodObject<
-                        {
-                          kind: z.ZodString;
-                          id: z.ZodString;
-                          description: z.ZodString;
-                          leftOutHeaders: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-                        },
-                        z.core.$strip
-                      >;
-                    },
-                    z.core.$strip
-                  > & {
-                    of: (dataValue: {
-                      kind: string;
-                      id: string;
-                      description: string;
-                      leftOutHeaders: readonly string[];
-                    }) => {
-                      type: "VendorPrimitive";
-                      data: {
+    MainContext: z.ZodObject<{
+        type: z.ZodLiteral<"MainContext">;
+        data: z.ZodObject<{
+            agent: z.ZodString;
+            isExact: z.ZodBoolean;
+            sessionLoads: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"MainContextLoad">;
+                data: z.ZodObject<{
+                    id: z.ZodString;
+                    kind: z.ZodString;
+                    tokens: z.ZodNumber;
+                    globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    id: string;
+                    kind: string;
+                    tokens: number;
+                    globs?: readonly string[] | undefined;
+                }) => {
+                    type: "MainContextLoad";
+                    data: {
+                        id: string;
+                        kind: string;
+                        tokens: number;
+                        globs?: readonly string[] | undefined;
+                    };
+                };
+            }>>;
+            fileLoads: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"MainContextLoad">;
+                data: z.ZodObject<{
+                    id: z.ZodString;
+                    kind: z.ZodString;
+                    tokens: z.ZodNumber;
+                    globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    id: string;
+                    kind: string;
+                    tokens: number;
+                    globs?: readonly string[] | undefined;
+                }) => {
+                    type: "MainContextLoad";
+                    data: {
+                        id: string;
+                        kind: string;
+                        tokens: number;
+                        globs?: readonly string[] | undefined;
+                    };
+                };
+            }>>;
+            totalTokens: z.ZodNumber;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            agent: string;
+            isExact: boolean;
+            sessionLoads: readonly {
+                type: "MainContextLoad";
+                data: {
+                    id: string;
+                    kind: string;
+                    tokens: number;
+                    globs?: readonly string[] | undefined;
+                };
+            }[];
+            fileLoads: readonly {
+                type: "MainContextLoad";
+                data: {
+                    id: string;
+                    kind: string;
+                    tokens: number;
+                    globs?: readonly string[] | undefined;
+                };
+            }[];
+            totalTokens: number;
+        }) => {
+            type: "MainContext";
+            data: {
+                agent: string;
+                isExact: boolean;
+                sessionLoads: readonly {
+                    type: "MainContextLoad";
+                    data: {
+                        id: string;
+                        kind: string;
+                        tokens: number;
+                        globs?: readonly string[] | undefined;
+                    };
+                }[];
+                fileLoads: readonly {
+                    type: "MainContextLoad";
+                    data: {
+                        id: string;
+                        kind: string;
+                        tokens: number;
+                        globs?: readonly string[] | undefined;
+                    };
+                }[];
+                totalTokens: number;
+            };
+        };
+    };
+    MainContexts: z.ZodObject<{
+        type: z.ZodLiteral<"MainContexts">;
+        data: z.ZodObject<{
+            contexts: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"MainContext">;
+                data: z.ZodObject<{
+                    agent: z.ZodString;
+                    isExact: z.ZodBoolean;
+                    sessionLoads: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                        type: z.ZodLiteral<"MainContextLoad">;
+                        data: z.ZodObject<{
+                            id: z.ZodString;
+                            kind: z.ZodString;
+                            tokens: z.ZodNumber;
+                            globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+                        }, z.core.$strip>;
+                    }, z.core.$strip> & {
+                        of: (dataValue: {
+                            id: string;
+                            kind: string;
+                            tokens: number;
+                            globs?: readonly string[] | undefined;
+                        }) => {
+                            type: "MainContextLoad";
+                            data: {
+                                id: string;
+                                kind: string;
+                                tokens: number;
+                                globs?: readonly string[] | undefined;
+                            };
+                        };
+                    }>>;
+                    fileLoads: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                        type: z.ZodLiteral<"MainContextLoad">;
+                        data: z.ZodObject<{
+                            id: z.ZodString;
+                            kind: z.ZodString;
+                            tokens: z.ZodNumber;
+                            globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+                        }, z.core.$strip>;
+                    }, z.core.$strip> & {
+                        of: (dataValue: {
+                            id: string;
+                            kind: string;
+                            tokens: number;
+                            globs?: readonly string[] | undefined;
+                        }) => {
+                            type: "MainContextLoad";
+                            data: {
+                                id: string;
+                                kind: string;
+                                tokens: number;
+                                globs?: readonly string[] | undefined;
+                            };
+                        };
+                    }>>;
+                    totalTokens: z.ZodNumber;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    agent: string;
+                    isExact: boolean;
+                    sessionLoads: readonly {
+                        type: "MainContextLoad";
+                        data: {
+                            id: string;
+                            kind: string;
+                            tokens: number;
+                            globs?: readonly string[] | undefined;
+                        };
+                    }[];
+                    fileLoads: readonly {
+                        type: "MainContextLoad";
+                        data: {
+                            id: string;
+                            kind: string;
+                            tokens: number;
+                            globs?: readonly string[] | undefined;
+                        };
+                    }[];
+                    totalTokens: number;
+                }) => {
+                    type: "MainContext";
+                    data: {
+                        agent: string;
+                        isExact: boolean;
+                        sessionLoads: readonly {
+                            type: "MainContextLoad";
+                            data: {
+                                id: string;
+                                kind: string;
+                                tokens: number;
+                                globs?: readonly string[] | undefined;
+                            };
+                        }[];
+                        fileLoads: readonly {
+                            type: "MainContextLoad";
+                            data: {
+                                id: string;
+                                kind: string;
+                                tokens: number;
+                                globs?: readonly string[] | undefined;
+                            };
+                        }[];
+                        totalTokens: number;
+                    };
+                };
+            }>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            contexts: readonly {
+                type: "MainContext";
+                data: {
+                    agent: string;
+                    isExact: boolean;
+                    sessionLoads: readonly {
+                        type: "MainContextLoad";
+                        data: {
+                            id: string;
+                            kind: string;
+                            tokens: number;
+                            globs?: readonly string[] | undefined;
+                        };
+                    }[];
+                    fileLoads: readonly {
+                        type: "MainContextLoad";
+                        data: {
+                            id: string;
+                            kind: string;
+                            tokens: number;
+                            globs?: readonly string[] | undefined;
+                        };
+                    }[];
+                    totalTokens: number;
+                };
+            }[];
+        }) => {
+            type: "MainContexts";
+            data: {
+                contexts: readonly {
+                    type: "MainContext";
+                    data: {
+                        agent: string;
+                        isExact: boolean;
+                        sessionLoads: readonly {
+                            type: "MainContextLoad";
+                            data: {
+                                id: string;
+                                kind: string;
+                                tokens: number;
+                                globs?: readonly string[] | undefined;
+                            };
+                        }[];
+                        fileLoads: readonly {
+                            type: "MainContextLoad";
+                            data: {
+                                id: string;
+                                kind: string;
+                                tokens: number;
+                                globs?: readonly string[] | undefined;
+                            };
+                        }[];
+                        totalTokens: number;
+                    };
+                }[];
+            };
+        };
+    };
+    AccessToken: z.ZodObject<{
+        type: z.ZodLiteral<"AccessToken">;
+        data: z.ZodObject<{
+            accessToken: z.ZodString;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            accessToken: string;
+        }) => {
+            type: "AccessToken";
+            data: {
+                accessToken: string;
+            };
+        };
+    };
+    DeclaredTool: z.ZodObject<{
+        type: z.ZodLiteral<"DeclaredTool">;
+        data: z.ZodObject<{
+            servedName: z.ZodString;
+            tool: z.ZodString;
+            mcpId: z.ZodString;
+            origin: z.ZodObject<{
+                address: z.ZodString;
+                endpoint: z.ZodOptional<z.ZodString>;
+                command: z.ZodOptional<z.ZodObject<{
+                    command: z.ZodString;
+                    args: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+                    tokenEnv: z.ZodOptional<z.ZodString>;
+                }, z.core.$strip>>;
+                path: z.ZodOptional<z.ZodString>;
+                auth: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+            }, z.core.$strip>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            servedName: string;
+            tool: string;
+            mcpId: string;
+            origin: {
+                address: string;
+                auth: readonly string[];
+                endpoint?: string | undefined;
+                command?: {
+                    command: string;
+                    args: readonly string[];
+                    tokenEnv?: string | undefined;
+                } | undefined;
+                path?: string | undefined;
+            };
+        }) => {
+            type: "DeclaredTool";
+            data: {
+                servedName: string;
+                tool: string;
+                mcpId: string;
+                origin: {
+                    address: string;
+                    auth: readonly string[];
+                    endpoint?: string | undefined;
+                    command?: {
+                        command: string;
+                        args: readonly string[];
+                        tokenEnv?: string | undefined;
+                    } | undefined;
+                    path?: string | undefined;
+                };
+            };
+        };
+    };
+    DeclaredTools: z.ZodObject<{
+        type: z.ZodLiteral<"DeclaredTools">;
+        data: z.ZodObject<{
+            tools: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"DeclaredTool">;
+                data: z.ZodObject<{
+                    servedName: z.ZodString;
+                    tool: z.ZodString;
+                    mcpId: z.ZodString;
+                    origin: z.ZodObject<{
+                        address: z.ZodString;
+                        endpoint: z.ZodOptional<z.ZodString>;
+                        command: z.ZodOptional<z.ZodObject<{
+                            command: z.ZodString;
+                            args: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+                            tokenEnv: z.ZodOptional<z.ZodString>;
+                        }, z.core.$strip>>;
+                        path: z.ZodOptional<z.ZodString>;
+                        auth: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+                    }, z.core.$strip>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    servedName: string;
+                    tool: string;
+                    mcpId: string;
+                    origin: {
+                        address: string;
+                        auth: readonly string[];
+                        endpoint?: string | undefined;
+                        command?: {
+                            command: string;
+                            args: readonly string[];
+                            tokenEnv?: string | undefined;
+                        } | undefined;
+                        path?: string | undefined;
+                    };
+                }) => {
+                    type: "DeclaredTool";
+                    data: {
+                        servedName: string;
+                        tool: string;
+                        mcpId: string;
+                        origin: {
+                            address: string;
+                            auth: readonly string[];
+                            endpoint?: string | undefined;
+                            command?: {
+                                command: string;
+                                args: readonly string[];
+                                tokenEnv?: string | undefined;
+                            } | undefined;
+                            path?: string | undefined;
+                        };
+                    };
+                };
+            }>>;
+            problems: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            tools: readonly {
+                type: "DeclaredTool";
+                data: {
+                    servedName: string;
+                    tool: string;
+                    mcpId: string;
+                    origin: {
+                        address: string;
+                        auth: readonly string[];
+                        endpoint?: string | undefined;
+                        command?: {
+                            command: string;
+                            args: readonly string[];
+                            tokenEnv?: string | undefined;
+                        } | undefined;
+                        path?: string | undefined;
+                    };
+                };
+            }[];
+            problems: readonly string[];
+        }) => {
+            type: "DeclaredTools";
+            data: {
+                tools: readonly {
+                    type: "DeclaredTool";
+                    data: {
+                        servedName: string;
+                        tool: string;
+                        mcpId: string;
+                        origin: {
+                            address: string;
+                            auth: readonly string[];
+                            endpoint?: string | undefined;
+                            command?: {
+                                command: string;
+                                args: readonly string[];
+                                tokenEnv?: string | undefined;
+                            } | undefined;
+                            path?: string | undefined;
+                        };
+                    };
+                }[];
+                problems: readonly string[];
+            };
+        };
+    };
+    SensorCommands: z.ZodObject<{
+        type: z.ZodLiteral<"SensorCommands">;
+        data: z.ZodObject<{
+            commands: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            commands: readonly string[];
+        }) => {
+            type: "SensorCommands";
+            data: {
+                commands: readonly string[];
+            };
+        };
+    };
+    MainContextTexts: z.ZodObject<{
+        type: z.ZodLiteral<"MainContextTexts">;
+        data: z.ZodObject<{
+            agents: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                agent: z.ZodString;
+                texts: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                    id: z.ZodString;
+                    kind: z.ZodString;
+                    text: z.ZodString;
+                    globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+                }, z.core.$strip>>>;
+            }, z.core.$strip>>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            agents: readonly {
+                agent: string;
+                texts: readonly {
+                    id: string;
+                    kind: string;
+                    text: string;
+                    globs?: readonly string[] | undefined;
+                }[];
+            }[];
+        }) => {
+            type: "MainContextTexts";
+            data: {
+                agents: readonly {
+                    agent: string;
+                    texts: readonly {
+                        id: string;
+                        kind: string;
+                        text: string;
+                        globs?: readonly string[] | undefined;
+                    }[];
+                }[];
+            };
+        };
+    };
+    EvalCases: z.ZodObject<{
+        type: z.ZodLiteral<"EvalCases">;
+        data: z.ZodObject<{
+            cases: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                suiteName: z.ZodString;
+                prompt: z.ZodString;
+                expect: z.ZodObject<{
+                    invoke: z.ZodOptional<z.ZodString>;
+                    follow: z.ZodOptional<z.ZodString>;
+                    read: z.ZodOptional<z.ZodString>;
+                    maxTokens: z.ZodOptional<z.ZodNumber>;
+                }, z.core.$strip>;
+                guideBody: z.ZodOptional<z.ZodString>;
+            }, z.core.$strip>>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            cases: readonly {
+                suiteName: string;
+                prompt: string;
+                expect: {
+                    invoke?: string | undefined;
+                    follow?: string | undefined;
+                    read?: string | undefined;
+                    maxTokens?: number | undefined;
+                };
+                guideBody?: string | undefined;
+            }[];
+        }) => {
+            type: "EvalCases";
+            data: {
+                cases: readonly {
+                    suiteName: string;
+                    prompt: string;
+                    expect: {
+                        invoke?: string | undefined;
+                        follow?: string | undefined;
+                        read?: string | undefined;
+                        maxTokens?: number | undefined;
+                    };
+                    guideBody?: string | undefined;
+                }[];
+            };
+        };
+    };
+    CharterLayout: z.ZodObject<{
+        type: z.ZodLiteral<"CharterLayout">;
+        data: z.ZodObject<{
+            charterUri: z.ZodString;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            charterUri: string;
+        }) => {
+            type: "CharterLayout";
+            data: {
+                charterUri: string;
+            };
+        };
+    };
+    DoctorOutcome: z.ZodObject<{
+        type: z.ZodLiteral<"DoctorOutcome">;
+        data: z.ZodObject<{
+            agents: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+            errorCount: z.ZodNumber;
+            warnCount: z.ZodNumber;
+            pendingCount: z.ZodNullable<z.ZodNumber>;
+            faultsByFile: z.ZodObject<{
+                type: z.ZodLiteral<"FaultsByFile">;
+                data: z.ZodObject<{
+                    files: z.ZodRecord<z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                        type: z.ZodLiteral<"Fault">;
+                        data: z.ZodObject<{
+                            name: z.ZodString;
+                            message: z.ZodString;
+                            fix: z.ZodString;
+                            severity: z.ZodEnum<{
+                                error: "error";
+                                warn: "warn";
+                            }>;
+                        }, z.core.$strip>;
+                    }, z.core.$strip> & {
+                        of: (dataValue: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        }) => {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        };
+                    }>>>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    files: Record<string, readonly {
+                        type: "Fault";
+                        data: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        };
+                    }[]>;
+                }) => {
+                    type: "FaultsByFile";
+                    data: {
+                        files: Record<string, readonly {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        }[]>;
+                    };
+                };
+            };
+            problemCount: z.ZodNumber;
+            mainContexts: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                agent: z.ZodString;
+                totalTokens: z.ZodNumber;
+            }, z.core.$strip>>>;
+            mainContextCeiling: z.ZodNumber;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            agents: readonly string[];
+            errorCount: number;
+            warnCount: number;
+            pendingCount: number | null;
+            faultsByFile: {
+                type: "FaultsByFile";
+                data: {
+                    files: Record<string, readonly {
+                        type: "Fault";
+                        data: {
+                            name: string;
+                            message: string;
+                            fix: string;
+                            severity: "error" | "warn";
+                        };
+                    }[]>;
+                };
+            };
+            problemCount: number;
+            mainContexts: readonly {
+                agent: string;
+                totalTokens: number;
+            }[];
+            mainContextCeiling: number;
+        }) => {
+            type: "DoctorOutcome";
+            data: {
+                agents: readonly string[];
+                errorCount: number;
+                warnCount: number;
+                pendingCount: number | null;
+                faultsByFile: {
+                    type: "FaultsByFile";
+                    data: {
+                        files: Record<string, readonly {
+                            type: "Fault";
+                            data: {
+                                name: string;
+                                message: string;
+                                fix: string;
+                                severity: "error" | "warn";
+                            };
+                        }[]>;
+                    };
+                };
+                problemCount: number;
+                mainContexts: readonly {
+                    agent: string;
+                    totalTokens: number;
+                }[];
+                mainContextCeiling: number;
+            };
+        };
+    };
+    ExplanationOutcome: z.ZodObject<{
+        type: z.ZodLiteral<"ExplanationOutcome">;
+        data: z.ZodObject<{
+            primitive: z.ZodObject<{
+                type: z.ZodLiteral<"Primitive">;
+                data: z.ZodObject<{
+                    id: z.ZodString;
+                    kind: z.ZodString;
+                    description: z.ZodString;
+                    file: z.ZodString;
+                    layerName: z.ZodEnum<{
+                        repo: "repo";
+                        vendor: "vendor";
+                        builtin: "builtin";
+                    }>;
+                    headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
+                    body: z.ZodString;
+                    hash: z.ZodString;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                }) => {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                };
+            };
+            activatesWhen: z.ZodString;
+            useMixins: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"Primitive">;
+                data: z.ZodObject<{
+                    id: z.ZodString;
+                    kind: z.ZodString;
+                    description: z.ZodString;
+                    file: z.ZodString;
+                    layerName: z.ZodEnum<{
+                        repo: "repo";
+                        vendor: "vendor";
+                        builtin: "builtin";
+                    }>;
+                    headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
+                    body: z.ZodString;
+                    hash: z.ZodString;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                }) => {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                };
+            }>>;
+            rationale: z.ZodOptional<z.ZodObject<{
+                type: z.ZodLiteral<"Primitive">;
+                data: z.ZodObject<{
+                    id: z.ZodString;
+                    kind: z.ZodString;
+                    description: z.ZodString;
+                    file: z.ZodString;
+                    layerName: z.ZodEnum<{
+                        repo: "repo";
+                        vendor: "vendor";
+                        builtin: "builtin";
+                    }>;
+                    headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
+                    body: z.ZodString;
+                    hash: z.ZodString;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                }) => {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                };
+            }>;
+            hosts: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"Primitive">;
+                data: z.ZodObject<{
+                    id: z.ZodString;
+                    kind: z.ZodString;
+                    description: z.ZodString;
+                    file: z.ZodString;
+                    layerName: z.ZodEnum<{
+                        repo: "repo";
+                        vendor: "vendor";
+                        builtin: "builtin";
+                    }>;
+                    headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
+                    body: z.ZodString;
+                    hash: z.ZodString;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                }) => {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                };
+            }>>;
+            citers: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"Primitive">;
+                data: z.ZodObject<{
+                    id: z.ZodString;
+                    kind: z.ZodString;
+                    description: z.ZodString;
+                    file: z.ZodString;
+                    layerName: z.ZodEnum<{
+                        repo: "repo";
+                        vendor: "vendor";
+                        builtin: "builtin";
+                    }>;
+                    headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
+                    body: z.ZodString;
+                    hash: z.ZodString;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                }) => {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                };
+            }>>;
+            mentioners: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"Primitive">;
+                data: z.ZodObject<{
+                    id: z.ZodString;
+                    kind: z.ZodString;
+                    description: z.ZodString;
+                    file: z.ZodString;
+                    layerName: z.ZodEnum<{
+                        repo: "repo";
+                        vendor: "vendor";
+                        builtin: "builtin";
+                    }>;
+                    headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
+                    body: z.ZodString;
+                    hash: z.ZodString;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                }) => {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                };
+            }>>;
+            testCasesByFile: z.ZodObject<{
+                type: z.ZodLiteral<"TestCasesByFile">;
+                data: z.ZodRecord<z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+            }, z.core.$strip> & {
+                of: (dataValue: Record<string, readonly string[]>) => {
+                    type: "TestCasesByFile";
+                    data: Record<string, readonly string[]>;
+                };
+            };
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            primitive: {
+                type: "Primitive";
+                data: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                };
+            };
+            activatesWhen: string;
+            useMixins: readonly {
+                type: "Primitive";
+                data: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                };
+            }[];
+            hosts: readonly {
+                type: "Primitive";
+                data: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                };
+            }[];
+            citers: readonly {
+                type: "Primitive";
+                data: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                };
+            }[];
+            mentioners: readonly {
+                type: "Primitive";
+                data: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                };
+            }[];
+            testCasesByFile: {
+                type: "TestCasesByFile";
+                data: Record<string, readonly string[]>;
+            };
+            rationale?: {
+                type: "Primitive";
+                data: {
+                    id: string;
+                    kind: string;
+                    description: string;
+                    file: string;
+                    layerName: "repo" | "vendor" | "builtin";
+                    headers: Record<string, string | readonly string[]>;
+                    body: string;
+                    hash: string;
+                };
+            } | undefined;
+        }) => {
+            type: "ExplanationOutcome";
+            data: {
+                primitive: {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                };
+                activatesWhen: string;
+                useMixins: readonly {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                }[];
+                hosts: readonly {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                }[];
+                citers: readonly {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                }[];
+                mentioners: readonly {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                }[];
+                testCasesByFile: {
+                    type: "TestCasesByFile";
+                    data: Record<string, readonly string[]>;
+                };
+                rationale?: {
+                    type: "Primitive";
+                    data: {
+                        id: string;
+                        kind: string;
+                        description: string;
+                        file: string;
+                        layerName: "repo" | "vendor" | "builtin";
+                        headers: Record<string, string | readonly string[]>;
+                        body: string;
+                        hash: string;
+                    };
+                } | undefined;
+            };
+        };
+    };
+    VendorAddOutcome: z.ZodObject<{
+        type: z.ZodLiteral<"VendorAddOutcome">;
+        data: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+            folder: z.ZodString;
+            primitives: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"VendorPrimitive">;
+                data: z.ZodObject<{
+                    kind: z.ZodString;
+                    id: z.ZodString;
+                    description: z.ZodString;
+                    leftOutHeaders: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    kind: string;
+                    id: string;
+                    description: string;
+                    leftOutHeaders: readonly string[];
+                }) => {
+                    type: "VendorPrimitive";
+                    data: {
                         kind: string;
                         id: string;
                         description: string;
                         leftOutHeaders: readonly string[];
-                      };
                     };
-                  }
-                >
-              >;
-            },
-            z.core.$strip
-          >
-        >
-      >;
-    },
-    z.core.$strip
-  > & {
-    of: (
-      dataValue: readonly {
-        folder: string;
-        primitives: readonly {
-          type: "VendorPrimitive";
-          data: {
-            kind: string;
-            id: string;
-            description: string;
-            leftOutHeaders: readonly string[];
-          };
-        }[];
-      }[],
-    ) => {
-      type: "VendorAddOutcome";
-      data: readonly {
-        folder: string;
-        primitives: readonly {
-          type: "VendorPrimitive";
-          data: {
-            kind: string;
-            id: string;
-            description: string;
-            leftOutHeaders: readonly string[];
-          };
-        }[];
-      }[];
+                };
+            }>>;
+        }, z.core.$strip>>>;
+    }, z.core.$strip> & {
+        of: (dataValue: readonly {
+            folder: string;
+            primitives: readonly {
+                type: "VendorPrimitive";
+                data: {
+                    kind: string;
+                    id: string;
+                    description: string;
+                    leftOutHeaders: readonly string[];
+                };
+            }[];
+        }[]) => {
+            type: "VendorAddOutcome";
+            data: readonly {
+                folder: string;
+                primitives: readonly {
+                    type: "VendorPrimitive";
+                    data: {
+                        kind: string;
+                        id: string;
+                        description: string;
+                        leftOutHeaders: readonly string[];
+                    };
+                }[];
+            }[];
+        };
     };
-  };
 };
 
 /** Every DTO's type, under its name: what its schema infers. */
 declare namespace CharterDTOs {
-  type AccessToken = z.infer<typeof CharterDTOs.AccessToken>;
-  type Catalogue = z.infer<typeof CharterDTOs.Catalogue>;
-  type CatalogueEntry = z.infer<typeof CharterDTOs.CatalogueEntry>;
-  type CharterLayout = z.infer<typeof CharterDTOs.CharterLayout>;
-  type DeclaredTool = z.infer<typeof CharterDTOs.DeclaredTool>;
-  type DeclaredTools = z.infer<typeof CharterDTOs.DeclaredTools>;
-  type DoctorOutcome = z.infer<typeof CharterDTOs.DoctorOutcome>;
-  type EvalCase = z.infer<typeof CharterDTOs.EvalCase>;
-  type EvalCases = z.infer<typeof CharterDTOs.EvalCases>;
-  type EvalSuite = z.infer<typeof CharterDTOs.EvalSuite>;
-  type EvalSuiteName = z.infer<typeof CharterDTOs.EvalSuiteName>;
-  type EvalSuites = z.infer<typeof CharterDTOs.EvalSuites>;
-  type ExplanationOutcome = z.infer<typeof CharterDTOs.ExplanationOutcome>;
-  type MainContext = z.infer<typeof CharterDTOs.MainContext>;
-  type MainContextLoad = z.infer<typeof CharterDTOs.MainContextLoad>;
-  type MainContextTexts = z.infer<typeof CharterDTOs.MainContextTexts>;
-  type MainContexts = z.infer<typeof CharterDTOs.MainContexts>;
-  type PlanSummary = z.infer<typeof CharterDTOs.PlanSummary>;
-  type Primitive = z.infer<typeof CharterDTOs.Primitive>;
-  type PrimitiveHeader = z.infer<typeof CharterDTOs.PrimitiveHeader>;
-  type PrimitiveKinds = z.infer<typeof CharterDTOs.PrimitiveKinds>;
-  type PrimitiveRequirements = z.infer<typeof CharterDTOs.PrimitiveRequirements>;
-  type Primitives = z.infer<typeof CharterDTOs.Primitives>;
-  type SensorCommands = z.infer<typeof CharterDTOs.SensorCommands>;
-  type ServedTool = z.infer<typeof CharterDTOs.ServedTool>;
-  type ServedTools = z.infer<typeof CharterDTOs.ServedTools>;
-  type SignInStatus = z.infer<typeof CharterDTOs.SignInStatus>;
-  type SignInStatuses = z.infer<typeof CharterDTOs.SignInStatuses>;
-  type TestCase = z.infer<typeof CharterDTOs.TestCase>;
-  type TestCaseReport = z.infer<typeof CharterDTOs.TestCaseReport>;
-  type TestCasesByFile = z.infer<typeof CharterDTOs.TestCasesByFile>;
-  type TestRunReport = z.infer<typeof CharterDTOs.TestRunReport>;
-  type TestSuite = z.infer<typeof CharterDTOs.TestSuite>;
-  type TestSuiteName = z.infer<typeof CharterDTOs.TestSuiteName>;
-  type TestSuites = z.infer<typeof CharterDTOs.TestSuites>;
-  type VendorAddOutcome = z.infer<typeof CharterDTOs.VendorAddOutcome>;
-  type VendorFolder = z.infer<typeof CharterDTOs.VendorFolder>;
-  type VendorFolders = z.infer<typeof CharterDTOs.VendorFolders>;
-  type VendorPrimitive = z.infer<typeof CharterDTOs.VendorPrimitive>;
+    type AccessToken = z.infer<typeof CharterDTOs.AccessToken>;
+    type Catalogue = z.infer<typeof CharterDTOs.Catalogue>;
+    type CatalogueEntry = z.infer<typeof CharterDTOs.CatalogueEntry>;
+    type CharterLayout = z.infer<typeof CharterDTOs.CharterLayout>;
+    type DeclaredTool = z.infer<typeof CharterDTOs.DeclaredTool>;
+    type DeclaredTools = z.infer<typeof CharterDTOs.DeclaredTools>;
+    type DoctorOutcome = z.infer<typeof CharterDTOs.DoctorOutcome>;
+    type EvalCase = z.infer<typeof CharterDTOs.EvalCase>;
+    type EvalCases = z.infer<typeof CharterDTOs.EvalCases>;
+    type EvalSuite = z.infer<typeof CharterDTOs.EvalSuite>;
+    type EvalSuiteName = z.infer<typeof CharterDTOs.EvalSuiteName>;
+    type EvalSuites = z.infer<typeof CharterDTOs.EvalSuites>;
+    type ExplanationOutcome = z.infer<typeof CharterDTOs.ExplanationOutcome>;
+    type MainContext = z.infer<typeof CharterDTOs.MainContext>;
+    type MainContextLoad = z.infer<typeof CharterDTOs.MainContextLoad>;
+    type MainContextTexts = z.infer<typeof CharterDTOs.MainContextTexts>;
+    type MainContexts = z.infer<typeof CharterDTOs.MainContexts>;
+    type PlanSummary = z.infer<typeof CharterDTOs.PlanSummary>;
+    type Primitive = z.infer<typeof CharterDTOs.Primitive>;
+    type PrimitiveHeader = z.infer<typeof CharterDTOs.PrimitiveHeader>;
+    type PrimitiveKinds = z.infer<typeof CharterDTOs.PrimitiveKinds>;
+    type PrimitiveRequirements = z.infer<typeof CharterDTOs.PrimitiveRequirements>;
+    type Primitives = z.infer<typeof CharterDTOs.Primitives>;
+    type SensorCommands = z.infer<typeof CharterDTOs.SensorCommands>;
+    type ServedTool = z.infer<typeof CharterDTOs.ServedTool>;
+    type ServedTools = z.infer<typeof CharterDTOs.ServedTools>;
+    type SignInStatus = z.infer<typeof CharterDTOs.SignInStatus>;
+    type SignInStatuses = z.infer<typeof CharterDTOs.SignInStatuses>;
+    type TestCase = z.infer<typeof CharterDTOs.TestCase>;
+    type TestCaseReport = z.infer<typeof CharterDTOs.TestCaseReport>;
+    type TestCasesByFile = z.infer<typeof CharterDTOs.TestCasesByFile>;
+    type TestRunReport = z.infer<typeof CharterDTOs.TestRunReport>;
+    type TestSuite = z.infer<typeof CharterDTOs.TestSuite>;
+    type TestSuiteName = z.infer<typeof CharterDTOs.TestSuiteName>;
+    type TestSuites = z.infer<typeof CharterDTOs.TestSuites>;
+    type VendorAddOutcome = z.infer<typeof CharterDTOs.VendorAddOutcome>;
+    type VendorFolder = z.infer<typeof CharterDTOs.VendorFolder>;
+    type VendorFolders = z.infer<typeof CharterDTOs.VendorFolders>;
+    type VendorPrimitive = z.infer<typeof CharterDTOs.VendorPrimitive>;
+}
+
+/** The names a layer goes by: what this repository authored itself; what it
+ *  installed from someone else, under the name it installed it as (FR-023);
+ *  and what the running engine brings itself, supplied on every read and kept
+ *  nowhere in the repository, so nothing can refresh, edit or remove it
+ *  (FR-015, FR-016). */
+declare const LAYER_NAMES: readonly ["repo", "vendor", "builtin"];
+
+/** Whose layer a primitive came from, and there are only the three. It says
+ *  where a primitive was written, never what it is called: one charter has one
+ *  id space, whichever layer a file arrived in (FR-014, FR-019). */
+type LayerName = (typeof LAYER_NAMES)[number];
+
+/** The layer a primitive was read in: whose it is, and for a vendor's, the
+ *  name this repository installed it as (FR-023). Where it is kept is what
+ *  keeps it to know, never the layer's (CORE-FR-213). */
+declare class PrimitiveLayer<Name extends LayerName = LayerName> {
+    readonly name: Name;
+    /** The name a vendor's layer was installed as: `team/charter`. */
+    readonly vendorName?: string | undefined;
+    /** This repository's own layer: where a primitive is written when it is
+     *  authored here (FR-039). */
+    static readonly REPO: PrimitiveLayer<"repo">;
+    /** The engine's own layer: kept nowhere, so there is nothing to open (FR-015,
+     *  FR-018). */
+    static readonly BUILTIN: PrimitiveLayer<"builtin">;
+    private constructor();
+    /** The name every vendor's layer goes by. */
+    static get vendorName(): "vendor";
+    /** The layer of the vendor this repository installed under this name. */
+    static vendorLayerOf(vendorName: string): PrimitiveLayer<"vendor">;
+}
+
+/** What one primitive's author answered, under the header each answer fills
+ *  in: a line, or the entries of a list — not yet read by the kind's schema,
+ *  which is what refuses what the kind will not take. */
+type UnparsedHeaders = Readonly<Record<string, string | readonly string[]>>;
+
+/** One mcp origin a token is asked for: the address its credential is kept
+ *  under, its endpoint where it has one, and the id of an mcp at it, which
+ *  `cw mcp auth` signs in by. */
+interface McpOriginAddress {
+    readonly address: string;
+    readonly endpoint?: string;
+    readonly mcpId: string;
 }
 
 /**
@@ -3286,728 +2711,419 @@ declare namespace CharterDTOs {
  * (SDK-FR-004, SDK-FR-017, SDK-FR-018).
  */
 interface ForAuthoringCharter {
-  /**
-   * What this repository's charter holds, listed (FR-011, FR-012).
-   *
-   * Reads and says: there is no way through this to write anything (FR-041).
-   * What comes back is the listing the charter compiles to and not a second
-   * one made for this command, so what a user reads and what an agent reads
-   * are the same listing said twice (SC-004).
-   *
-   * Narrowed to one kind where a kind is named, and the whole charter where none
-   * is. The word is taken as typed: whether it is a kind at all is asked behind
-   * this port, and a word that is none is answered as one fault rather than under a file, since it
-   * leaves nothing to narrow by and there is no file it is wrong with.
-   *
-   * A charter with an error is refused with nothing listed and the errors given
-   * back, for the reason a build is: a listing of a charter that does not hold
-   * would say a charter holds primitives it has not got (FR-009).
-   */
-  list(kind?: string): Promise<CharterDTOs.Catalogue | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-  /**
-   * Every primitive of every layer, off the charter as it was read rather than
-   * the catalogue it compiles to: each with its file, the layer it arrived in,
-   * and every header it declared (FR-112, FR-114). What the portal lists by;
-   * `list` stays what an agent surveys by.
-   *
-   * Given a word, only the primitives that mention it — in the id, the
-   * kind, the description, when the kind comes up, the file or any header
-   * value, ignoring case.
-   *
-   * A charter with an error is refused with nothing listed and the errors given
-   * back, as `list` refuses it.
-   */
-  fullList(matching?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-  /**
-   * Which file declares one id, and which layer that file arrived in
-   * (FR-017, SC-006); the mixins it uses and the corpus it cites, and what
-   * uses, cites or names it (FR-014, FR-163).
-   *
-   * Reads and says, as `list` does: there is no way through this to write
-   * anything (FR-041).
-   *
-   * The id is taken as typed. Text that is not an id, `<kind>:<id>` among it, and an
-   * id this charter holds nothing of, are answered as one fault rather than under a file,
-   * for the reason an unknown kind is: there is no file it is wrong with, and
-   * nothing to explain.
-   *
-   * A charter with an error explains nothing and hands the errors back, the way
-   * a listing does: a charter that does not hold would answer for a primitive it
-   * has not got (FR-009). The collision SC-006 asks about is among those errors,
-   * naming both files that claim the id, so it is read where every other
-   * fault is.
-   */
-  explain(id: string): Promise<CharterDTOs.ExplanationOutcome | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-  /**
-   * What one kind takes of whoever authors a primitive of it: each header,
-   * whether it holds a line or a list, and whether a file written without it is
-   * refused (FR-004, FR-039).
-   *
-   * Every header the kind takes is named, not only the ones it refuses a file
-   * without: a header an author may write is one they have to know the shape of,
-   * and the shape is read off the same schema the file is refused against.
-   *
-   * Reads and says, as `list` does: there is no way through this to write
-   * anything (FR-041). No charter is read either — what a kind demands is the
-   * kind's own contract, and it is the same in a repository that has authored
-   * nothing.
-   *
-   * What it is for is the asking: whoever has an author in front of them has one
-   * question per header the kind requires, and does not have to know the kinds
-   * to put them. A word
-   * that is no kind is answered as one fault rather than under a file, the way a listing's is:
-   * there is no file it is wrong with, and what comes back names every kind
-   * there is.
-   */
-  listPrimitiveRequirements(kind: string): Promise<CharterDTOs.PrimitiveRequirements | FaultDTOs.Fault>;
-  /**
-   * Every kind the charter knows, and when a primitive of that kind comes up
-   * (FR-010).
-   *
-   * Reads and says, and reads no charter either: what a kind is and when it
-   * applies is the kind's own contract, so the answer is the same in a
-   * repository that has authored nothing. The same declarations the compiled
-   * orientation says it in, so a listing and what the agent reads cannot come to
-   * say different things.
-   *
-   * What it is for is listing: whoever shows a charter shows it by kind, and the
-   * kinds a charter holds nothing of are kinds all the same.
-   */
-  kinds(): Promise<CharterDTOs.PrimitiveKinds | FaultDTOs.Fault>;
-  /**
-   * One primitive written where its kind's primitives are authored (FR-039).
-   *
-   * Writes exactly one file. What arrives is what the kind was asked for —
-   * `listPrimitiveRequirements` said which headers, and these are the
-   * answers — so the asking belongs to whoever had an author to ask and the
-   * checking belongs here: answers the kind refuses come back as the faults they
-   * are and no file is written (FR-004). What it gives back is the primitive as
-   * `explain` would say it — its id, the file it went into, this
-   * repository's layer — so a caller can say it without going and looking.
-   *
-   * The body is what its author typed, and empty where none was: at the command
-   * line the body is written in an editor afterwards (FR-117).
-   *
-   * Nothing is compiled: a build is the command that compiles a charter
-   * (FR-020, FR-079).
-   *
-   * A word that is no kind, and an id the charter already holds in any
-   * layer, are answered as one fault rather than under a file: neither leaves a file to report a
-   * fault under, and the second names the file already holding it.
-   */
-  add(
-    kind: string,
-    id: string,
-    headers: UnparsedHeaders,
-    body?: string,
-  ): Promise<CharterDTOs.Primitive | FaultDTOs.Faults | FaultDTOs.Fault>;
-  /**
-   * One primitive as the charter read it — its headers, its body, the file
-   * and the layer — and the hash of it written out, what a save is made over
-   * (FR-075, FR-078).
-   *
-   * Reads and says: there is no way through this to write anything (FR-041).
-   * Asked of the files as read rather than of the validation, so a primitive
-   * opens whatever else in the charter is wrong. An id the charter holds
-   * nothing of is answered as a fault, as `explain` answers it.
-   */
-  open(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
-  /**
-   * One repository primitive's headers and body written over, its kind, id and
-   * file kept (FR-075).
-   *
-   * Refused, as a fault, with nothing written for a vendored or builtin primitive, naming
-   * where it came from (FR-077), and for a primitive that, read again, no
-   * longer has the hash it was opened at, `openedHash`, naming the file
-   * (FR-078). Answers the kind will not take come back as the faults `add`
-   * gives for them. Nothing is compiled or committed
-   * (FR-079).
-   */
-  rewrite(
-    id: string,
-    headers: UnparsedHeaders,
-    body: string,
-    openedHash: string,
-  ): Promise<CharterDTOs.Primitive | FaultDTOs.Faults | FaultDTOs.Fault>;
-  /**
-   * One repository primitive's file taken away, and nothing else (FR-076):
-   * what still names it is reported dangling by the next validation. Refused, as a fault, for
-   * a vendored or builtin primitive, as a rewrite is (FR-077). What comes back
-   * is the primitive that was removed. Nothing is compiled or committed
-   * (FR-079).
-   */
-  remove(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
-  /**
-   * Install one source under this repository's vendor folder, pinned to this
-   * version where one is named (FR-023, FR-027).
-   *
-   * The source is passed on as it was written: which transport it names and
-   * whether the credentials for it are there is version control's business, and
-   * what it says when it refuses is what the caller is told (FR-031).
-   *
-   * Installing one that is already there brings it up to date instead, so a
-   * repository has one way of saying what it wants rather than two (FR-030).
-   *
-   * The folder need not be a repository; a machine without git is refused
-   * (CORE-FR-205). What it installs is left unstaged for the user to read and
-   * commit, whatever else is in hand (CORE-FR-190).
-   *
-   * What is taken is read off the source's shape where neither `selectedSkillIds` nor
-   * `selectedCharterNames` is given: its one charter, else every charter under its
-   * `charters/`, else every skill under its `skills/` (CORE-FR-193).
-   * `selectedCharterNames` picks charters from `charters/`, each installed whole in a
-   * vendor folder of its own (CORE-FR-195, CORE-FR-196); `selectedSkillIds` takes
-   * skills from `skills/`, every one it holds where the shape takes them and
-   * none is named, asking nothing (CORE-FR-184, CORE-FR-188).
-   *
-   * What it answers is each folder it filled, and the primitives installed
-   * there, each skill with the headers its `SKILL.md` declared that were left
-   * out (CORE-FR-186).
-   */
-  addVendor(
-    sourceUri: string,
-    version?: string,
-    selectedSkillIds?: readonly string[],
-    selectedCharterNames?: readonly string[],
-  ): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
-  /** Copy source primitives into the own charter, unstaged, refusing collisions before writing (CORE-FR-198–200). */
-  injectVendor(
-    sourceUri: string,
-    version?: string,
-    selectedSkillIds?: readonly string[],
-    selectedCharterNames?: readonly string[],
-  ): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
-  /**
-   * Take one installed charter away, named by the folder it was installed as
-   * (FR-030), and answer that folder.
-   *
-   * Named by the folder rather than by the address it came from: the folder is
-   * what a reader of this repository sees, and what the charter is read out of.
-   *
-   * Its folder is left gone in the working tree for the user to commit, whatever
-   * else is in hand, in a repository or out of one. A name no vendor folder
-   * answers to is refused, changing nothing (CORE-FR-204).
-   */
-  removeVendor(name: string): Promise<CharterDTOs.VendorFolder | FaultDTOs.Fault>;
-  /**
-   * Every folder a source was installed as, under this repository's vendor
-   * folder, sorted (FR-053, FR-122).
-   *
-   * The folder is all there is to say: nothing is recorded of where one came
-   * from or at which version, since version control keeps no such record
-   * either and a record kept beside it is one more thing to drift (FR-046).
-   */
-  vendors(): Promise<CharterDTOs.VendorFolders | FaultDTOs.Fault>;
-  /**
-   * Every test file under `.cw/charter/test/`, run or not: its name, its text, and its
-   * description and cases — or, for a file that does not read, why (FR-124).
-   *
-   * Reads and says, and reads no charter: nothing is resolved here, which is
-   * what testing the charter does. A file that does not read is listed all the
-   * same, since it is the one its author most needs to open.
-   */
-  suites(): Promise<CharterDTOs.TestSuites | FaultDTOs.Fault>;
-  /**
-   * A new test file, under a name no other test file has, holding one sample
-   * case that reads as a suite (FR-091). What comes back is its name.
-   */
-  addSuite(): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
-  /**
-   * One existing test file written over with this text (FR-090). Text that does
-   * not read as a suite is answered as a fault with the refusal and sample `cw test` gives,
-   * and nothing is written; so is a name that is no test file. What comes back
-   * is its name.
-   */
-  writeSuite(name: string, text: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
-  /**
-   * One test file taken away, and nothing else (FR-092). A name that is no test
-   * file is answered as a fault. What comes back is its name.
-   */
-  removeSuite(name: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
-  /**
-   * Every file of evaluation cases, evaluated or not: its name, its text, and
-   * its description and cases — or, for a file that does not read, why
-   * (CORE-FR-222). Reads and says, and reads no charter: whether a case names
-   * what the charter holds is evaluating's to say.
-   */
-  evalSuites(): Promise<CharterDTOs.EvalSuites | FaultDTOs.Fault>;
-  /**
-   * A new file of evaluation cases, under a name no other has, holding one
-   * sample case that reads as a suite. What comes back is its name.
-   */
-  addEvalSuite(): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
-  /**
-   * One existing file of evaluation cases written over with this text. Text
-   * that does not read as a suite is answered as a fault, with a sample, and
-   * nothing is written; so is a name that is no such file. What comes back is
-   * its name.
-   */
-  writeEvalSuite(name: string, text: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
-  /**
-   * One file of evaluation cases taken away, and nothing else. A name that is
-   * no such file is answered as a fault. What comes back is its name.
-   */
-  removeEvalSuite(name: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
-  /**
-   * Every address an mcp origin of the charter takes a sign-in at, ordered by
-   * address, and whether the developer has signed in there (FR-150). Asks
-   * nothing and changes nothing: a credential past its expiry is still signed
-   * in, since it is renewed when it is used.
-   */
-  signInStatus(): Promise<CharterDTOs.SignInStatuses | FaultDTOs.Fault>;
-  /**
-   * Keep this token as the developer's credential at this address, replacing
-   * whatever was kept there (FR-148, FR-149). Refused, keeping nothing, for an
-   * address no mcp origin is at, one that takes no token, or an empty token.
-   * What comes back is the address, signed in.
-   */
-  signInWithToken(address: string, token: string): Promise<CharterDTOs.SignInStatus | FaultDTOs.Fault>;
-  /**
-   * Sign in at this address in the developer's browser, and keep what the mcp origin
-   * issued (FR-148). `showAuthorizationUrl` is handed the address to open.
-   * Refused, keeping nothing, for an address no mcp origin is at or one that takes
-   * no OAuth sign-in. What comes back is the address, signed in.
-   */
-  signInWithOAuth(
-    address: string,
-    showAuthorizationUrl: (authorizationUrl: string) => void,
-  ): Promise<CharterDTOs.SignInStatus | FaultDTOs.Fault>;
-  /**
-   * Every situation this repository wrote down, resolved against its charter
-   * (FR-048, FR-049, FR-050). Runs nothing, fetches nothing and asks no agent.
-   * A charter with an error, or a test file that does not read, resolves
-   * nothing and is answered as its faults (FR-009). Reads and says (FR-041).
-   */
-  test(): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-  /**
-   * A folder per kind for a charter to be authored in, and the parts kept
-   * beside it, laid out where nothing is yet (FR-037, CORE-FR-224). Run again,
-   * it discards nothing anybody wrote. What comes back is where the charter
-   * is kept.
-   */
-  setUpCharter(): Promise<CharterDTOs.CharterLayout | FaultDTOs.Fault>;
-  /** Where the charter is kept, refused where the repository is laid out the
-   *  old way, naming the skill that moves it (CORE-FR-226): what a driver asks
-   *  before any command. */
-  layout(): Promise<CharterDTOs.CharterLayout | FaultDTOs.Fault>;
-  /**
-   * The developer's access token to this mcp origin, renewed first where it
-   * has expired or `isRefused` says the mcp origin has just refused it (FR-151,
-   * SC-035). An mcp origin nobody signed in to, or whose credential cannot be
-   * renewed, is answered as a fault naming the command that signs in again; one
-   * at plain `http` on another machine is refused before anything is read.
-   */
-  accessToken(
-    mcpOriginAddress: McpOriginAddress,
-    isRefused: boolean,
-  ): Promise<CharterDTOs.AccessToken | FaultDTOs.Fault>;
+    /**
+     * What this repository's charter holds, listed (FR-011, FR-012).
+     *
+     * Reads and says: there is no way through this to write anything (FR-041).
+     * What comes back is the listing the charter compiles to and not a second
+     * one made for this command, so what a user reads and what an agent reads
+     * are the same listing said twice (SC-004).
+     *
+     * Narrowed to one kind where a kind is named, and the whole charter where none
+     * is. The word is taken as typed: whether it is a kind at all is asked behind
+     * this port, and a word that is none is answered as one fault rather than under a file, since it
+     * leaves nothing to narrow by and there is no file it is wrong with.
+     *
+     * A charter with an error is refused with nothing listed and the errors given
+     * back, for the reason a build is: a listing of a charter that does not hold
+     * would say a charter holds primitives it has not got (FR-009).
+     */
+    listCatalogue(kind?: string): Promise<CharterDTOs.Catalogue | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    /**
+     * Every primitive of every layer, off the charter as it was read rather than
+     * the catalogue it compiles to: each with its file, the layer it arrived in,
+     * and every header it declared (FR-112, FR-114). What the portal lists by;
+     * `listCatalogue` stays what an agent surveys by.
+     *
+     * Given a word, only the primitives that mention it — in the id, the
+     * kind, the description, when the kind comes up, the file or any header
+     * value, ignoring case.
+     *
+     * A charter with an error is refused with nothing listed and the errors given
+     * back, as `listCatalogue` refuses it.
+     */
+    listPrimitives(matching?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    /**
+     * Which file declares one id, and which layer that file arrived in
+     * (FR-017, SC-006); the mixins it uses and the corpus it cites, and what
+     * uses, cites or names it (FR-014, FR-163).
+     *
+     * Reads and says, as `listCatalogue` does: there is no way through this to write
+     * anything (FR-041).
+     *
+     * The id is taken as typed. Text that is not an id, `<kind>:<id>` among it, and an
+     * id this charter holds nothing of, are answered as one fault rather than under a file,
+     * for the reason an unknown kind is: there is no file it is wrong with, and
+     * nothing to explain.
+     *
+     * A charter with an error explains nothing and hands the errors back, the way
+     * a listing does: a charter that does not hold would answer for a primitive it
+     * has not got (FR-009). The collision SC-006 asks about is among those errors,
+     * naming both files that claim the id, so it is read where every other
+     * fault is.
+     */
+    explainPrimitive(id: string): Promise<CharterDTOs.ExplanationOutcome | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    /**
+     * What one kind takes of whoever authors a primitive of it: each header,
+     * whether it holds a line or a list, and whether a file written without it is
+     * refused (FR-004, FR-039).
+     *
+     * Every header the kind takes is named, not only the ones it refuses a file
+     * without: a header an author may write is one they have to know the shape of,
+     * and the shape is read off the same schema the file is refused against.
+     *
+     * Reads and says, as `listCatalogue` does: there is no way through this to write
+     * anything (FR-041). No charter is read either — what a kind demands is the
+     * kind's own contract, and it is the same in a repository that has authored
+     * nothing.
+     *
+     * What it is for is the asking: whoever has an author in front of them has one
+     * question per header the kind requires, and does not have to know the kinds
+     * to put them. A word
+     * that is no kind is answered as one fault rather than under a file, the way a listing's is:
+     * there is no file it is wrong with, and what comes back names every kind
+     * there is.
+     */
+    listPrimitiveRequirements(kind: string): Promise<CharterDTOs.PrimitiveRequirements | FaultDTOs.Fault>;
+    /**
+     * Every kind the charter knows, and when a primitive of that kind comes up
+     * (FR-010).
+     *
+     * Reads and says, and reads no charter either: what a kind is and when it
+     * applies is the kind's own contract, so the answer is the same in a
+     * repository that has authored nothing. The same declarations the compiled
+     * orientation says it in, so a listing and what the agent reads cannot come to
+     * say different things.
+     *
+     * What it is for is listing: whoever shows a charter shows it by kind, and the
+     * kinds a charter holds nothing of are kinds all the same.
+     */
+    listKinds(): Promise<CharterDTOs.PrimitiveKinds | FaultDTOs.Fault>;
+    /**
+     * One primitive written where its kind's primitives are authored (FR-039).
+     *
+     * Writes exactly one file. What arrives is what the kind was asked for —
+     * `listPrimitiveRequirements` said which headers, and these are the
+     * answers — so the asking belongs to whoever had an author to ask and the
+     * checking belongs here: answers the kind refuses come back as the faults they
+     * are and no file is written (FR-004). What it gives back is the primitive as
+     * `explainPrimitive` would say it — its id, the file it went into, this
+     * repository's layer — so a caller can say it without going and looking.
+     *
+     * The body is what its author typed, and empty where none was: at the command
+     * line the body is written in an editor afterwards (FR-117).
+     *
+     * Nothing is compiled: a build is the command that compiles a charter
+     * (FR-020, FR-079).
+     *
+     * A word that is no kind, and an id the charter already holds in any
+     * layer, are answered as one fault rather than under a file: neither leaves a file to report a
+     * fault under, and the second names the file already holding it.
+     */
+    addPrimitive(kind: string, id: string, headers: UnparsedHeaders, body?: string): Promise<CharterDTOs.Primitive | FaultDTOs.Faults | FaultDTOs.Fault>;
+    /**
+     * One primitive as the charter read it — its headers, its body, the file
+     * and the layer — and the hash of it written out, what a save is made over
+     * (FR-075, FR-078).
+     *
+     * Reads and says: there is no way through this to write anything (FR-041).
+     * Asked of the files as read rather than of the validation, so a primitive
+     * opens whatever else in the charter is wrong. An id the charter holds
+     * nothing of is answered as a fault, as `explainPrimitive` answers it.
+     */
+    openPrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
+    /**
+     * One repository primitive's headers and body written over, its kind, id and
+     * file kept (FR-075).
+     *
+     * Refused, as a fault, with nothing written for a vendored or builtin primitive, naming
+     * where it came from (FR-077), and for a primitive that, read again, no
+     * longer has the hash it was opened at, `openedHash`, naming the file
+     * (FR-078). Answers the kind will not take come back as the faults `addPrimitive`
+     * gives for them. Nothing is compiled or committed
+     * (FR-079).
+     */
+    rewritePrimitive(id: string, headers: UnparsedHeaders, body: string, openedHash: string): Promise<CharterDTOs.Primitive | FaultDTOs.Faults | FaultDTOs.Fault>;
+    /**
+     * One repository primitive's file taken away, and nothing else (FR-076):
+     * what still names it is reported dangling by the next validation. Refused, as a fault, for
+     * a vendored or builtin primitive, as a rewrite is (FR-077). What comes back
+     * is the primitive that was removed. Nothing is compiled or committed
+     * (FR-079).
+     */
+    removePrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
+    /**
+     * Install one source under this repository's vendor folder, pinned to this
+     * version where one is named (FR-023, FR-027).
+     *
+     * The source is passed on as it was written: which transport it names and
+     * whether the credentials for it are there is version control's business, and
+     * what it says when it refuses is what the caller is told (FR-031).
+     *
+     * Installing one that is already there brings it up to date instead, so a
+     * repository has one way of saying what it wants rather than two (FR-030).
+     *
+     * The folder need not be a repository; a machine without git is refused
+     * (CORE-FR-205). What it installs is left unstaged for the user to read and
+     * commit, whatever else is in hand (CORE-FR-190).
+     *
+     * What is taken is read off the source's shape where neither `selectedSkillIds` nor
+     * `selectedCharterNames` is given: its one charter, else every charter under its
+     * `charters/`, else every skill under its `skills/` (CORE-FR-193).
+     * `selectedCharterNames` picks charters from `charters/`, each installed whole in a
+     * vendor folder of its own (CORE-FR-195, CORE-FR-196); `selectedSkillIds` takes
+     * skills from `skills/`, every one it holds where the shape takes them and
+     * none is named, asking nothing (CORE-FR-184, CORE-FR-188).
+     *
+     * What it answers is each folder it filled, and the primitives installed
+     * there, each skill with the headers its `SKILL.md` declared that were left
+     * out (CORE-FR-186).
+     */
+    addVendor(sourceUri: string, version?: string, selectedSkillIds?: readonly string[], selectedCharterNames?: readonly string[]): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
+    /** Copy source primitives into the own charter, unstaged, refusing collisions before writing (CORE-FR-198–200). */
+    injectVendor(sourceUri: string, version?: string, selectedSkillIds?: readonly string[], selectedCharterNames?: readonly string[]): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
+    /**
+     * Take one installed charter away, named by the folder it was installed as
+     * (FR-030), and answer that folder.
+     *
+     * Named by the folder rather than by the address it came from: the folder is
+     * what a reader of this repository sees, and what the charter is read out of.
+     *
+     * Its folder is left gone in the working tree for the user to commit, whatever
+     * else is in hand, in a repository or out of one. A name no vendor folder
+     * answers to is refused, changing nothing (CORE-FR-204).
+     */
+    removeVendor(name: string): Promise<CharterDTOs.VendorFolder | FaultDTOs.Fault>;
+    /**
+     * Every folder a source was installed as, under this repository's vendor
+     * folder, sorted (FR-053, FR-122).
+     *
+     * The folder is all there is to say: nothing is recorded of where one came
+     * from or at which version, since version control keeps no such record
+     * either and a record kept beside it is one more thing to drift (FR-046).
+     */
+    listVendors(): Promise<CharterDTOs.VendorFolders | FaultDTOs.Fault>;
+    /**
+     * Every test file under `.cw/charter/test/`, run or not: its name, its text, and its
+     * description and cases — or, for a file that does not read, why (FR-124).
+     *
+     * Reads and says, and reads no charter: nothing is resolved here, which is
+     * what testing the charter does. A file that does not read is listed all the
+     * same, since it is the one its author most needs to open.
+     */
+    listTestSuites(): Promise<CharterDTOs.TestSuites | FaultDTOs.Fault>;
+    /**
+     * A new test file, under a name no other test file has, holding one sample
+     * case that reads as a suite (FR-091). What comes back is its name.
+     */
+    addTestSuite(): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+    /**
+     * One existing test file written over with this text (FR-090). Text that does
+     * not read as a suite is answered as a fault with the refusal and sample `cw test` gives,
+     * and nothing is written; so is a name that is no test file. What comes back
+     * is its name.
+     */
+    writeTestSuite(name: string, text: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+    /**
+     * One test file taken away, and nothing else (FR-092). A name that is no test
+     * file is answered as a fault. What comes back is its name.
+     */
+    removeTestSuite(name: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+    /**
+     * Every file of evaluation cases, evaluated or not: its name, its text, and
+     * its description and cases — or, for a file that does not read, why
+     * (CORE-FR-222). Reads and says, and reads no charter: whether a case names
+     * what the charter holds is evaluating's to say.
+     */
+    listEvalSuites(): Promise<CharterDTOs.EvalSuites | FaultDTOs.Fault>;
+    /**
+     * A new file of evaluation cases, under a name no other has, holding one
+     * sample case that reads as a suite. What comes back is its name.
+     */
+    addEvalSuite(): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
+    /**
+     * One existing file of evaluation cases written over with this text. Text
+     * that does not read as a suite is answered as a fault, with a sample, and
+     * nothing is written; so is a name that is no such file. What comes back is
+     * its name.
+     */
+    writeEvalSuite(name: string, text: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
+    /**
+     * One file of evaluation cases taken away, and nothing else. A name that is
+     * no such file is answered as a fault. What comes back is its name.
+     */
+    removeEvalSuite(name: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
+    /**
+     * Every address an mcp origin of the charter takes a sign-in at, ordered by
+     * address, and whether the developer has signed in there (FR-150). Asks
+     * nothing and changes nothing: a credential past its expiry is still signed
+     * in, since it is renewed when it is used.
+     */
+    listSignInStatuses(): Promise<CharterDTOs.SignInStatuses | FaultDTOs.Fault>;
+    /**
+     * Keep this token as the developer's credential at this address, replacing
+     * whatever was kept there (FR-148, FR-149). Refused, keeping nothing, for an
+     * address no mcp origin is at, one that takes no token, or an empty token.
+     * What comes back is the address, signed in.
+     */
+    signInWithToken(address: string, token: string): Promise<CharterDTOs.SignInStatus | FaultDTOs.Fault>;
+    /**
+     * Sign in at this address in the developer's browser, and keep what the mcp origin
+     * issued (FR-148). `showAuthorizationUrl` is handed the address to open.
+     * Refused, keeping nothing, for an address no mcp origin is at or one that takes
+     * no OAuth sign-in. What comes back is the address, signed in.
+     */
+    signInWithOAuth(address: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<CharterDTOs.SignInStatus | FaultDTOs.Fault>;
+    /**
+     * Every situation this repository wrote down, resolved against its charter
+     * (FR-048, FR-049, FR-050). Runs nothing, fetches nothing and asks no agent.
+     * A charter with an error, or a test file that does not read, resolves
+     * nothing and is answered as its faults (FR-009). Reads and says (FR-041).
+     */
+    testCharter(): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    /**
+     * A folder per kind for a charter to be authored in, and the parts kept
+     * beside it, laid out where nothing is yet (FR-037, CORE-FR-224). Run again,
+     * it discards nothing anybody wrote. What comes back is where the charter
+     * is kept.
+     */
+    setUpCharter(): Promise<CharterDTOs.CharterLayout | FaultDTOs.Fault>;
+    /** Where the charter is kept, refused where the repository is laid out the
+     *  old way, naming the skill that moves it (CORE-FR-226): what a driver asks
+     *  before any command. */
+    readCharterLayout(): Promise<CharterDTOs.CharterLayout | FaultDTOs.Fault>;
+    /**
+     * The developer's access token to this mcp origin, renewed first where it
+     * has expired or `isRefused` says the mcp origin has just refused it (FR-151,
+     * SC-035). An mcp origin nobody signed in to, or whose credential cannot be
+     * renewed, is answered as a fault naming the command that signs in again; one
+     * at plain `http` on another machine is refused before anything is read.
+     */
+    getAccessToken(mcpOriginAddress: McpOriginAddress, isRefused: boolean): Promise<CharterDTOs.AccessToken | FaultDTOs.Fault>;
 }
+
+/** What an adapter answering this port raises when the server behind it
+ *  cannot be reached, named again here so it names this port and nothing
+ *  behind it. */
 
 /**
- * DRIVEN PORT — OAuth against one mcp origin: signing in, and renewing what a
- * sign-in ended with (FR-148, FR-151).
- *
- * Discovery, registration, PKCE and the callback are the adapter's business;
- * the hexagon hands it an endpoint and keeps what comes back.
- */
-interface ForAuthorizingMcpOrigins {
-  /**
-   * Sign in to the server at this endpoint in the developer's browser.
-   *
-   * `showAuthorizationUrl` is handed the address to open, once: the adapter
-   * never opens it (plan §15). Raises an `AdapterFault` where the server cannot
-   * be reached, the developer refuses, or nobody comes back in time.
-   */
-  authorize(endpoint: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<OAuthGrant>;
-  /**
-   * Renew one grant with its refresh token, asking nobody.
-   *
-   * `undefined` where the server refuses: the developer has to sign in again.
-   * A server that cannot be reached raises an `AdapterFault` instead, since
-   * nothing says the grant is no good.
-   */
-  renew(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined>;
-}
-
-/** What an adapter answering this port raises when git refuses, named again
- *  here so it names this port and nothing behind it. */
-
-/**
- * DRIVEN PORT — reaching a source. How it is answered — a git command today, a
- * library or a test's own answer tomorrow — is the adapter's business.
- *
- * The folder a source lands in need not be a repository: nothing here needs a
- * repository, and nothing here writes to one (FR-023, CORE-FR-205).
- */
-interface ForFetchingCharterSources {
-  /**
-   * Fetch this source, at this version where one is named, and answer the
-   * commit fetched: what the other questions about a source are asked of, so it
-   * is fetched once. Its text is the adapter's own, for this port alone to
-   * read. Nothing in the repository is touched; it is only what a relative source is
-   * read from, and whose own version control settings reach it, where it has
-   * any. Whoever fetched it says `forgetCommit` when done.
-   *
-   * A source that cannot be reached, a version that is not there, and a machine
-   * that cannot fetch at all each raise an `AdapterFault` saying so
-   * (CORE-FR-190, CORE-FR-205).
-   */
-  fetchCommit(source: string, version?: string): Promise<string>;
-  /** Every file this fetched commit holds, by its path in it, at any depth, in
-   *  no promised order. */
-  listFilesAt(commit: string): Promise<readonly string[]>;
-  /** What one file of this fetched commit holds, as text. */
-  readFileAt(commit: string, path: string): Promise<string>;
-  /** What one file of this fetched commit holds, as the bytes it holds, never
-   *  decoded (CORE-FR-208). */
-  readBytesAt(commit: string, path: string): Promise<Uint8Array>;
-  /**
-   * Put one folder of this fetched commit — every file under it, at any depth —
-   * at this folder of this repository, replacing whatever that folder held and
-   * nothing beside it. The empty path is the commit's root. Nothing is staged
-   * and nothing is committed: what lands is left in the working tree for the
-   * user to read, whatever else is in hand (FR-023, FR-042, CORE-FR-187,
-   * CORE-FR-190).
-   */
-  checkoutFolderAt(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
-  /** Let go of what was kept of this fetched commit; nothing is asked of it
-   *  afterwards. */
-  forgetCommit(commit: string): Promise<void>;
-}
-
-/** Keeps a repository's charter, wherever it keeps it, and knows how: its
- *  primitives, the vendors it installed, its test cases and its eval cases,
- *  through this one port (CORE-FR-228), and reads back what the last build
- *  laid of it, each part known by its host, the part it plays, its kind and its
- *  id, never by a path the engine knows (CORE-FR-221). Where a primitive, an asset of one, a
- *  vendor's or a suite sits is its own to know, never the engine's, which knows
- *  a primitive by its layer, kind and id and a suite by its name
- *  (CORE-FR-213). */
-interface ForManagingCharter {
-  /** Every primitive kept of the repository's charter, its own layer and each
-   *  vendor's, each with its assets. Under `checkoutPath`, a checkout of the
-   *  repository such as a worktree, where one is named. */
-  loadCharter(checkoutPath?: string): Promise<readonly RawPrimitive[]>;
-  /** A place laid out for each kind of primitive, where none was: what a
-   *  repository is set up with (FR-057). */
-  createCharter(): Promise<void>;
-  /** One new primitive of the repository's own layer kept, with its assets
-   *  where none stands there already, and a file already in its folder left
-   *  as one of them; its uri. Refused, with nothing written, where it is kept
-   *  already, would be kept inside another or around it, or would land outside
-   *  the charter (FR-167, CORE-FR-044). */
-  addPrimitive(rawPrimitive: RawPrimitive): Promise<string>;
-  /** New primitives of the repository's own layer kept together, each one's
-   *  uri in order; refused, with nothing written, as one added is, and where
-   *  any file is already in one's folder (CORE-FR-194). */
-  injectPrimitives(rawPrimitives: readonly RawPrimitive[]): Promise<readonly string[]>;
-  /** Refused where the repository is laid out in a way this store no longer
-   *  keeps, naming what moves it (CORE-FR-226). */
-  assertLayout(): Promise<void>;
-  /** Where the repository's own layer is kept, said back and never read. */
-  findCharterUri(): string;
-  /** One primitive of the repository's own layer kept over what it was, its
-   *  assets as they are (FR-075). */
-  rewritePrimitive(primitive: Primitive): Promise<void>;
-  /** One primitive of the repository's own layer taken away, with its assets,
-   *  and nothing else (FR-076, FR-167). */
-  removePrimitive(primitive: Primitive): Promise<void>;
-  /** One commit of this source, at this version where one is named, fetched
-   *  and read: its own charter, the charters it keeps apart, and its skills.
-   *  Whoever asked says `cleanupVendorSource` once done. A source that cannot be
-   *  reached raises an `AdapterFault` saying so (CORE-FR-190). */
-  fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<RawVendorSource>;
-  /** Let go of what was kept of a source fetched. */
-  cleanupVendorSource(rawVendorSource: RawVendorSource): Promise<void>;
-  /** Every vendor installed (FR-053). */
-  loadVendorRoot(): Promise<VendorRoot>;
-  /** One vendor of a source fetched put down by its plan, in order: each
-   *  folder copied from the source as it holds it, each file written or taken
-   *  away; what else the vendor folder holds is left as it was (CORE-FR-042,
-   *  CORE-FR-186 to CORE-FR-189, CORE-FR-196). */
-  storeVendor(vendorSource: VendorSource, projectionPlan: ProjectionPlan<WritePlan | CopyPlan>): Promise<void>;
-  /** Where a vendor installed under this name is kept, in this keeper's
-   *  words: said back, never read. */
-  findVendorUri(vendorName: string): string;
-  /** The vendor installed under this name taken away, with each folder above
-   *  it that leaves empty (FR-047, CORE-FR-204). */
-  removeVendor(vendorName: string): Promise<void>;
-  /** Every test suite kept, by its name, with what it holds. */
-  loadTestSuites(): Promise<readonly RawTestSuite[]>;
-  /** One test suite kept under this name, as its author wrote it, over
-   *  whatever it held. */
-  writeTestSuite(name: string, testSuite: TestSuite): Promise<void>;
-  /** The test suite kept under this name taken away. */
-  removeTestSuite(name: string): Promise<void>;
-  /** Every file of evaluation cases kept, by the name it is reported under,
-   *  with what it holds. Under `checkoutPath`, a checkout of the repository
-   *  such as a worktree, where one is named. */
-  loadEvalSuites(checkoutPath?: string): Promise<readonly RawEvalSuite[]>;
-  /** One file of evaluation cases kept under this name, as its author wrote
-   *  it, over whatever it held. */
-  writeEvalSuite(name: string, evalSuiteText: string): Promise<void>;
-  /** The file of evaluation cases kept under this name taken away. */
-  removeEvalSuite(name: string): Promise<void>;
-  /** The text a build laid for this part, as it was laid; nothing where none
-   *  was. Under `checkoutPath`, a checkout of the repository such as a
-   *  worktree, where one is named. */
-  loadLaidText(outputPart: OutputPart, checkoutPath?: string): Promise<string | undefined>;
-  /** Where this part is laid, in the repository's own words: said back where
-   *  a message names it, and never read. */
-  findPlace(outputPart: OutputPart): string;
-  /** Where the build's output lands, in the repository's own words: what
-   *  `$CW_OUT` stands for in what the output holds, where a command of it is
-   *  run (CORE-FR-221). */
-  findOutputFolder(): string;
-}
-
-/** Keeps the credentials of the mcp origins, wherever they are kept: what a
- *  credential holds is never shown, and no DTO carries one (SC-036). */
-interface ForStoringCredentials {
-  /** The credential kept under this address, or `undefined` where none is. One
-   *  that does not read as a credential is none: signing in again replaces it. */
-  readCredential(address: string): Promise<McpCredential | undefined>;
-  /** Keep this credential under its address, replacing what was there. */
-  writeCredential(credential: McpCredential): Promise<void>;
-}
-
-/**
- * DRIVER PORT — projecting the charter: the charter charter authoring keeps,
- * built and laid onto each agent provider the repository uses; the build and
- * its preview, the health check, the estimated main context, and what the
- * last build laid to be served or run — the tools of the mcp origins, the
- * sensors (CORE-FR-222). Runtime asks it, through this port alone, for the
- * mcp origins, the sensors of a signal, a build into a working copy, what an
- * agent is sent when a session opens, and an evaluation's cases
- * (CORE-FR-229).
- *
- * Which agents it builds for is what it was composed with, never what it reads
- * (CORE-FR-231). Every answer is a DTO, told apart from the others it may be
- * by its `type`; whatever stops an operation is among them, a
- * `FaultDTOs.Fault`, and never thrown (SDK-FR-004, SDK-FR-017, SDK-FR-018).
- */
-interface ForBuildingCharter {
-  /**
-   * The three questions about this repository, asked in one go (FR-040): which
-   * agents it compiles for, what validating its charter finds — its test files'
-   * findings among it — and how many files a build would still change, with
-   * the main context each agent opens with, estimated. Reads and says
-   * (FR-041).
-   */
-  doctor(): Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault>;
-  /** What each agent this repository compiles for is sent of the charter when
-   *  a session opens, estimated by a tokenizer on this machine (EVAL-FR-001,
-   *  EVAL-FR-002). Reads and says (FR-041). */
-  predictMainContext(): Promise<CharterDTOs.MainContexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-  /**
-   * One reading of the charter, put on disk (FR-020, FR-021): a charter with
-   * an error is refused before anything is touched, with its errors given back
-   * (FR-005, FR-009); an mcp origin that cannot be asked for its tools stops it
-   * as an error does (EVAL-FR-031).
-   */
-  build(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-  /** The build, worked out and stopped short of disk (FR-022). */
-  preview(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-  /** Every tool the mcp origins the last build listed serve, read off what it
-   *  kept there: no mcp origin is reached to list them (EVAL-FR-031). */
-  tools(): Promise<CharterDTOs.ServedTools | FaultDTOs.Fault>;
-  /** Every tool the mcp origins the last build listed declare, under the name
-   *  it is served by, with the mcp origin a call to it is forwarded to
-   *  (FR-152 – FR-154). */
-  declaredTools(): Promise<CharterDTOs.DeclaredTools | FaultDTOs.Fault>;
-  /** The commands the last build laid for this signal of this agent
-   *  (CORE-FR-176). */
-  sensorCommands(signal: string, agent: AgentProviderName): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault>;
-  /** The charter of the checkout `checkoutPath` names, built into it for the
-   *  agents this was composed with, keeping the tools the last build kept
-   *  (EVAL-FR-021). */
-  buildInto(checkoutPath: string): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-  /** What each agent this repository compiles for is sent of the charter when
-   *  a session opens, each text as the build lays it, for an exact count
-   *  (EVAL-FR-004). */
-  mainContextTexts(): Promise<CharterDTOs.MainContextTexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-  /** Every evaluation case of the checkout `checkoutPath` names, checked
-   *  against its charter: a charter with an error, a file that does not read,
-   *  or a case naming a skill or a guide the charter does not hold, is answered
-   *  as faults under their files (EVAL-FR-026). */
-  evalCases(checkoutPath: string): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-}
-
-/**
- * DRIVEN PORT — a tokenizer that runs on this machine. The hexagon hands it a
- * text and is told how many tokens that text is; which tokenizer answers, and
- * how, is the adapter's business.
- *
- * No tokenizer of the model an agent runs on is at hand offline, so what this
- * answers is an estimate of that model's count, and whoever says the number
- * says so (EVAL-FR-002).
- */
-interface ForCountingTokens {
-  /** How many tokens this text is, to the tokenizer behind this port. */
-  countTokens(text: string): number;
-}
-
-/**
- * DRIVEN PORT — what one agent reads of a charter, and where: the files it
- * reads and how each goes over what is there, its own links in them, and
- * what of them it holds in its main context (FR-018, CORE-FR-221). The engine
- * hands it the charter and what the charter compiles to, whose paths are
- * under `$CW_OUT/`, and knows no agent: one is taught to the engine by
- * handing its application one more of these, under the agent's name.
- */
-interface ForManagingLocalAgentOutput {
-  /**
-   * What laying this agent's files would do, decided and not yet done
-   * (FR-020, FR-022): each place it would write, with what it would hold and
-   * what it holds now, each place the last build left for it that this one
-   * would take away or write again, and what it could not lay as the charter
-   * says. Reads, and only reads. Under `checkoutPath`, a checkout of the
-   * repository such as a worktree, where one is named.
-   */
-  createAgentProjectionPlan(
-    charter: CharterRoot,
-    charterOutput: CharterOutput,
-    checkoutPath?: string,
-  ): Promise<ProjectionPlan>;
-  /** What this agent puts into its main context of the charter, each text as
-   *  it lays it (EVAL-FR-001, EVAL-FR-003). */
-  mainContextTextsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
-  /** How many of this agent's tokens one token of the tokenizer on this
-   *  machine stands for: what an estimate is scaled by (EVAL-SC-002). */
-  readonly tokenFactor: number;
-}
-
-/** The names a layer goes by: what this repository authored itself; what it
- *  installed from someone else, under the name it installed it as (FR-023);
- *  and what the running engine brings itself, supplied on every read and kept
- *  nowhere in the repository, so nothing can refresh, edit or remove it
- *  (FR-015, FR-016). */
-declare const LAYER_NAMES: readonly ["repo", "vendor", "builtin"];
-
-/** Whose layer a primitive came from, and there are only the three. It says
- *  where a primitive was written, never what it is called: one charter has one
- *  id space, whichever layer a file arrived in (FR-014, FR-019). */
-type LayerName = (typeof LAYER_NAMES)[number];
-
-/** The layer a primitive was read in: whose it is, and for a vendor's, the
- *  name this repository installed it as (FR-023). Where it is kept is what
- *  keeps it to know, never the layer's (CORE-FR-213). */
-declare class PrimitiveLayer<Name extends LayerName = LayerName> {
-  readonly name: Name;
-  /** The name a vendor's layer was installed as: `team/charter`. */
-  readonly vendorName?: string | undefined;
-  /** This repository's own layer: where a primitive is written when it is
-   *  authored here (FR-039). */
-  static readonly REPO: PrimitiveLayer<"repo">;
-  /** The engine's own layer: kept nowhere, so there is nothing to open (FR-015,
-   *  FR-018). */
-  static readonly BUILTIN: PrimitiveLayer<"builtin">;
-  private constructor();
-  /** The name every vendor's layer goes by. */
-  static get vendorName(): "vendor";
-  /** The layer of the vendor this repository installed under this name. */
-  static ofVendor(vendorName: string): PrimitiveLayer<"vendor">;
-}
-
-/** What one primitive's author answered, under the header each answer fills
- *  in: a line, or the entries of a list — not yet read by the kind's schema,
- *  which is what refuses what the kind will not take. */
-type UnparsedHeaders = Readonly<Record<string, string | readonly string[]>>;
-
-/** One mcp origin a token is asked for: the address its credential is kept
- *  under, its endpoint where it has one, and the id of an mcp at it, which
- *  `cw mcp auth` signs in by. */
-interface McpOriginAddress {
-  readonly address: string;
-  readonly endpoint?: string;
-  readonly mcpId: string;
-}
-
-/** What an mcp origin's authorization server registered `cw` as, and which
- *  server that was: a registration is presented to the server it came from
- *  and no other. */
-declare class McpClientRegistration {
-  readonly clientId: string;
-  readonly clientSecret?: string;
-  readonly issuer: string;
-  constructor({
-    clientId,
-    clientSecret,
-    issuer,
-  }: Pick<McpClientRegistration, "clientId" | "issuer"> & Partial<Pick<McpClientRegistration, "clientSecret">>);
-}
-
-/**
- * One developer's sign-in at one address, as the credential store keeps it.
- *
- * No DTO holds it, so no driver can show one (SC-036): it is read, and handed
- * on as the access token a call is made with.
- */
-declare class McpCredential {
-  readonly address: string;
-  readonly method: "oauth" | "token";
-  readonly accessToken: string;
-  readonly refreshToken?: string;
-  readonly expiresAt?: string;
-  readonly client?: McpClientRegistration;
-  constructor({
-    address,
-    method,
-    accessToken,
-    refreshToken,
-    expiresAt,
-    client,
-  }: Pick<McpCredential, "address" | "method" | "accessToken"> &
-    Partial<Pick<McpCredential, "refreshToken" | "expiresAt" | "client">>);
-}
-
-/**
- * What one OAuth sign-in ends with: the tokens an mcp origin issued, and what it
- * registered `cw` as, so a renewal needs no second registration (plan §19.5).
+ * What one OAuth sign-in ends with: the tokens the authorization server issued,
+ * and what it registered `cw` as, so a renewal needs no second registration (plan §19.5).
  *
  * Not a domain type, and no DTO carries one (SC-036): it goes from this port
  * into the credential store and back, and nowhere else.
  */
 interface OAuthGrant {
-  readonly accessToken: string;
-  readonly refreshToken?: string;
-  /** ISO 8601. Absent where the mcp origin said nothing of when it expires. */
-  readonly expiresAt?: string;
-  /** What the mcp origin's authorization server registered `cw` as, and which
-   *  server that was: a registration is presented to the server it came from
-   *  and no other. */
-  readonly client: McpClientRegistration;
+    readonly accessToken: string;
+    readonly refreshToken?: string;
+    /** ISO 8601. Absent where the mcp origin said nothing of when it expires. */
+    readonly expiresAt?: string;
+    /** What the authorization server registered `cw` as, and which server that
+     *  was: a registration is presented to the server it came from and no
+     *  other. */
+    readonly client: OAuthClientRegistration;
 }
+
+/** What an OAuth authorization server registered a client as (RFC 7591): its
+ *  id, its secret where it issued one, and the server that issued them. */
+interface OAuthClientRegistration {
+    readonly clientId: string;
+    readonly clientSecret?: string;
+    readonly issuer: string;
+}
+
+/**
+ * DRIVEN PORT — OAuth against one authorization server: signing in, and
+ * renewing what a sign-in ended with (FR-148, FR-151).
+ *
+ * Discovery, registration, PKCE and the callback are the adapter's business;
+ * the hexagon hands it an endpoint and keeps what comes back.
+ */
+interface ForAuthorizingOAuthClients {
+    /**
+     * Sign in to the server at this endpoint in the developer's browser.
+     *
+     * `showAuthorizationUrl` is handed the address to open, once: the adapter
+     * never opens it (plan §15). Raises an `AdapterFault` where the server cannot
+     * be reached, the developer refuses, or nobody comes back in time.
+     */
+    authorizeInBrowser(endpoint: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<OAuthGrant>;
+    /**
+     * Renew one grant with its refresh token, asking nobody.
+     *
+     * `undefined` where the server refuses: the developer has to sign in again.
+     * A server that cannot be reached raises an `AdapterFault` instead, since
+     * nothing says the grant is no good.
+     */
+    renewGrant(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined>;
+}
+
+/**
+ * What one evaluation case may say (EVAL-FR-020): a prompt put to the agent,
+ * and what is expected of it — a skill invoked, a guide followed, at most a
+ * number of tokens, or a file read — at least one expectation.
+ */
+declare const EvalCaseSchema: z.ZodObject<{
+    prompt: z.ZodString;
+    expect: z.ZodObject<{
+        invoke: z.ZodOptional<z.ZodString>;
+        follow: z.ZodOptional<z.ZodString>;
+        read: z.ZodOptional<z.ZodString>;
+        maxTokens: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>;
+}, z.core.$strict>;
+
+/** One case, as `EvalCaseSchema` read it. */
+type EvalCase = z.infer<typeof EvalCaseSchema>;
+
+/** What an evaluation file may hold: what it is about, and its cases. JSON, as
+ *  a test file is: nothing reads it but `cw eval`. Not a primitive, and a
+ *  vendor's are not installed with it (EVAL-FR-020). */
+declare const EvalSuiteSchema: z.ZodObject<{
+    description: z.ZodOptional<z.ZodString>;
+    cases: z.ZodArray<z.ZodObject<{
+        prompt: z.ZodString;
+        expect: z.ZodObject<{
+            invoke: z.ZodOptional<z.ZodString>;
+            follow: z.ZodOptional<z.ZodString>;
+            read: z.ZodOptional<z.ZodString>;
+            maxTokens: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strict>;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+/** One evaluation file, as `EvalSuiteSchema` read it: what it is about, the
+ *  cases it evaluates, and the body it was read from, as its author wrote it. Made by `EvalSuiteFactory.create` and by nothing
+ *  else. */
+declare class EvalSuite {
+    readonly description: string | undefined;
+    readonly cases: readonly EvalCase[];
+    readonly body: string;
+    static get schema(): typeof EvalSuiteSchema;
+    static get defaultBody(): typeof DEFAULT_EVAL_SUITE_BODY;
+    constructor(description: string | undefined, cases: readonly EvalCase[], body: string);
+}
+
+/** What a new evaluation file holds: one case that reads, so its author edits
+ *  rather than looks the format up, as a new test file does (FR-091). */
+declare const DEFAULT_EVAL_SUITE_BODY: string;
 
 /** One file of evaluation cases as what keeps them keeps it, before the
  *  engine reads it: the name it is reported under, what it holds, and where it
  *  is kept, said back and never read (CORE-FR-213). */
 declare class RawEvalSuite {
-  readonly name: string;
-  readonly text: string;
-  readonly uri: string;
-  constructor(name: string, text: string, uri: string);
-}
-
-/** The name of an agent a charter is compiled for, as a file, a DTO or a
- *  command line writes it: whichever names the projections the engine was
- *  composed with answer to, never a list of its own (CORE-FR-221). */
-type AgentProviderName = string;
-
-/** One agent a charter is compiled for, by its name: what it reads of a
- *  charter, and where, is its projection's (FR-018, CORE-FR-221). */
-declare class AgentProvider {
-  readonly name: AgentProviderName;
-  constructor(name: AgentProviderName);
-  toString(): AgentProviderName;
+    readonly name: string;
+    readonly text: string;
+    readonly uri: string;
+    constructor(name: string, text: string, uri: string);
 }
 
 /** One file of a primitive's folder beside its `index.md`: the path it has in
  *  that folder, and the bytes it holds, never decoded, so it is copied whole
  *  whatever it holds (FR-168, CORE-FR-207). */
 interface AssetFile {
-  readonly file: string;
-  readonly contents: Uint8Array;
+    readonly assetPath: string;
+    readonly contents: Uint8Array;
 }
 
 /**
@@ -4053,151 +3169,141 @@ type CommonHeaders = Readonly<z.infer<ReturnType<typeof BasePrimitive.headersSch
  * it is checked, and held as that kind's headers from then on.
  */
 declare abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeaders> {
-  #private;
-  /** What this primitive's file declared, read as the contract of its kind:
-   *  typed by whichever kind this is, so `headers.globs` compiles on a guide
-   *  and nowhere else. */
-  readonly headers: Headers;
-  readonly body: string;
-  /** Every file of its folder beside its `index.md`, at any depth (FR-168). */
-  readonly assets: readonly AssetFile[];
-  static get referencePattern(): typeof REFERENCE;
-  static get toolReferencePattern(): typeof TOOL_REFERENCE;
-  static get delimiter(): typeof DELIMITER;
-  static get goodLineSchema(): typeof GoodLineSchema;
-  static get goodArraySchema(): typeof GoodArraySchema;
-  static get flagSchema(): typeof FlagSchema;
-  static readonly headersOf: typeof headersOf;
-  /** The headers every kind declares, whatever else its own contract asks for
-   *  (data-model §1). Each kind's own headers extend these, so what every
-   *  primitive holds is written once. */
-  static headersSchema(): z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    },
-    z.core.$strip
-  >;
-  /** What every kind requires of its author, whatever else its own contract
-   *  asks for. A kind's own `requires` stands beside this rather than adding to
-   *  it, so whoever asks for a kind's headers asks for both (FR-039). `id` is
-   *  not among them: a primitive is named where it is asked for rather than
-   *  answered for, so what is left to ask about is what it is for. */
-  static readonly requires: RequiredHeaders;
-  /** The file a primitive's folder is read from, and compiled to (FR-141):
-   *  said here for whoever reads a folder before any primitive is read off it,
-   *  and by `index` on every primitive. */
-  static readonly index = "index.md";
-  /** The schema every kind's headers are read by, its own standing in place of
-   *  this. What a file is refused against, and the one place saying what shape
-   *  each header holds — including the ones a kind takes without requiring, so
-   *  whoever is writing a header reads its shape off the same contract a file
-   *  is refused against (FR-004). */
-  static readonly schema: z.ZodObject;
-  protected constructor(
+    #private;
     /** What this primitive's file declared, read as the contract of its kind:
      *  typed by whichever kind this is, so `headers.globs` compiles on a guide
      *  and nowhere else. */
-    headers: Headers,
-    body: string,
+    readonly headers: Headers;
+    readonly body: string;
     /** Every file of its folder beside its `index.md`, at any depth (FR-168). */
-    assets?: readonly AssetFile[],
+    readonly assets: readonly AssetFile[];
+    static get referencePattern(): typeof REFERENCE;
+    static get toolReferencePattern(): typeof TOOL_REFERENCE;
+    static get delimiter(): typeof DELIMITER;
+    static get goodLineSchema(): typeof GoodLineSchema;
+    static get goodArraySchema(): typeof GoodArraySchema;
+    static get flagSchema(): typeof FlagSchema;
+    static readonly headersOf: typeof headersOf;
+    /** The headers every kind declares, whatever else its own contract asks for
+     *  (data-model §1). Each kind's own headers extend these, so what every
+     *  primitive holds is written once. */
+    static headersSchema(): z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    /** What every kind requires of its author, whatever else its own contract
+     *  asks for. A kind's own `requires` stands beside this rather than adding to
+     *  it, so whoever asks for a kind's headers asks for both (FR-039). `id` is
+     *  not among them: a primitive is named where it is asked for rather than
+     *  answered for, so what is left to ask about is what it is for. */
+    static readonly requires: RequiredHeaders;
+    /** The file a primitive's folder is read from, and compiled to (FR-141):
+     *  said here for whoever reads a folder before any primitive is read off it,
+     *  and by `index` on every primitive. */
+    static readonly indexFileName = "index.md";
+    /** The schema every kind's headers are read by, its own standing in place of
+     *  this. What a file is refused against, and the one place saying what shape
+     *  each header holds — including the ones a kind takes without requiring, so
+     *  whoever is writing a header reads its shape off the same contract a file
+     *  is refused against (FR-004). */
+    static readonly schema: z.ZodObject;
+    protected constructor(
+    /** What this primitive's file declared, read as the contract of its kind:
+     *  typed by whichever kind this is, so `headers.globs` compiles on a guide
+     *  and nowhere else. */
+    headers: Headers, body: string, 
+    /** Every file of its folder beside its `index.md`, at any depth (FR-168). */
+    assets?: readonly AssetFile[], 
     /** The layer it was read in; a primitive authored here is in this
      *  repository's. */
-    primitiveLayer?: PrimitiveLayer,
+    primitiveLayer?: PrimitiveLayer, 
     /** Where what keeps it says it is kept, in its own scheme: `file:` for
      *  files, `db:` for a database. Never read here, only said back to whoever
      *  is told where it is (CORE-FR-213). */
-    keptUri?: string,
-  );
-  /** The layer it was read in. */
-  readonly layer: PrimitiveLayer;
-  /** Whose layer it came from. It says where it was written, never what it is
-   *  called (FR-014, FR-019). */
-  readonly layerName: LayerName;
-  /** Where it is kept, as what keeps it says: none for one not yet kept. The
-   *  engine's own is kept nowhere, and is said by the name of its layer
-   *  (FR-015). */
-  get uri(): string;
-  /** Whether a word someone searched for is anywhere a reader would look for
-   *  it: the id, the kind, what it is for, when its kind comes up, its
-   *  folder and file under its kind, its layer and the vendor it came from,
-   *  or any header it declared — ignoring case, since whoever typed it
-   *  did not know how it was written (FR-114). */
-  search(word: string): boolean;
-  /** Whether this primitive is available to a host. No restriction means all. */
-  supportsAgent(_agent: AgentProvider): boolean;
-  /** Which kind this is. Each class declares it as a literal, and those
-   *  literals are where `Kind` comes from. */
-  abstract readonly kind: string;
-  /** Its folder, from its charter folder: its kind, then each segment of its
-   *  id (FR-141). */
-  get primitiveFolder(): string;
-  /** The file of that folder it is read from (FR-141). */
-  get index(): string;
-  /** When a reader of this charter is to open a primitive of its kind at all:
-   *  the line its kind's class declares, in the words `cw kinds` says it in
-   *  (FR-002, FR-029). */
-  get activatesWhen(): string;
-  /** The hash of it written out, which is what a save writes: what a save is
-   *  checked against, so an edit made on disk since it was opened is not
-   *  written over (FR-078). */
-  get hash(): string;
-  /** Its id as every name given to a host writes it, `/` as `-`:
-   *  `mfbs-no-any` for `mfbs/no-any`, so a skill is invoked as `/mfbs-no-any`
-   *  (FR-141, FR-171). Made here, once, so nothing that names a host's file
-   *  spells it again. */
-  get normId(): string;
-  /**
-   * This primitive as the file it is authored in: its headers between the
-   * delimiters, and its body under them.
-   *
-   * The other direction of the reading `PrimitiveFactory.create` does, and the same
-   * frontmatter, so a file written here is a file that reads back as this
-   * primitive. Said here rather than by whoever writes, for the reason
-   * `description` is: what a primitive holds is the primitive's own, and a
-   * caller holding one already has everything the file says.
-   *
-   * The kind leads, since it is what decides how the rest is read (FR-003). A
-   * list is written the way the parser gives it back, so an author opening the
-   * file finds what they declared rather than a second spelling of it.
-   *
-   * Written as its author wrote it unless the compiler says otherwise (FR-139):
-   * `mixins` lend their bodies, before this one's own so it reads as the point
-   * and theirs as the setting, or after it where a mixin's `position` is `end`
-   * — nothing is merged and no header moves (FR-006);
-   * and `idReplacer` rewrites the body as its reader uses it, each mcp origin,
-   * script and template it names as a link to its file (FR-147).
-   */
-  toMarkdown({
-    mixins,
-    idReplacer,
-  }?: {
-    /** The mixin primitives it pulls in, in the order it named them: all a
-     *  mixin lends is its body, and where it goes. */
-    readonly mixins?: readonly {
-      readonly body: string;
-      readonly headers: {
-        readonly position: "start" | "end";
-      };
-    }[];
-    readonly idReplacer?: (body: string) => string;
-  }): string;
-  /**
-   * The one line this primitive is found by, composed: what its author wrote it
-   * is for, and — where its kind decides when it applies — what it applies to.
-   *
-   * Said here rather than by whoever compiles, because what makes a kind
-   * activate is the kind's own contract (FR-001, FR-004): a skill's triggers are
-   * the author's words, which only a skill knows how to say in a line. A kind
-   * that nothing activates on its description is the description it was
-   * written with.
-   */
-  description(): string;
+    keptUri?: string);
+    /** The layer it was read in: whose layer it came from. It says where it
+     *  was written, never what it is called (FR-014, FR-019). */
+    readonly layer: PrimitiveLayer;
+    /** Where it is kept, as what keeps it says: none for one not yet kept. The
+     *  engine's own is kept nowhere, and is said by the name of its layer
+     *  (FR-015). */
+    get uri(): string;
+    /** Whether a word someone searched for is anywhere a reader would look for
+     *  it: the id, the kind, what it is for, when its kind comes up, its
+     *  folder and file under its kind, its layer and the vendor it came from,
+     *  or any header it declared — ignoring case, since whoever typed it
+     *  did not know how it was written (FR-114). */
+    hasWord(word: string): boolean;
+    /** Whether this primitive is available to a host. No restriction means all. */
+    supportsAgent(_agent: AgentProvider): boolean;
+    /** Which kind this is. Each class declares it as a literal, and those
+     *  literals are where `Kind` comes from. */
+    abstract readonly kind: string;
+    /** Its folder, from its charter folder: its kind, then each segment of its
+     *  id (FR-141). */
+    get primitiveFolder(): string;
+    /** The file of that folder it is read from (FR-141). */
+    get index(): string;
+    /** When a reader of this charter is to open a primitive of its kind at all:
+     *  the line its kind's class declares, in the words `cw kinds` says it in
+     *  (FR-002, FR-029). */
+    get activatesWhen(): string;
+    /** The hash of it written out, which is what a save writes: what a save is
+     *  checked against, so an edit made on disk since it was opened is not
+     *  written over (FR-078). */
+    get hash(): string;
+    /** Its id as every name given to a host writes it, `/` as `-`:
+     *  `mfbs-no-any` for `mfbs/no-any`, so a skill is invoked as `/mfbs-no-any`
+     *  (FR-141, FR-171). Made here, once, so nothing that names a host's file
+     *  spells it again. */
+    get normId(): string;
+    /**
+     * This primitive as the file it is authored in: its headers between the
+     * delimiters, and its body under them.
+     *
+     * The other direction of the reading `PrimitiveFactory.create` does, and the same
+     * frontmatter, so a file written here is a file that reads back as this
+     * primitive. Said here rather than by whoever writes, for the reason
+     * `description` is: what a primitive holds is the primitive's own, and a
+     * caller holding one already has everything the file says.
+     *
+     * The kind leads, since it is what decides how the rest is read (FR-003). A
+     * list is written the way the parser gives it back, so an author opening the
+     * file finds what they declared rather than a second spelling of it.
+     *
+     * Written as its author wrote it unless the compiler says otherwise (FR-139):
+     * `mixins` lend their bodies, before this one's own so it reads as the point
+     * and theirs as the setting, or after it where a mixin's `position` is `end`
+     * — nothing is merged and no header moves (FR-006);
+     * and `idReplacer` rewrites the body as its reader uses it, each mcp origin,
+     * script and template it names as a link to its file (FR-147).
+     */
+    writeMarkdown({ mixins, idReplacer, }?: {
+        /** The mixin primitives it pulls in, in the order it named them: all a
+         *  mixin lends is its body, and where it goes. */
+        readonly mixins?: readonly {
+            readonly body: string;
+            readonly headers: {
+                readonly position: "start" | "end";
+            };
+        }[];
+        readonly idReplacer?: (body: string) => string;
+    }): string;
+    /**
+     * The one line this primitive is found by, composed: what its author wrote it
+     * is for, and — where its kind decides when it applies — what it applies to.
+     *
+     * Said here rather than by whoever compiles, because what makes a kind
+     * activate is the kind's own contract (FR-001, FR-004): a skill's triggers are
+     * the author's words, which only a skill knows how to say in a line. A kind
+     * that nothing activates on its description is the description it was
+     * written with.
+     */
+    composeDescription(): string;
 }
 
 /**
@@ -4219,65 +3325,51 @@ type RequiredHeaders = Readonly<Record<string, "line" | "list">>;
  * Where the schema said what is wrong in its own words — a rule spanning two
  * headers, which no sample shows at a glance — those words are the message.
  */
-declare function headersOf<Schema extends z.ZodType>(
-  sampledKind: {
+declare function headersOf<Schema extends z.ZodType>(sampledKind: {
     readonly kind: string;
     readonly sample: Readonly<Record<string, unknown>>;
-  },
-  headerSchema: Schema,
-  record: Readonly<Record<string, unknown>>,
-): Readonly<z.infer<Schema>>;
+}, headerSchema: Schema, record: Readonly<Record<string, unknown>>): Readonly<z.infer<Schema>>;
 
 /** A role the agent delegates to, with the tools it may use (FR-004). */
 type AgentHeaders = Readonly<z.infer<typeof AgentPrimitive.schema>>;
 
 declare class AgentPrimitive extends BasePrimitive {
-  readonly headers: AgentHeaders;
-  static readonly kind: "agent";
-  readonly kind: "agent";
-  /** What this kind requires beyond the common headers, declared where its
-   *  contract is: it is read both where a file is checked and where one is
-   *  scaffolded (FR-004, FR-039). */
-  static readonly requires: {
-    readonly tools: "list";
-  };
-  /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-   *  against, and what says the shape of every header this kind takes, required
-   *  or not (FR-004). */
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      tools: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-      model: z.ZodOptional<z.ZodString>;
-    },
-    z.core.$strip
-  >;
-  /** When a reader of this charter is to open this kind at all, said
-   *  where the kind's contract is: the neutral surface lists one
-   *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen =
-    "it is spawned by id, holding the `tools` it lists and nothing else \u2014 an mcp origin as `[[<id>]]`, or one of its tools as `[[<id>]]:<tool>`";
-  /** An agent as an author writes one: what a refused header is fixed with.
-   *  It holds one tool of an mcp origin the way an author writes it (FR-156). */
-  static readonly sample: AgentHeaders;
-  /** The agent its model is named for; none where it names no model. */
-  get modelProvider(): string | undefined;
-  /** The model this host runs it on, as this host names it; none where its
-   *  model is named for another host, or not at all. */
-  modelOf(provider: AgentProvider): string | undefined;
-  /** One agent, or every fault its headers have (FR-004). */
-  static of(
-    record: Readonly<Record<string, unknown>>,
-    body: string,
-    assets?: readonly AssetFile[],
-    primitiveLayer?: PrimitiveLayer,
-    keptUri?: string,
-  ): AgentPrimitive;
+    readonly headers: AgentHeaders;
+    static readonly kind: "agent";
+    readonly kind: "agent";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is: it is read both where a file is checked and where one is
+     *  scaffolded (FR-004, FR-039). */
+    static readonly requires: {
+        readonly tools: "list";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        tools: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        model: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "it is spawned by id, holding the `tools` it lists and nothing else \u2014 an mcp origin as `[[<id>]]`, or one of its tools as `[[<id>]]:<tool>`";
+    /** An agent as an author writes one: what a refused header is fixed with.
+     *  It holds one tool of an mcp origin the way an author writes it (FR-156). */
+    static readonly sample: AgentHeaders;
+    /** The agent its model is named for; none where it names no model. */
+    get modelProvider(): string | undefined;
+    /** The model this host runs it on, as this host names it; none where its
+     *  model is named for another host, or not at all. */
+    modelOf(provider: AgentProvider): string | undefined;
+    /** One agent, or every fault its headers have (FR-004). */
+    static of(record: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): AgentPrimitive;
 }
 
 /** Reasoning a primitive cites, loaded only on demand. Beyond the common
@@ -4285,40 +3377,31 @@ declare class AgentPrimitive extends BasePrimitive {
 type CorpusHeaders = Readonly<z.infer<typeof CorpusPrimitive.schema>>;
 
 declare class CorpusPrimitive extends BasePrimitive {
-  readonly headers: CorpusHeaders;
-  static readonly kind: "corpus";
-  readonly kind: "corpus";
-  /** What this kind requires beyond the common headers: nothing. Declared all
-   *  the same, since what a file is scaffolded with is read off this (FR-039). */
-  static readonly requires: {};
-  /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-   *  against, and what says the shape of every header this kind takes, required
-   *  or not (FR-004). */
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    },
-    z.core.$strip
-  >;
-  /** When a reader of this charter is to open this kind at all, said
-   *  where the kind's contract is: the neutral surface lists one
-   *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen = "a primitive's `rationale` cites it \u2014 the reasoning, read when someone asks why";
-  /** A corpus as an author writes one: what a refused header is fixed with. */
-  static readonly sample: CorpusHeaders;
-  /** One corpus, or every fault its headers have (FR-004). */
-  static of(
-    record: Readonly<Record<string, unknown>>,
-    body: string,
-    assets?: readonly AssetFile[],
-    primitiveLayer?: PrimitiveLayer,
-    keptUri?: string,
-  ): CorpusPrimitive;
+    readonly headers: CorpusHeaders;
+    static readonly kind: "corpus";
+    readonly kind: "corpus";
+    /** What this kind requires beyond the common headers: nothing. Declared all
+     *  the same, since what a file is scaffolded with is read off this (FR-039). */
+    static readonly requires: {};
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "a primitive's `rationale` cites it \u2014 the reasoning, read when someone asks why";
+    /** A corpus as an author writes one: what a refused header is fixed with. */
+    static readonly sample: CorpusHeaders;
+    /** One corpus, or every fault its headers have (FR-004). */
+    static of(record: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): CorpusPrimitive;
 }
 
 /** A standard the agent is held to. Its body is loaded when a touched file
@@ -4326,41 +3409,31 @@ declare class CorpusPrimitive extends BasePrimitive {
 type GuideHeaders = Readonly<z.infer<typeof GuidePrimitive.schema>>;
 
 declare class GuidePrimitive extends BasePrimitive {
-  readonly headers: GuideHeaders;
-  static readonly kind: "guide";
-  readonly kind: "guide";
-  /** What this kind requires beyond the common headers: nothing. Declared all
-   *  the same, since what a file is scaffolded with is read off this (FR-039). */
-  static readonly requires: {};
-  /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-   *  against, and what says the shape of every header this kind takes, required
-   *  or not (FR-004). */
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    },
-    z.core.$strip
-  >;
-  /** When a reader of this charter is to open this kind at all, said
-   *  where the kind's contract is: the neutral surface lists one
-   *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen =
-    "a touched file matches one of its `globs`, or every turn where globs are not specified";
-  /** A guide as an author writes one: what a refused header is fixed with. */
-  static readonly sample: GuideHeaders;
-  /** One guide, or every fault its headers have (FR-004). */
-  static of(
-    record: Readonly<Record<string, unknown>>,
-    body: string,
-    assets?: readonly AssetFile[],
-    primitiveLayer?: PrimitiveLayer,
-    keptUri?: string,
-  ): GuidePrimitive;
+    readonly headers: GuideHeaders;
+    static readonly kind: "guide";
+    readonly kind: "guide";
+    /** What this kind requires beyond the common headers: nothing. Declared all
+     *  the same, since what a file is scaffolded with is read off this (FR-039). */
+    static readonly requires: {};
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "a touched file matches one of its `globs`, or every turn where globs are not specified";
+    /** A guide as an author writes one: what a refused header is fixed with. */
+    static readonly sample: GuideHeaders;
+    /** One guide, or every fault its headers have (FR-004). */
+    static of(record: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): GuidePrimitive;
 }
 
 /**
@@ -4384,71 +3457,59 @@ declare function isSecureEndpoint(endpoint: string): boolean;
 type McpHeaders = Readonly<z.infer<typeof McpPrimitive.schema>>;
 
 declare class McpPrimitive extends BasePrimitive {
-  static readonly isSecureEndpoint: typeof isSecureEndpoint;
-  readonly headers: McpHeaders;
-  static readonly kind: "mcp";
-  readonly kind: "mcp";
-  /** What this kind requires beyond the common headers. `endpoint` or
-   *  `command` is required too, but which depends on the shape, so the schema's
-   *  refinement says it rather than this (FR-004, FR-039). */
-  static readonly requires: {
-    readonly tools: "list";
-  };
-  /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-   *  against, and what says the shape of every header this kind takes, required
-   *  or not (FR-004). */
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      endpoint: z.ZodOptional<z.ZodString>;
-      command: z.ZodOptional<z.ZodString>;
-      args: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      auth: z.ZodOptional<
-        z.ZodReadonly<
-          z.ZodArray<
-            z.ZodEnum<{
-              oauth: "oauth";
-              token: "token";
-            }>
-          >
-        >
-      >;
-      tokenEnv: z.ZodOptional<z.ZodString>;
-      path: z.ZodOptional<z.ZodString>;
-      tools: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-    },
-    z.core.$strip
-  >;
-  /** When a reader of this charter is to open this kind at all, said
-   *  where the kind's contract is: the neutral surface lists one
-   *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen =
-    "a primitive's body names it as `[[<id>]]` \u2014 an mcp origin outside the repository, reached through `cw mcp serve`";
-  /** An mcp reached at an endpoint, as an author writes one: what a refused
-   *  header is fixed with. */
-  static readonly sample: McpHeaders;
-  /** The same mcp origin started as a local process: what a refused file declaring
-   *  `command` is held up against, since that is the shape it was nearer. */
-  static readonly commandSample: McpHeaders;
-  /** What a developer signs in to, and what mcp origins are told apart by beside
-   *  their `path`: the endpoint, or the command followed by each of its
-   *  arguments. The refinement has already held that one of the two is here
-   *  (FR-142). */
-  get address(): string;
-  /** One mcp, or every fault its headers have, shown the sample of the shape
-   *  it declared (FR-004, FR-142). */
-  static of(
-    record: Readonly<Record<string, unknown>>,
-    body: string,
-    assets?: readonly AssetFile[],
-    primitiveLayer?: PrimitiveLayer,
-    keptUri?: string,
-  ): McpPrimitive;
+    static readonly isSecureEndpoint: typeof isSecureEndpoint;
+    readonly headers: McpHeaders;
+    static readonly kind: "mcp";
+    readonly kind: "mcp";
+    /** What this kind requires beyond the common headers. `endpoint` or
+     *  `command` is required too, but which depends on the shape, so the schema's
+     *  refinement says it rather than this (FR-004, FR-039). */
+    static readonly requires: {
+        readonly tools: "list";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        endpoint: z.ZodOptional<z.ZodString>;
+        command: z.ZodOptional<z.ZodString>;
+        args: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        auth: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodEnum<{
+            oauth: "oauth";
+            token: "token";
+        }>>>>;
+        tokenEnv: z.ZodOptional<z.ZodString>;
+        path: z.ZodOptional<z.ZodString>;
+        tools: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "a primitive's body names it as `[[<id>]]` \u2014 an mcp origin outside the repository, reached through `cw mcp serve`";
+    /** An mcp reached at an endpoint, as an author writes one: what a refused
+     *  header is fixed with. */
+    static readonly sample: McpHeaders;
+    /** The same mcp origin started as a local process: what a refused file declaring
+     *  `command` is held up against, since that is the shape it was nearer. */
+    static readonly commandSample: McpHeaders;
+    /** What a developer signs in to, and what mcp origins are told apart by beside
+     *  their `path`: the endpoint, or the command followed by each of its
+     *  arguments. The refinement has already held that one of the two is here
+     *  (FR-142). */
+    get address(): string;
+    /** The mcp origin this mcp is served from, told apart by its address and
+     *  path, never its name, joined by a character neither side can hold: a
+     *  path is one line, and an address is an endpoint or a command line. */
+    get originKey(): string;
+    /** One mcp, or every fault its headers have, shown the sample of the shape
+     *  it declared (FR-004, FR-142). */
+    static of(record: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): McpPrimitive;
 }
 
 /** Headers and body reused by other primitives. A leaf: it lends its body to
@@ -4456,175 +3517,138 @@ declare class McpPrimitive extends BasePrimitive {
 type MixinHeaders = Readonly<z.infer<typeof MixinPrimitive.schema>>;
 
 declare class MixinPrimitive extends BasePrimitive {
-  readonly headers: MixinHeaders;
-  static readonly kind: "mixin";
-  readonly kind: "mixin";
-  /** What this kind requires beyond the common headers: nothing. Declared all
-   *  the same, since what a file is scaffolded with is read off this (FR-039). */
-  static readonly requires: {};
-  /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-   *  against, and what says the shape of every header this kind takes, required
-   *  or not (FR-004). */
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodUndefined>;
-      position: z.ZodDefault<
-        z.ZodEnum<{
-          start: "start";
-          end: "end";
-        }>
-      >;
-    },
-    z.core.$strip
-  >;
-  /** When a reader of this charter is to open this kind at all, said
-   *  where the kind's contract is: the neutral surface lists one
-   *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen = "never on its own: its body is lent to the primitives that pull it in";
-  /** A mixin as an author writes one: what a refused header is fixed with. */
-  static readonly sample: MixinHeaders;
-  /** One mixin, or every fault its headers have (FR-004, FR-006). */
-  static of(
-    record: Readonly<Record<string, unknown>>,
-    body: string,
-    assets?: readonly AssetFile[],
-    primitiveLayer?: PrimitiveLayer,
-    keptUri?: string,
-  ): MixinPrimitive;
+    readonly headers: MixinHeaders;
+    static readonly kind: "mixin";
+    readonly kind: "mixin";
+    /** What this kind requires beyond the common headers: nothing. Declared all
+     *  the same, since what a file is scaffolded with is read off this (FR-039). */
+    static readonly requires: {};
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodUndefined>;
+        position: z.ZodDefault<z.ZodEnum<{
+            start: "start";
+            end: "end";
+        }>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "never on its own: its body is lent to the primitives that pull it in";
+    /** A mixin as an author writes one: what a refused header is fixed with. */
+    static readonly sample: MixinHeaders;
+    /** One mixin, or every fault its headers have (FR-004, FR-006). */
+    static of(record: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): MixinPrimitive;
 }
 
 /** An ordered procedure loaded when a request matches its triggers (FR-004). */
 type PlaybookHeaders = Readonly<z.infer<typeof PlaybookPrimitive.schema>>;
 
 declare class PlaybookPrimitive extends BasePrimitive {
-  readonly headers: PlaybookHeaders;
-  static readonly kind: "playbook";
-  readonly kind: "playbook";
-  /** What this kind requires beyond the common headers, declared where its
-   *  contract is: it is read both where a file is checked and where one is
-   *  scaffolded (FR-004, FR-039). */
-  static readonly requires: {
-    readonly triggers: "list";
-  };
-  /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-   *  against, and what says the shape of every header this kind takes, required
-   *  or not (FR-004). */
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      triggers: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-      "disable-user-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
-      "disable-model-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
-    },
-    z.core.$strip
-  >;
-  /** When a reader of this charter is to open this kind at all, said
-   *  where the kind's contract is: the neutral surface lists one
-   *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen = "one of its `triggers` matches; the body is a sequence of skills";
-  /** A playbook as an author writes one: what a refused header is fixed with. */
-  static readonly sample: PlaybookHeaders;
-  /** What this is found by: what it is for, and the requests its author said
-   *  bring it up. */
-  description(): string;
-  /** One playbook, or every fault its headers have (FR-004). */
-  static of(
-    record: Readonly<Record<string, unknown>>,
-    body: string,
-    assets?: readonly AssetFile[],
-    primitiveLayer?: PrimitiveLayer,
-    keptUri?: string,
-  ): PlaybookPrimitive;
+    readonly headers: PlaybookHeaders;
+    static readonly kind: "playbook";
+    readonly kind: "playbook";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is: it is read both where a file is checked and where one is
+     *  scaffolded (FR-004, FR-039). */
+    static readonly requires: {
+        readonly triggers: "list";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        triggers: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        "disable-user-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
+        "disable-model-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "one of its `triggers` matches; the body is a sequence of skills";
+    /** A playbook as an author writes one: what a refused header is fixed with. */
+    static readonly sample: PlaybookHeaders;
+    /** What this is found by: what it is for, and the requests its author said
+     *  bring it up. */
+    composeDescription(): string;
+    /** One playbook, or every fault its headers have (FR-004). */
+    static of(record: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): PlaybookPrimitive;
 }
 
 type AgentBasedHeaders = Readonly<z.infer<ReturnType<typeof AgentBasedPrimitive.headersSchema>>>;
 
 /** Shared provider selection for posture and sensor primitives. */
-declare abstract class AgentBasedPrimitive<
-  Headers extends AgentBasedHeaders = AgentBasedHeaders,
-> extends BasePrimitive<Headers> {
-  static headersSchema(): z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    },
-    z.core.$strip
-  >;
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    },
-    z.core.$strip
-  >;
-  supportsAgent(agent: AgentProvider): boolean;
+declare abstract class AgentBasedPrimitive<Headers extends AgentBasedHeaders = AgentBasedHeaders> extends BasePrimitive<Headers> {
+    static headersSchema(): z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    supportsAgent(agent: AgentProvider): boolean;
 }
 
 /** What the agent may and may not do, as permission lists (FR-004). */
 type PostureHeaders = Readonly<z.infer<typeof PosturePrimitive.schema>>;
 
 declare class PosturePrimitive extends AgentBasedPrimitive {
-  readonly headers: PostureHeaders;
-  static readonly kind: "posture";
-  readonly kind: "posture";
-  /** What this kind requires beyond the common headers, declared where its
-   *  contract is: it is read both where a file is checked and where one is
-   *  scaffolded (FR-004, FR-039). */
-  static readonly requires: {
-    readonly allow: "list";
-    readonly deny: "list";
-  };
-  /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-   *  against, and what says the shape of every header this kind takes, required
-   *  or not (FR-004). */
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      allow: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-      deny: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-    },
-    z.core.$strip
-  >;
-  /** When a reader of this charter is to open this kind at all, said
-   *  where the kind's contract is: the neutral surface lists one
-   *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen = "always, wherever the host can be told what to `allow` and what to `deny`";
-  /** A posture as an author writes one: what a refused header is fixed with. */
-  static readonly sample: PostureHeaders;
-  /** One posture, or every fault its headers have (FR-004). */
-  static of(
-    record: Readonly<Record<string, unknown>>,
-    body: string,
-    assets?: readonly AssetFile[],
-    primitiveLayer?: PrimitiveLayer,
-    keptUri?: string,
-  ): PosturePrimitive;
+    readonly headers: PostureHeaders;
+    static readonly kind: "posture";
+    readonly kind: "posture";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is: it is read both where a file is checked and where one is
+     *  scaffolded (FR-004, FR-039). */
+    static readonly requires: {
+        readonly allow: "list";
+        readonly deny: "list";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        allow: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        deny: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "always, wherever the host can be told what to `allow` and what to `deny`";
+    /** A posture as an author writes one: what a refused header is fixed with. */
+    static readonly sample: PostureHeaders;
+    /** One posture, or every fault its headers have (FR-004). */
+    static of(record: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): PosturePrimitive;
 }
 
 /** Files the agent or a sensor runs, kept as real files beside the script's
@@ -4632,47 +3656,38 @@ declare class PosturePrimitive extends AgentBasedPrimitive {
 type ScriptHeaders = Readonly<z.infer<typeof ScriptPrimitive.schema>>;
 
 declare class ScriptPrimitive extends BasePrimitive {
-  readonly headers: ScriptHeaders;
-  static readonly kind: "script";
-  readonly kind: "script";
-  /** What this kind requires beyond the common headers, declared where its
-   *  contract is (FR-004, FR-039). */
-  static readonly requires: {
-    readonly executionPath: "line";
-  };
-  /** The schema its headers are read by (FR-004). */
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      executionPath: z.ZodString;
-    },
-    z.core.$strip
-  >;
-  /** When a reader of this charter is to open this kind at all (FR-002): where
-   *  its assets are copied is a link to a script's folder, written as the
-   *  projection lays it. */
-  static readonly activatesWhen: string;
-  /** A script as an author writes one: what a refused header is fixed with. */
-  static readonly sample: ScriptHeaders;
-  /** One script, or every fault its headers have (FR-004). */
-  static of(
-    record: Readonly<Record<string, unknown>>,
-    body: string,
-    assets?: readonly AssetFile[],
-    primitiveLayer?: PrimitiveLayer,
-    keptUri?: string,
-  ): ScriptPrimitive;
-  /** The asset that runs, as a path inside its folder: `run.sh` of
-   *  `./run.sh`. */
-  get executionPathInFolder(): string;
-  /** Whether an asset of it is the one its `executionPath` names: the one
-   *  run by its path, and no other (FR-160). */
-  isExecutionFile(file: string): boolean;
+    readonly headers: ScriptHeaders;
+    static readonly kind: "script";
+    readonly kind: "script";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is (FR-004, FR-039). */
+    static readonly requires: {
+        readonly executionPath: "line";
+    };
+    /** The schema its headers are read by (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        executionPath: z.ZodString;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all (FR-002): where
+     *  its assets are copied is a link to a script's folder, written as the
+     *  projection lays it. */
+    static readonly activatesWhen: string;
+    /** A script as an author writes one: what a refused header is fixed with. */
+    static readonly sample: ScriptHeaders;
+    /** One script, or every fault its headers have (FR-004). */
+    static of(record: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): ScriptPrimitive;
+    /** The asset that runs, as a path inside its folder: `run.sh` of
+     *  `./run.sh`. */
+    get executionPathInFolder(): string;
+    /** Whether an asset of it is the one its `executionPath` names: the one
+     *  run by its path, and no other (FR-160). */
+    isExecutionFile(filePath: string): boolean;
 }
 
 /** The events a charter knows how to be raised by, and the only ones a sensor
@@ -4682,127 +3697,97 @@ declare class ScriptPrimitive extends BasePrimitive {
  *  ever fire, and saying so where the file is read is the one place an author
  *  finds out. A host that raises none of them compiles no hook for it, which is
  *  that host's to say and not this list's. */
-declare const SIGNALS: readonly [
-  "PreToolUse",
-  "PostToolUse",
-  "UserPromptSubmit",
-  "Stop",
-  "SubagentStop",
-  "PreCompact",
-  "SessionStart",
-  "SessionEnd",
-  "PermissionRequest",
-  "SubagentStart",
-  "PostCompact",
-];
+declare const SIGNALS: readonly ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop", "SubagentStop", "PreCompact", "SessionStart", "SessionEnd", "PermissionRequest", "SubagentStart", "PostCompact"];
 
 /** A command the agent's own harness runs when a signal fires (FR-004). */
 type SensorHeaders = Readonly<z.infer<typeof SensorPrimitive.schema>>;
 
 declare class SensorPrimitive extends AgentBasedPrimitive {
-  static get signals(): typeof SIGNALS;
-  readonly headers: SensorHeaders;
-  static readonly kind: "sensor";
-  readonly kind: "sensor";
-  /** What this kind requires beyond the common headers, declared where its
-   *  contract is: it is read both where a file is checked and where one is
-   *  scaffolded (FR-004, FR-039). */
-  static readonly requires: {
-    readonly signal: "line";
-    readonly run: "line";
-  };
-  /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-   *  against, and what says the shape of every header this kind takes, required
-   *  or not (FR-004). */
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      signal: z.ZodEnum<{
-        PreToolUse: "PreToolUse";
-        PostToolUse: "PostToolUse";
-        UserPromptSubmit: "UserPromptSubmit";
-        Stop: "Stop";
-        SubagentStop: "SubagentStop";
-        PreCompact: "PreCompact";
-        SessionStart: "SessionStart";
-        SessionEnd: "SessionEnd";
-        PermissionRequest: "PermissionRequest";
-        SubagentStart: "SubagentStart";
-        PostCompact: "PostCompact";
-      }>;
-      run: z.ZodString;
-    },
-    z.core.$strip
-  >;
-  /** When a reader of this charter is to open this kind at all, said
-   *  where the kind's contract is: the neutral surface lists one
-   *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen = "the `signal` it names is raised, and the harness runs what it says to `run`";
-  /** A sensor as an author writes one: what a refused header is fixed with. */
-  static readonly sample: SensorHeaders;
-  /** One sensor, or every fault its headers have (FR-004). */
-  static of(
-    record: Readonly<Record<string, unknown>>,
-    body: string,
-    assets?: readonly AssetFile[],
-    primitiveLayer?: PrimitiveLayer,
-    keptUri?: string,
-  ): SensorPrimitive;
+    static get signals(): typeof SIGNALS;
+    readonly headers: SensorHeaders;
+    static readonly kind: "sensor";
+    readonly kind: "sensor";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is: it is read both where a file is checked and where one is
+     *  scaffolded (FR-004, FR-039). */
+    static readonly requires: {
+        readonly signal: "line";
+        readonly run: "line";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        signal: z.ZodEnum<{
+            PreToolUse: "PreToolUse";
+            PostToolUse: "PostToolUse";
+            UserPromptSubmit: "UserPromptSubmit";
+            Stop: "Stop";
+            SubagentStop: "SubagentStop";
+            PreCompact: "PreCompact";
+            SessionStart: "SessionStart";
+            SessionEnd: "SessionEnd";
+            PermissionRequest: "PermissionRequest";
+            SubagentStart: "SubagentStart";
+            PostCompact: "PostCompact";
+        }>;
+        run: z.ZodString;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "the `signal` it names is raised, and the harness runs what it says to `run`";
+    /** A sensor as an author writes one: what a refused header is fixed with. */
+    static readonly sample: SensorHeaders;
+    /** One sensor, or every fault its headers have (FR-004). */
+    static of(record: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): SensorPrimitive;
 }
 
 /** Know-how loaded when a request matches its triggers (FR-004). */
 type SkillHeaders = Readonly<z.infer<typeof SkillPrimitive.schema>>;
 
 declare class SkillPrimitive extends BasePrimitive {
-  readonly headers: SkillHeaders;
-  static readonly kind: "skill";
-  readonly kind: "skill";
-  /** What this kind requires beyond the common headers, declared where its
-   *  contract is: it is read both where a file is checked and where one is
-   *  scaffolded (FR-004, FR-039). */
-  static readonly requires: {
-    readonly triggers: "list";
-  };
-  /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-   *  against, and what says the shape of every header this kind takes, required
-   *  or not (FR-004). */
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      triggers: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-      "disable-user-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
-      "disable-model-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
-    },
-    z.core.$strip
-  >;
-  /** When a reader of this charter is to open this kind at all, said
-   *  where the kind's contract is: the neutral surface lists one
-   *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen = "one of its `triggers` matches what is being asked";
-  /** A skill as an author writes one: what a refused header is fixed with. */
-  static readonly sample: SkillHeaders;
-  /** What this is found by: what it is for, and the requests its author said
-   *  bring it up. */
-  description(): string;
-  /** One skill, or every fault its headers have (FR-004). */
-  static of(
-    record: Readonly<Record<string, unknown>>,
-    body: string,
-    assets?: readonly AssetFile[],
-    primitiveLayer?: PrimitiveLayer,
-    keptUri?: string,
-  ): SkillPrimitive;
+    readonly headers: SkillHeaders;
+    static readonly kind: "skill";
+    readonly kind: "skill";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is: it is read both where a file is checked and where one is
+     *  scaffolded (FR-004, FR-039). */
+    static readonly requires: {
+        readonly triggers: "list";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        triggers: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        "disable-user-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
+        "disable-model-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "one of its `triggers` matches what is being asked";
+    /** A skill as an author writes one: what a refused header is fixed with. */
+    static readonly sample: SkillHeaders;
+    /** What this is found by: what it is for, and the requests its author said
+     *  bring it up. */
+    composeDescription(): string;
+    /** One skill, or every fault its headers have (FR-004). */
+    static of(record: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): SkillPrimitive;
 }
 
 /** A file the agent fills or copies, written as its body. Beyond the common
@@ -4811,54 +3796,32 @@ declare class SkillPrimitive extends BasePrimitive {
 type TemplateHeaders = Readonly<z.infer<typeof TemplatePrimitive.schema>>;
 
 declare class TemplatePrimitive extends BasePrimitive {
-  readonly headers: TemplateHeaders;
-  static readonly kind: "template";
-  readonly kind: "template";
-  /** What this kind requires beyond the common headers: nothing. Declared all
-   *  the same, since what a file is scaffolded with is read off this (FR-039). */
-  static readonly requires: {};
-  /** The schema its headers are read by (FR-004). */
-  static readonly schema: z.ZodObject<
-    {
-      id: z.ZodString;
-      description: z.ZodString;
-      tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-      rationale: z.ZodOptional<z.ZodString>;
-      mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    },
-    z.core.$strip
-  >;
-  /** When a reader of this charter is to open this kind at all (FR-002). */
-  static readonly activatesWhen =
-    "a primitive names it as `[[<id>]]` \u2014 a file the agent fills or copies, written as its body";
-  /** A template as an author writes one: what a refused header is fixed with. */
-  static readonly sample: TemplateHeaders;
-  /** One template, or every fault its headers have (FR-004). */
-  static of(
-    record: Readonly<Record<string, unknown>>,
-    body: string,
-    assets?: readonly AssetFile[],
-    primitiveLayer?: PrimitiveLayer,
-    keptUri?: string,
-  ): TemplatePrimitive;
+    readonly headers: TemplateHeaders;
+    static readonly kind: "template";
+    readonly kind: "template";
+    /** What this kind requires beyond the common headers: nothing. Declared all
+     *  the same, since what a file is scaffolded with is read off this (FR-039). */
+    static readonly requires: {};
+    /** The schema its headers are read by (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all (FR-002). */
+    static readonly activatesWhen = "a primitive names it as `[[<id>]]` \u2014 a file the agent fills or copies, written as its body";
+    /** A template as an author writes one: what a refused header is fixed with. */
+    static readonly sample: TemplateHeaders;
+    /** One template, or every fault its headers have (FR-004). */
+    static of(record: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): TemplatePrimitive;
 }
 
 /** The classes, one per kind. Adding a kind is a file beside them and a line here; what
  *  the kinds are is read back off this list rather than written down twice. */
-declare const PRIMITIVE_CLASSES: readonly [
-  typeof GuidePrimitive,
-  typeof SensorPrimitive,
-  typeof SkillPrimitive,
-  typeof PlaybookPrimitive,
-  typeof AgentPrimitive,
-  typeof PosturePrimitive,
-  typeof CorpusPrimitive,
-  typeof MixinPrimitive,
-  typeof McpPrimitive,
-  typeof ScriptPrimitive,
-  typeof TemplatePrimitive,
-];
+declare const PRIMITIVE_CLASSES: readonly [typeof GuidePrimitive, typeof SensorPrimitive, typeof SkillPrimitive, typeof PlaybookPrimitive, typeof AgentPrimitive, typeof PosturePrimitive, typeof CorpusPrimitive, typeof MixinPrimitive, typeof McpPrimitive, typeof ScriptPrimitive, typeof TemplatePrimitive];
 
 /**
  * A primitive of any kind, discriminated on `kind`: reading
@@ -4875,28 +3838,16 @@ type Primitive = ReturnType<(typeof PRIMITIVE_CLASSES)[number]["of"]>;
 /** The primitive kinds, each read off the class that reads it. The set is
  *  closed: any other value is a fault naming the file and the offending kind
  *  (FR-001). */
-declare const KINDS: readonly (
-  | "agent"
-  | "corpus"
-  | "guide"
-  | "mcp"
-  | "mixin"
-  | "playbook"
-  | "posture"
-  | "script"
-  | "sensor"
-  | "skill"
-  | "template"
-)[];
+declare const KINDS: readonly ("agent" | "corpus" | "guide" | "mcp" | "mixin" | "playbook" | "posture" | "script" | "sensor" | "skill" | "template")[];
 
 type Kind = (typeof KINDS)[number];
 
 /** An id as someone typed it, at a command or in a request, held to the shape
  *  an id is written in: text that is not one names nothing to look for
  *  (FR-172). */
-declare function primitiveIdOf(typed: string): string;
+declare function primitiveIdOf(typedId: string): string;
 
-declare function isKind(value: unknown): value is Kind;
+declare function isKind(kindName: unknown): kindName is Kind;
 
 /** One header a kind's author may answer for: the shape the answer takes,
  *  whether a file written without it is refused, and — where the kind reads it
@@ -4904,22 +3855,18 @@ declare function isKind(value: unknown): value is Kind;
  *  this kind can be written, and what is refused where a file was written
  *  without it — one declaration, read twice. */
 declare class PrimitiveHeader {
-  readonly field: string;
-  readonly shape: "line" | "list";
-  readonly required: boolean;
-  /** Every value the kind reads this header as, where the set is closed — a
-   *  sensor's `signal` — so it is chosen rather than typed (FR-118). A header
-   *  whose set is open has none. */
-  readonly allowedValues?: readonly string[] | undefined;
-  constructor(
-    field: string,
-    shape: "line" | "list",
-    required: boolean,
+    readonly field: string;
+    readonly shape: "line" | "list";
+    readonly isRequired: boolean;
     /** Every value the kind reads this header as, where the set is closed — a
      *  sensor's `signal` — so it is chosen rather than typed (FR-118). A header
      *  whose set is open has none. */
-    allowedValues?: readonly string[] | undefined,
-  );
+    readonly allowedValues?: readonly string[] | undefined;
+    constructor(field: string, shape: "line" | "list", isRequired: boolean, 
+    /** Every value the kind reads this header as, where the set is closed — a
+     *  sensor's `signal` — so it is chosen rather than typed (FR-118). A header
+     *  whose set is open has none. */
+    allowedValues?: readonly string[] | undefined);
 }
 
 /**
@@ -4947,13 +3894,13 @@ declare function primitiveSampleOf(kind: Kind): string;
 
 /** Every kind of primitive the charter knows, and how a primitive is read, made and named. */
 declare class Primitives {
-  static get classes(): typeof PRIMITIVE_CLASSES;
-  static get kinds(): typeof KINDS;
-  static readonly idOf: typeof primitiveIdOf;
-  static readonly isKind: typeof isKind;
-  static readonly headersOf: typeof primitiveHeadersOf;
-  static readonly sampleOf: typeof primitiveSampleOf;
-  private constructor();
+    static get classes(): typeof PRIMITIVE_CLASSES;
+    static get kinds(): typeof KINDS;
+    static readonly idOf: typeof primitiveIdOf;
+    static readonly isKind: typeof isKind;
+    static readonly headersOf: typeof primitiveHeadersOf;
+    static readonly sampleOf: typeof primitiveSampleOf;
+    private constructor();
 }
 
 /** One primitive as it is handed in, raw — kept, or answered by an author —
@@ -4963,177 +3910,45 @@ declare class Primitives {
  *  the kind and id; it never reads the uri, which it only says back
  *  (CORE-FR-213). */
 declare class RawPrimitive {
-  readonly layer: PrimitiveLayer;
-  readonly kind: string;
-  readonly id: string;
-  /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
-   *  the headers and body an author answered, where no file is written yet
-   *  (FR-011). */
-  readonly contents:
-    | string
-    | Uint8Array
-    | {
-        readonly headers: Readonly<Record<string, unknown>>;
-        readonly body: string;
-      };
-  readonly assets: readonly AssetFile[];
-  readonly uri: string;
-  /** Whether it is kept as a primitive is, apart with its assets: a
-   *  markdown file kept on its own is how an earlier version kept one
-   *  (FR-141). */
-  readonly isKeptApart: boolean;
-  /** Where its keeper would keep a primitive of this kind and id, as the
-   *  uri of its folder, for a fault to say where to move it (FR-141); the
-   *  engine says it back and never reads it. */
-  readonly folderUriOf?: ((kind: string, id: string) => string) | undefined;
-  constructor(
-    layer: PrimitiveLayer,
-    kind: string,
-    id: string,
+    readonly layer: PrimitiveLayer;
+    readonly kind: string;
+    readonly id: string;
     /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
      *  the headers and body an author answered, where no file is written yet
      *  (FR-011). */
-    contents:
-      | string
-      | Uint8Array
-      | {
-          readonly headers: Readonly<Record<string, unknown>>;
-          readonly body: string;
-        },
-    assets: readonly AssetFile[],
-    uri: string,
+    readonly contents: string | Uint8Array | {
+        readonly headers: Readonly<Record<string, unknown>>;
+        readonly body: string;
+    };
+    readonly assets: readonly AssetFile[];
+    readonly uri: string;
     /** Whether it is kept as a primitive is, apart with its assets: a
      *  markdown file kept on its own is how an earlier version kept one
      *  (FR-141). */
-    isKeptApart?: boolean,
+    readonly isKeptApart: boolean;
     /** Where its keeper would keep a primitive of this kind and id, as the
      *  uri of its folder, for a fault to say where to move it (FR-141); the
      *  engine says it back and never reads it. */
-    folderUriOf?: ((kind: string, id: string) => string) | undefined,
-  );
-  /** Its index.md as text, a leading BOM kept as a file read as text keeps it
-   *  (CORE-FR-207). */
-  get text(): string;
-}
-
-/** What every path into a build's output starts with: where the output
- *  lands is no part of the engine's, so it is written as this, and whoever
- *  lays or reads the output says where that is (CORE-FR-221). */
-declare const OUT_FOLDER_TOKEN = "$CW_OUT";
-
-/**
- * One part of what a build compiles to, known by what it is: the part it
- * plays, the kind of the primitive it was compiled from, or `charter` where it
- * is the whole charter's, its id there, and its path inside the build's
- * output (CORE-FR-220).
- *
- * Where the output lands is the projection's to decide (CORE-FR-221). A part's
- * text naming another names it by `linkOf`: its path inside the output, under
- * `$CW_OUT/`.
- */
-declare class OutputPart {
-  readonly part: string;
-  readonly kind: string;
-  readonly id: string;
-  /** Where it lands inside the build's output: `guide/no-any/index.md`. */
-  readonly path: string;
-  constructor(
-    part: string,
-    kind: string,
-    id: string,
-    /** Where it lands inside the build's output: `guide/no-any/index.md`. */
-    path: string,
-  );
-  /** What every path into the output starts with, in place of the folder it
-   *  lands in. */
-  static get outFolderToken(): typeof OUT_FOLDER_TOKEN;
-  /** A part of the whole charter: its id is the part it plays. */
-  static ofCharter(part: string, path: string): OutputPart;
-  /** One primitive's compiled document, every host's. */
-  static ofPrimitive(kind: string, id: string): OutputPart;
-  /**
-   * This part named in another's text: `$CW_OUT/` and its path inside the
-   * output, then on by `suffix`, a path from this part's own folder, where one
-   * is given: `./` or `../` before it read as a link reads it, every character
-   * of it a URL's, a file's name beside it otherwise.
-   */
-  linkOf(suffix?: string): string;
-}
-
-/**
- * One file a build has decided about, before anything on disk moves.
- *
- * Where it goes, what it would hold once the build is done, and what is there
- * now — so what a build would do to it is read off the plan rather than worked
- * out again against disk (FR-022).
- */
-declare class WritePlan {
-  /** Where it sits, at its path from what is built — the repository, or a
-   *  checkout of it: what a build says it did. */
-  readonly path: string;
-  /** Where it sits, at its path from the repository: where it is written. */
-  readonly filePath: string;
-  /** What the build would leave in it, or nothing where the plan is to take
-   *  it away. */
-  readonly contents?: string | Uint8Array | undefined;
-  /** What it holds now, or nothing where there is no such file yet: its
-   *  bytes where it is a copy, which are what it is compared by
-   *  (CORE-FR-207). */
-  readonly heldContents?: string | Uint8Array | undefined;
-  /** Run by its path once it is down: a built script (FR-160). */
-  readonly isExecutable?: boolean | undefined;
-  constructor(
-    /** Where it sits, at its path from what is built — the repository, or a
-     *  checkout of it: what a build says it did. */
-    path: string,
-    /** Where it sits, at its path from the repository: where it is written. */
-    filePath: string,
-    /** What the build would leave in it, or nothing where the plan is to take
-     *  it away. */
-    contents?: string | Uint8Array | undefined,
-    /** What it holds now, or nothing where there is no such file yet: its
-     *  bytes where it is a copy, which are what it is compared by
+    readonly folderUriOf?: ((kind: string, id: string) => string) | undefined;
+    constructor(layer: PrimitiveLayer, kind: string, id: string, 
+    /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
+     *  the headers and body an author answered, where no file is written yet
+     *  (FR-011). */
+    contents: string | Uint8Array | {
+        readonly headers: Readonly<Record<string, unknown>>;
+        readonly body: string;
+    }, assets: readonly AssetFile[], uri: string, 
+    /** Whether it is kept as a primitive is, apart with its assets: a
+     *  markdown file kept on its own is how an earlier version kept one
+     *  (FR-141). */
+    isKeptApart?: boolean, 
+    /** Where its keeper would keep a primitive of this kind and id, as the
+     *  uri of its folder, for a fault to say where to move it (FR-141); the
+     *  engine says it back and never reads it. */
+    folderUriOf?: ((kind: string, id: string) => string) | undefined);
+    /** Its index.md as text, a leading BOM kept as a file read as text keeps it
      *  (CORE-FR-207). */
-    heldContents?: string | Uint8Array | undefined,
-    /** Run by its path once it is down: a built script (FR-160). */
-    isExecutable?: boolean | undefined,
-  );
-}
-
-/** One folder a plan puts down as a source holds it, every file under it at
- *  any depth, replacing whatever that folder held (CORE-FR-042). */
-declare class CopyPlan {
-  /** Where it sits in the source it is copied from, the empty path its
-   *  root. */
-  readonly sourcePath: string;
-  /** Where it lands, at its path from the repository. */
-  readonly destinationPath: string;
-  constructor(
-    /** Where it sits in the source it is copied from, the empty path its
-     *  root. */
-    sourcePath: string,
-    /** Where it lands, at its path from the repository. */
-    destinationPath: string,
-  );
-}
-
-/** One reading of a charter, or of a vendor's source, said as what it would
- *  do to disk: a build writes each file, an install copies a folder too. */
-declare class ProjectionPlan<Plan extends WritePlan | CopyPlan = WritePlan> {
-  readonly warnings: readonly string[];
-  /** What the last build left, whether this one writes it again or not; or
-   *  what an install takes away once it is down. */
-  readonly cleanupPlan: readonly WritePlan[];
-  /** Everything this reading would put down, in order. */
-  readonly projectionPlan: readonly Plan[];
-  constructor(
-    warnings: readonly string[],
-    /** What the last build left, whether this one writes it again or not; or
-     *  what an install takes away once it is down. */
-    cleanupPlan: readonly WritePlan[],
-    /** Everything this reading would put down, in order. */
-    projectionPlan: readonly Plan[],
-  );
+    get text(): string;
 }
 
 /** One suite of self-regression tests as what keeps them keeps it, before the
@@ -5141,10 +3956,10 @@ declare class ProjectionPlan<Plan extends WritePlan | CopyPlan = WritePlan> {
  *  what it holds, and where it is kept, said back and never read
  *  (CORE-FR-213). */
 declare class RawTestSuite {
-  readonly name: string;
-  readonly text: string;
-  readonly uri: string;
-  constructor(name: string, text: string, uri: string);
+    readonly name: string;
+    readonly text: string;
+    readonly uri: string;
+    constructor(name: string, text: string, uri: string);
 }
 
 /**
@@ -5165,61 +3980,33 @@ declare class RawTestSuite {
  * to allow or refuse. So the shapes nothing could ever answer do not exist to
  * be handled.
  */
-declare const TestCaseSchema: z.ZodUnion<
-  readonly [
-    z.ZodObject<
-      {
-        do: z.ZodObject<
-          {
-            touchFile: z.ZodString;
-          },
-          z.core.$strict
-        >;
-        expect: z.ZodUnion<
-          readonly [
-            z.ZodObject<
-              {
-                activate: z.ZodString;
-              },
-              z.core.$strict
-            >,
-            z.ZodObject<
-              {
-                allow: z.ZodBoolean;
-              },
-              z.core.$strict
-            >,
-          ]
-        >;
-      },
-      z.core.$strict
-    >,
-    z.ZodObject<
-      {
-        when: z.ZodEnum<{
-          PreToolUse: "PreToolUse";
-          PostToolUse: "PostToolUse";
-          UserPromptSubmit: "UserPromptSubmit";
-          Stop: "Stop";
-          SubagentStop: "SubagentStop";
-          PreCompact: "PreCompact";
-          SessionStart: "SessionStart";
-          SessionEnd: "SessionEnd";
-          PermissionRequest: "PermissionRequest";
-          SubagentStart: "SubagentStart";
-          PostCompact: "PostCompact";
-        }>;
-        expect: z.ZodObject<
-          {
-            run: z.ZodString;
-          },
-          z.core.$strict
-        >;
-      },
-      z.core.$strict
-    >,
-  ]
->;
+declare const TestCaseSchema: z.ZodUnion<readonly [z.ZodObject<{
+    do: z.ZodObject<{
+        touchFile: z.ZodString;
+    }, z.core.$strict>;
+    expect: z.ZodUnion<readonly [z.ZodObject<{
+        activate: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        allow: z.ZodBoolean;
+    }, z.core.$strict>]>;
+}, z.core.$strict>, z.ZodObject<{
+    when: z.ZodEnum<{
+        PreToolUse: "PreToolUse";
+        PostToolUse: "PostToolUse";
+        UserPromptSubmit: "UserPromptSubmit";
+        Stop: "Stop";
+        SubagentStop: "SubagentStop";
+        PreCompact: "PreCompact";
+        SessionStart: "SessionStart";
+        SessionEnd: "SessionEnd";
+        PermissionRequest: "PermissionRequest";
+        SubagentStart: "SubagentStart";
+        PostCompact: "PostCompact";
+    }>;
+    expect: z.ZodObject<{
+        run: z.ZodString;
+    }, z.core.$strict>;
+}, z.core.$strict>]>;
 
 /**
  * One situation a test pins down, and what the charter is expected to make of
@@ -5236,27 +4023,27 @@ declare const TestCaseSchema: z.ZodUnion<
  * decides how it resolves, and that is the resolver's question to ask of it.
  */
 declare class TestCase {
-  readonly written: z.infer<typeof TestCaseSchema>;
-  static get schema(): typeof TestCaseSchema;
-  constructor(written: z.infer<typeof TestCaseSchema>);
-  /** The situation it puts, said as a line, and what it expects of it: what a
-   *  run reports it under, and what an explanation names it by (FR-048,
-   *  FR-014). */
-  describe(): string;
-  /** The situation it puts: the file it touches, or the event it raises. */
-  get situation(): string;
-  /** What it expects the charter to make of its situation. */
-  get expectation(): string;
-  /**
-   * Which primitive this case expects to be activated: the sensor a raised event
-   * is expected to run, or the guide a touched file is expected to bring up
-   * (FR-014).
-   *
-   * Nothing for the third shape. That one expects a touched file to be allowed
-   * or denied, which every posture in the charter answers between them, so it
-   * activates no one primitive by name.
-   */
-  get activatedId(): string | undefined;
+    readonly writtenCase: z.infer<typeof TestCaseSchema>;
+    static get schema(): typeof TestCaseSchema;
+    constructor(writtenCase: z.infer<typeof TestCaseSchema>);
+    /** The situation it puts, said as a line, and what it expects of it: what a
+     *  run reports it under, and what an explanation names it by (FR-048,
+     *  FR-014). */
+    describeCase(): string;
+    /** The situation it puts: the file it touches, or the event it raises. */
+    get situation(): string;
+    /** What it expects the charter to make of its situation. */
+    get expectation(): string;
+    /**
+     * Which primitive this case expects to be activated: the sensor a raised event
+     * is expected to run, or the guide a touched file is expected to bring up
+     * (FR-014).
+     *
+     * Nothing for the third shape. That one expects a touched file to be allowed
+     * or denied, which every posture in the charter answers between them, so it
+     * activates no one primitive by name.
+     */
+    get activatedId(): string | undefined;
 }
 
 /**
@@ -5269,118 +4056,65 @@ declare class TestCase {
  * That is why it is JSON and not a document with frontmatter: nobody reads it
  * but `cw test`, and there is no body for an agent to open.
  */
-declare const TestSuiteSchema: z.ZodObject<
-  {
+declare const TestSuiteSchema: z.ZodObject<{
     description: z.ZodOptional<z.ZodString>;
-    cases: z.ZodArray<
-      z.ZodPipe<
-        z.ZodUnion<
-          readonly [
-            z.ZodObject<
-              {
-                do: z.ZodObject<
-                  {
-                    touchFile: z.ZodString;
-                  },
-                  z.core.$strict
-                >;
-                expect: z.ZodUnion<
-                  readonly [
-                    z.ZodObject<
-                      {
-                        activate: z.ZodString;
-                      },
-                      z.core.$strict
-                    >,
-                    z.ZodObject<
-                      {
-                        allow: z.ZodBoolean;
-                      },
-                      z.core.$strict
-                    >,
-                  ]
-                >;
-              },
-              z.core.$strict
-            >,
-            z.ZodObject<
-              {
-                when: z.ZodEnum<{
-                  PreToolUse: "PreToolUse";
-                  PostToolUse: "PostToolUse";
-                  UserPromptSubmit: "UserPromptSubmit";
-                  Stop: "Stop";
-                  SubagentStop: "SubagentStop";
-                  PreCompact: "PreCompact";
-                  SessionStart: "SessionStart";
-                  SessionEnd: "SessionEnd";
-                  PermissionRequest: "PermissionRequest";
-                  SubagentStart: "SubagentStart";
-                  PostCompact: "PostCompact";
-                }>;
-                expect: z.ZodObject<
-                  {
-                    run: z.ZodString;
-                  },
-                  z.core.$strict
-                >;
-              },
-              z.core.$strict
-            >,
-          ]
-        >,
-        z.ZodTransform<
-          TestCase,
-          | {
-              do: {
-                touchFile: string;
-              };
-              expect:
-                | {
-                    activate: string;
-                  }
-                | {
-                    allow: boolean;
-                  };
-            }
-          | {
-              when:
-                | "PreToolUse"
-                | "PostToolUse"
-                | "UserPromptSubmit"
-                | "Stop"
-                | "SubagentStop"
-                | "PreCompact"
-                | "SessionStart"
-                | "SessionEnd"
-                | "PermissionRequest"
-                | "SubagentStart"
-                | "PostCompact";
-              expect: {
-                run: string;
-              };
-            }
-        >
-      >
-    >;
-  },
-  z.core.$strict
->;
+    cases: z.ZodArray<z.ZodPipe<z.ZodUnion<readonly [z.ZodObject<{
+        do: z.ZodObject<{
+            touchFile: z.ZodString;
+        }, z.core.$strict>;
+        expect: z.ZodUnion<readonly [z.ZodObject<{
+            activate: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            allow: z.ZodBoolean;
+        }, z.core.$strict>]>;
+    }, z.core.$strict>, z.ZodObject<{
+        when: z.ZodEnum<{
+            PreToolUse: "PreToolUse";
+            PostToolUse: "PostToolUse";
+            UserPromptSubmit: "UserPromptSubmit";
+            Stop: "Stop";
+            SubagentStop: "SubagentStop";
+            PreCompact: "PreCompact";
+            SessionStart: "SessionStart";
+            SessionEnd: "SessionEnd";
+            PermissionRequest: "PermissionRequest";
+            SubagentStart: "SubagentStart";
+            PostCompact: "PostCompact";
+        }>;
+        expect: z.ZodObject<{
+            run: z.ZodString;
+        }, z.core.$strict>;
+    }, z.core.$strict>]>, z.ZodTransform<TestCase, {
+        do: {
+            touchFile: string;
+        };
+        expect: {
+            activate: string;
+        } | {
+            allow: boolean;
+        };
+    } | {
+        when: "PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "Stop" | "SubagentStop" | "PreCompact" | "SessionStart" | "SessionEnd" | "PermissionRequest" | "SubagentStart" | "PostCompact";
+        expect: {
+            run: string;
+        };
+    }>>>;
+}, z.core.$strict>;
 
 /** One test file, as `TestSuiteSchema` read it (FR-047): what it is about, the
  *  cases it pins down, and the body it was read from, as its author wrote it
  *  and the editor shows it (FR-124). Made by `TestSuiteFactory.create` and by
  *  nothing else. */
 declare class TestSuite {
-  readonly description: string | undefined;
-  readonly cases: readonly TestCase[];
-  readonly body: string;
-  static get schema(): typeof TestSuiteSchema;
-  static get defaultBody(): typeof DEFAULT_TEST_SUITE_BODY;
-  /** A suite that reads, said on one line: what a file the schema refused is
-   *  shown. */
-  static get sampleText(): typeof SAMPLE;
-  constructor(description: string | undefined, cases: readonly TestCase[], body: string);
+    readonly description: string | undefined;
+    readonly cases: readonly TestCase[];
+    readonly body: string;
+    static get schema(): typeof TestSuiteSchema;
+    static get defaultBody(): typeof DEFAULT_TEST_SUITE_BODY;
+    /** A suite that reads, said on one line: what a file the schema refused is
+     *  shown. */
+    static get sampleText(): typeof SAMPLE;
+    constructor(description: string | undefined, cases: readonly TestCase[], body: string);
 }
 
 declare const SAMPLE: string;
@@ -5395,15 +4129,19 @@ declare const DEFAULT_TEST_SUITE_BODY: string;
  *  it lands in under the vendor folder, its owner and its repository (FR-049,
  *  FR-050). */
 declare class VendorSourceOrigin {
-  readonly sourceUri: string;
-  readonly name: string;
-  constructor(sourceUri: string, name: string);
+    readonly sourceUri: string;
+    readonly name: string;
+    constructor(sourceUri: string, name: string);
 }
 
 /** The folder a source of many charters keeps them in, one folder each named
  *  by it, laid out as a single-charter source holds its one:
  *  `charters/<name>/.cw/charter/` (CORE-FR-195). */
 declare const CHARTERS_FOLDER = "charters";
+
+/** The name a source's own charter, and the skills taken from it, are
+ *  installed under beside the charters picked from it. */
+declare const OWN_CHARTER_NAME = "root";
 
 /** The file a skills repository keeps each skill in, the way `npx skills add`
  *  reads one (CORE-FR-185). */
@@ -5423,26 +4161,18 @@ declare const SKILLS_FOLDER = "skills";
  *  read. `sourceFolder` is where its primitives sit in the source, for what
  *  copies them. */
 declare class SourceCharter {
-  readonly name: string;
-  readonly holdsCharter: boolean;
-  readonly holdsVendors: boolean;
-  readonly rawPrimitives: readonly RawPrimitive[];
-  readonly uri: string;
-  readonly vendorsUri: string;
-  readonly sourceFolder: string;
-  constructor(
-    name: string,
-    holdsCharter: boolean,
-    holdsVendors: boolean,
-    rawPrimitives: readonly RawPrimitive[],
-    uri: string,
-    vendorsUri: string,
-    sourceFolder: string,
-  );
-  /** The description one of its primitives declares, empty where it
-   *  declares none. Shown, never refused: the charter is installed whole, as
-   *  its source holds it (CORE-FR-196). */
-  descriptionOf(rawPrimitive: RawPrimitive): string;
+    readonly name: string;
+    readonly holdsCharter: boolean;
+    readonly holdsVendors: boolean;
+    readonly rawPrimitives: readonly RawPrimitive[];
+    readonly uri: string;
+    readonly vendorsUri: string;
+    readonly sourceFolder: string;
+    constructor(name: string, holdsCharter: boolean, holdsVendors: boolean, rawPrimitives: readonly RawPrimitive[], uri: string, vendorsUri: string, sourceFolder: string);
+    /** The description one of its primitives declares, empty where it
+     *  declares none. Shown, never refused: the charter is installed whole, as
+     *  its source holds it (CORE-FR-196). */
+    descriptionOf(rawPrimitive: RawPrimitive): string;
 }
 
 /** One skill a skills repository keeps, converted (CORE-FR-185,
@@ -5451,18 +4181,12 @@ declare class SourceCharter {
  *  folder, where it sits in the source, said back and never read, and the
  *  folder it sits in, for what copies it. */
 declare class SourceSkill {
-  readonly convertedSkill: SkillPrimitive;
-  readonly leftOutHeaders: readonly string[];
-  readonly assets: readonly AssetFile[];
-  readonly uri: string;
-  readonly sourceFolder: string;
-  constructor(
-    convertedSkill: SkillPrimitive,
-    leftOutHeaders: readonly string[],
-    assets: readonly AssetFile[],
-    uri: string,
-    sourceFolder: string,
-  );
+    readonly convertedSkill: SkillPrimitive;
+    readonly leftOutHeaders: readonly string[];
+    readonly assets: readonly AssetFile[];
+    readonly uri: string;
+    readonly sourceFolder: string;
+    constructor(convertedSkill: SkillPrimitive, leftOutHeaders: readonly string[], assets: readonly AssetFile[], uri: string, sourceFolder: string);
 }
 
 /** What one commit of a source holds, read: its own charter, the charters it
@@ -5470,29 +4194,24 @@ declare class SourceSkill {
  *  that does not convert does not (CORE-FR-192, CORE-FR-193). `commit` is
  *  what was fetched, for what fetched it alone to read again. */
 declare class VendorSource {
-  readonly origin: VendorSourceOrigin;
-  readonly commit: string;
-  readonly ownCharter: SourceCharter | undefined;
-  readonly charters: readonly SourceCharter[];
-  readonly skills: readonly SourceSkill[];
-  /** Held rather than raised: a skill that does not convert refuses taking
-   *  skills, and nothing else (CORE-FR-192). */
-  readonly skillFaults: readonly DomainFault[];
-  static get chartersFolder(): typeof CHARTERS_FOLDER;
-  static get skillFile(): typeof SKILL_FILE;
-  static get skillsFolder(): typeof SKILLS_FOLDER;
-  constructor(
-    origin: VendorSourceOrigin,
-    commit: string,
-    ownCharter: SourceCharter | undefined,
-    charters: readonly SourceCharter[],
-    skills: readonly SourceSkill[],
+    readonly origin: VendorSourceOrigin;
+    readonly commit: string;
+    readonly ownCharter: SourceCharter | undefined;
+    readonly charters: readonly SourceCharter[];
+    readonly skills: readonly SourceSkill[];
     /** Held rather than raised: a skill that does not convert refuses taking
      *  skills, and nothing else (CORE-FR-192). */
-    skillFaults: readonly DomainFault[],
-  );
-  /** Whether it publishes any skill, converted or not (CORE-FR-185). */
-  get holdsSkills(): boolean;
+    readonly skillFaults: readonly DomainFault[];
+    static get chartersFolder(): typeof CHARTERS_FOLDER;
+    static get ownCharterName(): typeof OWN_CHARTER_NAME;
+    static get skillFile(): typeof SKILL_FILE;
+    static get skillsFolder(): typeof SKILLS_FOLDER;
+    constructor(origin: VendorSourceOrigin, commit: string, ownCharter: SourceCharter | undefined, charters: readonly SourceCharter[], skills: readonly SourceSkill[], 
+    /** Held rather than raised: a skill that does not convert refuses taking
+     *  skills, and nothing else (CORE-FR-192). */
+    skillFaults: readonly DomainFault[]);
+    /** Whether it publishes any skill, converted or not (CORE-FR-185). */
+    get holdsSkills(): boolean;
 }
 
 /** One skill a skills repository keeps, as it is handed in, before the engine
@@ -5500,11 +4219,11 @@ declare class VendorSource {
  *  its folder, where it sits in the source, said back and never read, and the
  *  folder it sits in, for what copies it. */
 declare class RawSourceSkill {
-  readonly text: string;
-  readonly assets: readonly AssetFile[];
-  readonly uri: string;
-  readonly sourceFolder: string;
-  constructor(text: string, assets: readonly AssetFile[], uri: string, sourceFolder: string);
+    readonly text: string;
+    readonly assets: readonly AssetFile[];
+    readonly uri: string;
+    readonly sourceFolder: string;
+    constructor(text: string, assets: readonly AssetFile[], uri: string, sourceFolder: string);
 }
 
 /** What one commit of a source holds, as what fetched it read it, before the
@@ -5512,18 +4231,12 @@ declare class RawSourceSkill {
  *  the skills it publishes (CORE-FR-193). `commit` is what was fetched, for
  *  what fetched it alone to read again. */
 declare class RawVendorSource {
-  readonly origin: VendorSourceOrigin;
-  readonly commit: string;
-  readonly ownCharter: SourceCharter | undefined;
-  readonly charters: readonly SourceCharter[];
-  readonly rawSourceSkills: readonly RawSourceSkill[];
-  constructor(
-    origin: VendorSourceOrigin,
-    commit: string,
-    ownCharter: SourceCharter | undefined,
-    charters: readonly SourceCharter[],
-    rawSourceSkills: readonly RawSourceSkill[],
-  );
+    readonly origin: VendorSourceOrigin;
+    readonly commit: string;
+    readonly ownCharter: SourceCharter | undefined;
+    readonly charters: readonly SourceCharter[];
+    readonly rawSourceSkills: readonly RawSourceSkill[];
+    constructor(origin: VendorSourceOrigin, commit: string, ownCharter: SourceCharter | undefined, charters: readonly SourceCharter[], rawSourceSkills: readonly RawSourceSkill[]);
 }
 
 /** The folder a vendor keeps its primitives in, one folder per kind under it,
@@ -5534,81 +4247,391 @@ declare const PRIMITIVES_FOLDER = "primitive";
  *  was installed as, `<owner>/<repository>/<name>` (FR-050, CORE-FR-196), and
  *  where it is kept, said back and never read. */
 declare class VendorRoot {
-  /** Every vendor installed, as `cw vendor list` names them (FR-053). */
-  readonly vendors: readonly {
-    readonly name: string;
-    readonly uri: string;
-  }[];
-  static get primitivesFolder(): typeof PRIMITIVES_FOLDER;
-  constructor(
+    /** Every vendor installed, as `cw vendor list` names them (FR-053). */
+    readonly vendors: readonly {
+        readonly name: string;
+        readonly uri: string;
+    }[];
+    static get primitivesFolder(): typeof PRIMITIVES_FOLDER;
+    constructor(
     /** Every vendor installed, as `cw vendor list` names them (FR-053). */
     vendors: readonly {
-      readonly name: string;
-      readonly uri: string;
-    }[],
-  );
+        readonly name: string;
+        readonly uri: string;
+    }[]);
 }
 
-/** One folder under a repository, named by its path from it, and by nothing
- *  of where the repository is (CORE-FR-217). */
-declare abstract class RepoFolder {
-  readonly path: string;
-  protected constructor(path: string);
+/**
+ * One item of what a build compiles to: its text (CORE-FR-220). Every item of
+ * a `CharterOutput` is one of these — the catalogues, `CHARTER.md`, the mcp
+ * origins, the built sensors and each compiled primitive — each made by its
+ * own factory.
+ *
+ * Where it lands inside the output, and how another item's text names it, is
+ * `OutputPath`'s; where the output lands is the projection's (CORE-FR-221).
+ */
+declare abstract class CharterOutputItem {
+    /** What it holds, as a build lays it. */
+    abstract get text(): string;
 }
+
+/**
+ * Where each item of a build's output lands inside it, and how one item's
+ * text names another (CORE-FR-220, CORE-FR-221). The one place the output's
+ * layout is known: an item is what it holds, and its path is asked of this.
+ *
+ * Where the output itself lands is no part of the engine's, so every path
+ * into it is written under `cwOutFolderPlaceholder`, and whoever lays or
+ * reads the output says where that is.
+ */
+declare class OutputPath {
+    /** What every path into the output starts with, in place of the folder it
+     *  lands in. */
+    readonly cwOutFolderPlaceholder = "$CW_OUT";
+    /** The file every agent's entry file sends a reader to (FR-019, FR-051). */
+    readonly charterMdFileName = "CHARTER.md";
+    /** The mcp origins the last build listed (FR-145). */
+    readonly mcpOriginsFileName = "mcp-origins.json";
+    /** The sensors the last build compiled (FR-179). */
+    readonly sensorsFileName = "sensors.json";
+    /** Where this item lands inside the output, by what it is. */
+    getPath(charterOutputItem: CharterOutputItem): string;
+    /** A catalogue's file: the listing every agent shares, `catalogue.json`, or
+     *  one agent's own, named by the agent (FR-011). */
+    getCatalogueFileName(agentName?: string): string;
+    /** Where the compiled primitive of this kind and id lands, every agent's:
+     *  `guide/no-any/index.md`. */
+    getCompiledPrimitivePath(kind: string, id: string): string;
+    /** This item named in another's text, as `getLinkTo` names its path. */
+    getLink(charterOutputItem: CharterOutputItem, suffix?: string): string;
+    /**
+     * The item at `path` named in another's text, where that item is not in
+     * hand: `$CW_OUT/` and its path inside the output, then on by `suffix`, a
+     * path from the item's own folder, where one is given: `./` or `../` before
+     * it read as a link reads it, every character of it a URL's, a file's name
+     * beside it otherwise.
+     */
+    getLinkTo(path: string, suffix?: string): string;
+}
+
+/**
+ * The charter module's constants: each folder of the workspace by its path
+ * from the repository's root, and nothing of where the repository is
+ * (CORE-FR-217).
+ */
 
 /** The charter itself, the only part of the workspace a person authors: its
  *  primitives, its tests, its eval cases and its vendors, each in a folder of
  *  its own under it (CORE-FR-224). */
-declare class CharterFolder extends RepoFolder {
-  static readonly path: string;
-}
-
-/** The cases this repository evaluates its charter by against the real agent,
- *  one file of cases each (EVAL-FR-020), under the charter (CORE-FR-224).
- *  Beside the tests rather than inside them: a test is resolved offline, and
- *  an evaluation spends a key. */
-declare class EvalFolder extends RepoFolder {
-  static readonly path: string;
-}
+declare const CHARTER_FOLDER_PATH = ".cw/charter";
 
 /** The repository's own primitives, a folder per kind, under the charter
  *  (CORE-FR-224). */
-declare class PrimitivesFolder extends RepoFolder {
-  static readonly path: string;
-}
+declare const PRIMITIVES_FOLDER_PATH = ".cw/charter/primitive";
 
 /** The situations this repository pins its charter down with, one file of cases
  *  each (FR-047), under the charter (CORE-FR-224). Apart from the primitives: a
  *  test is not a primitive, nothing compiles it and no agent is instructed by
  *  it, so it is read only when tests run. */
-declare class TestFolder extends RepoFolder {
-  static readonly path: string;
-}
+declare const TEST_FOLDER_PATH = ".cw/charter/test";
+
+/** The cases this repository evaluates its charter by against the real agent,
+ *  one file of cases each (EVAL-FR-020), under the charter (CORE-FR-224).
+ *  Beside the tests rather than inside them: a test is resolved offline, and
+ *  an evaluation spends a key. */
+declare const EVAL_FOLDER_PATH = ".cw/charter/eval";
 
 /** What this repository installed from someone else, one folder per vendor,
  *  `<owner>/<repository>` (FR-023, FR-024, FR-050), under the charter
  *  (CORE-FR-224). Apart from the primitives: what a vendor published is
  *  read-only, and what this repository authored is not. */
-declare class VendorsFolder extends RepoFolder {
-  static readonly path: string;
+declare const VENDORS_FOLDER_PATH = ".cw/charter/vendor";
+
+/** The output's layout, made once: every path into a build's output, and
+ *  every link from one of its items to another, is asked of it (CORE-FR-220,
+ *  CORE-FR-221). */
+declare const outputPath: OutputPath;
+
+/**
+ * One file a build has decided about, before anything on disk moves.
+ *
+ * Where it goes, what it would hold once the build is done, and what is there
+ * now — so what a build would do to it is read off the plan rather than worked
+ * out again against disk (FR-022).
+ */
+declare class WritePlan {
+    /** Where it sits, at its path from what is built — the repository, or a
+     *  checkout of it: what a build says it did. */
+    readonly path: string;
+    /** Where it sits, at its path from the repository: where it is written. */
+    readonly filePath: string;
+    /** What the build would leave in it, or nothing where the plan is to take
+     *  it away. */
+    readonly contents?: string | Uint8Array | undefined;
+    /** What it holds now, or nothing where there is no such file yet: its
+     *  bytes where it is a copy, which are what it is compared by
+     *  (CORE-FR-207). */
+    readonly heldContents?: string | Uint8Array | undefined;
+    /** Run by its path once it is down: a built script (FR-160). */
+    readonly isExecutable?: boolean | undefined;
+    constructor(
+    /** Where it sits, at its path from what is built — the repository, or a
+     *  checkout of it: what a build says it did. */
+    path: string, 
+    /** Where it sits, at its path from the repository: where it is written. */
+    filePath: string, 
+    /** What the build would leave in it, or nothing where the plan is to take
+     *  it away. */
+    contents?: string | Uint8Array | undefined, 
+    /** What it holds now, or nothing where there is no such file yet: its
+     *  bytes where it is a copy, which are what it is compared by
+     *  (CORE-FR-207). */
+    heldContents?: string | Uint8Array | undefined, 
+    /** Run by its path once it is down: a built script (FR-160). */
+    isExecutable?: boolean | undefined);
+}
+
+/** One folder a plan puts down as a source holds it, every file under it at
+ *  any depth, replacing whatever that folder held (CORE-FR-042). */
+declare class CopyPlan {
+    /** Where it sits in the source it is copied from, the empty path its
+     *  root. */
+    readonly sourcePath: string;
+    /** Where it lands, at its path from the repository. */
+    readonly destinationPath: string;
+    constructor(
+    /** Where it sits in the source it is copied from, the empty path its
+     *  root. */
+    sourcePath: string, 
+    /** Where it lands, at its path from the repository. */
+    destinationPath: string);
+}
+
+/** One reading of a charter, or of a vendor's source, said as what it would
+ *  do to disk: a build writes each file, an install copies a folder too. */
+declare class ProjectionPlan<Plan extends WritePlan | CopyPlan = WritePlan> {
+    readonly warnings: readonly string[];
+    /** What the last build left, whether this one writes it again or not; or
+     *  what an install takes away once it is down. */
+    readonly cleanupPlan: readonly WritePlan[];
+    /** Everything this reading would put down, in order. */
+    readonly writePlans: readonly Plan[];
+    constructor(warnings: readonly string[], 
+    /** What the last build left, whether this one writes it again or not; or
+     *  what an install takes away once it is down. */
+    cleanupPlan: readonly WritePlan[], 
+    /** Everything this reading would put down, in order. */
+    writePlans: readonly Plan[]);
 }
 
 /** Makes what this repository installed from others out of the files kept
  *  under its vendor folder. */
 declare class VendorRootFactory {
-  /**
-   * Each vendor at `<owner>/<repository>/<name>/primitive/` under the vendor
-   * folder, named by those three folders (FR-050, CORE-FR-196).
-   *
-   * A file kept anywhere else is a vendor installed the way an earlier
-   * version laid one, refused naming the folder to take away before it is
-   * installed again: nothing of it is read as a vendor.
-   *
-   * `uriOf` says where a folder is kept, in its keeper's words: said back,
-   * never read.
-   */
-  static create(vendorFilePaths: readonly string[], uriOf: (folderPath: string) => string): VendorRoot;
-  private constructor();
+    /**
+     * Each vendor at `<owner>/<repository>/<name>/primitive/` under the vendor
+     * folder, named by those three folders (FR-050, CORE-FR-196).
+     *
+     * A file kept anywhere else is a vendor installed the way an earlier
+     * version laid one, refused naming the folder to take away before it is
+     * installed again: nothing of it is read as a vendor.
+     *
+     * `uriOf` says where a folder is kept, in its keeper's words: said back,
+     * never read.
+     */
+    static create(vendorFilePaths: readonly string[], uriOf: (folderPath: string) => string): VendorRoot;
+    private constructor();
+}
+
+/** What an adapter answering this port raises when git refuses, named again
+ *  here so it names this port and nothing behind it. */
+
+/**
+ * DRIVEN PORT — reaching a source. How it is answered — a git command today, a
+ * library or a test's own answer tomorrow — is the adapter's business.
+ *
+ * The folder a source lands in need not be a repository: nothing here needs a
+ * repository, and nothing here writes to one (FR-023, CORE-FR-205).
+ */
+interface ForFetchingCharterSources {
+    /**
+     * Fetch this source, at this version where one is named, and answer the
+     * commit fetched: what the other questions about a source are asked of, so it
+     * is fetched once. Its text is the adapter's own, for this port alone to
+     * read. Nothing in the repository is touched; it is only what a relative source is
+     * read from, and whose own version control settings reach it, where it has
+     * any. Whoever fetched it says `removeTempCommit` when done.
+     *
+     * A source that cannot be reached, a version that is not there, and a machine
+     * that cannot fetch at all each raise an `AdapterFault` saying so
+     * (CORE-FR-190, CORE-FR-205).
+     */
+    fetchCommit(source: string, version?: string): Promise<string>;
+    /** Every file this fetched commit holds, by its path in it, at any depth, in
+     *  no promised order. */
+    listFilesAt(commit: string): Promise<readonly string[]>;
+    /** What one file of this fetched commit holds, as text. */
+    readFileAt(commit: string, path: string): Promise<string>;
+    /** What one file of this fetched commit holds, as the bytes it holds, never
+     *  decoded (CORE-FR-208). */
+    readBytesAt(commit: string, path: string): Promise<Uint8Array>;
+    /**
+     * Put one folder of this fetched commit — every file under it, at any depth —
+     * at this folder of this repository, replacing whatever that folder held and
+     * nothing beside it. The empty path is the commit's root. Nothing is staged
+     * and nothing is committed: what lands is left in the working tree for the
+     * user to read, whatever else is in hand (FR-023, FR-042, CORE-FR-187,
+     * CORE-FR-190).
+     */
+    checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
+    /** The temporary folder this commit was fetched into, removed with all it
+     *  holds; nothing is asked of it afterwards. */
+    removeTempCommit(commit: string): Promise<void>;
+}
+
+/** Keeps a repository's charter, wherever it keeps it, and knows how: its
+ *  primitives, the vendors it installed, its test cases and its eval cases,
+ *  through this one port (CORE-FR-228), and reads back what the last build
+ *  laid of it, each item known by its path inside the output, never by
+ *  where the output lands (CORE-FR-221). Where a primitive, an asset of one, a
+ *  vendor's or a suite sits is its own to know, never the engine's, which knows
+ *  a primitive by its layer, kind and id and a suite by its name
+ *  (CORE-FR-213). */
+interface ForManagingCharter {
+    /** Every primitive kept of the repository's charter, its own layer and each
+     *  vendor's, each with its assets. */
+    loadCharter(): Promise<readonly RawPrimitive[]>;
+    /** A place laid out for each kind of primitive, where none was: what a
+     *  repository is set up with (FR-057). */
+    createCharter(): Promise<void>;
+    /** One new primitive of the repository's own layer kept, with its assets
+     *  where none stands there already, and a file already in its folder left
+     *  as one of them; its uri. Refused, with nothing written, where it is kept
+     *  already, would be kept inside another or around it, or would land outside
+     *  the charter (FR-167, CORE-FR-044). */
+    addPrimitive(rawPrimitive: RawPrimitive): Promise<string>;
+    /** New primitives of the repository's own layer kept together, each one's
+     *  uri in order; refused, with nothing written, as one added is, and where
+     *  any file is already in one's folder (CORE-FR-194). */
+    injectPrimitives(rawPrimitives: readonly RawPrimitive[]): Promise<readonly string[]>;
+    /** Refused where the repository is laid out in a way this store no longer
+     *  keeps, naming what moves it (CORE-FR-226). */
+    assertLayout(): Promise<void>;
+    /** Where the repository's own layer is kept, said back and never read. */
+    findCharterUri(): string;
+    /** One primitive of the repository's own layer kept over what it was, its
+     *  assets as they are (FR-075). */
+    rewritePrimitive(primitive: Primitive): Promise<void>;
+    /** One primitive of the repository's own layer taken away, with its assets,
+     *  and nothing else (FR-076, FR-167). */
+    removePrimitive(primitive: Primitive): Promise<void>;
+    /** One commit of this source, at this version where one is named, fetched
+     *  and read: its own charter, the charters it keeps apart, and its skills.
+     *  Whoever asked says `removeTempSource` once done. A source that cannot be
+     *  reached raises an `AdapterFault` saying so (CORE-FR-190). */
+    fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<RawVendorSource>;
+    /** The temporary folder a source was fetched into, removed with all it holds. */
+    removeTempSource(rawVendorSource: RawVendorSource): Promise<void>;
+    /** Every vendor installed (FR-053). */
+    loadVendorRoot(): Promise<VendorRoot>;
+    /** One vendor of a source fetched and filtered kept under the name its
+     *  origin gives it: each charter's primitives copied whole, as the source
+     *  holds them, the source's own under `VendorSource.ownCharterName` and each
+     *  kept apart under its own name; each skill's folder copied under the own
+     *  charter's and kept as the skill it converts to. Each replaces what stood
+     *  there before it; what else the vendor's folder holds is left as it was
+     *  (CORE-FR-042, CORE-FR-186 to CORE-FR-189, CORE-FR-196). */
+    storeVendor(vendorSource: VendorSource): Promise<void>;
+    /** Where a vendor installed under this name is kept, in this keeper's
+     *  words: said back, never read. */
+    findVendorUri(vendorName: string): string;
+    /** The vendor installed under this name taken away, with each folder above
+     *  it that leaves empty (FR-047, CORE-FR-204). */
+    removeVendor(vendorName: string): Promise<void>;
+    /** Every test suite kept, by its name, with what it holds. */
+    loadTestSuites(): Promise<readonly RawTestSuite[]>;
+    /** One test suite kept under this name, as its author wrote it, over
+     *  whatever it held. */
+    writeTestSuite(name: string, testSuite: TestSuite): Promise<void>;
+    /** The test suite kept under this name taken away. */
+    removeTestSuite(name: string): Promise<void>;
+    /** Every file of evaluation cases kept, by the name it is reported under,
+     *  with what it holds. */
+    loadEvalSuites(): Promise<readonly RawEvalSuite[]>;
+    /** One file of evaluation cases kept under this name, as its author wrote
+     *  it, over whatever it held. */
+    writeEvalSuite(name: string, evalSuite: EvalSuite): Promise<void>;
+    /** The file of evaluation cases kept under this name taken away. */
+    removeEvalSuite(name: string): Promise<void>;
+    /** The text a build laid for the item at this path inside its output, as
+     *  it was laid; nothing where none was. */
+    readBuiltOutputItem(itemPath: string): Promise<string | undefined>;
+    /** Where the item at this path inside the output is laid, in this keeper's
+     *  words: said back where a message names it, and never read. */
+    describeItemPlace(itemPath: string): string;
+    /** A text the last build laid, each path into its output — `$CW_OUT/` and
+     *  the path inside it — written as where this keeper laid the output, as a
+     *  command of it is run (CORE-FR-221). */
+    resolveOutputLinks(laidText: string): string;
+}
+
+/** The ways a developer may sign in to an mcp origin (FR-142): what an `mcp`
+ *  primitive declares, and what the list of mcp origins carries for each address.
+ *  Shared by the charter and the output, as the agent providers are. */
+declare const MCP_AUTH_METHOD_NAMES: readonly ["oauth", "token"];
+
+/** One of them, as a primitive's headers and the list of mcp origins write it. */
+type McpAuthMethodName = (typeof MCP_AUTH_METHOD_NAMES)[number];
+
+/** One way a developer signs in to an mcp origin: a value, one per name. */
+declare class McpAuthMethod {
+    readonly name: McpAuthMethodName;
+    static readonly OAUTH: McpAuthMethod;
+    static readonly TOKEN: McpAuthMethod;
+    private constructor();
+    /** The way this name writes, as a primitive's headers, a DTO or a kept
+     *  credential write it. */
+    static of(methodName: McpAuthMethodName): McpAuthMethod;
+    toString(): McpAuthMethodName;
+    /** Written as its name, wherever a model holding it is written as JSON. */
+    toJSON(): McpAuthMethodName;
+    /** Every name, in the order they are offered. */
+    static get names(): typeof MCP_AUTH_METHOD_NAMES;
+}
+
+/** What an mcp origin's authorization server registered `cw` as, and which
+ *  server that was: a registration is presented to the server it came from
+ *  and no other. */
+declare class McpClientRegistration {
+    readonly clientId: string;
+    readonly clientSecret?: string;
+    readonly issuer: string;
+    constructor({ clientId, clientSecret, issuer, }: Pick<McpClientRegistration, "clientId" | "issuer"> & Partial<Pick<McpClientRegistration, "clientSecret">>);
+}
+
+/**
+ * One developer's sign-in at one address, as the credential store keeps it.
+ *
+ * No DTO holds it, so no driver can show one (SC-036): it is read, and handed
+ * on as the access token a call is made with.
+ */
+declare class McpCredential {
+    readonly address: string;
+    readonly method: McpAuthMethod;
+    readonly accessToken: string;
+    readonly refreshToken?: string;
+    readonly expiresAt?: string;
+    readonly client?: McpClientRegistration;
+    constructor({ address, method, accessToken, refreshToken, expiresAt, client, }: Pick<McpCredential, "address" | "method" | "accessToken"> & Partial<Pick<McpCredential, "refreshToken" | "expiresAt" | "client">>);
+}
+
+/** Keeps the credentials of the mcp origins, wherever they are kept: what a
+ *  credential holds is never shown, and no DTO carries one (SC-036). */
+interface ForStoringCredentials {
+    /** The credential kept under this address, or `undefined` where none is. One
+     *  that does not read as a credential is none: signing in again replaces it. */
+    readCredential(address: string): Promise<McpCredential | undefined>;
+    /** Keep this credential under its address, replacing what was there. */
+    writeCredential(credential: McpCredential): Promise<void>;
 }
 
 /**
@@ -5621,105 +4644,203 @@ declare class VendorRootFactory {
  * hand.
  */
 declare class CharterRoot {
-  /** Every primitive this charter holds, whichever layer authored it: what
-   *  the engine brings, what this repository wrote and what it installed
-   *  under `vendor/`, each under the file it was authored in and the layer
-   *  its layer gives it. What a primitive says is its own; where it was
-   *  written is what a fault is filed under (SC-003) and what the catalogue
-   *  records (FR-011). */
-  readonly primitives: readonly Primitive[];
-  /** The files that were meant to be primitives and could not be read as one,
-   *  and why, wherever they were. Held rather than raised: a charter is worth
-   *  having with one file broken, and the broken one is worth naming
-   *  (FR-009). */
-  readonly faultsByFiles: FaultsByFile;
-  /** The layer of everything kept, read as a primitive or not, by where it is
-   *  kept: what a fault under it is weighed by (FR-005). */
-  readonly layerNameByUri: Readonly<Record<string, LayerName>>;
-  constructor(
     /** Every primitive this charter holds, whichever layer authored it: what
      *  the engine brings, what this repository wrote and what it installed
      *  under `vendor/`, each under the file it was authored in and the layer
      *  its layer gives it. What a primitive says is its own; where it was
      *  written is what a fault is filed under (SC-003) and what the catalogue
      *  records (FR-011). */
-    primitives: readonly Primitive[],
+    readonly primitives: readonly Primitive[];
     /** The files that were meant to be primitives and could not be read as one,
      *  and why, wherever they were. Held rather than raised: a charter is worth
      *  having with one file broken, and the broken one is worth naming
      *  (FR-009). */
-    faultsByFiles: FaultsByFile,
+    readonly faultsByFiles: FaultsByFile;
     /** The layer of everything kept, read as a primitive or not, by where it is
      *  kept: what a fault under it is weighed by (FR-005). */
-    layerNameByUri?: Readonly<Record<string, LayerName>>,
-  );
-  /** Everything wrong with this charter, under the file that has to change: the
-   *  files that could not be read as a primitive at all, and what the ones that
-   *  were read get wrong together. The two never name one file — a file reading
-   *  refused holds no primitive to get anything else wrong — so one asking is
-   *  the whole answer (FR-009). */
-  get allFaultsByFiles(): FaultsByFile;
-  /**
-   * Every primitive under the id the whole charter names it by (FR-015,
-   * FR-017).
-   *
-   * One id space covers every layer and every kind, so which file declares a
-   * name is a question about the whole charter and not about any one layer.
-   * The first claim on an id is the one in here where two files claim it: a
-   * collision is what `compositeFaultsByFiles` is for, and it names both files
-   * there; nothing is asked to explain a charter that has one (SC-006).
-   */
-  /** Every primitive naming an agent outside `agentNames`, the agents the
-   *  charter can be compiled for, under the file that has to change: in the
-   *  agents it is for, or in the model it runs on (FR-033). */
-  agentFaultsByFilesOf(agentNames: readonly string[]): FaultsByFile;
-  get primitiveById(): ReadonlyMap<string, Primitive>;
-  /** Every mixin one primitive uses, in the order it named them (FR-014). A
-   *  name nothing answers to, or that answers with another kind, is left out:
-   *  `compositeFaultsByFiles` already names that file as an error. */
-  mixinsOf(one: Primitive): readonly Primitive[];
-  /** The corpus one primitive cites as its rationale, or nothing where it cites
-   *  none or cites one this charter does not hold as a corpus — which
-   *  `compositeFaultsByFiles` already names (FR-005, FR-014). */
-  rationaleOf(one: Primitive): Primitive | undefined;
-  /** Every primitive using one mixin; nothing for any other kind (FR-014). */
-  hostsOf(mixin: Primitive): readonly Primitive[];
-  /** Every primitive citing one corpus as its rationale; nothing for any other
-   *  kind (FR-014). */
-  citersOf(corpus: Primitive): readonly Primitive[];
-  /** Every primitive naming one, as `[[<id>]]` (FR-144, FR-163, FR-172). */
-  mentionersOf(referencedPrimitive: Primitive): readonly Primitive[];
-  /** The ids one primitive names as `[[<id>]]`, whether the charter holds them
-   *  or not: in its body (FR-143, FR-172); for an agent, each mcp origin it holds by
-   *  listing it among its tools (FR-156); and for a sensor, each script its
-   *  `run` names (FR-161). */
-  private idsMentionedIn;
-  /** Does what a mixin lends reach as far as the host pulling it in, or the host
-   *  no further than the mixin? A side that names no files is asking about
-   *  nothing in particular, and is left alone (FR-006). */
-  private reaches;
-  /**
-   * What is wrong with this charter that is wrong with no one file on its own,
-   * under the file that has to change (FR-009).
-   *
-   * Reading refused the files whose own headers do not hold, and said so where
-   * it read them; what is left are the questions no single file answers. Every
-   * layer is read into one id space, the way one registry holds one name
-   * per package: two files claim one id; one names a mixin nothing
-   * answers to; one pulls in a mixin that speaks about other files than it does
-   * — a mixin lends its body at projection time, so what makes the two belong
-   * together is the files they both apply to (FR-006, FR-014). One cites a
-   * rationale no corpus answers to, which is a warning rather than an error:
-   * the rule holds without its reasoning, and the author is told the reasoning
-   * is gone (FR-005). A corpus nobody cites and a mixin nobody pulls in are
-   * warnings too: nothing breaks, and nothing reads them either (FR-014). So
-   * are an mcp nothing names (FR-144) and a script or a template nothing names
-   * (FR-163). A name no layer holds is an error (FR-162), and so are an agent
-   * holding a tool its mcp does not declare — the role would be promised a
-   * tool it cannot have (FR-156) — and a script whose `executionPath` names
-   * no asset of it (FR-165).
-   */
-  get compositeFaultsByFiles(): FaultsByFile;
+    readonly primitiveLayerByUri: Readonly<Record<string, PrimitiveLayer>>;
+    constructor(
+    /** Every primitive this charter holds, whichever layer authored it: what
+     *  the engine brings, what this repository wrote and what it installed
+     *  under `vendor/`, each under the file it was authored in and the layer
+     *  its layer gives it. What a primitive says is its own; where it was
+     *  written is what a fault is filed under (SC-003) and what the catalogue
+     *  records (FR-011). */
+    primitives: readonly Primitive[], 
+    /** The files that were meant to be primitives and could not be read as one,
+     *  and why, wherever they were. Held rather than raised: a charter is worth
+     *  having with one file broken, and the broken one is worth naming
+     *  (FR-009). */
+    faultsByFiles: FaultsByFile, 
+    /** The layer of everything kept, read as a primitive or not, by where it is
+     *  kept: what a fault under it is weighed by (FR-005). */
+    primitiveLayerByUri?: Readonly<Record<string, PrimitiveLayer>>);
+    /** Everything wrong with this charter, under the file that has to change: the
+     *  files that could not be read as a primitive at all, and what the ones that
+     *  were read get wrong together. The two never name one file — a file reading
+     *  refused holds no primitive to get anything else wrong — so one asking is
+     *  the whole answer (FR-009). */
+    get allFaultsByFiles(): FaultsByFile;
+    /**
+     * Every primitive under the id the whole charter names it by (FR-015,
+     * FR-017).
+     *
+     * One id space covers every layer and every kind, so which file declares a
+     * name is a question about the whole charter and not about any one layer.
+     * The first claim on an id is the one in here where two files claim it: a
+     * collision is what `compositeFaultsByFiles` is for, and it names both files
+     * there; nothing is asked to explain a charter that has one (SC-006).
+     */
+    /** Every primitive naming an agent outside `agentNames`, the agents the
+     *  charter can be compiled for, under the file that has to change: in the
+     *  agents it is for, or in the model it runs on (FR-033). */
+    agentFaultsByFilesOf(agentNames: readonly string[]): FaultsByFile;
+    get primitiveById(): ReadonlyMap<string, Primitive>;
+    /** Every mixin one primitive uses, in the order it named them (FR-014). A
+     *  name nothing answers to, or that answers with another kind, is left out:
+     *  `compositeFaultsByFiles` already names that file as an error. */
+    mixinsOf(hostPrimitive: Primitive): readonly Primitive[];
+    /** The corpus one primitive cites as its rationale, or nothing where it cites
+     *  none or cites one this charter does not hold as a corpus — which
+     *  `compositeFaultsByFiles` already names (FR-005, FR-014). */
+    rationaleOf(citingPrimitive: Primitive): Primitive | undefined;
+    /** Every primitive using one mixin; nothing for any other kind (FR-014). */
+    hostsOf(mixin: Primitive): readonly Primitive[];
+    /** Every primitive citing one corpus as its rationale; nothing for any other
+     *  kind (FR-014). */
+    citersOf(corpus: Primitive): readonly Primitive[];
+    /** Every primitive naming one, as `[[<id>]]` (FR-144, FR-163, FR-172). */
+    mentionersOf(referencedPrimitive: Primitive): readonly Primitive[];
+    /** The ids one primitive names as `[[<id>]]`, whether the charter holds them
+     *  or not: in its body (FR-143, FR-172); for an agent, each mcp origin it holds by
+     *  listing it among its tools (FR-156); and for a sensor, each script its
+     *  `run` names (FR-161). */
+    private findMentionedIds;
+    /** Does what a mixin lends reach as far as the host pulling it in, or the host
+     *  no further than the mixin? A side that names no files is asking about
+     *  nothing in particular, and is left alone (FR-006). */
+    private isMixinReaching;
+    /**
+     * What is wrong with this charter that is wrong with no one file on its own,
+     * under the file that has to change (FR-009).
+     *
+     * Reading refused the files whose own headers do not hold, and said so where
+     * it read them; what is left are the questions no single file answers. Every
+     * layer is read into one id space, the way one registry holds one name
+     * per package: two files claim one id; one names a mixin nothing
+     * answers to; one pulls in a mixin that speaks about other files than it does
+     * — a mixin lends its body at projection time, so what makes the two belong
+     * together is the files they both apply to (FR-006, FR-014). One cites a
+     * rationale no corpus answers to, which is a warning rather than an error:
+     * the rule holds without its reasoning, and the author is told the reasoning
+     * is gone (FR-005). A corpus nobody cites and a mixin nobody pulls in are
+     * warnings too: nothing breaks, and nothing reads them either (FR-014). So
+     * are an mcp nothing names (FR-144) and a script or a template nothing names
+     * (FR-163). A name no layer holds is an error (FR-162), and so are an agent
+     * holding a tool its mcp does not declare — the role would be promised a
+     * tool it cannot have (FR-156) — and a script whose `executionPath` names
+     * no asset of it (FR-165).
+     */
+    get compositeFaultsByFiles(): FaultsByFile;
+}
+
+/**
+ * DRIVER PORT — projecting the charter: the charter charter authoring keeps,
+ * built and laid onto each agent the repository uses; the build and
+ * its preview, the health check, the estimated main context, and what the
+ * last build laid to be served or run — the tools of the mcp origins, the
+ * sensors (CORE-FR-222). Runtime asks it, through this port alone, for the
+ * mcp origins, the sensors of a signal, a build into a working copy, what an
+ * agent is sent when a session opens, and an evaluation's cases
+ * (CORE-FR-229).
+ *
+ * Which agents it builds for is what it was composed with, never what it reads
+ * (CORE-FR-231). Every answer is a DTO, told apart from the others it may be
+ * by its `type`; whatever stops an operation is among them, a
+ * `FaultDTOs.Fault`, and never thrown (SDK-FR-004, SDK-FR-017, SDK-FR-018).
+ */
+interface ForBuildingCharter {
+    /**
+     * The three questions about this repository, asked in one go (FR-040): which
+     * agents it compiles for, what validating its charter finds — its test files'
+     * findings among it — and how many files a build would still change, with
+     * the main context each agent opens with, estimated. Reads and says
+     * (FR-041).
+     */
+    diagnoseCharter(): Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault>;
+    /** What each agent this repository compiles for is sent of the charter when
+     *  a session opens, estimated by a tokenizer on this machine (EVAL-FR-001,
+     *  EVAL-FR-002). Reads and says (FR-041). */
+    predictMainContext(): Promise<CharterDTOs.MainContexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    /**
+     * One reading of the charter, put on disk (FR-020, FR-021): a charter with
+     * an error is refused before anything is touched, with its errors given back
+     * (FR-005, FR-009); an mcp origin that cannot be asked for its tools stops it
+     * as an error does (EVAL-FR-031).
+     */
+    buildCharter(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    /** The build, worked out and stopped short of disk (FR-022). */
+    previewCharterBuild(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    /** Every tool the mcp origins the last build listed serve, read off what it
+     *  kept there: no mcp origin is reached to list them (EVAL-FR-031). */
+    listServedTools(): Promise<CharterDTOs.ServedTools | FaultDTOs.Fault>;
+    /** Every tool the mcp origins the last build listed declare, under the name
+     *  it is served by, with the mcp origin a call to it is forwarded to
+     *  (FR-152 – FR-154). */
+    listDeclaredTools(): Promise<CharterDTOs.DeclaredTools | FaultDTOs.Fault>;
+    /** The commands the last build laid for this signal of this agent
+     *  (CORE-FR-176). */
+    listSensorCommands(signal: string, agentProviderName: AgentProviderName): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault>;
+    /** The charter as the store holds it now, committed or not, built into the
+     *  checkout `checkoutPath` names for the agents this was composed with,
+     *  keeping the tools the last build kept; the repository's own working tree
+     *  is left as it was (EVAL-FR-021). */
+    buildCharterInto(checkoutPath: string): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    /** What each agent this repository compiles for is sent of the charter when
+     *  a session opens, each text as the build lays it, for an exact count
+     *  (EVAL-FR-004). */
+    readMainContextTexts(): Promise<CharterDTOs.MainContextTexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    /** Every evaluation case the store holds now, committed or not, checked
+     *  against the charter it holds: a charter with an error, a file that does not read,
+     *  or a case naming a skill or a guide the charter does not hold, is answered
+     *  as faults under their files (EVAL-FR-026). */
+    listEvalCases(): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+}
+
+/**
+ * DRIVEN PORT — a tokenizer that runs on this machine. The hexagon hands it a
+ * text and is told how many tokens that text is; which tokenizer answers, and
+ * how, is the adapter's business.
+ *
+ * No tokenizer of the model an agent runs on is at hand offline, so what this
+ * answers is an estimate of that model's count, and whoever says the number
+ * says so (EVAL-FR-002).
+ */
+interface ForCountingTokens {
+    /** How many tokens this text is, to the tokenizer behind this port. */
+    countTokens(text: string): number;
+}
+
+/**
+ * Everything one reading of a charter compiles to (FR-021): the items a
+ * build lays, naming no place but inside the build's output — where the
+ * output lands, and what each agent reads of it, is each projection's
+ * (CORE-FR-220, CORE-FR-221).
+ *
+ * What every reader of the charter gets is among them whether an agent is
+ * installed or not: the listing, and the file that orients a reader to it
+ * (FR-019). What the agents this repository runs get is each agent's own
+ * listing among them, and the rest its projection makes of them (FR-018).
+ */
+declare class CharterOutput {
+    #private;
+    /** One more item, laid after those already added (FR-020, FR-021). */
+    add(charterOutputItem: CharterOutputItem): void;
+    /** Every item, in the order a build lays them. */
+    get charterOutputItems(): readonly CharterOutputItem[];
+    /** The one item of a class it holds: a build adds each such item once, so
+     *  one missing is the engine's own fault, never the person's. */
+    findCharterOutputItem<Item extends CharterOutputItem>(itemClass: abstract new (...itemArguments: any[]) => Item): Item;
 }
 
 /**
@@ -5733,55 +4854,199 @@ declare class CharterRoot {
  * is the agent's projection's to say (CORE-FR-221).
  */
 interface MainContextText {
-  readonly id: string;
-  readonly kind: string;
-  readonly text: string;
-  readonly globs?: readonly string[];
+    readonly id: string;
+    readonly kind: string;
+    readonly text: string;
+    readonly globs?: readonly string[];
+}
+
+/** Each string, shortened to a name of its own: what `shortenStringsOf`
+ *  answers, keyed by the string it was handed. */
+type ShortStrings = Readonly<Record<string, string>>;
+
+/** What several models share: how a frontmatter value is written and read back, how strings are shortened apart, and what a content hashes to. */
+declare class ModelHelper {
+    /** How one header value is written into the frontmatter. A list becomes
+     *  `["a", "b"]`, with every entry in double quotes, because an unquoted glob
+     *  such as `*.md` starts with `*`, which YAML reads as an alias. A line YAML
+     *  would read as something other than that text — a list, a mapping, a comment,
+     *  a quoted string, a boolean or a number — is written in double quotes too, so
+     *  a sensor's `[ -z … ] || …` reads back as the command it is. Any other value
+     *  is written as it is. */
+    static formatFrontmatterValue(headerValue: unknown): string;
+    /** The headers and the body of a markdown file opening with a `---`
+     *  frontmatter block, or nothing for a file that does not. */
+    static parseFrontmatter(markdown: string): {
+        headers: Readonly<Record<string, unknown>>;
+        body: string;
+    } | undefined;
+    /**
+     * Each string shortened to its first segment and four hex characters hashed
+     * from the whole: `moneyforward_c3ae` for `moneyforward/billing-service`,
+     * the first segment being what comes before the first `/`.
+     *
+     * Short whatever the string's length, and the same whatever other strings are
+     * handed in with it, since the hash is of this string alone. FNV-1a over 32
+     * bits, the first four hex characters kept: a name to tell strings apart by,
+     * not a secret. Two that hash alike are told apart by a number, `_2` onward, in
+     * the order the strings sort in.
+     */
+    static shortenStringsOf(strings: readonly string[]): ShortStrings;
+    /** The hash of one text, in hex: what tells two readings of a primitive apart,
+     *  as a short string that crosses HTTP as it is (FR-078). FNV-1a over 64 bits:
+     *  read synchronously wherever a primitive is, and a mark of change, not a
+     *  secret. */
+    static createContentHash(content: string): string;
+    private constructor();
+}
+
+/**
+ * What a TOML file holds once the charter's own table is written into it: the
+ * file's text as it is where nothing it says changes, and otherwise the two
+ * merged. Tables merge field by field at every depth; an entry of an array of
+ * tables the file already holds is not added twice; a scalar or a scalar array
+ * is the charter's whole. A file that is not TOML is refused, naming where it
+ * is.
+ */
+declare function mergeTomlText(currentText: string | undefined, charterText: string, place: string): string;
+
+/**
+ * One file a host reads, whichever host: what it is and what it holds, so
+ * laying it knows nothing of the host that asked for it but its kind there
+ * and its id (FR-018).
+ *
+ * A host's file is a document (`DocumentBasedComponent`) or settings
+ * (`SettingBasedComponent`); each of a host's own kinds extends one of the two.
+ * Where it lands, and how it goes over what is there, is its host's
+ * projection's (CORE-FR-221).
+ */
+declare abstract class ProviderComponent {
+    /** The host that reads it. */
+    readonly host: string;
+    /** The kind of the primitive it was compiled from, or `charter` where it
+     *  is the whole charter's. */
+    readonly primitiveKind: string;
+    /** What that host knows it by: the name it is called, or, for a file of
+     *  the whole charter, the folder it is for or the part it plays. */
+    readonly id: string;
+    /** The whole of what the file holds, or of this engine's part of it, each
+     *  path into the build's output under `$CW_OUT/`. */
+    readonly document: string;
+    readonly warnings: readonly string[];
+    constructor(
+    /** The host that reads it. */
+    host: string, 
+    /** The kind of the primitive it was compiled from, or `charter` where it
+     *  is the whole charter's. */
+    primitiveKind: string, 
+    /** What that host knows it by: the name it is called, or, for a file of
+     *  the whole charter, the folder it is for or the part it plays. */
+    id: string, 
+    /** The whole of what the file holds, or of this engine's part of it, each
+     *  path into the build's output under `$CW_OUT/`. */
+    document: string, warnings?: readonly string[]);
+    get text(): string;
+    /** Which of its host's kinds this is. Each class declares it as a literal. */
+    abstract readonly kind: string;
+}
+
+/** A document this host reads no frontmatter of: the file it loads whole,
+ *  whatever is in it. Its whole content is the body. */
+type NoHeaders = Record<string, never>;
+
+/**
+ * One file a host reads as a document: frontmatter, then a body (FR-018).
+ *
+ * The other side of the compilation. A charter is what an author wrote — the
+ * kinds, in the charter's words; this is what one host reads — its kinds, in
+ * its words. Between the two sits a compiler, and the two never meet anywhere
+ * else: a `guide` becomes a claude skill there and nowhere in the charter, and
+ * the charter does not know this file exists.
+ *
+ * A document is frontmatter this host reads first and a body it opens once that
+ * frontmatter says to. A kind of this host that is one is a class extending this,
+ * declaring — in an interface of its own — what its frontmatter holds; a kind
+ * whose file this host reads whole declares none and is body alone.
+ *
+ * A document carries what it is called, since that is part of what it is, and
+ * the kind of primitive it was compiled from. Where it goes is its host's
+ * projection's (CORE-FR-221).
+ */
+declare abstract class DocumentBasedComponent<Headers extends object = NoHeaders> extends ProviderComponent {
+    /** What this host calls this one: the charter id with the `/` a filename
+     *  does not carry written `-`, so `acme/review` is `acme-review` (FR-141,
+     *  FR-171). Every document has one,
+     *  whether or not that host reads it out of the frontmatter: it is what the
+     *  file is called. */
+    readonly name: string;
+    /** What this host reads before the body, as the kind's own interface has
+     *  it. Typed by whichever kind this is, so nothing reads a field of one
+     *  kind's frontmatter off another's. */
+    readonly headers: Headers;
+    /** What the primitive says, with the mixins it pulls in already written
+     *  into it (FR-006). */
+    readonly body: string;
+    constructor(host: string, primitiveKind: string, 
+    /** What this host calls this one: the charter id with the `/` a filename
+     *  does not carry written `-`, so `acme/review` is `acme-review` (FR-141,
+     *  FR-171). Every document has one,
+     *  whether or not that host reads it out of the frontmatter: it is what the
+     *  file is called. */
+    name: string, 
+    /** What this host reads before the body, as the kind's own interface has
+     *  it. Typed by whichever kind this is, so nothing reads a field of one
+     *  kind's frontmatter off another's. */
+    headers: Headers, 
+    /** What the primitive says, with the mixins it pulls in already written
+     *  into it (FR-006). */
+    body: string);
+}
+
+/**
+ * One file a host reads as settings: JSON it shares with the repository, which
+ * this engine writes its own fields into and never over (FR-018, FR-146).
+ *
+ * No frontmatter, no body and no stamp: JSON has nowhere to carry one, and the
+ * file is the repository's as much as this engine's, so it is known by the
+ * part it plays instead.
+ */
+declare abstract class SettingBasedComponent<Settings extends object> extends ProviderComponent {
+    /** The fields this engine speaks for in that file. */
+    readonly settings: Settings;
+    constructor(host: string, 
+    /** The part it plays, which is its id there: one such file to a host. */
+    part: string, 
+    /** The fields this engine speaks for in that file. */
+    settings: Settings);
 }
 
 /** One sensor as a build leaves it: its id, the signal it fires on, and the
  *  command that runs, each script it names written as its built file (FR-169). */
 declare class BuiltSensor {
-  readonly id: string;
-  readonly signal: string;
-  readonly command: string;
-  readonly "agent-provider"?: readonly AgentProviderName[];
-  constructor(fields: BuiltSensor);
+    readonly id: string;
+    readonly signal: string;
+    readonly "agent-provider"?: readonly AgentProvider[];
+    readonly command: string;
+    constructor(builtSensor: BuiltSensor);
 }
-
-/** The one command a host is given for a signal its charter's sensors fire
- *  on, whichever host: `cw` runs every one of them (FR-175). */
-declare function sensorRunCommandOf(signal: string, agent?: AgentProvider): string;
 
 /** Every sensor the last build compiled, in order of id: what
  *  `cw sensor run <signal>` reads, since it reads no charter (FR-179). */
-declare class BuiltSensors {
-  readonly sensors: readonly BuiltSensor[];
-  static readonly runCommandOf: typeof sensorRunCommandOf;
-  static readonly of: typeof keptBuiltSensorsOf;
-  constructor(sensors: readonly BuiltSensor[]);
-  /** Select only sensors that support the host raising the signal. */
-  forAgent(agent: AgentProvider): BuiltSensors;
-  /** What it is among the parts of a build's output: the whole charter's,
-   *  every host's. */
-  static get outputPart(): OutputPart;
-  get outputPart(): OutputPart;
-  /** What it holds: generated, and the charter's alone. Indented, since it is
-   *  committed and read in diffs when a sensor's command changes. */
-  get text(): string;
-  /** Every signal at least one sensor names, each once, in the order the
-   *  sensors name them. */
-  get signals(): readonly string[];
+declare class BuiltSensors extends CharterOutputItem {
+    readonly sensors: readonly BuiltSensor[];
+    /** The one command a host is given for a signal its charter's sensors fire
+     *  on, whichever host: `cw` runs every one of them (FR-175). */
+    getRunCommand(signal: string, agent?: AgentProvider): string;
+    constructor(sensors: readonly BuiltSensor[]);
+    /** Select only sensors that support the host raising the signal. */
+    filterForAgent(agent: AgentProvider): BuiltSensors;
+    /** What it holds: generated, and the charter's alone. Indented, since it is
+     *  committed and read in diffs when a sensor's command changes. */
+    get text(): string;
+    /** Every signal at least one sensor names, each once, in the order the
+     *  sensors name them. */
+    get signals(): readonly string[];
 }
-
-/**
- * The sensors the last build compiled, from the text it kept (CORE-FR-179):
- * never the charter, so a sensor runs as built.
- *
- * No list, or one that does not read, is no sensor: what reads it is a hook,
- * and the host is given that hook only by a build that wrote the list.
- */
-declare function keptBuiltSensorsOf(sensorsText: string | undefined): BuiltSensors;
 
 /**
  * What a charter holds, listed for whoever reads it (FR-011, FR-013).
@@ -5800,27 +5065,23 @@ declare function keptBuiltSensorsOf(sensorsText: string | undefined): BuiltSenso
  * No bodies. What a primitive says is read from the file it names,
  * when the thing it applies to comes up and not before (FR-013).
  */
-declare class Catalogue {
-  readonly entries: readonly CatalogueEntry[];
-  readonly agent?: AgentProvider | undefined;
-  /** Entries in the order they are to be listed: by id (SC-007). */
-  constructor(entries: readonly CatalogueEntry[], agent?: AgentProvider | undefined);
-  /** What a catalogue is among the parts of a build's output: the listing
-   *  every host shares, or one host's own (FR-011). */
-  static outputPartOf(agent?: AgentProvider): OutputPart;
-  get outputPart(): OutputPart;
-  /** What it holds: the charter's own. Indented, since it is committed and
-   *  read in diffs, and a listing whose entries land one per line says what
-   *  changed in the charter rather than that the listing changed. */
-  get text(): string;
-  /**
-   * The same listing, narrowed to the primitives of one kind (FR-011).
-   *
-   * A narrowed listing is a listing: what comes back answers `entries` the way
-   * this does, so whoever reads it never has to ask whether it was narrowed. Nothing is re-sorted — the entries keep the order they were
-   * put in, which is the order by id they were made in.
-   */
-  filterByKind(kind: string): Catalogue;
+declare class Catalogue extends CharterOutputItem {
+    readonly entries: readonly CatalogueEntry[];
+    readonly agent?: AgentProvider | undefined;
+    /** Entries in the order they are to be listed: by id (SC-007). */
+    constructor(entries: readonly CatalogueEntry[], agent?: AgentProvider | undefined);
+    /** What it holds: the charter's own. Indented, since it is committed and
+     *  read in diffs, and a listing whose entries land one per line says what
+     *  changed in the charter rather than that the listing changed. */
+    get text(): string;
+    /**
+     * The same listing, narrowed to the primitives of one kind (FR-011).
+     *
+     * A narrowed listing is a listing: what comes back answers `entries` the way
+     * this does, so whoever reads it never has to ask whether it was narrowed. Nothing is re-sorted — the entries keep the order they were
+     * put in, which is the order by id they were made in.
+     */
+    filterByKind(kind: string): Catalogue;
 }
 
 /**
@@ -5831,18 +5092,18 @@ declare class Catalogue {
  * Globs nobody wrote are left out rather than recorded as nothing.
  */
 declare class CatalogueEntry {
-  /** The agents it is listed for, or `all` where its primitive names none:
-   *  what splits the catalogues in memory; omitted from their JSON files. */
-  readonly agentProviders: "all" | readonly AgentProviderName[];
-  readonly kind: string;
-  readonly id: string;
-  readonly description: string;
-  /** Where the body is: a link, under `$CW_OUT/`, to the compiled
-   *  primitive, in what a build writes; the authored file's uri, in what a
-   *  person is listed (FR-140). */
-  readonly file: string;
-  readonly globs?: readonly string[];
-  constructor(fields: CatalogueEntry);
+    /** The agents it is listed for, or `all` where its primitive names none:
+     *  what splits the catalogues in memory; omitted from their JSON files. */
+    readonly agentProviders: "all" | readonly AgentProvider[];
+    readonly kind: string;
+    readonly id: string;
+    readonly description: string;
+    /** Where the body is: a link, under `$CW_OUT/`, to the compiled
+     *  primitive, in what a build writes; the authored file's uri, in what a
+     *  person is listed (FR-140). */
+    readonly file: string;
+    readonly globs?: readonly string[];
+    constructor(catalogueEntry: CatalogueEntry);
 }
 
 /**
@@ -5874,17 +5135,14 @@ declare const GENERATED_STAMP = "Generated by cherry-works";
  * else.
  */
 declare class StampedDocument {
-  /** The document's text, the stamp on the end of it. */
-  readonly text: string;
-  constructor(document: string);
-  /** The stamp alone, as it ends every stamped document. */
-  static get footer(): string;
-  /** The words of the stamp, for a document that is no prose and says it
-   *  another way. */
-  static get stampText(): typeof GENERATED_STAMP;
-  /** Did this build, or one before it, write this file? Asked of what is on
-   *  disk before anything is taken away. */
-  static isStamped(contents: string): boolean;
+    /** The document's text, the stamp on the end of it. */
+    readonly text: string;
+    constructor(document: string);
+    /** The stamp alone, as it ends every stamped document. */
+    static get footer(): string;
+    /** The words of the stamp, for a document that is no prose and says it
+     *  another way. */
+    static get stampText(): typeof GENERATED_STAMP;
 }
 
 /**
@@ -5910,30 +5168,25 @@ declare class StampedDocument {
  * orientation and the listings it sends a reader to. What every turn is to carry
  * is a host's to hand its agent, in that host's own kind.
  */
-declare class CharterMd {
-  /** This file as a reader opens it: the stamp saying this engine wrote it,
-   *  and the orientation itself. */
-  private readonly stampedDocument;
-  static readonly type: "charter-md";
-  readonly type: "charter-md";
-  constructor(
+declare class CharterMd extends CharterOutputItem {
     /** This file as a reader opens it: the stamp saying this engine wrote it,
      *  and the orientation itself. */
-    stampedDocument: StampedDocument,
-  );
-  /** What it is among the parts of a build's output: the one every host's
-   *  entry file sends its agent to (FR-019, FR-051), the charter's own. */
-  static get outputPart(): OutputPart;
-  get outputPart(): OutputPart;
-  get text(): string;
+    private readonly stampedDocument;
+    static readonly type: "charter-md";
+    readonly type: "charter-md";
+    constructor(
+    /** This file as a reader opens it: the stamp saying this engine wrote it,
+     *  and the orientation itself. */
+    stampedDocument: StampedDocument);
+    get text(): string;
 }
 
 /** One asset of a compiled primitive: its path in the primitive's folder,
  *  what it holds, and whether it is run by its path (FR-160, FR-168). */
 interface CompiledAsset {
-  readonly file: string;
-  readonly contents: Uint8Array;
-  readonly executable: boolean;
+    readonly assetPath: string;
+    readonly contents: Uint8Array;
+    readonly isExecutable: boolean;
 }
 
 /**
@@ -5946,49 +5199,38 @@ interface CompiledAsset {
  * included. The document is handed in whole: reading a primitive into it is the
  * compiler's. Where it and its assets land is the projection's (CORE-FR-221).
  */
-declare class CompiledPrimitive {
-  /** The kind of the primitive it was compiled from. */
-  readonly kind: string;
-  /** That primitive's id: `team/review`. */
-  readonly id: string;
-  /** What its document holds, stamped with where to change it instead. */
-  private readonly stampedDocument;
-  /** Its assets, laid beside its document: the path each has in its
-   *  folder, what it holds, and whether it is run by its path — the one a
-   *  script says to run (FR-160, FR-168). */
-  readonly assets: readonly CompiledAsset[];
-  constructor(
+declare class CompiledPrimitive extends CharterOutputItem {
     /** The kind of the primitive it was compiled from. */
-    kind: string,
+    readonly kind: string;
     /** That primitive's id: `team/review`. */
-    id: string,
+    readonly id: string;
     /** What its document holds, stamped with where to change it instead. */
-    stampedDocument: StampedDocument,
+    private readonly stampedDocument;
     /** Its assets, laid beside its document: the path each has in its
      *  folder, what it holds, and whether it is run by its path — the one a
      *  script says to run (FR-160, FR-168). */
-    assets?: readonly CompiledAsset[],
-  );
-  /** What it is among the parts of a build's output: every host's. */
-  get outputPart(): OutputPart;
-  /** Its document as an agent opens it: generated, and the charter's alone
-   *  (FR-140). */
-  get text(): string;
+    readonly assets: readonly CompiledAsset[];
+    constructor(
+    /** The kind of the primitive it was compiled from. */
+    kind: string, 
+    /** That primitive's id: `team/review`. */
+    id: string, 
+    /** What its document holds, stamped with where to change it instead. */
+    stampedDocument: StampedDocument, 
+    /** Its assets, laid beside its document: the path each has in its
+     *  folder, what it holds, and whether it is run by its path — the one a
+     *  script says to run (FR-160, FR-168). */
+    assets?: readonly CompiledAsset[]);
+    /** Its document as an agent opens it: generated, and the charter's alone
+     *  (FR-140). */
+    get text(): string;
 }
-
-/** The ways a developer may sign in to an mcp origin (FR-142): what an `mcp`
- *  primitive declares, and what the list of mcp origins carries for each address.
- *  Shared by the charter and the output, as the agent providers are. */
-declare const MCP_AUTH_METHOD_NAMES: readonly ["oauth", "token"];
-
-/** One of them, as a primitive's headers and the list of mcp origins write it. */
-type McpAuthMethodName = (typeof MCP_AUTH_METHOD_NAMES)[number];
 
 /** One tool as an mcp origin lists it: its name, what it does, and what it takes. */
 interface McpToolDefinition {
-  readonly name: string;
-  readonly description: string;
-  readonly inputSchema: Readonly<Record<string, unknown>>;
+    readonly name: string;
+    readonly description: string;
+    readonly inputSchema: Readonly<Record<string, unknown>>;
 }
 
 /**
@@ -6000,264 +5242,94 @@ interface McpToolDefinition {
  * repository and a vendor may call one mcp origin by two names.
  */
 declare class McpOrigin {
-  /** Every mcp at this address and path, sorted. */
-  readonly ids: readonly string[];
-  /** The name each of those ids is served under, its tools as
-   *  `<name>__<tool>`: made once, by the build that wrote the bodies naming
-   *  it, so the server reads it rather than making it again (FR-145). */
-  readonly names: Readonly<Record<string, string>>;
-  readonly address: string;
-  readonly endpoint?: string;
-  readonly command?: {
-    readonly command: string;
-    readonly args: readonly string[];
-    readonly tokenEnv?: string;
-  };
-  readonly path?: string;
-  /** Every way any mcp here lets a developer sign in. */
-  readonly auth: readonly McpAuthMethodName[];
-  /** Each tool an mcp here declares, as the mcp origin listed it when the build
-   *  reached it, by name: what the server lists without reaching the mcp origin
-   *  (EVAL-FR-031). None in a list written before it was kept. */
-  readonly tools?: readonly McpToolDefinition[];
-  constructor(fields: McpOrigin);
+    /** Every mcp at this address and path, sorted. */
+    readonly ids: readonly string[];
+    /** The name each of those ids is served under, its tools as
+     *  `<name>__<tool>`: made once, by the build that wrote the bodies naming
+     *  it, so the server reads it rather than making it again (FR-145). */
+    readonly names: Readonly<Record<string, string>>;
+    readonly address: string;
+    readonly endpoint?: string;
+    readonly command?: {
+        readonly command: string;
+        readonly args: readonly string[];
+        readonly tokenEnv?: string;
+    };
+    readonly path?: string;
+    /** Every way any mcp here lets a developer sign in. */
+    readonly auth: readonly McpAuthMethod[];
+    /** Each tool an mcp here declares, as the mcp origin listed it when the build
+     *  reached it, by name: what the server lists without reaching the mcp origin
+     *  (EVAL-FR-031). None in a list written before it was kept. */
+    readonly tools?: readonly McpToolDefinition[];
+    constructor(mcpOrigin: McpOrigin);
 }
-
-/** What an mcp origin is told apart by: its address and path, never its name. */
-declare const originKeyOf: ({
-  address,
-  path,
-}: {
-  readonly address: string;
-  readonly path?: string | undefined;
-}) => string;
 
 /** Every mcp origin the charter's mcps reach, each once: what `cw mcp serve` and
  *  `cw mcp auth` read, since neither reads a charter (FR-145). Ordered by
  *  address, then path (SC-007). */
-declare class McpOrigins {
-  readonly origins: readonly McpOrigin[];
-  static get originKeyOf(): typeof originKeyOf;
-  constructor(origins: readonly McpOrigin[]);
-  /** What it is among the parts of a build's output: the whole charter's,
-   *  every host's. */
-  static get outputPart(): OutputPart;
-  get outputPart(): OutputPart;
-  /** What it holds: generated, and the charter's alone. Indented, since it is
-   *  committed and read in diffs when a mcp origin moves (SC-038). */
-  get text(): string;
-}
-
-/** One part of what a charter compiles to: what it is, its text, and, for a
- *  compiled primitive, its assets (CORE-FR-220). */
-type CompiledPart = Catalogue | CharterMd | CompiledPrimitive | McpOrigins | BuiltSensors;
-
-/**
- * Everything one reading of a charter compiles to (FR-021), naming no place
- * but inside the build's output: where the output lands, and what each agent
- * reads of it, is each projection's (CORE-FR-220, CORE-FR-221).
- *
- * What every reader of the charter gets is here whether an agent is installed or
- * not: the listing, and the file that orients a reader to it (FR-019). What the
- * agents this repository runs get is each agent's own listing here, and the
- * rest its projection makes of this (FR-018).
- */
-declare class CharterOutput {
-  /** Primitives shared by all providers. */
-  readonly catalogue: Catalogue;
-  readonly charterMd: CharterMd;
-  readonly compiledPrimitives: readonly CompiledPrimitive[];
-  readonly mcpOrigins: McpOrigins;
-  readonly builtSensors: BuiltSensors;
-  readonly agentBasedCatalogues: Readonly<Record<AgentProviderName, Catalogue>>;
-  constructor(
-    /** Primitives shared by all providers. */
-    catalogue: Catalogue,
-    charterMd: CharterMd,
-    compiledPrimitives: readonly CompiledPrimitive[],
-    mcpOrigins: McpOrigins,
-    builtSensors: BuiltSensors,
-    agentBasedCatalogues?: Readonly<Record<AgentProviderName, Catalogue>>,
-  );
-  /** Every part of it, in the order a build lays them (FR-020, FR-021). */
-  get compiledParts(): readonly CompiledPart[];
-}
-
-/** How one header value is written into the frontmatter. A list becomes
- *  `["a", "b"]`, with every entry in double quotes, because an unquoted glob
- *  such as `*.md` starts with `*`, which YAML reads as an alias. A line YAML
- *  would read as something other than that text — a list, a mapping, a comment,
- *  a quoted string, a boolean or a number — is written in double quotes too, so
- *  a sensor's `[ -z … ] || …` reads back as the command it is. Any other value
- *  is written as it is. */
-declare function formatFrontmatterValue(value: unknown): string;
-
-/** Each string, shortened to a name of its own: what `shortenStringsOf`
- *  answers, keyed by the string it was handed. */
-type ShortStrings = Readonly<Record<string, string>>;
-
-/**
- * Each string shortened to its first segment and four hex characters hashed
- * from the whole: `moneyforward_c3ae` for `moneyforward/billing-service`,
- * the first segment being what comes before the first `/`.
- *
- * Short whatever the string's length, and the same whatever other strings are
- * handed in with it, since the hash is of this string alone. FNV-1a over 32
- * bits, the first four hex characters kept: a name to tell strings apart by,
- * not a secret. Two that hash alike are told apart by a number, `_2` onward, in
- * the order the strings sort in.
- */
-declare function shortenStringsOf(strings: readonly string[]): ShortStrings;
-
-/** The hash of one text, in hex: what tells two readings of a primitive apart,
- *  as a short string that crosses HTTP as it is (FR-078). FNV-1a over 64 bits:
- *  read synchronously wherever a primitive is, and a mark of change, not a
- *  secret. */
-declare function contentHashOf(content: string): string;
-
-/** The headers and the body of a markdown file opening with a `---`
- *  frontmatter block, or nothing for a file that does not. */
-declare function frontmatterOf(markdown: string):
-  | {
-      headers: Readonly<Record<string, unknown>>;
-      body: string;
-    }
-  | undefined;
-
-/** What several models share: how a frontmatter value is written and read back, how strings are shortened apart, and what a content hashes to. */
-declare class ModelHelper {
-  static readonly formatFrontmatterValue: typeof formatFrontmatterValue;
-  static readonly frontmatterOf: typeof frontmatterOf;
-  static readonly shortenStringsOf: typeof shortenStringsOf;
-  static readonly contentHashOf: typeof contentHashOf;
-  private constructor();
+declare class McpOrigins extends CharterOutputItem {
+    readonly origins: readonly McpOrigin[];
+    constructor(origins: readonly McpOrigin[]);
+    /** What it holds: generated, and the charter's alone. Indented, since it is
+     *  committed and read in diffs when a mcp origin moves (SC-038). */
+    get text(): string;
 }
 
 /**
- * What a TOML file holds once the charter's own table is written into it: the
- * file's text as it is where nothing it says changes, and otherwise the two
- * merged. Tables merge field by field at every depth; an entry of an array of
- * tables the file already holds is not added twice; a scalar or a scalar array
- * is the charter's whole. A file that is not TOML is refused, naming where it
- * is.
+ * DRIVEN PORT — what one agent reads of a charter, and where: the files it
+ * reads and how each goes over what is there, its own links in them, and
+ * what of them it holds in its main context (FR-018, CORE-FR-221). The engine
+ * hands it the charter and what the charter compiles to, whose paths are
+ * under `$CW_OUT/`, and knows no agent: one is taught to the engine by
+ * handing its application one more of these, under the agent's name.
  */
-declare function mergedTomlText(currentText: string | undefined, charterText: string, place: string): string;
-
-/**
- * One file a host reads, whichever host: what it is and what it holds, so
- * laying it knows nothing of the host that asked for it but its kind there
- * and its id (FR-018).
- *
- * A host's file is a document (`DocumentBasedComponent`) or settings
- * (`SettingBasedComponent`); each of a host's own kinds extends one of the two.
- * Where it lands, and how it goes over what is there, is its host's
- * projection's (CORE-FR-221).
- */
-declare abstract class ProviderComponent {
-  /** The host that reads it. */
-  readonly host: string;
-  /** The kind of the primitive it was compiled from, or `charter` where it
-   *  is the whole charter's. */
-  readonly primitiveKind: string;
-  /** What that host knows it by: the name it is called, or, for a file of
-   *  the whole charter, the folder it is for or the part it plays. */
-  readonly id: string;
-  /** The whole of what the file holds, or of this engine's part of it, each
-   *  path into the build's output under `$CW_OUT/`. */
-  readonly document: string;
-  readonly warnings: readonly string[];
-  protected constructor(
-    /** The host that reads it. */
-    host: string,
-    /** The kind of the primitive it was compiled from, or `charter` where it
-     *  is the whole charter's. */
-    primitiveKind: string,
-    /** What that host knows it by: the name it is called, or, for a file of
-     *  the whole charter, the folder it is for or the part it plays. */
-    id: string,
-    /** The whole of what the file holds, or of this engine's part of it, each
-     *  path into the build's output under `$CW_OUT/`. */
-    document: string,
-    warnings?: readonly string[],
-  );
-  get text(): string;
-  /** Which of its host's kinds this is. Each class declares it as a literal. */
-  abstract readonly kind: string;
-}
-
-/** A document this host reads no frontmatter of: the file it loads whole,
- *  whatever is in it. Its whole content is the body. */
-type NoHeaders = Record<string, never>;
-
-/**
- * One file a host reads as a document: frontmatter, then a body (FR-018).
- *
- * The other side of the compilation. A charter is what an author wrote — the
- * kinds, in the charter's words; this is what one host reads — its kinds, in
- * its words. Between the two sits a compiler, and the two never meet anywhere
- * else: a `guide` becomes a claude skill there and nowhere in the charter, and
- * the charter does not know this file exists.
- *
- * A document is frontmatter this host reads first and a body it opens once that
- * frontmatter says to. A kind of this host that is one is a class extending this,
- * declaring — in an interface of its own — what its frontmatter holds; a kind
- * whose file this host reads whole declares none and is body alone.
- *
- * A document carries what it is called, since that is part of what it is, and
- * the kind of primitive it was compiled from. Where it goes is its host's
- * projection's (CORE-FR-221).
- */
-declare abstract class DocumentBasedComponent<Headers extends object = NoHeaders> extends ProviderComponent {
-  /** What this host calls this one: the charter id with the `/` a filename
-   *  does not carry written `-`, so `acme/review` is `acme-review` (FR-141,
-   *  FR-171). Every document has one,
-   *  whether or not that host reads it out of the frontmatter: it is what the
-   *  file is called. */
-  readonly name: string;
-  /** What this host reads before the body, as the kind's own interface has
-   *  it. Typed by whichever kind this is, so nothing reads a field of one
-   *  kind's frontmatter off another's. */
-  readonly headers: Headers;
-  /** What the primitive says, with the mixins it pulls in already written
-   *  into it (FR-006). */
-  readonly body: string;
-  protected constructor(
-    host: string,
-    primitiveKind: string,
-    /** What this host calls this one: the charter id with the `/` a filename
-     *  does not carry written `-`, so `acme/review` is `acme-review` (FR-141,
-     *  FR-171). Every document has one,
-     *  whether or not that host reads it out of the frontmatter: it is what the
-     *  file is called. */
-    name: string,
-    /** What this host reads before the body, as the kind's own interface has
-     *  it. Typed by whichever kind this is, so nothing reads a field of one
-     *  kind's frontmatter off another's. */
-    headers: Headers,
-    /** What the primitive says, with the mixins it pulls in already written
-     *  into it (FR-006). */
-    body: string,
-  );
+interface ForManagingLocalAgentOutput {
+    /** The same agent's files, laid onto another checkout of the repository,
+     *  such as a worktree, by the folder the checkout was made in, in this
+     *  adapter's words. */
+    createCheckoutProjection(checkoutFolder: string): ForManagingLocalAgentOutput;
+    /**
+     * What laying this agent's files would do, decided and not yet done
+     * (FR-020, FR-022): each place it would write, with what it would hold and
+     * what it holds now, each place the last build left for it that this one
+     * would take away or write again, and what it could not lay as the charter
+     * says. Reads, and only reads.
+     */
+    createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput): Promise<ProjectionPlan>;
+    /** What this agent puts into its main context of the charter, each text as
+     *  it lays it (EVAL-FR-001, EVAL-FR-003). */
+    listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
+    /** How many of this agent's tokens one token of the tokenizer on this
+     *  machine stands for: what an estimate is scaled by (EVAL-SC-002). */
+    readonly tokenFactor: number;
 }
 
 /**
- * One file a host reads as settings: JSON it shares with the repository, which
- * this engine writes its own fields into and never over (FR-018, FR-146).
+ * The local files a build checks and writes: it lays a build's output onto a
+ * repository, wherever it lays it, and writes every file a build planned: where the output lands is its own to know,
+ * never the engine's, which knows an item by its path inside the output, under
+ * `$CW_OUT/` (CORE-FR-220, CORE-FR-221). What each agent reads is
+ * that agent's projection's, `ForManagingLocalAgentOutput`.
  *
- * No frontmatter, no body and no stamp: JSON has nowhere to carry one, and the
- * file is the repository's as much as this engine's, so it is known by the
- * part it plays instead.
+ * What the build laid is read back through the charter's repository,
+ * `ForManagingCharter`, never off a path the engine knows (CORE-FR-222).
  */
-declare abstract class SettingBasedComponent<Settings extends object> extends ProviderComponent {
-  /** The fields this engine speaks for in that file. */
-  readonly settings: Settings;
-  protected constructor(
-    host: string,
-    /** The part it plays, which is its id there: one such file to a host. */
-    part: string,
-    /** The fields this engine speaks for in that file. */
-    settings: Settings,
-  );
+interface ForManagingLocalOutput {
+    /** The same output, laid onto another checkout of the repository, such as
+     *  a worktree, by the folder the checkout was made in, in this adapter's
+     *  words. */
+    createCheckoutOutput(checkoutFolder: string): ForManagingLocalOutput;
+    /**
+     * What laying this output would do, decided and not yet done (FR-020,
+     * FR-022): each place it would write, with what it would hold and what it
+     * holds now, and each place the last build left in the output that this one
+     * would take away or write again. Reads, and only reads.
+     */
+    createProjectionPlan(charterOutput: CharterOutput): Promise<ProjectionPlan>;
+    /** That plan carried out, every agent's files in it: what the last build
+     *  left taken away, then this one written (FR-020, FR-021). */
+    writePlan(projectionPlan: ProjectionPlan): Promise<void>;
 }
 
 /**
@@ -6270,35 +5342,33 @@ declare abstract class SettingBasedComponent<Settings extends object> extends Pr
  * agent's own.
  */
 declare abstract class AgentProjection implements ForManagingLocalAgentOutput {
-  #private;
-  protected readonly fileReader: ForReadingFiles;
-  constructor(fileReader: ForReadingFiles);
-  abstract readonly tokenFactor: number;
-  /** The folders only this agent's files are in: every stamped file a build
-   *  left there is the build's to take away (FR-020). */
-  protected abstract readonly ownedFolders: readonly string[];
-  /** Every file this agent reads of the charter (FR-018). */
-  protected abstract componentsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
-  /** Where one of this agent's files lands, from the repository's root. */
-  protected abstract placeOf(component: ProviderComponent): string;
-  abstract mainContextTextsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
-  /** What a file is once this build's part is written over `currentText`,
-   *  what is there now: the charter's part alone, where the file is the
-   *  charter's. */
-  protected contentsOf(
-    _component: ProviderComponent,
-    laidText: string,
-    _currentText: string | undefined,
-    _place: string,
-  ): string;
-  /** What else the last build left for this agent outside its own folders,
-   *  each with what to write back where it is the repository's too. */
-  protected planOtherCleanup(_checkoutPath: string): Promise<readonly WritePlan[]>;
-  createAgentProjectionPlan(
-    charter: CharterRoot,
-    charterOutput: CharterOutput,
-    checkoutPath?: string,
-  ): Promise<ProjectionPlan>;
+    #private;
+    protected readonly fileReader: ForReadingFiles;
+    /** The checkout of the repository this agent's files are laid in, such as
+     *  a worktree, by its path from the repository; none for the repository's own. */
+    protected readonly checkoutFolder: string;
+    constructor(fileReader: ForReadingFiles, checkoutFolder?: string);
+    /** The same projection over another checkout: each agent's builds itself,
+     *  and refuses to build a class extending it, which builds itself in turn
+     *  (EVAL-FR-021). */
+    abstract createCheckoutProjection(checkoutFolder: string): ForManagingLocalAgentOutput;
+    abstract readonly tokenFactor: number;
+    /** The folders only this agent's files are in: every stamped file a build
+     *  left there is the build's to take away (FR-020). */
+    protected abstract readonly ownedFolders: readonly string[];
+    /** Every file this agent reads of the charter (FR-018). */
+    protected abstract listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
+    /** Where one of this agent's files lands, from the repository's root. */
+    protected abstract findComponentPlace(component: ProviderComponent): string;
+    abstract listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
+    /** What a file is once this build's part is written over `currentText`,
+     *  what is there now: the charter's part alone, where the file is the
+     *  charter's. */
+    protected mergeComponentContents(_component: ProviderComponent, laidText: string, _currentText: string | undefined, _place: string): string;
+    /** What else the last build left for this agent outside its own folders,
+     *  each with what to write back where it is the repository's too. */
+    protected planOtherCleanup(_checkoutPath: string): Promise<readonly WritePlan[]>;
+    createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput): Promise<ProjectionPlan>;
 }
 
 /**
@@ -6314,12 +5384,16 @@ declare abstract class AgentProjection implements ForManagingLocalAgentOutput {
  * place (FR-051).
  */
 declare class ClaudeProjection extends AgentProjection {
-  readonly tokenFactor = 1.43;
-  protected readonly ownedFolders: string[];
-  protected componentsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
-  protected placeOf(component: ProviderComponent): string;
-  protected contentsOf(component: ProviderComponent, laidText: string, currentText: string | undefined): string;
-  mainContextTextsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
+    readonly tokenFactor = 1.43;
+    protected readonly ownedFolders: string[];
+    /** This projection over a checkout. A class extending it is refused, never
+     *  built as this one: it builds itself over the checkout, by its own
+     *  constructor (EVAL-FR-021). */
+    createCheckoutProjection(checkoutFolder: string): ClaudeProjection;
+    protected listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
+    protected findComponentPlace(component: ProviderComponent): string;
+    protected mergeComponentContents(component: ProviderComponent, laidText: string, currentText: string | undefined): string;
+    listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
 }
 
 /**
@@ -6335,22 +5409,21 @@ declare class ClaudeProjection extends AgentProjection {
  * the charter's section written in place (FR-051).
  */
 declare class CodexProjection extends AgentProjection {
-  readonly tokenFactor = 1;
-  protected readonly ownedFolders: string[];
-  protected componentsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
-  protected placeOf(component: ProviderComponent): string;
-  protected contentsOf(
-    component: ProviderComponent,
-    laidText: string,
-    currentText: string | undefined,
-    place: string,
-  ): string;
-  /** Every nested entry file carrying the stamp, each with the text that is
-   *  the repository's own where some is: a stamped section does not make the
-   *  text around it the build's (FR-020). Only folders are walked, not every
-   *  file of the repository read. */
-  protected planOtherCleanup(checkoutPath: string): Promise<readonly WritePlan[]>;
-  mainContextTextsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
+    readonly tokenFactor = 1;
+    protected readonly ownedFolders: string[];
+    /** This projection over a checkout. A class extending it is refused, never
+     *  built as this one: it builds itself over the checkout, by its own
+     *  constructor (EVAL-FR-021). */
+    createCheckoutProjection(checkoutFolder: string): CodexProjection;
+    protected listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
+    protected findComponentPlace(component: ProviderComponent): string;
+    protected mergeComponentContents(component: ProviderComponent, laidText: string, currentText: string | undefined, place: string): string;
+    /** Every nested entry file carrying the stamp, each with the text that is
+     *  the repository's own where some is: a stamped section does not make the
+     *  text around it the build's (FR-020). Only folders are walked, not every
+     *  file of the repository read. */
+    protected planOtherCleanup(checkoutPath: string): Promise<readonly WritePlan[]>;
+    listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
 }
 
 /**
@@ -6370,56 +5443,31 @@ declare class CodexProjection extends AgentProjection {
  * moves it (CORE-FR-226).
  */
 declare class FileCharterRepository implements ForManagingCharter {
-  #private;
-  constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles, sourceFetcher: ForFetchingCharterSources);
-  loadCharter(checkoutPath?: string): Promise<readonly RawPrimitive[]>;
-  createCharter(): Promise<void>;
-  addPrimitive(rawPrimitive: RawPrimitive): Promise<string>;
-  injectPrimitives(rawPrimitives: readonly RawPrimitive[]): Promise<readonly string[]>;
-  assertLayout(): Promise<void>;
-  findCharterUri(): string;
-  rewritePrimitive(primitive: Primitive): Promise<void>;
-  removePrimitive(primitive: Primitive): Promise<void>;
-  fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<RawVendorSource>;
-  cleanupVendorSource(rawVendorSource: RawVendorSource): Promise<void>;
-  loadVendorRoot(): Promise<VendorRoot>;
-  storeVendor(vendorSource: VendorSource, projectionPlan: ProjectionPlan<WritePlan | CopyPlan>): Promise<void>;
-  findVendorUri(vendorName: string): string;
-  removeVendor(vendorName: string): Promise<void>;
-  loadTestSuites(): Promise<readonly RawTestSuite[]>;
-  writeTestSuite(name: string, testSuite: TestSuite): Promise<void>;
-  removeTestSuite(name: string): Promise<void>;
-  loadEvalSuites(checkoutPath?: string): Promise<readonly RawEvalSuite[]>;
-  writeEvalSuite(name: string, evalSuiteText: string): Promise<void>;
-  removeEvalSuite(name: string): Promise<void>;
-  loadLaidText(outputPart: OutputPart, checkoutPath?: string): Promise<string | undefined>;
-  findPlace(outputPart: OutputPart): string;
-  findOutputFolder(): string;
-}
-
-/**
- * The local files a build checks and writes: it lays a build's output onto a
- * repository, wherever it lays it, and writes every file a build planned: where the output lands is its own to know,
- * never the engine's, which knows a part by its path inside the output, under
- * `$CW_OUT/` (CORE-FR-220, CORE-FR-221). What each agent reads is
- * that agent's projection's, `ForManagingLocalAgentOutput`.
- *
- * What the build laid is read back through the charter's repository,
- * `ForManagingCharter`, never off a path the engine knows (CORE-FR-222).
- */
-interface ForManagingLocalOutput {
-  /**
-   * What laying this output would do, decided and not yet done (FR-020,
-   * FR-022): each place it would write, with what it would hold and what it
-   * holds now, and each place the last build left in the output that this one
-   * would take away or write again. Reads, and only reads. Under
-   * `checkoutPath`, a checkout of the repository such as a worktree, where one
-   * is named.
-   */
-  createProjectionPlan(charterOutput: CharterOutput, checkoutPath?: string): Promise<ProjectionPlan>;
-  /** That plan carried out, every agent's files in it: what the last build
-   *  left taken away, then this one written (FR-020, FR-021). */
-  writePlan(plan: ProjectionPlan): Promise<void>;
+    #private;
+    constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles, sourceFetcher: ForFetchingCharterSources);
+    loadCharter(): Promise<readonly RawPrimitive[]>;
+    createCharter(): Promise<void>;
+    addPrimitive(rawPrimitive: RawPrimitive): Promise<string>;
+    injectPrimitives(rawPrimitives: readonly RawPrimitive[]): Promise<readonly string[]>;
+    assertLayout(): Promise<void>;
+    findCharterUri(): string;
+    rewritePrimitive(primitive: Primitive): Promise<void>;
+    removePrimitive(primitive: Primitive): Promise<void>;
+    fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<RawVendorSource>;
+    removeTempSource(rawVendorSource: RawVendorSource): Promise<void>;
+    loadVendorRoot(): Promise<VendorRoot>;
+    storeVendor(vendorSource: VendorSource): Promise<void>;
+    findVendorUri(vendorName: string): string;
+    removeVendor(vendorName: string): Promise<void>;
+    loadTestSuites(): Promise<readonly RawTestSuite[]>;
+    writeTestSuite(name: string, testSuite: TestSuite): Promise<void>;
+    removeTestSuite(name: string): Promise<void>;
+    loadEvalSuites(): Promise<readonly RawEvalSuite[]>;
+    writeEvalSuite(name: string, evalSuite: EvalSuite): Promise<void>;
+    removeEvalSuite(name: string): Promise<void>;
+    readBuiltOutputItem(itemPath: string): Promise<string | undefined>;
+    describeItemPlace(itemPath: string): string;
+    resolveOutputLinks(laidText: string): string;
 }
 
 /**
@@ -6434,33 +5482,32 @@ interface ForManagingLocalOutput {
  * Handing it over takes git 2.31 or later.
  */
 declare class GitSources implements ForFetchingCharterSources {
-  #private;
-  constructor(
+    #private;
+    constructor(
     /** The repository this works in, every path it is handed from its root:
      *  refused here unless it names a folder (SDK-FR-010). */
-    repoFolder: URL,
-  );
-  /** `git init --bare` first, as nothing else needs a folder: a refusal with
-   *  no such command is a machine without git, not a source out of reach. */
-  fetchCommit(source: string, version?: string): Promise<string>;
-  /** `git ls-tree -r`, the paths split on the NUL `-z` ends each with, so a
-   *  path holding a newline or a quote is read as it is. */
-  listFilesAt(storeFolder: string): Promise<readonly string[]>;
-  /** `git show FETCH_HEAD:<path>`. */
-  readFileAt(storeFolder: string, path: string): Promise<string>;
-  /** `git cat-file blob FETCH_HEAD:<path>`, its output taken as bytes: the
-   *  blob as it was committed, with no textconv a user's own git config sets
-   *  (CORE-FR-207). */
-  readBytesAt(storeFolder: string, path: string): Promise<Uint8Array>;
-  /** `git read-tree --prefix` into an index of the store's, and `checkout-index`
-   *  into a work tree of the store's, then a copy beside the folder, swapped with
-   *  it once whole, the folder put back if the swap fails. The
-   *  repository's own index, and what is staged in it, is never read from or
-   *  written to. */
-  checkoutFolderAt(storeFolder: string, fromFolder: string, intoSubFolder: string): Promise<void>;
-  /** A store left behind is only a temporary folder, and never worth reporting
-   *  a source that landed as one that failed. */
-  forgetCommit(storeFolder: string): Promise<void>;
+    repoFolder: URL);
+    /** `git init --bare` first, as nothing else needs a folder: a refusal with
+     *  no such command is a machine without git, not a source out of reach. */
+    fetchCommit(source: string, version?: string): Promise<string>;
+    /** `git ls-tree -r`, the paths split on the NUL `-z` ends each with, so a
+     *  path holding a newline or a quote is read as it is. */
+    listFilesAt(storeFolder: string): Promise<readonly string[]>;
+    /** `git show FETCH_HEAD:<path>`. */
+    readFileAt(storeFolder: string, path: string): Promise<string>;
+    /** `git cat-file blob FETCH_HEAD:<path>`, its output taken as bytes: the
+     *  blob as it was committed, with no textconv a user's own git config sets
+     *  (CORE-FR-207). */
+    readBytesAt(storeFolder: string, path: string): Promise<Uint8Array>;
+    /** `git read-tree --prefix` into an index of the store's, and `checkout-index`
+     *  into a work tree of the store's, then a copy beside the folder, swapped with
+     *  it once whole, the folder put back if the swap fails. The
+     *  repository's own index, and what is staged in it, is never read from or
+     *  written to. */
+    checkOutFolder(storeFolder: string, fromFolder: string, intoSubFolder: string): Promise<void>;
+    /** A store left behind is only a temporary folder, and never worth reporting
+     *  a source that landed as one that failed. */
+    removeTempCommit(storeFolder: string): Promise<void>;
 }
 
 /**
@@ -6478,31 +5525,35 @@ declare class GitSources implements ForFetchingCharterSources {
  * Any other platform refuses every call, naming the two it supports.
  */
 declare class KeychainCredentialsRepository implements ForStoringCredentials {
-  #private;
-  private readonly platform;
-  /** Which system's store to use: this process's, unless a test names
-   *  another. Named as `process.platform` names it, and typed as a plain
-   *  string so a tool importing it type-checks without Node's own types. */
-  constructor(platform?: string);
-  readCredential(address: string): Promise<McpCredential | undefined>;
-  writeCredential(credential: McpCredential): Promise<void>;
-  /** macOS and Linux have a store this knows; anything else is refused
-   *  before a command runs. */
-  private refuseUnsupportedPlatform;
-  private throwFault;
+    #private;
+    private readonly platform;
+    /** Which system's store to use: this process's, unless a test names
+     *  another. Named as `process.platform` names it, and typed as a plain
+     *  string so a tool importing it type-checks without Node's own types. */
+    constructor(platform?: string);
+    readCredential(address: string): Promise<McpCredential | undefined>;
+    writeCredential(credential: McpCredential): Promise<void>;
+    /** macOS and Linux have a store this knows; anything else is refused
+     *  before a command runs. */
+    private refuseUnsupportedPlatform;
+    private throwFault;
 }
 
 /**
  * DRIVEN ADAPTER: a build's output laid onto the repository as files, under
- * `.cw/out/`, which nothing else writes, each part as the build compiled it
+ * `.cw/out/`, which nothing else writes, each item as the build compiled it
  * (CORE-FR-221); and every file a build planned, each agent's own among them,
  * written.
  */
 declare class LocalRepoManipulator implements ForManagingLocalOutput {
-  #private;
-  constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles);
-  createProjectionPlan(charterOutput: CharterOutput, checkoutPath?: string): Promise<ProjectionPlan>;
-  writePlan(buildPlan: ProjectionPlan): Promise<void>;
+    #private;
+    constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles, checkoutFolder?: string);
+    /** The same output over another checkout. A class extending this one is
+     *  refused, never built as this one: it builds itself over the checkout, by
+     *  its own constructor (EVAL-FR-021). */
+    createCheckoutOutput(checkoutFolder: string): LocalRepoManipulator;
+    createProjectionPlan(charterOutput: CharterOutput): Promise<ProjectionPlan>;
+    writePlan(projectionPlan: ProjectionPlan): Promise<void>;
 }
 
 /**
@@ -6514,11 +5565,11 @@ declare class LocalRepoManipulator implements ForManagingLocalOutput {
  * handed to the caller, never opened here (plan §15). Nothing is kept here:
  * the grant goes back to the caller, and the credential store is its business.
  */
-declare class OAuth implements ForAuthorizingMcpOrigins {
-  #private;
-  constructor(callbackTimeoutMs?: number);
-  authorize(endpoint: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<OAuthGrant>;
-  renew(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined>;
+declare class OAuth implements ForAuthorizingOAuthClients {
+    #private;
+    constructor(callbackTimeoutMs?: number);
+    authorizeInBrowser(endpoint: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<OAuthGrant>;
+    renewGrant(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined>;
 }
 
 /**
@@ -6531,6 +5582,6 @@ declare class OAuth implements ForAuthorizingMcpOrigins {
  * made: a command that counts nothing pays nothing for it.
  */
 declare class Tiktoken implements ForCountingTokens {
-  #private;
-  countTokens(text: string): number;
+    #private;
+    countTokens(text: string): number;
 }

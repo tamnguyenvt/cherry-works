@@ -1,4 +1,4 @@
-import type { AgentProvider } from "../agent/agent-provider.js";
+import type { AgentProvider } from "#module/shared/module.js";
 
 /** The tokens a repository holds an agent's main context to when it sets
  *  none (EVAL-FR-006). */
@@ -50,7 +50,7 @@ export class MainContext {
     readonly isExact: boolean,
   ) {
     const loadsLargestFirst = [...loads].sort(
-      (one, other) => other.tokens - one.tokens || one.id.localeCompare(other.id),
+      (leftLoad, rightLoad) => rightLoad.tokens - leftLoad.tokens || leftLoad.id.localeCompare(rightLoad.id),
     );
     this.sessionLoads = loadsLargestFirst.filter((load) => load.globs === undefined);
     this.fileLoads = loadsLargestFirst.filter((load) => load.globs !== undefined);

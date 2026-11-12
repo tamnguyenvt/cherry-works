@@ -31,28 +31,28 @@ export class ContextCommand implements Command<typeof OPTIONS> {
   readonly summary = "Say how many tokens the charter puts into the agent's main context";
   readonly options = OPTIONS;
 
-  async run(
+  async runCommand(
     { charterBuildingApp, charterRuntimeApp }: Context,
     { exact: isExactAsked }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     const mainContextsDTO = isExactAsked
       ? await charterRuntimeApp.countMainContext()
       : await charterBuildingApp.predictMainContext();
-    if (mainContextsDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(mainContextsDTO) };
+    if (mainContextsDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(mainContextsDTO) };
 
     if (mainContextsDTO.type === "FaultsByFile") {
       const noOfFiles = Object.keys(mainContextsDTO.data.files).length;
       return {
-        code: EXIT_FAILURE,
-        problem: `Nothing was counted: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+        exitCode: EXIT_FAILURE,
+        problemText: `Nothing was counted: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
       };
     }
 
     const { contexts } = mainContextsDTO.data;
     if (contexts.length === 0)
       return {
-        code: EXIT_OK,
-        result: 'No agent is chosen, so no agent loads anything of the charter. Run "cw init" to choose one.\n',
+        exitCode: EXIT_OK,
+        resultText: 'No agent is chosen, so no agent loads anything of the charter. Run "cw init" to choose one.\n',
       };
 
     const loadLineOf = ({
@@ -64,8 +64,8 @@ export class ContextCommand implements Command<typeof OPTIONS> {
       ].join("");
 
     return {
-      code: EXIT_OK,
-      result: contexts
+      exitCode: EXIT_OK,
+      resultText: contexts
         .flatMap(({ data: { agent, isExact, sessionLoads, fileLoads, totalTokens } }) => [
           `${agent} opens a session with:`,
           ...sessionLoads.map(loadLineOf),

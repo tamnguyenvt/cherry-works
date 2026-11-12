@@ -3,11 +3,11 @@ import type { ForReportingProgress } from "../app/port/out/reporting-progress.po
 /** DRIVEN ADAPTER: the terminal. Results on stdout, problems on stderr, so a
  *  pipeline can separate what it asked for from what went wrong. */
 export class ConsoleReporter implements ForReportingProgress {
-  report(text: string): void {
+  reportProgress(text: string): void {
     process.stdout.write(text);
   }
 
-  problem(text: string): void {
+  reportProblem(text: string): void {
     process.stderr.write(text);
   }
 }

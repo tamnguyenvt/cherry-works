@@ -1,5 +1,5 @@
 import type { ForStoringCredentials, McpCredential } from "../../app/port/out/storing-credentials.port.js";
-import { credentialOfSecret } from "../helper.js";
+import { parseCredentialSecret } from "../helper.js";
 
 /** Credentials held in memory, each as the JSON secret the keychain would keep
  *  under its address: a test looks into `secrets` to see what was kept, and
@@ -9,7 +9,7 @@ export class InMemoryCredentialsRepository implements ForStoringCredentials {
 
   async readCredential(address: string): Promise<McpCredential | undefined> {
     const secret = this.secrets.get(address);
-    return secret === undefined ? undefined : credentialOfSecret(secret);
+    return secret === undefined ? undefined : parseCredentialSecret(secret);
   }
 
   async writeCredential(credential: McpCredential): Promise<void> {

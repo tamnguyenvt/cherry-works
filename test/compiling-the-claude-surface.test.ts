@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ModelHelper } from "../src/module/charter/domain/helper.js";
-import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
+import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { putDownBy } from "./put-down-by.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 
 const CLAUDE = new AgentProvider("claude");
 const repo = new URL("file:///repo/");
-const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
+const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
 
 const primitive = (kind: string, id: string, body: string, headers: readonly string[] = []) =>
   [
@@ -37,7 +37,7 @@ const putDown = async (files: Readonly<Record<string, string>>, agents: readonly
   const written = await putDownBy(charter, CompileService.compileCharterRoot(charter, agents), held);
 
   return Object.fromEntries(
-    await Promise.all(written.map(async (path) => [path, await held.read(new URL(path, repo))] as const)),
+    await Promise.all(written.map(async (path) => [path, await held.readFile(new URL(path, repo))] as const)),
   ) as Readonly<Record<string, string>>;
 };
 

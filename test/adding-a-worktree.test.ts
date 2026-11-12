@@ -59,7 +59,7 @@ test("a worktree of a repository with nothing committed is refused, saying to co
     const repo = pathToFileURL(`${repoFolder}/`);
     await assert.rejects(
       new GitWorktrees(repo).addWorktree(".worktrees/1"),
-      (raised) => raised instanceof AdapterFault && /Commit what is to be evaluated first/.test(raised.fix),
+      (raised) => raised instanceof AdapterFault && /Commit once first/.test(raised.fix),
     );
   } finally {
     await rm(repoFolder, { recursive: true, force: true });

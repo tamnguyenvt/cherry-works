@@ -6,6 +6,7 @@ export class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis 
   readonly #fileReader: ForReadingFiles;
   readonly #repoFolder: FolderURL;
   readonly #homeFolder: FolderURL;
+  readonly #sessionAnalysisFolder: string | undefined;
 
   constructor(
     /** What reads files under a folder, set up here on the root of the home's
@@ -19,18 +20,20 @@ export class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis 
      *  the repository names a folder of its own. Each refused here unless it
      *  names a folder (SDK-FR-010). */
     homeFolder: URL,
+    /** The folder the repository's settings keep its sessions in, an absolute
+     *  path or one under `~/`; none for the one under the home named after
+     *  the repository. An integrator setting this store up hands it the
+     *  folder the settings name: the engine hands the store none. */
+    sessionAnalysisFolder?: string,
   ) {
-    this.#repoFolder = FolderAddress.urlOf(repoFolder);
-    this.#homeFolder = FolderAddress.urlOf(homeFolder);
+    this.#repoFolder = FolderAddress.parseFolderUrl(repoFolder);
+    this.#homeFolder = FolderAddress.parseFolderUrl(homeFolder);
+    this.#sessionAnalysisFolder = sessionAnalysisFolder;
     this.#fileReader = fileReaderAt(new URL("/", this.#homeFolder));
   }
 
-  async loadSessionLogs(
-    sessionAnalysisFolder: string | undefined,
-    writtenFromMs: number,
-    writtenUntilMs: number,
-  ): Promise<SessionLogs> {
-    const sessionsFolder = SessionsFolder.of(this.#repoFolder, this.#homeFolder, sessionAnalysisFolder).url;
+  async loadSessionLogs(writtenFromMs: number, writtenUntilMs: number): Promise<SessionLogs> {
+    const sessionsFolder = SessionsFolder.of(this.#repoFolder, this.#homeFolder, this.#sessionAnalysisFolder).url;
     const sessionsFolderPath = decodeURIComponent(
       sessionsFolder.href.slice(new URL("/", this.#homeFolder).href.length),
     ).replace(/\/$/, "");
@@ -55,7 +58,7 @@ export class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis 
     );
     return new SessionLogs(
       // A folder on this machine's disk is named by its path, as it was; any other by its whole address (SDK-FR-011).
-      FolderAddress.localPathOf(sessionsFolder) ?? FolderAddress.addressOf(sessionsFolder).href,
+      FolderAddress.findLocalPath(sessionsFolder) ?? FolderAddress.cleanFolderAddress(sessionsFolder).href,
       logTexts.map((logText) => logText ?? ""),
     );
   }
@@ -81,34 +84,34 @@ class SessionsFolder {
    * `~/.cherry-works/` and the repository's path, each character that is not a
    * letter or a digit a dash. The counter names it the same way, from the folder
    * the agent ran in. A repository at any other address than a `file:` one with
-   * no host is named by its `FolderAddress.addressOf` instead, each character that is
+   * no host is named by its `FolderAddress.cleanFolderAddress` instead, each character that is
    * not a letter or a digit `_` and its code in hex, so two naming different
    * folders keep folders of their own (SDK-FR-011); past `REPO_NAME_LIMIT`, cut
    * and ended with a hash of the address.
    */
   static of(repoFolder: FolderURL, homeFolder: FolderURL, sessionAnalysisFolder?: string): SessionsFolder {
     if (sessionAnalysisFolder === undefined) {
-      const repoPath = FolderAddress.localPathOf(repoFolder);
+      const repoPath = FolderAddress.findLocalPath(repoFolder);
       if (repoPath !== undefined)
         return new SessionsFolder(
-          FolderAddress.urlOf(
+          FolderAddress.parseFolderUrl(
             new URL(`.cherry-works/${repoPath.replace(/\/$/, "").replace(/[^A-Za-z0-9]/g, "-")}/`, homeFolder),
           ),
         );
-      const repoAddress = FolderAddress.addressOf(repoFolder).href.replace(/\/$/, "");
+      const repoAddress = FolderAddress.cleanFolderAddress(repoFolder).href.replace(/\/$/, "");
       // A serialised URL is ASCII, so two hex digits a character keep any two addresses apart, where a dash would not.
       const repoName = repoAddress.replace(
         /[^A-Za-z0-9]/g,
         (character) => `_${character.charCodeAt(0).toString(16).padStart(2, "0")}`,
       );
       if (repoName.length <= REPO_NAME_LIMIT)
-        return new SessionsFolder(FolderAddress.urlOf(new URL(`.cherry-works/${repoName}/`, homeFolder)));
+        return new SessionsFolder(FolderAddress.parseFolderUrl(new URL(`.cherry-works/${repoName}/`, homeFolder)));
       // Past what a disk takes for a folder name, the name is cut and an FNV-1a hash of the whole address keeps it apart.
       let repoAddressHash = 0xcbf29ce484222325n;
       for (const character of repoAddress)
         repoAddressHash = BigInt.asUintN(64, (repoAddressHash ^ BigInt(character.charCodeAt(0))) * 0x100000001b3n);
       return new SessionsFolder(
-        FolderAddress.urlOf(
+        FolderAddress.parseFolderUrl(
           new URL(
             `.cherry-works/${repoName.slice(0, REPO_NAME_LIMIT - 17)}_${repoAddressHash.toString(16).padStart(16, "0")}/`,
             homeFolder,
@@ -120,7 +123,7 @@ class SessionsFolder {
       ? sessionAnalysisFolder
       : `${sessionAnalysisFolder}/`;
     return new SessionsFolder(
-      FolderAddress.urlOf(
+      FolderAddress.parseFolderUrl(
         sessionsFolderPath.startsWith("~/")
           ? new URL(sessionsFolderPath.slice(2).split("/").map(encodeURIComponent).join("/"), homeFolder)
           : new URL(`.${sessionsFolderPath.split("/").map(encodeURIComponent).join("/")}`, new URL("/", homeFolder)),

@@ -2,7 +2,7 @@ import { AuthoringCharter } from "../src/module/charter/app/authoring-charter.us
 import { BuildingCharter } from "../src/module/charter/app/building-charter.use-case.js";
 import type { ForAuthoringCharter } from "../src/module/charter/app/port/in/authoring-charter.port.js";
 import type { AgentProviderName, ForBuildingCharter } from "../src/module/charter/app/port/in/building-charter.port.js";
-import type { ForAuthorizingMcpOrigins } from "../src/module/charter/app/port/out/authorizing-mcp-origins.port.js";
+import type { ForAuthorizingOAuthClients } from "../src/module/charter/app/port/out/authorizing-oauth-clients.port.js";
 import type { ForCountingTokens } from "../src/module/charter/app/port/out/counting-tokens.port.js";
 import type { ForFetchingCharterSources } from "../src/module/charter/app/port/out/fetching-charter-sources.port.js";
 import type { ForManagingCharter } from "../src/module/charter/app/port/out/managing-charter.port.js";
@@ -16,7 +16,7 @@ import { loadMcpOriginsService } from "../src/module/charter/app/services/load-m
 import type { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
 import { PrimitiveFactory } from "../src/module/charter/domain/models/primitive/primitive.factory.js";
 import type { Primitive } from "../src/module/charter/domain/models/primitive/primitive.js";
-import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.js";
+import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
 import { RawPrimitive } from "../src/module/charter/domain/models/primitive/raw-primitive.js";
 import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
 import { CodexProjection } from "../src/module/charter/infra/codex/codex-projection.adapter.js";
@@ -108,20 +108,20 @@ export function loadCharterRoot(fileReader: ForReadingFiles): Promise<CharterRoo
 
 /** Authoring the charter over the files a test holds: its sources fetched
  *  through `sourceFetcher`, its credentials kept in `credentialsRepository`, signed in
- *  through `authorizing`, where a test gives them. */
+ *  through `oauthAuthorizer`, where a test gives them. */
 export function authoringCharterOf(
   fileReader: ForReadingFiles,
   fileWriter: ForWritingFiles,
   progressReporter: ForReportingProgress,
   {
     sourceFetcher = portNotGiven<ForFetchingCharterSources>("sources"),
-    authorizing = portNotGiven<ForAuthorizingMcpOrigins>("sign-ins"),
+    oauthAuthorizer = portNotGiven<ForAuthorizingOAuthClients>("sign-ins"),
     clock = new SystemClock(),
     charterRepository = charterRepositoryOf(fileReader, fileWriter, sourceFetcher),
     credentialsRepository = new InMemoryCredentialsRepository(),
   }: {
     readonly sourceFetcher?: ForFetchingCharterSources;
-    readonly authorizing?: ForAuthorizingMcpOrigins;
+    readonly oauthAuthorizer?: ForAuthorizingOAuthClients;
     readonly clock?: ForTellingTime;
     readonly charterRepository?: ForManagingCharter;
     readonly credentialsRepository?: ForStoringCredentials;
@@ -132,7 +132,7 @@ export function authoringCharterOf(
     installCharterService,
     charterRepository,
     credentialsRepository,
-    authorizing,
+    oauthAuthorizer,
     clock,
     progressReporter,
   );
@@ -190,7 +190,8 @@ export function commandLineOf(
  *  authoring's application; the mcp origins reached only where a test gives
  *  `mcpServers`, the sensors run through `shell`, the cases evaluated in
  *  worktrees `worktrees` adds through `promptfooRunner`, and the sessions read
- *  through `sessionAnalysisRepository`, where it gives them. */
+ *  through `sessionAnalysisRepository`, or the one `sessionAnalysisRepositoryOf`
+ *  sets up on the folder the settings name, where it gives them. */
 export function runningCharterOf(
   fileReader: ForReadingFiles,
   progressReporter: ForReportingProgress,
@@ -200,11 +201,12 @@ export function runningCharterOf(
     agentCliByProvider = {},
     mcpServers,
     credentialsRepository,
-    authorizing,
+    oauthAuthorizer,
     shell = portNotGiven<ForRunningShellCommands>("shells"),
     worktrees = portNotGiven<ForKeepingWorktrees>("worktrees"),
     promptfooRunner = portNotGiven<ForRunningPromptfoo>("promptfoo runs"),
     sessionAnalysisRepository = portNotGiven<ForLoadingSessionAnalysis>("sessions"),
+    sessionAnalysisRepositoryOf,
     clock = new SystemClock(),
     workspaceSettings,
     charterRepository = charterRepositoryOf(fileReader, fileWriter),
@@ -212,7 +214,7 @@ export function runningCharterOf(
     agentProjectionByProvider = agentProjectionByProviderOf(fileReader),
     charterAuthoringApp = authoringCharterOf(fileReader, fileWriter, progressReporter, {
       ...(credentialsRepository === undefined ? {} : { credentialsRepository }),
-      ...(authorizing === undefined ? {} : { authorizing }),
+      ...(oauthAuthorizer === undefined ? {} : { oauthAuthorizer }),
       clock,
       charterRepository,
     }),
@@ -224,11 +226,12 @@ export function runningCharterOf(
     >;
     readonly mcpServers?: ForCallingMcpServers;
     readonly credentialsRepository?: ForStoringCredentials;
-    readonly authorizing?: ForAuthorizingMcpOrigins;
+    readonly oauthAuthorizer?: ForAuthorizingOAuthClients;
     readonly shell?: ForRunningShellCommands;
     readonly worktrees?: ForKeepingWorktrees;
     readonly promptfooRunner?: ForRunningPromptfoo;
     readonly sessionAnalysisRepository?: ForLoadingSessionAnalysis;
+    readonly sessionAnalysisRepositoryOf?: (sessionAnalysisFolder: string | undefined) => ForLoadingSessionAnalysis;
     readonly clock?: ForTellingTime;
     readonly workspaceSettings?: WorkspaceSettings;
     readonly charterRepository?: ForManagingCharter;
@@ -262,14 +265,9 @@ export function runningCharterOf(
       shell,
       worktrees,
       promptfooRunner,
-      sessionAnalysisRepository,
+      sessionAnalysisRepositoryOf?.(settings.sessionAnalysisFolder) ?? sessionAnalysisRepository,
       clock,
-      {
-        agents: settings.agents,
-        ...(settings.sessionAnalysisFolder === undefined
-          ? {}
-          : { sessionAnalysisFolder: settings.sessionAnalysisFolder }),
-      },
+      { agents: settings.agents },
       progressReporter,
       mcpServers,
     );
@@ -282,7 +280,7 @@ export function runningCharterOf(
         // Settings that do not read are refused as the command line refuses
         // them, before anything is composed (FR-037).
         const workspaceSettingsDTO =
-          workspaceSettings === undefined ? await workspaceAppOf(fileReader).settings() : undefined;
+          workspaceSettings === undefined ? await workspaceAppOf(fileReader).readWorkspaceSettings() : undefined;
         if (workspaceSettingsDTO?.type === "Fault") return workspaceSettingsDTO;
         const settings = workspaceSettings ?? workspaceSettingsDTO!.data;
         const { charterBuildingApp, charterRuntimeApp } = composeApps(settings);
@@ -342,7 +340,8 @@ export function reviewingSessionsOf(
 ): CharterRuntimeApps {
   return runningCharterOf(fileReader, progressReporter, {
     clock,
-    sessionAnalysisRepository: new FileSessionAnalysisRepository(fileReaderAt, repoFolder, homeFolder),
+    sessionAnalysisRepositoryOf: (sessionAnalysisFolder) =>
+      new FileSessionAnalysisRepository(fileReaderAt, repoFolder, homeFolder, sessionAnalysisFolder),
   });
 }
 
@@ -357,7 +356,7 @@ export function readPrimitive(contents: RawPrimitive["contents"]): Primitive {
 export function workspaceSettingsLoaderOf(
   fileReader: ForReadingFiles,
 ): () => Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault> {
-  return () => workspaceAppOf(fileReader).settings();
+  return () => workspaceAppOf(fileReader).readWorkspaceSettings();
 }
 
 /** What a command is run with over these applications, as the command line

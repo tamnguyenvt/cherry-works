@@ -1,7 +1,5 @@
 import type { FaultDTOs } from "../../../../shared/module.js";
-import { EvalFolder } from "../../../domain/models/charter/eval-folder.js";
-import { TestFolder } from "../../../domain/models/charter/test-folder.js";
-import { PrimitiveLayer } from "../../../domain/models/primitive/primitive-layer.js";
+import { PrimitiveLayer } from "../../../domain/models/primitive/primitive-layer.value-object.js";
 import type { CharterDTOs } from "./charter.dto.js";
 
 /*
@@ -11,18 +9,12 @@ import type { CharterDTOs } from "./charter.dto.js";
  * among them: a driver reads a fault as the DTO it is answered with.
  */
 
-export type { LayerName } from "../../../domain/models/primitive/primitive-layer.js";
+export type { LayerName } from "../../../domain/models/primitive/primitive-layer.value-object.js";
 
 /** The names of the three layers a primitive may come from. */
 export const BUILTIN_LAYER = PrimitiveLayer.BUILTIN.name;
 export const REPO_LAYER = PrimitiveLayer.REPO.name;
 export const VENDOR_LAYER = PrimitiveLayer.vendorName;
-
-/** Where a repository keeps its test files, from the repository. */
-export const TEST_DIRECTORY = TestFolder.path;
-
-/** Where a repository keeps its evaluation cases, from the repository. */
-export const EVAL_DIRECTORY = EvalFolder.path;
 
 /** What one primitive's author answered, under the header each answer fills
  *  in: a line, or the entries of a list — not yet read by the kind's schema,
@@ -73,29 +65,29 @@ export interface ForAuthoringCharter {
    * back, for the reason a build is: a listing of a charter that does not hold
    * would say a charter holds primitives it has not got (FR-009).
    */
-  list(kind?: string): Promise<CharterDTOs.Catalogue | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  listCatalogue(kind?: string): Promise<CharterDTOs.Catalogue | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /**
    * Every primitive of every layer, off the charter as it was read rather than
    * the catalogue it compiles to: each with its file, the layer it arrived in,
    * and every header it declared (FR-112, FR-114). What the portal lists by;
-   * `list` stays what an agent surveys by.
+   * `listCatalogue` stays what an agent surveys by.
    *
    * Given a word, only the primitives that mention it — in the id, the
    * kind, the description, when the kind comes up, the file or any header
    * value, ignoring case.
    *
    * A charter with an error is refused with nothing listed and the errors given
-   * back, as `list` refuses it.
+   * back, as `listCatalogue` refuses it.
    */
-  fullList(matching?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  listPrimitives(matching?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /**
    * Which file declares one id, and which layer that file arrived in
    * (FR-017, SC-006); the mixins it uses and the corpus it cites, and what
    * uses, cites or names it (FR-014, FR-163).
    *
-   * Reads and says, as `list` does: there is no way through this to write
+   * Reads and says, as `listCatalogue` does: there is no way through this to write
    * anything (FR-041).
    *
    * The id is taken as typed. Text that is not an id, `<kind>:<id>` among it, and an
@@ -109,7 +101,7 @@ export interface ForAuthoringCharter {
    * naming both files that claim the id, so it is read where every other
    * fault is.
    */
-  explain(id: string): Promise<CharterDTOs.ExplanationOutcome | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  explainPrimitive(id: string): Promise<CharterDTOs.ExplanationOutcome | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /**
    * What one kind takes of whoever authors a primitive of it: each header,
@@ -120,7 +112,7 @@ export interface ForAuthoringCharter {
    * without: a header an author may write is one they have to know the shape of,
    * and the shape is read off the same schema the file is refused against.
    *
-   * Reads and says, as `list` does: there is no way through this to write
+   * Reads and says, as `listCatalogue` does: there is no way through this to write
    * anything (FR-041). No charter is read either — what a kind demands is the
    * kind's own contract, and it is the same in a repository that has authored
    * nothing.
@@ -147,7 +139,7 @@ export interface ForAuthoringCharter {
    * What it is for is listing: whoever shows a charter shows it by kind, and the
    * kinds a charter holds nothing of are kinds all the same.
    */
-  kinds(): Promise<CharterDTOs.PrimitiveKinds | FaultDTOs.Fault>;
+  listKinds(): Promise<CharterDTOs.PrimitiveKinds | FaultDTOs.Fault>;
 
   /**
    * One primitive written where its kind's primitives are authored (FR-039).
@@ -157,7 +149,7 @@ export interface ForAuthoringCharter {
    * answers — so the asking belongs to whoever had an author to ask and the
    * checking belongs here: answers the kind refuses come back as the faults they
    * are and no file is written (FR-004). What it gives back is the primitive as
-   * `explain` would say it — its id, the file it went into, this
+   * `explainPrimitive` would say it — its id, the file it went into, this
    * repository's layer — so a caller can say it without going and looking.
    *
    * The body is what its author typed, and empty where none was: at the command
@@ -170,7 +162,7 @@ export interface ForAuthoringCharter {
    * layer, are answered as one fault rather than under a file: neither leaves a file to report a
    * fault under, and the second names the file already holding it.
    */
-  add(
+  addPrimitive(
     kind: string,
     id: string,
     headers: UnparsedHeaders,
@@ -185,9 +177,9 @@ export interface ForAuthoringCharter {
    * Reads and says: there is no way through this to write anything (FR-041).
    * Asked of the files as read rather than of the validation, so a primitive
    * opens whatever else in the charter is wrong. An id the charter holds
-   * nothing of is answered as a fault, as `explain` answers it.
+   * nothing of is answered as a fault, as `explainPrimitive` answers it.
    */
-  open(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
+  openPrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
 
   /**
    * One repository primitive's headers and body written over, its kind, id and
@@ -196,11 +188,11 @@ export interface ForAuthoringCharter {
    * Refused, as a fault, with nothing written for a vendored or builtin primitive, naming
    * where it came from (FR-077), and for a primitive that, read again, no
    * longer has the hash it was opened at, `openedHash`, naming the file
-   * (FR-078). Answers the kind will not take come back as the faults `add`
+   * (FR-078). Answers the kind will not take come back as the faults `addPrimitive`
    * gives for them. Nothing is compiled or committed
    * (FR-079).
    */
-  rewrite(
+  rewritePrimitive(
     id: string,
     headers: UnparsedHeaders,
     body: string,
@@ -214,7 +206,7 @@ export interface ForAuthoringCharter {
    * is the primitive that was removed. Nothing is compiled or committed
    * (FR-079).
    */
-  remove(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
+  removePrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
 
   /**
    * Install one source under this repository's vendor folder, pinned to this
@@ -279,7 +271,7 @@ export interface ForAuthoringCharter {
    * from or at which version, since version control keeps no such record
    * either and a record kept beside it is one more thing to drift (FR-046).
    */
-  vendors(): Promise<CharterDTOs.VendorFolders | FaultDTOs.Fault>;
+  listVendors(): Promise<CharterDTOs.VendorFolders | FaultDTOs.Fault>;
 
   /**
    * Every test file under `.cw/charter/test/`, run or not: its name, its text, and its
@@ -289,13 +281,13 @@ export interface ForAuthoringCharter {
    * what testing the charter does. A file that does not read is listed all the
    * same, since it is the one its author most needs to open.
    */
-  suites(): Promise<CharterDTOs.TestSuites | FaultDTOs.Fault>;
+  listTestSuites(): Promise<CharterDTOs.TestSuites | FaultDTOs.Fault>;
 
   /**
    * A new test file, under a name no other test file has, holding one sample
    * case that reads as a suite (FR-091). What comes back is its name.
    */
-  addSuite(): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+  addTestSuite(): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
 
   /**
    * One existing test file written over with this text (FR-090). Text that does
@@ -303,13 +295,13 @@ export interface ForAuthoringCharter {
    * and nothing is written; so is a name that is no test file. What comes back
    * is its name.
    */
-  writeSuite(name: string, text: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+  writeTestSuite(name: string, text: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
 
   /**
    * One test file taken away, and nothing else (FR-092). A name that is no test
    * file is answered as a fault. What comes back is its name.
    */
-  removeSuite(name: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+  removeTestSuite(name: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
 
   /**
    * Every file of evaluation cases, evaluated or not: its name, its text, and
@@ -317,7 +309,7 @@ export interface ForAuthoringCharter {
    * (CORE-FR-222). Reads and says, and reads no charter: whether a case names
    * what the charter holds is evaluating's to say.
    */
-  evalSuites(): Promise<CharterDTOs.EvalSuites | FaultDTOs.Fault>;
+  listEvalSuites(): Promise<CharterDTOs.EvalSuites | FaultDTOs.Fault>;
 
   /**
    * A new file of evaluation cases, under a name no other has, holding one
@@ -345,7 +337,7 @@ export interface ForAuthoringCharter {
    * nothing and changes nothing: a credential past its expiry is still signed
    * in, since it is renewed when it is used.
    */
-  signInStatus(): Promise<CharterDTOs.SignInStatuses | FaultDTOs.Fault>;
+  listSignInStatuses(): Promise<CharterDTOs.SignInStatuses | FaultDTOs.Fault>;
 
   /**
    * Keep this token as the developer's credential at this address, replacing
@@ -372,7 +364,7 @@ export interface ForAuthoringCharter {
    * A charter with an error, or a test file that does not read, resolves
    * nothing and is answered as its faults (FR-009). Reads and says (FR-041).
    */
-  test(): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  testCharter(): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /**
    * A folder per kind for a charter to be authored in, and the parts kept
@@ -385,7 +377,7 @@ export interface ForAuthoringCharter {
   /** Where the charter is kept, refused where the repository is laid out the
    *  old way, naming the skill that moves it (CORE-FR-226): what a driver asks
    *  before any command. */
-  layout(): Promise<CharterDTOs.CharterLayout | FaultDTOs.Fault>;
+  readCharterLayout(): Promise<CharterDTOs.CharterLayout | FaultDTOs.Fault>;
 
   /**
    * The developer's access token to this mcp origin, renewed first where it
@@ -394,7 +386,7 @@ export interface ForAuthoringCharter {
    * renewed, is answered as a fault naming the command that signs in again; one
    * at plain `http` on another machine is refused before anything is read.
    */
-  accessToken(
+  getAccessToken(
     mcpOriginAddress: McpOriginAddress,
     isRefused: boolean,
   ): Promise<CharterDTOs.AccessToken | FaultDTOs.Fault>;

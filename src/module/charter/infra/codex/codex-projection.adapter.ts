@@ -1,15 +1,16 @@
-import { pathFromCheckout } from "#module/shared/module.js";
+import { resolveCheckoutPath } from "#module/shared/module.js";
 import {
   type CharterOutput,
   type CharterRoot,
   type MainContextText,
-  mergedTomlText,
+  mergeTomlText,
   type ProviderComponent,
-  StampedDocument,
+  StampedDocumentSpec,
+  UnbuiltCheckoutAdapterFault,
   WritePlan,
 } from "../../app/port/out/managing-local-agent-output.port.js";
 import { AgentProjection } from "../agent-projection.base.js";
-import { mergedEntryFileText } from "../helper.js";
+import { mergeEntryFileText } from "../helper.js";
 import { CodexComponentFactory } from "./codex-component.factory.js";
 import { CodexMainContextFactory } from "./codex-main-context.factory.js";
 import { CodexRules } from "./codex-rules.js";
@@ -20,7 +21,7 @@ const CODEX_ENTRY_FILE = "AGENTS.md";
 
 /** Where each of Codex's files lands, by its kind there and its id. */
 const CODEX_PLACE_BY_KIND: Readonly<Record<string, (id: string) => string>> = {
-  "entry-file": (folder) => (folder === "" ? CODEX_ENTRY_FILE : `${folder}/${CODEX_ENTRY_FILE}`),
+  "entry-file": (folderPath) => (folderPath === "" ? CODEX_ENTRY_FILE : `${folderPath}/${CODEX_ENTRY_FILE}`),
   config: () => ".codex/config.toml",
   rules: () => CodexRules.path,
   agent: (name) => `.codex/agents/${name}.toml`,
@@ -52,15 +53,27 @@ export class CodexProjection extends AgentProjection {
 
   protected readonly ownedFolders = [".codex", ".agents/skills"];
 
-  protected componentsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[] {
+  /** This projection over a checkout. A class extending it is refused, never
+   *  built as this one: it builds itself over the checkout, by its own
+   *  constructor (EVAL-FR-021). */
+  createCheckoutProjection(checkoutFolder: string): CodexProjection {
+    if (this.constructor !== CodexProjection)
+      throw new UnbuiltCheckoutAdapterFault(
+        `${this.constructor.name} extends CodexProjection and builds no copy of itself over the checkout "${checkoutFolder}".`,
+        `Override createCheckoutProjection in ${this.constructor.name} to build it over the checkout.`,
+      );
+    return new CodexProjection(this.fileReader, checkoutFolder);
+  }
+
+  protected listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[] {
     return CodexComponentFactory.create(charter, charterOutput);
   }
 
-  protected placeOf(component: ProviderComponent): string {
+  protected findComponentPlace(component: ProviderComponent): string {
     return CODEX_PLACE_BY_KIND[component.kind]!(component.id);
   }
 
-  protected override contentsOf(
+  protected override mergeComponentContents(
     component: ProviderComponent,
     laidText: string,
     currentText: string | undefined,
@@ -68,9 +81,9 @@ export class CodexProjection extends AgentProjection {
   ): string {
     switch (component.kind) {
       case "config":
-        return mergedTomlText(currentText, laidText, place);
+        return mergeTomlText(currentText, laidText, place);
       case "entry-file":
-        return mergedEntryFileText(currentText, laidText);
+        return mergeEntryFileText(currentText, laidText);
       default:
         return laidText;
     }
@@ -90,11 +103,11 @@ export class CodexProjection extends AgentProjection {
         if (UNSEARCHED_FOLDERS.includes(folderName)) continue;
         const filePath = `${entryFolderPath}/${CODEX_ENTRY_FILE}`;
         const contents = await this.fileReader.readIfThere(filePath);
-        if (contents !== undefined && StampedDocument.isStamped(contents)) {
+        if (contents !== undefined && new StampedDocumentSpec().isSatisfiedBy(contents)) {
           const userText = contents.replace(SECTION_PATTERN, "");
           entryCleanupPlan.push(
             new WritePlan(
-              pathFromCheckout(checkoutPath, filePath),
+              resolveCheckoutPath(checkoutPath, filePath),
               filePath,
               contents.includes("<!-- CHERRYWORKS START -->") && userText.trim() !== "" ? userText : undefined,
               contents,
@@ -108,7 +121,9 @@ export class CodexProjection extends AgentProjection {
     return entryCleanupPlan;
   }
 
-  mainContextTextsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[] {
-    return CodexMainContextFactory.create(charter, charterOutput, (codexEntryFile) => this.placeOf(codexEntryFile));
+  listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[] {
+    return CodexMainContextFactory.create(charter, charterOutput, (codexEntryFile) =>
+      this.findComponentPlace(codexEntryFile),
+    );
   }
 }

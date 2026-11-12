@@ -1,6 +1,6 @@
 /** What an adapter answering this port raises when the command line refuses,
  *  named again here so it names this port and nothing behind it. */
-export { AdapterFault } from "../../../../shared/module.js";
+export { AdapterFault, ErroredAgentAnswerFault, FailedAgentCliFault } from "../../../../shared/module.js";
 
 /**
  * DRIVEN PORT — an agent's own command line, run headless: one prompt asked,
@@ -19,7 +19,7 @@ export interface ForCheckingAgentCli {
 export interface ForRunningAgentCli extends ForCheckingAgentCli {
   /** This prompt asked, and what the model answered: what it said, and the
    *  usage the command line reports of what it was sent. */
-  ask(prompt: string): Promise<Answer>;
+  askAgent(prompt: string): Promise<Answer>;
 }
 
 /** One prompt answered, as the command line reports it. */

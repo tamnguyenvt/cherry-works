@@ -62,19 +62,20 @@ export class VendorAddCommand implements Command<typeof OPTIONS> {
   readonly summary = "Install a charter or skills from a git source, or bring an installed one up to date";
   readonly options = OPTIONS;
 
-  async run(
+  async runCommand(
     { charterAuthoringApp }: Context,
     { source, ref, charter, skill }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     const vendorAddOutcomeDTO = await charterAuthoringApp.addVendor(source ?? "", ref, skill, charter);
-    if (vendorAddOutcomeDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(vendorAddOutcomeDTO) };
+    if (vendorAddOutcomeDTO.type === "Fault")
+      return { exitCode: EXIT_FAILURE, problemText: printFault(vendorAddOutcomeDTO) };
     const vendorInstalls = vendorAddOutcomeDTO.data;
 
     return {
-      code: EXIT_OK,
-      result: [
-        ...vendorInstalls.flatMap(({ folder, primitives }) => [
-          `Installed ${source} under ${folder}${ref === undefined ? "" : `, pinned to ${ref}`}.`,
+      exitCode: EXIT_OK,
+      resultText: [
+        ...vendorInstalls.flatMap(({ folder: folderPath, primitives }) => [
+          `Installed ${source} under ${folderPath}${ref === undefined ? "" : `, pinned to ${ref}`}.`,
           ...primitives.map(
             ({ data: { kind, id, leftOutHeaders } }) =>
               `  ${kind} ${id}${leftOutHeaders.length === 0 ? "" : `, leaving out ${leftOutHeaders.join(", ")}: the charter has no field for them`}`,

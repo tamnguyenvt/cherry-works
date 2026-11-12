@@ -3,7 +3,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { AdapterFault, type Answer, type ForRunningAgentCli } from "../../app/port/out/running-agent-cli.port.js";
+import {
+  type Answer,
+  ErroredAgentAnswerFault,
+  FailedAgentCliFault,
+  type ForRunningAgentCli,
+} from "../../app/port/out/running-agent-cli.port.js";
 import { AgentCli } from "../agent-cli.base.js";
 
 /** How many runs of `claude` are under way at once. */
@@ -33,7 +38,7 @@ export class ClaudeCli extends AgentCli implements ForRunningAgentCli {
     }
   }
 
-  async ask(prompt: string): Promise<Answer> {
+  async askAgent(prompt: string): Promise<Answer> {
     type InputUsage = { input_tokens: number; cache_creation_input_tokens: number; cache_read_input_tokens: number };
     const { result: resultText, usage } = JSON.parse(await this.#runInSandbox(prompt)) as {
       result?: string;
@@ -76,17 +81,14 @@ export class ClaudeCli extends AgentCli implements ForRunningAgentCli {
         claudeProcess.stdout.on("data", (chunk) => (stdout += chunk));
         claudeProcess.stderr.on("data", (chunk) => (stderr += chunk));
         claudeProcess.on("error", reject);
-        claudeProcess.on("close", (code) =>
-          code === 0
+        claudeProcess.on("close", (exitCode) =>
+          exitCode === 0
             ? resolve(stdout)
             : reject(
-                new AdapterFault(
-                  `"claude -p" stopped with status ${code}.`,
+                new FailedAgentCliFault(
+                  `"claude -p" stopped with status ${exitCode}.`,
                   'Check that "claude" runs and is signed in here.',
-                  {
-                    internal: false,
-                    cause: new Error(stderr.trim()),
-                  },
+                  { internal: false, cause: stderr.trim() },
                 ),
               ),
         );
@@ -97,7 +99,7 @@ export class ClaudeCli extends AgentCli implements ForRunningAgentCli {
         result?: string;
       };
       if (isError === true)
-        throw new AdapterFault(
+        throw new ErroredAgentAnswerFault(
           `"claude -p" answered with an error: ${resultText ?? ""}`.trim(),
           'Check that "claude" runs and is signed in here.',
           { internal: false },

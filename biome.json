@@ -12,7 +12,6 @@
       "!.cw",
       "!specs",
       "!contract",
-      "!contract.d.ts",
       "!**/*.md",
       "!**/*.html",
       "!src/module/charter/domain/builtin/scripts"

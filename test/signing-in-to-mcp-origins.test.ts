@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import prompts from "prompts";
-import type { McpOrigin } from "../src/module/charter/domain/models/projection/mcp-origin.js";
-import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
+import { McpOrigin } from "../src/module/charter/domain/models/charter-output/mcp-origin.js";
+import { McpAuthMethod } from "../src/module/charter/domain/models/mcp/mcp-auth-method.value-object.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
+import { InMemoryOAuthAuthorizer } from "../src/module/charter/infra/in-memory/in-memory-oauth-authorizer.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
@@ -26,30 +27,36 @@ const LINEAR = "https://mcp.linear.app/mcp";
  *  signed in to by token alone, and a local command taking no token, which
  *  signs in to nothing. */
 const ORIGINS: readonly McpOrigin[] = [
-  {
+  new McpOrigin({
     ids: ["github/billing"],
     names: { "github/billing": "github_0000" },
     address: GITHUB,
     endpoint: GITHUB,
     path: "acme/billing",
-    auth: ["oauth", "token"],
-  },
-  {
+    auth: [McpAuthMethod.OAUTH, McpAuthMethod.TOKEN],
+  }),
+  new McpOrigin({
     ids: ["github/web"],
     names: { "github/web": "github_0000" },
     address: GITHUB,
     endpoint: GITHUB,
     path: "acme/web",
-    auth: ["token"],
-  },
-  { ids: ["linear"], names: { linear: "linear_0000" }, address: LINEAR, endpoint: LINEAR, auth: ["token"] },
-  {
+    auth: [McpAuthMethod.TOKEN],
+  }),
+  new McpOrigin({
+    ids: ["linear"],
+    names: { linear: "linear_0000" },
+    address: LINEAR,
+    endpoint: LINEAR,
+    auth: [McpAuthMethod.TOKEN],
+  }),
+  new McpOrigin({
     ids: ["local"],
     names: { local: "local_0000" },
     address: "npx -y some-server",
     command: { command: "npx", args: ["-y", "some-server"] },
     auth: [],
-  },
+  }),
 ];
 
 /** Every mcp origin the command line is driven through over one list of mcp origins, the
@@ -59,10 +66,10 @@ const mcpOriginsOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
     origins === null ? {} : { ...charterFilesOf(origins), [ORIGINS_FILE]: JSON.stringify({ origins }) },
   );
   const credentialsRepository = new InMemoryCredentialsRepository();
-  const authorizing = new InMemoryAuthorizing();
+  const oauthAuthorizer = new InMemoryOAuthAuthorizer();
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter(), {
     credentialsRepository,
-    authorizing,
+    oauthAuthorizer,
   });
   const cli = new Commander(
     commandLineOf(
@@ -76,14 +83,14 @@ const mcpOriginsOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
           new InMemoryTokenCounter(),
           { claude: new InMemoryAgentCli() },
           new InMemoryReporter(),
-          { mcpServers: new InMemoryMcpServers(), credentialsRepository, authorizing },
+          { mcpServers: new InMemoryMcpServers(), credentialsRepository, oauthAuthorizer },
         ),
       },
       "/repo",
     ),
     COMMANDS,
   );
-  return { held, credentialsRepository, authorizing, charterAuthoringApp, cli };
+  return { held, credentialsRepository, oauthAuthorizer, charterAuthoringApp, cli };
 };
 
 /** One run of the command line, at a terminal or not, with what the terminal
@@ -101,7 +108,7 @@ const running = async (
   process.stdin.isTTY = atTerminal;
   prompts.inject([...answers]);
   try {
-    const code = await cli.run(argv);
+    const code = await cli.runCommandLine(argv);
     return { code, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -110,7 +117,7 @@ const running = async (
   }
 };
 
-test("signInStatus() answers one row per address taking a sign-in, its ids whatever their path, and asks nothing (FR-150)", async () => {
+test("listSignInStatuses() answers one row per address taking a sign-in, its ids whatever their path, and asks nothing (FR-150)", async () => {
   const { charterAuthoringApp, credentialsRepository } = mcpOriginsOver();
   await credentialsRepository.secrets.set(
     LINEAR,
@@ -118,7 +125,7 @@ test("signInStatus() answers one row per address taking a sign-in, its ids whate
   );
 
   assert.deepEqual(
-    answerOf(await charterAuthoringApp.signInStatus()).data.signInStatuses.map((one) => one.data),
+    answerOf(await charterAuthoringApp.listSignInStatuses()).data.signInStatuses.map((one) => one.data),
     [
       { address: GITHUB, ids: ["github/billing", "github/web"], auth: ["oauth", "token"], signedIn: false },
       { address: LINEAR, ids: ["linear"], auth: ["token"], signedIn: true, method: "token" },
@@ -128,16 +135,16 @@ test("signInStatus() answers one row per address taking a sign-in, its ids whate
 
 test("a charter with no mcp has no address to sign in to (FR-148)", async () => {
   const { charterAuthoringApp } = mcpOriginsOver(null);
-  assert.deepEqual(answerOf(await charterAuthoringApp.signInStatus()).data.signInStatuses, []);
+  assert.deepEqual(answerOf(await charterAuthoringApp.listSignInStatuses()).data.signInStatuses, []);
 });
 
 test("an mcp the charter holds is signed in to before any build has listed it (FR-148, EVAL-FR-031)", async () => {
   const [githubOrigin] = ORIGINS as [McpOrigin];
   const { held, charterAuthoringApp, credentialsRepository } = mcpOriginsOver(null);
-  for (const [href, text] of Object.entries(charterFilesOf([githubOrigin]))) held.write(new URL(href), text);
+  for (const [href, text] of Object.entries(charterFilesOf([githubOrigin]))) held.writeFile(new URL(href), text);
 
   assert.deepEqual(
-    answerOf(await charterAuthoringApp.signInStatus()).data.signInStatuses.map((one) => one.data.ids),
+    answerOf(await charterAuthoringApp.listSignInStatuses()).data.signInStatuses.map((one) => one.data.ids),
     [["github/billing"]],
   );
   await charterAuthoringApp.signInWithToken(GITHUB, "gh-token");
@@ -168,8 +175,8 @@ test("a token is kept under its address; one for no mcp origin, a way the addres
 });
 
 test("an OAuth sign-in keeps what the mcp origin issued, with its registration (FR-148)", async () => {
-  const { charterAuthoringApp, credentialsRepository, authorizing } = mcpOriginsOver();
-  authorizing.oauthGrant = {
+  const { charterAuthoringApp, credentialsRepository, oauthAuthorizer } = mcpOriginsOver();
+  oauthAuthorizer.oauthGrant = {
     accessToken: "a",
     refreshToken: "r",
     expiresAt: "2030-01-01T00:00:00.000Z",
@@ -183,7 +190,7 @@ test("an OAuth sign-in keeps what the mcp origin issued, with its registration (
   assert.deepEqual(JSON.parse(credentialsRepository.secrets.get(GITHUB) ?? ""), {
     address: GITHUB,
     method: "oauth",
-    ...authorizing.oauthGrant,
+    ...oauthAuthorizer.oauthGrant,
   });
 });
 
@@ -209,12 +216,12 @@ test("cw mcp auth at a terminal asks about each address not signed in, then asks
 });
 
 test("cw mcp auth signs in by OAuth where chosen, printing the address to open", async () => {
-  const { cli, credentialsRepository, authorizing } = mcpOriginsOver();
+  const { cli, credentialsRepository, oauthAuthorizer } = mcpOriginsOver();
 
   const run = await running(cli, ["mcp", "auth"], { atTerminal: true, answers: ["oauth", "lin-secret"] });
 
   assert.equal(run.code, EXIT_OK, run.problems);
-  assert.deepEqual(authorizing.authorized, [GITHUB]);
+  assert.deepEqual(oauthAuthorizer.authorizedEndpoints, [GITHUB]);
   assert.match(run.problems, new RegExp(`${GITHUB}/authorize`));
   assert.equal(JSON.parse(credentialsRepository.secrets.get(GITHUB) ?? "").method, "oauth");
 });
@@ -272,13 +279,13 @@ test("cw mcp auth <id> signs in again at that id's address alone, whatever was k
 test("an mcp origin at plain http on another machine is signed in to by no way, and keeps nothing: the charter does not hold it (FR-149)", async () => {
   const CLEARTEXT = "http://mcp.example/mcp";
   const { charterAuthoringApp, credentialsRepository } = mcpOriginsOver([
-    {
+    new McpOrigin({
       ids: ["cleartext"],
       names: { cleartext: "cleartext_0000" },
       address: CLEARTEXT,
       endpoint: CLEARTEXT,
-      auth: ["oauth", "token"],
-    },
+      auth: [McpAuthMethod.OAUTH, McpAuthMethod.TOKEN],
+    }),
   ]);
 
   assert.match(

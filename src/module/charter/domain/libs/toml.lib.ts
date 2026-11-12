@@ -1,5 +1,5 @@
 import { parse, stringify } from "smol-toml";
-import { DomainFault } from "../../../shared/module.js";
+import { UnreadableTomlFault, UnwritableTomlFault } from "../models/charter.fault.js";
 
 /**
  * LIBRARY — TOML, the notation an agent's configuration is kept in. It knows
@@ -10,11 +10,11 @@ import { DomainFault } from "../../../shared/module.js";
 
 /** The table one TOML document holds. A document that does not parse raises
  *  a fault the person corrects. */
-export function tomlTableOf(document: string): Readonly<Record<string, unknown>> {
+export function parseTomlTable(document: string): Readonly<Record<string, unknown>> {
   try {
     return parse(document, { integersAsBigInt: true });
   } catch (cause) {
-    throw new DomainFault(
+    throw new UnreadableTomlFault(
       `TOML is not readable: ${(cause as Error).message.split("\n")[0]}`,
       "Correct the TOML syntax and build again.",
       { internal: false },
@@ -23,11 +23,11 @@ export function tomlTableOf(document: string): Readonly<Record<string, unknown>>
 }
 
 /** One table written as TOML, its integers and floats kept apart. */
-export function tomlTextOf(table: Readonly<Record<string, unknown>>): string {
+export function writeTomlText(table: Readonly<Record<string, unknown>>): string {
   try {
     return stringify(table, { numbersAsFloat: true });
   } catch (cause) {
-    throw new DomainFault(
+    throw new UnwritableTomlFault(
       "TOML could not be serialized.",
       "Check that the configuration contains supported TOML values.",
       { internal: false, cause },
@@ -43,40 +43,49 @@ export function tomlTextOf(table: Readonly<Record<string, unknown>>): string {
  * is the charter's whole. A file that is not TOML is refused, naming where it
  * is.
  */
-export function mergedTomlText(currentText: string | undefined, charterText: string, place: string): string {
+export function mergeTomlText(currentText: string | undefined, charterText: string, place: string): string {
   let currentTable: Readonly<Record<string, unknown>>;
   try {
-    currentTable = tomlTableOf(currentText ?? "");
+    currentTable = parseTomlTable(currentText ?? "");
   } catch (cause) {
-    throw new DomainFault(
+    throw new UnreadableTomlFault(
       `"${place}" is not readable TOML: ${(cause as Error).message}`,
       "Correct that file before building; no files have been written.",
       { internal: false },
     );
   }
-  const mergedTable = mergeTomlTables(currentTable, tomlTableOf(charterText));
-  return currentText !== undefined && sameTomlValue(currentTable, mergedTable) ? currentText : tomlTextOf(mergedTable);
+  const mergedTable = mergeTomlTables(currentTable, parseTomlTable(charterText));
+  return currentText !== undefined && isSameTomlValue(currentTable, mergedTable)
+    ? currentText
+    : writeTomlText(mergedTable);
 }
 
 /** TOML tables exclude scalar objects such as dates. */
-function isTomlTable(value: unknown): value is Record<string, unknown> {
+function isTomlTable(tomlValue: unknown): tomlValue is Record<string, unknown> {
   return (
-    typeof value === "object" &&
-    value !== null &&
-    (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
+    typeof tomlValue === "object" &&
+    tomlValue !== null &&
+    (Object.getPrototypeOf(tomlValue) === Object.prototype || Object.getPrototypeOf(tomlValue) === null)
   );
 }
 
 /** Structural equality ignores table key order and preserves TOML scalar types. */
-function sameTomlValue(first: unknown, second: unknown): boolean {
-  if (Object.is(first, second)) return true;
-  if (first instanceof Date && second instanceof Date) return first.toISOString() === second.toISOString();
-  if (Array.isArray(first) && Array.isArray(second))
-    return first.length === second.length && first.every((value, index) => sameTomlValue(value, second[index]));
-  if (isTomlTable(first) && isTomlTable(second))
+function isSameTomlValue(leftValue: unknown, rightValue: unknown): boolean {
+  if (Object.is(leftValue, rightValue)) return true;
+  if (leftValue instanceof Date && rightValue instanceof Date)
+    return leftValue.toISOString() === rightValue.toISOString();
+  if (Array.isArray(leftValue) && Array.isArray(rightValue))
     return (
-      Object.keys(first).length === Object.keys(second).length &&
-      Object.entries(first).every(([key, value]) => Object.hasOwn(second, key) && sameTomlValue(value, second[key]))
+      leftValue.length === rightValue.length &&
+      leftValue.every((leftEntry, entryIndex) => isSameTomlValue(leftEntry, rightValue[entryIndex]))
+    );
+  if (isTomlTable(leftValue) && isTomlTable(rightValue))
+    return (
+      Object.keys(leftValue).length === Object.keys(rightValue).length &&
+      Object.entries(leftValue).every(
+        ([tableKey, tableValue]) =>
+          Object.hasOwn(rightValue, tableKey) && isSameTomlValue(tableValue, rightValue[tableKey]),
+      )
     );
   return false;
 }
@@ -88,12 +97,12 @@ function mergeTomlTables(
   desired: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
   return Object.fromEntries(
-    [...new Set([...Object.keys(current), ...Object.keys(desired)])].map((key) => {
-      if (!Object.hasOwn(desired, key)) return [key, current[key]];
-      const currentValue = current[key];
-      const desiredValue = desired[key];
+    [...new Set([...Object.keys(current), ...Object.keys(desired)])].map((tableKey) => {
+      if (!Object.hasOwn(desired, tableKey)) return [tableKey, current[tableKey]];
+      const currentValue = current[tableKey];
+      const desiredValue = desired[tableKey];
       if (isTomlTable(currentValue) && isTomlTable(desiredValue))
-        return [key, mergeTomlTables(currentValue, desiredValue)];
+        return [tableKey, mergeTomlTables(currentValue, desiredValue)];
       if (
         Array.isArray(currentValue) &&
         Array.isArray(desiredValue) &&
@@ -102,15 +111,15 @@ function mergeTomlTables(
         desiredValue.every(isTomlTable)
       )
         return [
-          key,
+          tableKey,
           [
             ...currentValue,
             ...desiredValue.filter(
-              (desiredEntry) => !currentValue.some((currentEntry) => sameTomlValue(currentEntry, desiredEntry)),
+              (desiredEntry) => !currentValue.some((currentEntry) => isSameTomlValue(currentEntry, desiredEntry)),
             ),
           ],
         ];
-      return [key, desiredValue];
+      return [tableKey, desiredValue];
     }),
   );
 }

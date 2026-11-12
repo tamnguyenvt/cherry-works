@@ -48,7 +48,7 @@ const portal = async (files: Readonly<Record<string, string>>) => {
     const code = await new Commander(
       commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), { charterAuthoringApp, charterRuntimeApp }),
       COMMANDS,
-    ).run(["portal"]);
+    ).runCommandLine(["portal"]);
     return { code, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -60,7 +60,7 @@ const settings = new URL(".cw/settings.json", repoPath).href;
 
 test("a folder set up with no version control is ready to serve (CORE-FR-107)", async () => {
   const fileReaders = new InMemoryFileReaders({ [settings]: '{ "agents": [] }' });
-  const workspaceSettingsDTO = await workspaceAppOf(fileReaders).settings();
+  const workspaceSettingsDTO = await workspaceAppOf(fileReaders).readWorkspaceSettings();
 
   assert.equal(workspaceSettingsDTO.type === "WorkspaceSettings" && workspaceSettingsDTO.data.isSetUp, true);
 });

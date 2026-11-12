@@ -15,7 +15,7 @@ import { startMcpServer } from "../src/presentation/mcp/mcp.server.js";
 const MAIN = fileURLToPath(new URL("../main.ts", import.meta.url));
 const STDIO_SERVER = fileURLToPath(new URL("./an-mcp-server-over-stdio.ts", import.meta.url));
 const TSX = import.meta.resolve("tsx");
-const MODULE_LOADER = import.meta.resolve("../scripts/moduleLoader.mjs");
+const MODULE_LOADER = import.meta.resolve("../scripts/module-loader.mjs");
 
 /** The mcp origins reached through a port a test answers: one served tool, and a
  *  record of every call forwarded. */
@@ -23,8 +23,8 @@ const oneMcpOriginServed = () => {
   const calls: { name: string; args: unknown }[] = [];
   // The mcp server asks building the charter for its tools and its calls, and
   // for nothing else.
-  const servingApp: Pick<ForBuildingCharter, "tools"> & Pick<ForRunningCharter, "call"> = {
-    tools: async () => ({
+  const servingApp: Pick<ForBuildingCharter, "listServedTools"> & Pick<ForRunningCharter, "callTool"> = {
+    listServedTools: async () => ({
       type: "ServedTools",
       data: {
         tools: [
@@ -40,7 +40,7 @@ const oneMcpOriginServed = () => {
         problems: [],
       },
     }),
-    call: async (name, args) => {
+    callTool: async (name, args) => {
       calls.push({ name, args });
       return {
         type: "ToolAnswer",
@@ -50,6 +50,32 @@ const oneMcpOriginServed = () => {
   };
   return { charterRuntimeApp: servingApp, calls };
 };
+
+test("a tool listing the charter refuses is answered as the protocol's internal error, its message and fix said once (CORE Story 53 scenario 4)", async (t) => {
+  const refusingApp: Pick<ForBuildingCharter, "listServedTools"> & Pick<ForRunningCharter, "callTool"> = {
+    listServedTools: async () => ({
+      type: "Fault",
+      data: {
+        name: "MissingMcpOriginsFault",
+        message: "No build lists the mcp origins.",
+        fix: 'Run "cw build".',
+        severity: "error",
+      },
+    }),
+    callTool: async () => assert.fail("no call is made"),
+  };
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await startMcpServer(refusingApp, refusingApp, serverTransport);
+  const client = new Client({ name: "an-agent", version: "0.0.0" });
+  await client.connect(clientTransport);
+  t.after(() => client.close());
+
+  await assert.rejects(client.listTools(), (raisedValue: { code?: number; message?: string }) => {
+    assert.equal(raisedValue.code, -32603);
+    assert.equal(raisedValue.message, 'MCP error -32603: No build lists the mcp origins. Run "cw build".');
+    return true;
+  });
+});
 
 test("the server lists what the mcp origins serve, and forwards a call to them, its answer returned as it came (FR-152, FR-153)", async (t) => {
   const { charterRuntimeApp, calls } = oneMcpOriginServed();

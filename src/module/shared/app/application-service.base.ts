@@ -1,7 +1,21 @@
-import { DomainFault, type Faults, type FaultsByFile } from "../domain/models/domain.fault.js";
+import type { DomainFault } from "../domain/models/domain.fault.js";
 import { DomainFaultFactory } from "../domain/models/domain-fault.factory.js";
+import type { Faults } from "../domain/models/fault/faults.js";
+import type { FaultsByFile } from "../domain/models/fault/faults-by-file.js";
+import { RefusedByOtherModuleFault } from "../domain/models/shared.fault.js";
 import { FaultDTOs } from "./port/in/fault.dto.js";
 import type { ForReportingProgress } from "./port/out/reporting-progress.port.js";
+
+/** The fault a caller is told for a failure the system did not mean to say,
+ *  in place of one that says how the system is set up: the same four fields
+ *  wherever an internal fault is answered, by a use case or by a driver that
+ *  failed before reaching one (SDK-FR-018). */
+export const INTERNAL_FAULT_DTO: FaultDTOs.Fault = FaultDTOs.Fault.of({
+  name: "InternalFault",
+  message: "Something went wrong on our side.",
+  fix: "Try again in a moment. If it keeps happening, tell whoever runs this system.",
+  severity: "error",
+});
 
 /**
  * The base of every use case: the application service of one driver port.
@@ -11,16 +25,10 @@ import type { ForReportingProgress } from "./port/out/reporting-progress.port.js
  * it raises reaches the caller (SDK-FR-004).
  */
 export abstract class ApplicationService {
-  /** The fault a caller is told for a failure the system did not mean to say,
-   *  in place of one that says how the system is set up: the same four fields
-   *  wherever an internal fault is answered (SDK-FR-018). */
-  static get internalFaultDTO(): FaultDTOs.Fault {
-    return FaultDTOs.Fault.of({
-      name: "InternalFault",
-      message: "Something went wrong on our side.",
-      fix: "Try again in a moment. If it keeps happening, tell whoever runs this system.",
-      severity: "error",
-    });
+  /** The fault a caller is told for a failure the system did not mean to say:
+   *  `INTERNAL_FAULT_DTO`, wherever an internal fault is answered (SDK-FR-018). */
+  get internalFaultDTO(): FaultDTOs.Fault {
+    return INTERNAL_FAULT_DTO;
   }
 
   /** Where an internal fault is logged for whoever runs the system, before
@@ -64,12 +72,12 @@ export abstract class ApplicationService {
               `Caused by: ${cause instanceof Error ? (cause.stack ?? `${cause.name}: ${cause.message}`) : String(cause)}\n`,
             );
           }
-          this.progressReporter.problem(
+          this.progressReporter.reportProblem(
             `${operationName} stopped on an internal fault.\n${fault.stack ?? `${fault.name}: ${fault.message}`}\n  ${fault.fix}\n${causeTexts.join("")}`,
           );
         }
       } catch {}
-      return fault.internal ? ApplicationService.internalFaultDTO : this.findingDTOOf(fault);
+      return fault.internal ? this.internalFaultDTO : this.findingDTOOf(fault);
     }
   }
 
@@ -81,7 +89,10 @@ export abstract class ApplicationService {
   ): Exclude<Answer, FaultDTOs.Fault> {
     if (moduleAnswer.type !== "Fault") return moduleAnswer as Exclude<Answer, FaultDTOs.Fault>;
     const { name, message, fix, severity } = (moduleAnswer as FaultDTOs.Fault).data;
-    throw new DomainFault(message, fix, { severity, internal: name === ApplicationService.internalFaultDTO.data.name });
+    throw new RefusedByOtherModuleFault(message, fix, {
+      severity,
+      internal: name === this.internalFaultDTO.data.name,
+    });
   }
 
   /** One fault as it is, without the `Error` it was raised as — an `Error`
@@ -97,8 +108,8 @@ export abstract class ApplicationService {
   protected faultsByFileDTOOf(faultsByFile: FaultsByFile): FaultDTOs.FaultsByFile {
     return FaultDTOs.FaultsByFile.of({
       files: Object.fromEntries(
-        Object.entries(faultsByFile.files).map(([file, faults]) => [
-          file,
+        Object.entries(faultsByFile.faultsByFilePath).map(([filePath, faults]) => [
+          filePath,
           faults.map((fault) => this.findingDTOOf(fault)),
         ]),
       ),

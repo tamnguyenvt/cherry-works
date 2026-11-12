@@ -160,6 +160,19 @@ test("a port that is taken gives way to the next free one", async () => {
   }
 });
 
+test("no port left to listen on is said as what to report, never thrown (CORE Story 53 scenario 2)", async () => {
+  const LAST_PORT = 65535;
+  const takenServer = http.createServer();
+  await new Promise<void>((resolve) => takenServer.listen(LAST_PORT, "127.0.0.1", resolve));
+  try {
+    const refusalText = String(await startPortal(await builtPage(), ...portalApps(), LAST_PORT));
+    assert.match(refusalText, /^The portal could not listen on 127\.0\.0\.1:65535: /);
+    assert.match(refusalText, /Free a port on this machine, then start the portal again\./);
+  } finally {
+    takenServer.close();
+  }
+});
+
 test("a page never built refuses to start, naming pnpm build", async () => {
   const unbuilt = pathToFileURL(`${await mkdtemp(join(tmpdir(), "cw-portal-"))}/`);
   assert.match(String(await startPortal(unbuilt, ...portalApps(), PORT)), /pnpm build/);

@@ -19,6 +19,15 @@ const OPTIONS = {
   },
 } as const satisfies OptionSpec;
 
+/** Which layer a file arrived in, said rather than spelled: the three are what
+ *  a charter is made of, and the path above already names the vendor it was
+ *  installed as (FR-023, FR-017). */
+const SAID_BY_LAYER: Readonly<Record<LayerName, string>> = {
+  [REPO_LAYER]: "authored in this repository",
+  [VENDOR_LAYER]: "installed from a vendor",
+  [BUILTIN_LAYER]: "built into cw, and not authored in this repository",
+};
+
 /**
  * `cw explain`: trace one id to the single file that declares it
  * (FR-017, SC-006).
@@ -41,16 +50,16 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
   readonly summary = "Say which file declares an id, and which layer it came from";
   readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { id }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const explanationOutcomeDTO = await charterAuthoringApp.explain(id ?? "");
+  async runCommand({ charterAuthoringApp }: Context, { id }: Options<typeof OPTIONS>): Promise<Outcome> {
+    const explanationOutcomeDTO = await charterAuthoringApp.explainPrimitive(id ?? "");
     if (explanationOutcomeDTO.type === "Fault")
-      return { code: EXIT_FAILURE, problem: printFault(explanationOutcomeDTO) };
+      return { exitCode: EXIT_FAILURE, problemText: printFault(explanationOutcomeDTO) };
 
     if (explanationOutcomeDTO.type === "FaultsByFile") {
       const noOfFiles = Object.keys(explanationOutcomeDTO.data.files).length;
       return {
-        code: EXIT_FAILURE,
-        problem: `Nothing was explained: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+        exitCode: EXIT_FAILURE,
+        problemText: `Nothing was explained: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
       };
     }
 
@@ -68,41 +77,30 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
       ([name]) => name !== "id" && name !== "description",
     );
     return {
-      code: EXIT_OK,
-      result: [
+      exitCode: EXIT_OK,
+      resultText: [
         `${primitive.data.id}  ${primitive.data.description}`,
         `  ${primitive.data.file}`,
-        `  ${layer(primitive.data.layerName)}`,
+        `  ${SAID_BY_LAYER[primitive.data.layerName]}`,
         `  comes up when ${activatesWhen}`,
         ...declaredHeaders.map(
-          ([name, value]) => `  declares ${name}: ${typeof value === "string" ? value : value.join(", ")}`,
+          ([name, headerValue]) =>
+            `  declares ${name}: ${typeof headerValue === "string" ? headerValue : headerValue.join(", ")}`,
         ),
-        ...useMixins.map(({ data }) => `  uses mixin ${data.id}`),
+        ...useMixins.map(({ data: mixinEntry }) => `  uses mixin ${mixinEntry.id}`),
         ...(rationale !== undefined
           ? [`  rationale ${rationale.data.id}`]
           : citedRationale !== undefined
             ? [`  rationale ${String(citedRationale)} (does not resolve)`]
             : []),
-        ...hosts.map(({ data }) => `  mixin of ${data.id}`),
-        ...citers.map(({ data }) => `  rationale of ${data.id}`),
-        ...mentioners.map(({ data }) => `  mentioned in ${data.id}`),
-        ...Object.entries(testCasesByFile.data).flatMap(([file, situations]) =>
-          situations.map((situation) => `  pinned down by ${file}: ${situation}`),
+        ...hosts.map(({ data: hostEntry }) => `  mixin of ${hostEntry.id}`),
+        ...citers.map(({ data: citerEntry }) => `  rationale of ${citerEntry.id}`),
+        ...mentioners.map(({ data: mentionerEntry }) => `  mentioned in ${mentionerEntry.id}`),
+        ...Object.entries(testCasesByFile.data).flatMap(([filePath, situations]) =>
+          situations.map((situation) => `  pinned down by ${filePath}: ${situation}`),
         ),
         "",
       ].join("\n"),
     };
   }
-}
-
-/** Which layer a file arrived in, said rather than spelled: the three are what
- *  a charter is made of, and the path above already names the vendor it was
- *  installed as (FR-023, FR-017). */
-function layer(layerName: LayerName): string {
-  const saidByLayer: Record<LayerName, string> = {
-    [REPO_LAYER]: "authored in this repository",
-    [VENDOR_LAYER]: "installed from a vendor",
-    [BUILTIN_LAYER]: "built into cw, and not authored in this repository",
-  };
-  return saidByLayer[layerName];
 }

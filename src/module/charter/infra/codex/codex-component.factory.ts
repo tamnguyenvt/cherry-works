@@ -1,12 +1,12 @@
 import {
-  Catalogue,
-  CharterFolder,
-  CharterMd,
+  CHARTER_FOLDER_PATH,
   type CharterOutput,
   type CharterRoot,
+  CompiledPrimitive,
+  outputPath,
   StampedDocument,
 } from "../../app/port/out/managing-local-agent-output.port.js";
-import { laidTextOf } from "../helper.js";
+import { resolveLaidText } from "../helper.js";
 import { CodexAgent } from "./codex-agent.js";
 import { type CodexComponent, CodexComponents } from "./codex-component.js";
 import { CodexConfig, type CodexHook } from "./codex-config.js";
@@ -22,13 +22,16 @@ export class CodexComponentFactory {
    * a literal command prefix has the same scope as a Codex execution rule. */
   static create(charter: CharterRoot, charterOutput: CharterOutput): readonly CodexComponent[] {
     const codexAgent = CodexComponents.agentProvider;
+    const compiledPrimitives = charterOutput.charterOutputItems.filter(
+      (charterOutputItem): charterOutputItem is CompiledPrimitive => charterOutputItem instanceof CompiledPrimitive,
+    );
     const compiledPrimitiveById = new Map(
-      charterOutput.compiledPrimitives.map((compiledPrimitive) => [compiledPrimitive.id, compiledPrimitive]),
+      compiledPrimitives.map((compiledPrimitive) => [compiledPrimitive.id, compiledPrimitive]),
     );
     const entryLines = [
       "## Charter",
-      `Read and follow [${laidTextOf(CharterMd.outputPart.linkOf())}](${CharterMd.outputPart.linkOf()}) before working here. Edit the primitives under \`${CharterFolder.path}/\`, then run \`cw build\`; generated files are not edited by hand.`,
-      `Find primitives in [catalogue.json](${Catalogue.outputPartOf().linkOf()}) and [catalogue.codex.json](${Catalogue.outputPartOf(codexAgent).linkOf()}).`,
+      `Read and follow [${resolveLaidText(outputPath.getLinkTo(outputPath.charterMdFileName))}](${outputPath.getLinkTo(outputPath.charterMdFileName)}) before working here. Edit the primitives under \`${CHARTER_FOLDER_PATH}/\`, then run \`cw build\`; generated files are not edited by hand.`,
+      `Find primitives in [catalogue.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName())}) and [catalogue.codex.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName(codexAgent.name))}).`,
       "### Guides",
     ];
     const documentComponents: CodexComponent[] = [];
@@ -43,7 +46,7 @@ export class CodexComponentFactory {
       if (!primitive.supportsAgent(codexAgent)) continue;
       const compiledPrimitive = compiledPrimitiveById.get(primitive.headers.id)!;
       // From the repository's root, which is where every pointer is read from.
-      const compiledDocumentLink = laidTextOf(compiledPrimitive.outputPart.linkOf());
+      const compiledDocumentLink = resolveLaidText(outputPath.getLink(compiledPrimitive));
       const pointerText = `Read and follow ${compiledDocumentLink}.`;
       switch (primitive.kind) {
         case "guide": {
@@ -61,17 +64,22 @@ export class CodexComponentFactory {
                 if (segment === "" || segment === "." || segment === "..") break;
                 folderSegments.push(segment);
               }
-              const folder = folderSegments.join("/");
-              if (folder === ".git" || folder.startsWith(".git/") || folder === ".cw" || folder.startsWith(".cw/")) {
+              const folderPath = folderSegments.join("/");
+              if (
+                folderPath === ".git" ||
+                folderPath.startsWith(".git/") ||
+                folderPath === ".cw" ||
+                folderPath.startsWith(".cw/")
+              ) {
                 warnings.push(
-                  `Codex guide ${primitive.headers.id}: cannot generate an AGENTS.md inside ${folder}; kept the root instruction.`,
+                  `Codex guide ${primitive.headers.id}: cannot generate an AGENTS.md inside ${folderPath}; kept the root instruction.`,
                 );
                 continue;
               }
-              guideFolders.add(folder);
+              guideFolders.add(folderPath);
             }
           } else guideFolders.add("");
-          for (const folder of guideFolders) {
+          for (const folderPath of guideFolders) {
             // Embed the compiled body, including mixins. A link an author wrote
             // is from the compiled document, so it is linked on from there; a
             // link to a primitive is from wherever the text lands already.
@@ -84,12 +92,12 @@ export class CodexComponentFactory {
               /^ {0,3}(`{3,}|~{3,})[\s\S]*?(?:^ {0,3}\1[^\n]*$|(?![\s\S]))|`[^`\n]*`|!?\[[^\]\n]*\]\(([^)\n]*)\)/gm,
               (markdown, _fence, linkTarget: string | undefined) => {
                 if (linkTarget === undefined || !/^\.{1,2}\//.test(linkTarget)) return markdown;
-                return markdown.replace(`(${linkTarget})`, `(${compiledPrimitive.outputPart.linkOf(linkTarget)})`);
+                return markdown.replace(`(${linkTarget})`, `(${outputPath.getLink(compiledPrimitive, linkTarget)})`);
               },
             );
-            const section = `#### ${primitive.headers.id}${globs.length === 0 ? " — every turn" : ""}\n\n${globs.length === 0 ? "" : `Applies only to repository paths matching: ${globs.map((glob) => JSON.stringify(glob)).join(", ")}.\n\n`}Source: [${compiledDocumentLink}](${compiledPrimitive.outputPart.linkOf()}).\n\n${rootGuideBody.trimEnd()}`;
-            if (folder === "") entryLines.push(section);
-            else guideSectionsByFolder.set(folder, [...(guideSectionsByFolder.get(folder) ?? []), section]);
+            const section = `#### ${primitive.headers.id}${globs.length === 0 ? " — every turn" : ""}\n\n${globs.length === 0 ? "" : `Applies only to repository paths matching: ${globs.map((glob) => JSON.stringify(glob)).join(", ")}.\n\n`}Source: [${compiledDocumentLink}](${outputPath.getLink(compiledPrimitive)}).\n\n${rootGuideBody.trimEnd()}`;
+            if (folderPath === "") entryLines.push(section);
+            else guideSectionsByFolder.set(folderPath, [...(guideSectionsByFolder.get(folderPath) ?? []), section]);
           }
           break;
         }
@@ -164,14 +172,27 @@ export class CodexComponentFactory {
             // Codex has no native switch to hide only explicit invocation.
             // Leave this step in the catalogue, reachable by other playbooks.
             entryLines.push(
-              `- ${primitive.headers.id}: ${primitive.description()} Open ${compiledDocumentLink} when its triggers match or another primitive calls it; do not offer it as a user command.`,
+              `- ${primitive.headers.id}: ${primitive.composeDescription()} Open ${compiledDocumentLink} when its triggers match or another primitive calls it; do not offer it as a user command.`,
             );
           } else {
             documentComponents.push(
-              CodexSkill.of(primitive.kind, primitive.normId, primitive.description(), `${pointerText}\n`),
+              new CodexSkill(
+                "codex",
+                primitive.kind,
+                primitive.normId,
+                { name: primitive.normId, description: primitive.composeDescription() },
+                `${pointerText}\n`,
+              ),
             );
             if (primitive.headers["disable-model-invocation"] === true)
-              documentComponents.push(CodexSkillPolicy.of(primitive.kind, primitive.normId));
+              documentComponents.push(
+                new CodexSkillPolicy(
+                  "codex",
+                  primitive.kind,
+                  primitive.normId,
+                  `# ${StampedDocument.stampText}. Do not edit; edit the charter and build again.\npolicy:\n  allow_implicit_invocation: false\n`,
+                ),
+              );
           }
           break;
         case "agent": {
@@ -191,13 +212,18 @@ export class CodexComponentFactory {
             `Codex agent ${primitive.headers.id}: feature flags reduce capabilities, but individual tools and MCP servers still inherit the parent scope; the tool whitelist is not fully enforceable.`,
           );
           documentComponents.push(
-            CodexAgent.of(
+            new CodexAgent(
+              "codex",
+              "agent",
               primitive.normId,
-              primitive.description(),
-              `${pointerText}\nUse only the tools declared in that document. Native feature flags disable capability groups; remaining tools and MCP servers inherit the parent session's permissions.`,
-              primitive.modelOf(codexAgent),
-              disabledFeatures,
-              !hasSkills,
+              CodexComponentFactory.#composeAgentText(
+                primitive.normId,
+                primitive.composeDescription(),
+                `${pointerText}\nUse only the tools declared in that document. Native feature flags disable capability groups; remaining tools and MCP servers inherit the parent session's permissions.`,
+                primitive.modelOf(codexAgent),
+                disabledFeatures,
+                !hasSkills,
+              ),
             ),
           );
           break;
@@ -211,11 +237,11 @@ export class CodexComponentFactory {
         'Codex permissions: profile "cw" is selected by default_permissions. Remove legacy sandbox_mode settings from all active layers; native deny blocks both reading and writing, and glob enforcement depends on the platform.',
       );
     const scopedEntries = [...guideSectionsByFolder]
-      .sort(([first], [second]) => first.localeCompare(second))
-      .map(([folder, sections]) =>
-        CodexEntryFile.of(
+      .sort(([leftFolder], [rightFolder]) => leftFolder.localeCompare(rightFolder))
+      .map(([folderPath, sections]) =>
+        CodexComponentFactory.#createEntryFile(
           `## Charter guides\n\nRepository paths below are relative to the git root.\n\n${sections.join("\n\n")}`,
-          folder,
+          folderPath,
         ),
       );
     entryLines.push(
@@ -223,12 +249,113 @@ export class CodexComponentFactory {
       `Skills and playbooks are invoked as \`$<name>\` or selected through \`/skills\`. Directory guides are embedded in nested AGENTS.md files, discovered along the root-to-cwd chain; when working from the root, follow the glob instructions above. Supported hooks call \`cw sensor run <signal> --agent codex\`; review and trust hooks with \`/hooks\`. Filesystem permissions use profile \`cw\` where generated; command prefixes use \`${CodexRules.path}\` outside the sandbox. Unsupported permissions remain guidance. Subagent feature flags disable unsupported capability groups, while remaining tools and MCP servers inherit the parent scope. Session token logging and \`cw eval\` currently require Claude Code.`,
     );
     return [
-      CodexEntryFile.of(entryLines.join("\n\n")),
+      CodexComponentFactory.#createEntryFile(entryLines.join("\n\n")),
       ...scopedEntries,
-      CodexConfig.of(sensorHooks, filesystem, warnings),
-      ...(commandRules.length === 0 ? [] : [CodexRules.of(commandRules)]),
+      new CodexConfig(CodexComponentFactory.#composeConfigText(sensorHooks, filesystem), warnings),
+      ...(commandRules.length === 0
+        ? []
+        : [
+            new CodexRules(
+              "codex",
+              "charter",
+              CodexRules.kind,
+              [
+                `# ${StampedDocument.stampText}. Do not edit; edit the charter and build again.`,
+                ...commandRules.map(
+                  (commandRule) =>
+                    `prefix_rule(pattern = ${JSON.stringify(commandRule.pattern)}, decision = ${JSON.stringify(commandRule.decision)}, justification = ${JSON.stringify(commandRule.justification)})`,
+                ),
+                "",
+              ].join("\n"),
+            ),
+          ]),
       ...documentComponents,
     ];
+  }
+
+  /** The section for `folderPath`, from the repository's root; the root's is
+   *  `""`. One in a folder is the build's alone, and stamped so. */
+  static #createEntryFile(document: string, folderPath = ""): CodexEntryFile {
+    const sectionText = folderPath === "" ? document : new StampedDocument(document).text.trimEnd();
+    return new CodexEntryFile(
+      "codex",
+      "charter",
+      folderPath,
+      `<!-- CHERRYWORKS START -->\n${sectionText}\n<!-- CHERRYWORKS END -->\n`,
+    );
+  }
+
+  /** One subagent's TOML: TOML basic strings take the same escapes as JSON
+   *  for these values. */
+  static #composeAgentText(
+    name: string,
+    description: string,
+    instructions: string,
+    model: string | undefined,
+    disabledFeatures: readonly string[],
+    isSkillsDisabled: boolean,
+  ): string {
+    return [
+      `# ${StampedDocument.stampText}. Do not edit; edit the charter and build again.`,
+      `name = ${JSON.stringify(name)}`,
+      `description = ${JSON.stringify(description)}`,
+      `developer_instructions = ${JSON.stringify(instructions)}`,
+      ...(model === undefined ? [] : [`model = ${JSON.stringify(model)}`]),
+      ...(disabledFeatures.length === 0
+        ? []
+        : ["[features]", ...disabledFeatures.map((feature) => `${feature} = false`)]),
+      ...(isSkillsDisabled ? ["[skills]", "include_instructions = false", "[skills.bundled]", "enabled = false"] : []),
+      "",
+    ].join("\n");
+  }
+
+  /** The desired `.codex/config.toml` settings: the mcp server, the
+   *  permissions profile where any path is ruled, and the hooks. */
+  static #composeConfigText(
+    hooks: readonly CodexHook[],
+    filesystem: Readonly<Record<string, "read" | "write" | "deny">>,
+  ): string {
+    const hasPermissions = Object.keys(filesystem).length > 0;
+    const absolutePaths = Object.entries(filesystem).filter(([path]) => path.startsWith("/") || path.startsWith("~/"));
+    const workspacePaths = Object.fromEntries(
+      Object.entries(filesystem).filter(([path]) => !path.startsWith("/") && !path.startsWith("~/")),
+    );
+    return [
+      "project_doc_max_bytes = 1048576", // 1 MiB of project instructions.
+      "",
+      ...(hasPermissions ? ['default_permissions = "cw"', ""] : []),
+      "[mcp_servers.cw]",
+      'command = "cw"',
+      'args = ["mcp", "serve"]',
+      ...(hasPermissions
+        ? [
+            "",
+            "[permissions.cw]",
+            'extends = ":workspace"',
+            ...(absolutePaths.length === 0
+              ? []
+              : [
+                  "[permissions.cw.filesystem]",
+                  ...absolutePaths
+                    .sort(([leftPath], [rightPath]) => leftPath.localeCompare(rightPath))
+                    .map(([path, access]) => `${JSON.stringify(path)} = ${JSON.stringify(access)}`),
+                ]),
+            '[permissions.cw.filesystem.":workspace_roots"]',
+            ...Object.entries({ ".": "write", ...workspacePaths })
+              .sort(([leftPath], [rightPath]) => leftPath.localeCompare(rightPath))
+              .map(([path, access]) => `${JSON.stringify(path)} = ${JSON.stringify(access)}`),
+          ]
+        : []),
+      ...hooks.flatMap((hook) => [
+        "",
+        `[[hooks.${hook.event}]]`,
+        `[[hooks.${hook.event}.hooks]]`,
+        'type = "command"',
+        `command = ${JSON.stringify(hook.command)}`,
+        `statusMessage = ${JSON.stringify(hook.description)}`,
+      ]),
+      "",
+    ].join("\n");
   }
 
   private constructor() {}

@@ -1,6 +1,6 @@
-import { DomainFault } from "../../../../shared/module.js";
+import { DomainFault, ManyFindingsFault } from "../../../../shared/module.js";
 import { ModelHelper } from "../../helper.js";
-import { VendorFault } from "../charter.fault.js";
+import { InvalidSourceSkillFault } from "../charter.fault.js";
 import { SkillPrimitive } from "../primitive/skill-primitive.js";
 import type { RawVendorSource } from "./raw-vendor-source.js";
 import { SourceSkill, VendorSource } from "./vendor-source.js";
@@ -27,9 +27,9 @@ export class VendorSourceFactory {
     const skillFaults: DomainFault[] = [];
     for (const { text, assets, uri, sourceFolder } of rawVendorSource.rawSourceSkills) {
       try {
-        const skillFrontmatter = ModelHelper.frontmatterOf(text);
+        const skillFrontmatter = ModelHelper.parseFrontmatter(text);
         if (skillFrontmatter === undefined)
-          throw new VendorFault(
+          throw new InvalidSourceSkillFault(
             `${uri} opens with no "---" frontmatter block.`,
             `Take a skill whose ${VendorSource.skillFile} declares its name and description.`,
             { internal: false },
@@ -47,10 +47,12 @@ export class VendorSourceFactory {
             },
             body,
           );
-        } catch (raised) {
+        } catch (raisedValue) {
           const faultMessages =
-            raised instanceof AggregateError ? raised.errors.map((fault: Error) => fault.message) : [`${raised}`];
-          throw new VendorFault(
+            raisedValue instanceof ManyFindingsFault
+              ? raisedValue.faults.map((fault) => fault.message)
+              : [`${raisedValue}`];
+          throw new InvalidSourceSkillFault(
             `${uri} is no skill the charter can hold: ${faultMessages.join(" ")}`,
             `Take a skill whose ${VendorSource.skillFile} declares a "name" of lowercase words joined by "-", and a "description".`,
             { internal: false },
@@ -60,11 +62,11 @@ export class VendorSourceFactory {
           (header) => !(CONVERTED_HEADERS as readonly string[]).includes(header),
         );
         sourceSkills.push(new SourceSkill(convertedSkill, leftOutHeaders, assets, uri, sourceFolder));
-      } catch (skillError) {
+      } catch (raisedValue) {
         // A `SKILL.md` not reading is that skill being wrong; anything else
         // is not ours to swallow.
-        if (!(skillError instanceof DomainFault)) throw skillError;
-        skillFaults.push(skillError);
+        if (!(raisedValue instanceof DomainFault)) throw raisedValue;
+        skillFaults.push(raisedValue);
       }
     }
     const { origin, commit, ownCharter, charters } = rawVendorSource;

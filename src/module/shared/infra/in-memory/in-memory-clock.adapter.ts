@@ -4,7 +4,7 @@ import type { ForTellingTime } from "../../app/port/out/telling-time.port.js";
 export class InMemoryClock implements ForTellingTime {
   constructor(private readonly moment: Date) {}
 
-  now(): Date {
+  tellTime(): Date {
     return this.moment;
   }
 }

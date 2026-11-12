@@ -11,12 +11,12 @@ export const StringsSchema = z.array(z.string()).readonly();
 /** One DTO: its model's name, and what it holds. Every DTO is written with
  *  this, so each is `{ type, data }` the same way; `of` makes one of what it
  *  holds, its `type` read off the schema rather than written again. */
-export const dto = <const Type extends string, Data extends z.ZodType>(type: Type, data: Data) =>
-  Object.assign(z.object({ type: z.literal(type), data }), {
+export const dto = <const Type extends string, Data extends z.ZodType>(type: Type, dataSchema: Data) =>
+  Object.assign(z.object({ type: z.literal(type), data: dataSchema }), {
     of: (dataValue: z.output<Data>): { type: Type; data: z.output<Data> } => ({ type, data: dataValue }),
   });
 
-/** What `byType` is handed: a DTO's schema, read for the `type` it carries. */
+/** What `groupByType` is handed: a DTO's schema, read for the `type` it carries. */
 type DTOSchema = { readonly shape: { readonly type: { readonly value: string } } };
 
 /** Those schemas, each under the `type` it carries. */
@@ -27,6 +27,6 @@ type ByType<Schemas extends readonly DTOSchema[]> = {
 /** Every schema under the `type` it carries: the key a DTO is looked up by is
  *  read off the schema rather than written beside it, so the two cannot drift
  *  apart. */
-export function byType<const Schemas extends readonly DTOSchema[]>(...schemas: Schemas): ByType<Schemas> {
+export function groupByType<const Schemas extends readonly DTOSchema[]>(...schemas: Schemas): ByType<Schemas> {
   return Object.fromEntries(schemas.map((dtoSchema) => [dtoSchema.shape.type.value, dtoSchema])) as ByType<Schemas>;
 }

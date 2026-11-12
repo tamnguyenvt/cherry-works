@@ -1,21 +1,21 @@
+import { AgentProvider } from "#module/shared/module.js";
 import {
   ApplicationService,
-  DomainFault,
   type FaultDTOs,
   FaultsByFile,
   type ForCallingMcpServers,
   type ForReportingProgress,
 } from "../../shared/module.js";
-import { AgentProvider } from "../domain/models/agent/agent-provider.js";
+import { outputPath } from "../domain/constants.js";
 import type { CharterRoot } from "../domain/models/charter/charter-root.js";
+import { UncompiledAgentFault } from "../domain/models/charter.fault.js";
+import { BuiltSensorsFactory } from "../domain/models/charter-output/built-sensors.factory.js";
+import type { McpOrigin } from "../domain/models/charter-output/mcp-origin.js";
+import type { PlanSummary } from "../domain/models/charter-output/projection-plan.js";
 import { MainContext, type MainContextText } from "../domain/models/context/main-context.js";
 import { EvalRootFactory } from "../domain/models/eval/eval-root.factory.js";
 import { McpPrimitive } from "../domain/models/primitive/mcp-primitive.js";
-import { PrimitiveLayer } from "../domain/models/primitive/primitive-layer.js";
-import { BuiltSensors } from "../domain/models/projection/built-sensor.js";
-import { type McpOrigin, McpOrigins } from "../domain/models/projection/mcp-origin.js";
-import { OutputPart } from "../domain/models/projection/output-part.js";
-import type { PlanSummary } from "../domain/models/projection/projection-plan.js";
+import { PrimitiveLayer } from "../domain/models/primitive/primitive-layer.value-object.js";
 import { TestRootFactory } from "../domain/models/test/test-root.factory.js";
 import { CompileService } from "../domain/services/compile.service.js";
 import { EvalService } from "../domain/services/eval.service.js";
@@ -61,7 +61,12 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   readonly #loadMcpOriginsService: LoadMcpOriginsService;
   readonly #charterRepository: Pick<
     ForManagingCharter,
-    "loadCharter" | "loadTestSuites" | "loadEvalSuites" | "loadLaidText" | "findPlace" | "findOutputFolder"
+    | "loadCharter"
+    | "loadTestSuites"
+    | "loadEvalSuites"
+    | "readBuiltOutputItem"
+    | "describeItemPlace"
+    | "resolveOutputLinks"
   >;
   readonly #localRepo: ForManagingLocalOutput;
   readonly #agentProjectionByProvider: Readonly<Record<AgentProviderName, ForManagingLocalAgentOutput>>;
@@ -81,7 +86,12 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
      *  (CORE-FR-228); handed alone, since projecting writes none of them. */
     charterRepository: Pick<
       ForManagingCharter,
-      "loadCharter" | "loadTestSuites" | "loadEvalSuites" | "loadLaidText" | "findPlace" | "findOutputFolder"
+      | "loadCharter"
+      | "loadTestSuites"
+      | "loadEvalSuites"
+      | "readBuiltOutputItem"
+      | "describeItemPlace"
+      | "resolveOutputLinks"
     >,
     /** What lays a build's output onto the repository, deciding where it
      *  lands, and writes every file a build planned (CORE-FR-221). */
@@ -100,7 +110,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     progressReporter: ForReportingProgress,
     /** Charter authoring's application, which keeps the developer's
      *  credential to each mcp origin and renews it. */
-    charterAuthoringApp?: Pick<ForAuthoringCharter, "accessToken">,
+    charterAuthoringApp?: Pick<ForAuthoringCharter, "getAccessToken">,
     /** The mcp origins' MCP servers: what a build asks each mcp origin for its
      *  tools with, and stops where one cannot be asked (EVAL-FR-031). Without
      *  them, a build keeps the tools the last one kept. */
@@ -114,7 +124,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     this.#localRepo = localRepo;
     this.#agentProjectionByProvider = agentProjectionByProvider;
     this.#tokenCounter = tokenCounter;
-    this.#agents = projectionSettings.agents.map((agentName) => this.#agentProviderOf(agentName));
+    this.#agents = projectionSettings.agents.map((agentName) => this.#findAgentProvider(agentName));
     this.#mainContextCeiling = projectionSettings.mainContextCeiling ?? MainContext.defaultCeiling;
     this.#mcpReaching =
       mcpServers === undefined || charterAuthoringApp === undefined
@@ -123,7 +133,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
             mcpServers,
             loadAccessToken: async (origin, isRefused) =>
               this.answeredDTOOf(
-                await charterAuthoringApp.accessToken(
+                await charterAuthoringApp.getAccessToken(
                   {
                     address: origin.address,
                     ...(origin.endpoint === undefined ? {} : { endpoint: origin.endpoint }),
@@ -151,26 +161,26 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
    * tested and checked in its own repository. Its errors stay, since they stop
    * the build here.
    */
-  async doctor(): Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("BuildingCharter.doctor", async () => {
+  async diagnoseCharter(): Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("BuildingCharter.diagnoseCharter", async () => {
       const [charter, testRoot] = await Promise.all([
         this.#loadCharterService.loadCharterRoot(this.#charterRepository),
         this.#charterRepository.loadTestSuites().then(TestRootFactory.create),
       ]);
-      const charterFaultsByFile = this.#charterFaultsByFileOf(charter);
-      const isHolding = charterFaultsByFile.errors().isEmpty;
+      const charterFaultsByFile = this.#collectCharterFaults(charter);
+      const isHolding = charterFaultsByFile.filterErrors().isEmpty;
       const allFaultsByFile = isHolding
-        ? charterFaultsByFile.with(TestService.validateTestRoot(charter, testRoot))
+        ? charterFaultsByFile.mergeWith(TestService.validateTestRoot(charter, testRoot))
         : charterFaultsByFile;
-      const layerNameByUri = charter.layerNameByUri;
+      const primitiveLayerByUri = charter.primitiveLayerByUri;
       const heardFaultsByFile = new FaultsByFile(
         Object.fromEntries(
-          Object.entries(allFaultsByFile.files)
+          Object.entries(allFaultsByFile.faultsByFilePath)
             .map(
-              ([file, faults]) =>
+              ([filePath, faults]) =>
                 [
-                  file,
-                  layerNameByUri[file] === PrimitiveLayer.vendorName
+                  filePath,
+                  primitiveLayerByUri[filePath]?.name === PrimitiveLayer.vendorName
                     ? faults.filter((fault) => fault.severity !== "warn")
                     : faults,
                 ] as const,
@@ -184,7 +194,6 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
       // keep where nothing changed there.
       const doctorPlan = isHolding
         ? await this.#buildCharterService.planBuild(
-            "",
             charter,
             this.#chosenAgentProjectionByProvider,
             this.#localRepo,
@@ -196,7 +205,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
       const planSummary =
         doctorPlan === undefined || doctorPlan instanceof FaultsByFile
           ? undefined
-          : this.#buildCharterService.previewPlan(doctorPlan.cleanupPlan, doctorPlan.projectionPlan);
+          : this.#buildCharterService.previewPlan(doctorPlan.cleanupPlan, doctorPlan.writePlans);
       const mainContexts = isHolding ? this.#agents.map((agent) => this.#estimateMainContext(charter, agent)) : [];
 
       // A repository compiling for no agent is well — the neutral surface is
@@ -207,12 +216,12 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
       const faultsByFileDTO = this.faultsByFileDTOOf(heardFaultsByFile);
       const faults = Object.values(faultsByFileDTO.data.files)
         .flat()
-        .map(({ data }) => data);
+        .map(({ data: faultData }) => faultData);
       const errorCount = faults.filter((fault) => fault.severity === "error").length;
       const pendingCount =
         planSummary === undefined
           ? null
-          : planSummary.added.length + planSummary.edited.length + planSummary.deleted.length;
+          : planSummary.addedPaths.length + planSummary.editedPaths.length + planSummary.deletedPaths.length;
       return CharterDTOs.DoctorOutcome.of({
         agents: this.#agents.map((agent) => agent.name),
         errorCount,
@@ -257,15 +266,14 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
    * FR-009). Which agents are compiled for is what this was composed with,
    * never what happens to be installed on the machine running this (FR-033).
    */
-  async build(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("BuildingCharter.build", async () => {
+  async buildCharter(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("BuildingCharter.buildCharter", async () => {
       const charter = await this.#loadHoldingCharter();
       if (charter instanceof FaultsByFile) return this.faultsByFileDTOOf(charter);
 
       // An mcp origin that cannot be asked for its tools, or lacks one declared,
       // stops the build as an error in the charter does (EVAL-FR-031).
-      const buildPlan = await this.#buildCharterService.planBuild(
-        "",
+      const buildProjectionPlan = await this.#buildCharterService.planBuild(
         charter,
         this.#chosenAgentProjectionByProvider,
         this.#localRepo,
@@ -273,28 +281,27 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
         this.#mcpReaching,
         { refreshMcpOrigins: true },
       );
-      if (buildPlan instanceof FaultsByFile) return this.faultsByFileDTOOf(buildPlan);
+      if (buildProjectionPlan instanceof FaultsByFile) return this.faultsByFileDTOOf(buildProjectionPlan);
 
       // What it will have done, read off the plans before anything moves: a build
       // says the same thing a preview of it said (FR-022).
       const planSummary = this.#buildCharterService.previewPlan(
-        buildPlan.cleanupPlan,
-        buildPlan.projectionPlan,
-        buildPlan.warnings,
+        buildProjectionPlan.cleanupPlan,
+        buildProjectionPlan.writePlans,
+        buildProjectionPlan.warnings,
       );
-      await this.#buildCharterService.executePlan(buildPlan, this.#localRepo);
+      await this.#buildCharterService.executePlan(buildProjectionPlan, this.#localRepo);
       return this.#planSummaryDTOOf(planSummary);
     });
   }
 
   /** The same two plans a build carries out, read rather than run (FR-022). */
-  async preview(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("BuildingCharter.preview", async () => {
+  async previewCharterBuild(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("BuildingCharter.previewCharterBuild", async () => {
       const charter = await this.#loadHoldingCharter();
       if (charter instanceof FaultsByFile) return this.faultsByFileDTOOf(charter);
 
-      const buildPlan = await this.#buildCharterService.planBuild(
-        "",
+      const buildProjectionPlan = await this.#buildCharterService.planBuild(
         charter,
         this.#chosenAgentProjectionByProvider,
         this.#localRepo,
@@ -302,22 +309,26 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
         this.#mcpReaching,
         { refreshMcpOrigins: true },
       );
-      if (buildPlan instanceof FaultsByFile) return this.faultsByFileDTOOf(buildPlan);
+      if (buildProjectionPlan instanceof FaultsByFile) return this.faultsByFileDTOOf(buildProjectionPlan);
       return this.#planSummaryDTOOf(
-        this.#buildCharterService.previewPlan(buildPlan.cleanupPlan, buildPlan.projectionPlan, buildPlan.warnings),
+        this.#buildCharterService.previewPlan(
+          buildProjectionPlan.cleanupPlan,
+          buildProjectionPlan.writePlans,
+          buildProjectionPlan.warnings,
+        ),
       );
     });
   }
 
-  async tools(): Promise<CharterDTOs.ServedTools | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("BuildingCharter.tools", async () => {
+  async listServedTools(): Promise<CharterDTOs.ServedTools | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("BuildingCharter.listServedTools", async () => {
       const { declaredTools, problems } = await this.#loadDeclaredTools();
       const servedTools: CharterDTOs.ServedTool[] = [];
       for (const { origin, id, tool, servedName } of declaredTools) {
         const keptTool = origin.tools?.find(({ name }) => name === tool);
         if (keptTool === undefined) {
           problems.push(
-            `${id} declares "${tool}", which ${this.#charterRepository.findPlace(McpOrigins.outputPart)} does not hold; it is not served. Run "cw build" again.`,
+            `${id} declares "${tool}", which ${this.#charterRepository.describeItemPlace(outputPath.mcpOriginsFileName)} does not hold; it is not served. Run "cw build" again.`,
           );
           continue;
         }
@@ -338,8 +349,8 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     });
   }
 
-  async declaredTools(): Promise<CharterDTOs.DeclaredTools | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("BuildingCharter.declaredTools", async () => {
+  async listDeclaredTools(): Promise<CharterDTOs.DeclaredTools | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("BuildingCharter.listDeclaredTools", async () => {
       const { declaredTools, problems } = await this.#loadDeclaredTools();
       return CharterDTOs.DeclaredTools.of({
         tools: declaredTools.map(({ origin, id, tool, servedName }) =>
@@ -352,7 +363,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
               ...(origin.endpoint === undefined ? {} : { endpoint: origin.endpoint }),
               ...(origin.command === undefined ? {} : { command: origin.command }),
               ...(origin.path === undefined ? {} : { path: origin.path }),
-              auth: origin.auth,
+              auth: origin.auth.map((authMethod) => authMethod.name),
             },
           }),
         ),
@@ -364,48 +375,59 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   /** Read off the list the last build laid, through what laid it, each path
    *  into the build's output in a command written as where the output lands;
    *  it runs nothing (CORE-FR-176, FR-041, CORE-FR-221). */
-  async sensorCommands(
+  async listSensorCommands(
     signal: string,
     agentName: AgentProviderName,
   ): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("BuildingCharter.sensorCommands", async () => {
-      const builtSensors = BuiltSensors.of(await this.#charterRepository.loadLaidText(BuiltSensors.outputPart));
-      const outputFolder = this.#charterRepository.findOutputFolder();
+    return this.answerWithFaultDTO("BuildingCharter.listSensorCommands", async () => {
+      const builtSensors = BuiltSensorsFactory.createFromBuiltText(
+        await this.#charterRepository.readBuiltOutputItem(outputPath.sensorsFileName),
+      );
       const commands = builtSensors
-        .forAgent(this.#agentProviderOf(agentName))
+        .filterForAgent(this.#findAgentProvider(agentName))
         .sensors.filter((builtSensor) => builtSensor.signal === signal)
-        .map((builtSensor) => builtSensor.command.replaceAll(OutputPart.outFolderToken, outputFolder));
+        .map((builtSensor) => this.#charterRepository.resolveOutputLinks(builtSensor.command));
       return CharterDTOs.SensorCommands.of({ commands });
     });
   }
 
-  async buildInto(checkoutPath: string): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("BuildingCharter.buildInto", async () => {
-      const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, checkoutPath);
-      const charterErrors = this.#charterFaultsByFileOf(charter).errors();
-      if (!charterErrors.isEmpty) return this.faultsByFileDTOOf(charterErrors);
-      const buildPlan = await this.#buildCharterService.planBuild(
-        checkoutPath,
+  async buildCharterInto(
+    checkoutPath: string,
+  ): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("BuildingCharter.buildCharterInto", async () => {
+      // The charter as the store holds it now, committed or not, laid into
+      // the checkout by the output and each agent's projection made over it:
+      // no path of it crosses a driven port after this (EVAL-FR-021).
+      const checkoutLocalOutput = this.#localRepo.createCheckoutOutput(checkoutPath);
+      const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      const charterErrorFaultsByFile = this.#collectCharterFaults(charter).filterErrors();
+      if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
+      const checkoutProjectionPlan = await this.#buildCharterService.planBuild(
         charter,
-        this.#chosenAgentProjectionByProvider,
-        this.#localRepo,
+        Object.fromEntries(
+          Object.entries(this.#chosenAgentProjectionByProvider).map(([agentName, agentProjection]) => [
+            agentName,
+            agentProjection.createCheckoutProjection(checkoutPath),
+          ]),
+        ),
+        checkoutLocalOutput,
         this.#charterRepository,
         undefined,
         { refreshMcpOrigins: false },
       );
-      if (buildPlan instanceof FaultsByFile) return this.faultsByFileDTOOf(buildPlan);
+      if (checkoutProjectionPlan instanceof FaultsByFile) return this.faultsByFileDTOOf(checkoutProjectionPlan);
       const planSummary = this.#buildCharterService.previewPlan(
-        buildPlan.cleanupPlan,
-        buildPlan.projectionPlan,
-        buildPlan.warnings,
+        checkoutProjectionPlan.cleanupPlan,
+        checkoutProjectionPlan.writePlans,
+        checkoutProjectionPlan.warnings,
       );
-      await this.#buildCharterService.executePlan(buildPlan, this.#localRepo);
+      await this.#buildCharterService.executePlan(checkoutProjectionPlan, checkoutLocalOutput);
       return this.#planSummaryDTOOf(planSummary);
     });
   }
 
-  async mainContextTexts(): Promise<CharterDTOs.MainContextTexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("BuildingCharter.mainContextTexts", async () => {
+  async readMainContextTexts(): Promise<CharterDTOs.MainContextTexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("BuildingCharter.readMainContextTexts", async () => {
       const charter = await this.#loadHoldingCharter();
       if (charter instanceof FaultsByFile) return this.faultsByFileDTOOf(charter);
       return CharterDTOs.MainContextTexts.of({
@@ -414,16 +436,16 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     });
   }
 
-  async evalCases(checkoutPath: string): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("BuildingCharter.evalCases", async () => {
+  async listEvalCases(): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("BuildingCharter.listEvalCases", async () => {
       const [charter, evalRoot] = await Promise.all([
-        this.#loadCharterService.loadCharterRoot(this.#charterRepository, checkoutPath),
-        this.#charterRepository.loadEvalSuites(checkoutPath).then(EvalRootFactory.create),
+        this.#loadCharterService.loadCharterRoot(this.#charterRepository),
+        this.#charterRepository.loadEvalSuites().then(EvalRootFactory.create),
       ]);
       // Everything that would stop a case is said before the first one spends
       // anything (EVAL-FR-026).
       for (const faultsByFile of [
-        charter.allFaultsByFiles.errors(),
+        charter.allFaultsByFiles.filterErrors(),
         evalRoot.faultsByFiles,
         EvalService.validateEvalRoot(charter, evalRoot),
       ])
@@ -452,21 +474,23 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
    *  FR-009). */
   async #loadHoldingCharter(): Promise<CharterRoot | FaultsByFile> {
     const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
-    const charterErrors = this.#charterFaultsByFileOf(charter).errors();
-    return charterErrors.isEmpty ? charter : charterErrors;
+    const charterErrorFaultsByFile = this.#collectCharterFaults(charter).filterErrors();
+    return charterErrorFaultsByFile.isEmpty ? charter : charterErrorFaultsByFile;
   }
 
   /** Everything wrong with the charter, an agent it names that no projection
    *  was handed for among it (FR-033). */
-  #charterFaultsByFileOf(charter: CharterRoot): FaultsByFile {
-    return charter.allFaultsByFiles.with(charter.agentFaultsByFilesOf(Object.keys(this.#agentProjectionByProvider)));
+  #collectCharterFaults(charter: CharterRoot): FaultsByFile {
+    return charter.allFaultsByFiles.mergeWith(
+      charter.agentFaultsByFilesOf(Object.keys(this.#agentProjectionByProvider)),
+    );
   }
 
   /** What one agent puts into its main context of this charter, each text as
    *  its projection lays it: an agent reads what is laid (EVAL-FR-001,
    *  CORE-FR-221). */
   #layMainContextTexts(charter: CharterRoot, agent: AgentProvider): readonly MainContextText[] {
-    return this.#agentProjectionByProvider[agent.name]!.mainContextTextsOf(
+    return this.#agentProjectionByProvider[agent.name]!.listMainContextTexts(
       charter,
       CompileService.compileCharterRoot(charter, [agent]),
     );
@@ -495,10 +519,10 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
 
   /** The agent a name names; a name no projection was handed for is refused
    *  where it comes in, rather than taken for another agent (FR-033). */
-  #agentProviderOf(agentName: string): AgentProvider {
+  #findAgentProvider(agentName: string): AgentProvider {
     const agentNames = Object.keys(this.#agentProjectionByProvider);
     if (!agentNames.includes(agentName))
-      throw new DomainFault(
+      throw new UncompiledAgentFault(
         `This engine compiles for no agent called "${agentName}".`,
         `Name any of: ${agentNames.join(", ")}.`,
         { internal: false },
@@ -529,7 +553,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
         const tools = toolsById.get(id);
         if (tools === undefined) {
           problems.push(
-            `${id} has no compiled document at ${this.#charterRepository.findPlace(OutputPart.ofPrimitive(McpPrimitive.kind, id))}, so none of its tools is served. Run "cw build".`,
+            `${id} has no compiled document at ${this.#charterRepository.describeItemPlace(outputPath.getCompiledPrimitivePath(McpPrimitive.kind, id))}, so none of its tools is served. Run "cw build".`,
           );
           continue;
         }
@@ -538,7 +562,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
         const servedPrefix = origin.names?.[id];
         if (servedPrefix === undefined) {
           problems.push(
-            `${id} has no served name in ${this.#charterRepository.findPlace(McpOrigins.outputPart)}, so none of its tools is served. Run "cw build" again.`,
+            `${id} has no served name in ${this.#charterRepository.describeItemPlace(outputPath.mcpOriginsFileName)}, so none of its tools is served. Run "cw build" again.`,
           );
           continue;
         }
@@ -549,12 +573,13 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
 
   /** What a build did, or would do: the four lists as they are, and its
    *  warnings where it had any. */
-  #planSummaryDTOOf({ added, edited, deleted, unchanged, warnings }: PlanSummary): CharterDTOs.PlanSummary {
+  #planSummaryDTOOf(planSummary: PlanSummary): CharterDTOs.PlanSummary {
+    const { warnings } = planSummary;
     return CharterDTOs.PlanSummary.of({
-      added,
-      edited,
-      deleted,
-      unchanged,
+      added: planSummary.addedPaths,
+      edited: planSummary.editedPaths,
+      deleted: planSummary.deletedPaths,
+      unchanged: planSummary.unchangedPaths,
       ...(warnings.length === 0 ? {} : { warnings }),
     });
   }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { byType, dto, StringsSchema } from "../../../../shared/module.js";
+import { dto, groupByType, StringsSchema } from "../../../../shared/module.js";
 
 /**
  * What the workspace module answers with: what a repository configured itself
@@ -23,7 +23,7 @@ const WorkspaceSettingsSchema = dto(
 
 /** Every schema of this module's DTOs, under its name — the name it carries
  *  as `type` — in alphabetical order. */
-export const WorkspaceDTOs = byType(WorkspaceSettingsSchema);
+export const WorkspaceDTOs = groupByType(WorkspaceSettingsSchema);
 
 /** Every DTO's type, under its name: what its schema infers. */
 export namespace WorkspaceDTOs {

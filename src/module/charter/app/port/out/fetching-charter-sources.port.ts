@@ -1,6 +1,17 @@
 /** What an adapter answering this port raises when git refuses, named again
  *  here so it names this port and nothing behind it. */
-export { AdapterFault } from "../../../../shared/module.js";
+export {
+  AdapterFault,
+  FailedCheckoutFault,
+  LeftoverFolderFault,
+  LinkedFolderFault,
+  MissingGitFault,
+  UnreachableSourceFault,
+  UnreadableFetchedSourceFault,
+  UnreadableGitConfigFault,
+  UnrestoredFolderFault,
+  UnwritableSourceStoreFault,
+} from "../../../../shared/module.js";
 
 /**
  * DRIVEN PORT — reaching a source. How it is answered — a git command today, a
@@ -16,7 +27,7 @@ export interface ForFetchingCharterSources {
    * is fetched once. Its text is the adapter's own, for this port alone to
    * read. Nothing in the repository is touched; it is only what a relative source is
    * read from, and whose own version control settings reach it, where it has
-   * any. Whoever fetched it says `forgetCommit` when done.
+   * any. Whoever fetched it says `removeTempCommit` when done.
    *
    * A source that cannot be reached, a version that is not there, and a machine
    * that cannot fetch at all each raise an `AdapterFault` saying so
@@ -43,9 +54,9 @@ export interface ForFetchingCharterSources {
    * user to read, whatever else is in hand (FR-023, FR-042, CORE-FR-187,
    * CORE-FR-190).
    */
-  checkoutFolderAt(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
+  checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
 
-  /** Let go of what was kept of this fetched commit; nothing is asked of it
-   *  afterwards. */
-  forgetCommit(commit: string): Promise<void>;
+  /** The temporary folder this commit was fetched into, removed with all it
+   *  holds; nothing is asked of it afterwards. */
+  removeTempCommit(commit: string): Promise<void>;
 }

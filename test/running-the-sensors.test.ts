@@ -17,7 +17,7 @@ import { buildingCharterOf } from "./use-cases-of.js";
 
 const MAIN = fileURLToPath(new URL("../main.ts", import.meta.url));
 const TSX = import.meta.resolve("tsx");
-const MODULE_LOADER = import.meta.resolve("../scripts/moduleLoader.mjs");
+const MODULE_LOADER = import.meta.resolve("../scripts/module-loader.mjs");
 
 const repo = new URL("file:///repo/");
 const root = new URL(".cw/charter/primitive/", repo);
@@ -73,7 +73,7 @@ const aRepository = (
   return {
     held,
     shell,
-    build: () => charterRuntimeApp.build(),
+    build: () => charterRuntimeApp.buildCharter(),
     runSensors: charterRuntimeApp.runSensors.bind(charterRuntimeApp),
     claudeSettings,
   };
@@ -147,7 +147,7 @@ test("a signal whose last sensor is removed keeps the command the last build wro
     [at("sensor/guard/index.md")]: sensor("guard", "PreToolUse", "./bin/guard"),
   });
   await build();
-  held.remove(new URL("sensor/guard/index.md", root));
+  held.removeFile(new URL("sensor/guard/index.md", root));
 
   await build();
   const sensorRunOutcome = answerOf(await runSensors("PreToolUse", "{}", "claude"));
@@ -376,7 +376,7 @@ test("a sensor changed in the charter and not built runs as last built (CORE-FR-
     [at("sensor/say-a/index.md")]: sensor("say-a", "Stop", "echo a"),
   });
   await build();
-  held.write(new URL("sensor/say-a/index.md", root), sensor("say-a", "Stop", "echo changed"));
+  held.writeFile(new URL("sensor/say-a/index.md", root), sensor("say-a", "Stop", "echo changed"));
 
   await runSensors("Stop", "{}", "claude");
 
@@ -475,7 +475,7 @@ test("sensors run only for their declared provider from the built snapshot", asy
   assert.equal((await claudeSettings()).hooks.PreCompact, undefined);
   assert.match(JSON.stringify((await claudeSettings()).hooks), /--agent claude/);
   // Editing the source does not change what the last build runs.
-  held.write(new URL(at("sensor/codex-only/index.md")), sensor("codex-only", "SessionStart", "echo modified"));
+  held.writeFile(new URL(at("sensor/codex-only/index.md")), sensor("codex-only", "SessionStart", "echo modified"));
   await runSensors("SessionStart", "original event", "codex");
   assert.deepEqual(shell.runs.map((shellCall) => shellCall.command).sort(), ["echo codex", "echo shared"]);
   shell.runs.length = 0;

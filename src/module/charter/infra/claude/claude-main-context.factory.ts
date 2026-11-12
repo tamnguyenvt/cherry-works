@@ -1,10 +1,13 @@
 import {
+  CharterMd,
   type CharterOutput,
   type CharterRoot,
+  CompiledPrimitive,
   type MainContextText,
+  McpOrigins,
   McpPrimitive,
 } from "../../app/port/out/managing-local-agent-output.port.js";
-import { laidTextOf } from "../helper.js";
+import { resolveLaidText } from "../helper.js";
 import { ClaudeAgent } from "./claude-agent.js";
 import { ClaudeComponentFactory } from "./claude-component.factory.js";
 import { ClaudeComponents } from "./claude-component.js";
@@ -35,7 +38,11 @@ export class ClaudeMainContextFactory {
     charterOutput: CharterOutput,
     placeOf: (claudeComponent: ClaudeEntryFile | ClaudeRule) => string,
   ): readonly MainContextText[] {
-    const { charterMd, compiledPrimitives, mcpOrigins } = charterOutput;
+    const charterMd = charterOutput.findCharterOutputItem(CharterMd);
+    const compiledPrimitives = charterOutput.charterOutputItems.filter(
+      (charterOutputItem): charterOutputItem is CompiledPrimitive => charterOutputItem instanceof CompiledPrimitive,
+    );
+    const mcpOrigins = charterOutput.findCharterOutputItem(McpOrigins);
     const claudeComponents = ClaudeComponentFactory.create(charter, charterOutput);
     const servedPrefixById = new Map(mcpOrigins.origins.flatMap(({ names }) => Object.entries(names)));
     const compiledPrimitiveById = new Map(
@@ -46,7 +53,7 @@ export class ClaudeMainContextFactory {
     return [
       ...(entryFile === undefined
         ? []
-        : [{ id: placeOf(entryFile), kind: "charter", text: laidTextOf(entryFile.text, placeOf(entryFile)) }]),
+        : [{ id: placeOf(entryFile), kind: "charter", text: resolveLaidText(entryFile.text, placeOf(entryFile)) }]),
       { id: "CHARTER.md", kind: "charter", text: charterMd.text },
       ...charter.primitives
         .filter((primitive) => primitive.supportsAgent(ClaudeComponents.agentProvider))
@@ -72,7 +79,7 @@ export class ClaudeMainContextFactory {
               {
                 id,
                 kind: primitive.kind,
-                text: `${laidTextOf(claudeComponent.text, placeOf(claudeComponent))}${compiledPrimitive?.text ?? ""}`,
+                text: `${resolveLaidText(claudeComponent.text, placeOf(claudeComponent))}${compiledPrimitive?.text ?? ""}`,
                 ...(paths === undefined ? {} : { globs: paths }),
               },
             ];

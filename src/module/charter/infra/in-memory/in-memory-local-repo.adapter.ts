@@ -1,7 +1,7 @@
 import {
   type CharterOutput,
   type ForManagingLocalOutput,
-  type OutputPart,
+  outputPath,
   ProjectionPlan,
   WritePlan,
 } from "../../app/port/out/managing-local-output.port.js";
@@ -15,12 +15,19 @@ export class InMemoryLocalRepo implements ForManagingLocalOutput {
   /** What each place holds, as the last plan laid it or as a test sets it. */
   readonly textByPlace = new Map<string, string>();
 
-  findPlace(outputPart: OutputPart): string {
-    return outputPart.path;
+  /** The same memory, whichever checkout is asked: the twin holds one folder
+   *  and never stands in for a checkout kept apart, so a test proving a
+   *  checkout left apart lays through `LocalRepoManipulator`. */
+  createCheckoutOutput(): InMemoryLocalRepo {
+    return this;
   }
 
-  findOutputFolder(): string {
-    return ".";
+  describeItemPlace(itemPath: string): string {
+    return itemPath;
+  }
+
+  resolveOutputLinks(laidText: string): string {
+    return laidText.replaceAll(outputPath.cwOutFolderPlaceholder, ".");
   }
 
   async createProjectionPlan(charterOutput: CharterOutput): Promise<ProjectionPlan> {
@@ -28,20 +35,22 @@ export class InMemoryLocalRepo implements ForManagingLocalOutput {
     return new ProjectionPlan(
       [],
       [],
-      charterOutput.compiledParts.map(({ outputPart, text }) => {
-        const place = this.findPlace(outputPart);
+      charterOutput.charterOutputItems.map((charterOutputItem) => {
+        const { text } = charterOutputItem;
+        const path = outputPath.getPath(charterOutputItem);
+        const place = this.describeItemPlace(path);
         return new WritePlan(place, place, text, this.textByPlace.get(place));
       }),
     );
   }
 
-  async writePlan(buildPlan: ProjectionPlan): Promise<void> {
-    this.laidPlans.push(buildPlan);
-    for (const { path, contents } of buildPlan.projectionPlan)
+  async writePlan(projectionPlan: ProjectionPlan): Promise<void> {
+    this.laidPlans.push(projectionPlan);
+    for (const { path, contents } of projectionPlan.writePlans)
       if (typeof contents === "string") this.textByPlace.set(path, contents);
   }
 
-  async loadLaidText(outputPart: OutputPart): Promise<string | undefined> {
-    return this.textByPlace.get(this.findPlace(outputPart));
+  async readBuiltOutputItem(itemPath: string): Promise<string | undefined> {
+    return this.textByPlace.get(this.describeItemPlace(itemPath));
   }
 }

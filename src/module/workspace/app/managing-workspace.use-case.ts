@@ -1,8 +1,7 @@
 import { ApplicationService, DomainFault, type FaultDTOs, type ForReportingProgress } from "../../shared/module.js";
-import { MainContextCeilingFault, NoAgentFault, UnknownAgentFault } from "../domain/models/workspace.fault.js";
-import { WorkspaceReadme } from "../domain/models/workspace-readme.js";
-import { WorkspaceSettingsFactory } from "../domain/models/workspace-settings.factory.js";
-import { WorkspaceSettings } from "../domain/models/workspace-settings.js";
+import { WorkspaceSettingsFactory } from "../domain/models/settings/workspace-settings.factory.js";
+import { WorkspaceSettings } from "../domain/models/settings/workspace-settings.js";
+import { InvalidMainContextCeilingFault, NoAgentFault, UnknownAgentFault } from "../domain/models/workspace.fault.js";
 import type { ForManagingWorkspace } from "./port/in/managing-workspace.port.js";
 import { WorkspaceDTOs } from "./port/in/workspace.dto.js";
 import type { ForStoringWorkspaceSettings } from "./port/out/storing-workspace-settings.port.js";
@@ -26,22 +25,22 @@ export class ManagingWorkspace extends ApplicationService implements ForManaging
     this.agentProviderNames = agentProviderNames;
   }
 
-  async settings(): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("ManagingWorkspace.settings", async () => {
-      const settingsText = await this.#workspaceSettingsRepository.loadSettingsText();
+  async readWorkspaceSettings(): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("ManagingWorkspace.readWorkspaceSettings", async () => {
+      const rawSettings = await this.#workspaceSettingsRepository.loadSettings();
       return this.#workspaceSettingsDTOOf(
-        WorkspaceSettingsFactory.create(settingsText, this.agentProviderNames),
-        settingsText !== undefined,
+        WorkspaceSettingsFactory.create(rawSettings, this.agentProviderNames),
+        rawSettings !== undefined,
       );
     });
   }
 
-  async setUp(
+  async setUpWorkspace(
     agents: readonly string[],
     cwVersion: string,
     mainContextCeiling?: number,
   ): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("ManagingWorkspace.setUp", async () => {
+    return this.answerWithFaultDTO("ManagingWorkspace.setUpWorkspace", async () => {
       // A charter is authored to instruct an agent (FR-033).
       if (agents.length === 0)
         throw new NoAgentFault(
@@ -57,7 +56,7 @@ export class ManagingWorkspace extends ApplicationService implements ForManaging
           { internal: false },
         );
       if (!WorkspaceSettings.schema.shape.mainContextCeiling.safeParse(mainContextCeiling).success)
-        throw new MainContextCeilingFault(
+        throw new InvalidMainContextCeilingFault(
           `A context ceiling is the tokens past which the health check warns, and ${mainContextCeiling} is no whole number above 0.`,
           "Give one, as in --mainContextCeiling 20000.",
           { internal: false },
@@ -69,7 +68,7 @@ export class ManagingWorkspace extends ApplicationService implements ForManaging
       if (keptCeiling === undefined) {
         try {
           keptCeiling = WorkspaceSettingsFactory.create(
-            await this.#workspaceSettingsRepository.loadSettingsText(),
+            await this.#workspaceSettingsRepository.loadSettings(),
             this.agentProviderNames,
           ).mainContextCeiling;
         } catch (raisedValue) {
@@ -79,7 +78,7 @@ export class ManagingWorkspace extends ApplicationService implements ForManaging
       const workspaceSettings = new WorkspaceSettings(agents, keptCeiling);
       await this.#workspaceSettingsRepository.saveSettings(workspaceSettings);
       await this.#workspaceSettingsRepository.keepLogIgnored();
-      await this.#workspaceSettingsRepository.keepReadme(new WorkspaceReadme(cwVersion));
+      await this.#workspaceSettingsRepository.keepReadme(cwVersion);
       return this.#workspaceSettingsDTOOf(workspaceSettings, true);
     });
   }

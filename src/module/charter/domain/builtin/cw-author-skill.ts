@@ -1,4 +1,4 @@
-import { PrimitiveLayer } from "../models/primitive/primitive-layer.js";
+import { PrimitiveLayer } from "../models/primitive/primitive-layer.value-object.js";
 import { type SkillHeaders, SkillPrimitive } from "../models/primitive/skill-primitive.js";
 
 /** How a primitive of this charter is authored, brought by the engine to every

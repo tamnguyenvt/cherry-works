@@ -25,8 +25,4 @@ export type ClaudeAgentDeclared = Omit<ClaudeAgentHeaders, "name">;
 export class ClaudeAgent extends DocumentBasedComponent<ClaudeAgentHeaders> {
   static readonly kind = "agent" as const;
   readonly kind = ClaudeAgent.kind;
-
-  static of(name: string, declared: ClaudeAgentDeclared, body: string): ClaudeAgent {
-    return new ClaudeAgent("claude", "agent", name, { name, ...declared }, body);
-  }
 }

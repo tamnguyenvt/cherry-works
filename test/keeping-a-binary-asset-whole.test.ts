@@ -85,7 +85,7 @@ async function publishedSourceFolderOf(t: { after(fn: () => unknown): void }): P
 test("a built binary asset is identical to its source, byte for byte (CORE Story 38 scenario 1, CORE-FR-207)", async (t) => {
   const { repo, charterRuntimeApp } = await authorDiagramsSkill(t);
 
-  const planSummaryDTO = await charterRuntimeApp.build();
+  const planSummaryDTO = await charterRuntimeApp.buildCharter();
 
   assert.equal(planSummaryDTO.type, "PlanSummary");
   assert.deepEqual(
@@ -122,13 +122,13 @@ test("a binary file a source holds lands identical, installed or injected (CORE 
 test("a binary asset is listed, read, validated and previewed as any asset is, and unchanged it is no change (CORE Story 38 scenario 3, CORE-FR-207)", async (t) => {
   const { charterAuthoringApp, charterRuntimeApp } = await authorDiagramsSkill(t);
 
-  const catalogueDTO = await charterAuthoringApp.list();
+  const catalogueDTO = await charterAuthoringApp.listCatalogue();
   assert.equal(catalogueDTO.type, "Catalogue");
-  assert.equal(answerOf(await charterAuthoringApp.open("diagrams")).data.id, "diagrams");
-  assert.equal(answerOf(await charterRuntimeApp.doctor()).data.errorCount, 0);
+  assert.equal(answerOf(await charterAuthoringApp.openPrimitive("diagrams")).data.id, "diagrams");
+  assert.equal(answerOf(await charterRuntimeApp.diagnoseCharter()).data.errorCount, 0);
 
-  await charterRuntimeApp.build();
-  const planSummaryDTO = await charterRuntimeApp.preview();
+  await charterRuntimeApp.buildCharter();
+  const planSummaryDTO = await charterRuntimeApp.previewCharterBuild();
 
   assert.ok(planSummaryDTO.type === "PlanSummary");
   assert.ok(planSummaryDTO.data.unchanged.includes(".cw/out/skill/diagrams/diagram.png"));
@@ -137,7 +137,7 @@ test("a binary asset is listed, read, validated and previewed as any asset is, a
 
 test("a binary asset edited on disk after a build is an edit to the preview (CORE Story 38 scenario 3, CORE-FR-207)", async (t) => {
   const { repo, skillFolder, charterRuntimeApp } = await authorDiagramsSkill(t);
-  await charterRuntimeApp.build();
+  await charterRuntimeApp.buildCharter();
 
   // 0x80 for 0x81: two bytes a text decoder reads as the same replacement
   // character, so only bytes compared as bytes tell them apart.
@@ -145,7 +145,7 @@ test("a binary asset edited on disk after a build is an edit to the preview (COR
     join(skillFolder, "diagram.png"),
     pngBytes.map((pngByte) => (pngByte === 0x80 ? 0x81 : pngByte)),
   );
-  const planSummaryDTO = await charterRuntimeApp.preview();
+  const planSummaryDTO = await charterRuntimeApp.previewCharterBuild();
 
   assert.ok(planSummaryDTO.type === "PlanSummary");
   assert.deepEqual(planSummaryDTO.data.edited, [".cw/out/skill/diagrams/diagram.png"]);
@@ -159,7 +159,7 @@ test("a file's bytes cross the file ports whole, on disk and in memory (CORE Sto
     [new FileReaders(folder), new FileOutput(folder)],
     [inMemoryFileReaders, new InMemoryFileOutput(inMemoryFileReaders)],
   ] as const) {
-    await fileWriter.write("deep/diagram.png", pngBytes);
+    await fileWriter.writeFile("deep/diagram.png", pngBytes);
 
     assert.deepEqual(await fileReaders.readBytesIfThere("deep/diagram.png"), pngBytes);
     assert.deepEqual(
@@ -174,7 +174,7 @@ test("a fetched file's bytes cross the source port whole, from git and in memory
   const sourceFolder = await publishedSourceFolderOf(t);
   const gitSources = new GitSources(pathToFileURL(`${await temporaryFolderOf(t, "repo")}/`));
   const fetchedCommit = await gitSources.fetchCommit(sourceFolder, "v1.0.0");
-  t.after(() => gitSources.forgetCommit(fetchedCommit));
+  t.after(() => gitSources.removeTempCommit(fetchedCommit));
   assert.deepEqual(await gitSources.readBytesAt(fetchedCommit, "skills/diagrams/diagram.png"), pngBytes);
 
   const inMemorySources = new InMemorySources();
@@ -242,7 +242,7 @@ test("an in-memory worktree holds a binary file as the repository does (CORE Sto
 test("a deleted primitive takes its binary asset with it (CORE Story 38 scenario 5, CORE-FR-076)", async (t) => {
   const { skillFolder, charterAuthoringApp } = await authorDiagramsSkill(t);
 
-  await charterAuthoringApp.remove("diagrams");
+  await charterAuthoringApp.removePrimitive("diagrams");
 
   await assert.rejects(stat(join(skillFolder, "diagram.png")), { code: "ENOENT" });
   await assert.rejects(stat(join(skillFolder, "index.md")), { code: "ENOENT" });

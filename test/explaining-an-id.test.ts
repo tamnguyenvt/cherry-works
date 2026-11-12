@@ -69,7 +69,7 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
     commandLineOf(readers, new InMemoryFileOutput(readers), { charterAuthoringApp, charterRuntimeApp }, repo),
     COMMANDS,
   );
-  return writing(() => cli.run(argv));
+  return writing(() => cli.runCommandLine(argv));
 };
 
 const charter = {
@@ -136,7 +136,7 @@ test("what explaining finds reaches a driver as its DTO, saying when the primiti
 
   // Sent and read back, the way the portal's page will read it.
   const explanationOutcomeDTO = CharterDTOs.ExplanationOutcome.parse(
-    JSON.parse(JSON.stringify(await charterAuthoringApp.explain("no-any"))),
+    JSON.parse(JSON.stringify(await charterAuthoringApp.explainPrimitive("no-any"))),
   );
 
   assert.equal(

@@ -5,8 +5,8 @@ import ts from "typescript";
 import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
 import { CodexProjection } from "../src/module/charter/infra/codex/codex-projection.adapter.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
-import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
+import { InMemoryOAuthAuthorizer } from "../src/module/charter/infra/in-memory/in-memory-oauth-authorizer.adapter.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { LocalRepoManipulator } from "../src/module/charter/infra/local-repo-manipulator.adapter.js";
@@ -31,49 +31,56 @@ const hexagonFolderUrl = new URL("src/module/", repositoryUrl);
  *  of its driver port. */
 const operationNamesByPortName = {
   ForAuthoringCharter: [
-    "list",
-    "fullList",
-    "explain",
-    "kinds",
+    "listCatalogue",
+    "listPrimitives",
+    "explainPrimitive",
+    "listKinds",
     "listPrimitiveRequirements",
-    "add",
-    "open",
-    "rewrite",
-    "remove",
+    "addPrimitive",
+    "openPrimitive",
+    "rewritePrimitive",
+    "removePrimitive",
     "addVendor",
     "injectVendor",
     "removeVendor",
-    "vendors",
-    "suites",
-    "addSuite",
-    "writeSuite",
-    "removeSuite",
-    "evalSuites",
+    "listVendors",
+    "listTestSuites",
+    "addTestSuite",
+    "writeTestSuite",
+    "removeTestSuite",
+    "listEvalSuites",
     "addEvalSuite",
     "writeEvalSuite",
     "removeEvalSuite",
-    "signInStatus",
+    "listSignInStatuses",
     "signInWithToken",
     "signInWithOAuth",
-    "test",
+    "testCharter",
     "setUpCharter",
-    "layout",
-    "accessToken",
+    "readCharterLayout",
+    "getAccessToken",
   ],
   ForBuildingCharter: [
-    "doctor",
-    "build",
-    "preview",
+    "diagnoseCharter",
+    "buildCharter",
+    "previewCharterBuild",
     "predictMainContext",
-    "tools",
-    "declaredTools",
-    "sensorCommands",
-    "buildInto",
-    "mainContextTexts",
-    "evalCases",
+    "listServedTools",
+    "listDeclaredTools",
+    "listSensorCommands",
+    "buildCharterInto",
+    "readMainContextTexts",
+    "listEvalCases",
   ],
-  ForRunningCharter: ["runSensors", "call", "countMainContext", "evaluate", "analyze", "sessionSummary"],
-  ForManagingWorkspace: ["settings", "setUp"],
+  ForRunningCharter: [
+    "runSensors",
+    "callTool",
+    "countMainContext",
+    "evaluateCharter",
+    "analyzeEvalLog",
+    "summarizeSessions",
+  ],
+  ForManagingWorkspace: ["readWorkspaceSettings", "setUpWorkspace"],
 } as const;
 const portFileUrlByPortName = {
   ForAuthoringCharter: new URL("charter/app/port/in/authoring-charter.port.ts", hexagonFolderUrl),
@@ -146,6 +153,46 @@ test("the published package's driver ports are the modules' applications, each c
     );
 });
 
+/** The verbs a driver port's operation may begin with: each says what the
+ *  operation does, the words after it what it does it to. */
+const operationVerbs = new Set([
+  "add",
+  "analyze",
+  "build",
+  "call",
+  "count",
+  "diagnose",
+  "evaluate",
+  "explain",
+  "get",
+  "inject",
+  "list",
+  "open",
+  "predict",
+  "preview",
+  "read",
+  "remove",
+  "rewrite",
+  "run",
+  "set",
+  "sign",
+  "summarize",
+  "test",
+  "write",
+]);
+
+test("every operation of a driver port the package exports is named verb first, for what it acts on (CORE Story 53 scenario 1)", () => {
+  const builtContractText = readFileSync(new URL("dist/index.d.ts", repositoryUrl), "utf8");
+  for (const portName of Object.keys(portFileUrlByPortName)) {
+    assert.match(builtContractText, new RegExp(`\\b${portName}\\b`), `the package exports no ${portName}`);
+    for (const { operationName } of operationsOf(portName as keyof typeof portFileUrlByPortName)) {
+      const operationWords = operationName.split(/(?=[A-Z])/);
+      assert.ok(operationVerbs.has(operationWords[0]!), `${portName}.${operationName} does not begin with a verb`);
+      assert.ok(operationWords.length > 1, `${portName}.${operationName} is a bare verb, naming nothing it acts on`);
+    }
+  }
+});
+
 const repoFolder = new URL("file:///repo/");
 const homeFolder = new URL("file:///home/");
 const repoFileUrlOf = (path: string) => new URL(path, repoFolder).href;
@@ -176,7 +223,7 @@ async function applicationsInMemory() {
     sourceFetcher,
     worktrees: new InMemoryWorktrees(fileReader),
     credentialsRepository: new InMemoryCredentialsRepository(),
-    authorizing: new InMemoryAuthorizing(),
+    oauthAuthorizer: new InMemoryOAuthAuthorizer(),
     tokenCounter: new InMemoryTokenCounter(),
     shell: new InMemoryShellCommands({}),
     progressReporter: new InMemoryReporter(),
@@ -184,8 +231,8 @@ async function applicationsInMemory() {
     clock: new InMemoryClock(new Date("2026-11-10T00:00:00Z")),
     promptfooRunner,
     agentProvider: {
-      claude: { projection: new ClaudeProjection(fileReader), cli: new InMemoryAgentCli() },
-      codex: { projection: new CodexProjection(fileReader), cli: new InMemoryAgentCli() },
+      claude: { projection: new ClaudeProjection(fileReader), agentCli: new InMemoryAgentCli() },
+      codex: { projection: new CodexProjection(fileReader), agentCli: new InMemoryAgentCli() },
     },
     charterRepository: new FileCharterRepository(fileReader, fileWriter, sourceFetcher),
     sessionAnalysisRepository: new FileSessionAnalysisRepository(
@@ -217,60 +264,70 @@ test("every operation of the engine, called over a charter, answers the caller p
   // before leave something for the ones after.
   const operationCallByNameByPortName: Record<string, Record<string, () => Promise<unknown>>> = {
     ForManagingWorkspace: {
-      settings: () => workspaceApp.settings(),
-      setUp: () => workspaceApp.setUp(["claude"], "0.0.0"),
+      readWorkspaceSettings: () => workspaceApp.readWorkspaceSettings(),
+      setUpWorkspace: () => workspaceApp.setUpWorkspace(["claude"], "0.0.0"),
     },
     ForAuthoringCharter: {
       setUpCharter: () => charterAuthoringApp.setUpCharter(),
-      layout: () => charterAuthoringApp.layout(),
-      list: () => charterAuthoringApp.list(),
-      fullList: () => charterAuthoringApp.fullList(),
-      explain: () => charterAuthoringApp.explain("kept-guide"),
-      kinds: () => charterAuthoringApp.kinds(),
+      readCharterLayout: () => charterAuthoringApp.readCharterLayout(),
+      listCatalogue: () => charterAuthoringApp.listCatalogue(),
+      listPrimitives: () => charterAuthoringApp.listPrimitives(),
+      explainPrimitive: () => charterAuthoringApp.explainPrimitive("kept-guide"),
+      listKinds: () => charterAuthoringApp.listKinds(),
       listPrimitiveRequirements: () => charterAuthoringApp.listPrimitiveRequirements("guide"),
-      add: () =>
-        charterAuthoringApp.add("guide", "added-guide", { description: "Added.", globs: ["src/**/*.ts"] }, "Body."),
-      open: () => charterAuthoringApp.open("added-guide"),
-      rewrite: () =>
-        charterAuthoringApp.rewrite("added-guide", { description: "Rewritten." }, "Body.", "not-the-opened-hash"),
-      remove: () => charterAuthoringApp.remove("added-guide"),
+      addPrimitive: () =>
+        charterAuthoringApp.addPrimitive(
+          "guide",
+          "added-guide",
+          { description: "Added.", globs: ["src/**/*.ts"] },
+          "Body.",
+        ),
+      openPrimitive: () => charterAuthoringApp.openPrimitive("added-guide"),
+      rewritePrimitive: () =>
+        charterAuthoringApp.rewritePrimitive(
+          "added-guide",
+          { description: "Rewritten." },
+          "Body.",
+          "not-the-opened-hash",
+        ),
+      removePrimitive: () => charterAuthoringApp.removePrimitive("added-guide"),
       addVendor: () => charterAuthoringApp.addVendor("memory:/no-such-source/"),
       injectVendor: () => charterAuthoringApp.injectVendor("memory:/no-such-source/"),
       removeVendor: () => charterAuthoringApp.removeVendor("no-such-vendor"),
-      vendors: () => charterAuthoringApp.vendors(),
-      suites: () => charterAuthoringApp.suites(),
-      addSuite: () => charterAuthoringApp.addSuite(),
-      writeSuite: () => charterAuthoringApp.writeSuite("kept", testSuiteText),
-      removeSuite: () => charterAuthoringApp.removeSuite("no-such-suite"),
-      evalSuites: () => charterAuthoringApp.evalSuites(),
+      listVendors: () => charterAuthoringApp.listVendors(),
+      listTestSuites: () => charterAuthoringApp.listTestSuites(),
+      addTestSuite: () => charterAuthoringApp.addTestSuite(),
+      writeTestSuite: () => charterAuthoringApp.writeTestSuite("kept", testSuiteText),
+      removeTestSuite: () => charterAuthoringApp.removeTestSuite("no-such-suite"),
+      listEvalSuites: () => charterAuthoringApp.listEvalSuites(),
       addEvalSuite: () => charterAuthoringApp.addEvalSuite(),
       writeEvalSuite: () => charterAuthoringApp.writeEvalSuite("skills", evalSuiteText),
       removeEvalSuite: () => charterAuthoringApp.removeEvalSuite("no-such-suite"),
-      signInStatus: () => charterAuthoringApp.signInStatus(),
+      listSignInStatuses: () => charterAuthoringApp.listSignInStatuses(),
       signInWithToken: () => charterAuthoringApp.signInWithToken(mcpOriginAddress.address, "a-token"),
       signInWithOAuth: () => charterAuthoringApp.signInWithOAuth(mcpOriginAddress.address, () => {}),
-      accessToken: () => charterAuthoringApp.accessToken(mcpOriginAddress, false),
-      test: () => charterAuthoringApp.test(),
+      getAccessToken: () => charterAuthoringApp.getAccessToken(mcpOriginAddress, false),
+      testCharter: () => charterAuthoringApp.testCharter(),
     },
     ForBuildingCharter: {
-      doctor: () => charterBuildingApp.doctor(),
-      preview: () => charterBuildingApp.preview(),
-      build: () => charterBuildingApp.build(),
+      diagnoseCharter: () => charterBuildingApp.diagnoseCharter(),
+      previewCharterBuild: () => charterBuildingApp.previewCharterBuild(),
+      buildCharter: () => charterBuildingApp.buildCharter(),
       predictMainContext: () => charterBuildingApp.predictMainContext(),
-      mainContextTexts: () => charterBuildingApp.mainContextTexts(),
-      tools: () => charterBuildingApp.tools(),
-      declaredTools: () => charterBuildingApp.declaredTools(),
-      sensorCommands: () => charterBuildingApp.sensorCommands("Stop", "claude"),
-      buildInto: () => charterBuildingApp.buildInto("/checkout"),
-      evalCases: () => charterBuildingApp.evalCases("/checkout"),
+      readMainContextTexts: () => charterBuildingApp.readMainContextTexts(),
+      listServedTools: () => charterBuildingApp.listServedTools(),
+      listDeclaredTools: () => charterBuildingApp.listDeclaredTools(),
+      listSensorCommands: () => charterBuildingApp.listSensorCommands("Stop", "claude"),
+      buildCharterInto: () => charterBuildingApp.buildCharterInto("/checkout"),
+      listEvalCases: () => charterBuildingApp.listEvalCases(),
     },
     ForRunningCharter: {
       runSensors: () => charterRuntimeApp.runSensors("Stop", "", "claude"),
-      call: () => charterRuntimeApp.call("example__tool", {}),
+      callTool: () => charterRuntimeApp.callTool("example__tool", {}),
       countMainContext: () => charterRuntimeApp.countMainContext(),
-      evaluate: () => charterRuntimeApp.evaluate("claude"),
-      analyze: () => charterRuntimeApp.analyze(),
-      sessionSummary: () => charterRuntimeApp.sessionSummary(),
+      evaluateCharter: () => charterRuntimeApp.evaluateCharter("claude"),
+      analyzeEvalLog: () => charterRuntimeApp.analyzeEvalLog(),
+      summarizeSessions: () => charterRuntimeApp.summarizeSessions(),
     },
   };
   assert.deepEqual(
@@ -386,23 +443,24 @@ test("the driver ports changed and the models made public are released only as a
     },
   );
   // A model a driven port a tool may replace names is the contract too: the
-  // output part every projection is handed, with a member it did not have.
-  const outputPartPathText =
-    "\n    /** Where it lands inside the build's output: `guide/no-any/index.md`. */\n    readonly path: string;\n    constructor";
-  assert.ok(builtContractText.includes(`declare class OutputPart {`));
-  assert.ok(builtContractText.includes(outputPartPathText));
-  const contractBeforeOutputPartPathText = builtContractText.replace(outputPartPathText, "\n    constructor");
+  // output item every projection is handed, with a member it did not have.
+  const itemTextDeclaration = "\n    /** What it holds, as a build lays it. */\n    abstract get text(): string;\n}";
+  assert.ok(builtContractText.includes(`declare abstract class CharterOutputItem {${itemTextDeclaration}`));
+  const contractTextBeforeItemText = builtContractText.replace(
+    `declare abstract class CharterOutputItem {${itemTextDeclaration}`,
+    "declare abstract class CharterOutputItem {\n}",
+  );
   await inARelease(
     {
       currentVersion: "1.0.0",
       nextVersion: "1.1.0",
       releaseMode: "dry-run",
       builtContractText,
-      lastContractText: contractBeforeOutputPartPathText,
+      lastContractText: contractTextBeforeItemText,
     },
     async (releaseRun) => {
       assert.equal(releaseRun.status, 1);
-      assert.match(releaseRun.stderr, /1\.1\.0 is not a new major.*changes .*\bOutputPart\b.*Release 2\.0\.0/);
+      assert.match(releaseRun.stderr, /1\.1\.0 is not a new major.*changes .*\bCharterOutputItem\b.*Release 2\.0\.0/);
     },
   );
   const changelogText =

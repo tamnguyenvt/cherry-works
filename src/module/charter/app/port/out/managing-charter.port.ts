@@ -1,55 +1,63 @@
+import type { EvalSuite } from "../../../domain/models/eval/eval-suite.js";
 import type { RawEvalSuite } from "../../../domain/models/eval/raw-eval-suite.js";
 import type { Primitive } from "../../../domain/models/primitive/primitive.js";
 import type { RawPrimitive } from "../../../domain/models/primitive/raw-primitive.js";
-import type { OutputPart } from "../../../domain/models/projection/output-part.js";
-import type { CopyPlan, ProjectionPlan, WritePlan } from "../../../domain/models/projection/projection-plan.js";
 import type { RawTestSuite } from "../../../domain/models/test/raw-test-suite.js";
 import type { TestSuite } from "../../../domain/models/test/test-suite.js";
 import type { RawVendorSource } from "../../../domain/models/vendor/raw-vendor-source.js";
 import type { VendorRoot } from "../../../domain/models/vendor/vendor-root.js";
 import type { VendorSource } from "../../../domain/models/vendor/vendor-source.js";
-import type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.js";
+import type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.value-object.js";
 
 export type { ForReadingFiles, ForWritingFiles, ReadFile } from "../../../../shared/module.js";
-export { AdapterFault } from "../../../../shared/module.js";
-export { CharterFolder } from "../../../domain/models/charter/charter-folder.js";
-export { EvalFolder } from "../../../domain/models/charter/eval-folder.js";
-export { PrimitivesFolder } from "../../../domain/models/charter/primitives-folder.js";
-export { TestFolder } from "../../../domain/models/charter/test-folder.js";
-export { VendorsFolder } from "../../../domain/models/charter/vendors-folder.js";
+export {
+  AdapterFault,
+  FileOutsideFolderFault,
+  OccupiedPrimitiveFileFault,
+  OldLayoutFault,
+  OverlappingPrimitiveFoldersFault,
+} from "../../../../shared/module.js";
+export {
+  CHARTER_FOLDER_PATH,
+  EVAL_FOLDER_PATH,
+  outputPath,
+  PRIMITIVES_FOLDER_PATH,
+  TEST_FOLDER_PATH,
+  VENDORS_FOLDER_PATH,
+} from "../../../domain/constants.js";
+export { CharterOutputItem } from "../../../domain/models/charter-output/charter-output-item.js";
+export { CopyPlan, ProjectionPlan, WritePlan } from "../../../domain/models/charter-output/projection-plan.js";
+export type { EvalSuite } from "../../../domain/models/eval/eval-suite.js";
 export { RawEvalSuite } from "../../../domain/models/eval/raw-eval-suite.js";
 export { BasePrimitive } from "../../../domain/models/primitive/base-primitive.js";
 export { type Primitive, Primitives } from "../../../domain/models/primitive/primitive.js";
-export { PrimitiveLayer } from "../../../domain/models/primitive/primitive-layer.js";
+export { PrimitiveLayer } from "../../../domain/models/primitive/primitive-layer.value-object.js";
 /** The models and the layout a charter repository keeps a charter in, named
  *  again here so an adapter keeping one imports nothing of the hexagon but its
  *  port. */
 export { RawPrimitive } from "../../../domain/models/primitive/raw-primitive.js";
 export { SkillPrimitive } from "../../../domain/models/primitive/skill-primitive.js";
-export { OutputPart } from "../../../domain/models/projection/output-part.js";
-export { CopyPlan, type ProjectionPlan, type WritePlan } from "../../../domain/models/projection/projection-plan.js";
 export { RawTestSuite } from "../../../domain/models/test/raw-test-suite.js";
 export type { TestSuite } from "../../../domain/models/test/test-suite.js";
 export { RawSourceSkill, RawVendorSource } from "../../../domain/models/vendor/raw-vendor-source.js";
 export { VendorRootFactory } from "../../../domain/models/vendor/vendor-root.factory.js";
 export { VendorRoot } from "../../../domain/models/vendor/vendor-root.js";
 export { SourceCharter, SourceSkill, VendorSource } from "../../../domain/models/vendor/vendor-source.js";
-export type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.js";
+export type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.value-object.js";
 export type { ForFetchingCharterSources } from "./fetching-charter-sources.port.js";
 
 /** Keeps a repository's charter, wherever it keeps it, and knows how: its
  *  primitives, the vendors it installed, its test cases and its eval cases,
  *  through this one port (CORE-FR-228), and reads back what the last build
- *  laid of it, each part known by its host, the part it plays, its kind and its
- *  id, never by a path the engine knows (CORE-FR-221). Where a primitive, an asset of one, a
+ *  laid of it, each item known by its path inside the output, never by
+ *  where the output lands (CORE-FR-221). Where a primitive, an asset of one, a
  *  vendor's or a suite sits is its own to know, never the engine's, which knows
  *  a primitive by its layer, kind and id and a suite by its name
  *  (CORE-FR-213). */
 export interface ForManagingCharter {
   /** Every primitive kept of the repository's charter, its own layer and each
-   *  vendor's, each with its assets. Under `checkoutPath`, a checkout of the
-   *  repository such as a worktree, where one is named. */
-  loadCharter(checkoutPath?: string): Promise<readonly RawPrimitive[]>;
+   *  vendor's, each with its assets. */
+  loadCharter(): Promise<readonly RawPrimitive[]>;
 
   /** A place laid out for each kind of primitive, where none was: what a
    *  repository is set up with (FR-057). */
@@ -84,21 +92,24 @@ export interface ForManagingCharter {
 
   /** One commit of this source, at this version where one is named, fetched
    *  and read: its own charter, the charters it keeps apart, and its skills.
-   *  Whoever asked says `cleanupVendorSource` once done. A source that cannot be
+   *  Whoever asked says `removeTempSource` once done. A source that cannot be
    *  reached raises an `AdapterFault` saying so (CORE-FR-190). */
   fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<RawVendorSource>;
 
-  /** Let go of what was kept of a source fetched. */
-  cleanupVendorSource(rawVendorSource: RawVendorSource): Promise<void>;
+  /** The temporary folder a source was fetched into, removed with all it holds. */
+  removeTempSource(rawVendorSource: RawVendorSource): Promise<void>;
 
   /** Every vendor installed (FR-053). */
   loadVendorRoot(): Promise<VendorRoot>;
 
-  /** One vendor of a source fetched put down by its plan, in order: each
-   *  folder copied from the source as it holds it, each file written or taken
-   *  away; what else the vendor folder holds is left as it was (CORE-FR-042,
-   *  CORE-FR-186 to CORE-FR-189, CORE-FR-196). */
-  storeVendor(vendorSource: VendorSource, projectionPlan: ProjectionPlan<WritePlan | CopyPlan>): Promise<void>;
+  /** One vendor of a source fetched and filtered kept under the name its
+   *  origin gives it: each charter's primitives copied whole, as the source
+   *  holds them, the source's own under `VendorSource.ownCharterName` and each
+   *  kept apart under its own name; each skill's folder copied under the own
+   *  charter's and kept as the skill it converts to. Each replaces what stood
+   *  there before it; what else the vendor's folder holds is left as it was
+   *  (CORE-FR-042, CORE-FR-186 to CORE-FR-189, CORE-FR-196). */
+  storeVendor(vendorSource: VendorSource): Promise<void>;
 
   /** Where a vendor installed under this name is kept, in this keeper's
    *  words: said back, never read. */
@@ -119,28 +130,26 @@ export interface ForManagingCharter {
   removeTestSuite(name: string): Promise<void>;
 
   /** Every file of evaluation cases kept, by the name it is reported under,
-   *  with what it holds. Under `checkoutPath`, a checkout of the repository
-   *  such as a worktree, where one is named. */
-  loadEvalSuites(checkoutPath?: string): Promise<readonly RawEvalSuite[]>;
+   *  with what it holds. */
+  loadEvalSuites(): Promise<readonly RawEvalSuite[]>;
 
   /** One file of evaluation cases kept under this name, as its author wrote
    *  it, over whatever it held. */
-  writeEvalSuite(name: string, evalSuiteText: string): Promise<void>;
+  writeEvalSuite(name: string, evalSuite: EvalSuite): Promise<void>;
 
   /** The file of evaluation cases kept under this name taken away. */
   removeEvalSuite(name: string): Promise<void>;
 
-  /** The text a build laid for this part, as it was laid; nothing where none
-   *  was. Under `checkoutPath`, a checkout of the repository such as a
-   *  worktree, where one is named. */
-  loadLaidText(outputPart: OutputPart, checkoutPath?: string): Promise<string | undefined>;
+  /** The text a build laid for the item at this path inside its output, as
+   *  it was laid; nothing where none was. */
+  readBuiltOutputItem(itemPath: string): Promise<string | undefined>;
 
-  /** Where this part is laid, in the repository's own words: said back where
-   *  a message names it, and never read. */
-  findPlace(outputPart: OutputPart): string;
+  /** Where the item at this path inside the output is laid, in this keeper's
+   *  words: said back where a message names it, and never read. */
+  describeItemPlace(itemPath: string): string;
 
-  /** Where the build's output lands, in the repository's own words: what
-   *  `$CW_OUT` stands for in what the output holds, where a command of it is
-   *  run (CORE-FR-221). */
-  findOutputFolder(): string;
+  /** A text the last build laid, each path into its output — `$CW_OUT/` and
+   *  the path inside it — written as where this keeper laid the output, as a
+   *  command of it is run (CORE-FR-221). */
+  resolveOutputLinks(laidText: string): string;
 }

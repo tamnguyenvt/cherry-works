@@ -261,7 +261,7 @@
     {
       "request": "GET /api/charter/root/health",
       "status": 200,
-      "body": "{\"type\":\"DoctorOutcome\",\"data\":{\"agents\":[\"claude\"],\"errorCount\":0,\"warnCount\":1,\"pendingCount\":0,\"faultsByFile\":{\"type\":\"FaultsByFile\",\"data\":{\"files\":{\".cw/charter/primitive/guide/short-lines/index.md\":[{\"type\":\"Fault\",\"data\":{\"name\":\"TestCaseFault\",\"message\":\"No test case names \\\"short-lines\\\", so nothing notices when it stops coming up where it should.\",\"fix\":\"Add a case to a file under .cw/charter/test/: { \\\"do\\\": { \\\"touchFile\\\": \\\"<a file it speaks about>\\\" }, \\\"expect\\\": { \\\"activate\\\": \\\"short-lines\\\" } }.\",\"severity\":\"warn\"}}]}}},\"problemCount\":0,\"mainContexts\":[{\"agent\":\"claude\",\"totalTokens\":1207}],\"mainContextCeiling\":20000}}"
+      "body": "{\"type\":\"DoctorOutcome\",\"data\":{\"agents\":[\"claude\"],\"errorCount\":0,\"warnCount\":1,\"pendingCount\":0,\"faultsByFile\":{\"type\":\"FaultsByFile\",\"data\":{\"files\":{\".cw/charter/primitive/guide/short-lines/index.md\":[{\"type\":\"Fault\",\"data\":{\"name\":\"UntestedPrimitiveFault\",\"message\":\"No test case names \\\"short-lines\\\", so nothing notices when it stops coming up where it should.\",\"fix\":\"Add a case to a file under .cw/charter/test/: { \\\"do\\\": { \\\"touchFile\\\": \\\"<a file it speaks about>\\\" }, \\\"expect\\\": { \\\"activate\\\": \\\"short-lines\\\" } }.\",\"severity\":\"warn\"}}]}}},\"problemCount\":0,\"mainContexts\":[{\"agent\":\"claude\",\"totalTokens\":1207}],\"mainContextCeiling\":20000}}"
     },
     {
       "request": "GET /api/charter/root/context",

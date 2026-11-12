@@ -29,7 +29,7 @@ export class InMemoryPromptfoo implements ForRunningPromptfoo {
     return this.installed;
   }
 
-  async install(): Promise<void> {
+  async installPromptfoo(): Promise<void> {
     this.installCount++;
     this.installed = true;
   }
@@ -38,7 +38,7 @@ export class InMemoryPromptfoo implements ForRunningPromptfoo {
     return this.savedLogs.filter((savedLog) => logFilePath === undefined || savedLog.logPath === logFilePath);
   }
 
-  async evaluate(promptfooTest: PromptfooTest): Promise<PromptfooTestResult> {
+  async evaluateTest(promptfooTest: PromptfooTest): Promise<PromptfooTestResult> {
     const folderReadFiles =
       this.folderFiles === undefined ? [] : await this.folderFiles.readFilesRecursively(promptfooTest.workingPath);
     this.evaluatedTests.push({ ...promptfooTest, builtFiles: folderReadFiles.map(({ path }) => path) });

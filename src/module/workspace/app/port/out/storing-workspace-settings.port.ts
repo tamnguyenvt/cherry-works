@@ -1,20 +1,20 @@
-import type { WorkspaceReadme } from "../../../domain/models/workspace-readme.js";
-import type { WorkspaceSettings } from "../../../domain/models/workspace-settings.js";
+import type { RawWorkspaceSettings } from "../../../domain/models/settings/raw-workspace-settings.js";
+import type { WorkspaceSettings } from "../../../domain/models/settings/workspace-settings.js";
 
-export { WorkspaceReadme } from "../../../domain/models/workspace-readme.js";
+export { GITIGNORE_FILE_PATH, LOG_IGNORE_LINE, SETTINGS_FILE_PATH } from "../../../domain/constants.js";
 /** The model and the layout the settings are kept in, named again here so an
  *  adapter keeping them imports nothing of the hexagon but its port. */
-export { WorkspaceSettings } from "../../../domain/models/workspace-settings.js";
-export { SettingsFile } from "../../../domain/value-objects/settings-file.js";
+export { RawWorkspaceSettings } from "../../../domain/models/settings/raw-workspace-settings.js";
+export { WorkspaceSettings } from "../../../domain/models/settings/workspace-settings.js";
 
 /**
  * DRIVEN PORT — where a repository keeps its settings and the ignore file of
  * its workspace (CORE-FR-231, CORE-FR-225).
  */
 export interface ForStoringWorkspaceSettings {
-  /** The text the settings are kept in, or nothing where the repository was
+  /** The settings as they are kept, or nothing where the repository was
    *  never set up. */
-  loadSettingsText(): Promise<string | undefined>;
+  loadSettings(): Promise<RawWorkspaceSettings | undefined>;
 
   /** These settings kept, the ceiling only where it is not the default. */
   saveSettings(workspaceSettings: WorkspaceSettings): Promise<void>;
@@ -23,7 +23,7 @@ export interface ForStoringWorkspaceSettings {
    *  workspace's ignore file kept. */
   keepLogIgnored(): Promise<void>;
 
-  /** The workspace's README written, where it has none: one already there is
-   *  the repository's own. */
-  keepReadme(workspaceReadme: WorkspaceReadme): Promise<void>;
+  /** The workspace's README written, saying which `cw` set it up, where it
+   *  has none: one already there is the repository's own. */
+  keepReadme(cwVersion: string): Promise<void>;
 }

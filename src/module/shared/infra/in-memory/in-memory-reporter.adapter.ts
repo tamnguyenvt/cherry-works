@@ -6,11 +6,11 @@ export class InMemoryReporter implements ForReportingProgress {
   readonly reports: string[] = [];
   readonly problems: string[] = [];
 
-  report(text: string): void {
+  reportProgress(text: string): void {
     this.reports.push(text);
   }
 
-  problem(text: string): void {
+  reportProblem(text: string): void {
     this.problems.push(text);
   }
 }

@@ -1,7 +1,11 @@
 import { chmod, mkdir, rm, rmdir, writeFile } from "node:fs/promises";
 import { FolderAddress, type FolderURL } from "../app/port/out/folder-address.port.js";
-import { AdapterFault, type ForWritingFiles } from "../app/port/out/writing-files.port.js";
-import { urlAt } from "./helper.js";
+import {
+  type ForWritingFiles,
+  UndeletableFolderFault,
+  UnwritableFileFault,
+} from "../app/port/out/writing-files.port.js";
+import { resolveFileUrl } from "./helper.js";
 
 /** DRIVEN ADAPTER: the filesystem, written to. What the charter compiles to,
  *  put where a host will look for it.
@@ -20,55 +24,55 @@ export class FileOutput implements ForWritingFiles {
      *  (SDK-FR-010). */
     rootFolder: URL,
   ) {
-    this.#rootFolder = FolderAddress.urlOf(rootFolder);
+    this.#rootFolder = FolderAddress.parseFolderUrl(rootFolder);
   }
 
-  async write(
+  async writeFile(
     filePath: string,
     contents: string | Uint8Array,
-    options: { readonly executable?: boolean } = {},
+    options: { readonly isExecutable?: boolean } = {},
   ): Promise<void> {
-    const file = urlAt(this.#rootFolder, filePath);
+    const fileUrl = resolveFileUrl(this.#rootFolder, filePath);
     try {
-      await mkdir(new URL(".", file), { recursive: true });
+      await mkdir(new URL(".", fileUrl), { recursive: true });
       // Bytes go down as they are; only text is encoded (CORE-FR-207).
-      await writeFile(file, contents, typeof contents === "string" ? "utf8" : undefined);
+      await writeFile(fileUrl, contents, typeof contents === "string" ? "utf8" : undefined);
       // Set whether or not the file was there: a mode passed to `writeFile` is
       // only taken when it creates one.
-      if (options.executable === true) await chmod(file, 0o755);
+      if (options.isExecutable === true) await chmod(fileUrl, 0o755);
     } catch (writeError) {
       // Said in this adapter's words, what the disk said kept as the cause for
       // the log alone (SDK-FR-018).
-      throw new AdapterFault(
-        `"${file.pathname}" could not be written.`,
-        `Check that "${file.pathname}" can be written, and run this again.`,
+      throw new UnwritableFileFault(
+        `"${fileUrl.pathname}" could not be written.`,
+        `Check that "${fileUrl.pathname}" can be written, and run this again.`,
         { internal: false, cause: writeError },
       );
     }
   }
 
-  async delete(filePath: string): Promise<void> {
-    await rm(urlAt(this.#rootFolder, filePath), { force: true });
+  async deleteFile(filePath: string): Promise<void> {
+    await rm(resolveFileUrl(this.#rootFolder, filePath), { force: true });
   }
 
   async deleteFolder(folderPath: string): Promise<void> {
-    const folder = urlAt(this.#rootFolder, `${folderPath}/`);
-    await rm(folder, { recursive: true, force: true }).catch((rmError: unknown) => {
-      throw new AdapterFault(
-        `"${folder.pathname}" could not be deleted.`,
-        `Check that "${folder.pathname}" can be written, and run this again.`,
+    const folderUrl = resolveFileUrl(this.#rootFolder, `${folderPath}/`);
+    await rm(folderUrl, { recursive: true, force: true }).catch((rmError: unknown) => {
+      throw new UndeletableFolderFault(
+        `"${folderUrl.pathname}" could not be deleted.`,
+        `Check that "${folderUrl.pathname}" can be written, and run this again.`,
         { internal: false, cause: rmError },
       );
     });
   }
 
   async deleteEmptyFolder(folderPath: string): Promise<void> {
-    const folder = urlAt(this.#rootFolder, `${folderPath}/`);
-    await rmdir(folder).catch((rmdirError: NodeJS.ErrnoException) => {
+    const folderUrl = resolveFileUrl(this.#rootFolder, `${folderPath}/`);
+    await rmdir(folderUrl).catch((rmdirError: NodeJS.ErrnoException) => {
       if (rmdirError.code !== "ENOTEMPTY" && rmdirError.code !== "EEXIST" && rmdirError.code !== "ENOENT")
-        throw new AdapterFault(
-          `"${folder.pathname}" could not be deleted.`,
-          `Check that "${folder.pathname}" can be written, and run this again.`,
+        throw new UndeletableFolderFault(
+          `"${folderUrl.pathname}" could not be deleted.`,
+          `Check that "${folderUrl.pathname}" can be written, and run this again.`,
           { internal: false, cause: rmdirError },
         );
     });

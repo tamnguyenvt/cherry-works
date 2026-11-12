@@ -1,4 +1,4 @@
-import { EvalSuiteFault } from "../charter.fault.js";
+import { InvalidEvalSuiteFault } from "../charter.fault.js";
 import { EvalSuite } from "./eval-suite.js";
 
 /** What a file that reads holds, shown rather than described. */
@@ -19,7 +19,7 @@ export class EvalSuiteFactory {
     try {
       evalSuiteJson = JSON.parse(text);
     } catch {
-      throw new EvalSuiteFault(
+      throw new InvalidEvalSuiteFault(
         `This file is not JSON, so nothing can read the cases it was meant to hold.`,
         `Write it as ${SAMPLE}`,
         { internal: false },
@@ -27,10 +27,14 @@ export class EvalSuiteFactory {
     }
     const evalSuiteParse = EvalSuite.schema.safeParse(evalSuiteJson);
     if (!evalSuiteParse.success)
-      throw new EvalSuiteFault(`This file is not written as a suite of evaluation cases.`, `Write it as ${SAMPLE}`, {
-        internal: false,
-      });
-    return new EvalSuite(evalSuiteParse.data.description, evalSuiteParse.data.cases);
+      throw new InvalidEvalSuiteFault(
+        `This file is not written as a suite of evaluation cases.`,
+        `Write it as ${SAMPLE}`,
+        {
+          internal: false,
+        },
+      );
+    return new EvalSuite(evalSuiteParse.data.description, evalSuiteParse.data.cases, text);
   }
 
   private constructor() {}

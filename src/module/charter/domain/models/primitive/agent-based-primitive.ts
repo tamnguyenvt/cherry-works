@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { AgentProvider } from "../agent/agent-provider.js";
+import type { AgentProvider } from "#module/shared/module.js";
 import { BasePrimitive } from "./base-primitive.js";
 
 export type AgentBasedHeaders = Readonly<z.infer<ReturnType<typeof AgentBasedPrimitive.headersSchema>>>;

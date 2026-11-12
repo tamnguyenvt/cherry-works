@@ -1,4 +1,9 @@
-import { DomainFault } from "../../../shared/module.js";
+import {
+  NoEvaluationAgentFault,
+  UnconfiguredEvaluationAgentFault,
+  UnselectedEvaluationAgentFault,
+  UnsupportedEvaluationAgentFault,
+} from "../models/runtime.fault.js";
 
 /** What an evaluation decides before it runs a case. */
 export class EvalService {
@@ -14,19 +19,19 @@ export class EvalService {
     requestedAgent?: string,
   ): string {
     if (requestedAgent !== undefined && !supportedAgents.includes(requestedAgent))
-      throw new DomainFault(
+      throw new UnsupportedEvaluationAgentFault(
         `Unsupported evaluation agent "${requestedAgent}".`,
         `Choose one of: ${supportedAgents.join(", ")}.`,
         { internal: false },
       );
     const evaluableAgents = supportedAgents.filter((supportedAgent) => configuredAgents.includes(supportedAgent));
     if (evaluableAgents.length === 0)
-      throw new DomainFault("No evaluation agent is configured.", 'Run "cw init" and configure an agent.', {
+      throw new NoEvaluationAgentFault("No evaluation agent is configured.", 'Run "cw init" and configure an agent.', {
         internal: false,
       });
     if (requestedAgent !== undefined) {
       if (!evaluableAgents.includes(requestedAgent))
-        throw new DomainFault(
+        throw new UnconfiguredEvaluationAgentFault(
           `Evaluation agent ${requestedAgent} is not configured.`,
           `Run "cw init" and add ${requestedAgent} to the settings.`,
           { internal: false },
@@ -34,7 +39,7 @@ export class EvalService {
       return requestedAgent;
     }
     if (evaluableAgents.length !== 1)
-      throw new DomainFault(
+      throw new UnselectedEvaluationAgentFault(
         "Several evaluation agents are configured and no agent was selected.",
         'Run "cw eval --agent=<agent>" to select one.',
         { internal: false },

@@ -28,7 +28,7 @@ test("a built charter runs the engine's own counter when the agent stops (EVAL-F
     new InMemoryReporter(),
   );
 
-  await charterRuntimeApp.build();
+  await charterRuntimeApp.buildCharter();
 
   const claudeSettings = JSON.parse((await fileReaders.readIfThere(new URL(".claude/settings.json", repo))) ?? "{}");
   const stopCommands = (claudeSettings.hooks?.Stop ?? []).flatMap((entry: { hooks: { command: string }[] }) =>
@@ -78,7 +78,7 @@ async function aMachine(settings: object = { agents: ["claude"] }) {
   await mkdir(homeFolder, { recursive: true });
   await writeFile(join(repoFolder, ".cw/settings.json"), JSON.stringify(settings));
   const counterAsset = new CwSessionTokensCounterScript().assets.find(
-    (assetFile) => assetFile.file === "sessionTokensCounter.mjs",
+    (assetFile) => assetFile.assetPath === "sessionTokensCounter.mjs",
   );
   assert.ok(counterAsset);
   const counterFile = join(machineFolder, "sessionTokensCounter.mjs");

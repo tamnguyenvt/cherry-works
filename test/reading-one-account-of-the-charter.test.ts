@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 const coreSpecText = readFileSync(new URL("../specs/spec-core.md", import.meta.url), "utf8");
 const evalSpecText = readFileSync(new URL("../specs/spec-eval.md", import.meta.url), "utf8");
-const adrText = readFileSync(new URL("../specs/ADR.md", import.meta.url), "utf8");
+const architectureNoteText = readFileSync(new URL("../docs/architecture-note.md", import.meta.url), "utf8");
 
 /** The block under one heading, up to the next heading of the same rank or higher. */
 const sectionTextOf = (specText: string, heading: string): string => {
@@ -33,7 +33,7 @@ test("a story or an edge case about mixins and ids agrees with a body-only mixin
     story26Text.indexOf("2. **Given** a guide and a skill of one id"),
     story26Text.indexOf("\n3. **Given**"),
   );
-  const mixinEdgeCaseText = coreSpecText.slice(coreSpecText.indexOf("- A mixin and its host"));
+  const mixinEdgeCaseText = coreSpecText.slice(coreSpecText.indexOf("- A mixin and the primitive that pulls it in"));
   const keptApartAnswerText = coreSpecText.slice(coreSpecText.indexOf("what keeps them apart now?"));
   const mcpNameAnswerText = coreSpecText.slice(
     coreSpecText.indexOf("Is the name of an `mcp` primitive its address?"),
@@ -261,11 +261,14 @@ test("MCP serving and the catalogue agree on one entry, saved tools, a call and 
   assert.equal(requirementTextOf("CORE-FR-154").includes("listing leaves them out"), false);
   assert.match(requirementTextOf("CORE-FR-025"), /its kind, its id, its description/);
   assert.match(
-    adrText,
+    architectureNoteText,
     /kind, its id, its description, the file its body is in, and the files it applies to where it names any/,
   );
-  assert.equal(adrText.includes("Kind and id remain the only name"), false);
+  assert.equal(architectureNoteText.includes("Kind and id remain the only name"), false);
   assert.equal(storyTextOf("### CORE Story 27 -").includes("holds no identity"), false);
   assert.match(storyTextOf("### CORE Story 27 -"), /each catalogue entry is known by its id alone, with no `kind:id`/);
-  assert.match(adrText, /The id remains the only name the primitive has; the kind is a field of its entry\./);
+  assert.match(
+    architectureNoteText,
+    /The id remains the only name the primitive has; the kind is a field of its entry\./,
+  );
 });

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
-import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
 import { EvalService } from "../src/module/runtime/domain/services/eval.service.js";
+import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 
 const repositoryUrl = new URL("../", import.meta.url);
 /** Each module's domain, and the kernel's (CORE-FR-222). */
@@ -11,15 +11,16 @@ const domainFolderUrls = ["shared", "charter", "runtime"].map(
 );
 
 /** Every source file of the domain's models and value objects, by its URL,
- *  whichever folder of the domain holds it: its services, specifications and
- *  utilities aside, and the assets of the engine's own layer. */
+ *  whichever folder of the domain holds it: its services, specifications,
+ *  utilities and constants aside, and the assets of the engine's own layer. */
 const domainValueFileUrls = domainFolderUrls.flatMap((domainFolderUrl) =>
   readdirSync(domainFolderUrl, { recursive: true, encoding: "utf8" })
     .filter(
       (filePath) =>
         filePath.endsWith(".ts") &&
         !/(^|\/)(libs|builtin|services|specifications)\//.test(filePath) &&
-        !/\.(service|specification|lib)\.ts$/.test(filePath),
+        !/\.(service|specification|lib)\.ts$/.test(filePath) &&
+        filePath !== "constants.ts",
     )
     .map((filePath) => new URL(filePath, domainFolderUrl)),
 );
@@ -37,8 +38,15 @@ test("every value of the domain is a class, with no function or constant exporte
   assert.deepEqual(looseExports, []);
 });
 
-test("the workspace's folders are value objects, and a build's output and the hosts' folders are the projection's, not the domain's (CORE Story 45 scenario 1, CORE-FR-221)", () => {
-  assert.ok(domainFileNames.includes("charter-folder.ts"), "the domain holds no charter-folder.ts");
+test("the workspace's folders are the charter module's constants, and a build's output and the hosts' folders are the projection's, not the domain's (CORE Story 45 scenario 1, CORE-FR-221, CORE Story 53 scenario 2)", () => {
+  assert.match(
+    readFileSync(new URL("src/module/charter/domain/constants.ts", repositoryUrl), "utf8"),
+    /^export const CHARTER_FOLDER_PATH = /m,
+  );
+  assert.deepEqual(
+    domainFileNames.filter((fileName) => fileName.endsWith("-folder.value-object.ts")),
+    [],
+  );
   for (const valueObjectFileName of [
     "out-folder.ts",
     "agent-provider-folder.ts",

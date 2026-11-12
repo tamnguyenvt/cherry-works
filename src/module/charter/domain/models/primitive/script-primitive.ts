@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { OutputPart } from "../projection/output-part.js";
+import { outputPath } from "../../constants.js";
 import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
+import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** Files the agent or a sensor runs, kept as real files beside the script's
  *  `index.md`: its assets (FR-165). */
@@ -42,7 +42,7 @@ export class ScriptPrimitive extends BasePrimitive {
    *  its assets are copied is a link to a script's folder, written as the
    *  projection lays it. */
   static readonly activatesWhen =
-    `a primitive names it as \`[[<id>]]\`, or a sensor runs it — its assets, copied to \`${OutputPart.ofPrimitive("script", "<id>").linkOf("./")}\`, of which its \`executionPath\` names the one to run`;
+    `a primitive names it as \`[[<id>]]\`, or a sensor runs it — its assets, copied to \`${outputPath.getLinkTo(outputPath.getCompiledPrimitivePath("script", "<id>"), "./")}\`, of which its \`executionPath\` names the one to run`;
 
   /** A script as an author writes one: what a refused header is fixed with. */
   static readonly sample: ScriptHeaders = {
@@ -76,7 +76,7 @@ export class ScriptPrimitive extends BasePrimitive {
 
   /** Whether an asset of it is the one its `executionPath` names: the one
    *  run by its path, and no other (FR-160). */
-  isExecutionFile(file: string): boolean {
-    return file === this.executionPathInFolder;
+  isExecutionFile(filePath: string): boolean {
+    return filePath === this.executionPathInFolder;
   }
 }

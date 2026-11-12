@@ -9,7 +9,7 @@ const file = (written: unknown) => JSON.stringify(written, null, 2);
 
 /** Every case of one suite as its author wrote it down: what a case holds is
  *  what these are about, and the case itself is what says the situation. */
-const written = (suite: TestSuite) => suite.cases.map((each) => each.written);
+const writtenCasesOf = (suite: TestSuite) => suite.cases.map((testCase) => testCase.writtenCase);
 
 /** Why a reading refused this text: a suite or nothing, so what comes back is
  *  the one fault raised. */
@@ -34,7 +34,9 @@ test("a touched file is read with the primitive it is expected to bring up", () 
   );
 
   assert.equal(suite.description, "Type guides must come up when application code is touched.");
-  assert.deepEqual(written(suite), [{ do: { touchFile: "src/services/user.ts" }, expect: { activate: "no-any" } }]);
+  assert.deepEqual(writtenCasesOf(suite), [
+    { do: { touchFile: "src/services/user.ts" }, expect: { activate: "no-any" } },
+  ]);
 });
 
 test("a touched file is read with the permission it is expected to meet, either way", () => {
@@ -47,7 +49,7 @@ test("a touched file is read with the permission it is expected to meet, either 
     }),
   );
 
-  assert.deepEqual(written(suite), [
+  assert.deepEqual(writtenCasesOf(suite), [
     { do: { touchFile: ".env" }, expect: { allow: false } },
     { do: { touchFile: "src/one.ts" }, expect: { allow: true } },
   ]);
@@ -56,7 +58,7 @@ test("a touched file is read with the permission it is expected to meet, either 
 test("a raised event is read with the sensor it is expected to run", () => {
   const suite = TestSuiteFactory.create(file({ cases: [{ when: "PreToolUse", expect: { run: "no-secrets" } }] }));
 
-  assert.deepEqual(written(suite), [{ when: "PreToolUse", expect: { run: "no-secrets" } }]);
+  assert.deepEqual(writtenCasesOf(suite), [{ when: "PreToolUse", expect: { run: "no-secrets" } }]);
 });
 
 test("one file holds as many cases as it describes, in the order they are written", () => {
@@ -70,7 +72,7 @@ test("one file holds as many cases as it describes, in the order they are writte
   );
 
   assert.deepEqual(
-    written(suite).map((each) => ("do" in each ? each.do.touchFile : each.when)),
+    writtenCasesOf(suite).map((each) => ("do" in each ? each.do.touchFile : each.when)),
     ["src/one.ts", "Stop"],
   );
 });

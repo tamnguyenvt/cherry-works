@@ -3,12 +3,15 @@ import { ModelHelper } from "../../helper.js";
 import type { AssetFile } from "../primitive/base-primitive.js";
 import type { RawPrimitive } from "../primitive/raw-primitive.js";
 import type { SkillPrimitive } from "../primitive/skill-primitive.js";
-import type { VendorSourceOrigin } from "./vendor-source-origin.js";
+import type { VendorSourceOrigin } from "./vendor-source-origin.value-object.js";
 
 /** The folder a source of many charters keeps them in, one folder each named
  *  by it, laid out as a single-charter source holds its one:
  *  `charters/<name>/.cw/charter/` (CORE-FR-195). */
 const CHARTERS_FOLDER = "charters";
+/** The name a source's own charter, and the skills taken from it, are
+ *  installed under beside the charters picked from it. */
+const OWN_CHARTER_NAME = "root";
 
 /** The file a skills repository keeps each skill in, the way `npx skills add`
  *  reads one (CORE-FR-185). */
@@ -43,7 +46,7 @@ export class SourceCharter {
    *  its source holds it (CORE-FR-196). */
   descriptionOf(rawPrimitive: RawPrimitive): string {
     try {
-      const declaredDescription = ModelHelper.frontmatterOf(rawPrimitive.text)?.headers.description;
+      const declaredDescription = ModelHelper.parseFrontmatter(rawPrimitive.text)?.headers.description;
       return typeof declaredDescription === "string" ? declaredDescription : "";
     } catch {
       // Headers that do not parse are the source's to fix; what is shown is
@@ -75,6 +78,10 @@ export class SourceSkill {
 export class VendorSource {
   static get chartersFolder(): typeof CHARTERS_FOLDER {
     return CHARTERS_FOLDER;
+  }
+
+  static get ownCharterName(): typeof OWN_CHARTER_NAME {
+    return OWN_CHARTER_NAME;
   }
 
   static get skillFile(): typeof SKILL_FILE {

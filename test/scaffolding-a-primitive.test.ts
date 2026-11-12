@@ -45,7 +45,7 @@ const adding = async (
     const code = await new Commander(
       commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo),
       COMMANDS,
-    ).run(argv);
+    ).runCommandLine(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -61,14 +61,14 @@ const held = (files: InMemoryFileReaders, path: string) => files.readIfThere(new
 /** One answer per header the kind requires, in the order it is asked. */
 const answering = (kind: (typeof Primitives.kinds)[number]) =>
   Primitives.headersOf(kind)
-    .filter(({ required }) => required)
+    .filter(({ isRequired }) => isRequired)
     .map(({ field, shape }) => (shape === "line" ? valued(field) : [valued(field)]));
 
 /** The same answers, typed as one flag per header: what an author with no
  *  terminal to answer at gives instead. */
 const flagging = (kind: (typeof Primitives.kinds)[number]) =>
   Primitives.headersOf(kind)
-    .filter(({ required }) => required)
+    .filter(({ isRequired }) => isRequired)
     .flatMap(({ field }) => ["--header", `${field}=${valued(field)}`]);
 
 /** A value the kind will accept wherever the field is one it checks the worth
@@ -86,7 +86,7 @@ test("a kind is asked what it requires, and nothing else (FR-004, FR-039)", () =
   for (const one of Primitives.classes)
     assert.deepEqual(
       Primitives.headersOf(one.kind)
-        .filter(({ required }) => required)
+        .filter(({ isRequired }) => isRequired)
         .map(({ field }) => field),
       ["description", ...Object.keys(one.requires)],
     );
@@ -190,7 +190,7 @@ test("a file that is already there is never written over (FR-039)", async () => 
   const authoredText = readPrimitive({
     headers: { kind: "guide", id: "no-any", description: "Authored.", globs: ["src/**/*.ts"] },
     body: "BODY",
-  }).toMarkdown();
+  }).writeMarkdown();
   const {
     code,
     problems,

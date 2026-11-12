@@ -71,8 +71,8 @@ async function repository(t: { after(fn: () => unknown): void }): Promise<string
 async function installed(source: string, repo: string, version?: string): Promise<void> {
   const repoUrl = pathToFileURL(`${repo}/`);
   const fetchedCommit = await new GitSources(repoUrl).fetchCommit(source, version);
-  await new GitSources(repoUrl).checkoutFolderAt(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter");
-  await gitSources.forgetCommit(fetchedCommit);
+  await new GitSources(repoUrl).checkOutFolder(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter");
+  await gitSources.removeTempCommit(fetchedCommit);
 }
 
 /** What the vendored guide says in this repository, read off disk. */
@@ -197,7 +197,7 @@ test("a fetch leaves nothing in the repository's own object store, and what is f
   const fetchedCommit = await new GitSources(repoUrl).fetchCommit(source);
 
   await assert.rejects(readFile(join(repo, ".git", "FETCH_HEAD")));
-  await gitSources.forgetCommit(fetchedCommit);
+  await gitSources.removeTempCommit(fetchedCommit);
   await assert.rejects(gitSources.listFilesAt(fetchedCommit));
 });
 
@@ -207,8 +207,8 @@ test("a source is reached under the repository's own git config (CORE Story 37 s
   const repoUrl = pathToFileURL(`${repo}/`);
 
   const fetchedCommit = await new GitSources(repoUrl).fetchCommit("cw-team:charter");
-  t.after(() => gitSources.forgetCommit(fetchedCommit));
-  await new GitSources(repoUrl).checkoutFolderAt(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter");
+  t.after(() => gitSources.removeTempCommit(fetchedCommit));
+  await new GitSources(repoUrl).checkOutFolder(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter");
 
   assert.match(await vendored(repo), /Reject any\./);
   const { stdout } = await run("git", ["status", "--porcelain"], { cwd: repo });
@@ -225,7 +225,7 @@ test("a repository's config that applies only where it stands reaches the fetch 
   });
 
   const fetchedCommit = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit("cw-team:charter");
-  t.after(() => gitSources.forgetCommit(fetchedCommit));
+  t.after(() => gitSources.removeTempCommit(fetchedCommit));
 
   assert.ok((await gitSources.listFilesAt(fetchedCommit)).includes("README.md"));
 });
@@ -242,7 +242,7 @@ test("a repository whose config includes a file by a relative path still fetches
   await run("git", ["config", "--local", "include.path", "cw-included-config"], { cwd: repo });
 
   const fetchedCommit = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit("cw-team:charter");
-  t.after(() => gitSources.forgetCommit(fetchedCommit));
+  t.after(() => gitSources.removeTempCommit(fetchedCommit));
 
   assert.ok((await gitSources.listFilesAt(fetchedCommit)).includes("README.md"));
 });
@@ -259,7 +259,7 @@ test("a global config reaches the fetch, read once (CORE Story 37 scenario 6)", 
   });
 
   const fetchedCommit = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit("cw-team:charter");
-  t.after(() => gitSources.forgetCommit(fetchedCommit));
+  t.after(() => gitSources.removeTempCommit(fetchedCommit));
 
   assert.ok((await gitSources.listFilesAt(fetchedCommit)).includes("README.md"));
 });
@@ -384,11 +384,11 @@ test("a folder that cannot be written keeps what it held, with a fault saying so
   await mkdir(join(folder, ".cw", "charter", "vendor", "charter"), { recursive: true });
   await writeFile(join(folder, ".cw", "charter", "vendor", "charter", "kept.md"), "Kept.\n");
   const fetchedCommit = await new GitSources(folderUrl).fetchCommit(source);
-  t.after(() => gitSources.forgetCommit(fetchedCommit));
+  t.after(() => gitSources.removeTempCommit(fetchedCommit));
   await chmod(join(folder, ".cw", "charter", "vendor"), 0o555);
 
   await assert.rejects(
-    new GitSources(folderUrl).checkoutFolderAt(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter"),
+    new GitSources(folderUrl).checkOutFolder(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter"),
     (raised: unknown) => {
       assert.ok(raised instanceof AdapterFault);
       assert.equal(raised.internal, false);
@@ -417,10 +417,10 @@ test("a checkout git refuses leaves what the folder held (CORE-FR-205)", async (
   await mkdir(join(folder, ".cw", "charter", "vendor", "charter"), { recursive: true });
   await writeFile(join(folder, ".cw", "charter", "vendor", "charter", "kept.md"), "Kept.\n");
   const fetchedCommit = await new GitSources(folderUrl).fetchCommit(source);
-  t.after(() => gitSources.forgetCommit(fetchedCommit));
+  t.after(() => gitSources.removeTempCommit(fetchedCommit));
 
   await assert.rejects(
-    new GitSources(folderUrl).checkoutFolderAt(fetchedCommit, "no-such-folder", ".cw/charter/vendor/charter"),
+    new GitSources(folderUrl).checkOutFolder(fetchedCommit, "no-such-folder", ".cw/charter/vendor/charter"),
     AdapterFault,
   );
 
@@ -517,7 +517,7 @@ test("in a folder with no version control, a skill is injected as in a repositor
   await charterAuthoringApp.addVendor(source, undefined, ["grill-me"]);
 
   assert.match(await readFile(join(folder, ".cw/charter/primitive/skill/grilling/index.md"), "utf8"), /Grill\./);
-  assert.equal(answerOf(await charterAuthoringApp.vendors()).data.folders.length, 1);
+  assert.equal(answerOf(await charterAuthoringApp.listVendors()).data.folders.length, 1);
 });
 
 test("a source fetched once is read at its commit: every file it holds, and what one holds (CORE-FR-185)", async (t) => {
@@ -548,7 +548,7 @@ test("one folder of a commit fetched is checked out over a folder here, whole, l
   await writeFile(join(repo, ".cw/charter/vendor/team/skills/root/primitive/skill/grilling/index.md"), "Kept.\n");
   const { stdout: headBefore } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
 
-  await new GitSources(repoUrl).checkoutFolderAt(fetchedCommit, "skills/grill-me", intoSubFolder);
+  await new GitSources(repoUrl).checkOutFolder(fetchedCommit, "skills/grill-me", intoSubFolder);
 
   assert.equal(await readFile(join(repo, intoSubFolder, "agents", "deep", "openai.yaml"), "utf8"), "model: x\n");
   assert.match(await readFile(join(repo, intoSubFolder, "SKILL.md"), "utf8"), /name: grill-me/);

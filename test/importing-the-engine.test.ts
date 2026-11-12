@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { existsSync, readdirSync } from "node:fs";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { after, before, test } from "node:test";
+import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import packageJson from "../package.json" with { type: "json" };
+import { readContractFolder, splitContract } from "../scripts/bundle-contract.js";
 
 const repositoryUrl = new URL("../", import.meta.url);
 let consumerFolder: string;
@@ -79,8 +82,8 @@ function typecheckConsumerSource(consumerFileName: string, ...compilerFlags: str
 
 test("an installed engine supplies how to compose it, its driver ports, their DTOs, and every port a tool may replace with the types crossing it (SDK Story 2 scenario 1)", async () => {
   const consumerSource = `
-import { composeApplications, CharterDTOs, FaultDTOs, RuntimeDTOs, WorkspaceDTOs, AdapterFault, UnauthorizedMcpFault, McpCredential, McpClientRegistration, VERSION, AgentCli, ClaudeProjection, LocalRepoManipulator, SessionLogs, WorkspaceSettings, WorkspaceReadme } from 'cherry-works';
-import type { ComposedApplications, ComposedEngine, EngineAdapters, ForManagingCharter, ForManagingLocalAgentOutput, ForManagingLocalOutput, ForLoadingSessionAnalysis, ForStoringWorkspaceSettings, ForCheckingAgentCli, CharterOutput, ProjectionPlan, ForAuthoringCharter, ForBuildingCharter, ForRunningCharter, ForManagingWorkspace, ForReadingFiles, ReadFile, ListedFile, ForWritingFiles, ForReportingProgress, ForTellingTime, ForCountingTokens, ForRunningShellCommands, ShellCommandResult, ForKeepingWorktrees, ForRunningPromptfoo, PromptfooTest, PromptfooAssertion, PromptfooTestResult, PromptfooLog, ForCallingMcpServers, McpServerAddress, McpServerConnection, UpstreamTool, ToolAnswer, ForAuthorizingMcpOrigins, OAuthGrant, ForStoringCredentials, ForFetchingCharterSources } from 'cherry-works';
+import { composeApplications, CharterDTOs, FaultDTOs, RuntimeDTOs, WorkspaceDTOs, AdapterFault, UnauthorizedMcpFault, McpAuthMethod, McpCredential, McpClientRegistration, VERSION, AgentCli, ClaudeProjection, LocalRepoManipulator, SessionLogs, WorkspaceSettings, RawWorkspaceSettings } from 'cherry-works';
+import type { ComposedApplications, ComposedEngine, EngineAdapters, ForManagingCharter, ForManagingLocalAgentOutput, ForManagingLocalOutput, ForLoadingSessionAnalysis, ForStoringWorkspaceSettings, ForCheckingAgentCli, CharterOutput, ProjectionPlan, ForAuthoringCharter, ForBuildingCharter, ForRunningCharter, ForManagingWorkspace, ForReadingFiles, ReadFile, ListedFile, ForWritingFiles, ForReportingProgress, ForTellingTime, ForCountingTokens, ForRunningShellCommands, ShellCommandResult, ForKeepingWorktrees, ForRunningPromptfoo, PromptfooTest, PromptfooAssertion, PromptfooTestResult, PromptfooLog, ForCallingMcpServers, McpServerAddress, McpServerConnection, UpstreamTool, ToolAnswer, ForAuthorizingOAuthClients, OAuthGrant, ForStoringCredentials, ForFetchingCharterSources } from 'cherry-works';
 const fileReader: ForReadingFiles = {
   async readFilesRecursively(): Promise<readonly ReadFile[]> { return []; },
   async readBytesRecursively(): Promise<readonly ReadFile<Uint8Array>[]> { return [{path: 'a', contents: new Uint8Array([255])}]; },
@@ -88,59 +91,60 @@ const fileReader: ForReadingFiles = {
   async readBytesIfThere() { return undefined; }, async listFiles(): Promise<readonly ListedFile[]> { return []; },
   findFileAddress(filePath) { return 'memory:/r/' + filePath; }
 };
-const fileWriter: ForWritingFiles = { async write(file, contents, options) { const fileContents: string | Uint8Array = contents; }, async delete() {}, async deleteFolder() {}, async deleteEmptyFolder() {} };
-const progressReporter: ForReportingProgress = { report() {}, problem() {} };
-const clock: ForTellingTime = { now() { return new Date(); } };
+const fileWriter: ForWritingFiles = { async writeFile(file, contents, options) { const fileContents: string | Uint8Array = contents; }, async deleteFile() {}, async deleteFolder() {}, async deleteEmptyFolder() {} };
+const progressReporter: ForReportingProgress = { reportProgress() {}, reportProblem() {} };
+const clock: ForTellingTime = { tellTime() { return new Date(); } };
 const tokenCounter: ForCountingTokens = { countTokens(text) { return text.length; } };
 const shell: ForRunningShellCommands = { async runShellCommand(): Promise<ShellCommandResult> { return { exitCode: 0, stdout: '', stderr: '' }; } };
 const worktrees: ForKeepingWorktrees = { async addWorktree() {}, async removeWorktree() {} };
 const promptfooTestResult: PromptfooTestResult = { success: true, totalTokens: 0, componentResults: [] };
 const promptfooRunner: ForRunningPromptfoo = {
-  installFolderPath: '/promptfoo', async isInstalled() { return true; }, async install() {},
-  async evaluate(promptfooTest: PromptfooTest) { const promptfooAssertions: readonly PromptfooAssertion[] = promptfooTest.assertions; return promptfooTestResult; },
+  installFolderPath: '/promptfoo', async isInstalled() { return true; }, async installPromptfoo() {},
+  async evaluateTest(promptfooTest: PromptfooTest) { const promptfooAssertions: readonly PromptfooAssertion[] = promptfooTest.assertions; return promptfooTestResult; },
   async readLogs(): Promise<readonly PromptfooLog[]> { return []; }
 };
 const upstreamTool: UpstreamTool = { name: 'echo', inputSchema: {} };
-const mcpServers: ForCallingMcpServers = { async connect(mcpServerAddress: McpServerAddress): Promise<McpServerConnection> { return { tools: [upstreamTool], async callTool(): Promise<ToolAnswer> { throw new UnauthorizedMcpFault('Refused.', 'Sign in again.'); }, async close() {} }; } };
-const authorizing: ForAuthorizingMcpOrigins = { async authorize(endpoint): Promise<OAuthGrant> { return { accessToken: 'token', client: new McpClientRegistration({ clientId: 'client', issuer: endpoint }) }; }, async renew() { return undefined; } };
-const credentialByAddress = new Map<string, McpCredential>([['https://mcp.example/mcp', new McpCredential({ address: 'https://mcp.example/mcp', method: 'token', accessToken: 'token' })]]);
+const mcpServers: ForCallingMcpServers = { async connectServer(mcpServerAddress: McpServerAddress): Promise<McpServerConnection> { return { tools: [upstreamTool], async callTool(): Promise<ToolAnswer> { throw new UnauthorizedMcpFault('Refused.', 'Sign in again.'); }, async closeConnection() {} }; } };
+const oauthAuthorizer: ForAuthorizingOAuthClients = { async authorizeInBrowser(endpoint): Promise<OAuthGrant> { return { accessToken: 'token', client: new McpClientRegistration({ clientId: 'client', issuer: endpoint }) }; }, async renewGrant() { return undefined; } };
+const credentialByAddress = new Map<string, McpCredential>([['https://mcp.example/mcp', new McpCredential({ address: 'https://mcp.example/mcp', method: McpAuthMethod.TOKEN, accessToken: 'token' })]]);
 const credentialsRepository: ForStoringCredentials = { async readCredential(address) { return credentialByAddress.get(address); }, async writeCredential(mcpCredential) { credentialByAddress.set(mcpCredential.address, mcpCredential); } };
 const sourceFetcher: ForFetchingCharterSources = {
   async fetchCommit() { throw new AdapterFault('No source is reached here.', 'Vendor with cw.', { internal: false }); },
   async listFilesAt() { return []; }, async readFileAt() { return ''; }, async readBytesAt() { return new Uint8Array(); },
-  async checkoutFolderAt() {}, async forgetCommit() {}
+  async checkOutFolder() {}, async removeTempCommit() {}
 };
-const sessionAnalysisRepository: ForLoadingSessionAnalysis = { async loadSessionLogs(sessionAnalysisFolder, writtenFromMs, writtenUntilMs): Promise<SessionLogs> { return new SessionLogs(sessionAnalysisFolder ?? 'sessions', []); } };
+const sessionAnalysisRepository: ForLoadingSessionAnalysis = { async loadSessionLogs(writtenFromMs, writtenUntilMs): Promise<SessionLogs> { return new SessionLogs('sessions', []); } };
 let workspaceSettingsText: string | undefined;
 const workspaceSettingsRepository: ForStoringWorkspaceSettings = {
-  async loadSettingsText() { return workspaceSettingsText; },
+  async loadSettings() { return workspaceSettingsText === undefined ? undefined : new RawWorkspaceSettings(workspaceSettingsText); },
   async saveSettings(workspaceSettings: WorkspaceSettings) { workspaceSettingsText = JSON.stringify(workspaceSettings); },
-  async keepLogIgnored() {}, async keepReadme(workspaceReadme: WorkspaceReadme) {}
+  async keepLogIgnored() {}, async keepReadme(cwVersion: string) {}
 };
 const ownLocalOutput = new LocalRepoManipulator(fileReader, fileWriter);
 const localOutput: ForManagingLocalOutput = {
-  createProjectionPlan(charterOutput: CharterOutput, checkoutPath?: string): Promise<ProjectionPlan> { return ownLocalOutput.createProjectionPlan(charterOutput, checkoutPath); },
+  createCheckoutOutput(checkoutFolder: string): ForManagingLocalOutput { return ownLocalOutput.createCheckoutOutput(checkoutFolder); },
+  createProjectionPlan(charterOutput: CharterOutput): Promise<ProjectionPlan> { return ownLocalOutput.createProjectionPlan(charterOutput); },
   writePlan(projectionPlan: ProjectionPlan) { return ownLocalOutput.writePlan(projectionPlan); }
 };
 const agentCli: ForCheckingAgentCli = { async isInstalled() { return false; } };
-const replacedAdapters: Partial<EngineAdapters> = { fileReader, fileWriter, worktrees, authorizing, mcpServers, tokenCounter, clock, shell, progressReporter, promptfooRunner, credentialsRepository, sourceFetcher, sessionAnalysisRepository, workspaceSettingsRepository, localOutput, agentProvider: { claude: { projection: new ClaudeProjection(fileReader), cli: agentCli } } };
+const replacedAdapters: Partial<EngineAdapters> = { fileReader, fileWriter, worktrees, oauthAuthorizer, mcpServers, tokenCounter, clock, shell, progressReporter, promptfooRunner, credentialsRepository, sourceFetcher, sessionAnalysisRepository, workspaceSettingsRepository, localOutput, agentProvider: { claude: { projection: new ClaudeProjection(fileReader), agentCli: agentCli } } };
 const composedApplications: ComposedApplications = await composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), replacedAdapters);
 const filesReplacedApplications: Promise<ComposedApplications> = composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), { fileReader, fileWriter });
 // An agent's projection and command line, and the charter's store, may be a tool's own too.
 class OwnAgentCli extends AgentCli { async isInstalled() { return true; } }
 class OwnClaudeProjection extends ClaudeProjection {}
 const ownProjection: ForManagingLocalAgentOutput = new OwnClaudeProjection(fileReader);
-const ownAgentApplications = composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), { fileReader, fileWriter, agentProvider: { claude: { projection: ownProjection, cli: new OwnAgentCli() } } });
+const ownAgentApplications = composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), { fileReader, fileWriter, agentProvider: { claude: { projection: ownProjection, agentCli: new OwnAgentCli() } } });
 const charterRepositoryOfOwn = (charterRepository: ForManagingCharter): Partial<EngineAdapters> => ({ charterRepository });
 const workspaceApp: ForManagingWorkspace = composedApplications.workspaceApp;
 const engineApp: ComposedEngine = composedApplications.engineApp;
 const charterAuthoringApp: ForAuthoringCharter = engineApp.charterAuthoringApp;
 const charterBuildingApp: ForBuildingCharter = engineApp.charterBuildingApp;
 const charterRuntimeApp: ForRunningCharter = engineApp.charterRuntimeApp;
-const workspaceSettings: Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault> = workspaceApp.settings();
-const accessTokenAnswer: Promise<CharterDTOs.AccessToken | FaultDTOs.Fault> = charterAuthoringApp.accessToken({ address: 'https://mcp.example/mcp', mcpId: 'example' }, false);
-const doctorOutcome: Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault> = charterBuildingApp.doctor();
-const sessionReviewOutcome: Promise<RuntimeDTOs.SessionReviewOutcome | FaultDTOs.Fault> = charterRuntimeApp.sessionSummary();
+const workspaceSettings: Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault> = workspaceApp.readWorkspaceSettings();
+const accessTokenAnswer: Promise<CharterDTOs.AccessToken | FaultDTOs.Fault> = charterAuthoringApp.getAccessToken({ address: 'https://mcp.example/mcp', mcpId: 'example' }, false);
+const doctorOutcome: Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault> = charterBuildingApp.diagnoseCharter();
+const sessionReviewOutcome: Promise<RuntimeDTOs.SessionReviewOutcome | FaultDTOs.Fault> = charterRuntimeApp.summarizeSessions();
 const faultSchema = FaultDTOs.Fault;
 const engineVersion: string = VERSION;
 `;
@@ -240,7 +244,7 @@ test("the library refuses internal imports and exports only its public contract 
 import assert from 'node:assert/strict';
 import * as engine from 'cherry-works';
 for (const publicName of ['AdapterFault', 'CharterDTOs', 'FaultDTOs', 'McpClientRegistration', 'McpCredential', 'RuntimeDTOs', 'UnauthorizedMcpFault', 'VERSION', 'WorkspaceDTOs', 'composeApplications', 'FileCharterRepository', 'ClaudeProjection', 'CodexProjection', 'AgentProjection', 'AgentCli', 'ClaudeCli', 'CodexCli', 'RawPrimitive']) assert.equal(publicName in engine, true, publicName);
-for (const privateName of ['AuthoringCharter', 'BuildingCharter', 'RunningCharter', 'buildCharterService', 'loadCharterService', 'BUILTIN_LAYER', 'TEST_DIRECTORY', 'composeEngine', 'composeWorkspace', 'WorkspaceSettingsSchema', 'folderURL', 'loadCharterRoot', 'RepoLayerPrimitive', 'BUILTIN_PRIMITIVES', 'FileSettingsRepository', 'ManagingWorkspace', 'InMemoryFileReaders', 'Commander']) assert.equal(privateName in engine, false, privateName);
+for (const privateName of ['AuthoringCharter', 'BuildingCharter', 'RunningCharter', 'buildCharterService', 'loadCharterService', 'BUILTIN_LAYER', 'TEST_DIRECTORY', 'composeEngine', 'composeWorkspace', 'WorkspaceSettingsSchema', 'folderURL', 'loadCharterRoot', 'RepoLayerPrimitiveSpec', 'BUILTIN_PRIMITIVES', 'FileSettingsRepository', 'ManagingWorkspace', 'InMemoryFileReaders', 'Commander']) assert.equal(privateName in engine, false, privateName);
 for (const privatePath of ['domain/models/DomainFault', 'storage/FileCharterRepository', 'index.js', 'dist/index.js', 'dist/main.js', 'src/module/charter/module.js', 'application/RunningCharter']) await assert.rejects(import('cherry-works/' + privatePath), {code: 'ERR_PACKAGE_PATH_NOT_EXPORTED'});
 `);
 });
@@ -305,28 +309,28 @@ const fileReader = {
  }
 };
 const fileWriter = {
- async write(filePath, fileContents) {
+ async writeFile(filePath, fileContents) {
   fileBytesByAddress.set(fileAddressOf(filePath).href, typeof fileContents === 'string' ? new TextEncoder().encode(fileContents) : fileContents.slice());
  },
- async delete(filePath) { fileBytesByAddress.delete(fileAddressOf(filePath).href); },
+ async deleteFile(filePath) { fileBytesByAddress.delete(fileAddressOf(filePath).href); },
  async deleteFolder(folderPath) {
   for (const fileAddress of fileBytesByAddress.keys()) if (fileAddress.startsWith(folderAddressOf(folderPath).href)) fileBytesByAddress.delete(fileAddress);
  },
  async deleteEmptyFolder() {} // Empty folders have no map entry.
 };
 const tokenCounter = { countTokens(text) { return text.length; } };
-const progressReporter = { problems: [], report() {}, problem(text) { this.problems.push(text); } };
+const progressReporter = { problems: [], reportProgress() {}, reportProblem(text) { this.problems.push(text); } };
 const credentialByAddress = new Map();
 const credentialsRepository = { async readCredential(address) { return credentialByAddress.get(address); }, async writeCredential(mcpCredential) { credentialByAddress.set(mcpCredential.address, mcpCredential); } };
 const evaluatingRefusal = () => new AdapterFault('Evaluating runs an agent in a real folder.', 'Evaluate with cw.', { internal: false });
-const promptfooRunner = { installFolderPath: '', async isInstalled() { return false; }, async install() { throw evaluatingRefusal(); }, async evaluate() { throw evaluatingRefusal(); }, async readLogs() { return []; } };
+const promptfooRunner = { installFolderPath: '', async isInstalled() { return false; }, async installPromptfoo() { throw evaluatingRefusal(); }, async evaluateTest() { throw evaluatingRefusal(); }, async readLogs() { return []; } };
 /** The engine composed over these adapters, for the agents the settings kept
  *  name, written first where some are named: called once, so it is composed
  *  for them before a test makes the store fail. */
 async function composeOverMemory(settingsAgents, replacedAdapters = {}) {
- if (settingsAgents !== undefined) await fileWriter.write('.cw/settings.json', JSON.stringify({ agents: settingsAgents }));
+ if (settingsAgents !== undefined) await fileWriter.writeFile('.cw/settings.json', JSON.stringify({ agents: settingsAgents }));
  const { engineApp } = await composeApplications(repositoryAddress, homeAddress, { fileReader, fileWriter, tokenCounter, progressReporter, credentialsRepository, promptfooRunner, ...replacedAdapters });
- await engineApp.charterAuthoringApp.kinds();
+ await engineApp.charterAuthoringApp.listKinds();
  return engineApp;
 }
 `;
@@ -337,7 +341,7 @@ test("a consumer reads a use case's fault as a DTO, never as an exception (SDK S
       String.raw`
 const { charterBuildingApp } = await composeOverMemory(['claude']);
 storeFailure = new Error('Store unavailable.');
-const sensorRunAnswer = await charterBuildingApp.sensorCommands('Stop', 'claude');
+const sensorRunAnswer = await charterBuildingApp.listSensorCommands('Stop', 'claude');
 assert.equal(sensorRunAnswer.type, 'Fault');
 assert.equal(sensorRunAnswer.data.name, 'InternalFault');
 // The operator's log holds what went wrong; the answer withholds it.
@@ -359,12 +363,12 @@ test("a refusal the caller can correct is answered as a fault DTO with its next 
   runConsumerCode(
     failureConsumerCode +
       String.raw`
-const listAnswer = await charterAuthoringApp.list('nonsense');
+const listAnswer = await charterAuthoringApp.listCatalogue('nonsense');
 assert.equal(listAnswer.type, 'Fault');
 assert.match(listAnswer.data.message, /"nonsense" is not a kind/);
 assert.match(listAnswer.data.fix, /guide/);
 assert.equal(listAnswer.data.name, 'UnknownKindFault');
-const explainAnswer = await charterAuthoringApp.explain('nowhere');
+const explainAnswer = await charterAuthoringApp.explainPrimitive('nowhere');
 assert.equal(explainAnswer.type, 'Fault');
 assert.equal(explainAnswer.data.name, 'UnknownIdFault');
 assert.match(explainAnswer.data.fix, /cw list/);
@@ -378,25 +382,25 @@ test("a driven adapter failing inside is logged with its cause and no secret, an
     failureConsumerCode +
       String.raw`
 storeFailure = new Error('Store refused the read.', { cause: new Error('Socket closed at 10.0.0.7.') });
-const doctorAnswer = await charterBuildingApp.doctor();
+const doctorAnswer = await charterBuildingApp.diagnoseCharter();
 assert.equal(doctorAnswer.type, 'Fault');
 assert.equal(doctorAnswer.data.name, 'InternalFault');
 assert.doesNotMatch(JSON.stringify(doctorAnswer), /Store refused|10\.0\.0\.7/);
 // Each module logs the fault it met, the health check among them, each with
 // its cause (CORE-FR-229, SDK-FR-017).
 assert.ok(progressReporter.problems.length >= 1);
-assert.ok(progressReporter.problems.some((problemText) => /doctor/.test(problemText)));
+assert.ok(progressReporter.problems.some((problemText) => /diagnoseCharter/.test(problemText)));
 assert.ok(progressReporter.problems.some((problemText) => /Store refused the read\./.test(problemText) && /Caused by: Error: Socket closed at 10\.0\.0\.7\./.test(problemText)));
 
 // An adapter's own fault, unmarked, is the system's too; one marked as the
 // person's reaches them as it is, and is not logged.
 let problemCount = progressReporter.problems.length;
 storeFailure = new AdapterFault('The store is read-only for this key.', 'Ask for write access.');
-assert.equal((await charterBuildingApp.tools()).data.name, 'InternalFault');
+assert.equal((await charterBuildingApp.listServedTools()).data.name, 'InternalFault');
 assert.equal(progressReporter.problems.length, problemCount + 1);
 problemCount = progressReporter.problems.length;
 storeFailure = new AdapterFault('The store is offline.', 'Reconnect the store.', { internal: false });
-const settingsAnswer = await charterBuildingApp.tools();
+const settingsAnswer = await charterBuildingApp.listServedTools();
 assert.deepEqual(settingsAnswer, { type: 'Fault', data: { name: 'AdapterFault', message: 'The store is offline.', fix: 'Reconnect the store.', severity: 'error' } });
 assert.equal(progressReporter.problems.length, problemCount);
 
@@ -410,15 +414,15 @@ assert.doesNotMatch(progressReporter.problems.join(''), /tok-very-secret/);
 const loopingError = new Error('The store loops.');
 loopingError.cause = loopingError;
 storeFailure = loopingError;
-assert.equal((await charterBuildingApp.tools()).data.name, 'InternalFault');
+assert.equal((await charterBuildingApp.listServedTools()).data.name, 'InternalFault');
 assert.equal(progressReporter.problems.at(-1).match(/Caused by:/g).length, 1);
 
 // A reporter that fails is a driven adapter failing too: the caller is still
 // answered, and nothing is thrown.
 storeFailure = undefined;
-const failingReporterApp = (await composeOverMemory(undefined, { progressReporter: { report() {}, problem() { throw new Error('The log is full.'); } } })).charterBuildingApp;
+const failingReporterApp = (await composeOverMemory(undefined, { progressReporter: { reportProgress() {}, reportProblem() { throw new Error('The log is full.'); } } })).charterBuildingApp;
 storeFailure = loopingError;
-assert.equal((await failingReporterApp.doctor()).data.name, 'InternalFault');
+assert.equal((await failingReporterApp.diagnoseCharter()).data.name, 'InternalFault');
 `,
   );
 });
@@ -427,15 +431,15 @@ test("charter content that does not hold stays data grouped by file, not a fault
   runConsumerCode(
     failureConsumerCode +
       String.raw`
-await fileWriter.write('.cw/charter/primitive/guide/broken/index.md', '---\nkind: guide\nid: broken\n---\nBody');
-const buildAnswer = await charterBuildingApp.build();
+await fileWriter.writeFile('.cw/charter/primitive/guide/broken/index.md', '---\nkind: guide\nid: broken\n---\nBody');
+const buildAnswer = await charterBuildingApp.buildCharter();
 assert.equal(buildAnswer.type, 'FaultsByFile');
 assert.deepEqual(Object.keys(buildAnswer.data.files), [fileAddressOf('.cw/charter/primitive/guide/broken/index.md').href]);
 
 // Frontmatter that is no set of named headers is a finding under its file
 // too, in the engine's words.
-await fileWriter.write('.cw/charter/primitive/guide/unread/index.md', '---\nunreadable\n---\nBody');
-const refusedBuildAnswer = await charterBuildingApp.build();
+await fileWriter.writeFile('.cw/charter/primitive/guide/unread/index.md', '---\nunreadable\n---\nBody');
+const refusedBuildAnswer = await charterBuildingApp.buildCharter();
 assert.equal(refusedBuildAnswer.type, 'FaultsByFile');
 assert.deepEqual(refusedBuildAnswer.data.files[fileAddressOf('.cw/charter/primitive/guide/unread/index.md').href].map(({ data }) => data.message), ['The frontmatter must be a list of named headers, one per line — not a bare value or a list.']);
 assert.deepEqual(progressReporter.problems, []);
@@ -455,7 +459,7 @@ const everyOperationAnswersFaults: [FaultAnswered<ForAuthoringCharter>, FaultAns
 type BareAnswered<Port> = { [Method in keyof Port]: Port[Method] extends (...args: never[]) => Promise<infer Answer> ? (Answer extends { readonly type: string } ? never : Method) : never }[keyof Port];
 const noBareAnswer: [BareAnswered<ForAuthoringCharter>, BareAnswered<ForBuildingCharter>, BareAnswered<ForRunningCharter>, BareAnswered<ForManagingWorkspace>] extends [never, never, never, never] ? true : false = true;
 async function textOf(charterBuildingApp: ForBuildingCharter): Promise<string> {
-  const buildAnswer = await charterBuildingApp.build();
+  const buildAnswer = await charterBuildingApp.buildCharter();
   switch (buildAnswer.type) {
     case 'PlanSummary': return buildAnswer.data.added.join('\\n');
     case 'FaultsByFile': return Object.keys(buildAnswer.data.files).join('\\n');
@@ -473,8 +477,8 @@ test("validation through the installed engine answers faults by file (SDK Story 
     memoryConsumerCode +
       String.raw`
 const { charterBuildingApp } = await composeOverMemory([]);
-await fileWriter.write('.cw/charter/primitive/guide/broken/index.md', '---\nkind: guide\nid: broken\n---\nBody');
-const doctorOutcome = await charterBuildingApp.doctor();
+await fileWriter.writeFile('.cw/charter/primitive/guide/broken/index.md', '---\nkind: guide\nid: broken\n---\nBody');
+const doctorOutcome = await charterBuildingApp.diagnoseCharter();
 assert.deepEqual(Object.keys(doctorOutcome.data.faultsByFile.data.files), [fileAddressOf('.cw/charter/primitive/guide/broken/index.md').href]);
 assert.ok(doctorOutcome.data.errorCount > 0);
 `,
@@ -495,12 +499,12 @@ for (const filesystemModule of [filesystem, filesystemPromises]) {
  }
 }
 syncBuiltinESMExports();
-const primitiveList = await charterAuthoringApp.fullList();
+const primitiveList = await charterAuthoringApp.listPrimitives();
 assert.equal(primitiveList.type, 'Primitives', JSON.stringify(primitiveList));
 for (const primitiveId of ['cw-author', 'cw-session-cost', 'cw-session-tokens-counter', 'cw-session-tokens-counter-on-stop']) assert.ok(primitiveList.data.primitives.some(primitive => primitive.data.id === primitiveId));
-const counterPrimitive = await charterAuthoringApp.open('cw-session-tokens-counter');
+const counterPrimitive = await charterAuthoringApp.openPrimitive('cw-session-tokens-counter');
 assert.ok(counterPrimitive.data.body.includes('session-analysis.jsonl'));
-const buildOutcome = await charterBuildingApp.build();
+const buildOutcome = await charterBuildingApp.buildCharter();
 assert.equal(buildOutcome.type, 'PlanSummary');
 const scriptBytes = fileBytesByAddress.get(fileAddressOf('.cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs').href);
 assert.ok(scriptBytes instanceof Uint8Array);
@@ -545,16 +549,16 @@ import { composeApplications } from 'cherry-works';
 import type { EngineAdapters, ComposedApplications, ForCountingTokens, ForReportingProgress } from 'cherry-works';
 const repoFolder: URL = pathToFileURL(${JSON.stringify(repoFolderPath)} + '/');
 const problemTexts: string[] = [];
-const progressReporter: ForReportingProgress = { report() {}, problem(problemText) { problemTexts.push(problemText); } };
+const progressReporter: ForReportingProgress = { reportProgress() {}, reportProblem(problemText) { problemTexts.push(problemText); } };
 let countedTextCount = 0;
 const tokenCounter: ForCountingTokens = { countTokens(text) { countedTextCount++; return text.length; } };
 // Only what the tool replaces is handed: every other adapter is cw's own.
 const ownAdapters: Partial<EngineAdapters> = { tokenCounter, progressReporter };
 const { workspaceApp, engineApp }: ComposedApplications = await composeApplications(repoFolder, repoFolder, ownAdapters);
-const settingsAnswer = await workspaceApp.settings();
+const settingsAnswer = await workspaceApp.readWorkspaceSettings();
 assert.equal(settingsAnswer.type, 'WorkspaceSettings', JSON.stringify(settingsAnswer));
 assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
-const buildAnswer = await engineApp.charterBuildingApp.build();
+const buildAnswer = await engineApp.charterBuildingApp.buildCharter();
 assert.equal(buildAnswer.type, 'PlanSummary', JSON.stringify(buildAnswer));
 const mainContextAnswer = await engineApp.charterBuildingApp.predictMainContext();
 assert.equal(mainContextAnswer.type, 'MainContexts', JSON.stringify(mainContextAnswer));
@@ -620,7 +624,7 @@ async function setUp() {
  ({ charterAuthoringApp, charterBuildingApp } = await composeOverMemory(['claude']));
  const charterLayout = await charterAuthoringApp.setUpCharter();
  assert.equal(charterLayout.type, 'CharterLayout', JSON.stringify(charterLayout));
- return charterBuildingApp.build();
+ return charterBuildingApp.buildCharter();
 }
 `;
 
@@ -631,7 +635,7 @@ test("setup through the installed engine keeps settings, empty kind files and it
 const setupOutcome = await setUp();
 assert.equal(setupOutcome.type, 'PlanSummary', JSON.stringify(setupOutcome));
 assert.deepEqual(JSON.parse(await fileReader.readIfThere('.cw/settings.json')), { agents: ['claude'] });
-const primitiveKinds = await charterAuthoringApp.kinds();
+const primitiveKinds = await charterAuthoringApp.listKinds();
 for (const primitiveKind of Object.keys(primitiveKinds.data)) {
  assert.deepEqual(await fileReader.readBytesIfThere('.cw/charter/primitive/' + primitiveKind + '/.gitkeep'), new Uint8Array());
 }
@@ -648,12 +652,12 @@ test("adding and validating a guide through the installed engine uses only its o
     memoryAuthoringConsumerCode +
       String.raw`
 await setUp();
-const addedPrimitive = await charterAuthoringApp.add('guide', 'clear-boundary', guideHeaders, 'Keep the boundary clear.');
+const addedPrimitive = await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', guideHeaders, 'Keep the boundary clear.');
 assert.equal(addedPrimitive.type, 'Primitive', JSON.stringify(addedPrimitive));
 assert.match(await fileReader.readIfThere('.cw/charter/primitive/guide/clear-boundary/index.md'), /Keep the boundary clear\./);
-const doctorOutcome = await charterBuildingApp.doctor();
+const doctorOutcome = await charterBuildingApp.diagnoseCharter();
 assert.equal(doctorOutcome.data.errorCount, 0, JSON.stringify(doctorOutcome));
-const buildOutcome = await charterBuildingApp.build();
+const buildOutcome = await charterBuildingApp.buildCharter();
 assert.equal(buildOutcome.type, 'PlanSummary', JSON.stringify(buildOutcome));
 assert.match(await fileReader.readIfThere('.cw/out/guide/clear-boundary/index.md'), /Keep the boundary clear\./);
 assert.equal(forbiddenCallCount, 0);
@@ -667,7 +671,7 @@ test("an invalid addition through the installed engine answers faults and writes
       String.raw`
 await setUp();
 const originalFiles = [...fileBytesByAddress];
-const refusedPrimitive = await charterAuthoringApp.add('guide', 'broken', {}, 'Body');
+const refusedPrimitive = await charterAuthoringApp.addPrimitive('guide', 'broken', {}, 'Body');
 assert.equal(refusedPrimitive.type, 'Faults', JSON.stringify(refusedPrimitive));
 assert.ok(refusedPrimitive.data.faults.length > 0);
 for (const faultDTO of refusedPrimitive.data.faults) {
@@ -685,10 +689,10 @@ test("a memory build matches cw on disk byte for byte, including escaped binary 
     memoryAuthoringConsumerCode +
       String.raw`
 await setUp();
-await charterAuthoringApp.add('guide', 'clear-boundary', guideHeaders, 'Keep the boundary clear.');
+await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', guideHeaders, 'Keep the boundary clear.');
 const assetFile = '.cw/charter/primitive/guide/clear-boundary/a #%.bin';
-await fileWriter.write(assetFile, new Uint8Array([0, 255, 128, 13, 10]));
-const buildOutcome = await charterBuildingApp.build();
+await fileWriter.writeFile(assetFile, new Uint8Array([0, 255, 128, 13, 10]));
+const buildOutcome = await charterBuildingApp.buildCharter();
 assert.equal(buildOutcome.type, 'PlanSummary', JSON.stringify(buildOutcome));
 assert.deepEqual(await fileReader.readBytesIfThere('.cw/out/guide/clear-boundary/a #%.bin'), new Uint8Array([0, 255, 128, 13, 10]));
 assert.equal(forbiddenCallCount, 0);
@@ -735,37 +739,37 @@ test("every authoring operation honours a minimal read-after-write adapter (SDK 
       String.raw`
 assert.equal((await setUp()).type, 'PlanSummary');
 assert.equal((await charterAuthoringApp.listPrimitiveRequirements('guide')).type, 'PrimitiveRequirements');
-assert.equal((await charterAuthoringApp.add('guide', 'clear-boundary', guideHeaders, 'First body.')).type, 'Primitive');
-assert.equal((await charterAuthoringApp.list('guide')).type, 'Catalogue');
-assert.equal((await charterAuthoringApp.fullList('clear-boundary')).data.primitives.length, 1);
-assert.equal((await charterAuthoringApp.explain('clear-boundary')).type, 'ExplanationOutcome');
-const openedPrimitive = await charterAuthoringApp.open('clear-boundary');
+assert.equal((await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', guideHeaders, 'First body.')).type, 'Primitive');
+assert.equal((await charterAuthoringApp.listCatalogue('guide')).type, 'Catalogue');
+assert.equal((await charterAuthoringApp.listPrimitives('clear-boundary')).data.primitives.length, 1);
+assert.equal((await charterAuthoringApp.explainPrimitive('clear-boundary')).type, 'ExplanationOutcome');
+const openedPrimitive = await charterAuthoringApp.openPrimitive('clear-boundary');
 assert.equal(openedPrimitive.data.body, 'First body.');
-assert.equal((await charterAuthoringApp.rewrite('clear-boundary', guideHeaders, 'Second body.', openedPrimitive.data.hash)).type, 'Primitive');
-assert.equal((await charterAuthoringApp.open('clear-boundary')).data.body, 'Second body.');
-assert.equal((await charterAuthoringApp.rewrite('clear-boundary', guideHeaders, 'Stale body.', openedPrimitive.data.hash)).type, 'Fault');
+assert.equal((await charterAuthoringApp.rewritePrimitive('clear-boundary', guideHeaders, 'Second body.', openedPrimitive.data.hash)).type, 'Primitive');
+assert.equal((await charterAuthoringApp.openPrimitive('clear-boundary')).data.body, 'Second body.');
+assert.equal((await charterAuthoringApp.rewritePrimitive('clear-boundary', guideHeaders, 'Stale body.', openedPrimitive.data.hash)).type, 'Fault');
 const filesBeforePreview = [...fileBytesByAddress];
-const previewOutcome = await charterBuildingApp.preview();
+const previewOutcome = await charterBuildingApp.previewCharterBuild();
 assert.equal(previewOutcome.type, 'PlanSummary');
 assert.deepEqual([...fileBytesByAddress], filesBeforePreview);
 assert.equal((await charterBuildingApp.predictMainContext()).type, 'MainContexts');
-assert.equal((await charterAuthoringApp.test()).type, 'TestRunReport');
-assert.equal((await charterBuildingApp.build()).type, 'PlanSummary');
-assert.deepEqual((await charterBuildingApp.preview()).data.added, []);
-assert.deepEqual((await charterBuildingApp.preview()).data.edited, []);
+assert.equal((await charterAuthoringApp.testCharter()).type, 'TestRunReport');
+assert.equal((await charterBuildingApp.buildCharter()).type, 'PlanSummary');
+assert.deepEqual((await charterBuildingApp.previewCharterBuild()).data.added, []);
+assert.deepEqual((await charterBuildingApp.previewCharterBuild()).data.edited, []);
 const escapedAssetFile = '.cw/charter/primitive/guide/clear-boundary/a #%.bin';
-await fileWriter.write(escapedAssetFile, new Uint8Array([0, 255]));
-assert.equal((await charterAuthoringApp.remove('clear-boundary')).type, 'Primitive');
+await fileWriter.writeFile(escapedAssetFile, new Uint8Array([0, 255]));
+assert.equal((await charterAuthoringApp.removePrimitive('clear-boundary')).type, 'Primitive');
 assert.equal(await fileReader.readBytesIfThere(escapedAssetFile), undefined);
 assert.equal(await fileReader.readIfThere('.cw/charter/primitive/guide/clear-boundary/index.md'), undefined);
-const cleanupOutcome = await charterBuildingApp.build();
+const cleanupOutcome = await charterBuildingApp.buildCharter();
 assert.equal(cleanupOutcome.type, 'PlanSummary');
 assert.ok(cleanupOutcome.data.deleted.includes('.cw/out/guide/clear-boundary/index.md'));
 assert.equal(await fileReader.readIfThere('.cw/out/guide/clear-boundary/index.md'), undefined);
 // A missing kind folder is empty, and setup reads back even when empty files are dropped.
 for (const fileAddress of fileBytesByAddress.keys()) if (fileAddress.endsWith('/.gitkeep')) fileBytesByAddress.delete(fileAddress);
-assert.equal((await charterBuildingApp.doctor()).data.errorCount, 0);
-assert.equal((await charterBuildingApp.build()).type, 'PlanSummary');
+assert.equal((await charterBuildingApp.diagnoseCharter()).data.errorCount, 0);
+assert.equal((await charterBuildingApp.buildCharter()).type, 'PlanSummary');
 assert.equal(forbiddenCallCount, 0);
 `,
   );
@@ -776,23 +780,23 @@ test("a memory build reports a failed write and keeps completed writes (SDK Stor
     memoryAuthoringConsumerCode +
       String.raw`
 await setUp();
-await charterAuthoringApp.add('guide', 'first-guide', guideHeaders, 'First guide.');
-await charterAuthoringApp.add('guide', 'second-guide', guideHeaders, 'Second guide.');
+await charterAuthoringApp.addPrimitive('guide', 'first-guide', guideHeaders, 'First guide.');
+await charterAuthoringApp.addPrimitive('guide', 'second-guide', guideHeaders, 'Second guide.');
 const completedWriteAddresses = [];
-const failingWriter = { ...fileWriter, async write(filePath, fileContents, writeOptions) {
+const failingWriter = { ...fileWriter, async writeFile(filePath, fileContents, writeOptions) {
  if (completedWriteAddresses.length === 1) throw new Error('Store write refused.');
- await fileWriter.write(filePath, fileContents, writeOptions);
+ await fileWriter.writeFile(filePath, fileContents, writeOptions);
  completedWriteAddresses.push(fileAddressOf(filePath).href);
 }};
 const failingApp = (await composeOverMemory(undefined, { fileWriter: failingWriter })).charterBuildingApp;
-const failedBuild = await failingApp.build();
+const failedBuild = await failingApp.buildCharter();
 assert.equal(failedBuild.type, 'Fault');
 assert.equal(failedBuild.data.name, 'InternalFault');
 assert.doesNotMatch(JSON.stringify(failedBuild), /Store write refused/);
 assert.match(progressReporter.problems.at(-1), /build[\s\S]*Store write refused\./);
 assert.equal(completedWriteAddresses.length, 1);
 assert.ok(fileBytesByAddress.has(completedWriteAddresses[0]));
-assert.equal((await charterBuildingApp.build()).type, 'PlanSummary');
+assert.equal((await charterBuildingApp.buildCharter()).type, 'PlanSummary');
 assert.equal(forbiddenCallCount, 0);
 `,
   );
@@ -840,13 +844,16 @@ const CW_ADAPTER_NAMES = [
 /** What a port names that is no model: the helpers a projection lays its
  *  files with, and what makes a vendor's root, kept for a tool to extend
  *  cw's own adapters with. */
-const PORT_NAMED_HELPER_NAMES = ["ModelHelper", "mergedTomlText", "VendorRootFactory"];
+const PORT_NAMED_HELPER_NAMES = ["ModelHelper", "mergeTomlText", "VendorRootFactory"];
 
 test("the installed package exports exactly what its contract names: the composition, the driver ports and their DTOs, each adapter's port with the models it names, and cw's own adapters (SDK Story 8 scenario 1)", async () => {
   const installedNames = exportedNamesOf(
     await readFile(join(consumerFolder, "node_modules/cherry-works/dist/index.d.ts"), "utf8"),
   );
-  assert.deepEqual(installedNames, exportedNamesOf(await readFile(new URL("contract.d.ts", repositoryUrl), "utf8")));
+  assert.deepEqual(
+    installedNames,
+    exportedNamesOf(await readFile(new URL("contract/index.d.ts", repositoryUrl), "utf8")),
+  );
   // Each name is what its declaring file says it is: the composition, a driver
   // port or its DTO, an adapter's port or a model it names, or one of cw's own
   // adapters — never a use case, a service, a driver or a portal.
@@ -868,7 +875,9 @@ test("the installed package exports exactly what its contract names: the composi
       declaringPaths.some(
         (declaringPath) =>
           declaringPath === "composition.ts" ||
-          /\/app\/port\/(?:in|out)\/|\/domain\/(?:models|value-objects)\//.test(declaringPath) ||
+          /\/app\/port\/(?:in|out)\/|\/domain\/(?:models|value-objects)\/|\/domain\/constants\.ts$/.test(
+            declaringPath,
+          ) ||
           PORT_NAMED_HELPER_NAMES.includes(installedName) ||
           (/\/infra\//.test(declaringPath) && CW_ADAPTER_NAMES.includes(installedName)),
       ),
@@ -887,9 +896,8 @@ test("the installed package exports exactly what its contract names: the composi
     "SessionLogs",
     "ForStoringWorkspaceSettings",
     "WorkspaceSettings",
-    "WorkspaceReadme",
     "ForManagingLocalOutput",
-    "CompiledPart",
+    "CharterOutputItem",
     "McpOrigins",
     ...CW_ADAPTER_NAMES,
   ])
@@ -934,16 +942,16 @@ import type { CharterOutput, CharterRoot, ProjectionPlan, RawPrimitive } from 'c
 const repoFolder: URL = pathToFileURL(${JSON.stringify(repoFolderPath)} + '/');
 class CountingCharterRepository extends FileCharterRepository {
   loadedCharterCount = 0;
-  override async loadCharter(checkoutPath?: string): Promise<readonly RawPrimitive[]> {
+  override async loadCharter(): Promise<readonly RawPrimitive[]> {
     this.loadedCharterCount++;
-    return super.loadCharter(checkoutPath);
+    return super.loadCharter();
   }
 }
 class CountingClaudeProjection extends ClaudeProjection {
   plannedProjectionCount = 0;
-  override async createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput, checkoutPath?: string): Promise<ProjectionPlan> {
+  override async createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput): Promise<ProjectionPlan> {
     this.plannedProjectionCount++;
-    return super.createAgentProjectionPlan(charter, charterOutput, checkoutPath);
+    return super.createAgentProjectionPlan(charter, charterOutput);
   }
 }
 const fileReader = new FileReaders(repoFolder);
@@ -954,10 +962,10 @@ const { engineApp } = await composeApplications(repoFolder, repoFolder, {
   fileReader,
   fileWriter,
   charterRepository,
-  agentProvider: { claude: { projection: claudeProjection, cli: new ClaudeCli() } },
+  agentProvider: { claude: { projection: claudeProjection, agentCli: new ClaudeCli() } },
 });
 assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
-const buildAnswer = await engineApp.charterBuildingApp.build();
+const buildAnswer = await engineApp.charterBuildingApp.buildCharter();
 assert.equal(buildAnswer.type, 'PlanSummary', JSON.stringify(buildAnswer));
 assert.ok(charterRepository.loadedCharterCount > 0);
 assert.equal(claudeProjection.plannedProjectionCount, 1);
@@ -1028,18 +1036,18 @@ test("an engine composed before setup reads the settings again on its next call,
       String.raw`
 const { workspaceApp, engineApp } = await composeApplications(repositoryAddress, homeAddress, { fileReader, fileWriter, tokenCounter, progressReporter, credentialsRepository, promptfooRunner });
 assert.equal(engineApp.charterBuildingApp.toJSON, undefined);
-assert.equal('build' in engineApp.charterBuildingApp, true);
+assert.equal('buildCharter' in engineApp.charterBuildingApp, true);
 assert.equal('toJSON' in engineApp.charterBuildingApp, false);
 const claudeEntryAddress = new URL('CLAUDE.md', repositoryAddress).href;
 const codexEntryAddress = new URL('AGENTS.md', repositoryAddress).href;
 assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
-assert.equal((await engineApp.charterBuildingApp.build()).type, 'PlanSummary');
+assert.equal((await engineApp.charterBuildingApp.buildCharter()).type, 'PlanSummary');
 assert.equal(fileBytesByAddress.has(claudeEntryAddress), false);
-assert.equal((await workspaceApp.setUp(['claude'], '1.0.0')).type, 'WorkspaceSettings');
-assert.equal((await engineApp.charterBuildingApp.build()).type, 'PlanSummary');
+assert.equal((await workspaceApp.setUpWorkspace(['claude'], '1.0.0')).type, 'WorkspaceSettings');
+assert.equal((await engineApp.charterBuildingApp.buildCharter()).type, 'PlanSummary');
 assert.ok(fileBytesByAddress.has(claudeEntryAddress));
-await fileWriter.write('.cw/settings.json', JSON.stringify({ agents: ['codex'] }));
-const keptBuildAnswer = await engineApp.charterBuildingApp.build();
+await fileWriter.writeFile('.cw/settings.json', JSON.stringify({ agents: ['codex'] }));
+const keptBuildAnswer = await engineApp.charterBuildingApp.buildCharter();
 assert.equal(keptBuildAnswer.type, 'PlanSummary', JSON.stringify(keptBuildAnswer));
 assert.ok(fileBytesByAddress.has(claudeEntryAddress));
 assert.equal(fileBytesByAddress.has(codexEntryAddress), false);
@@ -1051,18 +1059,18 @@ test("a sessions store, a settings store and a local output of a tool's own are 
   runConsumerCode(
     memoryConsumerCode +
       String.raw`
-import { LocalRepoManipulator, SessionLogs } from 'cherry-works';
+import { LocalRepoManipulator, RawWorkspaceSettings, SessionLogs } from 'cherry-works';
 const keptSettingsTexts = [];
 const workspaceSettingsRepository = {
- async loadSettingsText() { return keptSettingsTexts.at(-1); },
+ async loadSettings() { const keptSettingsText = keptSettingsTexts.at(-1); return keptSettingsText === undefined ? undefined : new RawWorkspaceSettings(keptSettingsText); },
  async saveSettings(workspaceSettings) { keptSettingsTexts.push(JSON.stringify({ agents: workspaceSettings.agents })); },
  async keepLogIgnored() {},
  async keepReadme() {},
 };
-const loadedSessionFolders = [];
+const loadedSessionWindowStarts = [];
 const sessionAnalysisRepository = {
- async loadSessionLogs(sessionAnalysisFolder) {
-  loadedSessionFolders.push(sessionAnalysisFolder);
+ async loadSessionLogs(writtenFromMs) {
+  loadedSessionWindowStarts.push(writtenFromMs);
   return new SessionLogs('own-sessions', []);
  },
 };
@@ -1075,28 +1083,54 @@ class CountingLocalOutput extends LocalRepoManipulator {
 }
 const localOutput = new CountingLocalOutput(fileReader, fileWriter);
 const { workspaceApp, engineApp } = await composeApplications(repositoryAddress, homeAddress, { fileReader, fileWriter, tokenCounter, progressReporter, credentialsRepository, promptfooRunner, workspaceSettingsRepository, sessionAnalysisRepository, localOutput });
-const setUpAnswer = await workspaceApp.setUp(['claude'], '1.0.0');
+const setUpAnswer = await workspaceApp.setUpWorkspace(['claude'], '1.0.0');
 assert.equal(setUpAnswer.type, 'WorkspaceSettings', JSON.stringify(setUpAnswer));
 assert.deepEqual(keptSettingsTexts, ['{"agents":["claude"]}']);
 assert.equal(fileBytesByAddress.has(new URL('.cw/settings.json', repositoryAddress).href), false);
 assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
-const buildAnswer = await engineApp.charterBuildingApp.build();
+const buildAnswer = await engineApp.charterBuildingApp.buildCharter();
 assert.equal(buildAnswer.type, 'PlanSummary', JSON.stringify(buildAnswer));
 assert.equal(localOutput.writtenPlanCount, 1);
 assert.ok(fileBytesByAddress.has(new URL('CLAUDE.md', repositoryAddress).href));
-const sessionReviewAnswer = await engineApp.charterRuntimeApp.sessionSummary();
+const sessionReviewAnswer = await engineApp.charterRuntimeApp.summarizeSessions();
 assert.equal(sessionReviewAnswer.type, 'SessionReviewOutcome', JSON.stringify(sessionReviewAnswer));
 assert.equal(sessionReviewAnswer.data.sessionsFolder, 'own-sessions');
-assert.equal(loadedSessionFolders.length, 1);
+assert.equal(loadedSessionWindowStarts.length, 1);
 assert.deepEqual(progressReporter.problems, []);
 `,
   );
 });
 
-test("the contract recorded for the first release under it says how it was made, and that nothing has been published under it yet (SDK Story 8 scenario 5)", async () => {
-  const [contractHeaderLine] = (await readFile(new URL("contract.d.ts", repositoryUrl), "utf8")).split("\n");
-  assert.match(contractHeaderLine ?? "", /dist\/index\.d\.ts/);
-  assert.match(contractHeaderLine ?? "", /Nothing has been published under it yet\./);
+test("the contract recorded for the first release under it is one folder, a file per module, each saying how it was made and that nothing has been published under it yet (SDK Story 8 scenario 5)", async () => {
+  const contractFolderUrl = new URL("contract/", repositoryUrl);
+  assert.equal(existsSync(new URL("contract.d.ts", repositoryUrl)), false, "the contract is a folder, not one file");
+  const contractFileNames = readdirSync(contractFolderUrl).sort();
+  assert.deepEqual(contractFileNames, [
+    "charter.d.ts",
+    "composition.d.ts",
+    "index.d.ts",
+    "runtime.d.ts",
+    "shared.d.ts",
+    "workspace.d.ts",
+  ]);
+  for (const contractFileName of contractFileNames) {
+    const [contractHeaderLine] = (await readFile(new URL(contractFileName, contractFolderUrl), "utf8")).split("\n");
+    assert.match(contractHeaderLine ?? "", /dist\/index\.d\.ts/, contractFileName);
+    assert.match(contractHeaderLine ?? "", /Nothing has been published under it yet\./, contractFileName);
+  }
+});
+
+test("the contract recorded is the build split by module, so a declaration changed in the code and not in contract/ fails (CORE Story 53 scenario 6)", async () => {
+  const repositoryPath = fileURLToPath(repositoryUrl);
+  const contractTextByFileName = (await readContractFolder(repositoryPath))!;
+  const builtContractText = await readFile(new URL("dist/index.d.ts", repositoryUrl), "utf8");
+  const splitContractTextByFileName = await splitContract(
+    repositoryPath,
+    builtContractText,
+    contractTextByFileName,
+    (contractFileName) => contractTextByFileName.get(contractFileName)?.split("\n")[0] ?? "",
+  );
+  assert.deepEqual(Object.fromEntries(splitContractTextByFileName), Object.fromEntries(contractTextByFileName));
 });
 
 test("running a signal's sensors names the agent they run for, and the engine assumes none (SDK Story 8 scenario 6)", async () => {
@@ -1114,7 +1148,7 @@ await charterRuntimeApp.runSensors('Stop', '{}');
       String.raw`
 const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = await composeOverMemory(['claude']);
 assert.equal((await charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
-assert.equal((await charterBuildingApp.build()).type, 'PlanSummary');
+assert.equal((await charterBuildingApp.buildCharter()).type, 'PlanSummary');
 const unnamedAnswer = await charterRuntimeApp.runSensors('NoSensorSignal', '{}');
 assert.equal(unnamedAnswer.type, 'Fault', JSON.stringify(unnamedAnswer));
 assert.notEqual(unnamedAnswer.data.name, 'InternalFault');

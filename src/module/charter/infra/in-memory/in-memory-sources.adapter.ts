@@ -1,11 +1,16 @@
-import { decodeContents, encodeContents, type InMemoryFileReaders, urlAt } from "../../../shared/module.js";
-import { AdapterFault, type ForFetchingCharterSources } from "../../app/port/out/fetching-charter-sources.port.js";
+import { decodeContents, encodeContents, type InMemoryFileReaders, resolveFileUrl } from "../../../shared/module.js";
+import {
+  type ForFetchingCharterSources,
+  MissingGitFault,
+  UnreachableSourceFault,
+  UnreadableFetchedSourceFault,
+} from "../../app/port/out/fetching-charter-sources.port.js";
 
 /** Sources held in memory: a test publishes what each holds, and nothing shells
  *  out. The second implementation that earns `ForFetchingCharterSources` its place
  *  (plan §2.4). */
 export class InMemorySources implements ForFetchingCharterSources {
-  constructor(private readonly files?: InMemoryFileReaders) {}
+  constructor(private readonly fileReaders?: InMemoryFileReaders) {}
 
   /** Every source it was asked to fetch, and the version asked for: what a test
    *  about vendoring looks at, since nothing was fetched. */
@@ -55,11 +60,11 @@ export class InMemorySources implements ForFetchingCharterSources {
 
   async fetchCommit(source: string, version?: string): Promise<string> {
     if (this.hasNoGit)
-      throw new AdapterFault("spawn git ENOENT", "Reaching a source needs git: install it, and run this again.", {
+      throw new MissingGitFault("spawn git ENOENT", "Reaching a source needs git: install it, and run this again.", {
         internal: false,
       });
     if (this.unreachableSources.includes(source))
-      throw new AdapterFault(
+      throw new UnreachableSourceFault(
         `${source} could not be fetched.`,
         "Check the address, and that you can reach it from here.",
         { internal: false },
@@ -75,31 +80,36 @@ export class InMemorySources implements ForFetchingCharterSources {
   async readFileAt(commit: string, path: string): Promise<string> {
     const contents = this.#listSourceFiles(commit)[path];
     if (contents === undefined)
-      throw new AdapterFault(`${commit} has no "${path}".`, "Read a file the commit holds.", { internal: false });
+      throw new UnreadableFetchedSourceFault(`${commit} has no "${path}".`, "Read a file the commit holds.", {
+        internal: false,
+      });
     return decodeContents(contents);
   }
 
   async readBytesAt(commit: string, path: string): Promise<Uint8Array> {
     const contents = this.#listSourceFiles(commit)[path];
     if (contents === undefined)
-      throw new AdapterFault(`${commit} has no "${path}".`, "Read a file the commit holds.", { internal: false });
+      throw new UnreadableFetchedSourceFault(`${commit} has no "${path}".`, "Read a file the commit holds.", {
+        internal: false,
+      });
     return encodeContents(contents);
   }
 
   /** The folder written over in the files a test handed it, every file of
    *  the source under `fromFolder` put under it. */
-  async checkoutFolderAt(commit: string, fromFolder: string, intoSubFolder: string): Promise<void> {
+  async checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void> {
     this.checkedOutFolders.push({ commit, fromFolder, intoSubFolder });
-    if (this.files === undefined) return;
-    const intoFolder = urlAt(this.files.rootFolder, `${intoSubFolder}/`);
-    for (const { path } of await this.files.readFilesRecursively(intoSubFolder))
-      this.files.remove(urlAt(this.files.rootFolder, path));
+    if (this.fileReaders === undefined) return;
+    const intoFolder = resolveFileUrl(this.fileReaders.rootFolder, `${intoSubFolder}/`);
+    for (const { path } of await this.fileReaders.readFilesRecursively(intoSubFolder))
+      this.fileReaders.removeFile(resolveFileUrl(this.fileReaders.rootFolder, path));
     const fromPrefix = fromFolder === "" ? "" : `${fromFolder}/`;
     for (const [path, contents] of Object.entries(this.#listSourceFiles(commit)))
-      if (path.startsWith(fromPrefix)) this.files.write(urlAt(intoFolder, path.slice(fromPrefix.length)), contents);
+      if (path.startsWith(fromPrefix))
+        this.fileReaders.writeFile(resolveFileUrl(intoFolder, path.slice(fromPrefix.length)), contents);
   }
 
-  async forgetCommit(commit: string): Promise<void> {
+  async removeTempCommit(commit: string): Promise<void> {
     this.forgottenCommits.push(commit);
   }
 }

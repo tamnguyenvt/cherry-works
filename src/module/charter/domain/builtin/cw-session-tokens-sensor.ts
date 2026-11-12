@@ -1,4 +1,4 @@
-import { PrimitiveLayer } from "../models/primitive/primitive-layer.js";
+import { PrimitiveLayer } from "../models/primitive/primitive-layer.value-object.js";
 import { type SensorHeaders, SensorPrimitive } from "../models/primitive/sensor-primitive.js";
 
 /** What runs `cw-session-tokens-counter` each time the agent stops, so a built

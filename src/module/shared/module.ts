@@ -4,8 +4,8 @@
  * Everything it lets the code outside it reach, and the only file the code
  * outside it imports (`.dependency-cruiser.cjs`).
  */
-export { ApplicationService } from "./app/application-service.base.js";
-export { byType, dto, StringsSchema } from "./app/port/in/dto.schema.js";
+export { ApplicationService, INTERNAL_FAULT_DTO } from "./app/application-service.base.js";
+export { dto, groupByType, StringsSchema } from "./app/port/in/dto.schema.js";
 export { FaultDTOs } from "./app/port/in/fault.dto.js";
 export {
   type ForCallingMcpServers,
@@ -20,13 +20,68 @@ export type { ForReadingFiles, ListedFile, ReadFile } from "./app/port/out/readi
 export type { ForReportingProgress } from "./app/port/out/reporting-progress.port.js";
 export type { ForTellingTime } from "./app/port/out/telling-time.port.js";
 export type { ForWritingFiles } from "./app/port/out/writing-files.port.js";
-export { AdapterFault } from "./domain/models/adapter.fault.js";
+export { FaultHelper } from "./domain/helper.js";
+export {
+  AdapterFault,
+  ErroredAgentAnswerFault,
+  FailedAgentCliFault,
+  FailedCheckoutFault,
+  FailedEvaluationCaseFault,
+  FailedPromptfooEvalFault,
+  FailedPromptfooInstallFault,
+  FailedRenewalFault,
+  FailedSignInFault,
+  FileOutsideFolderFault,
+  InvalidEvaluationLogFault,
+  LeftoverFolderFault,
+  LinkedFolderFault,
+  MissingGitFault,
+  MissingHeldFileFault,
+  MissingPromptfooResultFault,
+  NoFolderAddressFault,
+  OccupiedPrimitiveFileFault,
+  OldLayoutFault,
+  OverlappingPrimitiveFoldersFault,
+  PathOutsideFolderFault,
+  RefusedSecretStoreFault,
+  RefusedSignInFault,
+  RefusedWorktreeFault,
+  SignInTimedOutFault,
+  UnansweringMcpOriginFault,
+  UnbuiltCheckoutAdapterFault,
+  UndeletableFolderFault,
+  UnkeepableSecretKeyFault,
+  UnreachableMcpOriginFault,
+  UnreachableSourceFault,
+  UnreadableEvaluationLogFault,
+  UnreadableEvaluationRunsFault,
+  UnreadableFetchedSourceFault,
+  UnreadableFileFault,
+  UnreadableFolderFault,
+  UnreadableGitConfigFault,
+  UnreadableSessionFolderFault,
+  UnrestoredFolderFault,
+  UnsupportedPlatformFault,
+  UnwritableFileFault,
+  UnwritableSourceStoreFault,
+} from "./domain/models/adapter.fault.js";
 export { ApplicationFault } from "./domain/models/application.fault.js";
-export { DomainFault, Faults, FaultsByFile } from "./domain/models/domain.fault.js";
+export { DomainFault, ManyFindingsFault, UnfaultedRaiseFault } from "./domain/models/domain.fault.js";
+export { Faults } from "./domain/models/fault/faults.js";
+export { FaultsByFile } from "./domain/models/fault/faults-by-file.js";
+export { RefusedByOtherModuleFault } from "./domain/models/shared.fault.js";
+export { AgentProvider, type AgentProviderName } from "./domain/value-objects/agent-provider.value-object.js";
 export { ConsoleReporter } from "./infra/console-reporter.adapter.js";
 export { FileOutput } from "./infra/file-output.adapter.js";
 export { FileReaders } from "./infra/file-readers.adapter.js";
-export { checkoutPathOf, decodeContents, encodeContents, filePathOf, pathFromCheckout, urlAt } from "./infra/helper.js";
+export {
+  decodeContents,
+  encodeContents,
+  formatCheckoutFolder,
+  resolveCheckoutPath,
+  resolveFileUrl,
+  resolveRepoPath,
+} from "./infra/helper.js";
 export type { InMemoryFileReaders } from "./infra/in-memory/in-memory-file-readers.adapter.js";
 export { McpClients } from "./infra/mcp-clients.adapter.js";
 export { SystemClock } from "./infra/system-clock.adapter.js";

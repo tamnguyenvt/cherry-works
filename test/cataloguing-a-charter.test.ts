@@ -4,15 +4,15 @@ import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-sk
 import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
-import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
-import type { Catalogue } from "../src/module/charter/domain/models/projection/catalogue.js";
+import { Catalogue } from "../src/module/charter/domain/models/charter-output/catalogue.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
+import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 
-const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
-const vendorRoot = FolderAddress.urlOf("file:///repo/.cw/charter/vendor/");
+const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
+const vendorRoot = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/vendor/");
 
 /** One authored file, holding what any of the kinds these tests use asks
  *  for. The body is what a real guide's body is like: the bulk of the file, and
@@ -76,8 +76,9 @@ const load = (files: InMemoryFileReaders) => loadCharterRoot(files);
  *  to ask for it on its own (SC-004); each entry's file under `$CW_OUT/`
  *  (CORE-FR-221). */
 const catalogueOf = async (files: InMemoryFileReaders): Promise<Catalogue> => {
-  const { catalogue } = CompileService.compileCharterRoot(await load(files), []);
-  return catalogue;
+  return CompileService.compileCharterRoot(await load(files), []).charterOutputItems.find(
+    (charterOutputItem): charterOutputItem is Catalogue => charterOutputItem instanceof Catalogue,
+  )!;
 };
 
 /** The bytes a listing lands on disk as, which is what an agent pays to read
@@ -94,7 +95,7 @@ test("the catalogue records what a primitive is called, what it is for, the file
   );
 
   assert.deepEqual(
-    catalogue.entries.map((catalogueEntry) => ({ ...catalogueEntry })),
+    JSON.parse(JSON.stringify(catalogue.entries)),
     [
       { ...builtinEntry, file: "$CW_OUT/skill/cw-author/index.md" },
       ...sessionCounterEntries.filter((catalogueEntry) => catalogueEntry.id !== CwSessionTokensSensor.id),
@@ -126,17 +127,20 @@ test("the output keeps shared entries in catalogue and restricted entries only i
     new AgentProvider("codex"),
   ]);
   const sensorId = CwSessionTokensSensor.id;
+  const catalogues = charterOutput.charterOutputItems.filter(
+    (charterOutputItem): charterOutputItem is Catalogue => charterOutputItem instanceof Catalogue,
+  );
+  const sharedCatalogue = catalogues.find((catalogue) => catalogue.agent === undefined)!;
+  const catalogueOfAgent = (agentName: string) => catalogues.find((catalogue) => catalogue.agent?.name === agentName);
 
-  assert.ok(charterOutput.catalogue.entries.every((catalogueEntry) => catalogueEntry.agentProviders === "all"));
-  assert.ok(!charterOutput.catalogue.entries.some((catalogueEntry) => catalogueEntry.id === sensorId));
+  assert.ok(sharedCatalogue.entries.every((catalogueEntry) => catalogueEntry.agentProviders === "all"));
+  assert.ok(!sharedCatalogue.entries.some((catalogueEntry) => catalogueEntry.id === sensorId));
   assert.deepEqual(
-    charterOutput.agentBasedCatalogues.claude?.entries.map((catalogueEntry) => catalogueEntry.id),
+    catalogueOfAgent("claude")?.entries.map((catalogueEntry) => catalogueEntry.id),
     [sensorId],
   );
-  assert.deepEqual(charterOutput.agentBasedCatalogues.codex?.entries, []);
-  assert.ok(
-    !JSON.parse(charterOutput.catalogue.text).some((catalogueEntry: { id: string }) => catalogueEntry.id === sensorId),
-  );
+  assert.deepEqual(catalogueOfAgent("codex")?.entries, []);
+  assert.ok(!JSON.parse(sharedCatalogue.text).some((catalogueEntry: { id: string }) => catalogueEntry.id === sensorId));
 });
 
 test("a vendored primitive is catalogued at its compiled file, as every layer's is (FR-140)", async () => {

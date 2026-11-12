@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
+import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** An ordered procedure loaded when a request matches its triggers (FR-004). */
 export type PlaybookHeaders = Readonly<z.infer<typeof PlaybookPrimitive.schema>>;
@@ -53,7 +53,7 @@ export class PlaybookPrimitive extends BasePrimitive {
 
   /** What this is found by: what it is for, and the requests its author said
    *  bring it up. */
-  override description(): string {
+  override composeDescription(): string {
     return `${this.headers.description} Use when: ${this.headers.triggers.join("; ")}.`;
   }
 

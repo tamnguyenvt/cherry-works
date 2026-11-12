@@ -9,16 +9,24 @@ import { promisify } from "node:util";
 // back is held to its own shapes, and nothing of it is bundled.
 import type { OutputFile, UnifiedConfig } from "promptfoo";
 import { z } from "zod";
-import { FolderAddress, type FolderURL, urlAt } from "../../shared/module.js";
+import { FolderAddress, type FolderURL, resolveFileUrl } from "../../shared/module.js";
 import {
   AdapterFault,
+  FailedEvaluationCaseFault,
+  FailedPromptfooEvalFault,
+  FailedPromptfooInstallFault,
   type ForRunningPromptfoo,
+  InvalidEvaluationLogFault,
+  MissingPromptfooResultFault,
   type PromptfooLog,
   type PromptfooTest,
   type PromptfooTestResult,
+  UnreadableEvaluationLogFault,
+  UnreadableEvaluationRunsFault,
+  UnreadableSessionFolderFault,
 } from "../app/port/out/running-promptfoo.port.js";
 
-const run = promisify(execFile);
+const runCommandFile = promisify(execFile);
 
 /** The promptfoo and agent SDK versions installed: pinned so every machine
  *  grades the same way. Kept
@@ -95,8 +103,8 @@ export class Promptfoo implements ForRunningPromptfoo {
       join(process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude"), "projects"),
     ],
   ) {
-    this.#repoFolder = FolderAddress.urlOf(repoFolder);
-    this.#cherryWorksFolder = FolderAddress.urlOf(cherryWorksFolder);
+    this.#repoFolder = FolderAddress.parseFolderUrl(repoFolder);
+    this.#cherryWorksFolder = FolderAddress.parseFolderUrl(cherryWorksFolder);
   }
 
   get installFolderPath(): string {
@@ -114,11 +122,11 @@ export class Promptfoo implements ForRunningPromptfoo {
     );
   }
 
-  async install(): Promise<void> {
+  async installPromptfoo(): Promise<void> {
     await mkdir(this.installFolderPath, { recursive: true });
     await writeFile(join(this.installFolderPath, "package.json"), `${JSON.stringify({ private: true })}\n`);
     try {
-      await run(
+      await runCommandFile(
         "npm",
         [
           "install",
@@ -132,7 +140,7 @@ export class Promptfoo implements ForRunningPromptfoo {
         { cwd: this.installFolderPath, maxBuffer: 64 * 1024 * 1024 },
       );
     } catch (raisedValue) {
-      throw new AdapterFault(
+      throw new FailedPromptfooInstallFault(
         "Installing promptfoo failed.",
         `Check that npm can reach the registry, then run "cw eval" again.`,
         { internal: false, cause: raisedValue },
@@ -140,9 +148,15 @@ export class Promptfoo implements ForRunningPromptfoo {
     }
   }
 
-  async evaluate({ agent, description, prompt, workingPath, assertions }: PromptfooTest): Promise<PromptfooTestResult> {
+  async evaluateTest({
+    agent,
+    description,
+    prompt,
+    workingPath,
+    assertions,
+  }: PromptfooTest): Promise<PromptfooTestResult> {
     const workingFolderPath = fileURLToPath(
-      workingPath === "" ? this.#repoFolder : urlAt(this.#repoFolder, `${workingPath}/`),
+      workingPath === "" ? this.#repoFolder : resolveFileUrl(this.#repoFolder, `${workingPath}/`),
     ).replace(/\/$/, "");
     const runsFolderPath = join(fileURLToPath(this.#repoFolder), RUNS_FOLDER);
     await mkdir(runsFolderPath, { recursive: true });
@@ -222,20 +236,20 @@ export class Promptfoo implements ForRunningPromptfoo {
                   },
                 }
               : {}),
-            assert: assertions.map(({ type, value }) =>
+            assert: assertions.map(({ type, value: assertionValue }) =>
               type === "file-read"
                 ? {
                     type: "javascript" as const,
-                    value: `return (${gradeFileRead.toString()})(context.providerResponse, ${JSON.stringify(value)}, ${JSON.stringify(workingFolderPath)});`,
+                    value: `return (${gradeFileRead.toString()})(context.providerResponse, ${JSON.stringify(assertionValue)}, ${JSON.stringify(workingFolderPath)});`,
                   }
-                : { type, value },
+                : { type, value: assertionValue },
             ),
           },
         ],
       } satisfies Partial<UnifiedConfig>;
       await writeFile(configFilePath, JSON.stringify(promptfooConfig));
       try {
-        const processOutput = await run(
+        const processOutput = await runCommandFile(
           join(this.installFolderPath, "node_modules", ".bin", "promptfoo"),
           ["eval", "-c", configFilePath, "-o", outputFilePath, "--no-table", "--no-cache", "--no-write"],
           {
@@ -255,7 +269,7 @@ export class Promptfoo implements ForRunningPromptfoo {
         if ((raisedValue as { code?: unknown }).code !== PROMPTFOO_FAILED_TEST_EXIT_CODE)
           // Said with what promptfoo wrote, which is the person's own agent
           // speaking and kept in the saved log as well.
-          throw new AdapterFault(
+          throw new FailedPromptfooEvalFault(
             `"promptfoo eval" stopped with an error: ${processFault.stderr?.trim() || raisedValue}`,
             `Check that "${agent}" runs and is signed in here.`,
             { internal: false, cause: raisedValue },
@@ -266,7 +280,9 @@ export class Promptfoo implements ForRunningPromptfoo {
       } = JSON.parse(await readFile(outputFilePath, "utf8")) as OutputFile;
       const [testResult] = testResults;
       if (testResult === undefined)
-        throw new AdapterFault('"promptfoo eval" wrote no result.', 'Run "cw eval" again.', { internal: false });
+        throw new MissingPromptfooResultFault('"promptfoo eval" wrote no result.', 'Run "cw eval" again.', {
+          internal: false,
+        });
       const sessionId = (testResult.response as { sessionId?: string } | undefined)?.sessionId;
       const sessionPath = sessionId === undefined ? undefined : await this.findSessionLog(agent, sessionId);
       const promptfooResult: PromptfooTestResult = {
@@ -335,7 +351,7 @@ export class Promptfoo implements ForRunningPromptfoo {
       );
       // The person's own fault stays theirs, with the log to read; anything
       // else is the system's, its words kept in the log file and the cause.
-      throw new AdapterFault(
+      throw new FailedEvaluationCaseFault(
         `${errorMessage} Log: ${logFilePath}`,
         `Read it with "cw eval-analyze --log ${logFilePath}".`,
         {
@@ -359,9 +375,13 @@ export class Promptfoo implements ForRunningPromptfoo {
       let folderEntries: Dirent[];
       try {
         folderEntries = await readdir(folderPath, { withFileTypes: true });
-      } catch (raisedValue) {
-        if (["ENOENT", "EACCES", "EPERM"].includes((raisedValue as NodeJS.ErrnoException).code ?? "")) continue;
-        throw raisedValue;
+      } catch (readError) {
+        if (["ENOENT", "EACCES", "EPERM"].includes((readError as NodeJS.ErrnoException).code ?? "")) continue;
+        throw new UnreadableSessionFolderFault(
+          `"${folderPath}" could not be read.`,
+          "Check that the agent's session folder can be read, and run this again.",
+          { cause: readError },
+        );
       }
       for (const folderEntry of folderEntries) {
         const entryPath = join(folderPath, folderEntry.name);
@@ -385,9 +405,13 @@ export class Promptfoo implements ForRunningPromptfoo {
       let folderEntries: Dirent[];
       try {
         folderEntries = await readdir(join(repositoryFolderPath, RUNS_FOLDER), { withFileTypes: true });
-      } catch (raisedValue) {
-        if ((raisedValue as NodeJS.ErrnoException).code === "ENOENT") return [];
-        throw raisedValue;
+      } catch (readError) {
+        if ((readError as NodeJS.ErrnoException).code === "ENOENT") return [];
+        throw new UnreadableEvaluationRunsFault(
+          `"${join(repositoryFolderPath, RUNS_FOLDER)}" could not be read.`,
+          "Check that the folder of evaluation runs can be read, and run this again.",
+          { cause: readError },
+        );
       }
       logFilePaths = folderEntries
         .filter((folderEntry) => folderEntry.isDirectory() && folderEntry.name.startsWith("run-"))
@@ -400,7 +424,7 @@ export class Promptfoo implements ForRunningPromptfoo {
         savedLogText = await readFile(savedLogPath, "utf8");
       } catch (raisedValue) {
         if (logFilePath === undefined && (raisedValue as NodeJS.ErrnoException).code === "ENOENT") continue;
-        throw new AdapterFault(
+        throw new UnreadableEvaluationLogFault(
           `Cannot read evaluation log ${savedLogPath}.`,
           "Pass an existing case.json path printed by cw eval.",
           { internal: false, cause: raisedValue },
@@ -417,9 +441,13 @@ export class Promptfoo implements ForRunningPromptfoo {
       );
       if (!savedLogParse.success) {
         if (logFilePath === undefined) continue;
-        throw new AdapterFault(`Invalid evaluation log: ${savedLogPath}`, "Pass a case.json path written by cw eval.", {
-          internal: false,
-        });
+        throw new InvalidEvaluationLogFault(
+          `Invalid evaluation log: ${savedLogPath}`,
+          "Pass a case.json path written by cw eval.",
+          {
+            internal: false,
+          },
+        );
       }
       const savedLog = savedLogParse.data;
       if (
@@ -447,18 +475,19 @@ export function gradeFileRead(
   expectedFilePath: string,
   workingFolderPath: string,
 ): { pass: boolean; score: number; reason: string } {
-  const response = providerResponse as
+  const providerAnswer = providerResponse as
     | { raw?: string | { items?: unknown[] }; metadata?: { toolCalls?: unknown[] } }
     | undefined;
   let rawResponse: { items?: unknown[] } = {};
   try {
-    rawResponse = typeof response?.raw === "string" ? JSON.parse(response.raw) : (response?.raw ?? {});
+    rawResponse =
+      typeof providerAnswer?.raw === "string" ? JSON.parse(providerAnswer.raw) : (providerAnswer?.raw ?? {});
   } catch {
     /* Missing or malformed trace is not evidence. */
   }
   const toolCalls = [
     ...(Array.isArray(rawResponse?.items) ? rawResponse.items : []),
-    ...(Array.isArray(response?.metadata?.toolCalls) ? response.metadata.toolCalls : []),
+    ...(Array.isArray(providerAnswer?.metadata?.toolCalls) ? providerAnswer.metadata.toolCalls : []),
   ];
   let hasReadEvidence = false;
   for (const toolCall of toolCalls) {

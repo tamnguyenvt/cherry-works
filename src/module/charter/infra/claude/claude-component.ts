@@ -19,18 +19,15 @@ const CLAUDE_COMPONENT_CLASSES = [
 ] as const;
 
 /**
- * One file as claude's own kinds have it, discriminated on `kind`.
- *
- * Read off what those classes hand back rather than listed again: a constructor
- * is private, so `of` is the only way one comes into being, and what it returns
- * is what a primitive of this host is.
+ * One file as claude's own kinds have it, discriminated on `kind`: an
+ * instance of one of those classes, each built by the component factory.
  */
-export type ClaudeComponent = ReturnType<(typeof CLAUDE_COMPONENT_CLASSES)[number]["of"]>;
+export type ClaudeComponent = InstanceType<(typeof CLAUDE_COMPONENT_CLASSES)[number]>;
 
 /** The kinds, each read off the class that writes it. The set is closed:
  *  the compiler reads it to know where a file of that kind goes, and a kind
  *  with nowhere to go is a compile error. */
-const CLAUDE_COMPONENT_KINDS = Object.freeze(CLAUDE_COMPONENT_CLASSES.map((one) => one.kind));
+const CLAUDE_COMPONENT_KINDS = Object.freeze(CLAUDE_COMPONENT_CLASSES.map((componentClass) => componentClass.kind));
 
 export type ClaudeComponentKind = (typeof CLAUDE_COMPONENT_CLASSES)[number]["kind"];
 

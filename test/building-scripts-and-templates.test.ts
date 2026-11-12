@@ -59,7 +59,7 @@ const building = (files: Readonly<Record<string, string>>) => {
     { claude: new InMemoryAgentCli() },
     new InMemoryReporter(),
   );
-  return { held, fileOutput, charterAuthoringApp, charterRuntimeApp, build: () => charterRuntimeApp.build() };
+  return { held, fileOutput, charterAuthoringApp, charterRuntimeApp, build: () => charterRuntimeApp.buildCharter() };
 };
 
 const filesOf = (
@@ -90,7 +90,7 @@ test("a template is compiled like any other primitive, its headers then its body
   const built = filesOf(await build());
 
   assert.ok(built.added.includes(".cw/out/template/release-note/index.md"));
-  const compiledDocument = await held.read(new URL(".cw/out/template/release-note/index.md", repo));
+  const compiledDocument = await held.readFile(new URL(".cw/out/template/release-note/index.md", repo));
   assert.match(compiledDocument, /^---\nkind: template\nid: release-note\n/);
   // Indentation on a line of the body is the author's, and comes through.
   assert.ok(compiledDocument.includes(releaseNote));
@@ -108,15 +108,18 @@ test("every asset of a primitive is copied beside its compiled document byte for
 
   const built = filesOf(await build());
 
-  assert.equal(await held.read(new URL(".cw/out/script/check-changelog/run.sh", repo)), runFile);
-  assert.equal(await held.read(new URL(".cw/out/script/check-changelog/lib/versions.sh", repo)), "latest() { :; }\n");
-  assert.equal(await held.read(new URL(".cw/out/script/check-changelog/README.md", repo)), "How it is laid out.\n");
-  assert.equal(await held.read(new URL(".cw/out/skill/release/checklist.md", repo)), "1. Check the changelog.\n");
+  assert.equal(await held.readFile(new URL(".cw/out/script/check-changelog/run.sh", repo)), runFile);
+  assert.equal(
+    await held.readFile(new URL(".cw/out/script/check-changelog/lib/versions.sh", repo)),
+    "latest() { :; }\n",
+  );
+  assert.equal(await held.readFile(new URL(".cw/out/script/check-changelog/README.md", repo)), "How it is laid out.\n");
+  assert.equal(await held.readFile(new URL(".cw/out/skill/release/checklist.md", repo)), "1. Check the changelog.\n");
   assert.ok(built.added.includes(".cw/out/script/check-changelog/index.md"));
   // The document says how it is called, and the file that runs, as its author
   // wrote it: the copy sits beside the document as the asset sits beside the
   // script's index.md.
-  const compiledDocument = await held.read(new URL(".cw/out/script/check-changelog/index.md", repo));
+  const compiledDocument = await held.readFile(new URL(".cw/out/script/check-changelog/index.md", repo));
   assert.match(compiledDocument, /^executionPath: \.\/run\.sh$/m);
   assert.ok(compiledDocument.includes("Takes the version as its one argument."));
 });
@@ -146,13 +149,13 @@ test("the catalogue names each primitive's compiled file, and a listing the inde
 
   await build();
 
-  const catalogue = JSON.parse(await held.read(new URL(".cw/out/catalogue.json", repo))) as {
+  const catalogue = JSON.parse(await held.readFile(new URL(".cw/out/catalogue.json", repo))) as {
     id: string;
     file: string;
   }[];
   assert.equal(catalogue.find((entry) => entry.id === "check")?.file, ".cw/out/script/check/index.md");
   assert.equal(catalogue.find((entry) => entry.id === "note")?.file, ".cw/out/template/note/index.md");
-  const listing = answerOf(await charterAuthoringApp.fullList());
+  const listing = answerOf(await charterAuthoringApp.listPrimitives());
   assert.ok(listing.type === "Primitives");
   assert.match(JSON.stringify(listing.data), /\.cw\/charter\/primitive\/script\/check\/index\.md/);
 });
@@ -166,9 +169,9 @@ test("an id holding / is a folder in the charter and in the output alike (FR-141
 
   filesOf(await build());
 
-  assert.equal(await held.read(new URL(".cw/out/script/release/check/run.sh", repo)), runFile);
+  assert.equal(await held.readFile(new URL(".cw/out/script/release/check/run.sh", repo)), runFile);
   assert.match(
-    await held.read(new URL(".cw/out/script/release/check/index.md", repo)),
+    await held.readFile(new URL(".cw/out/script/release/check/index.md", repo)),
     /^executionPath: \.\/run\.sh$/m,
   );
 });
@@ -180,13 +183,13 @@ test("an asset edited and not built leaves its copy as the last build left it, a
   });
   await build();
 
-  held.write(new URL(at("script/check/run.sh")), "echo half written\n");
-  held.remove(new URL(at("script/check/old.sh")));
+  held.writeFile(new URL(at("script/check/run.sh")), "echo half written\n");
+  held.removeFile(new URL(at("script/check/old.sh")));
 
-  assert.equal(await held.read(new URL(".cw/out/script/check/run.sh", repo)), runFile);
-  const previewed = filesOf(await charterRuntimeApp.preview());
-  assert.ok(previewed.edited.includes(".cw/out/script/check/run.sh"));
-  assert.ok(previewed.deleted.includes(".cw/out/script/check/old.sh"));
+  assert.equal(await held.readFile(new URL(".cw/out/script/check/run.sh", repo)), runFile);
+  const previewPlanFiles = filesOf(await charterRuntimeApp.previewCharterBuild());
+  assert.ok(previewPlanFiles.edited.includes(".cw/out/script/check/run.sh"));
+  assert.ok(previewPlanFiles.deleted.includes(".cw/out/script/check/old.sh"));
 });
 
 test("a primitive deleted from the charter has its copies deleted by the next build (FR-168)", async () => {
@@ -196,7 +199,7 @@ test("a primitive deleted from the charter has its copies deleted by the next bu
   });
   await build();
 
-  held.remove(new URL(at("script/check/index.md")));
+  held.removeFile(new URL(at("script/check/index.md")));
   const built = filesOf(await build());
 
   assert.ok(built.deleted.includes(".cw/out/script/check/run.sh"));
@@ -240,7 +243,7 @@ test("a script or a template no primitive names is a warning, and the build stil
   });
 
   filesOf(await build());
-  const doctorOutcome = answerOf(await charterRuntimeApp.doctor());
+  const doctorOutcome = answerOf(await charterRuntimeApp.diagnoseCharter());
 
   const warnedFiles = Object.entries(doctorOutcome.data.faultsByFile.data.files)
     .filter(([, faults]) => faults.some((fault) => fault.data.severity === "warn" && /names/.test(fault.data.message)))
@@ -264,7 +267,7 @@ test("a vendor's assets are copied into the repository's output folder like ones
 
   filesOf(await build());
 
-  assert.equal(await held.read(new URL(".cw/out/script/check/run.sh", repo)), runFile);
+  assert.equal(await held.readFile(new URL(".cw/out/script/check/run.sh", repo)), runFile);
 });
 
 test("asking a script what it requires names its executionPath (Story 24 scenario 1)", async () => {
@@ -283,15 +286,18 @@ test("a script is added as its index.md and an empty asset at its executionPath 
   const { held, charterAuthoringApp } = building({});
 
   const primitiveDTO = answerOf(
-    await charterAuthoringApp.add("script", "release/check", {
+    await charterAuthoringApp.addPrimitive("script", "release/check", {
       description: "Check the changelog.",
       executionPath: "./run.sh",
     }),
   );
 
   assert.equal(primitiveDTO.type, "Primitive");
-  assert.match(await held.read(new URL(at("script/release/check/index.md"))), /^kind: script\nid: release\/check\n/m);
-  assert.equal(await held.read(new URL(at("script/release/check/run.sh"))), "");
+  assert.match(
+    await held.readFile(new URL(at("script/release/check/index.md"))),
+    /^kind: script\nid: release\/check\n/m,
+  );
+  assert.equal(await held.readFile(new URL(at("script/release/check/run.sh"))), "");
 });
 
 test("a primitive added inside another's folder, or around one, is refused and nothing is written (FR-167)", async () => {
@@ -301,7 +307,7 @@ test("a primitive added inside another's folder, or around one, is refused and n
 
   for (const id of ["team/review/strict", "team"])
     assert.match(
-      faultTextOf(await charterAuthoringApp.add("skill", id, { description: "Mine.", triggers: ["mine"] })),
+      faultTextOf(await charterAuthoringApp.addPrimitive("skill", id, { description: "Mine.", triggers: ["mine"] })),
       /skill\/team\/review\/index\.md is a primitive/,
     );
   assert.equal(await held.readIfThere(new URL(at("skill/team/review/strict/index.md"))), undefined);
@@ -314,7 +320,7 @@ test("deleting a primitive takes every asset of it with it (FR-167)", async () =
     ...script("other"),
   });
 
-  await charterAuthoringApp.remove("check");
+  await charterAuthoringApp.removePrimitive("check");
 
   assert.equal(await held.readIfThere(new URL(at("script/check/index.md"))), undefined);
   assert.equal(await held.readIfThere(new URL(at("script/check/run.sh"))), undefined);

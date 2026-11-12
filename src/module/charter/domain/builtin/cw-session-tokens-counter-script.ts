@@ -1,4 +1,4 @@
-import { PrimitiveLayer } from "../models/primitive/primitive-layer.js";
+import { PrimitiveLayer } from "../models/primitive/primitive-layer.value-object.js";
 import { type ScriptHeaders, ScriptPrimitive } from "../models/primitive/script-primitive.js";
 // Its text, not the module: it runs on the developer's machine when the agent
 // stops, never here.
@@ -35,7 +35,7 @@ its tokens. The model is sent nothing of it.
 
 A transcript it cannot read is left alone: nothing is shown or kept, and the
 agent stops as it would have.`,
-      [{ file: "sessionTokensCounter.mjs", contents: new TextEncoder().encode(sessionTokensCounterMjs) }],
+      [{ assetPath: "sessionTokensCounter.mjs", contents: new TextEncoder().encode(sessionTokensCounterMjs) }],
       PrimitiveLayer.BUILTIN,
     );
   }

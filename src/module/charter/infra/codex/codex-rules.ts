@@ -1,4 +1,4 @@
-import { ProviderComponent, StampedDocument } from "../../app/port/out/managing-local-agent-output.port.js";
+import { ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
 export interface CodexCommandRule {
   readonly pattern: readonly string[];
@@ -15,20 +15,4 @@ export class CodexRules extends ProviderComponent {
   /** Where it lands, from the repository's root, whether this charter
    *  writes one or not: what the entry file names. */
   static readonly path = ".codex/rules/cw.rules";
-
-  static of(rules: readonly CodexCommandRule[]): CodexRules {
-    return new CodexRules(
-      "codex",
-      "charter",
-      CodexRules.kind,
-      [
-        `# ${StampedDocument.stampText}. Do not edit; edit the charter and build again.`,
-        ...rules.map(
-          (rule) =>
-            `prefix_rule(pattern = ${JSON.stringify(rule.pattern)}, decision = ${JSON.stringify(rule.decision)}, justification = ${JSON.stringify(rule.justification)})`,
-        ),
-        "",
-      ].join("\n"),
-    );
-  }
 }

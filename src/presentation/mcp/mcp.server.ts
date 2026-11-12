@@ -3,6 +3,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import {
   CallToolRequestSchema,
   type CallToolResult,
+  ErrorCode,
   ListToolsRequestSchema,
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
@@ -21,20 +22,26 @@ import type { ForRunningCharter } from "#module/runtime/module.js";
  * the transport closes.
  */
 export async function startMcpServer(
-  charterBuildingApp: Pick<ForBuildingCharter, "tools">,
-  charterRuntimeApp: Pick<ForRunningCharter, "call">,
+  charterBuildingApp: Pick<ForBuildingCharter, "listServedTools">,
+  charterRuntimeApp: Pick<ForRunningCharter, "callTool">,
   transport: Transport,
   version = "0.0.0",
 ): Promise<{ serverClosed: Promise<void> }> {
   const server = new Server({ name: "cw", version }, { capabilities: { tools: {} } });
-  // A fault is said as the protocol says a refusal, an error the host reads.
+  // A fault is said as the protocol says a refusal, an error the host reads:
+  // the JSON-RPC error the server answers with is read off what is thrown,
+  // its code and its message, and no class of ours is needed to carry them.
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-    const servedToolsDTO = await charterBuildingApp.tools();
-    if (servedToolsDTO.type === "Fault") throw new Error(`${servedToolsDTO.data.message} ${servedToolsDTO.data.fix}`);
-    return { tools: servedToolsDTO.data.tools.map(({ data }) => data as Tool) };
+    const servedToolsDTO = await charterBuildingApp.listServedTools();
+    if (servedToolsDTO.type === "Fault")
+      throw {
+        code: ErrorCode.InternalError,
+        message: `${servedToolsDTO.data.message} ${servedToolsDTO.data.fix}`,
+      };
+    return { tools: servedToolsDTO.data.tools.map(({ data: servedToolData }) => servedToolData as Tool) };
   });
-  server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
-    const toolAnswerDTO = await charterRuntimeApp.call(params.name, params.arguments ?? {});
+  server.setRequestHandler(CallToolRequestSchema, async ({ params: callToolParams }) => {
+    const toolAnswerDTO = await charterRuntimeApp.callTool(callToolParams.name, callToolParams.arguments ?? {});
     // A fault of the call is the tool's own error, which the host reads as
     // the result. A list that fails is still a protocol error, above.
     if (toolAnswerDTO.type === "Fault")

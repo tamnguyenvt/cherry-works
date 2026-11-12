@@ -1,10 +1,18 @@
 import type { ForReadingFiles, ForWritingFiles } from "../../shared/module.js";
 import {
   type ForStoringWorkspaceSettings,
-  SettingsFile,
-  WorkspaceReadme,
+  GITIGNORE_FILE_PATH,
+  LOG_IGNORE_LINE,
+  RawWorkspaceSettings,
+  SETTINGS_FILE_PATH,
   WorkspaceSettings,
 } from "../app/port/out/storing-workspace-settings.port.js";
+
+/** Where the charter's own home of Cherry Works is published. */
+const CHERRY_WORKS_URL = "https://github.com/tamnguyenvt/cherry-works";
+
+/** The workspace's README, from the repository's root. */
+const README_FILE_PATH = ".cw/README.md";
 
 /** The settings kept as JSON in `.cw/settings.json`, and the workspace's
  *  ignore file beside them, both read and written as files of the repository. */
@@ -17,30 +25,48 @@ export class FileWorkspaceSettingsRepository implements ForStoringWorkspaceSetti
     this.#fileWriter = fileWriter;
   }
 
-  async loadSettingsText(): Promise<string | undefined> {
-    return this.#fileReader.readIfThere(SettingsFile.path);
+  async loadSettings(): Promise<RawWorkspaceSettings | undefined> {
+    const settingsText = await this.#fileReader.readIfThere(SETTINGS_FILE_PATH);
+    return settingsText === undefined ? undefined : new RawWorkspaceSettings(settingsText);
   }
 
   async saveSettings({ agents, mainContextCeiling }: WorkspaceSettings): Promise<void> {
     const keptCeiling =
       mainContextCeiling === WorkspaceSettings.defaultMainContextCeiling ? undefined : mainContextCeiling;
-    await this.#fileWriter.write(
-      SettingsFile.path,
+    await this.#fileWriter.writeFile(
+      SETTINGS_FILE_PATH,
       `${JSON.stringify({ agents, ...(keptCeiling === undefined ? {} : { mainContextCeiling: keptCeiling }) }, null, 2)}\n`,
     );
   }
 
   async keepLogIgnored(): Promise<void> {
-    const gitignoreText = (await this.#fileReader.readIfThere(SettingsFile.gitignorePath)) ?? "";
-    if (gitignoreText.split("\n").includes(SettingsFile.logLine)) return;
-    await this.#fileWriter.write(
-      SettingsFile.gitignorePath,
-      `${gitignoreText}${gitignoreText === "" || gitignoreText.endsWith("\n") ? "" : "\n"}${SettingsFile.logLine}\n`,
+    const gitignoreText = (await this.#fileReader.readIfThere(GITIGNORE_FILE_PATH)) ?? "";
+    if (gitignoreText.split("\n").includes(LOG_IGNORE_LINE)) return;
+    await this.#fileWriter.writeFile(
+      GITIGNORE_FILE_PATH,
+      `${gitignoreText}${gitignoreText === "" || gitignoreText.endsWith("\n") ? "" : "\n"}${LOG_IGNORE_LINE}\n`,
     );
   }
 
-  async keepReadme(workspaceReadme: WorkspaceReadme): Promise<void> {
-    if ((await this.#fileReader.readIfThere(WorkspaceReadme.path)) === undefined)
-      await this.#fileWriter.write(WorkspaceReadme.path, workspaceReadme.text);
+  async keepReadme(cwVersion: string): Promise<void> {
+    if ((await this.#fileReader.readIfThere(README_FILE_PATH)) !== undefined) return;
+    await this.#fileWriter.writeFile(
+      README_FILE_PATH,
+      `# Cherry Works
+
+This folder holds the charter that governs the coding agents working in this repository, kept by [Cherry Works](${CHERRY_WORKS_URL}). It was set up with \`cw\` ${cwVersion}.
+
+- \`charter/\` — the charter: \`primitive/\` for what this repository authors, one folder per kind; \`test/\` and \`eval/\` for its tests and eval cases; \`vendor/\` for charters and skills installed with \`cw vendor add\`, read-only.
+- \`out/\` — what \`cw build\` compiles the charter to; never edit it.
+- \`settings.json\` — what this repository was set up with.
+
+## Author it
+
+- Ask your agent to run the \`/cw-author\` skill: it asks what a primitive needs and writes it.
+- Or run \`cw portal\` and author it in the browser.
+
+Then run \`cw build\` to lay the charter out for every agent.
+`,
+    );
   }
 }

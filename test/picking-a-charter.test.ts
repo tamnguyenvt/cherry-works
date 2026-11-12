@@ -62,7 +62,7 @@ async function running(argv: readonly string[], fileReaders: InMemoryFileReaders
     const code = await new Commander(
       commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), context, context.cwd),
       COMMANDS,
-    ).run(argv);
+    ).runCommandLine(argv);
     return { code, commandOutput: commandOutput.join("") };
   } finally {
     for (const [index, stream] of streams.entries()) stream.write = kept[index] as typeof stream.write;
@@ -98,12 +98,12 @@ test("a charter picked from a source of many lands in a vendor folder of its own
     ["charters/baseline/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/baseline/primitive"],
   ]);
   assert.equal(
-    await fileReaders.read(new URL(pickedAt("baseline", "guide/small-diffs/index.md"))),
+    await fileReaders.readFile(new URL(pickedAt("baseline", "guide/small-diffs/index.md"))),
     guide("small-diffs"),
   );
-  await assert.rejects(() => fileReaders.read(new URL(pickedAt("sdd", "guide/spec-first/index.md"))));
+  await assert.rejects(() => fileReaders.readFile(new URL(pickedAt("sdd", "guide/spec-first/index.md"))));
   await assert.rejects(
-    () => fileReaders.read(new URL(".cw/charter/vendor/acme/charters/baseline/README.md", repoPath)),
+    () => fileReaders.readFile(new URL(".cw/charter/vendor/acme/charters/baseline/README.md", repoPath)),
     "no README is copied, the charter's own nor the source's",
   );
   assert.match(
@@ -126,7 +126,7 @@ test("each charter picked is a vendor of its own: listed, read, brought up to da
     { sourceFetcher },
   );
 
-  assert.deepEqual(answerOf(await charterAuthoringApp.vendors()).data.folders, [
+  assert.deepEqual(answerOf(await charterAuthoringApp.listVendors()).data.folders, [
     "file:///repo/.cw/charter/vendor/acme/charters/baseline",
     "file:///repo/.cw/charter/vendor/acme/charters/sdd",
   ]);
@@ -148,7 +148,7 @@ test("each charter picked is a vendor of its own: listed, read, brought up to da
     ["charters/baseline/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/baseline/primitive"],
   ]);
   assert.equal(
-    await fileReaders.read(new URL(pickedAt("sdd", "guide/spec-first/index.md"))),
+    await fileReaders.readFile(new URL(pickedAt("sdd", "guide/spec-first/index.md"))),
     guide("spec-first"),
     "sdd left as it was",
   );
@@ -156,11 +156,11 @@ test("each charter picked is a vendor of its own: listed, read, brought up to da
   const removeOutcome = await running(["vendor", "remove", "acme/charters/baseline"], fileReaders, sourceFetcher);
   assert.equal(removeOutcome.code, EXIT_OK, removeOutcome.commandOutput);
   await assert.rejects(
-    () => fileReaders.read(new URL(pickedAt("baseline", "guide/small-diffs/index.md"))),
+    () => fileReaders.readFile(new URL(pickedAt("baseline", "guide/small-diffs/index.md"))),
     "baseline is gone",
   );
   assert.equal(
-    await fileReaders.read(new URL(pickedAt("sdd", "guide/spec-first/index.md"))),
+    await fileReaders.readFile(new URL(pickedAt("sdd", "guide/spec-first/index.md"))),
     guide("spec-first"),
     "sdd left as it was",
   );
@@ -225,7 +225,7 @@ test("a source of every shape gives its one charter with neither flag, skills al
         new InMemoryFileOutput(withBoth.fileReaders),
         new InMemoryReporter(),
         { sourceFetcher: withBoth.sourceFetcher },
-      ).vendors(),
+      ).listVendors(),
     ).data.folders,
     ["file:///repo/.cw/charter/vendor/acme/charters/root", "file:///repo/.cw/charter/vendor/acme/charters/sdd"],
   );
@@ -342,7 +342,7 @@ test("the source's own charter and the charters picked from it are installed sid
         new InMemoryFileOutput(intoOwnCharter.fileReaders),
         new InMemoryReporter(),
         { sourceFetcher: intoOwnCharter.sourceFetcher },
-      ).vendors(),
+      ).listVendors(),
     ).data.folders,
     ["file:///repo/.cw/charter/vendor/acme/charters/baseline", "file:///repo/.cw/charter/vendor/acme/charters/root"],
   );
@@ -361,7 +361,7 @@ test("the source's own charter and the charters picked from it are installed sid
     [".cw/charter/primitive", ".cw/charter/vendor/acme/charters/root/primitive"],
   ]);
   assert.equal(
-    await intoPicked.fileReaders.read(new URL(pickedAt("baseline", "guide/small-diffs/index.md"))),
+    await intoPicked.fileReaders.readFile(new URL(pickedAt("baseline", "guide/small-diffs/index.md"))),
     guide("small-diffs"),
     "baseline left as it was",
   );

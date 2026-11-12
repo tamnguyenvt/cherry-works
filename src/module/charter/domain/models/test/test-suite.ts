@@ -13,7 +13,7 @@ import { TestCase } from "./test-case.js";
  */
 const TestSuiteSchema = z.strictObject({
   description: z.string().min(1).optional(),
-  cases: z.array(TestCase.schema.transform((written) => new TestCase(written))).min(1),
+  cases: z.array(TestCase.schema.transform((writtenCase) => new TestCase(writtenCase))).min(1),
 });
 
 /** One test file, as `TestSuiteSchema` read it (FR-047): what it is about, the

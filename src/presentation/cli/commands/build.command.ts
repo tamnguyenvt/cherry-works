@@ -40,63 +40,68 @@ export class BuildCommand implements Command<typeof OPTIONS> {
   readonly summary = "Compile the charter into the files each agent reads";
   readonly options = OPTIONS;
 
-  async run({ charterBuildingApp }: Context, { preview: isPreview }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async runCommand({ charterBuildingApp }: Context, { preview: isPreview }: Options<typeof OPTIONS>): Promise<Outcome> {
     // What a build would do, every file it would touch under what would happen
     // to it, and how many of each (FR-022). The unchanged are said too — naming
     // none of them would leave a fully built repository saying nothing.
     if (isPreview) {
-      const planSummaryDTO = await charterBuildingApp.preview();
-      if (planSummaryDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(planSummaryDTO) };
+      const planSummaryDTO = await charterBuildingApp.previewCharterBuild();
+      if (planSummaryDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(planSummaryDTO) };
 
       if (planSummaryDTO.type === "FaultsByFile") {
         const noOfFiles = Object.keys(planSummaryDTO.data.files).length;
         return {
-          code: EXIT_FAILURE,
-          problem: `Nothing was previewed: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
+          exitCode: EXIT_FAILURE,
+          problemText: `Nothing was previewed: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
         };
       }
 
-      const { added, edited, deleted, unchanged } = planSummaryDTO.data;
+      const {
+        added: addedPaths,
+        edited: editedPaths,
+        deleted: deletedPaths,
+        unchanged: unchangedPaths,
+      } = planSummaryDTO.data;
       const changes = [
-        ...added.map((path) => ["create", path] as const),
-        ...edited.map((path) => ["update", path] as const),
-        ...deleted.map((path) => ["delete", path] as const),
-        ...unchanged.map((path) => ["unchanged", path] as const),
+        ...addedPaths.map((path) => ["create", path] as const),
+        ...editedPaths.map((path) => ["update", path] as const),
+        ...deletedPaths.map((path) => ["delete", path] as const),
+        ...unchangedPaths.map((path) => ["unchanged", path] as const),
       ];
 
       return {
-        code: EXIT_OK,
-        result: [
+        exitCode: EXIT_OK,
+        resultText: [
           ...(planSummaryDTO.data.warnings ?? []).map((warning) => `Warning: ${warning}`),
           ...changes.map(([change, path]) => `  ${change.padEnd("unchanged".length)}  ${path}`),
-          `${changes.length} file${changes.length === 1 ? "" : "s"}: ${added.length} create, ${edited.length} update, ${deleted.length} delete, ${unchanged.length} unchanged.`,
+          `${changes.length} file${changes.length === 1 ? "" : "s"}: ${addedPaths.length} create, ${editedPaths.length} update, ${deletedPaths.length} delete, ${unchangedPaths.length} unchanged.`,
           "",
         ].join("\n"),
       };
     }
 
-    const planSummaryDTO = await charterBuildingApp.build();
-    if (planSummaryDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(planSummaryDTO) };
+    const planSummaryDTO = await charterBuildingApp.buildCharter();
+    if (planSummaryDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(planSummaryDTO) };
 
     if (planSummaryDTO.type === "FaultsByFile") {
       const noOfFiles = Object.keys(planSummaryDTO.data.files).length;
       return {
-        code: EXIT_FAILURE,
-        problem: `Nothing was built: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
+        exitCode: EXIT_FAILURE,
+        problemText: `Nothing was built: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
       };
     }
 
-    const { added, edited, deleted } = planSummaryDTO.data;
-    const wrote = added.length + edited.length;
+    const { added: addedPaths, edited: editedPaths, deleted: deletedPaths } = planSummaryDTO.data;
+    const writtenFileCount = addedPaths.length + editedPaths.length;
     // What each agent will open a session with, in one line (EVAL-FR-005).
     const mainContextsDTO = await charterBuildingApp.predictMainContext();
     const mainContexts = mainContextsDTO.type === "MainContexts" ? mainContextsDTO.data.contexts : [];
     return {
-      code: EXIT_OK,
-      result: [
+      exitCode: EXIT_OK,
+      resultText: [
         ...(planSummaryDTO.data.warnings ?? []).map((warning) => `Warning: ${warning}`),
-        `Built ${wrote} file${wrote === 1 ? "" : "s"}: ${added.length} added, ${edited.length} changed.`,
-        ...deleted.map((path) => `  deleted ${path}, whose primitive is gone`),
+        `Built ${writtenFileCount} file${writtenFileCount === 1 ? "" : "s"}: ${addedPaths.length} added, ${editedPaths.length} changed.`,
+        ...deletedPaths.map((path) => `  deleted ${path}, whose primitive is gone`),
         ...mainContexts.map(
           ({ data: { agent, totalTokens } }) =>
             `${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens of the charter, estimated. Run "cw context" for each primitive's share.`,

@@ -8,8 +8,10 @@ const cwSessionCostSkill = new CwSessionCostSkill();
 const skillBody = cwSessionCostSkill.body;
 
 test("the engine brings a skill that answers what the kept sessions cost, of its own layer (EVAL-FR-014)", () => {
-  assert.ok(BuiltinPrimitives.all.some((builtinPrimitive) => builtinPrimitive.headers.id === "cw-session-cost"));
-  assert.equal(cwSessionCostSkill.layerName, "builtin");
+  assert.ok(
+    new BuiltinPrimitives().primitives.some((builtinPrimitive) => builtinPrimitive.headers.id === "cw-session-cost"),
+  );
+  assert.equal(cwSessionCostSkill.layer.name, "builtin");
   assert.equal(cwSessionCostSkill.uri, "(built into cw)/skill/cw-session-cost/index.md");
   assert.ok(cwSessionCostSkill.headers.triggers.length > 0);
 });

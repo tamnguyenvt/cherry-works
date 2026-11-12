@@ -1,15 +1,15 @@
 import { z } from "zod";
-import { DomainFault } from "../../../../shared/module.js";
+import type { AgentProvider } from "#module/shared/module.js";
+import { FaultHelper } from "../../../../shared/module.js";
 import { ModelHelper } from "../../helper.js";
-import type { AgentProvider } from "../agent/agent-provider.js";
-import { CharterPrimitiveFault } from "../charter.fault.js";
-import { type LayerName, PrimitiveLayer } from "./primitive-layer.js";
+import { InvalidPrimitiveFault } from "../charter.fault.js";
+import { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** One file of a primitive's folder beside its `index.md`: the path it has in
  *  that folder, and the bytes it holds, never decoded, so it is copied whole
  *  whatever it holds (FR-168, CORE-FR-207). */
 export interface AssetFile {
-  readonly file: string;
+  readonly assetPath: string;
   readonly contents: Uint8Array;
 }
 
@@ -47,10 +47,10 @@ const GoodArraySchema = z.array(GoodLineSchema).min(1).readonly();
  *  the line an author typed at `cw add` or in the portal. */
 const FlagSchema = z
   .unknown()
-  .refine((value) => [true, false, "true", "false"].includes(value as never), {
+  .refine((yesNoValue) => [true, false, "true", "false"].includes(yesNoValue as never), {
     message: "A yes or no header is written true or false.",
   })
-  .transform((value) => value === true || value === "true");
+  .transform((yesNoValue) => yesNoValue === true || yesNoValue === "true");
 
 export type CommonHeaders = Readonly<z.infer<ReturnType<typeof BasePrimitive.headersSchema>>>;
 
@@ -128,7 +128,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
   /** The file a primitive's folder is read from, and compiled to (FR-141):
    *  said here for whoever reads a folder before any primitive is read off it,
    *  and by `index` on every primitive. */
-  static readonly index = "index.md";
+  static readonly indexFileName = "index.md";
 
   /** The schema every kind's headers are read by, its own standing in place of
    *  this. What a file is refused against, and the one place saying what shape
@@ -154,27 +154,21 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
     keptUri?: string,
   ) {
     this.layer = primitiveLayer;
-    this.layerName = primitiveLayer.name;
     this.#keptUri = keptUri;
   }
 
-  /** The layer it was read in. */
+  /** The layer it was read in: whose layer it came from. It says where it
+   *  was written, never what it is called (FR-014, FR-019). */
   readonly layer: PrimitiveLayer;
 
   readonly #keptUri: string | undefined;
-
-  /** Whose layer it came from. It says where it was written, never what it is
-   *  called (FR-014, FR-019). */
-  readonly layerName: LayerName;
 
   /** Where it is kept, as what keeps it says: none for one not yet kept. The
    *  engine's own is kept nowhere, and is said by the name of its layer
    *  (FR-015). */
   get uri(): string {
     if (this.#keptUri !== undefined) return this.#keptUri;
-    return this.layerName === PrimitiveLayer.BUILTIN.name
-      ? `(built into cw)/${this.kind}/${this.headers.id}/${this.index}`
-      : "";
+    return this.layer === PrimitiveLayer.BUILTIN ? `(built into cw)/${this.kind}/${this.headers.id}/${this.index}` : "";
   }
 
   /** Whether a word someone searched for is anywhere a reader would look for
@@ -182,9 +176,9 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    *  folder and file under its kind, its layer and the vendor it came from,
    *  or any header it declared — ignoring case, since whoever typed it
    *  did not know how it was written (FR-114). */
-  search(word: string): boolean {
-    const headerValues = Object.values(this.headers).flatMap((value) =>
-      value === undefined ? [] : Array.isArray(value) ? value : [String(value)],
+  hasWord(word: string): boolean {
+    const headerValues = Object.values(this.headers).flatMap((headerValue) =>
+      headerValue === undefined ? [] : Array.isArray(headerValue) ? headerValue : [String(headerValue)],
     );
     const loweredWord = word.toLowerCase();
     return [
@@ -192,7 +186,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
       this.kind,
       this.activatesWhen,
       `${this.primitiveFolder}/${this.index}`,
-      this.layerName,
+      this.layer.name,
       this.layer.vendorName ?? "",
       ...headerValues,
     ].some((searchedText) => searchedText.toLowerCase().includes(loweredWord));
@@ -215,7 +209,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
 
   /** The file of that folder it is read from (FR-141). */
   get index(): string {
-    return BasePrimitive.index;
+    return BasePrimitive.indexFileName;
   }
 
   /** When a reader of this charter is to open a primitive of its kind at all:
@@ -229,7 +223,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    *  checked against, so an edit made on disk since it was opened is not
    *  written over (FR-078). */
   get hash(): string {
-    return ModelHelper.contentHashOf(this.toMarkdown());
+    return ModelHelper.createContentHash(this.writeMarkdown());
   }
 
   /** Its id as every name given to a host writes it, `/` as `-`:
@@ -261,7 +255,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    * and `idReplacer` rewrites the body as its reader uses it, each mcp origin,
    * script and template it names as a link to its file (FR-147).
    */
-  toMarkdown({
+  writeMarkdown({
     mixins = [],
     idReplacer = (body) => body,
   }: {
@@ -273,13 +267,13 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
     const endMixins = mixins.filter((mixin) => mixin.headers.position === "end");
     const startMixins = mixins.filter((mixin) => mixin.headers.position === "start");
     const body = [...startMixins.map((mixin) => mixin.body), this.body, ...endMixins.map((mixin) => mixin.body)]
-      .filter((one) => one.trim() !== "")
+      .filter((bodyText) => bodyText.trim() !== "")
       .join("\n\n");
     return (
       [
         DELIMITER,
         ...Object.entries({ kind: this.kind, ...this.headers }).map(
-          ([field, value]) => `${field}: ${ModelHelper.formatFrontmatterValue(value)}`,
+          ([field, headerValue]) => `${field}: ${ModelHelper.formatFrontmatterValue(headerValue)}`,
         ),
         DELIMITER,
         "",
@@ -303,7 +297,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    * that nothing activates on its description is the description it was
    * written with.
    */
-  description(): string {
+  composeDescription(): string {
     return this.headers.description;
   }
 }
@@ -335,18 +329,18 @@ function headersOf<Schema extends z.ZodType>(
   headerSchema: Schema,
   record: Readonly<Record<string, unknown>>,
 ): Readonly<z.infer<Schema>> {
-  const parsed = headerSchema.safeParse(record);
-  if (parsed.success) return parsed.data;
+  const parsedHeaders = headerSchema.safeParse(record);
+  if (parsedHeaders.success) return parsedHeaders.data;
 
   const { kind, sample } = sampledKind;
-  const refinementMessages = parsed.error.issues
+  const refinementMessages = parsedHeaders.error.issues
     .filter((issue) => issue.code === "custom")
     .map((issue) => issue.message);
   const sampleLines = Object.entries({ kind, ...sample }).map(
-    ([field, value]) => `${field}: ${ModelHelper.formatFrontmatterValue(value)}`,
+    ([field, sampleValue]) => `${field}: ${ModelHelper.formatFrontmatterValue(sampleValue)}`,
   );
-  return DomainFault.throwAggregate([
-    new CharterPrimitiveFault(
+  return FaultHelper.throwAggregate([
+    new InvalidPrimitiveFault(
       refinementMessages.length > 0 ? refinementMessages.join(" ") : `These headers are not what a ${kind} holds.`,
       `Write them the way this ${kind} does:\n${sampleLines.join("\n")}`,
       { internal: false },

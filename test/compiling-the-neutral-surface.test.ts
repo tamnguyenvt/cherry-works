@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
 import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
+import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { putDownBy } from "./put-down-by.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 
 const repo = new URL("file:///repo/");
-const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
+const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
 const CLAUDE = new AgentProvider("claude");
 const CHARTER_MD = ".cw/out/CHARTER.md";
 
@@ -42,7 +42,7 @@ const written = async (files: Readonly<Record<string, string>>, path: string) =>
   const put = await putDownBy(charter, CompileService.compileCharterRoot(charter, [CLAUDE]), held);
   assert.ok(put.includes(path), `${path} is not among the files this charter was put down as`);
 
-  return held.read(new URL(path, repo));
+  return held.readFile(new URL(path, repo));
 };
 
 const oneGuide = { [at("guide/no-any/index.md")]: primitive("guide", "no-any", "Never write `any`.") };

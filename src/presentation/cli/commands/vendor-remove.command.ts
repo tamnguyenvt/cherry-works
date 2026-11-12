@@ -31,14 +31,14 @@ export class VendorRemoveCommand implements Command<typeof OPTIONS> {
   readonly summary = "Take an installed charter away";
   readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { name }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async runCommand({ charterAuthoringApp }: Context, { name }: Options<typeof OPTIONS>): Promise<Outcome> {
     const vendorFolderDTO = await charterAuthoringApp.removeVendor(name ?? "");
-    if (vendorFolderDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(vendorFolderDTO) };
-    const { folder } = vendorFolderDTO.data;
+    if (vendorFolderDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(vendorFolderDTO) };
+    const { folder: folderPath } = vendorFolderDTO.data;
 
     return {
-      code: EXIT_OK,
-      result: [`Removed ${folder}.`, 'Run "cw build" to compile this charter without it.', ""].join("\n"),
+      exitCode: EXIT_OK,
+      resultText: [`Removed ${folderPath}.`, 'Run "cw build" to compile this charter without it.', ""].join("\n"),
     };
   }
 }

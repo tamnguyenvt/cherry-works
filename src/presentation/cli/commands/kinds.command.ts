@@ -42,15 +42,16 @@ export class KindsCommand implements Command<typeof OPTIONS> {
   readonly summary = "Say which kinds a charter is written in, and what one of them requires";
   readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { kind }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async runCommand({ charterAuthoringApp }: Context, { kind }: Options<typeof OPTIONS>): Promise<Outcome> {
     if (kind === undefined) {
-      const primitiveKindsDTO = await charterAuthoringApp.kinds();
-      if (primitiveKindsDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(primitiveKindsDTO) };
+      const primitiveKindsDTO = await charterAuthoringApp.listKinds();
+      if (primitiveKindsDTO.type === "Fault")
+        return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveKindsDTO) };
       const primitiveKinds = primitiveKindsDTO.data;
       return {
-        code: EXIT_OK,
-        result: `${Object.entries(primitiveKinds)
-          .map(([named, activatesWhen]) => `${named}  ${activatesWhen}`)
+        exitCode: EXIT_OK,
+        resultText: `${Object.entries(primitiveKinds)
+          .map(([kindName, activatesWhen]) => `${kindName}  ${activatesWhen}`)
           .join("\n")}\n`,
       };
     }
@@ -60,7 +61,7 @@ export class KindsCommand implements Command<typeof OPTIONS> {
     // the same sentence whichever command they asked with.
     const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements(kind);
     if (primitiveRequirementsDTO.type === "Fault")
-      return { code: EXIT_FAILURE, problem: printFault(primitiveRequirementsDTO) };
+      return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveRequirementsDTO) };
     const primitiveRequirements = primitiveRequirementsDTO.data;
 
     // Only what the kind requires: a header it takes without requiring is one
@@ -70,8 +71,8 @@ export class KindsCommand implements Command<typeof OPTIONS> {
     const widestFieldLength = Math.max(...requiredHeaders.map((primitiveHeader) => primitiveHeader.data.field.length));
 
     return {
-      code: EXIT_OK,
-      result: [
+      exitCode: EXIT_OK,
+      resultText: [
         `A ${kind} requires:`,
         // A header read from a closed set is one of those values or refused, so
         // the values are part of what it requires (FR-118).

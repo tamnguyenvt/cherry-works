@@ -1,10 +1,10 @@
 import {
-  AdapterFault,
   type ForCallingMcpServers,
   type McpServerAddress,
   type McpServerConnection,
   type ToolAnswer,
   UnauthorizedMcpFault,
+  UnreachableMcpOriginFault,
   type UpstreamTool,
 } from "../../app/port/out/calling-mcp-servers.port.js";
 
@@ -12,7 +12,7 @@ import {
  *  `acceptsToken` says which token it lets through; any other is a `401`. */
 export interface InMemoryMcpServer {
   readonly tools: readonly UpstreamTool[];
-  readonly answer?: (name: string, args: Readonly<Record<string, unknown>>) => ToolAnswer;
+  readonly answerCall?: (toolName: string, toolArguments: Readonly<Record<string, unknown>>) => ToolAnswer;
   readonly acceptsToken?: (accessToken: string | undefined) => boolean;
 }
 
@@ -25,26 +25,30 @@ export class InMemoryMcpServers implements ForCallingMcpServers {
   readonly connected: { readonly address: string; readonly accessToken: string | undefined }[] = [];
   readonly calls: {
     readonly address: string;
-    readonly name: string;
-    readonly args: unknown;
+    readonly toolName: string;
+    readonly toolArguments: unknown;
     readonly accessToken: string | undefined;
   }[] = [];
   readonly closed: string[] = [];
 
-  async connect({ address }: McpServerAddress, accessToken: string | undefined): Promise<McpServerConnection> {
+  async connectServer({ address }: McpServerAddress, accessToken: string | undefined): Promise<McpServerConnection> {
     const server = this.servers.get(address);
     if (server === undefined)
-      throw new AdapterFault(`${address} could not be reached.`, "Check the mcp origin is up.", { internal: false });
+      throw new UnreachableMcpOriginFault(`${address} could not be reached.`, "Check the mcp origin is up.", {
+        internal: false,
+      });
     this.connected.push({ address, accessToken });
     return {
       tools: server.tools,
-      callTool: async (name, args, callToken) => {
-        this.calls.push({ address, name, args, accessToken: callToken });
+      callTool: async (toolName, toolArguments, callToken) => {
+        this.calls.push({ address, toolName, toolArguments, accessToken: callToken });
         if (server.acceptsToken !== undefined && !server.acceptsToken(callToken))
           throw new UnauthorizedMcpFault(`${address} refused the credential.`, "Sign in again.", { internal: false });
-        return server.answer?.(name, args) ?? { content: [{ type: "text", text: `${name} answered` }] };
+        return (
+          server.answerCall?.(toolName, toolArguments) ?? { content: [{ type: "text", text: `${toolName} answered` }] }
+        );
       },
-      close: async () => void this.closed.push(address),
+      closeConnection: async () => void this.closed.push(address),
     };
   }
 }

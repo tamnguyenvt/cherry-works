@@ -2,11 +2,11 @@ import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { CharterDTOs, type ForAuthoringCharter, type ForBuildingCharter } from "#module/charter/module.js";
-import { ApplicationService, FaultDTOs } from "#module/shared/module.js";
+import { FaultDTOs, INTERNAL_FAULT_DTO } from "#module/shared/module.js";
 import { WorkspaceDTOs } from "#module/workspace/module.js";
 
 /** One answer sent as JSON, under the schema it parses by. */
-const json = <Schema extends z.ZodType>(schema: Schema, description: string) => ({
+const describeJsonContent = <Schema extends z.ZodType>(schema: Schema, description: string) => ({
   content: { "application/json": { schema } },
   description,
 });
@@ -31,19 +31,19 @@ const json = <Schema extends z.ZodType>(schema: Schema, description: string) => 
  *  The port arrives here rather than being reached for: the command line built
  *  it over the repository it was run in, and `main.ts` stays the one
  *  composition root. */
-export function api(
+export function buildPortalRoutes(
   charterAuthoringApp: ForAuthoringCharter,
   charterBuildingApp: ForBuildingCharter,
   /** What the repository configured itself with, as the command line reads
    *  it (CORE-FR-231). */
   loadWorkspaceSettings: () => Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>,
 ) {
-  const app = new OpenAPIHono();
+  const portalRoutes = new OpenAPIHono();
   // Every use case answers its faults as DTOs, a `Fault` going out as a 422
   // like every other refusal (plan §2.2, SDK-FR-004) — but for the system's
   // own, which no request of the caller's caused: an `InternalFault` goes out
   // as a 500, its body the same DTO (SDK-FR-018).
-  app.use("*", async (c, next) => {
+  portalRoutes.use("*", async (c, next) => {
     await next();
     if (c.res.status !== 422) return;
     const faultDTO = (await c.res
@@ -54,29 +54,29 @@ export function api(
       c.res = new Response(c.res.body, { status: 500, headers: c.res.headers });
   });
   // What is left to catch here is hono's own.
-  app.onError((raised, c) => {
+  portalRoutes.onError((honoError, c) => {
     // What hono refused before a route was reached — a body that is not JSON —
     // goes out with the status hono gave it.
-    if (raised instanceof HTTPException) return raised.getResponse();
+    if (honoError instanceof HTTPException) return honoError.getResponse();
     // Nothing the engine meant to say. The terminal the portal was started
     // from keeps the whole of it; the page is told only the internal fault
     // (SDK-FR-018).
-    console.error(raised);
-    return c.json(ApplicationService.internalFaultDTO, 500);
+    console.error(honoError);
+    return c.json(INTERNAL_FAULT_DTO, 500);
   });
 
-  return app
+  return portalRoutes
     .openapi(
       createRoute({
         method: "get",
         path: "/charter/root/faults",
         responses: {
-          200: json(FaultDTOs.FaultsByFile, "Everything wrong with the charter, under each file"),
-          422: json(FaultDTOs.Fault, "What stopped the charter being read"),
+          200: describeJsonContent(FaultDTOs.FaultsByFile, "Everything wrong with the charter, under each file"),
+          422: describeJsonContent(FaultDTOs.Fault, "What stopped the charter being read"),
         },
       }),
       async (c) => {
-        const doctorOutcomeDTO = await charterBuildingApp.doctor();
+        const doctorOutcomeDTO = await charterBuildingApp.diagnoseCharter();
         return doctorOutcomeDTO.type === "Fault"
           ? c.json(doctorOutcomeDTO, 422)
           : c.json(doctorOutcomeDTO.data.faultsByFile, 200);
@@ -88,8 +88,11 @@ export function api(
         path: "/charter/root/primitives",
         request: { query: z.object({ matching: z.string().optional() }) },
         responses: {
-          200: json(CharterDTOs.Primitives, "Every primitive of every layer, or those mentioning the word"),
-          422: json(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold"),
+          200: describeJsonContent(
+            CharterDTOs.Primitives,
+            "Every primitive of every layer, or those mentioning the word",
+          ),
+          422: describeJsonContent(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold"),
         },
       }),
       async (c) => {
@@ -97,7 +100,7 @@ export function api(
         // kind as well, so a narrowed answer would be a second call for what the
         // first one already carried. A word searched for narrows it, and an
         // empty box is no word.
-        const primitivesDTO = await charterAuthoringApp.fullList(c.req.valid("query").matching || undefined);
+        const primitivesDTO = await charterAuthoringApp.listPrimitives(c.req.valid("query").matching || undefined);
         return primitivesDTO.type === "Primitives" ? c.json(primitivesDTO, 200) : c.json(primitivesDTO, 422);
       },
     )
@@ -107,8 +110,8 @@ export function api(
         path: "/charter/root/primitives/{id}/explanation",
         request: { params: z.object({ id: z.string() }) },
         responses: {
-          200: json(CharterDTOs.ExplanationOutcome, "What the engine says of one primitive"),
-          422: json(
+          200: describeJsonContent(CharterDTOs.ExplanationOutcome, "What the engine says of one primitive"),
+          422: describeJsonContent(
             z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]),
             "The charter does not hold, or holds nothing of it",
           ),
@@ -116,7 +119,7 @@ export function api(
       }),
       async (c) => {
         const { id } = c.req.valid("param");
-        const explanationOutcomeDTO = await charterAuthoringApp.explain(id);
+        const explanationOutcomeDTO = await charterAuthoringApp.explainPrimitive(id);
         return explanationOutcomeDTO.type === "ExplanationOutcome"
           ? c.json(explanationOutcomeDTO, 200)
           : c.json(explanationOutcomeDTO, 422);
@@ -127,7 +130,7 @@ export function api(
         method: "post",
         path: "/charter/root/primitives",
         request: {
-          body: json(
+          body: describeJsonContent(
             z.object({
               kind: z.string(),
               id: z.string(),
@@ -139,10 +142,10 @@ export function api(
         },
         responses: {
           201: {
-            ...json(CharterDTOs.Primitive, "The primitive written"),
+            ...describeJsonContent(CharterDTOs.Primitive, "The primitive written"),
             headers: z.object({ Location: z.string() }),
           },
-          422: json(
+          422: describeJsonContent(
             z.union([FaultDTOs.Faults, FaultDTOs.Fault]),
             "The answers the kind refused, or an id already claimed",
           ),
@@ -150,7 +153,7 @@ export function api(
       }),
       async (c) => {
         const { kind, id, headers, body } = c.req.valid("json");
-        const primitiveDTO = await charterAuthoringApp.add(kind, id, headers, body);
+        const primitiveDTO = await charterAuthoringApp.addPrimitive(kind, id, headers, body);
         if (primitiveDTO.type !== "Primitive") return c.json(primitiveDTO, 422);
         return c.json(primitiveDTO, 201, {
           Location: `/api/charter/root/primitives/${encodeURIComponent(primitiveDTO.data.id)}`,
@@ -164,15 +167,15 @@ export function api(
         request: { params: z.object({ id: z.string() }) },
         responses: {
           200: {
-            ...json(CharterDTOs.Primitive, "One primitive as the charter read it"),
+            ...describeJsonContent(CharterDTOs.Primitive, "One primitive as the charter read it"),
             headers: z.object({ ETag: z.string() }),
           },
-          422: json(FaultDTOs.Fault, "The charter holds nothing of it"),
+          422: describeJsonContent(FaultDTOs.Fault, "The charter holds nothing of it"),
         },
       }),
       async (c) => {
         const { id } = c.req.valid("param");
-        const primitiveDTO = await charterAuthoringApp.open(id);
+        const primitiveDTO = await charterAuthoringApp.openPrimitive(id);
         if (primitiveDTO.type === "Fault") return c.json(primitiveDTO, 422);
         // Its hash is the entity tag, quoted.
         return c.json(primitiveDTO, 200, { ETag: `"${primitiveDTO.data.hash}"` });
@@ -185,7 +188,7 @@ export function api(
         request: {
           params: z.object({ id: z.string() }),
           headers: z.object({ "if-match": z.string().optional() }),
-          body: json(
+          body: describeJsonContent(
             z.object({
               headers: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
               body: z.string(),
@@ -194,9 +197,9 @@ export function api(
           ),
         },
         responses: {
-          200: json(CharterDTOs.Primitive, "The primitive written"),
-          412: json(FaultDTOs.Fault, "The file changed on disk after it was opened"),
-          422: json(
+          200: describeJsonContent(CharterDTOs.Primitive, "The primitive written"),
+          412: describeJsonContent(FaultDTOs.Fault, "The file changed on disk after it was opened"),
+          422: describeJsonContent(
             z.union([FaultDTOs.Faults, FaultDTOs.Fault]),
             "The answers the kind refused, or a primitive this repository did not author",
           ),
@@ -204,12 +207,12 @@ export function api(
       }),
       async (c) => {
         const { id } = c.req.valid("param");
-        // The entity tag the page opened it at is the hash `rewrite` holds the
+        // The entity tag the page opened it at is the hash `rewritePrimitive` holds the
         // file to, so a stale one is refused there, and answered as a 412
         // rather than a refusal like any other (FR-078).
         const openedHash = /^"(.*)"$/.exec(c.req.valid("header")["if-match"] ?? "")?.[1] ?? "";
         const { headers, body } = c.req.valid("json");
-        const primitiveDTO = await charterAuthoringApp.rewrite(id, headers, body, openedHash);
+        const primitiveDTO = await charterAuthoringApp.rewritePrimitive(id, headers, body, openedHash);
         if (primitiveDTO.type === "Fault" && primitiveDTO.data.name === "PrimitiveChangedFault")
           return c.json(primitiveDTO, 412);
         return primitiveDTO.type === "Primitive" ? c.json(primitiveDTO, 200) : c.json(primitiveDTO, 422);
@@ -222,12 +225,12 @@ export function api(
         request: { params: z.object({ id: z.string() }) },
         responses: {
           204: { description: "The file is gone" },
-          422: json(FaultDTOs.Fault, "A primitive this repository did not author, or none at all"),
+          422: describeJsonContent(FaultDTOs.Fault, "A primitive this repository did not author, or none at all"),
         },
       }),
       async (c) => {
         const { id } = c.req.valid("param");
-        const primitiveDTO = await charterAuthoringApp.remove(id);
+        const primitiveDTO = await charterAuthoringApp.removePrimitive(id);
         if (primitiveDTO.type === "Fault") return c.json(primitiveDTO, 422);
         return c.body(null, 204);
       },
@@ -237,12 +240,12 @@ export function api(
         method: "get",
         path: "/definitions/kinds",
         responses: {
-          200: json(CharterDTOs.PrimitiveKinds, "Every kind, and when a primitive of it comes up"),
-          422: json(FaultDTOs.Fault, "What stopped the kinds being said"),
+          200: describeJsonContent(CharterDTOs.PrimitiveKinds, "Every kind, and when a primitive of it comes up"),
+          422: describeJsonContent(FaultDTOs.Fault, "What stopped the kinds being said"),
         },
       }),
       async (c) => {
-        const primitiveKindsDTO = await charterAuthoringApp.kinds();
+        const primitiveKindsDTO = await charterAuthoringApp.listKinds();
         return primitiveKindsDTO.type === "Fault" ? c.json(primitiveKindsDTO, 422) : c.json(primitiveKindsDTO, 200);
       },
     )
@@ -252,8 +255,8 @@ export function api(
         path: "/definitions/kinds/{kind}/requirements",
         request: { params: z.object({ kind: z.string() }) },
         responses: {
-          200: json(CharterDTOs.PrimitiveRequirements, "Every header the kind takes, and its sample"),
-          422: json(FaultDTOs.Fault, "A word that is no kind"),
+          200: describeJsonContent(CharterDTOs.PrimitiveRequirements, "Every header the kind takes, and its sample"),
+          422: describeJsonContent(FaultDTOs.Fault, "A word that is no kind"),
         },
       }),
       async (c) => {
@@ -268,12 +271,12 @@ export function api(
         method: "get",
         path: "/charter/root/build",
         responses: {
-          200: json(CharterDTOs.PlanSummary, "What a build would do to every file, nothing written"),
-          422: json(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold"),
+          200: describeJsonContent(CharterDTOs.PlanSummary, "What a build would do to every file, nothing written"),
+          422: describeJsonContent(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold"),
         },
       }),
       async (c) => {
-        const planSummaryDTO = await charterBuildingApp.preview();
+        const planSummaryDTO = await charterBuildingApp.previewCharterBuild();
         return planSummaryDTO.type === "PlanSummary" ? c.json(planSummaryDTO, 200) : c.json(planSummaryDTO, 422);
       },
     )
@@ -282,15 +285,15 @@ export function api(
         method: "post",
         path: "/charter/root/build",
         responses: {
-          200: json(CharterDTOs.PlanSummary, "What the build wrote and deleted"),
-          422: json(
+          200: describeJsonContent(CharterDTOs.PlanSummary, "What the build wrote and deleted"),
+          422: describeJsonContent(
             z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]),
             "The charter does not hold, and nothing was written",
           ),
         },
       }),
       async (c) => {
-        const planSummaryDTO = await charterBuildingApp.build();
+        const planSummaryDTO = await charterBuildingApp.buildCharter();
         return planSummaryDTO.type === "PlanSummary" ? c.json(planSummaryDTO, 200) : c.json(planSummaryDTO, 422);
       },
     )
@@ -299,12 +302,12 @@ export function api(
         method: "get",
         path: "/charter/root/health",
         responses: {
-          200: json(CharterDTOs.DoctorOutcome, "The four answers cw doctor gives, and every fault"),
-          422: json(FaultDTOs.Fault, "What stopped the questions being asked"),
+          200: describeJsonContent(CharterDTOs.DoctorOutcome, "The four answers cw doctor gives, and every fault"),
+          422: describeJsonContent(FaultDTOs.Fault, "What stopped the questions being asked"),
         },
       }),
       async (c) => {
-        const doctorOutcomeDTO = await charterBuildingApp.doctor();
+        const doctorOutcomeDTO = await charterBuildingApp.diagnoseCharter();
         return doctorOutcomeDTO.type === "Fault" ? c.json(doctorOutcomeDTO, 422) : c.json(doctorOutcomeDTO, 200);
       },
     )
@@ -313,11 +316,11 @@ export function api(
         method: "get",
         path: "/charter/root/context",
         responses: {
-          200: json(
+          200: describeJsonContent(
             CharterDTOs.MainContexts,
             "What the charter puts into each agent's main context, estimated, as cw context lists it",
           ),
-          422: json(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold"),
+          422: describeJsonContent(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold"),
         },
       }),
       async (c) => {
@@ -330,8 +333,11 @@ export function api(
         method: "get",
         path: "/settings",
         responses: {
-          200: json(WorkspaceDTOs.WorkspaceSettings, "What this repository configured itself with, whole"),
-          422: json(FaultDTOs.Fault, "Settings that do not read"),
+          200: describeJsonContent(
+            WorkspaceDTOs.WorkspaceSettings,
+            "What this repository configured itself with, whole",
+          ),
+          422: describeJsonContent(FaultDTOs.Fault, "Settings that do not read"),
         },
       }),
       async (c) => {
@@ -346,12 +352,15 @@ export function api(
         method: "get",
         path: "/test-suites",
         responses: {
-          200: json(CharterDTOs.TestSuites, "Every test file, its text, and its cases or why it does not read"),
-          422: json(FaultDTOs.Fault, "What stopped the test files being read"),
+          200: describeJsonContent(
+            CharterDTOs.TestSuites,
+            "Every test file, its text, and its cases or why it does not read",
+          ),
+          422: describeJsonContent(FaultDTOs.Fault, "What stopped the test files being read"),
         },
       }),
       async (c) => {
-        const testSuitesDTO = await charterAuthoringApp.suites();
+        const testSuitesDTO = await charterAuthoringApp.listTestSuites();
         return testSuitesDTO.type === "Fault" ? c.json(testSuitesDTO, 422) : c.json(testSuitesDTO, 200);
       },
     )
@@ -361,14 +370,14 @@ export function api(
         path: "/test-suites",
         responses: {
           201: {
-            ...json(CharterDTOs.TestSuiteName, "The name of the test file written"),
+            ...describeJsonContent(CharterDTOs.TestSuiteName, "The name of the test file written"),
             headers: z.object({ Location: z.string() }),
           },
-          422: json(FaultDTOs.Fault, "What stopped the test file being written"),
+          422: describeJsonContent(FaultDTOs.Fault, "What stopped the test file being written"),
         },
       }),
       async (c) => {
-        const testSuiteNameDTO = await charterAuthoringApp.addSuite();
+        const testSuiteNameDTO = await charterAuthoringApp.addTestSuite();
         if (testSuiteNameDTO.type === "Fault") return c.json(testSuiteNameDTO, 422);
         return c.json(testSuiteNameDTO, 201, { Location: `/api/test-suites/${testSuiteNameDTO.data.name}` });
       },
@@ -379,15 +388,21 @@ export function api(
         path: "/test-suites/{name}",
         request: {
           params: z.object({ name: z.string() }),
-          body: json(z.object({ text: z.string() }), "The whole text the test file is written over with"),
+          body: describeJsonContent(
+            z.object({ text: z.string() }),
+            "The whole text the test file is written over with",
+          ),
         },
         responses: {
-          200: json(CharterDTOs.TestSuiteName, "The name of the test file written"),
-          422: json(FaultDTOs.Fault, "Text that is not a suite, with its sample, or a name that is no test file"),
+          200: describeJsonContent(CharterDTOs.TestSuiteName, "The name of the test file written"),
+          422: describeJsonContent(
+            FaultDTOs.Fault,
+            "Text that is not a suite, with its sample, or a name that is no test file",
+          ),
         },
       }),
       async (c) => {
-        const testSuiteNameDTO = await charterAuthoringApp.writeSuite(
+        const testSuiteNameDTO = await charterAuthoringApp.writeTestSuite(
           c.req.valid("param").name,
           c.req.valid("json").text,
         );
@@ -403,11 +418,11 @@ export function api(
         request: { params: z.object({ name: z.string() }) },
         responses: {
           204: { description: "The test file is gone" },
-          422: json(FaultDTOs.Fault, "A name that is no test file"),
+          422: describeJsonContent(FaultDTOs.Fault, "A name that is no test file"),
         },
       }),
       async (c) => {
-        const testSuiteNameDTO = await charterAuthoringApp.removeSuite(c.req.valid("param").name);
+        const testSuiteNameDTO = await charterAuthoringApp.removeTestSuite(c.req.valid("param").name);
         if (testSuiteNameDTO.type === "Fault") return c.json(testSuiteNameDTO, 422);
         return c.body(null, 204);
       },
@@ -417,15 +432,15 @@ export function api(
         method: "get",
         path: "/test-suites/outcome",
         responses: {
-          200: json(CharterDTOs.TestRunReport, "How every case came out"),
-          422: json(
+          200: describeJsonContent(CharterDTOs.TestRunReport, "How every case came out"),
+          422: describeJsonContent(
             z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]),
             "The charter does not hold, or a test file does not read",
           ),
         },
       }),
       async (c) => {
-        const testRunReportDTO = await charterAuthoringApp.test();
+        const testRunReportDTO = await charterAuthoringApp.testCharter();
         return testRunReportDTO.type === "TestRunReport"
           ? c.json(testRunReportDTO, 200)
           : c.json(testRunReportDTO, 422);
@@ -436,12 +451,12 @@ export function api(
         method: "get",
         path: "/vendors",
         responses: {
-          200: json(CharterDTOs.VendorFolders, "Every folder a vendor source was installed as"),
-          422: json(FaultDTOs.Fault, "What stopped the vendor folders being listed"),
+          200: describeJsonContent(CharterDTOs.VendorFolders, "Every folder a vendor source was installed as"),
+          422: describeJsonContent(FaultDTOs.Fault, "What stopped the vendor folders being listed"),
         },
       }),
       async (c) => {
-        const vendorFoldersDTO = await charterAuthoringApp.vendors();
+        const vendorFoldersDTO = await charterAuthoringApp.listVendors();
         return vendorFoldersDTO.type === "VendorFolders"
           ? c.json(vendorFoldersDTO, 200)
           : c.json(vendorFoldersDTO, 422);
@@ -452,7 +467,7 @@ export function api(
         method: "post",
         path: "/vendors",
         request: {
-          body: json(
+          body: describeJsonContent(
             z.object({ source: z.string(), version: z.string().optional() }),
             "A source as git fetches it, and the version to pin it to where one is named",
           ),
@@ -462,7 +477,7 @@ export function api(
             description:
               "The source is installed — a charter whole, or every skill of a skills repository — left unstaged",
           },
-          422: json(
+          422: describeJsonContent(
             FaultDTOs.Fault,
             "No git on the machine, a source holding neither a charter nor a skill, or what git refused",
           ),
@@ -482,7 +497,10 @@ export function api(
         request: { params: z.object({ name: z.string() }) },
         responses: {
           204: { description: "The folder is gone, left uncommitted in the working tree" },
-          422: json(FaultDTOs.Fault, "A name no vendor folder answers to, or a folder that cannot be taken away"),
+          422: describeJsonContent(
+            FaultDTOs.Fault,
+            "A name no vendor folder answers to, or a folder that cannot be taken away",
+          ),
         },
       }),
       async (c) => {
@@ -496,4 +514,4 @@ export function api(
 /** Every route with what it takes and the answer it sends, for `hc` to type
  *  the page's calls by: a route declared above is here, and nothing is written
  *  twice. */
-export type Api = ReturnType<typeof api>;
+export type Api = ReturnType<typeof buildPortalRoutes>;

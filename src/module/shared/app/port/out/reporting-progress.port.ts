@@ -7,7 +7,7 @@
  */
 export interface ForReportingProgress {
   /** A result the user asked for. */
-  report(text: string): void;
+  reportProgress(text: string): void;
   /** A problem, and the next move after it (FR-009, SC-003). */
-  problem(text: string): void;
+  reportProblem(text: string): void;
 }

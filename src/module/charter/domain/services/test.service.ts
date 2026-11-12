@@ -1,11 +1,11 @@
 import { type DomainFault, FaultsByFile } from "../../../shared/module.js";
-import { matches } from "../libs/globs.lib.js";
+import { isMatchedByGlob } from "../libs/globs.lib.js";
 import type { CharterRoot } from "../models/charter/charter-root.js";
-import { TestCaseFault } from "../models/charter.fault.js";
-import { PrimitiveLayer } from "../models/primitive/primitive-layer.js";
+import { InvalidTestSuiteFault, UnmetExpectationFault, UntestedPrimitiveFault } from "../models/charter.fault.js";
+import { PrimitiveLayer } from "../models/primitive/primitive-layer.value-object.js";
 import type { TestCase } from "../models/test/test-case.js";
+import { TestCaseReport } from "../models/test/test-case-report.js";
 import type { TestRoot } from "../models/test/test-root.js";
-import { TestCaseReport } from "../models/test/test-run-report.js";
 import type { TestSuite } from "../models/test/test-suite.js";
 
 /** Resolves the self-regression cases against a charter, and checks them. */
@@ -47,11 +47,11 @@ export class TestService {
       if (
         (primitive.kind !== "guide" && primitive.kind !== "sensor") ||
         testedIds.has(id) ||
-        primitive.layerName === PrimitiveLayer.BUILTIN.name
+        primitive.layer === PrimitiveLayer.BUILTIN
       )
         continue;
       faultsByFiles[primitiveUri] = [
-        new TestCaseFault(
+        new UntestedPrimitiveFault(
           `No test case names "${id}", so nothing notices when it stops coming up where it should.`,
           primitive.kind === "guide"
             ? `Add a case to a file under .cw/charter/test/: { "do": { "touchFile": "<a file it speaks about>" }, "expect": { "activate": "${id}" } }.`
@@ -68,11 +68,11 @@ export class TestService {
    *  a raised event, an activation or a permission — which is what the file it
    *  was written in holds too. */
   static runCase(charter: CharterRoot, suiteName: string, testCase: TestCase): TestCaseReport {
-    const writtenCase = testCase.written;
+    const writtenCase = testCase.writtenCase;
     if ("when" in writtenCase) {
       return new TestCaseReport(
         suiteName,
-        testCase.describe(),
+        testCase.describeCase(),
         TestService.#findSensorFault(charter, writtenCase.when, writtenCase.expect.run),
       );
     }
@@ -82,21 +82,21 @@ export class TestService {
       if ("activate" in writtenCase.expect) {
         return new TestCaseReport(
           suiteName,
-          testCase.describe(),
+          testCase.describeCase(),
           TestService.#findActivationFault(charter, touchFile, writtenCase.expect.activate),
         );
       }
       if ("allow" in writtenCase.expect) {
         return new TestCaseReport(
           suiteName,
-          testCase.describe(),
+          testCase.describeCase(),
           TestService.#findPostureFault(charter, touchFile, writtenCase.expect.allow),
         );
       }
     }
 
     // The schema lets no other case through; one that reached here is the engine's fault.
-    throw new TestCaseFault(
+    throw new InvalidTestSuiteFault(
       "This case puts no situation the charter answers.",
       'Write it with "do" and "expect.activate" or "expect.allow", or with "when" and "expect.run".',
     );
@@ -108,11 +108,11 @@ export class TestService {
    *  other kind is the case asking the charter for something that kind never
    *  does — said as that rather than as a glob that did not match (FR-004).
    *  A guide naming no files comes up every turn, so any file brings it up. */
-  static #findActivationFault(charter: CharterRoot, file: string, id: string): TestCaseFault | undefined {
+  static #findActivationFault(charter: CharterRoot, filePath: string, id: string): UnmetExpectationFault | undefined {
     const declaredPrimitive = charter.primitiveById.get(id);
     if (declaredPrimitive === undefined) return TestService.#createUnknownPrimitiveFault(id);
     if (declaredPrimitive.kind !== "guide")
-      return new TestCaseFault(
+      return new UnmetExpectationFault(
         `Coming up when a file is touched is a guide's rule, and "${id}" is a ${declaredPrimitive.kind}.`,
         `Expect a guide here, or put the situation that kind answers.`,
         { internal: false },
@@ -120,9 +120,9 @@ export class TestService {
 
     const { globs = [] } = declaredPrimitive.headers;
     if (globs.length === 0) return undefined;
-    return globs.some((glob) => matches(glob, file))
+    return globs.some((glob) => isMatchedByGlob(glob, filePath))
       ? undefined
-      : new TestCaseFault(
+      : new UnmetExpectationFault(
           `This file matches none of the globs "${id}" speaks about: ${globs.join(", ")}.`,
           `Widen that guide's "globs", or touch a file it already speaks about.`,
           { internal: false },
@@ -140,14 +140,19 @@ export class TestService {
    * denial is told which one is missing, while a case expecting a file to be left
    * alone is told which posture took it.
    */
-  static #findPostureFault(charter: CharterRoot, file: string, expected: boolean): TestCaseFault | undefined {
+  static #findPostureFault(
+    charter: CharterRoot,
+    filePath: string,
+    expected: boolean,
+  ): UnmetExpectationFault | undefined {
     const denyingPostures = charter.primitives.filter(
-      (primitive) => primitive.kind === "posture" && primitive.headers.deny.some((glob) => matches(glob, file)),
+      (primitive) =>
+        primitive.kind === "posture" && primitive.headers.deny.some((glob) => isMatchedByGlob(glob, filePath)),
     );
     if (expected)
       return denyingPostures.length === 0
         ? undefined
-        : new TestCaseFault(
+        : new UnmetExpectationFault(
             `${denyingPostures.map((posture) => `"${posture.headers.id}"`).join(", ")} denies this file.`,
             `Drop it from that posture's "deny", or expect "allow": false.`,
             { internal: false },
@@ -155,24 +160,28 @@ export class TestService {
 
     const postures = charter.primitives.filter((primitive) => primitive.kind === "posture");
     if (postures.length === 0)
-      return new TestCaseFault(
+      return new UnmetExpectationFault(
         `This charter holds no posture, so it refuses nothing.`,
         `Author a posture denying this file, or expect "allow": true.`,
         { internal: false },
       );
     return denyingPostures.length > 0
       ? undefined
-      : new TestCaseFault(`No posture denies this file.`, `Add it to a posture's "deny", or expect "allow": true.`, {
-          internal: false,
-        });
+      : new UnmetExpectationFault(
+          `No posture denies this file.`,
+          `Add it to a posture's "deny", or expect "allow": true.`,
+          {
+            internal: false,
+          },
+        );
   }
 
   /** Why a raised event did not run this sensor, or nothing where it did. */
-  static #findSensorFault(charter: CharterRoot, event: string, id: string): TestCaseFault | undefined {
+  static #findSensorFault(charter: CharterRoot, event: string, id: string): UnmetExpectationFault | undefined {
     const declaredPrimitive = charter.primitiveById.get(id);
     if (declaredPrimitive === undefined) return TestService.#createUnknownPrimitiveFault(id);
     if (declaredPrimitive.kind !== "sensor")
-      return new TestCaseFault(
+      return new UnmetExpectationFault(
         `Running when an event is raised is a sensor's rule, and "${id}" is a ${declaredPrimitive.kind}.`,
         `Expect a sensor here, or put the situation that kind answers.`,
         { internal: false },
@@ -181,7 +190,7 @@ export class TestService {
     const { signal } = declaredPrimitive.headers;
     return signal === event
       ? undefined
-      : new TestCaseFault(
+      : new UnmetExpectationFault(
           `"${id}" fires on ${signal}, not on ${event}.`,
           `Raise the event it names, or declare the "signal" this case raises.`,
           { internal: false },
@@ -199,8 +208,8 @@ export class TestService {
    * which is the one way a test goes quiet exactly when the charter changed under
    * it.
    */
-  static #createUnknownPrimitiveFault(id: string): TestCaseFault {
-    return new TestCaseFault(
+  static #createUnknownPrimitiveFault(id: string): UnmetExpectationFault {
+    return new UnmetExpectationFault(
       `This charter holds no primitive called "${id}".`,
       `Author it, or correct the name. "cw list --min" says every id this charter does hold.`,
       { internal: false },

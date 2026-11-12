@@ -68,7 +68,7 @@ async function running(argv: readonly string[], fileReaders: InMemoryFileReaders
     const code = await new Commander(
       commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), context, context.cwd),
       COMMANDS,
-    ).run(argv);
+    ).runCommandLine(argv);
     return { code, commandOutput: commandOutput.join("") };
   } finally {
     for (const [index, stream] of streams.entries()) stream.write = kept[index] as typeof stream.write;
@@ -89,7 +89,7 @@ function withSkillsPublished(
 
 /** The primitive a taken skill's index.md reads back as. */
 const takenPrimitive = async (fileReaders: InMemoryFileReaders, skillId: string) =>
-  readPrimitive(await fileReaders.read(new URL(takenAt(`skill/${skillId}/index.md`))));
+  readPrimitive(await fileReaders.readFile(new URL(takenAt(`skill/${skillId}/index.md`))));
 
 test("a skill named is taken from a skills repository into the root vendor folder of its owner and repository, and nothing is built (CORE-FR-184, CORE-FR-185, CORE-SC-049)", async () => {
   const { fileReaders, sourceFetcher } = withSkillsPublished();
@@ -103,11 +103,11 @@ test("a skill named is taken from a skills repository into the root vendor folde
   assert.equal(code, EXIT_OK, commandOutput);
   assert.equal((await takenPrimitive(fileReaders, "grill-me")).headers.id, "grill-me");
   await assert.rejects(
-    () => fileReaders.read(new URL(takenAt("skill/grilling/index.md"))),
+    () => fileReaders.readFile(new URL(takenAt("skill/grilling/index.md"))),
     "only the skill named is taken",
   );
   await assert.rejects(
-    () => fileReaders.read(new URL(takenAt("skill/grill-me/SKILL.md"))),
+    () => fileReaders.readFile(new URL(takenAt("skill/grill-me/SKILL.md"))),
     "the SKILL.md is converted, not kept beside it",
   );
   assert.match(commandOutput, /grill-me/);
@@ -160,7 +160,7 @@ test("every file beside a SKILL.md arrives as an asset of the primitive, at the 
 
   await running(["vendor", "add", "mattpocock/skills", "--skill", "grill-me"], fileReaders, sourceFetcher);
 
-  assert.equal(await fileReaders.read(new URL(takenAt("skill/grill-me/agents/openai.yaml"))), "model: gpt\n");
+  assert.equal(await fileReaders.readFile(new URL(takenAt("skill/grill-me/agents/openai.yaml"))), "model: gpt\n");
 });
 
 test("a skills repository given with no --skill has every skill it holds taken, but none under node_modules (CORE-FR-185, CORE-FR-188)", async () => {
@@ -171,7 +171,7 @@ test("a skills repository given with no --skill has every skill it holds taken, 
   assert.equal(code, EXIT_OK);
   assert.equal((await takenPrimitive(fileReaders, "grill-me")).headers.id, "grill-me");
   assert.equal((await takenPrimitive(fileReaders, "grilling")).headers.id, "grilling");
-  await assert.rejects(() => fileReaders.read(new URL(takenAt("skill/some-package/index.md"))));
+  await assert.rejects(() => fileReaders.readFile(new URL(takenAt("skill/some-package/index.md"))));
 });
 
 test("a --skill the source does not hold installs nothing, naming the skills it holds (CORE-FR-188)", async () => {
@@ -186,20 +186,20 @@ test("a --skill the source does not hold installs nothing, naming the skills it 
   assert.equal(code, EXIT_FAILURE);
   assert.match(commandOutput, /nothing-here/);
   assert.match(commandOutput, /grill-me, grilling/);
-  await assert.rejects(() => fileReaders.read(new URL(takenAt("skill/grill-me/index.md"))));
+  await assert.rejects(() => fileReaders.readFile(new URL(takenAt("skill/grill-me/index.md"))));
 });
 
 test("taking one skill leaves the others in its folder as they were, and taking one again replaces it whole (CORE-FR-189)", async () => {
   const { fileReaders, sourceFetcher } = withSkillsPublished();
   await running(["vendor", "add", "mattpocock/skills", "--skill", "grill-me"], fileReaders, sourceFetcher);
-  fileReaders.write(new URL(takenAt("skill/grill-me/stale.md")), "From before.\n");
+  fileReaders.writeFile(new URL(takenAt("skill/grill-me/stale.md")), "From before.\n");
 
   await running(["vendor", "add", "mattpocock/skills", "--skill", "grilling"], fileReaders, sourceFetcher);
-  assert.equal(await fileReaders.read(new URL(takenAt("skill/grill-me/stale.md"))), "From before.\n");
+  assert.equal(await fileReaders.readFile(new URL(takenAt("skill/grill-me/stale.md"))), "From before.\n");
   assert.equal((await takenPrimitive(fileReaders, "grilling")).headers.id, "grilling");
 
   await running(["vendor", "add", "mattpocock/skills", "--skill", "grill-me"], fileReaders, sourceFetcher);
-  await assert.rejects(() => fileReaders.read(new URL(takenAt("skill/grill-me/stale.md"))));
+  await assert.rejects(() => fileReaders.readFile(new URL(takenAt("skill/grill-me/stale.md"))));
   assert.equal((await takenPrimitive(fileReaders, "grill-me")).headers.id, "grill-me");
 });
 
@@ -213,7 +213,7 @@ test("installing into root again writes the latest over what it held, a charter 
   );
 
   assert.equal(skillsOverCharter.code, EXIT_OK);
-  assert.match(await charterHeld.fileReaders.read(new URL(takenAt("skill/grill-me/index.md"))), /id: grill-me/);
+  assert.match(await charterHeld.fileReaders.readFile(new URL(takenAt("skill/grill-me/index.md"))), /id: grill-me/);
 
   const skillsHeld = withSkillsPublished(
     { ".cw/charter/primitive/guide/no-any/index.md": "x" },
@@ -227,7 +227,7 @@ test("installing into root again writes the latest over what it held, a charter 
   );
 
   assert.equal(charterOverSkills.code, EXIT_OK);
-  await assert.rejects(() => skillsHeld.fileReaders.read(new URL(takenAt("skill/grill-me/index.md"))));
+  await assert.rejects(() => skillsHeld.fileReaders.readFile(new URL(takenAt("skill/grill-me/index.md"))));
 });
 
 test("a SKILL.md with no description, a name that is no id, or a name two folders declare installs nothing, naming the files (CORE-FR-192)", async () => {
@@ -278,7 +278,7 @@ test("a source that cannot be reached is refused in git's words, and work in han
 
   assert.equal(takeOutcome.code, EXIT_OK, takeOutcome.commandOutput);
   assert.equal((await takenPrimitive(fileReaders, "grill-me")).headers.id, "grill-me");
-  assert.equal(await fileReaders.read(new URL("file:///repo/work.txt")), "In hand.\n");
+  assert.equal(await fileReaders.readFile(new URL("file:///repo/work.txt")), "In hand.\n");
 });
 
 test("a charter source given --skill takes only the skills named, and given none is installed whole, as before, its skill folders not taken (CORE-FR-193)", async () => {
@@ -315,12 +315,12 @@ test("a charter source given --skill takes only the skills named, and given none
   );
   assert.equal(
     await withoutSkill.fileReaders
-      .read(new URL(".cw/charter/vendor/mattpocock/skills/root/README.md", repoPath))
+      .readFile(new URL(".cw/charter/vendor/mattpocock/skills/root/README.md", repoPath))
       .catch(() => undefined),
     undefined,
     "no README is copied",
   );
-  await assert.rejects(() => withoutSkill.fileReaders.read(new URL(takenAt("skill/grill-me/index.md"))));
+  await assert.rejects(() => withoutSkill.fileReaders.readFile(new URL(takenAt("skill/grill-me/index.md"))));
 });
 
 test("a skill is looked for under skills/ alone: copies kept for agents and SKILL.md files elsewhere are no skills, and clash with none (CORE-FR-185)", async () => {
@@ -344,7 +344,7 @@ test("a skill is looked for under skills/ alone: copies kept for agents and SKIL
     ["skills/hyperframes-registry"],
   );
   assert.equal(
-    await fileReaders.read(new URL(takenAt("skill/hyperframes-registry/references/blocks.md"))),
+    await fileReaders.readFile(new URL(takenAt("skill/hyperframes-registry/references/blocks.md"))),
     "# Blocks\n",
   );
 });
@@ -366,7 +366,7 @@ test("a skill is looked for at most three folders under skills/, and nothing bel
     ["skills/one", "skills/a/b/three", "skills/group/two"],
   );
   assert.equal(
-    await fileReaders.read(new URL(takenAt("skill/one/examples/inner/SKILL.md"))),
+    await fileReaders.readFile(new URL(takenAt("skill/one/examples/inner/SKILL.md"))),
     skillMd(["name: inner", "description: An example of one."]),
     "an inner SKILL.md is an asset of the skill above it",
   );

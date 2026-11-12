@@ -4,6 +4,7 @@ import { Primitives } from "../src/module/charter/domain/models/primitive/primit
 import { SensorPrimitive } from "../src/module/charter/domain/models/primitive/sensor-primitive.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { ManyFindingsFault } from "../src/module/shared/domain/models/domain.fault.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
@@ -36,7 +37,7 @@ const asking = async (argv: readonly string[]) => {
     const code = await new Commander(
       commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo),
       COMMANDS,
-    ).run(argv);
+    ).runCommandLine(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -79,7 +80,7 @@ test("a command is refused as a kind the charter does not have: a skill is what 
       readPrimitive(
         ["---", "kind: command", "id: release", "description: Cut a release.", "---", "", "Cut it."].join("\n"),
       ),
-    (raised: AggregateError) => /"command" is not a kind the charter knows/.test(String(raised.errors[0]?.message)),
+    (raised: ManyFindingsFault) => /"command" is not a kind the charter knows/.test(String(raised.faults[0]?.message)),
   );
 });
 
@@ -98,7 +99,7 @@ test("cw kinds <kind> names what that kind's contract requires, and no more (FR-
     assert.deepEqual(
       headersNamedIn(results),
       Primitives.headersOf(kind)
-        .filter(({ required }) => required)
+        .filter(({ isRequired }) => isRequired)
         .map(({ field, shape }) => ({ field, shape })),
       kind,
     );
@@ -206,9 +207,9 @@ const refusalOf = (read: () => unknown) => {
   try {
     read();
   } catch (raised) {
-    assert.ok(raised instanceof AggregateError);
-    const [fault] = raised.errors as Error[];
-    return { message: fault!.message, fix: (fault as Error & { fix: string }).fix };
+    assert.ok(raised instanceof ManyFindingsFault);
+    const [fault] = raised.faults;
+    return { message: fault!.message, fix: fault!.fix };
   }
   return assert.fail("the file was read");
 };

@@ -1,4 +1,3 @@
-import type { CharterDTOs } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
@@ -25,7 +24,7 @@ const OPTIONS = {
 /**
  * `cw list`: say what the charter holds (FR-011, FR-012).
  *
- * It reaches for `list` and nothing else, and listing reads and says: nothing
+ * It reaches for `listCatalogue` and nothing else, and listing reads and says: nothing
  * this command runs can write a file (FR-041). What it adds is presentation —
  * one primitive to a line, ordered by id as the listing already is, with
  * `--min` saying what an agent surveys by and the default adding where the body
@@ -44,42 +43,39 @@ export class ListCommand implements Command<typeof OPTIONS> {
   readonly summary = "Say what the charter holds";
   readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { kind, min: isMin }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const catalogueDTO = await charterAuthoringApp.list(kind);
-    if (catalogueDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(catalogueDTO) };
+  async runCommand({ charterAuthoringApp }: Context, { kind, min: isMin }: Options<typeof OPTIONS>): Promise<Outcome> {
+    const catalogueDTO = await charterAuthoringApp.listCatalogue(kind);
+    if (catalogueDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(catalogueDTO) };
 
     if (catalogueDTO.type === "FaultsByFile") {
       const noOfFiles = Object.keys(catalogueDTO.data.files).length;
       return {
-        code: EXIT_FAILURE,
-        problem: `Nothing was listed: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+        exitCode: EXIT_FAILURE,
+        problemText: `Nothing was listed: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
       };
     }
 
     const { entries } = catalogueDTO.data;
     if (entries.length === 0)
       return {
-        code: EXIT_OK,
-        result: kind === undefined ? "This charter holds nothing yet.\n" : `This charter holds no ${kind}.\n`,
+        exitCode: EXIT_OK,
+        resultText: kind === undefined ? "This charter holds nothing yet.\n" : `This charter holds no ${kind}.\n`,
       };
 
     return {
-      code: EXIT_OK,
-      result: isMin ? `${entries.map(surveyed).join("\n")}\n` : `${entries.map(inFull).join("\n")}\n`,
+      exitCode: EXIT_OK,
+      // A primitive as an agent surveys it is what it is called and what it is
+      // for (FR-012); in full, also where its body is and the files it applies
+      // to (FR-011). Globs nobody wrote are not said, the way the listing does
+      // not record them.
+      resultText: `${entries
+        .map(({ data: { id, description, file: filePath, globs } }) =>
+          [
+            `${id}  ${description}`,
+            ...(isMin ? [] : [`  ${filePath}`, ...(globs === undefined ? [] : [`  globs: ${globs.join(", ")}`])]),
+          ].join("\n"),
+        )
+        .join("\n")}\n`,
     };
   }
-}
-
-/** One primitive as an agent surveys it: what it is called and what it is for
- *  (FR-012). */
-function surveyed({ data: { id, description } }: CharterDTOs.CatalogueEntry): string {
-  return `${id}  ${description}`;
-}
-
-/** One primitive in full: what it is called and what it is for, where its body
- *  is, and the files it applies to (FR-011). Globs nobody wrote are not said,
- *  the way the listing does not record them. */
-function inFull(entry: CharterDTOs.CatalogueEntry): string {
-  const { file, globs } = entry.data;
-  return [surveyed(entry), `  ${file}`, ...(globs === undefined ? [] : [`  globs: ${globs.join(", ")}`])].join("\n");
 }

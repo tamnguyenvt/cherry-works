@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { AgentBasedPrimitive } from "./agent-based-primitive.js";
 import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
+import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** The events a charter knows how to be raised by, and the only ones a sensor
  *  may name (FR-004).

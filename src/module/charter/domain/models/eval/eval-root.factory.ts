@@ -19,9 +19,9 @@ export class EvalRootFactory {
     )) {
       try {
         suitesByFile[uri] = EvalSuiteFactory.create(text);
-      } catch (suiteError) {
-        if (!(suiteError instanceof DomainFault)) throw suiteError;
-        faultsByFile[uri] = [suiteError];
+      } catch (raisedValue) {
+        if (!(raisedValue instanceof DomainFault)) throw raisedValue;
+        faultsByFile[uri] = [raisedValue];
       }
     }
     return new EvalRoot(suitesByFile, new FaultsByFile(faultsByFile), suiteNameByFile, suiteTextByFile);

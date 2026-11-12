@@ -1,7 +1,12 @@
 /** What an adapter answering this port raises when an mcp origin cannot be
  *  reached or started, or refuses the credential a call was made with, named
  *  again here so it names this port and nothing behind it. */
-export { AdapterFault, UnauthorizedMcpFault } from "../../../domain/models/adapter.fault.js";
+export {
+  AdapterFault,
+  UnansweringMcpOriginFault,
+  UnauthorizedMcpFault,
+  UnreachableMcpOriginFault,
+} from "../../../domain/models/adapter.fault.js";
 
 /** Where one mcp origin is, as the list of mcp origins holds it: reached at an endpoint,
  *  or started as a local command reading its token from `tokenEnv`. */
@@ -36,10 +41,14 @@ export interface McpServerConnection {
    * Raises `UnauthorizedMcpFault` where the mcp origin refuses the credential, and a
    * `AdapterFault` where the call fails on the way.
    */
-  callTool(name: string, args: Readonly<Record<string, unknown>>, accessToken: string | undefined): Promise<ToolAnswer>;
+  callTool(
+    toolName: string,
+    toolArguments: Readonly<Record<string, unknown>>,
+    accessToken: string | undefined,
+  ): Promise<ToolAnswer>;
 
   /** Let go of the mcp origin: a local command it started is stopped. */
-  close(): Promise<void>;
+  closeConnection(): Promise<void>;
 }
 
 /**
@@ -58,7 +67,7 @@ export interface ForCallingMcpServers {
    * Raises an `AdapterFault` naming the address where the mcp origin cannot be
    * reached or started, or does not answer in time.
    */
-  connect(
+  connectServer(
     mcpServerAddress: McpServerAddress,
     accessToken: string | undefined,
     timeoutMs: number,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
+import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** Headers and body reused by other primitives. A leaf: it lends its body to
  *  the host that pulls it in, and pulls in none of its own (FR-006). */

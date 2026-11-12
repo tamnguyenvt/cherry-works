@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
 import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { workspaceAppOf } from "./use-cases-of.js";
 
@@ -10,14 +10,15 @@ const file = new URL(".cw/settings.json", repo).href;
 
 const holding = (contents: string) => new InMemoryFileReaders({ [file]: contents });
 /** The settings a repository holding these files has, as the workspace module answers them (CORE-FR-231). */
-const loadSettingsHeldIn = async (fileReaders: InMemoryFileReaders) => workspaceAppOf(fileReaders).settings();
+const loadSettingsHeldIn = async (fileReaders: InMemoryFileReaders) =>
+  workspaceAppOf(fileReaders).readWorkspaceSettings();
 
 /** What reading these settings raised, for a test that is about the fault. */
 const refusing = async (contents: string) => {
   const settingsDTO = await loadSettingsHeldIn(holding(contents));
   assert.equal(settingsDTO.type, "Fault", "reading settings that do not read is refused");
   const raised = (settingsDTO as FaultDTOs.Fault).data;
-  assert.equal(raised.name, "SettingsFault");
+  assert.equal(raised.name, "InvalidSettingsFault");
   assert.ok(raised.fix, "and says what to do about it");
   return raised;
 };

@@ -9,7 +9,7 @@ import { ProviderComponent } from "./provider-component.js";
  * part it plays instead.
  */
 export abstract class SettingBasedComponent<Settings extends object> extends ProviderComponent {
-  protected constructor(
+  constructor(
     host: string,
     /** The part it plays, which is its id there: one such file to a host. */
     part: string,

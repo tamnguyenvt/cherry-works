@@ -309,8 +309,8 @@ test("each renamed use case answers through its driver port as it did (CORE Stor
     new InMemoryReporter(),
   );
 
-  assert.equal((await charterAuthoringApp.kinds()).type, "PrimitiveKinds");
-  assert.equal((await charterAuthoringApp.vendors()).type, "VendorFolders");
-  assert.equal((await charterAuthoringApp.suites()).type, "TestSuites");
-  assert.equal((await charterRuntimeApp.preview()).type, "PlanSummary");
+  assert.equal((await charterAuthoringApp.listKinds()).type, "PrimitiveKinds");
+  assert.equal((await charterAuthoringApp.listVendors()).type, "VendorFolders");
+  assert.equal((await charterAuthoringApp.listTestSuites()).type, "TestSuites");
+  assert.equal((await charterRuntimeApp.previewCharterBuild()).type, "PlanSummary");
 });

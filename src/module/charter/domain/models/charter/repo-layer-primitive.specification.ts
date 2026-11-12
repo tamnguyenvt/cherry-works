@@ -1,5 +1,5 @@
 import type { Primitive } from "../primitive/primitive.js";
-import { PrimitiveLayer } from "../primitive/primitive-layer.js";
+import { PrimitiveLayer } from "../primitive/primitive-layer.value-object.js";
 
 /**
  * SPECIFICATION — a primitive this repository authored, and so one it may
@@ -7,8 +7,8 @@ import { PrimitiveLayer } from "../primitive/primitive-layer.js";
  * installing it again, and what the engine brings has no file here to change
  * (FR-077).
  */
-export class RepoLayerPrimitive {
-  static isSatisfiedBy(primitive: Primitive): boolean {
-    return primitive.layerName === PrimitiveLayer.REPO.name;
+export class RepoLayerPrimitiveSpec {
+  isSatisfiedBy(primitive: Primitive): boolean {
+    return primitive.layer === PrimitiveLayer.REPO;
   }
 }

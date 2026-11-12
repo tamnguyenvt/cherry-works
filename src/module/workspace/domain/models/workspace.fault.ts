@@ -13,7 +13,7 @@ export class NoAgentFault extends ApplicationFault {}
 export class UnknownAgentFault extends ApplicationFault {}
 
 /** A main-context ceiling that is no whole number above 0 (EVAL-FR-006). */
-export class MainContextCeilingFault extends ApplicationFault {}
+export class InvalidMainContextCeilingFault extends ApplicationFault {}
 
 /**
  * One thing wrong with what a repository configured itself with: settings that
@@ -23,4 +23,4 @@ export class MainContextCeilingFault extends ApplicationFault {}
  * Its own file is the file that has to change, and that file is nobody's
  * primitive — which is what tells it apart from the two below.
  */
-export class SettingsFault extends DomainFault {}
+export class InvalidSettingsFault extends DomainFault {}

@@ -44,23 +44,24 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
   readonly summary = "Sign in, as yourself, to every mcp origin the charter reaches";
   readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { id, status }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const signInStatusesDTO = await charterAuthoringApp.signInStatus();
-    if (signInStatusesDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(signInStatusesDTO) };
+  async runCommand({ charterAuthoringApp }: Context, { id, status }: Options<typeof OPTIONS>): Promise<Outcome> {
+    const signInStatusesDTO = await charterAuthoringApp.listSignInStatuses();
+    if (signInStatusesDTO.type === "Fault")
+      return { exitCode: EXIT_FAILURE, problemText: printFault(signInStatusesDTO) };
     const signInStatuses = signInStatusesDTO.data.signInStatuses.map((signInStatusDTO) => signInStatusDTO.data);
 
     if (status)
       return {
-        code: EXIT_OK,
-        result:
+        exitCode: EXIT_OK,
+        resultText:
           signInStatuses.length === 0
             ? "No mcp in the charter takes a sign-in.\n"
             : signInStatuses
-                .map(({ address, ids, signedIn, method }) =>
+                .map(({ address, ids, signedIn: isSignedIn, method }) =>
                   [
                     address,
                     `  ${ids.join(", ")}`,
-                    `  ${signedIn ? `signed in by ${method}` : "not signed in"}`,
+                    `  ${isSignedIn ? `signed in by ${method}` : "not signed in"}`,
                     "",
                   ].join("\n"),
                 )
@@ -68,21 +69,21 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
       };
 
     let unsignedStatuses: readonly CharterDTOs.SignInStatus["data"][];
-    if (id === undefined) unsignedStatuses = signInStatuses.filter((one) => !one.signedIn);
+    if (id === undefined) unsignedStatuses = signInStatuses.filter((signInStatus) => !signInStatus.signedIn);
     else {
-      const signInStatus = signInStatuses.find((one) => one.ids.includes(id));
+      const signInStatus = signInStatuses.find((signInStatus) => signInStatus.ids.includes(id));
       if (signInStatus === undefined)
         return {
-          code: EXIT_FAILURE,
-          problem: `No mcp in the charter that takes a sign-in is ${id}.\n  Run "cw mcp auth --status" to see every mcp that does.\n`,
+          exitCode: EXIT_FAILURE,
+          problemText: `No mcp in the charter that takes a sign-in is ${id}.\n  Run "cw mcp auth --status" to see every mcp that does.\n`,
         };
       unsignedStatuses = [signInStatus];
     }
 
     if (unsignedStatuses.length === 0)
       return {
-        code: EXIT_OK,
-        result:
+        exitCode: EXIT_OK,
+        resultText:
           signInStatuses.length === 0
             ? "No mcp in the charter takes a sign-in.\n"
             : `You are signed in at every address: ${signInStatuses.length}.\n`,
@@ -90,8 +91,8 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
 
     if (!process.stdin.isTTY)
       return {
-        code: EXIT_FAILURE,
-        problem: [
+        exitCode: EXIT_FAILURE,
+        problemText: [
           "Not signed in at:",
           ...unsignedStatuses.map(({ address }) => `  ${address}`),
           '  Run "cw mcp auth" at a terminal to sign in; nothing is asked without one.',
@@ -107,9 +108,9 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
               type: "select",
               name: "method",
               message: "Sign in how?",
-              choices: auth.map((one) => ({
-                title: one === "oauth" ? "in the browser (OAuth)" : "with a token",
-                value: one,
+              choices: auth.map((signInMethod) => ({
+                title: signInMethod === "oauth" ? "in the browser (OAuth)" : "with a token",
+                value: signInMethod,
               })),
             })
           : { method: auth[0] };
@@ -120,15 +121,15 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
         );
       else if (method === "token") {
         const { token } = await prompts({ type: "invisible", name: "token", message: "Token?" });
-        if (token === undefined) return { code: EXIT_FAILURE, problem: printInterruptProblem(address) };
+        if (token === undefined) return { exitCode: EXIT_FAILURE, problemText: printInterruptProblem(address) };
         signInStatusDTO = await charterAuthoringApp.signInWithToken(address, token);
-      } else return { code: EXIT_FAILURE, problem: printInterruptProblem(address) };
-      if (signInStatusDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(signInStatusDTO) };
+      } else return { exitCode: EXIT_FAILURE, problemText: printInterruptProblem(address) };
+      if (signInStatusDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(signInStatusDTO) };
     }
 
     return {
-      code: EXIT_OK,
-      result: `Signed in at ${unsignedStatuses.map(({ address }) => address).join(", ")}.\n`,
+      exitCode: EXIT_OK,
+      resultText: `Signed in at ${unsignedStatuses.map(({ address }) => address).join(", ")}.\n`,
     };
   }
 }

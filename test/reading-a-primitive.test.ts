@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
 import { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
-import { CharterPrimitiveFault } from "../src/module/charter/domain/models/charter.fault.js";
+import { InvalidPrimitiveFault } from "../src/module/charter/domain/models/charter.fault.js";
 import { type Primitive, Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
-import { type DomainFault, FaultsByFile } from "../src/module/shared/domain/models/domain.fault.js";
+import { type DomainFault, ManyFindingsFault } from "../src/module/shared/domain/models/domain.fault.js";
+import { FaultsByFile } from "../src/module/shared/domain/models/fault/faults-by-file.js";
+import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { readPrimitive } from "./use-cases-of.js";
 
 const guide = [
@@ -28,8 +29,8 @@ const faultsIn = (text: string): readonly DomainFault[] => {
   try {
     readPrimitive(text);
   } catch (raised) {
-    assert.ok(raised instanceof AggregateError, String(raised));
-    return raised.errors as readonly DomainFault[];
+    assert.ok(raised instanceof ManyFindingsFault, String(raised));
+    return raised.faults as readonly DomainFault[];
   }
   return assert.fail("this text was read as a primitive");
 };
@@ -100,8 +101,8 @@ test("an empty block declares no kind, and is refused for that first", () => {
 });
 
 test("frontmatter that is not a list of named headers is reported as such", () => {
-  assert.throws(() => readPrimitive("---\n- one\n- two\n---\n"), CharterPrimitiveFault);
-  assert.throws(() => readPrimitive("---\nid: [unclosed\n---\n"), CharterPrimitiveFault);
+  assert.throws(() => readPrimitive("---\n- one\n- two\n---\n"), InvalidPrimitiveFault);
+  assert.throws(() => readPrimitive("---\nid: [unclosed\n---\n"), InvalidPrimitiveFault);
 });
 
 test("a delimiter inside the body does not reopen the frontmatter", () => {
@@ -149,7 +150,8 @@ test("an agent's model is written <provider>:<model>, the provider one of the ag
   // Which agents there are is known where the charter is compiled, not where it is read.
   const unknownModelPrimitive = primitive(agentText("unknown:gpt-5"));
   const [agentFault] = Object.values(
-    new CharterRoot([unknownModelPrimitive], FaultsByFile.none).agentFaultsByFilesOf(["claude", "codex"]).files,
+    new CharterRoot([unknownModelPrimitive], FaultsByFile.none).agentFaultsByFilesOf(["claude", "codex"])
+      .faultsByFilePath,
   ).flat();
   assert.match(agentFault?.message ?? "", /"model" names "unknown"/);
 });
@@ -192,7 +194,7 @@ test("posture and sensor support agent-provider, with omitted and empty lists su
           !agentProviders?.length || agentProviders.includes(agent.name),
           primitiveClass.kind,
         );
-      const rereadPrimitive = readPrimitive(charterPrimitive.toMarkdown());
+      const rereadPrimitive = readPrimitive(charterPrimitive.writeMarkdown());
       assert.ok(rereadPrimitive.kind === "posture" || rereadPrimitive.kind === "sensor");
       assert.deepEqual(rereadPrimitive.headers["agent-provider"], agentProviders);
     }
@@ -215,7 +217,9 @@ test("only posture and sensor accept agent-provider in authored files and author
         headers: { kind: primitiveClass.kind, ...primitiveClass.sample },
         body: "Shared.",
       });
-      const fileText = authoredPrimitive.toMarkdown().replace("description:", "agent-provider: [claude]\ndescription:");
+      const fileText = authoredPrimitive
+        .writeMarkdown()
+        .replace("description:", "agent-provider: [claude]\ndescription:");
       assert.match(messages(faultsIn(fileText)), /holds no "agent-provider"/);
       assert.equal(authoredPrimitive.supportsAgent(new AgentProvider("claude")), true);
       assert.equal(authoredPrimitive.supportsAgent(new AgentProvider("codex")), true);

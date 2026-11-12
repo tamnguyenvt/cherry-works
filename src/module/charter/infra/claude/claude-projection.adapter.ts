@@ -1,11 +1,12 @@
-import type {
-  CharterOutput,
-  CharterRoot,
-  MainContextText,
-  ProviderComponent,
+import {
+  type CharterOutput,
+  type CharterRoot,
+  type MainContextText,
+  type ProviderComponent,
+  UnbuiltCheckoutAdapterFault,
 } from "../../app/port/out/managing-local-agent-output.port.js";
 import { AgentProjection } from "../agent-projection.base.js";
-import { mergedEntryFileText, mergedSettingsText } from "../helper.js";
+import { mergeEntryFileText, mergeSettingsText } from "../helper.js";
 import { ClaudeComponentFactory } from "./claude-component.factory.js";
 import { ClaudeMainContextFactory } from "./claude-main-context.factory.js";
 
@@ -15,7 +16,7 @@ const CLAUDE_ENTRY_FILE = "CLAUDE.md";
 
 /** Where each of claude's files lands, by its kind there and its id. */
 const CLAUDE_PLACE_BY_KIND: Readonly<Record<string, (id: string) => string>> = {
-  "entry-file": (folder) => (folder === "" ? CLAUDE_ENTRY_FILE : `${folder}/${CLAUDE_ENTRY_FILE}`),
+  "entry-file": (folderPath) => (folderPath === "" ? CLAUDE_ENTRY_FILE : `${folderPath}/${CLAUDE_ENTRY_FILE}`),
   settings: () => ".claude/settings.json",
   "mcp-config": () => ".mcp.json",
   rule: (name) => `.claude/rules/${name}.md`,
@@ -48,15 +49,27 @@ export class ClaudeProjection extends AgentProjection {
 
   protected readonly ownedFolders = [".claude"];
 
-  protected componentsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[] {
+  /** This projection over a checkout. A class extending it is refused, never
+   *  built as this one: it builds itself over the checkout, by its own
+   *  constructor (EVAL-FR-021). */
+  createCheckoutProjection(checkoutFolder: string): ClaudeProjection {
+    if (this.constructor !== ClaudeProjection)
+      throw new UnbuiltCheckoutAdapterFault(
+        `${this.constructor.name} extends ClaudeProjection and builds no copy of itself over the checkout "${checkoutFolder}".`,
+        `Override createCheckoutProjection in ${this.constructor.name} to build it over the checkout.`,
+      );
+    return new ClaudeProjection(this.fileReader, checkoutFolder);
+  }
+
+  protected listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[] {
     return ClaudeComponentFactory.create(charter, charterOutput);
   }
 
-  protected placeOf(component: ProviderComponent): string {
+  protected findComponentPlace(component: ProviderComponent): string {
     return CLAUDE_PLACE_BY_KIND[component.kind]!(component.id);
   }
 
-  protected override contentsOf(
+  protected override mergeComponentContents(
     component: ProviderComponent,
     laidText: string,
     currentText: string | undefined,
@@ -64,15 +77,17 @@ export class ClaudeProjection extends AgentProjection {
     switch (component.kind) {
       case "settings":
       case "mcp-config":
-        return mergedSettingsText(currentText, laidText);
+        return mergeSettingsText(currentText, laidText);
       case "entry-file":
-        return mergedEntryFileText(currentText, laidText);
+        return mergeEntryFileText(currentText, laidText);
       default:
         return laidText;
     }
   }
 
-  mainContextTextsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[] {
-    return ClaudeMainContextFactory.create(charter, charterOutput, (claudeComponent) => this.placeOf(claudeComponent));
+  listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[] {
+    return ClaudeMainContextFactory.create(charter, charterOutput, (claudeComponent) =>
+      this.findComponentPlace(claudeComponent),
+    );
   }
 }

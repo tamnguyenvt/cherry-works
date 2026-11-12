@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
+import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** Reasoning a primitive cites, loaded only on demand. Beyond the common
  *  headers it asks for nothing (FR-004). */

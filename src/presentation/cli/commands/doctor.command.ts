@@ -7,7 +7,7 @@ import { printFault, printFaultsByFile } from "./helper.js";
  * (FR-009, FR-010).
  *
  * Which agents it compiles for, whether its charter holds, and whether what agents
- * read is still what the charter compiles to. All three are `doctor()`'s answer, worked out behind the
+ * read is still what the charter compiles to. All three are `diagnoseCharter()`'s answer, worked out behind the
  * port — how many are unwell included — so this command and the portal's
  * health check say one thing, nothing here is a second opinion, and staleness
  * in particular is the preview run rather than a record kept of it.
@@ -35,9 +35,9 @@ export class DoctorCommand implements Command {
   readonly name = "doctor";
   readonly summary = "Check this repository: agents, charter, vendors, and what is built";
 
-  async run({ version, charterBuildingApp }: Context, _options: Options): Promise<Outcome> {
-    const doctorOutcomeDTO = await charterBuildingApp.doctor();
-    if (doctorOutcomeDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(doctorOutcomeDTO) };
+  async runCommand({ version, charterBuildingApp }: Context, _options: Options): Promise<Outcome> {
+    const doctorOutcomeDTO = await charterBuildingApp.diagnoseCharter();
+    if (doctorOutcomeDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(doctorOutcomeDTO) };
     const {
       agents,
       errorCount: errors,
@@ -60,8 +60,8 @@ export class DoctorCommand implements Command {
     } as const;
 
     return {
-      code: problemCount === 0 ? EXIT_OK : EXIT_FAILURE,
-      result: [
+      exitCode: problemCount === 0 ? EXIT_OK : EXIT_FAILURE,
+      resultText: [
         // Which cw wrote the report, so one pasted into a bug report names
         // the release it came from (FR-132).
         `cw ${version}`,

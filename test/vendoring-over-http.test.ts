@@ -9,7 +9,7 @@ import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memo
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
-import { api } from "../src/presentation/portal/portal.routes.js";
+import { buildPortalRoutes } from "../src/presentation/portal/portal.routes.js";
 import { answerOf } from "./answer-of.js";
 import { authoringCharterOf, buildingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
@@ -28,7 +28,7 @@ const portal = (files: Readonly<Record<string, string>> = {}, sourceFetcher = ne
     new InMemoryReporter(),
     { sourceFetcher },
   );
-  const portalRoutes = api(
+  const portalRoutes = buildPortalRoutes(
     wrapAppToShowPaths(charterAuthoringApp, "/repo"),
     wrapAppToShowPaths(
       buildingCharterOf(
@@ -64,7 +64,7 @@ test("the vendors are sent as the folders installed() answers (FR-122)", async (
     type: "VendorFolders",
     data: { folders: [".cw/charter/vendor/acme/charter/root"] },
   });
-  assert.deepEqual(answerOf(await charterAuthoringApp.vendors()).data.folders, [
+  assert.deepEqual(answerOf(await charterAuthoringApp.listVendors()).data.folders, [
     "file:///repo/.cw/charter/vendor/acme/charter/root",
   ]);
 });
@@ -136,7 +136,7 @@ const filesHoldingVendor = (vendorName: string) => ({
 });
 
 const installedVendors = async (charterAuthoringApp: ForAuthoringCharter) => [
-  ...answerOf(await charterAuthoringApp.vendors()).data.folders,
+  ...answerOf(await charterAuthoringApp.listVendors()).data.folders,
 ];
 
 test("a vendor an earlier version laid out in one folder is refused when deleted, saying to install it again (Story 8 scenario 5, FR-180)", async () => {

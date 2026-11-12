@@ -1,15 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { CharterListing } from "./components/CharterListing.js";
-import { CharterSearch } from "./components/CharterSearch.js";
-import { DialogProvider, useDialog } from "./components/Dialogs.js";
-import { MainContextListing } from "./components/MainContextListing.js";
-import { TestSuites } from "./components/TestSuites.js";
+import { CharterListing } from "./components/charter-listing.component.js";
+import { CharterSearch } from "./components/charter-search.component.js";
+import { DialogProvider, useDialog } from "./components/dialogs.component.js";
+import { MainContextListing } from "./components/main-context-listing.component.js";
+import { TestSuites } from "./components/test-suites.component.js";
 import { Button } from "./components/ui/button.js";
 import { Toaster } from "./components/ui/sonner.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs.js";
-import { VendorSources } from "./components/VendorSources.js";
+import { VendorSources } from "./components/vendor-sources.component.js";
 
 /** The tabs of plan §12.5, in the order the mockup draws them. */
 const TABS = [
@@ -68,8 +68,8 @@ function Portal() {
       <main className="mx-auto max-w-[1120px] px-[26px] pt-[22px] pb-[60px]">
         <Tabs
           value={tab}
-          onValueChange={(value) => {
-            setTab(value);
+          onValueChange={(tabValue) => {
+            setTab(tabValue);
             setShownKind(null);
           }}
         >

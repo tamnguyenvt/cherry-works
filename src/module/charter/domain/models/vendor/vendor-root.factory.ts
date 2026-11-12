@@ -1,5 +1,5 @@
-import { VendorsFolder } from "../charter/vendors-folder.js";
-import { VendorFault } from "../charter.fault.js";
+import { VENDORS_FOLDER_PATH } from "../../constants.js";
+import { OldVendorLayoutFault } from "../charter.fault.js";
 import { Primitives } from "../primitive/primitive.js";
 import { VendorRoot } from "./vendor-root.js";
 
@@ -21,7 +21,7 @@ export class VendorRootFactory {
    * never read.
    */
   static create(vendorFilePaths: readonly string[], uriOf: (folderPath: string) => string): VendorRoot {
-    const vendorPathPrefix = `${VendorsFolder.path}/`;
+    const vendorPathPrefix = `${VENDORS_FOLDER_PATH}/`;
     // A file kept right in the vendor folder, its `.gitkeep`, is no vendor's.
     const pathsUnderVendor = vendorFilePaths
       .filter((filePath) => filePath.startsWith(vendorPathPrefix))
@@ -47,8 +47,8 @@ export class VendorRootFactory {
       ),
     ].sort();
     if (oldFolderNames.length > 0)
-      throw new VendorFault(
-        `${oldFolderNames.map((folderName) => `${VendorsFolder.path}/${folderName}`).join(", ")} ${oldFolderNames.length === 1 ? "is" : "are"} laid out the way an earlier version installed a vendor, not as <owner>/<repository>/<name>/${VendorRoot.primitivesFolder}/.`,
+      throw new OldVendorLayoutFault(
+        `${oldFolderNames.map((folderName) => `${VENDORS_FOLDER_PATH}/${folderName}`).join(", ")} ${oldFolderNames.length === 1 ? "is" : "are"} laid out the way an earlier version installed a vendor, not as <owner>/<repository>/<name>/${VendorRoot.primitivesFolder}/.`,
         `Delete ${oldFolderNames.length === 1 ? "it" : "them"}, then install each source again with "cw vendor add".`,
         { internal: false },
       );
@@ -57,7 +57,7 @@ export class VendorRootFactory {
       ...new Set(pathsUnderVendor.map((filePath) => filePath.split("/").slice(0, VENDOR_NAME_DEPTH).join("/"))),
     ].sort();
     return new VendorRoot(
-      vendorNames.map((vendorName) => ({ name: vendorName, uri: uriOf(`${VendorsFolder.path}/${vendorName}`) })),
+      vendorNames.map((vendorName) => ({ name: vendorName, uri: uriOf(`${VENDORS_FOLDER_PATH}/${vendorName}`) })),
     );
   }
 

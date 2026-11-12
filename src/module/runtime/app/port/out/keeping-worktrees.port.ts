@@ -1,6 +1,6 @@
 /** What an adapter answering this port raises when git refuses, named again
  *  here so it names this port and nothing behind it. */
-export { AdapterFault } from "../../../../shared/module.js";
+export { AdapterFault, MissingGitFault, RefusedWorktreeFault } from "../../../../shared/module.js";
 
 /**
  * DRIVEN PORT — worktrees of a repository's last commit, the one thing

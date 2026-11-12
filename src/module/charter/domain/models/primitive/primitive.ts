@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ModelHelper } from "../../helper.js";
-import { CharterPrimitiveFault } from "../charter.fault.js";
+import { InvalidPrimitiveFault } from "../charter.fault.js";
 import { AgentPrimitive } from "./agent-primitive.js";
 import { BasePrimitive } from "./base-primitive.js";
 import { CorpusPrimitive } from "./corpus-primitive.js";
@@ -45,29 +45,31 @@ export type Primitive = ReturnType<(typeof PRIMITIVE_CLASSES)[number]["of"]>;
 /** The primitive kinds, each read off the class that reads it. The set is
  *  closed: any other value is a fault naming the file and the offending kind
  *  (FR-001). */
-const KINDS = Object.freeze(PRIMITIVE_CLASSES.map((one) => one.kind));
+const KINDS = Object.freeze(PRIMITIVE_CLASSES.map((primitiveClass) => primitiveClass.kind));
 
 export type Kind = (typeof KINDS)[number];
 
 /** An id as someone typed it, at a command or in a request, held to the shape
  *  an id is written in: text that is not one names nothing to look for
  *  (FR-172). */
-function primitiveIdOf(typed: string): string {
-  if (!BasePrimitive.headersSchema().shape.id.safeParse(typed).success)
-    throw new CharterPrimitiveFault(
-      `"${typed}" is not an id: one is lowercase letters, digits and inner hyphens, in segments joined by "/".`,
+function primitiveIdOf(typedId: string): string {
+  if (!BasePrimitive.headersSchema().shape.id.safeParse(typedId).success)
+    throw new InvalidPrimitiveFault(
+      `"${typedId}" is not an id: one is lowercase letters, digits and inner hyphens, in segments joined by "/".`,
       'Type it as the primitive declares it, as in "no-any".',
       { internal: false },
     );
-  return typed;
+  return typedId;
 }
 
-function isKind(value: unknown): value is Kind {
-  return typeof value === "string" && (KINDS as readonly string[]).includes(value);
+function isKind(kindName: unknown): kindName is Kind {
+  return typeof kindName === "string" && (KINDS as readonly string[]).includes(kindName);
 }
 
 /** Which class reads each kind. */
-const CLASS_OF = new Map<Kind, (typeof PRIMITIVE_CLASSES)[number]>(PRIMITIVE_CLASSES.map((one) => [one.kind, one]));
+const CLASS_OF = new Map<Kind, (typeof PRIMITIVE_CLASSES)[number]>(
+  PRIMITIVE_CLASSES.map((primitiveClass) => [primitiveClass.kind, primitiveClass]),
+);
 
 /** One header a kind's author may answer for: the shape the answer takes,
  *  whether a file written without it is refused, and — where the kind reads it
@@ -78,7 +80,7 @@ export class PrimitiveHeader {
   constructor(
     readonly field: string,
     readonly shape: "line" | "list",
-    readonly required: boolean,
+    readonly isRequired: boolean,
     /** Every value the kind reads this header as, where the set is closed — a
      *  sensor's `signal` — so it is chosen rather than typed (FR-118). A header
      *  whose set is open has none. */
@@ -103,7 +105,7 @@ export class PrimitiveHeader {
  */
 function primitiveHeadersOf(kind: Kind): readonly PrimitiveHeader[] {
   const kindClass = CLASS_OF.get(kind)!;
-  const required = { ...BasePrimitive.requires, ...kindClass.requires };
+  const requiredHeaders = { ...BasePrimitive.requires, ...kindClass.requires };
 
   return Object.entries(kindClass.schema.shape)
     .filter(([field]) => field !== "id")
@@ -117,7 +119,7 @@ function primitiveHeadersOf(kind: Kind): readonly PrimitiveHeader[] {
       return new PrimitiveHeader(
         field,
         heldType instanceof z.ZodArray ? "list" : "line",
-        field in required,
+        field in requiredHeaders,
         heldType instanceof z.ZodEnum
           ? (heldType.options as readonly string[])
           : heldType === BasePrimitive.flagSchema
@@ -133,7 +135,7 @@ function primitiveHeadersOf(kind: Kind): readonly PrimitiveHeader[] {
  *  the same sample a refused file is held up against (FR-001). */
 function primitiveSampleOf(kind: Kind): string {
   return Object.entries({ kind, ...CLASS_OF.get(kind)!.sample })
-    .map(([field, value]) => `${field}: ${ModelHelper.formatFrontmatterValue(value)}`)
+    .map(([field, sampleValue]) => `${field}: ${ModelHelper.formatFrontmatterValue(sampleValue)}`)
     .join("\n");
 }
 

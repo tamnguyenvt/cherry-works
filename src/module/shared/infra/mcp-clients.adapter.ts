@@ -7,7 +7,9 @@ import {
   type ForCallingMcpServers,
   type McpServerAddress,
   type McpServerConnection,
+  UnansweringMcpOriginFault,
   UnauthorizedMcpFault,
+  UnreachableMcpOriginFault,
 } from "../app/port/out/calling-mcp-servers.port.js";
 
 /**
@@ -21,7 +23,7 @@ import {
  * is stopped when its mcp origin is let go. Its standard error is the server's own.
  */
 export class McpClients implements ForCallingMcpServers {
-  async connect(
+  async connectServer(
     { address, endpoint, command }: McpServerAddress,
     accessToken: string | undefined,
     timeoutMs: number,
@@ -43,7 +45,9 @@ export class McpClients implements ForCallingMcpServers {
             args: [...(command?.args ?? [])],
             env: {
               ...Object.fromEntries(
-                Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+                Object.entries(process.env).filter(
+                  (environmentEntry): environmentEntry is [string, string] => environmentEntry[1] !== undefined,
+                ),
               ),
               ...(command?.tokenEnv !== undefined && accessToken !== undefined && { [command.tokenEnv]: accessToken }),
             },
@@ -60,7 +64,7 @@ export class McpClients implements ForCallingMcpServers {
           connectTimeout = setTimeout(
             () =>
               reject(
-                new AdapterFault(
+                new UnansweringMcpOriginFault(
                   `${address} did not answer within ${timeoutMs / 1000} seconds.`,
                   "Check the mcp origin is up, then start the server again.",
                   { internal: false },
@@ -76,23 +80,23 @@ export class McpClients implements ForCallingMcpServers {
           ...(description !== undefined && { description }),
           inputSchema,
         })),
-        callTool: async (name, args, callToken) => {
+        callTool: async (toolName, toolArguments, callToken) => {
           if (endpoint !== undefined) bearerToken = callToken;
           try {
-            return await client.callTool({ name, arguments: { ...args } });
+            return await client.callTool({ name: toolName, arguments: { ...toolArguments } });
           } catch (raisedValue) {
-            throw faultOf(
+            throw wrapMcpFault(
               raisedValue,
-              `Calling "${name}" at ${address} failed`,
+              `Calling "${toolName}" at ${address} failed`,
               "Check the mcp origin is up, then try again.",
             );
           }
         },
-        close: () => client.close(),
+        closeConnection: () => client.close(),
       };
     } catch (raisedValue) {
       await client.close().catch(() => undefined);
-      throw faultOf(
+      throw wrapMcpFault(
         raisedValue,
         `${address} could not be reached`,
         "Check the mcp origin is up, or its command installed, then start the server again.",
@@ -104,16 +108,16 @@ export class McpClients implements ForCallingMcpServers {
 }
 
 /** What the SDK raised, as this port raises it: a `401` the one refusal the
- *  caller can act on, anything else an `AdapterFault` saying what failed where,
+ *  caller can act on, anything else an `UnreachableMcpOriginFault` saying what failed where,
  *  what the SDK said kept as its cause for the log alone (SDK-FR-018). Never
  *  what was sent: a credential is not in any message. */
-function faultOf(raisedValue: unknown, failed: string, fix: string): AdapterFault {
+function wrapMcpFault(raisedValue: unknown, failedCallText: string, fix: string): AdapterFault {
   if (raisedValue instanceof AdapterFault) return raisedValue;
   if (raisedValue instanceof StreamableHTTPError && raisedValue.code === 401)
     return new UnauthorizedMcpFault(
-      `${failed}: the mcp origin refused your credential.`,
+      `${failedCallText}: the mcp origin refused your credential.`,
       'Run "cw mcp auth" at a terminal to sign in there again.',
       { internal: false },
     );
-  return new AdapterFault(`${failed}.`, fix, { internal: false, cause: raisedValue });
+  return new UnreachableMcpOriginFault(`${failedCallText}.`, fix, { internal: false, cause: raisedValue });
 }

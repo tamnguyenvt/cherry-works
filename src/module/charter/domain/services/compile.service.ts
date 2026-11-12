@@ -1,17 +1,17 @@
+import type { AgentProvider } from "#module/shared/module.js";
+import { outputPath } from "../constants.js";
 import { ModelHelper } from "../helper.js";
-import type { AgentProvider } from "../models/agent/agent-provider.js";
 import type { CharterRoot } from "../models/charter/charter-root.js";
+import { BuiltSensorsFactory } from "../models/charter-output/built-sensors.factory.js";
+import { CatalogueFactory } from "../models/charter-output/catalogue.factory.js";
+import { Catalogue } from "../models/charter-output/catalogue.js";
+import { CharterMdFactory } from "../models/charter-output/charter-md.factory.js";
+import { CharterOutput } from "../models/charter-output/charter-output.js";
+import { CompiledPrimitiveFactory } from "../models/charter-output/compiled-primitive.factory.js";
+import { McpOrigins, type McpToolDefinition } from "../models/charter-output/mcp-origin.js";
+import { McpOriginsFactory } from "../models/charter-output/mcp-origins.factory.js";
 import { McpPrimitive } from "../models/primitive/mcp-primitive.js";
 import { Primitives } from "../models/primitive/primitive.js";
-import { BuiltSensors } from "../models/projection/built-sensor.js";
-import { BuiltSensorsFactory } from "../models/projection/built-sensors.factory.js";
-import { CatalogueFactory } from "../models/projection/catalogue.factory.js";
-import { Catalogue } from "../models/projection/catalogue.js";
-import { CharterMdFactory } from "../models/projection/charter-md.factory.js";
-import { CharterOutput } from "../models/projection/charter-output.js";
-import { CompiledPrimitiveFactory } from "../models/projection/compiled-primitive.factory.js";
-import { McpOrigins, type McpToolDefinition } from "../models/projection/mcp-origin.js";
-import { McpOriginsFactory } from "../models/projection/mcp-origins.factory.js";
 /** Compiles a charter into what its readers and its hosts are given. */
 export class CompileService {
   /**
@@ -37,7 +37,7 @@ export class CompileService {
    * still compiles to something, and whether that something may be written is
    * `everythingWrong` answered by whoever is about to write (FR-009).
    *
-   * The tools each mcp origin listed when the build reached it, by `originKeyOf`, are
+   * The tools each mcp origin listed when the build reached it, by `McpPrimitive.originKey`, are
    * handed in, since reaching an mcp origin is no model's to do; none for an mcp origin
    * keeps none (EVAL-FR-031).
    */
@@ -70,32 +70,32 @@ export class CompileService {
     );
     // What `cw sensor run` runs, each sensor's command as built: written once,
     // read by every host given one command per signal (FR-175, FR-179).
-    const builtSensors = new BuiltSensors(BuiltSensorsFactory.create(charter, compiledPrimitiveByPrimitive));
+    const builtSensors = BuiltSensorsFactory.create(charter, compiledPrimitiveByPrimitive);
     const allCatalogue = CatalogueFactory.create(charter, (primitive) =>
-      compiledPrimitiveByPrimitive.get(primitive)!.outputPart.linkOf(),
+      outputPath.getLink(compiledPrimitiveByPrimitive.get(primitive)!),
     );
-    const agentBasedCatalogues = Object.fromEntries(
-      agents.map((agentProvider) => [
-        agentProvider.name,
+    // In the order a build lays them (FR-020, FR-021). What an agent opens
+    // from the catalogue is the primitive as it compiled, not the file its
+    // author wrote: the whole body in one place, under the output whichever
+    // layer brought it (FR-140).
+    const charterOutput = new CharterOutput();
+    charterOutput.add(new Catalogue(allCatalogue.entries.filter(({ agentProviders }) => agentProviders === "all")));
+    for (const agentProvider of agents)
+      charterOutput.add(
         new Catalogue(
           allCatalogue.entries.filter(
-            ({ agentProviders }) => agentProviders !== "all" && agentProviders.includes(agentProvider.name),
+            ({ agentProviders }) =>
+              agentProviders !== "all" &&
+              agentProviders.some((entryAgentProvider) => entryAgentProvider.name === agentProvider.name),
           ),
           agentProvider,
         ),
-      ]),
-    );
-    return new CharterOutput(
-      // What an agent opens from the catalogue is the primitive as it compiled,
-      // not the file its author wrote: the whole body in one place, under the
-      // output whichever layer brought it (FR-140).
-      new Catalogue(allCatalogue.entries.filter(({ agentProviders }) => agentProviders === "all")),
-      CharterMdFactory.create(Primitives.classes),
-      [...compiledPrimitiveByPrimitive.values()],
-      new McpOrigins(McpOriginsFactory.create(charter, shortMcpIds, toolsByOriginKey)),
-      builtSensors,
-      agentBasedCatalogues,
-    );
+      );
+    charterOutput.add(new McpOrigins(McpOriginsFactory.create(charter, shortMcpIds, toolsByOriginKey)));
+    charterOutput.add(builtSensors);
+    charterOutput.add(CharterMdFactory.create(Primitives.classes));
+    for (const compiledPrimitive of compiledPrimitiveByPrimitive.values()) charterOutput.add(compiledPrimitive);
+    return charterOutput;
   }
 
   private constructor() {}

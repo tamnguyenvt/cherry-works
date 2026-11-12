@@ -34,7 +34,7 @@ const charter = {
 const fullListOf = async (files: Readonly<Record<string, string>>, matching?: string) => {
   const readers = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryReporter());
-  return charterAuthoringApp.fullList(matching);
+  return charterAuthoringApp.listPrimitives(matching);
 };
 
 const idsIn = (answer: CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault) => {

@@ -17,9 +17,12 @@ export interface ReleaseFixture {
   releaseMode: string;
   /** The library's declarations the build leaves in `dist/index.d.ts`. */
   builtContractText: string;
-  /** The contract the last release recorded in `contract.d.ts`; none where
-   *  the library was never released. */
+  /** The contract the last release recorded, all of it in the entry file
+   *  `contract/index.d.ts`; none where the library was never released. */
   lastContractText?: string;
+  /** The contract the last release recorded as several files of
+   *  `contract/`, by file name, in place of `lastContractText`. */
+  lastContractTextByFileName?: Readonly<Record<string, string>>;
   changelogText?: string;
 }
 
@@ -39,6 +42,10 @@ export async function inARelease(
     await mkdir(join(fixtureFolder, "bin"));
     await writeFile(join(fixtureFolder, "bin/package.json"), '{"type":"commonjs"}');
     await copyFile(new URL("../scripts/release.ts", import.meta.url), join(fixtureFolder, "scripts/release.ts"));
+    await copyFile(
+      new URL("../scripts/bundle-contract.ts", import.meta.url),
+      join(fixtureFolder, "scripts/bundle-contract.ts"),
+    );
     // The packages the script imports, as the repository installed them.
     await symlink(fileURLToPath(new URL("../node_modules", import.meta.url)), join(fixtureFolder, "node_modules"));
     await writeFile(
@@ -50,8 +57,14 @@ export async function inARelease(
       `# Fixture\n\nCurrent version: **${releaseFixture.currentVersion}**\n\nKeep this text.\n`,
     );
     await writeFile(join(fixtureFolder, "built-contract.d.ts"), releaseFixture.builtContractText);
-    if (releaseFixture.lastContractText !== undefined)
-      await writeFile(join(fixtureFolder, "contract.d.ts"), releaseFixture.lastContractText);
+    const lastContractTextByFileName =
+      releaseFixture.lastContractTextByFileName ??
+      (releaseFixture.lastContractText === undefined ? undefined : { "index.d.ts": releaseFixture.lastContractText });
+    if (lastContractTextByFileName !== undefined) {
+      await mkdir(join(fixtureFolder, "contract"));
+      for (const [contractFileName, contractText] of Object.entries(lastContractTextByFileName))
+        await writeFile(join(fixtureFolder, "contract", contractFileName), contractText);
+    }
     if (releaseFixture.changelogText !== undefined)
       await writeFile(join(fixtureFolder, "CHANGELOG.md"), releaseFixture.changelogText);
     const commandScript = `#!${process.execPath}
@@ -104,12 +117,14 @@ if (commandName === 'pnpm') {
   if (commandArguments[0] === 'branch') console.info('develop');
   if (commandArguments[0] === 'commit') {
     if (releaseMode === 'commit-fails') process.exit(1);
-    const contractFile = 'contract.d.ts';
+    const contractFolder = 'contract';
     fs.writeFileSync('recorded-release.json', JSON.stringify({
       arguments: commandArguments,
       readme: fs.readFileSync('README.md', 'utf8'),
       packageJson: fs.readFileSync('package.json', 'utf8'),
-      contract: fs.existsSync(contractFile) ? fs.readFileSync(contractFile, 'utf8') : null,
+      contract: fs.existsSync(contractFolder)
+        ? Object.fromEntries(fs.readdirSync(contractFolder).sort().map((contractFileName) => [contractFileName, fs.readFileSync(path.join(contractFolder, contractFileName), 'utf8')]))
+        : null,
     }));
   }
 }

@@ -1,4 +1,4 @@
-import { type CharterDTOs, TEST_DIRECTORY } from "#module/charter/module.js";
+import { TEST_FOLDER_PATH } from "#module/charter/module.js";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
 import { printFault, printFaultsByFile } from "./helper.js";
 
@@ -19,52 +19,51 @@ import { printFault, printFaultsByFile } from "./helper.js";
  */
 export class TestCommand implements Command {
   readonly name = "test";
-  readonly summary = `Resolve every situation in ${TEST_DIRECTORY}/ against the charter`;
+  readonly summary = `Resolve every situation in ${TEST_FOLDER_PATH}/ against the charter`;
 
-  async run({ charterAuthoringApp }: Context, _options: Options): Promise<Outcome> {
-    const testRunReportDTO = await charterAuthoringApp.test();
-    if (testRunReportDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(testRunReportDTO) };
+  async runCommand({ charterAuthoringApp }: Context, _options: Options): Promise<Outcome> {
+    const testRunReportDTO = await charterAuthoringApp.testCharter();
+    if (testRunReportDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(testRunReportDTO) };
 
     // Either the charter does not hold or the tests do not read; either way
     // nothing was resolved, and what has to change is named under its own path
     // (SC-003).
     if (testRunReportDTO.type === "FaultsByFile")
-      return { code: EXIT_FAILURE, problem: `Nothing was resolved.\n\n${printFaultsByFile(testRunReportDTO)}` };
+      return { exitCode: EXIT_FAILURE, problemText: `Nothing was resolved.\n\n${printFaultsByFile(testRunReportDTO)}` };
 
     const cases = testRunReportDTO.data.testCaseReports;
 
     if (cases.length === 0) {
       return {
-        code: EXIT_OK,
-        result: `No tests: ${TEST_DIRECTORY}/ holds no case.\nWrite one as ${TEST_DIRECTORY}/<name>.json to pin a situation down.\n`,
+        exitCode: EXIT_OK,
+        resultText: `No tests: ${TEST_FOLDER_PATH}/ holds no case.\nWrite one as ${TEST_FOLDER_PATH}/<name>.json to pin a situation down.\n`,
       };
     }
 
-    const failed = cases.filter((one) => !one.data.passed);
+    const failedCases = cases.filter((testCaseReport) => !testCaseReport.data.passed);
 
     return {
-      code: failed.length === 0 ? EXIT_OK : EXIT_FAILURE,
-      result: [
-        ...cases.flatMap(lines),
+      exitCode: failedCases.length === 0 ? EXIT_OK : EXIT_FAILURE,
+      resultText: [
+        // One case: the situation it put, whether the charter answered it as
+        // expected, and under a failing one why it did not (FR-048). A case is
+        // named by what it puts rather than by a title its author also had to
+        // write, so a failing line already says what broke.
+        ...cases.flatMap((testCaseReport) => [
+          `  ${testCaseReport.data.passed ? "pass" : "FAIL"}  ${testCaseReport.data.situation}`,
+          ...(testCaseReport.data.unmet === undefined
+            ? []
+            : [
+                `          ${testCaseReport.data.unmet.data.message}`,
+                `          ${testCaseReport.data.unmet.data.fix}`,
+              ]),
+        ]),
         "",
-        failed.length === 0
+        failedCases.length === 0
           ? `${cases.length} case${cases.length === 1 ? "" : "s"} passed.`
-          : `${failed.length} of ${cases.length} case${cases.length === 1 ? "" : "s"} failed.`,
+          : `${failedCases.length} of ${cases.length} case${cases.length === 1 ? "" : "s"} failed.`,
         "",
       ].join("\n"),
     };
   }
-}
-
-/** One case: the situation it put, whether the charter answered it as expected,
- *  and under a failing one why it did not (FR-048). A case is named by what it
- *  puts rather than by a title its author also had to write, so a failing line
- *  already says what broke. */
-function lines(one: CharterDTOs.TestCaseReport): readonly string[] {
-  return [
-    `  ${one.data.passed ? "pass" : "FAIL"}  ${one.data.situation}`,
-    ...(one.data.unmet === undefined
-      ? []
-      : [`          ${one.data.unmet.data.message}`, `          ${one.data.unmet.data.fix}`]),
-  ];
 }

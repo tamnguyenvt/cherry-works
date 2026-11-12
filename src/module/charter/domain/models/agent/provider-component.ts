@@ -9,7 +9,7 @@
  * projection's (CORE-FR-221).
  */
 export abstract class ProviderComponent {
-  protected constructor(
+  constructor(
     /** The host that reads it. */
     readonly host: string,
     /** The kind of the primitive it was compiled from, or `charter` where it

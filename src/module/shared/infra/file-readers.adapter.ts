@@ -1,8 +1,12 @@
-import type { Dirent } from "node:fs";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { FolderAddress, type FolderURL } from "../app/port/out/folder-address.port.js";
-import type { ForReadingFiles, ListedFile, ReadFile } from "../app/port/out/reading-files.port.js";
-import { pathFrom, urlAt } from "./helper.js";
+import {
+  type ForReadingFiles,
+  type ListedFile,
+  type ReadFile,
+  UnreadableFileFault,
+} from "../app/port/out/reading-files.port.js";
+import { findRelativePath, readFolderEntries, resolveFileUrl, resolveSubfolderUrl } from "./helper.js";
 
 /** DRIVEN ADAPTER: the filesystem. The charter as it was authored, on a disk.
  *
@@ -22,97 +26,90 @@ export class FileReaders implements ForReadingFiles {
      *  (SDK-FR-010). */
     rootFolder: URL,
   ) {
-    this.#rootFolder = FolderAddress.urlOf(rootFolder);
+    this.#rootFolder = FolderAddress.parseFolderUrl(rootFolder);
   }
 
   async readFilesRecursively(folderPath: string): Promise<readonly ReadFile[]> {
     return Promise.all(
-      (await this.#filesUnder(this.#folderUrlOf(folderPath))).map(async (file) => ({
-        path: pathFrom(this.#rootFolder, file),
-        contents: await readFile(file, "utf8"),
+      (await this.#listFilesUnder(this.#resolveFolderUrl(folderPath))).map(async (fileUrl) => ({
+        path: findRelativePath(this.#rootFolder, fileUrl),
+        contents: await readFile(fileUrl, "utf8"),
       })),
     );
   }
 
   async readBytesRecursively(folderPath: string): Promise<readonly ReadFile<Uint8Array>[]> {
     return Promise.all(
-      (await this.#filesUnder(this.#folderUrlOf(folderPath))).map(async (file) => ({
-        path: pathFrom(this.#rootFolder, file),
-        contents: new Uint8Array(await readFile(file)),
+      (await this.#listFilesUnder(this.#resolveFolderUrl(folderPath))).map(async (fileUrl) => ({
+        path: findRelativePath(this.#rootFolder, fileUrl),
+        contents: new Uint8Array(await readFile(fileUrl)),
       })),
     );
   }
 
   async listFiles(folderPath: string): Promise<readonly ListedFile[]> {
-    const folder = this.#folderUrlOf(folderPath);
+    const folderUrl = this.#resolveFolderUrl(folderPath);
     return Promise.all(
-      (await entriesOf(folder))
-        .filter((entry) => entry.isFile())
-        .map(async (entry) => {
-          const file = new URL(encodeURIComponent(entry.name), folder);
-          return { path: pathFrom(this.#rootFolder, file), modifiedAt: (await stat(file)).mtime };
+      (await readFolderEntries(folderUrl))
+        .filter((folderEntry) => folderEntry.isFile())
+        .map(async (folderEntry) => {
+          const fileUrl = new URL(encodeURIComponent(folderEntry.name), folderUrl);
+          return { path: findRelativePath(this.#rootFolder, fileUrl), modifiedAt: (await stat(fileUrl)).mtime };
         }),
     );
   }
 
   async listFolders(folderPath: string): Promise<readonly string[]> {
-    const folder = this.#folderUrlOf(folderPath);
-    return (await entriesOf(folder))
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => pathFrom(this.#rootFolder, under(folder, entry.name)));
+    const folderUrl = this.#resolveFolderUrl(folderPath);
+    return (await readFolderEntries(folderUrl))
+      .filter((folderEntry) => folderEntry.isDirectory())
+      .map((folderEntry) => findRelativePath(this.#rootFolder, resolveSubfolderUrl(folderUrl, folderEntry.name)));
   }
 
   findFileAddress(filePath: string): string {
-    return urlAt(this.#rootFolder, filePath).href;
+    return resolveFileUrl(this.#rootFolder, filePath).href;
   }
 
   async readIfThere(filePath: string): Promise<string | undefined> {
     try {
-      return await readFile(urlAt(this.#rootFolder, filePath), "utf8");
-    } catch (raised) {
-      if ((raised as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-      throw raised;
+      return await readFile(resolveFileUrl(this.#rootFolder, filePath), "utf8");
+    } catch (readError) {
+      if ((readError as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw new UnreadableFileFault(
+        `"${resolveFileUrl(this.#rootFolder, filePath).pathname}" could not be read.`,
+        "Check that the file can be read, and run this again.",
+        { cause: readError },
+      );
     }
   }
 
   async readBytesIfThere(filePath: string): Promise<Uint8Array | undefined> {
     try {
-      return new Uint8Array(await readFile(urlAt(this.#rootFolder, filePath)));
+      return new Uint8Array(await readFile(resolveFileUrl(this.#rootFolder, filePath)));
     } catch (readError) {
       if ((readError as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-      throw readError;
+      throw new UnreadableFileFault(
+        `"${resolveFileUrl(this.#rootFolder, filePath).pathname}" could not be read.`,
+        "Check that the file can be read, and run this again.",
+        { cause: readError },
+      );
     }
   }
 
   /** The folder at a path, as an address a directory is read at. */
-  #folderUrlOf(folderPath: string): URL {
-    return folderPath === "" ? this.#rootFolder : urlAt(this.#rootFolder, `${folderPath}/`);
+  #resolveFolderUrl(folderPath: string): URL {
+    return folderPath === "" ? this.#rootFolder : resolveFileUrl(this.#rootFolder, `${folderPath}/`);
   }
 
   /** Every file under one folder, at any depth. */
-  async #filesUnder(folder: URL): Promise<readonly URL[]> {
+  async #listFilesUnder(folderUrl: URL): Promise<readonly URL[]> {
     const fileLists = await Promise.all(
-      (await entriesOf(folder)).map(async (entry) =>
-        entry.isDirectory()
-          ? this.#filesUnder(under(folder, entry.name))
-          : [new URL(encodeURIComponent(entry.name), folder)],
+      (await readFolderEntries(folderUrl)).map(async (folderEntry) =>
+        folderEntry.isDirectory()
+          ? this.#listFilesUnder(resolveSubfolderUrl(folderUrl, folderEntry.name))
+          : [new URL(encodeURIComponent(folderEntry.name), folderUrl)],
       ),
     );
     return fileLists.flat();
   }
-}
-
-/** What one directory holds, and nothing where there is no such directory. */
-async function entriesOf(at: URL): Promise<readonly Dirent[]> {
-  try {
-    return await readdir(at, { withFileTypes: true });
-  } catch (raised) {
-    if ((raised as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw raised;
-  }
-}
-
-/** One directory inside another. */
-function under(at: URL, directory: string): URL {
-  return new URL(`${encodeURIComponent(directory)}/`, at);
 }

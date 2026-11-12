@@ -10,7 +10,7 @@ import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memo
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
-import { api } from "../src/presentation/portal/portal.routes.js";
+import { buildPortalRoutes } from "../src/presentation/portal/portal.routes.js";
 import { authoringCharterOf, buildingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
@@ -34,7 +34,7 @@ const guide = (id: string) =>
 const portal = (files: Readonly<Record<string, string>> = {}) => {
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources();
-  const portalRoutes = api(
+  const portalRoutes = buildPortalRoutes(
     wrapAppToShowPaths(
       authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), { sourceFetcher }),
       "/repo",
@@ -144,7 +144,7 @@ test("a save over a file changed on disk, or with no If-Match, is 412 naming the
   });
   const entityTag = (await portalRoutes.request("/charter/root/primitives/no-any")).headers.get("ETag") ?? "";
   const changedOnDisk = guide("no-any").replace("About no-any.", "Changed elsewhere.");
-  fileReaders.write(new URL(at(".cw/charter/primitive/guide/no-any/index.md")), changedOnDisk);
+  fileReaders.writeFile(new URL(at(".cw/charter/primitive/guide/no-any/index.md")), changedOnDisk);
 
   for (const ifMatch of [{ "If-Match": entityTag }, {}]) {
     const refused = await portalRoutes.request(

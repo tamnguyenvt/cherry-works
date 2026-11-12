@@ -25,7 +25,7 @@
       "good": true,
       "findings": []
     },
-    "scripts/moduleLoader.mjs": {
+    "scripts/module-loader.mjs": {
       "hash": "6217203abd5f0cb651b551c2fc6b3191f06a749ad94d1d1705b9bfb65834bc05",
       "assessed": "2026-11-05",
       "good": true,

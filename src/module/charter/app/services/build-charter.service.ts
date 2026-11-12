@@ -1,7 +1,8 @@
+import { AgentProvider, type AgentProviderName } from "#module/shared/module.js";
 import { DomainFault, type FaultsByFile } from "../../../shared/module.js";
-import { AgentProvider, type AgentProviderName } from "../../domain/models/agent/agent-provider.js";
 import type { CharterRoot } from "../../domain/models/charter/charter-root.js";
-import { PlanSummary, ProjectionPlan, type WritePlan } from "../../domain/models/projection/projection-plan.js";
+import { UnwrittenBuildFault } from "../../domain/models/charter.fault.js";
+import { PlanSummary, ProjectionPlan, type WritePlan } from "../../domain/models/charter-output/projection-plan.js";
 import { CompileService } from "../../domain/services/compile.service.js";
 import type { ForManagingCharter } from "../port/out/managing-charter.port.js";
 import type { ForManagingLocalAgentOutput } from "../port/out/managing-local-agent-output.port.js";
@@ -39,24 +40,22 @@ export class BuildCharterService {
    * an mcp origin that cannot be asked, or lacks a tool declared, is answered as
    * its faults in place of a plan (EVAL-FR-031).
    *
-   * What is built is the repository, or the checkout of it `checkoutPath` names,
-   * such as an evaluation's worktree, nothing of where that root is
-   * (CORE-FR-217); where the output lands, and what is there now, is
+   * What is built is the repository, or a checkout of it such as an
+   * evaluation's worktree where the adapters handed were opened at one,
+   * nothing of where that root is (CORE-FR-217); where the output lands, and what is there now, is
    * `localRepo`'s, what each agent reads of it is its projection's,
    * under the agent's name in `agentProjectionByProvider`, and what the last build
    * kept is read back through `charterRepository` (CORE-FR-221).
    */
   async planBuild(
-    checkoutPath: string,
     charter: CharterRoot,
     agentProjectionByProvider: Readonly<Record<AgentProviderName, ForManagingLocalAgentOutput>>,
     localRepo: ForManagingLocalOutput,
-    charterRepository: Pick<ForManagingCharter, "loadLaidText" | "findPlace">,
+    charterRepository: Pick<ForManagingCharter, "readBuiltOutputItem" | "describeItemPlace">,
     mcpReaching: McpReaching | undefined,
     { refreshMcpOrigins }: { readonly refreshMcpOrigins: boolean },
   ): Promise<ProjectionPlan | FaultsByFile> {
     const { toolsByOriginKey, faultsByFile } = await this.#loadMcpOriginsService.loadToolsByOriginKey(
-      checkoutPath,
       charter,
       charterRepository,
       mcpReaching,
@@ -70,15 +69,15 @@ export class BuildCharterService {
       toolsByOriginKey,
     );
     const buildPlans = await Promise.all([
-      localRepo.createProjectionPlan(charterOutput, checkoutPath),
+      localRepo.createProjectionPlan(charterOutput),
       ...Object.values(agentProjectionByProvider).map((agentProjection) =>
-        agentProjection.createAgentProjectionPlan(charter, charterOutput, checkoutPath),
+        agentProjection.createAgentProjectionPlan(charter, charterOutput),
       ),
     ]);
     return new ProjectionPlan(
       buildPlans.flatMap((buildPlan) => buildPlan.warnings),
       buildPlans.flatMap((buildPlan) => buildPlan.cleanupPlan),
-      buildPlans.flatMap((buildPlan) => buildPlan.projectionPlan),
+      buildPlans.flatMap((buildPlan) => buildPlan.writePlans),
     );
   }
 
@@ -132,7 +131,7 @@ export class BuildCharterService {
       // (SC-003). Only a fault the writer meant for the person is said so; any
       // other is the system's, logged and never said (SDK-FR-017, SDK-FR-018).
       if (!(raisedValue instanceof DomainFault) || raisedValue.internal) throw raisedValue;
-      throw new DomainFault(
+      throw new UnwrittenBuildFault(
         `This build could not be written: ${raisedValue.message}`,
         "Check that the files this build writes can be written, then build again.",
         { cause: raisedValue, internal: false },
@@ -154,7 +153,7 @@ export class BuildCharterService {
       return heldContents === plannedContents;
     return (
       heldContents.length === plannedContents.length &&
-      heldContents.every((heldByte, index) => heldByte === plannedContents[index])
+      heldContents.every((heldByte, byteIndex) => heldByte === plannedContents[byteIndex])
     );
   }
 }

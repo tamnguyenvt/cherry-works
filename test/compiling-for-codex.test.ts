@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { tomlTableOf } from "../src/module/charter/domain/libs/toml.lib.js";
-import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
+import { outputPath } from "../src/module/charter/domain/constants.js";
+import { parseTomlTable } from "../src/module/charter/domain/libs/toml.lib.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 import { CodexComponentFactory } from "../src/module/charter/infra/codex/codex-component.factory.js";
 import { CodexEntryFile } from "../src/module/charter/infra/codex/codex-entry-file.js";
 import { CodexProjection } from "../src/module/charter/infra/codex/codex-projection.adapter.js";
+import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 
@@ -32,15 +33,15 @@ test("compilation supplies scoped instruction components without reading provide
   assert.match(scopedComponent.document, /Follow this scoped guide/);
   const configComponent = codexComponents.find((component) => component.kind === "config");
   assert.ok(configComponent);
-  const settings = tomlTableOf(configComponent.document);
+  const settings = parseTomlTable(configComponent.document);
   assert.equal(settings["project_doc_max_bytes"], 1_048_576n);
   assert.equal(await fileReaders.readIfThere(inRepo("src/AGENTS.md")), undefined);
-  const { projectionPlan } = await new CodexProjection(fileReaders).createAgentProjectionPlan(charter, output);
+  const { writePlans } = await new CodexProjection(fileReaders).createAgentProjectionPlan(charter, output);
   assert.match(
-    projectionPlan.find((writePlan) => writePlan.path === "src/AGENTS.md")!.contents as string,
+    writePlans.find((writePlan) => writePlan.path === "src/AGENTS.md")!.contents as string,
     /Follow this scoped guide/,
   );
-  assert.equal(await fileReaders.read(inRepo("AGENTS.md")), rootText);
+  assert.equal(await fileReaders.readFile(inRepo("AGENTS.md")), rootText);
 });
 
 test("compilation depends only on the charter, not existing provider files", async () => {
@@ -52,11 +53,13 @@ test("compilation depends only on the charter, not existing provider files", asy
   fileReaders.calls.length = 0;
   const firstOutput = CompileService.compileCharterRoot(charter, [new AgentProvider("codex")]);
   assert.deepEqual(fileReaders.calls, []);
-  fileReaders.write(inRepo(".codex/config.toml"), "not valid TOML");
+  fileReaders.writeFile(inRepo(".codex/config.toml"), "not valid TOML");
   const secondOutput = CompileService.compileCharterRoot(charter, [new AgentProvider("codex")]);
-  assert.deepEqual(secondOutput.compiledParts, firstOutput.compiledParts);
+  assert.deepEqual(secondOutput.charterOutputItems, firstOutput.charterOutputItems);
   assert.deepEqual(fileReaders.calls, []);
   assert.ok(
-    !firstOutput.compiledParts.some((compiledPart) => compiledPart.outputPart.id.endsWith("codex-entry-files.json")),
+    !firstOutput.charterOutputItems.some((charterOutputItem) =>
+      outputPath.getPath(charterOutputItem).endsWith("codex-entry-files.json"),
+    ),
   );
 });

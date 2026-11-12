@@ -11,7 +11,7 @@ import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory
 import { Commander } from "../src/presentation/cli/cli.commander.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { api } from "../src/presentation/portal/portal.routes.js";
+import { buildPortalRoutes } from "../src/presentation/portal/portal.routes.js";
 import { authoringCharterOf, buildingCharterOf, commandLineOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
@@ -71,7 +71,7 @@ const surfaces = (files: Readonly<Record<string, string>>) => {
     COMMANDS,
   );
   return {
-    portalRoutes: api(
+    portalRoutes: buildPortalRoutes(
       wrapAppToShowPaths(charterAuthoringApp, "/repo"),
       wrapAppToShowPaths(charterRuntimeApp, "/repo"),
       workspaceSettingsLoaderOf(fileReaders),
@@ -89,7 +89,7 @@ const printed = async (cli: Commander, argv: readonly string[]) => {
     written.push(String(text)), true
   )) as typeof process.stdout.write;
   try {
-    return { code: await cli.run(argv), text: written.join("") };
+    return { code: await cli.runCommandLine(argv), text: written.join("") };
   } finally {
     process.stdout.write = kept;
   }

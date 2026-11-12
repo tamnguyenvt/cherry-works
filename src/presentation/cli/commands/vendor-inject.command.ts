@@ -38,16 +38,17 @@ export class VendorInjectCommand implements Command<typeof OPTIONS> {
   readonly summary = "Copy a charter or skills into this repository's own charter";
   readonly options = OPTIONS;
 
-  async run(
+  async runCommand(
     { charterAuthoringApp }: Context,
     { source, ref, charter, skill }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     const vendorAddOutcomeDTO = await charterAuthoringApp.injectVendor(source ?? "", ref, skill, charter);
-    if (vendorAddOutcomeDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(vendorAddOutcomeDTO) };
+    if (vendorAddOutcomeDTO.type === "Fault")
+      return { exitCode: EXIT_FAILURE, problemText: printFault(vendorAddOutcomeDTO) };
     const vendorInstalls = vendorAddOutcomeDTO.data;
     return {
-      code: EXIT_OK,
-      result: [
+      exitCode: EXIT_OK,
+      resultText: [
         ...vendorInstalls.flatMap(({ primitives }) =>
           primitives.map(
             ({ data: { kind, id, leftOutHeaders } }) =>

@@ -32,7 +32,7 @@ function claudeContextOf(
       "--import",
       import.meta.resolve("tsx"),
       "--import",
-      join(ROOT, "scripts/moduleLoader.mjs"),
+      join(ROOT, "scripts/module-loader.mjs"),
       join(ROOT, "main.ts"),
       "context",
       ...contextArgs,

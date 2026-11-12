@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
+import { McpOrigins } from "../src/module/charter/domain/models/charter-output/mcp-origin.js";
 import { AgentPrimitive } from "../src/module/charter/domain/models/primitive/agent-primitive.js";
 import { CorpusPrimitive } from "../src/module/charter/domain/models/primitive/corpus-primitive.js";
 import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
@@ -8,13 +9,13 @@ import { McpPrimitive } from "../src/module/charter/domain/models/primitive/mcp-
 import { MixinPrimitive } from "../src/module/charter/domain/models/primitive/mixin-primitive.js";
 import { PlaybookPrimitive } from "../src/module/charter/domain/models/primitive/playbook-primitive.js";
 import { type Primitive, Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
-import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.js";
+import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
 import { SkillPrimitive } from "../src/module/charter/domain/models/primitive/skill-primitive.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
-import { FaultsByFile } from "../src/module/shared/domain/models/domain.fault.js";
+import { FaultsByFile } from "../src/module/shared/domain/models/fault/faults-by-file.js";
 
-const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
+const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
 
 /** One primitive that has already been read, under the file it was read from:
  *  what validate is given, and what a file that came through reading clean
@@ -30,7 +31,7 @@ const layered = (vendor: string | undefined, file: string, primitive: Primitive)
       primitive.headers,
       primitive.body,
       [],
-      vendor === undefined ? PrimitiveLayer.REPO : PrimitiveLayer.ofVendor(vendor),
+      vendor === undefined ? PrimitiveLayer.REPO : PrimitiveLayer.vendorLayerOf(vendor),
       file,
     );
 
@@ -82,7 +83,10 @@ const mcp = (id: string, vendor?: string, headers: Record<string, unknown> = {})
   );
 
 /** Every mcp origin a charter's mcps reach, as a build writes them (FR-145). */
-const mcpOriginsOf = (charter: CharterRoot) => CompileService.compileCharterRoot(charter, []).mcpOrigins.origins;
+const mcpOriginsOf = (charter: CharterRoot) =>
+  CompileService.compileCharterRoot(charter, []).charterOutputItems.find(
+    (charterOutputItem): charterOutputItem is McpOrigins => charterOutputItem instanceof McpOrigins,
+  )!.origins;
 
 /** Every mcp of these, named in a guide's body so none is reported as unnamed. */
 const namedMcps = (...mcps: Authored[]): Authored[] => [
@@ -96,12 +100,12 @@ const namedMcps = (...mcps: Authored[]): Authored[] => [
   ...mcps,
 ];
 
-const faultsByFilesOf = (...primitives: Authored[]): FaultsByFile["files"] =>
-  new CharterRoot(primitives, FaultsByFile.none).compositeFaultsByFiles.files;
+const faultsByFilesOf = (...primitives: Authored[]): FaultsByFile["faultsByFilePath"] =>
+  new CharterRoot(primitives, FaultsByFile.none).compositeFaultsByFiles.faultsByFilePath;
 
-const faultsIn = (faultsByFiles: FaultsByFile["files"]) => Object.values(faultsByFiles).flat();
+const faultsIn = (faultsByFiles: FaultsByFile["faultsByFilePath"]) => Object.values(faultsByFiles).flat();
 
-const messages = (faultsByFiles: FaultsByFile["files"]) =>
+const messages = (faultsByFiles: FaultsByFile["faultsByFilePath"]) =>
   Object.values(faultsByFiles)
     .flatMap((one) => one.map((fault) => fault.message))
     .join("\n");
@@ -380,20 +384,17 @@ test("a repository mcp and a vendor mcp at one endpoint and path are one mcp ori
     FaultsByFile.none,
   );
 
-  assert.deepEqual(
-    mcpOriginsOf(charter).map((mcpOrigin) => ({ ...mcpOrigin })),
-    [
-      {
-        ids: ["acme/code", "billing"],
-        names: { "acme/code": "acme_4a92", billing: "billing_4170" },
-        address: "https://mcp.example.com/",
-        endpoint: "https://mcp.example.com/",
-        path: "acme/billing",
-        auth: ["oauth", "token"],
-      },
-    ],
-  );
-  assert.deepEqual(charter.compositeFaultsByFiles.files, {});
+  assert.deepEqual(JSON.parse(JSON.stringify(mcpOriginsOf(charter))), [
+    {
+      ids: ["acme/code", "billing"],
+      names: { "acme/code": "acme_4a92", billing: "billing_4170" },
+      address: "https://mcp.example.com/",
+      endpoint: "https://mcp.example.com/",
+      path: "acme/billing",
+      auth: ["oauth", "token"],
+    },
+  ]);
+  assert.deepEqual(charter.compositeFaultsByFiles.faultsByFilePath, {});
 });
 
 test("the same two at different paths are two mcp origins (FR-145)", () => {

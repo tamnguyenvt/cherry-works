@@ -6,7 +6,7 @@ import {
   CodexProjection,
   FileCharterRepository,
   type ForAuthoringCharter,
-  type ForAuthorizingMcpOrigins,
+  type ForAuthorizingOAuthClients,
   type ForBuildingCharter,
   type ForCountingTokens,
   type ForFetchingCharterSources,
@@ -42,6 +42,7 @@ import {
   ConsoleReporter,
   FileOutput,
   FileReaders,
+  FolderAddress,
   type ForCallingMcpServers,
   type ForReadingFiles,
   type ForReportingProgress,
@@ -70,7 +71,7 @@ export interface EngineAdapters {
       /** What the agent reads of a charter, and where (CORE-FR-221). */
       readonly projection: ForManagingLocalAgentOutput;
       /** The agent's own command line (EVAL-FR-004). */
-      readonly cli: ForCheckingAgentCli;
+      readonly agentCli: ForCheckingAgentCli;
     };
   };
   /** The charter — its primitives, its vendors, its test and eval cases —
@@ -88,7 +89,7 @@ export interface EngineAdapters {
   readonly fileReader: ForReadingFiles;
   readonly fileWriter: ForWritingFiles;
   readonly worktrees: ForKeepingWorktrees;
-  readonly authorizing: ForAuthorizingMcpOrigins;
+  readonly oauthAuthorizer: ForAuthorizingOAuthClients;
   readonly mcpServers: ForCallingMcpServers;
   readonly tokenCounter: ForCountingTokens;
   readonly clock: ForTellingTime;
@@ -104,7 +105,6 @@ export interface EngineAdapters {
 export interface EngineSettings {
   readonly enabledAgents: readonly string[];
   readonly mainContextCeiling?: number | undefined;
-  readonly sessionAnalysisFolder?: string | undefined;
 }
 
 /** The engine's two modules' applications, as the drivers reach them
@@ -131,7 +131,7 @@ export function composeEngine(
     installCharterService,
     charterRepository,
     engineAdapters.credentialsRepository,
-    engineAdapters.authorizing,
+    engineAdapters.oauthAuthorizer,
     clock,
     progressReporter,
   );
@@ -157,18 +157,13 @@ export function composeEngine(
     charterAuthoringApp,
     charterBuildingApp,
     fileReader,
-    Object.fromEntries(Object.entries(agentProvider).map(([agentName, { cli }]) => [agentName, cli])),
+    Object.fromEntries(Object.entries(agentProvider).map(([agentName, { agentCli }]) => [agentName, agentCli])),
     engineAdapters.shell,
     engineAdapters.worktrees,
     engineAdapters.promptfooRunner,
     engineAdapters.sessionAnalysisRepository,
     clock,
-    {
-      agents: engineSettings.enabledAgents,
-      ...(engineSettings.sessionAnalysisFolder === undefined
-        ? {}
-        : { sessionAnalysisFolder: engineSettings.sessionAnalysisFolder }),
-    },
+    { agents: engineSettings.enabledAgents },
     progressReporter,
     mcpServers,
   );
@@ -215,29 +210,26 @@ export async function composeApplications(
   homeFolder: URL,
   engineAdapters: Partial<EngineAdapters> = {},
 ): Promise<ComposedApplications> {
+  // A home naming no folder is refused when the engine is composed, as the
+  // sessions store set up later would refuse it (SDK-FR-010).
+  FolderAddress.parseFolderUrl(homeFolder);
   const fileReader = engineAdapters.fileReader ?? new FileReaders(repoFolder);
   const fileWriter = engineAdapters.fileWriter ?? new FileOutput(repoFolder);
-  const defaultedEngineAdapters: Omit<EngineAdapters, "sourceFetcher"> = {
+  const defaultedEngineAdapters: Omit<EngineAdapters, "sourceFetcher" | "sessionAnalysisRepository"> = {
     agentProvider: engineAdapters.agentProvider ?? {
-      claude: { projection: new ClaudeProjection(fileReader), cli: new ClaudeCli() },
-      codex: { projection: new CodexProjection(fileReader), cli: new CodexCli() },
+      claude: { projection: new ClaudeProjection(fileReader), agentCli: new ClaudeCli() },
+      codex: { projection: new CodexProjection(fileReader), agentCli: new CodexCli() },
     },
     charterRepository:
       engineAdapters.charterRepository ??
       new FileCharterRepository(fileReader, fileWriter, engineAdapters.sourceFetcher ?? new GitSources(repoFolder)),
-    // The sessions are read off the home's, wherever under it the
-    // repository's settings keep them: the repository sets that reader up
-    // itself.
-    sessionAnalysisRepository:
-      engineAdapters.sessionAnalysisRepository ??
-      new FileSessionAnalysisRepository((rootFolder) => new FileReaders(rootFolder), repoFolder, homeFolder),
     workspaceSettingsRepository:
       engineAdapters.workspaceSettingsRepository ?? new FileWorkspaceSettingsRepository(fileReader, fileWriter),
     localOutput: engineAdapters.localOutput ?? new LocalRepoManipulator(fileReader, fileWriter),
     fileReader,
     fileWriter,
     worktrees: engineAdapters.worktrees ?? new GitWorktrees(repoFolder),
-    authorizing: engineAdapters.authorizing ?? new OAuth(),
+    oauthAuthorizer: engineAdapters.oauthAuthorizer ?? new OAuth(),
     mcpServers: engineAdapters.mcpServers ?? new McpClients(),
     tokenCounter: engineAdapters.tokenCounter ?? new Tiktoken(),
     clock: engineAdapters.clock ?? new SystemClock(),
@@ -254,16 +246,31 @@ export async function composeApplications(
   let composedEngine: ComposedEngine | undefined;
   const composeEngineForSettings = async (): Promise<ComposedEngine> => {
     if (composedEngine !== undefined) return composedEngine;
-    const workspaceSettingsDTO = await workspaceApp.settings();
+    const workspaceSettingsDTO = await workspaceApp.readWorkspaceSettings();
     const engineSettings: EngineSettings =
       workspaceSettingsDTO.type === "Fault"
         ? { enabledAgents: [] }
         : {
             enabledAgents: workspaceSettingsDTO.data.agents,
             mainContextCeiling: workspaceSettingsDTO.data.mainContextCeiling,
-            sessionAnalysisFolder: workspaceSettingsDTO.data.sessionAnalysisFolder,
           };
-    const settingsComposedEngine = composeEngine(engineSettings, defaultedEngineAdapters);
+    // The sessions are read off the home's, wherever under it the
+    // repository's settings keep them, which cw's own store is set up with: a
+    // store handed in knows where it keeps them.
+    const sessionAnalysisFolder =
+      workspaceSettingsDTO.type === "Fault" ? undefined : workspaceSettingsDTO.data.sessionAnalysisFolder;
+    const sessionAnalysisRepository =
+      engineAdapters.sessionAnalysisRepository ??
+      new FileSessionAnalysisRepository(
+        (rootFolder) => new FileReaders(rootFolder),
+        repoFolder,
+        homeFolder,
+        sessionAnalysisFolder,
+      );
+    const settingsComposedEngine = composeEngine(engineSettings, {
+      ...defaultedEngineAdapters,
+      sessionAnalysisRepository,
+    });
     if (engineSettings.enabledAgents.length > 0) composedEngine ??= settingsComposedEngine;
     return composedEngine ?? settingsComposedEngine;
   };

@@ -43,18 +43,19 @@ export class RemoveCommand implements Command<typeof OPTIONS> {
   readonly summary = "Delete the file of one primitive this repository authored";
   readonly options = OPTIONS;
 
-  async run({ charterAuthoringApp }: Context, { id, yes }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const openedPrimitiveDTO = await charterAuthoringApp.open(id ?? "");
-    if (openedPrimitiveDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(openedPrimitiveDTO) };
+  async runCommand({ charterAuthoringApp }: Context, { id, yes }: Options<typeof OPTIONS>): Promise<Outcome> {
+    const openedPrimitiveDTO = await charterAuthoringApp.openPrimitive(id ?? "");
+    if (openedPrimitiveDTO.type === "Fault")
+      return { exitCode: EXIT_FAILURE, problemText: printFault(openedPrimitiveDTO) };
     const primitive = openedPrimitiveDTO.data;
 
     // Only what this repository authored is asked about: anything else is
-    // refused by `remove` itself, and a question before a refusal asks nothing.
+    // refused by `removePrimitive` itself, and a question before a refusal asks nothing.
     if (!yes && primitive.layerName === REPO_LAYER) {
       if (!process.stdin.isTTY)
         return {
-          code: EXIT_FAILURE,
-          problem: `Removing ${primitive.file} is asked first, and nobody is at the terminal to answer.\n  Run "cw remove ${primitive.id} --yes" to remove it without asking.\n`,
+          exitCode: EXIT_FAILURE,
+          problemText: `Removing ${primitive.file} is asked first, and nobody is at the terminal to answer.\n  Run "cw remove ${primitive.id} --yes" to remove it without asking.\n`,
         };
       const { confirmed } = await prompts({
         type: "confirm",
@@ -62,14 +63,14 @@ export class RemoveCommand implements Command<typeof OPTIONS> {
         message: `Remove ${primitive.file}?`,
         initial: false,
       });
-      if (confirmed !== true) return { code: EXIT_OK, result: "Nothing was removed.\n" };
+      if (confirmed !== true) return { exitCode: EXIT_OK, resultText: "Nothing was removed.\n" };
     }
 
-    const primitiveDTO = await charterAuthoringApp.remove(primitive.id);
-    if (primitiveDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(primitiveDTO) };
+    const primitiveDTO = await charterAuthoringApp.removePrimitive(primitive.id);
+    if (primitiveDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveDTO) };
     return {
-      code: EXIT_OK,
-      result: [
+      exitCode: EXIT_OK,
+      resultText: [
         `Removed ${primitiveDTO.data.file}.`,
         'Run "cw doctor" to see what still names it, then "cw build".',
         "",

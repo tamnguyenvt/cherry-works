@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { GitSources } from "../src/module/charter/infra/git-sources.adapter.js";
+import { composeApplications } from "../src/module/composition.js";
 import { FileSessionAnalysisRepository } from "../src/module/runtime/infra/file-session-analysis.repository.js";
 import { GitWorktrees } from "../src/module/runtime/infra/git-worktrees.adapter.js";
 import { Promptfoo } from "../src/module/runtime/infra/promptfoo.adapter.js";
@@ -36,7 +37,7 @@ const fileReadersHolding = (
 ) => {
   const fileReaders = new InMemoryFileReaders(otherFiles);
   for (const [logFile, logText] of Object.entries(logTextByFile))
-    fileReaders.write(new URL(logFile), logText, new Date("2026-10-02T12:00:00.000Z"));
+    fileReaders.writeFile(new URL(logFile), logText, new Date("2026-10-02T12:00:00.000Z"));
   return fileReaders;
 };
 
@@ -46,11 +47,11 @@ const reviewedSessionsOf = async (repo: string, home: string, fileReaders: InMem
     await reviewingSessionsOf(
       new URL(repo),
       new URL(home),
-      fileReaders.rootedAt(new URL(repo)),
-      (rootFolder) => fileReaders.rootedAt(rootFolder),
+      fileReaders.makeReadersAt(new URL(repo)),
+      (rootFolder) => fileReaders.makeReadersAt(rootFolder),
       new InMemoryClock(today),
       new InMemoryReporter(),
-    ).sessionSummary(),
+    ).summarizeSessions(),
   );
   return {
     sessionIds: sessionReviewOutcome.data.sessionSummary.data.sessions.map((session) => session.sessionId),
@@ -156,6 +157,16 @@ test("a home that is no folder is refused too (SDK Story 1 scenario 4, SDK-FR-01
         new URL("mailto:home"),
       ),
     (fault: unknown) => fault instanceof DomainFault && /no folder/.test(fault.message),
+  );
+});
+
+test("a home naming no folder is refused when the engine is composed, never on a later call (SDK-FR-010)", async () => {
+  await assert.rejects(
+    composeApplications(new URL("memory://a/"), new URL("file:///home/user"), {
+      fileReader: new InMemoryFileReaders({}, new URL("memory://a/")),
+    }),
+    (fault: unknown) =>
+      fault instanceof DomainFault && /names a file, and a folder is what is wanted here/.test(fault.message),
   );
 });
 
@@ -266,7 +277,7 @@ test("a fault refusing an address repeats none of its credentials, and the fix i
         assert.doesNotMatch(`${fault.message} ${fault.fix}`, /secret/);
         const fixAddress = [...fault.fix.matchAll(/"([^"]+)"/g)].at(-1)?.[1];
         assert.ok(fixAddress !== undefined);
-        FolderAddress.urlOf(fixAddress);
+        FolderAddress.parseFolderUrl(fixAddress);
         return true;
       },
     );

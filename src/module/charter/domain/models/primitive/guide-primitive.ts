@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
+import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** A standard the agent is held to. Its body is loaded when a touched file
  *  matches one of its globs, and on every turn where it names none (FR-004). */

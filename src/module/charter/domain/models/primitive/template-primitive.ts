@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
+import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** A file the agent fills or copies, written as its body. Beyond the common
  *  headers it asks for nothing: the agent reads what kind of file it is off

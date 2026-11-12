@@ -24,23 +24,24 @@ export class EvalAnalyzeCommand implements Command<typeof OPTIONS> {
   readonly summary = "Read evaluation results, tool evidence and agent session paths without running an agent";
   readonly options = OPTIONS;
 
-  async run(
+  async runCommand(
     { charterRuntimeApp }: Context,
     { log: logFilePath, json: isJson }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    const evalLogAnalysis = await charterRuntimeApp.analyze(logFilePath);
-    if (evalLogAnalysis.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(evalLogAnalysis) };
-    if (isJson) return { code: EXIT_OK, result: `${JSON.stringify(evalLogAnalysis, null, 2)}\n` };
-    const { logs: savedLogs } = evalLogAnalysis.data;
+    const evalLogAnalysisDTO = await charterRuntimeApp.analyzeEvalLog(logFilePath);
+    if (evalLogAnalysisDTO.type === "Fault")
+      return { exitCode: EXIT_FAILURE, problemText: printFault(evalLogAnalysisDTO) };
+    if (isJson) return { exitCode: EXIT_OK, resultText: `${JSON.stringify(evalLogAnalysisDTO, null, 2)}\n` };
+    const { logs: savedLogs } = evalLogAnalysisDTO.data;
     if (savedLogs.length === 0)
       return {
-        code: EXIT_OK,
-        result:
+        exitCode: EXIT_OK,
+        resultText:
           "No saved evaluation log for this repository. Run cw eval first; older runs without retained logs cannot be reconstructed.\n",
       };
     return {
-      code: EXIT_OK,
-      result: savedLogs
+      exitCode: EXIT_OK,
+      resultText: savedLogs
         .flatMap((savedLog) => [
           `${savedLog.success ? "PASS" : "FAIL"} ${savedLog.agent} | ${savedLog.createdAt} | ${savedLog.totalTokens.toLocaleString("en-US")} tokens`,
           `Prompt: ${savedLog.prompt}`,

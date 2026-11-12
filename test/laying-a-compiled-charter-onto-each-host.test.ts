@@ -3,27 +3,30 @@ import { readdir, readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { AuthoringCharter } from "../src/module/charter/app/authoring-charter.use-case.js";
 import type { ForManagingLocalAgentOutput } from "../src/module/charter/app/port/out/managing-local-agent-output.port.js";
-import type {
-  CharterOutput,
-  ForManagingLocalOutput,
-  OutputPart,
+import {
+  type CharterOutput,
+  CharterOutputItem,
+  type ForManagingLocalOutput,
 } from "../src/module/charter/app/port/out/managing-local-output.port.js";
 import { installCharterService } from "../src/module/charter/app/services/install-charter.service.js";
 import { loadCharterService } from "../src/module/charter/app/services/load-charter.service.js";
-import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
-import { CompiledPrimitive } from "../src/module/charter/domain/models/projection/compiled-primitive.js";
-import { McpOrigin, McpOrigins } from "../src/module/charter/domain/models/projection/mcp-origin.js";
-import { ProjectionPlan, WritePlan } from "../src/module/charter/domain/models/projection/projection-plan.js";
+import { outputPath } from "../src/module/charter/domain/constants.js";
+import { Catalogue } from "../src/module/charter/domain/models/charter-output/catalogue.js";
+import { CharterMd } from "../src/module/charter/domain/models/charter-output/charter-md.js";
+import { CompiledPrimitive } from "../src/module/charter/domain/models/charter-output/compiled-primitive.js";
+import { McpOrigin, McpOrigins } from "../src/module/charter/domain/models/charter-output/mcp-origin.js";
+import { ProjectionPlan, WritePlan } from "../src/module/charter/domain/models/charter-output/projection-plan.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
-import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
 import { InMemoryLocalRepo } from "../src/module/charter/infra/in-memory/in-memory-local-repo.adapter.js";
+import { InMemoryOAuthAuthorizer } from "../src/module/charter/infra/in-memory/in-memory-oauth-authorizer.adapter.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { LocalRepoManipulator } from "../src/module/charter/infra/local-repo-manipulator.adapter.js";
 import { InMemoryShellCommands } from "../src/module/runtime/infra/in-memory/in-memory-shell-commands.adapter.js";
+import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { InMemoryClock } from "../src/module/shared/infra/in-memory/in-memory-clock.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
@@ -62,7 +65,7 @@ const authoringCharterOver = (heldFileReaders: InMemoryFileReaders) => {
     installCharterService,
     charterRepositoryOf(heldFileReaders, fileWriter, new InMemorySources()),
     new InMemoryCredentialsRepository(),
-    new InMemoryAuthorizing(),
+    new InMemoryOAuthAuthorizer(),
     new SystemClock(),
     new InMemoryReporter(),
   );
@@ -76,36 +79,42 @@ test("a compiled charter's parts each name their id, kind and part, their path i
     hostNames.map((hostName) => new AgentProvider(hostName)),
   );
 
-  assert.ok(charterOutput.compiledParts.length > 0);
-  for (const compiledPart of charterOutput.compiledParts) {
-    const { part, kind, id, path } = compiledPart.outputPart;
-    assert.ok(part !== "" && kind !== "", `${id} names its part and kind`);
-    assert.ok(
-      path !== "" && !path.startsWith("/") && !path.startsWith("."),
-      `${part} ${id} names its path inside the output`,
-    );
-    assert.equal(typeof id, "string");
-    assert.equal(typeof compiledPart.text, "string");
-    for (const placeField of ["file", "path", "projections", "projectionPolicy"])
-      assert.ok(!(placeField in compiledPart), `${part} ${id} holds no ${placeField}`);
+  assert.ok(charterOutput.charterOutputItems.length > 0);
+  for (const charterOutputItem of charterOutput.charterOutputItems) {
+    const path = outputPath.getPath(charterOutputItem);
+    assert.ok(charterOutputItem instanceof CharterOutputItem, `${path} is an item of the output`);
+    assert.ok(path !== "" && !path.startsWith("/") && !path.startsWith("."), `${path} is a path inside the output`);
+    assert.equal(typeof charterOutputItem.text, "string");
+    for (const placeField of ["file", "projections", "projectionPolicy"])
+      assert.ok(!(placeField in charterOutputItem), `${path} holds no ${placeField}`);
     for (const outputPlace of OUTPUT_PLACES)
-      assert.ok(!compiledPart.text.includes(outputPlace), `${part} ${id} names ${outputPlace}`);
+      assert.ok(!charterOutputItem.text.includes(outputPlace), `${path} names ${outputPlace}`);
   }
-  // A part for one host alone names that host in its path; a part every host
-  // reads names none.
-  const hostCatalogues = Object.entries(charterOutput.agentBasedCatalogues);
-  assert.deepEqual(hostCatalogues.map(([hostName]) => hostName).sort(), hostNames);
-  for (const [hostName, hostCatalogue] of hostCatalogues)
-    assert.ok(hostCatalogue.outputPart.path.includes(hostName), `${hostCatalogue.outputPart.path} names ${hostName}`);
-  const hostCatalogueSet = new Set<unknown>(hostCatalogues.map(([, hostCatalogue]) => hostCatalogue));
-  for (const sharedPart of charterOutput.compiledParts.filter((compiledPart) => !hostCatalogueSet.has(compiledPart)))
+  // An item for one agent alone names that agent in its path; an item every
+  // agent reads names none.
+  const agentCatalogues = charterOutput.charterOutputItems.filter(
+    (charterOutputItem): charterOutputItem is Catalogue =>
+      charterOutputItem instanceof Catalogue && charterOutputItem.agent !== undefined,
+  );
+  assert.deepEqual(agentCatalogues.map((agentCatalogue) => agentCatalogue.agent!.name).sort(), hostNames);
+  for (const agentCatalogue of agentCatalogues)
+    assert.ok(
+      outputPath.getPath(agentCatalogue).includes(agentCatalogue.agent!.name),
+      `${outputPath.getPath(agentCatalogue)} names ${agentCatalogue.agent!.name}`,
+    );
+  for (const sharedItem of charterOutput.charterOutputItems.filter(
+    (charterOutputItem) => !agentCatalogues.includes(charterOutputItem as Catalogue),
+  ))
     for (const hostName of hostNames)
-      assert.ok(!sharedPart.outputPart.path.includes(hostName), `${sharedPart.outputPart.path} names ${hostName}`);
+      assert.ok(
+        !outputPath.getPath(sharedItem).includes(hostName),
+        `${outputPath.getPath(sharedItem)} names ${hostName}`,
+      );
   // Every primitive with files beside its document carries each of them, as
   // its author kept it, among its assets.
   const primitiveFolderUrl = "file:///repo/.cw/charter/primitive/";
-  const compiledPrimitives = charterOutput.compiledParts.filter(
-    (compiledPart): compiledPart is CompiledPrimitive => compiledPart instanceof CompiledPrimitive,
+  const compiledPrimitives = charterOutput.charterOutputItems.filter(
+    (charterOutputItem): charterOutputItem is CompiledPrimitive => charterOutputItem instanceof CompiledPrimitive,
   );
   const assetPrimitiveIds = new Set<string>();
   for (const [fileUrl, keptContents] of Object.entries(charterOfEveryKind)) {
@@ -118,7 +127,7 @@ test("a compiled charter's parts each name their id, kind and part, their path i
     const assetPrimitive = compiledPrimitives.find(
       (compiledPrimitive) => compiledPrimitive.kind === assetKind && compiledPrimitive.id === assetPrimitiveId,
     );
-    const compiledAsset = assetPrimitive?.assets.find(({ file }) => file === assetFile);
+    const compiledAsset = assetPrimitive?.assets.find(({ assetPath }) => assetPath === assetFile);
     assert.ok(compiledAsset !== undefined, `${assetKind} ${assetPrimitiveId} carries ${assetFile}`);
     assert.deepEqual(
       compiledAsset.contents,
@@ -129,7 +138,7 @@ test("a compiled charter's parts each name their id, kind and part, their path i
   const compiledScript = compiledPrimitives.find((compiledPrimitive) => compiledPrimitive.id === "check");
   assert.ok(compiledScript !== undefined);
   assert.deepEqual(
-    compiledScript.assets.map(({ file, executable }) => [file, executable]),
+    compiledScript.assets.map(({ assetPath, isExecutable }) => [assetPath, isExecutable]),
     [
       ["run.sh", true],
       ["logo.png", false],
@@ -160,7 +169,7 @@ test("laid onto a repository, a charter leaves the build's output, its paths wri
     new LocalRepoManipulator(heldFileReaders, new InMemoryFileOutput(heldFileReaders)),
   );
 
-  assert.deepEqual(await charterRuntimeApp.build(), laidBefore.built);
+  assert.deepEqual(await charterRuntimeApp.buildCharter(), laidBefore.built);
   const laidFiles = Object.fromEntries(
     (await heldFileReaders.readBytesRecursively("")).map(({ path, contents }) => [path, contents] as const),
   );
@@ -179,12 +188,12 @@ test("an output writer of a tool author's own is handed the whole of what the ch
   const filesBefore = (await heldFileReaders.readBytesRecursively("")).length;
   const recordingLocalRepo = new InMemoryLocalRepo();
 
-  const planSummaryDTO = await projectingCharterOver(heldFileReaders, recordingLocalRepo).build();
+  const planSummaryDTO = await projectingCharterOver(heldFileReaders, recordingLocalRepo).buildCharter();
 
   const [charterOutput] = recordingLocalRepo.charterOutputs;
   assert.ok(charterOutput !== undefined);
-  const places = charterOutput.compiledParts.map((compiledPart) =>
-    recordingLocalRepo.findPlace(compiledPart.outputPart),
+  const places = charterOutput.charterOutputItems.map((charterOutputItem) =>
+    recordingLocalRepo.describeItemPlace(outputPath.getPath(charterOutputItem)),
   );
   for (const expectedPlace of [
     "catalogue.json",
@@ -197,7 +206,10 @@ test("an output writer of a tool author's own is handed the whole of what the ch
   ])
     assert.ok(places.includes(expectedPlace), `handed ${expectedPlace}`);
   // What a part says of another is its path inside the output.
-  assert.match(charterOutput.charterMd.text, /\(\$CW_OUT\/catalogue\.json\)/);
+  const charterMd = charterOutput.charterOutputItems.find(
+    (charterOutputItem): charterOutputItem is CharterMd => charterOutputItem instanceof CharterMd,
+  )!;
+  assert.match(charterMd.text, /\(\$CW_OUT\/catalogue\.json\)/);
   assert.equal(planSummaryDTO.type, "PlanSummary");
   if (planSummaryDTO.type === "PlanSummary")
     for (const place of places) assert.ok(planSummaryDTO.data.added.includes(place), `${place} is added`);
@@ -217,23 +229,28 @@ test("a projection of a tool author's own, handed for an agent, is handed the sa
     agentProjection: ForManagingLocalAgentOutput,
   ): ForManagingLocalAgentOutput => ({
     tokenFactor: agentProjection.tokenFactor,
-    mainContextTextsOf: (charter, charterOutput) => agentProjection.mainContextTextsOf(charter, charterOutput),
-    createAgentProjectionPlan: async (charter, charterOutput, checkoutPath) => {
+    createCheckoutProjection: (checkoutFolder) =>
+      recordingProjectionOf(projectionName, agentProjection.createCheckoutProjection(checkoutFolder)),
+    listMainContextTexts: (charter, charterOutput) => agentProjection.listMainContextTexts(charter, charterOutput),
+    createAgentProjectionPlan: async (charter, charterOutput) => {
       handedCharterOutputs.push({ projectionName, charterOutput });
-      return agentProjection.createAgentProjectionPlan(charter, charterOutput, checkoutPath);
+      return agentProjection.createAgentProjectionPlan(charter, charterOutput);
     },
   });
   // The author's own lays each part under a folder of its choosing, its path
   // inside the output kept.
   const ownProjection: ForManagingLocalAgentOutput = {
     tokenFactor: 1,
-    mainContextTextsOf: () => [],
+    createCheckoutProjection: () => ownProjection,
+    listMainContextTexts: () => [],
     createAgentProjectionPlan: async (_charter, charterOutput) =>
       new ProjectionPlan(
         [],
         [],
-        charterOutput.compiledParts.map(({ outputPart, text }) => {
-          const ownPlace = `own-agent/${outputPart.path}`;
+        charterOutput.charterOutputItems.map((charterOutputItem) => {
+          const { text } = charterOutputItem;
+          const path = outputPath.getPath(charterOutputItem);
+          const ownPlace = `own-agent/${path}`;
           return new WritePlan(ownPlace, ownPlace, text);
         }),
       ),
@@ -249,7 +266,7 @@ test("a projection of a tool author's own, handed for an agent, is handed the sa
       workspaceSettings: { agents: ["claude"] },
       agentProjectionByProvider: { claude: agentProjection },
     });
-    assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
+    assert.equal((await charterRuntimeApp.buildCharter()).type, "PlanSummary");
     return recordingLocalRepo;
   };
 
@@ -267,9 +284,11 @@ test("a projection of a tool author's own, handed for an agent, is handed the sa
   // What the author's projection decided is what the build lays.
   const [laidPlan] = ownLocalRepo.laidPlans;
   assert.ok(laidPlan !== undefined);
-  const laidPaths = laidPlan.projectionPlan.map(({ path }) => path);
-  for (const { outputPart } of ownHandedRecord!.charterOutput.compiledParts)
-    assert.ok(laidPaths.includes(`own-agent/${outputPart.path}`), `laid own-agent/${outputPart.path}`);
+  const laidPaths = laidPlan.writePlans.map(({ path }) => path);
+  for (const path of ownHandedRecord!.charterOutput.charterOutputItems.map((charterOutputItem) =>
+    outputPath.getPath(charterOutputItem),
+  ))
+    assert.ok(laidPaths.includes(`own-agent/${path}`), `laid own-agent/${path}`);
 });
 
 test("the mcp origins are served from what the build put out, read back from where an output writer of a tool author's own laid it (CORE-FR-221, CORE-FR-222, CORE Story 48 scenario 4)", async () => {
@@ -279,8 +298,8 @@ test("the mcp origins are served from what the build put out, read back from whe
   // and the charter's repository reads it back from there.
   const ownLocalRepo = new InMemoryLocalRepo();
   class OwnLaidCharterRepository extends FileCharterRepository {
-    override async loadLaidText(outputPart: OutputPart): Promise<string | undefined> {
-      return ownLocalRepo.loadLaidText(outputPart);
+    override async readBuiltOutputItem(itemPath: string): Promise<string | undefined> {
+      return ownLocalRepo.readBuiltOutputItem(itemPath);
     }
   }
   const mcpServers = new InMemoryMcpServers();
@@ -297,17 +316,17 @@ test("the mcp origins are served from what the build put out, read back from whe
     agentProjectionByProvider: { claude: new ClaudeProjection(heldFileReaders) },
     mcpServers,
     credentialsRepository: new InMemoryCredentialsRepository(),
-    authorizing: new InMemoryAuthorizing(),
+    oauthAuthorizer: new InMemoryOAuthAuthorizer(),
     clock: new InMemoryClock(new Date("2026-11-07T00:00:00Z")),
   });
 
-  assert.equal((await charterRuntimeApp.build()).type, "PlanSummary");
+  assert.equal((await charterRuntimeApp.buildCharter()).type, "PlanSummary");
   const laidOriginsText = ownLocalRepo.textByPlace.get("mcp-origins.json");
   assert.ok(laidOriginsText !== undefined, "the build laid the mcp origins");
   const [laidOrigin] = (JSON.parse(laidOriginsText) as { origins: { names: Record<string, string> }[] }).origins;
   assert.equal(await heldFileReaders.readIfThere(".cw/out/mcp-origins.json"), undefined);
 
-  const servedTools = await charterRuntimeApp.tools();
+  const servedTools = await charterRuntimeApp.listServedTools();
 
   assert.equal(servedTools.type, "ServedTools");
   if (servedTools.type === "ServedTools") {
@@ -328,7 +347,8 @@ test("built with projections of a tool author's own, under any agent's name, the
    *  handed under. */
   const ownProjectionOf = (agentName: string): ForManagingLocalAgentOutput => ({
     tokenFactor: 1,
-    mainContextTextsOf: () => [],
+    createCheckoutProjection: () => ownProjectionOf(agentName),
+    listMainContextTexts: () => [],
     createAgentProjectionPlan: async () =>
       new ProjectionPlan([], [], [new WritePlan(`.${agentName}/rules.md`, `.${agentName}/rules.md`, "Own.\n")]),
   });
@@ -345,7 +365,7 @@ test("built with projections of a tool author's own, under any agent's name, the
     agentProjectionByProvider,
   });
 
-  const planSummaryDTO = await charterRuntimeApp.build();
+  const planSummaryDTO = await charterRuntimeApp.buildCharter();
 
   assert.equal(planSummaryDTO.type, "PlanSummary", JSON.stringify(planSummaryDTO));
   const contentsByPathAfter = await contentsByPathOf(heldFileReaders);
@@ -363,7 +383,7 @@ test("a search reads when a kind comes up as the domain says it, its paths under
   const heldFileReaders = new InMemoryFileReaders(charterOfEveryKind);
   const charterAuthoringApp = authoringCharterOver(heldFileReaders);
   const matchedIdsOf = async (matching: string) => {
-    const primitivesDTO = await charterAuthoringApp.fullList(matching);
+    const primitivesDTO = await charterAuthoringApp.listPrimitives(matching);
     assert.equal(primitivesDTO.type, "Primitives");
     return primitivesDTO.type === "Primitives" ? primitivesDTO.data.primitives.map(({ data }) => data.id) : [];
   };
@@ -387,4 +407,20 @@ test("what an mcp origin listed is laid in its own words, whatever it holds (COR
   const laidOrigins = JSON.parse(mcpOrigins.text) as { origins: { tools: { description: string }[] }[] };
 
   assert.equal(laidOrigins.origins[0]?.tools[0]?.description, listedDescription);
+});
+
+test("an output item of no class the layout knows is refused by a named fault, never a bare error (CORE-FR-220)", () => {
+  class UnplacedItem extends CharterOutputItem {
+    get text(): string {
+      return "";
+    }
+  }
+
+  assert.throws(
+    () => outputPath.getPath(new UnplacedItem()),
+    (thrownError: unknown) =>
+      thrownError instanceof Error &&
+      thrownError.name === "UnplaceableCharterOutputItemFault" &&
+      thrownError.message.includes("UnplacedItem"),
+  );
 });

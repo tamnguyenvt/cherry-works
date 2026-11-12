@@ -9,7 +9,7 @@ import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memo
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
-import { api } from "../src/presentation/portal/portal.routes.js";
+import { buildPortalRoutes } from "../src/presentation/portal/portal.routes.js";
 import { authoringCharterOf, buildingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
@@ -59,7 +59,7 @@ const portal = (files: Readonly<Record<string, string>>) => {
     { claude: new InMemoryAgentCli() },
     new InMemoryReporter(),
   );
-  const portalRoutes = api(
+  const portalRoutes = buildPortalRoutes(
     wrapAppToShowPaths(charterAuthoringApp, "/repo"),
     wrapAppToShowPaths(charterRuntimeApp, "/repo"),
     workspaceSettingsLoaderOf(fileReaders),
@@ -85,7 +85,7 @@ test("the test files are sent as suites() answers them (FR-124)", async () => {
   const answer = await portalRoutes.request("/test-suites");
 
   assert.equal(answer.status, 200);
-  assert.deepEqual(CharterDTOs.TestSuites.parse(await answer.json()), await charterAuthoringApp.suites());
+  assert.deepEqual(CharterDTOs.TestSuites.parse(await answer.json()), await charterAuthoringApp.listTestSuites());
 });
 
 test("the outcome is how cw test resolves every case, each under its file (Story 9 scenario 2)", async () => {
@@ -95,7 +95,7 @@ test("the outcome is how cw test resolves every case, each under its file (Story
 
   assert.equal(answer.status, 200);
   const testRunReportDTO = CharterDTOs.TestRunReport.parse(await answer.json());
-  assert.deepEqual(testRunReportDTO, await charterAuthoringApp.test());
+  assert.deepEqual(testRunReportDTO, await charterAuthoringApp.testCharter());
   assert.deepEqual(
     testRunReportDTO.data.testCaseReports.map(({ data }) => [data.suiteName, data.passed]),
     [

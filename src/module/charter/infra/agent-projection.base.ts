@@ -1,4 +1,4 @@
-import { type ForReadingFiles, filePathOf, pathFromCheckout } from "#module/shared/module.js";
+import { type ForReadingFiles, resolveCheckoutPath, resolveRepoPath } from "#module/shared/module.js";
 import {
   type CharterOutput,
   type CharterRoot,
@@ -6,10 +6,10 @@ import {
   type MainContextText,
   ProjectionPlan,
   type ProviderComponent,
-  StampedDocument,
+  StampedDocumentSpec,
   WritePlan,
 } from "../app/port/out/managing-local-agent-output.port.js";
-import { laidTextOf } from "./helper.js";
+import { resolveLaidText } from "./helper.js";
 
 /**
  * What every agent's projection onto a repository's files does the same way:
@@ -22,10 +22,19 @@ import { laidTextOf } from "./helper.js";
  */
 export abstract class AgentProjection implements ForManagingLocalAgentOutput {
   protected readonly fileReader: ForReadingFiles;
+  /** The checkout of the repository this agent's files are laid in, such as
+   *  a worktree, by its path from the repository; none for the repository's own. */
+  protected readonly checkoutFolder: string;
 
-  constructor(fileReader: ForReadingFiles) {
+  constructor(fileReader: ForReadingFiles, checkoutFolder = "") {
     this.fileReader = fileReader;
+    this.checkoutFolder = checkoutFolder;
   }
+
+  /** The same projection over another checkout: each agent's builds itself,
+   *  and refuses to build a class extending it, which builds itself in turn
+   *  (EVAL-FR-021). */
+  abstract createCheckoutProjection(checkoutFolder: string): ForManagingLocalAgentOutput;
 
   abstract readonly tokenFactor: number;
 
@@ -34,17 +43,17 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
   protected abstract readonly ownedFolders: readonly string[];
 
   /** Every file this agent reads of the charter (FR-018). */
-  protected abstract componentsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
+  protected abstract listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
 
   /** Where one of this agent's files lands, from the repository's root. */
-  protected abstract placeOf(component: ProviderComponent): string;
+  protected abstract findComponentPlace(component: ProviderComponent): string;
 
-  abstract mainContextTextsOf(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
+  abstract listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
 
   /** What a file is once this build's part is written over `currentText`,
    *  what is there now: the charter's part alone, where the file is the
    *  charter's. */
-  protected contentsOf(
+  protected mergeComponentContents(
     _component: ProviderComponent,
     laidText: string,
     _currentText: string | undefined,
@@ -59,15 +68,11 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
     return [];
   }
 
-  async createAgentProjectionPlan(
-    charter: CharterRoot,
-    charterOutput: CharterOutput,
-    checkoutPath = "",
-  ): Promise<ProjectionPlan> {
-    const components = this.componentsOf(charter, charterOutput);
+  async createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput): Promise<ProjectionPlan> {
+    const components = this.listComponents(charter, charterOutput);
     const [cleanupPlan, layingPlan] = await Promise.all([
-      this.#planCleanup(checkoutPath),
-      this.#planWriting(checkoutPath, components),
+      this.#planCleanup(this.checkoutFolder),
+      this.#planWriting(this.checkoutFolder, components),
     ]);
     // A file the last build wrote and this one takes only part of — an entry
     // file whose own text stays — is written back as that text.
@@ -87,12 +92,17 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
   async #planWriting(checkoutPath: string, components: readonly ProviderComponent[]): Promise<readonly WritePlan[]> {
     const writePlanByPath = new Map<string, WritePlan>();
     for (const component of components) {
-      const place = this.placeOf(component);
-      const filePath = filePathOf(checkoutPath, place);
+      const place = this.findComponentPlace(component);
+      const filePath = resolveRepoPath(checkoutPath, place);
       const heldContents = await this.fileReader.readIfThere(filePath);
       const plannedContents = writePlanByPath.get(place)?.contents;
       const currentText = typeof plannedContents === "string" ? plannedContents : heldContents;
-      const contents = this.contentsOf(component, laidTextOf(component.text, place), currentText, place);
+      const contents = this.mergeComponentContents(
+        component,
+        resolveLaidText(component.text, place),
+        currentText,
+        place,
+      );
       writePlanByPath.set(place, new WritePlan(place, filePath, contents, heldContents, false));
     }
     return [...writePlanByPath.values()];
@@ -103,13 +113,15 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
    *  else it left for this agent (FR-020). */
   async #planCleanup(checkoutPath: string): Promise<readonly WritePlan[]> {
     const folderFileLists = await Promise.all(
-      this.ownedFolders.map((folderPath) => this.fileReader.readFilesRecursively(filePathOf(checkoutPath, folderPath))),
+      this.ownedFolders.map((folderPath) =>
+        this.fileReader.readFilesRecursively(resolveRepoPath(checkoutPath, folderPath)),
+      ),
     );
     return [
       ...folderFileLists
         .flat()
-        .filter(({ contents }) => StampedDocument.isStamped(contents))
-        .map(({ path, contents }) => new WritePlan(pathFromCheckout(checkoutPath, path), path, undefined, contents)),
+        .filter(({ contents }) => new StampedDocumentSpec().isSatisfiedBy(contents))
+        .map(({ path, contents }) => new WritePlan(resolveCheckoutPath(checkoutPath, path), path, undefined, contents)),
       ...(await this.planOtherCleanup(checkoutPath)),
     ];
   }

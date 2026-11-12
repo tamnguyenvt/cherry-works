@@ -1,6 +1,6 @@
 import type { AssetFile } from "../primitive/base-primitive.js";
 import type { SourceCharter } from "./vendor-source.js";
-import type { VendorSourceOrigin } from "./vendor-source-origin.js";
+import type { VendorSourceOrigin } from "./vendor-source-origin.value-object.js";
 
 /** One skill a skills repository keeps, as it is handed in, before the engine
  *  converts it (CORE-FR-185): the text of its `SKILL.md`, every other file of

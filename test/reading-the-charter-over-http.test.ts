@@ -11,7 +11,7 @@ import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memo
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
-import { api } from "../src/presentation/portal/portal.routes.js";
+import { buildPortalRoutes } from "../src/presentation/portal/portal.routes.js";
 import { authoringCharterOf, buildingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
@@ -51,7 +51,7 @@ const portal = (
     { claude: new InMemoryAgentCli() },
     progressReporter,
   );
-  return api(
+  return buildPortalRoutes(
     wrapAppToShowPaths(charterAuthoringApp, "/repo"),
     wrapAppToShowPaths(charterRuntimeApp, "/repo"),
     workspaceSettingsLoaderOf(fileReaders),
@@ -186,7 +186,7 @@ test("the charter is read again on every call, so what changed on disk is what t
   const portalRoutes = portal({}, fileReaders);
   await portalRoutes.request("/charter/root/primitives");
 
-  fileReaders.write(new URL(at("corpus/why/index.md")), primitive("corpus", "why"));
+  fileReaders.writeFile(new URL(at("corpus/why/index.md")), primitive("corpus", "why"));
   const answer = await portalRoutes.request("/charter/root/primitives");
 
   const { data } = CharterDTOs.Primitives.parse(await answer.json());
@@ -218,5 +218,5 @@ test("what the engine never meant to say is a 500 with an internal fault that sa
   assert.equal(faultDTO.data.name, "InternalFault");
   assert.doesNotMatch(JSON.stringify(faultDTO), /disk went away/);
   assert.equal(progressReporter.problems.length, 1);
-  assert.match(progressReporter.problems[0] ?? "", /fullList[\s\S]*The disk went away\./);
+  assert.match(progressReporter.problems[0] ?? "", /listPrimitives[\s\S]*The disk went away\./);
 });

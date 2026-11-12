@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import { AgentBasedPrimitive } from "./agent-based-primitive.js";
 import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
+import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** What the agent may and may not do, as permission lists (FR-004). */
 export type PostureHeaders = Readonly<z.infer<typeof PosturePrimitive.schema>>;

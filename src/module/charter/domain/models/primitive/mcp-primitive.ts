@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { McpAuthMethod } from "../mcp/mcp-auth-method.js";
+import { McpAuthMethod } from "../mcp/mcp-auth-method.value-object.js";
 import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
-import type { PrimitiveLayer } from "./primitive-layer.js";
+import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /**
  * Whether a developer's credential may be sent to this endpoint: `https`, or
@@ -72,7 +72,7 @@ export class McpPrimitive extends BasePrimitive {
     })
     .superRefine((headers, context) => {
       const addFault = (message: string) => context.addIssue({ code: "custom", message });
-      const { endpoint, command, args, auth, tokenEnv } = headers;
+      const { endpoint, command, args: commandArguments, auth, tokenEnv } = headers;
 
       if (endpoint !== undefined && command !== undefined)
         return addFault(`This declares both "endpoint" and "command"; an mcp is one server, reached one way.`);
@@ -82,7 +82,7 @@ export class McpPrimitive extends BasePrimitive {
       if (endpoint !== undefined) {
         if (auth === undefined)
           addFault(`An endpoint says how a developer signs in to it: "auth" of oauth, token or both.`);
-        if (args !== undefined) addFault(`"args" are a command's; an endpoint takes none.`);
+        if (commandArguments !== undefined) addFault(`"args" are a command's; an endpoint takes none.`);
         if (tokenEnv !== undefined) addFault(`"tokenEnv" is where a command reads its token; an endpoint takes none.`);
         return;
       }
@@ -131,8 +131,15 @@ export class McpPrimitive extends BasePrimitive {
    *  arguments. The refinement has already held that one of the two is here
    *  (FR-142). */
   get address(): string {
-    const { endpoint, command, args = [] } = this.headers;
-    return endpoint ?? [command, ...args].join(" ");
+    const { endpoint, command, args: commandArguments = [] } = this.headers;
+    return endpoint ?? [command, ...commandArguments].join(" ");
+  }
+
+  /** The mcp origin this mcp is served from, told apart by its address and
+   *  path, never its name, joined by a character neither side can hold: a
+   *  path is one line, and an address is an endpoint or a command line. */
+  get originKey(): string {
+    return `${this.address}\n${this.headers.path ?? ""}`;
   }
 
   /** One mcp, or every fault its headers have, shown the sample of the shape

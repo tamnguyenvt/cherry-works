@@ -42,7 +42,7 @@ the import rules; run it after any change that adds an import.
   (`AgentProjection`, `ForManagingLocalAgentOutput`) in `charter/infra/<agent>/`,
   its command line (`AgentCli`, `ForCheckingAgentCli`) in
   `runtime/infra/<agent>/`. They are adapters like any other, and are what
-  the composition root hands in as plugins.
+  the composition root hands in as adapters.
 - `main.ts` / `main.js` is the composition root. Where the engine is
   composed apart from it, as `composeApplications` in
   `src/module/composition.ts`, that is the one place that names
@@ -63,27 +63,27 @@ module lets the code outside it reach, and the only file of it that code
 imports. Each folder named below is a module's: `<module>/app/port/in/`,
 `<module>/app/`…
 
-- `app/port/in/` — use-case interfaces, `For<Doing>` (`ForManagingOrders`),
+- `app/port/in/` — use-case interfaces, `For<Doing>` (`ForAuthoringCharter`),
   and beside them `<module>.dto.ts`, the zod schemas of what crosses them (`<Module>DTOs`, in
   the module answering with them, the faults `FaultDTOs` in `shared/`;
   each DTO `{ type, data }` — see [[hexagonal-naming]]). A driver port answers DTOs, never
   a model; it re-exports every type a driver needs, so a driver imports
   nothing else of the hexagon.
 - `app/port/out/` — driven ports, `For<Doing>` (`ForReadingFiles`,
-  `ForSendingMail`), named in the adapter's own words — see
+  `ForFetchingCharterSources`), named in the adapter's own words — see
   `[[driven-port-speaks-its-adapter]]`. Faults and types an adapter needs
   are exported here; the adapters' faults live in the domain's
   `adapter.fault.ts`, re-exported by the port they are raised behind. A
-  storage port, `ForStoring<Thing>` or `ForLoading<Thing>`, keeps one part of
+  storage port, `ForManaging<Thing>`, `ForStoring<Thing>` or `ForLoading<Thing>`, keeps one part of
   the repository's state and carries the engine's own models both ways —
   each kept thing known by its layer, kind and id or name, with a `uri` its
   store gives and the engine only says back — never a record made to carry
   them, nor a path the engine reads anything off. The output
-  port, `ForManagingLocalOutput`, is handed the compiled output, each part
-  known by the part it plays, its kind, its id and its path inside the
-  output, and decides where the output lands; `ForManagingLocalAgentOutput`, one per
+  port, `ForManagingLocalOutput`, is handed the compiled output, each item
+  known by its path inside the output, and decides where the output lands,
+  a checkout's handed once to its factory method (`createCheckoutOutput`); `ForManagingLocalAgentOutput`, one per
   agent, handed under the agent's name, decides what that agent reads of
-  the charter and its output, and where — each host's own folders — and how;
+  the charter and its output, and where — each agent's own folders — and how;
   what a build laid is read back through the charter's repository,
   `ForManagingCharter`, by the same parts (CORE-FR-221). Their adapters,
   `LocalRepoManipulator` and `InMemoryLocalRepo`, are in its module's `infra/`;
@@ -99,7 +99,7 @@ imports. Each folder named below is a module's: `<module>/app/port/in/`,
   turns the result — a fault included — into
   DTOs, each made by its schema, `<Module>DTOs.<Model>.of({ … })` — there is no
   folder of DTO makers. Logic that only this
-  use case follows is a private `#method` of its class. A rule found here
+  use case follows is a private method of its class (`#findPrimitiveById`). A rule found here
   belongs in the domain.
 - Nothing in the use cases, the services, the domain or the ports knows
   where a repository is, nor where the developer's home is, nor where a
@@ -108,7 +108,7 @@ imports. Each folder named below is a module's: `<module>/app/port/in/`,
   addresses go only to the adapters — `FileSessionAnalysisRepository`
   among them — set up once
   in the composition root on them, which refuse one that names no folder
-  (`FolderAddress.urlOf`, in `app/port/out/folder-address.port.ts`). A use
+  (`FolderAddress.parseFolderUrl`, in `app/port/out/folder-address.port.ts`). A use
   case is set up with no address (CORE-FR-217, CORE-FR-218).
 - `app/services/` — orchestration that more than one use case
   follows: reading the charter off its layers, building it, reaching the mcp
@@ -120,12 +120,16 @@ imports. Each folder named below is a module's: `<module>/app/port/in/`,
   a call needs.
 - `domain/` — pure values and rules, every one a class. `models/` holds one
   folder per concept of the business (`primitive/`, `charter/`, `test/`,
-  `projection/`…), each with the concept's models, its value objects and the
+  `charter-output/`…), each with the concept's models, its value objects and the
   factories that make them side by side; a module's faults sit in `models/`
   itself (`charter.fault.ts`). `services/` holds the domain services, apart
   from every model: a service works over several models, so the folder of
   any one of them is the wrong place for it. A domain may keep its value
-  objects in `value-objects/` beside `models/` (runtime's `LogFolder`).
+  objects in `value-objects/` beside `models/` (the kernel's `AgentProvider`).
+  A value object is a value an entity or an aggregate holds as a property;
+  a value no model holds is no value object. A module's constants — a
+  folder's path, a file's name — are its `domain/constants.ts`, never a class
+  of static members.
   - A model: what makes one out of what a repository keeps is its factory
     (`CharterRootFactory.create`, `WorkspaceSettingsFactory.create`), its zod
     schema a static member (`WorkspaceSettings.schema`), and a constant a
@@ -133,15 +137,19 @@ imports. Each folder named below is a module's: `<module>/app/port/in/`,
     set of names is a value object, one instance per name
     (`PrimitiveLayer.REPO`,
     `McpAuthMethod.OAUTH`); the name itself stays only where it crosses an
-    edge — a file, a DTO, a driver port. No port, no service, no DTO, no I/O:
+    edge — a file, a DTO, a driver port. A model holds a value as its value
+    object, never its name (`McpCredential.method` is an `McpAuthMethod`,
+    `CatalogueEntry.agentProviders` are `AgentProvider`s); a record, a DTO
+    and the JSON a model is written as hold the name, which the value object
+    writes itself as (`toJSON`) and is read back by (`McpAuthMethod.of`). No port, no service, no DTO, no I/O:
     whatever a rule needs, it is handed. The kernel's `domain.fault.ts` is
     the base of every fault.
-  - A value object of the workspace: its folders and files, each by its path
-    from the repository's root (`CharterFolder.path`): the charter, the
-    output and the log (CORE-FR-224). Where a build's output and each host's
+  - The workspace's folders and files are constants, each by its path from
+    the repository's root (`CHARTER_FOLDER_PATH`): the charter, the output
+    and the log (CORE-FR-224). Where a build's output and each agent's
     files land is no value of the domain's: it is the projections', and a
-    part of the output naming another names it by its path inside the
-    output, under `$CW_OUT` (`OutputPart.linkOf`). Which agents there are is
+    item of the output naming another names it by its path inside the
+    output, under `$CW_OUT` (`OutputPath.getLink`). Which agents there are is
     no value of the domain's either: an agent is a name, whichever names the
     projections the application was handed answer to.
   - A factory, `<model>.factory.ts`: one class per model it makes,

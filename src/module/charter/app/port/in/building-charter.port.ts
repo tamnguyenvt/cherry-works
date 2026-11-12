@@ -1,5 +1,5 @@
+import type { AgentProviderName } from "#module/shared/module.js";
 import type { FaultDTOs } from "../../../../shared/module.js";
-import type { AgentProviderName } from "../../../domain/models/agent/agent-provider.js";
 import type { CharterDTOs } from "./charter.dto.js";
 
 /*
@@ -26,7 +26,7 @@ export interface ProjectionSettings {
 
 /**
  * DRIVER PORT — projecting the charter: the charter charter authoring keeps,
- * built and laid onto each agent provider the repository uses; the build and
+ * built and laid onto each agent the repository uses; the build and
  * its preview, the health check, the estimated main context, and what the
  * last build laid to be served or run — the tools of the mcp origins, the
  * sensors (CORE-FR-222). Runtime asks it, through this port alone, for the
@@ -47,7 +47,7 @@ export interface ForBuildingCharter {
    * the main context each agent opens with, estimated. Reads and says
    * (FR-041).
    */
-  doctor(): Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault>;
+  diagnoseCharter(): Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault>;
 
   /** What each agent this repository compiles for is sent of the charter when
    *  a session opens, estimated by a tokenizer on this machine (EVAL-FR-001,
@@ -60,37 +60,41 @@ export interface ForBuildingCharter {
    * (FR-005, FR-009); an mcp origin that cannot be asked for its tools stops it
    * as an error does (EVAL-FR-031).
    */
-  build(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  buildCharter(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /** The build, worked out and stopped short of disk (FR-022). */
-  preview(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  previewCharterBuild(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /** Every tool the mcp origins the last build listed serve, read off what it
    *  kept there: no mcp origin is reached to list them (EVAL-FR-031). */
-  tools(): Promise<CharterDTOs.ServedTools | FaultDTOs.Fault>;
+  listServedTools(): Promise<CharterDTOs.ServedTools | FaultDTOs.Fault>;
 
   /** Every tool the mcp origins the last build listed declare, under the name
    *  it is served by, with the mcp origin a call to it is forwarded to
    *  (FR-152 – FR-154). */
-  declaredTools(): Promise<CharterDTOs.DeclaredTools | FaultDTOs.Fault>;
+  listDeclaredTools(): Promise<CharterDTOs.DeclaredTools | FaultDTOs.Fault>;
 
   /** The commands the last build laid for this signal of this agent
    *  (CORE-FR-176). */
-  sensorCommands(signal: string, agent: AgentProviderName): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault>;
+  listSensorCommands(
+    signal: string,
+    agentProviderName: AgentProviderName,
+  ): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault>;
 
-  /** The charter of the checkout `checkoutPath` names, built into it for the
-   *  agents this was composed with, keeping the tools the last build kept
-   *  (EVAL-FR-021). */
-  buildInto(checkoutPath: string): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  /** The charter as the store holds it now, committed or not, built into the
+   *  checkout `checkoutPath` names for the agents this was composed with,
+   *  keeping the tools the last build kept; the repository's own working tree
+   *  is left as it was (EVAL-FR-021). */
+  buildCharterInto(checkoutPath: string): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /** What each agent this repository compiles for is sent of the charter when
    *  a session opens, each text as the build lays it, for an exact count
    *  (EVAL-FR-004). */
-  mainContextTexts(): Promise<CharterDTOs.MainContextTexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  readMainContextTexts(): Promise<CharterDTOs.MainContextTexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
-  /** Every evaluation case of the checkout `checkoutPath` names, checked
-   *  against its charter: a charter with an error, a file that does not read,
+  /** Every evaluation case the store holds now, committed or not, checked
+   *  against the charter it holds: a charter with an error, a file that does not read,
    *  or a case naming a skill or a guide the charter does not hold, is answered
    *  as faults under their files (EVAL-FR-026). */
-  evalCases(checkoutPath: string): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  listEvalCases(): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 }

@@ -4,12 +4,12 @@ import { CharterRoot } from "../src/module/charter/domain/models/charter/charter
 import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
 import { MixinPrimitive } from "../src/module/charter/domain/models/primitive/mixin-primitive.js";
 import { type Primitive, Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
-import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.js";
+import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
 import { SkillPrimitive } from "../src/module/charter/domain/models/primitive/skill-primitive.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
-import { FaultsByFile } from "../src/module/shared/domain/models/domain.fault.js";
+import { FaultsByFile } from "../src/module/shared/domain/models/fault/faults-by-file.js";
 
-const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
+const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
 
 type Authored = Primitive;
 
@@ -22,7 +22,7 @@ const layered = (vendor: string | undefined, file: string, primitive: Primitive)
       primitive.headers,
       primitive.body,
       [],
-      vendor === undefined ? PrimitiveLayer.REPO : PrimitiveLayer.ofVendor(vendor),
+      vendor === undefined ? PrimitiveLayer.REPO : PrimitiveLayer.vendorLayerOf(vendor),
       file,
     );
 
@@ -49,7 +49,7 @@ const primitive = (
   );
 
 const faultsByFilesOf = (...primitives: Authored[]) =>
-  new CharterRoot(primitives, FaultsByFile.none).compositeFaultsByFiles.files;
+  new CharterRoot(primitives, FaultsByFile.none).compositeFaultsByFiles.faultsByFilePath;
 
 const messages = (primitives: Authored[]) =>
   Object.values(faultsByFilesOf(...primitives))

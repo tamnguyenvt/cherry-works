@@ -2,8 +2,12 @@ import { execFile } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { FolderAddress, type FolderURL, urlAt } from "../../shared/module.js";
-import { AdapterFault, type ForKeepingWorktrees } from "../app/port/out/keeping-worktrees.port.js";
+import { FolderAddress, type FolderURL, resolveFileUrl } from "../../shared/module.js";
+import {
+  type ForKeepingWorktrees,
+  MissingGitFault,
+  RefusedWorktreeFault,
+} from "../app/port/out/keeping-worktrees.port.js";
 
 const runGit = promisify(execFile);
 
@@ -16,12 +20,12 @@ export class GitWorktrees implements ForKeepingWorktrees {
      *  refused here unless it names a folder (SDK-FR-010). */
     repoFolder: URL,
   ) {
-    this.#repoFolder = FolderAddress.urlOf(repoFolder);
+    this.#repoFolder = FolderAddress.parseFolderUrl(repoFolder);
   }
 
   /** `git rev-parse --git-dir`: a refusal is a folder under no repository. */
-  async #isRepository(folder: URL): Promise<boolean> {
-    return runGit("git", ["rev-parse", "--git-dir"], { cwd: fileURLToPath(folder) }).then(
+  async #isRepository(folderUrl: URL): Promise<boolean> {
+    return runGit("git", ["rev-parse", "--git-dir"], { cwd: fileURLToPath(folderUrl) }).then(
       () => true,
       () => false,
     );
@@ -30,7 +34,7 @@ export class GitWorktrees implements ForKeepingWorktrees {
   /** `git worktree add --detach` at `HEAD`, forced over a record of one
    *  left at that folder by a run stopped halfway. */
   async addWorktree(worktreePath: string): Promise<void> {
-    const worktreeFolder = urlAt(this.#repoFolder, `${worktreePath}/`);
+    const worktreeFolder = resolveFileUrl(this.#repoFolder, `${worktreePath}/`);
     try {
       await runGit(
         "git",
@@ -39,17 +43,21 @@ export class GitWorktrees implements ForKeepingWorktrees {
       );
     } catch (gitError) {
       if ((gitError as NodeJS.ErrnoException).code === "ENOENT")
-        throw new AdapterFault("git is not installed here.", "Evaluating needs git: install it, and run this again.", {
-          internal: false,
-          cause: gitError,
-        });
+        throw new MissingGitFault(
+          "git is not installed here.",
+          "Evaluating needs git: install it, and run this again.",
+          {
+            internal: false,
+            cause: gitError,
+          },
+        );
       // Refused in git's own words (CORE-FR-206): what git says of the
       // person's own repository is theirs to read.
-      throw new AdapterFault(
+      throw new RefusedWorktreeFault(
         `${gitError}`,
         (await this.#isRepository(this.#repoFolder))
-          ? "Commit what is to be evaluated first: a worktree holds the last commit."
-          : 'Evaluating needs a git repository: run "git init" here and commit what is to be evaluated.',
+          ? "Commit once first: each case runs in a worktree of the last commit, the charter as it stands built into it."
+          : 'Evaluating needs a git repository: run "git init" here and commit once.',
         { internal: false, cause: gitError },
       );
     }
@@ -59,7 +67,7 @@ export class GitWorktrees implements ForKeepingWorktrees {
    *  said, and `git worktree prune` for a record whose folder is gone, which a
    *  folder under no repository has none of. */
   async removeWorktree(worktreePath: string): Promise<void> {
-    const worktreeFolder = urlAt(this.#repoFolder, `${worktreePath}/`);
+    const worktreeFolder = resolveFileUrl(this.#repoFolder, `${worktreePath}/`);
     const repoFolderPath = fileURLToPath(this.#repoFolder);
     await runGit("git", ["worktree", "remove", "--force", "--force", fileURLToPath(worktreeFolder)], {
       cwd: repoFolderPath,

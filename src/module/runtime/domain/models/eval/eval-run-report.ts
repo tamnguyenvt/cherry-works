@@ -1,3 +1,5 @@
+import type { AgentProvider } from "#module/shared/module.js";
+
 /** How one evaluation case came out: the file it is in, its prompt, the tokens
  *  the agent used, and every expectation it did not meet, said (EVAL-FR-025). */
 export class EvalCaseReport {
@@ -21,7 +23,7 @@ export class EvalCaseReport {
 export class EvalRunReport {
   constructor(
     readonly evalCaseReports: readonly EvalCaseReport[],
-    readonly agent: string,
+    readonly agent: AgentProvider,
   ) {}
 
   get totalTokens(): number {

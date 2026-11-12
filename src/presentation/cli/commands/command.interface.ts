@@ -60,11 +60,11 @@ export interface Context extends CommandLine, EngineApps, Pick<Applications, "wo
  *  to say; where that goes is the command line's own business, and the command
  *  line is the terminal — it has no need of a port to reach one. */
 export interface Outcome {
-  readonly code: number;
+  readonly exitCode: number;
   /** What was asked for. */
-  readonly result?: string;
+  readonly resultText?: string;
   /** What went wrong, and the next move after it (SC-003). */
-  readonly problem?: string;
+  readonly problemText?: string;
 }
 
 /** The three things an argument can be worth. */
@@ -131,7 +131,7 @@ export interface Command<Spec extends OptionSpec = NoOptions> {
   /** The context first: every command is run with one, while arguments are what
    *  a command may or may not take. Never calls `process.exit`, so the whole
    *  CLI stays testable in-process. */
-  run(context: Context, options: Options<Spec>): Promise<Outcome> | Outcome;
+  runCommand(context: Context, options: Options<Spec>): Promise<Outcome> | Outcome;
 }
 
 /** A command whatever it takes. What a table of them holds: each one's

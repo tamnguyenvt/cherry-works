@@ -68,14 +68,14 @@ test("injected primitives are editable and deletable own primitives, absent from
   });
   await charterAuthoringApp.injectVendor("team/source");
   const primitivePath = ".cw/charter/primitive/guide/published/index.md";
-  await fileWriter.write(primitivePath, guideMarkdown.replace("Original body.", "Edited body."));
+  await fileWriter.writeFile(primitivePath, guideMarkdown.replace("Original body.", "Edited body."));
   const charterRoot = await loadCharterRoot(fileReader);
   assert.equal(
     charterRoot.primitives.find((primitive) => primitive.headers.id === "published")?.body.trim(),
     "Edited body.",
   );
-  assert.deepEqual(answerOf(await charterAuthoringApp.vendors()).data.folders, []);
-  await fileWriter.delete(primitivePath);
+  assert.deepEqual(answerOf(await charterAuthoringApp.listVendors()).data.folders, []);
+  await fileWriter.deleteFile(primitivePath);
   assert.equal(
     (await loadCharterRoot(fileReader)).primitives.some((primitive) => primitive.headers.id === "published"),
     false,

@@ -24,14 +24,4 @@ export class ClaudeMcpConfig extends SettingBasedComponent<{
   /** What this host names the server, and so what it puts before each tool it
    *  serves: `mcp__cw__<tool>`. */
   static readonly cwMcpName = "cw";
-
-  /** The one entry the charter speaks for, under `mcpServers`, in the file this
-   *  host starts a project's servers from. That file is the repository's too —
-   *  every server it wrote itself is there — so the entry is written into it,
-   *  and it is never taken away (FR-146). */
-  static of(): ClaudeMcpConfig {
-    return new ClaudeMcpConfig("claude", ClaudeMcpConfig.kind, {
-      mcpServers: { [ClaudeMcpConfig.cwMcpName]: { command: "cw", args: ["mcp", "serve"] } },
-    });
-  }
 }

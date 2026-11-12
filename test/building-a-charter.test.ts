@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
-import { InMemoryAuthorizing } from "../src/module/charter/infra/in-memory/in-memory-authorizing.adapter.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
+import { InMemoryOAuthAuthorizer } from "../src/module/charter/infra/in-memory/in-memory-oauth-authorizer.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
@@ -76,9 +76,9 @@ const building = (
     new InMemoryReporter(),
     mcpServers === undefined || credentialsRepository === undefined
       ? {}
-      : { mcpServers, credentialsRepository, authorizing: new InMemoryAuthorizing() },
+      : { mcpServers, credentialsRepository, oauthAuthorizer: new InMemoryOAuthAuthorizer() },
   );
-  return { held, build: () => charterRuntimeApp.build(), doctor: () => charterRuntimeApp.doctor() };
+  return { held, build: () => charterRuntimeApp.buildCharter(), doctor: () => charterRuntimeApp.diagnoseCharter() };
 };
 
 /** Every file one build put down, whether it was there before or not. */
@@ -95,7 +95,7 @@ const filesOf = (
 };
 
 /** What one file holds after a build. */
-const contentsOf = async (held: InMemoryFileReaders, path: string) => held.read(new URL(path, repo));
+const contentsOf = async (fileReaders: InMemoryFileReaders, path: string) => fileReaders.readFile(new URL(path, repo));
 
 test("a build puts down everything one reading of the charter produces (FR-021)", async () => {
   const { held, build } = building({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
@@ -161,7 +161,7 @@ test("a skill an earlier engine brought and this one does not is taken away by t
   // What an engine that once shipped another skill left behind: compiled and
   // stamped the way this one compiles its own.
   const builtinSkillFile = await contentsOf(held, ".claude/skills/cw-author/SKILL.md");
-  held.write(
+  held.writeFile(
     new URL(".claude/skills/cw-retired/SKILL.md", repo),
     builtinSkillFile.replaceAll("cw-author", "cw-retired"),
   );
@@ -179,7 +179,7 @@ test("a projection whose primitive is gone is taken away by the next build (FR-0
     [at("agent/ship/index.md")]: primitive("agent", "ship", ['tools: ["Bash"]']),
   });
   await build();
-  held.remove(new URL("agent/ship/index.md", root));
+  held.removeFile(new URL("agent/ship/index.md", root));
 
   const built = filesOf(await build());
 
@@ -195,7 +195,7 @@ test("a compiled file someone edited by hand is written back over (FR-020)", asy
     [at("guide/no-any/index.md")]: guide("no-any", "Never write `any`."),
   });
   await build();
-  held.write(new URL(".claude/rules/no-any.md", repo), "Whatever someone typed in here.");
+  held.writeFile(new URL(".claude/rules/no-any.md", repo), "Whatever someone typed in here.");
 
   await build();
 
@@ -355,7 +355,7 @@ test("a skill no longer marked disable-user-invocation is a command again at the
   filesOf(await build());
   assert.match(await contentsOf(held, ".claude/skills/ship-review/SKILL.md"), /\nuser-invocable: false\n/);
 
-  held.write(new URL(skillFile), primitive("skill", "ship-review", ['triggers: ["review the release"]']));
+  held.writeFile(new URL(skillFile), primitive("skill", "ship-review", ['triggers: ["review the release"]']));
   filesOf(await build());
 
   assert.doesNotMatch(await contentsOf(held, ".claude/skills/ship-review/SKILL.md"), /user-invocable/);
@@ -849,7 +849,7 @@ test("a host's settings file is never taken away, however little the charter say
     [at("posture/sandboxed/index.md")]: posture("sandboxed", "Read(**)", "Bash(rm:*)"),
   });
   await build();
-  held.remove(new URL("posture/sandboxed/index.md", root));
+  held.removeFile(new URL("posture/sandboxed/index.md", root));
 
   const built = filesOf(await build());
 

@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { FolderAddress, type FolderURL, urlAt } from "../../shared/module.js";
+import { FolderAddress, type FolderURL, resolveFileUrl } from "../../shared/module.js";
 import type { ForRunningShellCommands, ShellCommandResult } from "../app/port/out/running-shell-commands.port.js";
 
 /** DRIVEN ADAPTER: the system shell, as a host runs a hook's command. */
@@ -12,14 +12,14 @@ export class Shell implements ForRunningShellCommands {
      *  refused here unless it names a folder (SDK-FR-010). */
     repoFolder: URL,
   ) {
-    this.#repoFolder = FolderAddress.urlOf(repoFolder);
+    this.#repoFolder = FolderAddress.parseFolderUrl(repoFolder);
   }
 
   runShellCommand(command: string, workingPath: string, stdin: string): Promise<ShellCommandResult> {
     return new Promise((resolve) => {
       const childProcess = spawn(command, {
         shell: true,
-        cwd: fileURLToPath(workingPath === "" ? this.#repoFolder : urlAt(this.#repoFolder, `${workingPath}/`)),
+        cwd: fileURLToPath(workingPath === "" ? this.#repoFolder : resolveFileUrl(this.#repoFolder, `${workingPath}/`)),
         stdio: "pipe",
       });
       const stdoutChunks: Buffer[] = [];
@@ -27,7 +27,7 @@ export class Shell implements ForRunningShellCommands {
       childProcess.stdout.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
       childProcess.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
       // A shell that cannot start is a command that failed, said as one.
-      childProcess.on("error", (raised) => resolve({ exitCode: 1, stdout: "", stderr: `${raised.message}\n` }));
+      childProcess.on("error", (spawnError) => resolve({ exitCode: 1, stdout: "", stderr: `${spawnError.message}\n` }));
       childProcess.on("close", (exitCode) =>
         resolve({
           exitCode: exitCode ?? 1,

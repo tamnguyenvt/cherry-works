@@ -6,6 +6,7 @@ import {
   type ForStoringCredentials,
   McpCredential,
 } from "../src/module/charter/app/port/out/storing-credentials.port.js";
+import { McpAuthMethod } from "../src/module/charter/domain/models/mcp/mcp-auth-method.value-object.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
 import { KeychainCredentialsRepository } from "../src/module/charter/infra/keychain-credentials.repository.js";
 import { AdapterFault } from "../src/module/shared/domain/models/adapter.fault.js";
@@ -37,10 +38,12 @@ async function keepsACredential(
 
   assert.equal(await credentialsRepository.readCredential(address), undefined);
   await credentialsRepository.writeCredential(
-    new McpCredential({ address, method: "token", accessToken: 'a token with spaces and "quotes"' }),
+    new McpCredential({ address, method: McpAuthMethod.TOKEN, accessToken: 'a token with spaces and "quotes"' }),
   );
   assert.equal((await credentialsRepository.readCredential(address))?.accessToken, 'a token with spaces and "quotes"');
-  await credentialsRepository.writeCredential(new McpCredential({ address, method: "token", accessToken: "replaced" }));
+  await credentialsRepository.writeCredential(
+    new McpCredential({ address, method: McpAuthMethod.TOKEN, accessToken: "replaced" }),
+  );
   assert.equal((await credentialsRepository.readCredential(address))?.accessToken, "replaced");
 }
 
@@ -74,7 +77,7 @@ test("a platform with no store it knows is refused, naming the two it supports",
     () => credentialsRepository.readCredential("https://a.example/mcp"),
     () =>
       credentialsRepository.writeCredential(
-        new McpCredential({ address: "https://a.example/mcp", method: "token", accessToken: "s3cret" }),
+        new McpCredential({ address: "https://a.example/mcp", method: McpAuthMethod.TOKEN, accessToken: "s3cret" }),
       ),
   ]) {
     await assert.rejects(call, (raised: unknown) => {

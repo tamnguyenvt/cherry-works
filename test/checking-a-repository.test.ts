@@ -95,7 +95,7 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
     ),
     COMMANDS,
   );
-  return { fileReaders, sourceFetcher, run: (argv: readonly string[]) => writing(() => cli.run(argv)) };
+  return { fileReaders, sourceFetcher, run: (argv: readonly string[]) => writing(() => cli.runCommandLine(argv)) };
 };
 
 test("a repository with nothing wrong passes, and says so of each thing it looked at (FR-040)", async () => {
@@ -138,7 +138,7 @@ test("staleness is the preview run, not a record kept of the last build (FR-040)
     [at("guide/no-any/index.md")]: guide("no-any"),
   });
   await run(["build"]);
-  fileReaders.write(new URL("guide/no-any/index.md", root), guide("no-any", "Never write `any`."));
+  fileReaders.writeFile(new URL("guide/no-any/index.md", root), guide("no-any", "Never write `any`."));
 
   const { code, written } = await run(["doctor"]);
 
@@ -181,7 +181,7 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
 
   // Sent and read back, the way the portal's page will read it.
   const doctorOutcomeDTO = CharterDTOs.DoctorOutcome.parse(
-    JSON.parse(JSON.stringify(await charterRuntimeApp.doctor())),
+    JSON.parse(JSON.stringify(await charterRuntimeApp.diagnoseCharter())),
   );
   const { errorCount, warnCount, pendingCount, faultsByFile } = doctorOutcomeDTO.data;
 
@@ -219,7 +219,7 @@ test("what doctor reports is a result, never a problem", async () => {
   assert.deepEqual(written.problems, []);
 });
 
-/** What `doctor()` answers over these files, read back as the portal reads it. */
+/** What `diagnoseCharter()` answers over these files, read back as the portal reads it. */
 const doctorOf = async (files: Readonly<Record<string, string>>) => {
   const fileReaders = new InMemoryFileReaders({ ...compilingFor("claude"), ...files });
   const charterRuntimeApp = buildingCharterOf(
@@ -229,7 +229,7 @@ const doctorOf = async (files: Readonly<Record<string, string>>) => {
     { claude: new InMemoryAgentCli() },
     new InMemoryReporter(),
   );
-  return CharterDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterRuntimeApp.doctor()))).data;
+  return CharterDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterRuntimeApp.diagnoseCharter()))).data;
 };
 
 const messagesUnder = (faultsByFile: CharterDTOs.DoctorOutcome["data"]["faultsByFile"], file: string) =>

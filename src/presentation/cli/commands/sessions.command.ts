@@ -42,10 +42,14 @@ export class SessionsCommand implements Command<typeof OPTIONS> {
   readonly summary = "Sum up the tokens of the sessions kept on this machine, by day and by session";
   readonly options = OPTIONS;
 
-  async run({ charterRuntimeApp }: Context, { since, until, json: isJson }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const sessionReviewOutcome = await charterRuntimeApp.sessionSummary(since, until);
-    if (sessionReviewOutcome.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(sessionReviewOutcome) };
-    if (isJson) return { code: EXIT_OK, result: `${JSON.stringify(sessionReviewOutcome, null, 2)}\n` };
+  async runCommand(
+    { charterRuntimeApp }: Context,
+    { since, until, json: isJson }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
+    const sessionReviewOutcomeDTO = await charterRuntimeApp.summarizeSessions(since, until);
+    if (sessionReviewOutcomeDTO.type === "Fault")
+      return { exitCode: EXIT_FAILURE, problemText: printFault(sessionReviewOutcomeDTO) };
+    if (isJson) return { exitCode: EXIT_OK, resultText: `${JSON.stringify(sessionReviewOutcomeDTO, null, 2)}\n` };
 
     const {
       data: {
@@ -59,18 +63,18 @@ export class SessionsCommand implements Command<typeof OPTIONS> {
         },
         dailySessionSummary,
       },
-    } = sessionReviewOutcome;
+    } = sessionReviewOutcomeDTO;
 
     if (sessionCount === 0)
       return {
-        code: EXIT_OK,
-        result: `No session has been kept for this repository from ${sinceDay} until ${untilDay}, in ${sessionsFolder}.\nOne is kept each time the agent stops, once "cw build" has built the charter for claude.\n`,
+        exitCode: EXIT_OK,
+        resultText: `No session has been kept for this repository from ${sinceDay} until ${untilDay}, in ${sessionsFolder}.\nOne is kept each time the agent stops, once "cw build" has built the charter for claude.\n`,
       };
 
-    const tokensText = (tokenCount: number) => tokenCount.toLocaleString("en-US");
+    const formatTokenCount = (tokenCount: number) => tokenCount.toLocaleString("en-US");
     return {
-      code: EXIT_OK,
-      result: [
+      exitCode: EXIT_OK,
+      resultText: [
         ...Object.entries(dailySessionSummary).flatMap(
           ([
             day,
@@ -78,15 +82,15 @@ export class SessionsCommand implements Command<typeof OPTIONS> {
               data: { sessions: daySessions, sessionCount: daySessionCount, totalTokens: dayTokens },
             },
           ]) => [
-            `${day}  ${tokensText(dayTokens)} tokens, ${daySessionCount} session${daySessionCount === 1 ? "" : "s"}`,
+            `${day}  ${formatTokenCount(dayTokens)} tokens, ${daySessionCount} session${daySessionCount === 1 ? "" : "s"}`,
             ...daySessions.map(({ sessionId, lastStopAt, model, totalTokens: sessionTokens }) => {
               const stopDate = new Date(lastStopAt);
               const stopTime = `${String(stopDate.getHours()).padStart(2, "0")}:${String(stopDate.getMinutes()).padStart(2, "0")}`;
-              return `  ${tokensText(sessionTokens).padStart(11)}  ${model}  ${sessionId}  last stop ${stopTime}`;
+              return `  ${formatTokenCount(sessionTokens).padStart(11)}  ${model}  ${sessionId}  last stop ${stopTime}`;
             }),
           ],
         ),
-        `${tokensText(totalTokens)} tokens in all, ${sessionCount} session${sessionCount === 1 ? "" : "s"}, from ${sinceDay} until ${untilDay}.`,
+        `${formatTokenCount(totalTokens)} tokens in all, ${sessionCount} session${sessionCount === 1 ? "" : "s"}, from ${sinceDay} until ${untilDay}.`,
         "",
       ].join("\n"),
     };

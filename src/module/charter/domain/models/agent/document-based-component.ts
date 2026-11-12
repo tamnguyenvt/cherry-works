@@ -1,5 +1,5 @@
 import { ModelHelper } from "../../helper.js";
-import { StampedDocument } from "../projection/stamped-document.js";
+import { StampedDocument } from "../charter-output/stamped-document.value-object.js";
 import { ProviderComponent } from "./provider-component.js";
 
 /** A document this host reads no frontmatter of: the file it loads whole,
@@ -25,7 +25,7 @@ export type NoHeaders = Record<string, never>;
  * projection's (CORE-FR-221).
  */
 export abstract class DocumentBasedComponent<Headers extends object = NoHeaders> extends ProviderComponent {
-  protected constructor(
+  constructor(
     host: string,
     primitiveKind: string,
     /** What this host calls this one: the charter id with the `/` a filename
@@ -59,7 +59,9 @@ export abstract class DocumentBasedComponent<Headers extends object = NoHeaders>
           : [
               [
                 "---",
-                ...headerEntries.map(([field, value]) => `${field}: ${ModelHelper.formatFrontmatterValue(value)}`),
+                ...headerEntries.map(
+                  ([field, headerValue]) => `${field}: ${ModelHelper.formatFrontmatterValue(headerValue)}`,
+                ),
                 "---",
               ].join("\n"),
             ]),

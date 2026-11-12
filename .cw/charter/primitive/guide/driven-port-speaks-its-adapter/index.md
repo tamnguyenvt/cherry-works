@@ -16,11 +16,11 @@ each kept thing by its layer, kind and id or name, never by where it sits.
 What is kept comes as it is kept (`RawPrimitive`), and
 validating it into the model is the domain's factories' job, on the
 hexagon's side of the port; what a build laid is read back through the
-same store, each part by its host, the part it plays, its kind and its id.
+same store, each item by its path inside the output.
 The output ports are the other: `ForManagingLocalOutput` is handed the
-domain's compiled output (`CharterOutput`), each part known by its path
-inside the output (`OutputPart`), and decides where the output lands; and
+domain's compiled output (`CharterOutput`), each item known by its path
+inside the output (`CharterOutputItem`), and decides where the output lands; and
 `ForManagingLocalAgentOutput`, one per agent, is handed the charter and that output
-and decides what the agent reads of it and where, since where a host reads
-a file is that host's layout and never the engine's (CORE-FR-220,
+and decides what the agent reads of it and where, since where an agent reads
+a file is that agent's layout and never the engine's (CORE-FR-220,
 CORE-FR-221).

@@ -1,9 +1,11 @@
-import type {
-  CharterOutput,
-  CharterRoot,
-  MainContextText,
+import {
+  CharterMd,
+  type CharterOutput,
+  type CharterRoot,
+  CompiledPrimitive,
+  type MainContextText,
 } from "../../app/port/out/managing-local-agent-output.port.js";
-import { laidTextOf } from "../helper.js";
+import { resolveLaidText } from "../helper.js";
 import { CodexComponentFactory } from "./codex-component.factory.js";
 import { CodexComponents } from "./codex-component.js";
 import { CodexEntryFile } from "./codex-entry-file.js";
@@ -19,7 +21,10 @@ export class CodexMainContextFactory {
     charterOutput: CharterOutput,
     placeOf: (codexEntryFile: CodexEntryFile) => string,
   ): readonly MainContextText[] {
-    const { charterMd, compiledPrimitives } = charterOutput;
+    const charterMd = charterOutput.findCharterOutputItem(CharterMd);
+    const compiledPrimitives = charterOutput.charterOutputItems.filter(
+      (charterOutputItem): charterOutputItem is CompiledPrimitive => charterOutputItem instanceof CompiledPrimitive,
+    );
     const compiledPrimitiveById = new Map(
       compiledPrimitives.map((compiledPrimitive) => [compiledPrimitive.id, compiledPrimitive]),
     );
@@ -30,7 +35,7 @@ export class CodexMainContextFactory {
             {
               id: placeOf(component),
               kind: "charter",
-              text: laidTextOf(component.text, placeOf(component)),
+              text: resolveLaidText(component.text, placeOf(component)),
               ...(component.folder === "" ? {} : { globs: [`${component.folder}/**`] }),
             },
           ];
@@ -55,7 +60,7 @@ export class CodexMainContextFactory {
               {
                 id: primitive.headers.id,
                 kind: primitive.kind,
-                text: `${primitive.normId}: ${primitive.description()}`,
+                text: `${primitive.normId}: ${primitive.composeDescription()}`,
               },
             ];
           if (primitive.kind !== "posture") return [];

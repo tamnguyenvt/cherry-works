@@ -54,26 +54,28 @@ export class TestCase {
     return TestCaseSchema;
   }
 
-  constructor(readonly written: z.infer<typeof TestCaseSchema>) {}
+  constructor(readonly writtenCase: z.infer<typeof TestCaseSchema>) {}
 
   /** The situation it puts, said as a line, and what it expects of it: what a
    *  run reports it under, and what an explanation names it by (FR-048,
    *  FR-014). */
-  describe(): string {
+  describeCase(): string {
     return `${this.situation} ${this.expectation}`;
   }
 
   /** The situation it puts: the file it touches, or the event it raises. */
   get situation(): string {
-    return "when" in this.written ? `firing event ${this.written.when}` : `touching ${this.written.do.touchFile}`;
+    return "when" in this.writtenCase
+      ? `firing event ${this.writtenCase.when}`
+      : `touching ${this.writtenCase.do.touchFile}`;
   }
 
   /** What it expects the charter to make of its situation. */
   get expectation(): string {
-    const written = this.written;
-    if ("when" in written) return `runs ${written.expect.run}`;
-    if ("activate" in written.expect) return `activates ${written.expect.activate}`;
-    return `is ${written.expect.allow ? "allowed" : "denied"}`;
+    const writtenCase = this.writtenCase;
+    if ("when" in writtenCase) return `runs ${writtenCase.expect.run}`;
+    if ("activate" in writtenCase.expect) return `activates ${writtenCase.expect.activate}`;
+    return `is ${writtenCase.expect.allow ? "allowed" : "denied"}`;
   }
 
   /**
@@ -86,8 +88,8 @@ export class TestCase {
    * activates no one primitive by name.
    */
   get activatedId(): string | undefined {
-    if ("when" in this.written) return this.written.expect.run;
-    if ("activate" in this.written.expect) return this.written.expect.activate;
+    if ("when" in this.writtenCase) return this.writtenCase.expect.run;
+    if ("activate" in this.writtenCase.expect) return this.writtenCase.expect.activate;
     return undefined;
   }
 }

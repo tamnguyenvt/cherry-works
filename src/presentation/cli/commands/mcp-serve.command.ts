@@ -18,10 +18,10 @@ export class McpServeCommand implements Command {
   readonly name = "mcp serve";
   readonly summary = "Serve every mcp origin the charter reaches to your agent, over stdio";
 
-  async run({ charterBuildingApp, charterRuntimeApp, version }: Context): Promise<Outcome> {
-    const servedTools = await charterBuildingApp.tools();
-    if (servedTools.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(servedTools) };
-    for (const problem of servedTools.data.problems) process.stderr.write(`${problem}\n`);
+  async runCommand({ charterBuildingApp, charterRuntimeApp, version }: Context): Promise<Outcome> {
+    const servedToolsDTO = await charterBuildingApp.listServedTools();
+    if (servedToolsDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(servedToolsDTO) };
+    for (const servingProblem of servedToolsDTO.data.problems) process.stderr.write(`${servingProblem}\n`);
 
     const transport = new StdioServerTransport();
     const { serverClosed } = await startMcpServer(charterBuildingApp, charterRuntimeApp, transport, version);
@@ -31,6 +31,6 @@ export class McpServeCommand implements Command {
     process.once("SIGINT", closeTransport);
     await serverClosed;
 
-    return { code: EXIT_OK };
+    return { exitCode: EXIT_OK };
   }
 }

@@ -19,12 +19,6 @@ const CLAUDE_HOOK_EVENTS = [
 /** One of them, read off the list rather than written out again. */
 export type ClaudeHookEvent = (typeof CLAUDE_HOOK_EVENTS)[number];
 
-/** Is this name one of them? What anything asks before writing a hook: a signal
- *  read off a charter is a string until this says otherwise. */
-function isClaudeHookEvent(name: string): name is ClaudeHookEvent {
-  return (CLAUDE_HOOK_EVENTS as readonly string[]).includes(name);
-}
-
 /** What turns on this host's own tool search, so a session opens with each
  *  tool's name and no schema, and the agent searches for a schema when it needs
  *  one (EVAL-FR-016). */
@@ -76,18 +70,10 @@ export class ClaudeSettings extends SettingBasedComponent<ClaudeSettingsFields> 
     return CLAUDE_HOOK_EVENTS;
   }
 
-  static readonly isHookEvent: typeof isClaudeHookEvent = isClaudeHookEvent;
-
   static get toolSearchEnv(): typeof CLAUDE_TOOL_SEARCH_ENV {
     return CLAUDE_TOOL_SEARCH_ENV;
   }
 
   static readonly kind = "settings" as const;
   readonly kind = ClaudeSettings.kind;
-
-  /** Every posture and every sensor of the charter lands in the one file this
-   *  host reads its settings from. */
-  static of(settings: ClaudeSettingsFields): ClaudeSettings {
-    return new ClaudeSettings("claude", ClaudeSettings.kind, settings);
-  }
 }

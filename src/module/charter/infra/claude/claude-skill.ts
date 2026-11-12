@@ -32,9 +32,4 @@ export type ClaudeSkillDeclared = Omit<ClaudeSkillHeaders, "name">;
 export class ClaudeSkill extends DocumentBasedComponent<ClaudeSkillHeaders> {
   static readonly kind = "skill" as const;
   readonly kind = ClaudeSkill.kind;
-
-  /** One compiled from a primitive of `primitiveKind`: a `skill` or a `playbook`. */
-  static of(primitiveKind: string, name: string, declared: ClaudeSkillDeclared, body: string): ClaudeSkill {
-    return new ClaudeSkill("claude", primitiveKind, name, { name, ...declared }, body);
-  }
 }

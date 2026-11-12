@@ -13,7 +13,7 @@ import { Commander } from "../src/presentation/cli/cli.commander.js";
 import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { api } from "../src/presentation/portal/portal.routes.js";
+import { buildPortalRoutes } from "../src/presentation/portal/portal.routes.js";
 import { authoringCharterOf, buildingCharterOf, commandLineOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
@@ -89,7 +89,7 @@ const surfaces = (files: Readonly<Record<string, string>>, agentCli = new InMemo
     COMMANDS,
   );
   return {
-    portalRoutes: api(
+    portalRoutes: buildPortalRoutes(
       wrapAppToShowPaths(charterAuthoringApp, "/repo"),
       wrapAppToShowPaths(charterRuntimeApp, "/repo"),
       workspaceSettingsLoaderOf(fileReaders),
@@ -107,7 +107,7 @@ const printed = async (cli: Commander, argv: readonly string[]) => {
   process.stdout.write = ((text: string) => (results.push(String(text)), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(String(text)), true)) as typeof kept.err;
   try {
-    return { code: await cli.run(argv), text: results.join(""), problem: problems.join("") };
+    return { code: await cli.runCommandLine(argv), text: results.join(""), problem: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
     process.stderr.write = kept.err;

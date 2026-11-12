@@ -1,5 +1,5 @@
 import yargs, { type Argv } from "yargs";
-import { SETTINGS_FILE } from "#module/workspace/module.js";
+import { SETTINGS_FILE_PATH } from "#module/workspace/module.js";
 import {
   type AnyCommand,
   type CommandLine,
@@ -36,25 +36,25 @@ export class Commander {
     this.#commands = commands;
   }
 
-  async run(argv: readonly string[]): Promise<number> {
+  async runCommandLine(argv: readonly string[]): Promise<number> {
     // yargs gives a handler no way to return a value, so it lands here.
-    let code = EXIT_OK;
+    let exitCode = EXIT_OK;
     let isFailed = false;
 
-    await this.#parser((outcome) => {
-      code = outcome.code;
-      if (outcome.result) process.stdout.write(outcome.result);
-      if (outcome.problem) process.stderr.write(outcome.problem);
+    await this.#buildParser((outcome) => {
+      exitCode = outcome.exitCode;
+      if (outcome.resultText) process.stdout.write(outcome.resultText);
+      if (outcome.problemText) process.stderr.write(outcome.problemText);
     }).parseAsync([...argv], {}, (error, _parsed, output) => {
       isFailed = error !== null && error !== undefined;
       if (output) (isFailed ? process.stderr : process.stdout).write(`${output}\n`);
     });
 
-    return isFailed ? EXIT_USAGE : code;
+    return isFailed ? EXIT_USAGE : exitCode;
   }
 
-  #parser(collect: (outcome: Outcome) => void): Argv {
-    let cli = yargs()
+  #buildParser(collectOutcome: (outcome: Outcome) => void): Argv {
+    let cliParser = yargs()
       .scriptName("cw")
       .usage("Usage: $0 <command> [options]")
       .demandCommand(1, "")
@@ -75,25 +75,25 @@ export class Commander {
     // declared whole.
     const commandsByHead = new Map<string, AnyCommand[]>();
     for (const command of this.#commands) {
-      const head = wordsOf(command.name)[0] as string;
-      commandsByHead.set(head, [...(commandsByHead.get(head) ?? []), command]);
+      const headWord = listCommandWords(command.name)[0] as string;
+      commandsByHead.set(headWord, [...(commandsByHead.get(headWord) ?? []), command]);
     }
 
-    for (const [head, commands] of commandsByHead) {
+    for (const [headWord, commands] of commandsByHead) {
       const [onlyCommand] = commands;
-      cli =
-        commands.length === 1 && onlyCommand !== undefined && wordsOf(onlyCommand.name).length === 1
-          ? this.#declaringCommand(cli, onlyCommand, onlyCommand.name, collect)
-          : cli.command({
-              command: head,
+      cliParser =
+        commands.length === 1 && onlyCommand !== undefined && listCommandWords(onlyCommand.name).length === 1
+          ? this.#registerCommand(cliParser, onlyCommand, onlyCommand.name, collectOutcome)
+          : cliParser.command({
+              command: headWord,
               // What the group is for is what its commands are: saying it any
               // other way would be a second description to keep in step.
-              describe: commands.map((groupedCommand) => wordsOf(groupedCommand.name)[1]).join(", "),
+              describe: commands.map((groupedCommand) => listCommandWords(groupedCommand.name)[1]).join(", "),
               builder: (child: Argv) =>
                 commands
                   .reduce(
                     (parser, command) =>
-                      this.#declaringCommand(parser, command, command.name.slice(head.length + 1), collect),
+                      this.#registerCommand(parser, command, command.name.slice(headWord.length + 1), collectOutcome),
                     child,
                   )
                   .demandCommand(1, ""),
@@ -101,24 +101,50 @@ export class Commander {
             });
     }
 
-    return cli;
+    return cliParser;
   }
 
   /** One command, said to yargs under the name it is typed by — the whole of it
    *  for a command that stands alone, what follows the group for one inside
    *  it. */
-  #declaringCommand(cli: Argv, command: AnyCommand, name: string, collect: (outcome: Outcome) => void): Argv {
-    return cli.command({
-      command: name,
+  #registerCommand(
+    cliParser: Argv,
+    command: AnyCommand,
+    typedCommandName: string,
+    collectOutcome: (outcome: Outcome) => void,
+  ): Argv {
+    return cliParser.command({
+      command: typedCommandName,
       describe: command.summary,
-      builder: (child: Argv) => declaringArguments(child, command.options ?? {}, name),
+      // The one place the parser hears what a command takes, so a command
+      // declares it and names no parser. An argument the command's own name
+      // asks for — `vendor add <source>` — is a positional, typed where it is
+      // written rather than offered as a flag beside itself.
+      builder: (childParser: Argv) =>
+        Object.entries<OptionSpec[string]>(command.options ?? {}).reduce((parser, [optionName, option]) => {
+          const argumentDeclaration = {
+            type: option.type,
+            describe: option.describe,
+            ...(option.alias === undefined ? {} : { alias: option.alias }),
+            ...(option.default === undefined ? {} : { default: option.default }),
+            // Typed once per value: yargs collects them, and a run that typed none
+            // reads an empty list rather than nothing, so the command asks how many
+            // were typed instead of whether any were.
+            ...(option.isArray === undefined ? {} : { array: true, default: [] }),
+          };
+          return typedCommandName.includes(`<${optionName}>`) || typedCommandName.includes(`[${optionName}]`)
+            ? parser.positional(optionName, argumentDeclaration)
+            : parser.option(optionName, argumentDeclaration);
+        }, childParser),
       handler: async (options) => {
         // The one cast in the adapter, and the reason it is here: yargs
         // parses into a bag of names, and what the command declared is what
         // says how to read it. A refusal is an outcome like any other: every
         // use case answers its faults as DTOs, so nothing is caught here.
-        const context = await contextOf(this.#commandLine, command);
-        collect("code" in context ? context : await command.run(context, options as Options<OptionSpec>));
+        const context = await loadCommandContext(this.#commandLine, command);
+        collectOutcome(
+          "exitCode" in context ? context : await command.runCommand(context, options as Options<OptionSpec>),
+        );
       },
     });
   }
@@ -130,55 +156,29 @@ export class Commander {
  *  Settings that do not read refuse every command but setup, which writes them
  *  again (FR-037); a repository laid out the old way refuses every one, naming
  *  the skill that moves it (CORE-FR-226). */
-async function contextOf(commandLine: CommandLine, command: AnyCommand): Promise<Context | Outcome> {
+async function loadCommandContext(commandLine: CommandLine, command: AnyCommand): Promise<Context | Outcome> {
   const composeApplications = async () => {
     const { workspaceApp, engineApp } = await commandLine.composeApplications();
     return { workspaceApp, engineApp: showPathsInApps(engineApp, commandLine.cwd) };
   };
   const { workspaceApp, engineApp } = await composeApplications();
-  const workspaceSettingsDTO = await workspaceApp.settings();
+  const workspaceSettingsDTO = await workspaceApp.readWorkspaceSettings();
   const workspaceSettings: WorkspaceSettings =
     workspaceSettingsDTO.type === "Fault" ? { agents: [] } : workspaceSettingsDTO.data;
   // The layout first: a repository laid out the old way is told so whatever
   // its settings say, since moving it is what comes before anything else.
-  const layoutAnswer = await engineApp.charterAuthoringApp.layout();
-  if (layoutAnswer.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(layoutAnswer) };
+  const charterLayoutDTO = await engineApp.charterAuthoringApp.readCharterLayout();
+  if (charterLayoutDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(charterLayoutDTO) };
   if (workspaceSettingsDTO.type === "Fault" && command.name !== "init")
     return {
-      code: EXIT_FAILURE,
-      problem: `${SETTINGS_FILE}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`,
+      exitCode: EXIT_FAILURE,
+      problemText: `${SETTINGS_FILE_PATH}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`,
     };
   return { ...commandLine, composeApplications, workspaceApp, ...engineApp, workspaceSettings };
 }
 
 /** The words one command is typed by, without the arguments it takes: the name
  *  says where the command sits, and `<id>` is not a place. */
-function wordsOf(name: string): readonly string[] {
+function listCommandWords(name: string): readonly string[] {
   return name.split(" ").filter((word) => !word.startsWith("<") && !word.startsWith("["));
-}
-
-/**
- * One command's arguments, said to yargs. The one place the parser hears about
- * what a command takes, so a command declares it and names no parser.
- *
- * An argument the command's own name asks for — `vendor add <source>` — is a
- * positional and is declared as one, so it is typed where it is written rather
- * than offered as a flag beside itself.
- */
-function declaringArguments(cli: Argv, options: OptionSpec, name: string): Argv {
-  return Object.entries(options).reduce((parser, [argument, option]) => {
-    const argumentDeclaration = {
-      type: option.type,
-      describe: option.describe,
-      ...(option.alias === undefined ? {} : { alias: option.alias }),
-      ...(option.default === undefined ? {} : { default: option.default }),
-      // Typed once per value: yargs collects them, and a run that typed none
-      // reads an empty list rather than nothing, so the command asks how many
-      // were typed instead of whether any were.
-      ...(option.isArray === undefined ? {} : { array: true, default: [] }),
-    };
-    return name.includes(`<${argument}>`) || name.includes(`[${argument}]`)
-      ? parser.positional(argument, argumentDeclaration)
-      : parser.option(argument, argumentDeclaration);
-  }, cli);
 }

@@ -1,3 +1,14 @@
+/** What an adapter answering this port raises when a file or a folder cannot
+ *  be read, or a path reaches out of its folder, named again here so it names
+ *  this port and nothing behind it. */
+export {
+  AdapterFault,
+  MissingHeldFileFault,
+  PathOutsideFolderFault,
+  UnreadableFileFault,
+  UnreadableFolderFault,
+} from "../../../domain/models/adapter.fault.js";
+
 /**
  * DRIVEN PORT — repository. The hexagon says which folder it means, by its path
  * from the repository's root; walking that folder is the adapter's business,

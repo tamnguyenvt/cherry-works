@@ -6,9 +6,13 @@ import { OAuthError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import type { OAuthClientInformationMixed, OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import {
   AdapterFault,
-  type ForAuthorizingMcpOrigins,
+  FailedRenewalFault,
+  FailedSignInFault,
+  type ForAuthorizingOAuthClients,
   type OAuthGrant,
-} from "../app/port/out/authorizing-mcp-origins.port.js";
+  RefusedSignInFault,
+  SignInTimedOutFault,
+} from "../app/port/out/authorizing-oauth-clients.port.js";
 
 /** How long a sign-in waits for the developer to come back from the browser. */
 const CALLBACK_TIMEOUT_MS = 5 * 60_000;
@@ -30,15 +34,18 @@ interface OAuthSession {
  * handed to the caller, never opened here (plan §15). Nothing is kept here:
  * the grant goes back to the caller, and the credential store is its business.
  */
-export class OAuth implements ForAuthorizingMcpOrigins {
+export class OAuth implements ForAuthorizingOAuthClients {
   readonly #callbackTimeoutMs: number;
 
   constructor(callbackTimeoutMs = CALLBACK_TIMEOUT_MS) {
     this.#callbackTimeoutMs = callbackTimeoutMs;
   }
 
-  async authorize(endpoint: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<OAuthGrant> {
-    const state = randomUUID();
+  async authorizeInBrowser(
+    endpoint: string,
+    showAuthorizationUrl: (authorizationUrl: string) => void,
+  ): Promise<OAuthGrant> {
+    const oauthState = randomUUID();
     const callbackServer = createServer();
     await new Promise<void>((resolve, reject) => callbackServer.once("error", reject).listen(0, "127.0.0.1", resolve));
     const redirectUrl = `http://127.0.0.1:${(callbackServer.address() as AddressInfo).port}/callback`;
@@ -48,7 +55,7 @@ export class OAuth implements ForAuthorizingMcpOrigins {
       callbackTimeout = setTimeout(
         () =>
           reject(
-            new AdapterFault(
+            new SignInTimedOutFault(
               `Nobody came back from signing in to ${endpoint} in time.`,
               'Run "cw mcp auth" again, and open the address it prints.',
               { internal: false },
@@ -56,19 +63,19 @@ export class OAuth implements ForAuthorizingMcpOrigins {
           ),
         this.#callbackTimeoutMs,
       );
-      callbackServer.on("request", (request, response) => {
+      callbackServer.on("request", (request, callbackResponse) => {
         const callbackUrl = new URL(request.url ?? "/", redirectUrl);
-        if (callbackUrl.pathname !== "/callback") return void response.writeHead(404).end();
+        if (callbackUrl.pathname !== "/callback") return void callbackResponse.writeHead(404).end();
 
         const callbackCode = callbackUrl.searchParams.get("code");
-        const signedIn = callbackCode !== null && callbackUrl.searchParams.get("state") === state;
-        response
+        const isSignedIn = callbackCode !== null && callbackUrl.searchParams.get("state") === oauthState;
+        callbackResponse
           .writeHead(200, { "content-type": "text/plain; charset=utf-8" })
-          .end(signedIn ? "Signed in. Go back to the terminal.\n" : "Not signed in. Go back to the terminal.\n");
-        if (signedIn) return resolve(callbackCode);
+          .end(isSignedIn ? "Signed in. Go back to the terminal.\n" : "Not signed in. Go back to the terminal.\n");
+        if (isSignedIn) return resolve(callbackCode);
         const callbackError = callbackUrl.searchParams.get("error");
         reject(
-          new AdapterFault(
+          new RefusedSignInFault(
             `Signing in to ${endpoint} came back without an authorization${callbackError ? `: ${callbackError}` : ""}.`,
             'Run "cw mcp auth" again.',
             { internal: false },
@@ -82,18 +89,18 @@ export class OAuth implements ForAuthorizingMcpOrigins {
 
     try {
       const oauthSession: OAuthSession = {};
-      const provider = this.#providerOver(
+      const provider = this.#createOAuthProvider(
         oauthSession,
         redirectUrl,
         (authorizationUrl) => showAuthorizationUrl(authorizationUrl.href),
-        state,
+        oauthState,
       );
       if ((await auth(provider, { serverUrl: endpoint })) === "REDIRECT")
         await auth(provider, { serverUrl: endpoint, authorizationCode: await authorizationCode });
-      return oauthGrantOf(endpoint, oauthSession);
+      return readOAuthGrant(endpoint, oauthSession);
     } catch (raisedValue) {
       if (raisedValue instanceof AdapterFault) throw raisedValue;
-      throw new AdapterFault(
+      throw new FailedSignInFault(
         `Signing in to ${endpoint} failed.`,
         'Check the address is reachable and offers an OAuth sign-in, then run "cw mcp auth" again.',
         // What the SDK said stays in the cause, for the log alone (SDK-FR-018).
@@ -106,7 +113,7 @@ export class OAuth implements ForAuthorizingMcpOrigins {
     }
   }
 
-  async renew(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined> {
+  async renewGrant(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined> {
     const { clientId, clientSecret, issuer } = oauthGrant.client;
     const oauthSession: OAuthSession = {
       clientInformation: {
@@ -123,18 +130,18 @@ export class OAuth implements ForAuthorizingMcpOrigins {
     };
     // No redirect is followed and no registration made: the SDK falls back to
     // a new sign-in only where the refresh was refused, which is the answer.
-    const provider = this.#providerOver(oauthSession, "http://127.0.0.1/callback", () => undefined);
+    const provider = this.#createOAuthProvider(oauthSession, "http://127.0.0.1/callback", () => undefined);
     try {
       if ((await auth(provider, { serverUrl: endpoint })) === "REDIRECT") return undefined;
     } catch (raisedValue) {
       if (raisedValue instanceof OAuthError) return undefined;
-      throw new AdapterFault(
+      throw new FailedRenewalFault(
         `Renewing the sign-in to ${endpoint} failed.`,
         "Check the address is reachable, then try again.",
         { internal: false, cause: raisedValue },
       );
     }
-    const renewedGrant = oauthGrantOf(endpoint, oauthSession);
+    const renewedGrant = readOAuthGrant(endpoint, oauthSession);
     // A server that does not rotate its refresh token keeps the one it had.
     return renewedGrant.refreshToken !== undefined || oauthGrant.refreshToken === undefined
       ? renewedGrant
@@ -147,11 +154,11 @@ export class OAuth implements ForAuthorizingMcpOrigins {
    * session. Registering is offered to a sign-in only, where a `state` is
    * checked on the way back; a renewal presents what the grant was issued to.
    */
-  #providerOver(
+  #createOAuthProvider(
     oauthSession: OAuthSession,
     redirectUrl: string,
     redirectToAuthorization: (authorizationUrl: URL) => void,
-    state?: string,
+    oauthState?: string,
   ): OAuthClientProvider {
     return {
       redirectUrl,
@@ -162,8 +169,8 @@ export class OAuth implements ForAuthorizingMcpOrigins {
         response_types: ["code"],
         token_endpoint_auth_method: "none",
       },
-      ...(state !== undefined && {
-        state: () => state,
+      ...(oauthState !== undefined && {
+        state: () => oauthState,
         saveClientInformation: (clientInformation: OAuthClientInformationMixed) => {
           oauthSession.clientInformation = clientInformation;
         },
@@ -183,9 +190,9 @@ export class OAuth implements ForAuthorizingMcpOrigins {
 }
 
 /** What a finished flow saved, as the grant it ends with. */
-function oauthGrantOf(endpoint: string, { clientInformation, tokens }: OAuthSession): OAuthGrant {
+function readOAuthGrant(endpoint: string, { clientInformation, tokens }: OAuthSession): OAuthGrant {
   if (clientInformation === undefined || tokens === undefined)
-    throw new AdapterFault(`Signing in to ${endpoint} ended without a token.`, 'Run "cw mcp auth" again.', {
+    throw new FailedSignInFault(`Signing in to ${endpoint} ended without a token.`, 'Run "cw mcp auth" again.', {
       internal: false,
     });
   return {

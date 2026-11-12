@@ -60,7 +60,7 @@ It answers `workspaceApp` and `engineApp`:
 The engine is composed for the settings the repository holds **when one of
 `engineApp`'s applications is first called**; composing itself reads nothing,
 at an address of any scheme. Settings naming no agent yet, as before setup,
-are read again on the next call; once they name one, `workspaceApp.setUp(…)`
+are read again on the next call; once they name one, `workspaceApp.setUpWorkspace(…)`
 writing new settings needs composing again to get an engine for them.
 
 ```ts
@@ -73,7 +73,7 @@ const homeFolder = pathToFileURL(`${homedir()}/`);
 
 // Set the repository up for Claude Code, as `cw init --agent claude` does.
 const { workspaceApp } = await composeApplications(repoFolder, homeFolder);
-const settingsAnswer = await workspaceApp.setUp(["claude"], VERSION);
+const settingsAnswer = await workspaceApp.setUpWorkspace(["claude"], VERSION);
 if (settingsAnswer.type === "Fault") throw new Error(settingsAnswer.data.message);
 
 // Compose again: the engine now builds for the settings just written.
@@ -81,7 +81,7 @@ const { engineApp } = await composeApplications(repoFolder, homeFolder);
 await engineApp.charterAuthoringApp.setUpCharter();
 
 // Add a guide, as `cw add guide no-any --header description=…` does.
-const addAnswer = await engineApp.charterAuthoringApp.add(
+const addAnswer = await engineApp.charterAuthoringApp.addPrimitive(
   "guide",
   "no-any",
   { description: "Never type a value as any.", globs: ["src/**/*.ts"] },
@@ -89,7 +89,7 @@ const addAnswer = await engineApp.charterAuthoringApp.add(
 );
 
 // Build what Claude Code reads.
-const buildAnswer = await engineApp.charterBuildingApp.build();
+const buildAnswer = await engineApp.charterBuildingApp.buildCharter();
 if (buildAnswer.type === "PlanSummary") console.log(buildAnswer.data.added);
 ```
 
@@ -132,7 +132,7 @@ Every adapter you may hand, as a `Partial<EngineAdapters>`:
 
 | Key | Port | `cw`'s own |
 |---|---|---|
-| `agentProvider` | `{ [agent]: { projection: ForManagingLocalAgentOutput, cli: ForCheckingAgentCli } }` | Claude Code's and Codex's: `ClaudeProjection`, `CodexProjection`, `ClaudeCli`, `CodexCli` |
+| `agentProvider` | `{ [agent]: { projection: ForManagingLocalAgentOutput, agentCli: ForCheckingAgentCli } }` | Claude Code's and Codex's: `ClaudeProjection`, `CodexProjection`, `ClaudeCli`, `CodexCli` |
 | `charterRepository` | `ForManagingCharter` | `FileCharterRepository`: the charter as files under `.cw/charter/` |
 | `workspaceSettingsRepository` | `ForStoringWorkspaceSettings` | `FileWorkspaceSettingsRepository`: `.cw/settings.json`, through the file adapters |
 | `sessionAnalysisRepository` | `ForLoadingSessionAnalysis` | `FileSessionAnalysisRepository`: the session logs under the home |
@@ -144,7 +144,7 @@ Every adapter you may hand, as a `Partial<EngineAdapters>`:
 | `shell` | `ForRunningShellCommands` | the shell, in the repository |
 | `promptfooRunner` | `ForRunningPromptfoo` | promptfoo, installed under the home's `.cherry-works` |
 | `mcpServers` | `ForCallingMcpServers` | MCP clients over HTTP and stdio |
-| `authorizing` | `ForAuthorizingMcpOrigins` | OAuth in the browser |
+| `oauthAuthorizer` | `ForAuthorizingOAuthClients` | OAuth in the browser |
 | `credentialsRepository` | `ForStoringCredentials` | the operating system's keychain |
 | `tokenCounter` | `ForCountingTokens` | an offline tokenizer |
 | `clock` | `ForTellingTime` | the system clock |
@@ -169,8 +169,8 @@ class QuietClaudeCli extends AgentCli {
 
 const { engineApp } = await composeApplications(repoFolder, homeFolder, {
   agentProvider: {
-    claude: { projection: new ClaudeProjection(fileReader), cli: new QuietClaudeCli() },
-    codex: { projection: new CodexProjection(fileReader), cli: new CodexCli() },
+    claude: { projection: new ClaudeProjection(fileReader), agentCli: new QuietClaudeCli() },
+    codex: { projection: new CodexProjection(fileReader), agentCli: new CodexCli() },
   },
 });
 ```
@@ -179,7 +179,19 @@ const { engineApp } = await composeApplications(repoFolder, homeFolder, {
 cases. `cw`'s own keeps them as files, through the file adapters; hand your own
 `ForManagingCharter` to keep them in a database instead, or extend
 `FileCharterRepository`. The models its methods take and answer, such as
-`RawPrimitive` and `VendorRoot`, are exported with it.
+`RawPrimitive` and `VendorRoot`, are exported with it. A store is never asked
+for a version or a checkout: an evaluation reads the charter and its cases as
+the store holds them now, committed or not, and lays the build into each
+case's worktree of the repository through `createCheckoutOutput` and
+`createCheckoutProjection`, which answer the same output or projection built
+over that checkout. `cw`'s own build only themselves: every class extending
+one overrides the method to build itself over the checkout, by its own
+constructor, and one that does not is refused with
+`UnbuiltCheckoutAdapterFault` before anything is laid.
+
+`sessionAnalysisRepository` is set up with the folder the sessions are kept
+in: `cw`'s own, with the one the repository's settings name. A store of your
+own knows where it keeps them.
 
 Every adapter of `cw`'s in the table above is exported, for a tool to extend
 rather than write anew: an extension is handed as any other adapter.
@@ -189,9 +201,9 @@ import { FileCharterRepository, FileOutput, FileReaders, GitSources } from "cher
 import type { RawPrimitive } from "cherry-works";
 
 class LoggedCharterRepository extends FileCharterRepository {
-  override async loadCharter(checkoutPath?: string): Promise<readonly RawPrimitive[]> {
+  override async loadCharter(): Promise<readonly RawPrimitive[]> {
     myLogger.info("reading the charter");
-    return super.loadCharter(checkoutPath);
+    return super.loadCharter();
   }
 }
 
@@ -266,8 +278,10 @@ and answers a `Fault` DTO; it never reaches your caller as an exception.
 What `cherry-works` exports, with the file adapter's duties above, is a public
 contract under semantic versioning. It includes the models the charter's store
 and the projections speak in, so a change to one of them is a change to the
-contract. It is recorded in `contract.d.ts` at the
-root of the repository, and each release is compared with it:
+contract. It is recorded in the folder `contract/` at the root of the
+repository, a declarations file per module of the engine (`charter.d.ts`,
+`runtime.d.ts`…) and the entry `index.d.ts` holding every name exported, and
+each release is compared with it:
 
 - removing an export, or changing an existing declaration in any way — a
   port gaining a method included — is a new major version;

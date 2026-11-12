@@ -18,7 +18,7 @@ export class InMemoryAgentCli implements ForRunningAgentCli {
     return this.installed;
   }
 
-  async ask(prompt: string): Promise<Answer> {
+  async askAgent(prompt: string): Promise<Answer> {
     this.prompts.push(prompt);
     const promptTokens = 2 * prompt.split(/\s+/).filter((word) => word !== "").length;
     return {

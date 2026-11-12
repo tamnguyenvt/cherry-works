@@ -80,7 +80,7 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
     ),
     COMMANDS,
   );
-  return (argv: readonly string[] = ["test"]) => writing(() => cli.run([...argv]));
+  return (argv: readonly string[] = ["test"]) => writing(() => cli.runCommandLine([...argv]));
 };
 
 const charter = {

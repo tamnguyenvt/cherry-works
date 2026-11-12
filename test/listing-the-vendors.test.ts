@@ -60,7 +60,7 @@ async function listing(fileReaders: InMemoryFileReaders) {
         "/repo",
       ),
       COMMANDS,
-    ).run(["vendor", "list"]);
+    ).runCommandLine(["vendor", "list"]);
     return { code, said: said.join("") };
   } finally {
     process.stdout.write = kept;
@@ -75,7 +75,7 @@ test("every source folder under the vendor folder is listed by owner, repository
         new InMemoryFileOutput(new InMemoryFileReaders({})),
         new InMemoryReporter(),
         { sourceFetcher: new InMemorySources() },
-      ).vendors(),
+      ).listVendors(),
     ).data.folders,
     [
       "file:///repo/.cw/charter/vendor/acme/charters/baseline",
@@ -99,7 +99,7 @@ test("a folder laid out the way an earlier version installed a vendor is refused
     const { message, fix } = faultOf(
       await authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), {
         sourceFetcher: new InMemorySources(),
-      }).vendors(),
+      }).listVendors(),
     );
     assert.match(message, /is laid out the way an earlier version installed a vendor/, vendorFilePath);
     assert.match(fix, /install each source again with "cw vendor add"/, vendorFilePath);
@@ -113,7 +113,7 @@ test("a file kept right in the vendor folder is no vendor's", async () => {
     answerOf(
       await authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), {
         sourceFetcher: new InMemorySources(),
-      }).vendors(),
+      }).listVendors(),
     ).data.folders,
     [],
   );
@@ -127,7 +127,7 @@ test("a repository with no vendor lists none", async () => {
         new InMemoryFileOutput(new InMemoryFileReaders({})),
         new InMemoryReporter(),
         { sourceFetcher: new InMemorySources() },
-      ).vendors(),
+      ).listVendors(),
     ).data.folders,
     [],
   );

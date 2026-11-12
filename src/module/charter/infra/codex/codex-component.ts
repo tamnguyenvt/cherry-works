@@ -14,7 +14,9 @@ const CODEX_COMPONENT_CLASSES = [
   CodexSkill,
   CodexSkillPolicy,
 ] as const;
-export type CodexComponent = ReturnType<(typeof CODEX_COMPONENT_CLASSES)[number]["of"]>;
+/** One file as Codex's own kinds have it: an instance of one of those
+ *  classes, each built by the component factory. */
+export type CodexComponent = InstanceType<(typeof CODEX_COMPONENT_CLASSES)[number]>;
 
 /** Every kind of file this engine puts down for Codex. */
 export class CodexComponents {

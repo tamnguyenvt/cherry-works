@@ -57,7 +57,7 @@ async function running(
     const code = await new Commander(
       commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), context, context.cwd),
       COMMANDS,
-    ).run(argv);
+    ).runCommandLine(argv);
     return { code, commandOutput: commandOutput.join(""), sourceFetcher, fileReaders };
   } finally {
     for (const [index, stream] of streams.entries()) stream.write = kept[index] as typeof stream.write;
@@ -176,7 +176,7 @@ test("a repository with work in hand installs all the same, and that work is as 
 
   assert.equal(code, EXIT_OK);
   assert.equal(sourceFetcher.checkedOutFolders[0]?.intoSubFolder, ".cw/charter/vendor/team/charter/root/primitive");
-  assert.equal(await fileReaders.read(new URL(`file://${repo}/work.txt`)), "In hand.\n");
+  assert.equal(await fileReaders.readFile(new URL(`file://${repo}/work.txt`)), "In hand.\n");
 });
 
 /** One repository holding this vendor, two guides, beside work of its own. */
@@ -189,7 +189,9 @@ const fileReadersHoldingVendor = (vendorName: string) =>
 
 /** Every file left under the vendor folder. */
 const vendoredFiles = async (fileReaders: InMemoryFileReaders) =>
-  (await fileReaders.readFilesRecursively(new URL(`file://${repo}/.cw/charter/vendor/`))).map(({ file }) => file.href);
+  (await fileReaders.readFilesRecursively(new URL(`file://${repo}/.cw/charter/vendor/`))).map(
+    ({ fileUrl }) => fileUrl.href,
+  );
 
 test("an installed charter is taken away by the folder it was installed as, owner, repository and name (CORE Story 37 scenario 2)", async () => {
   const { code, commandOutput, fileReaders } = await running(
@@ -201,7 +203,7 @@ test("an installed charter is taken away by the folder it was installed as, owne
   assert.equal(code, EXIT_OK, commandOutput);
   assert.deepEqual(await vendoredFiles(fileReaders), []);
   assert.equal(
-    await fileReaders.read(new URL(`file://${repo}/work.txt`)),
+    await fileReaders.readFile(new URL(`file://${repo}/work.txt`)),
     "In hand.\n",
     "the work in hand is as it was",
   );

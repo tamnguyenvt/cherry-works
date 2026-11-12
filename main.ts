@@ -20,10 +20,10 @@ const repoFolder = pathToFileURL(`${process.cwd()}/`);
  *  (CORE-FR-218). */
 const homeFolder = pathToFileURL(`${homedir()}/`);
 
-const cli = new Commander({
+const cwCommander = new Commander({
   cwd: process.cwd(),
   version: packageJson.version,
   composeApplications: () => composeApplications(repoFolder, homeFolder),
 });
 
-process.exitCode = await cli.run(process.argv.slice(2));
+process.exitCode = await cwCommander.runCommandLine(process.argv.slice(2));

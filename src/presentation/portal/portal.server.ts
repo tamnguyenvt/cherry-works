@@ -8,7 +8,7 @@ import { bearerAuth } from "hono/bearer-auth";
 import type { ForAuthoringCharter, ForBuildingCharter } from "#module/charter/module.js";
 import type { FaultDTOs } from "#module/shared/module.js";
 import type { WorkspaceDTOs } from "#module/workspace/module.js";
-import { api } from "./portal.routes.js";
+import { buildPortalRoutes } from "./portal.routes.js";
 
 export const DEFAULT_PORT = 9927;
 
@@ -44,15 +44,26 @@ export async function startPortal(
   for (let candidatePort = port; ; candidatePort++) {
     try {
       const address = new URL(`http://127.0.0.1:${candidatePort}/?t=${token}`);
-      return {
-        address,
-        server: await listen(
-          portal(page, charterAuthoringApp, charterBuildingApp, loadWorkspaceSettings, token, candidatePort),
-          candidatePort,
-        ),
-      };
-    } catch (raised) {
-      if ((raised as NodeJS.ErrnoException).code !== "EADDRINUSE" || candidatePort === 65535) throw raised;
+      const portalApp = buildPortalApp(
+        page,
+        charterAuthoringApp,
+        charterBuildingApp,
+        loadWorkspaceSettings,
+        token,
+        candidatePort,
+      );
+      const server = await new Promise<ServerType>((resolve, reject) => {
+        const listeningServer = serve({ fetch: portalApp.fetch, hostname: "127.0.0.1", port: candidatePort }, () =>
+          resolve(listeningServer),
+        );
+        listeningServer.once("error", reject);
+      });
+      return { address, server };
+    } catch (listenError) {
+      // A port taken is the next one tried; any other refusal of the machine's
+      // is said as what to report, as a page never built is.
+      if ((listenError as NodeJS.ErrnoException).code === "EADDRINUSE" && candidatePort < 65535) continue;
+      return `The portal could not listen on 127.0.0.1:${candidatePort}: ${(listenError as Error).message}\n  Free a port on this machine, then start the portal again.\n`;
     }
   }
 }
@@ -65,7 +76,7 @@ export async function startPortal(
  * markup, which cannot carry one. No CORS header is sent, so a page of another
  * origin fails the preflight of every write.
  */
-function portal(
+function buildPortalApp(
   page: URL,
   charterAuthoringApp: ForAuthoringCharter,
   charterBuildingApp: ForBuildingCharter,
@@ -90,13 +101,6 @@ function portal(
       await next();
     })
     .use("/api/*", bearerAuth({ token }))
-    .route("/api", api(charterAuthoringApp, charterBuildingApp, loadWorkspaceSettings))
+    .route("/api", buildPortalRoutes(charterAuthoringApp, charterBuildingApp, loadWorkspaceSettings))
     .use("/*", serveStatic({ root: fileURLToPath(page) }));
-}
-
-function listen(app: Hono, port: number): Promise<ServerType> {
-  return new Promise((resolve, reject) => {
-    const server = serve({ fetch: app.fetch, hostname: "127.0.0.1", port }, () => resolve(server));
-    server.once("error", reject);
-  });
 }

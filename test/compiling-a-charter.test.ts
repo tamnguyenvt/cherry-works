@@ -4,19 +4,23 @@ import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-sk
 import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
+import { outputPath } from "../src/module/charter/domain/constants.js";
 import { ModelHelper } from "../src/module/charter/domain/helper.js";
-import { yamlFieldsOf } from "../src/module/charter/domain/libs/yaml.lib.js";
-import { AgentProvider } from "../src/module/charter/domain/models/agent/agent-provider.js";
-import { StampedDocument } from "../src/module/charter/domain/models/projection/stamped-document.js";
+import { parseYamlFields } from "../src/module/charter/domain/libs/yaml.lib.js";
+import { CharterMd } from "../src/module/charter/domain/models/charter-output/charter-md.js";
+import { CharterOutputItem } from "../src/module/charter/domain/models/charter-output/charter-output-item.js";
+import { CompiledPrimitive } from "../src/module/charter/domain/models/charter-output/compiled-primitive.js";
+import { StampedDocumentSpec } from "../src/module/charter/domain/models/charter-output/stamped-document.specification.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
+import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { putDownBy } from "./put-down-by.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 
 const CLAUDE = new AgentProvider("claude");
 const repo = new URL("file:///repo/");
-const root = FolderAddress.urlOf("file:///repo/.cw/charter/primitive/");
+const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
 
 const primitive = (kind: string, id: string, body = `The body of ${id}.`) =>
   [
@@ -89,7 +93,7 @@ const built = async (authored: Readonly<Record<string, string>>, agents: readonl
     charter,
     written,
     files: Object.fromEntries(
-      await Promise.all(written.map(async (path) => [path, await held.read(new URL(path, repo))] as const)),
+      await Promise.all(written.map(async (path) => [path, await held.readFile(new URL(path, repo))] as const)),
     ) as Readonly<Record<string, string>>,
   };
 };
@@ -193,7 +197,7 @@ test("every primitive compiles to one document holding its headers, then its mix
 
   assert.match(document, /^---\nkind: guide\nid: no-any\n/);
   assert.match(document, /mixins: \["house-style"\]\n---\n\nLENT BODY\n\nOWN BODY\n/);
-  assert.ok(StampedDocument.isStamped(document));
+  assert.ok(new StampedDocumentSpec().isSatisfiedBy(document));
 });
 
 test("a mixin at the end lends its body after its host's, and one at the start before it, each in the order the host named them", async () => {
@@ -271,7 +275,7 @@ test("a charter with a broken file still compiles what the readable files hold",
     [new URL("guide/broken/index.md", root).href]: "---\nkind: guide\n---\n\nNo id, no description.\n",
   });
 
-  assert.equal(Object.keys(charter.allFaultsByFiles.files).length, 1);
+  assert.equal(Object.keys(charter.allFaultsByFiles.faultsByFilePath).length, 1);
   assert.deepEqual(
     JSON.parse(files[".cw/out/catalogue.json"] ?? "").map((one: { id: string }) => one.id),
     ["cw-author", "cw-session-cost", "cw-session-tokens-counter", "no-any"],
@@ -296,7 +300,7 @@ test("a header YAML would read as something else is quoted in the compiled docum
   const document = files[".cw/out/sensor/on-stop/index.md"] ?? "";
   const [, headers = ""] = document.split("---\n");
 
-  assert.deepEqual(yamlFieldsOf(headers).run, run);
+  assert.deepEqual(parseYamlFields(headers).run, run);
 });
 
 test("an mcp origin is served under the first segment of its id and a hash of its id, the same on every build (FR-145)", () => {
@@ -313,4 +317,32 @@ test("two mcp origins whose prefixes hash alike are told apart by a number, in t
     "acme/place-1157": "acme_3b85",
     "acme/place-5": "acme_3b85_2",
   });
+});
+
+test("a charter compiles to a list of items, each of its own kind extending one base, known by its path inside the output and added in the order a build lays them (CORE Story 53 scenario 7, CORE-FR-220)", async () => {
+  const held = new InMemoryFileReaders(oneGuide);
+  const charter = await loadCharterRoot(held);
+
+  const charterOutput = CompileService.compileCharterRoot(charter, [CLAUDE]);
+
+  assert.ok(
+    charterOutput.charterOutputItems.every((charterOutputItem) => charterOutputItem instanceof CharterOutputItem),
+  );
+  assert.deepEqual(
+    charterOutput.charterOutputItems.map((charterOutputItem) => [
+      charterOutputItem.constructor.name,
+      outputPath.getPath(charterOutputItem),
+    ]),
+    [
+      ["Catalogue", "catalogue.json"],
+      ["Catalogue", "catalogue.claude.json"],
+      ["McpOrigins", "mcp-origins.json"],
+      ["BuiltSensors", "sensors.json"],
+      ["CharterMd", "CHARTER.md"],
+      ...charterOutput.charterOutputItems
+        .filter((charterOutputItem) => charterOutputItem instanceof CompiledPrimitive)
+        .map((compiledPrimitive) => ["CompiledPrimitive", outputPath.getPath(compiledPrimitive)]),
+    ],
+  );
+  assert.equal(outputPath.getPath(charterOutput.findCharterOutputItem(CharterMd)), outputPath.charterMdFileName);
 });

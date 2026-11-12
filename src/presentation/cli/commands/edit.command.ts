@@ -34,22 +34,22 @@ export class EditCommand implements Command<typeof OPTIONS> {
   readonly summary = "Open the file of one primitive in your editor";
   readonly options = OPTIONS;
 
-  async run({ cwd, charterAuthoringApp }: Context, { id }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const primitiveDTO = await charterAuthoringApp.open(id ?? "");
-    if (primitiveDTO.type === "Fault") return { code: EXIT_FAILURE, problem: printFault(primitiveDTO) };
+  async runCommand({ cwd, charterAuthoringApp }: Context, { id }: Options<typeof OPTIONS>): Promise<Outcome> {
+    const primitiveDTO = await charterAuthoringApp.openPrimitive(id ?? "");
+    if (primitiveDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveDTO) };
     const primitive = primitiveDTO.data;
     if (primitive.layerName === BUILTIN_LAYER)
       return {
-        code: EXIT_FAILURE,
-        problem: `${primitive.id} is built into cw, and there is no file of it in this repository to edit.\n  To differ from it, run "cw add" for a primitive of your own under an id of its own.\n`,
+        exitCode: EXIT_FAILURE,
+        problemText: `${primitive.id} is built into cw, and there is no file of it in this repository to edit.\n  To differ from it, run "cw add" for a primitive of your own under an id of its own.\n`,
       };
 
-    const problem = await editInEditor(cwd, primitive.file);
-    if (problem !== undefined) return { code: EXIT_FAILURE, problem };
+    const editorProblem = await editInEditor(cwd, primitive.file);
+    if (editorProblem !== undefined) return { exitCode: EXIT_FAILURE, problemText: editorProblem };
 
     return {
-      code: EXIT_OK,
-      result: [
+      exitCode: EXIT_OK,
+      resultText: [
         `Closed ${primitive.file}.`,
         'Run "cw doctor" to see that the charter still holds, then "cw build".',
         "",

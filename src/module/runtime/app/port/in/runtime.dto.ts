@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { byType, dto, StringsSchema } from "../../../../shared/module.js";
+import { dto, groupByType, StringsSchema } from "../../../../shared/module.js";
 
 /**
  * What the runtime module answers with: the calls it forwards, the evaluations
@@ -155,7 +155,7 @@ const MainContextsSchema = dto(
 
 /** Every schema of this module's DTOs, under its name — the name it carries
  *  as `type` — in alphabetical order. */
-export const RuntimeDTOs = byType(
+export const RuntimeDTOs = groupByType(
   EvalCaseReportSchema,
   EvalLogAnalysisSchema,
   EvalRunReportSchema,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
-import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.js";
+import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
 import { RawPrimitive } from "../src/module/charter/domain/models/primitive/raw-primitive.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
@@ -53,7 +53,7 @@ test("one use case set up on each repository's storage answers for that reposito
     [new URL("memory://a/"), "guide-of-a"],
     [new URL("file:///work/b/"), "guide-of-b"],
   ] as const) {
-    const explanationOutcome = await charterAppOn(repoFolder, guideId).explain(guideId);
+    const explanationOutcome = await charterAppOn(repoFolder, guideId).explainPrimitive(guideId);
     assert.equal(explanationOutcome.type, "ExplanationOutcome", JSON.stringify(explanationOutcome));
     assert.equal(
       explanationOutcome.data.primitive.data.file,
@@ -75,7 +75,7 @@ test("a path starting at / or stepping out with .. reaches nothing outside the r
         fault instanceof AdapterFault && /no path inside the folder this was set up on/.test(fault.message),
       outsidePath,
     );
-    await assert.rejects(fileOutput.write(outsidePath, "written"), AdapterFault, outsidePath);
+    await assert.rejects(fileOutput.writeFile(outsidePath, "written"), AdapterFault, outsidePath);
   }
   const charterRepository = new FileCharterRepository(fileReaders, fileOutput, new InMemorySources(fileReaders));
   await assert.rejects(
@@ -84,5 +84,5 @@ test("a path starting at / or stepping out with .. reaches nothing outside the r
     ),
     /would land outside/,
   );
-  assert.equal(await fileReaders.read(new URL("file:///outside.md")), "Not the repository's.");
+  assert.equal(await fileReaders.readFile(new URL("file:///outside.md")), "Not the repository's.");
 });

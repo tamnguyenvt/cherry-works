@@ -1,12 +1,12 @@
 import { type DomainFault, FaultsByFile } from "../../../../shared/module.js";
-import { covers } from "../../libs/globs.lib.js";
-import { CharterPrimitiveFault, CharterRootFault } from "../charter.fault.js";
+import { coversGlob } from "../../libs/globs.lib.js";
+import { InconsistentCharterFault, InvalidPrimitiveFault } from "../charter.fault.js";
 import { AgentBasedPrimitive } from "../primitive/agent-based-primitive.js";
 import { AgentPrimitive } from "../primitive/agent-primitive.js";
 import { BasePrimitive } from "../primitive/base-primitive.js";
 import { McpPrimitive } from "../primitive/mcp-primitive.js";
 import type { Primitive } from "../primitive/primitive.js";
-import type { LayerName } from "../primitive/primitive-layer.js";
+import type { PrimitiveLayer } from "../primitive/primitive-layer.value-object.js";
 import { ScriptPrimitive } from "../primitive/script-primitive.js";
 import { SensorPrimitive } from "../primitive/sensor-primitive.js";
 
@@ -35,7 +35,7 @@ export class CharterRoot {
     readonly faultsByFiles: FaultsByFile,
     /** The layer of everything kept, read as a primitive or not, by where it is
      *  kept: what a fault under it is weighed by (FR-005). */
-    readonly layerNameByUri: Readonly<Record<string, LayerName>> = {},
+    readonly primitiveLayerByUri: Readonly<Record<string, PrimitiveLayer>> = {},
   ) {}
 
   /** Everything wrong with this charter, under the file that has to change: the
@@ -44,7 +44,7 @@ export class CharterRoot {
    *  refused holds no primitive to get anything else wrong — so one asking is
    *  the whole answer (FR-009). */
   get allFaultsByFiles(): FaultsByFile {
-    return this.faultsByFiles.with(this.compositeFaultsByFiles);
+    return this.faultsByFiles.mergeWith(this.compositeFaultsByFiles);
   }
 
   /**
@@ -75,7 +75,7 @@ export class CharterRoot {
         .filter(([, agentName]) => !agentNames.includes(agentName))
         .map(
           ([header, agentName]) =>
-            new CharterPrimitiveFault(
+            new InvalidPrimitiveFault(
               `"${header}" names "${agentName}", an agent this charter is compiled for none of.`,
               `Name any of: ${agentNames.join(", ")}.`,
               { internal: false },
@@ -88,16 +88,17 @@ export class CharterRoot {
 
   get primitiveById(): ReadonlyMap<string, Primitive> {
     const primitiveById = new Map<string, Primitive>();
-    for (const one of this.primitives) if (!primitiveById.has(one.headers.id)) primitiveById.set(one.headers.id, one);
+    for (const primitive of this.primitives)
+      if (!primitiveById.has(primitive.headers.id)) primitiveById.set(primitive.headers.id, primitive);
     return primitiveById;
   }
 
   /** Every mixin one primitive uses, in the order it named them (FR-014). A
    *  name nothing answers to, or that answers with another kind, is left out:
    *  `compositeFaultsByFiles` already names that file as an error. */
-  mixinsOf(one: Primitive): readonly Primitive[] {
+  mixinsOf(hostPrimitive: Primitive): readonly Primitive[] {
     const primitiveById = this.primitiveById;
-    return (one.headers.mixins ?? []).flatMap((id) => {
+    return (hostPrimitive.headers.mixins ?? []).flatMap((id) => {
       const mixin = primitiveById.get(id);
       return mixin?.kind === "mixin" ? [mixin] : [];
     });
@@ -106,8 +107,8 @@ export class CharterRoot {
   /** The corpus one primitive cites as its rationale, or nothing where it cites
    *  none or cites one this charter does not hold as a corpus — which
    *  `compositeFaultsByFiles` already names (FR-005, FR-014). */
-  rationaleOf(one: Primitive): Primitive | undefined {
-    const { rationale } = one.headers;
+  rationaleOf(citingPrimitive: Primitive): Primitive | undefined {
+    const { rationale } = citingPrimitive.headers;
     const corpusPrimitive = rationale === undefined ? undefined : this.primitiveById.get(rationale);
     return corpusPrimitive?.kind === "corpus" ? corpusPrimitive : undefined;
   }
@@ -128,7 +129,7 @@ export class CharterRoot {
   /** Every primitive naming one, as `[[<id>]]` (FR-144, FR-163, FR-172). */
   mentionersOf(referencedPrimitive: Primitive): readonly Primitive[] {
     return this.primitives.filter((mentioner) =>
-      this.idsMentionedIn(mentioner).includes(referencedPrimitive.headers.id),
+      this.findMentionedIds(mentioner).includes(referencedPrimitive.headers.id),
     );
   }
 
@@ -136,14 +137,14 @@ export class CharterRoot {
    *  or not: in its body (FR-143, FR-172); for an agent, each mcp origin it holds by
    *  listing it among its tools (FR-156); and for a sensor, each script its
    *  `run` names (FR-161). */
-  private idsMentionedIn(one: Primitive): readonly string[] {
+  private findMentionedIds(mentioningPrimitive: Primitive): readonly string[] {
     return [
-      ...[...one.body.matchAll(BasePrimitive.referencePattern)].map(([, id]) => id!),
-      ...(one instanceof AgentPrimitive
-        ? one.headers.tools.flatMap((tool) => tool.match(BasePrimitive.toolReferencePattern)?.[1] ?? [])
+      ...[...mentioningPrimitive.body.matchAll(BasePrimitive.referencePattern)].map(([, id]) => id!),
+      ...(mentioningPrimitive instanceof AgentPrimitive
+        ? mentioningPrimitive.headers.tools.flatMap((tool) => tool.match(BasePrimitive.toolReferencePattern)?.[1] ?? [])
         : []),
-      ...(one instanceof SensorPrimitive
-        ? [...one.headers.run.matchAll(BasePrimitive.referencePattern)].map(([, id]) => id!)
+      ...(mentioningPrimitive instanceof SensorPrimitive
+        ? [...mentioningPrimitive.headers.run.matchAll(BasePrimitive.referencePattern)].map(([, id]) => id!)
         : []),
     ];
   }
@@ -151,12 +152,12 @@ export class CharterRoot {
   /** Does what a mixin lends reach as far as the host pulling it in, or the host
    *  no further than the mixin? A side that names no files is asking about
    *  nothing in particular, and is left alone (FR-006). */
-  private reaches(host: Primitive, mixin: Primitive): boolean {
+  private isMixinReaching(host: Primitive, mixin: Primitive): boolean {
     const hostGlobs = host.headers.globs ?? [];
     const mixinGlobs = mixin.headers.globs ?? [];
     if (hostGlobs.length === 0 || mixinGlobs.length === 0) return true;
     const coversAll = (outer: readonly string[], inner: readonly string[]) =>
-      inner.every((narrower) => outer.some((wider) => covers(wider, narrower)));
+      inner.every((narrower) => outer.some((wider) => coversGlob(wider, narrower)));
     return coversAll(mixinGlobs, hostGlobs) || coversAll(hostGlobs, mixinGlobs);
   }
 
@@ -184,13 +185,13 @@ export class CharterRoot {
   get compositeFaultsByFiles(): FaultsByFile {
     const everyPrimitive = this.primitives;
     const primitiveById = this.primitiveById;
-    const referencedIds = new Set(everyPrimitive.flatMap((one) => this.idsMentionedIn(one)));
+    const referencedIds = new Set(everyPrimitive.flatMap((primitive) => this.findMentionedIds(primitive)));
 
     const uriById = new Map<string, string>();
     const idByNormId = new Map<string, string>();
     const faultsByFiles: Record<string, DomainFault[]> = {};
-    const addFault = (file: string, found: DomainFault) => {
-      faultsByFiles[file] = [...(faultsByFiles[file] ?? []), found];
+    const addFault = (filePath: string, fileFault: DomainFault) => {
+      faultsByFiles[filePath] = [...(faultsByFiles[filePath] ?? []), fileFault];
     };
     for (const primitive of everyPrimitive) {
       const { uri: primitiveUri } = primitive;
@@ -200,7 +201,7 @@ export class CharterRoot {
       else
         addFault(
           primitiveUri,
-          new CharterRootFault(
+          new InconsistentCharterFault(
             `"${id}" is already declared by ${declaringUri}. One id names one primitive in a charter, whatever its kind and whichever layer it was authored in.`,
             `Give this one an id of its own, or delete it if the other says the same thing. A vendor claiming an id you authored is one to raise with whoever publishes it. An id (built into cw) claims is the engine's own and nobody can change it, so the one to rename is yours.`,
             { internal: false },
@@ -216,7 +217,7 @@ export class CharterRoot {
       else if (claimingId !== id)
         addFault(
           primitiveUri,
-          new CharterRootFault(
+          new InconsistentCharterFault(
             `"${id}" and "${claimingId}" are both named "${normId}" in an agent's files, where "/" is written as "-". Only one of them would be written there.`,
             `Give this one an id that stays its own once "/" is written as "-".`,
             { internal: false },
@@ -230,7 +231,7 @@ export class CharterRoot {
         if (mixin?.kind !== "mixin") {
           addFault(
             primitiveUri,
-            new CharterRootFault(
+            new InconsistentCharterFault(
               `This pulls in the mixin "${mixinId}", and this charter holds no mixin of that id.`,
               `Author it, or drop "${mixinId}" from "mixins". A mixin is named by its id, whichever layer authored it.`,
               { internal: false },
@@ -238,10 +239,10 @@ export class CharterRoot {
           );
           continue;
         }
-        if (!this.reaches(primitive, mixin)) {
+        if (!this.isMixinReaching(primitive, mixin)) {
           addFault(
             primitiveUri,
-            new CharterRootFault(
+            new InconsistentCharterFault(
               `This pulls in the mixin "${mixinId}", and neither one's "globs" covers the other's. The mixin's body would be written into a primitive that applies to different files.`,
               `Widen one side's "globs" until it covers the other's, or move the shared text into a corpus and cite it with "rationale".`,
               { internal: false },
@@ -257,7 +258,7 @@ export class CharterRoot {
       if (rationaleId !== undefined && primitiveById.get(rationaleId)?.kind !== "corpus")
         addFault(
           primitiveUri,
-          new CharterRootFault(
+          new InconsistentCharterFault(
             `This cites "${rationaleId}" as its rationale, and this charter holds no corpus of that id.`,
             `Author that corpus, correct the reference, or drop "rationale". A corpus is cited by its id, whichever layer authored it.`,
             { severity: "warn", internal: false },
@@ -267,11 +268,11 @@ export class CharterRoot {
       // A name nothing holds stops the build: an agent sent to something that
       // is not there may guess at one, or invent it, and act on the guess
       // (FR-143, FR-162).
-      for (const referencedId of new Set(this.idsMentionedIn(primitive)))
+      for (const referencedId of new Set(this.findMentionedIds(primitive)))
         if (!primitiveById.has(referencedId))
           addFault(
             primitiveUri,
-            new CharterRootFault(
+            new InconsistentCharterFault(
               `This names "${referencedId}", and this charter holds no primitive of that id.`,
               `Author it, or correct the name. It is named as "[[<id>]]", whichever layer authored it.`,
               { internal: false },
@@ -282,11 +283,11 @@ export class CharterRoot {
       // else: a build copies those and no other (FR-165).
       if (
         primitive instanceof ScriptPrimitive &&
-        !primitive.assets.some((assetFile) => primitive.isExecutionFile(assetFile.file))
+        !primitive.assets.some((assetFile) => primitive.isExecutionFile(assetFile.assetPath))
       )
         addFault(
           primitiveUri,
-          new CharterRootFault(
+          new InconsistentCharterFault(
             `"executionPath" names "${primitive.headers.executionPath}", and the folder of this index.md holds no such file.`,
             `Write that file beside this index.md, or name one that is there.`,
             { internal: false },
@@ -297,13 +298,13 @@ export class CharterRoot {
       // lists must be an mcp the charter holds, and each tool one it declares
       // (FR-156).
       if (primitive instanceof AgentPrimitive)
-        for (const tool of primitive.headers.tools.filter((one) => one.startsWith("[["))) {
+        for (const tool of primitive.headers.tools.filter((agentTool) => agentTool.startsWith("[["))) {
           const [, mcpId, mcpTool] = tool.match(BasePrimitive.toolReferencePattern) ?? [];
           const mcpPrimitive = mcpId === undefined ? undefined : primitiveById.get(mcpId);
           if (mcpId === undefined)
             addFault(
               primitiveUri,
-              new CharterRootFault(
+              new InconsistentCharterFault(
                 `"${tool}" under "tools" is not an mcp origin this role can hold.`,
                 `Write an mcp origin as "[[<id>]]" for every tool it declares, or "[[<id>]]:<tool>" for one.`,
                 { internal: false },
@@ -318,7 +319,7 @@ export class CharterRoot {
           )
             addFault(
               primitiveUri,
-              new CharterRootFault(
+              new InconsistentCharterFault(
                 `"${tool}" under "tools" names a tool "${mcpId}" does not declare; it declares ${mcpPrimitive.headers.tools.join(", ")}.`,
                 `Name one of those, or add "${mcpTool}" to the tools of "${mcpId}".`,
                 { internal: false },
@@ -332,7 +333,7 @@ export class CharterRoot {
       if (primitive.kind === "corpus" && this.citersOf(primitive).length === 0)
         addFault(
           primitiveUri,
-          new CharterRootFault(
+          new InconsistentCharterFault(
             `No primitive cites "${id}" as its rationale, so nothing an agent reads leads to it.`,
             `Cite it from the rules it explains with "rationale: ${id}", or delete it.`,
             { severity: "warn", internal: false },
@@ -341,7 +342,7 @@ export class CharterRoot {
       if (primitive.kind === "mixin" && this.hostsOf(primitive).length === 0)
         addFault(
           primitiveUri,
-          new CharterRootFault(
+          new InconsistentCharterFault(
             `No primitive pulls in the mixin "${id}", so its body is never written anywhere.`,
             `Name "${id}" under "mixins" of the primitives it was written for, or delete it.`,
             { severity: "warn", internal: false },
@@ -355,7 +356,7 @@ export class CharterRoot {
       )
         addFault(
           primitiveUri,
-          new CharterRootFault(
+          new InconsistentCharterFault(
             `No primitive names "${id}" in its body, so nothing an agent reads leads to it.`,
             `Name it where it is used, as "[[${id}]]", or delete it.`,
             { severity: "warn", internal: false },
@@ -367,7 +368,7 @@ export class CharterRoot {
     // below takes every layer to see.
     const mcpPrimitives = everyPrimitive
       .flatMap((primitive) => (primitive instanceof McpPrimitive ? [primitive] : []))
-      .sort((one, another) => (one.headers.id < another.headers.id ? -1 : 1));
+      .sort((leftMcp, rightMcp) => (leftMcp.headers.id < rightMcp.headers.id ? -1 : 1));
 
     // One command is one process, and a process reads its token from one
     // variable: two named for one address leave it unsaid which (FR-145).
@@ -375,15 +376,15 @@ export class CharterRoot {
       const { uri: primitiveUri } = primitive;
       const { tokenEnv } = primitive.headers;
       const conflictingMcp = mcpPrimitives.find(
-        (other) =>
-          other.address === primitive.address &&
-          other.headers.tokenEnv !== undefined &&
-          other.headers.tokenEnv !== tokenEnv,
+        (otherMcp) =>
+          otherMcp.address === primitive.address &&
+          otherMcp.headers.tokenEnv !== undefined &&
+          otherMcp.headers.tokenEnv !== tokenEnv,
       );
       if (tokenEnv !== undefined && conflictingMcp !== undefined)
         addFault(
           primitiveUri,
-          new CharterRootFault(
+          new InconsistentCharterFault(
             `This hands "${primitive.address}" its token in "${tokenEnv}", and "${conflictingMcp.headers.id}" in "${conflictingMcp.headers.tokenEnv}". One process reads its token from one variable.`,
             `Name the variable that command reads in both, or drop "tokenEnv" and "auth" from one of them.`,
             { internal: false },

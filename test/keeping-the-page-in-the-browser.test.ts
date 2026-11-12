@@ -9,7 +9,7 @@ const root = new URL("../", import.meta.url);
  *  rules look, since what they guard is a path in the repository, and taken
  *  away whatever the run says. */
 async function cruisePage(name: string, text: string): Promise<{ status: number | null; stdout: string }> {
-  const probe = `src/presentation/portal/page/${name}-${process.pid}.ts`;
+  const probe = `src/presentation/portal/page/${name}-${process.pid}.probe.ts`;
   await writeFile(new URL(probe, root), text);
   try {
     return spawnSync("pnpm", ["exec", "depcruise", probe], { cwd: root, encoding: "utf8" });

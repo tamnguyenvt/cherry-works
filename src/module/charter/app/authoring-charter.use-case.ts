@@ -6,46 +6,53 @@ import {
   Faults,
   type ForReportingProgress,
   type ForTellingTime,
+  ManyFindingsFault,
 } from "../../shared/module.js";
-import { EvalFolder } from "../domain/models/charter/eval-folder.js";
-import { RepoLayerPrimitive } from "../domain/models/charter/repo-layer-primitive.specification.js";
-import { TestFolder } from "../domain/models/charter/test-folder.js";
+import { EVAL_FOLDER_PATH, TEST_FOLDER_PATH } from "../domain/constants.js";
+import { RepoLayerPrimitiveSpec } from "../domain/models/charter/repo-layer-primitive.specification.js";
 import {
   ClaimedIdFault,
   EmptyTokenFault,
-  EvalSuiteFault,
+  ExpiredSignInFault,
+  InsecureEndpointFault,
+  NotSignedInFault,
   PrimitiveChangedFault,
   ReadOnlyPrimitiveFault,
-  SignInAddressFault,
-  TestSuiteFault,
+  UnknownEvalSuiteFault,
   UnknownIdFault,
   UnknownKindFault,
-  VendorFault,
+  UnknownSignInAddressFault,
+  UnknownTestSuiteFault,
+  UnknownVendorFault,
+  UnplaceableVendorFault,
+  UnsupportedSignInMethodFault,
 } from "../domain/models/charter.fault.js";
+import { CatalogueFactory } from "../domain/models/charter-output/catalogue.factory.js";
+import type { McpOrigin } from "../domain/models/charter-output/mcp-origin.js";
 import { EvalRootFactory } from "../domain/models/eval/eval-root.factory.js";
 import type { EvalRoot } from "../domain/models/eval/eval-root.js";
 import { EvalSuiteFactory } from "../domain/models/eval/eval-suite.factory.js";
 import { EvalSuite } from "../domain/models/eval/eval-suite.js";
+import { McpAuthMethod, type McpAuthMethodName } from "../domain/models/mcp/mcp-auth-method.value-object.js";
+import { McpClientRegistration } from "../domain/models/mcp/mcp-client-registration.js";
 import { McpPrimitive } from "../domain/models/primitive/mcp-primitive.js";
 import { PrimitiveFactory } from "../domain/models/primitive/primitive.factory.js";
 import { type Kind, type Primitive, Primitives } from "../domain/models/primitive/primitive.js";
-import { PrimitiveLayer } from "../domain/models/primitive/primitive-layer.js";
+import { PrimitiveLayer } from "../domain/models/primitive/primitive-layer.value-object.js";
 import { RawPrimitive } from "../domain/models/primitive/raw-primitive.js";
 import { ScriptPrimitive } from "../domain/models/primitive/script-primitive.js";
 import { SkillPrimitive } from "../domain/models/primitive/skill-primitive.js";
-import { CatalogueFactory } from "../domain/models/projection/catalogue.factory.js";
-import type { McpOrigin } from "../domain/models/projection/mcp-origin.js";
 import { TestRootFactory } from "../domain/models/test/test-root.factory.js";
 import type { TestRoot } from "../domain/models/test/test-root.js";
 import { TestSuiteFactory } from "../domain/models/test/test-suite.factory.js";
 import { TestSuite } from "../domain/models/test/test-suite.js";
 import { VendorSourceFactory } from "../domain/models/vendor/vendor-source.factory.js";
-import type { SourceCharter, VendorSource } from "../domain/models/vendor/vendor-source.js";
+import { type SourceCharter, VendorSource } from "../domain/models/vendor/vendor-source.js";
 import { VendorSourceOriginFactory } from "../domain/models/vendor/vendor-source-origin.factory.js";
 import { TestService } from "../domain/services/test.service.js";
 import type { ForAuthoringCharter, McpOriginAddress, UnparsedHeaders } from "./port/in/authoring-charter.port.js";
 import { CharterDTOs } from "./port/in/charter.dto.js";
-import type { ForAuthorizingMcpOrigins } from "./port/out/authorizing-mcp-origins.port.js";
+import type { ForAuthorizingOAuthClients } from "./port/out/authorizing-oauth-clients.port.js";
 import type { ForManagingCharter } from "./port/out/managing-charter.port.js";
 import type { ForStoringCredentials } from "./port/out/storing-credentials.port.js";
 import type { InstallCharterService } from "./services/install-charter.service.js";
@@ -71,7 +78,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   readonly #installCharterService: InstallCharterService;
   readonly #charterRepository: ForManagingCharter;
   readonly #credentialsRepository: ForStoringCredentials;
-  readonly #authorizing: ForAuthorizingMcpOrigins;
+  readonly #oauthAuthorizer: ForAuthorizingOAuthClients;
   readonly #clock: ForTellingTime;
 
   constructor(
@@ -87,7 +94,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     /** Where the developer's credentials to the mcp origins are kept, on this
      *  machine rather than in the repository (FR-149). */
     credentialsRepository: ForStoringCredentials,
-    authorizing: ForAuthorizingMcpOrigins,
+    oauthAuthorizer: ForAuthorizingOAuthClients,
     /** What now is, which a credential's expiry is read against. */
     clock: ForTellingTime,
     /** Where an internal fault is logged for whoever runs the system, before
@@ -99,7 +106,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     this.#installCharterService = installCharterService;
     this.#charterRepository = charterRepository;
     this.#credentialsRepository = credentialsRepository;
-    this.#authorizing = authorizing;
+    this.#oauthAuthorizer = oauthAuthorizer;
     this.#clock = clock;
   }
 
@@ -119,8 +126,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    * Reads and says: this holds a writing port and never reaches for it, which is
    * what keeps a reading use case unable to write (FR-041).
    */
-  async list(kind?: string): Promise<CharterDTOs.Catalogue | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.list", async () => {
+  async listCatalogue(kind?: string): Promise<CharterDTOs.Catalogue | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.listCatalogue", async () => {
       // Asked before the charter is read: a word that is no kind leaves this
       // nothing to narrow by, so it is answered as one fault rather than under a
       // file — there is none it is wrong with — and a typo costs no reading
@@ -135,21 +142,22 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       // A warning is said and lets the run through; what refuses it is only the
       // errors among the faults (FR-005, FR-009).
       const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
-      const charterErrors = charter.allFaultsByFiles.errors();
-      if (!charterErrors.isEmpty) return this.faultsByFileDTOOf(charterErrors);
+      const charterErrorFaultsByFile = charter.allFaultsByFiles.filterErrors();
+      if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
       const catalogue = CatalogueFactory.create(charter, (primitive) => primitive.uri);
       return CharterDTOs.Catalogue.of({
         // Each entry copied out of its model, so the caller is answered plain
         // data (CORE-FR-223).
         entries: (kind === undefined ? catalogue : catalogue.filterByKind(kind)).entries.map(
-          ({ agentProviders, id, kind: entryKind, description, file, globs }) =>
+          ({ agentProviders, id, kind: entryKind, description, file: filePath, globs }) =>
             CharterDTOs.CatalogueEntry.of({
-              agentProviders,
+              agentProviders:
+                agentProviders === "all" ? "all" : agentProviders.map((agentProvider) => agentProvider.name),
               id,
               kind: entryKind,
               description,
-              file,
+              file: filePath,
               ...(globs === undefined ? {} : { globs }),
             }),
         ),
@@ -160,17 +168,17 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   /** Every primitive the charter read, or those mentioning a word, each as the
    *  whole charter sees it (FR-112, FR-114). Whether one mentions the word is
    *  the primitive's own to say. */
-  async fullList(matching?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.fullList", async () => {
+  async listPrimitives(matching?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.listPrimitives", async () => {
       const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
-      const charterErrors = charter.allFaultsByFiles.errors();
-      if (!charterErrors.isEmpty) return this.faultsByFileDTOOf(charterErrors);
+      const charterErrorFaultsByFile = charter.allFaultsByFiles.filterErrors();
+      if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
       // Ordered by id, the way the catalogue orders its entries.
       const shownPrimitives =
         matching === undefined
           ? charter.primitives
-          : charter.primitives.filter((primitive) => primitive.search(matching));
+          : charter.primitives.filter((primitive) => primitive.hasWord(matching));
       return CharterDTOs.Primitives.of({
         primitives: [...shownPrimitives]
           .sort((leftPrimitive, rightPrimitive) =>
@@ -202,14 +210,16 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *
    * Reads and says: this holds a writing port and never reaches for it (FR-041).
    */
-  async explain(id: string): Promise<CharterDTOs.ExplanationOutcome | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.explain", async () => {
+  async explainPrimitive(
+    id: string,
+  ): Promise<CharterDTOs.ExplanationOutcome | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.explainPrimitive", async () => {
       // Held to the shape an id is written in before anything is read: text
       // that is not one names nothing to look for (FR-014).
       const primitiveId = Primitives.idOf(id);
       const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
-      const charterErrors = charter.allFaultsByFiles.errors();
-      if (!charterErrors.isEmpty) return this.faultsByFileDTOOf(charterErrors);
+      const charterErrorFaultsByFile = charter.allFaultsByFiles.filterErrors();
+      if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
       const declaredPrimitive = charter.primitiveById.get(primitiveId);
       if (declaredPrimitive === undefined)
@@ -234,12 +244,12 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       const testCasesByFile = Object.fromEntries(
         Object.entries(testRoot.suitesByFile)
           .map(
-            ([file, suite]) =>
+            ([filePath, suite]) =>
               [
-                file,
+                filePath,
                 suite.cases
                   .filter((testCase) => testCase.activatedId === primitiveId)
-                  .map((testCase) => testCase.describe()),
+                  .map((testCase) => testCase.describeCase()),
               ] as const,
           )
           .filter(([, situations]) => situations.length > 0),
@@ -270,11 +280,11 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     return this.answerWithFaultDTO("AuthoringCharter.listPrimitiveRequirements", async () => {
       const primitiveKind = this.#findKind(kind);
       return CharterDTOs.PrimitiveRequirements.of({
-        headers: Primitives.headersOf(primitiveKind).map(({ field, shape, required, allowedValues }) =>
+        headers: Primitives.headersOf(primitiveKind).map(({ field, shape, isRequired, allowedValues }) =>
           CharterDTOs.PrimitiveHeader.of({
             field,
             shape,
-            required,
+            required: isRequired,
             ...(allowedValues === undefined ? {} : { allowedValues }),
           }),
         ),
@@ -287,8 +297,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  (FR-010). Asked of the classes themselves, as the requirements above are:
    *  no charter is read, and a kind this repository has authored nothing of is a
    *  kind all the same. */
-  async kinds(): Promise<CharterDTOs.PrimitiveKinds | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.kinds", async () => {
+  async listKinds(): Promise<CharterDTOs.PrimitiveKinds | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.listKinds", async () => {
       // Where a kind's line names a place, it is where the projection lays it.
       // Read off the class that reads each kind (FR-010): the same declarations
       // the compiled orientation says it in, so a listing and what an agent
@@ -318,13 +328,13 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    * (FR-014). The files are read without being validated, so a charter wrong
    * somewhere else can still be added to.
    */
-  async add(
+  async addPrimitive(
     kindWord: string,
     id: string,
     headers: UnparsedHeaders,
     body = "",
   ): Promise<CharterDTOs.Primitive | FaultDTOs.Faults | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.add", async () => {
+    return this.answerWithFaultDTO("AuthoringCharter.addPrimitive", async () => {
       const kind = this.#findKind(kindWord);
 
       let primitive: Primitive;
@@ -335,11 +345,11 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       } catch (raisedValue) {
         // Every fault the answers have, not the first, the way a charter's are
         // read (FR-009).
-        if (!(raisedValue instanceof AggregateError)) throw raisedValue;
-        const findingFaults = raisedValue.errors.filter(
+        if (!(raisedValue instanceof ManyFindingsFault)) throw raisedValue;
+        const findingFaults = raisedValue.faults.filter(
           (error): error is DomainFault => error instanceof DomainFault && !error.internal,
         );
-        if (findingFaults.length !== raisedValue.errors.length) throw raisedValue;
+        if (findingFaults.length !== raisedValue.faults.length) throw raisedValue;
         return this.faultsDTOOf(new Faults(findingFaults));
       }
 
@@ -365,8 +375,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    * needs to open it. A save made over its hash is checked against the
    * primitive read again then.
    */
-  async open(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.open", async () => {
+  async openPrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.openPrimitive", async () => {
       return this.#primitiveDTOOf(await this.#findPrimitiveById(id));
     });
   }
@@ -379,27 +389,27 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    * did not author (FR-077), and for one whose hash is no longer the one its
    * author opened it at, so an edit made on disk since is not lost under
    * this one (FR-078). Answers the kind will not take come back as the faults
-   * `add` gives for them, since both read answers the one way.
+   * `addPrimitive` gives for them, since both read answers the one way.
    *
    * Kind and id are the id's, never the headers': an edit cannot move a
    * file, and a rename is a new primitive and a deletion. Nothing is compiled
    * and nothing committed (FR-079).
    */
-  async rewrite(
+  async rewritePrimitive(
     id: string,
     headers: UnparsedHeaders,
     body: string,
     openedHash: string,
   ): Promise<CharterDTOs.Primitive | FaultDTOs.Faults | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.rewrite", async () => {
+    return this.answerWithFaultDTO("AuthoringCharter.rewritePrimitive", async () => {
       const authoredPrimitive = await this.#findPrimitiveById(id);
-      if (!RepoLayerPrimitive.isSatisfiedBy(authoredPrimitive))
+      if (!new RepoLayerPrimitiveSpec().isSatisfiedBy(authoredPrimitive))
         throw new ReadOnlyPrimitiveFault(
           `${id} was not authored in this repository, and ${authoredPrimitive.uri} is read-only here.`,
           `To differ from it, author a primitive of your own under an id of its own.`,
           { internal: false },
         );
-      // Read again now and hashed the way `open` hashed it: the two differ only
+      // Read again now and hashed the way `openPrimitive` hashed it: the two differ only
       // if the file changed since (FR-078).
       if (authoredPrimitive.hash !== openedHash)
         throw new PrimitiveChangedFault(
@@ -422,11 +432,11 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
           ),
         );
       } catch (raisedValue) {
-        if (!(raisedValue instanceof AggregateError)) throw raisedValue;
-        const findingFaults = raisedValue.errors.filter(
+        if (!(raisedValue instanceof ManyFindingsFault)) throw raisedValue;
+        const findingFaults = raisedValue.faults.filter(
           (error): error is DomainFault => error instanceof DomainFault && !error.internal,
         );
-        if (findingFaults.length !== raisedValue.errors.length) throw raisedValue;
+        if (findingFaults.length !== raisedValue.faults.length) throw raisedValue;
         return this.faultsDTOOf(new Faults(findingFaults));
       }
 
@@ -444,10 +454,10 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    * each as dangling, and what to do about them is its author's call. Nothing is
    * compiled and nothing committed (FR-079).
    */
-  async remove(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.remove", async () => {
+  async removePrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.removePrimitive", async () => {
       const primitive = await this.#findPrimitiveById(id);
-      if (!RepoLayerPrimitive.isSatisfiedBy(primitive))
+      if (!new RepoLayerPrimitiveSpec().isSatisfiedBy(primitive))
         throw new ReadOnlyPrimitiveFault(
           `${id} was not authored in this repository, and ${primitive.uri} is read-only here.`,
           `To differ from it, author a primitive of your own under an id of its own.`,
@@ -492,14 +502,10 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
           selectedSkillIds,
           selectedCharterNames,
         );
-        await this.#installCharterService.executePlan(
-          filteredSource,
-          this.#installCharterService.planInstall(filteredSource),
-          this.#charterRepository,
-        );
+        await this.#charterRepository.storeVendor(filteredSource);
         return this.#vendorAddOutcomeDTOOf(filteredSource);
       } finally {
-        await this.#charterRepository.cleanupVendorSource(rawVendorSource);
+        await this.#charterRepository.removeTempSource(rawVendorSource);
       }
     });
   }
@@ -549,7 +555,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
                 PrimitiveLayer.REPO,
                 SkillPrimitive.kind,
                 convertedSkill.headers.id,
-                convertedSkill.toMarkdown(),
+                convertedSkill.writeMarkdown(),
                 assets,
                 uri,
               ),
@@ -562,7 +568,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         for (const injectedPrimitive of injectedPrimitives) {
           const existingUri = uriById.get(injectedPrimitive.id);
           if (existingUri !== undefined)
-            throw new VendorFault(
+            throw new ClaimedIdFault(
               `${existingUri} and ${injectedPrimitive.uri} claim id "${injectedPrimitive.id}".`,
               "Inject primitives with ids this charter does not already hold.",
               { internal: false },
@@ -573,7 +579,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         // here, it is a vendor that cannot be injected (FR-167).
         await this.#charterRepository.injectPrimitives(injectedPrimitives).catch((raisedValue: unknown) => {
           throw raisedValue instanceof AdapterFault
-            ? new VendorFault(raisedValue.message, raisedValue.fix, {
+            ? new UnplaceableVendorFault(raisedValue.message, raisedValue.fix, {
                 internal: raisedValue.internal,
                 cause: raisedValue,
               })
@@ -581,7 +587,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         });
         return this.#vendorAddOutcomeDTOOf(filteredSource, this.#charterRepository.findCharterUri());
       } finally {
-        await this.#charterRepository.cleanupVendorSource(rawVendorSource);
+        await this.#charterRepository.removeTempSource(rawVendorSource);
       }
     });
   }
@@ -598,7 +604,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         (listedVendor) => listedVendor.name === name,
       );
       if (installedVendor === undefined)
-        throw new VendorFault(
+        throw new UnknownVendorFault(
           `No vendor folder is named "${name}".`,
           "Name the folder as cw vendor list names it under .cw/charter/vendor/.",
           { internal: false },
@@ -608,8 +614,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     });
   }
 
-  async vendors(): Promise<CharterDTOs.VendorFolders | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.vendors", async () => {
+  async listVendors(): Promise<CharterDTOs.VendorFolders | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.listVendors", async () => {
       // Listed the way the charter finds its vendor layers, so what is listed is
       // what the charter reads (FR-053).
       return CharterDTOs.VendorFolders.of({
@@ -621,19 +627,19 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   /** Every test file as it was read, with its text, one that does not read
    *  among them (FR-124). No charter is read: resolving the cases against it
    *  is testing the charter's. */
-  async suites(): Promise<CharterDTOs.TestSuites | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.suites", async () => {
+  async listTestSuites(): Promise<CharterDTOs.TestSuites | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.listTestSuites", async () => {
       const { suitesByFile, faultsByFiles, suiteNameByFile } = await this.#loadTestRoot();
       // In the order their paths sort in: one that reads with its name, body,
       // description and each case said; one that does not with its name and
       // the fault that says why (FR-124).
-      const suitePaths = [...Object.keys(suitesByFile), ...Object.keys(faultsByFiles.files)].sort(
+      const suitePaths = [...Object.keys(suitesByFile), ...Object.keys(faultsByFiles.faultsByFilePath)].sort(
         (leftPath, rightPath) => leftPath.localeCompare(rightPath),
       );
       return CharterDTOs.TestSuites.of({
         testSuites: suitePaths.map((path) => {
           const suite = suitesByFile[path];
-          const [fault] = faultsByFiles.files[path] ?? [];
+          const [fault] = faultsByFiles.faultsByFilePath[path] ?? [];
           return CharterDTOs.TestSuite.of({
             name: suiteNameByFile[path] ?? path,
             ...(suite === undefined ? {} : { text: suite.body }),
@@ -652,8 +658,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     });
   }
 
-  async addSuite(): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.addSuite", async () => {
+  async addTestSuite(): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.addTestSuite", async () => {
       // Named `untitled-<n>.json` for the first `n` no test file has, holding
       // one sample case that reads as a suite (FR-091).
       const name = (await this.#loadTestRoot()).untitledName;
@@ -662,8 +668,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     });
   }
 
-  async writeSuite(name: string, text: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.writeSuite", async () => {
+  async writeTestSuite(name: string, text: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.writeTestSuite", async () => {
       await this.#ensureTestSuiteNamed(name);
       // Refused with nothing written where the text does not read as a suite —
       // the refusal and sample `cw test` gives (FR-090).
@@ -672,8 +678,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     });
   }
 
-  async removeSuite(name: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.removeSuite", async () => {
+  async removeTestSuite(name: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.removeTestSuite", async () => {
       await this.#ensureTestSuiteNamed(name);
       await this.#charterRepository.removeTestSuite(name);
       return CharterDTOs.TestSuiteName.of({ name });
@@ -683,20 +689,20 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   /** Every file of evaluation cases as it was read, with its text, one that
    *  does not read among them. No charter is read: whether a case names what
    *  it holds is evaluating the charter's. */
-  async evalSuites(): Promise<CharterDTOs.EvalSuites | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.evalSuites", async () => {
+  async listEvalSuites(): Promise<CharterDTOs.EvalSuites | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.listEvalSuites", async () => {
       const { suitesByFile, faultsByFiles, suiteNameByFile, suiteTextByFile } = await this.#loadEvalRoot();
       // In the order their paths sort in: one that reads with its name, text,
       // description and each case said; one that does not with its name, its
       // text and the fault that says why.
-      const suitePaths = [...Object.keys(suitesByFile), ...Object.keys(faultsByFiles.files)].sort(
+      const suitePaths = [...Object.keys(suitesByFile), ...Object.keys(faultsByFiles.faultsByFilePath)].sort(
         (leftPath, rightPath) => leftPath.localeCompare(rightPath),
       );
       return CharterDTOs.EvalSuites.of({
         evalSuites: suitePaths.map((path) => {
           const suite = suitesByFile[path];
           const suiteText = suiteTextByFile[path];
-          const [fault] = faultsByFiles.files[path] ?? [];
+          const [fault] = faultsByFiles.faultsByFilePath[path] ?? [];
           return CharterDTOs.EvalSuite.of({
             name: suiteNameByFile[path] ?? path,
             ...(suiteText === undefined ? {} : { text: suiteText }),
@@ -712,7 +718,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   async addEvalSuite(): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.addEvalSuite", async () => {
       const name = (await this.#loadEvalRoot()).untitledName;
-      await this.#charterRepository.writeEvalSuite(name, EvalSuite.defaultBody);
+      await this.#charterRepository.writeEvalSuite(name, EvalSuiteFactory.create(EvalSuite.defaultBody));
       return CharterDTOs.EvalSuiteName.of({ name });
     });
   }
@@ -721,8 +727,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     return this.answerWithFaultDTO("AuthoringCharter.writeEvalSuite", async () => {
       await this.#ensureEvalSuiteNamed(name);
       // Refused with nothing written where the text does not read as a suite.
-      EvalSuiteFactory.create(text);
-      await this.#charterRepository.writeEvalSuite(name, text);
+      await this.#charterRepository.writeEvalSuite(name, EvalSuiteFactory.create(text));
       return CharterDTOs.EvalSuiteName.of({ name });
     });
   }
@@ -735,8 +740,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     });
   }
 
-  async signInStatus(): Promise<CharterDTOs.SignInStatuses | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.signInStatus", async () => {
+  async listSignInStatuses(): Promise<CharterDTOs.SignInStatuses | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.listSignInStatuses", async () => {
       return CharterDTOs.SignInStatuses.of({
         signInStatuses: await Promise.all(
           (await this.#loadSignInAddresses()).map(async (signInAddress) =>
@@ -752,15 +757,15 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
 
   async signInWithToken(address: string, token: string): Promise<CharterDTOs.SignInStatus | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.signInWithToken", async () => {
-      const signInAddress = await this.#findSignInAddress(address, "token");
+      const signInAddress = await this.#findSignInAddress(address, McpAuthMethod.TOKEN);
       if (token.trim() === "")
         throw new EmptyTokenFault(
           `No token was given for ${address}, so nothing was kept.`,
           'Run "cw mcp auth" again and paste the token.',
           { internal: false },
         );
-      await this.#credentialsRepository.writeCredential({ address, method: "token", accessToken: token });
-      return this.#signInStatusDTOOf(signInAddress, "token");
+      await this.#credentialsRepository.writeCredential({ address, method: McpAuthMethod.TOKEN, accessToken: token });
+      return this.#signInStatusDTOOf(signInAddress, McpAuthMethod.TOKEN);
     });
   }
 
@@ -769,10 +774,17 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     showAuthorizationUrl: (authorizationUrl: string) => void,
   ): Promise<CharterDTOs.SignInStatus | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.signInWithOAuth", async () => {
-      const signInAddress = await this.#findSignInAddress(address, "oauth");
-      const oauthGrant = await this.#authorizing.authorize(address, showAuthorizationUrl);
-      await this.#credentialsRepository.writeCredential({ address, method: "oauth", ...oauthGrant });
-      return this.#signInStatusDTOOf(signInAddress, "oauth");
+      const signInAddress = await this.#findSignInAddress(address, McpAuthMethod.OAUTH);
+      const oauthGrant = await this.#oauthAuthorizer.authorizeInBrowser(address, showAuthorizationUrl);
+      // What the authorization server registered `cw` as is kept as the
+      // domain's registration, read off the grant in OAuth's words.
+      await this.#credentialsRepository.writeCredential({
+        address,
+        method: McpAuthMethod.OAUTH,
+        ...oauthGrant,
+        client: new McpClientRegistration(oauthGrant.client),
+      });
+      return this.#signInStatusDTOOf(signInAddress, McpAuthMethod.OAUTH);
     });
   }
 
@@ -793,13 +805,13 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *
    * Reads and says: nothing here writes (FR-041).
    */
-  async test(): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.test", async () => {
+  async testCharter(): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.testCharter", async () => {
       const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
       // A warning is said and lets the run through; what refuses it is only the
       // errors among the faults (FR-005).
-      const charterErrors = charter.allFaultsByFiles.errors();
-      if (!charterErrors.isEmpty) return this.faultsByFileDTOOf(charterErrors);
+      const charterErrorFaultsByFile = charter.allFaultsByFiles.filterErrors();
+      if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
       const testRoot = TestRootFactory.create(await this.#charterRepository.loadTestSuites());
 
@@ -810,13 +822,15 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
 
       return CharterDTOs.TestRunReport.of({
         testCaseReports: Object.entries(testRoot.suitesByFile)
-          .flatMap(([file, suite]) => TestService.runSuite(charter, testRoot.suiteNameByFile[file] ?? file, suite))
-          .map(({ suiteName, situation, passed, unmet }) =>
+          .flatMap(([filePath, suite]) =>
+            TestService.runSuite(charter, testRoot.suiteNameByFile[filePath] ?? filePath, suite),
+          )
+          .map(({ suiteName, situation, hasPassed, unmetFault }) =>
             CharterDTOs.TestCaseReport.of({
               suiteName,
               situation,
-              passed,
-              ...(unmet === undefined ? {} : { unmet: this.findingDTOOf(unmet) }),
+              passed: hasPassed,
+              ...(unmetFault === undefined ? {} : { unmet: this.findingDTOOf(unmetFault) }),
             }),
           ),
       });
@@ -835,8 +849,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
 
   /** Refused where the repository is laid out the old way, naming the skill
    *  that moves it (CORE-FR-226); what keeps the charter knows its layout. */
-  async layout(): Promise<CharterDTOs.CharterLayout | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.layout", async () => {
+  async readCharterLayout(): Promise<CharterDTOs.CharterLayout | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.readCharterLayout", async () => {
       await this.#charterRepository.assertLayout();
       return CharterDTOs.CharterLayout.of({ charterUri: this.#charterRepository.findCharterUri() });
     });
@@ -855,13 +869,13 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    * `isRefused` says the mcp origin has just refused this credential, so it is renewed
    * whatever its expiry says.
    */
-  async accessToken(
+  async getAccessToken(
     { address, endpoint, mcpId }: McpOriginAddress,
     isRefused: boolean,
   ): Promise<CharterDTOs.AccessToken | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.accessToken", async () => {
+    return this.answerWithFaultDTO("AuthoringCharter.getAccessToken", async () => {
       if (endpoint !== undefined && !McpPrimitive.isSecureEndpoint(endpoint))
-        throw new DomainFault(
+        throw new InsecureEndpointFault(
           `${address} is plain http to another machine, so no credential is sent there.`,
           'Declare its endpoint as https://, then run "cw build".',
           { internal: false },
@@ -869,32 +883,37 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       const signInAgain = `Run "cw mcp auth ${mcpId}" at a terminal to sign in there.`;
       const credential = await this.#credentialsRepository.readCredential(address);
       if (credential === undefined)
-        throw new DomainFault(`You are not signed in to ${address}.`, signInAgain, { internal: false });
+        throw new NotSignedInFault(`You are not signed in to ${address}.`, signInAgain, { internal: false });
 
       // A credential the mcp origin has just refused is renewed as an expired one is:
       // the mcp origin knows better than `expiresAt` (FR-151).
       const isExpired =
         isRefused ||
-        (credential.expiresAt !== undefined && Date.parse(credential.expiresAt) <= this.#clock.now().getTime());
+        (credential.expiresAt !== undefined && Date.parse(credential.expiresAt) <= this.#clock.tellTime().getTime());
       if (!isExpired) return CharterDTOs.AccessToken.of({ accessToken: credential.accessToken });
 
       const { method, client, address: _keptAddress, ...tokens } = credential;
       const renewedGrant =
         endpoint !== undefined && client !== undefined && tokens.refreshToken !== undefined
-          ? await this.#authorizing.renew(endpoint, { ...tokens, client })
+          ? await this.#oauthAuthorizer.renewGrant(endpoint, { ...tokens, client })
           : undefined;
       if (renewedGrant === undefined)
-        throw new DomainFault(`Your sign-in to ${address} has expired and could not be renewed.`, signInAgain, {
+        throw new ExpiredSignInFault(`Your sign-in to ${address} has expired and could not be renewed.`, signInAgain, {
           internal: false,
         });
 
-      await this.#credentialsRepository.writeCredential({ address, method, ...renewedGrant });
+      await this.#credentialsRepository.writeCredential({
+        address,
+        method,
+        ...renewedGrant,
+        client: new McpClientRegistration(renewedGrant.client),
+      });
       return CharterDTOs.AccessToken.of({ accessToken: renewedGrant.accessToken });
     });
   }
 
   /** The primitive one id names, off the files as read and not the
-   *  validation. Raised when the charter holds nothing of it, the way `explain`
+   *  validation. Raised when the charter holds nothing of it, the way `explainPrimitive`
    *  raises it: there is no file it is wrong with. */
   async #findPrimitiveById(id: string): Promise<Primitive> {
     const primitiveId = Primitives.idOf(id);
@@ -937,9 +956,9 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     // already standing there is theirs and is left as it is (FR-167).
     const assets =
       primitive instanceof ScriptPrimitive
-        ? [{ file: primitive.executionPathInFolder, contents: new Uint8Array() }]
+        ? [{ assetPath: primitive.executionPathInFolder, contents: new Uint8Array() }]
         : [];
-    const markdownText = primitive.toMarkdown();
+    const markdownText = primitive.writeMarkdown();
     const keptUri = await this.#charterRepository.addPrimitive(
       new RawPrimitive(PrimitiveLayer.REPO, primitive.kind, primitive.headers.id, markdownText, assets, ""),
     );
@@ -959,8 +978,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  ever written over or taken away. */
   async #ensureTestSuiteNamed(name: string): Promise<void> {
     if (!(await this.#loadTestRoot()).hasTestSuiteNamed(name))
-      throw new TestSuiteFault(
-        `${TestFolder.path}/ holds no test file called "${name}".`,
+      throw new UnknownTestSuiteFault(
+        `${TEST_FOLDER_PATH}/ holds no test file called "${name}".`,
         'Run "cw suite add" to write a new one.',
         { internal: false },
       );
@@ -976,8 +995,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  nothing but one is ever written over or taken away. */
   async #ensureEvalSuiteNamed(name: string): Promise<void> {
     if (!(await this.#loadEvalRoot()).hasEvalSuiteNamed(name))
-      throw new EvalSuiteFault(
-        `${EvalFolder.path}/ holds no evaluation file called "${name}".`,
+      throw new UnknownEvalSuiteFault(
+        `${EVAL_FOLDER_PATH}/ holds no evaluation file called "${name}".`,
         "List the evaluation files, or add a new one.",
         { internal: false },
       );
@@ -997,7 +1016,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
     const signInAddressByAddress = new Map<
       string,
-      { endpoint?: string; ids: Set<string>; auth: Set<McpOrigin["auth"][number]> }
+      { endpoint?: string; ids: Set<string>; auth: Set<McpAuthMethodName> }
     >();
     for (const mcpPrimitive of charter.primitives) {
       if (!(mcpPrimitive instanceof McpPrimitive) || mcpPrimitive.headers.auth === undefined) continue;
@@ -1017,7 +1036,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         address,
         ...(endpoint !== undefined && { endpoint }),
         ids: [...ids].sort(),
-        auth: (["oauth", "token"] as const).filter((method) => auth.has(method)),
+        auth: McpAuthMethod.names.filter((methodName) => auth.has(methodName)).map(McpAuthMethod.of),
       }));
   }
 
@@ -1028,25 +1047,25 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  clear. What comes back is the address taken. */
   async #findSignInAddress(
     address: string,
-    method: McpOrigin["auth"][number],
+    method: McpAuthMethod,
   ): Promise<Pick<McpOrigin, "address" | "endpoint" | "ids" | "auth">> {
     const signInAddress = (await this.#loadSignInAddresses()).find(
       (originAddress) => originAddress.address === address,
     );
     if (signInAddress === undefined)
-      throw new SignInAddressFault(
+      throw new UnknownSignInAddressFault(
         `No mcp in the charter is at ${address}.`,
         'Run "cw mcp auth --status" to see every address.',
         { internal: false },
       );
     if (signInAddress.endpoint !== undefined && !McpPrimitive.isSecureEndpoint(signInAddress.endpoint))
-      throw new SignInAddressFault(
+      throw new InsecureEndpointFault(
         `${address} is plain http to another machine, so no credential is sent there.`,
         'Declare its endpoint as https://, then run "cw build".',
         { internal: false },
       );
     if (!signInAddress.auth.includes(method))
-      throw new SignInAddressFault(
+      throw new UnsupportedSignInMethodFault(
         `${address} is not signed in to by ${method}; it allows ${signInAddress.auth.join(" or ")}.`,
         `Sign in there by ${signInAddress.auth.join(" or ")}.`,
         { internal: false },
@@ -1058,20 +1077,22 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  is for, the file it was authored in, which layer that file arrived in,
    *  every header it declared, its body and its hash (FR-017, FR-078). */
   #primitiveDTOOf(primitive: Primitive): CharterDTOs.Primitive {
-    const { layerName, uri, body, hash } = primitive;
+    const { layer, uri, body, hash } = primitive;
     return CharterDTOs.Primitive.of({
       id: primitive.headers.id,
       kind: primitive.kind,
       description: primitive.headers.description,
       file: uri,
-      layerName,
+      layerName: layer.name,
       // A header nobody wrote is left out rather than carried as undefined: this
       // says what the file declared. A yes or no is carried as the line an
       // author types for it.
       headers: Object.fromEntries(
         Object.entries(primitive.headers).flatMap(
-          ([field, value]: [string, string | readonly string[] | boolean | undefined]) =>
-            value === undefined ? [] : [[field, typeof value === "boolean" ? String(value) : value]],
+          ([field, headerValue]: [string, string | readonly string[] | boolean | undefined]) =>
+            headerValue === undefined
+              ? []
+              : [[field, typeof headerValue === "boolean" ? String(headerValue) : headerValue]],
         ),
       ),
       body,
@@ -1083,14 +1104,14 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  the credential itself (FR-150, SC-036). */
   #signInStatusDTOOf(
     { address, ids, auth }: Pick<McpOrigin, "address" | "ids" | "auth">,
-    method: "oauth" | "token" | undefined,
+    method: McpAuthMethod | undefined,
   ): CharterDTOs.SignInStatus {
     return CharterDTOs.SignInStatus.of({
       address,
       ids,
-      auth,
+      auth: auth.map((authMethod) => authMethod.name),
       signedIn: method !== undefined,
-      ...(method !== undefined && { method }),
+      ...(method !== undefined && { method: method.name }),
     });
   }
 
@@ -1098,11 +1119,11 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  vendor's own, or the charter's where it was injected into it — and the
    *  primitives installed there (CORE-FR-184, CORE-FR-196). */
   #vendorAddOutcomeDTOOf(filteredSource: VendorSource, injectedCharterUri?: string): CharterDTOs.VendorAddOutcome {
-    const { rootName } = this.#installCharterService;
-    const folderOf = (charterName: string) =>
+    const rootName = VendorSource.ownCharterName;
+    const findVendorFolderUri = (charterName: string) =>
       injectedCharterUri ?? this.#charterRepository.findVendorUri(`${filteredSource.origin.name}/${charterName}`);
-    const charterVendorAddOutcomeOf = (charterName: string, sourceCharter: SourceCharter) => ({
-      folder: folderOf(charterName),
+    const composeVendorAddOutcome = (charterName: string, sourceCharter: SourceCharter) => ({
+      folder: findVendorFolderUri(charterName),
       primitives: sourceCharter.rawPrimitives.map((rawPrimitive) =>
         CharterDTOs.VendorPrimitive.of({
           kind: rawPrimitive.kind,
@@ -1115,13 +1136,13 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     return CharterDTOs.VendorAddOutcome.of([
       ...(filteredSource.ownCharter === undefined
         ? []
-        : [charterVendorAddOutcomeOf(rootName, filteredSource.ownCharter)]),
-      ...filteredSource.charters.map((sourceCharter) => charterVendorAddOutcomeOf(sourceCharter.name, sourceCharter)),
+        : [composeVendorAddOutcome(rootName, filteredSource.ownCharter)]),
+      ...filteredSource.charters.map((sourceCharter) => composeVendorAddOutcome(sourceCharter.name, sourceCharter)),
       ...(filteredSource.skills.length === 0
         ? []
         : [
             {
-              folder: folderOf(rootName),
+              folder: findVendorFolderUri(rootName),
               primitives: filteredSource.skills.map(({ convertedSkill, leftOutHeaders }) =>
                 CharterDTOs.VendorPrimitive.of({
                   kind: SkillPrimitive.kind,

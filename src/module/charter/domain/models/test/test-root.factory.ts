@@ -26,11 +26,11 @@ export class TestRootFactory {
     )) {
       try {
         suitesByFile[uri] = TestSuiteFactory.create(text);
-      } catch (suiteError) {
+      } catch (raisedValue) {
         // A file not reading is this file being wrong; anything else is not ours
         // to swallow.
-        if (!(suiteError instanceof DomainFault)) throw suiteError;
-        faultsByFile[uri] = [suiteError];
+        if (!(raisedValue instanceof DomainFault)) throw raisedValue;
+        faultsByFile[uri] = [raisedValue];
       }
     }
 

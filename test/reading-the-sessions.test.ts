@@ -66,7 +66,7 @@ const machineHolding = (
   const fileReaders = new InMemoryFileReaders(otherFiles);
   for (const [logFile, logText] of Object.entries(logTexts)) {
     const lastTime = JSON.parse(logText.trim().split("\n").at(-1)!).time;
-    fileReaders.write(new URL(logFile), logText, new Date(lastTime));
+    fileReaders.writeFile(new URL(logFile), logText, new Date(lastTime));
   }
   return fileReaders;
 };
@@ -81,7 +81,9 @@ const cliOver = (
   clock: ForTellingTime = new InMemoryClock(today),
 ) => {
   const fileReaderAt =
-    fileReaders instanceof InMemoryFileReaders ? (rootFolder: URL) => fileReaders.rootedAt(rootFolder) : fileReaders;
+    fileReaders instanceof InMemoryFileReaders
+      ? (rootFolder: URL) => fileReaders.makeReadersAt(rootFolder)
+      : fileReaders;
   const emptyFileReaders = new InMemoryFileReaders({});
   const sourceFetcher = new InMemorySources();
   const charterAuthoringApp = authoringCharterOf(
@@ -118,7 +120,7 @@ const printed = async (cli: Commander, argv: readonly string[]) => {
   process.stdout.write = ((text: string) => (results.push(String(text)), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(String(text)), true)) as typeof kept.err;
   try {
-    return { code: await cli.run(argv), text: results.join(""), problem: problems.join("") };
+    return { code: await cli.runCommandLine(argv), text: results.join(""), problem: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
     process.stderr.write = kept.err;
@@ -319,7 +321,7 @@ test("the summary reads what the counter kept when the agent stopped, on a disk 
     const counterFile = join(machineFolder, "sessionTokensCounter.mjs");
     await writeFile(
       counterFile,
-      new CwSessionTokensCounterScript().assets.find((assetFile) => assetFile.file === "sessionTokensCounter.mjs")!
+      new CwSessionTokensCounterScript().assets.find((assetFile) => assetFile.assetPath === "sessionTokensCounter.mjs")!
         .contents,
     );
     const transcriptFile = join(machineFolder, "session-e.jsonl");
