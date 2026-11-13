@@ -124,6 +124,54 @@ test("an id holding / is written as one file in its kind's folder, each / as - (
   assert.equal(keptPrimitive.headers.id, "mfbs/no-any");
 });
 
+test("a successful add compiles nothing: its file alone is written, for its author to write the body into and build (CORE Story 10 scenario 7, FR-074, FR-079, CORE Story 55 scenario 8)", async () => {
+  const settingsText = `${JSON.stringify({ agents: ["claude"] })}\n`;
+  const {
+    code,
+    held: files,
+    results,
+  } = await adding(["add", "guide", "no-any"], ["what description holds"], {
+    "file:///repo/.cw/settings.json": settingsText,
+  });
+
+  assert.equal(code, 0);
+  assert.deepEqual((await files.readFilesRecursively(repoPath)).map(({ fileUrl }) => fileUrl.href).sort(), [
+    "file:///repo/.cw/charter/primitive/guide/no-any/index.md",
+    "file:///repo/.cw/settings.json",
+  ]);
+  assert.match(results, /Write what it has to say in the body, then run "cw build"\./);
+});
+
+test("cw add mcp mfbs/billing, its address, ways to sign in and tools given, writes its file, and mfbs/billing is an id of the charter (CORE Story 17 scenario 1, FR-142, FR-064, CORE Story 55 scenario 8)", async () => {
+  const { code, held: files } = await adding([
+    "add",
+    "mcp",
+    "mfbs/billing",
+    "--header",
+    "description=Billing's code.",
+    "--header",
+    "endpoint=https://api.githubcopilot.com/mcp/",
+    "--header",
+    "auth=oauth",
+    "--header",
+    "auth=token",
+    "--header",
+    "tools=search_code",
+  ]);
+
+  assert.equal(code, 0);
+  const mcpPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/mcp/mfbs/billing/index.md")) ?? "");
+  assert.equal(mcpPrimitive.kind, "mcp");
+  assert.equal(mcpPrimitive.headers.id, "mfbs/billing");
+  const charterAuthoringApp = authoringCharterOf(files, new InMemoryFileOutput(files), new InMemoryReporter());
+  const explanationDTO = await charterAuthoringApp.explainPrimitive("mfbs/billing");
+  assert.ok(explanationDTO.type === "ExplanationOutcome", JSON.stringify(explanationDTO));
+  const { data: explainedPrimitive } = explanationDTO.data.primitive;
+  assert.equal(explainedPrimitive.kind, "mcp");
+  assert.equal(explainedPrimitive.id, "mfbs/billing");
+  assert.equal(explainedPrimitive.layerName, "repo");
+});
+
 test("an id with an empty segment is refused with the kind's sample, and nothing is written (FR-141)", async () => {
   for (const id of ["a//b", "/a", "a/"]) {
     const { code, problems, held: files } = await adding(["add", "guide", id], ["what description holds"]);
@@ -302,7 +350,7 @@ test("a header the kind does not take is named, and nothing is written (FR-011)"
   assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), undefined);
 });
 
-test("a header the kind requires and nobody answered is refused in the same words either way (FR-010, FR-012, SC-004)", async () => {
+test("a header the kind requires and nobody answered is refused in the same words either way, and in the words reading the charter refuses it with, naming what it takes (FR-010, FR-012, SC-004, CORE Story 10 scenario 3, FR-071, FR-073, CORE Story 55 scenario 8)", async () => {
   const typed = await adding(["add", "skill", "refactoring", "--header", "triggers=refactor"]);
   const answered = await adding(["add", "skill", "refactoring"], ["", ["refactor"]]);
 
@@ -311,6 +359,23 @@ test("a header the kind requires and nobody answered is refused in the same word
   assert.equal(typed.problems, answered.problems);
   assert.match(typed.problems, /not what a skill holds/);
   assert.equal(await held(typed.held, ".cw/charter/primitive/skill/refactoring/index.md"), undefined);
+  assert.deepEqual(await typed.held.readFilesRecursively(repoPath), [], "nothing is written");
+  // The same file missing the same header, as reading the charter refuses it.
+  const readFaults = (() => {
+    try {
+      readPrimitive('---\nkind: skill\nid: refactoring\ntriggers: ["refactor"]\n---\n');
+    } catch (readFault) {
+      return (readFault as { faults: readonly { message: string; fix: string }[] }).faults;
+    }
+    return assert.fail("the file missing its description was read");
+  })();
+  assert.ok(readFaults.length > 0);
+  for (const { message, fix } of readFaults) {
+    assert.ok(typed.problems.includes(message), message);
+    assert.ok(typed.problems.includes(fix.split("\n")[0] ?? fix), fix);
+    // What the missing header takes, shown in the kind's sample.
+    assert.match(fix, /\ndescription: \S/);
+  }
 });
 
 test("adding a script says the file it runs was written too, so its author knows where to write it (FR-167)", async () => {

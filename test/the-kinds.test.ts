@@ -164,6 +164,34 @@ test("the headers it names are the ones cw add takes, one flag apiece (FR-004, s
   }
 });
 
+test("for every kind, what cw kinds names, what cw add asks for and what a refusal says are the same headers in the same words (CORE Story 11 scenario 4, FR-062, FR-063, CORE Story 55 scenario 8)", async () => {
+  for (const kind of Primitives.kinds) {
+    const { results: kindAnswer } = await asking(["kinds", kind]);
+    const namedFields = headersNamedIn(kindAnswer).map(({ field }) => field);
+
+    // What cw add asks for, said where nobody is at the terminal to be asked.
+    const { code: addCode, problems: addProblems } = await asking(["add", kind, "something"]);
+    assert.equal(addCode, EXIT_FAILURE, kind);
+    const [, askedFieldsText = ""] = /requires (.*), and nobody is at the terminal/.exec(addProblems) ?? [];
+    assert.deepEqual(
+      [...askedFieldsText.matchAll(/"([^"]+)"/g)].map(([, field]) => field),
+      namedFields,
+      kind,
+    );
+
+    // What a refusal says: the sample cw kinds shows, word for word.
+    let refusalFix = "";
+    try {
+      readPrimitive(`---\nkind: ${kind}\nid: something\n---\n`);
+    } catch (readFault) {
+      assert.ok(readFault instanceof ManyFindingsFault, String(readFault));
+      refusalFix = readFault.faults.map(({ fix }) => fix).join("\n");
+    }
+    assert.ok(refusalFix.includes(sampleShownIn(kindAnswer)), `${kind}: ${refusalFix}`);
+    for (const field of namedFields) assert.match(refusalFix, new RegExp(`\\n${field}: `), `${kind} ${field}`);
+  }
+});
+
 test("cw kinds with no kind answers as it does today: one line per kind (FR-002)", async () => {
   const { code, results } = await asking(["kinds"]);
 

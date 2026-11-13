@@ -3,15 +3,16 @@ import { type ForLoadingSessionAnalysis, SessionLogs } from "../app/port/out/loa
 
 /** Reads the session logs kept as files, a folder per session. */
 export class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis {
-  readonly #fileReader: ForReadingFiles;
+  readonly #fileReaderAt: (rootFolder: URL) => ForReadingFiles;
   readonly #repoFolder: FolderURL;
   readonly #homeFolder: FolderURL;
   readonly #sessionAnalysisFolder: string | undefined;
 
   constructor(
-    /** What reads files under a folder, set up here on the root of the home's
-     *  address, so a folder the settings name anywhere under it is reached and
-     *  no reader set up anywhere else is handed in. */
+    /** What reads files under a folder, set up on the root of the home's
+     *  address when the sessions are read, so a folder the settings name
+     *  anywhere under it is reached and no reader set up anywhere else is
+     *  handed in. */
     fileReaderAt: (rootFolder: URL) => ForReadingFiles,
     /** The repository whose sessions are read, which names the folder they are
      *  kept in where its settings name none. */
@@ -29,10 +30,11 @@ export class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis 
     this.#repoFolder = FolderAddress.parseFolderUrl(repoFolder);
     this.#homeFolder = FolderAddress.parseFolderUrl(homeFolder);
     this.#sessionAnalysisFolder = sessionAnalysisFolder;
-    this.#fileReader = fileReaderAt(new URL("/", this.#homeFolder));
+    this.#fileReaderAt = fileReaderAt;
   }
 
   async loadSessionLogs(writtenFromMs: number, writtenUntilMs: number): Promise<SessionLogs> {
+    const fileReader = this.#fileReaderAt(new URL("/", this.#homeFolder));
     const sessionsFolder = SessionsFolder.of(this.#repoFolder, this.#homeFolder, this.#sessionAnalysisFolder).url;
     const sessionsFolderPath = decodeURIComponent(
       sessionsFolder.href.slice(new URL("/", this.#homeFolder).href.length),
@@ -42,8 +44,8 @@ export class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis 
     const listedLogFiles = (
       await Promise.all(
         (
-          await this.#fileReader.listFolders(sessionsFolderPath)
-        ).map((sessionFolderPath) => this.#fileReader.listFiles(sessionFolderPath)),
+          await fileReader.listFolders(sessionsFolderPath)
+        ).map((sessionFolderPath) => fileReader.listFiles(sessionFolderPath)),
       )
     ).flat();
     const logTexts = await Promise.all(
@@ -54,7 +56,7 @@ export class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis 
             modifiedAt.getTime() >= writtenFromMs &&
             modifiedAt.getTime() <= writtenUntilMs,
         )
-        .map(({ path }) => this.#fileReader.readIfThere(path)),
+        .map(({ path }) => fileReader.readIfThere(path)),
     );
     return new SessionLogs(
       // A folder on this machine's disk is named by its path, as it was; any other by its whole address (SDK-FR-011).
@@ -80,7 +82,8 @@ class SessionsFolder {
    * The folder one repository's sessions are kept in on this machine, a folder
    * per session id under it, as `cw-session-tokens-counter` keeps them
    * (EVAL-FR-009): the `sessionAnalysisFolder` the repository set, an absolute
-   * path or one under `~/`, both under the home's scheme, or else
+   * path or one under `~/`, both under the home's scheme, unless it is inside
+   * the repository (EVAL-FR-042), or else
    * `~/.cherry-works/` and the repository's path, each character that is not a
    * letter or a digit a dash. The counter names it the same way, from the folder
    * the agent ran in. A repository at any other address than a `file:` one with
@@ -122,12 +125,15 @@ class SessionsFolder {
     const sessionsFolderPath = sessionAnalysisFolder.endsWith("/")
       ? sessionAnalysisFolder
       : `${sessionAnalysisFolder}/`;
-    return new SessionsFolder(
-      FolderAddress.parseFolderUrl(
-        sessionsFolderPath.startsWith("~/")
-          ? new URL(sessionsFolderPath.slice(2).split("/").map(encodeURIComponent).join("/"), homeFolder)
-          : new URL(`.${sessionsFolderPath.split("/").map(encodeURIComponent).join("/")}`, new URL("/", homeFolder)),
-      ),
+    const namedSessionsFolder = FolderAddress.parseFolderUrl(
+      sessionsFolderPath.startsWith("~/")
+        ? new URL(sessionsFolderPath.slice(2).split("/").map(encodeURIComponent).join("/"), homeFolder)
+        : new URL(`.${sessionsFolderPath.split("/").map(encodeURIComponent).join("/")}`, new URL("/", homeFolder)),
     );
+    // A folder inside the repository is refused, as the counter refuses it,
+    // and the sessions read from the default it kept them in (EVAL-FR-042).
+    return namedSessionsFolder.href.startsWith(repoFolder.href)
+      ? SessionsFolder.of(repoFolder, homeFolder)
+      : new SessionsFolder(namedSessionsFolder);
   }
 }

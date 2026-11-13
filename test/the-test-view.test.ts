@@ -128,3 +128,23 @@ test("New test file writes one and opens its text; Delete file removes it (Story
     assert.equal(await page.getByLabel("untitled-1.json", { exact: true }).count(), 0);
   });
 });
+
+test("Delete file on a file open for editing removes it and clears the outcomes of the run before (CORE Story 9 scenario 7, FR-092, CORE Story 55 scenario 8)", async () => {
+  await inTheBrowser(withTwoFiles(), async (page, files) => {
+    await page.getByRole("tab", { name: "Test" }).click();
+    await page.getByRole("button", { name: "Run all tests" }).click();
+    await page.getByText("2 of 4 cases pass").waitFor();
+
+    await page.getByLabel("guides.json", { exact: true }).getByRole("button", { name: "Edit" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete file" }).click();
+    await page.getByText("Test file deleted").waitFor();
+
+    assert.equal(await files.readIfThere(new URL(at(".cw/charter/test/guides.json"))), undefined);
+    await page.getByText("1 case in 1 file").waitFor();
+    assert.equal(await page.getByText("2 of 4 cases pass").count(), 0);
+    const posture = page.getByLabel("posture.json", { exact: true });
+    await posture.getByRole("button", { name: /posture\.json/ }).click();
+    await posture.getByText("not run").waitFor();
+    assert.equal(await posture.getByText("pass", { exact: true }).count(), 0);
+  });
+});

@@ -3,7 +3,7 @@ import type { CharterOutputItem } from "./charter-output-item.js";
 
 /**
  * Everything one reading of a charter compiles to (FR-021): the items a
- * build lays, naming no place but inside the build's output — where the
+ * build lays, naming no place but inside the compiled output — where the
  * output lands, and what each agent reads of it, is each projection's
  * (CORE-FR-220, CORE-FR-221).
  *
@@ -36,7 +36,7 @@ export class CharterOutput {
     );
     if (charterOutputItem === undefined)
       throw new MissingCharterOutputItemFault(
-        `The build's output holds no ${itemClass.name}.`,
+        `The compiled output holds no ${itemClass.name}.`,
         "Report it: every build adds one.",
       );
     return charterOutputItem;

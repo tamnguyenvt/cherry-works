@@ -1,7 +1,7 @@
 import type { RawWorkspaceSettings } from "../../../domain/models/settings/raw-workspace-settings.js";
 import type { WorkspaceSettings } from "../../../domain/models/settings/workspace-settings.js";
 
-export { GITIGNORE_FILE_PATH, LOG_IGNORE_LINE, SETTINGS_FILE_PATH } from "../../../domain/constants.js";
+export { settingsPath } from "../../../domain/constants.js";
 /** The model and the layout the settings are kept in, named again here so an
  *  adapter keeping them imports nothing of the hexagon but its port. */
 export { RawWorkspaceSettings } from "../../../domain/models/settings/raw-workspace-settings.js";

@@ -525,6 +525,8 @@ declare const RuntimeDTOs: {
             id: z.ZodString;
             kind: z.ZodString;
             tokens: z.ZodNumber;
+            estimatedTokens: z.ZodNumber;
+            differenceRatio: z.ZodOptional<z.ZodNumber>;
             globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
         }, z.core.$strip>;
     }, z.core.$strip> & {
@@ -532,6 +534,8 @@ declare const RuntimeDTOs: {
             id: string;
             kind: string;
             tokens: number;
+            estimatedTokens: number;
+            differenceRatio?: number | undefined;
             globs?: readonly string[] | undefined;
         }) => {
             type: "MainContextLoad";
@@ -539,6 +543,8 @@ declare const RuntimeDTOs: {
                 id: string;
                 kind: string;
                 tokens: number;
+                estimatedTokens: number;
+                differenceRatio?: number | undefined;
                 globs?: readonly string[] | undefined;
             };
         };
@@ -547,13 +553,14 @@ declare const RuntimeDTOs: {
         type: z.ZodLiteral<"MainContext">;
         data: z.ZodObject<{
             agent: z.ZodString;
-            isExact: z.ZodBoolean;
             sessionLoads: z.ZodReadonly<z.ZodArray<z.ZodObject<{
                 type: z.ZodLiteral<"MainContextLoad">;
                 data: z.ZodObject<{
                     id: z.ZodString;
                     kind: z.ZodString;
                     tokens: z.ZodNumber;
+                    estimatedTokens: z.ZodNumber;
+                    differenceRatio: z.ZodOptional<z.ZodNumber>;
                     globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
                 }, z.core.$strip>;
             }, z.core.$strip> & {
@@ -561,6 +568,8 @@ declare const RuntimeDTOs: {
                     id: string;
                     kind: string;
                     tokens: number;
+                    estimatedTokens: number;
+                    differenceRatio?: number | undefined;
                     globs?: readonly string[] | undefined;
                 }) => {
                     type: "MainContextLoad";
@@ -568,6 +577,8 @@ declare const RuntimeDTOs: {
                         id: string;
                         kind: string;
                         tokens: number;
+                        estimatedTokens: number;
+                        differenceRatio?: number | undefined;
                         globs?: readonly string[] | undefined;
                     };
                 };
@@ -578,6 +589,8 @@ declare const RuntimeDTOs: {
                     id: z.ZodString;
                     kind: z.ZodString;
                     tokens: z.ZodNumber;
+                    estimatedTokens: z.ZodNumber;
+                    differenceRatio: z.ZodOptional<z.ZodNumber>;
                     globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
                 }, z.core.$strip>;
             }, z.core.$strip> & {
@@ -585,6 +598,8 @@ declare const RuntimeDTOs: {
                     id: string;
                     kind: string;
                     tokens: number;
+                    estimatedTokens: number;
+                    differenceRatio?: number | undefined;
                     globs?: readonly string[] | undefined;
                 }) => {
                     type: "MainContextLoad";
@@ -592,22 +607,29 @@ declare const RuntimeDTOs: {
                         id: string;
                         kind: string;
                         tokens: number;
+                        estimatedTokens: number;
+                        differenceRatio?: number | undefined;
                         globs?: readonly string[] | undefined;
                     };
                 };
             }>>;
             totalTokens: z.ZodNumber;
+            estimatedTotalTokens: z.ZodNumber;
+            totalDifferenceRatio: z.ZodOptional<z.ZodNumber>;
+            accuracyLimit: z.ZodNumber;
+            isPastAccuracyLimit: z.ZodBoolean;
         }, z.core.$strip>;
     }, z.core.$strip> & {
         of: (dataValue: {
             agent: string;
-            isExact: boolean;
             sessionLoads: readonly {
                 type: "MainContextLoad";
                 data: {
                     id: string;
                     kind: string;
                     tokens: number;
+                    estimatedTokens: number;
+                    differenceRatio?: number | undefined;
                     globs?: readonly string[] | undefined;
                 };
             }[];
@@ -617,21 +639,28 @@ declare const RuntimeDTOs: {
                     id: string;
                     kind: string;
                     tokens: number;
+                    estimatedTokens: number;
+                    differenceRatio?: number | undefined;
                     globs?: readonly string[] | undefined;
                 };
             }[];
             totalTokens: number;
+            estimatedTotalTokens: number;
+            accuracyLimit: number;
+            isPastAccuracyLimit: boolean;
+            totalDifferenceRatio?: number | undefined;
         }) => {
             type: "MainContext";
             data: {
                 agent: string;
-                isExact: boolean;
                 sessionLoads: readonly {
                     type: "MainContextLoad";
                     data: {
                         id: string;
                         kind: string;
                         tokens: number;
+                        estimatedTokens: number;
+                        differenceRatio?: number | undefined;
                         globs?: readonly string[] | undefined;
                     };
                 }[];
@@ -641,179 +670,16 @@ declare const RuntimeDTOs: {
                         id: string;
                         kind: string;
                         tokens: number;
+                        estimatedTokens: number;
+                        differenceRatio?: number | undefined;
                         globs?: readonly string[] | undefined;
                     };
                 }[];
                 totalTokens: number;
-            };
-        };
-    };
-    MainContexts: z.ZodObject<{
-        type: z.ZodLiteral<"MainContexts">;
-        data: z.ZodObject<{
-            contexts: z.ZodReadonly<z.ZodArray<z.ZodObject<{
-                type: z.ZodLiteral<"MainContext">;
-                data: z.ZodObject<{
-                    agent: z.ZodString;
-                    isExact: z.ZodBoolean;
-                    sessionLoads: z.ZodReadonly<z.ZodArray<z.ZodObject<{
-                        type: z.ZodLiteral<"MainContextLoad">;
-                        data: z.ZodObject<{
-                            id: z.ZodString;
-                            kind: z.ZodString;
-                            tokens: z.ZodNumber;
-                            globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-                        }, z.core.$strip>;
-                    }, z.core.$strip> & {
-                        of: (dataValue: {
-                            id: string;
-                            kind: string;
-                            tokens: number;
-                            globs?: readonly string[] | undefined;
-                        }) => {
-                            type: "MainContextLoad";
-                            data: {
-                                id: string;
-                                kind: string;
-                                tokens: number;
-                                globs?: readonly string[] | undefined;
-                            };
-                        };
-                    }>>;
-                    fileLoads: z.ZodReadonly<z.ZodArray<z.ZodObject<{
-                        type: z.ZodLiteral<"MainContextLoad">;
-                        data: z.ZodObject<{
-                            id: z.ZodString;
-                            kind: z.ZodString;
-                            tokens: z.ZodNumber;
-                            globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-                        }, z.core.$strip>;
-                    }, z.core.$strip> & {
-                        of: (dataValue: {
-                            id: string;
-                            kind: string;
-                            tokens: number;
-                            globs?: readonly string[] | undefined;
-                        }) => {
-                            type: "MainContextLoad";
-                            data: {
-                                id: string;
-                                kind: string;
-                                tokens: number;
-                                globs?: readonly string[] | undefined;
-                            };
-                        };
-                    }>>;
-                    totalTokens: z.ZodNumber;
-                }, z.core.$strip>;
-            }, z.core.$strip> & {
-                of: (dataValue: {
-                    agent: string;
-                    isExact: boolean;
-                    sessionLoads: readonly {
-                        type: "MainContextLoad";
-                        data: {
-                            id: string;
-                            kind: string;
-                            tokens: number;
-                            globs?: readonly string[] | undefined;
-                        };
-                    }[];
-                    fileLoads: readonly {
-                        type: "MainContextLoad";
-                        data: {
-                            id: string;
-                            kind: string;
-                            tokens: number;
-                            globs?: readonly string[] | undefined;
-                        };
-                    }[];
-                    totalTokens: number;
-                }) => {
-                    type: "MainContext";
-                    data: {
-                        agent: string;
-                        isExact: boolean;
-                        sessionLoads: readonly {
-                            type: "MainContextLoad";
-                            data: {
-                                id: string;
-                                kind: string;
-                                tokens: number;
-                                globs?: readonly string[] | undefined;
-                            };
-                        }[];
-                        fileLoads: readonly {
-                            type: "MainContextLoad";
-                            data: {
-                                id: string;
-                                kind: string;
-                                tokens: number;
-                                globs?: readonly string[] | undefined;
-                            };
-                        }[];
-                        totalTokens: number;
-                    };
-                };
-            }>>;
-        }, z.core.$strip>;
-    }, z.core.$strip> & {
-        of: (dataValue: {
-            contexts: readonly {
-                type: "MainContext";
-                data: {
-                    agent: string;
-                    isExact: boolean;
-                    sessionLoads: readonly {
-                        type: "MainContextLoad";
-                        data: {
-                            id: string;
-                            kind: string;
-                            tokens: number;
-                            globs?: readonly string[] | undefined;
-                        };
-                    }[];
-                    fileLoads: readonly {
-                        type: "MainContextLoad";
-                        data: {
-                            id: string;
-                            kind: string;
-                            tokens: number;
-                            globs?: readonly string[] | undefined;
-                        };
-                    }[];
-                    totalTokens: number;
-                };
-            }[];
-        }) => {
-            type: "MainContexts";
-            data: {
-                contexts: readonly {
-                    type: "MainContext";
-                    data: {
-                        agent: string;
-                        isExact: boolean;
-                        sessionLoads: readonly {
-                            type: "MainContextLoad";
-                            data: {
-                                id: string;
-                                kind: string;
-                                tokens: number;
-                                globs?: readonly string[] | undefined;
-                            };
-                        }[];
-                        fileLoads: readonly {
-                            type: "MainContextLoad";
-                            data: {
-                                id: string;
-                                kind: string;
-                                tokens: number;
-                                globs?: readonly string[] | undefined;
-                            };
-                        }[];
-                        totalTokens: number;
-                    };
-                }[];
+                estimatedTotalTokens: number;
+                accuracyLimit: number;
+                isPastAccuracyLimit: boolean;
+                totalDifferenceRatio?: number | undefined;
             };
         };
     };
@@ -826,7 +692,6 @@ declare namespace RuntimeDTOs {
     type EvalRunReport = z.infer<typeof RuntimeDTOs.EvalRunReport>;
     type MainContext = z.infer<typeof RuntimeDTOs.MainContext>;
     type MainContextLoad = z.infer<typeof RuntimeDTOs.MainContextLoad>;
-    type MainContexts = z.infer<typeof RuntimeDTOs.MainContexts>;
     type SensorRunOutcome = z.infer<typeof RuntimeDTOs.SensorRunOutcome>;
     type SessionReviewOutcome = z.infer<typeof RuntimeDTOs.SessionReviewOutcome>;
     type SessionSummary = z.infer<typeof RuntimeDTOs.SessionSummary>;
@@ -852,9 +717,13 @@ interface ForRunningCharter {
     /** One call forwarded to the mcp origin serving it, reached for this call
      *  alone and let go once it has answered (EVAL-FR-031, FR-154). */
     callTool(servedToolName: string, toolArguments: Readonly<Record<string, unknown>>): Promise<RuntimeDTOs.ToolAnswer | FaultDTOs.Fault>;
-    /** What each agent the repository compiles for is sent of the charter when a
-     *  session opens, counted exactly by its own command line (EVAL-FR-004). */
-    countMainContext(): Promise<RuntimeDTOs.MainContexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    /** What the agent named is sent of the charter when a session opens,
+     *  counted exactly by its own command line, beside its estimate, and
+     *  whether the two totals are further apart than EVAL-SC-002 allows
+     *  (EVAL-FR-004). Refused for an agent it cannot count through, one the
+     *  repository does not compile for, or one whose command line is not
+     *  installed. */
+    countMainContext(agentProviderName: AgentProviderName): Promise<RuntimeDTOs.MainContext | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
     /**
      * Select an explicitly requested configured agent, or the sole configured
      * agent. Several agents require a choice from the driver before execution.
@@ -892,6 +761,12 @@ interface ForRunningCharter {
  * (CORE-FR-206).
  */
 interface ForKeepingWorktrees {
+    /** The folder every worktree is added under, from the repository's root:
+     *  where a run stopped halfway left any, swept before the next one, and
+     *  where each case's worktree is added. The adapter's to say, not the
+     *  application's (CORE-FR-217); cw's own keep them in the log,
+     *  `.cw/log/eval/worktrees` (EVAL-FR-021). */
+    readonly worktreesFolderPath: string;
     /**
      * A worktree of this repository's last commit, checked out detached at this
      * path from the repository: its files as committed, and none of the work in hand
@@ -901,7 +776,8 @@ interface ForKeepingWorktrees {
     addWorktree(worktreePath: string): Promise<void>;
     /** One worktree taken away: its folder, and version control's record of
      *  it. A folder that is no worktree any more, or is not there, is removed
-     *  all the same. */
+     *  all the same; a path that is not one under `worktreesFolderPath` is
+     *  refused, and nothing is removed. */
     removeWorktree(worktreePath: string): Promise<void>;
 }
 
@@ -996,7 +872,8 @@ interface ForRunningPromptfoo {
 
 /** One promptfoo test, in promptfoo's own words. */
 interface PromptfooTest {
-    readonly agent: string;
+    /** The provider the test runs on, named by its agent: `claude` or `codex`. */
+    readonly provider: string;
     readonly description: string;
     readonly prompt: string;
     /** The folder the selected agent runs in, by its path from the repository. */
@@ -1006,11 +883,18 @@ interface PromptfooTest {
 
 /** One promptfoo assertion: a skill the agent invoked, a rubric an agent
  *  grader holds what the agent did to, reading the working folder itself, or
- *  a JavaScript check of the response. */
-interface PromptfooAssertion {
-    readonly type: "skill-used" | "agent-rubric" | "javascript" | "file-read";
+ *  a JavaScript check of the response. A JavaScript check that the agent's
+ *  tools read a file names that file in its `config` and carries no value:
+ *  the adapter writes the check, over the tool calls the provider reports. */
+type PromptfooAssertion = {
+    readonly type: "skill-used" | "agent-rubric" | "javascript";
     readonly value: string;
-}
+} | {
+    readonly type: "javascript";
+    readonly config: {
+        readonly readFilePath: string;
+    };
+};
 
 /** How one test came out, as promptfoo writes it: whether it passed, the
  *  tokens the provider reported in all, each assertion's grading, and the
@@ -1029,11 +913,13 @@ interface PromptfooTestResult {
     readonly sessionPath?: string;
 }
 
-/** A saved case and its diagnostics, read without an inference call. */
+/** A case promptfoo ran, kept with what it ran on and how it came out, read
+ *  again without an inference call. */
 interface PromptfooLog {
     readonly logPath: string;
     readonly createdAt: string;
-    readonly agent: string;
+    /** The provider the case ran on, named by its agent: `claude` or `codex`. */
+    readonly provider: string;
     readonly prompt: string;
     readonly workingFolderPath: string;
     readonly outputPath: string;
@@ -1105,9 +991,10 @@ declare class CodexCli extends AgentCli {
 declare class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis {
     #private;
     constructor(
-    /** What reads files under a folder, set up here on the root of the home's
-     *  address, so a folder the settings name anywhere under it is reached and
-     *  no reader set up anywhere else is handed in. */
+    /** What reads files under a folder, set up on the root of the home's
+     *  address when the sessions are read, so a folder the settings name
+     *  anywhere under it is reached and no reader set up anywhere else is
+     *  handed in. */
     fileReaderAt: (rootFolder: URL) => ForReadingFiles, 
     /** The repository whose sessions are read, which names the folder they are
      *  kept in where its settings name none. */
@@ -1124,9 +1011,10 @@ declare class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis
     loadSessionLogs(writtenFromMs: number, writtenUntilMs: number): Promise<SessionLogs>;
 }
 
-/** DRIVEN ADAPTER: git worktrees, as the command everyone already has. */
 declare class GitWorktrees implements ForKeepingWorktrees {
     #private;
+    /** Under the log, which version control ignores (CORE-FR-225). */
+    readonly worktreesFolderPath: string;
     constructor(
     /** The repository this works in, every path it is handed from its root:
      *  refused here unless it names a folder (SDK-FR-010). */
@@ -1136,10 +1024,31 @@ declare class GitWorktrees implements ForKeepingWorktrees {
     addWorktree(worktreePath: string): Promise<void>;
     /** `git worktree remove --force`, then the folder removed whatever git
      *  said, and `git worktree prune` for a record whose folder is gone, which a
-     *  folder under no repository has none of. */
+     *  folder under no repository has none of. A folder that is not one under
+     *  `worktreesFolderPath` is refused before anything is removed: what the
+     *  repository holds anywhere else is never this adapter's to delete. */
     removeWorktree(worktreePath: string): Promise<void>;
 }
 
+/**
+ * DRIVEN ADAPTER: promptfoo, installed with npm into a folder of its own and run
+ * as `promptfoo eval` (EVAL-FR-020, EVAL-FR-032).
+ *
+ * The selected agent runs through its promptfoo SDK provider in the working
+ * folder. Claude Code uses the project's settings, every skill, edits accepted, and no
+ * command, since no one is there to allow one. An `agent-rubric` is graded by
+ * the same provider in the same folder, reading and searching only, with no
+ * settings of the project's to sway it. Codex uses workspace-write for the
+ * case and read-only for grading, without approval prompts or retries. Both
+ * use the selected agent's sign-in, or the key the environment sets.
+ *
+ * The provider finds the SDK from where the configuration is, so each test's
+ * configuration is written into a folder under the one it is installed in,
+ * and taken away once it has run. Its raw output, stdout, stderr and a
+ * readable case manifest are kept in a folder of the run's own under the
+ * repository's log, which version control ignores (CORE-FR-225).
+ * Nothing is written to promptfoo's own store (`--no-write`).
+ */
 declare class Promptfoo implements ForRunningPromptfoo {
     #private;
     private readonly agentSessionFolders;
@@ -1151,13 +1060,13 @@ declare class Promptfoo implements ForRunningPromptfoo {
     get installFolderPath(): string;
     isInstalled(): Promise<boolean>;
     installPromptfoo(): Promise<void>;
-    evaluateTest({ agent, description, prompt, workingPath, assertions, }: PromptfooTest): Promise<PromptfooTestResult>;
+    evaluateTest({ provider: agentName, description, prompt, workingPath, assertions, }: PromptfooTest): Promise<PromptfooTestResult>;
     /** Resolve only existing local session files, never manufacture a path from an id. */
     private findSessionLog;
     readLogs(logFilePath?: string): Promise<readonly PromptfooLog[]>;
 }
 
-/** DRIVEN ADAPTER: the system shell, as a host runs a hook's command. */
+/** DRIVEN ADAPTER: the system shell, as an agent runs a hook's command. */
 declare class Shell implements ForRunningShellCommands {
     #private;
     constructor(

@@ -3,12 +3,14 @@ import type { CharterOutput } from "../../../domain/models/charter-output/charte
 import type { ProjectionPlan } from "../../../domain/models/charter-output/projection-plan.js";
 import type { MainContextText } from "../../../domain/models/context/main-context.js";
 
-export { AgentProvider } from "#module/shared/module.js";
-export { AdapterFault, UnbuiltCheckoutAdapterFault } from "../../../../shared/module.js";
-export { CHARTER_FOLDER_PATH, outputPath } from "../../../domain/constants.js";
-export { ModelHelper } from "../../../domain/helper.js";
-/** How a TOML file the charter shares with the repository is written into. */
-export { mergeTomlText } from "../../../domain/libs/toml.lib.js";
+/** The faults a projection raises, the agent it projects for, and how a TOML
+ *  file the charter shares with the repository is written into, from the
+ *  kernel. */
+export { AdapterFault, AgentProvider, TomlLib, UnbuiltCheckoutAdapterFault } from "#module/shared/module.js";
+/** Where each item of the output lands inside it. */
+export { outputPath } from "../../../domain/constants.js";
+/** How one primitive names another, read out of a text an agent is given. */
+export { PrimitiveHelper } from "../../../domain/helper.js";
 export { DocumentBasedComponent } from "../../../domain/models/agent/document-based-component.js";
 export { ProviderComponent } from "../../../domain/models/agent/provider-component.js";
 export { SettingBasedComponent } from "../../../domain/models/agent/setting-based-component.js";
@@ -26,7 +28,7 @@ export { McpOrigins } from "../../../domain/models/charter-output/mcp-origin.js"
 export { ProjectionPlan, WritePlan } from "../../../domain/models/charter-output/projection-plan.js";
 export { StampedDocumentSpec } from "../../../domain/models/charter-output/stamped-document.specification.js";
 export { StampedDocument } from "../../../domain/models/charter-output/stamped-document.value-object.js";
-export type { MainContextText } from "../../../domain/models/context/main-context.js";
+export { MainContextText } from "../../../domain/models/context/main-context.js";
 export { AgentPrimitive } from "../../../domain/models/primitive/agent-primitive.js";
 export { BasePrimitive } from "../../../domain/models/primitive/base-primitive.js";
 export { GuidePrimitive } from "../../../domain/models/primitive/guide-primitive.js";

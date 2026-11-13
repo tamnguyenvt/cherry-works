@@ -165,7 +165,8 @@ test("a case expecting a guide followed is handed to promptfoo as an agent-rubri
 
   const [rubricAssertion] = promptfoo.evaluatedTests[0]?.assertions ?? [];
   assert.equal(rubricAssertion?.type, "agent-rubric");
-  assert.match(rubricAssertion?.value ?? "", /Never name a variable `data`\./);
+  assert.ok(rubricAssertion !== undefined && "value" in rubricAssertion);
+  assert.match(rubricAssertion.value, /Never name a variable `data`\./);
   assert.equal(code, EXIT_FAILURE);
   assert.match(
     result,
@@ -189,8 +190,9 @@ test("a guide is handed to the grader as written: what reads as a template in it
   await printed(cli, ["eval"]);
 
   const [rubricAssertion] = promptfoo.evaluatedTests[0]?.assertions ?? [];
+  assert.ok(rubricAssertion !== undefined && "value" in rubricAssertion);
   assert.match(
-    rubricAssertion?.value ?? "",
+    rubricAssertion.value,
     /\{% raw %\}Never write `\{\{ data \}\}` or `\{% for data in items %\}`\.\{% endraw %\}/,
   );
 });
@@ -213,8 +215,9 @@ test("a case naming a number of tokens is handed to promptfoo as a check of the 
 
   const [tokenAssertion] = promptfoo.evaluatedTests[0]?.assertions ?? [];
   assert.equal(tokenAssertion?.type, "javascript");
-  assert.match(tokenAssertion?.value ?? "", /tokenUsage/);
-  assert.match(tokenAssertion?.value ?? "", /20000/);
+  assert.ok(tokenAssertion !== undefined && "value" in tokenAssertion);
+  assert.match(tokenAssertion.value, /tokenUsage/);
+  assert.match(tokenAssertion.value, /20000/);
   assert.equal(code, EXIT_FAILURE);
   assert.match(result, /The agent used 30000 tokens, more than the 20000 this case allows\./);
 });
@@ -296,6 +299,7 @@ test("a charter changed and not yet committed is evaluated as it stands: each ca
   /** Worktrees of a last commit that holds only what `committedPaths` names. */
   class LastCommitWorktrees implements ForKeepingWorktrees {
     readonly worktreePaths: string[] = [];
+    readonly worktreesFolderPath = ".cw/log/eval/worktrees";
     constructor(private readonly fileReaders: InMemoryFileReaders) {}
     async addWorktree(worktreePath: string): Promise<void> {
       for (const committedPath of committedPaths)
@@ -431,7 +435,7 @@ for (const agentName of ["claude", "codex"]) {
     assert.equal(commandOutput.code, EXIT_FAILURE);
     assert.match(commandOutput.result, new RegExp(`Agent: ${agentName}`));
     assert.match(commandOutput.result, /123 tokens/);
-    assert.equal(promptfooRunner.evaluatedTests[0]?.agent, agentName);
+    assert.equal(promptfooRunner.evaluatedTests[0]?.provider, agentName);
     assert.deepEqual(
       promptfooRunner.evaluatedTests[0]?.assertions.map(({ type }) => type),
       ["skill-used", "agent-rubric", "javascript"],
@@ -457,7 +461,7 @@ for (const agentName of ["claude", "codex"]) {
     };
     const commandOutput = await printed(surfaces(repositoryFiles, promptfooRunner).cli, ["eval"]);
     assert.equal(commandOutput.code, EXIT_OK);
-    assert.equal(promptfooRunner.evaluatedTests[0]?.agent, agentName);
+    assert.equal(promptfooRunner.evaluatedTests[0]?.provider, agentName);
   });
 }
 
@@ -499,7 +503,7 @@ for (const selectedAgent of ["codex", undefined]) {
       const commandOutput = await printed(surfaces(repositoryFiles, promptfooRunner).cli, ["eval"]);
       assert.equal(commandOutput.code, selectedAgent === undefined ? EXIT_FAILURE : EXIT_OK);
       assert.equal(promptfooRunner.evaluatedTests.length, selectedAgent === undefined ? 0 : 1);
-      if (selectedAgent !== undefined) assert.equal(promptfooRunner.evaluatedTests[0]?.agent, selectedAgent);
+      if (selectedAgent !== undefined) assert.equal(promptfooRunner.evaluatedTests[0]?.provider, selectedAgent);
     } finally {
       if (ttyDescriptor === undefined) delete (process.stdin as { isTTY?: boolean }).isTTY;
       else Object.defineProperty(process.stdin, "isTTY", ttyDescriptor);
@@ -524,11 +528,11 @@ test("a read-only expectation is accepted and handed to promptfoo without requir
   const { code } = await printed(cli, ["eval"]);
   assert.equal(code, EXIT_OK);
   assert.deepEqual(promptfoo.evaluatedTests[0]?.assertions, [
-    { type: "file-read", value: ".cw/out/skill/planning/index.md" },
+    { type: "javascript", config: { readFilePath: ".cw/out/skill/planning/index.md" } },
   ]);
 });
 
-test("read expectations reject absolute, traversal, empty and control-character paths before running an agent", async () => {
+test("a case expecting a read of an empty, absolute, outside or control-character path is refused before any case runs, naming the path (CORE Story 55 scenario 30, EVAL-FR-039)", async () => {
   for (const filePath of [
     "",
     "/etc/passwd",
@@ -539,16 +543,20 @@ test("read expectations reject absolute, traversal, empty and control-character 
     "C:/secret",
     "a\\file",
     "a\nfile",
+    "a\u007ffile",
+    "a\u0085file",
+    "a/{{x}}",
   ]) {
     const promptfoo = new InMemoryPromptfoo();
     const { cli } = surfaces(holding([{ prompt: "read", expect: { read: filePath } }]), promptfoo);
-    const { code } = await printed(cli, ["eval"]);
+    const { code, problem } = await printed(cli, ["eval"]);
     assert.equal(code, EXIT_FAILURE, JSON.stringify(filePath));
+    assert.ok(problem.includes(JSON.stringify(filePath)), `${JSON.stringify(filePath)} not named in: ${problem}`);
     assert.equal(promptfoo.evaluatedTests.length, 0);
   }
 });
 
-test("eval prints retained promptfoo and agent session paths, and eval-analyze reads saved evidence without evaluating", async () => {
+test("the run says where each case's result and the agent's session record are kept, and eval-analyze reads them again, in words or as JSON, without running a case (CORE Story 55 scenarios 31 and 32, EVAL-FR-040, EVAL-FR-041)", async () => {
   const promptfoo = new InMemoryPromptfoo();
   promptfoo.resultByPrompt.set("plan", {
     ...promptfooResult(123),
@@ -559,7 +567,7 @@ test("eval prints retained promptfoo and agent session paths, and eval-analyze r
   promptfoo.savedLogs.push({
     logPath: "/logs/case.json",
     createdAt: "2026-10-31T02:00:00.000Z",
-    agent: "codex",
+    provider: "codex",
     prompt: "plan",
     workingFolderPath: "/repo/.cw/log/eval/worktrees/1",
     outputPath: "/logs/output.json",
@@ -587,7 +595,39 @@ test("eval prints retained promptfoo and agent session paths, and eval-analyze r
   assert.match(analysisOutput.result, /Session log: \/sessions\/session-one.jsonl/);
   const jsonOutput = await printed(cli, ["eval-analyze", "--json"]);
   assert.equal(JSON.parse(jsonOutput.result).data.logs[0].sessionId, "session-one");
+  assert.equal(JSON.parse(jsonOutput.result).data.logs[0].agent, "codex");
   assert.equal(promptfoo.evaluatedTests.length, evaluateCount);
+});
+
+test("with no agent and no promptfoo installed, eval-analyze reads a kept result by the path a run said, in words, and the latest as JSON, and runs no agent (CORE Story 55 scenario 32, EVAL-FR-041)", async () => {
+  const promptfoo = new InMemoryPromptfoo(false);
+  promptfoo.savedLogs.push({
+    logPath: "/repo/.cw/log/eval/runs/run-1/case.json",
+    createdAt: "2026-10-31T02:00:00.000Z",
+    provider: "claude",
+    prompt: "read the guide",
+    workingFolderPath: "/repo/.cw/log/eval/worktrees/1",
+    outputPath: "/repo/.cw/log/eval/runs/run-1/output.json",
+    stdoutPath: "/repo/.cw/log/eval/runs/run-1/stdout.log",
+    stderrPath: "/repo/.cw/log/eval/runs/run-1/stderr.log",
+    success: true,
+    totalTokens: 40,
+    unmetReasons: [],
+    answer: "Read it.",
+    toolCalls: ['{"name":"Read","input":{"file_path":"/repo/docs/guide.md"}}'],
+  });
+  const { cli } = surfaces(holding([]), promptfoo, new InMemoryAgentCli(false));
+
+  const wordsOutput = await printed(cli, ["eval-analyze", "--log", "/repo/.cw/log/eval/runs/run-1/case.json"]);
+  const jsonOutput = await printed(cli, ["eval-analyze", "--json"]);
+
+  assert.equal(wordsOutput.code, EXIT_OK);
+  assert.match(wordsOutput.result, /read the guide/);
+  assert.match(wordsOutput.result, /docs\/guide\.md/);
+  assert.equal(jsonOutput.code, EXIT_OK);
+  assert.equal(JSON.parse(jsonOutput.result).data.logs[0].prompt, "read the guide");
+  assert.equal(promptfoo.evaluatedTests.length, 0);
+  assert.equal(promptfoo.installCount, 0);
 });
 
 test("eval-analyze explains an empty history without running an agent", async () => {

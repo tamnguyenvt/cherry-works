@@ -6,7 +6,8 @@ import { test } from "node:test";
 import prompts from "prompts";
 import type { AuthoringCharter } from "../src/module/charter/app/authoring-charter.use-case.js";
 import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
-import { ModelHelper } from "../src/module/charter/domain/helper.js";
+import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
+import { ContentHelper } from "../src/module/charter/domain/helper.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
@@ -121,7 +122,7 @@ test("a primitive opens with its headers, body, file, layer and revision, whatev
   const { data } = CharterDTOs.Primitive.parse(await charterAuthoringApp.openPrimitive("no-any"));
 
   // The hash is of the primitive written out, which is what a save writes.
-  assert.equal(data.hash, ModelHelper.createContentHash(text));
+  assert.equal(data.hash, ContentHelper.createContentHash(text));
   assert.equal(data.body, "The body of no-any.");
   assert.equal(data.file, "file:///repo/.cw/charter/primitive/guide/no-any/index.md");
   assert.equal(data.layerName, "repo");
@@ -144,6 +145,23 @@ test("a vendored and a builtin primitive open too, each under its own layer", as
   const builtin = answerOf(await charterAuthoringApp.openPrimitive("cw-author")).data;
   assert.equal(builtin.layerName, "builtin");
   assert.match(builtin.hash, /^[0-9a-f]{16}$/);
+});
+
+test("what the engine brings is read as the running engine says it, whatever an earlier engine's build left behind, with nothing to refresh (CORE Story 12 scenario 3, FR-018, CORE Story 55 scenario 8)", async () => {
+  const { charterAuthoringApp, charterRuntimeApp, fileAt } = authoring({
+    [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
+    [at(".cw/out/skill/cw-author/index.md")]: "What an earlier engine said.\n",
+    [at(".claude/skills/cw-author/SKILL.md")]: "---\nname: cw-author\n---\n\nWhat an earlier engine said.\n",
+  });
+
+  const builtinPrimitiveDTO = answerOf(await charterAuthoringApp.openPrimitive("cw-author")).data;
+  assert.equal(builtinPrimitiveDTO.body, new CwAuthorSkill().body);
+  assert.equal(builtinPrimitiveDTO.layerName, "builtin");
+
+  // The next build writes the running engine's word over the earlier one's.
+  answerOf(await charterRuntimeApp.buildCharter());
+  assert.doesNotMatch((await fileAt(".claude/skills/cw-author/SKILL.md")) ?? "", /What an earlier engine said/);
+  assert.ok(((await fileAt(".cw/out/skill/cw-author/index.md")) ?? "").includes(new CwAuthorSkill().body.trim()));
 });
 
 test("an id the charter holds nothing of opens nothing", async () => {

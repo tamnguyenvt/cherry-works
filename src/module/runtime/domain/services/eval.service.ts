@@ -46,4 +46,6 @@ export class EvalService {
       );
     return evaluableAgents[0]!;
   }
+
+  private constructor() {}
 }

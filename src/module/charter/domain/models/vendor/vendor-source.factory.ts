@@ -1,5 +1,6 @@
 import { DomainFault, ManyFindingsFault } from "../../../../shared/module.js";
-import { ModelHelper } from "../../helper.js";
+import { vendorSourcePath } from "../../constants.js";
+import { ContentHelper } from "../../helper.js";
 import { InvalidSourceSkillFault } from "../charter.fault.js";
 import { SkillPrimitive } from "../primitive/skill-primitive.js";
 import type { RawVendorSource } from "./raw-vendor-source.js";
@@ -27,11 +28,11 @@ export class VendorSourceFactory {
     const skillFaults: DomainFault[] = [];
     for (const { text, assets, uri, sourceFolder } of rawVendorSource.rawSourceSkills) {
       try {
-        const skillFrontmatter = ModelHelper.parseFrontmatter(text);
+        const skillFrontmatter = ContentHelper.parseFrontmatter(text);
         if (skillFrontmatter === undefined)
           throw new InvalidSourceSkillFault(
             `${uri} opens with no "---" frontmatter block.`,
-            `Take a skill whose ${VendorSource.skillFile} declares its name and description.`,
+            `Take a skill whose ${vendorSourcePath.skillFileName} declares its name and description.`,
             { internal: false },
           );
         const { headers: skillHeaders, body } = skillFrontmatter;
@@ -54,7 +55,7 @@ export class VendorSourceFactory {
               : [`${raisedValue}`];
           throw new InvalidSourceSkillFault(
             `${uri} is no skill the charter can hold: ${faultMessages.join(" ")}`,
-            `Take a skill whose ${VendorSource.skillFile} declares a "name" of lowercase words joined by "-", and a "description".`,
+            `Take a skill whose ${vendorSourcePath.skillFileName} declares a "name" of lowercase words joined by "-", and a "description".`,
             { internal: false },
           );
         }

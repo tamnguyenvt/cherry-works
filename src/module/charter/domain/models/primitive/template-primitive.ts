@@ -1,5 +1,6 @@
-import type { z } from "zod";
-import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
+import type { z } from "#module/shared/module.js";
+import type { AssetFile } from "./asset-file.js";
+import { BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** A file the agent fills or copies, written as its body. Beyond the common
@@ -32,14 +33,14 @@ export class TemplatePrimitive extends BasePrimitive {
 
   /** One template, or every fault its headers have (FR-004). */
   static of(
-    record: Readonly<Record<string, unknown>>,
+    headerRecord: Readonly<Record<string, unknown>>,
     body: string,
     assets: readonly AssetFile[] = [],
     primitiveLayer?: PrimitiveLayer,
     keptUri?: string,
   ): TemplatePrimitive {
     return new TemplatePrimitive(
-      BasePrimitive.headersOf(TemplatePrimitive, TemplatePrimitive.schema, record),
+      BasePrimitive.headersOf(TemplatePrimitive, TemplatePrimitive.schema, headerRecord),
       body,
       assets,
       primitiveLayer,

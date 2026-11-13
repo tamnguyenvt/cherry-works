@@ -71,7 +71,7 @@ const authoringCharterOver = (heldFileReaders: InMemoryFileReaders) => {
   );
 };
 
-test("a compiled charter's parts each name their id, kind and part, their path inside the output, their text and assets; a part for one host alone names that host in its path, and none names where the output lands (CORE-FR-220, CORE Story 48 scenario 1)", async () => {
+test("a compiled charter's items are each known by their path inside the output and hold their text and assets; an item for one agent alone names that agent in its path, and none names where the output lands (CORE-FR-220, CORE Story 48 scenario 1)", async () => {
   const hostNames = ["claude", "codex"];
   const charterRoot = await loadCharterRoot(new InMemoryFileReaders(charterOfEveryKind));
   const charterOutput = CompileService.compileCharterRoot(
@@ -149,7 +149,7 @@ test("a compiled charter's parts each name their id, kind and part, their path i
 test("the engine's own code names no place of the build's output or of a host (CORE-FR-221)", async () => {
   const hexagonFolder = new URL("../src/module/", import.meta.url);
   const sourceFiles = (await readdir(hexagonFolder, { recursive: true })).filter(
-    (file) => file.endsWith(".ts") && !file.includes("/infra/"),
+    (file) => file.endsWith(".ts") && !file.includes("/infra/") && !/\.probe\./.test(file),
   );
   for (const sourceFile of sourceFiles) {
     // What the code says, its comments left out: a comment may say where a host reads a file.
@@ -210,8 +210,8 @@ test("an output writer of a tool author's own is handed the whole of what the ch
     (charterOutputItem): charterOutputItem is CharterMd => charterOutputItem instanceof CharterMd,
   )!;
   assert.match(charterMd.text, /\(\$CW_OUT\/catalogue\.json\)/);
-  assert.equal(planSummaryDTO.type, "PlanSummary");
-  if (planSummaryDTO.type === "PlanSummary")
+  assert.equal(planSummaryDTO.type, "ProjectionPlanSummary");
+  if (planSummaryDTO.type === "ProjectionPlanSummary")
     for (const place of places) assert.ok(planSummaryDTO.data.added.includes(place), `${place} is added`);
   assert.equal(recordingLocalRepo.laidPlans.length, 1);
   assert.equal(
@@ -266,7 +266,7 @@ test("a projection of a tool author's own, handed for an agent, is handed the sa
       workspaceSettings: { agents: ["claude"] },
       agentProjectionByProvider: { claude: agentProjection },
     });
-    assert.equal((await charterRuntimeApp.buildCharter()).type, "PlanSummary");
+    assert.equal((await charterRuntimeApp.buildCharter()).type, "ProjectionPlanSummary");
     return recordingLocalRepo;
   };
 
@@ -298,8 +298,8 @@ test("the mcp origins are served from what the build put out, read back from whe
   // and the charter's repository reads it back from there.
   const ownLocalRepo = new InMemoryLocalRepo();
   class OwnLaidCharterRepository extends FileCharterRepository {
-    override async readBuiltOutputItem(itemPath: string): Promise<string | undefined> {
-      return ownLocalRepo.readBuiltOutputItem(itemPath);
+    override async readCompiledOutputItem(itemPath: string): Promise<string | undefined> {
+      return ownLocalRepo.readCompiledOutputItem(itemPath);
     }
   }
   const mcpServers = new InMemoryMcpServers();
@@ -320,7 +320,7 @@ test("the mcp origins are served from what the build put out, read back from whe
     clock: new InMemoryClock(new Date("2026-11-07T00:00:00Z")),
   });
 
-  assert.equal((await charterRuntimeApp.buildCharter()).type, "PlanSummary");
+  assert.equal((await charterRuntimeApp.buildCharter()).type, "ProjectionPlanSummary");
   const laidOriginsText = ownLocalRepo.textByPlace.get("mcp-origins.json");
   assert.ok(laidOriginsText !== undefined, "the build laid the mcp origins");
   const [laidOrigin] = (JSON.parse(laidOriginsText) as { origins: { names: Record<string, string> }[] }).origins;
@@ -367,7 +367,7 @@ test("built with projections of a tool author's own, under any agent's name, the
 
   const planSummaryDTO = await charterRuntimeApp.buildCharter();
 
-  assert.equal(planSummaryDTO.type, "PlanSummary", JSON.stringify(planSummaryDTO));
+  assert.equal(planSummaryDTO.type, "ProjectionPlanSummary", JSON.stringify(planSummaryDTO));
   const contentsByPathAfter = await contentsByPathOf(heldFileReaders);
   const changedPaths = Object.keys(contentsByPathAfter)
     .filter(

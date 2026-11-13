@@ -7,11 +7,11 @@ export interface ClaudeRuleHeaders {
 }
 
 /**
- * A rule this host loads into context whole, one file under the directory it
+ * A rule this agent loads into context whole, one file under the directory it
  * reads every one of.
  *
  * A charter's guides land here. One that names files becomes a rule whose
- * `paths` are those globs, so this host loads it when one of them is touched;
+ * `paths` are those globs, so this agent loads it when one of them is touched;
  * one that names none becomes a rule with no `paths`, loaded at the start of
  * every session whether or not anything in it comes up (FR-004, FR-013). That
  * one is charged for on every turn of every session, so a guide that speaks

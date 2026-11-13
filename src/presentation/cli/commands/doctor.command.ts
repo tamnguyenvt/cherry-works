@@ -40,9 +40,9 @@ export class DoctorCommand implements Command {
     if (doctorOutcomeDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(doctorOutcomeDTO) };
     const {
       agents,
-      errorCount: errors,
-      warnCount: warnings,
-      pendingCount: pending,
+      errorCount,
+      warnCount,
+      pendingCount,
       faultsByFile,
       problemCount,
       mainContexts,
@@ -70,16 +70,16 @@ export class DoctorCommand implements Command {
         agents.length === 0
           ? `${markByStanding.good} Agents:   none chosen, so only the neutral surface is compiled.`
           : `${markByStanding.good} Agents:   ${agents.join(", ")}.`,
-        errors > 0
-          ? `${markByStanding.fault} Charter:  ${errors} error${errors === 1 ? "" : "s"}.`
-          : warnings === 0
+        errorCount > 0
+          ? `${markByStanding.fault} Charter:  ${errorCount} error${errorCount === 1 ? "" : "s"}.`
+          : warnCount === 0
             ? `${markByStanding.good} Charter:  good.`
-            : `${markByStanding.todo} Charter:  good, with ${warnings} warning${warnings === 1 ? "" : "s"}.`,
-        pending === null
+            : `${markByStanding.todo} Charter:  good, with ${warnCount} warning${warnCount === 1 ? "" : "s"}.`,
+        pendingCount === null
           ? `${markByStanding.fault} Built:    Fix the charter's errors, then run "cw build".`
-          : pending === 0
+          : pendingCount === 0
             ? `${markByStanding.good} Built:    up to date.`
-            : `${markByStanding.todo} Built:    ${pending} file${pending === 1 ? "" : "s"} out of date. Run "cw build".`,
+            : `${markByStanding.todo} Built:    ${pendingCount} file${pendingCount === 1 ? "" : "s"} out of date. Run "cw build".`,
         // What each agent opens a session with, held to the ceiling: past it is
         // a warning, and fails nothing (EVAL-FR-006).
         ...mainContexts.map(({ agent, totalTokens }) =>

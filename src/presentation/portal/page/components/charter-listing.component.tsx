@@ -36,7 +36,7 @@ export function CharterListing({
   kind: string | null;
   onKindChange: (kind: string) => void;
 }) {
-  const { open } = useDialog();
+  const { openDialog } = useDialog();
   const kindsQuery = useKinds();
   const primitivesQuery = usePrimitives();
 
@@ -78,7 +78,7 @@ export function CharterListing({
             size="sm"
             variant="outline"
             className="ml-auto"
-            onClick={() => open("newPrimitive", { kind: shownKind })}
+            onClick={() => openDialog("newPrimitive", { kind: shownKind })}
           >
             New {shownKind}
           </Button>
@@ -173,7 +173,7 @@ function Rows({
   kind: string;
   listedPrimitives: CharterDTOs.Primitives["data"]["primitives"];
 }) {
-  const { open } = useDialog();
+  const { openDialog } = useDialog();
   const isGuide = kind === "guide";
   const isMixingIn = kind !== "mixin";
 
@@ -207,7 +207,7 @@ function Rows({
                     variant="link"
                     className="block h-auto max-w-full truncate rounded-none p-0 text-left font-mono text-[11.5px] font-bold text-foreground"
                     title={`Open ${filePath}`}
-                    onClick={() => open("primitive", { id })}
+                    onClick={() => openDialog("primitive", { id })}
                   >
                     {String(headers.id)}
                   </Button>
@@ -221,12 +221,27 @@ function Rows({
                     {/* A guide declaring no globs is carried on every turn, as if
                         it matched every file, which is worth reading as something
                         rather than as a blank. */}
-                    <Chips namedIds={globs} none="all patterns" said={globs === undefined} label="Matching globs" />
-                    <Chips namedIds={listHeaderValues(headers.rationale)} none="none" said={false} label="Rationale" />
+                    <Chips
+                      namedIds={globs}
+                      noneText="all patterns"
+                      isNoneNoticed={globs === undefined}
+                      label="Matching globs"
+                    />
+                    <Chips
+                      namedIds={listHeaderValues(headers.rationale)}
+                      noneText="none"
+                      isNoneNoticed={false}
+                      label="Rationale"
+                    />
                   </>
                 )}
                 {isMixingIn && (
-                  <Chips namedIds={listHeaderValues(headers.mixins)} none="none" said={false} label="Mixins" />
+                  <Chips
+                    namedIds={listHeaderValues(headers.mixins)}
+                    noneText="none"
+                    isNoneNoticed={false}
+                    label="Mixins"
+                  />
                 )}
                 <TableCell>
                   <Button
@@ -234,7 +249,7 @@ function Rows({
                     size="icon"
                     className="ml-auto size-6 rounded-[7px] border border-transparent text-zinc-300 group-hover/row:border-zinc-200 group-hover/row:bg-background group-hover/row:text-zinc-400 hover:!border-foreground hover:bg-background hover:!text-foreground [&_svg:not([class*='size-'])]:size-[13px]"
                     aria-label={`Explain ${id}`}
-                    onClick={() => open("explanation", { id })}
+                    onClick={() => openDialog("explanation", { id })}
                   >
                     <CircleHelp />
                   </Button>
@@ -253,20 +268,20 @@ function Rows({
  *  noticing and quietly where it is ordinary. */
 function Chips({
   namedIds,
-  none,
-  said,
+  noneText,
+  isNoneNoticed,
   label,
 }: {
   namedIds: readonly string[] | undefined;
-  none: string;
-  said: boolean;
+  noneText: string;
+  isNoneNoticed: boolean;
   label: string;
 }) {
   return (
     <TableCell aria-label={label}>
       <div className="flex min-w-0 flex-wrap content-start justify-end gap-1">
         {namedIds === undefined || namedIds.length === 0 ? (
-          <span className={`text-[10.5px] ${said ? "text-destructive" : "text-zinc-300"}`}>{none}</span>
+          <span className={`text-[10.5px] ${isNoneNoticed ? "text-destructive" : "text-zinc-300"}`}>{noneText}</span>
         ) : (
           namedIds.map((namedId) => (
             <Badge

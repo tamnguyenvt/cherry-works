@@ -7,7 +7,7 @@ import { CompiledPrimitive } from "./compiled-primitive.js";
 import { McpOrigins } from "./mcp-origin.js";
 
 /**
- * Where each item of a build's output lands inside it, and how one item's
+ * Where each item of the compiled output lands inside it, and how one item's
  * text names another (CORE-FR-220, CORE-FR-221). The one place the output's
  * layout is known: an item is what it holds, and its path is asked of this.
  *
@@ -39,7 +39,7 @@ export class OutputPath {
       return this.getCompiledPrimitivePath(charterOutputItem.kind, charterOutputItem.id);
     throw new UnplaceableCharterOutputItemFault(
       `No path is known for ${charterOutputItem.constructor.name}.`,
-      "Report it: every class of a build's output has its path in OutputPath.getPath.",
+      "Report it: every class of the compiled output has its path in OutputPath.getPath.",
     );
   }
 

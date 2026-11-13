@@ -25,9 +25,18 @@ interface EngineAdapters {
     readonly sessionAnalysisRepository: ForLoadingSessionAnalysis;
     /** Where a repository keeps its settings (CORE-FR-231). */
     readonly workspaceSettingsRepository: ForStoringWorkspaceSettings;
-    /** What lays a build's output onto the repository (CORE-FR-221). */
+    /** What lays the compiled output onto the repository (CORE-FR-221). */
     readonly localOutput: ForManagingLocalOutput;
-    readonly fileReader: ForReadingFiles;
+    /** The files the charter's store, the settings', the local output and each
+     *  agent's projection are set up over where none of them is handed, and,
+     *  set up over the home by `createFolderReader`, the sessions' (SDK-FR-020). */
+    readonly fileReader: ForReadingFiles & {
+        /** The same files, every path from another folder: what `cw`'s own
+         *  sessions store reads the developer's home through. Where the reader
+         *  handed has none, a sessions store of the tool's own is handed beside
+         *  it, or reading the sessions answers a fault saying so. */
+        createFolderReader?(rootFolder: URL): ForReadingFiles;
+    };
     readonly fileWriter: ForWritingFiles;
     readonly worktrees: ForKeepingWorktrees;
     readonly oauthAuthorizer: ForAuthorizingOAuthClients;
@@ -61,11 +70,11 @@ interface ComposedApplications {
  * The workspace module and the engine over the adapters handed, each one not
  * handed being the engine's own — Claude's and Codex's, the charter kept as
  * files, and every adapter over the repository's address and the developer's
- * home's (CORE-FR-217, CORE-FR-218, CORE-FR-230). The charter's store and the
- * agents' projections are set up over the file adapters handed, so files kept
- * anywhere keep the charter there too, unless a store of the tool's own is
- * handed (SDK-FR-020). The workspace first, then the engine for the settings
- * it reads, a repository being set up for exactly the agents a projection is
+ * home's (CORE-FR-217, CORE-FR-218, CORE-FR-230). The charter's store, the
+ * sessions' and the agents' projections are set up over the file adapters
+ * handed, so files kept anywhere keep the charter and the sessions there too,
+ * unless a store of the tool's own is handed (SDK-FR-020). The workspace
+ * first, then the engine for the settings it reads, a repository being set up for exactly the agents a projection is
  * handed for (CORE-FR-221, CORE-FR-231). Settings that do not read yet, as
  * before setup, compose an engine for no agent. They are read when one of the
  * engine's applications is first called, so composing reaches no disk, at an

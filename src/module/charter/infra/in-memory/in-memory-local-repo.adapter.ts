@@ -50,7 +50,7 @@ export class InMemoryLocalRepo implements ForManagingLocalOutput {
       if (typeof contents === "string") this.textByPlace.set(path, contents);
   }
 
-  async readBuiltOutputItem(itemPath: string): Promise<string | undefined> {
+  async readCompiledOutputItem(itemPath: string): Promise<string | undefined> {
     return this.textByPlace.get(this.describeItemPlace(itemPath));
   }
 }

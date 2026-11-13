@@ -1,11 +1,11 @@
-import { z } from "zod";
+import { z } from "../../../domain/libs/validator.lib.js";
 import { dto, groupByType } from "./dto.schema.js";
 
 /**
  * The faults every module answers with: one fault, every fault under the file
  * it is wrong with, and faults under no file yet. Each is `{ type, data }`,
  * `type` its name exactly as `FaultDTOs` keys it. Zod and nothing else: the
- * page bundles this file.
+ * kernel's DTO entry, `index.ts`, exports it to every DTO file.
  */
 
 /** One fault: which fault it is, what is wrong, the next move, and whether it

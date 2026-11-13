@@ -80,7 +80,7 @@ export interface ForAuthoringCharter {
    * A charter with an error is refused with nothing listed and the errors given
    * back, as `listCatalogue` refuses it.
    */
-  listPrimitives(matching?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  listPrimitives(searchText?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /**
    * Which file declares one id, and which layer that file arrived in

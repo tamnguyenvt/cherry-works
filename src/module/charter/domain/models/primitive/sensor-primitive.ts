@@ -1,6 +1,7 @@
-import { z } from "zod";
+import { GoodLineSchema, z } from "#module/shared/module.js";
 import { AgentBasedPrimitive } from "./agent-based-primitive.js";
-import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
+import type { AssetFile } from "./asset-file.js";
+import { BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** The events a charter knows how to be raised by, and the only ones a sensor
@@ -8,8 +9,8 @@ import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
  *
  *  Closed the way the kinds are: a name outside it is a sensor nothing will
  *  ever fire, and saying so where the file is read is the one place an author
- *  finds out. A host that raises none of them compiles no hook for it, which is
- *  that host's to say and not this list's. */
+ *  finds out. An agent that raises none of them compiles no hook for it, which is
+ *  that agent's to say and not this list's. */
 const SIGNALS = [
   "PreToolUse",
   "PostToolUse",
@@ -49,11 +50,11 @@ export class SensorPrimitive extends AgentBasedPrimitive {
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
   static override readonly schema = super.headersSchema().extend({
-    /** What raises it: one of the events every host of this engine speaks in. */
+    /** What raises it: one of the events every agent of this engine speaks in. */
     signal: z.enum(SIGNALS),
     /** What is run when it does. A sensor that names no command is a sensor
      *  nothing can fire, so this is required. */
-    run: BasePrimitive.goodLineSchema,
+    run: GoodLineSchema,
   });
 
   /** When a reader of this charter is to open this kind at all, said
@@ -71,14 +72,14 @@ export class SensorPrimitive extends AgentBasedPrimitive {
 
   /** One sensor, or every fault its headers have (FR-004). */
   static of(
-    record: Readonly<Record<string, unknown>>,
+    headerRecord: Readonly<Record<string, unknown>>,
     body: string,
     assets: readonly AssetFile[] = [],
     primitiveLayer?: PrimitiveLayer,
     keptUri?: string,
   ): SensorPrimitive {
     return new SensorPrimitive(
-      BasePrimitive.headersOf(SensorPrimitive, SensorPrimitive.schema, record),
+      BasePrimitive.headersOf(SensorPrimitive, SensorPrimitive.schema, headerRecord),
       body,
       assets,
       primitiveLayer,

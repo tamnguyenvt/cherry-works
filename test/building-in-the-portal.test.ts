@@ -2,7 +2,15 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Page } from "playwright";
 import packageJson from "../package.json" with { type: "json" };
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import type { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { COMMANDS } from "../src/presentation/cli/commands/index.js";
 import { inTheBrowser } from "./in-the-browser.js";
+import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const at = (path: string) => new URL(path, "file:///repo/").href;
 
@@ -30,6 +38,30 @@ const holding = (extra: Record<string, string> = {}) => ({
   }),
   ...extra,
 });
+
+/** What `cw doctor` printed over the same files the page reads. */
+const printedDoctorOf = async (files: InMemoryFileReaders) => {
+  const charterAuthoringApp = authoringCharterOf(files, new InMemoryFileOutput(files), new InMemoryReporter());
+  const charterRuntimeApp = buildingCharterOf(
+    files,
+    new InMemoryFileOutput(files),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
+  const printedTexts: string[] = [];
+  const keptWrite = process.stdout.write;
+  process.stdout.write = ((text: string) => (printedTexts.push(String(text)), true)) as typeof process.stdout.write;
+  try {
+    await new Commander(
+      commandLineOf(files, new InMemoryFileOutput(files), { charterAuthoringApp, charterRuntimeApp }, "/repo"),
+      COMMANDS,
+    ).runCommandLine(["doctor"]);
+  } finally {
+    process.stdout.write = keptWrite;
+  }
+  return printedTexts.join("");
+};
 
 /** Preview, from the Build button. */
 const previewing = async (page: Page) => {
@@ -104,6 +136,52 @@ test("Doctor shows the three answers and every warning, and builds when the outp
       await page.getByRole("dialog").getByRole("button", { name: "Build", exact: true }).click();
       await page.getByRole("table", { name: "Build written" }).waitFor();
       assert.notEqual(await files.readIfThere(new URL(at(".cw/out/CHARTER.md"))), undefined);
+    },
+  );
+});
+
+test("Doctor gives what cw doctor gives for the same repository: its main-context line per chosen agent, and every fault, nothing added and nothing left out (CORE Story 7 scenario 4, FR-080, FR-121, EVAL-FR-006, CORE Story 55 scenario 8)", async () => {
+  await inTheBrowser(
+    holding({
+      [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude", "codex"] })}\n`,
+      [at(".cw/charter/primitive/corpus/why/index.md")]: primitive("corpus", "why"),
+      [at(".cw/charter/primitive/mixin/ts/index.md")]: primitive("mixin", "ts"),
+    }),
+    async (page, files) => {
+      const doctorText = await printedDoctorOf(files);
+      await page.getByRole("button", { name: "Doctor" }).click();
+      await page.getByLabel("Health").waitFor();
+
+      const healthText = await page.getByLabel("Health").innerText();
+      const doctorContextLines = doctorText.split("\n").filter((line) => line.includes("Context:"));
+      assert.equal(doctorContextLines.length, 2, doctorText);
+      for (const doctorContextLine of doctorContextLines) {
+        const [, agentTokensText] = /\((\w+ opens a session with about [\d,]+ tokens)/.exec(doctorContextLine) ?? [];
+        assert.ok(agentTokensText !== undefined && healthText.includes(agentTokensText), doctorContextLine);
+      }
+      assert.equal((healthText.match(/opens a session with about/g) ?? []).length, doctorContextLines.length);
+
+      // Every fault the page shows, file and words, against every fault cw
+      // doctor printed: the same, both ways.
+      const shownFaultTexts = await page
+        .getByRole("table", { name: "Faults" })
+        .locator("tr")
+        .evaluateAll((rows) =>
+          rows.flatMap((row) =>
+            [...row.querySelectorAll("td:nth-child(2) p")].map(
+              (paragraph) => `${row.querySelector("td")!.textContent} ${paragraph.textContent}`,
+            ),
+          ),
+        );
+      const doctorFaultTexts = [
+        ...doctorText.matchAll(/^(\S.*)\n((?: {2}(?:error|warn): .*\n(?: {4}.*\n)*)+)/gm),
+      ].flatMap(([, filePath, faultLines]) =>
+        [...(faultLines ?? "").matchAll(/^ {2}(error|warn): (.*)\n {9}(.*)/gm)].map(
+          ([, severity, message, fix]) => `${filePath} ${severity}${message} ${fix}`,
+        ),
+      );
+      assert.ok(doctorFaultTexts.length >= 2, doctorText);
+      assert.deepEqual([...shownFaultTexts].sort(), [...doctorFaultTexts].sort());
     },
   );
 });

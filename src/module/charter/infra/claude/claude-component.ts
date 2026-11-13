@@ -6,7 +6,7 @@ import { ClaudeRule } from "./claude-rule.js";
 import { ClaudeSettings } from "./claude-settings.js";
 import { ClaudeSkill } from "./claude-skill.js";
 
-/** The kinds this host has, one class each. Adding a kind is a file beside them
+/** The kinds this agent has, one class each. Adding a kind is a file beside them
  *  and a line here; what the kinds are is read back off this list rather than
  *  written down twice. */
 const CLAUDE_COMPONENT_CLASSES = [

@@ -7,9 +7,10 @@ import {
   UnlistedMcpToolFault,
   UnreadableMcpOriginsFault,
 } from "../../domain/models/charter.fault.js";
-import { McpOrigin, McpOrigins } from "../../domain/models/charter-output/mcp-origin.js";
+import { McpDeclaredTools } from "../../domain/models/charter-output/mcp-declared-tools.js";
+import { type McpOrigin, McpOrigins, McpToolDefinition } from "../../domain/models/charter-output/mcp-origin.js";
 import { McpOriginTools } from "../../domain/models/charter-output/mcp-origin-tools.js";
-import { McpAuthMethod, type McpAuthMethodName } from "../../domain/models/mcp/mcp-auth-method.value-object.js";
+import { McpOriginsFactory } from "../../domain/models/charter-output/mcp-origins.factory.js";
 import { McpPrimitive } from "../../domain/models/primitive/mcp-primitive.js";
 import { PrimitiveFactory } from "../../domain/models/primitive/primitive.factory.js";
 import { PrimitiveLayer } from "../../domain/models/primitive/primitive-layer.value-object.js";
@@ -18,7 +19,7 @@ import { CompileService } from "../../domain/services/compile.service.js";
 import type { ForManagingCharter } from "../port/out/managing-charter.port.js";
 
 /** What the last build laid is read back through: the charter's repository. */
-type BuiltOutputReader = Pick<ForManagingCharter, "readBuiltOutputItem" | "describeItemPlace">;
+type CompiledOutputReader = Pick<ForManagingCharter, "readCompiledOutputItem" | "describeItemPlace">;
 
 /** How long one mcp origin has to answer a build asking for its tools. */
 const LIST_TIMEOUT_MS = 10_000;
@@ -43,9 +44,9 @@ export class LoadMcpOriginsService {
    * No list is refused, saying to build; one that does not read is refused
    * saying to build again, since only a build writes it.
    */
-  async loadMcpOrigins(builtOutputReader: BuiltOutputReader): Promise<McpOrigins> {
-    const mcpOriginsPlace = builtOutputReader.describeItemPlace(outputPath.mcpOriginsFileName);
-    const contents = await builtOutputReader.readBuiltOutputItem(outputPath.mcpOriginsFileName);
+  async loadMcpOrigins(compiledOutputReader: CompiledOutputReader): Promise<McpOrigins> {
+    const mcpOriginsPlace = compiledOutputReader.describeItemPlace(outputPath.mcpOriginsFileName);
+    const contents = await compiledOutputReader.readCompiledOutputItem(outputPath.mcpOriginsFileName);
     if (contents === undefined)
       throw new MissingMcpOriginsFault(
         `There is no ${mcpOriginsPlace}, so no mcp origin has been listed yet.`,
@@ -53,27 +54,8 @@ export class LoadMcpOriginsService {
         { internal: false },
       );
 
-    try {
-      const mcpOriginsJson: unknown = JSON.parse(contents);
-      const origins = (mcpOriginsJson as { origins?: unknown }).origins;
-      // Each origin is read by its ids and address; one without them is a list
-      // that does not read, as a list that is no list is.
-      if (
-        Array.isArray(origins) &&
-        origins.every(
-          (origin) =>
-            Array.isArray((origin as Partial<McpOrigin>)?.ids) &&
-            typeof (origin as Partial<McpOrigin>)?.address === "string",
-        )
-      )
-        return new McpOrigins(
-          (origins as readonly (Omit<McpOrigin, "auth"> & { readonly auth?: readonly McpAuthMethodName[] })[]).map(
-            (origin) => new McpOrigin({ ...origin, auth: (origin.auth ?? []).map(McpAuthMethod.of) }),
-          ),
-        );
-    } catch {
-      // Said below, as any list that does not read is.
-    }
+    const mcpOrigins = McpOriginsFactory.create(contents);
+    if (mcpOrigins !== undefined) return mcpOrigins;
     throw new UnreadableMcpOriginsFault(
       `${mcpOriginsPlace} does not hold a list of mcp origins.`,
       'Run "cw build" to write it again.',
@@ -90,16 +72,13 @@ export class LoadMcpOriginsService {
    * An mcp whose compiled document is missing or does not read is answered
    * as none: the caller says so, naming it, and serves the rest.
    */
-  async loadMcpTools(
-    builtOutputReader: BuiltOutputReader,
-    mcpIds: readonly string[],
-  ): Promise<ReadonlyMap<string, readonly string[] | undefined>> {
+  async loadMcpTools(compiledOutputReader: CompiledOutputReader, mcpIds: readonly string[]): Promise<McpDeclaredTools> {
     const toolsById = new Map<string, readonly string[] | undefined>();
     for (const id of mcpIds) {
       if (toolsById.has(id)) continue;
       toolsById.set(id, undefined);
       const compiledMcpPath = outputPath.getCompiledPrimitivePath(McpPrimitive.kind, id);
-      const compiledDocument = await builtOutputReader.readBuiltOutputItem(compiledMcpPath);
+      const compiledDocument = await compiledOutputReader.readCompiledOutputItem(compiledMcpPath);
       if (compiledDocument === undefined) continue;
       try {
         const primitive = PrimitiveFactory.create(
@@ -109,7 +88,7 @@ export class LoadMcpOriginsService {
             id,
             compiledDocument,
             [],
-            builtOutputReader.describeItemPlace(compiledMcpPath),
+            compiledOutputReader.describeItemPlace(compiledMcpPath),
           ),
         );
         if (primitive instanceof McpPrimitive) toolsById.set(id, primitive.headers.tools);
@@ -117,7 +96,7 @@ export class LoadMcpOriginsService {
         // Said by the caller, as a missing one is.
       }
     }
-    return toolsById;
+    return new McpDeclaredTools(toolsById);
   }
 
   /**
@@ -127,23 +106,23 @@ export class LoadMcpOriginsService {
    * Each mcp origin is asked at once, under the developer's own credential, and let
    * go. One that cannot be reached or is not signed in to, and a tool an mcp
    * declares that its mcp origin does not list, is a fault under that mcp's file: the
-   * build stops on it. Without `refreshMcpOrigins`, or without `mcpReaching` to
+   * build stops on it. Without `shouldRefreshMcpOrigins`, or without `mcpReaching` to
    * ask them with, no mcp origin is asked, and each keeps what the last build
    * kept.
    */
   async loadToolsByOriginKey(
     charter: CharterRoot,
-    builtOutputReader: BuiltOutputReader,
+    compiledOutputReader: CompiledOutputReader,
     mcpReaching: McpReaching | undefined,
-    refreshMcpOrigins: boolean,
+    shouldRefreshMcpOrigins: boolean,
   ): Promise<McpOriginTools> {
     const mcpPrimitiveById = new Map(
       charter.primitives.flatMap((primitive) =>
         primitive instanceof McpPrimitive ? [[primitive.headers.id, primitive] as const] : [],
       ),
     );
-    if (!refreshMcpOrigins || mcpReaching === undefined) {
-      const keptOrigins = await this.loadMcpOrigins(builtOutputReader).then(
+    if (!shouldRefreshMcpOrigins || mcpReaching === undefined) {
+      const keptOrigins = await this.loadMcpOrigins(compiledOutputReader).then(
         ({ origins }) => origins,
         () => [],
       );
@@ -161,7 +140,7 @@ export class LoadMcpOriginsService {
             : [[keptMcpPrimitive.originKey, origin.tools] as const];
         }),
       );
-      return new McpOriginTools(toolsByOriginKey, FaultsByFile.none);
+      return new McpOriginTools(toolsByOriginKey, FaultsByFile.emptyFaultsByFile);
     }
 
     const { mcpServers, loadAccessToken } = mcpReaching;
@@ -176,11 +155,9 @@ export class LoadMcpOriginsService {
             const accessToken = origin.auth.length > 0 ? await loadAccessToken(origin, false) : undefined;
             const connection = await mcpServers.connectServer(origin, accessToken, LIST_TIMEOUT_MS);
             await connection.closeConnection();
-            const listedTools = connection.tools.map(({ name, description, inputSchema }) => ({
-              name,
-              description: description ?? "",
-              inputSchema,
-            }));
+            const listedTools = connection.tools.map(
+              ({ name, description, inputSchema }) => new McpToolDefinition(name, description ?? "", inputSchema),
+            );
             const listedToolNames = new Set(listedTools.map(({ name }) => name));
             const faultsByFile = new FaultsByFile(
               Object.fromEntries(
@@ -222,7 +199,7 @@ export class LoadMcpOriginsService {
       ),
       mcpOriginResults.reduce(
         (faultsByFile, mcpOriginResult) => faultsByFile.mergeWith(mcpOriginResult.faultsByFile),
-        FaultsByFile.none,
+        FaultsByFile.emptyFaultsByFile,
       ),
     );
   }

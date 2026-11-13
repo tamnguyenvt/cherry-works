@@ -45,7 +45,7 @@ declare class DomainFault extends Error {
 declare class FaultsByFile {
     #private;
     /** Nothing wrong with any file. */
-    static readonly none: FaultsByFile;
+    static readonly emptyFaultsByFile: FaultsByFile;
     constructor(faultsByFilePath: Readonly<Record<string, readonly DomainFault[]>>);
     /** Every fault, under the file it is wrong with. */
     get faultsByFilePath(): Readonly<Record<string, readonly DomainFault[]>>;
@@ -339,7 +339,7 @@ interface ForReadingFiles {
     listFolders(folderPath: string): Promise<readonly string[]>;
     /** The text of one file that may not be there, and nothing where it is not.
      *  What is asked of a file the engine allows to be absent: the settings a
-     *  repository configured itself with, and the settings file a host already
+     *  repository configured itself with, and the settings file an agent already
      *  keeps that a build has to write into rather than over. */
     readIfThere(filePath: string): Promise<string | undefined>;
     /** The bytes of one file that may not be there, never decoded, and nothing
@@ -421,7 +421,7 @@ declare class ConsoleReporter implements ForReportingProgress {
 }
 
 /** DRIVEN ADAPTER: the filesystem, written to. What the charter compiles to,
- *  put where a host will look for it.
+ *  put where an agent will look for it.
  *
  *  The directories are made on the way: a projection lands in `.claude/skills/`
  *  whether anything has been built here before or not, and the hexagon names a
@@ -464,6 +464,9 @@ declare class FileReaders implements ForReadingFiles {
     listFiles(folderPath: string): Promise<readonly ListedFile[]>;
     listFolders(folderPath: string): Promise<readonly string[]>;
     findFileAddress(filePath: string): string;
+    /** The same disk, every path from another folder: what `cw`'s own sessions
+     *  store reads the developer's home through (SDK-FR-020). */
+    createFolderReader(rootFolder: URL): FileReaders;
     readIfThere(filePath: string): Promise<string | undefined>;
     readBytesIfThere(filePath: string): Promise<Uint8Array | undefined>;
 }

@@ -51,3 +51,18 @@ export class ManyFindingsFault extends DomainFault {
 /** Something raised that was no fault — a bug, or what a library threw — made
  *  a fault of the system's own, carrying it as its cause (SDK-FR-004). */
 export class UnfaultedRaiseFault extends DomainFault {}
+
+// What the kernel's libraries raise when a notation will not read or write:
+// the person's to correct, the text they wrote being the text that is wrong.
+
+/** TOML text that does not parse, an agent's configuration file among it. */
+export class UnreadableTomlFault extends DomainFault {}
+
+/** A table holding a value TOML cannot write. */
+export class UnwritableTomlFault extends DomainFault {}
+
+/** YAML text that does not parse. */
+export class UnreadableYamlFault extends DomainFault {}
+
+/** YAML text that parses to a bare value or a list, not to named fields. */
+export class UnmappedYamlFault extends DomainFault {}

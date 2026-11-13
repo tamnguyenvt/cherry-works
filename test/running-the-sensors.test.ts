@@ -328,7 +328,7 @@ test("a PermissionRequest denial wins over an earlier allowance without carrying
       },
     },
   );
-  assert.equal((await build()).type, "PlanSummary");
+  assert.equal((await build()).type, "ProjectionPlanSummary");
   const outcome = answerOf(await runSensors("PermissionRequest", "{}", "claude"));
   assert.deepEqual(JSON.parse(outcome.data.answer).hookSpecificOutput.decision, {
     behavior: "deny",
@@ -384,14 +384,16 @@ test("a sensor changed in the charter and not built runs as last built (CORE-FR-
   assert.ok(!shell.runs.some(({ command }) => command === "echo changed"));
 });
 
-test("a signal no sensor names runs nothing, writes nothing, and exits 0 (CORE-FR-176)", async () => {
-  const { shell, build, runSensors } = aRepository({});
+test("a signal no sensor names runs nothing, writes nothing, and exits 0 (CORE Story 29 scenario 9, CORE-FR-176, CORE Story 55 scenario 8)", async () => {
+  const { held, shell, build, runSensors } = aRepository({});
   await build();
+  const filesBeforeRun = await held.readFilesRecursively(repo);
 
   const sensorRunOutcome = answerOf(await runSensors("PreCompact", "{}", "claude"));
 
   assert.deepEqual(sensorRunOutcome.data, { exitCode: 0, answer: "", problem: "" });
   assert.deepEqual(shell.runs, []);
+  assert.deepEqual(await held.readFilesRecursively(repo), filesBeforeRun, "nothing is written");
 });
 
 test("Codex runs a signal once through the shared runner, passes its payload and excludes the Claude counter", async () => {
@@ -471,7 +473,7 @@ test("sensors run only for their declared provider from the built snapshot", asy
       "agent-provider: [codex]\nsignal:",
     ),
   });
-  assert.equal((await build()).type, "PlanSummary");
+  assert.equal((await build()).type, "ProjectionPlanSummary");
   assert.equal((await claudeSettings()).hooks.PreCompact, undefined);
   assert.match(JSON.stringify((await claudeSettings()).hooks), /--agent claude/);
   // Editing the source does not change what the last build runs.

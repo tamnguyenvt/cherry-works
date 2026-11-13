@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { outputPath } from "../src/module/charter/domain/constants.js";
-import { parseTomlTable } from "../src/module/charter/domain/libs/toml.lib.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 import { CodexComponentFactory } from "../src/module/charter/infra/codex/codex-component.factory.js";
 import { CodexEntryFile } from "../src/module/charter/infra/codex/codex-entry-file.js";
 import { CodexProjection } from "../src/module/charter/infra/codex/codex-projection.adapter.js";
+import { TomlLib } from "../src/module/shared/domain/libs/toml.lib.js";
 import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { loadCharterRoot } from "./use-cases-of.js";
@@ -33,7 +33,7 @@ test("compilation supplies scoped instruction components without reading provide
   assert.match(scopedComponent.document, /Follow this scoped guide/);
   const configComponent = codexComponents.find((component) => component.kind === "config");
   assert.ok(configComponent);
-  const settings = parseTomlTable(configComponent.document);
+  const settings = TomlLib.parseTomlTable(configComponent.document);
   assert.equal(settings["project_doc_max_bytes"], 1_048_576n);
   assert.equal(await fileReaders.readIfThere(inRepo("src/AGENTS.md")), undefined);
   const { writePlans } = await new CodexProjection(fileReaders).createAgentProjectionPlan(charter, output);

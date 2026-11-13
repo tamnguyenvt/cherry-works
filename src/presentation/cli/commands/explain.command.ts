@@ -63,7 +63,7 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
       };
     }
 
-    const { primitive, activatesWhen, useMixins, rationale, hosts, citers, mentioners, testCasesByFile } =
+    const { primitive, activatesWhen, useMixins, rationale, usedByPrimitives, citers, mentioners, testCasesByFile } =
       explanationOutcomeDTO.data;
     // A corpus the charter does not hold is not in `rationale`: what was cited
     // is read off the primitive's own header, and said as not resolving rather
@@ -93,7 +93,7 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
           : citedRationale !== undefined
             ? [`  rationale ${String(citedRationale)} (does not resolve)`]
             : []),
-        ...hosts.map(({ data: hostEntry }) => `  mixin of ${hostEntry.id}`),
+        ...usedByPrimitives.map(({ data: pullerPrimitive }) => `  mixin of ${pullerPrimitive.id}`),
         ...citers.map(({ data: citerEntry }) => `  rationale of ${citerEntry.id}`),
         ...mentioners.map(({ data: mentionerEntry }) => `  mentioned in ${mentionerEntry.id}`),
         ...Object.entries(testCasesByFile.data).flatMap(([filePath, situations]) =>

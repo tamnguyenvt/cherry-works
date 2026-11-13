@@ -91,8 +91,17 @@ function withSkillsPublished(
 const takenPrimitive = async (fileReaders: InMemoryFileReaders, skillId: string) =>
   readPrimitive(await fileReaders.readFile(new URL(takenAt(`skill/${skillId}/index.md`))));
 
-test("a skill named is taken from a skills repository into the root vendor folder of its owner and repository, and nothing is built (CORE-FR-184, CORE-FR-185, CORE-SC-049)", async () => {
-  const { fileReaders, sourceFetcher } = withSkillsPublished();
+test("a skill named is taken from a skills repository into the root vendor folder of its owner and repository, and nothing is built (CORE Story 32 scenario 1, CORE-FR-184, CORE-FR-185, CORE-SC-049, CORE Story 55 scenario 8)", async () => {
+  // Its folder named otherwise than the skill: it is found by the name its
+  // SKILL.md declares.
+  const { fileReaders, sourceFetcher } = withSkillsPublished(
+    Object.fromEntries(
+      Object.entries(mattpocockSkills()).map(([sourceFilePath, sourceText]) => [
+        sourceFilePath.replace("/grill-me/", "/interview/"),
+        sourceText,
+      ]),
+    ),
+  );
 
   const { code, commandOutput } = await running(
     ["vendor", "add", "mattpocock/skills", "--skill", "grill-me"],
@@ -113,6 +122,12 @@ test("a skill named is taken from a skills repository into the root vendor folde
   assert.match(commandOutput, /grill-me/);
   assert.match(commandOutput, /\.cw\/charter\/vendor\/mattpocock\/skills\/root/);
   assert.match(commandOutput, /cw build/);
+  const heldFilePaths = (await fileReaders.readFilesRecursively(repoPath)).map(({ path }) => path);
+  assert.deepEqual(
+    heldFilePaths.filter((heldFilePath) => !heldFilePath.startsWith(".cw/charter/")),
+    [],
+    "nothing is built",
+  );
 });
 
 test("a SKILL.md is converted: its name the id and the one trigger, its description kept, disable-model-invocation kept, its body as written (CORE-FR-186)", async () => {
@@ -253,7 +268,7 @@ test("a SKILL.md with no description, a name that is no id, or a name two folder
   }
 });
 
-test("a source that cannot be reached is refused in git's words, and work in hand does not stop a skill being taken (CORE-FR-190)", async () => {
+test("a source that cannot be reached is refused in git's words, and work in hand does not stop a skill being taken (CORE Story 32 scenario 9, CORE-FR-190, CORE Story 55 scenario 8)", async () => {
   const unreachable = withSkillsPublished();
   unreachable.sourceFetcher.unreachableSources.push("mattpocock/skills");
 
@@ -265,6 +280,9 @@ test("a source that cannot be reached is refused in git's words, and work in han
 
   assert.equal(refuseOutcome.code, EXIT_FAILURE);
   assert.match(refuseOutcome.commandOutput, /could not be fetched/);
+  // The reason in git's own words is the adapter's: fetching-a-vendor.test.ts
+  // runs git against a source it cannot reach.
+  assert.deepEqual(await unreachable.fileReaders.readFilesRecursively(repoPath), [], "nothing is installed");
 
   const fileReaders = new InMemoryFileReaders({ "file:///repo/work.txt": "In hand.\n" });
   const skillSources = new InMemorySources(fileReaders);

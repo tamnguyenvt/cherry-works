@@ -1,10 +1,10 @@
-import { z } from "zod";
-import { dto, groupByType, StringsSchema } from "../../../../shared/module.js";
+import { dto, groupByType, StringsSchema, z } from "#module/shared/app/port/in/index.js";
 
 /**
  * What the workspace module answers with: what a repository configured itself
  * with (CORE-FR-231). `{ type, data }`, `type` its name exactly as
- * `WorkspaceDTOs` keys it. Zod and nothing else: the page bundles this file.
+ * `WorkspaceDTOs` keys it. Written with the kernel's DTO entry alone, never its
+ * module.ts: a client that imports this file bundles no server code.
  */
 
 /** What a repository configured itself with: whether it was ever set up, which

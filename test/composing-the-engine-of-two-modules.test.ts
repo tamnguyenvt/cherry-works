@@ -35,6 +35,7 @@ import { InMemoryWorktrees } from "../src/module/runtime/infra/in-memory/in-memo
 import { Promptfoo } from "../src/module/runtime/infra/promptfoo.adapter.js";
 import * as runtimeModule from "../src/module/runtime/module.js";
 import { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
+import { FileReaders } from "../src/module/shared/infra/file-readers.adapter.js";
 import { InMemoryClock } from "../src/module/shared/infra/in-memory/in-memory-clock.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
@@ -146,7 +147,9 @@ function pluginsInMemory(adapters: ReturnType<typeof adaptersInMemory>): EngineA
 
 /** Every file under `folderUrl`, by its path from there. */
 const filePathsUnder = (folderUrl: URL) =>
-  readdirSync(folderUrl, { recursive: true, encoding: "utf8" }).filter((filePath) => filePath.endsWith(".ts"));
+  readdirSync(folderUrl, { recursive: true, encoding: "utf8" }).filter(
+    (filePath) => filePath.endsWith(".ts") && !/\.probe\./.test(filePath),
+  );
 
 /** Each module specifier a source file imports or re-exports. */
 function importedSpecifiersOf(fileUrl: URL): readonly string[] {
@@ -198,7 +201,10 @@ const claudeSettings = { enabledAgents: ["claude"] };
 /** Each operation that reaches an adapter, asked in turn of the applications
  *  composed over `filesReachingEveryAdapter`, under its name with what it
  *  answered or raised: signed in before the build, built before what runs it. */
-async function operationAnswersOf({ workspaceApp, engineApp }: ComposedApplications) {
+async function operationAnswersOf(
+  { workspaceApp, engineApp }: ComposedApplications,
+  startOperation: (operationName: string) => void = () => {},
+) {
   const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = engineApp;
   const operationByName: Readonly<Record<string, () => Promise<unknown>>> = {
     readWorkspaceSettings: () => workspaceApp.readWorkspaceSettings(),
@@ -209,15 +215,23 @@ async function operationAnswersOf({ workspaceApp, engineApp }: ComposedApplicati
     predictMainContext: () => charterBuildingApp.predictMainContext(),
     addVendor: () => charterAuthoringApp.addVendor("team/kept"),
     runSensors: () => charterRuntimeApp.runSensors("Stop", "", "claude"),
-    callTool: () => charterRuntimeApp.callTool("billing_get_file_contents", {}),
+    // Called by the name the build served it under, so the call reaches the
+    // mcp origin and the credential kept for it.
+    callTool: async () =>
+      charterRuntimeApp.callTool(
+        answerOf(await charterBuildingApp.listDeclaredTools()).data.tools[0]!.data.servedName,
+        {},
+      ),
     evaluateCharter: () => charterRuntimeApp.evaluateCharter(),
     summarizeSessions: () => charterRuntimeApp.summarizeSessions(),
     analyzeEvalLog: () => charterRuntimeApp.analyzeEvalLog(),
-    countMainContext: () => charterRuntimeApp.countMainContext(),
+    countMainContext: () => charterRuntimeApp.countMainContext("claude"),
   };
   const operationAnswers: { operationName: string; answer: unknown }[] = [];
-  for (const [operationName, operation] of Object.entries(operationByName))
+  for (const [operationName, operation] of Object.entries(operationByName)) {
+    startOperation(operationName);
     operationAnswers.push({ operationName, answer: await operation().catch((raisedValue: unknown) => raisedValue) });
+  }
   return operationAnswers;
 }
 
@@ -372,16 +386,26 @@ test("runtime asks the charter only through charter's applications, in answers m
   );
 
   answerOf(await charterRuntimeApp.runSensors("Stop", "", "claude"));
-  await charterRuntimeApp.callTool("billing_get_file_contents", {});
+  // Called by the name the build served it under, so the call reaches the mcp
+  // origin and asks authoring for the credential kept for it.
+  answerOf(
+    await charterRuntimeApp.callTool(
+      answerOf(await charterBuildingApp.listDeclaredTools()).data.tools[0]!.data.servedName,
+      {},
+    ),
+  );
   answerOf(await charterRuntimeApp.evaluateCharter());
-  await charterRuntimeApp.countMainContext();
+  await charterRuntimeApp.countMainContext("claude");
 
   assert.deepEqual([...new Set(charterAnswers.map(({ operationName }) => operationName))].sort(), [
     "buildCharterInto",
+    "getAccessToken",
     "listDeclaredTools",
     "listEvalCases",
     "listEvalSuites",
     "listSensorCommands",
+    // The estimate an exact count is put beside (EVAL-FR-004).
+    "predictMainContext",
     "readMainContextTexts",
   ]);
   // Each operationAnswer is a DTO made for the caller: it reads back through its own
@@ -428,7 +452,7 @@ const OWN_ADAPTER_CLASS_NAMES_BY_KEY = {
  *  that `cw`'s own of those is the one composed (SDK-FR-020). */
 const ADAPTER_KEYS_SET_UP_OVER = {
   sourceFetcher: ["charterRepository"],
-  fileReader: ["charterRepository", "workspaceSettingsRepository", "localOutput"],
+  fileReader: ["charterRepository", "workspaceSettingsRepository", "localOutput", "sessionAnalysisRepository"],
   fileWriter: ["charterRepository", "workspaceSettingsRepository", "localOutput"],
 } as const satisfies Partial<Record<keyof EngineAdapters, readonly (keyof EngineAdapters)[]>>;
 
@@ -533,6 +557,210 @@ test("the published package composes the engine of its two parts, which hold no 
     }
     assert.ok(reachedOperationNames.length > 0, `with no ${adapterKey} handed, cw's own was never reached`);
   }
+});
+
+/** `adapter`, each call of one of its operations counted under `adapterKey`,
+ *  answered by the adapter itself. */
+function countedAdapterOf<Adapter extends object>(
+  adapter: Adapter,
+  adapterKey: string,
+  countCall: (adapterKey: string) => void,
+): Adapter {
+  return new Proxy(adapter, {
+    get(targetAdapter, propertyKey) {
+      const propertyValue = Reflect.get(targetAdapter, propertyKey, targetAdapter);
+      if (typeof propertyValue !== "function" || propertyKey === "constructor") return propertyValue;
+      return (...callArguments: unknown[]) => {
+        countCall(adapterKey);
+        return propertyValue.apply(targetAdapter, callArguments);
+      };
+    },
+  });
+}
+
+/** The adapters each operation of `operationAnswersOf` uses, by the name each
+ *  is handed under: what it reaches, whoever wrote the adapter. */
+const ADAPTER_KEYS_BY_OPERATION_NAME: Readonly<Record<string, readonly string[]>> = {
+  readWorkspaceSettings: ["fileReader", "workspaceSettingsRepository"],
+  listCatalogue: ["charterRepository", "fileReader", "workspaceSettingsRepository"],
+  signInWithOAuth: ["charterRepository", "credentialsRepository", "fileReader", "oauthAuthorizer"],
+  listSignInStatuses: ["charterRepository", "credentialsRepository", "fileReader"],
+  buildCharter: [
+    "agentProvider",
+    "charterRepository",
+    "credentialsRepository",
+    "fileReader",
+    "fileWriter",
+    "localOutput",
+    "mcpServers",
+  ],
+  predictMainContext: ["agentProvider", "charterRepository", "fileReader", "tokenCounter"],
+  addVendor: ["charterRepository", "fileReader", "sourceFetcher"],
+  runSensors: ["charterRepository", "fileReader", "shell"],
+  callTool: ["charterRepository", "credentialsRepository", "fileReader", "mcpServers"],
+  evaluateCharter: [
+    "agentProvider",
+    "charterRepository",
+    "fileReader",
+    "fileWriter",
+    "localOutput",
+    "progressReporter",
+    "promptfooRunner",
+    "worktrees",
+  ],
+  summarizeSessions: ["clock", "sessionAnalysisRepository"],
+  analyzeEvalLog: ["promptfooRunner"],
+  countMainContext: ["agentProvider", "charterRepository", "fileReader", "tokenCounter"],
+};
+
+test("each adapter the engine is composed with, handed as a test's own, is what every use case using it answers through (CORE Story 55 scenario 28, SDK-SC-005)", async () => {
+  // Each call counted under the driver-port operation that made it, and the
+  // adapter it reached: what composing asks before any operation is under
+  // `composeApplications`.
+  const callCountByOperationName = new Map<string, Map<string, number>>();
+  let runningOperationName = "composeApplications";
+  const countCall = (adapterKey: string) => {
+    const callCountByAdapterKey = callCountByOperationName.get(runningOperationName) ?? new Map<string, number>();
+    callCountByAdapterKey.set(adapterKey, (callCountByAdapterKey.get(adapterKey) ?? 0) + 1);
+    callCountByOperationName.set(runningOperationName, callCountByAdapterKey);
+  };
+  const adapters = adaptersInMemory(filesReachingEveryAdapter);
+  // Not yet installed, so the evaluation reports that it installs it.
+  adapters.promptfooRunner = new InMemoryPromptfoo(false);
+  adapters.promptfooRunner.folderFiles = adapters.fileReader;
+  const countedAdapters = Object.fromEntries(
+    Object.entries(adapters).map(([adapterKey, adapter]) => [
+      adapterKey,
+      countedAdapterOf(adapter, adapterKey, countCall),
+    ]),
+  ) as typeof adapters;
+  const handedPlugins = pluginsInMemory(countedAdapters);
+  const countedPlugins: EngineAdapters = {
+    ...handedPlugins,
+    agentProvider: Object.fromEntries(
+      Object.entries(handedPlugins.agentProvider).map(([agentName, { projection, agentCli }]) => [
+        agentName,
+        {
+          projection: countedAdapterOf(projection, "agentProvider", countCall),
+          agentCli: countedAdapterOf(agentCli, "agentProvider", countCall),
+        },
+      ]),
+    ),
+    charterRepository: countedAdapterOf(handedPlugins.charterRepository, "charterRepository", countCall),
+    sessionAnalysisRepository: countedAdapterOf(
+      handedPlugins.sessionAnalysisRepository,
+      "sessionAnalysisRepository",
+      countCall,
+    ),
+    workspaceSettingsRepository: countedAdapterOf(
+      handedPlugins.workspaceSettingsRepository,
+      "workspaceSettingsRepository",
+      countCall,
+    ),
+    localOutput: countedAdapterOf(handedPlugins.localOutput, "localOutput", countCall),
+  };
+
+  const operationAnswers = await operationAnswersOf(
+    await composeApplications(repoFolder, homeFolder, countedPlugins),
+    (operationName) => {
+      runningOperationName = operationName;
+    },
+  );
+
+  // Every operation answered, none of them raising.
+  for (const { operationName, answer } of operationAnswers)
+    assert.ok(!(answer instanceof Error), `${operationName} raised ${String(answer)}`);
+  // Each operation reached every adapter it uses through the one handed, the
+  // composing itself none; and every adapter handed is used by one.
+  assert.deepEqual(
+    Object.fromEntries(
+      [...callCountByOperationName].map(([operationName, callCountByAdapterKey]) => [
+        operationName,
+        [...callCountByAdapterKey.keys()].sort(),
+      ]),
+    ),
+    ADAPTER_KEYS_BY_OPERATION_NAME,
+  );
+  assert.deepEqual(
+    [...new Set(Object.values(ADAPTER_KEYS_BY_OPERATION_NAME).flat())].sort(),
+    Object.keys(OWN_ADAPTER_CLASS_NAMES_BY_KEY).sort(),
+  );
+});
+
+test("with in-memory file adapters handed and no sessions store, a session kept and the sessions summed go through the adapters handed, and the disk is never reached (CORE Story 55 scenario 26, SDK-FR-020)", async () => {
+  const memoryRepoFolder = new URL("memory:/team/");
+  const memoryHomeFolder = new URL("memory:/home/");
+  const fileReader = new InMemoryFileReaders(
+    { [new URL(".cw/settings.json", memoryRepoFolder).href]: settingsText },
+    memoryRepoFolder,
+  );
+  const fileWriter = new InMemoryFileOutput(fileReader);
+  const progressReporter = new InMemoryReporter();
+  // A session kept as cw-session-tokens-counter keeps one, in the files handed,
+  // under the home's folder named after the repository.
+  const sessionLogUrl = new URL(".cherry-works/memory_3a_2fteam/session-a/session-analysis.jsonl", memoryHomeFolder);
+  fileReader.writeFile(
+    sessionLogUrl,
+    `${JSON.stringify({
+      time: "2026-11-09T12:00:00.000Z",
+      sessionId: "session-a",
+      repository: "memory:/team",
+      model: "claude-opus-5-5",
+      tokens: { input: 100, output: 100, cacheWrite: 100, cacheRead: 700 },
+      total: 1000,
+    })}\n`,
+    new Date("2026-11-09T12:00:00.000Z"),
+  );
+  const diskReachedNames: string[] = [];
+  const originalOperationByName = new Map<string, unknown>();
+  const fileReadersPrototype = FileReaders.prototype as unknown as Record<string, unknown>;
+  for (const operationName of Object.getOwnPropertyNames(fileReadersPrototype)) {
+    if (operationName === "constructor") continue;
+    originalOperationByName.set(operationName, fileReadersPrototype[operationName]);
+    fileReadersPrototype[operationName] = () => {
+      diskReachedNames.push(operationName);
+      throw new Error(`FileReaders.${operationName} was reached`);
+    };
+  }
+  try {
+    const { engineApp } = await composeApplications(memoryRepoFolder, memoryHomeFolder, {
+      fileReader,
+      fileWriter,
+      progressReporter,
+      clock: new InMemoryClock(new Date("2026-11-10T00:00:00Z")),
+    });
+    const sessionReviewOutcome = answerOf(await engineApp.charterRuntimeApp.summarizeSessions());
+
+    assert.equal(sessionReviewOutcome.data.sessionsFolder, "memory:/home/.cherry-works/memory_3a_2fteam/");
+    assert.deepEqual(
+      sessionReviewOutcome.data.sessionSummary.data.sessions.map((session) => session.sessionId),
+      ["session-a"],
+    );
+    assert.ok(fileReader.calls.includes(`read ${sessionLogUrl.href}`), fileReader.calls.join("\n"));
+    assert.deepEqual(diskReachedNames, []);
+    assert.deepEqual(progressReporter.problems, []);
+  } finally {
+    for (const [operationName, operation] of originalOperationByName) fileReadersPrototype[operationName] = operation;
+  }
+});
+
+test("composed at a scheme no adapter of cw's reads, with no file adapter handed, reading the charter answers a fault the caller corrects, naming the adapter to hand, and records no internal failure (CORE Story 55 scenario 27, SDK-FR-017, SDK-FR-018)", async () => {
+  const progressReporter = new InMemoryReporter();
+  const { engineApp } = await composeApplications(new URL("memory:/team/"), new URL("memory:/home/"), {
+    progressReporter,
+  });
+
+  for (const readingAnswer of [
+    await engineApp.charterAuthoringApp.listCatalogue(),
+    await engineApp.charterBuildingApp.buildCharter(),
+  ]) {
+    assert.equal(readingAnswer.type, "Fault", JSON.stringify(readingAnswer));
+    const { name, message, fix } = (readingAnswer as FaultDTOs.Fault).data;
+    assert.notEqual(name, "InternalFault");
+    assert.match(message, /memory:/);
+    assert.match(fix, /fileReader/);
+  }
+  assert.deepEqual(progressReporter.problems, []);
 });
 
 test("an engine composed with a plugin of the author's own builds and evaluates for its agent through that plugin, and answers as it does with the plugin shipped (CORE Story 52 scenario 4)", async () => {
@@ -773,7 +1001,7 @@ test("an evaluation keeps each case's working copy and what its run leaves under
     await chmod(promptfooFilePath, 0o755);
 
     const promptfooTestResult = await promptfooRunner.evaluateTest({
-      agent: "claude",
+      provider: "claude",
       description: "skills.json: keep it",
       prompt: "keep it",
       workingPath: "",
@@ -867,8 +1095,10 @@ test("neither the charter nor runtime reads or writes .cw/settings.json: run, ea
   // was for the agent they name.
   assert.deepEqual(answerOf(await composedApplications.workspaceApp.readWorkspaceSettings()).data.agents, ["claude"]);
   const buildAnswer = operationAnswers.find(({ operationName }) => operationName === "buildCharter")?.answer;
-  assert.equal((buildAnswer as { type?: string }).type, "PlanSummary", JSON.stringify(buildAnswer));
-  assert.ok((buildAnswer as CharterDTOs.PlanSummary).data.added.some((addedPath) => addedPath.startsWith(".claude/")));
+  assert.equal((buildAnswer as { type?: string }).type, "ProjectionPlanSummary", JSON.stringify(buildAnswer));
+  assert.ok(
+    (buildAnswer as CharterDTOs.ProjectionPlanSummary).data.added.some((addedPath) => addedPath.startsWith(".claude/")),
+  );
   assert.ok(reachedFilePaths.length > 0);
   assert.deepEqual(
     reachedFilePaths.filter((reachedFilePath) => /(?:^|\/)\.cw\/settings\.json$/.test(reachedFilePath)),

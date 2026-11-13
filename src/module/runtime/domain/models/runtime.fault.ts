@@ -12,6 +12,14 @@ export class MissingAgentCliFault extends ApplicationFault {}
  *  (EVAL-FR-004). */
 export class UnsupportedExactCountFault extends ApplicationFault {}
 
+/** An exact count asked for an agent the repository does not compile for
+ *  (EVAL-FR-004). */
+export class UnconfiguredExactCountAgentFault extends ApplicationFault {}
+
+/** An exact count of a primitive the estimate beside it does not hold: the
+ *  engine's own fault (EVAL-FR-004). */
+export class MissingEstimateFault extends ApplicationFault {}
+
 /** A call naming a tool this server does not serve (FR-153). */
 export class UnknownToolFault extends ApplicationFault {}
 

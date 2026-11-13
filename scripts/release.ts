@@ -114,7 +114,7 @@ try {
     number[],
     number[],
   ];
-  const firstDifferenceIndex = nextParts.findIndex((part, index) => part !== currentParts[index]);
+  const firstDifferenceIndex = nextParts.findIndex((nextPart, partIndex) => nextPart !== currentParts[partIndex]);
   if (firstDifferenceIndex === -1 || nextParts[firstDifferenceIndex]! < currentParts[firstDifferenceIndex]!) {
     throw new ReleaseError(`${version} is not above ${currentVersion}, the version package.json holds.`);
   }
@@ -291,8 +291,8 @@ try {
     const installedEntries = await readdir(installFolder, { recursive: true, withFileTypes: true });
     const installedFileSizes = await Promise.all(
       installedEntries
-        .filter((entry) => entry.isFile())
-        .map(async (entry) => (await lstat(join(entry.parentPath, entry.name))).size),
+        .filter((installedEntry) => installedEntry.isFile())
+        .map(async (installedEntry) => (await lstat(join(installedEntry.parentPath, installedEntry.name))).size),
     );
     const installedSize = installedFileSizes.reduce((total, size) => total + size, 0);
     if (installedSize >= INSTALLED_SIZE_LIMIT) {

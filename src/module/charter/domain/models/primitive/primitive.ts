@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { ModelHelper } from "../../helper.js";
+import { FlagSchema, z } from "#module/shared/module.js";
+import { ContentHelper } from "../../helper.js";
 import { InvalidPrimitiveFault } from "../charter.fault.js";
 import { AgentPrimitive } from "./agent-primitive.js";
 import { BasePrimitive } from "./base-primitive.js";
@@ -49,23 +49,6 @@ const KINDS = Object.freeze(PRIMITIVE_CLASSES.map((primitiveClass) => primitiveC
 
 export type Kind = (typeof KINDS)[number];
 
-/** An id as someone typed it, at a command or in a request, held to the shape
- *  an id is written in: text that is not one names nothing to look for
- *  (FR-172). */
-function primitiveIdOf(typedId: string): string {
-  if (!BasePrimitive.headersSchema().shape.id.safeParse(typedId).success)
-    throw new InvalidPrimitiveFault(
-      `"${typedId}" is not an id: one is lowercase letters, digits and inner hyphens, in segments joined by "/".`,
-      'Type it as the primitive declares it, as in "no-any".',
-      { internal: false },
-    );
-  return typedId;
-}
-
-function isKind(kindName: unknown): kindName is Kind {
-  return typeof kindName === "string" && (KINDS as readonly string[]).includes(kindName);
-}
-
 /** Which class reads each kind. */
 const CLASS_OF = new Map<Kind, (typeof PRIMITIVE_CLASSES)[number]>(
   PRIMITIVE_CLASSES.map((primitiveClass) => [primitiveClass.kind, primitiveClass]),
@@ -88,57 +71,6 @@ export class PrimitiveHeader {
   ) {}
 }
 
-/**
- * Every header one kind takes: what every primitive declares, and what this
- * kind's own contract adds on top of it — each with the shape it holds and
- * whether the kind refuses a file without it (FR-004, FR-039).
- *
- * Read off the kind's own class rather than listed again here, so a kind that
- * grows a header is asked for it without anything else being told. The shape
- * comes off the schema a file is refused against, so a header a kind takes
- * without requiring — a guide's globs — is written the shape it is read as, and
- * whoever answers one reads the same contract that refuses it.
- *
- * `kind` and `id` are not among them: the first is what is being asked about
- * and the second is what the primitive is to be called, so both are known
- * before there is anything to ask.
- */
-function primitiveHeadersOf(kind: Kind): readonly PrimitiveHeader[] {
-  const kindClass = CLASS_OF.get(kind)!;
-  const requiredHeaders = { ...BasePrimitive.requires, ...kindClass.requires };
-
-  return Object.entries(kindClass.schema.shape)
-    .filter(([field]) => field !== "id")
-    .map(([field, type]) => {
-      // What the header holds — an array of lines, a closed set, or one line —
-      // with optional and readonly taken off: they wrap what is held rather than
-      // being part of it.
-      let heldType: unknown = type;
-      while (!(heldType instanceof z.ZodArray) && typeof (heldType as { unwrap?: unknown })?.unwrap === "function")
-        heldType = (heldType as { unwrap: () => unknown }).unwrap();
-      return new PrimitiveHeader(
-        field,
-        heldType instanceof z.ZodArray ? "list" : "line",
-        field in requiredHeaders,
-        heldType instanceof z.ZodEnum
-          ? (heldType.options as readonly string[])
-          : heldType === BasePrimitive.flagSchema
-            ? ["true", "false"]
-            : undefined,
-      );
-    });
-}
-
-/** One primitive of this kind as its own class declares one, written out the
- *  way a file holds it — the kind first, since it is what decides how the rest
- *  is read. What an author is shown beside the headers they are to answer, and
- *  the same sample a refused file is held up against (FR-001). */
-function primitiveSampleOf(kind: Kind): string {
-  return Object.entries({ kind, ...CLASS_OF.get(kind)!.sample })
-    .map(([field, sampleValue]) => `${field}: ${ModelHelper.formatFrontmatterValue(sampleValue)}`)
-    .join("\n");
-}
-
 /** Every kind of primitive the charter knows, and how a primitive is read, made and named. */
 export class Primitives {
   static get classes(): typeof PRIMITIVE_CLASSES {
@@ -149,13 +81,73 @@ export class Primitives {
     return KINDS;
   }
 
-  static readonly idOf: typeof primitiveIdOf = primitiveIdOf;
+  /** An id as someone typed it, at a command or in a request, held to the shape
+   *  an id is written in: text that is not one names nothing to look for
+   *  (FR-172). */
+  static idOf(typedId: string): string {
+    if (!BasePrimitive.headersSchema().shape.id.safeParse(typedId).success)
+      throw new InvalidPrimitiveFault(
+        `"${typedId}" is not an id: one is lowercase letters, digits and inner hyphens, in segments joined by "/".`,
+        'Type it as the primitive declares it, as in "no-any".',
+        { internal: false },
+      );
+    return typedId;
+  }
 
-  static readonly isKind: typeof isKind = isKind;
+  static isKind(kindName: unknown): kindName is Kind {
+    return typeof kindName === "string" && (KINDS as readonly string[]).includes(kindName);
+  }
 
-  static readonly headersOf: typeof primitiveHeadersOf = primitiveHeadersOf;
+  /**
+   * Every header one kind takes: what every primitive declares, and what this
+   * kind's own contract adds on top of it — each with the shape it holds and
+   * whether the kind refuses a file without it (FR-004, FR-039).
+   *
+   * Read off the kind's own class rather than listed again here, so a kind that
+   * grows a header is asked for it without anything else being told. The shape
+   * comes off the schema a file is refused against, so a header a kind takes
+   * without requiring — a guide's globs — is written the shape it is read as, and
+   * whoever answers one reads the same contract that refuses it.
+   *
+   * `kind` and `id` are not among them: the first is what is being asked about
+   * and the second is what the primitive is to be called, so both are known
+   * before there is anything to ask.
+   */
+  static headersOf(kind: Kind): readonly PrimitiveHeader[] {
+    const kindClass = CLASS_OF.get(kind)!;
+    const requiredHeaders = { ...BasePrimitive.requires, ...kindClass.requires };
 
-  static readonly sampleOf: typeof primitiveSampleOf = primitiveSampleOf;
+    return Object.entries(kindClass.schema.shape)
+      .filter(([field]) => field !== "id")
+      .map(([field, type]) => {
+        // What the header holds — an array of lines, a closed set, or one line —
+        // with optional and readonly taken off: they wrap what is held rather than
+        // being part of it.
+        let heldType: unknown = type;
+        while (!(heldType instanceof z.ZodArray) && typeof (heldType as { unwrap?: unknown })?.unwrap === "function")
+          heldType = (heldType as { unwrap: () => unknown }).unwrap();
+        return new PrimitiveHeader(
+          field,
+          heldType instanceof z.ZodArray ? "list" : "line",
+          field in requiredHeaders,
+          heldType instanceof z.ZodEnum
+            ? (heldType.options as readonly string[])
+            : heldType === FlagSchema
+              ? ["true", "false"]
+              : undefined,
+        );
+      });
+  }
+
+  /** One primitive of this kind as its own class declares one, written out the
+   *  way a file holds it — the kind first, since it is what decides how the rest
+   *  is read. What an author is shown beside the headers they are to answer, and
+   *  the same sample a refused file is held up against (FR-001). */
+  static sampleOf(kind: Kind): string {
+    return Object.entries({ kind, ...CLASS_OF.get(kind)!.sample })
+      .map(([field, sampleValue]) => `${field}: ${ContentHelper.formatFrontmatterValue(sampleValue)}`)
+      .join("\n");
+  }
 
   private constructor() {}
 }

@@ -26,14 +26,11 @@ export type { ForCountingTokens } from "./app/port/out/counting-tokens.port.js";
 export type { ForFetchingCharterSources } from "./app/port/out/fetching-charter-sources.port.js";
 export {
   BasePrimitive,
-  CHARTER_FOLDER_PATH,
-  EVAL_FOLDER_PATH,
+  CharterPath,
+  charterPath,
   type ForManagingCharter,
-  PRIMITIVES_FOLDER_PATH,
   Primitives,
   SkillPrimitive,
-  TEST_FOLDER_PATH,
-  VENDORS_FOLDER_PATH,
 } from "./app/port/out/managing-charter.port.js";
 export {
   AgentPrimitive,
@@ -48,8 +45,6 @@ export {
   GuidePrimitive,
   type MainContextText,
   McpPrimitive,
-  ModelHelper,
-  mergeTomlText,
   PlaybookPrimitive,
   PosturePrimitive,
   ProviderComponent,
@@ -84,7 +79,6 @@ export { RawPrimitive } from "./domain/models/primitive/raw-primitive.js";
 export { RawTestSuite } from "./domain/models/test/raw-test-suite.js";
 export { TestSuite } from "./domain/models/test/test-suite.js";
 export { RawSourceSkill, RawVendorSource } from "./domain/models/vendor/raw-vendor-source.js";
-export { VendorRootFactory } from "./domain/models/vendor/vendor-root.factory.js";
 export { VendorRoot } from "./domain/models/vendor/vendor-root.js";
 export { SourceCharter, SourceSkill, VendorSource } from "./domain/models/vendor/vendor-source.js";
 export { VendorSourceOrigin } from "./domain/models/vendor/vendor-source-origin.value-object.js";
@@ -93,7 +87,7 @@ export { ClaudeProjection } from "./infra/claude/claude-projection.adapter.js";
 export { CodexProjection } from "./infra/codex/codex-projection.adapter.js";
 export { FileCharterRepository } from "./infra/file-charter.repository.js";
 export { GitSources } from "./infra/git-sources.adapter.js";
-export { OUT_FOLDER, resolveLaidText } from "./infra/helper.js";
+export { resolveLaidText } from "./infra/helper.js";
 export { KeychainCredentialsRepository } from "./infra/keychain-credentials.repository.js";
 export { LocalRepoManipulator } from "./infra/local-repo-manipulator.adapter.js";
 export { OAuth } from "./infra/oauth.adapter.js";

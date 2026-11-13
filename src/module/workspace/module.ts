@@ -9,10 +9,8 @@ export type { ForManagingWorkspace } from "./app/port/in/managing-workspace.port
 export { WorkspaceDTOs } from "./app/port/in/workspace.dto.js";
 export {
   type ForStoringWorkspaceSettings,
-  GITIGNORE_FILE_PATH,
-  LOG_IGNORE_LINE,
   RawWorkspaceSettings,
-  SETTINGS_FILE_PATH,
+  settingsPath,
   WorkspaceSettings,
 } from "./app/port/out/storing-workspace-settings.port.js";
 export { FileWorkspaceSettingsRepository } from "./infra/file-workspace-settings.repository.js";

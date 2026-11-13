@@ -30,7 +30,7 @@ export function PrimitiveExplanation({ id, onExplain }: { id: string; onExplain:
       </ExplanationSection>
     );
 
-  const { primitive, activatesWhen, useMixins, rationale, hosts, citers, mentioners, testCasesByFile } =
+  const { primitive, activatesWhen, useMixins, rationale, usedByPrimitives, citers, mentioners, testCasesByFile } =
     explanationAnswer.data;
   const { kind, description, file: primitiveFilePath, layerName, headers } = primitive.data;
   const renderPrimitiveLink = ({ data: linkedPrimitive }: CharterDTOs.Primitive) => (
@@ -90,9 +90,9 @@ export function PrimitiveExplanation({ id, onExplain }: { id: string; onExplain:
           )}
         </ExplanationSection>
       )}
-      {hosts.length > 0 && (
+      {usedByPrimitives.length > 0 && (
         <ExplanationSection title="Lent to">
-          {hosts.map((relatedPrimitive) => (
+          {usedByPrimitives.map((relatedPrimitive) => (
             <div key={relatedPrimitive.data.id}>{renderPrimitiveLink(relatedPrimitive)}</div>
           ))}
         </ExplanationSection>

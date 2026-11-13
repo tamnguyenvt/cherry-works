@@ -1,8 +1,7 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
-import { z } from "zod";
 import { CharterDTOs, type ForAuthoringCharter, type ForBuildingCharter } from "#module/charter/module.js";
-import { FaultDTOs, INTERNAL_FAULT_DTO } from "#module/shared/module.js";
+import { FaultDTOs, INTERNAL_FAULT_DTO, z } from "#module/shared/module.js";
 import { WorkspaceDTOs } from "#module/workspace/module.js";
 
 /** One answer sent as JSON, under the schema it parses by. */
@@ -43,18 +42,18 @@ export function buildPortalRoutes(
   // like every other refusal (plan §2.2, SDK-FR-004) — but for the system's
   // own, which no request of the caller's caused: an `InternalFault` goes out
   // as a 500, its body the same DTO (SDK-FR-018).
-  portalRoutes.use("*", async (c, next) => {
-    await next();
-    if (c.res.status !== 422) return;
-    const faultDTO = (await c.res
+  portalRoutes.use("*", async (requestContext, nextMiddleware) => {
+    await nextMiddleware();
+    if (requestContext.res.status !== 422) return;
+    const faultDTO = (await requestContext.res
       .clone()
       .json()
       .catch(() => undefined)) as Partial<FaultDTOs.Fault> | undefined;
     if (faultDTO?.type === "Fault" && faultDTO.data?.name === "InternalFault")
-      c.res = new Response(c.res.body, { status: 500, headers: c.res.headers });
+      requestContext.res = new Response(requestContext.res.body, { status: 500, headers: requestContext.res.headers });
   });
   // What is left to catch here is hono's own.
-  portalRoutes.onError((honoError, c) => {
+  portalRoutes.onError((honoError, requestContext) => {
     // What hono refused before a route was reached — a body that is not JSON —
     // goes out with the status hono gave it.
     if (honoError instanceof HTTPException) return honoError.getResponse();
@@ -62,7 +61,7 @@ export function buildPortalRoutes(
     // from keeps the whole of it; the page is told only the internal fault
     // (SDK-FR-018).
     console.error(honoError);
-    return c.json(INTERNAL_FAULT_DTO, 500);
+    return requestContext.json(INTERNAL_FAULT_DTO, 500);
   });
 
   return portalRoutes
@@ -75,11 +74,11 @@ export function buildPortalRoutes(
           422: describeJsonContent(FaultDTOs.Fault, "What stopped the charter being read"),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const doctorOutcomeDTO = await charterBuildingApp.diagnoseCharter();
         return doctorOutcomeDTO.type === "Fault"
-          ? c.json(doctorOutcomeDTO, 422)
-          : c.json(doctorOutcomeDTO.data.faultsByFile, 200);
+          ? requestContext.json(doctorOutcomeDTO, 422)
+          : requestContext.json(doctorOutcomeDTO.data.faultsByFile, 200);
       },
     )
     .openapi(
@@ -95,13 +94,17 @@ export function buildPortalRoutes(
           422: describeJsonContent(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold"),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         // Never one kind of it: whoever is showing it by kind is counting every
         // kind as well, so a narrowed answer would be a second call for what the
         // first one already carried. A word searched for narrows it, and an
         // empty box is no word.
-        const primitivesDTO = await charterAuthoringApp.listPrimitives(c.req.valid("query").matching || undefined);
-        return primitivesDTO.type === "Primitives" ? c.json(primitivesDTO, 200) : c.json(primitivesDTO, 422);
+        const primitivesDTO = await charterAuthoringApp.listPrimitives(
+          requestContext.req.valid("query").matching || undefined,
+        );
+        return primitivesDTO.type === "Primitives"
+          ? requestContext.json(primitivesDTO, 200)
+          : requestContext.json(primitivesDTO, 422);
       },
     )
     .openapi(
@@ -117,12 +120,12 @@ export function buildPortalRoutes(
           ),
         },
       }),
-      async (c) => {
-        const { id } = c.req.valid("param");
+      async (requestContext) => {
+        const { id } = requestContext.req.valid("param");
         const explanationOutcomeDTO = await charterAuthoringApp.explainPrimitive(id);
         return explanationOutcomeDTO.type === "ExplanationOutcome"
-          ? c.json(explanationOutcomeDTO, 200)
-          : c.json(explanationOutcomeDTO, 422);
+          ? requestContext.json(explanationOutcomeDTO, 200)
+          : requestContext.json(explanationOutcomeDTO, 422);
       },
     )
     .openapi(
@@ -151,11 +154,11 @@ export function buildPortalRoutes(
           ),
         },
       }),
-      async (c) => {
-        const { kind, id, headers, body } = c.req.valid("json");
+      async (requestContext) => {
+        const { kind, id, headers, body } = requestContext.req.valid("json");
         const primitiveDTO = await charterAuthoringApp.addPrimitive(kind, id, headers, body);
-        if (primitiveDTO.type !== "Primitive") return c.json(primitiveDTO, 422);
-        return c.json(primitiveDTO, 201, {
+        if (primitiveDTO.type !== "Primitive") return requestContext.json(primitiveDTO, 422);
+        return requestContext.json(primitiveDTO, 201, {
           Location: `/api/charter/root/primitives/${encodeURIComponent(primitiveDTO.data.id)}`,
         });
       },
@@ -173,12 +176,12 @@ export function buildPortalRoutes(
           422: describeJsonContent(FaultDTOs.Fault, "The charter holds nothing of it"),
         },
       }),
-      async (c) => {
-        const { id } = c.req.valid("param");
+      async (requestContext) => {
+        const { id } = requestContext.req.valid("param");
         const primitiveDTO = await charterAuthoringApp.openPrimitive(id);
-        if (primitiveDTO.type === "Fault") return c.json(primitiveDTO, 422);
+        if (primitiveDTO.type === "Fault") return requestContext.json(primitiveDTO, 422);
         // Its hash is the entity tag, quoted.
-        return c.json(primitiveDTO, 200, { ETag: `"${primitiveDTO.data.hash}"` });
+        return requestContext.json(primitiveDTO, 200, { ETag: `"${primitiveDTO.data.hash}"` });
       },
     )
     .openapi(
@@ -205,17 +208,19 @@ export function buildPortalRoutes(
           ),
         },
       }),
-      async (c) => {
-        const { id } = c.req.valid("param");
+      async (requestContext) => {
+        const { id } = requestContext.req.valid("param");
         // The entity tag the page opened it at is the hash `rewritePrimitive` holds the
         // file to, so a stale one is refused there, and answered as a 412
         // rather than a refusal like any other (FR-078).
-        const openedHash = /^"(.*)"$/.exec(c.req.valid("header")["if-match"] ?? "")?.[1] ?? "";
-        const { headers, body } = c.req.valid("json");
+        const openedHash = /^"(.*)"$/.exec(requestContext.req.valid("header")["if-match"] ?? "")?.[1] ?? "";
+        const { headers, body } = requestContext.req.valid("json");
         const primitiveDTO = await charterAuthoringApp.rewritePrimitive(id, headers, body, openedHash);
         if (primitiveDTO.type === "Fault" && primitiveDTO.data.name === "PrimitiveChangedFault")
-          return c.json(primitiveDTO, 412);
-        return primitiveDTO.type === "Primitive" ? c.json(primitiveDTO, 200) : c.json(primitiveDTO, 422);
+          return requestContext.json(primitiveDTO, 412);
+        return primitiveDTO.type === "Primitive"
+          ? requestContext.json(primitiveDTO, 200)
+          : requestContext.json(primitiveDTO, 422);
       },
     )
     .openapi(
@@ -228,11 +233,11 @@ export function buildPortalRoutes(
           422: describeJsonContent(FaultDTOs.Fault, "A primitive this repository did not author, or none at all"),
         },
       }),
-      async (c) => {
-        const { id } = c.req.valid("param");
+      async (requestContext) => {
+        const { id } = requestContext.req.valid("param");
         const primitiveDTO = await charterAuthoringApp.removePrimitive(id);
-        if (primitiveDTO.type === "Fault") return c.json(primitiveDTO, 422);
-        return c.body(null, 204);
+        if (primitiveDTO.type === "Fault") return requestContext.json(primitiveDTO, 422);
+        return requestContext.body(null, 204);
       },
     )
     .openapi(
@@ -244,9 +249,11 @@ export function buildPortalRoutes(
           422: describeJsonContent(FaultDTOs.Fault, "What stopped the kinds being said"),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const primitiveKindsDTO = await charterAuthoringApp.listKinds();
-        return primitiveKindsDTO.type === "Fault" ? c.json(primitiveKindsDTO, 422) : c.json(primitiveKindsDTO, 200);
+        return primitiveKindsDTO.type === "Fault"
+          ? requestContext.json(primitiveKindsDTO, 422)
+          : requestContext.json(primitiveKindsDTO, 200);
       },
     )
     .openapi(
@@ -259,11 +266,13 @@ export function buildPortalRoutes(
           422: describeJsonContent(FaultDTOs.Fault, "A word that is no kind"),
         },
       }),
-      async (c) => {
-        const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements(c.req.valid("param").kind);
+      async (requestContext) => {
+        const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements(
+          requestContext.req.valid("param").kind,
+        );
         return primitiveRequirementsDTO.type === "Fault"
-          ? c.json(primitiveRequirementsDTO, 422)
-          : c.json(primitiveRequirementsDTO, 200);
+          ? requestContext.json(primitiveRequirementsDTO, 422)
+          : requestContext.json(primitiveRequirementsDTO, 200);
       },
     )
     .openapi(
@@ -271,13 +280,18 @@ export function buildPortalRoutes(
         method: "get",
         path: "/charter/root/build",
         responses: {
-          200: describeJsonContent(CharterDTOs.PlanSummary, "What a build would do to every file, nothing written"),
+          200: describeJsonContent(
+            CharterDTOs.ProjectionPlanSummary,
+            "What a build would do to every file, nothing written",
+          ),
           422: describeJsonContent(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold"),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const planSummaryDTO = await charterBuildingApp.previewCharterBuild();
-        return planSummaryDTO.type === "PlanSummary" ? c.json(planSummaryDTO, 200) : c.json(planSummaryDTO, 422);
+        return planSummaryDTO.type === "ProjectionPlanSummary"
+          ? requestContext.json(planSummaryDTO, 200)
+          : requestContext.json(planSummaryDTO, 422);
       },
     )
     .openapi(
@@ -285,16 +299,18 @@ export function buildPortalRoutes(
         method: "post",
         path: "/charter/root/build",
         responses: {
-          200: describeJsonContent(CharterDTOs.PlanSummary, "What the build wrote and deleted"),
+          200: describeJsonContent(CharterDTOs.ProjectionPlanSummary, "What the build wrote and deleted"),
           422: describeJsonContent(
             z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]),
             "The charter does not hold, and nothing was written",
           ),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const planSummaryDTO = await charterBuildingApp.buildCharter();
-        return planSummaryDTO.type === "PlanSummary" ? c.json(planSummaryDTO, 200) : c.json(planSummaryDTO, 422);
+        return planSummaryDTO.type === "ProjectionPlanSummary"
+          ? requestContext.json(planSummaryDTO, 200)
+          : requestContext.json(planSummaryDTO, 422);
       },
     )
     .openapi(
@@ -306,9 +322,11 @@ export function buildPortalRoutes(
           422: describeJsonContent(FaultDTOs.Fault, "What stopped the questions being asked"),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const doctorOutcomeDTO = await charterBuildingApp.diagnoseCharter();
-        return doctorOutcomeDTO.type === "Fault" ? c.json(doctorOutcomeDTO, 422) : c.json(doctorOutcomeDTO, 200);
+        return doctorOutcomeDTO.type === "Fault"
+          ? requestContext.json(doctorOutcomeDTO, 422)
+          : requestContext.json(doctorOutcomeDTO, 200);
       },
     )
     .openapi(
@@ -323,9 +341,11 @@ export function buildPortalRoutes(
           422: describeJsonContent(z.union([FaultDTOs.FaultsByFile, FaultDTOs.Fault]), "The charter does not hold"),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const mainContextsDTO = await charterBuildingApp.predictMainContext();
-        return mainContextsDTO.type === "MainContexts" ? c.json(mainContextsDTO, 200) : c.json(mainContextsDTO, 422);
+        return mainContextsDTO.type === "MainContexts"
+          ? requestContext.json(mainContextsDTO, 200)
+          : requestContext.json(mainContextsDTO, 422);
       },
     )
     .openapi(
@@ -340,11 +360,11 @@ export function buildPortalRoutes(
           422: describeJsonContent(FaultDTOs.Fault, "Settings that do not read"),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const workspaceSettingsDTO = await loadWorkspaceSettings();
         return workspaceSettingsDTO.type === "Fault"
-          ? c.json(workspaceSettingsDTO, 422)
-          : c.json(workspaceSettingsDTO, 200);
+          ? requestContext.json(workspaceSettingsDTO, 422)
+          : requestContext.json(workspaceSettingsDTO, 200);
       },
     )
     .openapi(
@@ -359,9 +379,11 @@ export function buildPortalRoutes(
           422: describeJsonContent(FaultDTOs.Fault, "What stopped the test files being read"),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const testSuitesDTO = await charterAuthoringApp.listTestSuites();
-        return testSuitesDTO.type === "Fault" ? c.json(testSuitesDTO, 422) : c.json(testSuitesDTO, 200);
+        return testSuitesDTO.type === "Fault"
+          ? requestContext.json(testSuitesDTO, 422)
+          : requestContext.json(testSuitesDTO, 200);
       },
     )
     .openapi(
@@ -376,10 +398,12 @@ export function buildPortalRoutes(
           422: describeJsonContent(FaultDTOs.Fault, "What stopped the test file being written"),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const testSuiteNameDTO = await charterAuthoringApp.addTestSuite();
-        if (testSuiteNameDTO.type === "Fault") return c.json(testSuiteNameDTO, 422);
-        return c.json(testSuiteNameDTO, 201, { Location: `/api/test-suites/${testSuiteNameDTO.data.name}` });
+        if (testSuiteNameDTO.type === "Fault") return requestContext.json(testSuiteNameDTO, 422);
+        return requestContext.json(testSuiteNameDTO, 201, {
+          Location: `/api/test-suites/${testSuiteNameDTO.data.name}`,
+        });
       },
     )
     .openapi(
@@ -401,14 +425,14 @@ export function buildPortalRoutes(
           ),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const testSuiteNameDTO = await charterAuthoringApp.writeTestSuite(
-          c.req.valid("param").name,
-          c.req.valid("json").text,
+          requestContext.req.valid("param").name,
+          requestContext.req.valid("json").text,
         );
         return testSuiteNameDTO.type === "TestSuiteName"
-          ? c.json(testSuiteNameDTO, 200)
-          : c.json(testSuiteNameDTO, 422);
+          ? requestContext.json(testSuiteNameDTO, 200)
+          : requestContext.json(testSuiteNameDTO, 422);
       },
     )
     .openapi(
@@ -421,10 +445,10 @@ export function buildPortalRoutes(
           422: describeJsonContent(FaultDTOs.Fault, "A name that is no test file"),
         },
       }),
-      async (c) => {
-        const testSuiteNameDTO = await charterAuthoringApp.removeTestSuite(c.req.valid("param").name);
-        if (testSuiteNameDTO.type === "Fault") return c.json(testSuiteNameDTO, 422);
-        return c.body(null, 204);
+      async (requestContext) => {
+        const testSuiteNameDTO = await charterAuthoringApp.removeTestSuite(requestContext.req.valid("param").name);
+        if (testSuiteNameDTO.type === "Fault") return requestContext.json(testSuiteNameDTO, 422);
+        return requestContext.body(null, 204);
       },
     )
     .openapi(
@@ -439,11 +463,11 @@ export function buildPortalRoutes(
           ),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const testRunReportDTO = await charterAuthoringApp.testCharter();
         return testRunReportDTO.type === "TestRunReport"
-          ? c.json(testRunReportDTO, 200)
-          : c.json(testRunReportDTO, 422);
+          ? requestContext.json(testRunReportDTO, 200)
+          : requestContext.json(testRunReportDTO, 422);
       },
     )
     .openapi(
@@ -455,11 +479,11 @@ export function buildPortalRoutes(
           422: describeJsonContent(FaultDTOs.Fault, "What stopped the vendor folders being listed"),
         },
       }),
-      async (c) => {
+      async (requestContext) => {
         const vendorFoldersDTO = await charterAuthoringApp.listVendors();
         return vendorFoldersDTO.type === "VendorFolders"
-          ? c.json(vendorFoldersDTO, 200)
-          : c.json(vendorFoldersDTO, 422);
+          ? requestContext.json(vendorFoldersDTO, 200)
+          : requestContext.json(vendorFoldersDTO, 422);
       },
     )
     .openapi(
@@ -483,11 +507,11 @@ export function buildPortalRoutes(
           ),
         },
       }),
-      async (c) => {
-        const { source, version } = c.req.valid("json");
+      async (requestContext) => {
+        const { source, version } = requestContext.req.valid("json");
         const vendorAddOutcomeDTO = await charterAuthoringApp.addVendor(source, version);
-        if (vendorAddOutcomeDTO.type === "Fault") return c.json(vendorAddOutcomeDTO, 422);
-        return c.body(null, 204);
+        if (vendorAddOutcomeDTO.type === "Fault") return requestContext.json(vendorAddOutcomeDTO, 422);
+        return requestContext.body(null, 204);
       },
     )
     .openapi(
@@ -503,10 +527,10 @@ export function buildPortalRoutes(
           ),
         },
       }),
-      async (c) => {
-        const vendorFolderDTO = await charterAuthoringApp.removeVendor(c.req.valid("param").name);
-        if (vendorFolderDTO.type === "Fault") return c.json(vendorFolderDTO, 422);
-        return c.body(null, 204);
+      async (requestContext) => {
+        const vendorFolderDTO = await charterAuthoringApp.removeVendor(requestContext.req.valid("param").name);
+        if (vendorFolderDTO.type === "Fault") return requestContext.json(vendorFolderDTO, 422);
+        return requestContext.body(null, 204);
       },
     );
 }

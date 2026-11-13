@@ -9,13 +9,16 @@ export class LoadCharterService {
    * One repository's charter, read off its three layers (FR-008): its own and its
    * vendors', as the charter repository keeps them, and what the engine
    * brings. Each primitive comes by its layer, kind and id; where it is kept
-   * is the repository's to know (FR-023, CORE-FR-213).
+   * is the repository's to know (FR-023, CORE-FR-213), and so is where an
+   * author edits it (SDK-FR-020).
    */
-  async loadCharterRoot(charterRepository: Pick<ForManagingCharter, "loadCharter">): Promise<CharterRoot> {
-    return CharterRootFactory.create([
-      ...new BuiltinPrimitives().primitives,
-      ...(await charterRepository.loadCharter()),
-    ]);
+  async loadCharterRoot(
+    charterRepository: Pick<ForManagingCharter, "loadCharter" | "describeCharterPlace">,
+  ): Promise<CharterRoot> {
+    return CharterRootFactory.create(
+      [...new BuiltinPrimitives().primitives, ...(await charterRepository.loadCharter())],
+      charterRepository.describeCharterPlace(),
+    );
   }
 }
 

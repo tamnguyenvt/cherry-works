@@ -160,6 +160,39 @@ test("a save over a file changed on disk, or with no If-Match, is 412 naming the
   assert.equal(await fileAt(".cw/charter/primitive/guide/no-any/index.md"), changedOnDisk);
 });
 
+test("a sensor with no command and a mixin naming a mixin are refused in the engine's words, and nothing is written (CORE Story 6 scenario 2, FR-117, FR-108, CORE Story 55 scenario 8)", async () => {
+  const { portalRoutes, fileReaders } = portal();
+  const filesBefore = await fileReaders.readFilesRecursively(repoPath);
+
+  const sensorRefused = await portalRoutes.request(
+    "/charter/root/primitives",
+    sending("POST", {
+      kind: "sensor",
+      id: "check",
+      headers: { description: "Checks.", signal: "PostToolUse" },
+      body: "",
+    }),
+  );
+  assert.equal(sensorRefused.status, 422);
+  const [sensorFault] = FaultDTOs.Faults.parse(await sensorRefused.json()).data.faults;
+  assert.equal(sensorFault?.data.message, "These headers are not what a sensor holds.");
+  assert.match(sensorFault?.data.fix ?? "", /\nrun: pnpm test/);
+
+  const mixinRefused = await portalRoutes.request(
+    "/charter/root/primitives",
+    sending("POST", {
+      kind: "mixin",
+      id: "voice",
+      headers: { description: "A voice.", mixins: ["base"] },
+      body: "",
+    }),
+  );
+  assert.equal(mixinRefused.status, 422);
+  assert.match(JSON.stringify(FaultDTOs.Faults.parse(await mixinRefused.json()).data.faults), /not what a mixin holds/);
+
+  assert.deepEqual(await fileReaders.readFilesRecursively(repoPath), filesBefore);
+});
+
 test("a repository primitive is deleted with 204, and a vendored one is refused with 422 (FR-076, FR-077)", async () => {
   const { portalRoutes, fileAt } = portal({
     [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
@@ -177,6 +210,84 @@ test("a repository primitive is deleted with 204, and a vendored one is refused 
     /\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/theirs\/index\.md is read-only/,
   );
   assert.ok(await fileAt(".cw/charter/vendor/team/rules/root/primitive/guide/theirs/index.md"));
+});
+
+test("a deleted primitive still named by a primitive and a test case leaves both as they were, and the next validation reports each as dangling (CORE Story 6 scenario 6, FR-076, FR-007, CORE Story 55 scenario 8)", async () => {
+  const namingGuideText = guide("small-diffs").replace("The body of small-diffs.", "Read [[no-any]] first.");
+  const namingTestText = `${JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] })}\n`;
+  // A primitive naming it: the health check reports it under that file.
+  const namedByPrimitive = portal({
+    [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
+    [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
+    [at(".cw/charter/primitive/guide/small-diffs/index.md")]: namingGuideText,
+  });
+  assert.equal(
+    (await namedByPrimitive.portalRoutes.request("/charter/root/primitives/no-any", { method: "DELETE" })).status,
+    204,
+  );
+  assert.equal(await namedByPrimitive.fileAt(".cw/charter/primitive/guide/no-any/index.md"), undefined);
+  assert.equal(await namedByPrimitive.fileAt(".cw/charter/primitive/guide/small-diffs/index.md"), namingGuideText);
+  const health = CharterDTOs.DoctorOutcome.parse(
+    await (await namedByPrimitive.portalRoutes.request("/charter/root/health")).json(),
+  ).data;
+  assert.match(
+    JSON.stringify(health.faultsByFile.data.files[".cw/charter/primitive/guide/small-diffs/index.md"] ?? []),
+    /names \\"no-any\\", and this charter holds no primitive of that id/,
+  );
+
+  // A test case naming it: the test run reports it, the case left as written.
+  const namedByTestCase = portal({
+    [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
+    [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
+    [at(".cw/charter/test/no-any.json")]: namingTestText,
+  });
+  assert.equal(
+    (await namedByTestCase.portalRoutes.request("/charter/root/primitives/no-any", { method: "DELETE" })).status,
+    204,
+  );
+  assert.equal(await namedByTestCase.fileAt(".cw/charter/test/no-any.json"), namingTestText);
+  const testRunAnswer = await namedByTestCase.portalRoutes.request("/test-suites/outcome");
+  assert.match(JSON.stringify(await testRunAnswer.json()), /This charter holds no primitive called \\"no-any\\"/);
+});
+
+test("a save and a delete compile nothing: what a build wrote stays as it was, and the health check says the output is behind until the next build (CORE Story 6 scenario 8, FR-079, CORE Story 55 scenario 8)", async () => {
+  const { portalRoutes, fileReaders } = portal({
+    [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
+    [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
+    [at(".cw/charter/primitive/guide/small-diffs/index.md")]: guide("small-diffs"),
+  });
+  assert.equal((await portalRoutes.request("/charter/root/build", sending("POST", {}))).status, 200);
+  const pendingCountOf = async () =>
+    CharterDTOs.DoctorOutcome.parse(await (await portalRoutes.request("/charter/root/health")).json()).data
+      .pendingCount;
+  assert.equal(await pendingCountOf(), 0);
+  /** Every file outside the charter's own folder: what a build writes. */
+  const builtFilesOf = async () =>
+    (await fileReaders.readFilesRecursively(repoPath))
+      .filter(({ fileUrl }) => !fileUrl.href.startsWith(at(".cw/charter/")))
+      .map(({ fileUrl, contents }) => `${fileUrl.href} ${contents}`)
+      .sort();
+  const builtFilesBefore = await builtFilesOf();
+
+  const opened = await portalRoutes.request("/charter/root/primitives/no-any");
+  const saved = await portalRoutes.request(
+    "/charter/root/primitives/no-any",
+    sending(
+      "PUT",
+      { headers: { description: "Never any.", globs: ["src/**"] }, body: "Use unknown." },
+      { "If-Match": opened.headers.get("ETag") ?? "" },
+    ),
+  );
+  assert.equal(saved.status, 200);
+  assert.deepEqual(await builtFilesOf(), builtFilesBefore, "a save compiles nothing");
+  assert.ok(((await pendingCountOf()) ?? 0) > 0, "after a save, the output is behind");
+
+  assert.equal((await portalRoutes.request("/charter/root/primitives/small-diffs", { method: "DELETE" })).status, 204);
+  assert.deepEqual(await builtFilesOf(), builtFilesBefore, "a delete compiles nothing");
+  assert.ok(((await pendingCountOf()) ?? 0) > 0, "after a delete, the output is behind");
+
+  assert.equal((await portalRoutes.request("/charter/root/build", sending("POST", {}))).status, 200);
+  assert.equal(await pendingCountOf(), 0);
 });
 
 test("text not shaped as an id is a 422 and a fault before the engine is asked (FR-172)", async () => {

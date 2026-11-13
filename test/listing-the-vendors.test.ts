@@ -9,7 +9,7 @@ import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory
 import { Commander } from "../src/presentation/cli/cli.commander.js";
 import { EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
-import { answerOf, faultOf } from "./answer-of.js";
+import { answerOf, faultOf, faultTextOf } from "./answer-of.js";
 import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
@@ -104,6 +104,44 @@ test("a folder laid out the way an earlier version installed a vendor is refused
     assert.match(message, /is laid out the way an earlier version installed a vendor/, vendorFilePath);
     assert.match(fix, /install each source again with "cw vendor add"/, vendorFilePath);
   }
+});
+
+test("a charter holding a folder an earlier version laid out is refused when listed and when built, naming that folder, with the fix to delete it and install its source again (CORE Story 30 scenario 3, FR-180, CORE Story 55 scenario 8)", async () => {
+  const fileReaders = new InMemoryFileReaders({
+    [vendoredAt("legacy", "guide/old/index.md")]: guide("old"),
+    [new URL(".cw/settings.json", repoPath).href]: '{"agents":["claude"]}',
+  });
+  const charterAuthoringApp = authoringCharterOf(
+    fileReaders,
+    new InMemoryFileOutput(fileReaders),
+    new InMemoryReporter(),
+    {
+      sourceFetcher: new InMemorySources(),
+    },
+  );
+  const charterRuntimeApp = buildingCharterOf(
+    fileReaders,
+    new InMemoryFileOutput(fileReaders),
+    new InMemoryTokenCounter(),
+    { claude: new InMemoryAgentCli() },
+    new InMemoryReporter(),
+  );
+
+  for (const refusalText of [
+    faultTextOf(await charterAuthoringApp.listPrimitives()),
+    faultTextOf(await charterRuntimeApp.buildCharter()),
+  ]) {
+    assert.match(
+      refusalText,
+      /\.cw\/charter\/vendor\/legacy is laid out the way an earlier version installed a vendor/,
+    );
+    assert.match(refusalText, /Delete it, then install each source again with "cw vendor add"/);
+  }
+  assert.equal(
+    await fileReaders.readIfThere(new URL(".cw/out/catalogue.json", repoPath)),
+    undefined,
+    "nothing is built",
+  );
 });
 
 test("a file kept right in the vendor folder is no vendor's", async () => {

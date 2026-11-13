@@ -15,11 +15,11 @@ declare const CW_VERSION: string;
  *  `useDialog` hands out: the one way to open a dialog — by its name, with the
  *  params that dialog is rendered by — and to close it. */
 type DialogHelpers = {
-  open: <Name extends keyof typeof DIALOGS>(
+  openDialog: <Name extends keyof typeof DIALOGS>(
     name: Name,
-    dialogParams: Parameters<(typeof DIALOGS)[Name]["render"]>[0],
+    dialogParams: Parameters<(typeof DIALOGS)[Name]["renderContent"]>[0],
   ) => void;
-  close: () => void;
+  closeDialog: () => void;
 };
 
 /**
@@ -38,8 +38,12 @@ const DIALOGS = {
     title: () => "Explain",
     context: ({ id }: { id: string }) => id,
     holdsDraft: false,
-    render: ({ id }: { id: string }, { open }: DialogHelpers) => (
-      <PrimitiveExplanation key={id} id={id} onExplain={(next) => open("explanation", { id: next })} />
+    renderContent: ({ id }: { id: string }, { openDialog }: DialogHelpers) => (
+      <PrimitiveExplanation
+        key={id}
+        id={id}
+        onExplain={(explainedId) => openDialog("explanation", { id: explainedId })}
+      />
     ),
   },
   /** One primitive opened in the form, or read-only where this repository did
@@ -48,8 +52,8 @@ const DIALOGS = {
     title: ({ id }: { id: string }) => id,
     context: () => "",
     holdsDraft: true,
-    render: ({ id }: { id: string }, { close }: DialogHelpers) => (
-      <PrimitiveForm key={id} id={id} onDone={showWrittenToast(close)} onClose={close} />
+    renderContent: ({ id }: { id: string }, { closeDialog }: DialogHelpers) => (
+      <PrimitiveForm key={id} id={id} onDone={showWrittenToast(closeDialog)} onClose={closeDialog} />
     ),
   },
   /** A new primitive, starting as the kind the listing was showing (FR-117). */
@@ -57,8 +61,8 @@ const DIALOGS = {
     title: () => "New primitive",
     context: () => "",
     holdsDraft: true,
-    render: ({ kind }: { kind: string }, { close }: DialogHelpers) => (
-      <PrimitiveForm key={`new ${kind}`} newKind={kind} onDone={showWrittenToast(close)} onClose={close} />
+    renderContent: ({ kind }: { kind: string }, { closeDialog }: DialogHelpers) => (
+      <PrimitiveForm key={`new ${kind}`} newKind={kind} onDone={showWrittenToast(closeDialog)} onClose={closeDialog} />
     ),
   },
   /** What a build would do, with the build itself from it (FR-120). */
@@ -66,8 +70,8 @@ const DIALOGS = {
     title: () => "cw build",
     context: () => "nothing written yet",
     holdsDraft: false,
-    render: (_params: Record<string, never>, { open }: DialogHelpers) => (
-      <BuildPreview onBuilt={(buildAnswer) => open("buildOutcome", { buildAnswer })} />
+    renderContent: (_params: Record<string, never>, { openDialog }: DialogHelpers) => (
+      <BuildPreview onBuilt={(buildAnswer) => openDialog("buildOutcome", { buildAnswer })} />
     ),
   },
   /** What a build wrote and deleted, or why it wrote nothing (FR-120). */
@@ -75,7 +79,7 @@ const DIALOGS = {
     title: () => "cw build",
     context: () => "",
     holdsDraft: false,
-    render: ({ buildAnswer }: { buildAnswer: BuildAnswer }) => <BuildOutcome buildAnswer={buildAnswer} />,
+    renderContent: ({ buildAnswer }: { buildAnswer: BuildAnswer }) => <BuildOutcome buildAnswer={buildAnswer} />,
   },
   /** A vendor source to install, above the directories reserved under its charter folder
    *  (FR-123). */
@@ -83,8 +87,8 @@ const DIALOGS = {
     title: () => "Add vendor source",
     context: () => "",
     holdsDraft: true,
-    render: (_params: Record<string, never>, { close }: DialogHelpers) => (
-      <AddVendorSource onDone={showWrittenToast(close)} onClose={close} />
+    renderContent: (_params: Record<string, never>, { closeDialog }: DialogHelpers) => (
+      <AddVendorSource onDone={showWrittenToast(closeDialog)} onClose={closeDialog} />
     ),
   },
   /** One test file's text, to save or delete (FR-090, FR-092). */
@@ -92,8 +96,8 @@ const DIALOGS = {
     title: ({ name }: { name: string }) => `.cw/charter/test/${name}`,
     context: () => "",
     holdsDraft: true,
-    render: ({ name }: { name: string }, { close }: DialogHelpers) => (
-      <TestSuiteEditor key={name} name={name} onDone={showWrittenToast(close)} onClose={close} />
+    renderContent: ({ name }: { name: string }, { closeDialog }: DialogHelpers) => (
+      <TestSuiteEditor key={name} name={name} onDone={showWrittenToast(closeDialog)} onClose={closeDialog} />
     ),
   },
   /** The health check `cw doctor` gives, with a build where the output is
@@ -103,18 +107,18 @@ const DIALOGS = {
     // The version the report is from, as `cw doctor` starts with it (FR-132).
     context: () => `cw ${CW_VERSION}`,
     holdsDraft: false,
-    render: (_params: Record<string, never>, { open }: DialogHelpers) => (
-      <DoctorReport onBuilt={(buildAnswer) => open("buildOutcome", { buildAnswer })} />
+    renderContent: (_params: Record<string, never>, { openDialog }: DialogHelpers) => (
+      <DoctorReport onBuilt={(buildAnswer) => openDialog("buildOutcome", { buildAnswer })} />
     ),
   },
 };
 
 /** What was written, said in a toast once the form closes; the listing asks
  *  again by itself. */
-function showWrittenToast(close: () => void) {
-  return (did: string, detail: string) => {
-    close();
-    toast(did, { description: detail });
+function showWrittenToast(closeDialog: () => void) {
+  return (doneText: string, detailText: string) => {
+    closeDialog();
+    toast(doneText, { description: detailText });
   };
 }
 
@@ -138,11 +142,11 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const dialogHelpers: DialogHelpers = {
-    open: (name, dialogParams) => {
+    openDialog: (name, dialogParams) => {
       setShownDialog({ name, dialogProps: dialogParams as never });
       setIsOpen(true);
     },
-    close: () => setIsOpen(false),
+    closeDialog: () => setIsOpen(false),
   };
   const dialog = shownDialog === null ? null : DIALOGS[shownDialog.name];
 
@@ -168,7 +172,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
                 it ends on is drawn as its footer (`DIALOG_FOOTER_CLASS_NAME`), and a strip or
                 a list of rows is drawn from edge to edge by `-mx-5`. */}
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-[18px]">
-              {dialog.render(shownDialog.dialogProps, dialogHelpers)}
+              {dialog.renderContent(shownDialog.dialogProps, dialogHelpers)}
             </div>
           </DialogContent>
         )}

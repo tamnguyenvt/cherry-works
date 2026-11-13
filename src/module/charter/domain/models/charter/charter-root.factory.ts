@@ -35,8 +35,10 @@ export class CharterRootFactory {
    * What reads as a primitive is held under where it is kept; what does not
    * leaves its faults under that same place. So a charter always comes back, and
    * one read names every bad file rather than the first (FR-009).
+   *
+   * `charterPlace` is where an author edits it, as the store keeping it says.
    */
-  static create(handedPrimitives: readonly (RawPrimitive | Primitive)[]): CharterRoot {
+  static create(handedPrimitives: readonly (RawPrimitive | Primitive)[], charterPlace: string): CharterRoot {
     const primitives: Primitive[] = [];
     const faultsByFile: Record<string, readonly DomainFault[]> = {};
     const primitiveLayerByUri: Record<string, PrimitiveLayer> = {};
@@ -104,7 +106,7 @@ export class CharterRootFactory {
         }
       }
 
-    return new CharterRoot(primitives, new FaultsByFile(faultsByFile), primitiveLayerByUri);
+    return new CharterRoot(primitives, new FaultsByFile(faultsByFile), primitiveLayerByUri, charterPlace);
   }
 
   private constructor() {}

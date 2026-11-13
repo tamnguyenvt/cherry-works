@@ -1,4 +1,4 @@
-import type { AssetFile } from "../primitive/base-primitive.js";
+import type { AssetFile } from "../primitive/asset-file.js";
 import type { SourceCharter } from "./vendor-source.js";
 import type { VendorSourceOrigin } from "./vendor-source-origin.value-object.js";
 

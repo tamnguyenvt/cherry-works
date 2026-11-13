@@ -1,5 +1,4 @@
-import type { AgentProviderName } from "#module/shared/module.js";
-import type { FaultDTOs } from "../../../../shared/module.js";
+import type { AgentProviderName, FaultDTOs } from "#module/shared/module.js";
 import type { CharterDTOs } from "./charter.dto.js";
 
 /*
@@ -60,10 +59,10 @@ export interface ForBuildingCharter {
    * (FR-005, FR-009); an mcp origin that cannot be asked for its tools stops it
    * as an error does (EVAL-FR-031).
    */
-  buildCharter(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  buildCharter(): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /** The build, worked out and stopped short of disk (FR-022). */
-  previewCharterBuild(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  previewCharterBuild(): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /** Every tool the mcp origins the last build listed serve, read off what it
    *  kept there: no mcp origin is reached to list them (EVAL-FR-031). */
@@ -85,7 +84,9 @@ export interface ForBuildingCharter {
    *  checkout `checkoutPath` names for the agents this was composed with,
    *  keeping the tools the last build kept; the repository's own working tree
    *  is left as it was (EVAL-FR-021). */
-  buildCharterInto(checkoutPath: string): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  buildCharterInto(
+    checkoutPath: string,
+  ): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /** What each agent this repository compiles for is sent of the charter when
    *  a session opens, each text as the build lays it, for an exact count

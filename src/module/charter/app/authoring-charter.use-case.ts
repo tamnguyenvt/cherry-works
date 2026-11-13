@@ -8,7 +8,7 @@ import {
   type ForTellingTime,
   ManyFindingsFault,
 } from "../../shared/module.js";
-import { EVAL_FOLDER_PATH, TEST_FOLDER_PATH } from "../domain/constants.js";
+import { vendorSourcePath } from "../domain/constants.js";
 import { RepoLayerPrimitiveSpec } from "../domain/models/charter/repo-layer-primitive.specification.js";
 import {
   ClaimedIdFault,
@@ -35,19 +35,21 @@ import { EvalSuiteFactory } from "../domain/models/eval/eval-suite.factory.js";
 import { EvalSuite } from "../domain/models/eval/eval-suite.js";
 import { McpAuthMethod, type McpAuthMethodName } from "../domain/models/mcp/mcp-auth-method.value-object.js";
 import { McpClientRegistration } from "../domain/models/mcp/mcp-client-registration.js";
+import { AssetFile } from "../domain/models/primitive/asset-file.js";
 import { McpPrimitive } from "../domain/models/primitive/mcp-primitive.js";
 import { PrimitiveFactory } from "../domain/models/primitive/primitive.factory.js";
 import { type Kind, type Primitive, Primitives } from "../domain/models/primitive/primitive.js";
 import { PrimitiveLayer } from "../domain/models/primitive/primitive-layer.value-object.js";
 import { RawPrimitive } from "../domain/models/primitive/raw-primitive.js";
 import { ScriptPrimitive } from "../domain/models/primitive/script-primitive.js";
+import { SecureEndpointSpec } from "../domain/models/primitive/secure-endpoint.specification.js";
 import { SkillPrimitive } from "../domain/models/primitive/skill-primitive.js";
 import { TestRootFactory } from "../domain/models/test/test-root.factory.js";
 import type { TestRoot } from "../domain/models/test/test-root.js";
 import { TestSuiteFactory } from "../domain/models/test/test-suite.factory.js";
 import { TestSuite } from "../domain/models/test/test-suite.js";
 import { VendorSourceFactory } from "../domain/models/vendor/vendor-source.factory.js";
-import { type SourceCharter, VendorSource } from "../domain/models/vendor/vendor-source.js";
+import type { SourceCharter, VendorSource } from "../domain/models/vendor/vendor-source.js";
 import { VendorSourceOriginFactory } from "../domain/models/vendor/vendor-source-origin.factory.js";
 import { TestService } from "../domain/services/test.service.js";
 import type { ForAuthoringCharter, McpOriginAddress, UnparsedHeaders } from "./port/in/authoring-charter.port.js";
@@ -168,7 +170,9 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   /** Every primitive the charter read, or those mentioning a word, each as the
    *  whole charter sees it (FR-112, FR-114). Whether one mentions the word is
    *  the primitive's own to say. */
-  async listPrimitives(matching?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+  async listPrimitives(
+    searchText?: string,
+  ): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.listPrimitives", async () => {
       const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
       const charterErrorFaultsByFile = charter.allFaultsByFiles.filterErrors();
@@ -176,9 +180,9 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
 
       // Ordered by id, the way the catalogue orders its entries.
       const shownPrimitives =
-        matching === undefined
+        searchText === undefined
           ? charter.primitives
-          : charter.primitives.filter((primitive) => primitive.hasWord(matching));
+          : charter.primitives.filter((primitive) => primitive.hasWord(searchText));
       return CharterDTOs.Primitives.of({
         primitives: [...shownPrimitives]
           .sort((leftPrimitive, rightPrimitive) =>
@@ -263,7 +267,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         activatesWhen: declaredPrimitive.activatesWhen,
         useMixins: charter.mixinsOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
         ...(rationalePrimitive === undefined ? {} : { rationale: this.#primitiveDTOOf(rationalePrimitive) }),
-        hosts: charter.hostsOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
+        usedByPrimitives: charter.pullersOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
         citers: charter.citersOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
         mentioners: charter.mentionersOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
         testCasesByFile: CharterDTOs.TestCasesByFile.of(testCasesByFile),
@@ -606,7 +610,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       if (installedVendor === undefined)
         throw new UnknownVendorFault(
           `No vendor folder is named "${name}".`,
-          "Name the folder as cw vendor list names it under .cw/charter/vendor/.",
+          "Name the folder as cw vendor list names it among the charter's vendors.",
           { internal: false },
         );
       await this.#charterRepository.removeVendor(installedVendor.name);
@@ -662,9 +666,9 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     return this.answerWithFaultDTO("AuthoringCharter.addTestSuite", async () => {
       // Named `untitled-<n>.json` for the first `n` no test file has, holding
       // one sample case that reads as a suite (FR-091).
-      const name = (await this.#loadTestRoot()).untitledName;
-      await this.#charterRepository.writeTestSuite(name, TestSuiteFactory.create(TestSuite.defaultBody));
-      return CharterDTOs.TestSuiteName.of({ name });
+      const testSuiteName = (await this.#loadTestRoot()).untitledName;
+      await this.#charterRepository.writeTestSuite(testSuiteName, TestSuiteFactory.create(TestSuite.defaultBody));
+      return CharterDTOs.TestSuiteName.of({ name: testSuiteName });
     });
   }
 
@@ -717,9 +721,9 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
 
   async addEvalSuite(): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.addEvalSuite", async () => {
-      const name = (await this.#loadEvalRoot()).untitledName;
-      await this.#charterRepository.writeEvalSuite(name, EvalSuiteFactory.create(EvalSuite.defaultBody));
-      return CharterDTOs.EvalSuiteName.of({ name });
+      const evalSuiteName = (await this.#loadEvalRoot()).untitledName;
+      await this.#charterRepository.writeEvalSuite(evalSuiteName, EvalSuiteFactory.create(EvalSuite.defaultBody));
+      return CharterDTOs.EvalSuiteName.of({ name: evalSuiteName });
     });
   }
 
@@ -874,7 +878,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     isRefused: boolean,
   ): Promise<CharterDTOs.AccessToken | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.getAccessToken", async () => {
-      if (endpoint !== undefined && !McpPrimitive.isSecureEndpoint(endpoint))
+      if (endpoint !== undefined && !new SecureEndpointSpec().isSatisfiedBy(endpoint))
         throw new InsecureEndpointFault(
           `${address} is plain http to another machine, so no credential is sent there.`,
           'Declare its endpoint as https://, then run "cw build".',
@@ -955,9 +959,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     // The asset a script runs, empty, so its author knows where to write it; one
     // already standing there is theirs and is left as it is (FR-167).
     const assets =
-      primitive instanceof ScriptPrimitive
-        ? [{ assetPath: primitive.executionPathInFolder, contents: new Uint8Array() }]
-        : [];
+      primitive instanceof ScriptPrimitive ? [new AssetFile(primitive.executionPathInFolder, new Uint8Array())] : [];
     const markdownText = primitive.writeMarkdown();
     const keptUri = await this.#charterRepository.addPrimitive(
       new RawPrimitive(PrimitiveLayer.REPO, primitive.kind, primitive.headers.id, markdownText, assets, ""),
@@ -974,12 +976,12 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   }
 
   /** Refused unless a test file is listed under this name. A name that is none — a name reaching
-   *  outside `.cw/charter/test/` among them — is refused, so nothing but a test file is
+   *  outside the store's tests among them — is refused, so nothing but a test file is
    *  ever written over or taken away. */
-  async #ensureTestSuiteNamed(name: string): Promise<void> {
-    if (!(await this.#loadTestRoot()).hasTestSuiteNamed(name))
+  async #ensureTestSuiteNamed(testSuiteName: string): Promise<void> {
+    if (!(await this.#loadTestRoot()).hasTestSuiteNamed(testSuiteName))
       throw new UnknownTestSuiteFault(
-        `${TEST_FOLDER_PATH}/ holds no test file called "${name}".`,
+        `The charter holds no test file called "${testSuiteName}".`,
         'Run "cw suite add" to write a new one.',
         { internal: false },
       );
@@ -993,10 +995,10 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
 
   /** Refused unless a file of evaluation cases is listed under this name, so
    *  nothing but one is ever written over or taken away. */
-  async #ensureEvalSuiteNamed(name: string): Promise<void> {
-    if (!(await this.#loadEvalRoot()).hasEvalSuiteNamed(name))
+  async #ensureEvalSuiteNamed(evalSuiteName: string): Promise<void> {
+    if (!(await this.#loadEvalRoot()).hasEvalSuiteNamed(evalSuiteName))
       throw new UnknownEvalSuiteFault(
-        `${EVAL_FOLDER_PATH}/ holds no evaluation file called "${name}".`,
+        `The charter holds no evaluation file called "${evalSuiteName}".`,
         "List the evaluation files, or add a new one.",
         { internal: false },
       );
@@ -1058,7 +1060,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         'Run "cw mcp auth --status" to see every address.',
         { internal: false },
       );
-    if (signInAddress.endpoint !== undefined && !McpPrimitive.isSecureEndpoint(signInAddress.endpoint))
+    if (signInAddress.endpoint !== undefined && !new SecureEndpointSpec().isSatisfiedBy(signInAddress.endpoint))
       throw new InsecureEndpointFault(
         `${address} is plain http to another machine, so no credential is sent there.`,
         'Declare its endpoint as https://, then run "cw build".',
@@ -1119,7 +1121,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  vendor's own, or the charter's where it was injected into it — and the
    *  primitives installed there (CORE-FR-184, CORE-FR-196). */
   #vendorAddOutcomeDTOOf(filteredSource: VendorSource, injectedCharterUri?: string): CharterDTOs.VendorAddOutcome {
-    const rootName = VendorSource.ownCharterName;
+    const rootName = vendorSourcePath.ownCharterName;
     const findVendorFolderUri = (charterName: string) =>
       injectedCharterUri ?? this.#charterRepository.findVendorUri(`${filteredSource.origin.name}/${charterName}`);
     const composeVendorAddOutcome = (charterName: string, sourceCharter: SourceCharter) => ({

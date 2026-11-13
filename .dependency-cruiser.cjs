@@ -14,21 +14,21 @@ module.exports = {
       comment:
         "A module's application and domain declare ports and forget who fills " +
         "them. They import nothing outside the modules — not node:*, not an " +
-        "adapter, and no library but zod, the shape of a value; any other " +
+        "adapter, and no library: zod, the shape of a value, and every " +
         "library a notation or an algebra needs is wrapped by a lib of the " +
-        "domain (below), and knows nothing about where its input came from. " +
+        "kernel's domain (below), and knows nothing about where its input came from. " +
         "This is also what keeps a reading service unable to write (FR-041).",
-      from: { path: "^src/module/[^/]+/(app|domain)/", pathNot: "^src/module/[^/]+/domain/libs/" },
-      to: { pathNot: "^src/module/[^/]+/(app|domain)/|^src/module/[^/]+/module\\.ts$|node_modules/.*/zod/" },
+      from: { path: "^src/module/[^/]+/(app|domain)/", pathNot: "^src/module/shared/domain/libs/" },
+      to: { pathNot: "^src/module/[^/]+/(app|domain)/|^src/module/[^/]+/module\\.ts$" },
     },
     {
       name: "a-library-is-reached-through-a-lib",
       severity: "error",
       comment:
-        "A domain's libs wrap the libraries the hexagon reads with — glob " +
+        "The kernel's domain libs wrap the libraries the hexagon reads with — glob " +
         "strings, YAML, TOML — so nothing else of it imports one, and a parser " +
         "is swapped in one file. They import nothing else outside the modules.",
-      from: { path: "^src/module/[^/]+/domain/libs/" },
+      from: { path: "^src/module/shared/domain/libs/" },
       to: {
         pathNot:
           "^src/module/[^/]+/(app|domain)/|^src/module/[^/]+/module\\.ts$|node_modules/.*/(lodash-es|picomatch|zod|yaml|smol-toml)/",
@@ -40,8 +40,13 @@ module.exports = {
       comment:
         "Each module says in its module.ts what the code outside it may " +
         "reach, and another module reaches it there and nowhere else: its " +
-        "inside can be rearranged without anything outside noticing.",
-      from: { path: "^src/module/([^/]+)/" },
+        "inside can be rearranged without anything outside noticing. A DTO " +
+        "file, and the kernel's DTO entry, are governed by dtos-are-zod-only " +
+        "alone: they reach the entry, which no other file may.",
+      from: {
+        path: "^src/module/([^/]+)/",
+        pathNot: "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$|^src/module/shared/app/port/in/index\\.ts$",
+      },
       to: { path: "^src/module/(?!$1/)[^/]+/", pathNot: "^src/module/[^/]+/module\\.ts$" },
     },
     {
@@ -80,13 +85,26 @@ module.exports = {
       severity: "error",
       comment:
         "Every module's DTOs are read by every driver and parsed by clients. " +
-        "They import zod, the other DTO files and dto() through the kernel's " +
-        "module.ts, and nothing else.",
-      from: { path: "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$" },
+        "A DTO file imports the other DTO and schema files, the kernel's DTO " +
+        "entry (src/module/shared/app/port/in/index.ts) and the kernel's " +
+        "validator lib, and nothing else — never the kernel's module.ts, which " +
+        "reaches its adapters and node:*. The entry reaches those alone.",
+      from: {
+        path: "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$|^src/module/shared/app/port/in/index\\.ts$",
+      },
       to: {
         pathNot:
-          "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$|^src/module/shared/module\\.ts$|node_modules/.*/zod/",
+          "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$|^src/module/shared/app/port/in/index\\.ts$|^src/module/shared/domain/libs/validator\\.lib\\.ts$",
       },
+    },
+    {
+      name: "zod-is-reached-through-the-kernel-validator",
+      severity: "error",
+      comment:
+        "Every schema of the engine is written with the z the kernel's " +
+        "validator lib exports, so zod is imported in one file and swapped in one.",
+      from: { path: "^(src|main\\.ts)", pathNot: "^src/module/shared/domain/libs/validator\\.lib\\.ts$" },
+      to: { path: "node_modules/.*/zod/" },
     },
     {
       name: "page-is-browser-code",

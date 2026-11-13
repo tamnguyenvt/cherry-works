@@ -3,10 +3,12 @@ import type { StampedDocument } from "./stamped-document.value-object.js";
 
 /** One asset of a compiled primitive: its path in the primitive's folder,
  *  what it holds, and whether it is run by its path (FR-160, FR-168). */
-export interface CompiledAsset {
-  readonly assetPath: string;
-  readonly contents: Uint8Array;
-  readonly isExecutable: boolean;
+export class CompiledAsset {
+  constructor(
+    readonly assetPath: string,
+    readonly contents: Uint8Array,
+    readonly isExecutable: boolean,
+  ) {}
 }
 
 /**
@@ -15,7 +17,7 @@ export interface CompiledAsset {
  * own (FR-139) — with its assets beside it (FR-168).
  *
  * Every layer's primitive compiles to one of these, so what the catalogue sends
- * an agent to is a file in the output folder for all of them, the engine's own
+ * an agent to is a file in the compiled output for all of them, the engine's own
  * included. The document is handed in whole: reading a primitive into it is the
  * compiler's. Where it and its assets land is the projection's (CORE-FR-221).
  */

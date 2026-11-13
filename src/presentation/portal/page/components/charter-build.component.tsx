@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableRow } from "./ui/table.js";
 
 /** What a build answered: what it wrote and deleted, or the faults that
  *  refused it. */
-export type BuildAnswer = CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault;
+export type BuildAnswer = CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault;
 
 /**
  * What a build would do, asked of the engine and written nowhere (FR-120):

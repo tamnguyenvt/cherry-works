@@ -8,8 +8,7 @@ import { promisify } from "node:util";
 // Types only, off the promptfoo this pins: what is written to it and read
 // back is held to its own shapes, and nothing of it is bundled.
 import type { OutputFile, UnifiedConfig } from "promptfoo";
-import { z } from "zod";
-import { FolderAddress, type FolderURL, resolveFileUrl } from "../../shared/module.js";
+import { FolderAddress, type FolderURL, resolveFileUrl, z } from "#module/shared/module.js";
 import {
   AdapterFault,
   FailedEvaluationCaseFault,
@@ -17,6 +16,7 @@ import {
   FailedPromptfooInstallFault,
   type ForRunningPromptfoo,
   InvalidEvaluationLogFault,
+  logPath,
   MissingPromptfooResultFault,
   type PromptfooLog,
   type PromptfooTest,
@@ -79,13 +79,6 @@ const PromptfooLogSchema = z.object({
  * repository's log, which version control ignores (CORE-FR-225).
  * Nothing is written to promptfoo's own store (`--no-write`).
  */
-/** The folder every run's folder is kept under, from the repository: the
- *  evaluations' part of the log (CORE-FR-225). */
-const RUNS_FOLDER = ".cw/log/eval/runs";
-
-/** Where each evaluation case runs, in a worktree of its own. */
-const WORKTREES_FOLDER = ".cw/log/eval/worktrees";
-
 export class Promptfoo implements ForRunningPromptfoo {
   readonly #repoFolder: FolderURL;
   readonly #cherryWorksFolder: FolderURL;
@@ -149,7 +142,7 @@ export class Promptfoo implements ForRunningPromptfoo {
   }
 
   async evaluateTest({
-    agent,
+    provider: agentName,
     description,
     prompt,
     workingPath,
@@ -158,7 +151,7 @@ export class Promptfoo implements ForRunningPromptfoo {
     const workingFolderPath = fileURLToPath(
       workingPath === "" ? this.#repoFolder : resolveFileUrl(this.#repoFolder, `${workingPath}/`),
     ).replace(/\/$/, "");
-    const runsFolderPath = join(fileURLToPath(this.#repoFolder), RUNS_FOLDER);
+    const runsFolderPath = join(fileURLToPath(this.#repoFolder), logPath.evalRunsFolderPath);
     await mkdir(runsFolderPath, { recursive: true });
     const runFolderPath = await mkdtemp(join(runsFolderPath, "run-"));
     const logFilePath = join(runFolderPath, "case.json");
@@ -169,7 +162,7 @@ export class Promptfoo implements ForRunningPromptfoo {
     const logBase = {
       logPath: logFilePath,
       createdAt,
-      agent,
+      agent: agentName,
       prompt,
       workingFolderPath,
       outputPath: outputFilePath,
@@ -184,9 +177,9 @@ export class Promptfoo implements ForRunningPromptfoo {
     try {
       const configFilePath = join(configFolderPath, "promptfooconfig.json");
       const isAgentGraded = assertions.some(({ type }) => type === "agent-rubric");
-      const providerId = agent === "codex" ? "openai:codex-sdk" : "anthropic:claude-agent-sdk";
+      const providerId = agentName === "codex" ? "openai:codex-sdk" : "anthropic:claude-agent-sdk";
       const providerConfig =
-        agent === "codex"
+        agentName === "codex"
           ? {
               working_dir: workingFolderPath,
               codex_path_override: "codex",
@@ -203,7 +196,7 @@ export class Promptfoo implements ForRunningPromptfoo {
               apiKeyRequired: false,
             };
       const graderConfig =
-        agent === "codex"
+        agentName === "codex"
           ? {
               working_dir: workingFolderPath,
               codex_path_override: "codex",
@@ -236,13 +229,13 @@ export class Promptfoo implements ForRunningPromptfoo {
                   },
                 }
               : {}),
-            assert: assertions.map(({ type, value: assertionValue }) =>
-              type === "file-read"
+            assert: assertions.map((promptfooAssertion) =>
+              "config" in promptfooAssertion
                 ? {
-                    type: "javascript" as const,
-                    value: `return (${gradeFileRead.toString()})(context.providerResponse, ${JSON.stringify(assertionValue)}, ${JSON.stringify(workingFolderPath)});`,
+                    type: promptfooAssertion.type,
+                    value: `return (${gradeFileRead.toString()})(context.providerResponse, ${JSON.stringify(promptfooAssertion.config.readFilePath)}, ${JSON.stringify(workingFolderPath)});`,
                   }
-                : { type, value: assertionValue },
+                : { type: promptfooAssertion.type, value: promptfooAssertion.value },
             ),
           },
         ],
@@ -271,7 +264,7 @@ export class Promptfoo implements ForRunningPromptfoo {
           // speaking and kept in the saved log as well.
           throw new FailedPromptfooEvalFault(
             `"promptfoo eval" stopped with an error: ${processFault.stderr?.trim() || raisedValue}`,
-            `Check that "${agent}" runs and is signed in here.`,
+            `Check that "${agentName}" runs and is signed in here.`,
             { internal: false, cause: raisedValue },
           );
       }
@@ -284,7 +277,7 @@ export class Promptfoo implements ForRunningPromptfoo {
           internal: false,
         });
       const sessionId = (testResult.response as { sessionId?: string } | undefined)?.sessionId;
-      const sessionPath = sessionId === undefined ? undefined : await this.findSessionLog(agent, sessionId);
+      const sessionPath = sessionId === undefined ? undefined : await this.findSessionLog(agentName, sessionId);
       const promptfooResult: PromptfooTestResult = {
         logPath: logFilePath,
         ...(sessionId === undefined ? {} : { sessionId }),
@@ -311,7 +304,7 @@ export class Promptfoo implements ForRunningPromptfoo {
         ...(Array.isArray(rawResponse?.items) ? rawResponse.items : []),
         ...(Array.isArray(metadataCalls) ? metadataCalls : []),
       ];
-      const savedLog: PromptfooLog = {
+      const savedLog: z.infer<typeof PromptfooLogSchema> = {
         ...logBase,
         ...promptfooResult,
         unmetReasons: promptfooResult.componentResults.filter(({ pass }) => !pass).map(({ reason }) => reason),
@@ -404,18 +397,18 @@ export class Promptfoo implements ForRunningPromptfoo {
     else {
       let folderEntries: Dirent[];
       try {
-        folderEntries = await readdir(join(repositoryFolderPath, RUNS_FOLDER), { withFileTypes: true });
+        folderEntries = await readdir(join(repositoryFolderPath, logPath.evalRunsFolderPath), { withFileTypes: true });
       } catch (readError) {
         if ((readError as NodeJS.ErrnoException).code === "ENOENT") return [];
         throw new UnreadableEvaluationRunsFault(
-          `"${join(repositoryFolderPath, RUNS_FOLDER)}" could not be read.`,
+          `"${join(repositoryFolderPath, logPath.evalRunsFolderPath)}" could not be read.`,
           "Check that the folder of evaluation runs can be read, and run this again.",
           { cause: readError },
         );
       }
       logFilePaths = folderEntries
         .filter((folderEntry) => folderEntry.isDirectory() && folderEntry.name.startsWith("run-"))
-        .map((folderEntry) => join(repositoryFolderPath, RUNS_FOLDER, folderEntry.name, "case.json"));
+        .map((folderEntry) => join(repositoryFolderPath, logPath.evalRunsFolderPath, folderEntry.name, "case.json"));
     }
     const savedLogs: PromptfooLog[] = [];
     for (const savedLogPath of logFilePaths) {
@@ -453,12 +446,14 @@ export class Promptfoo implements ForRunningPromptfoo {
       if (
         logFilePath === undefined &&
         savedLog.workingFolderPath !== repositoryFolderPath &&
-        !savedLog.workingFolderPath.startsWith(`${repositoryFolderPath}/${WORKTREES_FOLDER}/`)
+        !savedLog.workingFolderPath.startsWith(`${repositoryFolderPath}/${logPath.evalWorktreesFolderPath}/`)
       )
         continue;
-      const { sessionId, sessionPath, error, ...requiredFields } = savedLog;
+      // Kept on disk under `agent`, as every log already written names it.
+      const { agent: providerName, sessionId, sessionPath, error, ...requiredFields } = savedLog;
       savedLogs.push({
         ...requiredFields,
+        provider: providerName,
         ...(sessionId === undefined ? {} : { sessionId }),
         ...(sessionPath === undefined ? {} : { sessionPath }),
         ...(error === undefined ? {} : { error }),

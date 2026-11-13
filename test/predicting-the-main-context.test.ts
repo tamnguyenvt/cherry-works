@@ -4,6 +4,7 @@ import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
 import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import type { Answer, ForRunningAgentCli } from "../src/module/runtime/app/port/out/running-agent-cli.port.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
@@ -61,7 +62,7 @@ const holding = (settings: object = { agents: ["claude"] }) => ({
 
 /** The command line and the routes over one repository held in memory, the
  *  agent's command line installed or not. */
-const surfaces = (files: Readonly<Record<string, string>>, agentCli = new InMemoryAgentCli()) => {
+const surfaces = (files: Readonly<Record<string, string>>, agentCli: ForRunningAgentCli = new InMemoryAgentCli()) => {
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources();
   const charterAuthoringApp = authoringCharterOf(
@@ -148,12 +149,12 @@ test("the prediction lists what a session opens with, the largest first, with it
 });
 
 // How close the scaled count comes to the real agent's (EVAL-SC-002) is
-// measured against the real `claude` by `pnpm tokenizer-accuracy`, never here.
+// measured against the real `claude` by `cw context --exact --agent=claude`, never here.
 test("the estimate is the tokenizer's count scaled to the agent's own (EVAL-FR-002)", async () => {
   const agentCli = new InMemoryAgentCli();
   const { cli } = surfaces(holding(), agentCli);
   // The text a skill puts there, as the agent's command line was handed it.
-  await printed(cli, ["context", "--exact"]);
+  await printed(cli, ["context", "--exact", "--agent=claude"]);
   const refactoringPrompt = agentCli.prompts.find((prompt) => prompt.startsWith("refactoring:"))!;
 
   const { text } = await printed(cli, ["context"]);
@@ -209,31 +210,181 @@ test("each mcp is counted by the names of the tools the server lists for it, and
   assert.ok((linearLoad?.data.tokens ?? 0) > 0);
 });
 
-test("counted exactly, each number is the agent's own command line's, and said to be exact (EVAL-FR-004)", async () => {
+/** Every line listed counted exactly, `<estimated>  <exact>  <difference>  <kind>  <id>`. */
+const comparedLoads = (text: string) =>
+  text.split("\n").flatMap((line) => {
+    const [, estimatedTokens, exactTokens, difference, kind, id] =
+      line.match(/^ +([\d,]+) +([\d,]+) +(\S+%|n\/a) {2}(\S+) +(\S+)/) ?? [];
+    return estimatedTokens === undefined
+      ? []
+      : [
+          {
+            estimatedTokens: Number(estimatedTokens.replaceAll(",", "")),
+            exactTokens: Number(exactTokens!.replaceAll(",", "")),
+            difference,
+            kind,
+            id,
+          },
+        ];
+  });
+
+/** An agent's command line that sends the model the estimate's own count of
+ *  a prompt, a tenth over, and nothing of its own for next to nothing: close
+ *  enough to the estimate that no warning is said. */
+class CloseAgentCli implements ForRunningAgentCli {
+  readonly prompts: string[] = [];
+
+  async isInstalled(): Promise<boolean> {
+    return true;
+  }
+
+  async askAgent(prompt: string): Promise<Answer> {
+    this.prompts.push(prompt);
+    const promptWords = prompt.split(/\s+/).filter((word) => word !== "").length;
+    const tokenFactor = new ClaudeProjection(new InMemoryFileReaders()).tokenFactor;
+    return {
+      resultText: "",
+      usage: {
+        inputTokens: prompt === "." ? 0 : Math.round(promptWords * tokenFactor * 1.1),
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+      },
+    };
+  }
+}
+
+test("counted exactly for the agent named, each primitive is listed with its estimate, its exact count and how far apart they are, the totals too (CORE Story 55 scenario 34, EVAL-FR-004, EVAL Story 1 scenario 3)", async () => {
   const agentCli = new InMemoryAgentCli();
   const { cli } = surfaces(holding(), agentCli);
+  const { text: estimatedText } = await printed(cli, ["context"]);
 
-  const { code, text } = await printed(cli, ["context", "--exact"]);
+  const { code, text } = await printed(cli, ["context", "--exact", "--agent=claude"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(text, /in all, counted exactly by claude/);
+  assert.match(text, /claude opens a session with, estimated and counted exactly by claude:/);
   // The command line sends two tokens a word of what it is given, and
   // one word of next to nothing is what it is measured against.
   const refactoringPrompt = agentCli.prompts.find((prompt) => prompt.startsWith("refactoring:"))!;
   const refactoringWords = refactoringPrompt.split(/\s+/).filter((word) => word !== "").length;
-  assert.equal(listedLoads(text).find(({ id }) => id === "refactoring")?.tokens, 2 * refactoringWords - 2);
+  const compared = comparedLoads(text);
+  const refactoringLoad = compared.find(({ id }) => id === "refactoring")!;
+  assert.equal(refactoringLoad.exactTokens, 2 * refactoringWords - 2);
+  // Each estimate is the one `cw context` says, beside it.
+  assert.deepEqual(
+    compared
+      .filter(({ kind }) => kind !== "in")
+      .map(({ estimatedTokens, kind, id }) => ({ tokens: estimatedTokens, kind, id }))
+      .sort((left, right) => left.id!.localeCompare(right.id!)),
+    listedLoads(estimatedText).sort((left, right) => left.id!.localeCompare(right.id!)),
+  );
+  // How far apart, as a share of the exact count.
+  const refactoringDifference =
+    ((refactoringLoad.estimatedTokens - refactoringLoad.exactTokens) / refactoringLoad.exactTokens) * 100;
+  assert.equal(
+    refactoringLoad.difference,
+    `${refactoringDifference > 0 ? "+" : ""}${refactoringDifference.toFixed(1)}%`,
+  );
+  // The totals, of what a session opens with alone.
+  const [sessionPart = ""] = text.split("Loaded when");
+  const sessionLoads = comparedLoads(sessionPart).filter(({ id }) => id !== "all");
+  const totalLine = text.split("\n").find((line) => line.endsWith("in all"))!;
+  const [, estimatedTotal, exactTotal] = totalLine.match(/^ +([\d,]+) +([\d,]+) +\S+%/) ?? [];
+  assert.equal(
+    Number(estimatedTotal!.replaceAll(",", "")),
+    sessionLoads.reduce((sum, { estimatedTokens }) => sum + estimatedTokens, 0),
+  );
+  assert.equal(
+    Number(exactTotal!.replaceAll(",", "")),
+    sessionLoads.reduce((sum, { exactTokens }) => sum + exactTokens, 0),
+  );
   assert.ok(agentCli.prompts.includes("."));
+  // A guide naming files is listed apart, with both counts too.
+  assert.ok(comparedLoads(text.split("Loaded when")[1] ?? "").some(({ id }) => id === "no-any"));
+});
+
+test("totals more than 15% apart are warned of, and the count still succeeds (CORE Story 55 scenario 34, EVAL-FR-004, EVAL-SC-002)", async () => {
+  // Two tokens a word, against the estimate's 1.43: far past 15%.
+  const { cli } = surfaces(holding(), new InMemoryAgentCli());
+
+  const { code, problem } = await printed(cli, ["context", "--exact", "--agent=claude"]);
+
+  assert.equal(code, EXIT_OK);
+  assert.match(problem, /The estimate is [\d.]+% from the exact count, past the 15% EVAL-SC-002 allows\./);
+});
+
+test("totals within 15% are said to be within it, and no warning is said (CORE Story 55 scenario 34, EVAL-FR-004, EVAL-SC-002)", async () => {
+  const { cli } = surfaces(holding(), new CloseAgentCli());
+
+  const { code, text, problem } = await printed(cli, ["context", "--exact", "--agent=claude"]);
+
+  assert.equal(code, EXIT_OK);
+  assert.equal(problem, "");
+  assert.match(text, /Within the 15% EVAL-SC-002 allows\./);
+});
+
+test("counted exactly with no agent named is refused, naming --agent, and nothing is counted (CORE Story 55 scenario 35, EVAL-FR-004)", async () => {
+  const agentCli = new InMemoryAgentCli();
+  const { cli } = surfaces(holding(), agentCli);
+
+  const { code, text, problem } = await printed(cli, ["context", "--exact"]);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.equal(text, "");
+  assert.match(problem, /--agent/);
+  assert.deepEqual(agentCli.prompts, []);
 });
 
 test("counted exactly with no command line installed is refused, saying the estimate needs nothing (EVAL-FR-004)", async () => {
   const agentCli = new InMemoryAgentCli(false);
   const { cli } = surfaces(holding(), agentCli);
 
-  const { code, problem } = await printed(cli, ["context", "--exact"]);
+  const { code, problem } = await printed(cli, ["context", "--exact", "--agent=claude"]);
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problem, /not installed/);
   assert.match(problem, /without --exact/);
+  assert.deepEqual(agentCli.prompts, []);
+});
+
+test("counted exactly for an agent it cannot count through is refused, saying the estimate needs nothing (EVAL-FR-004)", async () => {
+  const agentCli = new InMemoryAgentCli();
+  const { cli } = surfaces(holding({ agents: ["claude", "codex"] }), agentCli);
+
+  const { code, problem } = await printed(cli, ["context", "--exact", "--agent=codex"]);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(problem, /not supported for codex yet/);
+  assert.match(problem, /without --exact/);
+  assert.deepEqual(agentCli.prompts, []);
+});
+
+test("counted exactly for an agent the repository does not compile for is refused, and nothing is counted (EVAL-FR-004)", async () => {
+  const agentCli = new InMemoryAgentCli();
+  const { cli } = surfaces(holding({ agents: ["codex"] }), agentCli);
+
+  const { code, problem } = await printed(cli, ["context", "--exact", "--agent=claude"]);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(problem, /does not compile for claude/);
+  assert.deepEqual(agentCli.prompts, []);
+});
+
+test("an agent named without --exact narrows the estimate to that agent, and one not compiled for is refused (EVAL-FR-001)", async () => {
+  const agentCli = new InMemoryAgentCli();
+  const { cli } = surfaces(holding({ agents: ["claude", "codex"] }), agentCli);
+
+  const { code, text } = await printed(cli, ["context", "--agent=codex"]);
+  const { code: uncompiledCode, problem: uncompiledProblem } = await printed(
+    surfaces(holding({ agents: ["codex"] }), agentCli).cli,
+    ["context", "--agent=claude"],
+  );
+
+  assert.equal(code, EXIT_OK);
+  assert.match(text, /codex opens a session with:/);
+  assert.doesNotMatch(text, /claude opens/);
+  assert.match(text, /in all, estimated/);
+  assert.equal(uncompiledCode, EXIT_FAILURE);
+  assert.match(uncompiledProblem, /does not compile for claude/);
   assert.deepEqual(agentCli.prompts, []);
 });
 

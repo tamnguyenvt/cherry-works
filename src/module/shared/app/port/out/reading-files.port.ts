@@ -39,7 +39,7 @@ export interface ForReadingFiles {
 
   /** The text of one file that may not be there, and nothing where it is not.
    *  What is asked of a file the engine allows to be absent: the settings a
-   *  repository configured itself with, and the settings file a host already
+   *  repository configured itself with, and the settings file an agent already
    *  keeps that a build has to write into rather than over. */
   readIfThere(filePath: string): Promise<string | undefined>;
 

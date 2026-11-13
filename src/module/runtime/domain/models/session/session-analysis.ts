@@ -1,5 +1,5 @@
-import type { SessionAnalysisLine } from "./session-analysis-line.js";
-import type { SessionAnalysisSummary } from "./session-analysis-summary.js";
+import type { SessionAnalysisLine } from "./session-analysis-line.value-object.js";
+import { SessionAnalysisSummary } from "./session-analysis-summary.js";
 import { SessionSpan } from "./session-span.value-object.js";
 
 /**
@@ -23,18 +23,21 @@ export class SessionAnalysis {
     const lastAnalysisLineBySessionId = new Map<string, SessionAnalysisLine>();
     for (const sessionAnalysisLine of this.sessionAnalysisLines) {
       const lastAnalysisLine = lastAnalysisLineBySessionId.get(sessionAnalysisLine.sessionId);
-      if (lastAnalysisLine === undefined || Date.parse(sessionAnalysisLine.time) >= Date.parse(lastAnalysisLine.time))
+      if (
+        lastAnalysisLine === undefined ||
+        Date.parse(sessionAnalysisLine.stopTimeText) >= Date.parse(lastAnalysisLine.stopTimeText)
+      )
         lastAnalysisLineBySessionId.set(sessionAnalysisLine.sessionId, sessionAnalysisLine);
     }
     const sessions = [...lastAnalysisLineBySessionId.values()]
       .filter((lastAnalysisLine) => {
-        const stopDay = SessionSpan.localDayOf(new Date(lastAnalysisLine.time));
+        const stopDay = SessionSpan.localDayOf(new Date(lastAnalysisLine.stopTimeText));
         return stopDay >= span.since && stopDay <= span.until;
       })
-      .map(({ sessionId, model, time, tokens, total }) => ({
+      .map(({ sessionId, model, stopTimeText, tokens, total }) => ({
         sessionId,
         model,
-        lastStopAt: time,
+        lastStopAt: stopTimeText,
         tokens,
         totalTokens: total,
       }))
@@ -42,12 +45,7 @@ export class SessionAnalysis {
         (session, otherSession) =>
           otherSession.totalTokens - session.totalTokens || session.sessionId.localeCompare(otherSession.sessionId),
       );
-    return {
-      span,
-      sessions,
-      sessionCount: sessions.length,
-      totalTokens: sessions.reduce((total, session) => total + session.totalTokens, 0),
-    };
+    return new SessionAnalysisSummary(span, sessions);
   }
 
   /** Each day of the span a session's last stop fell on, summarized as a span

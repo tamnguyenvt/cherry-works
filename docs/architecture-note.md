@@ -65,9 +65,18 @@ Every spec names each thing by one term, and no term names two things:
 | One primitive's file | a primitive's file | charter file |
 | The whole | the charter | charter root |
 | The per-agent adapter laying the compiled output | projection | — |
-| What a build compiles | the compiled output, a compiled file | projection, projected file |
+| What a build compiles | the compiled output, a compiled file | projection, projected file, output folder, build's output |
+| What compiles a charter and applies it | the engine | harness |
+| `.cw/`: the charter, the compiled output and the log, the settings apart | the workspace | — |
+| The store laying the compiled output and each agent's files onto a checkout | the local output | — |
 
 A test or an eval case is kept beside the charter's primitives and is none of them.
+
+ADR-001 was written before this glossary and is never rewritten: its
+"workspace" is the module of the settings, and its "logs" are diagnostics.
+The code keeps that module's name, `src/module/workspace/`: the module that
+keeps the settings and sets a repository up, which the specs call setup and
+the settings, never the workspace.
 
 Every later story, FR and SC writes these terms, and `test/naming-each-thing-once-in-the-specs.test.ts` refuses the ones set aside. A user's words quoted under **Input** keep what they said, but for a term the test refuses.
 
@@ -77,7 +86,7 @@ Story: [CORE Story 42](../specs/spec-core.md#core-story-42---keep-the-engines-ar
 
 Every file under `src/`, but the portal's page, is named as NestJS names one:
 the subject in kebab-case, then the role its folder gives it —
-`build-charter.service.ts`, `managing-charter.use-case.ts`,
+`build-charter.service.ts`, `authoring-charter.use-case.ts`,
 `managing-charter.port.ts`, `file-charter.repository.ts`,
 `in-memory-file-output.adapter.ts`, `adapter.fault.ts`, `add.command.ts`,
 `charter-root.factory.ts`, `primitive-layer.value-object.ts`. A model under a
@@ -121,10 +130,11 @@ A value object is a value an entity or an aggregate holds as a property
 `<subject>.value-object.ts`, beside the models that hold it or in its
 module's `domain/value-objects/`; a closed set of names is one, one instance
 per name (`PrimitiveLayer.REPO`, `McpAuthMethod.OAUTH`). A value no model
-holds is no value object: the workspace's folders and files are each
-module's constants, in its `domain/constants.ts` (`CHARTER_FOLDER_PATH`,
-`VENDORS_FOLDER_PATH`, `TEST_FOLDER_PATH`, `EVAL_FOLDER_PATH`,
-`LOG_FOLDER_PATH`, `SETTINGS_FILE_PATH`), never a class of static members. The
+holds is no value object: the folders and files each store of `cw`'s
+keeps are that module's layout, one model made once in its `domain/constants.ts`
+(`charterPath`, a `CharterPath`; `logPath`, a `LogPath`; `settingsPath`, a
+`SettingsPath`), as the output's layout is `outputPath`, never a loose
+constant. The
 name (`LayerName`, `McpAuthMethodName`, `AgentProviderName`) stays only where
 it crosses an edge — a stored file, a DTO, a driver port — and becomes the
 value where it comes in.
@@ -169,7 +179,7 @@ needs by its class; an item the build did not add raises
 Story: [CORE Story 53](../specs/spec-core.md#core-story-53---keep-the-whole-engine-to-its-naming-and-fault-guides-priority-p2) ([EVAL-FR-021](../specs/spec-eval.md#eval-fr-021))
 
 An evaluation reads the charter and its cases as the store holds them now,
-committed or not, builds them, and lays the built output into each case's
+committed or not, builds them, and lays the compiled output into each case's
 worktree of the last commit, where the agent runs, through the output's and
 each projection's factory method for a checkout. The worktree is only a
 clean place for the agent; the working tree is left as it was.

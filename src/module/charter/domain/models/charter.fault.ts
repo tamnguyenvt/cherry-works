@@ -144,19 +144,13 @@ export class UntestedPrimitiveFault extends DomainFault {}
  *  frontmatter, or headers a skill will not take (CORE-FR-184). */
 export class InvalidSourceSkillFault extends DomainFault {}
 
-/** TOML text that does not parse, an agent's configuration file among it. */
-export class UnreadableTomlFault extends DomainFault {}
-
-/** A table holding a value TOML cannot write. */
-export class UnwritableTomlFault extends DomainFault {}
-
 /** A primitive an author answered, asked for an index.md it has not got. */
 export class MissingIndexTextFault extends DomainFault {}
 
-/** A build's output holding no item of a class every build adds: the
+/** The compiled output holding no item of a class every build adds: the
  *  engine's own fault (FR-021). */
 export class MissingCharterOutputItemFault extends DomainFault {}
 
-/** A build's output item of a class the output's layout places nowhere: the
+/** An item of the compiled output, of a class the output's layout places nowhere: the
  *  engine's own fault (CORE-FR-220). */
 export class UnplaceableCharterOutputItemFault extends DomainFault {}

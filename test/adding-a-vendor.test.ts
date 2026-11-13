@@ -9,6 +9,7 @@ import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory
 import { Commander } from "../src/presentation/cli/cli.commander.js";
 import { EXIT_FAILURE, EXIT_OK, EXIT_USAGE } from "../src/presentation/cli/commands/command.interface.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { answerOf } from "./answer-of.js";
 import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
@@ -122,15 +123,20 @@ test("a version is what the source is pinned to", async () => {
   assert.match(commandOutput, /v1\.2\.0/);
 });
 
-test("a source holding no charter folder is refused, saying how to make it one", async () => {
+test("a source holding neither a charter folder nor a skill at the version asked for is refused as holding neither, saying how to make it one, and nothing is installed (CORE Story 2 scenario 4, CORE-FR-042, CORE Story 55 scenario 8)", async () => {
   const sourceFetcher = new InMemorySources();
   sourceFetcher.sourcesWithoutSubFolder.push("team/notes");
 
-  const { code, commandOutput } = await running(["vendor", "add", "team/notes"], sourceFetcher);
+  const { code, commandOutput, fileReaders } = await running(
+    ["vendor", "add", "team/notes", "--ref", "v1.2.0"],
+    sourceFetcher,
+  );
 
   assert.equal(code, EXIT_FAILURE);
   assert.deepEqual(sourceFetcher.checkedOutFolders, []);
-  assert.match(commandOutput, /no "\.cw\/charter"/);
+  assert.deepEqual(await vendoredFiles(fileReaders), []);
+  assert.match(commandOutput, /no "\.cw\/charter" and no SKILL\.md under "skills\/"/);
+  assert.match(commandOutput, /at the version asked for/);
 });
 
 test("a source that installs vendors of its own is refused: vendoring is one level deep", async () => {
@@ -207,6 +213,54 @@ test("an installed charter is taken away by the folder it was installed as, owne
     "In hand.\n",
     "the work in hand is as it was",
   );
+});
+
+test("vendor commands leave what the engine brings alone: it is listed as no vendor, removed by no name, and still read after a vendor goes (CORE Story 12 scenario 6, FR-023, CORE Story 55 scenario 3)", async () => {
+  const builtSkillUrls = [".cw/out/skill/cw-author/index.md", ".claude/skills/cw-author/SKILL.md"].map(
+    (path) => new URL(`file://${repo}/${path}`),
+  );
+  const fileReaders = fileReadersHoldingVendor("team/charter/root");
+  for (const builtSkillUrl of builtSkillUrls) fileReaders.writeFile(builtSkillUrl, "As the last build wrote it.\n");
+
+  const listingRun = await running(["vendor", "list"], undefined, fileReaders);
+  assert.equal(listingRun.code, EXIT_OK, listingRun.commandOutput);
+  assert.match(listingRun.commandOutput, /team\/charter\/root/);
+  assert.doesNotMatch(listingRun.commandOutput, /builtin|built into cw|cw-author/);
+  for (const builtinName of ["builtin", "cw-author", "builtin/skill/cw-author"]) {
+    const removingRun = await running(["vendor", "remove", builtinName], undefined, fileReaders);
+    assert.equal(removingRun.code, EXIT_FAILURE, builtinName);
+    assert.match(removingRun.commandOutput, /No vendor folder is named/, builtinName);
+  }
+  assert.equal((await running(["vendor", "remove", "team/charter/root"], undefined, fileReaders)).code, EXIT_OK);
+
+  for (const builtSkillUrl of builtSkillUrls)
+    assert.equal(await fileReaders.readFile(builtSkillUrl), "As the last build wrote it.\n", builtSkillUrl.href);
+  const cwAuthorExplanation = answerOf(
+    await authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter()).explainPrimitive(
+      "cw-author",
+    ),
+  );
+  assert.match(JSON.stringify(cwAuthorExplanation), /"builtin"/);
+});
+
+test("a vendor laid out the old way, removed and installed again, lands in its owner and repository folder, and the old folder is gone (CORE Story 30 scenario 4, FR-050, CORE Story 55 scenario 7)", async () => {
+  const oldGuideUrl = new URL(`file://${repo}/.cw/charter/vendor/charter/guide/one/index.md`);
+  const fileReaders = new InMemoryFileReaders({ [oldGuideUrl.href]: "---\nkind: guide\n---\n" });
+  const sourceFetcher = new InMemorySources(fileReaders);
+  assert.equal((await running(["vendor", "list"], sourceFetcher, fileReaders)).code, EXIT_FAILURE);
+
+  // What the refusal says to do: delete the folder, then install the source again.
+  fileReaders.removeFile(oldGuideUrl);
+  const { code, commandOutput } = await running(["vendor", "add", "team/charter"], sourceFetcher, fileReaders);
+
+  assert.equal(code, EXIT_OK, commandOutput);
+  const vendoredPaths = await vendoredFiles(fileReaders);
+  assert.ok(vendoredPaths.length > 0);
+  for (const vendoredPath of vendoredPaths)
+    assert.ok(vendoredPath.startsWith(`file://${repo}/.cw/charter/vendor/team/charter/root/primitive/`), vendoredPath);
+  const listingRun = await running(["vendor", "list"], sourceFetcher, fileReaders);
+  assert.equal(listingRun.code, EXIT_OK, listingRun.commandOutput);
+  assert.match(listingRun.commandOutput, /team\/charter\/root/);
 });
 
 test("a source an earlier version named by its repository alone is refused, saying to install it again, and nothing is taken away (FR-180)", async () => {

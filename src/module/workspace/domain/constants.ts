@@ -1,15 +1,10 @@
 /**
- * The workspace module's constants: where a repository keeps what it
- * configured itself with, from its root (CORE-FR-231), and the ignore file of
- * the workspace beside it, with the line of it that keeps the log out of
- * version control (CORE-FR-225).
+ * The workspace module's constants: the layout of the store `cw` keeps a
+ * repository's settings in, one value (CORE-FR-215, CORE-FR-231).
  */
 
-/** The settings file, from the repository's root. */
-export const SETTINGS_FILE_PATH = ".cw/settings.json";
+import { SettingsPath } from "./models/settings/settings-path.js";
 
-/** The workspace's ignore file, from the repository's root. */
-export const GITIGNORE_FILE_PATH = ".cw/.gitignore";
-
-/** The line of the ignore file that keeps the log out of version control. */
-export const LOG_IGNORE_LINE = "log/";
+/** The settings store's layout, made once: every file of it is asked of this
+ *  (CORE-FR-225, CORE-FR-231). */
+export const settingsPath = new SettingsPath();

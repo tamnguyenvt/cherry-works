@@ -1,5 +1,4 @@
 import prompts from "prompts";
-import type { CharterDTOs } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
@@ -87,20 +86,54 @@ export class AddCommand implements Command<typeof OPTIONS> {
         exitCode: EXIT_FAILURE,
         problemText: `"${repeatedField}" holds one line, and was typed ${typedHeaders?.[repeatedField]?.length} times.\n  Type "--header ${repeatedField}=..." once.\n`,
       };
-    const answers =
-      typedHeaders !== undefined
-        ? Object.fromEntries(
-            Object.entries(typedHeaders).map(([field, values]) => [
-              field,
-              listFields.has(field) ? values : (values[0] ?? ""),
-            ]),
-          )
-        : await this.#askHeaderAnswers(
-            primitiveHeaders.filter((primitiveHeader) => primitiveHeader.required),
-            kind ?? "",
-          );
-    if (typeof answers === "string") return { exitCode: EXIT_FAILURE, problemText: answers };
-    const primitiveDTO = await charterAuthoringApp.addPrimitive(kind ?? "", id ?? "", answers);
+    let headerAnswers: Record<string, string | readonly string[]>;
+    if (typedHeaders !== undefined)
+      headerAnswers = Object.fromEntries(
+        Object.entries(typedHeaders).map(([field, values]) => [
+          field,
+          listFields.has(field) ? values : (values[0] ?? ""),
+        ]),
+      );
+    else {
+      // Every header this kind requires, answered by whoever is at the
+      // terminal: one question per header, in the order the engine named them,
+      // each asked as what it holds — one line of text, or a list of names
+      // typed with commas between its entries, which is what the file holds it
+      // as.
+      //
+      // Nobody at the terminal is refused rather than answered with blanks:
+      // every header here is one its kind requires, so a file written without
+      // them is a file the next build refuses, and writing it would leave the
+      // author to find that out later (FR-035 is setup's, and this asks for
+      // what nothing can default).
+      const requiredHeaders = primitiveHeaders.filter((primitiveHeader) => primitiveHeader.required);
+      if (!process.stdin.isTTY)
+        return {
+          exitCode: EXIT_FAILURE,
+          problemText: `A ${kind ?? ""} requires ${requiredHeaders.map((requiredHeader) => `"${requiredHeader.field}"`).join(", ")}, and nobody is at the terminal to answer.\n  Run "cw add" where you can answer, or author the file under the charter yourself.\n`,
+        };
+      const promptAnswers = await prompts(
+        requiredHeaders.map(({ field, shape }) =>
+          shape === "line"
+            ? { type: "text" as const, name: field, message: `${field}?` }
+            : {
+                type: "list" as const,
+                name: field,
+                message: `${field}?`,
+                // `prompts` hands an answer left empty back as [""].
+                format: (entries: readonly string[]) =>
+                  entries.map((answerLine) => answerLine.trim()).filter((answerLine) => answerLine !== ""),
+              },
+        ),
+      );
+      if (requiredHeaders.some((requiredHeader) => promptAnswers[requiredHeader.field] === undefined))
+        return {
+          exitCode: EXIT_FAILURE,
+          problemText: 'This was stopped before it had its answers, so nothing was written.\n  Run "cw add" again.\n',
+        };
+      headerAnswers = promptAnswers;
+    }
+    const primitiveDTO = await charterAuthoringApp.addPrimitive(kind ?? "", id ?? "", headerAnswers);
 
     if (primitiveDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveDTO) };
     if (primitiveDTO.type === "Faults")
@@ -122,48 +155,5 @@ export class AddCommand implements Command<typeof OPTIONS> {
         "",
       ].join("\n"),
     };
-  }
-
-  /**
-   * Every header this kind requires, answered by whoever is at the terminal.
-   *
-   * One question per header, in the order the engine named them, each asked as
-   * what it holds: one line of text, or a list of names typed with commas between
-   * them.
-   *
-   * Nobody at the terminal is refused rather than answered with blanks: every
-   * header here is one its kind requires, so a file written without them is a
-   * file the next build refuses, and writing it would leave the author to find
-   * that out later (FR-035 is setup's, and this asks for what nothing can default).
-   * What comes back then is what to report, in place of the answers.
-   */
-  async #askHeaderAnswers(
-    requiredHeaders: readonly CharterDTOs.PrimitiveHeader["data"][],
-    kind: string,
-  ): Promise<Record<string, string | readonly string[]> | string> {
-    if (!process.stdin.isTTY)
-      return `A ${kind} requires ${requiredHeaders.map((requiredHeader) => `"${requiredHeader.field}"`).join(", ")}, and nobody is at the terminal to answer.\n  Run "cw add" where you can answer, or author the file under the charter yourself.\n`;
-
-    // One question per header, asked as what it holds: one line of text, or a list
-    // of names typed with commas between its entries, which is what the file
-    // holds it as.
-    const answers = await prompts(
-      requiredHeaders.map(({ field, shape }) =>
-        shape === "line"
-          ? { type: "text" as const, name: field, message: `${field}?` }
-          : {
-              type: "list" as const,
-              name: field,
-              message: `${field}?`,
-              // `prompts` hands an answer left empty back as [""].
-              format: (entries: readonly string[]) =>
-                entries.map((answerLine) => answerLine.trim()).filter((answerLine) => answerLine !== ""),
-            },
-      ),
-    );
-    if (requiredHeaders.some((requiredHeader) => answers[requiredHeader.field] === undefined))
-      return 'This was stopped before it had its answers, so nothing was written.\n  Run "cw add" again.\n';
-
-    return answers;
   }
 }

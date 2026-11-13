@@ -181,7 +181,43 @@ test("the package failing to install publishes nothing, and says so (SDK Story 4
   );
 });
 
-test("the tests failing name the package, and publish nothing (SDK Story 4 scenario 2)", async () => {
+test("a change not committed is refused, saying so, and nothing is published (CORE Story 15 scenario 2, CORE-FR-134, CORE Story 55 scenario 8)", async () => {
+  await inARelease(
+    {
+      currentVersion: "1.0.0",
+      nextVersion: "1.1.0",
+      releaseMode: "uncommitted",
+      builtContractText: LAST_CONTRACT,
+      lastContractText: LAST_CONTRACT,
+    },
+    async (releaseRun, fixtureFolder) => {
+      assert.equal(releaseRun.status, 1);
+      assert.match(releaseRun.stderr, /^Release refused: the working tree holds uncommitted changes\./m);
+      assertNothingReleased(await releaseCommandsIn(fixtureFolder));
+      assert.equal(JSON.parse(await readFile(join(fixtureFolder, "package.json"), "utf8")).version, "1.0.0");
+    },
+  );
+});
+
+test("the installed package failing to build a fresh repository publishes nothing, naming the command (CORE Story 15 scenario 4, CORE-FR-135, CORE Story 55 scenario 8)", async () => {
+  await inARelease(
+    {
+      currentVersion: "1.0.0",
+      nextVersion: "1.1.0",
+      releaseMode: "cw-build-fails",
+      builtContractText: LAST_CONTRACT,
+      lastContractText: LAST_CONTRACT,
+    },
+    async (releaseRun, fixtureFolder) => {
+      assert.equal(releaseRun.status, 1);
+      assert.match(releaseRun.stderr, /^Release refused: the installed "cw build" fails on a fresh repository\./m);
+      assertNothingReleased(await releaseCommandsIn(fixtureFolder));
+      assert.equal(JSON.parse(await readFile(join(fixtureFolder, "package.json"), "utf8")).version, "1.0.0");
+    },
+  );
+});
+
+test("the tests failing name the package, and publish nothing (SDK Story 4 scenario 2, CORE Story 15 scenario 2)", async () => {
   await inARelease(
     {
       currentVersion: "1.0.0",

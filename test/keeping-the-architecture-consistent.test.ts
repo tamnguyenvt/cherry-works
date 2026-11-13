@@ -21,7 +21,7 @@ const fileUrlsUnder = (folderPath: string, recursive = false): readonly URL[] =>
     const folderUrl = new URL(folderPath, moduleUrl);
     if (!existsSync(folderUrl)) return [];
     return readdirSync(folderUrl, { recursive, encoding: "utf8" })
-      .filter((filePath) => /\.[a-z]+$/.test(filePath))
+      .filter((filePath) => /\.[a-z]+$/.test(filePath) && !/\.probe\./.test(filePath))
       .map((filePath) => new URL(filePath, folderUrl));
   });
 const fileNameOf = (fileUrl: URL): string => fileUrl.pathname.split("/").at(-1)!;
@@ -276,7 +276,10 @@ test("every file of src is named <kebab-subject>.<role>, but a model, a value ob
   const sourceFolderUrl = new URL("src/", repositoryUrl);
   const misnamedPaths = readdirSync(sourceFolderUrl, { recursive: true, encoding: "utf8" })
     .filter(
-      (sourcePath) => !sourcePath.startsWith("presentation/portal/page/") && /\.(ts|mjs|d\.mts|md)$/.test(sourcePath),
+      (sourcePath) =>
+        !sourcePath.startsWith("presentation/portal/page/") &&
+        !/\.probe\./.test(sourcePath) &&
+        /\.(ts|mjs|d\.mts|md)$/.test(sourcePath),
     )
     .filter((sourcePath) => {
       const fileName = sourcePath.split("/").at(-1)!;
@@ -312,5 +315,5 @@ test("each renamed use case answers through its driver port as it did (CORE Stor
   assert.equal((await charterAuthoringApp.listKinds()).type, "PrimitiveKinds");
   assert.equal((await charterAuthoringApp.listVendors()).type, "VendorFolders");
   assert.equal((await charterAuthoringApp.listTestSuites()).type, "TestSuites");
-  assert.equal((await charterRuntimeApp.previewCharterBuild()).type, "PlanSummary");
+  assert.equal((await charterRuntimeApp.previewCharterBuild()).type, "ProjectionPlanSummary");
 });

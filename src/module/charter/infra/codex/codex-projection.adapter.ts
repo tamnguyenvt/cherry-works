@@ -3,9 +3,9 @@ import {
   type CharterOutput,
   type CharterRoot,
   type MainContextText,
-  mergeTomlText,
   type ProviderComponent,
   StampedDocumentSpec,
+  TomlLib,
   UnbuiltCheckoutAdapterFault,
   WritePlan,
 } from "../../app/port/out/managing-local-agent-output.port.js";
@@ -30,7 +30,7 @@ const CODEX_PLACE_BY_KIND: Readonly<Record<string, (id: string) => string>> = {
 };
 
 /** Folders no nested entry file is looked for in: the repository's own
- *  machinery and every host's. */
+ *  machinery and every agent's. */
 const UNSEARCHED_FOLDERS = [".git", ".cw", ".claude", ".codex", ".agents", "node_modules"];
 
 /** What starts and ends the charter's section of an entry file. */
@@ -81,7 +81,7 @@ export class CodexProjection extends AgentProjection {
   ): string {
     switch (component.kind) {
       case "config":
-        return mergeTomlText(currentText, laidText, place);
+        return TomlLib.mergeTomlText(currentText, laidText, place);
       case "entry-file":
         return mergeEntryFileText(currentText, laidText);
       default:

@@ -96,7 +96,7 @@ const progressReporter: ForReportingProgress = { reportProgress() {}, reportProb
 const clock: ForTellingTime = { tellTime() { return new Date(); } };
 const tokenCounter: ForCountingTokens = { countTokens(text) { return text.length; } };
 const shell: ForRunningShellCommands = { async runShellCommand(): Promise<ShellCommandResult> { return { exitCode: 0, stdout: '', stderr: '' }; } };
-const worktrees: ForKeepingWorktrees = { async addWorktree() {}, async removeWorktree() {} };
+const worktrees: ForKeepingWorktrees = { worktreesFolderPath: '.worktrees', async addWorktree() {}, async removeWorktree() {} };
 const promptfooTestResult: PromptfooTestResult = { success: true, totalTokens: 0, componentResults: [] };
 const promptfooRunner: ForRunningPromptfoo = {
   installFolderPath: '/promptfoo', async isInstalled() { return true; }, async installPromptfoo() {},
@@ -202,7 +202,8 @@ test("the installed library holds the engine and the adapters cw is composed of,
   );
   const defaultAdapterNames = [
     ...new Set([...composingSource.matchAll(/\bnew ([A-Z]\w+)\(/g)].map(([, adapterName]) => adapterName!)),
-  ].filter((adapterName) => adapterName !== "URL");
+    // A fault the composition raises is no adapter.
+  ].filter((adapterName) => adapterName !== "URL" && !adapterName.endsWith("Fault"));
   assert.ok(defaultAdapterNames.length >= 20, defaultAdapterNames.join(", "));
   runConsumerCode(`
 import assert from 'node:assert/strict';
@@ -461,7 +462,7 @@ const noBareAnswer: [BareAnswered<ForAuthoringCharter>, BareAnswered<ForBuilding
 async function textOf(charterBuildingApp: ForBuildingCharter): Promise<string> {
   const buildAnswer = await charterBuildingApp.buildCharter();
   switch (buildAnswer.type) {
-    case 'PlanSummary': return buildAnswer.data.added.join('\\n');
+    case 'ProjectionPlanSummary': return buildAnswer.data.added.join('\\n');
     case 'FaultsByFile': return Object.keys(buildAnswer.data.files).join('\\n');
     case 'Fault': return buildAnswer.data.name + ': ' + buildAnswer.data.message + ' ' + buildAnswer.data.fix;
   }
@@ -505,7 +506,7 @@ for (const primitiveId of ['cw-author', 'cw-session-tokens-counter', 'cw-session
 const counterPrimitive = await charterAuthoringApp.openPrimitive('cw-session-tokens-counter');
 assert.ok(counterPrimitive.data.body.includes('session-analysis.jsonl'));
 const buildOutcome = await charterBuildingApp.buildCharter();
-assert.equal(buildOutcome.type, 'PlanSummary');
+assert.equal(buildOutcome.type, 'ProjectionPlanSummary');
 const scriptBytes = fileBytesByAddress.get(fileAddressOf('.cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs').href);
 assert.ok(scriptBytes instanceof Uint8Array);
 assert.ok(new TextDecoder().decode(scriptBytes).includes('appendFile'));
@@ -559,7 +560,7 @@ const settingsAnswer = await workspaceApp.readWorkspaceSettings();
 assert.equal(settingsAnswer.type, 'WorkspaceSettings', JSON.stringify(settingsAnswer));
 assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
 const buildAnswer = await engineApp.charterBuildingApp.buildCharter();
-assert.equal(buildAnswer.type, 'PlanSummary', JSON.stringify(buildAnswer));
+assert.equal(buildAnswer.type, 'ProjectionPlanSummary', JSON.stringify(buildAnswer));
 const mainContextAnswer = await engineApp.charterBuildingApp.predictMainContext();
 assert.equal(mainContextAnswer.type, 'MainContexts', JSON.stringify(mainContextAnswer));
 assert.ok(countedTextCount > 0);
@@ -633,7 +634,7 @@ test("setup through the installed engine keeps settings, empty kind files and it
     memoryAuthoringConsumerCode +
       String.raw`
 const setupOutcome = await setUp();
-assert.equal(setupOutcome.type, 'PlanSummary', JSON.stringify(setupOutcome));
+assert.equal(setupOutcome.type, 'ProjectionPlanSummary', JSON.stringify(setupOutcome));
 assert.deepEqual(JSON.parse(await fileReader.readIfThere('.cw/settings.json')), { agents: ['claude'] });
 const primitiveKinds = await charterAuthoringApp.listKinds();
 for (const primitiveKind of Object.keys(primitiveKinds.data)) {
@@ -658,7 +659,7 @@ assert.match(await fileReader.readIfThere('.cw/charter/primitive/guide/clear-bou
 const doctorOutcome = await charterBuildingApp.diagnoseCharter();
 assert.equal(doctorOutcome.data.errorCount, 0, JSON.stringify(doctorOutcome));
 const buildOutcome = await charterBuildingApp.buildCharter();
-assert.equal(buildOutcome.type, 'PlanSummary', JSON.stringify(buildOutcome));
+assert.equal(buildOutcome.type, 'ProjectionPlanSummary', JSON.stringify(buildOutcome));
 assert.match(await fileReader.readIfThere('.cw/out/guide/clear-boundary/index.md'), /Keep the boundary clear\./);
 assert.equal(forbiddenCallCount, 0);
 `,
@@ -693,7 +694,7 @@ await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', guideHeaders, 
 const assetFile = '.cw/charter/primitive/guide/clear-boundary/a #%.bin';
 await fileWriter.writeFile(assetFile, new Uint8Array([0, 255, 128, 13, 10]));
 const buildOutcome = await charterBuildingApp.buildCharter();
-assert.equal(buildOutcome.type, 'PlanSummary', JSON.stringify(buildOutcome));
+assert.equal(buildOutcome.type, 'ProjectionPlanSummary', JSON.stringify(buildOutcome));
 assert.deepEqual(await fileReader.readBytesIfThere('.cw/out/guide/clear-boundary/a #%.bin'), new Uint8Array([0, 255, 128, 13, 10]));
 assert.equal(forbiddenCallCount, 0);
 process.stdout.write(JSON.stringify([...fileBytesByAddress].map(([fileAddress, fileBytes]) => [decodeURIComponent(fileAddress.slice(repositoryAddress.href.length)), [...fileBytes]])) + "\n");
@@ -737,7 +738,7 @@ test("every authoring operation honours a minimal read-after-write adapter (SDK 
   runConsumerCode(
     memoryAuthoringConsumerCode +
       String.raw`
-assert.equal((await setUp()).type, 'PlanSummary');
+assert.equal((await setUp()).type, 'ProjectionPlanSummary');
 assert.equal((await charterAuthoringApp.listPrimitiveRequirements('guide')).type, 'PrimitiveRequirements');
 assert.equal((await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', guideHeaders, 'First body.')).type, 'Primitive');
 assert.equal((await charterAuthoringApp.listCatalogue('guide')).type, 'Catalogue');
@@ -750,11 +751,11 @@ assert.equal((await charterAuthoringApp.openPrimitive('clear-boundary')).data.bo
 assert.equal((await charterAuthoringApp.rewritePrimitive('clear-boundary', guideHeaders, 'Stale body.', openedPrimitive.data.hash)).type, 'Fault');
 const filesBeforePreview = [...fileBytesByAddress];
 const previewOutcome = await charterBuildingApp.previewCharterBuild();
-assert.equal(previewOutcome.type, 'PlanSummary');
+assert.equal(previewOutcome.type, 'ProjectionPlanSummary');
 assert.deepEqual([...fileBytesByAddress], filesBeforePreview);
 assert.equal((await charterBuildingApp.predictMainContext()).type, 'MainContexts');
 assert.equal((await charterAuthoringApp.testCharter()).type, 'TestRunReport');
-assert.equal((await charterBuildingApp.buildCharter()).type, 'PlanSummary');
+assert.equal((await charterBuildingApp.buildCharter()).type, 'ProjectionPlanSummary');
 assert.deepEqual((await charterBuildingApp.previewCharterBuild()).data.added, []);
 assert.deepEqual((await charterBuildingApp.previewCharterBuild()).data.edited, []);
 const escapedAssetFile = '.cw/charter/primitive/guide/clear-boundary/a #%.bin';
@@ -763,13 +764,13 @@ assert.equal((await charterAuthoringApp.removePrimitive('clear-boundary')).type,
 assert.equal(await fileReader.readBytesIfThere(escapedAssetFile), undefined);
 assert.equal(await fileReader.readIfThere('.cw/charter/primitive/guide/clear-boundary/index.md'), undefined);
 const cleanupOutcome = await charterBuildingApp.buildCharter();
-assert.equal(cleanupOutcome.type, 'PlanSummary');
+assert.equal(cleanupOutcome.type, 'ProjectionPlanSummary');
 assert.ok(cleanupOutcome.data.deleted.includes('.cw/out/guide/clear-boundary/index.md'));
 assert.equal(await fileReader.readIfThere('.cw/out/guide/clear-boundary/index.md'), undefined);
 // A missing kind folder is empty, and setup reads back even when empty files are dropped.
 for (const fileAddress of fileBytesByAddress.keys()) if (fileAddress.endsWith('/.gitkeep')) fileBytesByAddress.delete(fileAddress);
 assert.equal((await charterBuildingApp.diagnoseCharter()).data.errorCount, 0);
-assert.equal((await charterBuildingApp.buildCharter()).type, 'PlanSummary');
+assert.equal((await charterBuildingApp.buildCharter()).type, 'ProjectionPlanSummary');
 assert.equal(forbiddenCallCount, 0);
 `,
   );
@@ -796,7 +797,7 @@ assert.doesNotMatch(JSON.stringify(failedBuild), /Store write refused/);
 assert.match(progressReporter.problems.at(-1), /build[\s\S]*Store write refused\./);
 assert.equal(completedWriteAddresses.length, 1);
 assert.ok(fileBytesByAddress.has(completedWriteAddresses[0]));
-assert.equal((await charterBuildingApp.buildCharter()).type, 'PlanSummary');
+assert.equal((await charterBuildingApp.buildCharter()).type, 'ProjectionPlanSummary');
 assert.equal(forbiddenCallCount, 0);
 `,
   );
@@ -841,15 +842,81 @@ const CW_ADAPTER_NAMES = [
   "Tiktoken",
 ];
 
-/** What a port names that is no model: the helpers a projection lays its
- *  files with, and what makes a vendor's root, kept for a tool to extend
- *  cw's own adapters with. */
-const PORT_NAMED_HELPER_NAMES = ["ModelHelper", "mergeTomlText", "VendorRootFactory"];
+/** The layout of the store cw keeps the charter in and of the output, each
+ *  one value made of its model, the only values a module's constants file
+ *  lends the package (SDK-FR-020, CORE-FR-215). */
+const LAYOUT_VALUE_NAMES = ["charterPath", "outputPath"];
+
+/** What the package exported beside the values before CORE Story 55: loose
+ *  constants and helpers, none of them a port, a model or an adapter. */
+const LOOSE_EXPORTED_NAMES = [
+  "CHARTER_FOLDER_PATH",
+  "EVAL_FOLDER_PATH",
+  "PRIMITIVES_FOLDER_PATH",
+  "TEST_FOLDER_PATH",
+  "VENDORS_FOLDER_PATH",
+  "GITIGNORE_FILE_PATH",
+  "LOG_IGNORE_LINE",
+  "SETTINGS_FILE_PATH",
+  "ModelHelper",
+  "ContentHelper",
+  "mergeTomlText",
+  "VendorRootFactory",
+];
+
+/** Every name of these declarations that the ones named first reach: what
+ *  their signatures name, and, from there, what that names in turn. A class
+ *  is read by what it extends and its members a tool extending it sees — its
+ *  public and protected ones, never a private one — and a class extending
+ *  one reached is reached too, being what a signature naming that base hands
+ *  over or asks for. */
+function reachedNamesOf(declarationText: string, startNames: readonly string[]): ReadonlySet<string> {
+  const declarationFile = ts.createSourceFile("index.d.ts", declarationText, ts.ScriptTarget.Latest, true);
+  const declarationsByName = new Map<string, ts.Statement[]>();
+  for (const statement of declarationFile.statements) {
+    const declaredName = ts.isVariableStatement(statement)
+      ? statement.declarationList.declarations[0]?.name.getText(declarationFile)
+      : (statement as { name?: ts.Identifier }).name?.text;
+    if (declaredName !== undefined)
+      declarationsByName.set(declaredName, [...(declarationsByName.get(declaredName) ?? []), statement]);
+  }
+  const baseNamesByClassName = new Map(
+    declarationFile.statements
+      .filter(ts.isClassDeclaration)
+      .map((classDeclaration) => [
+        classDeclaration.name?.text ?? "",
+        (classDeclaration.heritageClauses ?? [])
+          .filter((heritageClause) => heritageClause.token === ts.SyntaxKind.ExtendsKeyword)
+          .flatMap((heritageClause) =>
+            heritageClause.types.map((baseType) => baseType.expression.getText(declarationFile)),
+          ),
+      ]),
+  );
+  const reachedNames = new Set<string>();
+  const pendingNames = [...startNames];
+  const collectNamedIdentifiers = (node: ts.Node): void => {
+    if (ts.canHaveModifiers(node) && ts.getCombinedModifierFlags(node as ts.Declaration) & ts.ModifierFlags.Private)
+      return;
+    if (ts.isIdentifier(node) && declarationsByName.has(node.text)) pendingNames.push(node.text);
+    ts.forEachChild(node, collectNamedIdentifiers);
+  };
+  while (pendingNames.length > 0) {
+    const pendingName = pendingNames.pop()!;
+    if (reachedNames.has(pendingName)) continue;
+    reachedNames.add(pendingName);
+    for (const statement of declarationsByName.get(pendingName) ?? []) collectNamedIdentifiers(statement);
+    for (const [className, baseNames] of baseNamesByClassName)
+      if (baseNames.includes(pendingName)) pendingNames.push(className);
+  }
+  return reachedNames;
+}
 
 test("the installed package exports exactly what its contract names: the composition, the driver ports and their DTOs, each adapter's port with the models it names, and cw's own adapters (SDK Story 8 scenario 1)", async () => {
-  const installedNames = exportedNamesOf(
-    await readFile(join(consumerFolder, "node_modules/cherry-works/dist/index.d.ts"), "utf8"),
+  const installedDeclarationText = await readFile(
+    join(consumerFolder, "node_modules/cherry-works/dist/index.d.ts"),
+    "utf8",
   );
+  const installedNames = exportedNamesOf(installedDeclarationText);
   assert.deepEqual(
     installedNames,
     exportedNamesOf(await readFile(new URL("contract/index.d.ts", repositoryUrl), "utf8")),
@@ -859,7 +926,7 @@ test("the installed package exports exactly what its contract names: the composi
   // adapters — never a use case, a service, a driver or a portal.
   const declaringPathsByName = new Map<string, string[]>();
   for (const sourcePath of await readdir(new URL("src/module/", repositoryUrl), { recursive: true }))
-    if (sourcePath.endsWith(".ts"))
+    if (sourcePath.endsWith(".ts") && !/\.probe\./.test(sourcePath))
       for (const declarationMatch of (
         await readFile(new URL(`src/module/${sourcePath}`, repositoryUrl), "utf8")
       ).matchAll(
@@ -869,19 +936,33 @@ test("the installed package exports exactly what its contract names: the composi
           ...(declaringPathsByName.get(declarationMatch[1]!) ?? []),
           sourcePath,
         ]);
+  // A model of the domain is the package's only where something it exports
+  // to be called or handed in names it: a port, the composition, a layout
+  // value, or the public face of one of cw's own adapters.
+  const portOrAdapterNames = installedNames.filter((installedName) =>
+    (declaringPathsByName.get(installedName) ?? []).some(
+      (declaringPath) =>
+        declaringPath === "composition.ts" ||
+        /\/app\/port\/(?:in|out)\//.test(declaringPath) ||
+        (/\/domain\/constants\.ts$/.test(declaringPath) && LAYOUT_VALUE_NAMES.includes(installedName)) ||
+        (/\/infra\//.test(declaringPath) && CW_ADAPTER_NAMES.includes(installedName)),
+    ),
+  );
+  const reachedNames = reachedNamesOf(installedDeclarationText, portOrAdapterNames);
   for (const installedName of installedNames.filter((installedName) => installedName !== "VERSION")) {
     const declaringPaths = declaringPathsByName.get(installedName) ?? [];
     assert.ok(
       declaringPaths.some(
         (declaringPath) =>
           declaringPath === "composition.ts" ||
-          /\/app\/port\/(?:in|out)\/|\/domain\/(?:models|value-objects)\/|\/domain\/constants\.ts$/.test(
-            declaringPath,
-          ) ||
-          PORT_NAMED_HELPER_NAMES.includes(installedName) ||
+          (/\/app\/port\/(?:in|out)\//.test(declaringPath) && !/\.helper\.ts$/.test(declaringPath)) ||
+          (/\/domain\/(?:models|value-objects)\//.test(declaringPath) &&
+            !/\.helper\.ts$/.test(declaringPath) &&
+            reachedNames.has(installedName)) ||
+          (/\/domain\/constants\.ts$/.test(declaringPath) && LAYOUT_VALUE_NAMES.includes(installedName)) ||
           (/\/infra\//.test(declaringPath) && CW_ADAPTER_NAMES.includes(installedName)),
       ),
-      `${installedName} is declared in ${declaringPaths.join(", ") || "no module"}`,
+      `${installedName} is declared in ${declaringPaths.join(", ") || "no module"}${reachedNames.has(installedName) ? "" : ", and no port or adapter the package exports names it"}`,
     );
   }
   for (const contractName of [
@@ -929,6 +1010,41 @@ for (const adapterName of ${JSON.stringify(CW_ADAPTER_NAMES)}) assert.equal(type
 `);
 });
 
+test("the installed package exports the layout of cw's store and of the output each as one value, made of its model, and no constant or helper beside the values (CORE Story 55 scenario 23)", async () => {
+  const installedNames = exportedNamesOf(
+    await readFile(join(consumerFolder, "node_modules/cherry-works/dist/index.d.ts"), "utf8"),
+  );
+  for (const looseName of LOOSE_EXPORTED_NAMES) assert.ok(!installedNames.includes(looseName), looseName);
+  for (const layoutName of ["CharterPath", "charterPath", "OutputPath", "outputPath"])
+    assert.ok(installedNames.includes(layoutName), layoutName);
+  // A source vendors are installed from is no store of cw's: its layout is
+  // the adapters' to read through their port, never lent beside the store's.
+  for (const sourceLayoutName of ["VendorSourcePath", "vendorSourcePath"])
+    assert.ok(!installedNames.includes(sourceLayoutName), sourceLayoutName);
+  // Each value a module's constants file declares is one model made once.
+  for (const moduleName of ["shared", "charter", "runtime", "workspace"]) {
+    const constantsUrl = new URL(`src/module/${moduleName}/domain/constants.ts`, repositoryUrl);
+    if (!existsSync(constantsUrl)) continue;
+    const constantsText = await readFile(constantsUrl, "utf8");
+    const declaredLines = [...constantsText.matchAll(/^export .*$/gm)].map((declarationMatch) => declarationMatch[0]);
+    assert.ok(declaredLines.length > 0, moduleName);
+    for (const declaredLine of declaredLines)
+      assert.match(declaredLine, /^export const [a-z]\w* = new [A-Z]\w*\(\);$/, `${moduleName}: ${declaredLine}`);
+  }
+  runConsumerCode(`
+import assert from 'node:assert/strict';
+import { CharterPath, charterPath, OutputPath, outputPath } from 'cherry-works';
+assert.ok(charterPath instanceof CharterPath);
+assert.ok(outputPath instanceof OutputPath);
+assert.equal(charterPath.charterFolderPath, '.cw/charter');
+assert.equal(charterPath.primitivesFolderName, 'primitive');
+assert.equal(charterPath.primitivesFolderPath, '.cw/charter/primitive');
+assert.equal(charterPath.testFolderPath, '.cw/charter/test');
+assert.equal(charterPath.evalFolderPath, '.cw/charter/eval');
+assert.equal(charterPath.vendorsFolderPath, '.cw/charter/vendor');
+`);
+});
+
 test("a tool extends cw's own charter store and an agent's projection, imported from the package, and a build answers through the extensions (SDK Story 8 scenario 2)", async () => {
   const repoFolderPath = await mkdtemp(join(tmpdir(), "cw-extended-repo-"));
   try {
@@ -966,7 +1082,7 @@ const { engineApp } = await composeApplications(repoFolder, repoFolder, {
 });
 assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
 const buildAnswer = await engineApp.charterBuildingApp.buildCharter();
-assert.equal(buildAnswer.type, 'PlanSummary', JSON.stringify(buildAnswer));
+assert.equal(buildAnswer.type, 'ProjectionPlanSummary', JSON.stringify(buildAnswer));
 assert.ok(charterRepository.loadedCharterCount > 0);
 assert.equal(claudeProjection.plannedProjectionCount, 1);
 `;
@@ -1041,14 +1157,14 @@ assert.equal('toJSON' in engineApp.charterBuildingApp, false);
 const claudeEntryAddress = new URL('CLAUDE.md', repositoryAddress).href;
 const codexEntryAddress = new URL('AGENTS.md', repositoryAddress).href;
 assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
-assert.equal((await engineApp.charterBuildingApp.buildCharter()).type, 'PlanSummary');
+assert.equal((await engineApp.charterBuildingApp.buildCharter()).type, 'ProjectionPlanSummary');
 assert.equal(fileBytesByAddress.has(claudeEntryAddress), false);
 assert.equal((await workspaceApp.setUpWorkspace(['claude'], '1.0.0')).type, 'WorkspaceSettings');
-assert.equal((await engineApp.charterBuildingApp.buildCharter()).type, 'PlanSummary');
+assert.equal((await engineApp.charterBuildingApp.buildCharter()).type, 'ProjectionPlanSummary');
 assert.ok(fileBytesByAddress.has(claudeEntryAddress));
 await fileWriter.writeFile('.cw/settings.json', JSON.stringify({ agents: ['codex'] }));
 const keptBuildAnswer = await engineApp.charterBuildingApp.buildCharter();
-assert.equal(keptBuildAnswer.type, 'PlanSummary', JSON.stringify(keptBuildAnswer));
+assert.equal(keptBuildAnswer.type, 'ProjectionPlanSummary', JSON.stringify(keptBuildAnswer));
 assert.ok(fileBytesByAddress.has(claudeEntryAddress));
 assert.equal(fileBytesByAddress.has(codexEntryAddress), false);
 `,
@@ -1089,7 +1205,7 @@ assert.deepEqual(keptSettingsTexts, ['{"agents":["claude"]}']);
 assert.equal(fileBytesByAddress.has(new URL('.cw/settings.json', repositoryAddress).href), false);
 assert.equal((await engineApp.charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
 const buildAnswer = await engineApp.charterBuildingApp.buildCharter();
-assert.equal(buildAnswer.type, 'PlanSummary', JSON.stringify(buildAnswer));
+assert.equal(buildAnswer.type, 'ProjectionPlanSummary', JSON.stringify(buildAnswer));
 assert.equal(localOutput.writtenPlanCount, 1);
 assert.ok(fileBytesByAddress.has(new URL('CLAUDE.md', repositoryAddress).href));
 const sessionReviewAnswer = await engineApp.charterRuntimeApp.summarizeSessions();
@@ -1120,7 +1236,7 @@ test("the contract recorded for the first release under it is one folder, a file
   }
 });
 
-test("the contract recorded is the build split by module, so a declaration changed in the code and not in contract/ fails (CORE Story 53 scenario 6)", async () => {
+test("the contract recorded is the build split by module, so a declaration changed in the code and not in contract/ fails (CORE Story 53 scenario 6, CORE Story 55 scenario 25)", async () => {
   const repositoryPath = fileURLToPath(repositoryUrl);
   const contractTextByFileName = (await readContractFolder(repositoryPath))!;
   const builtContractText = await readFile(new URL("dist/index.d.ts", repositoryUrl), "utf8");
@@ -1148,7 +1264,7 @@ await charterRuntimeApp.runSensors('Stop', '{}');
       String.raw`
 const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = await composeOverMemory(['claude']);
 assert.equal((await charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
-assert.equal((await charterBuildingApp.buildCharter()).type, 'PlanSummary');
+assert.equal((await charterBuildingApp.buildCharter()).type, 'ProjectionPlanSummary');
 const unnamedAnswer = await charterRuntimeApp.runSensors('NoSensorSignal', '{}');
 assert.equal(unnamedAnswer.type, 'Fault', JSON.stringify(unnamedAnswer));
 assert.notEqual(unnamedAnswer.data.name, 'InternalFault');
@@ -1186,7 +1302,7 @@ assert.equal((await charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
 const addedAnswer = await charterAuthoringApp.addPrimitive('sensor', 'quill-check', { description: 'Check when quill stops.', signal: 'Stop', run: 'echo quill', 'agent-provider': ['quill'] }, 'Check.');
 assert.equal(addedAnswer.type, 'Primitive', JSON.stringify(addedAnswer));
 const buildAnswer = await charterBuildingApp.buildCharter();
-assert.equal(buildAnswer.type, 'PlanSummary', JSON.stringify(buildAnswer));
+assert.equal(buildAnswer.type, 'ProjectionPlanSummary', JSON.stringify(buildAnswer));
 const builtPaths = [...fileBytesByAddress.keys()].map(pathOf);
 assert.ok(builtPaths.some((builtPath) => builtPath.startsWith('.quill/')), builtPaths.join(', '));
 assert.deepEqual(builtPaths.filter((builtPath) => /^(\.claude|\.codex|\.agents)\/|^(CLAUDE|AGENTS)\.md$|^\.mcp\.json$/.test(builtPath)), []);

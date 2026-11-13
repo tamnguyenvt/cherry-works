@@ -324,7 +324,7 @@ test("every operation of the engine, called over a charter, answers the caller p
     ForRunningCharter: {
       runSensors: () => charterRuntimeApp.runSensors("Stop", "", "claude"),
       callTool: () => charterRuntimeApp.callTool("example__tool", {}),
-      countMainContext: () => charterRuntimeApp.countMainContext(),
+      countMainContext: () => charterRuntimeApp.countMainContext("claude"),
       evaluateCharter: () => charterRuntimeApp.evaluateCharter("claude"),
       analyzeEvalLog: () => charterRuntimeApp.analyzeEvalLog(),
       summarizeSessions: () => charterRuntimeApp.summarizeSessions(),
@@ -387,7 +387,9 @@ test("a driver port answers shapes made for the driver, and takes none of the do
   );
   const drivenModelNames = drivenPortFolderUrls
     .flatMap((drivenPortFolderUrl) =>
-      readdirSync(drivenPortFolderUrl).map((portFileName) => new URL(portFileName, drivenPortFolderUrl)),
+      readdirSync(drivenPortFolderUrl)
+        .filter((portFileName) => !/\.probe\./.test(portFileName))
+        .map((portFileName) => new URL(portFileName, drivenPortFolderUrl)),
     )
     .filter((portFileUrl) =>
       [...readFileSync(portFileUrl, "utf8").matchAll(/^export interface (For\w+)/gm)].some((portMatch) =>
@@ -432,7 +434,7 @@ test("the driver ports changed and the models made public are released only as a
   const lastContractText = builtContractText
     .replace(
       "\ndeclare const VERSION: string;",
-      "\ninterface ForKeepingCharter {\n    build(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;\n}\ndeclare const VERSION: string;",
+      "\ninterface ForKeepingCharter {\n    build(): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;\n}\ndeclare const VERSION: string;",
     )
     .replace("export { ", "export { type ForKeepingCharter, ");
   await inARelease(

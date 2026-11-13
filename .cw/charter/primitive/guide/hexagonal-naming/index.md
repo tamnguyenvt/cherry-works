@@ -43,12 +43,13 @@ its file says it holds a value and no identity. A model keeps its subject
 alone, with no role: its folder says what it is (`charter-root.ts`), and so
 does a model an adapter keeps of its own in a folder of its module's `infra/`
 or of its agent (`charter/infra/claude/claude-rule.ts`). So do `helper.ts`, `index.ts`, a
-module's `module.ts` and its `domain/constants.ts`, the composition root `composition.ts`, and the entry files
+module's `module.ts` and its `domain/constants.ts`, the kernel's `domain/schema.ts` — the
+schemas every module shares (`GoodLineSchema`, `GoodArraySchema`, `FlagSchema`) —, the composition root `composition.ts`, and the entry files
 `main.ts` and the portal page's `main.tsx`; and what a generator wrote and
 keeps writing, the portal page's shadcn components under `components/ui/`
 and their `lib/utils.ts`, keeps the names it was given. The
 other roles: `.repository`, `.base` (the class every use case, or every adapter of a kind, extends), `.constants` (a layout of names), `.specification`, `.lib`,
-`.value-object` (a value of the domain, above), `.script` (an asset put down as it is), `.schema` (`dto()`, what
+`.value-object` (a value of the domain, above), `.helper` (what several parts of a module share about one model, beside that model: `primitive.helper.ts`), `.script` (an asset put down as it is), `.schema` (`dto()`, what
 every DTO schema is written with), `.interface` (a type every driving adapter of an entry point
 implements), `.commander`, `.server`, `.routes`, and in the portal's page
 `.component` (a component it shows, `charter-listing.component.tsx`),
@@ -118,15 +119,20 @@ What crosses a driver port is a DTO, written as cherry-works writes them, in
   to the module answering with it, never to `shared/`; a module reading
   another's answers imports that module's DTO file.
 - `shared/app/port/in/` — `dto.schema.ts`, and `fault.dto.ts`, the faults
-  every module answers with, gathered as `FaultDTOs`; the kernel's `module.ts`
-  exports both.
+  every module answers with, gathered as `FaultDTOs`; and `index.ts`, the
+  kernel's DTO entry, which exports what a DTO is written with and nothing
+  else: `z` from the validator lib, `dto`, `groupByType`, `StringsSchema` and
+  `FaultDTOs`. The kernel's `module.ts` exports them too, for the code that is
+  no DTO.
 
 In JavaScript there is no namespace to hold the types: each is a typedef
 `<Model>DTO` beside the schemas (`@typedef {z.infer<typeof FaultDTOs.Fault>}
 FaultDTO`), and `dto()` and `groupByType()` are typed with `@type`.
 
-The DTO files import zod and nothing else, so a client may import them and
-parse what it is sent by them: `CharterDTOs.Primitive.or(FaultDTOs.Fault).parse(…)`.
+The DTO files import the kernel's DTO entry, `#module/shared/app/port/in/index.js`,
+and the other DTO files, never the kernel's `module.ts`, which reaches its
+adapters and `node:*` (`dtos-are-zod-only`): so a client may import them,
+bundling no server code, and parse what it is sent by them: `CharterDTOs.Primitive.or(FaultDTOs.Fault).parse(…)`.
 A driver port answers DTOs alone — `Promise<CharterDTOs.Primitive |
 FaultDTOs.Fault>`; the use case makes each one by its schema,
 `CharterDTOs.Primitive.of({ … })`, never by hand as `{ type, data }`,

@@ -16,13 +16,13 @@ import type { StampedDocument } from "./stamped-document.value-object.js";
  * its own beside the headers it requires, so what a kind is and when it is
  * opened is said in one place (FR-001).
  *
- * It lands in the output folder, beside the listing it sends a reader to by
+ * It lands in the compiled output, beside the listing it sends a reader to by
  * name. No charter here — it is handed the lines it writes, so what a kind is
  * is asked of the charter once, by the caller.
  *
  * No primitive's body reaches here, not even a guide's: this file is
  * orientation and the listings it sends a reader to. What every turn is to carry
- * is a host's to hand its agent, in that host's own kind.
+ * is each agent's to carry, in its own kinds.
  */
 export class CharterMd extends CharterOutputItem {
   static readonly type = "charter-md" as const;

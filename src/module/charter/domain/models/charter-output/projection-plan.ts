@@ -62,7 +62,7 @@ export class ProjectionPlan<Plan extends WritePlan | CopyPlan = WritePlan> {
  * come to read together, each path under the one change it gets and no contents
  * left — a file both halves name is written again here, never deleted.
  */
-export class PlanSummary {
+export class ProjectionPlanSummary {
   constructor(
     /** Put where there was no such file. */
     readonly addedPaths: readonly string[],

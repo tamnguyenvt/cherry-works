@@ -1,9 +1,8 @@
-import { type DomainFault, FaultsByFile } from "../../../../shared/module.js";
-import { coversGlob } from "../../libs/globs.lib.js";
+import { type DomainFault, FaultsByFile, GlobsLib } from "#module/shared/module.js";
+import { PrimitiveHelper } from "../../helper.js";
 import { InconsistentCharterFault, InvalidPrimitiveFault } from "../charter.fault.js";
 import { AgentBasedPrimitive } from "../primitive/agent-based-primitive.js";
 import { AgentPrimitive } from "../primitive/agent-primitive.js";
-import { BasePrimitive } from "../primitive/base-primitive.js";
 import { McpPrimitive } from "../primitive/mcp-primitive.js";
 import type { Primitive } from "../primitive/primitive.js";
 import { PrimitiveLayer } from "../primitive/primitive-layer.value-object.js";
@@ -36,6 +35,10 @@ export class CharterRoot {
     /** The layer of everything kept, read as a primitive or not, by where it is
      *  kept: what a fault under it is weighed by (FR-005). */
     readonly primitiveLayerByUri: Readonly<Record<string, PrimitiveLayer>> = {},
+    /** Where an author edits this charter, in the words of the store keeping
+     *  it: what each agent is told to edit, never read off `cw`'s own layout
+     *  (SDK-FR-020, CORE-FR-213). Nothing where no store kept it. */
+    readonly charterPlace: string = "",
   ) {}
 
   /** Everything wrong with this charter, under the file that has to change: the
@@ -99,9 +102,9 @@ export class CharterRoot {
   /** Every mixin one primitive uses, in the order it named them (FR-014). A
    *  name nothing answers to, or that answers with another kind, is left out:
    *  `compositeFaultsByFiles` already names that file as an error. */
-  mixinsOf(hostPrimitive: Primitive): readonly Primitive[] {
+  mixinsOf(pullingPrimitive: Primitive): readonly Primitive[] {
     const primitiveById = this.primitiveById;
-    return (hostPrimitive.headers.mixins ?? []).flatMap((id) => {
+    return (pullingPrimitive.headers.mixins ?? []).flatMap((id) => {
       const mixin = primitiveById.get(id);
       return mixin?.kind === "mixin" ? [mixin] : [];
     });
@@ -116,10 +119,11 @@ export class CharterRoot {
     return corpusPrimitive?.kind === "corpus" ? corpusPrimitive : undefined;
   }
 
-  /** Every primitive using one mixin; nothing for any other kind (FR-014). */
-  hostsOf(mixin: Primitive): readonly Primitive[] {
+  /** Every primitive that pulls one mixin in; nothing for any other kind
+   *  (FR-014). */
+  pullersOf(mixin: Primitive): readonly Primitive[] {
     if (mixin.kind !== "mixin") return [];
-    return this.primitives.filter((host) => (host.headers.mixins ?? []).includes(mixin.headers.id));
+    return this.primitives.filter((puller) => (puller.headers.mixins ?? []).includes(mixin.headers.id));
   }
 
   /** Every primitive citing one corpus as its rationale; nothing for any other
@@ -142,26 +146,26 @@ export class CharterRoot {
    *  `run` names (FR-161). */
   private findMentionedIds(mentioningPrimitive: Primitive): readonly string[] {
     return [
-      ...[...mentioningPrimitive.body.matchAll(BasePrimitive.referencePattern)].map(([, id]) => id!),
+      ...PrimitiveHelper.findReferencedIds(mentioningPrimitive.body),
       ...(mentioningPrimitive instanceof AgentPrimitive
-        ? mentioningPrimitive.headers.tools.flatMap((tool) => tool.match(BasePrimitive.toolReferencePattern)?.[1] ?? [])
+        ? mentioningPrimitive.headers.tools.flatMap((tool) => PrimitiveHelper.parseToolReference(tool)?.mcpId ?? [])
         : []),
       ...(mentioningPrimitive instanceof SensorPrimitive
-        ? [...mentioningPrimitive.headers.run.matchAll(BasePrimitive.referencePattern)].map(([, id]) => id!)
+        ? PrimitiveHelper.findReferencedIds(mentioningPrimitive.headers.run)
         : []),
     ];
   }
 
-  /** Does what a mixin lends reach as far as the host pulling it in, or the host
-   *  no further than the mixin? A side that names no files is asking about
+  /** Does what a mixin lends reach as far as the primitive pulling it in, or
+   *  that primitive no further than the mixin? A side that names no files is asking about
    *  nothing in particular, and is left alone (FR-006). */
-  private isMixinReaching(host: Primitive, mixin: Primitive): boolean {
-    const hostGlobs = host.headers.globs ?? [];
+  private isMixinReaching(pullingPrimitive: Primitive, mixin: Primitive): boolean {
+    const pullingGlobs = pullingPrimitive.headers.globs ?? [];
     const mixinGlobs = mixin.headers.globs ?? [];
-    if (hostGlobs.length === 0 || mixinGlobs.length === 0) return true;
-    const coversAll = (outer: readonly string[], inner: readonly string[]) =>
-      inner.every((narrower) => outer.some((wider) => coversGlob(wider, narrower)));
-    return coversAll(mixinGlobs, hostGlobs) || coversAll(hostGlobs, mixinGlobs);
+    if (pullingGlobs.length === 0 || mixinGlobs.length === 0) return true;
+    const coversAll = (outerGlobs: readonly string[], innerGlobs: readonly string[]) =>
+      innerGlobs.every((narrowerGlob) => outerGlobs.some((widerGlob) => GlobsLib.coversGlob(widerGlob, narrowerGlob)));
+    return coversAll(mixinGlobs, pullingGlobs) || coversAll(pullingGlobs, mixinGlobs);
   }
 
   /**
@@ -211,7 +215,7 @@ export class CharterRoot {
           ),
         );
 
-      // `/` is written `-` in a name given to a host, so two ids can come to
+      // `/` is written `-` in a name given to an agent, so two ids can come to
       // one file there: `a/b` and `a-b`. Caught where the name is made, as a
       // second claim on it (FR-141).
       const { normId } = primitive;
@@ -302,7 +306,7 @@ export class CharterRoot {
       // (FR-156).
       if (primitive instanceof AgentPrimitive)
         for (const tool of primitive.headers.tools.filter((agentTool) => agentTool.startsWith("[["))) {
-          const [, mcpId, mcpTool] = tool.match(BasePrimitive.toolReferencePattern) ?? [];
+          const { mcpId, toolName: mcpTool } = PrimitiveHelper.parseToolReference(tool) ?? {};
           const mcpPrimitive = mcpId === undefined ? undefined : primitiveById.get(mcpId);
           if (mcpId === undefined)
             addFault(
@@ -342,7 +346,7 @@ export class CharterRoot {
             { severity: "warn", internal: false },
           ),
         );
-      if (primitive.kind === "mixin" && this.hostsOf(primitive).length === 0)
+      if (primitive.kind === "mixin" && this.pullersOf(primitive).length === 0)
         addFault(
           primitiveUri,
           new InconsistentCharterFault(

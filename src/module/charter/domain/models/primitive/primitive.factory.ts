@@ -1,5 +1,5 @@
 import { type DomainFault, FaultHelper, ManyFindingsFault } from "../../../../shared/module.js";
-import { parseYamlFields } from "../../libs/yaml.lib.js";
+import { ContentHelper } from "../../helper.js";
 import { InvalidPrimitiveFault } from "../charter.fault.js";
 import { BasePrimitive } from "./base-primitive.js";
 import { type Primitive, Primitives } from "./primitive.js";
@@ -75,7 +75,7 @@ export class PrimitiveFactory {
             { internal: false },
           ),
         ]);
-      headers = parseYamlFields(lines.slice(1, closingLineIndex).join("\n"));
+      headers = ContentHelper.parseFrontmatterFields(lines.slice(1, closingLineIndex).join("\n"));
       // The blank lines between the headers and the body, and the whitespace at
       // its end, are the file's; the indentation of its first line is the body's,
       // which its compiled document keeps (FR-139).

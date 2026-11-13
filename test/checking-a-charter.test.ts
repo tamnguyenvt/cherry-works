@@ -49,7 +49,7 @@ const primitive = (
   );
 
 const faultsByFilesOf = (...primitives: Authored[]) =>
-  new CharterRoot(primitives, FaultsByFile.none).compositeFaultsByFiles.faultsByFilePath;
+  new CharterRoot(primitives, FaultsByFile.emptyFaultsByFile).compositeFaultsByFiles.faultsByFilePath;
 
 const messages = (primitives: Authored[]) =>
   Object.values(faultsByFilesOf(...primitives))

@@ -1,11 +1,11 @@
-import { z } from "zod";
-import { dto, groupByType, StringsSchema } from "../../../../shared/module.js";
+import { dto, groupByType, StringsSchema, z } from "#module/shared/app/port/in/index.js";
 
 /**
  * What the runtime module answers with: the calls it forwards, the evaluations
  * it runs and their log, the sessions it reads, and what came of running the
  * sensors, `…Outcome`. Each is `{ type, data }`, `type` its name exactly as
- * `RuntimeDTOs` keys it. Zod and nothing else.
+ * `RuntimeDTOs` keys it. Written with the kernel's DTO entry alone, never its
+ * module.ts: a client that imports this file bundles no server code.
  */
 
 /** How one evaluation case came out: its file, its prompt, the tokens the
@@ -106,7 +106,7 @@ const SessionReviewOutcomeSchema = dto(
 );
 
 /** What running every sensor of one signal came to, as one command
- *  (CORE-FR-177, CORE-FR-178): the exit code, the one answer for the host, and
+ *  (CORE-FR-177, CORE-FR-178): the exit code, the one answer for the agent, and
  *  the error output it is given. */
 const SensorRunOutcomeSchema = dto(
   "SensorRunOutcome",
@@ -118,7 +118,8 @@ const SensorRunOutcomeSchema = dto(
 );
 
 /** What one primitive, or the charter itself, puts into an agent's main
- *  context, in tokens, as the agent itself counted it; with the globs a file
+ *  context, in tokens, as the agent itself counted it, beside its estimate and
+ *  how far the estimate is from it, as a share of it; with the globs a file
  *  touched has to match, where it is loaded only then. */
 const MainContextLoadSchema = dto(
   "MainContextLoad",
@@ -126,29 +127,27 @@ const MainContextLoadSchema = dto(
     id: z.string(),
     kind: z.string(),
     tokens: z.number(),
+    estimatedTokens: z.number(),
+    differenceRatio: z.number().optional(),
     globs: StringsSchema.optional(),
   }),
 );
 
-/** What a charter puts into one agent's main context, counted exactly: what
- *  is loaded when a session opens, the largest first, and their total; apart,
- *  what is loaded when a file is touched. */
+/** What a charter puts into one agent's main context, counted exactly and
+ *  estimated: what is loaded when a session opens, the largest first, and
+ *  both totals, how far apart they are, and whether that is past the limit
+ *  the estimate is held to; apart, what is loaded when a file is touched. */
 const MainContextSchema = dto(
   "MainContext",
   z.object({
     agent: z.string(),
-    isExact: z.boolean(),
     sessionLoads: z.array(MainContextLoadSchema).readonly(),
     fileLoads: z.array(MainContextLoadSchema).readonly(),
     totalTokens: z.number(),
-  }),
-);
-
-/** The main context of every agent the repository compiles for. */
-const MainContextsSchema = dto(
-  "MainContexts",
-  z.object({
-    contexts: z.array(MainContextSchema).readonly(),
+    estimatedTotalTokens: z.number(),
+    totalDifferenceRatio: z.number().optional(),
+    accuracyLimit: z.number(),
+    isPastAccuracyLimit: z.boolean(),
   }),
 );
 
@@ -160,7 +159,6 @@ export const RuntimeDTOs = groupByType(
   EvalRunReportSchema,
   MainContextSchema,
   MainContextLoadSchema,
-  MainContextsSchema,
   SensorRunOutcomeSchema,
   SessionReviewOutcomeSchema,
   SessionSummarySchema,
@@ -174,7 +172,6 @@ export namespace RuntimeDTOs {
   export type EvalRunReport = z.infer<typeof RuntimeDTOs.EvalRunReport>;
   export type MainContext = z.infer<typeof RuntimeDTOs.MainContext>;
   export type MainContextLoad = z.infer<typeof RuntimeDTOs.MainContextLoad>;
-  export type MainContexts = z.infer<typeof RuntimeDTOs.MainContexts>;
   export type SensorRunOutcome = z.infer<typeof RuntimeDTOs.SensorRunOutcome>;
   export type SessionReviewOutcome = z.infer<typeof RuntimeDTOs.SessionReviewOutcome>;
   export type SessionSummary = z.infer<typeof RuntimeDTOs.SessionSummary>;

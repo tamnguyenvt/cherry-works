@@ -61,16 +61,16 @@ const everything = async (held: InMemoryFileReaders) =>
 /** What one preview said about the files it named, path by change. */
 /** What a preview of a charter that does not hold says: nothing about any
  *  file. */
-const nothing: CharterDTOs.PlanSummary["data"] = { added: [], edited: [], deleted: [], unchanged: [] };
+const nothing: CharterDTOs.ProjectionPlanSummary["data"] = { added: [], edited: [], deleted: [], unchanged: [] };
 
 /** What a preview would do, where the charter held; and what stopped it, where
  *  it did not. */
-const planOf = (planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault) =>
-  planSummaryDTO.type === "PlanSummary" ? planSummaryDTO.data : undefined;
-const faultsOf = (planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault) =>
+const planOf = (planSummaryDTO: CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault) =>
+  planSummaryDTO.type === "ProjectionPlanSummary" ? planSummaryDTO.data : undefined;
+const faultsOf = (planSummaryDTO: CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault) =>
   planSummaryDTO.type === "FaultsByFile" ? planSummaryDTO.data : undefined;
 
-const changed = ({ added, edited, deleted, unchanged }: CharterDTOs.PlanSummary["data"]) =>
+const changed = ({ added, edited, deleted, unchanged }: CharterDTOs.ProjectionPlanSummary["data"]) =>
   Object.fromEntries([
     ...added.map((path) => [path, "create"] as const),
     ...edited.map((path) => [path, "update"] as const),
@@ -121,7 +121,7 @@ test("a repository built from the charter as it stands has every file unchanged 
   assert.deepEqual(await everything(held), before);
 });
 
-test("a rule edited since the last build would be updated, and its listings with it (FR-022)", async () => {
+test("a rule edited since the last build would be updated, and its listings with it (FR-022, CORE Story 16 scenario 5)", async () => {
   const { held, build, preview } = previewing({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: guide("no-any"),
@@ -157,6 +157,21 @@ test("a rule edited since the last build would be updated, and its listings with
     ".claude/rules/no-any.md": "unchanged",
     ".claude/skills/cw-author/SKILL.md": "unchanged",
   });
+});
+
+test("a compiled document edited by hand would be written again, and is left as edited until a build (CORE Story 16 scenario 5, FR-032, FR-034, CORE Story 55 scenario 8)", async () => {
+  const { held, build, preview } = previewing({
+    ...compilingFor("claude"),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+  });
+  await build();
+  const compiledDocumentUrl = new URL(".cw/out/guide/no-any/index.md", repo);
+  held.writeFile(compiledDocumentUrl, "Edited by hand.\n");
+
+  const previewed = planOf(await preview());
+
+  assert.equal(changed(previewed ?? nothing)[".cw/out/guide/no-any/index.md"], "update");
+  assert.equal(await held.readFile(compiledDocumentUrl), "Edited by hand.\n");
 });
 
 test("a projection whose primitive is gone would be deleted, and is not (FR-020, FR-022)", async () => {

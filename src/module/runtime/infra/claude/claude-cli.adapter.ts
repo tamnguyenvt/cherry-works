@@ -39,34 +39,18 @@ export class ClaudeCli extends AgentCli implements ForRunningAgentCli {
   }
 
   async askAgent(prompt: string): Promise<Answer> {
-    type InputUsage = { input_tokens: number; cache_creation_input_tokens: number; cache_read_input_tokens: number };
-    const { result: resultText, usage } = JSON.parse(await this.#runInSandbox(prompt)) as {
-      result?: string;
-      usage: InputUsage & { iterations?: readonly InputUsage[] };
-    };
-    const firstMessageUsage = usage.iterations?.[0] ?? usage;
-    return {
-      resultText: resultText ?? "",
-      usage: {
-        inputTokens: firstMessageUsage.input_tokens,
-        cacheCreationInputTokens: firstMessageUsage.cache_creation_input_tokens,
-        cacheReadInputTokens: firstMessageUsage.cache_read_input_tokens,
-      },
-    };
-  }
-
-  /** What `claude -p` printed as JSON for a prompt run in an empty folder with
-   *  nothing loaded, the folder taken away afterwards; waiting its turn behind
-   *  `PARALLEL_RUNNER_COUNT` others. A run that stopped with an error, or the
-   *  model never answered, such as one not signed in, is raised rather than
-   *  read. */
-  async #runInSandbox(prompt: string): Promise<string> {
+    // What `claude -p` printed as JSON for a prompt run in an empty folder with
+    // nothing loaded, the folder taken away afterwards; waiting its turn behind
+    // `PARALLEL_RUNNER_COUNT` others. A run that stopped with an error, or the
+    // model never answered, such as one not signed in, is raised rather than
+    // read.
     if (this.#runningCount >= PARALLEL_RUNNER_COUNT) await new Promise<void>((resolve) => this.#queue.push(resolve));
     this.#runningCount++;
     let emptyFolder: string | undefined;
+    let printedJson: string;
     try {
       emptyFolder = await mkdtemp(join(tmpdir(), "cw-claude-"));
-      const printedJson = await new Promise<string>((resolve, reject) => {
+      printedJson = await new Promise<string>((resolve, reject) => {
         // Nothing of its own loaded: no tool, no MCP server and no settings file.
         const claudeProcess = spawn(
           "claude",
@@ -104,11 +88,24 @@ export class ClaudeCli extends AgentCli implements ForRunningAgentCli {
           'Check that "claude" runs and is signed in here.',
           { internal: false },
         );
-      return printedJson;
     } finally {
       if (emptyFolder !== undefined) await rm(emptyFolder, { recursive: true, force: true });
       this.#runningCount--;
       this.#queue.shift()?.();
     }
+    type InputUsage = { input_tokens: number; cache_creation_input_tokens: number; cache_read_input_tokens: number };
+    const { result: resultText, usage } = JSON.parse(printedJson) as {
+      result?: string;
+      usage: InputUsage & { iterations?: readonly InputUsage[] };
+    };
+    const firstMessageUsage = usage.iterations?.[0] ?? usage;
+    return {
+      resultText: resultText ?? "",
+      usage: {
+        inputTokens: firstMessageUsage.input_tokens,
+        cacheCreationInputTokens: firstMessageUsage.cache_creation_input_tokens,
+        cacheReadInputTokens: firstMessageUsage.cache_read_input_tokens,
+      },
+    };
   }
 }

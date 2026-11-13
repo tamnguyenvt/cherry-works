@@ -1,6 +1,7 @@
-import type { z } from "zod";
+import { GoodArraySchema, type z } from "#module/shared/module.js";
 import { AgentBasedPrimitive } from "./agent-based-primitive.js";
-import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
+import type { AssetFile } from "./asset-file.js";
+import { BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** What the agent may and may not do, as permission lists (FR-004). */
@@ -21,14 +22,14 @@ export class PosturePrimitive extends AgentBasedPrimitive {
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
   static override readonly schema = super.headersSchema().extend({
-    allow: BasePrimitive.goodArraySchema,
-    deny: BasePrimitive.goodArraySchema,
+    allow: GoodArraySchema,
+    deny: GoodArraySchema,
   });
 
   /** When a reader of this charter is to open this kind at all, said
    *  where the kind's contract is: the neutral surface lists one
    *  line per kind and none of them is written down twice (FR-002). */
-  static readonly activatesWhen = "always, wherever the host can be told what to `allow` and what to `deny`";
+  static readonly activatesWhen = "always, wherever the agent can be told what to `allow` and what to `deny`";
 
   /** A posture as an author writes one: what a refused header is fixed with. */
   static readonly sample: PostureHeaders = {
@@ -40,14 +41,14 @@ export class PosturePrimitive extends AgentBasedPrimitive {
 
   /** One posture, or every fault its headers have (FR-004). */
   static of(
-    record: Readonly<Record<string, unknown>>,
+    headerRecord: Readonly<Record<string, unknown>>,
     body: string,
     assets: readonly AssetFile[] = [],
     primitiveLayer?: PrimitiveLayer,
     keptUri?: string,
   ): PosturePrimitive {
     return new PosturePrimitive(
-      BasePrimitive.headersOf(PosturePrimitive, PosturePrimitive.schema, record),
+      BasePrimitive.headersOf(PosturePrimitive, PosturePrimitive.schema, headerRecord),
       body,
       assets,
       primitiveLayer,

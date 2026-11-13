@@ -4,18 +4,19 @@ import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-sk
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
 import { outputPath } from "../src/module/charter/domain/constants.js";
-import { ModelHelper } from "../src/module/charter/domain/helper.js";
-import { parseYamlFields } from "../src/module/charter/domain/libs/yaml.lib.js";
+import { ContentHelper } from "../src/module/charter/domain/helper.js";
 import { CharterMd } from "../src/module/charter/domain/models/charter-output/charter-md.js";
+import { CharterOutput } from "../src/module/charter/domain/models/charter-output/charter-output.js";
 import { CharterOutputItem } from "../src/module/charter/domain/models/charter-output/charter-output-item.js";
 import { CompiledPrimitive } from "../src/module/charter/domain/models/charter-output/compiled-primitive.js";
 import { StampedDocumentSpec } from "../src/module/charter/domain/models/charter-output/stamped-document.specification.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
+import { YamlLib } from "../src/module/shared/domain/libs/yaml.lib.js";
 import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { putDownBy } from "./put-down-by.js";
-import { loadCharterRoot } from "./use-cases-of.js";
+import { agentProjectionByProviderOf, loadCharterRoot } from "./use-cases-of.js";
 
 const CLAUDE = new AgentProvider("claude");
 const repo = new URL("file:///repo/");
@@ -289,11 +290,11 @@ test("a header YAML would read as something else is quoted in the compiled docum
   const document = files[".cw/out/sensor/on-stop/index.md"] ?? "";
   const [, headers = ""] = document.split("---\n");
 
-  assert.deepEqual(parseYamlFields(headers).run, run);
+  assert.deepEqual(YamlLib.parseYamlFields(headers).run, run);
 });
 
 test("an mcp origin is served under the first segment of its id and a hash of its id, the same on every build (FR-145)", () => {
-  assert.deepEqual(ModelHelper.shortenStringsOf(["notion", "moneyforward/tax", "moneyforward/billing-service"]), {
+  assert.deepEqual(ContentHelper.shortenStringsOf(["notion", "moneyforward/tax", "moneyforward/billing-service"]), {
     "moneyforward/billing-service": "moneyforward_c3ae",
     "moneyforward/tax": "moneyforward_e2d3",
     notion: "notion_8d57",
@@ -302,7 +303,7 @@ test("an mcp origin is served under the first segment of its id and a hash of it
 
 test("two mcp origins whose prefixes hash alike are told apart by a number, in the order they sort in (FR-145)", () => {
   // Both hash to `acme_3b85`; `place-1157` sorts before `place-5`.
-  assert.deepEqual(ModelHelper.shortenStringsOf(["acme/place-5", "acme/place-1157"]), {
+  assert.deepEqual(ContentHelper.shortenStringsOf(["acme/place-5", "acme/place-1157"]), {
     "acme/place-1157": "acme_3b85",
     "acme/place-5": "acme_3b85_2",
   });
@@ -334,6 +335,65 @@ test("a charter compiles to a list of items, each of its own kind extending one 
     ],
   );
   assert.equal(outputPath.getPath(charterOutput.findCharterOutputItem(CharterMd)), outputPath.charterMdFileName);
+});
+
+test("each item of the output is known by its path inside it and holds its text and its assets, one for one agent alone names that agent in its path, and none names where the output lands (CORE Story 48 scenario 1, CORE-FR-220, CORE Story 55 scenario 16)", async () => {
+  const charter = await loadCharterRoot(new InMemoryFileReaders(oneGuide));
+
+  const charterOutputItems = CompileService.compileCharterRoot(charter, [CLAUDE]).charterOutputItems;
+
+  const itemPaths = charterOutputItems.map((charterOutputItem) => outputPath.getPath(charterOutputItem));
+  assert.equal(new Set(itemPaths).size, itemPaths.length, "each path is one item's");
+  for (const [itemIndex, charterOutputItem] of charterOutputItems.entries()) {
+    const itemPath = itemPaths[itemIndex] ?? "";
+    assert.ok(!itemPath.startsWith("/") && !itemPath.startsWith(".cw/"), itemPath);
+    assert.ok(charterOutputItem.text.length > 0, itemPath);
+    assert.ok(!charterOutputItem.text.includes("/repo") && !charterOutputItem.text.includes(".cw/out"), itemPath);
+    const isForClaudeAlone = "agent" in charterOutputItem && charterOutputItem.agent !== undefined;
+    assert.equal(itemPath.includes("claude"), isForClaudeAlone, itemPath);
+  }
+  const counterScript = charterOutputItems.find(
+    (charterOutputItem) => outputPath.getPath(charterOutputItem) === "script/cw-session-tokens-counter/index.md",
+  );
+  assert.ok(counterScript instanceof CompiledPrimitive);
+  assert.equal(counterScript.assets.length, 1, "the script holds the file it runs");
+});
+
+test("an agent's projection finds each item it needs by what it is, wherever the item sits in the output (CORE Story 53 scenario 7, CORE Story 48 scenario 1, CORE-FR-220, CORE Story 55 scenario 16)", async () => {
+  const held = new InMemoryFileReaders({
+    ...oneGuide,
+    [new URL("mcp/billing/index.md", root).href]: [
+      "---",
+      "kind: mcp",
+      "id: billing",
+      "description: The billing service.",
+      "endpoint: https://mcp.example.com/",
+      "auth: [oauth]",
+      "tools: [search]",
+      "---",
+      "",
+      "Billing.",
+      "",
+    ].join("\n"),
+  });
+  const charter = await loadCharterRoot(held);
+  const charterOutput = CompileService.compileCharterRoot(charter, [CLAUDE]);
+  const reversedOutput = new CharterOutput();
+  for (const charterOutputItem of [...charterOutput.charterOutputItems].reverse())
+    reversedOutput.add(charterOutputItem);
+  const claudeProjection = agentProjectionByProviderOf(held).claude!;
+  const writtenPlanOf = async (laidOutput: CharterOutput) =>
+    (await claudeProjection.createAgentProjectionPlan(charter, laidOutput)).writePlans
+      .map(({ path, contents }) => [path, contents] as const)
+      .sort(([leftPath], [rightPath]) => leftPath.localeCompare(rightPath));
+
+  const [inOrderPlan, reversedPlan] = [await writtenPlanOf(charterOutput), await writtenPlanOf(reversedOutput)];
+
+  assert.deepEqual(reversedPlan, inOrderPlan);
+  // What it found: its own catalogue, the mcp origins, the sensors, each compiled primitive.
+  const plannedPaths = inOrderPlan.map(([path]) => path);
+  for (const plannedPath of ["CLAUDE.md", ".mcp.json", ".claude/settings.json", ".claude/rules/no-any.md"])
+    assert.ok(plannedPaths.includes(plannedPath), plannedPath);
 });
 
 test("where the charter document explains ids, it names the layer the engine brings beside the repository's own (CORE Story 56 scenario 1)", async () => {

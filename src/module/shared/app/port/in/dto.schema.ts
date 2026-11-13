@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "../../../domain/libs/validator.lib.js";
 
 /**
  * What every DTO is written with, data or outcome, written once: the shape of

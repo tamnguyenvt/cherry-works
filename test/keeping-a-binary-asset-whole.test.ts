@@ -87,7 +87,7 @@ test("a built binary asset is identical to its source, byte for byte (CORE Story
 
   const planSummaryDTO = await charterRuntimeApp.buildCharter();
 
-  assert.equal(planSummaryDTO.type, "PlanSummary");
+  assert.equal(planSummaryDTO.type, "ProjectionPlanSummary");
   assert.deepEqual(
     new Uint8Array(await readFile(join(repo, ".cw", "out", "skill", "diagrams", "diagram.png"))),
     pngBytes,
@@ -130,7 +130,7 @@ test("a binary asset is listed, read, validated and previewed as any asset is, a
   await charterRuntimeApp.buildCharter();
   const planSummaryDTO = await charterRuntimeApp.previewCharterBuild();
 
-  assert.ok(planSummaryDTO.type === "PlanSummary");
+  assert.ok(planSummaryDTO.type === "ProjectionPlanSummary");
   assert.ok(planSummaryDTO.data.unchanged.includes(".cw/out/skill/diagrams/diagram.png"));
   assert.deepEqual([...planSummaryDTO.data.added, ...planSummaryDTO.data.edited, ...planSummaryDTO.data.deleted], []);
 });
@@ -147,7 +147,7 @@ test("a binary asset edited on disk after a build is an edit to the preview (COR
   );
   const planSummaryDTO = await charterRuntimeApp.previewCharterBuild();
 
-  assert.ok(planSummaryDTO.type === "PlanSummary");
+  assert.ok(planSummaryDTO.type === "ProjectionPlanSummary");
   assert.deepEqual(planSummaryDTO.data.edited, [".cw/out/skill/diagrams/diagram.png"]);
   assert.ok((await stat(join(repo, ".cw", "out", "skill", "diagrams", "diagram.png"))).isFile());
 });

@@ -1,56 +1,12 @@
-import { z } from "zod";
-import type { AgentProvider } from "#module/shared/module.js";
-import { FaultHelper } from "../../../../shared/module.js";
-import { ModelHelper } from "../../helper.js";
+import { type AgentProvider, FaultHelper, GoodLineSchema, z } from "#module/shared/module.js";
+import { ContentHelper } from "../../helper.js";
 import { InvalidPrimitiveFault } from "../charter.fault.js";
+import type { AssetFile } from "./asset-file.js";
 import { PrimitiveLayer } from "./primitive-layer.value-object.js";
-
-/** One file of a primitive's folder beside its `index.md`: the path it has in
- *  that folder, and the bytes it holds, never decoded, so it is copied whole
- *  whatever it holds (FR-168, CORE-FR-207). */
-export interface AssetFile {
-  readonly assetPath: string;
-  readonly contents: Uint8Array;
-}
-
-/** An id as FR-141 writes one: lowercase slugs joined by `/`. */
-const ID_SOURCE = /[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*/.source;
-
-/**
- * Where a body or a sensor's `run` names another primitive: `[[<id>]]`, of any
- * kind (FR-172). Only a name so written is a reference, so prose is never taken
- * for one. The id is the first group.
- */
-const REFERENCE = new RegExp(`\\[\\[(${ID_SOURCE})\\]\\]`, "g");
-
-/**
- * Where an agent's `tools` holds an mcp origin: `[[<id>]]` for every tool that mcp
- * declares, `[[<id>]]:<tool>` for one of them (FR-156). The id is the first
- * group, the tool the second where one is named.
- */
-const TOOL_REFERENCE = new RegExp(`^\\[\\[(${ID_SOURCE})\\]\\](?::([^:\\s]+))?$`);
 
 /** The delimiter a primitive's headers are written between. One constant for
  *  the writing here and the reading in `PrimitiveFactory.create`, so the two cannot drift. */
 const DELIMITER = "---";
-
-/** One line of text with something on it: a header written down and left
- *  blank is one nothing can read. */
-const GoodLineSchema = z.string().regex(/\S/);
-
-/** A list of names, paths or globs with at least one in it: a kind that
- *  requires a list reads it entry by entry, and an empty one gives it nothing
- *  to read. */
-const GoodArraySchema = z.array(GoodLineSchema).min(1).readonly();
-
-/** A yes or a no: `true` or `false`, read as YAML reads it off a file, or as
- *  the line an author typed at `cw add` or in the portal. */
-const FlagSchema = z
-  .unknown()
-  .refine((yesNoValue) => [true, false, "true", "false"].includes(yesNoValue as never), {
-    message: "A yes or no header is written true or false.",
-  })
-  .transform((yesNoValue) => yesNoValue === true || yesNoValue === "true");
 
 export type CommonHeaders = Readonly<z.infer<ReturnType<typeof BasePrimitive.headersSchema>>>;
 
@@ -64,31 +20,45 @@ export type CommonHeaders = Readonly<z.infer<ReturnType<typeof BasePrimitive.hea
  * it is checked, and held as that kind's headers from then on.
  */
 export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeaders> {
-  static get referencePattern(): typeof REFERENCE {
-    return REFERENCE;
-  }
-
-  static get toolReferencePattern(): typeof TOOL_REFERENCE {
-    return TOOL_REFERENCE;
-  }
-
   static get delimiter(): typeof DELIMITER {
     return DELIMITER;
   }
 
-  static get goodLineSchema(): typeof GoodLineSchema {
-    return GoodLineSchema;
-  }
+  /**
+   * One kind's headers, read off what its file declared by that kind's schema, or
+   * one fault saying they are not what the kind holds (FR-004).
+   *
+   * The fault does not list what is wrong, header by header: it shows the kind's
+   * own sample, and an author holding the two side by side sees the difference.
+   * Where the schema said what is wrong in its own words — a rule spanning two
+   * headers, which no sample shows at a glance — those words are the message.
+   */
+  static headersOf<Schema extends z.ZodType>(
+    sampledKind: {
+      readonly kind: string;
+      readonly sample: Readonly<Record<string, unknown>>;
+    },
+    headerSchema: Schema,
+    headerRecord: Readonly<Record<string, unknown>>,
+  ): Readonly<z.infer<Schema>> {
+    const parsedHeaders = headerSchema.safeParse(headerRecord);
+    if (parsedHeaders.success) return parsedHeaders.data;
 
-  static get goodArraySchema(): typeof GoodArraySchema {
-    return GoodArraySchema;
+    const { kind, sample } = sampledKind;
+    const refinementMessages = parsedHeaders.error.issues
+      .filter((issue) => issue.code === "custom")
+      .map((issue) => issue.message);
+    const sampleLines = Object.entries({ kind, ...sample }).map(
+      ([field, sampleValue]) => `${field}: ${ContentHelper.formatFrontmatterValue(sampleValue)}`,
+    );
+    return FaultHelper.throwAggregate([
+      new InvalidPrimitiveFault(
+        refinementMessages.length > 0 ? refinementMessages.join(" ") : `These headers are not what a ${kind} holds.`,
+        `Write them the way this ${kind} does:\n${sampleLines.join("\n")}`,
+        { internal: false },
+      ),
+    ]);
   }
-
-  static get flagSchema(): typeof FlagSchema {
-    return FlagSchema;
-  }
-
-  static readonly headersOf: typeof headersOf = headersOf;
 
   /** The headers every kind declares, whatever else its own contract asks for
    *  (data-model §1). Each kind's own headers extend these, so what every
@@ -97,9 +67,9 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
     return z.object({
       /** Slugs joined by `/`, so ids can be grouped by team or domain
        *  (FR-141). The `/` is written `-` in the file's name and nothing else:
-       *  nothing is read from what a file is called. At most 40 characters, so every name a host
+       *  nothing is read from what a file is called. At most 40 characters, so every name an agent
        *  is given for it — an mcp's tools among them, `mcp__cw__mcp-<id>__<tool>` —
-       *  stays within what the host takes (FR-157). */
+       *  stays within what the agent takes (FR-157). */
       id: z
         .string()
         .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\/[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/)
@@ -192,7 +162,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
     ].some((searchedText) => searchedText.toLowerCase().includes(loweredWord));
   }
 
-  /** Whether this primitive is available to a host. No restriction means all. */
+  /** Whether this primitive is available to an agent. No restriction means all. */
   supportsAgent(_agent: AgentProvider): boolean {
     return true;
   }
@@ -223,12 +193,12 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
    *  checked against, so an edit made on disk since it was opened is not
    *  written over (FR-078). */
   get hash(): string {
-    return ModelHelper.createContentHash(this.writeMarkdown());
+    return ContentHelper.createContentHash(this.writeMarkdown());
   }
 
-  /** Its id as every name given to a host writes it, `/` as `-`:
+  /** Its id as every name given to an agent writes it, `/` as `-`:
    *  `mfbs-no-any` for `mfbs/no-any`, so a skill is invoked as `/mfbs-no-any`
-   *  (FR-141, FR-171). Made here, once, so nothing that names a host's file
+   *  (FR-141, FR-171). Made here, once, so nothing that names an agent's file
    *  spells it again. */
   get normId(): string {
     return this.headers.id.replace(/\//g, "-");
@@ -273,7 +243,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
       [
         DELIMITER,
         ...Object.entries({ kind: this.kind, ...this.headers }).map(
-          ([field, headerValue]) => `${field}: ${ModelHelper.formatFrontmatterValue(headerValue)}`,
+          ([field, headerValue]) => `${field}: ${ContentHelper.formatFrontmatterValue(headerValue)}`,
         ),
         DELIMITER,
         "",
@@ -311,39 +281,3 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
  * given is read off it (FR-039).
  */
 export type RequiredHeaders = Readonly<Record<string, "line" | "list">>;
-
-/**
- * One kind's headers, read off what its file declared by that kind's schema, or
- * one fault saying they are not what the kind holds (FR-004).
- *
- * The fault does not list what is wrong, header by header: it shows the kind's
- * own sample, and an author holding the two side by side sees the difference.
- * Where the schema said what is wrong in its own words — a rule spanning two
- * headers, which no sample shows at a glance — those words are the message.
- */
-function headersOf<Schema extends z.ZodType>(
-  sampledKind: {
-    readonly kind: string;
-    readonly sample: Readonly<Record<string, unknown>>;
-  },
-  headerSchema: Schema,
-  record: Readonly<Record<string, unknown>>,
-): Readonly<z.infer<Schema>> {
-  const parsedHeaders = headerSchema.safeParse(record);
-  if (parsedHeaders.success) return parsedHeaders.data;
-
-  const { kind, sample } = sampledKind;
-  const refinementMessages = parsedHeaders.error.issues
-    .filter((issue) => issue.code === "custom")
-    .map((issue) => issue.message);
-  const sampleLines = Object.entries({ kind, ...sample }).map(
-    ([field, sampleValue]) => `${field}: ${ModelHelper.formatFrontmatterValue(sampleValue)}`,
-  );
-  return FaultHelper.throwAggregate([
-    new InvalidPrimitiveFault(
-      refinementMessages.length > 0 ? refinementMessages.join(" ") : `These headers are not what a ${kind} holds.`,
-      `Write them the way this ${kind} does:\n${sampleLines.join("\n")}`,
-      { internal: false },
-    ),
-  ]);
-}

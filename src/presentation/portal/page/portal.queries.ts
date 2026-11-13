@@ -26,11 +26,13 @@ export function useKinds() {
 /** Every primitive of every layer, or those mentioning a word (FR-112, FR-114):
  *  the listing, the faults of a charter the engine will not read, or the fault
  *  it was raised with. */
-export function usePrimitives(matching?: string) {
+export function usePrimitives(searchText?: string) {
   return useQuery({
-    queryKey: ["primitives", matching ?? ""],
+    queryKey: ["primitives", searchText ?? ""],
     queryFn: async () =>
-      (await client.charter.root.primitives.$get({ query: matching === undefined ? {} : { matching } })).json(),
+      (
+        await client.charter.root.primitives.$get({ query: searchText === undefined ? {} : { matching: searchText } })
+      ).json(),
   });
 }
 

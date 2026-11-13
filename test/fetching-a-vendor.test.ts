@@ -509,6 +509,21 @@ test("a file a source names to climb out of a skill's folder lands inside it whe
   assert.equal(await readFile(join(folder, "CLAUDE.md"), "utf8"), "Mine.\n");
 });
 
+test("a version the source has not got is refused when injected as vendor add refuses it, and nothing is written (CORE Story 34 scenario 6, CORE-FR-198, CORE Story 55 scenario 8)", async (t) => {
+  const [source, injectFolder, addFolder] = [
+    await published(t),
+    await temporary(t, "inject"),
+    await temporary(t, "add"),
+  ];
+
+  const injectRefusalText = faultTextOf(await charterAuthoringIn(injectFolder).injectVendor(source, "v9.9.9"));
+  const addRefusalText = faultTextOf(await charterAuthoringIn(addFolder).addVendor(source, "v9.9.9"));
+
+  assert.match(injectRefusalText, /tag or branch/);
+  assert.equal(injectRefusalText, addRefusalText.replaceAll(addFolder, injectFolder));
+  assert.deepEqual(await readdir(injectFolder), []);
+});
+
 test("in a folder with no version control, a skill is injected as in a repository, and installed there too (CORE Story 37 scenario 1)", async (t) => {
   const [source, folder] = [await publishedSkills(t), await temporary(t, "plain")];
   const charterAuthoringApp = charterAuthoringIn(folder);

@@ -67,16 +67,22 @@ test("each primitive carries every header it declared, the ones the catalogue do
   assert.equal(sensor.data.headers.run, "pnpm lint");
 });
 
-test("a word keeps only the primitives mentioning it, in a header value as much as in a description (FR-114)", async () => {
+test("a word keeps only the primitives mentioning it, in a header value as much as in a description (FR-114, CORE Story 5 scenario 3, CORE Story 55 scenario 11)", async () => {
   assert.deepEqual(idsIn(await fullListOf(charter, "posttooluse")), ["lint"]);
   assert.deepEqual(idsIn(await fullListOf(charter, "About small")), ["small-diffs"]);
   assert.deepEqual(idsIn(await fullListOf(charter, "vendor")), ["small-diffs"]);
 });
 
-test("a word is found in the line saying when a primitive's kind comes up", async () => {
+test("a word is found in the line saying when a primitive's kind comes up (CORE Story 5 scenario 3, CORE Story 55 scenario 11)", async () => {
   // Only a sensor's kind says the harness runs something: the authored one, and
   // the one the engine brings to count a session's tokens.
   assert.deepEqual(idsIn(await fullListOf(charter, "the harness runs")), ["cw-session-tokens-counter-on-stop", "lint"]);
+});
+
+test("a word is found in a primitive's id, its kind and its path, and nothing else is listed (CORE Story 5 scenario 3, CORE-FR-114, CORE Story 55 scenario 8)", async () => {
+  assert.deepEqual(idsIn(await fullListOf(charter, "NO-AN")), ["no-any"]);
+  assert.deepEqual(idsIn(await fullListOf(charter, "GUIDE")), ["no-any", "small-diffs"]);
+  assert.deepEqual(idsIn(await fullListOf(charter, "small-diffs/index.md")), ["small-diffs"]);
 });
 
 test("a word nothing mentions lists nothing, and is no fault", async () => {

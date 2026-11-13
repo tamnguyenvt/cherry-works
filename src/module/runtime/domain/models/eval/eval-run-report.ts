@@ -6,14 +6,14 @@ export class EvalCaseReport {
   constructor(
     readonly suiteName: string,
     readonly prompt: string,
-    readonly tokens: number,
+    readonly tokenCount: number,
     readonly unmetReasons: readonly string[],
     readonly logPath?: string,
     readonly sessionId?: string,
     readonly sessionPath?: string,
   ) {}
 
-  get passed(): boolean {
+  get hasPassed(): boolean {
     return this.unmetReasons.length === 0;
   }
 }
@@ -27,6 +27,6 @@ export class EvalRunReport {
   ) {}
 
   get totalTokens(): number {
-    return this.evalCaseReports.reduce((tokens, evalCaseReport) => tokens + evalCaseReport.tokens, 0);
+    return this.evalCaseReports.reduce((tokenCount, evalCaseReport) => tokenCount + evalCaseReport.tokenCount, 0);
   }
 }

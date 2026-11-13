@@ -1,32 +1,37 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { EvalService } from "../src/module/runtime/domain/services/eval.service.js";
 import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 
 const repositoryUrl = new URL("../", import.meta.url);
 /** Each module's domain, and the kernel's (CORE-FR-222). */
-const domainFolderUrls = ["shared", "charter", "runtime"].map(
+const domainFolderUrls = ["shared", "charter", "runtime", "workspace"].map(
   (moduleName) => new URL(`src/module/${moduleName}/domain/`, repositoryUrl),
 );
 
 /** Every source file of the domain's models and value objects, by its URL,
  *  whichever folder of the domain holds it: its services, specifications,
- *  utilities and constants aside, and the assets of the engine's own layer. */
+ *  utilities and constants aside, the schemas the kernel shares, and the
+ *  assets of the engine's own layer. */
 const domainValueFileUrls = domainFolderUrls.flatMap((domainFolderUrl) =>
   readdirSync(domainFolderUrl, { recursive: true, encoding: "utf8" })
     .filter(
       (filePath) =>
         filePath.endsWith(".ts") &&
+        !/\.probe\./.test(filePath) &&
         !/(^|\/)(libs|builtin|services|specifications)\//.test(filePath) &&
         !/\.(service|specification|lib)\.ts$/.test(filePath) &&
-        filePath !== "constants.ts",
+        filePath !== "constants.ts" &&
+        filePath !== "schema.ts",
     )
     .map((filePath) => new URL(filePath, domainFolderUrl)),
 );
 /** Every file name of the domain, at any depth. */
 const domainFileNames = domainFolderUrls.flatMap((domainFolderUrl) =>
-  readdirSync(domainFolderUrl, { recursive: true, encoding: "utf8" }).map((filePath) => filePath.split("/").at(-1)!),
+  readdirSync(domainFolderUrl, { recursive: true, encoding: "utf8" })
+    .filter((filePath) => !/\.probe\./.test(filePath))
+    .map((filePath) => filePath.split("/").at(-1)!),
 );
 
 test("every value of the domain is a class, with no function or constant exported beside it (CORE Story 45 scenario 1)", () => {
@@ -38,10 +43,23 @@ test("every value of the domain is a class, with no function or constant exporte
   assert.deepEqual(looseExports, []);
 });
 
-test("the workspace's folders are the charter module's constants, and a build's output and the hosts' folders are the projection's, not the domain's (CORE Story 45 scenario 1, CORE-FR-221, CORE Story 53 scenario 2)", () => {
+test("a module's constants are its layouts, each one value made of its model, never a loose constant or a helper (CORE Story 55 scenario 23, CORE-FR-215)", () => {
+  const looseDeclarations = ["shared", "charter", "runtime", "workspace"].flatMap((moduleName) => {
+    const constantsUrl = new URL(`src/module/${moduleName}/domain/constants.ts`, repositoryUrl);
+    return existsSync(constantsUrl)
+      ? [...readFileSync(constantsUrl, "utf8").matchAll(/^export .*$/gm)]
+          .map((declarationMatch) => declarationMatch[0])
+          .filter((declaredLine) => !/^export const [a-z]\w* = new [A-Z]\w*\(\);$/.test(declaredLine))
+          .map((declaredLine) => `${moduleName}: ${declaredLine}`)
+      : [];
+  });
+  assert.deepEqual(looseDeclarations, []);
+});
+
+test("the workspace's folders are the charter module's layout, one value, and a build's output and the hosts' folders are the projection's, not the domain's (CORE Story 45 scenario 1, CORE-FR-221, CORE Story 53 scenario 2, CORE Story 55 scenario 23)", () => {
   assert.match(
     readFileSync(new URL("src/module/charter/domain/constants.ts", repositoryUrl), "utf8"),
-    /^export const CHARTER_FOLDER_PATH = /m,
+    /^export const charterPath = new CharterPath\(\);$/m,
   );
   assert.deepEqual(
     domainFileNames.filter((fileName) => fileName.endsWith("-folder.value-object.ts")),

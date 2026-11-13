@@ -56,4 +56,6 @@ export class EvalService {
   }
 
   /** Resolve a run's agent before any case can spend tokens. */
+
+  private constructor() {}
 }

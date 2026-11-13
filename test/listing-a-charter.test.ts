@@ -107,9 +107,18 @@ test("every primitive is listed, ordered by id, with what it is for", async () =
   );
 });
 
-test("the full listing names the file each primitive was authored in, and the files it applies to (FR-140)", async () => {
-  const { results } = await run(charter);
+test("the full listing opens each primitive on its id and description, with the file it was authored in and the files it applies to each on a line of its own beneath (CORE Story 3 scenario 10, FR-028, FR-140, CORE Story 55 scenario 12)", async () => {
+  const { code, results } = await run(charter);
 
+  assert.equal(code, EXIT_OK);
+  assert.ok(
+    results.includes(
+      ["no-any  What no-any is for.", "  .cw/charter/primitive/guide/no-any/index.md", "  globs: src/**/*.ts", ""].join(
+        "\n",
+      ),
+    ),
+    results,
+  );
   assert.match(results, /^ {2}\.cw\/charter\/primitive\/guide\/no-any\/index\.md$/m);
   assert.match(results, /^ {2}globs: src\/\*\*\/\*\.ts$/m);
   // Every other header is read from the file the line above names.
@@ -129,7 +138,7 @@ test("a listing is read off the charter, so every layer is named where it was au
   assert.doesNotMatch(results, /\.cw\/out\//);
 });
 
-test("--min says what an agent surveys by, and nothing else", async () => {
+test("--min says what an agent surveys by, and nothing else (CORE Story 3 scenario 10, FR-028, CORE Story 55 scenario 12)", async () => {
   const { code, results } = await run(charter, ["list", "--min"]);
 
   assert.equal(code, EXIT_OK);
@@ -152,7 +161,7 @@ test("no listing carries a body", async () => {
   for (const { results } of both) assert.ok(!results.includes("SECRET BODY TEXT"));
 });
 
-test("--kind narrows the listing to that kind", async () => {
+test("--kind narrows the listing to that kind (CORE Story 3 scenario 10, FR-028, CORE Story 55 scenario 12)", async () => {
   const { code, results } = await run(charter, ["list", "--kind", "guide", "--min"]);
 
   assert.equal(code, EXIT_OK);
@@ -175,7 +184,7 @@ test("a word that is no kind is refused, naming it and the kinds it could have b
   assert.match(problems, /guide, sensor, skill/);
 });
 
-test("a charter with an error lists nothing and sends the user to doctor", async () => {
+test("a charter with an error lists nothing and sends the user to doctor (CORE Story 3 scenario 10, FR-028, CORE Story 55 scenario 12)", async () => {
   const { code, results, problems } = await run({
     [new URL("guide/no-any/index.md", root).href]: ["---", "kind: guide", "id: no-any", "---", "", "Body.", ""].join(
       "\n",

@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { spawn, spawnSync } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
@@ -79,4 +84,51 @@ test("a folder with no version control never set up is refused, naming cw init a
   assert.match(problems, /never set up/);
   assert.match(problems, /cw init/);
   assert.doesNotMatch(problems, /git/);
+});
+
+test("cw portal, in a folder with no version control that cw init set up, serves the charter (CORE Story 35 scenario 2, CORE-FR-107, CORE Story 55 scenario 8)", async (t) => {
+  const plainFolderPath = await mkdtemp(join(tmpdir(), "cw-portal-anywhere-"));
+  t.after(() => rm(plainFolderPath, { recursive: true, force: true }));
+  // `pnpm test` builds this tree first: dist/ is what its source builds to.
+  const cwFilePath = fileURLToPath(new URL("../dist/cw.js", import.meta.url));
+  const commandEnv = { ...process.env, HOME: join(plainFolderPath, ".home"), NO_COLOR: "1" };
+  const initRun = spawnSync(process.execPath, [cwFilePath, "init", "--agent", "claude"], {
+    cwd: plainFolderPath,
+    env: commandEnv,
+    input: "",
+    encoding: "utf8",
+  });
+  assert.equal(initRun.status, 0, initRun.stderr);
+
+  const portalProcess = spawn(process.execPath, [cwFilePath, "portal", "--port", "47431"], {
+    cwd: plainFolderPath,
+    env: commandEnv,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  t.after(() => portalProcess.kill());
+  const portalAddress = new URL(
+    await new Promise<string>((resolve, reject) => {
+      let portalOutput = "";
+      const addressTimer = setTimeout(
+        () => reject(new Error(`the portal printed no address: ${portalOutput}`)),
+        10_000,
+      );
+      portalProcess.stdout.on("data", (outputChunk: Buffer) => {
+        portalOutput += outputChunk.toString();
+        const addressMatch = portalOutput.match(/http:\/\/\S+/);
+        if (addressMatch === null) return;
+        clearTimeout(addressTimer);
+        resolve(addressMatch[0]);
+      });
+      portalProcess.on("exit", () => reject(new Error(`the portal stopped: ${portalOutput}`)));
+    }),
+  );
+  const portalToken = portalAddress.searchParams.get("t") ?? "";
+
+  const primitivesResponse = await fetch(new URL("/api/charter/root/primitives", portalAddress.origin), {
+    headers: { authorization: `Bearer ${portalToken}` },
+  });
+
+  assert.equal(primitivesResponse.status, 200);
+  assert.match(await primitivesResponse.text(), /"cw-author"/);
 });

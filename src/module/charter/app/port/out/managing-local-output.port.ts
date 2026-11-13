@@ -14,7 +14,7 @@ export { ProjectionPlan, WritePlan } from "../../../domain/models/charter-output
 export { StampedDocument } from "../../../domain/models/charter-output/stamped-document.value-object.js";
 
 /**
- * The local files a build checks and writes: it lays a build's output onto a
+ * The local files a build checks and writes: it lays the compiled output onto a
  * repository, wherever it lays it, and writes every file a build planned: where the output lands is its own to know,
  * never the engine's, which knows an item by its path inside the output, under
  * `$CW_OUT/` (CORE-FR-220, CORE-FR-221). What each agent reads is

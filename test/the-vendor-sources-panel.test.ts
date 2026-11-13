@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import type { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { inTheBrowser } from "./in-the-browser.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
@@ -80,7 +81,7 @@ test("a source added from the dialog is installed through the engine, and the di
   );
 });
 
-test("a refused source stays in the dialog, in the engine's words (Story 8 scenarios 3, 6)", async () => {
+test("a source holding no charter folder is refused, and the refusal stays in the dialog, in the engine's words (CORE-FR-123)", async () => {
   const sourceFetcher = new InMemorySources();
   sourceFetcher.sourcesWithoutSubFolder.push("team/charter");
   await inTheBrowser(
@@ -94,6 +95,62 @@ test("a refused source stays in the dialog, in the engine's words (Story 8 scena
 
       assert.match(await page.getByRole("dialog").innerText(), /no "\.cw\/charter"[\s\S]*Check that the source holds/);
       assert.deepEqual(sourceFetcher.checkedOutFolders, []);
+    },
+    sourceFetcher,
+  );
+});
+
+/** Every file under the vendor folder, with what it holds. */
+const vendoredFilesOf = async (files: InMemoryFileReaders) =>
+  Object.fromEntries(
+    (await files.readFilesRecursively(new URL("file:///repo/.cw/charter/vendor/"))).map(({ fileUrl, contents }) => [
+      fileUrl.href,
+      contents,
+    ]),
+  );
+
+test("a source that cannot be reached installs nothing, touches nothing installed, and the dialog shows why in the engine's words (CORE Story 8 scenarios 3, 6, CORE-FR-123, CORE-FR-049, CORE Story 55 scenario 11)", async () => {
+  const sourceFetcher = new InMemorySources();
+  sourceFetcher.unreachableSources.push("team/charter");
+  await inTheBrowser(
+    withTwoVendors(),
+    async (page, files) => {
+      const vendoredBefore = await vendoredFilesOf(files);
+      await page.getByRole("tab", { name: "Vendor" }).click();
+      await page.getByLabel("Vendor sources").getByRole("button", { name: "Add source" }).click();
+      await page.getByLabel("source", { exact: true }).fill("team/charter");
+      await page.getByRole("dialog").getByRole("button", { name: "Add source" }).click();
+      await page.getByText("Refused, and nothing was installed").waitFor();
+
+      const dialogText = await page.getByRole("dialog").innerText();
+      assert.match(dialogText, /team\/charter could not be fetched\./);
+      assert.match(dialogText, /Check the address, and that you can reach it from here\./);
+      assert.deepEqual(sourceFetcher.checkedOutFolders, []);
+      assert.deepEqual(await vendoredFilesOf(files), vendoredBefore);
+    },
+    sourceFetcher,
+  );
+});
+
+test("a source whose charter would land on a name reserved for a kind installs nothing, touches nothing installed, and the dialog shows why (CORE Story 8 scenario 6, CORE-FR-123, CORE-FR-044, CORE Story 55 scenario 11)", async () => {
+  const sourceFetcher = new InMemorySources();
+  sourceFetcher.sourceFilesBySource["team/charters"] = {
+    "charters/guide/.cw/charter/primitive/guide/one-rule/index.md": primitive("guide", "one-rule"),
+  };
+  await inTheBrowser(
+    withTwoVendors(),
+    async (page, files) => {
+      const vendoredBefore = await vendoredFilesOf(files);
+      await page.getByRole("tab", { name: "Vendor" }).click();
+      await page.getByLabel("Vendor sources").getByRole("button", { name: "Add source" }).click();
+      await page.getByLabel("source", { exact: true }).fill("team/charters");
+      await page.getByRole("dialog").getByRole("button", { name: "Add source" }).click();
+      await page.getByText("Refused, and nothing was installed").waitFor();
+
+      const dialogText = await page.getByRole("dialog").innerText();
+      assert.match(dialogText, /is named as a kind is, and a charter is never installed under a kind's name/);
+      assert.deepEqual(sourceFetcher.checkedOutFolders, []);
+      assert.deepEqual(await vendoredFilesOf(files), vendoredBefore);
     },
     sourceFetcher,
   );

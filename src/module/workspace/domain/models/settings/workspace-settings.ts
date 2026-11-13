@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "#module/shared/module.js";
 
 /**
  * What a repository configured itself with — which agents it compiles its

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { PassThrough } from "node:stream";
 import { test } from "node:test";
 import prompts from "prompts";
 import { McpOrigin } from "../src/module/charter/domain/models/charter-output/mcp-origin.js";
@@ -194,16 +195,31 @@ test("an OAuth sign-in keeps what the mcp origin issued, with its registration (
   });
 });
 
-test("cw mcp auth at a terminal asks about each address not signed in, then asks nothing the next time, and no file changes (Story 18, 1 – 3, 5)", async () => {
+test("cw mcp auth at a terminal asks about each address not signed in, then asks nothing the next time, and no file changes (Story 18, 1 – 3, 5; CORE Story 18 scenarios 1, 5, CORE Story 55 scenario 8)", async () => {
   const { cli, credentialsRepository, held } = mcpOriginsOver();
   const filesBefore = await held.readFilesRecursively(repoPath);
 
+  // GitHub, allowing OAuth by one mcp and a token by both, is asked how; Linear,
+  // allowing a token alone, is asked for the token straight away.
   const firstRun = await running(cli, ["mcp", "auth"], {
     atTerminal: true,
     answers: ["token", "gh-secret", "lin-secret"],
   });
   assert.equal(firstRun.code, EXIT_OK, firstRun.problems);
   assert.deepEqual([...credentialsRepository.secrets.keys()].sort(), [LINEAR, GITHUB].sort());
+  // Each address in turn, with every id declaring it.
+  assert.match(
+    firstRun.problems,
+    new RegExp(`${GITHUB}\\n {2}github/billing, github/web\\n[\\s\\S]*${LINEAR}\\n {2}linear\\n`),
+  );
+  assert.doesNotMatch(firstRun.problems, /npx -y some-server/);
+  assert.deepEqual(
+    [GITHUB, LINEAR].map((address) => JSON.parse(credentialsRepository.secrets.get(address) ?? "{}").accessToken),
+    ["gh-secret", "lin-secret"],
+  );
+  // The token typed reaches no file under the repository.
+  for (const { contents } of await held.readFilesRecursively(repoPath))
+    assert.doesNotMatch(String(contents), /gh-secret|lin-secret/);
   assert.match(firstRun.results, /Signed in at/);
   for (const token of ["gh-secret", "lin-secret"])
     assert.doesNotMatch(firstRun.results + firstRun.problems, new RegExp(token));
@@ -213,6 +229,76 @@ test("cw mcp auth at a terminal asks about each address not signed in, then asks
   assert.match(secondRun.results, /signed in at every address: 2/);
 
   assert.deepEqual(await held.readFilesRecursively(repoPath), filesBefore);
+});
+
+test("cw mcp auth at a terminal offers each way an address allows to sign in, and reads the token typed without showing it (CORE Story 18 scenario 1, CORE Story 18 scenario 5, CORE Story 55 scenario 8)", {
+  timeout: 30_000,
+}, async (t) => {
+  const { cli, credentialsRepository } = mcpOriginsOver();
+  // A terminal of a test's own: each key is pressed once the prompt it
+  // answers is shown, as a person would. Answers another test handed prompts
+  // are taken away, even none: an injected list, empty or not, is read
+  // before any terminal is.
+  Object.assign(prompts, { _injected: undefined });
+  const terminalInput = Object.assign(new PassThrough(), { isTTY: true, setRawMode: () => terminalInput });
+  const processStdinDescriptor = Object.getOwnPropertyDescriptor(process, "stdin");
+  Object.defineProperty(process, "stdin", { value: terminalInput, configurable: true });
+  const shownTexts: string[] = [];
+  const originalWriteByStream = { out: process.stdout.write, err: process.stderr.write };
+  t.after(() => {
+    if (processStdinDescriptor !== undefined) Object.defineProperty(process, "stdin", processStdinDescriptor);
+    process.stdout.write = originalWriteByStream.out;
+    process.stderr.write = originalWriteByStream.err;
+  });
+  // GitHub allows OAuth and a token: the arrow moves to the token, which is
+  // then typed; Linear allows a token alone, typed straight away.
+  const pressedKeysByPrompt: [RegExp, string][] = [
+    [/Sign in how\?/, "\x1b[B\r"],
+    [/Token\?/, "gh-secret\r"],
+    [/Token\?[\s\S]*Token\?/, "lin-secret\r"],
+  ];
+  const showText = (text: string) => {
+    shownTexts.push(text);
+    const nextPromptKeys = pressedKeysByPrompt[0];
+    if (nextPromptKeys?.[0].test(shownTexts.join(""))) {
+      pressedKeysByPrompt.shift();
+      setTimeout(() => terminalInput.write(nextPromptKeys[1]), 20);
+    }
+    return true;
+  };
+  // What the terminal is shown is text; the bytes the test runner reports in
+  // meanwhile go on where they were going.
+  process.stdout.write = ((text: string | Uint8Array, ...writeArguments: unknown[]) =>
+    typeof text === "string"
+      ? showText(text)
+      : Reflect.apply(originalWriteByStream.out, process.stdout, [
+          text,
+          ...writeArguments,
+        ])) as typeof originalWriteByStream.out;
+  process.stderr.write = ((text: string | Uint8Array, ...writeArguments: unknown[]) =>
+    typeof text === "string"
+      ? showText(text)
+      : Reflect.apply(originalWriteByStream.err, process.stderr, [
+          text,
+          ...writeArguments,
+        ])) as typeof originalWriteByStream.err;
+
+  const exitCode = await cli.runCommandLine(["mcp", "auth"]);
+
+  // What the terminal showed, its colours and cursor moves taken out.
+  const shownText = shownTexts.join("").replace(new RegExp(`${String.fromCharCode(27)}\\[[0-9;?]*[A-Za-z]`, "g"), "");
+  assert.equal(exitCode, EXIT_OK, shownText);
+  // Each way GitHub allows is offered by name.
+  assert.match(shownText, /Sign in how\?/);
+  assert.match(shownText, /in the browser \(OAuth\)/);
+  assert.match(shownText, /with a token/);
+  // The token is asked for and typed without a character of it shown.
+  assert.match(shownText, /Token\?/);
+  for (const token of ["gh-secret", "lin-secret"]) assert.doesNotMatch(shownText, new RegExp(token));
+  assert.deepEqual(
+    [GITHUB, LINEAR].map((address) => JSON.parse(credentialsRepository.secrets.get(address) ?? "{}").accessToken),
+    ["gh-secret", "lin-secret"],
+  );
 });
 
 test("cw mcp auth signs in by OAuth where chosen, printing the address to open", async () => {

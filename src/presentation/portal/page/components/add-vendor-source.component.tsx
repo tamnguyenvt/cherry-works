@@ -17,7 +17,7 @@ export function AddVendorSource({
   onDone,
   onClose,
 }: {
-  onDone: (did: string, detail: string) => void;
+  onDone: (doneText: string, detailText: string) => void;
   onClose: () => void;
 }) {
   const [source, setSource] = useState("");

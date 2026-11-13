@@ -58,7 +58,7 @@ The main host differences:
 | Measurement / evaluation | Claude Code | Codex |
 |---|---|---|
 | `cw context` | Offline estimate | Offline estimate |
-| `cw context --exact` | Supported | Not implemented |
+| `cw context --exact --agent=<agent>` | Supported | Not implemented |
 | Session token logging | Supported | Not implemented; Claude's built-in token counter is excluded from Codex hooks |
 | `cw eval` | Supported | Supported |
 
@@ -75,7 +75,7 @@ The main host differences:
 | `cw remove <id> [--yes]` | Delete a primitive this repository authored |
 | `cw explain <id>` | Show which file declares an id, what it pulls in and which tests name it |
 | `cw doctor` | Check the agents, the charter and the compiled output |
-| `cw context [--exact]` | Say how many tokens the charter puts into the agent's context when a session opens |
+| `cw context [--agent=<agent>] [--exact]` | Say how many tokens the charter puts into the agent's context when a session opens |
 | `cw sessions [--since] [--until] [--json]` | Sum up the tokens of the sessions kept on this machine, by day and by session |
 | `cw test` | Run every case in `.cw/charter/test/` against the charter |
 | `cw eval` | Put every case in `.cw/charter/eval/` to the real agent under promptfoo |
@@ -252,9 +252,15 @@ Everything the charter loads when a session opens — always-on guides, every
 skill's description, every subagent's — is paid for on every turn.
 
 ```bash
-cw context           # each primitive's tokens, the largest first, estimated
-cw context --exact   # counted through the agent's own command line
+cw context                          # each primitive's tokens, the largest first, estimated
+cw context --agent=claude           # the same, for that agent alone
+cw context --exact --agent=claude   # estimated and counted through claude's own command line, side by side
 ```
+
+With `--exact`, each primitive is listed with its estimate, the exact count and
+how far apart they are, then the totals; a warning is printed when the totals
+differ by more than 15%, and the command still succeeds. `--exact` needs
+`--agent`.
 
 A guide with `globs` is listed apart: it is loaded only when a file it names is
 touched. `cw build` prints the total in one line, the portal shows the same

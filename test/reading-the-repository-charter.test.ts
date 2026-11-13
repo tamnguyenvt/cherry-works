@@ -2,8 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
 import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
+import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
+import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
 import { inTheBrowser } from "./in-the-browser.js";
 import { chipsOf, columnOf, rowsOf, shownKindOf } from "./listing-in-the-browser.js";
+import { buildingCharterOf } from "./use-cases-of.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
 
@@ -119,6 +125,58 @@ test("a charter the engine will not read shows every fault under its file in pla
     ]);
     assert.ok((await refusedFiles.locator("tr td:nth-child(2) p").count()) > 0);
     assert.equal(await page.getByRole("radio").count(), 0);
+  });
+});
+
+test("a charter with two files claiming one id shows, in place of a listing, every fault cw doctor gives, under the same files, and nothing else (CORE Story 5 scenario 5, FR-115, CORE Story 55 scenario 8)", async () => {
+  // One id in the repository and in a vendor: a collision, filed where it
+  // has to change.
+  const collidingCharter = {
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
+    [new URL("guide/no-any/index.md", "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/").href]: primitive(
+      "guide",
+      "no-any",
+    ),
+  };
+  await inTheBrowser(collidingCharter, async (page, files) => {
+    await page.getByRole("alert").waitFor();
+    const doctorOutcomeDTO = await wrapAppToShowPaths(
+      buildingCharterOf(
+        files,
+        new InMemoryFileOutput(files),
+        new InMemoryTokenCounter(),
+        { claude: new InMemoryAgentCli() },
+        new InMemoryReporter(),
+      ),
+      "/repo",
+    ).diagnoseCharter();
+    assert.equal(doctorOutcomeDTO.type, "DoctorOutcome");
+    const doctorFaultsByFilePath =
+      doctorOutcomeDTO.type === "DoctorOutcome" ? doctorOutcomeDTO.data.faultsByFile.data.files : {};
+
+    assert.match(await page.getByRole("alert").innerText(), /The engine will not read this charter/);
+    assert.equal(await page.getByRole("radio").count(), 0);
+    const refusedFileRows = page.getByRole("table", { name: "Refused files" }).locator("tr");
+    const shownFaultsByFilePath = Object.fromEntries(
+      await refusedFileRows.evaluateAll((rows) =>
+        rows.map((row) => [
+          row.querySelector("td")!.textContent,
+          [...row.querySelectorAll("td:nth-child(2) p")].map((paragraph) => paragraph.textContent),
+        ]),
+      ),
+    );
+    assert.deepEqual(Object.keys(shownFaultsByFilePath).sort(), Object.keys(doctorFaultsByFilePath).sort());
+    assert.ok(Object.keys(doctorFaultsByFilePath).length > 0, "the collision is a fault cw doctor gives");
+    assert.match(
+      JSON.stringify(shownFaultsByFilePath),
+      /\.cw\/charter\/vendor\/acme\/charter\/root\/primitive\/guide\/no-any\/index\.md/,
+    );
+    for (const [filePath, doctorFaults] of Object.entries(doctorFaultsByFilePath))
+      assert.deepEqual(
+        [...(shownFaultsByFilePath[filePath] ?? [])].sort(),
+        doctorFaults.map(({ data: { severity, message, fix } }) => `${severity}${message} ${fix}`).sort(),
+        filePath,
+      );
   });
 });
 

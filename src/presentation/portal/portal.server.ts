@@ -44,14 +44,34 @@ export async function startPortal(
   for (let candidatePort = port; ; candidatePort++) {
     try {
       const address = new URL(`http://127.0.0.1:${candidatePort}/?t=${token}`);
-      const portalApp = buildPortalApp(
-        page,
-        charterAuthoringApp,
-        charterBuildingApp,
-        loadWorkspaceSettings,
-        token,
-        candidatePort,
-      );
+      // The routes and the page behind the guards of plan §6: a `Host` naming
+      // this port, JSON on every verb but `GET`, and the token on the page's
+      // address and on every call to `/api`. The page's other files are the
+      // bundle `pnpm build` wrote, and ask for no token: the browser fetches
+      // them from the page's own markup, which cannot carry one. No CORS header
+      // is sent, so a page of another origin fails the preflight of every write.
+      const hosts = [`127.0.0.1:${candidatePort}`, `localhost:${candidatePort}`];
+      const portalApp = new Hono()
+        .use(async (requestContext, nextMiddleware) => {
+          if (!hosts.includes(requestContext.req.header("host") ?? "")) {
+            return requestContext.text(`The portal answers only at ${hosts.join(" and ")}.`, 403);
+          }
+          if (
+            requestContext.req.method !== "GET" &&
+            requestContext.req.header("content-type")?.split(";")[0]?.trim() !== "application/json"
+          ) {
+            return requestContext.text("Every request but a GET is sent with Content-Type: application/json.", 415);
+          }
+          await nextMiddleware();
+        })
+        .use("/", async (requestContext, nextMiddleware) => {
+          if (requestContext.req.query("t") !== token)
+            return requestContext.text('Open the address "cw portal" printed: this one has no token.', 401);
+          await nextMiddleware();
+        })
+        .use("/api/*", bearerAuth({ token }))
+        .route("/api", buildPortalRoutes(charterAuthoringApp, charterBuildingApp, loadWorkspaceSettings))
+        .use("/*", serveStatic({ root: fileURLToPath(page) }));
       const server = await new Promise<ServerType>((resolve, reject) => {
         const listeningServer = serve({ fetch: portalApp.fetch, hostname: "127.0.0.1", port: candidatePort }, () =>
           resolve(listeningServer),
@@ -66,41 +86,4 @@ export async function startPortal(
       return `The portal could not listen on 127.0.0.1:${candidatePort}: ${(listenError as Error).message}\n  Free a port on this machine, then start the portal again.\n`;
     }
   }
-}
-
-/**
- * The routes and the page behind the guards of plan §6: a `Host` naming this
- * port, JSON on every verb but `GET`, and the token on the page's address and
- * on every call to `/api`. The page's other files are the bundle `pnpm build`
- * wrote, and ask for no token: the browser fetches them from the page's own
- * markup, which cannot carry one. No CORS header is sent, so a page of another
- * origin fails the preflight of every write.
- */
-function buildPortalApp(
-  page: URL,
-  charterAuthoringApp: ForAuthoringCharter,
-  charterBuildingApp: ForBuildingCharter,
-  loadWorkspaceSettings: () => Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>,
-  token: string,
-  port: number,
-): Hono {
-  const hosts = [`127.0.0.1:${port}`, `localhost:${port}`];
-  return new Hono()
-    .use(async (c, next) => {
-      if (!hosts.includes(c.req.header("host") ?? "")) {
-        return c.text(`The portal answers only at ${hosts.join(" and ")}.`, 403);
-      }
-      if (c.req.method !== "GET" && c.req.header("content-type")?.split(";")[0]?.trim() !== "application/json") {
-        return c.text("Every request but a GET is sent with Content-Type: application/json.", 415);
-      }
-      await next();
-    })
-    .use("/", async (c, next) => {
-      if (c.req.query("t") !== token)
-        return c.text('Open the address "cw portal" printed: this one has no token.', 401);
-      await next();
-    })
-    .use("/api/*", bearerAuth({ token }))
-    .route("/api", buildPortalRoutes(charterAuthoringApp, charterBuildingApp, loadWorkspaceSettings))
-    .use("/*", serveStatic({ root: fileURLToPath(page) }));
 }

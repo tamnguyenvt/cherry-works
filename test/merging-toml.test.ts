@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseTomlTable, writeTomlText } from "../src/module/charter/domain/libs/toml.lib.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { TomlLib } from "../src/module/shared/domain/libs/toml.lib.js";
 import { DomainFault } from "../src/module/shared/domain/models/domain.fault.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
@@ -31,7 +31,7 @@ const building = (config: string, files: Readonly<Record<string, string>> = {}) 
 
 test("TOML that cannot be serialized is the caller's to correct, and says none of the library's words", () => {
   assert.throws(
-    () => writeTomlText({ bad: () => 0 }),
+    () => TomlLib.writeTomlText({ bad: () => 0 }),
     (raised: unknown) => {
       assert.ok(raised instanceof DomainFault);
       assert.equal(raised.internal, false);
@@ -55,9 +55,9 @@ test("TOML merging preserves quoted dotted keys, inline tables, multiline string
     'mcp_servers."user.server" = { command = "mine", args = ["one"], env = { KEEP = "yes" } }',
   ].join("\n");
   const { held, app } = building(source);
-  assert.equal((await app.buildCharter()).type, "PlanSummary");
-  const parsed = parseTomlTable(await held.readFile(inRepo(".codex/config.toml")));
-  const expected = parseTomlTable(
+  assert.equal((await app.buildCharter()).type, "ProjectionPlanSummary");
+  const parsed = TomlLib.parseTomlTable(await held.readFile(inRepo(".codex/config.toml")));
+  const expected = TomlLib.parseTomlTable(
     `${source}\nproject_doc_max_bytes = 1048576\n[mcp_servers.cw]\ncommand = "cw"\nargs = ["mcp", "serve"]\n`,
   );
   assert.deepEqual(parsed, expected);
@@ -78,20 +78,20 @@ test("TOML merges in memory without state, preserves existing hook groups and do
         "---\nkind: sensor\nid: check\ndescription: Check Stop.\nsignal: Stop\nrun: echo check\n---\n\nCheck.\n",
     },
   );
-  assert.equal((await app.buildCharter()).type, "PlanSummary");
+  assert.equal((await app.buildCharter()).type, "ProjectionPlanSummary");
   assert.equal(await held.readIfThere(inRepo(".cw/toml-projections.json")), undefined);
   const builtText = await held.readFile(inRepo(".codex/config.toml"));
   assert.match(builtText, /echo user/);
   assert.equal((builtText.match(/\[\[hooks.Stop\]\]/g) ?? []).length, 2);
   const secondBuildAnswer = await app.buildCharter();
-  assert.equal(secondBuildAnswer.type, "PlanSummary");
-  if (secondBuildAnswer.type === "PlanSummary") assert.deepEqual(secondBuildAnswer.data.edited, []);
+  assert.equal(secondBuildAnswer.type, "ProjectionPlanSummary");
+  if (secondBuildAnswer.type === "ProjectionPlanSummary") assert.deepEqual(secondBuildAnswer.data.edited, []);
   assert.equal(await held.readFile(inRepo(".codex/config.toml")), builtText);
 
   // Settings missing from the next projection stay in the existing TOML.
   held.removeFile(sensorFile);
   for (const { fileUrl } of await held.readFilesRecursively(inRepo(".cw/out/"))) held.removeFile(fileUrl);
-  assert.equal((await app.buildCharter()).type, "PlanSummary");
+  assert.equal((await app.buildCharter()).type, "ProjectionPlanSummary");
   assert.equal(await held.readFile(inRepo(".codex/config.toml")), builtText);
 });
 
@@ -101,7 +101,7 @@ test("unchanged TOML keeps user formatting and comments byte-for-byte", async ()
   const unchanged = `# User comment.\n\n${await held.readFile(inRepo(".codex/config.toml"))}`;
   held.writeFile(inRepo(".codex/config.toml"), unchanged);
   const secondBuildAnswer = await app.buildCharter();
-  if (secondBuildAnswer.type === "PlanSummary") assert.deepEqual(secondBuildAnswer.data.edited, []);
+  if (secondBuildAnswer.type === "ProjectionPlanSummary") assert.deepEqual(secondBuildAnswer.data.edited, []);
   assert.equal(await held.readFile(inRepo(".codex/config.toml")), unchanged);
 });
 
@@ -116,7 +116,7 @@ test("invalid TOML fails before any file is written", async () => {
 test("preview merges TOML in memory without changing the configuration", async () => {
   const { held, app } = building('model = "mine"\n');
   const preview = await app.previewCharterBuild();
-  assert.equal(preview.type, "PlanSummary");
+  assert.equal(preview.type, "ProjectionPlanSummary");
   assert.equal(await held.readIfThere(inRepo(".cw/toml-projections.json")), undefined);
   assert.equal(await held.readFile(inRepo(".codex/config.toml")), 'model = "mine"\n');
 });

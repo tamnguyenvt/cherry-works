@@ -1,7 +1,7 @@
 import { DocumentBasedComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
-/** A subagent's frontmatter: the name this host spawns it by, the line it is
- *  described by, the tools it holds — comma-separated, the way this host
+/** A subagent's frontmatter: the name this agent spawns it by, the line it is
+ *  described by, the tools it holds — comma-separated, the way this agent
  *  reads them — and the model it runs on, where one is named. */
 export interface ClaudeAgentHeaders {
   readonly name: string;
@@ -11,7 +11,7 @@ export interface ClaudeAgentHeaders {
 }
 
 /** What a subagent is compiled with, its name aside: that is what the component
- *  is called, and this host reads it out of the frontmatter as well. */
+ *  is called, and this agent reads it out of the frontmatter as well. */
 export type ClaudeAgentDeclared = Omit<ClaudeAgentHeaders, "name">;
 
 /**
@@ -19,7 +19,7 @@ export type ClaudeAgentDeclared = Omit<ClaudeAgentHeaders, "name">;
  * frontmatter lists and nothing else.
  *
  * A charter `agent` compiles to one. The tools are written comma-separated on
- * one line, which is how this host reads them — the one place a charter list
+ * one line, which is how this agent reads them — the one place a charter list
  * stops being a list.
  */
 export class ClaudeAgent extends DocumentBasedComponent<ClaudeAgentHeaders> {

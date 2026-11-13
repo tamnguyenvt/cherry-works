@@ -20,7 +20,7 @@ import { Button } from "./ui/button.js";
  * outcome is the engine's, matched to the case by its file and its place in it.
  */
 export function TestSuites() {
-  const { open } = useDialog();
+  const { openDialog } = useDialog();
   const testSuitesQuery = useTestSuites();
   const testOutcomeQuery = useTestOutcome();
   const primitivesQuery = usePrimitives();
@@ -53,7 +53,7 @@ export function TestSuites() {
       return void toast.error(testSuiteNameDTO.data.message, { description: testSuiteNameDTO.data.fix });
     const { name } = testSuiteNameDTO.data;
     setOpenedName(name);
-    open("testSuite", { name });
+    openDialog("testSuite", { name });
     toast("Test file created", { description: `.cw/charter/test/${name} · edit the cases, then run them` });
   };
 
@@ -125,7 +125,7 @@ export function TestSuites() {
               <Button
                 variant="ghost"
                 className="h-auto p-0 text-[11.5px] text-zinc-400 hover:bg-transparent hover:text-foreground"
-                onClick={() => open("testSuite", { name: testSuite.name })}
+                onClick={() => openDialog("testSuite", { name: testSuite.name })}
               >
                 Edit
               </Button>
@@ -143,7 +143,7 @@ export function TestSuites() {
                   testCase={testCase}
                   testCaseReport={testCaseReports[caseIndex]}
                   isHeld={testCase.id === undefined || heldIds.has(testCase.id)}
-                  onOpen={(id) => open("primitive", { id })}
+                  onOpen={(id) => openDialog("primitive", { id })}
                 />
               ))}
           </section>

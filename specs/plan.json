@@ -17,7 +17,11 @@
       "title": "Trust the charter, and prove it in CI",
       "dependsOn": [
         "CORE Story 1"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 4",
@@ -38,7 +42,11 @@
       "title": "Author, edit and delete a primitive without looking anything up",
       "dependsOn": [
         "CORE Story 5"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 7",
@@ -114,21 +122,33 @@
       "title": "Open every primitive as it was compiled",
       "dependsOn": [
         "CORE Story 1"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 17",
       "title": "Declare where knowledge lives once, and point any primitive at it",
       "dependsOn": [
         "CORE Story 16"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 18",
       "title": "Sign in to every mcp origin as yourself",
       "dependsOn": [
         "CORE Story 17"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 19",
@@ -149,28 +169,44 @@
       "title": "Keep a script or a template in the charter, and get the file it is",
       "dependsOn": [
         "CORE Story 16"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 22",
       "title": "Point any primitive at a script or a template by its id",
       "dependsOn": [
         "CORE Story 21"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 23",
       "title": "Keep every primitive as a folder, with its index.md and its assets",
       "dependsOn": [
         "CORE Story 21"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 24",
       "title": "Keep a script as real files, and say which one runs",
       "dependsOn": [
         "CORE Story 23"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 25",
@@ -178,7 +214,11 @@
       "dependsOn": [
         "CORE Story 22",
         "CORE Story 24"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 26",
@@ -192,7 +232,11 @@
       "title": "Name every primitive by its id alone",
       "dependsOn": [
         "CORE Story 26"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 28",
@@ -206,7 +250,11 @@
       "title": "Fire every sensor of a signal through one `cw` command",
       "dependsOn": [
         "CORE Story 25"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 30",
@@ -250,14 +298,22 @@
       "title": "See what the charter loads into the agent's context",
       "dependsOn": [
         "CORE Story 16"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "EVAL Story 2",
       "title": "Be told what a session has used when the agent stops",
       "dependsOn": [
         "CORE Story 24"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "EVAL Story 3",
@@ -278,7 +334,11 @@
       "title": "Evaluate the charter against the real agent under promptfoo",
       "dependsOn": [
         "CORE Story 9"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "EVAL Story 7",
@@ -327,8 +387,8 @@
         "EVAL Story 3"
       ],
       "evidence": {
-        "summary": "pnpm typecheck and pnpm test passed: 778 tests, 0 failures; dependency rules and build passed; manual db: review isolated sessions, urn:x refused; cw sessions succeeded and cw build changed no files; specs check passed; independent review passed.",
-        "date": "2026-11-03"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -341,8 +401,8 @@
         "SDK Story 1"
       ],
       "evidence": {
-        "summary": "Rerun after the rewrite: every scenario proven by test/importing-the-engine.test.ts (SDK Story 2 scenarios 1-9) over the packed and installed package, scenario 1 type-checking a tool's own adapter for every replaceable port; pnpm test 918 tests, 915 passed, 0 failed, 3 skipped, typecheck and lint clean.",
-        "date": "2026-11-11"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -352,8 +412,8 @@
         "SDK Story 2"
       ],
       "evidence": {
-        "summary": "pnpm typecheck and pnpm test passed: 792 tests, 0 failures; dependency rules and unified build passed; installed-package memory authoring covered all scenarios and matched cw disk output byte for byte; fresh manual memory flow made 0 filesystem/process calls with stderr empty; specs, clean-state and independent review passed.",
-        "date": "2026-11-03"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -364,8 +424,8 @@
         "SDK Story 3"
       ],
       "evidence": {
-        "summary": "Rerun after the rewrite: scenarios 1-4 proven by test/releasing-the-engine.test.ts running scripts/release.ts over fake npm and git (no registry reached), scenario 1 checking the tag and committed version, scenario 2 an installed cw naming another version; pnpm test 918 tests, 915 passed, 0 failed, 3 skipped, typecheck and lint clean.",
-        "date": "2026-11-11"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -412,8 +472,8 @@
         "SDK Story 2"
       ],
       "evidence": {
-        "summary": "pnpm typecheck passed; pnpm test 823/823 pass, 0 fail, lint:deps clean (280 modules, 997 dependencies) and the build included; node .cw/out/script/sdd-specs/specs.mjs check exit 0; git diff --check clean. By hand cw list --kind nonsense, cw explain nowhere and cw remove nope exit 1 with the person's message and fix and nothing on stdout; cw build reports unreadable frontmatter under .cw/charter/guide/bad/index.md; cw vendor add of https://reader:tok-very-secret@127.0.0.1:1/team/charter.git exits 1 naming https://127.0.0.1:1/team/charter.git with neither the user nor the token; an unreadable .cw/charter logs CharterAuthoring.list stopped on an internal fault and Caused by Error: EACCES and answers Something went wrong on our side; the portal answers that internal fault as HTTP 500 InternalFault with no EACCES in the body, and UnknownIdFault as HTTP 422, the EACCES only on the portal stderr. cw init logged nothing.",
-        "date": "2026-11-05"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -423,8 +483,8 @@
         "CORE Story 39"
       ],
       "evidence": {
-        "summary": "pnpm typecheck passed; pnpm test 844 tests, 841 passed, 0 failed, 3 skipped; lint:deps no violations; cw build, cw doctor and cw test 6 cases passed over the repositories wired in main.ts",
-        "date": "2026-11-06"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -447,8 +507,8 @@
         "SDK Story 4"
       ],
       "evidence": {
-        "summary": "pnpm typecheck passed; pnpm test 838 tests, 835 passed, 0 failed, 3 skipped; a manual release run refused an optional member, removal and patch-level addition, and passed comments and layout at 1.0.1",
-        "date": "2026-11-05"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -459,8 +519,8 @@
         "EVAL Story 1"
       ],
       "evidence": {
-        "summary": "pnpm test: 830 tests, 827 pass, 0 fail, 3 skipped; typecheck clean; tokenizer estimate 5,669 vs 5,565 exact (1.9%) at 94f4536, 2026-11-05T13:52Z",
-        "date": "2026-11-05"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed; cw context --exact --agent=claude, 2026-11-13T09:05Z: estimated 5,847, exact 5,800, +0.8%, within 15%",
+        "date": "2026-11-13"
       }
     },
     {
@@ -481,8 +541,8 @@
         "CORE Story 44"
       ],
       "evidence": {
-        "summary": "pnpm typecheck passed; pnpm test 855 tests, 852 passed, 0 failed, 3 skipped; lint:deps no violations; cw test 6 cases passed; the built cw answered init, build, explain, context, doctor and remove in a scratch repository, and refused the agent \"gemini\"",
-        "date": "2026-11-06"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -514,8 +574,8 @@
         "CORE Story 47"
       ],
       "evidence": {
-        "summary": "Rerun after the rewrite: scenarios 1, 2, 4 proven by test/reaching-the-engine-through-four-applications.test.ts; scenario 2 failed by behaviour and was fixed (catalogue entries and session span copied out of their models); scenario 3 by test/answering-every-command-as-before.test.ts against answers recorded from this tree on 2026-11-11, not from before the split; pnpm test 918 tests, 915 passed, 0 failed, 3 skipped, typecheck and lint clean.",
-        "date": "2026-11-11"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -526,8 +586,8 @@
         "CORE Story 49"
       ],
       "evidence": {
-        "summary": "Rerun after the rewrite: scenarios 1-4 proven by test/laying-a-compiled-charter-onto-each-host.test.ts (CORE Story 48 scenarios 1-4), scenario 3 through a projection of an author's own, scenario 4 serving mcp origins from where an own output writer laid them; pnpm test 918 tests, 915 passed, 0 failed, 3 skipped, typecheck and lint clean.",
-        "date": "2026-11-11"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -539,8 +599,8 @@
         "CORE Story 48"
       ],
       "evidence": {
-        "summary": "Rerun after the rewrite: scenarios 1-5, 7-12 proven by test/composing-the-engine-of-two-modules.test.ts, scenario 10 applying cw-author's move table mechanically with no real agent; scenario 13 and 48's byte-for-byte by test/laying-a-compiled-charter-onto-each-host.test.ts; scenario 6 against answers recorded from this tree on 2026-11-11; pnpm test 918 tests, 915 passed, 0 failed, 3 skipped, typecheck and lint clean.",
-        "date": "2026-11-11"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -565,8 +625,8 @@
         "CORE Story 43"
       ],
       "evidence": {
-        "summary": "biome, typecheck; pnpm test 905 tests, 902 passed, 0 failed, 3 skipped; specs check passed; contract.d.ts equals the build",
-        "date": "2026-11-11"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -576,8 +636,8 @@
         "CORE Story 43"
       ],
       "evidence": {
-        "summary": "943 tests, 940 pass, 0 fail, 3 skipped; typecheck, lint:deps and biome clean; review round 40 passed",
-        "date": "2026-11-12"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -600,8 +660,8 @@
         "SDK Story 8"
       ],
       "evidence": {
-        "summary": "typecheck; biome; pnpm test 953 tests, 950 pass, 3 skipped, 0 fail, the count of CORE FR no story cites at 0 among them; specs check; pty cw init shows claude and codex unticked; cw init with no --agent stops naming the flag; buidl answers Did you mean build?",
-        "date": "2026-11-12"
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
+        "date": "2026-11-13"
       }
     },
     {
@@ -611,7 +671,7 @@
         "CORE Story 43"
       ],
       "evidence": {
-        "summary": "typecheck exit 0; pnpm test 945 pass, 0 fail; check exit 0; pnpm tokenizer-accuracy at 61bf5b1 on the charter alone, estimated 5,925 vs 6,054 exact (-2.1%), 2026-11-13T02:23Z; pricing dropped",
+        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed; cw context --exact --agent=claude, 2026-11-13T09:05Z: estimated 5,847, exact 5,800, +0.8%, within 15%",
         "date": "2026-11-13"
       }
     },
@@ -624,7 +684,11 @@
         "SDK Story 10",
         "CORE Story 56",
         "EVAL Story 9"
-      ]
+      ],
+      "evidence": {
+        "summary": "Quality passes 1-3 (F, then B with no error); every violation repaired within the story (scenarios 2-35); typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed; cw context --exact --agent=claude +0.8%",
+        "date": "2026-11-13"
+      }
     }
   ]
 }

@@ -126,7 +126,7 @@ test("scope describes a primitive's folder, its binary assets and keeping a skil
   assert.match(skillFolderAnswerText, /It is a folder, as every primitive is/);
   assert.equal(coreSpecText.includes("A primitive is a markdown file with headers"), false);
   assert.equal(primitiveEntityText.includes("One authored markdown file"), false);
-  assert.match(primitiveEntityText, /A folder `<kind>\/<id>` whose `index\.md` holds its headers/);
+  assert.match(primitiveEntityText, /[Aa] folder `<kind>\/<id>` whose `index\.md` holds its headers/);
   assert.equal(story4Scenario1Text.includes("a markdown file appears"), false);
   assert.match(story4Scenario1Text, /`<kind>\/<id>\/index\.md` appears holding the answers and nothing else/);
   assert.equal(coreSpecText.includes("A skill kept as a folder of files would have needed"), false);

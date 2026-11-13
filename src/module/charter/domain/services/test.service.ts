@@ -1,5 +1,4 @@
-import { type DomainFault, FaultsByFile } from "../../../shared/module.js";
-import { isMatchedByGlob } from "../libs/globs.lib.js";
+import { type DomainFault, FaultsByFile, GlobsLib } from "#module/shared/module.js";
 import type { CharterRoot } from "../models/charter/charter-root.js";
 import { InvalidTestSuiteFault, UnmetExpectationFault, UntestedPrimitiveFault } from "../models/charter.fault.js";
 import { PrimitiveLayer } from "../models/primitive/primitive-layer.value-object.js";
@@ -54,8 +53,8 @@ export class TestService {
         new UntestedPrimitiveFault(
           `No test case names "${id}", so nothing notices when it stops coming up where it should.`,
           primitive.kind === "guide"
-            ? `Add a case to a file under .cw/charter/test/: { "do": { "touchFile": "<a file it speaks about>" }, "expect": { "activate": "${id}" } }.`
-            : `Add a case to a file under .cw/charter/test/: { "when": "${primitive.headers.signal}", "expect": { "run": "${id}" } }.`,
+            ? `Add a case to a test file of the charter: { "do": { "touchFile": "<a file it speaks about>" }, "expect": { "activate": "${id}" } }.`
+            : `Add a case to a test file of the charter: { "when": "${primitive.headers.signal}", "expect": { "run": "${id}" } }.`,
           { severity: "warn", internal: false },
         ),
       ];
@@ -120,7 +119,7 @@ export class TestService {
 
     const { globs = [] } = declaredPrimitive.headers;
     if (globs.length === 0) return undefined;
-    return globs.some((glob) => isMatchedByGlob(glob, filePath))
+    return globs.some((glob) => GlobsLib.isMatchedByGlob(glob, filePath))
       ? undefined
       : new UnmetExpectationFault(
           `This file matches none of the globs "${id}" speaks about: ${globs.join(", ")}.`,
@@ -143,13 +142,13 @@ export class TestService {
   static #findPostureFault(
     charter: CharterRoot,
     filePath: string,
-    expected: boolean,
+    isAllowExpected: boolean,
   ): UnmetExpectationFault | undefined {
     const denyingPostures = charter.primitives.filter(
       (primitive) =>
-        primitive.kind === "posture" && primitive.headers.deny.some((glob) => isMatchedByGlob(glob, filePath)),
+        primitive.kind === "posture" && primitive.headers.deny.some((glob) => GlobsLib.isMatchedByGlob(glob, filePath)),
     );
-    if (expected)
+    if (isAllowExpected)
       return denyingPostures.length === 0
         ? undefined
         : new UnmetExpectationFault(
@@ -215,4 +214,6 @@ export class TestService {
       { internal: false },
     );
   }
+
+  private constructor() {}
 }

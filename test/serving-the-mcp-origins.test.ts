@@ -319,13 +319,56 @@ test("MCP reads only the shared catalogue, since its primitives are shared", asy
 });
 
 test("a list of mcp origins whose origin has no ids or no address does not read, and is refused saying to build again (FR-145)", async () => {
-  const builtOutputReader = {
+  const compiledOutputReader = {
     describeItemPlace: (outputFileName: string) => `.cw/out/${outputFileName}`,
-    readBuiltOutputItem: async () => JSON.stringify({ origins: [{ names: {}, auth: [] }] }),
+    readCompiledOutputItem: async () => JSON.stringify({ origins: [{ names: {}, auth: [] }] }),
   };
 
-  await assert.rejects(loadMcpOriginsService.loadMcpOrigins(builtOutputReader), (raisedValue: Error) => {
+  await assert.rejects(loadMcpOriginsService.loadMcpOrigins(compiledOutputReader), (raisedValue: Error) => {
     assert.equal(raisedValue.name, "UnreadableMcpOriginsFault");
     return true;
   });
+});
+
+test("the repository and a vendor declaring one address under two ids are listed once, under both, and every tool either declares is served there (CORE Story 17 scenario 5, FR-145, CORE Story 55 scenario 8)", async () => {
+  const mcpText = (id: string, tools: string) =>
+    `---\nkind: mcp\nid: ${id}\ndescription: Billing's code.\nendpoint: ${GITHUB}\nauth: [token]\ntools: [${tools}]\n---\n\nRead it.\n`;
+  const held = new InMemoryFileReaders({
+    "file:///repo/.cw/settings.json": `${JSON.stringify({ agents: ["claude"] })}\n`,
+    "file:///repo/.cw/charter/primitive/guide/no-any/index.md":
+      '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nRead [[billing]] and [[acme/code]].\n',
+    "file:///repo/.cw/charter/primitive/mcp/billing/index.md": mcpText("billing", "search_code"),
+    "file:///repo/.cw/charter/vendor/acme/tools/root/primitive/mcp/acme/code/index.md": mcpText(
+      "acme/code",
+      "get_file_contents",
+    ),
+  });
+  const credentialsRepository = new InMemoryCredentialsRepository();
+  await signIn(credentialsRepository, GITHUB);
+  const mcpServers = new InMemoryMcpServers();
+  mcpServers.servers.set(GITHUB, { tools: ["get_file_contents", "search_code"].map(toolNamed) });
+  const charterRuntimeApp = buildingCharterOf(
+    held,
+    new InMemoryFileOutput(held),
+    new InMemoryTokenCounter(),
+    {},
+    new InMemoryReporter(),
+    { mcpServers, credentialsRepository, oauthAuthorizer: new InMemoryOAuthAuthorizer() },
+  );
+
+  const planSummaryDTO = await charterRuntimeApp.buildCharter();
+  assert.equal(planSummaryDTO.type, "ProjectionPlanSummary", JSON.stringify(planSummaryDTO));
+
+  const { origins: builtOrigins } = JSON.parse(await held.readFile(new URL(`${OUT}mcp-origins.json`)));
+  assert.equal(builtOrigins.length, 1);
+  assert.equal(builtOrigins[0].address, GITHUB);
+  assert.deepEqual(builtOrigins[0].ids, ["acme/code", "billing"]);
+  const servedTools = answerOf(await charterRuntimeApp.listServedTools());
+  assert.deepEqual(
+    servedTools.data.tools.map(({ data }) => data.name).sort(),
+    [
+      `${builtOrigins[0].names["acme/code"]}__get_file_contents`,
+      `${builtOrigins[0].names.billing}__search_code`,
+    ].sort(),
+  );
 });

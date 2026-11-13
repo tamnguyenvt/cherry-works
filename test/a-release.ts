@@ -11,7 +11,7 @@ export interface ReleaseFixture {
   nextVersion: string;
   /** What the fake commands do: `dry-run`, `publish` and `unpublished`
    *  pass, the last with the package never published; `tests-fail`,
-   *  `install-fails`, `cw-version-wrong`, `library-version-wrong`, `maintainer-denied`,
+   *  `uncommitted`, `install-fails`, `cw-build-fails`, `cw-version-wrong`, `library-version-wrong`, `maintainer-denied`,
    *  `already-published`, `commit-fails`, `publish-fails` and `push-fails`
    *  fail where they say. */
   releaseMode: string;
@@ -102,7 +102,7 @@ if (commandName === 'pnpm') {
     const installFolder = commandArguments[commandArguments.indexOf('--prefix') + 1];
     const installedCw = path.join(installFolder, 'node_modules/.bin/cw');
     fs.mkdirSync(path.dirname(installedCw), { recursive: true });
-    fs.writeFileSync(installedCw, '#!${process.execPath}\\nif (process.argv[2] === "--version") console.info("' + (releaseMode === 'cw-version-wrong' ? '0.0.0' : packageVersion) + '");\\n');
+    fs.writeFileSync(installedCw, '#!${process.execPath}\\nif (process.argv[2] === "--version") console.info("' + (releaseMode === 'cw-version-wrong' ? '0.0.0' : packageVersion) + '");\\n' + (releaseMode === 'cw-build-fails' ? 'if (process.argv[2] === "build") process.exit(1);\\n' : ''));
     fs.chmodSync(installedCw, 0o755);
     const libraryFolder = path.join(installFolder, 'node_modules/cherry-works');
     fs.mkdirSync(libraryFolder, { recursive: true });
@@ -111,6 +111,7 @@ if (commandName === 'pnpm') {
   }
   if (commandArguments[0] === 'publish' && releaseMode === 'publish-fails') process.exit(1);
 } else if (commandName === 'git') {
+  if (commandArguments[0] === 'status' && releaseMode === 'uncommitted') console.info(' M README.md');
   if (commandArguments[0] === 'push' && releaseMode === 'push-fails') process.exit(1);
   if (commandArguments[0] === 'rev-parse' && commandArguments.includes('--verify')) process.exit(1);
   if (commandArguments[0] === 'rev-parse') console.info('fixture-commit');

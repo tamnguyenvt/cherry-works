@@ -47,6 +47,10 @@ export class NoFolderAddressFault extends AdapterFault {}
 /** A file a test's map of files was asked for and does not hold. */
 export class MissingHeldFileFault extends AdapterFault {}
 
+/** A file reader handed that sets up no reader over another folder, so `cw`'s
+ *  own sessions store cannot read the home (SDK-FR-020). */
+export class MissingFolderReaderFault extends AdapterFault {}
+
 // What the charter's adapters raise.
 
 /** An output or a projection asked for a checkout that its class built over

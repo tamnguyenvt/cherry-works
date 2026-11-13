@@ -87,4 +87,6 @@ export class WorkspaceSettingsFactory {
       { internal: false },
     );
   }
+
+  private constructor() {}
 }

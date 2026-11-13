@@ -1,5 +1,5 @@
 import { SessionAnalysis } from "./session-analysis.js";
-import { SessionAnalysisLines } from "./session-analysis-line.js";
+import { SessionAnalysisLine } from "./session-analysis-line.value-object.js";
 
 /** Makes the sessions' analysis out of the logs their store read. */
 export class SessionAnalysisFactory {
@@ -10,8 +10,8 @@ export class SessionAnalysisFactory {
     const sessionAnalysisLines = logTexts.flatMap((logText) =>
       logText.split("\n").flatMap((logLine) => {
         try {
-          const sessionAnalysisLineParse = SessionAnalysisLines.schema.safeParse(JSON.parse(logLine));
-          return sessionAnalysisLineParse.success ? [sessionAnalysisLineParse.data] : [];
+          const sessionAnalysisLineParse = SessionAnalysisLine.schema.safeParse(JSON.parse(logLine));
+          return sessionAnalysisLineParse.success ? [new SessionAnalysisLine(sessionAnalysisLineParse.data)] : [];
         } catch {
           return [];
         }

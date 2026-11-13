@@ -1,16 +1,14 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { StreamableHTTPClientTransport, StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import {
-  AdapterFault,
   type ForCallingMcpServers,
   type McpServerAddress,
   type McpServerConnection,
   UnansweringMcpOriginFault,
-  UnauthorizedMcpFault,
-  UnreachableMcpOriginFault,
 } from "../app/port/out/calling-mcp-servers.port.js";
+import { wrapMcpFault } from "./helper.js";
 
 /**
  * DRIVEN ADAPTER: the mcp origins a charter declares, reached over the SDK's own
@@ -105,19 +103,4 @@ export class McpClients implements ForCallingMcpServers {
       clearTimeout(connectTimeout);
     }
   }
-}
-
-/** What the SDK raised, as this port raises it: a `401` the one refusal the
- *  caller can act on, anything else an `UnreachableMcpOriginFault` saying what failed where,
- *  what the SDK said kept as its cause for the log alone (SDK-FR-018). Never
- *  what was sent: a credential is not in any message. */
-function wrapMcpFault(raisedValue: unknown, failedCallText: string, fix: string): AdapterFault {
-  if (raisedValue instanceof AdapterFault) return raisedValue;
-  if (raisedValue instanceof StreamableHTTPError && raisedValue.code === 401)
-    return new UnauthorizedMcpFault(
-      `${failedCallText}: the mcp origin refused your credential.`,
-      'Run "cw mcp auth" at a terminal to sign in there again.',
-      { internal: false },
-    );
-  return new UnreachableMcpOriginFault(`${failedCallText}.`, fix, { internal: false, cause: raisedValue });
 }

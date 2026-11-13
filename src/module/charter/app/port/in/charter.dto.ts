@@ -1,11 +1,11 @@
-import { z } from "zod";
-import { dto, FaultDTOs, groupByType, StringsSchema } from "../../../../shared/module.js";
+import { dto, FaultDTOs, groupByType, StringsSchema, z } from "#module/shared/app/port/in/index.js";
 
 /**
  * What the charter module answers with, through authoring and projection:
  * what one model of the charter says, and what came of doing something with
  * it, `…Outcome`. Each is `{ type, data }`, `type` its name exactly as
- * `CharterDTOs` keys it. Zod and nothing else: the page bundles this file.
+ * `CharterDTOs` keys it. Written with the kernel's DTO entry alone, never its
+ * module.ts: a client that imports this file bundles no server code.
  */
 
 /** Every kind the charter knows, and when a primitive of that kind comes up:
@@ -66,8 +66,8 @@ const PrimitivesSchema = dto(
 );
 
 /** What a build did, or would do, to each file it touches. */
-const PlanSummarySchema = dto(
-  "PlanSummary",
+const ProjectionPlanSummarySchema = dto(
+  "ProjectionPlanSummary",
   z.object({
     added: StringsSchema,
     edited: StringsSchema,
@@ -456,7 +456,8 @@ const ExplanationOutcomeSchema = dto(
     activatesWhen: z.string(),
     useMixins: z.array(PrimitiveSchema).readonly(),
     rationale: PrimitiveSchema.optional(),
-    hosts: z.array(PrimitiveSchema).readonly(),
+    /** Every primitive that pulls this mixin in. */
+    usedByPrimitives: z.array(PrimitiveSchema).readonly(),
     citers: z.array(PrimitiveSchema).readonly(),
     mentioners: z.array(PrimitiveSchema).readonly(),
     testCasesByFile: TestCasesByFileSchema,
@@ -498,7 +499,7 @@ export const CharterDTOs = groupByType(
   MainContextLoadSchema,
   MainContextTextsSchema,
   MainContextsSchema,
-  PlanSummarySchema,
+  ProjectionPlanSummarySchema,
   PrimitiveSchema,
   PrimitiveHeaderSchema,
   PrimitiveKindsSchema,
@@ -541,7 +542,7 @@ export namespace CharterDTOs {
   export type MainContextLoad = z.infer<typeof CharterDTOs.MainContextLoad>;
   export type MainContextTexts = z.infer<typeof CharterDTOs.MainContextTexts>;
   export type MainContexts = z.infer<typeof CharterDTOs.MainContexts>;
-  export type PlanSummary = z.infer<typeof CharterDTOs.PlanSummary>;
+  export type ProjectionPlanSummary = z.infer<typeof CharterDTOs.ProjectionPlanSummary>;
   export type Primitive = z.infer<typeof CharterDTOs.Primitive>;
   export type PrimitiveHeader = z.infer<typeof CharterDTOs.PrimitiveHeader>;
   export type PrimitiveKinds = z.infer<typeof CharterDTOs.PrimitiveKinds>;

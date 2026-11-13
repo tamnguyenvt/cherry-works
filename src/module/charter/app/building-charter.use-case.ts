@@ -1,18 +1,18 @@
-import { AgentProvider } from "#module/shared/module.js";
 import {
+  AgentProvider,
   ApplicationService,
   type FaultDTOs,
   FaultsByFile,
   type ForCallingMcpServers,
   type ForReportingProgress,
-} from "../../shared/module.js";
+} from "#module/shared/module.js";
 import { outputPath } from "../domain/constants.js";
 import type { CharterRoot } from "../domain/models/charter/charter-root.js";
 import { UncompiledAgentFault } from "../domain/models/charter.fault.js";
 import { BuiltSensorsFactory } from "../domain/models/charter-output/built-sensors.factory.js";
 import type { McpOrigin } from "../domain/models/charter-output/mcp-origin.js";
-import type { PlanSummary } from "../domain/models/charter-output/projection-plan.js";
-import { MainContext, type MainContextText } from "../domain/models/context/main-context.js";
+import type { ProjectionPlanSummary } from "../domain/models/charter-output/projection-plan.js";
+import { MainContext, MainContextLoad, type MainContextText } from "../domain/models/context/main-context.js";
 import { EvalRootFactory } from "../domain/models/eval/eval-root.factory.js";
 import { McpPrimitive } from "../domain/models/primitive/mcp-primitive.js";
 import { PrimitiveLayer } from "../domain/models/primitive/primitive-layer.value-object.js";
@@ -62,9 +62,10 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   readonly #charterRepository: Pick<
     ForManagingCharter,
     | "loadCharter"
+    | "describeCharterPlace"
     | "loadTestSuites"
     | "loadEvalSuites"
-    | "readBuiltOutputItem"
+    | "readCompiledOutputItem"
     | "describeItemPlace"
     | "resolveOutputLinks"
   >;
@@ -87,13 +88,14 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     charterRepository: Pick<
       ForManagingCharter,
       | "loadCharter"
+      | "describeCharterPlace"
       | "loadTestSuites"
       | "loadEvalSuites"
-      | "readBuiltOutputItem"
+      | "readCompiledOutputItem"
       | "describeItemPlace"
       | "resolveOutputLinks"
     >,
-    /** What lays a build's output onto the repository, deciding where it
+    /** What lays the compiled output onto the repository, deciding where it
      *  lands, and writes every file a build planned (CORE-FR-221). */
     localRepo: ForManagingLocalOutput,
     /** What each agent reads of a charter, and where, under the agent's name:
@@ -199,7 +201,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
             this.#localRepo,
             this.#charterRepository,
             this.#mcpReaching,
-            { refreshMcpOrigins: false },
+            { shouldRefreshMcpOrigins: false },
           )
         : undefined;
       const planSummary =
@@ -248,8 +250,8 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
           return CharterDTOs.MainContext.of({
             agent: mainContext.agent.name,
             isExact: mainContext.isExact,
-            sessionLoads: mainContext.sessionLoads.map(CharterDTOs.MainContextLoad.of),
-            fileLoads: mainContext.fileLoads.map(CharterDTOs.MainContextLoad.of),
+            sessionLoads: mainContext.sessionLoads.map(this.#mainContextLoadDTOOf),
+            fileLoads: mainContext.fileLoads.map(this.#mainContextLoadDTOOf),
             totalTokens: mainContext.totalTokens,
           });
         }),
@@ -266,7 +268,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
    * FR-009). Which agents are compiled for is what this was composed with,
    * never what happens to be installed on the machine running this (FR-033).
    */
-  async buildCharter(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+  async buildCharter(): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("BuildingCharter.buildCharter", async () => {
       const charter = await this.#loadHoldingCharter();
       if (charter instanceof FaultsByFile) return this.faultsByFileDTOOf(charter);
@@ -279,7 +281,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
         this.#localRepo,
         this.#charterRepository,
         this.#mcpReaching,
-        { refreshMcpOrigins: true },
+        { shouldRefreshMcpOrigins: true },
       );
       if (buildProjectionPlan instanceof FaultsByFile) return this.faultsByFileDTOOf(buildProjectionPlan);
 
@@ -296,7 +298,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   }
 
   /** The same two plans a build carries out, read rather than run (FR-022). */
-  async previewCharterBuild(): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+  async previewCharterBuild(): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("BuildingCharter.previewCharterBuild", async () => {
       const charter = await this.#loadHoldingCharter();
       if (charter instanceof FaultsByFile) return this.faultsByFileDTOOf(charter);
@@ -307,7 +309,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
         this.#localRepo,
         this.#charterRepository,
         this.#mcpReaching,
-        { refreshMcpOrigins: true },
+        { shouldRefreshMcpOrigins: true },
       );
       if (buildProjectionPlan instanceof FaultsByFile) return this.faultsByFileDTOOf(buildProjectionPlan);
       return this.#planSummaryDTOOf(
@@ -373,7 +375,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   }
 
   /** Read off the list the last build laid, through what laid it, each path
-   *  into the build's output in a command written as where the output lands;
+   *  into the compiled output in a command written as where the output lands;
    *  it runs nothing (CORE-FR-176, FR-041, CORE-FR-221). */
   async listSensorCommands(
     signal: string,
@@ -381,7 +383,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   ): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("BuildingCharter.listSensorCommands", async () => {
       const builtSensors = BuiltSensorsFactory.createFromBuiltText(
-        await this.#charterRepository.readBuiltOutputItem(outputPath.sensorsFileName),
+        await this.#charterRepository.readCompiledOutputItem(outputPath.sensorsFileName),
       );
       const commands = builtSensors
         .filterForAgent(this.#findAgentProvider(agentName))
@@ -393,7 +395,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
 
   async buildCharterInto(
     checkoutPath: string,
-  ): Promise<CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+  ): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("BuildingCharter.buildCharterInto", async () => {
       // The charter as the store holds it now, committed or not, laid into
       // the checkout by the output and each agent's projection made over it:
@@ -413,7 +415,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
         checkoutLocalOutput,
         this.#charterRepository,
         undefined,
-        { refreshMcpOrigins: false },
+        { shouldRefreshMcpOrigins: false },
       );
       if (checkoutProjectionPlan instanceof FaultsByFile) return this.faultsByFileDTOOf(checkoutProjectionPlan);
       const planSummary = this.#buildCharterService.previewPlan(
@@ -431,7 +433,15 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
       const charter = await this.#loadHoldingCharter();
       if (charter instanceof FaultsByFile) return this.faultsByFileDTOOf(charter);
       return CharterDTOs.MainContextTexts.of({
-        agents: this.#agents.map((agent) => ({ agent: agent.name, texts: this.#layMainContextTexts(charter, agent) })),
+        agents: this.#agents.map((agent) => ({
+          agent: agent.name,
+          texts: this.#layMainContextTexts(charter, agent).map(({ id, kind, text, globs }) => ({
+            id,
+            kind,
+            text,
+            ...(globs === undefined ? {} : { globs }),
+          })),
+        })),
       });
     });
   }
@@ -496,6 +506,12 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     );
   }
 
+  /** What one primitive, or the charter itself, puts into an agent's main
+   *  context, counted, as a DTO. */
+  #mainContextLoadDTOOf({ id, kind, tokenCount, globs }: MainContextLoad): CharterDTOs.MainContextLoad {
+    return CharterDTOs.MainContextLoad.of({ id, kind, ...(globs === undefined ? {} : { globs }), tokens: tokenCount });
+  }
+
   /** What one agent's main context of this charter comes to, counted by a
    *  tokenizer on this machine and scaled to that agent's: an estimate, with no
    *  key and no network (EVAL-FR-001, EVAL-FR-002, EVAL-SC-001, EVAL-SC-002). */
@@ -503,10 +519,10 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     const { tokenFactor } = this.#agentProjectionByProvider[agent.name]!;
     return new MainContext(
       agent,
-      this.#layMainContextTexts(charter, agent).map(({ text, ...mainContextText }) => ({
-        ...mainContextText,
-        tokens: Math.round(this.#tokenCounter.countTokens(text) * tokenFactor),
-      })),
+      this.#layMainContextTexts(charter, agent).map(
+        ({ id, kind, text, globs }) =>
+          new MainContextLoad(id, kind, Math.round(this.#tokenCounter.countTokens(text) * tokenFactor), globs),
+      ),
       false,
     );
   }
@@ -541,7 +557,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     readonly problems: string[];
   }> {
     const { origins } = await this.#loadMcpOriginsService.loadMcpOrigins(this.#charterRepository);
-    const toolsById = await this.#loadMcpOriginsService.loadMcpTools(
+    const { toolNamesById } = await this.#loadMcpOriginsService.loadMcpTools(
       this.#charterRepository,
       origins.flatMap(({ ids }) => ids),
     );
@@ -549,8 +565,8 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     const declaredTools: DeclaredTool[] = [];
     for (const origin of origins)
       for (const id of origin.ids) {
-        if (!toolsById.has(id)) continue;
-        const tools = toolsById.get(id);
+        if (!toolNamesById.has(id)) continue;
+        const tools = toolNamesById.get(id);
         if (tools === undefined) {
           problems.push(
             `${id} has no compiled document at ${this.#charterRepository.describeItemPlace(outputPath.getCompiledPrimitivePath(McpPrimitive.kind, id))}, so none of its tools is served. Run "cw build".`,
@@ -573,9 +589,9 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
 
   /** What a build did, or would do: the four lists as they are, and its
    *  warnings where it had any. */
-  #planSummaryDTOOf(planSummary: PlanSummary): CharterDTOs.PlanSummary {
+  #planSummaryDTOOf(planSummary: ProjectionPlanSummary): CharterDTOs.ProjectionPlanSummary {
     const { warnings } = planSummary;
-    return CharterDTOs.PlanSummary.of({
+    return CharterDTOs.ProjectionPlanSummary.of({
       added: planSummary.addedPaths,
       edited: planSummary.editedPaths,
       deleted: planSummary.deletedPaths,

@@ -9,6 +9,7 @@ import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memo
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { Commander } from "../src/presentation/cli/cli.commander.js";
+import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
 import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
 import { buildPortalRoutes } from "../src/presentation/portal/portal.routes.js";
@@ -103,7 +104,7 @@ test("the preview lists every target cw build --preview prints, and writes nothi
   const answer = await portalRoutes.request("/charter/root/build");
 
   assert.equal(answer.status, 200);
-  const { added, edited, deleted, unchanged } = CharterDTOs.PlanSummary.parse(await answer.json()).data;
+  const { added, edited, deleted, unchanged } = CharterDTOs.ProjectionPlanSummary.parse(await answer.json()).data;
   assert.ok(added.includes(".cw/out/catalogue.json"));
   assert.equal(await fileReaders.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
 
@@ -123,13 +124,54 @@ test("the preview lists every target cw build --preview prints, and writes nothi
   ]);
 });
 
+test("cw build --preview writes nothing, lists every target with a count, and fails while anything would change, so CI can gate on it (CORE Story 3 scenarios 2, 3, CORE-FR-034, CORE-FR-093, CORE Story 55 scenario 8)", async () => {
+  const { fileReaders, cli } = surfaces(holding());
+  const filesBefore = await fileReaders.readFilesRecursively(repoPath);
+
+  const { code, text } = await printed(cli, ["build", "--preview"]);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.deepEqual(await fileReaders.readFilesRecursively(repoPath), filesBefore, "nothing is written");
+  const listedTargets = text.split("\n").filter((line) => /^ {2}(create|update|delete|unchanged) +\S+$/.test(line));
+  assert.ok(listedTargets.some((line) => /^ {2}create +\.cw\/out\/catalogue\.json$/.test(line)));
+  assert.match(
+    text,
+    new RegExp(
+      `^${listedTargets.length} files: ${listedTargets.length} create, 0 update, 0 delete, 0 unchanged\\.$`,
+      "m",
+    ),
+  );
+});
+
+test("cw build --preview over a repository already fully built has every target unchanged and succeeds (CORE Story 3 scenario 4, CORE-FR-034, CORE Story 55 scenario 8)", async () => {
+  const { cli } = surfaces(holding());
+  assert.equal((await printed(cli, ["build"])).code, EXIT_OK);
+
+  const { code, text } = await printed(cli, ["build", "--preview"]);
+
+  assert.equal(code, EXIT_OK);
+  const listedTargets = text.split("\n").filter((line) => /^ {2}(create|update|delete|unchanged) +\S+$/.test(line));
+  assert.ok(listedTargets.length > 0);
+  assert.ok(
+    listedTargets.every((line) => line.startsWith("  unchanged ")),
+    text,
+  );
+  assert.match(
+    text,
+    new RegExp(
+      `^${listedTargets.length} files: 0 create, 0 update, 0 delete, ${listedTargets.length} unchanged\\.$`,
+      "m",
+    ),
+  );
+});
+
 test("building writes, says what it wrote, and the health check then says the output is up to date (FR-120, FR-121)", async () => {
   const { portalRoutes, fileReaders } = surfaces(holding());
 
   const answer = await portalRoutes.request("/charter/root/build", buildRequest);
 
   assert.equal(answer.status, 200);
-  const { added } = CharterDTOs.PlanSummary.parse(await answer.json()).data;
+  const { added } = CharterDTOs.ProjectionPlanSummary.parse(await answer.json()).data;
   assert.ok(added.includes(".cw/out/catalogue.json"));
   assert.notEqual(await fileReaders.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
 

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "#module/shared/module.js";
 import { BasePrimitive } from "../primitive/base-primitive.js";
 import { SensorPrimitive } from "../primitive/sensor-primitive.js";
 

@@ -8,7 +8,7 @@ import {
 import { resolveFileUrl } from "./helper.js";
 
 /** DRIVEN ADAPTER: the filesystem, written to. What the charter compiles to,
- *  put where a host will look for it.
+ *  put where an agent will look for it.
  *
  *  The directories are made on the way: a projection lands in `.claude/skills/`
  *  whether anything has been built here before or not, and the hexagon names a
@@ -32,7 +32,7 @@ export class FileOutput implements ForWritingFiles {
     contents: string | Uint8Array,
     options: { readonly isExecutable?: boolean } = {},
   ): Promise<void> {
-    const fileUrl = resolveFileUrl(this.#rootFolder, filePath);
+    const fileUrl = this.#resolveDiskFileUrl(filePath);
     try {
       await mkdir(new URL(".", fileUrl), { recursive: true });
       // Bytes go down as they are; only text is encoded (CORE-FR-207).
@@ -52,11 +52,11 @@ export class FileOutput implements ForWritingFiles {
   }
 
   async deleteFile(filePath: string): Promise<void> {
-    await rm(resolveFileUrl(this.#rootFolder, filePath), { force: true });
+    await rm(this.#resolveDiskFileUrl(filePath), { force: true });
   }
 
   async deleteFolder(folderPath: string): Promise<void> {
-    const folderUrl = resolveFileUrl(this.#rootFolder, `${folderPath}/`);
+    const folderUrl = this.#resolveDiskFileUrl(`${folderPath}/`);
     await rm(folderUrl, { recursive: true, force: true }).catch((rmError: unknown) => {
       throw new UndeletableFolderFault(
         `"${folderUrl.pathname}" could not be deleted.`,
@@ -67,7 +67,7 @@ export class FileOutput implements ForWritingFiles {
   }
 
   async deleteEmptyFolder(folderPath: string): Promise<void> {
-    const folderUrl = resolveFileUrl(this.#rootFolder, `${folderPath}/`);
+    const folderUrl = this.#resolveDiskFileUrl(`${folderPath}/`);
     await rmdir(folderUrl).catch((rmdirError: NodeJS.ErrnoException) => {
       if (rmdirError.code !== "ENOTEMPTY" && rmdirError.code !== "EEXIST" && rmdirError.code !== "ENOENT")
         throw new UndeletableFolderFault(
@@ -76,5 +76,19 @@ export class FileOutput implements ForWritingFiles {
           { internal: false, cause: rmdirError },
         );
     });
+  }
+
+  /** The file or folder at a path, as an address on the disk; refused, as the
+   *  caller's to correct, where the folder this was set up on is no `file:`
+   *  address: a disk is all this writes, and a writer of the caller's own
+   *  writes any other (SDK-FR-011, SDK-FR-017). */
+  #resolveDiskFileUrl(filePath: string): URL {
+    if (this.#rootFolder.protocol !== "file:")
+      throw new UnwritableFileFault(
+        `"${FolderAddress.cleanFolderAddress(this.#rootFolder).href}" is no folder on this machine's disk: cw's own file writer writes only file: addresses.`,
+        `Hand the engine a fileWriter of your own that writes ${this.#rootFolder.protocol} addresses, or compose it at a file: address.`,
+        { internal: false },
+      );
+    return resolveFileUrl(this.#rootFolder, filePath);
   }
 }

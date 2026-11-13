@@ -11,7 +11,10 @@ export {
   UnreadableEvaluationLogFault,
   UnreadableEvaluationRunsFault,
   UnreadableSessionFolderFault,
-} from "../../../../shared/module.js";
+} from "#module/shared/module.js";
+/** The log's layout, where cw's own runner keeps each run and finds each
+ *  case's worktree. */
+export { logPath } from "../../../domain/constants.js";
 
 /**
  * DRIVEN PORT — promptfoo, the evaluation framework a charter is evaluated
@@ -42,7 +45,8 @@ export interface ForRunningPromptfoo {
 
 /** One promptfoo test, in promptfoo's own words. */
 export interface PromptfooTest {
-  readonly agent: string;
+  /** The provider the test runs on, named by its agent: `claude` or `codex`. */
+  readonly provider: string;
   readonly description: string;
   readonly prompt: string;
   /** The folder the selected agent runs in, by its path from the repository. */
@@ -52,11 +56,12 @@ export interface PromptfooTest {
 
 /** One promptfoo assertion: a skill the agent invoked, a rubric an agent
  *  grader holds what the agent did to, reading the working folder itself, or
- *  a JavaScript check of the response. */
-export interface PromptfooAssertion {
-  readonly type: "skill-used" | "agent-rubric" | "javascript" | "file-read";
-  readonly value: string;
-}
+ *  a JavaScript check of the response. A JavaScript check that the agent's
+ *  tools read a file names that file in its `config` and carries no value:
+ *  the adapter writes the check, over the tool calls the provider reports. */
+export type PromptfooAssertion =
+  | { readonly type: "skill-used" | "agent-rubric" | "javascript"; readonly value: string }
+  | { readonly type: "javascript"; readonly config: { readonly readFilePath: string } };
 
 /** How one test came out, as promptfoo writes it: whether it passed, the
  *  tokens the provider reported in all, each assertion's grading, and the
@@ -75,11 +80,13 @@ export interface PromptfooTestResult {
   readonly sessionPath?: string;
 }
 
-/** A saved case and its diagnostics, read without an inference call. */
+/** A case promptfoo ran, kept with what it ran on and how it came out, read
+ *  again without an inference call. */
 export interface PromptfooLog {
   readonly logPath: string;
   readonly createdAt: string;
-  readonly agent: string;
+  /** The provider the case ran on, named by its agent: `claude` or `codex`. */
+  readonly provider: string;
   readonly prompt: string;
   readonly workingFolderPath: string;
   readonly outputPath: string;

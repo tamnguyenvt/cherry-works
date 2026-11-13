@@ -82,7 +82,7 @@ const cliOver = (
 ) => {
   const fileReaderAt =
     fileReaders instanceof InMemoryFileReaders
-      ? (rootFolder: URL) => fileReaders.makeReadersAt(rootFolder)
+      ? (rootFolder: URL) => fileReaders.createFolderReader(rootFolder)
       : fileReaders;
   const emptyFileReaders = new InMemoryFileReaders({});
   const sourceFetcher = new InMemorySources();
@@ -308,6 +308,26 @@ test("the summary reads the folder the repository's settings name (EVAL-FR-012)"
     { day: "2026-10-03", tokens: 3000 },
     { sessionId: "session-d", tokens: 3000 },
   ]);
+});
+
+test("a sessions folder named inside this repository is refused, and the summary reads the default the counter kept the sessions in instead (CORE Story 55 scenario 33, EVAL-FR-042)", async () => {
+  const fileReaders = machineHolding(
+    {
+      "file:///work/my-repo/logs/sessions/session-r/session-analysis.jsonl": `${sessionAnalysisLine("session-r", "2026-10-03T12:00:00.000Z", 3000)}\n`,
+      ...keptLog,
+    },
+    {
+      "file:///work/my-repo/.cw/settings.json": JSON.stringify({
+        agents: ["claude"],
+        sessionAnalysisFolder: "/work/my-repo/logs/sessions",
+      }),
+    },
+  );
+
+  const { text } = await printed(cliOver(fileReaders), ["sessions"]);
+
+  assert.doesNotMatch(text, /session-r/);
+  assert.match(text, /session-c/);
 });
 
 test("the summary reads what the counter kept when the agent stopped, on a disk (EVAL-FR-012)", async () => {

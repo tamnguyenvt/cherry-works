@@ -3,7 +3,9 @@
  * SDK-FR-005, SDK-FR-020): how to compose the engine and the applications it
  * answers through, with the DTOs they answer; the ports of every adapter a
  * tool may hand in place of the engine's own, with the values they cross; and
- * the engine's own adapters, for a tool to extend.
+ * the engine's own adapters, for a tool to extend; and the layout of the
+ * store `cw` keeps the charter in and of the output, each one value
+ * (CORE-FR-215) — no constant or helper beside them.
  */
 export {
   AgentPrimitive,
@@ -12,18 +14,18 @@ export {
   BasePrimitive,
   BuiltSensors,
   Catalogue,
-  CHARTER_FOLDER_PATH,
   CharterDTOs,
   CharterMd,
   type CharterOutput,
   CharterOutputItem,
+  CharterPath,
   type CharterRoot,
   ClaudeProjection,
   CodexProjection,
   type CompiledPrimitive,
   CopyPlan,
+  charterPath,
   DocumentBasedComponent,
-  EVAL_FOLDER_PATH,
   FileCharterRepository,
   type ForAuthoringCharter,
   type ForAuthorizingOAuthClients,
@@ -45,15 +47,12 @@ export {
   McpCredential,
   McpOrigins,
   McpPrimitive,
-  ModelHelper,
-  mergeTomlText,
   OAuth,
   type OAuthGrant,
   OutputPath,
   outputPath,
   PlaybookPrimitive,
   PosturePrimitive,
-  PRIMITIVES_FOLDER_PATH,
   type Primitive,
   PrimitiveLayer,
   Primitives,
@@ -70,12 +69,9 @@ export {
   SourceCharter,
   SourceSkill,
   StampedDocument,
-  TEST_FOLDER_PATH,
   TestSuite,
   Tiktoken,
-  VENDORS_FOLDER_PATH,
   VendorRoot,
-  VendorRootFactory,
   VendorSource,
   VendorSourceOrigin,
   WritePlan,
@@ -136,10 +132,7 @@ export {
   FileWorkspaceSettingsRepository,
   type ForManagingWorkspace,
   type ForStoringWorkspaceSettings,
-  GITIGNORE_FILE_PATH,
-  LOG_IGNORE_LINE,
   RawWorkspaceSettings,
-  SETTINGS_FILE_PATH,
   WorkspaceDTOs,
   WorkspaceSettings,
 } from "./module/workspace/module.js";

@@ -19,20 +19,20 @@ const CLAUDE_HOOK_EVENTS = [
 /** One of them, read off the list rather than written out again. */
 export type ClaudeHookEvent = (typeof CLAUDE_HOOK_EVENTS)[number];
 
-/** What turns on this host's own tool search, so a session opens with each
+/** What turns on this agent's own tool search, so a session opens with each
  *  tool's name and no schema, and the agent searches for a schema when it needs
  *  one (EVAL-FR-016). */
 const CLAUDE_TOOL_SEARCH_ENV = { ENABLE_TOOL_SEARCH: "true" } as const;
 
-/** One command this host runs when an event fires. */
+/** One command this agent runs when an event fires. */
 export interface ClaudeHook {
   readonly type: "command";
   readonly command: string;
 }
 
 /**
- * What one primitive asks of the settings this host runs on: what may and may
- * not be run, or a command to run when one of this host's events fires.
+ * What one primitive asks of the settings this agent runs on: what may and may
+ * not be run, or a command to run when one of this agent's events fires.
  *
  * Both in one shape because claude reads both out of one file. Each field is
  * optional and a primitive names the one it asks for: a posture the permissions,
@@ -44,7 +44,7 @@ export interface ClaudeSettingsFields {
     readonly deny: readonly string[];
   };
   readonly hooks?: Readonly<Partial<Record<ClaudeHookEvent, readonly { readonly hooks: readonly ClaudeHook[] }[]>>>;
-  /** Whatever else this host reads out of that file and this engine knows
+  /** Whatever else this agent reads out of that file and this engine knows
    *  nothing about — the model a repository set, its environment. Read and
    *  written back untouched: what the repository set for itself is not this
    *  engine's to take away (FR-020). */
@@ -52,7 +52,7 @@ export interface ClaudeSettingsFields {
 }
 
 /**
- * The settings this host runs on: what the agent may and may not do, and what it
+ * The settings this agent runs on: what it may and may not do, and what it
  * runs when an event fires.
  *
  * The one kind here that is not a document. What claude reads is JSON, so this

@@ -90,7 +90,7 @@ const addAnswer = await engineApp.charterAuthoringApp.addPrimitive(
 
 // Build what Claude Code reads.
 const buildAnswer = await engineApp.charterBuildingApp.buildCharter();
-if (buildAnswer.type === "PlanSummary") console.log(buildAnswer.data.added);
+if (buildAnswer.type === "ProjectionPlanSummary") console.log(buildAnswer.data.added);
 ```
 
 A header with several values, such as `globs`, is handed as a list. To know
@@ -104,7 +104,7 @@ Every answer is a DTO with a `type` and its `data`; read the `type` first:
 
 | `type` | Meaning |
 |---|---|
-| the operation's own, such as `PlanSummary`, `Primitive`, `WorkspaceSettings` | it did what was asked |
+| the operation's own, such as `ProjectionPlanSummary`, `Primitive`, `WorkspaceSettings` | it did what was asked |
 | `Fault` | one thing stopped it: `data.name`, `data.message`, `data.fix`, `data.severity` |
 | `Faults` | several things are wrong with what was handed, such as a primitive's headers |
 | `FaultsByFile` | the charter does not hold, and these are its faults, file by file |

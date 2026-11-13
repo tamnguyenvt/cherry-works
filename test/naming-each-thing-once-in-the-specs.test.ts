@@ -29,9 +29,14 @@ const termsSetAside = [
   { offTerm: /\bsessions? logs?\b|\blogs? of (the )?sessions\b/i, oneTerm: "the sessions" },
   { offTerm: /\b(other )?tools? (build|depend)s? on\b|\bwrites a tool\b/i, oneTerm: "integrator" },
   { offTerm: /\b(logged|logging) for the operator\b|\boperator's logging\b/i, oneTerm: "diagnostics" },
+  { offTerm: /\bharness\b(?! engineering)/i, oneTerm: "the engine; or, for what runs a command, the agent" },
+  {
+    offTerm: /\boutput folder\b|\bbuild's output\b|\bbuilt output\b|\boutput of a build\b/i,
+    oneTerm: "the compiled output",
+  },
 ];
 
-test("every spec names each thing by one term, and no term names two things (CORE Story 53 scenario 3)", () => {
+test("every spec names each thing by one term, and no term names two things (CORE Story 53 scenario 3, CORE Story 55 scenario 21)", () => {
   const offTermPlaces = [...specTextByFileName].flatMap(([fileName, specText]) =>
     proseOf(specText)
       .split("\n")
@@ -44,13 +49,23 @@ test("every spec names each thing by one term, and no term names two things (COR
   assert.deepEqual(offTermPlaces, []);
 });
 
-test("the Key Entities define the agent, the engine's adapters, the integrator, the log and the sessions, each once (CORE Story 53 scenario 3)", () => {
+test("the Key Entities define the agent, the engine's adapters, the integrator, the log, the sessions, the engine, the workspace, the compiled output and the local output, each once (CORE Story 53 scenario 3, CORE Story 55 scenario 20)", () => {
   const keyEntityNames = [...specTextByFileName.values()].flatMap((specText) =>
     [...specText.matchAll(/^- \*\*([^*]+)\*\*:/gm)].map((entityMatch) =>
       entityMatch[1]!.toLowerCase().replace(/^the /, ""),
     ),
   );
-  for (const entityName of ["agent", "engine's adapters", "integrator", "log", "sessions"])
+  for (const entityName of [
+    "agent",
+    "engine's adapters",
+    "integrator",
+    "log",
+    "sessions",
+    "engine",
+    "workspace",
+    "compiled output",
+    "local output",
+  ])
     assert.equal(
       keyEntityNames.filter((keyEntityName) => keyEntityName === entityName).length,
       1,

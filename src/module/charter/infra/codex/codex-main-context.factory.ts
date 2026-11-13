@@ -3,7 +3,7 @@ import {
   type CharterOutput,
   type CharterRoot,
   CompiledPrimitive,
-  type MainContextText,
+  MainContextText,
 } from "../../app/port/out/managing-local-agent-output.port.js";
 import { resolveLaidText } from "../helper.js";
 import { CodexComponentFactory } from "./codex-component.factory.js";
@@ -32,44 +32,44 @@ export class CodexMainContextFactory {
       ...CodexComponentFactory.create(charter, charterOutput).flatMap((component): MainContextText[] => {
         if (component instanceof CodexEntryFile)
           return [
-            {
-              id: placeOf(component),
-              kind: "charter",
-              text: resolveLaidText(component.text, placeOf(component)),
-              ...(component.folder === "" ? {} : { globs: [`${component.folder}/**`] }),
-            },
+            new MainContextText(
+              placeOf(component),
+              "charter",
+              resolveLaidText(component.text, placeOf(component)),
+              component.folder === "" ? undefined : [`${component.folder}/**`],
+            ),
           ];
         if (component instanceof CodexSkill) {
           const primitive = charter.primitives.find((primitive) => primitive.normId === component.name)!;
           return [
-            {
-              id: primitive.headers.id,
-              kind: primitive.kind,
-              text: `${component.headers.name}: ${component.headers.description}`,
-            },
+            new MainContextText(
+              primitive.headers.id,
+              primitive.kind,
+              `${component.headers.name}: ${component.headers.description}`,
+            ),
           ];
         }
         return [];
       }),
-      { id: "CHARTER.md", kind: "charter", text: charterMd.text },
+      new MainContextText("CHARTER.md", "charter", charterMd.text),
       ...charter.primitives
         .filter((primitive) => primitive.supportsAgent(CodexComponents.agentProvider))
         .flatMap((primitive): MainContextText[] => {
           if (primitive.kind === "agent")
             return [
-              {
-                id: primitive.headers.id,
-                kind: primitive.kind,
-                text: `${primitive.normId}: ${primitive.composeDescription()}`,
-              },
+              new MainContextText(
+                primitive.headers.id,
+                primitive.kind,
+                `${primitive.normId}: ${primitive.composeDescription()}`,
+              ),
             ];
           if (primitive.kind !== "posture") return [];
           return [
-            {
-              id: primitive.headers.id,
-              kind: primitive.kind,
-              text: compiledPrimitiveById.get(primitive.headers.id)?.text ?? "",
-            },
+            new MainContextText(
+              primitive.headers.id,
+              primitive.kind,
+              compiledPrimitiveById.get(primitive.headers.id)?.text ?? "",
+            ),
           ];
         }),
     ];

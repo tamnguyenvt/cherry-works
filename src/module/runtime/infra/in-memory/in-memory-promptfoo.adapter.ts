@@ -23,15 +23,15 @@ export class InMemoryPromptfoo implements ForRunningPromptfoo {
    *  what was in it. */
   folderFiles: InMemoryFileReaders | undefined;
 
-  constructor(private installed: boolean = true) {}
+  constructor(private isPromptfooInstalled: boolean = true) {}
 
   async isInstalled(): Promise<boolean> {
-    return this.installed;
+    return this.isPromptfooInstalled;
   }
 
   async installPromptfoo(): Promise<void> {
     this.installCount++;
-    this.installed = true;
+    this.isPromptfooInstalled = true;
   }
 
   async readLogs(logFilePath?: string): Promise<readonly PromptfooLog[]> {

@@ -1,4 +1,4 @@
-import { TEST_FOLDER_PATH } from "#module/charter/module.js";
+import { charterPath } from "#module/charter/module.js";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
 import { printFault, printFaultsByFile } from "./helper.js";
 
@@ -19,7 +19,7 @@ import { printFault, printFaultsByFile } from "./helper.js";
  */
 export class TestCommand implements Command {
   readonly name = "test";
-  readonly summary = `Resolve every situation in ${TEST_FOLDER_PATH}/ against the charter`;
+  readonly summary = `Resolve every situation in ${charterPath.testFolderPath}/ against the charter`;
 
   async runCommand({ charterAuthoringApp }: Context, _options: Options): Promise<Outcome> {
     const testRunReportDTO = await charterAuthoringApp.testCharter();
@@ -36,7 +36,7 @@ export class TestCommand implements Command {
     if (cases.length === 0) {
       return {
         exitCode: EXIT_OK,
-        resultText: `No tests: ${TEST_FOLDER_PATH}/ holds no case.\nWrite one as ${TEST_FOLDER_PATH}/<name>.json to pin a situation down.\n`,
+        resultText: `No tests: ${charterPath.testFolderPath}/ holds no case.\nWrite one as ${charterPath.testFolderPath}/<name>.json to pin a situation down.\n`,
       };
     }
 

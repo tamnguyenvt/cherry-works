@@ -39,7 +39,7 @@ export function PrimitiveForm({
   id?: string;
   /** The kind a new one starts as: the one the listing was showing. */
   newKind?: string;
-  onDone: (did: string, detail: string) => void;
+  onDone: (doneText: string, detailText: string) => void;
   onClose: () => void;
 }) {
   const { data: openedAnswer } = usePrimitive(id);
@@ -89,7 +89,7 @@ function PrimitiveEditor({
   /** The entity tag a save is sent back with (FR-078). */
   entityTag: string;
   newKind: string;
-  onDone: (did: string, detail: string) => void;
+  onDone: (doneText: string, detailText: string) => void;
   onClose: () => void;
 }) {
   const primitive = openedPrimitive?.data;

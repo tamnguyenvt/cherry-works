@@ -1,6 +1,6 @@
 import type { AgentProvider } from "#module/shared/module.js";
 import { outputPath } from "../constants.js";
-import { ModelHelper } from "../helper.js";
+import { ContentHelper } from "../helper.js";
 import type { CharterRoot } from "../models/charter/charter-root.js";
 import { BuiltSensorsFactory } from "../models/charter-output/built-sensors.factory.js";
 import { CatalogueFactory } from "../models/charter-output/catalogue.factory.js";
@@ -8,11 +8,11 @@ import { Catalogue } from "../models/charter-output/catalogue.js";
 import { CharterMdFactory } from "../models/charter-output/charter-md.factory.js";
 import { CharterOutput } from "../models/charter-output/charter-output.js";
 import { CompiledPrimitiveFactory } from "../models/charter-output/compiled-primitive.factory.js";
-import { McpOrigins, type McpToolDefinition } from "../models/charter-output/mcp-origin.js";
+import type { McpToolDefinition } from "../models/charter-output/mcp-origin.js";
 import { McpOriginsFactory } from "../models/charter-output/mcp-origins.factory.js";
 import { McpPrimitive } from "../models/primitive/mcp-primitive.js";
 import { Primitives } from "../models/primitive/primitive.js";
-/** Compiles a charter into what its readers and its hosts are given. */
+/** Compiles a charter into what its readers and its agents are given. */
 export class CompileService {
   /**
    * Everything one reading of a charter compiles to (FR-021).
@@ -20,7 +20,7 @@ export class CompileService {
    * Models and nothing else. What every reader of the charter gets is in it
    * whether an agent is installed or not — the listing, and the file that orients
    * a reader to it (FR-019); what the agents this repository runs get is each
-   * primitive in that host's own kinds (FR-018).
+   * primitive in that agent's own kinds (FR-018).
    *
    * The whole of what this does is reading primitives into the parameters those
    * models take. What each agent reads of them — a `guide` as a claude rule —
@@ -50,7 +50,7 @@ export class CompileService {
     // short whatever the id's length, and the same on every build whatever other
     // mcps come and go (FR-145). Written into `mcp-origins.json` beside each
     // mcp origin, so the server, which reads no charter, serves under these.
-    const shortMcpIds = ModelHelper.shortenStringsOf(
+    const shortMcpIds = ContentHelper.shortenStringsOf(
       charter.primitives
         .filter((primitive) => primitive.kind === McpPrimitive.kind)
         .map((mcpPrimitive) => mcpPrimitive.headers.id),
@@ -69,7 +69,7 @@ export class CompileService {
         .map((primitive) => [primitive, CompiledPrimitiveFactory.create(charter, primitive)] as const),
     );
     // What `cw sensor run` runs, each sensor's command as built: written once,
-    // read by every host given one command per signal (FR-175, FR-179).
+    // read by every agent given one command per signal (FR-175, FR-179).
     const builtSensors = BuiltSensorsFactory.create(charter, compiledPrimitiveByPrimitive);
     const allCatalogue = CatalogueFactory.create(charter, (primitive) =>
       outputPath.getLink(compiledPrimitiveByPrimitive.get(primitive)!),
@@ -91,9 +91,9 @@ export class CompileService {
           agentProvider,
         ),
       );
-    charterOutput.add(new McpOrigins(McpOriginsFactory.create(charter, shortMcpIds, toolsByOriginKey)));
+    charterOutput.add(McpOriginsFactory.create(charter, shortMcpIds, toolsByOriginKey));
     charterOutput.add(builtSensors);
-    charterOutput.add(CharterMdFactory.create(Primitives.classes));
+    charterOutput.add(CharterMdFactory.create(Primitives.classes, charter.charterPlace));
     for (const compiledPrimitive of compiledPrimitiveByPrimitive.values()) charterOutput.add(compiledPrimitive);
     return charterOutput;
   }

@@ -3,13 +3,14 @@
 // <session id>/session-analysis.jsonl each time the agent stops
 // (EVAL-FR-008, EVAL-FR-009): under ~/.cherry-works/<the repository's path,
 // each character that is not a letter or a digit a dash>/, or the
-// sessionAnalysisFolder of .cw/settings.json. The developer is shown one line, as a Stop hook's
+// sessionAnalysisFolder of .cw/settings.json, unless it is inside the
+// repository (EVAL-FR-042). The developer is shown one line, as a Stop hook's
 // systemMessage the model is never sent, when the session crosses a mark
-// (EVAL-FR-010). Whatever goes wrong, nothing is shown or kept and the agent
+// (EVAL-FR-010), and another while the folder named is refused. Whatever goes wrong, nothing is shown or kept and the agent
 // stops as it would have (EVAL-FR-011).
 import { appendFile, mkdir, readFile, readdir } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 const DEFAULT_SESSION_CONTEXT_MARK = 100000;
 const USAGE_FIELDS = {
@@ -64,9 +65,27 @@ try {
   // in the repository. Each session keeps a folder of its own in it, named
   // by its id, which is letters, digits and dashes or nothing is kept.
   if (!/^[A-Za-z0-9_-]+$/.test(stopEvent.session_id)) throw new Error("a session id that names no folder");
-  const sessionsFolder = /^(\/|~\/)/.test(repositorySettings.sessionAnalysisFolder)
-    ? repositorySettings.sessionAnalysisFolder.replace(/^~(?=\/)/, homedir())
-    : join(homedir(), ".cherry-works", repositoryFolder.replace(/[^A-Za-z0-9]/g, "-"));
+  const namedSessionsFolder = /^(\/|~\/)/.test(repositorySettings.sessionAnalysisFolder)
+    ? resolve(repositorySettings.sessionAnalysisFolder.replace(/^~(?=\/)/, homedir()))
+    : undefined;
+  // A folder inside the repository would be committed with it: refused, the
+  // session kept in the default, and the refusal said (EVAL-FR-042).
+  const repositoryRelativePath = namedSessionsFolder === undefined ? undefined : relative(resolve(repositoryFolder), namedSessionsFolder);
+  const isInsideRepository =
+    repositoryRelativePath !== undefined &&
+    repositoryRelativePath !== ".." &&
+    !repositoryRelativePath.startsWith(`..${sep}`) &&
+    !isAbsolute(repositoryRelativePath);
+  const sessionsFolder =
+    namedSessionsFolder !== undefined && !isInsideRepository
+      ? namedSessionsFolder
+      : join(homedir(), ".cherry-works", repositoryFolder.replace(/[^A-Za-z0-9]/g, "-"));
+  const systemMessages = isInsideRepository
+    ? [
+        "The sessionAnalysisFolder " + namedSessionsFolder + " of .cw/settings.json is inside this repository, so it is refused: " +
+          "this session is kept in " + sessionsFolder + " instead. Name a folder outside every repository, or drop it.",
+      ]
+    : [];
   const sessionFolder = join(sessionsFolder, stopEvent.session_id);
   const logFile = join(sessionFolder, "session-analysis.jsonl");
 
@@ -93,13 +112,11 @@ try {
 
   if (Math.floor(previousTotalTokens / sessionContextMark) < Math.floor(totalTokens / sessionContextMark)) {
     const tokensText = (tokenCount) => tokenCount.toLocaleString("en-US");
-    process.stdout.write(
-      JSON.stringify({
-        systemMessage:
-          "This session has used " + tokensText(totalTokens) + " tokens, subagents included: " +
-          tokensText(tokens.input) + " input, " + tokensText(tokens.output) + " output, " +
-          tokensText(tokens.cacheWrite) + " written to the cache, " + tokensText(tokens.cacheRead) + " read from it.",
-      }),
+    systemMessages.push(
+      "This session has used " + tokensText(totalTokens) + " tokens, subagents included: " +
+        tokensText(tokens.input) + " input, " + tokensText(tokens.output) + " output, " +
+        tokensText(tokens.cacheWrite) + " written to the cache, " + tokensText(tokens.cacheRead) + " read from it.",
     );
   }
+  if (systemMessages.length > 0) process.stdout.write(JSON.stringify({ systemMessage: systemMessages.join("\n") }));
 } catch {}

@@ -19,9 +19,11 @@ const guide = (id: string) =>
   ["---", "kind: guide", `id: ${id}`, `description: About ${id}.`, "---", "", "Body.", ""].join("\n");
 
 /** The routes over one repository held in memory, and the sources
- *  they install through, so a test reads what was asked of it (plan §12.2). */
-const portal = (files: Readonly<Record<string, string>> = {}, sourceFetcher = new InMemorySources()) => {
+ *  they install through, so a test reads what was asked of it (plan §12.2).
+ *  Sources a test does not hand over put what they hold into the repository. */
+const portal = (files: Readonly<Record<string, string>> = {}, givenSourceFetcher?: InMemorySources) => {
   const fileReaders = new InMemoryFileReaders(files);
+  const sourceFetcher = givenSourceFetcher ?? new InMemorySources(fileReaders);
   const charterAuthoringApp = authoringCharterOf(
     fileReaders,
     new InMemoryFileOutput(fileReaders),
@@ -69,7 +71,7 @@ test("the vendors are sent as the folders installed() answers (FR-122)", async (
   ]);
 });
 
-test("a source posted is installed as cw vendor add installs it (Story 8 scenario 2)", async () => {
+test("a source posted is installed as cw vendor add installs it, and the portal then lists its folder and the primitives it brought (CORE Story 8 scenario 2, FR-123, FR-109, CORE Story 55 scenario 8)", async () => {
   const { portalRoutes, sourceFetcher } = portal();
 
   const answer = await portalRoutes.request(
@@ -86,6 +88,19 @@ test("a source posted is installed as cw vendor add installs it (Story 8 scenari
       intoSubFolder: ".cw/charter/vendor/team/charter/root/primitive",
     },
   ]);
+  assert.deepEqual(await (await portalRoutes.request("/vendors")).json(), {
+    type: "VendorFolders",
+    data: { folders: [".cw/charter/vendor/team/charter/root"] },
+  });
+  const primitivesListing = (await (await portalRoutes.request("/charter/root/primitives")).json()) as {
+    data: { primitives: { data: { id: string; layerName: string; file: string } }[] };
+  };
+  assert.deepEqual(
+    primitivesListing.data.primitives
+      .filter(({ data }) => data.layerName === "vendor")
+      .map(({ data: { id, file } }) => [id, file]),
+    [["published", ".cw/charter/vendor/team/charter/root/primitive/guide/published/index.md"]],
+  );
 });
 
 test("a source posted with no version is installed at its default", async () => {

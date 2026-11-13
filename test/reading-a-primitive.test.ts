@@ -150,7 +150,7 @@ test("an agent's model is written <provider>:<model>, the provider one of the ag
   // Which agents there are is known where the charter is compiled, not where it is read.
   const unknownModelPrimitive = primitive(agentText("unknown:gpt-5"));
   const [agentFault] = Object.values(
-    new CharterRoot([unknownModelPrimitive], FaultsByFile.none).agentFaultsByFilesOf(["claude", "codex"])
+    new CharterRoot([unknownModelPrimitive], FaultsByFile.emptyFaultsByFile).agentFaultsByFilesOf(["claude", "codex"])
       .faultsByFilePath,
   ).flat();
   assert.match(agentFault?.message ?? "", /"model" names "unknown"/);
@@ -208,7 +208,10 @@ test("only posture and sensor accept agent-provider in authored files and author
       assert.throws(() => readPrimitive({ headers: { ...headers, "agent-provider": "claude" }, body: "" }));
       const unknownAgentPrimitive = readPrimitive({ headers: { ...headers, "agent-provider": ["unknown"] }, body: "" });
       assert.equal(
-        new CharterRoot([unknownAgentPrimitive], FaultsByFile.none).agentFaultsByFilesOf(["claude", "codex"]).isEmpty,
+        new CharterRoot([unknownAgentPrimitive], FaultsByFile.emptyFaultsByFile).agentFaultsByFilesOf([
+          "claude",
+          "codex",
+        ]).isEmpty,
         false,
       );
     } else {

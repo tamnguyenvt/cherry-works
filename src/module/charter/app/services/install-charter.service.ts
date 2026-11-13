@@ -1,4 +1,4 @@
-import { CHARTER_FOLDER_PATH } from "../../domain/constants.js";
+import { charterPath, vendorSourcePath } from "../../domain/constants.js";
 import { ReservedCharterNameFault, UnexpectedSourceShapeFault } from "../../domain/models/charter.fault.js";
 import { Primitives } from "../../domain/models/primitive/primitive.js";
 import { type SourceCharter, VendorSource } from "../../domain/models/vendor/vendor-source.js";
@@ -38,43 +38,43 @@ export class InstallCharterService {
     } = vendorSource;
 
     const heldCharterNames = vendorSource.charters.map(({ name }) => name);
-    const holdsOwnCharter = ownCharter !== undefined;
+    const hasOwnCharter = ownCharter !== undefined;
     const heldShapes = [
-      ...(holdsOwnCharter ? [`a charter in "${CHARTER_FOLDER_PATH}"`] : []),
-      ...(heldCharterNames.length > 0 ? [`charters under "${VendorSource.chartersFolder}/"`] : []),
-      ...(vendorSource.holdsSkills ? [`skills under "${VendorSource.skillsFolder}/"`] : []),
+      ...(hasOwnCharter ? [`a charter in "${charterPath.charterFolderPath}"`] : []),
+      ...(heldCharterNames.length > 0 ? [`charters under "${vendorSourcePath.chartersFolderPath}/"`] : []),
+      ...(vendorSource.hasSkills ? [`skills under "${vendorSourcePath.skillsFolderPath}/"`] : []),
     ];
     if (heldShapes.length === 0)
       throw new UnexpectedSourceShapeFault(
-        `${sourceUri} has no "${CHARTER_FOLDER_PATH}" and no ${VendorSource.skillFile} under "${VendorSource.skillsFolder}/", nor any charter under "${VendorSource.chartersFolder}/".`,
-        `Check that the source holds "${CHARTER_FOLDER_PATH}", charters under "${VendorSource.chartersFolder}/" each in a folder holding its "${CHARTER_FOLDER_PATH}", or skills under "${VendorSource.skillsFolder}/" each in a folder holding its ${VendorSource.skillFile}, at the version asked for.`,
+        `${sourceUri} has no "${charterPath.charterFolderPath}" and no ${vendorSourcePath.skillFileName} under "${vendorSourcePath.skillsFolderPath}/", nor any charter under "${vendorSourcePath.chartersFolderPath}/".`,
+        `Check that the source holds "${charterPath.charterFolderPath}", charters under "${vendorSourcePath.chartersFolderPath}/" each in a folder holding its "${charterPath.charterFolderPath}", or skills under "${vendorSourcePath.skillsFolderPath}/" each in a folder holding its ${vendorSourcePath.skillFileName}, at the version asked for.`,
         { internal: false },
       );
     if (selectedCharterNames.length > 0 && heldCharterNames.length === 0)
       throw new UnexpectedSourceShapeFault(
-        `${sourceUri} holds no "${VendorSource.chartersFolder}/": it holds ${heldShapes.join(" and ")}.`,
+        `${sourceUri} holds no "${vendorSourcePath.chartersFolderPath}/": it holds ${heldShapes.join(" and ")}.`,
         "Run this again without --charter.",
         { internal: false },
       );
-    if (selectedSkillIds.length > 0 && !vendorSource.holdsSkills)
+    if (selectedSkillIds.length > 0 && !vendorSource.hasSkills)
       throw new UnexpectedSourceShapeFault(
-        `${sourceUri} holds no "${VendorSource.skillsFolder}/": it holds ${heldShapes.join(" and ")}.`,
+        `${sourceUri} holds no "${vendorSourcePath.skillsFolderPath}/": it holds ${heldShapes.join(" and ")}.`,
         "Run this again without --skill.",
         { internal: false },
       );
 
-    const isTakingOwnCharter = holdsOwnCharter && selectedCharterNames.length === 0 && selectedSkillIds.length === 0;
+    const isTakingOwnCharter = hasOwnCharter && selectedCharterNames.length === 0 && selectedSkillIds.length === 0;
     const pickedCharterNames =
       selectedCharterNames.length > 0
         ? selectedCharterNames
-        : !holdsOwnCharter && selectedSkillIds.length === 0
+        : !hasOwnCharter && selectedSkillIds.length === 0
           ? heldCharterNames
           : [];
-    const isTakingSkills = selectedSkillIds.length > 0 || (!holdsOwnCharter && heldCharterNames.length === 0);
+    const isTakingSkills = selectedSkillIds.length > 0 || (!hasOwnCharter && heldCharterNames.length === 0);
 
     // A charter that installed vendors of its own is refused (FR-170).
     const assertOneLevelDeep = (sourceCharter: SourceCharter) => {
-      if (sourceCharter.holdsVendors)
+      if (sourceCharter.hasVendors)
         throw new UnexpectedSourceShapeFault(
           `${sourceUri} holds "${sourceCharter.vendorsUri}", and vendoring is one level deep.`,
           `Remove "${sourceCharter.vendorsUri}" from the source, or install a version without it.`,
@@ -102,16 +102,16 @@ export class InstallCharterService {
           `Rename "${sourceCharter.uri}" in the source, then pick it again.`,
           { internal: false },
         );
-      if (sourceCharter.name === VendorSource.ownCharterName)
+      if (sourceCharter.name === vendorSourcePath.ownCharterName)
         throw new ReservedCharterNameFault(
-          `"${sourceCharter.uri}" is named "${VendorSource.ownCharterName}", and its vendor folder would be the one the source's own charter is installed in.`,
+          `"${sourceCharter.uri}" is named "${vendorSourcePath.ownCharterName}", and its vendor folder would be the one the source's own charter is installed in.`,
           `Rename "${sourceCharter.uri}" in the source, then pick it again.`,
           { internal: false },
         );
-      if (!sourceCharter.holdsCharter)
+      if (!sourceCharter.hasCharter)
         throw new UnexpectedSourceShapeFault(
-          `"${sourceCharter.uri}" holds no "${CHARTER_FOLDER_PATH}".`,
-          `Pick a charter whose folder holds "${CHARTER_FOLDER_PATH}": ${heldCharterNames.filter((heldCharterName) => heldCharterName !== sourceCharter.name).join(", ")}.`,
+          `"${sourceCharter.uri}" holds no "${charterPath.charterFolderPath}".`,
+          `Pick a charter whose folder holds "${charterPath.charterFolderPath}": ${heldCharterNames.filter((heldCharterName) => heldCharterName !== sourceCharter.name).join(", ")}.`,
           { internal: false },
         );
       assertOneLevelDeep(sourceCharter);

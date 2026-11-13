@@ -1,4 +1,4 @@
-import { TEST_FOLDER_PATH } from "#module/charter/module.js";
+import { charterPath } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
@@ -13,7 +13,7 @@ import { printFault } from "./helper.js";
 const OPTIONS = {
   name: {
     type: "string",
-    describe: `The test file's name under ${TEST_FOLDER_PATH}/: "untitled-1.json"`,
+    describe: `The test file's name under ${charterPath.testFolderPath}/: "untitled-1.json"`,
   },
 } as const satisfies OptionSpec;
 
@@ -31,6 +31,6 @@ export class SuiteRemoveCommand implements Command<typeof OPTIONS> {
   async runCommand({ charterAuthoringApp }: Context, { name }: Options<typeof OPTIONS>): Promise<Outcome> {
     const testSuiteNameDTO = await charterAuthoringApp.removeTestSuite(name ?? "");
     if (testSuiteNameDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(testSuiteNameDTO) };
-    return { exitCode: EXIT_OK, resultText: `Removed ${TEST_FOLDER_PATH}/${testSuiteNameDTO.data.name}.\n` };
+    return { exitCode: EXIT_OK, resultText: `Removed ${charterPath.testFolderPath}/${testSuiteNameDTO.data.name}.\n` };
   }
 }

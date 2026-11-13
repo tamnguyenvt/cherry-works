@@ -11,7 +11,7 @@ import type { ForBuildingCharter } from "#module/charter/module.js";
 import type { ForRunningCharter } from "#module/runtime/module.js";
 
 /**
- * DRIVER ADAPTER: the one MCP server an agent's host is given, `cw mcp serve`
+ * DRIVER ADAPTER: the one MCP server an agent is given, `cw mcp serve`
  * (FR-152).
  *
  * Answers `tools/list` through `ForBuildingCharter` and `tools/call` through
@@ -28,7 +28,7 @@ export async function startMcpServer(
   version = "0.0.0",
 ): Promise<{ serverClosed: Promise<void> }> {
   const server = new Server({ name: "cw", version }, { capabilities: { tools: {} } });
-  // A fault is said as the protocol says a refusal, an error the host reads:
+  // A fault is said as the protocol says a refusal, an error the agent reads:
   // the JSON-RPC error the server answers with is read off what is thrown,
   // its code and its message, and no class of ours is needed to carry them.
   server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -42,7 +42,7 @@ export async function startMcpServer(
   });
   server.setRequestHandler(CallToolRequestSchema, async ({ params: callToolParams }) => {
     const toolAnswerDTO = await charterRuntimeApp.callTool(callToolParams.name, callToolParams.arguments ?? {});
-    // A fault of the call is the tool's own error, which the host reads as
+    // A fault of the call is the tool's own error, which the agent reads as
     // the result. A list that fails is still a protocol error, above.
     if (toolAnswerDTO.type === "Fault")
       return {

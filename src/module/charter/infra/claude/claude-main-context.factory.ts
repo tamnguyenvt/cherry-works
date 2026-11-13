@@ -3,7 +3,7 @@ import {
   type CharterOutput,
   type CharterRoot,
   CompiledPrimitive,
-  type MainContextText,
+  MainContextText,
   McpOrigins,
   McpPrimitive,
 } from "../../app/port/out/managing-local-agent-output.port.js";
@@ -30,7 +30,7 @@ export class ClaudeMainContextFactory {
    * called for. A rule naming `paths` is loaded when a file they match is
    * touched, so it carries the guide's globs. Settings and the MCP configuration
    * put nothing there. Of each tool `cw mcp serve` lists for an mcp, its name
-   * alone, under the mcp: the host's tool search, which the build turns on,
+   * alone, under the mcp: the agent's tool search, which the build turns on,
    * sends a schema only once the agent searches for it (EVAL-FR-029).
    */
   static create(
@@ -53,8 +53,8 @@ export class ClaudeMainContextFactory {
     return [
       ...(entryFile === undefined
         ? []
-        : [{ id: placeOf(entryFile), kind: "charter", text: resolveLaidText(entryFile.text, placeOf(entryFile)) }]),
-      { id: "CHARTER.md", kind: "charter", text: charterMd.text },
+        : [new MainContextText(placeOf(entryFile), "charter", resolveLaidText(entryFile.text, placeOf(entryFile)))]),
+      new MainContextText("CHARTER.md", "charter", charterMd.text),
       ...charter.primitives
         .filter((primitive) => primitive.supportsAgent(ClaudeComponents.agentProvider))
         .flatMap((primitive): MainContextText[] => {
@@ -70,23 +70,23 @@ export class ClaudeMainContextFactory {
             const toolNames = primitive.headers.tools.map(
               (tool) => `mcp__${ClaudeMcpConfig.cwMcpName}__${servedPrefixById.get(id)}__${tool}`,
             );
-            return [{ id, kind: primitive.kind, text: toolNames.join("\n") }];
+            return [new MainContextText(id, primitive.kind, toolNames.join("\n"))];
           }
           if (claudeComponent instanceof ClaudeRule) {
             const { paths } = claudeComponent.headers;
             const compiledPrimitive = compiledPrimitiveById.get(id);
             return [
-              {
+              new MainContextText(
                 id,
-                kind: primitive.kind,
-                text: `${resolveLaidText(claudeComponent.text, placeOf(claudeComponent))}${compiledPrimitive?.text ?? ""}`,
-                ...(paths === undefined ? {} : { globs: paths }),
-              },
+                primitive.kind,
+                `${resolveLaidText(claudeComponent.text, placeOf(claudeComponent))}${compiledPrimitive?.text ?? ""}`,
+                paths,
+              ),
             ];
           }
           if (claudeComponent instanceof ClaudeSkill || claudeComponent instanceof ClaudeAgent) {
             const { name, description } = claudeComponent.headers;
-            return [{ id, kind: primitive.kind, text: `${name}: ${description}` }];
+            return [new MainContextText(id, primitive.kind, `${name}: ${description}`)];
           }
           return [];
         }),

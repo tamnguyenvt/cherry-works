@@ -55,36 +55,28 @@ export class KeychainCredentialsRepository implements ForStoringCredentials {
   constructor(private readonly platform: string = process.platform) {}
 
   async readCredential(address: string): Promise<McpCredential | undefined> {
-    const secret = await this.#readSecret(address);
-    return secret === undefined ? undefined : parseCredentialSecret(secret);
-  }
-
-  async writeCredential(credential: McpCredential): Promise<void> {
-    await this.#writeSecret(credential.address, JSON.stringify(credential));
-  }
-
-  async #readSecret(secretKey: string): Promise<string | undefined> {
     this.refuseUnsupportedPlatform();
     const commandOutputOfRead =
       this.platform === "darwin"
-        ? await runSecretCommand("security", ["find-generic-password", "-s", SERVICE, "-a", secretKey, "-w"])
-        : await runSecretCommand("secret-tool", ["lookup", "service", SERVICE, "account", secretKey]);
-    if (commandOutputOfRead.exitCode === 0) return commandOutputOfRead.stdout.replace(/\n$/, "");
-    const nothingThere =
+        ? await runSecretCommand("security", ["find-generic-password", "-s", SERVICE, "-a", address, "-w"])
+        : await runSecretCommand("secret-tool", ["lookup", "service", SERVICE, "account", address]);
+    if (commandOutputOfRead.exitCode === 0) return parseCredentialSecret(commandOutputOfRead.stdout.replace(/\n$/, ""));
+    const isNothingThere =
       this.platform === "darwin"
         ? commandOutputOfRead.exitCode === MACOS_NOT_FOUND
         : commandOutputOfRead.stderr.trim() === "";
-    if (nothingThere) return undefined;
-    this.throwFault("read", secretKey, commandOutputOfRead.stderr);
+    if (isNothingThere) return undefined;
+    this.throwFault("read", address, commandOutputOfRead.stderr);
   }
 
-  async #writeSecret(secretKey: string, secret: string): Promise<void> {
+  async writeCredential(credential: McpCredential): Promise<void> {
+    const secret = JSON.stringify(credential);
     this.refuseUnsupportedPlatform();
     // `security -i` reads the key between double quotes, which it cannot
     // escape out of. An address never holds one.
-    if (this.platform === "darwin" && /["\\\n]/.test(secretKey)) {
+    if (this.platform === "darwin" && /["\\\n]/.test(credential.address)) {
       throw new UnkeepableSecretKeyFault(
-        `The key "${secretKey}" cannot be kept in the keychain.`,
+        `The key "${credential.address}" cannot be kept in the keychain.`,
         "Name the mcp origin by an address without quotes, backslashes or line breaks.",
         { internal: false },
       );
@@ -94,14 +86,14 @@ export class KeychainCredentialsRepository implements ForStoringCredentials {
         ? await runSecretCommand(
             "security",
             ["-i"],
-            `add-generic-password -U -s ${SERVICE} -a "${secretKey}" -X ${Buffer.from(secret).toString("hex")}\n`,
+            `add-generic-password -U -s ${SERVICE} -a "${credential.address}" -X ${Buffer.from(secret).toString("hex")}\n`,
           )
         : await runSecretCommand(
             "secret-tool",
-            ["store", `--label=${SERVICE} ${secretKey}`, "service", SERVICE, "account", secretKey],
+            ["store", `--label=${SERVICE} ${credential.address}`, "service", SERVICE, "account", credential.address],
             secret,
           );
-    if (commandOutputOfWrite.exitCode !== 0) this.throwFault("write", secretKey);
+    if (commandOutputOfWrite.exitCode !== 0) this.throwFault("write", credential.address);
   }
 
   /** macOS and Linux have a store this knows; anything else is refused

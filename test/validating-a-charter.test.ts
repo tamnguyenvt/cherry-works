@@ -101,7 +101,7 @@ const namedMcps = (...mcps: Authored[]): Authored[] => [
 ];
 
 const faultsByFilesOf = (...primitives: Authored[]): FaultsByFile["faultsByFilePath"] =>
-  new CharterRoot(primitives, FaultsByFile.none).compositeFaultsByFiles.faultsByFilePath;
+  new CharterRoot(primitives, FaultsByFile.emptyFaultsByFile).compositeFaultsByFiles.faultsByFilePath;
 
 const faultsIn = (faultsByFiles: FaultsByFile["faultsByFilePath"]) => Object.values(faultsByFiles).flat();
 
@@ -226,7 +226,25 @@ test("a rationale no corpus answers to is said, and does not fail the charter", 
   assert.match(messages(faultsByFiles), /"absent"/);
 });
 
-test("a rationale or a mixin naming a primitive of another kind is one nothing answers to (FR-172)", () => {
+test("a rationale and mixins naming a corpus and a mixin by their bare ids resolve to them, and the same ids held only by a guide resolve to nothing (CORE Story 27 scenario 2, FR-172, CORE Story 55 scenario 15)", () => {
+  const namingGuide = guide("no-any", "guide/no-any/index.md", { rationale: "why", mixins: ["typed"] });
+
+  assert.deepEqual(faultsByFilesOf(corpus("why"), mixin("typed"), namingGuide), {});
+
+  const faultsByFiles = faultsByFilesOf(
+    guide("why", "guide/why/index.md", {}, undefined, "Body."),
+    guide("typed", "guide/typed/index.md", {}, undefined, "Body."),
+    namingGuide,
+  );
+  const namingGuideMessages = (faultsByFiles[at("guide/no-any/index.md")] ?? []).map(({ message }) => message);
+  assert.equal(namingGuideMessages.length, 2, namingGuideMessages.join("\n"));
+  assert.ok(namingGuideMessages.some((message) => /"why"/.test(message) && /holds no corpus of that id/.test(message)));
+  assert.ok(
+    namingGuideMessages.some((message) => /"typed"/.test(message) && /holds no mixin of that id/.test(message)),
+  );
+});
+
+test("a rationale or a mixin naming a primitive of another kind is one nothing answers to (CORE Story 27 scenario 2, FR-172)", () => {
   const faultsByFiles = faultsByFilesOf(
     guide("type-safety", "guide/type-safety/index.md", {}, undefined, "Body."),
     guide("no-any", "guide/no-any/index.md", { rationale: "type-safety", mixins: ["type-safety"] }),
@@ -381,7 +399,7 @@ test("a repository mcp and a vendor mcp at one endpoint and path are one mcp ori
       mcp("billing", undefined, { path: "acme/billing", auth: ["oauth"], tools: ["search_code"] }),
       mcp("acme/code", "acme", { path: "acme/billing", auth: ["token"], tools: ["get_file_contents", "search_code"] }),
     ),
-    FaultsByFile.none,
+    FaultsByFile.emptyFaultsByFile,
   );
 
   assert.deepEqual(JSON.parse(JSON.stringify(mcpOriginsOf(charter))), [
@@ -400,7 +418,7 @@ test("a repository mcp and a vendor mcp at one endpoint and path are one mcp ori
 test("the same two at different paths are two mcp origins (FR-145)", () => {
   const charter = new CharterRoot(
     namedMcps(mcp("billing", undefined, { path: "acme/billing" }), mcp("acme/code", "acme", { path: "acme/code" })),
-    FaultsByFile.none,
+    FaultsByFile.emptyFaultsByFile,
   );
 
   assert.deepEqual(
@@ -420,7 +438,7 @@ test("a command's mcp origin carries its arguments and the variable its token is
     auth: ["token"],
     tokenEnv: "GITHUB_TOKEN",
   };
-  const charter = new CharterRoot(namedMcps(mcp("github", undefined, command)), FaultsByFile.none);
+  const charter = new CharterRoot(namedMcps(mcp("github", undefined, command)), FaultsByFile.emptyFaultsByFile);
 
   const [mcpOrigin] = mcpOriginsOf(charter);
   assert.equal(mcpOrigin?.address, "npx -y server-github");

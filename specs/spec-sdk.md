@@ -2,7 +2,7 @@
 
 **Created**: 2026-11-02
 
-**Updated**: 2026-11-11
+**Updated**: 2026-11-13
 
 **Input**: User description: "Publish the Cherry Works hexagon as an npm package, so a third party can import the engine's logic and write driver and driven adapters of their own, without `main.ts`, the command line or any adapter of this repository; a repository's address need not be a `file:` one; a test proves authoring through the built package on in-memory adapters, touching no disk." Then: "Ship the repositories as adapters in a package of their own…"
 
@@ -15,6 +15,8 @@ Then: "Export only what a user needs: `composeApplications`, handed only the ada
 Then: "Merge the adapters a tool may hand into one `EngineAdapters`, every one of them replaceable: the charter's store and each agent's projection and command line included."
 
 Then: "Keep [SDK-FR-020](#sdk-fr-020): export `cw`'s own adapters for a tool to extend. Rewrite the SDK spec, its FR and SC, to stand by it."
+
+Then: "Export the charter's layout as one value, as the output's is, and nothing loose; keep the sessions where the file adapters handed in keep files."
 
 ## Overview
 
@@ -38,6 +40,11 @@ It serves an integrator, not the developer using `cw`. What is published is a co
 - Q: Must an integrator hand every adapter? → A: No: it hands only what it replaces, and `cw`'s own is composed for every other ([SDK-FR-003](#sdk-fr-003)).
 - Q: The library exports `cw`'s own adapters and the domain models their ports name, while [SDK-FR-002](#sdk-fr-002), [SDK-FR-005](#sdk-fr-005) and [CORE-FR-228](spec-core.md#core-fr-228) said it exports no adapter: which stands? → A: The export: an integrator extends `cw`'s own adapters rather than writing each anew; [SDK-FR-002](#sdk-fr-002), [SDK-FR-005](#sdk-fr-005) and [CORE-FR-228](spec-core.md#core-fr-228) are rewritten to it ([SDK-FR-005](#sdk-fr-005), [SDK-FR-020](#sdk-fr-020)).
 - Q: Must every store and runner be replaceable, the sessions, the settings and the local output included, and the engine composed at addresses that are not `file:` with nothing handed? → A: Yes: every one is handed in the one set, and composing reaches no disk until a use case does ([SDK-FR-011](#sdk-fr-011), [SDK-FR-020](#sdk-fr-020)).
+
+### Session 2026-11-13
+
+- Q: Does the package export the workspace's folders and the helpers an adapter of `cw`'s uses, beside the values? → A: No: the layout of the store `cw` keeps is exported as one value, as the output's layout is; no loose constant or helper is exported, and an agent's projection is told where the charter is edited rather than reading `cw`'s layout ([SDK-FR-002](#sdk-fr-002), [SDK-FR-020](#sdk-fr-020)).
+- Q: Where an integrator hands file adapters but no sessions store, where are the sessions kept? → A: Through the file adapters handed, as every other store of `cw`'s is set up ([SDK-FR-020](#sdk-fr-020)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -192,11 +199,11 @@ An integrator imports `cw`'s own store and an agent's projection from `cherry-wo
 
 **Acceptance Scenarios**:
 
-1. **Given** the installed package, **When** every name it exports is listed, **Then** each is what composes the engine, a driver port or its DTO, an adapter's port or a model it names, or one of `cw`'s own adapters, and no use case, service, driver, command line or portal is among them ([SDK-FR-002](#sdk-fr-002), [SDK-FR-005](#sdk-fr-005), [SDK-FR-020](#sdk-fr-020)).
+1. **Given** the installed package, **When** every name it exports is listed, **Then** each is what composes the engine, the version, a driver port or its DTO, an adapter's port or a model it names, one of `cw`'s own adapters, or the layout of `cw`'s store or of the output as one value, and no use case, service, driver, command line or portal is among them ([SDK-FR-002](#sdk-fr-002), [SDK-FR-005](#sdk-fr-005), [SDK-FR-020](#sdk-fr-020)).
 2. **Given** `cw`'s own charter store and an agent's projection imported from the package, **When** an integrator extends them and composes the engine with the extended ones, **Then** a build answers through the extensions, and the script type-checks against the package alone ([SDK-FR-020](#sdk-fr-020), [SDK-FR-006](#sdk-fr-006)).
 3. **Given** a repository and a home at `memory:` addresses, **When** the engine is composed with no adapter handed, **Then** it is composed with no failure and no file-system call ([SDK-FR-011](#sdk-fr-011), [SDK-SC-006](#sdk-sc-006)).
 4. **Given** a sessions store, a settings store and a local output of an integrator's own, **When** the engine is composed with them and the use cases that use them run, **Then** each answers through the integrator's own, and `cw`'s own is never reached ([SDK-FR-020](#sdk-fr-020), [SDK-FR-003](#sdk-fr-003), [SDK-SC-005](#sdk-sc-005)).
-5. **Given** the contract recorded for the first release under it, **When** what it says of itself is read, **Then** it says how it was made and that nothing has been published under it yet ([SDK-FR-015](#sdk-fr-015)).
+5. **Given** the contract recorded for the first release under it, **When** what it says of itself is read, **Then** it says how it was made and that nothing has been published under it yet ([SDK-FR-015](#sdk-fr-015), [SDK-FR-016](#sdk-fr-016)).
 6. **Given** an integrator composing the engine, **When** it runs a signal's sensors, **Then** it names the agent they run for, and the engine assumes none ([CORE-FR-233](spec-core.md#core-fr-233)).
 
 ---
@@ -256,10 +263,10 @@ A maintainer reads the evidence of each `Done` story and knows it proves the sce
 
 - <a id="sdk-fr-013"></a>**SDK-FR-013**: `cw` and the library MUST be one package, `cherry-works`, depending on no other, and `cw` MUST run as it did before the library was in it.
 - <a id="sdk-fr-014"></a>**SDK-FR-014**: The contract MUST be what the package exports and what [SDK-FR-008](#sdk-fr-008) states, and nothing else: anything reached any other way is internal, and MAY change in any release.
-- <a id="sdk-fr-015"></a>**SDK-FR-015**: From the first publish, removing an exported name or changing the contents of an existing declaration — a compatible optional member added included — MUST be a major version; adding a newly named declaration MUST be a minor one; comments or layout alone MUST change no version. Compatibility MUST NOT be analysed beyond that. A release breaking the contract without a new major, or adding a newly named declaration in a patch, MUST be refused, naming what changed. A breaking change MUST be named in the changelog. Only what the package exports is compared: the duties [SDK-FR-008](#sdk-fr-008) states are prose, and whoever changes them versions and names the change by hand.
+- <a id="sdk-fr-015"></a>**SDK-FR-015**: From the first publish, removing an exported name or changing the contents of an existing declaration — a compatible optional member added included — MUST be a major version; adding a newly named declaration MUST be a minor one; comments or layout alone MUST change no version. Compatibility MUST NOT be analysed beyond that. A release breaking the contract without a new major, or adding a newly named declaration in a patch, MUST be refused, naming what changed. A breaking change MUST be named in the changelog. Only what the package exports is compared: the duties [SDK-FR-008](#sdk-fr-008) states are prose, and whoever changes them versions and names the change by hand. Each release MUST record the contract anew, module by module, from the library it publishes, and the contract MUST say how it was made and whether anything has been published under it.
 - <a id="sdk-fr-016"></a>**SDK-FR-016**: The library MUST go out only inside `cherry-works`, at its version, after the checks of [CORE-FR-134](spec-core.md#core-fr-134) and an import of the installed library pass. A preflight check failing MUST publish nothing. A failure of the publication MUST be reported under [SDK-FR-019](#sdk-fr-019). The first version published under this contract MUST be 1.0.0.
 - <a id="sdk-fr-019"></a>**SDK-FR-019**: A release that fails during publication MUST report that nothing was published, that the release commit and tag pushed are kept, and how the maintainer can publish at the same version; it MUST NOT claim that anything was rolled back.
-- <a id="sdk-fr-020"></a>**SDK-FR-020**: The library MUST export how `cw` composes the engine, taking only the adapters an integrator replaces and composing `cw`'s own for every other ([CORE-FR-230](spec-core.md#core-fr-230)). Every store and runner the engine is composed with MUST be replaceable — the store that keeps the charter, the sessions, the settings, the local output, and each agent's projection and command line included — all handed as one set that may be partial. The library MUST export each adapter's port, the models that port names, and `cw`'s own adapters for an integrator to extend. Where an integrator hands no store or projection, `cw`'s own MUST be set up over the file adapters it hands, so files kept anywhere keep the charter there too.
+- <a id="sdk-fr-020"></a>**SDK-FR-020**: The library MUST export how `cw` composes the engine, taking only the adapters an integrator replaces and composing `cw`'s own for every other ([CORE-FR-230](spec-core.md#core-fr-230)). Every store and runner the engine is composed with MUST be replaceable — the store that keeps the charter, the sessions, the settings, the local output, and each agent's projection and command line included — all handed as one set that may be partial. The library MUST export each adapter's port, the models that port names, and `cw`'s own adapters for an integrator to extend; the layout of the store `cw` keeps MUST be one value, as the output's layout is, and no constant or helper MUST be exported beside them. An agent's projection MUST be told where the charter is edited, never read it off the layout of `cw`'s store. Where an integrator hands no store or projection, `cw`'s own MUST be set up over the file adapters it hands, the sessions store included — a file reader handed without a way to read another root folder answering a fault the caller corrects, naming it — so files kept anywhere keep the charter and the sessions there too.
 
 **Failures**
 
@@ -294,10 +301,10 @@ A maintainer reads the evidence of each `Done` story and knows it proves the sce
 
 ## Out of Scope
 
-- A store beyond the file and in-memory ones there are, such as a database.
+- A store `cw` ships beyond its file and in-memory ones, such as a database store.
 - An entry point made for one integrator.
 - Any dependency on a central service.
-- Splitting a use case's constructor, or making its ports optional.
+- Splitting a use case by what it can do, or making its ports optional.
 - Exporting the command line or the portal as a library.
 - Evaluating away from a real folder and git.
 - Changing the charter's format or validation rules: the CORE spec sets them ([CORE-FR-224](spec-core.md#core-fr-224), [CORE-FR-226](spec-core.md#core-fr-226)).

@@ -1,7 +1,7 @@
 import { AgentProvider, type AgentProviderName } from "#module/shared/module.js";
 import { outputPath } from "../../constants.js";
+import { PrimitiveHelper } from "../../helper.js";
 import type { CharterRoot } from "../charter/charter-root.js";
-import { BasePrimitive } from "../primitive/base-primitive.js";
 import type { Primitive } from "../primitive/primitive.js";
 import { SensorPrimitive } from "../primitive/sensor-primitive.js";
 import { BuiltSensor, BuiltSensors } from "./built-sensor.js";
@@ -36,7 +36,7 @@ export class BuiltSensorsFactory {
               ...(agentProviders === undefined
                 ? {}
                 : { "agent-provider": agentProviders.map((agentName) => new AgentProvider(agentName)) }),
-              command: sensorRun.replace(BasePrimitive.referencePattern, (reference, referencedId: string) => {
+              command: PrimitiveHelper.rewriteReferences(sensorRun, (reference, referencedId) => {
                 const scriptPrimitive = charter.primitiveById.get(referencedId);
                 const compiledScript = scriptPrimitive && compiledPrimitiveByPrimitive.get(scriptPrimitive);
                 const executionFile = compiledScript?.assets.find((asset) => asset.isExecutable)?.assetPath;

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { delimiter, join, relative } from "node:path";
+import { delimiter, dirname, join, relative } from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
@@ -201,4 +201,128 @@ test("the install holds only what cw runs on, nothing that exists only to build,
     ),
     [],
   );
+});
+
+/** The text the builtin skill opens with, and what a newer version says there
+ *  instead: what tells one version's builtin layer from the other's. */
+const BUILTIN_SKILL_TEXT = "This skill is cw's own.";
+const NEWER_BUILTIN_SKILL_TEXT = "This skill is cw's own, as the newer version brings it.";
+
+/** The package as a newer version would publish it: this tree's, under the
+ *  next patch version, its builtin skill saying so. Packed into a folder of its
+ *  own, with the version it was published as. */
+async function newerTarballOf(folderPath: string): Promise<{ newerTarballPath: string; newerVersion: string }> {
+  const untarRun = spawnSync("tar", ["-xzf", tarballPath, "-C", folderPath], { encoding: "utf8" });
+  assert.equal(untarRun.status, 0, untarRun.stderr);
+  const packagePath = join(folderPath, "package");
+  const packageJson = JSON.parse(await readFile(join(packagePath, "package.json"), "utf8"));
+  const [major, minor, patch] = String(packageJson.version).split(".").map(Number);
+  const newerVersion = `${major}.${minor}.${(patch ?? 0) + 1}`;
+  await writeFile(join(packagePath, "package.json"), JSON.stringify({ ...packageJson, version: newerVersion }));
+  // What `cw` runs: the program its bin starts imports this bundle.
+  const bundlePath = join(packagePath, "dist", "main.js");
+  const bundleText = await readFile(bundlePath, "utf8");
+  assert.ok(bundleText.includes(`version: "${packageJson.version}"`) && bundleText.includes(BUILTIN_SKILL_TEXT));
+  await writeFile(
+    bundlePath,
+    bundleText
+      .replaceAll(`version: "${packageJson.version}"`, `version: "${newerVersion}"`)
+      .replaceAll(BUILTIN_SKILL_TEXT, NEWER_BUILTIN_SKILL_TEXT),
+  );
+  const packRun = spawnSync("npm", ["pack", "--json", "--pack-destination", folderPath], {
+    cwd: packagePath,
+    encoding: "utf8",
+  });
+  assert.equal(packRun.status, 0, packRun.stderr);
+  return { newerTarballPath: join(folderPath, JSON.parse(packRun.stdout)[0].filename), newerVersion };
+}
+
+/** A PATH holding the `cw` installed under this prefix, and node, npm and the
+ *  system's own tools, but no other `cw` this machine may have. */
+const pathOfPrefix = (prefixPath: string) =>
+  [join(prefixPath, "bin"), dirname(process.execPath), "/usr/bin", "/bin"].join(delimiter);
+
+/** `npm install -g` of one tarball under this prefix. */
+const installGlobally = (prefixPath: string, packageTarballPath: string) =>
+  spawnSync("npm", ["install", "--global", "--prefix", prefixPath, "--no-audit", "--no-fund", packageTarballPath], {
+    encoding: "utf8",
+  });
+
+test("upgraded with the package manager, the next run is the newer version, and the builtin layer it builds is the newer one's, with nothing to migrate (CORE Story 14 scenario 2, CORE-SC-021, CORE Story 55 scenario 4)", async () => {
+  const workFolderPath = await mkdtemp(join(tmpdir(), "cw-upgrade-"));
+  try {
+    const prefixPath = join(workFolderPath, "prefix");
+    const runningPath = pathOfPrefix(prefixPath);
+    const repoFolderPath = join(workFolderPath, "repo");
+    await mkdir(repoFolderPath);
+    assert.equal(installGlobally(prefixPath, tarballPath).status, 0);
+    const initRun = spawnSync("cw", ["init", "--agent", "claude"], {
+      cwd: repoFolderPath,
+      env: { ...process.env, PATH: runningPath },
+      encoding: "utf8",
+    });
+    assert.equal(initRun.status, 0, initRun.stderr);
+    const builtSkillPath = join(repoFolderPath, ".cw/out/skill/cw-author/index.md");
+    assert.ok((await readFile(builtSkillPath, "utf8")).includes(BUILTIN_SKILL_TEXT));
+    const { newerTarballPath, newerVersion } = await newerTarballOf(workFolderPath);
+
+    const upgradeRun = installGlobally(prefixPath, newerTarballPath);
+
+    assert.equal(upgradeRun.status, 0, upgradeRun.stderr);
+    const versionRun = spawnSync("cw", ["--version"], { env: { ...process.env, PATH: runningPath }, encoding: "utf8" });
+    assert.equal(versionRun.stdout.trim(), newerVersion);
+    const buildRun = spawnSync("cw", ["build"], {
+      cwd: repoFolderPath,
+      env: { ...process.env, PATH: runningPath },
+      encoding: "utf8",
+    });
+    assert.equal(buildRun.status, 0, buildRun.stderr);
+    assert.ok((await readFile(builtSkillPath, "utf8")).includes(NEWER_BUILTIN_SKILL_TEXT));
+  } finally {
+    await rm(workFolderPath, { recursive: true, force: true });
+  }
+});
+
+test("a repository declaring one version as a development dependency runs that version through its own scripts, whatever version is installed globally (CORE Story 14 scenario 3, CORE-FR-210, CORE Story 55 scenario 4)", async () => {
+  const workFolderPath = await mkdtemp(join(tmpdir(), "cw-pinned-"));
+  try {
+    const prefixPath = join(workFolderPath, "prefix");
+    const runningPath = pathOfPrefix(prefixPath);
+    const { newerTarballPath, newerVersion } = await newerTarballOf(workFolderPath);
+    assert.equal(installGlobally(prefixPath, newerTarballPath).status, 0);
+    const pinnedVersion = JSON.parse(await readFile(join(repositoryPath, "package.json"), "utf8")).version;
+    const repoFolderPath = join(workFolderPath, "repo");
+    await mkdir(repoFolderPath);
+    await writeFile(
+      join(repoFolderPath, "package.json"),
+      JSON.stringify({
+        name: "pinned-repository",
+        private: true,
+        scripts: { cw: "cw" },
+        devDependencies: { "cherry-works": `file:${tarballPath}` },
+      }),
+    );
+    const installRun = spawnSync("npm", ["install", "--no-audit", "--no-fund"], {
+      cwd: repoFolderPath,
+      encoding: "utf8",
+    });
+    assert.equal(installRun.status, 0, installRun.stderr);
+
+    const globalRun = spawnSync("cw", ["--version"], {
+      cwd: repoFolderPath,
+      env: { ...process.env, PATH: runningPath },
+      encoding: "utf8",
+    });
+    const scriptRun = spawnSync("npm", ["run", "--silent", "cw", "--", "--version"], {
+      cwd: repoFolderPath,
+      env: { ...process.env, PATH: runningPath },
+      encoding: "utf8",
+    });
+
+    assert.equal(globalRun.stdout.trim(), newerVersion);
+    assert.equal(scriptRun.status, 0, scriptRun.stderr);
+    assert.equal(scriptRun.stdout.trim(), pinnedVersion);
+  } finally {
+    await rm(workFolderPath, { recursive: true, force: true });
+  }
 });

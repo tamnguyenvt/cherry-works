@@ -6,7 +6,7 @@ import type { DomainFault } from "../domain.fault.js";
  *  together without either being unwrapped first (FR-009). */
 export class FaultsByFile {
   /** Nothing wrong with any file. */
-  static readonly none = new FaultsByFile({});
+  static readonly emptyFaultsByFile = new FaultsByFile({});
 
   readonly #faultsByFilePath: Readonly<Record<string, readonly DomainFault[]>>;
 

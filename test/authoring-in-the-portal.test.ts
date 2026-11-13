@@ -44,6 +44,42 @@ const opening = async (page: Page, id: string) => {
   await page.getByRole("dialog").waitFor();
 };
 
+test("for every kind, New asks the id, the description, every header that kind requires, the rationale and the mixins, and no header of another kind (CORE Story 6 scenario 1, FR-117, CORE Story 55 scenario 14)", async () => {
+  await inTheBrowser({}, async (page) => {
+    await startingNew(page, "guide");
+
+    for (const kind of Primitives.kinds) {
+      await page.getByRole("dialog").getByLabel("kind", { exact: true }).click();
+      await page.getByRole("option", { name: kind, exact: true }).click();
+      const kindHeaders = Primitives.headersOf(kind);
+      await page
+        .getByRole("dialog")
+        .locator('[data-slot="label"]')
+        .nth(kindHeaders.length + 1)
+        .waitFor();
+      const rowLabels = await rowLabelsOf(page);
+
+      // A header of the kind's own that it does not require may be asked as
+      // well: the scenario rules out only another kind's.
+      for (const askedField of [
+        "id",
+        "description",
+        "rationale",
+        "mixins",
+        ...kindHeaders.filter(({ isRequired }) => isRequired).map(({ field }) => field),
+      ])
+        assert.ok(rowLabels.includes(askedField), `${kind} asks no ${askedField}`);
+      const kindFields = new Set(kindHeaders.map(({ field }) => field));
+      const otherKindFields = Primitives.kinds
+        .flatMap((otherKind) => Primitives.headersOf(otherKind).map(({ field }) => field))
+        .filter((field) => !kindFields.has(field));
+      for (const otherKindField of otherKindFields)
+        assert.ok(!rowLabels.includes(otherKindField), `${kind} asks ${otherKindField}, another kind's`);
+    }
+    assert.equal(await page.getByRole("dialog").locator(".cm-content").count(), 1, "a body editor");
+  });
+});
+
 test("New asks the kind, the id and every header the kind takes, each in its shape (FR-117, FR-118)", async () => {
   await inTheBrowser({}, async (page) => {
     await startingNew(page, "guide");

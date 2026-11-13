@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, relative } from "node:path";
+import { PassThrough } from "node:stream";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
@@ -280,4 +286,103 @@ test("a folder under no repository is set up and built as a git repository is (C
   assert.equal(plainSetupOutcome.code, 0);
   assert.equal(plainSetupOutcome.problems, "");
   assert.notEqual(await held(plainSetupOutcome.held, ".cw/settings.json"), undefined);
+});
+
+test("cw init in a folder with no version control sets the charter up and builds it as in a git repository, file for file (CORE Story 35 scenario 1, CORE-FR-054, CORE Story 55 scenario 8)", async (t) => {
+  const workFolderPath = await mkdtemp(join(tmpdir(), "cw-init-anywhere-"));
+  t.after(() => rm(workFolderPath, { recursive: true, force: true }));
+  // `pnpm test` builds this tree first: dist/ is what its source builds to.
+  const cwFilePath = fileURLToPath(new URL("../dist/cw.js", import.meta.url));
+  const commandEnv = { ...process.env, HOME: join(workFolderPath, "home"), NO_COLOR: "1" };
+  const setUpIn = async (folderName: string, isUnderGit: boolean) => {
+    const folderPath = join(workFolderPath, folderName);
+    await mkdir(folderPath, { recursive: true });
+    if (isUnderGit) assert.equal(spawnSync("git", ["init", "--quiet"], { cwd: folderPath }).status, 0);
+    const initRun = spawnSync(process.execPath, [cwFilePath, "init", "--agent", "claude"], {
+      cwd: folderPath,
+      env: commandEnv,
+      input: "",
+      encoding: "utf8",
+    });
+    const setUpFiles = (await readdir(folderPath, { recursive: true, withFileTypes: true }))
+      .filter((dirent) => dirent.isFile())
+      .map((dirent) => relative(folderPath, join(dirent.parentPath, dirent.name)))
+      .filter((setUpFilePath) => !setUpFilePath.startsWith(".git/"))
+      .sort();
+    const setUpTextByPath = Object.fromEntries(
+      await Promise.all(
+        setUpFiles.map(async (setUpFilePath) => [
+          setUpFilePath,
+          await readFile(join(folderPath, setUpFilePath), "utf8"),
+        ]),
+      ),
+    );
+    return { status: initRun.status, stdout: initRun.stdout, stderr: initRun.stderr, setUpTextByPath };
+  };
+
+  const plainSetUp = await setUpIn("plain", false);
+  const gitSetUp = await setUpIn("git", true);
+
+  assert.equal(plainSetUp.status, 0, plainSetUp.stderr);
+  assert.equal(plainSetUp.stderr, "");
+  assert.match(plainSetUp.stdout, /Built \d+ files/);
+  assert.ok(".cw/out/catalogue.json" in plainSetUp.setUpTextByPath, "the charter is built");
+  assert.ok(".claude/skills/cw-author/SKILL.md" in plainSetUp.setUpTextByPath, "the agent can already author");
+  assert.deepEqual(plainSetUp, gitSetUp);
+});
+
+test("setting up at a terminal with no agent chosen yet offers every agent, none of them ticked (CORE-FR-055, CORE Story 55 scenario 9)", async (t) => {
+  // A terminal of a test's own, where a person presses return with nothing
+  // ticked, then stops setup.
+  const terminalInput = Object.assign(new PassThrough(), { isTTY: true, setRawMode: () => terminalInput });
+  const processStdinDescriptor = Object.getOwnPropertyDescriptor(process, "stdin");
+  Object.defineProperty(process, "stdin", { value: terminalInput, configurable: true });
+  t.after(() => {
+    if (processStdinDescriptor !== undefined) Object.defineProperty(process, "stdin", processStdinDescriptor);
+  });
+  terminalInput.write("\r\x03");
+
+  const { code, held: files, results } = await setUp({}, ["init"], ["claude", "codex"]);
+
+  // What the terminal showed, its colours and cursor moves taken out: an
+  // unticked agent is drawn ◯, a ticked one ◉.
+  const shownText = results.replace(new RegExp(`${String.fromCharCode(27)}\\[[0-9;?]*[A-Za-z]`, "g"), "");
+  assert.match(shownText, /Which agents does this charter compile for\?/);
+  for (const agentProviderName of ["claude", "codex"])
+    assert.match(shownText, new RegExp(`^◯ +${agentProviderName}\\b`, "m"), agentProviderName);
+  assert.doesNotMatch(shownText, /◉/);
+  // A return with nothing ticked is no answer.
+  assert.match(shownText, /You must select a minimum of 1 choices/);
+  assert.equal(code, EXIT_FAILURE);
+  assert.equal(await held(files, ".cw/settings.json"), undefined);
+});
+
+test("setting up again at a terminal offers what the repository chose before as the default, and a return keeps it with nothing authored discarded (CORE Story 1 scenario 5, FR-038, CORE-FR-055, CORE Story 55 scenario 8)", async (t) => {
+  // A terminal of a test's own: the prompt reads keys from it as from a
+  // person, who here only presses return.
+  const terminalInput = Object.assign(new PassThrough(), { isTTY: true, setRawMode: () => terminalInput });
+  const processStdinDescriptor = Object.getOwnPropertyDescriptor(process, "stdin");
+  Object.defineProperty(process, "stdin", { value: terminalInput, configurable: true });
+  t.after(() => {
+    if (processStdinDescriptor !== undefined) Object.defineProperty(process, "stdin", processStdinDescriptor);
+  });
+  terminalInput.write("\r");
+  const authoredGuidePath = ".cw/charter/primitive/guide/no-any/index.md";
+  const authoredGuideText =
+    '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nBody.\n';
+
+  const {
+    code,
+    held: files,
+    results,
+  } = await setUp({
+    [new URL(".cw/settings.json", repoPath).href]: `${JSON.stringify({ agents: ["codex"] }, undefined, 2)}\n`,
+    [new URL(authoredGuidePath, repoPath).href]: authoredGuideText,
+  });
+
+  assert.equal(code, 0);
+  assert.match(results, /Which agents does this charter compile for\?/, "the agent was asked at the terminal");
+  assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["codex"] });
+  assert.match(results, /Compiling for: codex\./);
+  assert.equal(await held(files, authoredGuidePath), authoredGuideText);
 });

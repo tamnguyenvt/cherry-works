@@ -151,7 +151,7 @@ async function aMachine(settings: object = { agents: ["claude"] }) {
   };
 }
 
-test("each stop is kept as one line outside the repository, by kind, subagents counted in, a message counted once (EVAL-FR-008, EVAL-FR-009)", async () => {
+test("each stop is kept as one line outside this repository, by kind, subagents counted in, a message counted once (EVAL-FR-008, EVAL-FR-009)", async () => {
   const machine = await aMachine();
   try {
     await machine.writeSession(
@@ -232,6 +232,29 @@ test("the log is kept, by default, in a folder of the repository's own under ~/.
     await machine.removeMachineFolder();
   }
 });
+
+for (const repoSessionsFolderName of ["logs/sessions", "..sessions"])
+  test(`a sessions folder named inside this repository, ${repoSessionsFolderName}, is refused: the session is kept in the default, and the refusal said (CORE Story 55 scenario 33, EVAL-FR-042, EVAL-FR-009)`, async () => {
+    const machine = await aMachine();
+    try {
+      const repoSessionsFolder = join(machine.repoFolder, repoSessionsFolderName);
+      await writeFile(
+        join(machine.repoFolder, ".cw/settings.json"),
+        JSON.stringify({ agents: ["claude"], sessionAnalysisFolder: repoSessionsFolder }),
+      );
+      await machine.writeSession("session-r", [assistantLine("msg-1", { input: 1, output: 1 })]);
+
+      const stopOutput = await machine.stopOutputOf("session-r");
+
+      assert.equal(stopOutput.code, 0);
+      assert.deepEqual(await machine.sessionLines(repoSessionsFolder), []);
+      assert.equal((await machine.sessionLines())[0].sessionId, "session-r");
+      const { systemMessage } = JSON.parse(stopOutput.stdout);
+      assert.ok(systemMessage.includes(repoSessionsFolder) && systemMessage.includes("refused"), systemMessage);
+    } finally {
+      await machine.removeMachineFolder();
+    }
+  });
 
 test("below its next mark, a stop shows nothing (EVAL-FR-010)", async () => {
   const machine = await aMachine();

@@ -13,7 +13,7 @@ import { Button } from "./ui/button.js";
  * Remove is the engine's vendoring too, and a refusal is said in its words.
  */
 export function VendorSources() {
-  const { open } = useDialog();
+  const { openDialog } = useDialog();
   const vendorFoldersQuery = useVendorFolders();
   const primitivesQuery = usePrimitives();
   const removeVendor = useRemoveVendor();
@@ -39,7 +39,7 @@ export function VendorSources() {
         aria-label="Vendor sources"
       >
         <span className="text-xs font-semibold">No vendor source installed</span>
-        <Button size="sm" className="ml-auto" onClick={() => open("addVendor", {})}>
+        <Button size="sm" className="ml-auto" onClick={() => openDialog("addVendor", {})}>
           Add vendor source
         </Button>
       </div>
@@ -95,7 +95,7 @@ export function VendorSources() {
         );
       })}
       <div className="px-3.5 py-[11px]">
-        <Button size="sm" variant="outline" onClick={() => open("addVendor", {})}>
+        <Button size="sm" variant="outline" onClick={() => openDialog("addVendor", {})}>
           Add source
         </Button>
       </div>

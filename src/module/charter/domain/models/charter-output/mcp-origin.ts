@@ -2,10 +2,12 @@ import type { McpAuthMethod } from "../mcp/mcp-auth-method.value-object.js";
 import { CharterOutputItem } from "./charter-output-item.js";
 
 /** One tool as an mcp origin lists it: its name, what it does, and what it takes. */
-export interface McpToolDefinition {
-  readonly name: string;
-  readonly description: string;
-  readonly inputSchema: Readonly<Record<string, unknown>>;
+export class McpToolDefinition {
+  constructor(
+    readonly name: string,
+    readonly description: string,
+    readonly inputSchema: Readonly<Record<string, unknown>>,
+  ) {}
 }
 
 /**

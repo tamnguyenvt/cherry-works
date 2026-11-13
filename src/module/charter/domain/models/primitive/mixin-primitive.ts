@@ -1,9 +1,10 @@
-import { z } from "zod";
-import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
+import { z } from "#module/shared/module.js";
+import type { AssetFile } from "./asset-file.js";
+import { BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** Headers and body reused by other primitives. A leaf: it lends its body to
- *  the host that pulls it in, and pulls in none of its own (FR-006). */
+ *  the primitive that pulls it in, and pulls in none of its own (FR-006). */
 export type MixinHeaders = Readonly<z.infer<typeof MixinPrimitive.schema>>;
 
 export class MixinPrimitive extends BasePrimitive {
@@ -22,8 +23,9 @@ export class MixinPrimitive extends BasePrimitive {
   static override readonly schema = super.headersSchema().extend({
     /** Never: reading refuses a mixin that declares one. */
     mixins: z.undefined().optional(),
-    /** Where its body is lent: before its host's own, where it sets the scene and
-     *  where it goes unsaid, or after it, where it closes what the host says. */
+    /** Where its body is lent: before the body of the primitive that pulls it
+     *  in, where it sets the scene and goes unsaid, or after it, where it closes
+     *  what that primitive says. */
     position: z.enum(["start", "end"]).default("start"),
   });
 
@@ -42,14 +44,14 @@ export class MixinPrimitive extends BasePrimitive {
 
   /** One mixin, or every fault its headers have (FR-004, FR-006). */
   static of(
-    record: Readonly<Record<string, unknown>>,
+    headerRecord: Readonly<Record<string, unknown>>,
     body: string,
     assets: readonly AssetFile[] = [],
     primitiveLayer?: PrimitiveLayer,
     keptUri?: string,
   ): MixinPrimitive {
     return new MixinPrimitive(
-      BasePrimitive.headersOf(MixinPrimitive, MixinPrimitive.schema, record),
+      BasePrimitive.headersOf(MixinPrimitive, MixinPrimitive.schema, headerRecord),
       body,
       assets,
       primitiveLayer,

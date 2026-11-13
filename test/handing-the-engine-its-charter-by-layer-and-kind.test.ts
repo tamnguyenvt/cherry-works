@@ -12,7 +12,7 @@ import type { ForManagingLocalOutput } from "../src/module/charter/app/port/out/
 import type { ForStoringCredentials } from "../src/module/charter/app/port/out/storing-credentials.port.js";
 import { buildCharterService } from "../src/module/charter/app/services/build-charter.service.js";
 import { loadCharterService } from "../src/module/charter/app/services/load-charter.service.js";
-import { outputPath } from "../src/module/charter/domain/constants.js";
+import { outputPath, vendorSourcePath } from "../src/module/charter/domain/constants.js";
 import { CharterOutput } from "../src/module/charter/domain/models/charter-output/charter-output.js";
 import { ProjectionPlan, WritePlan } from "../src/module/charter/domain/models/charter-output/projection-plan.js";
 import { RawEvalSuite } from "../src/module/charter/domain/models/eval/raw-eval-suite.js";
@@ -23,7 +23,7 @@ import { RawPrimitive } from "../src/module/charter/domain/models/primitive/raw-
 import { RawTestSuite } from "../src/module/charter/domain/models/test/raw-test-suite.js";
 import { RawVendorSource } from "../src/module/charter/domain/models/vendor/raw-vendor-source.js";
 import { VendorRoot } from "../src/module/charter/domain/models/vendor/vendor-root.js";
-import { SourceCharter, VendorSource } from "../src/module/charter/domain/models/vendor/vendor-source.js";
+import { SourceCharter } from "../src/module/charter/domain/models/vendor/vendor-source.js";
 import { VendorSourceOrigin } from "../src/module/charter/domain/models/vendor/vendor-source-origin.value-object.js";
 import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
@@ -80,7 +80,9 @@ const storagePortFileUrls = hexagonModuleUrls.flatMap((moduleUrl) => {
 const serviceFileUrls = hexagonModuleUrls.flatMap((moduleUrl) => {
   const serviceFolderUrl = new URL("app/services/", moduleUrl);
   return existsSync(serviceFolderUrl)
-    ? readdirSync(serviceFolderUrl).map((fileName) => new URL(fileName, serviceFolderUrl))
+    ? readdirSync(serviceFolderUrl)
+        .filter((fileName) => !/\.probe\./.test(fileName))
+        .map((fileName) => new URL(fileName, serviceFolderUrl))
     : [];
 });
 
@@ -110,7 +112,7 @@ function charterKeptWithNoPath(): {
     rawPrimitiveOf(PrimitiveLayer.REPO, "guide", "broken-guide", brokenGuideText),
   );
   const charterRepository: ForManagingCharter = {
-    async readBuiltOutputItem() {
+    async readCompiledOutputItem() {
       // What a build laid is the output writer's, kept elsewhere: this store
       // has read none of it back.
       return undefined;
@@ -137,6 +139,9 @@ function charterKeptWithNoPath(): {
       return Promise.all(rawPrimitives.map((rawPrimitive) => this.addPrimitive(rawPrimitive)));
     },
     findCharterUri() {
+      return "db://charter";
+    },
+    describeCharterPlace() {
       return "db://charter";
     },
     async rewritePrimitive(primitive) {
@@ -288,7 +293,7 @@ test("what crosses between the engine and what keeps its state is the engine's m
   // joins a path onto one or cuts one out of it.
   const hexagonFolderUrl = new URL("src/module/", repositoryUrl);
   const uriReadingLocations = readdirSync(hexagonFolderUrl, { recursive: true, encoding: "utf8" })
-    .filter((filePath) => filePath.endsWith(".ts") && !filePath.includes("/infra/"))
+    .filter((filePath) => filePath.endsWith(".ts") && !filePath.includes("/infra/") && !/\.probe\./.test(filePath))
     .flatMap((filePath) =>
       readFileSync(new URL(filePath, hexagonFolderUrl), "utf8")
         .split("\n")
@@ -301,7 +306,7 @@ test("what crosses between the engine and what keeps its state is the engine's m
   assert.deepEqual(uriReadingLocations, []);
 });
 
-test("a charter kept with no path is validated, listed, written and tested as the same charter kept as files (CORE Story 47 scenario 2)", async () => {
+test("a charter kept with no path is validated, listed, written and tested as the same charter kept as files (CORE Story 44 scenarios 1, 2, CORE Story 47 scenario 2, CORE Story 55 scenario 11)", async () => {
   const { charterRepository, rawPrimitiveByKey } = charterKeptWithNoPath();
   const { charterAuthoringApp: keptAuthoringApp, charterRuntimeApp: keptBuildingApp } = charterAppsOver(
     charterRepository,
@@ -337,8 +342,8 @@ test("a charter kept with no path is validated, listed, written and tested as th
   rawPrimitiveByKey.delete("guide/broken-guide");
   fileReaders.removeFile(new URL("file:///repo/.cw/charter/primitive/guide/broken-guide/index.md"));
   const [keptPlanSummary, filesPlanSummary] = [
-    answerTyped<CharterDTOs.PlanSummary>(await keptBuildingApp.buildCharter(), "PlanSummary"),
-    answerTyped<CharterDTOs.PlanSummary>(await filesBuildingApp.buildCharter(), "PlanSummary"),
+    answerTyped<CharterDTOs.ProjectionPlanSummary>(await keptBuildingApp.buildCharter(), "ProjectionPlanSummary"),
+    answerTyped<CharterDTOs.ProjectionPlanSummary>(await filesBuildingApp.buildCharter(), "ProjectionPlanSummary"),
   ];
   assert.deepEqual(keptPlanSummary, filesPlanSummary);
   assert.ok(keptPlanSummary.data.added.includes(".cw/out/guide/kept-guide/index.md"));
@@ -408,12 +413,28 @@ test("a build's plan is the domain's own, every file in it one of its planned fi
     charterOutputWriterOf(fileReaders),
     charterKeptAsFiles(fileReaders),
     undefined,
-    { refreshMcpOrigins: false },
+    { shouldRefreshMcpOrigins: false },
   );
 
   assert.ok(buildPlan instanceof ProjectionPlan, JSON.stringify(buildPlan));
   assert.ok(buildPlan.writePlans.length > 0 && buildPlan.cleanupPlan.length > 0);
   assert.ok([...buildPlan.cleanupPlan, ...buildPlan.writePlans].every((writePlan) => writePlan instanceof WritePlan));
+});
+
+test("what each agent is told to edit names where a store of a test's own keeps the charter, never cw's own layout (CORE Story 55 scenario 24)", async () => {
+  const fileReaders = new InMemoryFileReaders({});
+  const { charterRepository, rawPrimitiveByKey } = charterKeptWithNoPath();
+  rawPrimitiveByKey.delete("guide/broken-guide");
+  const { charterRuntimeApp } = charterAppsOver(charterRepository, { agents: ["claude", "codex"] }, fileReaders);
+
+  answerTyped(await charterRuntimeApp.buildCharter(), "ProjectionPlanSummary");
+
+  // The entry file of each agent, and the charter file every agent is sent to.
+  for (const toldFilePath of ["CLAUDE.md", "AGENTS.md", ".cw/out/CHARTER.md"]) {
+    const toldText = (await fileReaders.readIfThere(toldFilePath)) ?? "";
+    assert.match(toldText, /`db:\/\/charter\/`/, toldFilePath);
+    assert.doesNotMatch(toldText, /\.cw\/charter/, toldFilePath);
+  }
 });
 
 test("settings naming an agent this engine compiles for none under are refused, and nothing is composed for them (CORE Story 45)", async () => {
@@ -450,7 +471,7 @@ test("a link kept under the charter folder is a file of it, so no primitive is w
   assert.equal(readFileSync(join(repoFolder, "outside.md"), "utf8"), "kept outside\n");
 });
 
-test("every other use case answers through stores of a tool's own that keep no path (CORE Story 47 scenario 2, CORE-SC-062)", async () => {
+test("every other use case answers through stores of a tool's own that keep no path (CORE Story 44 scenarios 1, 2, CORE Story 47 scenario 2, CORE-SC-062, CORE Story 55 scenario 11)", async () => {
   const { charterRepository } = charterKeptWithNoPath();
   const mcpText = McpPrimitive.of(McpPrimitive.sample, "Read the billing service.").writeMarkdown();
   await charterRepository.addPrimitive(
@@ -838,7 +859,7 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
     async storeVendor(vendorSource) {
       // Each charter of the source is a vendor of its own, under the origin's name.
       for (const charterName of [
-        ...(vendorSource.ownCharter === undefined ? [] : [VendorSource.ownCharterName]),
+        ...(vendorSource.ownCharter === undefined ? [] : [vendorSourcePath.ownCharterName]),
         ...vendorSource.charters.map(({ name }) => name),
       ])
         installedVendorUris.push(`db://vendor:${vendorSource.origin.name}/${charterName}`);

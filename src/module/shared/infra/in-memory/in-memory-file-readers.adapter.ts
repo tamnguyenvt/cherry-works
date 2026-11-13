@@ -37,7 +37,7 @@ export class InMemoryFileReaders implements ForReadingFiles {
 
   /** The same files, every path from another folder: what a test reads a
    *  home's files through, beside the repository's. */
-  makeReadersAt(rootFolder: URL): InMemoryFileReaders {
+  createFolderReader(rootFolder: URL): InMemoryFileReaders {
     return Object.assign(new InMemoryFileReaders({}, rootFolder), {
       contentsByFile: this.contentsByFile,
       modifiedAtByFile: this.modifiedAtByFile,

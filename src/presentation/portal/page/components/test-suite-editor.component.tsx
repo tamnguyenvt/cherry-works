@@ -16,7 +16,7 @@ export function TestSuiteEditor({
   onClose,
 }: {
   name: string;
-  onDone: (did: string, detail: string) => void;
+  onDone: (doneText: string, detailText: string) => void;
   onClose: () => void;
 }) {
   const testSuitesQuery = useTestSuites();
@@ -41,7 +41,7 @@ function TestSuiteText({
 }: {
   name: string;
   initialText: string;
-  onDone: (did: string, detail: string) => void;
+  onDone: (doneText: string, detailText: string) => void;
   onClose: () => void;
 }) {
   const [text, setText] = useState(initialText);

@@ -41,18 +41,25 @@ const sectionsOf = async (page: import("playwright").Page) =>
       ),
   );
 
-test("a row's Explain opens what the engine says of it: when it comes up, what it pulls in, what names it (FR-029)", async () => {
+test("a row's Explain opens what the engine says of it: its kind and description, when it comes up, what it pulls in, what lends from it, what names it, its file and layer (FR-029, CORE Story 5 scenario 4, CORE Story 55 scenario 8)", async () => {
   await inTheBrowser(charter, async (page) => {
     await page.getByLabel("Explain no-any").click();
     await page.getByRole("dialog").getByRole("region").first().waitFor();
 
     assert.equal(await page.getByRole("dialog").locator('[data-slot="dialog-description"]').innerText(), "no-any");
     const sections = await sectionsOf(page);
+    assert.equal(sections["What it is"], "guide — About no-any.");
     assert.equal(sections["When it comes up"], GuidePrimitive.activatesWhen);
     assert.match(sections["What it pulls in"], /voice/);
     assert.match(sections["What it pulls in"], /why/);
     assert.match(sections["Tested by"], /\.cw\/charter\/test\/activation\.jsontouching src\/one\.ts activates no-any/);
     assert.match(sections["File"], /\.cw\/charter\/primitive\/guide\/no-any\/index\.md in the repo layer/);
+
+    // The mixin it pulls in says what lends from it.
+    await page.getByRole("dialog").getByRole("button", { name: "voice" }).click();
+    await page.getByRole("dialog").locator('[data-slot="dialog-description"]', { hasText: "voice" }).waitFor();
+    await page.getByRole("dialog").getByRole("region", { name: "Lent to" }).waitFor();
+    assert.equal((await sectionsOf(page))["Lent to"], "no-any");
   });
 });
 

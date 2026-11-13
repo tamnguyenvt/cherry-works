@@ -155,25 +155,28 @@ class UntriggeredBuiltinSkill extends SkillPrimitive {
 }
 
 test("what the engine brings is read as a layer of its own, first (FR-015, FR-017)", () => {
-  const charter = CharterRootFactory.create([
-    new RawPrimitive(
-      PrimitiveLayer.REPO,
-      "corpus",
-      "type-safety",
-      primitive("corpus", "type-safety"),
-      [],
-      ".cw/charter/primitive/corpus/type-safety/index.md",
-    ),
-    new RawPrimitive(
-      PrimitiveLayer.vendorLayerOf("team/rules/root"),
-      "guide",
-      "no-any",
-      primitive("guide", "no-any"),
-      [],
-      ".cw/charter/vendor/team/rules/root/primitive/guide/no-any/index.md",
-    ),
-    new CwAuthorSkill(),
-  ]);
+  const charter = CharterRootFactory.create(
+    [
+      new RawPrimitive(
+        PrimitiveLayer.REPO,
+        "corpus",
+        "type-safety",
+        primitive("corpus", "type-safety"),
+        [],
+        ".cw/charter/primitive/corpus/type-safety/index.md",
+      ),
+      new RawPrimitive(
+        PrimitiveLayer.vendorLayerOf("team/rules/root"),
+        "guide",
+        "no-any",
+        primitive("guide", "no-any"),
+        [],
+        ".cw/charter/vendor/team/rules/root/primitive/guide/no-any/index.md",
+      ),
+      new CwAuthorSkill(),
+    ],
+    ".cw/charter",
+  );
 
   assert.deepEqual(
     charter.primitives.map(({ headers, layer, uri }) => [headers.id, layer.name, uri]),
@@ -186,24 +189,27 @@ test("what the engine brings is read as a layer of its own, first (FR-015, FR-01
 });
 
 test("what the engine brings ready-made is checked against its kind like any file, and a refused one is named under its own name (CORE-FR-020)", () => {
-  const charter = CharterRootFactory.create([new UntriggeredBuiltinSkill()]);
+  const charter = CharterRootFactory.create([new UntriggeredBuiltinSkill()], ".cw/charter");
 
   assert.deepEqual(charter.primitives, []);
   assert.deepEqual(Object.keys(charter.faultsByFiles.faultsByFilePath), ["(built into cw)/skill/cw-author/index.md"]);
 });
 
 test("a repository claiming what the engine brings is the collision, filed against its own file (FR-019)", () => {
-  const charter = CharterRootFactory.create([
-    new RawPrimitive(
-      PrimitiveLayer.REPO,
-      "skill",
-      "cw-author",
-      primitive("skill", "cw-author"),
-      [],
-      ".cw/charter/primitive/skill/cw-author/index.md",
-    ),
-    new CwAuthorSkill(),
-  ]);
+  const charter = CharterRootFactory.create(
+    [
+      new RawPrimitive(
+        PrimitiveLayer.REPO,
+        "skill",
+        "cw-author",
+        primitive("skill", "cw-author"),
+        [],
+        ".cw/charter/primitive/skill/cw-author/index.md",
+      ),
+      new CwAuthorSkill(),
+    ],
+    ".cw/charter",
+  );
 
   assert.equal(charter.primitiveById.get("cw-author")?.layer, PrimitiveLayer.BUILTIN);
   const [collision, ...rest] =
@@ -218,7 +224,7 @@ test("a repository is read through the charter it keeps, and no other", async ()
   const elsewhere = new URL("file:///other/");
   files.writeFile(new URL(".cw/charter/primitive/skill/naming/index.md", elsewhere), primitive("skill", "naming"));
 
-  const charter = await loadCharterRoot(files.makeReadersAt(elsewhere));
+  const charter = await loadCharterRoot(files.createFolderReader(elsewhere));
 
   assert.deepEqual(ids(PrimitiveLayer.REPO.name, charter), ["naming"]);
 });
@@ -231,6 +237,18 @@ test("a file the format refuses is a problem naming that file, not a read that f
   assert.deepEqual(Object.keys(charter.faultsByFiles.faultsByFilePath), [
     "file:///repo/.cw/charter/primitive/guide/no-any/index.md",
   ]);
+});
+
+test("a file in a kind's folder that declares no kind is refused under that file, saying it declares none (CORE Story 1 scenario 4, CORE-FR-003, CORE Story 55 scenario 8)", async () => {
+  const file = new URL("guide/no-any/index.md", root);
+  const charter = await load(
+    new InMemoryFileReaders({ [file.href]: primitive("guide", "no-any").replace("kind: guide\n", "") }),
+  );
+
+  assert.deepEqual(ids(PrimitiveLayer.REPO.name, charter), []);
+  const faultsByFilePath = charter.faultsByFiles.faultsByFilePath;
+  assert.deepEqual(Object.keys(faultsByFilePath), [file.href]);
+  assert.match((faultsByFilePath[file.href] ?? []).map((fault) => fault.message).join("\n"), /declares no "kind"/);
 });
 
 test("what reads is kept, and what does not is named, in one read", async () => {

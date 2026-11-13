@@ -14,19 +14,23 @@ const DEFAULT_MAIN_CONTEXT_CEILING = 20_000;
  * Its text is as it is laid: an agent reads what is laid, and what that is
  * is the agent's projection's to say (CORE-FR-221).
  */
-export interface MainContextText {
-  readonly id: string;
-  readonly kind: string;
-  readonly text: string;
-  readonly globs?: readonly string[];
+export class MainContextText {
+  constructor(
+    readonly id: string,
+    readonly kind: string,
+    readonly text: string,
+    readonly globs?: readonly string[],
+  ) {}
 }
 
 /** One of those, counted. */
-export interface MainContextLoad {
-  readonly id: string;
-  readonly kind: string;
-  readonly tokens: number;
-  readonly globs?: readonly string[];
+export class MainContextLoad {
+  constructor(
+    readonly id: string,
+    readonly kind: string,
+    readonly tokenCount: number,
+    readonly globs?: readonly string[],
+  ) {}
 }
 
 /**
@@ -50,14 +54,14 @@ export class MainContext {
     readonly isExact: boolean,
   ) {
     const loadsLargestFirst = [...loads].sort(
-      (leftLoad, rightLoad) => rightLoad.tokens - leftLoad.tokens || leftLoad.id.localeCompare(rightLoad.id),
+      (leftLoad, rightLoad) => rightLoad.tokenCount - leftLoad.tokenCount || leftLoad.id.localeCompare(rightLoad.id),
     );
     this.sessionLoads = loadsLargestFirst.filter((load) => load.globs === undefined);
     this.fileLoads = loadsLargestFirst.filter((load) => load.globs !== undefined);
   }
 
   get totalTokens(): number {
-    return this.sessionLoads.reduce((total, load) => total + load.tokens, 0);
+    return this.sessionLoads.reduce((tokenCount, load) => tokenCount + load.tokenCount, 0);
   }
 
   isOverCeiling(mainContextCeiling: number): boolean {

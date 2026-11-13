@@ -43,7 +43,10 @@ export class RemoveCommand implements Command<typeof OPTIONS> {
   readonly summary = "Delete the file of one primitive this repository authored";
   readonly options = OPTIONS;
 
-  async runCommand({ charterAuthoringApp }: Context, { id, yes }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async runCommand(
+    { charterAuthoringApp }: Context,
+    { id, yes: isAnsweredYes }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
     const openedPrimitiveDTO = await charterAuthoringApp.openPrimitive(id ?? "");
     if (openedPrimitiveDTO.type === "Fault")
       return { exitCode: EXIT_FAILURE, problemText: printFault(openedPrimitiveDTO) };
@@ -51,19 +54,19 @@ export class RemoveCommand implements Command<typeof OPTIONS> {
 
     // Only what this repository authored is asked about: anything else is
     // refused by `removePrimitive` itself, and a question before a refusal asks nothing.
-    if (!yes && primitive.layerName === REPO_LAYER) {
+    if (!isAnsweredYes && primitive.layerName === REPO_LAYER) {
       if (!process.stdin.isTTY)
         return {
           exitCode: EXIT_FAILURE,
           problemText: `Removing ${primitive.file} is asked first, and nobody is at the terminal to answer.\n  Run "cw remove ${primitive.id} --yes" to remove it without asking.\n`,
         };
-      const { confirmed } = await prompts({
+      const { isConfirmed } = await prompts({
         type: "confirm",
-        name: "confirmed",
+        name: "isConfirmed",
         message: `Remove ${primitive.file}?`,
         initial: false,
       });
-      if (confirmed !== true) return { exitCode: EXIT_OK, resultText: "Nothing was removed.\n" };
+      if (isConfirmed !== true) return { exitCode: EXIT_OK, resultText: "Nothing was removed.\n" };
     }
 
     const primitiveDTO = await charterAuthoringApp.removePrimitive(primitive.id);

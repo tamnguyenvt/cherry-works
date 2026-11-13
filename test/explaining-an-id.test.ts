@@ -155,6 +155,20 @@ test("a vendored id is named the same way, and says which layer it came from", a
   assert.match(results, /installed from a vendor/);
 });
 
+test("what the engine brings is explained and listed like any other, under the layer it came from, saying which layer that is (CORE Story 12 scenario 4, FR-019, FR-020, CORE Story 55 scenario 8)", async () => {
+  const explained = await run(charter, ["explain", "cw-author"]);
+
+  assert.equal(explained.code, EXIT_OK);
+  assert.match(explained.results, /^cw-author {2}\S/);
+  assert.match(explained.results, /^ {2}\(built into cw\)\/skill\/cw-author\/index\.md$/m);
+  assert.match(explained.results, /^ {2}built into cw, and not authored in this repository$/m);
+
+  const listed = await run(charter, ["list", "--kind", "skill"]);
+  assert.equal(listed.code, EXIT_OK);
+  assert.match(listed.results, /^cw-author {2}\S/m);
+  assert.match(listed.results, /^ {2}\(built into cw\)\/skill\/cw-author\/index\.md$/m);
+});
+
 test("what is explained carries no body", async () => {
   const { results } = await run(charter, ["explain", "no-any"]);
 

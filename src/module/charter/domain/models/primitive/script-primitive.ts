@@ -1,6 +1,7 @@
-import { z } from "zod";
+import { z } from "#module/shared/module.js";
 import { outputPath } from "../../constants.js";
-import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
+import type { AssetFile } from "./asset-file.js";
+import { BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** Files the agent or a sensor runs, kept as real files beside the script's
@@ -53,14 +54,14 @@ export class ScriptPrimitive extends BasePrimitive {
 
   /** One script, or every fault its headers have (FR-004). */
   static of(
-    record: Readonly<Record<string, unknown>>,
+    headerRecord: Readonly<Record<string, unknown>>,
     body: string,
     assets: readonly AssetFile[] = [],
     primitiveLayer?: PrimitiveLayer,
     keptUri?: string,
   ): ScriptPrimitive {
     return new ScriptPrimitive(
-      BasePrimitive.headersOf(ScriptPrimitive, ScriptPrimitive.schema, record),
+      BasePrimitive.headersOf(ScriptPrimitive, ScriptPrimitive.schema, headerRecord),
       body,
       assets,
       primitiveLayer,

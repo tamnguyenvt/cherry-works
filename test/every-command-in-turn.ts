@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { chmod, mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join, relative } from "node:path";
+import { basename, delimiter, join, relative } from "node:path";
+import { pathToFileURL } from "node:url";
 import packageJson from "../package.json" with { type: "json" };
+import { Promptfoo } from "../src/module/runtime/infra/promptfoo.adapter.js";
 
 /** What one command printed and how it ended. */
 export interface CommandAnswer {
@@ -21,9 +24,10 @@ export interface PortalAnswer {
   body: string;
 }
 
-/** Every answer a developer meets, running every command that needs neither
- *  the network nor an agent in turn, then the portal's every route: what each
- *  printed or sent, and the files the repository is left holding. */
+/** Every answer a developer meets, running every command in turn, needing no
+ *  network and evaluating over an agent of the run's own, then the portal's
+ *  every route: what each printed or sent, and the files the repository is
+ *  left holding. */
 export interface AnswersOfEveryCommand {
   commandAnswers: CommandAnswer[];
   portalAnswers: PortalAnswer[];
@@ -33,6 +37,24 @@ export interface AnswersOfEveryCommand {
 /** A git source on disk holding one skill, committed at a fixed time by a
  *  fixed author, so its commit is the same on every run. */
 const VENDOR_SKILL_TEXT = "---\nname: grill-me\ndescription: Ask questions until the plan holds.\n---\n\nAsk.\n";
+
+/** The case `cw eval` puts to the agent, written and committed just before it
+ *  runs, as a developer commits a case before evaluating it. */
+const EVAL_CASE_TEXT = '{"cases":[{"prompt":"ask first, then plan","expect":{"invoke":"ask-first"}}]}\n';
+
+/** An agent of the run's own: its `claude` answers that it is installed, and
+ *  the promptfoo it is evaluated under grades the one case passed, with the
+ *  tokens it spent, reaching no network and no sign-in. */
+const FAKE_CLAUDE_TEXT = '#!/bin/sh\necho "2.0.0 (Claude Code)"\n';
+const FAKE_PROMPTFOO_TEXT = `#!/usr/bin/env node
+const { writeFileSync } = require("node:fs");
+const outputPath = process.argv[process.argv.indexOf("-o") + 1];
+writeFileSync(outputPath, JSON.stringify({ results: { results: [{
+  success: true,
+  response: { output: "Asked first.", tokenUsage: { total: 1200 } },
+  gradingResult: { componentResults: [{ pass: true, reason: "All required skills used", assertion: { type: "skill-used" } }] },
+}] } }));
+`;
 
 /** Each command in the order a developer meets them, each over the repository
  *  the ones before it left; `<vendor>` is the git source of one skill, and
@@ -54,6 +76,7 @@ const COMMAND_ARGS: readonly (readonly string[])[] = [
   ["suite", "remove", "untitled-1.json"],
   ["build"],
   ["doctor"],
+  ["eval"],
   ["context"],
   ["sessions"],
   ["eval-analyze"],
@@ -144,6 +167,10 @@ export async function answersOfEveryCommand(
     [...workFolderPaths, ...workFolderPaths.map((folderPath) => folderPath.replaceAll(/[/.]/g, "-"))]
       .reduce((normalisedText, folderPath) => normalisedText.replaceAll(folderPath, "<work>"), text)
       .replaceAll(workFolderName, "<work>")
+      // What an evaluation keeps is under a folder named at random, from the
+      // time it ran.
+      .replaceAll(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z/g, "<date>T<time>Z")
+      .replaceAll(/\brun-[A-Za-z0-9]{6}\b/g, "run-<random>")
       .replaceAll(/\b\d{4}-\d{2}-\d{2}\b/g, "<date>")
       .replaceAll(packageJson.version, "<version>");
   const commandEnv = {
@@ -183,13 +210,45 @@ export async function answersOfEveryCommand(
     });
     assert.equal(repoGitRun.status, 0, repoGitRun.stderr);
     let listedVendorName = "";
+    // The agent `cw eval` runs (CORE Story 46 scenario 4, CORE Story 55
+    // scenario 10): a `claude` of the run's own on the PATH, and promptfoo
+    // where cw installs it under the home, each answering as the real one.
+    const fakeAgentFolderPath = join(workFolderPath, "agent-bin");
+    await mkdir(fakeAgentFolderPath);
+    await writeFile(join(fakeAgentFolderPath, "claude"), FAKE_CLAUDE_TEXT);
+    await chmod(join(fakeAgentFolderPath, "claude"), 0o755);
+    const promptfooFolderPath = new Promptfoo(
+      pathToFileURL(`${repoFolderPath}/`),
+      pathToFileURL(`${homeFolderPath}/.cherry-works/`),
+    ).installFolderPath;
+    for (const sdkFolderPath of ["@anthropic-ai/claude-agent-sdk", "@openai/codex-sdk"]) {
+      await mkdir(join(promptfooFolderPath, "node_modules", sdkFolderPath), { recursive: true });
+      await writeFile(join(promptfooFolderPath, "node_modules", sdkFolderPath, "package.json"), "{}\n");
+    }
+    await mkdir(join(promptfooFolderPath, "node_modules", ".bin"), { recursive: true });
+    await writeFile(join(promptfooFolderPath, "node_modules", ".bin", "promptfoo"), FAKE_PROMPTFOO_TEXT);
+    await chmod(join(promptfooFolderPath, "node_modules", ".bin", "promptfoo"), 0o755);
     const commandAnswers = COMMAND_ARGS.map((commandArgs) => {
+      const isEvaluating = commandArgs[0] === "eval";
+      if (isEvaluating) {
+        mkdirSync(join(repoFolderPath, ".cw/charter/eval"), { recursive: true });
+        writeFileSync(join(repoFolderPath, ".cw/charter/eval/asking.json"), EVAL_CASE_TEXT);
+        for (const gitArgs of [
+          ["add", "."],
+          ["commit", "--quiet", "-m", "The charter and its case"],
+        ]) {
+          const gitRun = spawnSync("git", gitArgs, { cwd: repoFolderPath, env: commandEnv, encoding: "utf8" });
+          assert.equal(gitRun.status, 0, gitRun.stderr);
+        }
+      }
       const cwArgs = commandArgs.map((commandArg) =>
         commandArg === "<vendor>" ? vendorFolderPath : commandArg === "<listed vendor>" ? listedVendorName : commandArg,
       );
       const commandRun = spawnSync(process.execPath, [cwFilePath, ...cwArgs], {
         cwd: repoFolderPath,
-        env: commandEnv,
+        env: isEvaluating
+          ? { ...commandEnv, PATH: [fakeAgentFolderPath, process.env.PATH].join(delimiter) }
+          : commandEnv,
         input: "",
         encoding: "utf8",
       });

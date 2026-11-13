@@ -1,10 +1,10 @@
-import { z } from "zod";
-import type { AgentProvider } from "#module/shared/module.js";
-import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
+import { type AgentProvider, GoodArraySchema, z } from "#module/shared/module.js";
+import type { AssetFile } from "./asset-file.js";
+import { BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
-/** `<provider>:<model>`: the host the model is named for, then the model as
- *  that host names it. */
+/** `<provider>:<model>`: the agent the model is named for, then the model as
+ *  that agent names it. */
 const MODEL_REFERENCE = /^([^:]+):(\S+)$/;
 
 /** A role the agent delegates to, with the tools it may use (FR-004). */
@@ -25,9 +25,9 @@ export class AgentPrimitive extends BasePrimitive {
    *  against, and what says the shape of every header this kind takes, required
    *  or not (FR-004). */
   static override readonly schema = super.headersSchema().extend({
-    tools: BasePrimitive.goodArraySchema,
-    /** The model it runs on, `<provider>:<model>`; a host it does not name
-     *  runs it on that host's default. */
+    tools: GoodArraySchema,
+    /** The model it runs on, `<provider>:<model>`; an agent it does not name
+     *  runs it on that agent's default. */
     model: z
       .string()
       .refine((model) => MODEL_REFERENCE.test(model), {
@@ -55,8 +55,8 @@ export class AgentPrimitive extends BasePrimitive {
     return this.headers.model?.match(MODEL_REFERENCE)?.[1];
   }
 
-  /** The model this host runs it on, as this host names it; none where its
-   *  model is named for another host, or not at all. */
+  /** The model this agent runs it on, as this agent names it; none where its
+   *  model is named for another agent, or not at all. */
   modelOf(provider: AgentProvider): string | undefined {
     const [, modelProvider, model] = this.headers.model?.match(MODEL_REFERENCE) ?? [];
     return modelProvider === provider.name ? model : undefined;
@@ -64,14 +64,14 @@ export class AgentPrimitive extends BasePrimitive {
 
   /** One agent, or every fault its headers have (FR-004). */
   static of(
-    record: Readonly<Record<string, unknown>>,
+    headerRecord: Readonly<Record<string, unknown>>,
     body: string,
     assets: readonly AssetFile[] = [],
     primitiveLayer?: PrimitiveLayer,
     keptUri?: string,
   ): AgentPrimitive {
     return new AgentPrimitive(
-      BasePrimitive.headersOf(AgentPrimitive, AgentPrimitive.schema, record),
+      BasePrimitive.headersOf(AgentPrimitive, AgentPrimitive.schema, headerRecord),
       body,
       assets,
       primitiveLayer,

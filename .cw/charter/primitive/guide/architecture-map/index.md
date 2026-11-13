@@ -9,8 +9,9 @@ here and extend what is already there. Every file is named
 `<kebab-subject>.<role>.ts` as [[hexagonal-naming]] says (`file-charter.repository.ts`);
 only the models under a module's `domain/` (`charter-root.ts`), those an
 agent's adapters keep of its own (`charter/infra/claude/claude-rule.ts`),
-`helper.ts`, `index.ts`, a module's `domain/constants.ts` and `main.ts` keep
-their bare names; a value object takes `.value-object`
+`helper.ts`, `index.ts`, a module's `module.ts` and its `domain/constants.ts`,
+the kernel's `domain/schema.ts` (the schemas every module shares), the
+composition root's `composition.ts` and `main.ts` keep their bare names; a value object takes `.value-object`
 (`primitive-layer.value-object.ts`).
 
 ## Layers (hexagonal; enforced by `pnpm lint:deps`)
@@ -29,12 +30,16 @@ their bare names; a value object takes `.value-object`
   `.cw/settings.json` and setting a repository up, knowing neither other
   module, which never read it (CORE-FR-231) — and the kernel they share,
   `shared/`, each laid out as `app/`, `domain/` and `infra/`
-  (CORE-FR-222). `app/` and `domain/` import nothing outside the modules but
-  zod: no `node:*`, no adapter; they are the engine. Any other
-  library is wrapped by a lib in `domain/libs/` — `globs.lib.ts`
-  (picomatch), `yaml.lib.ts` (yaml, a primitive's frontmatter),
-  `toml.lib.ts` (smol-toml, an agent's configuration) — the only files that
-  import one; there is no port for a notation. `infra/` holds the module's adapters: one per driven port, plus an
+  (CORE-FR-222). `app/` and `domain/` import nothing outside the modules: no
+  `node:*`, no adapter, no library; they are the engine. Every library is
+  wrapped by a lib in the kernel's `shared/domain/libs/`, reached through
+  `shared/module.ts` — `validator.lib.ts` (zod, the `z` every schema is
+  written with), `globs.lib.ts` (picomatch, `GlobsLib`), `yaml.lib.ts`
+  (yaml, a primitive's frontmatter, `YamlLib`), `toml.lib.ts` (smol-toml, an
+  agent's configuration, `TomlLib`), each but the validator one class of
+  static methods — the only files that import one; there is no port for a
+  notation. The schemas every module shares, `GoodLineSchema`,
+  `GoodArraySchema` and `FlagSchema`, are the kernel's `domain/schema.ts`. `infra/` holds the module's adapters: one per driven port, plus an
   `InMemory*` twin used by tests under `infra/in-memory/`, each in
   `<name>.adapter.ts` (`in-memory/in-memory-file-output.adapter.ts`), each answering a driven port of its
   own module or of the kernel and nothing else of them.
@@ -49,7 +54,7 @@ their bare names; a value object takes `.value-object`
     `storeVendor`, `findVendorUri`, `removeVendor`), its test cases (`loadTestSuites`, `writeTestSuite`,
     `removeTestSuite`) and its eval cases (`loadEvalSuites`,
     `writeEvalSuite`, `removeEvalSuite`), and what the last build laid
-    (`readBuiltOutputItem`, `describeItemPlace`, `resolveOutputLinks`: the output
+    (`readCompiledOutputItem`, `describeItemPlace`, `resolveOutputLinks`: the output
     under `.cw/out/`, `$CW_OUT` in what it holds, where `helper.ts`'s
     `findItemPlace` says), each read as the store holds it now, an
     evaluation's included (ADR-001);
@@ -61,19 +66,26 @@ their bare names; a value object takes `.value-object`
     file a build planned, each made over a checkout by `createCheckoutOutput`;
     `GitSources`, `OAuth`, `Tiktoken`; and `helper.ts`: a charter folder's primitives, a source's
     skills, refusing a repository or a source laid out the old way
-    (`assertNewLayout`, `findOldLayoutPaths`, CORE-FR-226), and where the output
-    lands (`OUT_FOLDER`, which `module.ts` hands the agents' adapters too, `findItemPlace`).
+    (`assertNewLayout`, `findOldLayoutPaths`, CORE-FR-226), where the output
+    lands (`OUT_FOLDER`, under the workspace's folder `charterPath` names,
+    `findItemPlace`), and the credential one kept secret holds
+    (`parseCredentialSecret`).
   - `runtime/infra/`: `FileSessionAnalysisRepository` (`loadSessionLogs`:
     each session's lines last written within a window, in the sessions folder
     it is set up with — the one the repository's settings name, or one it
-    finds from the repository's address and the home), `GitWorktrees`, `Promptfoo`
-    (each run kept under `.cw/log/eval/runs/`), `Shell`; each agent's own
-    command line is its agent's.
-  - `workspace/infra/`: `FileWorkspaceSettingsRepository`, the settings and
-    the workspace's ignore file (`log/`, CORE-FR-225).
+    finds from the repository's address and the home), `GitWorktrees` (each
+    worktree under the folder it names, `worktreesFolderPath`: the log's
+    `logPath.evalWorktreesFolderPath`), `Promptfoo` (each run kept under
+    `logPath.evalRunsFolderPath`), `Shell`; each agent's own command line is
+    its agent's. Each reads the log's layout through the port it answers.
+  - `workspace/infra/`: `FileWorkspaceSettingsRepository`, the settings,
+    the workspace's ignore file (`log/`, CORE-FR-225) and its README, each at
+    its `settingsPath`.
   - `shared/infra/`: `FileReaders`, `FileOutput`,
     `McpClients`, `ConsoleReporter`, `SystemClock`, and `helper.ts`: a path
-    read as an address, and a checkout's path.
+    read as an address, a checkout's path, a file's contents read as text or
+    as bytes (`decodeContents`, `encodeContents`), and what an mcp server
+    raised turned into a fault of the adapter's (`wrapMcpFault`).
 - `charter/infra/claude/`, `charter/infra/codex/` — each agent the engine
   compiles for, one folder per agent, holding its projection,
   `ClaudeProjection` and `CodexProjection` (`ForManagingLocalAgentOutput`,
@@ -106,9 +118,11 @@ their bare names; a value object takes `.value-object`
   application as it does.
 - `index.ts` — the library `cherry-works` exports (SDK-FR-002, SDK-FR-020),
   and nothing more: `composeApplications`, its `EngineAdapters`, and what it
-  answers; the four driver ports and their DTOs; `VERSION`; the port of every
-  adapter, with the models and values crossing it; and `cw`'s own adapters
-  and their abstract bases, for a tool to extend. No use case or service. It reaches a module only through its `module.ts`, as `main.ts`
+  answers; the four driver ports and their DTOs; `VERSION`; the layout values
+  `charterPath` and `outputPath`, with their models `CharterPath` and
+  `OutputPath`; the port of every adapter, with the models and values crossing
+  it; and `cw`'s own adapters and their abstract bases, for a tool to extend.
+  No use case or service. It reaches a module only through its `module.ts`, as `main.ts`
   does; what it exports is the contract a release compares.
 
 ## Inside `module/`
@@ -130,12 +144,15 @@ charter's two applications, in DTOs, and holds no model of the charter's
   `ProjectionSettings` when it is composed.
 - `runtime/` — `RunningCharter` in `app/running-charter.use-case.ts`,
   answering `ForRunningCharter`: the sensors of a signal, the calls forwarded
-  to the mcp origins, the main context counted exactly, the evaluations and
-  their log under `.cw/log/`, and the sessions; handed `RuntimeSettings` when
-  it is composed.
+  to the mcp origins, the main context of the agent named counted exactly
+  beside its estimate, the evaluations and their log under `.cw/log/`, and
+  the sessions; handed `RuntimeSettings` when it is composed.
 - `shared/` — what is neither's: `DomainFault`, `ApplicationService` in
   `app/application-service.base.ts`, `dto()` and the faults' DTOs, `FaultDTOs`,
-  in `app/port/in/`, and the ports both use (`ForReadingFiles`,
+  in `app/port/in/`, with `index.ts` beside them, the kernel's DTO entry:
+  what every DTO file is written with and imports, and nothing else, never
+  `shared/module.ts`, which reaches its adapters (`dtos-are-zod-only`); and
+  the ports both use (`ForReadingFiles`,
   `ForWritingFiles`, `ForReportingProgress`,
   `ForTellingTime`, `ForCallingMcpServers`, `FolderAddress`).
 
@@ -201,23 +218,36 @@ In each module:
     one of the two.
   - `primitive/` — one `<Kind>Primitive` per kind extending `BasePrimitive`,
     registered in `Primitives.classes` of `primitive.ts`; `RawPrimitive`, a
-    primitive as it is kept; `PrimitiveLayer`; `PrimitiveFactory`.
+    primitive as it is kept; `AssetFile`, one file beside a primitive's
+    `index.md`; `PrimitiveLayer`; `PrimitiveFactory`; `PrimitiveHelper`
+    (`primitive.helper.ts`, re-exported by the domain's `helper.ts`), how one
+    primitive names another, `[[<id>]]`, read out of a text and written back,
+    what `CharterRoot`, the `BuiltSensorsFactory`, the `CompiledPrimitiveFactory`
+    and Claude's `ClaudeComponentFactory` share; `SecureEndpointSpec`, a
+    specification: whether a developer's credential may be sent to an endpoint.
   - `charter/` — `CharterRoot` (every primitive, every composite fault, in
     `compositeFaultsByFiles`) and `CharterRootFactory`;
-    `RepoLayerPrimitiveSpec`, a specification. The workspace's layout is no
-    model: it is the module's constants, in `domain/constants.ts`
-    (`WORKSPACE_FOLDER_PATH`, `CHARTER_FOLDER_PATH`, `PRIMITIVES_FOLDER_PATH`,
-    `VENDORS_FOLDER_PATH`, `TEST_FOLDER_PATH`, `EVAL_FOLDER_PATH`), each a
-    path from the repository's root (CORE-FR-224). Where a build's output and
+    `RepoLayerPrimitiveSpec`, a specification; `CharterPath`, the layout of
+    the charter in the store `cw` keeps — its workspace, charter, primitives,
+    tests, eval cases and vendors folders, each a path from the repository's
+    root (CORE-FR-224), and the folder a vendor keeps its primitives in —
+    made once as `charterPath` in the domain's
+    `constants.ts`, as `outputPath` is. Where a build's output and
     each agent's files land is none of them: it is the projections'
     (CORE-FR-221).
   - `builtin/`, beside `models/` — the engine's own layer: `cw-author`, the session
     counter; listed in `BuiltinPrimitives.primitives`.
   - `vendor/` — `VendorSource` (with its `SourceCharter` and `SourceSkill`),
-    `RawVendorSource`, `VendorSourceOrigin`, `VendorRoot`, their factories.
+    `RawVendorSource`, `VendorSourceOrigin`, `VendorRoot`, their factories;
+    `VendorSourcePath`, a source's layout — its charters and skills folders,
+    a skill's file, the own charter's name — made once as `vendorSourcePath`
+    in the domain's `constants.ts`, and lent to the adapters through
+    `managing-charter.port.ts` alone: a source is no store of `cw`'s, so the
+    package does not export it.
   - `test/` — `TestSuite`, `TestCase`, `TestRoot`, `TestCaseReport`, their
     factories (`TestSuiteFactory`, `TestRootFactory`).
   - `eval/` — `EvalSuite` (the cases of one file under `.cw/charter/eval/`),
+    each case an `EvalCase` value object, made where the suite is read;
     `EvalRoot`, their factories.
   - `charter-output/` — what a build produces, knowing no agent and naming
     no place but inside the output: `CharterOutput`, the list of its
@@ -231,7 +261,7 @@ In each module:
     `getLinkTo`), made once as `outputPath` in the domain's `constants.ts`
     and asked by everyone; the items, `Catalogue` (the shared one and each agent's), `CharterMd`,
     `McpOrigins`, `BuiltSensors` and `CompiledPrimitive`, each made by its
-    factory; `ProjectionPlan`, `PlanSummary`, `StampedDocument`, and
+    factory; `ProjectionPlan`, `ProjectionPlanSummary`, `StampedDocument`, and
     `StampedDocumentSpec`, a specification: whether a file on disk carries the
     stamp. What each agent reads of it is
     that agent's projection's, in its agent's folder.
@@ -243,15 +273,22 @@ In each module:
     no file reads), `TestService` (`runSuite`, `runCase`,
     `validateTestRoot`), `EvalService` (`validateEvalRoot`: the cases naming
     what the charter does not hold).
-  - `libs/` — the libraries the domain reads with (glob, YAML, TOML).
-  - `helper.ts` — `ModelHelper`: frontmatter written out, short names, hashes.
-  Runtime's domain keeps `models/` (`session/`, `eval/`, `sensor/`), each
-  factory beside its model, `services/`, and `constants.ts` holding `LOG_FOLDER_PATH` and
-  `EVAL_WORKTREES_FOLDER_PATH`; the workspace's `models/` holds
-  `WorkspaceSettings` and its factory, and its `constants.ts` the settings
-  file's and the ignore file's paths. The kernel's
+  - `helper.ts` — `ContentHelper`: frontmatter written out and read back,
+    short names, hashes; and `PrimitiveHelper`, re-exported.
+  Runtime's domain keeps `models/` (`session/`, each stop of a session a
+  `SessionAnalysisLine` value object made where the log is read; `eval/`;
+  `sensor/`; `log/`, `LogPath`), each
+  factory beside its model, `services/`, and `constants.ts` holding `logPath`, a `LogPath`: the log's
+  folder, and the eval worktrees' and runs' under it; the workspace's `models/` holds
+  `WorkspaceSettings` and its factory, and its `constants.ts` `settingsPath`,
+  a `SettingsPath`: the workspace's folder, the settings file's, the ignore
+  file's and the README's paths, and the line that ignores the log. The kernel's
   `domain/models/` holds `DomainFault` (`domain.fault.ts`), `AdapterFault`,
-  `ApplicationFault` and `DomainFaultFactory`, and its `value-objects/`
+  `ApplicationFault`, `RefusedByOtherModuleFault` (`shared.fault.ts`) and
+  `DomainFaultFactory`, and under `fault/` `Faults`, faults under no file
+  yet, and `FaultsByFile`, every fault under the file it is wrong with; its
+  `helper.ts` holds `FaultHelper`; its `schema.ts` the schemas every module
+  shares; and its `value-objects/`
   holds `AgentProvider`, an agent by its name, whichever names the
   projections the application was handed answer to (CORE-FR-221,
   CORE-FR-229).

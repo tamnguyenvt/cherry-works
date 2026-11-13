@@ -1,6 +1,5 @@
 import {
   AgentPrimitive,
-  BasePrimitive,
   BuiltSensors,
   type CharterOutput,
   type CharterRoot,
@@ -12,6 +11,7 @@ import {
   PlaybookPrimitive,
   PosturePrimitive,
   type Primitive,
+  PrimitiveHelper,
   SensorPrimitive,
   SkillPrimitive,
 } from "../../app/port/out/managing-local-agent-output.port.js";
@@ -29,21 +29,21 @@ export class ClaudeComponentFactory {
   /**
    * Every file claude reads of this charter (FR-018).
    *
-   * Two passes, because this host reads two kinds of file. What lands in its
+   * Two passes, because this agent reads two kinds of file. What lands in its
    * settings lands in one file whatever asked for it, so every primitive that asks
    * is read together and compiles to one fragment; everything else is a document
    * of its own, one per primitive.
    *
    * Not one for one, either way. A `skill` and a `playbook` are two things in a
-   * charter and one thing here, because this host has one mechanism for a body
+   * charter and one thing here, because this agent has one mechanism for a body
    * loaded when the request calls for it; a `guide` is a rule, brought up by the
    * files it names or carried on every turn where it names none. What the charter kept apart, the listing
-   * keeps apart (FR-011); what the host cannot tell apart, it is not told.
+   * keeps apart (FR-011); what the agent cannot tell apart, it is not told.
    *
    * Three kinds project nothing of their own. A `corpus` is cited rather than
-   * loaded, a `mixin` has no life of its own — its body is written into each host
+   * loaded, a `mixin` has no life of its own — its body is written into each primitive
    * that pulls it in, which `writeMarkdown` does when `compile` hands it the mixins — and an `mcp` is reached through
-   * `cw mcp serve` rather than read: the one entry of the host's MCP
+   * `cw mcp serve` rather than read: the one entry of the agent's MCP
    * configuration that starts it, written whether the charter holds an mcp origin yet or
    * not, since the server reads which mcp origins there are when it starts (FR-146).
    */
@@ -61,9 +61,9 @@ export class ClaudeComponentFactory {
       mcpOrigins.origins.flatMap(({ names }) => Object.entries(names)),
     );
     const builtSensors = charterOutput.findCharterOutputItem(BuiltSensors).filterForAgent(claudeAgent);
-    // Does this primitive ask something of the settings this host runs on, rather
+    // Does this primitive ask something of the settings this agent runs on, rather
     // than compile to a file of its own? A posture says what may be run, a sensor
-    // what runs when an event fires, and this host reads both out of one file.
+    // what runs when an event fires, and this agent reads both out of one file.
     const isSettingComponent = (primitive: Primitive) =>
       primitive.kind === PosturePrimitive.kind || primitive.kind === SensorPrimitive.kind;
     const settingPrimitives = charter.primitives.filter(
@@ -72,7 +72,7 @@ export class ClaudeComponentFactory {
     const documentPrimitives = charter.primitives.filter((primitive) => !isSettingComponent(primitive));
 
     // A subagent holds the tools it lists and nothing else. An mcp origin it lists,
-    // `[[<id>]]` whole or `[[<id>]]:<tool>` one tool, is written as this host is
+    // `[[<id>]]` whole or `[[<id>]]:<tool>` one tool, is written as this agent is
     // given each of its tools, `mcp__cw__<served name>__<tool>` (FR-156); the
     // charter has refused an mcp origin or tool it does not hold.
     const toolsByMcpId = new Map(
@@ -82,7 +82,7 @@ export class ClaudeComponentFactory {
     );
     const listAgentTools = (agent: AgentPrimitive) =>
       agent.headers.tools.flatMap((tool) => {
-        const [, mcpId, mcpTool] = tool.match(BasePrimitive.toolReferencePattern) ?? [];
+        const { mcpId, toolName: mcpTool } = PrimitiveHelper.parseToolReference(tool) ?? {};
         if (mcpId === undefined) return [tool];
         return (mcpTool === undefined ? (toolsByMcpId.get(mcpId) ?? []) : [mcpTool]).map(
           (oneTool) => `mcp__${ClaudeMcpConfig.cwMcpName}__${shortMcpIds[mcpId]}__${oneTool}`,
@@ -90,9 +90,9 @@ export class ClaudeComponentFactory {
       });
 
     return [
-      // The section of `CLAUDE.md` that sends this host to the charter at all
+      // The section of `CLAUDE.md` that sends this agent to the charter at all
       // (FR-051).
-      new ClaudeEntryFile(ClaudeComponentFactory.#composeEntryFileSection()),
+      new ClaudeEntryFile(ClaudeComponentFactory.#composeEntryFileSection(charter.charterPlace)),
       ...(settingPrimitives.length === 0 && toolsByMcpId.size === 0
         ? []
         : [
@@ -121,14 +121,14 @@ export class ClaudeComponentFactory {
   }
 
   /**
-   * Everything this charter asks of the settings this host runs on, read together
+   * Everything this charter asks of the settings this agent runs on, read together
    * (FR-018).
    *
-   * One fragment for the whole charter, because the host keeps one such file: every
+   * One fragment for the whole charter, because the agent keeps one such file: every
    * posture's permissions are the permissions, each thing once, and every event a
    * sensor fires on is one hook, `cw sensor run <event>`, which runs that event's
    * sensors as the last build wrote them (FR-175). A charter reaching a mcp origin
-   * turns the host's own tool search on (EVAL-FR-016).
+   * turns the agent's own tool search on (EVAL-FR-016).
    *
    * What the repository set for itself is not here at all: that is on disk, and
    * reading it together with this is the projection's (FR-020).
@@ -147,9 +147,9 @@ export class ClaudeComponentFactory {
         for (const permission of settingPrimitive.headers.deny) deniedPermissions.add(permission);
       }
     }
-    // A signal this host raises nothing for compiles to nothing: writing it would
+    // A signal this agent raises nothing for compiles to nothing: writing it would
     // be a hook that never fires, and the charter still names the event for
-    // whichever host does raise it. In the order the events' names sort in, so the
+    // whichever agent does raise it. In the order the events' names sort in, so the
     // same charter writes the same file (SC-007).
     const hookEvents = builtSensors.signals
       .filter((signal): signal is ClaudeHookEvent => (ClaudeSettings.hookEvents as readonly string[]).includes(signal))
@@ -178,7 +178,7 @@ export class ClaudeComponentFactory {
               ]),
             ),
           }),
-      // A charter reaching an mcp origin has its tools' schemas deferred by the host
+      // A charter reaching an mcp origin has its tools' schemas deferred by the agent
       // itself, the one server listing every tool (EVAL-FR-016).
       ...(charter.primitives.some((primitive) => primitive instanceof McpPrimitive) && {
         env: ClaudeSettings.toolSearchEnv,
@@ -187,15 +187,15 @@ export class ClaudeComponentFactory {
   }
 
   /**
-   * Which document of this host a charter primitive becomes, or nothing where this
-   * host has no kind for it.
+   * Which document of this agent a charter primitive becomes, or nothing where this
+   * agent has no kind for it.
    *
    * What the primitive says is kept once, in its compiled document: this holds
-   * what the host reads before it opens a body, and one line pointing there
+   * what the agent reads before it opens a body, and one line pointing there
    * (FR-139). The link is from this document's own place, as claude resolves an
    * `@` import. A rule's `@` is expanded when the session opens; for the other kinds claude
    * documents no such expansion, so the line says to read the file. A subagent
-   * is handed `agentTools`: its tools as this host names them, each mcp origin it
+   * is handed `agentTools`: its tools as this agent names them, each mcp origin it
    * holds written as that mcp origin's tools (FR-156).
    */
   static #createClaudeDocumentComponent(
@@ -206,12 +206,12 @@ export class ClaudeComponentFactory {
     // The id alone, so a skill is invoked as `/<id>` rather than
     // `/skill-<id>`; one id names one primitive whatever its kind, so no two
     // land on one name here (FR-015, FR-171).
-    const name = documentPrimitive.normId;
+    const primitiveId = documentPrimitive.normId;
     const compiledDocumentLink = outputPath.getLink(compiledPrimitive);
     const pointerText = `Read and follow @${compiledDocumentLink}.\n`;
 
     switch (documentPrimitive.kind) {
-      // A guide is a rule this host loads into context whole: when a file it names
+      // A guide is a rule this agent loads into context whole: when a file it names
       // is touched, which is what `paths` on a rule does, and at the start of every
       // session where it names none (FR-013). Under the id it is changed by,
       // so a reader who wants it changed is sent to the primitive rather than
@@ -221,11 +221,11 @@ export class ClaudeComponentFactory {
         // naming files is pointed to from the repository's root instead, and
         // read only once one of them is touched.
         const { globs = [] } = documentPrimitive.headers;
-        if (globs.length === 0) return new ClaudeRule("claude", "guide", name, {}, `@${compiledDocumentLink}\n`);
+        if (globs.length === 0) return new ClaudeRule("claude", "guide", primitiveId, {}, `@${compiledDocumentLink}\n`);
         return new ClaudeRule(
           "claude",
           "guide",
-          name,
+          primitiveId,
           { paths: globs },
           `Read and follow ${resolveLaidText(outputPath.getLink(compiledPrimitive))}.\n`,
         );
@@ -236,9 +236,9 @@ export class ClaudeComponentFactory {
         return new ClaudeAgent(
           "claude",
           "agent",
-          name,
+          primitiveId,
           {
-            name,
+            name: primitiveId,
             description: documentPrimitive.composeDescription(),
             tools: (agentTools ?? tools).join(", "),
             ...(claudeModel === undefined ? {} : { model: claudeModel }),
@@ -246,9 +246,9 @@ export class ClaudeComponentFactory {
           pointerText,
         );
       }
-      // One kind of this host for the two the charter loads when the request calls
+      // One kind of this agent for the two the charter loads when the request calls
       // for them: what decides that the body is worth opening is the description,
-      // because that line is all this host reads before deciding (FR-013), and
+      // because that line is all this agent reads before deciding (FR-013), and
       // composing it is the primitive's. One that is a step of another is kept
       // out of the user's commands (CORE-FR-174), and one the user alone starts is
       // kept out of the agent's own reach (CORE-FR-182).
@@ -257,9 +257,9 @@ export class ClaudeComponentFactory {
         return new ClaudeSkill(
           "claude",
           documentPrimitive.kind,
-          name,
+          primitiveId,
           {
-            name,
+            name: primitiveId,
             description: documentPrimitive.composeDescription(),
             ...(documentPrimitive.headers["disable-user-invocation"] === true ? { "user-invocable": false } : {}),
             ...(documentPrimitive.headers["disable-model-invocation"] === true
@@ -274,13 +274,14 @@ export class ClaudeComponentFactory {
   }
 
   /** The section of `CLAUDE.md`, said the same for every charter: where the
-   *  orientation is, from where the file lands (FR-019). */
-  static #composeEntryFileSection(): string {
+   *  orientation is, from where the file lands (FR-019), and where the charter
+   *  is edited, as the store keeping it says (SDK-FR-020). */
+  static #composeEntryFileSection(charterPlace: string): string {
     return `<!-- CHERRYWORKS START -->\n${[
       "## Charter",
       `This repository is governed by a charter. Read [CHARTER.md](${outputPath.getLinkTo(outputPath.charterMdFileName)}) before anything else here, and work under what it says.`,
       `Find primitives in [catalogue.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName())}) and [catalogue.claude.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName(ClaudeComponents.agentProvider.name))}).`,
-      "It is generated from the charter under `.cw/charter/`: do not edit it, edit the primitive behind it.",
+      `It is generated from the charter under \`${charterPlace}/\`: do not edit it, edit the primitive behind it.`,
     ].join("\n\n")}\n<!-- CHERRYWORKS END -->\n`;
   }
 

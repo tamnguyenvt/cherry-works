@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "#module/shared/module.js";
 import { TestCase } from "./test-case.js";
 
 /**

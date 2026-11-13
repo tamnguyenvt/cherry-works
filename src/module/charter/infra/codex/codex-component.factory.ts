@@ -1,5 +1,4 @@
 import {
-  CHARTER_FOLDER_PATH,
   type CharterOutput,
   type CharterRoot,
   CompiledPrimitive,
@@ -18,7 +17,7 @@ import { CodexSkillPolicy } from "./codex-skill-policy.js";
 /** Makes every file this engine puts down for Codex. */
 export class CodexComponentFactory {
   /** Translate charter activation, execution permissions and sensors into the
-   * host's native surfaces. Claude permission syntax is translated only where
+   * agent's native surfaces. Claude permission syntax is translated only where
    * a literal command prefix has the same scope as a Codex execution rule. */
   static create(charter: CharterRoot, charterOutput: CharterOutput): readonly CodexComponent[] {
     const codexAgent = CodexComponents.agentProvider;
@@ -30,7 +29,7 @@ export class CodexComponentFactory {
     );
     const entryLines = [
       "## Charter",
-      `Read and follow [${resolveLaidText(outputPath.getLinkTo(outputPath.charterMdFileName))}](${outputPath.getLinkTo(outputPath.charterMdFileName)}) before working here. Edit the primitives under \`${CHARTER_FOLDER_PATH}/\`, then run \`cw build\`; generated files are not edited by hand.`,
+      `Read and follow [${resolveLaidText(outputPath.getLinkTo(outputPath.charterMdFileName))}](${outputPath.getLinkTo(outputPath.charterMdFileName)}) before working here. Edit the primitives under \`${charter.charterPlace}/\`, then run \`cw build\`; generated files are not edited by hand.`,
       `Find primitives in [catalogue.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName())}) and [catalogue.codex.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName(codexAgent.name))}).`,
       "### Guides",
     ];
@@ -245,7 +244,7 @@ export class CodexComponentFactory {
         ),
       );
     entryLines.push(
-      "### Host support",
+      "### Codex support",
       `Skills and playbooks are invoked as \`$<name>\` or selected through \`/skills\`. Directory guides are embedded in nested AGENTS.md files, discovered along the root-to-cwd chain; when working from the root, follow the glob instructions above. Supported hooks call \`cw sensor run <signal> --agent codex\`; review and trust hooks with \`/hooks\`. Filesystem permissions use profile \`cw\` where generated; command prefixes use \`${CodexRules.path}\` outside the sandbox. Unsupported permissions remain guidance. Subagent feature flags disable unsupported capability groups, while remaining tools and MCP servers inherit the parent scope. Session token logging and \`cw eval\` currently require Claude Code.`,
     );
     return [

@@ -20,7 +20,10 @@ const hexagonFolderUrl = new URL("src/module/", repositoryUrl);
 const hexagonFilePaths = ["shared/", "charter/", "runtime/"].flatMap((moduleFolderPath) =>
   ["app/", "domain/"].flatMap((folderPath) =>
     readdirSync(new URL(`${moduleFolderPath}${folderPath}`, hexagonFolderUrl), { recursive: true, encoding: "utf8" })
-      .filter((filePath) => filePath.endsWith(".ts") && !filePath.endsWith("folder-address.port.ts"))
+      .filter(
+        (filePath) =>
+          filePath.endsWith(".ts") && !filePath.endsWith("folder-address.port.ts") && !/\.probe\./.test(filePath),
+      )
       .map((filePath) => `${moduleFolderPath}${folderPath}${filePath}`),
   ),
 );

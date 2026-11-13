@@ -16,7 +16,7 @@ process.exit(100);
 `;
 
 for (const agentName of ["claude", "codex"] as const) {
-  test(`promptfoo runs and grades with ${agentName}, preserves failed assertions, raw artifacts and agent session links`, async () => {
+  test(`promptfoo runs and grades with ${agentName}, and keeps each case under the log as it ran: its prompt, the agent, whether it passed and why, the tools called and the agent's session record (CORE Story 55 scenario 31, EVAL-FR-040)`, async () => {
     const temporaryFolderPath = await mkdtemp(join(tmpdir(), "cw-promptfoo-"));
     try {
       const sessionFolderPath = join(temporaryFolderPath, agentName === "codex" ? "sessions" : "projects");
@@ -37,14 +37,14 @@ for (const agentName of ["claude", "codex"] as const) {
       await writeFile(executableFilePath, FAKE_PROMPTFOO);
       await chmod(executableFilePath, 0o755);
       const testReport = await promptfooRunner.evaluateTest({
-        agent: agentName,
+        provider: agentName,
         description: "planning",
         prompt: "plan",
         workingPath: "",
         assertions: [
           { type: "skill-used", value: "planning" },
           { type: "agent-rubric", value: "Use plain names" },
-          { type: "file-read", value: "instructions.md" },
+          { type: "javascript", config: { readFilePath: "instructions.md" } },
         ],
       });
       assert.equal(testReport.success, false);
@@ -86,6 +86,12 @@ for (const agentName of ["claude", "codex"] as const) {
       assert.ok(testReport.logPath);
       const savedLogs = await promptfooRunner.readLogs(testReport.logPath);
       assert.equal(savedLogs.length, 1);
+      assert.equal(savedLogs[0]?.logPath.startsWith(join(temporaryFolderPath, ".cw/log/")), true);
+      assert.equal(savedLogs[0]?.prompt, "plan");
+      assert.equal(savedLogs[0]?.provider, agentName);
+      assert.equal(JSON.parse(await readFile(savedLogs[0]!.logPath, "utf8")).agent, agentName);
+      assert.equal(savedLogs[0]?.success, false);
+      assert.deepEqual(savedLogs[0]?.unmetReasons, ["Missing skill: planning"]);
       assert.equal(savedLogs[0]?.answer, "Verification incomplete");
       assert.match(savedLogs[0]?.toolCalls[0] ?? "", /cat instructions.md/);
       assert.equal(savedLogs[0]?.sessionPath, sessionFilePath);
@@ -111,7 +117,56 @@ for (const agentName of ["claude", "codex"] as const) {
   });
 }
 
-test("file-read assertions grade successful tool evidence, not mentions, failures or ambiguous shell commands", async () => {
+/** promptfoo standing in for itself: the agent answers each prompt as a test
+ *  set, and every JavaScript assertion handed in is run on that answer, as
+ *  promptfoo runs it. */
+const GRADING_PROMPTFOO = `#!/usr/bin/env node
+const fs = require("node:fs");
+const config = JSON.parse(fs.readFileSync(process.argv[process.argv.indexOf("-c") + 1], "utf8"));
+const workingFolderPath = config.providers[0].config.working_dir;
+const providerResponseByPrompt = {
+  "read the guide": { output: "Done.", metadata: { toolCalls: [{ name: "Read", input: { file_path: workingFolderPath + "/docs/guide.md" }, output: "the guide", is_error: false }] } },
+  "mention the guide": { output: "I read docs/guide.md." },
+};
+const providerResponse = providerResponseByPrompt[config.tests[0].vars.prompt];
+const componentResults = config.tests[0].assert.map((assertion) => ({ ...new Function("context", assertion.value)({ providerResponse }), assertion: { type: assertion.type } }));
+const success = componentResults.every(({ pass }) => pass);
+fs.writeFileSync(process.argv[process.argv.indexOf("-o") + 1], JSON.stringify({ results: { results: [{ success, response: { ...providerResponse, tokenUsage: { total: 10 } }, gradingResult: { componentResults } }] } }));
+process.exit(success ? 0 : 100);
+`;
+
+test("a case expecting a read passes where the agent's tools read the file, and fails naming it where the agent only mentioned it (CORE Story 55 scenario 29, EVAL-FR-039, EVAL-FR-020)", async () => {
+  const temporaryFolderPath = await mkdtemp(join(tmpdir(), "cw-promptfoo-read-"));
+  try {
+    const promptfooRunner = new Promptfoo(
+      pathToFileURL(`${temporaryFolderPath}/`),
+      pathToFileURL(`${temporaryFolderPath}/`),
+      [],
+    );
+    const executableFolderPath = join(promptfooRunner.installFolderPath, "node_modules", ".bin");
+    await mkdir(executableFolderPath, { recursive: true });
+    await writeFile(join(executableFolderPath, "promptfoo"), GRADING_PROMPTFOO);
+    await chmod(join(executableFolderPath, "promptfoo"), 0o755);
+    const readExpectingTest = (prompt: string) => ({
+      provider: "claude",
+      description: "reading",
+      prompt,
+      workingPath: "",
+      assertions: [{ type: "javascript" as const, config: { readFilePath: "docs/guide.md" } }],
+    });
+
+    const readTestResult = await promptfooRunner.evaluateTest(readExpectingTest("read the guide"));
+    const mentionTestResult = await promptfooRunner.evaluateTest(readExpectingTest("mention the guide"));
+
+    assert.equal(readTestResult.success, true);
+    assert.equal(mentionTestResult.success, false);
+    assert.match(mentionTestResult.componentResults[0]?.reason ?? "", /docs\/guide\.md/);
+  } finally {
+    await rm(temporaryFolderPath, { recursive: true, force: true });
+  }
+});
+
+test("file-read assertions grade successful tool evidence, not mentions, failures or ambiguous shell commands (CORE Story 55 scenario 29, EVAL-FR-039)", async () => {
   const { gradeFileRead } = await import("../src/module/runtime/infra/promptfoo.adapter.js");
   const expectedPath = ".cw/out/skill/sdd-verify/index.md";
   const commandItem = (command: string, exitCode = 0) => ({
@@ -199,7 +254,7 @@ test("a promptfoo process error preserves stderr and a readable failure log even
     await chmod(executableFilePath, 0o755);
     await assert.rejects(
       promptfooRunner.evaluateTest({
-        agent: "codex",
+        provider: "codex",
         description: "error",
         prompt: "read",
         workingPath: "",
@@ -218,6 +273,59 @@ test("a promptfoo process error preserves stderr and a readable failure log even
     const invalidLogPath = join(temporaryFolderPath, "invalid.json");
     await writeFile(invalidLogPath, "{}");
     await assert.rejects(promptfooRunner.readLogs(invalidLogPath), /Invalid evaluation log/);
+  } finally {
+    await rm(temporaryFolderPath, { recursive: true, force: true });
+  }
+});
+
+test("kept results are read again with no agent and no promptfoo installed, one by the path a run said or the latest twenty of the repository (CORE Story 55 scenario 32, EVAL-FR-041)", async () => {
+  const temporaryFolderPath = await mkdtemp(join(tmpdir(), "cw-promptfoo-kept-"));
+  try {
+    const promptfooRunner = new Promptfoo(
+      pathToFileURL(`${temporaryFolderPath}/`),
+      pathToFileURL(`${temporaryFolderPath}/`),
+      [],
+    );
+    const keptLogPaths: string[] = [];
+    for (let caseIndex = 0; caseIndex < 21; caseIndex++) {
+      const runFolderPath = join(temporaryFolderPath, ".cw/log/eval/runs", `run-${caseIndex}`);
+      await mkdir(runFolderPath, { recursive: true });
+      const keptLogPath = join(runFolderPath, "case.json");
+      keptLogPaths.push(keptLogPath);
+      await writeFile(
+        keptLogPath,
+        JSON.stringify({
+          logPath: keptLogPath,
+          createdAt: new Date(Date.UTC(2026, 9, 1, 12, caseIndex)).toISOString(),
+          agent: "claude",
+          prompt: `case ${caseIndex}`,
+          workingFolderPath: temporaryFolderPath,
+          outputPath: join(runFolderPath, "output.json"),
+          stdoutPath: join(runFolderPath, "stdout.log"),
+          stderrPath: join(runFolderPath, "stderr.log"),
+          success: caseIndex % 2 === 0,
+          totalTokens: 10,
+          unmetReasons: [],
+          answer: "",
+          toolCalls: [],
+        }),
+      );
+    }
+
+    const latestLogs = await promptfooRunner.readLogs();
+    const namedLogs = await promptfooRunner.readLogs(keptLogPaths[0]);
+
+    assert.equal(await promptfooRunner.isInstalled(), false);
+    assert.equal(latestLogs.length, 20);
+    assert.equal(latestLogs[0]?.prompt, "case 20");
+    assert.equal(
+      latestLogs.some(({ prompt }) => prompt === "case 0"),
+      false,
+    );
+    assert.deepEqual(
+      namedLogs.map(({ prompt }) => prompt),
+      ["case 0"],
+    );
   } finally {
     await rm(temporaryFolderPath, { recursive: true, force: true });
   }

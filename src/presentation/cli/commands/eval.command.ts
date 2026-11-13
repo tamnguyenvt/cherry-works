@@ -1,5 +1,5 @@
 import prompts from "prompts";
-import { EVAL_FOLDER_PATH } from "#module/charter/module.js";
+import { charterPath } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
@@ -27,7 +27,7 @@ const OPTIONS = {
  */
 export class EvalCommand implements Command<typeof OPTIONS> {
   readonly name = "eval";
-  readonly summary = `Put every case in ${EVAL_FOLDER_PATH}/ to the real agent under promptfoo`;
+  readonly summary = `Put every case in ${charterPath.evalFolderPath}/ to the real agent under promptfoo`;
   readonly options = OPTIONS;
 
   async runCommand(
@@ -58,18 +58,20 @@ export class EvalCommand implements Command<typeof OPTIONS> {
     if (evalCaseReports.length === 0)
       return {
         exitCode: EXIT_OK,
-        resultText: `No evaluation: ${EVAL_FOLDER_PATH}/ holds no case.\nWrite one as ${EVAL_FOLDER_PATH}/<name>.json, and run "cw eval" again.\n`,
+        resultText: `No evaluation: ${charterPath.evalFolderPath}/ holds no case.\nWrite one as ${charterPath.evalFolderPath}/<name>.json, and run "cw eval" again.\n`,
       };
 
-    const failedCount = evalCaseReports.filter(({ data: { passed } }) => !passed).length;
+    const failedCount = evalCaseReports.filter(({ data: { passed: hasPassed } }) => !hasPassed).length;
     const casesWord = `case${evalCaseReports.length === 1 ? "" : "s"}`;
     return {
       exitCode: failedCount === 0 ? EXIT_OK : EXIT_FAILURE,
       resultText: [
         `Agent: ${evalRunReportDTO.data.agent}`,
         ...evalCaseReports.flatMap(
-          ({ data: { passed, tokens, prompt, unmetReasons, logPath, sessionId, sessionPath } }) => [
-            `  ${passed ? "pass" : "FAIL"}  ${`${tokens.toLocaleString("en-US")} tokens`.padStart(14)}  ${prompt.split("\n")[0]}`,
+          ({
+            data: { passed: hasPassed, tokens: tokenCount, prompt, unmetReasons, logPath, sessionId, sessionPath },
+          }) => [
+            `  ${hasPassed ? "pass" : "FAIL"}  ${`${tokenCount.toLocaleString("en-US")} tokens`.padStart(14)}  ${prompt.split("\n")[0]}`,
             ...unmetReasons.map((unmetReason) => `          ${unmetReason}`),
             ...(logPath === undefined ? [] : [`          Log: ${logPath}`]),
             ...(sessionId === undefined ? [] : [`          Agent session: ${sessionId}`]),

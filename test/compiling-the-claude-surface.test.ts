@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ModelHelper } from "../src/module/charter/domain/helper.js";
+import { ContentHelper } from "../src/module/charter/domain/helper.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
 import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
@@ -239,7 +239,7 @@ test("a role holds each mcp it lists, whole or one tool, under the name this hos
     ),
   });
 
-  const servedNames = ModelHelper.shortenStringsOf(["linear", "github/billing", "sentry"]);
+  const servedNames = ContentHelper.shortenStringsOf(["linear", "github/billing", "sentry"]);
   const contents = files[".claude/agents/fraud-scanner.md"] ?? "";
   assert.ok(
     contents.includes(

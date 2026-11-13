@@ -17,9 +17,10 @@ the import rules; run it after any change that adds an import.
   `mcp/`, a UI). It parses input, calls a driver port, renders the answer. It
   decides nothing.
 - `src/module/*/app/` and `src/module/*/domain/` decide. They import nothing
-  outside the modules — no `node:*`, no adapter, no SDK — but zod
-  (`hexagon-is-sealed` of `.dependency-cruiser.cjs`), and each other library
-  only through a `domain/libs/` wrapper (`a-library-is-reached-through-a-lib`).
+  outside the modules — no `node:*`, no adapter, no SDK, no library
+  (`hexagon-is-sealed` of `.dependency-cruiser.cjs`) — and each library, zod
+  included, only through a `domain/libs/` wrapper of the kernel
+  (`a-library-is-reached-through-a-lib`, `zod-is-reached-through-the-kernel-validator`).
 - `src/module/<module>/infra/` is called out to: one adapter per driven port (disk, DB, HTTP
   API, clock, queue), each with an `InMemory*` twin used by tests. The
   repositories are among them: one class per storage port, keeping that
@@ -127,13 +128,18 @@ imports. Each folder named below is a module's: `<module>/app/port/in/`,
   any one of them is the wrong place for it. A domain may keep its value
   objects in `value-objects/` beside `models/` (the kernel's `AgentProvider`).
   A value object is a value an entity or an aggregate holds as a property;
-  a value no model holds is no value object. A module's constants — a
-  folder's path, a file's name — are its `domain/constants.ts`, never a class
-  of static members.
+  a value no model holds is no value object. A module's layout — a
+  folder's path, a file's name — is one model of its own, made once in its
+  `domain/constants.ts` (`charterPath`, `vendorSourcePath`, `logPath`,
+  `settingsPath`, `outputPath`), never a loose constant; an adapter reads it
+  through the port it answers, never writes a path of the workspace again.
   - A model: what makes one out of what a repository keeps is its factory
     (`CharterRootFactory.create`, `WorkspaceSettingsFactory.create`), its zod
     schema a static member (`WorkspaceSettings.schema`), and a constant a
-    variable private to its file or a static member of its class. A closed
+    variable private to its file or a static member of its class. The one
+    exception is the kernel's `domain/schema.ts`, which exports as constants
+    the schemas every module's models share (`GoodLineSchema`,
+    `GoodArraySchema`, `FlagSchema`). A closed
     set of names is a value object, one instance per name
     (`PrimitiveLayer.REPO`,
     `McpAuthMethod.OAUTH`); the name itself stays only where it crosses an
@@ -144,9 +150,9 @@ imports. Each folder named below is a module's: `<module>/app/port/in/`,
     writes itself as (`toJSON`) and is read back by (`McpAuthMethod.of`). No port, no service, no DTO, no I/O:
     whatever a rule needs, it is handed. The kernel's `domain.fault.ts` is
     the base of every fault.
-  - The workspace's folders and files are constants, each by its path from
-    the repository's root (`CHARTER_FOLDER_PATH`): the charter, the output
-    and the log (CORE-FR-224). Where a build's output and each agent's
+  - The workspace's folders and files are each module's layout model, each
+    by its path from the repository's root (`charterPath.charterFolderPath`):
+    the charter, the output and the log (CORE-FR-224). Where a build's output and each agent's
     files land is no value of the domain's: it is the projections', and a
     item of the output naming another names it by its path inside the
     output, under `$CW_OUT` (`OutputPath.getLink`). Which agents there are is
@@ -159,8 +165,11 @@ imports. Each folder named below is a module's: `<module>/app/port/in/`,
   - A service, `<name>.service.ts`: pure logic over several models, calling
     the factories: one class per file, holding no state, its methods static
     (`CompileService.compileCharterRoot`), never constructed.
-  - `libs/` — the libraries the domain reads with, each wrapped in one
-    `<name>.lib.ts` (see `.dependency-cruiser.cjs`).
+  - `libs/`, in the kernel alone — the libraries the domain reads with,
+    each wrapped in one `<name>.lib.ts`, one class of static methods named
+    after it (`GlobsLib.coversGlob`, `TomlLib.mergeTomlText`), never
+    constructed; the validator lib alone exports `z` itself, which every
+    schema is written with (see `.dependency-cruiser.cjs`).
 
 ## Ports in JavaScript
 
@@ -179,10 +188,10 @@ Never turn `checkJs` off to make a change pass.
 |---|---|
 | `presentation/**` | `module/*/app/port/in/**`, `module/*/app/**`, its own folder |
 | `module/*/infra/**` | `app/port/out/**` of its module and of `shared/`, its own folder |
-| `module/*/{app,domain}/**` | `module/**`, zod, and a library only from `domain/libs/` |
+| `module/*/{app,domain}/**` | `module/**`, and a library, zod included, only from the kernel's `domain/libs/` |
 | `module/*/domain/**` | `module/*/domain/**` only |
 | `module/*/domain/**`, `module/*/app/services/**` | never `module/*/app/port/in/**` |
-| `module/*/app/port/in/*.dto.ts`, `dto.schema.ts` | other DTOs and the schema library |
+| `module/*/app/port/in/*.dto.ts`, `dto.schema.ts`, `shared/app/port/in/index.ts` | other DTOs, the kernel's DTO entry `shared/app/port/in/index.ts` and the validator lib — never `shared/module.ts`, which reaches its adapters |
 | `module/runtime/**` | of `module/charter/`, its driver ports alone |
 | `module/charter/**` | nothing of `module/runtime/` |
 | `module/shared/**` | nothing of either module |

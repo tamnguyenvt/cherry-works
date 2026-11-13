@@ -1,5 +1,5 @@
 import yargs, { type Argv } from "yargs";
-import { SETTINGS_FILE_PATH } from "#module/workspace/module.js";
+import { settingsPath } from "#module/workspace/module.js";
 import {
   type AnyCommand,
   type CommandLine,
@@ -41,19 +41,12 @@ export class Commander {
     let exitCode = EXIT_OK;
     let isFailed = false;
 
-    await this.#buildParser((outcome) => {
+    const collectOutcome = (outcome: Outcome) => {
       exitCode = outcome.exitCode;
       if (outcome.resultText) process.stdout.write(outcome.resultText);
       if (outcome.problemText) process.stderr.write(outcome.problemText);
-    }).parseAsync([...argv], {}, (error, _parsed, output) => {
-      isFailed = error !== null && error !== undefined;
-      if (output) (isFailed ? process.stderr : process.stdout).write(`${output}\n`);
-    });
+    };
 
-    return isFailed ? EXIT_USAGE : exitCode;
-  }
-
-  #buildParser(collectOutcome: (outcome: Outcome) => void): Argv {
     let cliParser = yargs()
       .scriptName("cw")
       .usage("Usage: $0 <command> [options]")
@@ -101,7 +94,12 @@ export class Commander {
             });
     }
 
-    return cliParser;
+    await cliParser.parseAsync([...argv], {}, (error, _parsed, output) => {
+      isFailed = error !== null && error !== undefined;
+      if (output) (isFailed ? process.stderr : process.stdout).write(`${output}\n`);
+    });
+
+    return isFailed ? EXIT_USAGE : exitCode;
   }
 
   /** One command, said to yargs under the name it is typed by — the whole of it
@@ -137,44 +135,41 @@ export class Commander {
             : parser.option(optionName, argumentDeclaration);
         }, childParser),
       handler: async (options) => {
+        // What the command runs with: the repository's settings, read by the
+        // workspace module, and the engine composed for them, every address it
+        // answers said as the path from where the command line runs
+        // (CORE-FR-231, CORE-FR-214). Settings that do not read refuse every
+        // command but setup, which writes them again (FR-037); a repository
+        // laid out the old way refuses every one, naming the skill that moves
+        // it (CORE-FR-226).
+        const commandLine = this.#commandLine;
+        const composeApplications = async () => {
+          const { workspaceApp, engineApp } = await commandLine.composeApplications();
+          return { workspaceApp, engineApp: showPathsInApps(engineApp, commandLine.cwd) };
+        };
+        const { workspaceApp, engineApp } = await composeApplications();
+        const workspaceSettingsDTO = await workspaceApp.readWorkspaceSettings();
+        const workspaceSettings: WorkspaceSettings =
+          workspaceSettingsDTO.type === "Fault" ? { agents: [] } : workspaceSettingsDTO.data;
+        // The layout first: a repository laid out the old way is told so whatever
+        // its settings say, since moving it is what comes before anything else.
+        const charterLayoutDTO = await engineApp.charterAuthoringApp.readCharterLayout();
+        if (charterLayoutDTO.type === "Fault")
+          return collectOutcome({ exitCode: EXIT_FAILURE, problemText: printFault(charterLayoutDTO) });
+        if (workspaceSettingsDTO.type === "Fault" && command.name !== "init")
+          return collectOutcome({
+            exitCode: EXIT_FAILURE,
+            problemText: `${settingsPath.settingsFilePath}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`,
+          });
+        const context: Context = { ...commandLine, composeApplications, workspaceApp, ...engineApp, workspaceSettings };
         // The one cast in the adapter, and the reason it is here: yargs
         // parses into a bag of names, and what the command declared is what
         // says how to read it. A refusal is an outcome like any other: every
         // use case answers its faults as DTOs, so nothing is caught here.
-        const context = await loadCommandContext(this.#commandLine, command);
-        collectOutcome(
-          "exitCode" in context ? context : await command.runCommand(context, options as Options<OptionSpec>),
-        );
+        collectOutcome(await command.runCommand(context, options as Options<OptionSpec>));
       },
     });
   }
-}
-
-/** What one command runs with: the repository's settings, read by the
- *  workspace module, and the engine composed for them, every address it answers said
- *  as the path from where the command line runs (CORE-FR-231, CORE-FR-214).
- *  Settings that do not read refuse every command but setup, which writes them
- *  again (FR-037); a repository laid out the old way refuses every one, naming
- *  the skill that moves it (CORE-FR-226). */
-async function loadCommandContext(commandLine: CommandLine, command: AnyCommand): Promise<Context | Outcome> {
-  const composeApplications = async () => {
-    const { workspaceApp, engineApp } = await commandLine.composeApplications();
-    return { workspaceApp, engineApp: showPathsInApps(engineApp, commandLine.cwd) };
-  };
-  const { workspaceApp, engineApp } = await composeApplications();
-  const workspaceSettingsDTO = await workspaceApp.readWorkspaceSettings();
-  const workspaceSettings: WorkspaceSettings =
-    workspaceSettingsDTO.type === "Fault" ? { agents: [] } : workspaceSettingsDTO.data;
-  // The layout first: a repository laid out the old way is told so whatever
-  // its settings say, since moving it is what comes before anything else.
-  const charterLayoutDTO = await engineApp.charterAuthoringApp.readCharterLayout();
-  if (charterLayoutDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(charterLayoutDTO) };
-  if (workspaceSettingsDTO.type === "Fault" && command.name !== "init")
-    return {
-      exitCode: EXIT_FAILURE,
-      problemText: `${SETTINGS_FILE_PATH}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`,
-    };
-  return { ...commandLine, composeApplications, workspaceApp, ...engineApp, workspaceSettings };
 }
 
 /** The words one command is typed by, without the arguments it takes: the name

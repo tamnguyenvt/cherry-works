@@ -9,26 +9,23 @@ import type { VendorRoot } from "../../../domain/models/vendor/vendor-root.js";
 import type { VendorSource } from "../../../domain/models/vendor/vendor-source.js";
 import type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.value-object.js";
 
-export type { ForReadingFiles, ForWritingFiles, ReadFile } from "../../../../shared/module.js";
 export {
   AdapterFault,
   FileOutsideFolderFault,
+  type ForReadingFiles,
+  type ForWritingFiles,
   OccupiedPrimitiveFileFault,
   OldLayoutFault,
   OverlappingPrimitiveFoldersFault,
+  type ReadFile,
 } from "../../../../shared/module.js";
-export {
-  CHARTER_FOLDER_PATH,
-  EVAL_FOLDER_PATH,
-  outputPath,
-  PRIMITIVES_FOLDER_PATH,
-  TEST_FOLDER_PATH,
-  VENDORS_FOLDER_PATH,
-} from "../../../domain/constants.js";
+export { charterPath, outputPath, vendorSourcePath } from "../../../domain/constants.js";
+export { CharterPath } from "../../../domain/models/charter/charter-path.js";
 export { CharterOutputItem } from "../../../domain/models/charter-output/charter-output-item.js";
 export { CopyPlan, ProjectionPlan, WritePlan } from "../../../domain/models/charter-output/projection-plan.js";
 export type { EvalSuite } from "../../../domain/models/eval/eval-suite.js";
 export { RawEvalSuite } from "../../../domain/models/eval/raw-eval-suite.js";
+export { AssetFile } from "../../../domain/models/primitive/asset-file.js";
 export { BasePrimitive } from "../../../domain/models/primitive/base-primitive.js";
 export { type Primitive, Primitives } from "../../../domain/models/primitive/primitive.js";
 export { PrimitiveLayer } from "../../../domain/models/primitive/primitive-layer.value-object.js";
@@ -44,6 +41,7 @@ export { VendorRootFactory } from "../../../domain/models/vendor/vendor-root.fac
 export { VendorRoot } from "../../../domain/models/vendor/vendor-root.js";
 export { SourceCharter, SourceSkill, VendorSource } from "../../../domain/models/vendor/vendor-source.js";
 export type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.value-object.js";
+export { VendorSourcePath } from "../../../domain/models/vendor/vendor-source-path.js";
 export type { ForFetchingCharterSources } from "./fetching-charter-sources.port.js";
 
 /** Keeps a repository's charter, wherever it keeps it, and knows how: its
@@ -82,6 +80,11 @@ export interface ForManagingCharter {
   /** Where the repository's own layer is kept, said back and never read. */
   findCharterUri(): string;
 
+  /** Where an author edits the charter, in this keeper's words, from the
+   *  repository's root where it keeps it there: what each agent is told to
+   *  edit, said back and never read (SDK-FR-020). */
+  describeCharterPlace(): string;
+
   /** One primitive of the repository's own layer kept over what it was, its
    *  assets as they are (FR-075). */
   rewritePrimitive(primitive: Primitive): Promise<void>;
@@ -104,7 +107,7 @@ export interface ForManagingCharter {
 
   /** One vendor of a source fetched and filtered kept under the name its
    *  origin gives it: each charter's primitives copied whole, as the source
-   *  holds them, the source's own under `VendorSource.ownCharterName` and each
+   *  holds them, the source's own under `vendorSourcePath.ownCharterName` and each
    *  kept apart under its own name; each skill's folder copied under the own
    *  charter's and kept as the skill it converts to. Each replaces what stood
    *  there before it; what else the vendor's folder holds is left as it was
@@ -142,7 +145,7 @@ export interface ForManagingCharter {
 
   /** The text a build laid for the item at this path inside its output, as
    *  it was laid; nothing where none was. */
-  readBuiltOutputItem(itemPath: string): Promise<string | undefined>;
+  readCompiledOutputItem(itemPath: string): Promise<string | undefined>;
 
   /** Where the item at this path inside the output is laid, in this keeper's
    *  words: said back where a message names it, and never read. */

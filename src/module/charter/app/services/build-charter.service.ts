@@ -1,8 +1,11 @@
-import { AgentProvider, type AgentProviderName } from "#module/shared/module.js";
-import { DomainFault, type FaultsByFile } from "../../../shared/module.js";
+import { AgentProvider, type AgentProviderName, DomainFault, type FaultsByFile } from "#module/shared/module.js";
 import type { CharterRoot } from "../../domain/models/charter/charter-root.js";
 import { UnwrittenBuildFault } from "../../domain/models/charter.fault.js";
-import { PlanSummary, ProjectionPlan, type WritePlan } from "../../domain/models/charter-output/projection-plan.js";
+import {
+  ProjectionPlan,
+  ProjectionPlanSummary,
+  type WritePlan,
+} from "../../domain/models/charter-output/projection-plan.js";
 import { CompileService } from "../../domain/services/compile.service.js";
 import type { ForManagingCharter } from "../port/out/managing-charter.port.js";
 import type { ForManagingLocalAgentOutput } from "../port/out/managing-local-agent-output.port.js";
@@ -10,7 +13,7 @@ import type { ForManagingLocalOutput } from "../port/out/managing-local-output.p
 import { type LoadMcpOriginsService, loadMcpOriginsService, type McpReaching } from "./load-mcp-origins.service.js";
 
 /** Plans, previews and lays what a build of the charter puts down, through
- *  what lays the build's output and each agent's projection, which know where
+ *  what lays the compiled output and each agent's projection, which know where
  *  each part lands (CORE-FR-221). */
 export class BuildCharterService {
   readonly #loadMcpOriginsService: LoadMcpOriginsService;
@@ -36,7 +39,7 @@ export class BuildCharterService {
    * (FR-033); one naming none still gets the surface every reader shares (FR-019).
    *
    * What each mcp origin lists is asked of it through `mcpReaching` where
-   * `refreshMcpOrigins` says so, and read off what the last build kept otherwise;
+   * `shouldRefreshMcpOrigins` says so, and read off what the last build kept otherwise;
    * an mcp origin that cannot be asked, or lacks a tool declared, is answered as
    * its faults in place of a plan (EVAL-FR-031).
    *
@@ -51,15 +54,15 @@ export class BuildCharterService {
     charter: CharterRoot,
     agentProjectionByProvider: Readonly<Record<AgentProviderName, ForManagingLocalAgentOutput>>,
     localRepo: ForManagingLocalOutput,
-    charterRepository: Pick<ForManagingCharter, "readBuiltOutputItem" | "describeItemPlace">,
+    charterRepository: Pick<ForManagingCharter, "readCompiledOutputItem" | "describeItemPlace">,
     mcpReaching: McpReaching | undefined,
-    { refreshMcpOrigins }: { readonly refreshMcpOrigins: boolean },
+    { shouldRefreshMcpOrigins }: { readonly shouldRefreshMcpOrigins: boolean },
   ): Promise<ProjectionPlan | FaultsByFile> {
     const { toolsByOriginKey, faultsByFile } = await this.#loadMcpOriginsService.loadToolsByOriginKey(
       charter,
       charterRepository,
       mcpReaching,
-      refreshMcpOrigins,
+      shouldRefreshMcpOrigins,
     );
     if (!faultsByFile.isEmpty) return faultsByFile;
 
@@ -97,8 +100,8 @@ export class BuildCharterService {
     cleanupPlan: readonly WritePlan[],
     projectionPlan: readonly WritePlan[],
     warnings: readonly string[] = [],
-  ): PlanSummary {
-    return new PlanSummary(
+  ): ProjectionPlanSummary {
+    return new ProjectionPlanSummary(
       projectionPlan.filter((writePlan) => writePlan.heldContents === undefined).map((writePlan) => writePlan.path),
       projectionPlan
         .filter((writePlan) => writePlan.heldContents !== undefined && !this.#isUnchanged(writePlan))

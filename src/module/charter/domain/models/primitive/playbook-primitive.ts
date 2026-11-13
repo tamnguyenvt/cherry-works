@@ -1,5 +1,6 @@
-import type { z } from "zod";
-import { type AssetFile, BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
+import { FlagSchema, GoodArraySchema, type z } from "#module/shared/module.js";
+import type { AssetFile } from "./asset-file.js";
+import { BasePrimitive, type RequiredHeaders } from "./base-primitive.js";
 import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** An ordered procedure loaded when a request matches its triggers (FR-004). */
@@ -22,13 +23,13 @@ export class PlaybookPrimitive extends BasePrimitive {
   static override readonly schema = super
     .headersSchema()
     .extend({
-      triggers: BasePrimitive.goodArraySchema,
-      /** Whether it is kept out of the commands its host offers the user, being a
+      triggers: GoodArraySchema,
+      /** Whether it is kept out of the commands its agent offers the user, being a
        *  step of something else; the agent still opens it (CORE-FR-173). */
-      "disable-user-invocation": BasePrimitive.flagSchema.optional(),
+      "disable-user-invocation": FlagSchema.optional(),
       /** Whether the agent is kept from opening it by itself, its description
        *  matching what is asked; the user still runs it as a command (CORE-FR-181). */
-      "disable-model-invocation": BasePrimitive.flagSchema.optional(),
+      "disable-model-invocation": FlagSchema.optional(),
     })
     .superRefine((headers, context) => {
       // Kept from both, nobody could open it (CORE-FR-183).
@@ -59,14 +60,14 @@ export class PlaybookPrimitive extends BasePrimitive {
 
   /** One playbook, or every fault its headers have (FR-004). */
   static of(
-    record: Readonly<Record<string, unknown>>,
+    headerRecord: Readonly<Record<string, unknown>>,
     body: string,
     assets: readonly AssetFile[] = [],
     primitiveLayer?: PrimitiveLayer,
     keptUri?: string,
   ): PlaybookPrimitive {
     return new PlaybookPrimitive(
-      BasePrimitive.headersOf(PlaybookPrimitive, PlaybookPrimitive.schema, record),
+      BasePrimitive.headersOf(PlaybookPrimitive, PlaybookPrimitive.schema, headerRecord),
       body,
       assets,
       primitiveLayer,

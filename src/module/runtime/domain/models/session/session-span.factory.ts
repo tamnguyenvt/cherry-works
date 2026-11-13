@@ -53,4 +53,6 @@ export class SessionSpanFactory {
       );
     return new SessionSpan({ since: sinceDay, until: untilDay });
   }
+
+  private constructor() {}
 }

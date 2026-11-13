@@ -1,4 +1,4 @@
-import { TEST_FOLDER_PATH } from "#module/charter/module.js";
+import { charterPath } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
@@ -13,7 +13,7 @@ import { editInEditor, printFault } from "./helper.js";
 const OPTIONS = {
   name: {
     type: "string",
-    describe: `The test file's name under ${TEST_FOLDER_PATH}/: "untitled-1.json"`,
+    describe: `The test file's name under ${charterPath.testFolderPath}/: "untitled-1.json"`,
   },
 } as const satisfies OptionSpec;
 
@@ -36,10 +36,10 @@ export class SuiteEditCommand implements Command<typeof OPTIONS> {
     if (!testSuitesDTO.data.testSuites.some((testSuite) => testSuite.data.name === name))
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `${TEST_FOLDER_PATH}/ holds no test file called "${name ?? ""}".\n  Run "cw suite add" to write a new one.\n`,
+        problemText: `${charterPath.testFolderPath}/ holds no test file called "${name ?? ""}".\n  Run "cw suite add" to write a new one.\n`,
       };
 
-    const filePath = `${TEST_FOLDER_PATH}/${name}`;
+    const filePath = `${charterPath.testFolderPath}/${name}`;
     const editorProblem = await editInEditor(cwd, filePath);
     if (editorProblem !== undefined) return { exitCode: EXIT_FAILURE, problemText: editorProblem };
 

@@ -4,13 +4,13 @@ import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from 
 import { printFault } from "./helper.js";
 
 /**
- * `cw mcp serve`: the one MCP server the agent's host starts, speaking over
+ * `cw mcp serve`: the one MCP server the agent starts, speaking over
  * standard input and output, serving the mcp origins the last build listed (FR-152
  * – FR-154).
  *
  * What was left out and why is said once, before the protocol starts, on
  * standard error: standard output is the protocol's. A repository never built
- * stops here, saying to build. The run lasts as long as the host keeps
+ * stops here, saying to build. The run lasts as long as the agent keeps
  * standard input open; every mcp origin reached, a local command's process among
  * them, is let go once it has answered.
  */

@@ -97,21 +97,6 @@ declare class WorkspaceSettings {
 }
 
 /**
- * The workspace module's constants: where a repository keeps what it
- * configured itself with, from its root (CORE-FR-231), and the ignore file of
- * the workspace beside it, with the line of it that keeps the log out of
- * version control (CORE-FR-225).
- */
-/** The settings file, from the repository's root. */
-declare const SETTINGS_FILE_PATH = ".cw/settings.json";
-
-/** The workspace's ignore file, from the repository's root. */
-declare const GITIGNORE_FILE_PATH = ".cw/.gitignore";
-
-/** The line of the ignore file that keeps the log out of version control. */
-declare const LOG_IGNORE_LINE = "log/";
-
-/**
  * DRIVEN PORT — where a repository keeps its settings and the ignore file of
  * its workspace (CORE-FR-231, CORE-FR-225).
  */

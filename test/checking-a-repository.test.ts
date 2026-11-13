@@ -348,8 +348,8 @@ test("warnings alone let the build through, and doctor passes once it is built (
   assert.match(written.everything, /⚠ Charter: {2}good, with 3 warnings\./);
 });
 
-test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-144)", async () => {
-  const { errorCount, warnCount, faultsByFile } = await doctorOf({
+test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-144, CORE Story 17 scenario 4, CORE Story 55 scenario 8)", async () => {
+  const charterFiles = {
     ...pinningDown("no-any"),
     [at("guide/no-any/index.md")]: guide("no-any"),
     [at("mcp/mfbs/billing/index.md")]: primitive("mcp", "mfbs/billing", [
@@ -357,11 +357,50 @@ test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-14
       "auth: [oauth]",
       "tools: [search_code]",
     ]),
-  });
+  };
+  const { errorCount, warnCount, faultsByFile } = await doctorOf(charterFiles);
 
   assert.deepEqual([errorCount, warnCount], [0, 1]);
   assert.match(
     messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/mcp/mfbs/billing/index.md").join(),
     /warn: No primitive names "mfbs\/billing" in its body/,
   );
+  // The build still runs over it, and builds the mcp's document.
+  const { fileReaders, run } = commandLine({ ...compilingFor("claude"), ...charterFiles });
+  const buildRun = await run(["build"]);
+  assert.equal(buildRun.code, EXIT_OK, buildRun.written.everything);
+  assert.notEqual(
+    await fileReaders.readIfThere(new URL(".cw/out/mcp/mfbs/billing/index.md", "file:///repo/")),
+    undefined,
+  );
+});
+
+test("a primitive kept as <kind>/<id>.md, or in a folder its kind and id do not say, is an error saying where to move it, checked, built or listed, and nothing is built (CORE Story 23 scenario 5, FR-003, FR-141, FR-002, FR-012, CORE Story 55 scenario 8)", async () => {
+  const { fileReaders, run } = commandLine({
+    ...compilingFor("claude"),
+    [at("guide/kept-guide.md")]: guide("kept-guide"),
+    [at("guide/elsewhere/index.md")]: guide("house-style"),
+  });
+
+  const doctorRun = await run(["doctor"]);
+  const buildRun = await run(["build"]);
+  const listRun = await run(["list"]);
+
+  assert.equal(doctorRun.code, EXIT_FAILURE);
+  assert.match(doctorRun.written.everything, /guide\/kept-guide\.md/);
+  assert.match(
+    doctorRun.written.everything,
+    /Move it to "[^"]*\.cw\/charter\/primitive\/guide\/kept-guide\/index\.md"/,
+  );
+  assert.match(doctorRun.written.everything, /guide\/elsewhere\/index\.md/);
+  assert.match(
+    doctorRun.written.everything,
+    /Move its folder to "[^"]*\.cw\/charter\/primitive\/guide\/house-style\/"/,
+  );
+  assert.equal(buildRun.code, EXIT_FAILURE);
+  assert.match(buildRun.written.everything, /Move it to "[^"]*guide\/kept-guide\/index\.md"/);
+  assert.deepEqual(await fileReaders.readFilesRecursively(new URL("file:///repo/.cw/out/")), []);
+  assert.equal(await fileReaders.readIfThere(new URL("file:///repo/CLAUDE.md")), undefined);
+  assert.equal(listRun.code, EXIT_FAILURE);
+  assert.match(listRun.written.everything, /cw doctor/);
 });

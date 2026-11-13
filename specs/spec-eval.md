@@ -16,6 +16,8 @@ Then: "…prove pricing skill results and measure tokenizer accuracy."
 
 Then: "Drop pricing the sessions: its code and its spec."
 
+Then: "Keep the read expectation, `cw eval-analyze` and each case's kept result, and write their requirements."
+
 ## Overview
 
 A charter is paid for in tokens every turn an agent works under it, and is worth that price only if the agent does what it says. This part shows both sides. Before any agent runs, an author learns how much of the agent's main context the charter takes, and which primitives take the most. When their agent stops, a developer is told how many tokens the session has used. The tools of the mcp origins a charter reaches are searched rather than listed, so they stop costing context. And under promptfoo an author puts the charter in front of the real agent, and learns whether the right skill is invoked, whether a guide is followed, and what each case cost.
@@ -39,6 +41,8 @@ A charter is paid for in tokens every turn an agent works under it, and is worth
 ### Session 2026-11-13
 
 - Q: Does the engine bring a skill that prices the sessions kept? → A: No: pricing is dropped, its skill and its requirements with it; the sessions are counted in tokens alone.
+- Q: Is the estimate's accuracy measured by a script of the repository's own, or by `cw context`? → A: By `cw context --exact --agent=<agent>`: it counts exactly, estimates too, lists both and warns past the limit; no agent named is refused; no release spends tokens on it ([EVAL-FR-004](#eval-fr-004)).
+- Q: Are the expectation that the agent reads a file, `cw eval-analyze` and each case's kept result, which no requirement asks for, kept or removed? → A: Kept, each with its requirement; judging whether the agent read a file is the engine's own, every other expectation promptfoo's ([EVAL-FR-020](#eval-fr-020), [EVAL-FR-039](#eval-fr-039), [EVAL-FR-040](#eval-fr-040), [EVAL-FR-041](#eval-fr-041)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -56,7 +60,7 @@ An author adds a guide with no files named, and three skills with long descripti
 
 1. **Given** a charter, **When** the developer asks for the prediction, **Then** every primitive that puts anything into the main context when a session opens is listed with its tokens, the largest first, with the total, said to be an estimate ([EVAL-FR-001](#eval-fr-001), [EVAL-FR-002](#eval-fr-002)).
 2. **Given** a guide that names files, **When** the prediction is listed, **Then** it is listed apart, as loaded when a file it names is touched, and is not in the total ([EVAL-FR-003](#eval-fr-003)).
-3. **Given** the agent's own command line installed and the developer asking for an exact count, **When** the prediction is listed, **Then** each number is counted through it and said to be exact ([EVAL-FR-004](#eval-fr-004)).
+3. **Given** the agent's own command line installed and the developer asking for an exact count for that agent, **When** the prediction is listed, **Then** each number is counted through it and said to be exact, beside its estimate ([EVAL-FR-004](#eval-fr-004)).
 4. **Given** a build, **When** it finishes, **Then** it says the predicted total in one line ([EVAL-FR-005](#eval-fr-005)).
 5. **Given** a total above the repository's ceiling, or above 20,000 tokens where it set none, **When** the developer runs the health check, **Then** it warns, naming the total and the ceiling ([EVAL-FR-006](#eval-fr-006)).
 6. **Given** the portal, **When** the developer opens the charter, **Then** it shows the same list and total the command gives ([EVAL-FR-007](#eval-fr-007)).
@@ -187,7 +191,7 @@ The tokenizer accuracy claim is supported by a measurement against the real agen
 
 **Status**: Done
 
-An author reads evidence of the tokenizer's accuracy made after the workspace was split into the charter, the output and the log, measured on the charter alone.
+An author reads evidence of the tokenizer's accuracy made after the workspace was split into the charter, the compiled output and the log, measured on the charter alone.
 
 **Why this priority**: The recorded measurement predates the move, and still counts the eval cases and the log as part of the charter.
 
@@ -195,7 +199,7 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 
 **Acceptance Scenarios**:
 
-1. **Given** one fixed charter, **When** the estimate and the exact count are measured, **Then** what is measured is the charter alone — no eval case and no log — and the two differ by no more than 15%, recorded ([EVAL-SC-002](#eval-sc-002)).
+1. **Given** one fixed charter, **When** the estimate and the exact count are measured, **Then** what is measured is the charter's primitives alone — no eval case and no log — and the two differ by no more than 15%, recorded ([EVAL-SC-002](#eval-sc-002)).
 
 ---
 
@@ -204,6 +208,7 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 - A charter holding nothing loaded when a session opens — the prediction says the total is none, and the health check is quiet ([EVAL-FR-002](#eval-fr-002), [EVAL-FR-006](#eval-fr-006)).
 - A guide naming files that every file in the repository matches — it is still listed apart: what is predicted is what the agent loads, not what it is likely to ([EVAL-FR-003](#eval-fr-003)).
 - An exact count asked for with the agent's command line not installed — the prediction is refused, saying the estimate needs nothing ([EVAL-FR-004](#eval-fr-004)).
+- An exact count asked for with no agent named — refused, naming `--agent` ([EVAL-FR-004](#eval-fr-004)).
 - The agent's own record of a session changes shape between versions of the agent — the stop is let through untouched, and nothing is kept for it ([EVAL-FR-011](#eval-fr-011)).
 - A span named by one end only — 31 days from the day named, or up to it ([EVAL-FR-030](#eval-fr-030)).
 - A session the developer closes without the agent stopping — what was kept at its last stop is what the summary counts ([EVAL-FR-012](#eval-fr-012), [EVAL-FR-008](#eval-fr-008)).
@@ -223,7 +228,7 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 - <a id="eval-fr-001"></a>**EVAL-FR-001**: The engine MUST predict, without running an agent, the tokens each primitive puts into the agent's main context when a session opens: the charter's always-loaded instructions, every guide that names no files in full, and the name and description of each skill, playbook and subagent.
 - <a id="eval-fr-002"></a>**EVAL-FR-002**: The prediction MUST be listed per primitive, the largest first, with the total, and MUST say it is an estimate unless it was counted exactly.
 - <a id="eval-fr-003"></a>**EVAL-FR-003**: A guide that names files MUST be listed apart, as loaded when a file it names is touched, and MUST NOT be added to the total or held to the ceiling.
-- <a id="eval-fr-004"></a>**EVAL-FR-004**: Asked to, and with the agent's own command line installed, the engine MUST count the prediction exactly through it, run headless, and say so; asked to without it, it MUST refuse, saying the estimate needs nothing.
+- <a id="eval-fr-004"></a>**EVAL-FR-004**: Asked to count exactly, for the agent the developer names with `--agent`, and with that agent's own command line installed, the engine MUST count the prediction exactly through it, run headless, estimate it too, and list both by primitive with how far apart they are, warning when the totals differ by more than [EVAL-SC-002](#eval-sc-002) allows; asked to with no agent named, it MUST refuse, naming `--agent`; asked to for an agent it cannot count through — one it has no exact count for, or one the repository does not compile for — or whose command line is not installed, it MUST refuse, saying the estimate needs nothing.
 - <a id="eval-fr-005"></a>**EVAL-FR-005**: A build MUST say the predicted total in one line.
 - <a id="eval-fr-006"></a>**EVAL-FR-006**: The health check MUST warn when the predicted total passes the ceiling the repository sets, or 20,000 tokens where it sets none, naming both.
 - <a id="eval-fr-007"></a>**EVAL-FR-007**: The portal MUST show the prediction the command lists, as the command lists it.
@@ -231,7 +236,7 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 **A session's tokens**
 
 - <a id="eval-fr-008"></a>**EVAL-FR-008**: A built charter MUST count, each time the agent stops, the session's tokens so far by kind — input, output, written to and read from the cache — its subagents' included, read off the agent's own record of the session.
-- <a id="eval-fr-009"></a>**EVAL-FR-009**: Each stop MUST be kept as one line of the sessions on the developer's machine, outside every repository, naming the session, the repository, the model and the time; it MUST never be committed or sent anywhere.
+- <a id="eval-fr-009"></a>**EVAL-FR-009**: Each stop MUST be kept as one line of the sessions on the developer's machine, by default outside every repository and never inside the repository it is of ([EVAL-FR-042](#eval-fr-042)), naming the session, the repository, the model and the time; it MUST never be committed or sent anywhere.
 - <a id="eval-fr-010"></a>**EVAL-FR-010**: When a session crosses a mark, every 100,000 tokens unless the repository sets another, the developer MUST be shown one line with its tokens; the model MUST NOT be sent it, and below the next mark nothing MUST be shown.
 - <a id="eval-fr-011"></a>**EVAL-FR-011**: A session whose record cannot be read MUST be let stop as it would have, with nothing shown and nothing kept.
 - <a id="eval-fr-012"></a>**EVAL-FR-012**: The engine MUST sum the sessions up by day and by session, in tokens, the largest first, each session counted once at the last stop it was kept at, over a span of time of at most 31 days, reading only the sessions kept within it.
@@ -246,7 +251,7 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 
 **Evaluating the charter**
 
-- <a id="eval-fr-020"></a>**EVAL-FR-020**: The engine MUST run the evaluation cases a repository writes under promptfoo, running and judging none itself, in a folder of their own beside its tests, one file of cases each, by a command apart from the self-regression tests ([CORE-FR-084](spec-core.md#core-fr-084)). Evaluation cases are not primitives, and a vendor's are not installed with it.
+- <a id="eval-fr-020"></a>**EVAL-FR-020**: The engine MUST run the evaluation cases a repository writes under promptfoo, running none itself and judging none itself but whether the agent read a file ([EVAL-FR-039](#eval-fr-039)), in a folder of their own beside its tests, one file of cases each, by a command apart from the self-regression tests ([CORE-FR-084](spec-core.md#core-fr-084)). Evaluation cases are not primitives, and a vendor's are not installed with it.
 - <a id="eval-fr-021"></a>**EVAL-FR-021**: Each case MUST put its prompt to the real agent, run headless, once, in a worktree of the repository's last commit, kept under the log, `.cw/log/`, which version control ignores, with the charter and its cases as the store holds them now, committed or not, built into it; the worktree MUST be removed once the case has run, and any a run stopped halfway left MUST be removed when the next run starts; the files of the repository's own working tree MUST be left as they were.
 - <a id="eval-fr-022"></a>**EVAL-FR-022**: A case expecting a skill MUST pass when the agent invoked it and fail otherwise, saying which skills it invoked, none among them.
 - <a id="eval-fr-023"></a>**EVAL-FR-023**: A case expecting a guide followed MUST be judged by promptfoo's model grader against that guide, on the developer's own sign-in or key, passing or failing with the grader's reason.
@@ -254,23 +259,23 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 - <a id="eval-fr-025"></a>**EVAL-FR-025**: A run MUST report each case's outcome and tokens and the run's total, and MUST fail through its exit status when any case fails.
 - <a id="eval-fr-026"></a>**EVAL-FR-026**: A run MUST be refused before any case runs when the agent's own command line is not installed, or when a case names a skill or a guide the charter does not hold, saying which.
 - <a id="eval-fr-032"></a>**EVAL-FR-032**: The first run that needs promptfoo MUST fetch it, and what it needs to run the agent, once into a folder on the developer's machine outside every repository, saying so; later runs MUST use what was fetched, and nothing MUST be installed into the repository.
-
 - <a id="eval-fr-033"></a>**EVAL-FR-033**: When several agents are configured, no agent was explicitly selected and an interactive choice is unavailable, the evaluation MUST refuse before any case runs and tell the developer to select an agent explicitly.
-
 - <a id="eval-fr-034"></a>**EVAL-FR-034**: An explicitly selected agent absent from the configured agents MUST be refused before any case runs, naming the agent and telling the developer to add it to the settings.
-
 - <a id="eval-fr-035"></a>**EVAL-FR-035**: Missing settings or an empty configured agent list MUST cause the evaluation to refuse before any case runs and tell the developer to configure an agent; it MUST NOT choose a default agent.
-
 - <a id="eval-fr-036"></a>**EVAL-FR-036**: Evaluation MUST accept an explicit agent selection through `--agent=<agent>`, supporting `claude` and `codex`. Without it, it MUST use the sole configured agent or require an interactive choice among several configured agents before any case runs.
 - <a id="eval-fr-037"></a>**EVAL-FR-037**: Both Claude Code and Codex MUST support the existing evaluation case format, skill and guide expectations, token ceilings, per-case outcomes and token totals, failed-run exit status, isolated execution and cleanup. The report MUST identify the selected agent.
 - <a id="eval-fr-038"></a>**EVAL-FR-038**: An unsupported agent selection MUST be refused before any case runs, naming the supported choices. Cancelling an interactive selection MUST run no case. A failed selection or an unavailable selected agent MUST NOT cause a fallback to another agent.
+- <a id="eval-fr-039"></a>**EVAL-FR-039**: A case MAY expect the agent to read a file of the repository, named by its path from the repository's root; the engine MUST judge it from the files the agent's tools read in that case, and MUST refuse, before any case runs, a path that is empty, absolute, leaves the repository, holds an empty or `.` segment, a backslash, a drive letter, a control character or a template's braces.
+- <a id="eval-fr-040"></a>**EVAL-FR-040**: Each case's result MUST be kept under the log, `.cw/log/`, as the case ran — its prompt, the agent, whether it passed and why, the tools the agent called and where the agent's own record of the session is — and the run MUST say where it is kept.
+- <a id="eval-fr-041"></a>**EVAL-FR-041**: The developer MUST be able to read the kept results again without running the agent: one by the path a run said, or the latest twenty of the repository, in words or as JSON.
+- <a id="eval-fr-042"></a>**EVAL-FR-042**: A developer MAY name the folder the sessions are kept in; a folder inside this repository MUST be refused when a session is kept, the session kept in the default and the refusal said, and the sessions MUST then be read from the default ([EVAL-FR-009](#eval-fr-009)).
 
 ### Key Entities
 
 - **Prediction**: what each primitive puts into the main context when a session opens, in tokens, estimated or exact, and their total.
 - **Sessions**: what a developer's agent sessions used, one line per stop, kept on the developer's machine outside every repository ([EVAL-FR-009](#eval-fr-009)); never part of the log.
 - **Session line**: one stop of one session — when, which repository and model, and its tokens by kind so far, its subagents' included.
-- **Evaluation case**: a prompt, and what is expected of the agent given it: a skill invoked, a guide followed, at most a number of tokens.
+- **Evaluation case**: a prompt, and what is expected of the agent given it: a skill invoked, a guide followed, a file read ([EVAL-FR-039](#eval-fr-039)), at most a number of tokens.
 
 ## Success Criteria *(mandatory)*
 
@@ -283,7 +288,6 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 - <a id="eval-sc-005"></a>**EVAL-SC-005**: A charter whose mcp origins declare 5,000 tokens of tool schemas or more sends the agent at least 80% fewer of them when a session opens.
 - <a id="eval-sc-006"></a>**EVAL-SC-006**: An author writes each evaluation case once, in the engine's own format, and never a promptfoo configuration.
 - <a id="eval-sc-007"></a>**EVAL-SC-007**: Summing up the sessions reads none kept outside the span, so it takes no longer after a year of sessions than after a month.
-
 - <a id="eval-sc-008"></a>**EVAL-SC-008**: Authors can evaluate 100% of their existing cases with either supported agent without rewriting cases or authoring framework configuration.
 
 ## Assumptions

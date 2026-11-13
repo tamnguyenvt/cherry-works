@@ -38,9 +38,15 @@ export interface ForRunningCharter {
     toolArguments: Readonly<Record<string, unknown>>,
   ): Promise<RuntimeDTOs.ToolAnswer | FaultDTOs.Fault>;
 
-  /** What each agent the repository compiles for is sent of the charter when a
-   *  session opens, counted exactly by its own command line (EVAL-FR-004). */
-  countMainContext(): Promise<RuntimeDTOs.MainContexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  /** What the agent named is sent of the charter when a session opens,
+   *  counted exactly by its own command line, beside its estimate, and
+   *  whether the two totals are further apart than EVAL-SC-002 allows
+   *  (EVAL-FR-004). Refused for an agent it cannot count through, one the
+   *  repository does not compile for, or one whose command line is not
+   *  installed. */
+  countMainContext(
+    agentProviderName: AgentProviderName,
+  ): Promise<RuntimeDTOs.MainContext | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /**
    * Select an explicitly requested configured agent, or the sole configured

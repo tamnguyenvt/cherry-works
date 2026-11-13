@@ -21,6 +21,10 @@ export type { ForReportingProgress } from "./app/port/out/reporting-progress.por
 export type { ForTellingTime } from "./app/port/out/telling-time.port.js";
 export type { ForWritingFiles } from "./app/port/out/writing-files.port.js";
 export { FaultHelper } from "./domain/helper.js";
+export { GlobsLib } from "./domain/libs/globs.lib.js";
+export { TomlLib } from "./domain/libs/toml.lib.js";
+export { z } from "./domain/libs/validator.lib.js";
+export { YamlLib } from "./domain/libs/yaml.lib.js";
 export {
   AdapterFault,
   ErroredAgentAnswerFault,
@@ -35,6 +39,7 @@ export {
   InvalidEvaluationLogFault,
   LeftoverFolderFault,
   LinkedFolderFault,
+  MissingFolderReaderFault,
   MissingGitFault,
   MissingHeldFileFault,
   MissingPromptfooResultFault,
@@ -66,10 +71,19 @@ export {
   UnwritableSourceStoreFault,
 } from "./domain/models/adapter.fault.js";
 export { ApplicationFault } from "./domain/models/application.fault.js";
-export { DomainFault, ManyFindingsFault, UnfaultedRaiseFault } from "./domain/models/domain.fault.js";
+export {
+  DomainFault,
+  ManyFindingsFault,
+  UnfaultedRaiseFault,
+  UnmappedYamlFault,
+  UnreadableTomlFault,
+  UnreadableYamlFault,
+  UnwritableTomlFault,
+} from "./domain/models/domain.fault.js";
 export { Faults } from "./domain/models/fault/faults.js";
 export { FaultsByFile } from "./domain/models/fault/faults-by-file.js";
 export { RefusedByOtherModuleFault } from "./domain/models/shared.fault.js";
+export { FlagSchema, GoodArraySchema, GoodLineSchema } from "./domain/schema.js";
 export { AgentProvider, type AgentProviderName } from "./domain/value-objects/agent-provider.value-object.js";
 export { ConsoleReporter } from "./infra/console-reporter.adapter.js";
 export { FileOutput } from "./infra/file-output.adapter.js";

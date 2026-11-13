@@ -72,4 +72,6 @@ export class FolderAddress {
     folderAddress.hash = "";
     return folderAddress;
   }
+
+  private constructor() {}
 }

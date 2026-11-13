@@ -69,8 +69,10 @@ export class BuildCommand implements Command<typeof OPTIONS> {
         ...unchangedPaths.map((path) => ["unchanged", path] as const),
       ];
 
+      // A preview fails while anything would change, so a pipeline can gate on a
+      // charter built and committed (FR-034).
       return {
-        exitCode: EXIT_OK,
+        exitCode: changes.length === unchangedPaths.length ? EXIT_OK : EXIT_FAILURE,
         resultText: [
           ...(planSummaryDTO.data.warnings ?? []).map((warning) => `Warning: ${warning}`),
           ...changes.map(([change, path]) => `  ${change.padEnd("unchanged".length)}  ${path}`),

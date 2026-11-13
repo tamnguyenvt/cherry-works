@@ -2,10 +2,10 @@ import { ProviderComponent } from "../../app/port/out/managing-local-agent-outpu
 
 /**
  * The one line that gets the charter read at all: the section this charter keeps
- * in `CLAUDE.md`, the file this host reads before it is asked to read anything
+ * in `CLAUDE.md`, the file this agent reads before it is asked to read anything
  * (FR-051).
  *
- * Everything else this host reads is under a folder of its own, and it opens
+ * Everything else this agent reads is under a folder of its own, and it opens
  * none of it until something has sent it there. This is that something: where
  * the orientation is, and nothing else, so it costs the same on every turn
  * however much the charter grows (SC-005).

@@ -12,10 +12,10 @@ export const AGENT_CLI_OWN_TOKENS = 5_000;
 export class InMemoryAgentCli implements ForRunningAgentCli {
   readonly prompts: string[] = [];
 
-  constructor(private readonly installed: boolean = true) {}
+  constructor(private readonly isAgentCliInstalled: boolean = true) {}
 
   async isInstalled(): Promise<boolean> {
-    return this.installed;
+    return this.isAgentCliInstalled;
   }
 
   async askAgent(prompt: string): Promise<Answer> {

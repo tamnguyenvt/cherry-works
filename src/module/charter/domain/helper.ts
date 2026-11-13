@@ -1,4 +1,7 @@
-import { parseYamlFields } from "./libs/yaml.lib.js";
+import { UnmappedYamlFault, UnreadableYamlFault, YamlLib } from "#module/shared/module.js";
+import { InvalidPrimitiveFault } from "./models/charter.fault.js";
+
+export { PrimitiveHelper } from "./models/primitive/primitive.helper.js";
 
 /** A line that, written unquoted after `header: `, YAML reads as something
  *  other than the line: one starting with an indicator, one holding `: ` or
@@ -11,8 +14,34 @@ const YAML_READS_OTHERWISE =
  *  answers, keyed by the string it was handed. */
 export type ShortStrings = Readonly<Record<string, string>>;
 
-/** What several models share: how a frontmatter value is written and read back, how strings are shortened apart, and what a content hashes to. */
-export class ModelHelper {
+/** How content is written and read back, shared by several models: a frontmatter value and block, strings shortened apart, and what a content hashes to. */
+export class ContentHelper {
+  /**
+   * The headers one frontmatter block declares. An empty block is no headers,
+   * not an error. A block whose notation does not parse, or that is not a
+   * mapping of names to values, raises an `InvalidPrimitiveFault`, the
+   * person's to correct: a finding under its file (SDK-FR-004).
+   */
+  static parseFrontmatterFields(block: string): Readonly<Record<string, unknown>> {
+    try {
+      return YamlLib.parseYamlFields(block);
+    } catch (yamlFault) {
+      if (yamlFault instanceof UnreadableYamlFault)
+        throw new InvalidPrimitiveFault(
+          `The frontmatter is not readable: ${yamlFault.message}`,
+          `Correct the notation: each header is "name: value", one per line.`,
+          { internal: false },
+        );
+      if (yamlFault instanceof UnmappedYamlFault)
+        throw new InvalidPrimitiveFault(
+          "The frontmatter must be a list of named headers, one per line — not a bare value or a list.",
+          `Write it as "id: <name>" and the rest of the headers this kind requires, one per line.`,
+          { internal: false },
+        );
+      throw yamlFault;
+    }
+  }
+
   /** How one header value is written into the frontmatter. A list becomes
    *  `["a", "b"]`, with every entry in double quotes, because an unquoted glob
    *  such as `*.md` starts with `*`, which YAML reads as an alias. A line YAML
@@ -35,7 +64,7 @@ export class ModelHelper {
       lines[0]?.trim() === "---" ? lines.findIndex((line, lineIndex) => lineIndex > 0 && line.trim() === "---") : -1;
     if (frontmatterEnd === -1) return undefined;
     return {
-      headers: parseYamlFields(lines.slice(1, frontmatterEnd).join("\n")),
+      headers: ContentHelper.parseFrontmatterFields(lines.slice(1, frontmatterEnd).join("\n")),
       body: lines
         .slice(frontmatterEnd + 1)
         .join("\n")

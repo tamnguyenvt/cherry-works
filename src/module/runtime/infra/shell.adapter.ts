@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { FolderAddress, type FolderURL, resolveFileUrl } from "../../shared/module.js";
 import type { ForRunningShellCommands, ShellCommandResult } from "../app/port/out/running-shell-commands.port.js";
 
-/** DRIVEN ADAPTER: the system shell, as a host runs a hook's command. */
+/** DRIVEN ADAPTER: the system shell, as an agent runs a hook's command. */
 export class Shell implements ForRunningShellCommands {
   readonly #repoFolder: FolderURL;
 

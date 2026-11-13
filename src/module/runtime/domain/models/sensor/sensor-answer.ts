@@ -1,30 +1,32 @@
 /** What one sensor's command came to, or what every sensor of a signal came
  *  to together: the exit code, the answer on standard output, and the error
  *  output. */
-export interface SensorAnswer {
-  readonly exitCode: number;
-  readonly stdout: string;
-  readonly stderr: string;
+export class SensorAnswer {
+  constructor(
+    readonly exitCode: number,
+    readonly stdout: string,
+    readonly stderr: string,
+  ) {}
 }
 
-/** The signals whose plain answer this host adds to the agent's context
+/** The signals whose plain answer this agent adds to its own context
  *  rather than only showing it. */
 const CONTEXT_SIGNALS: readonly string[] = ["UserPromptSubmit", "SessionStart", "SubagentStart"];
 
 /** Each permission decision, the one that stops more first. */
 const PERMISSION_DECISIONS: readonly string[] = ["deny", "ask", "allow"];
 
-/** What the sensors of one signal answered, said as one answer to the host. */
+/** What the sensors of one signal answered, said as one answer to the agent. */
 export class SensorAnswers {
   /**
-   * What the sensors of one signal answer the host with, as one command, given
+   * What the sensors of one signal answer the agent with, as one command, given
    * each one's answer in order of id (FR-177, FR-178).
    *
    * The exit code is 2 where any exited 2, with the error output of each that
    * did; else the first other non-zero, with the error output of each that
    * failed; else 0, and none.
    *
-   * The answers are combined the way Claude, the one host so far, combines the
+   * The answers are combined the way Claude, the one agent so far, combines the
    * answers of several hooks on one event, so it acts as it did when given one
    * hook per sensor (SC-048). Plain answers are joined as written. Where any is
    * its structured form, all are read into one: a block, `continue: false` and
@@ -55,7 +57,7 @@ export class SensorAnswers {
       }
     });
     if (structuredAnswers.every((structuredAnswer) => structuredAnswer === undefined))
-      return { exitCode, stdout: answerTexts.map((answerText) => `${answerText}\n`).join(""), stderr };
+      return new SensorAnswer(exitCode, answerTexts.map((answerText) => `${answerText}\n`).join(""), stderr);
 
     const plainTexts = answerTexts.filter((_answerText, answerIndex) => structuredAnswers[answerIndex] === undefined);
     const answerJSONs = structuredAnswers.filter((structuredAnswer) => structuredAnswer !== undefined);
@@ -126,7 +128,7 @@ export class SensorAnswers {
     if (Object.keys(combinedHookSpecificOutput).length > 0)
       combinedAnswer["hookSpecificOutput"] = { ...combinedHookSpecificOutput, hookEventName: signal };
 
-    return { exitCode, stdout: `${JSON.stringify(combinedAnswer)}\n`, stderr };
+    return new SensorAnswer(exitCode, `${JSON.stringify(combinedAnswer)}\n`, stderr);
   }
 
   constructor(

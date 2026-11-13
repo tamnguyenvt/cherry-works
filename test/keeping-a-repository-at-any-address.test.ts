@@ -47,8 +47,8 @@ const reviewedSessionsOf = async (repo: string, home: string, fileReaders: InMem
     await reviewingSessionsOf(
       new URL(repo),
       new URL(home),
-      fileReaders.makeReadersAt(new URL(repo)),
-      (rootFolder) => fileReaders.makeReadersAt(rootFolder),
+      fileReaders.createFolderReader(new URL(repo)),
+      (rootFolder) => fileReaders.createFolderReader(rootFolder),
       new InMemoryClock(today),
       new InMemoryReporter(),
     ).summarizeSessions(),
@@ -305,4 +305,28 @@ test("an address with a host and no path is told the folder at its root (SDK Sto
     () => new FileReaders(new URL("db://h")),
     (fault: unknown) => fault instanceof DomainFault && fault.fix.includes('"db://h/"'),
   );
+});
+
+test("a file reader handed with no reader over another folder makes reading the sessions answer a fault the caller can put right, naming what to hand (SDK-FR-020)", async () => {
+  const fileReaders = new InMemoryFileReaders({}, new URL("memory:/repo/"));
+  // The same reader, with every method but `createFolderReader`.
+  const fileReaderWithoutFolders = new Proxy(fileReaders, {
+    get: (targetReaders, propertyKey) => {
+      if (propertyKey === "createFolderReader") return undefined;
+      const propertyValue = Reflect.get(targetReaders, propertyKey);
+      return typeof propertyValue === "function" ? propertyValue.bind(targetReaders) : propertyValue;
+    },
+  });
+  const { engineApp } = await composeApplications(new URL("memory:/repo/"), new URL("memory:/home/"), {
+    fileReader: fileReaderWithoutFolders,
+  });
+
+  const sessionReviewAnswer = await engineApp.charterRuntimeApp.summarizeSessions();
+
+  assert.equal(sessionReviewAnswer.type, "Fault", JSON.stringify(sessionReviewAnswer));
+  // The caller's own to put right, so said in its own words rather than as
+  // the system's internal fault.
+  assert.equal(sessionReviewAnswer.data.name, "MissingFolderReaderFault");
+  assert.match(sessionReviewAnswer.data.message, /sets up no reader over another folder/);
+  assert.match(sessionReviewAnswer.data.fix ?? "", /createFolderReader\(rootFolder\)/);
 });

@@ -1,5 +1,5 @@
 import prompts from "prompts";
-import { type ForManagingWorkspace, SETTINGS_FILE_PATH } from "#module/workspace/module.js";
+import { settingsPath } from "#module/workspace/module.js";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
 import { printFault, printFaultsByFile } from "./helper.js";
 
@@ -45,8 +45,70 @@ export class InitCommand implements Command<typeof OPTIONS> {
     { workspaceApp, composeApplications, version }: Context,
     { agent, mainContextCeiling }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    const agents = await pickAgents(workspaceApp, agent);
-    if (typeof agents === "string") return { exitCode: EXIT_FAILURE, problemText: agents };
+    // Which agents this repository compiles for, answered by the first of
+    // these that applies: what was typed, and otherwise whoever is at the
+    // terminal choosing from the ones this engine compiles for.
+    //
+    // Nothing is detected. What is installed on this machine does not decide
+    // what a repository's charter compiles for — a charter choosing claude
+    // compiles for claude whether claude is here or not, and the build creates
+    // the directory it reads from either way.
+    //
+    // What the repository is already running under is the choice already
+    // made, so it arrives as the default: a return keeps it, and a run with
+    // nobody at the terminal takes it rather than waiting on an answer that is
+    // never coming (FR-035, FR-038, SC-012). A repository that has chosen none
+    // yet has no such default, so that run is refused, naming the flag that
+    // answers it.
+    let agents: readonly string[];
+    if (agent !== undefined) agents = [agent];
+    else {
+      const keptSettingsDTO = await workspaceApp.readWorkspaceSettings();
+      if (keptSettingsDTO.type === "Fault")
+        return {
+          exitCode: EXIT_FAILURE,
+          problemText: `${settingsPath.settingsFilePath}\n  error: ${keptSettingsDTO.data.message}\n    ${keptSettingsDTO.data.fix}\n`,
+        };
+      const agentsInSettings = keptSettingsDTO.data.agents;
+
+      // Nobody at the terminal is answered with what the settings already name,
+      // which is what the prompt below would hand back on a return: a pipeline
+      // finishes rather than waits on an answer that is never coming (FR-035,
+      // SC-012). A repository that has chosen none yet has no such default,
+      // however many agents this engine compiles for (CORE-FR-055, CORE-FR-056).
+      if (!process.stdin.isTTY) {
+        if (agentsInSettings.length === 0)
+          return {
+            exitCode: EXIT_FAILURE,
+            problemText: `Nobody is at the terminal to choose an agent, and this repository has none chosen yet.\n  Run "cw init --agent <name>", naming one of: ${workspaceApp.agentProviderNames.join(", ")}.\n`,
+          };
+        agents = agentsInSettings;
+      } else {
+        const { chosen: chosenAgents } = await prompts({
+          type: "multiselect",
+          name: "chosen",
+          message: "Which agents does this charter compile for?",
+          // What the settings already name arrives ticked, so a return keeps what this
+          // repository is already running under and a second run is rechoosing rather
+          // than starting over (FR-038). Nothing named yet — a repository being set up
+          // for the first time — arrives with none ticked (CORE-FR-055).
+          choices: workspaceApp.agentProviderNames.map((agentProviderName) => ({
+            title: agentProviderName,
+            value: agentProviderName,
+            selected: agentsInSettings.includes(agentProviderName),
+          })),
+          // Ticking none of them is not an answer: a charter compiles for at least one
+          // agent, so the prompt holds the submit until one is ticked (FR-033).
+          min: 1,
+        });
+        if (chosenAgents === undefined)
+          return {
+            exitCode: EXIT_FAILURE,
+            problemText: 'Setup was stopped before it had its answers.\n  Run "cw init" again.\n',
+          };
+        agents = chosenAgents as readonly string[];
+      }
+    }
     // No agent, one this engine does not compile for, and a ceiling that is
     // no whole number are the workspace module's to refuse (FR-033).
     const workspaceSettingsDTO = await workspaceApp.setUpWorkspace(agents, version, mainContextCeiling);
@@ -83,65 +145,4 @@ export class InitCommand implements Command<typeof OPTIONS> {
       ].join("\n"),
     };
   }
-}
-
-/**
- * Which agents this repository compiles for, answered by the first of these
- * that applies: what was typed, and otherwise whoever is at the terminal
- * choosing from the ones this engine compiles for.
- *
- * Nothing is detected. What is installed on this machine does not decide what a
- * repository's charter compiles for — a charter choosing claude compiles for
- * claude whether claude is here or not, and the build creates the directory it
- * reads from either way.
- *
- * What the repository is already running under is the choice already made, so
- * it arrives as the default: a return keeps it, and a run with nobody at the
- * terminal takes it rather than waiting on an answer that is never coming
- * (FR-035, FR-038, SC-012). A repository that has chosen none yet has no such
- * default, so that run is refused, naming the flag that answers it: what comes
- * back then is what to report, in place of the agents.
- */
-async function pickAgents(
-  workspaceApp: ForManagingWorkspace,
-  typedAgent: string | undefined,
-): Promise<readonly string[] | string> {
-  if (typedAgent !== undefined) return [typedAgent];
-
-  const workspaceSettingsDTO = await workspaceApp.readWorkspaceSettings();
-  if (workspaceSettingsDTO.type === "Fault")
-    return `${SETTINGS_FILE_PATH}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`;
-  const agentsInSettings = workspaceSettingsDTO.data.agents;
-
-  // Nobody at the terminal is answered with what the settings already name,
-  // which is what the prompt below would hand back on a return: a pipeline
-  // finishes rather than waits on an answer that is never coming (FR-035,
-  // SC-012). A repository that has chosen none yet has no such default,
-  // however many agents this engine compiles for (CORE-FR-055, CORE-FR-056).
-  if (!process.stdin.isTTY) {
-    if (agentsInSettings.length === 0)
-      return `Nobody is at the terminal to choose an agent, and this repository has none chosen yet.\n  Run "cw init --agent <name>", naming one of: ${workspaceApp.agentProviderNames.join(", ")}.\n`;
-    return agentsInSettings;
-  }
-
-  const { chosen: chosenAgents } = await prompts({
-    type: "multiselect",
-    name: "chosen",
-    message: "Which agents does this charter compile for?",
-    // What the settings already name arrives ticked, so a return keeps what this
-    // repository is already running under and a second run is rechoosing rather
-    // than starting over (FR-038). Nothing named yet — a repository being set up
-    // for the first time — arrives with none ticked (CORE-FR-055).
-    choices: workspaceApp.agentProviderNames.map((agentProviderName) => ({
-      title: agentProviderName,
-      value: agentProviderName,
-      selected: agentsInSettings.includes(agentProviderName),
-    })),
-    // Ticking none of them is not an answer: a charter compiles for at least one
-    // agent, so the prompt holds the submit until one is ticked (FR-033).
-    min: 1,
-  });
-  if (chosenAgents === undefined) return 'Setup was stopped before it had its answers.\n  Run "cw init" again.\n';
-
-  return chosenAgents as readonly string[];
 }

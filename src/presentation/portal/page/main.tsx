@@ -36,7 +36,7 @@ function Portal() {
   // The kind the listing shows, or nothing for its own first choice; a tab
   // shown afresh starts from nothing again.
   const [shownKind, setShownKind] = useState<string | null>(null);
-  const { open } = useDialog();
+  const { openDialog } = useDialog();
 
   return (
     <>
@@ -53,14 +53,14 @@ function Portal() {
             onPick={({ data: { id, kind, layerName } }) => {
               setTab(layerName === "vendor" ? "vendor" : "repo");
               setShownKind(kind);
-              open("primitive", { id });
+              openDialog("primitive", { id });
             }}
           />
         </div>
-        <Button variant="outline" onClick={() => open("buildPreview", {})}>
+        <Button variant="outline" onClick={() => openDialog("buildPreview", {})}>
           Build
         </Button>
-        <Button variant="outline" onClick={() => open("doctor", {})}>
+        <Button variant="outline" onClick={() => openDialog("doctor", {})}>
           Doctor
         </Button>
       </header>
@@ -74,13 +74,13 @@ function Portal() {
           }}
         >
           <TabsList className="mb-4 h-auto w-full gap-1 rounded-[11px] bg-[#e9e9ec] p-1">
-            {TABS.map(([which, name]) => (
+            {TABS.map(([tabValue, tabTitle]) => (
               <TabsTrigger
-                key={which}
-                value={which}
+                key={tabValue}
+                value={tabValue}
                 className="h-auto rounded-lg py-[9px] text-[12.5px] font-semibold text-zinc-500 data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.09)]"
               >
-                {name}
+                {tabTitle}
               </TabsTrigger>
             ))}
           </TabsList>

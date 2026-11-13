@@ -81,15 +81,15 @@ const building = (
 };
 
 /** Every file one build put down, whether it was there before or not. */
-const wrote = (built: CharterDTOs.PlanSummary["data"]) => [...built.added, ...built.edited];
+const wrote = (built: CharterDTOs.ProjectionPlanSummary["data"]) => [...built.added, ...built.edited];
 
 /** What a build did, where it did anything: a test asking for the files takes
  *  the charter holding for granted, and says so here rather than in every
  *  assertion after it. */
 const filesOf = (
-  planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault,
-): CharterDTOs.PlanSummary["data"] => {
-  assert.ok(planSummaryDTO.type === "PlanSummary", "this build was refused, and the test expected it to run");
+  planSummaryDTO: CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault,
+): CharterDTOs.ProjectionPlanSummary["data"] => {
+  assert.ok(planSummaryDTO.type === "ProjectionPlanSummary", "this build was refused, and the test expected it to run");
   return planSummaryDTO.data;
 };
 
@@ -168,6 +168,36 @@ test("a skill an earlier engine brought and this one does not is taken away by t
 
   assert.deepEqual(built.deleted, [".claude/skills/cw-retired/SKILL.md"]);
   await assert.rejects(() => contentsOf(held, ".claude/skills/cw-retired/SKILL.md"));
+});
+
+test("files an earlier version named skill-<id> and guide-<id> are deleted, and the files named by id alone are written (CORE Story 26 scenario 4, CORE-FR-171, CORE Story 55 scenario 8)", async () => {
+  const { held, build } = building({
+    ...compilingFor("claude"),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    [at("skill/review/index.md")]: primitive("skill", "review", ['triggers: ["a review"]']),
+  });
+  await build();
+  // What an earlier version left: each compiled file, stamped as this one
+  // stamps its own, under the name that version gave it.
+  const [compiledRuleText, compiledSkillText] = await Promise.all([
+    contentsOf(held, ".claude/rules/no-any.md"),
+    contentsOf(held, ".claude/skills/review/SKILL.md"),
+  ]);
+  held.writeFile(new URL(".claude/rules/guide-no-any.md", repo), compiledRuleText);
+  held.writeFile(new URL(".claude/skills/skill-review/SKILL.md", repo), compiledSkillText);
+  held.removeFile(new URL(".claude/rules/no-any.md", repo));
+  held.removeFile(new URL(".claude/skills/review/SKILL.md", repo));
+
+  const built = filesOf(await build());
+
+  assert.deepEqual([...built.deleted].sort(), [
+    ".claude/rules/guide-no-any.md",
+    ".claude/skills/skill-review/SKILL.md",
+  ]);
+  await assert.rejects(() => contentsOf(held, ".claude/rules/guide-no-any.md"));
+  await assert.rejects(() => contentsOf(held, ".claude/skills/skill-review/SKILL.md"));
+  assert.equal(await contentsOf(held, ".claude/rules/no-any.md"), compiledRuleText);
+  assert.equal(await contentsOf(held, ".claude/skills/review/SKILL.md"), compiledSkillText);
 });
 
 test("a projection whose primitive is gone is taken away by the next build (FR-020)", async () => {
@@ -301,6 +331,36 @@ test("a section already in the entry file is written in place, and stays one sec
   const entry = await contentsOf(held, "CLAUDE.md");
   assert.equal(entry.match(/<!-- CHERRYWORKS START -->/g)?.length, 1);
   assert.ok(!entry.includes("What an older build put here."));
+});
+
+test("an entry file carrying the charter's section twice over carries it once after a build, the prose around it kept (CORE Story 1 scenario 6, CORE-FR-035, CORE Story 55 scenario 2)", async () => {
+  const olderSectionText = ["<!-- CHERRYWORKS START -->", "What an older build put here.", "<!-- CHERRYWORKS END -->"];
+  const { held, build } = building({
+    ...compilingFor("claude"),
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    // A merge conflict resolved by keeping both sides.
+    [inRepo("CLAUDE.md")]: [
+      "# Notes",
+      "",
+      ...olderSectionText,
+      "",
+      "Between the two.",
+      "",
+      ...olderSectionText,
+      "",
+    ].join("\n"),
+  });
+
+  await build();
+
+  const entry = await contentsOf(held, "CLAUDE.md");
+  assert.equal(entry.match(/<!-- CHERRYWORKS START -->/g)?.length, 1);
+  assert.equal(entry.match(/<!-- CHERRYWORKS END -->/g)?.length, 1);
+  assert.ok(!entry.includes("What an older build put here."));
+  assert.ok(entry.startsWith("# Notes\n"));
+  assert.ok(entry.includes("Between the two."));
+  const builtAgain = filesOf(await build());
+  assert.ok(builtAgain.unchanged.includes("CLAUDE.md"));
 });
 
 test("a second build leaves the entry file byte for byte as the first did (SC-007)", async () => {
@@ -474,6 +534,37 @@ test("a build writes every mcp origin the charter's mcps reach to mcp-origins.js
   });
 });
 
+test("an mcp origin whose address changes, its mcp alone edited, is reached at the new address by every primitive naming it, and no other file changes (CORE Story 17 scenario 7, CORE-FR-143, CORE-SC-038, CORE Story 55 scenario 5)", async () => {
+  const billingMcp = (endpoint: string) =>
+    primitive("mcp", "mfbs/billing", [`endpoint: ${endpoint}`, "auth: [oauth]", "tools: [search_code]"]);
+  const { held, build } = building({
+    ...compilingFor("claude"),
+    [at("mcp/mfbs/billing/index.md")]: billingMcp("https://old.example.com/mcp/"),
+    [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Read [[mfbs/billing]]."),
+    [at("agent/biller/index.md")]: primitive("agent", "biller", ['tools: ["[[mfbs/billing]]"]'], "Bill."),
+  });
+  await build();
+  const contentsBefore = Object.fromEntries(
+    (await held.readFilesRecursively(repo)).map(({ fileUrl, contents }) => [fileUrl.href, contents]),
+  );
+
+  await held.writeFile(new URL(at("mcp/mfbs/billing/index.md")), billingMcp("https://new.example.com/mcp/"));
+  const builtAgain = filesOf(await build());
+
+  const [billingOrigin] = JSON.parse(await contentsOf(held, ".cw/out/mcp-origins.json")).origins;
+  assert.equal(billingOrigin.address, "https://new.example.com/mcp/");
+  assert.deepEqual(billingOrigin.ids, ["mfbs/billing"]);
+  // The guide and the subagent reach it through cw's one server, by the name
+  // it is served under, which an address does not change.
+  assert.deepEqual(builtAgain.edited, [".cw/out/mcp-origins.json", ".cw/out/mcp/mfbs/billing/index.md"].sort());
+  assert.deepEqual(builtAgain.added, []);
+  assert.deepEqual(builtAgain.deleted, []);
+  for (const [fileHref, contents] of Object.entries(contentsBefore)) {
+    const isEdited = [at("mcp/mfbs/billing/index.md"), ...builtAgain.edited.map(inRepo)].includes(fileHref);
+    if (!isEdited) assert.deepEqual(await held.readFile(new URL(fileHref)), contents, fileHref);
+  }
+});
+
 const LINEAR = "https://mcp.linear.app/mcp";
 const linearDeclared = {
   [at("mcp/linear/index.md")]: primitive("mcp", "linear", [
@@ -507,7 +598,7 @@ test("a build asks each mcp origin for its tools and keeps those its mcps declar
 });
 
 /** What a build that was refused says, under each file. */
-const faultsOf = (planSummaryDTO: CharterDTOs.PlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault) => {
+const faultsOf = (planSummaryDTO: CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault) => {
   assert.ok(planSummaryDTO.type === "FaultsByFile", "this build ran, and the test expected it refused");
   return JSON.stringify(planSummaryDTO.data);
 };
@@ -525,7 +616,7 @@ test("an mcp origin the build cannot ask for its tools stops the build, under th
   assert.equal(await held.readIfThere(new URL(".cw/out/mcp-origins.json", repo)), undefined);
 });
 
-test("a tool an mcp declares that its mcp origin does not list stops the build, naming the tools it lists (EVAL-FR-031)", async () => {
+test("a tool an mcp declares that its mcp origin does not list stops the build, naming the tools it lists, and writes nothing (EVAL-FR-031, CORE Story 19 scenario 6, CORE Story 55 scenario 8)", async () => {
   const mcpServers = new InMemoryMcpServers();
   mcpServers.servers.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
   const credentialsRepository = new InMemoryCredentialsRepository();
@@ -533,13 +624,15 @@ test("a tool an mcp declares that its mcp origin does not list stops the build, 
     LINEAR,
     JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }),
   );
-  const { build } = building(linearDeclared, mcpServers, credentialsRepository);
+  const { held, build } = building(linearDeclared, mcpServers, credentialsRepository);
+  const filesBefore = await held.readFilesRecursively(repo);
 
   const faultsText = faultsOf(await build());
 
   assert.match(faultsText, /mcp\/linear\/index\.md/);
   assert.match(faultsText, /no tool .*create_issue/);
   assert.match(faultsText, /list_issues/);
+  assert.deepEqual(await held.readFilesRecursively(repo), filesBefore);
 });
 
 test("without the mcp origins to ask, a build keeps the tools the last build kept (EVAL-FR-031)", async () => {
@@ -629,6 +722,36 @@ const script = (id: string) => ({
   [at(`script/${id}/run.sh`)]: "#!/usr/bin/env bash\n",
 });
 
+test("a guide naming an mcp origin links it by its id, in its compiled document and its rule for the agent, and a subagent listing it is given its tools under the name they are served under (CORE Story 17 scenario 2, FR-147, FR-145, CORE Story 55 scenario 13)", async () => {
+  const { held, build } = building({
+    ...compilingFor("claude"),
+    [at("mcp/mfbs/billing/index.md")]: primitive("mcp", "mfbs/billing", [
+      "endpoint: https://api.githubcopilot.com/mcp/",
+      "auth: [oauth]",
+      "tools: [search_code]",
+    ]),
+    [at("guide/no-any/index.md")]: guide("no-any", "Take the requirements from [[mfbs/billing]]."),
+    [at("agent/biller/index.md")]: primitive("agent", "biller", ['tools: ["[[mfbs/billing]]"]'], "Bill."),
+  });
+
+  filesOf(await build());
+
+  const servedName = JSON.parse(await contentsOf(held, ".cw/out/mcp-origins.json")).origins[0].names["mfbs/billing"];
+  assert.match(servedName, /^mfbs_[0-9a-f]{4}$/);
+  const compiledDocument = await contentsOf(held, ".cw/out/guide/no-any/index.md");
+  assert.ok(
+    compiledDocument.includes("Take the requirements from [mfbs/billing](../../mcp/mfbs/billing/index.md)."),
+    compiledDocument,
+  );
+  // The rule sends the agent to that document, the link and all, and names
+  // the mcp origin by nothing else.
+  const guideRule = await contentsOf(held, ".claude/rules/no-any.md");
+  assert.ok(guideRule.includes(".cw/out/guide/no-any/index.md"), guideRule);
+  for (const document of [compiledDocument, guideRule]) assert.ok(!document.includes(servedName), document);
+  const subagent = await contentsOf(held, ".claude/agents/biller.md");
+  assert.match(subagent, new RegExp(`\\ntools: mcp__cw__${servedName}__search_code\\n`));
+});
+
 test("once compiled, an mcp origin, a script or a template a body names is a link to the file the catalogue names for it, from the document holding it (FR-147)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
@@ -662,6 +785,53 @@ test("once compiled, an mcp origin, a script or a template a body names is a lin
       undefined,
       target,
     );
+});
+
+test("a body naming [[<id>]] of every kind the charter holds compiles to a link to that primitive's file in its place (CORE Story 27 scenario 3, CORE-FR-147, CORE Story 55 scenario 8)", async () => {
+  const idByKind: Readonly<Record<string, string>> = {
+    guide: "types",
+    skill: "review",
+    playbook: "ship",
+    agent: "reviewer",
+    mcp: "local",
+    posture: "safe",
+    sensor: "lint",
+    script: "check",
+    template: "pr",
+    corpus: "terms",
+    mixin: "voice",
+  };
+  const { held, build } = building({
+    ...compilingFor("claude"),
+    [at("guide/general/index.md")]: primitive(
+      "guide",
+      "general",
+      [],
+      Object.values(idByKind)
+        .map((referencedId) => `See [[${referencedId}]].`)
+        .join(" "),
+    ),
+    [at("guide/types/index.md")]: guide("types"),
+    [at("skill/review/index.md")]: primitive("skill", "review", ['triggers: ["review"]']),
+    [at("playbook/ship/index.md")]: primitive("playbook", "ship", ['triggers: ["ship"]']),
+    [at("agent/reviewer/index.md")]: primitive("agent", "reviewer", ['tools: ["Read"]']),
+    [at("mcp/local/index.md")]: primitive("mcp", "local", ["command: node", "tools: [echo]"]),
+    [at("posture/safe/index.md")]: primitive("posture", "safe", ['allow: ["Read(src/**)"]', 'deny: ["Bash(rm:*)"]']),
+    [at("sensor/lint/index.md")]: primitive("sensor", "lint", ["signal: Stop", 'run: "node lint.mjs"']),
+    ...script("check"),
+    [at("template/pr/index.md")]: primitive("template", "pr"),
+    [at("corpus/terms/index.md")]: primitive("corpus", "terms"),
+    [at("mixin/voice/index.md")]: primitive("mixin", "voice"),
+  });
+
+  filesOf(await build());
+
+  const compiledDocument = await contentsOf(held, ".cw/out/guide/general/index.md");
+  for (const [kind, referencedId] of Object.entries(idByKind)) {
+    const linkText = `See [${referencedId}](../../${kind}/${referencedId}/index.md).`;
+    assert.ok(compiledDocument.includes(linkText), `${linkText} in ${compiledDocument}`);
+  }
+  assert.ok(!compiledDocument.includes("[["), compiledDocument);
 });
 
 test("a name alone in a code span keeps the span as the link's text; one inside a longer span, a fenced block or a link is left as written (FR-147)", async () => {

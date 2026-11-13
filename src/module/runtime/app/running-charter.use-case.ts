@@ -10,16 +10,18 @@ import {
   type ForTellingTime,
   UnauthorizedMcpFault,
 } from "../../shared/module.js";
-import { EVAL_WORKTREES_FOLDER_PATH } from "../domain/constants.js";
+import { MainContextCount, MainContextLoadCount } from "../domain/models/context/main-context-count.js";
 import { EvalCaseReport, EvalRunReport } from "../domain/models/eval/eval-run-report.js";
 import {
   MissingAgentCliFault,
+  MissingEstimateFault,
   MissingMcpServersFault,
   RefusedMcpCredentialFault,
+  UnconfiguredExactCountAgentFault,
   UnknownToolFault,
   UnsupportedExactCountFault,
 } from "../domain/models/runtime.fault.js";
-import { SensorAnswers } from "../domain/models/sensor/sensor-answer.js";
+import { SensorAnswer, SensorAnswers } from "../domain/models/sensor/sensor-answer.js";
 import { SessionAnalysisFactory } from "../domain/models/session/session-analysis.factory.js";
 import type { SessionAnalysisSummary } from "../domain/models/session/session-analysis-summary.js";
 import { SessionSpanFactory } from "../domain/models/session/session-span.factory.js";
@@ -123,7 +125,10 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
       ).data;
       // Each runs to its end whatever the others do: one failing stops none.
       const sensorAnswers = await Promise.all(
-        commands.map((command) => this.#shell.runShellCommand(command, "", stdin)),
+        commands.map(async (command) => {
+          const { exitCode, stdout, stderr } = await this.#shell.runShellCommand(command, "", stdin);
+          return new SensorAnswer(exitCode, stdout, stderr);
+        }),
       );
       const signalAnswer = new SensorAnswers(signal, sensorAnswers).signalAnswer;
       return RuntimeDTOs.SensorRunOutcome.of({
@@ -218,55 +223,102 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
   }
 
   /**
-   * Every text an agent is sent when a session opens is run as a prompt, and so
-   * is a prompt of next to nothing; what the model was sent for the text past
-   * what it was sent for that is the text's count, the command line's own
-   * instructions taken away (EVAL-FR-004). Refused before anything runs where
-   * the command line is not installed.
+   * Every text the agent named is sent when a session opens is run as a
+   * prompt, and so is a prompt of next to nothing; what the model was sent for
+   * the text past what it was sent for that is the text's count, the command
+   * line's own instructions taken away. Each is put beside its estimate, and
+   * the domain says whether the totals are further apart than EVAL-SC-002
+   * allows (EVAL-FR-004). Refused before anything runs where the agent cannot
+   * be counted through, is not compiled for, or has no command line installed.
    */
-  async countMainContext(): Promise<RuntimeDTOs.MainContexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+  async countMainContext(
+    agentProviderName: AgentProviderName,
+  ): Promise<RuntimeDTOs.MainContext | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("RunningCharter.countMainContext", async () => {
+      const agentCli = this.#agentCliByProvider[agentProviderName];
+      if (agentCli === undefined || !("askAgent" in agentCli))
+        throw new UnsupportedExactCountFault(
+          `Counting exactly is not supported for ${agentProviderName} yet.`,
+          'Run "cw context" without --exact: the estimate needs nothing.',
+          { internal: false },
+        );
       const mainContextTextsAnswer = await this.#charterBuildingApp.readMainContextTexts();
       if (mainContextTextsAnswer.type === "FaultsByFile") return mainContextTextsAnswer;
-      const mainContexts: RuntimeDTOs.MainContext[] = [];
-      for (const { agent, texts } of this.answeredDTOOf(mainContextTextsAnswer).data.agents) {
-        const agentCli = this.#agentCliByProvider[agent];
-        if (agentCli === undefined || !("askAgent" in agentCli))
-          throw new UnsupportedExactCountFault(
-            `Counting exactly is not supported for ${agent} yet.`,
-            'Run "cw context" without --exact: the estimate needs nothing.',
-            { internal: false },
-          );
-        if (!(await agentCli.isInstalled()))
-          throw new MissingAgentCliFault(
-            `Counting exactly runs ${agent}'s own command line, and it is not installed here.`,
-            'Run "cw context" without --exact: the estimate needs nothing.',
-            { internal: false },
-          );
-        const ownTokens = this.#countAnswerTokens((await agentCli.askAgent(".")).usage);
-        const mainContextLoads = await Promise.all(
-          texts.map(async ({ text, ...mainContextText }) => ({
-            ...mainContextText,
-            tokens: Math.max(0, this.#countAnswerTokens((await agentCli.askAgent(text)).usage) - ownTokens),
-          })),
+      const agentTexts = this.answeredDTOOf(mainContextTextsAnswer).data.agents.find(
+        ({ agent }) => agent === agentProviderName,
+      );
+      if (agentTexts === undefined)
+        throw new UnconfiguredExactCountAgentFault(
+          `The repository does not compile for ${agentProviderName}, so there is nothing of it to count.`,
+          `Run "cw init" and add ${agentProviderName} to the settings, or name an agent it compiles for.`,
+          { internal: false },
         );
-        const mainContextLoadsLargestFirst = [...mainContextLoads].sort(
-          (leftLoad, rightLoad) => rightLoad.tokens - leftLoad.tokens || leftLoad.id.localeCompare(rightLoad.id),
+      if (!(await agentCli.isInstalled()))
+        throw new MissingAgentCliFault(
+          `Counting exactly runs ${agentProviderName}'s own command line, and it is not installed here.`,
+          'Run "cw context" without --exact: the estimate needs nothing.',
+          { internal: false },
         );
-        const sessionLoads = mainContextLoadsLargestFirst.filter((load) => load.globs === undefined);
-        mainContexts.push(
-          RuntimeDTOs.MainContext.of({
-            agent,
-            isExact: true,
-            sessionLoads: sessionLoads.map(RuntimeDTOs.MainContextLoad.of),
-            fileLoads: mainContextLoadsLargestFirst
-              .filter((load) => load.globs !== undefined)
-              .map(RuntimeDTOs.MainContextLoad.of),
-            totalTokens: sessionLoads.reduce((total, load) => total + load.tokens, 0),
-          }),
+      const mainContextsAnswer = await this.#charterBuildingApp.predictMainContext();
+      if (mainContextsAnswer.type === "FaultsByFile") return mainContextsAnswer;
+      const estimatedContext = this.answeredDTOOf(mainContextsAnswer).data.contexts.find(
+        ({ data: { agent } }) => agent === agentProviderName,
+      );
+      const estimatedTokensByLoadKey = new Map(
+        [...(estimatedContext?.data.sessionLoads ?? []), ...(estimatedContext?.data.fileLoads ?? [])].map(
+          ({ data: { kind, id, tokens } }) => [`${kind} ${id}`, tokens],
+        ),
+      );
+      const ownTokens = this.#countAnswerTokens((await agentCli.askAgent(".")).usage);
+      // One headless run at a time: each is a paid call, and a provider
+      // refusing a burst would lose the count and what it spent.
+      const mainContextLoadCounts: MainContextLoadCount[] = [];
+      for (const { id, kind, text, globs } of agentTexts.texts) {
+        const estimatedTokenCount = estimatedTokensByLoadKey.get(`${kind} ${id}`);
+        if (estimatedTokenCount === undefined)
+          throw new MissingEstimateFault(
+            `The estimate of ${agentProviderName}'s main context holds no ${kind} ${id}, which it counts exactly.`,
+            "This is cw's own fault: report it.",
+            { internal: true },
+          );
+        mainContextLoadCounts.push(
+          new MainContextLoadCount(
+            id,
+            kind,
+            Math.max(0, this.#countAnswerTokens((await agentCli.askAgent(text)).usage) - ownTokens),
+            estimatedTokenCount,
+            globs,
+          ),
         );
       }
-      return RuntimeDTOs.MainContexts.of({ contexts: mainContexts });
+      const mainContextCount = new MainContextCount(new AgentProvider(agentProviderName), mainContextLoadCounts);
+      const mainContextLoadDTOOf = ({
+        id,
+        kind,
+        exactTokenCount,
+        estimatedTokenCount,
+        differenceRatio,
+        globs,
+      }: MainContextLoadCount) =>
+        RuntimeDTOs.MainContextLoad.of({
+          id,
+          kind,
+          tokens: exactTokenCount,
+          estimatedTokens: estimatedTokenCount,
+          ...(differenceRatio === undefined ? {} : { differenceRatio }),
+          ...(globs === undefined ? {} : { globs }),
+        });
+      const { totalDifferenceRatio } = mainContextCount;
+      return RuntimeDTOs.MainContext.of({
+        agent: mainContextCount.agent.name,
+        sessionLoads: mainContextCount.sessionLoadCounts.map(mainContextLoadDTOOf),
+        fileLoads: mainContextCount.fileLoadCounts.map(mainContextLoadDTOOf),
+        totalTokens: mainContextCount.exactTotalTokens,
+        estimatedTotalTokens: mainContextCount.estimatedTotalTokens,
+        ...(totalDifferenceRatio === undefined ? {} : { totalDifferenceRatio }),
+        accuracyLimit: MainContextCount.accuracyLimit,
+        isPastAccuracyLimit: mainContextCount.isPastAccuracyLimit,
+      });
     });
   }
 
@@ -286,7 +338,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
         return this.#evalRunReportDTOOf(new EvalRunReport([], new AgentProvider(agentProviderName)));
 
       // What a run stopped halfway left is swept (EVAL-FR-021).
-      for (const leftWorktreePath of await this.#fileReader.listFolders(EVAL_WORKTREES_FOLDER_PATH))
+      for (const leftWorktreePath of await this.#fileReader.listFolders(this.#worktrees.worktreesFolderPath))
         await this.#worktrees.removeWorktree(leftWorktreePath);
 
       // What is evaluated is the charter and its cases as the store holds them
@@ -303,7 +355,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
       // Version control is asked before the agent's command line is asked
       // for or promptfoo installed: a folder under no repository, or with
       // nothing committed, is refused in git's words (CORE-FR-206).
-      const probeWorktreePath = `${EVAL_WORKTREES_FOLDER_PATH}/probe`;
+      const probeWorktreePath = `${this.#worktrees.worktreesFolderPath}/probe`;
       await this.#worktrees.addWorktree(probeWorktreePath);
       await this.#worktrees.removeWorktree(probeWorktreePath);
 
@@ -327,7 +379,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
       // be writing in.
       const evalCaseReports: EvalCaseReport[] = [];
       for (const [caseIndex, evalCase] of cases.entries()) {
-        const caseWorktreePath = `${EVAL_WORKTREES_FOLDER_PATH}/${caseIndex + 1}`;
+        const caseWorktreePath = `${this.#worktrees.worktreesFolderPath}/${caseIndex + 1}`;
         await this.#worktrees.addWorktree(caseWorktreePath);
         try {
           const buildAnswer = await this.#charterBuildingApp.buildCharterInto(caseWorktreePath);
@@ -344,7 +396,13 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
 
   async analyzeEvalLog(logFilePath?: string): Promise<RuntimeDTOs.EvalLogAnalysis | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("RunningCharter.analyzeEvalLog", async () => {
-      return RuntimeDTOs.EvalLogAnalysis.of({ logs: await this.#promptfooRunner.readLogs(logFilePath) });
+      return RuntimeDTOs.EvalLogAnalysis.of({
+        // Answered under `agent`, as the case's report names what it ran on.
+        logs: (await this.#promptfooRunner.readLogs(logFilePath)).map(({ provider, ...promptfooLog }) => ({
+          ...promptfooLog,
+          agent: provider,
+        })),
+      });
     });
   }
 
@@ -402,7 +460,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
   ): Promise<EvalCaseReport> {
     const { invoke: skillId, follow: guideId, read: filePath, maxTokens } = expect;
     const assertions: PromptfooAssertion[] = [
-      ...(filePath === undefined ? [] : [{ type: "file-read" as const, value: filePath }]),
+      ...(filePath === undefined ? [] : [{ type: "javascript" as const, config: { readFilePath: filePath } }]),
       ...(skillId === undefined ? [] : [{ type: "skill-used" as const, value: skillId }]),
       ...(guideId === undefined || guideBody === undefined
         ? []
@@ -427,21 +485,28 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
             },
           ]),
     ];
-    const { success, totalTokens, componentResults, error, logPath, sessionId, sessionPath } =
-      await this.#promptfooRunner.evaluateTest({
-        agent: agentProviderName,
-        description: `${suiteName}: ${prompt}`,
-        prompt,
-        workingPath,
-        assertions,
-      });
+    const {
+      success: isSuccessful,
+      totalTokens,
+      componentResults,
+      error,
+      logPath,
+      sessionId,
+      sessionPath,
+    } = await this.#promptfooRunner.evaluateTest({
+      provider: agentProviderName,
+      description: `${suiteName}: ${prompt}`,
+      prompt,
+      workingPath,
+      assertions,
+    });
     const unmetReasons = componentResults
-      .filter(({ pass }) => !pass)
+      .filter(({ pass: isPassing }) => !isPassing)
       .map(({ assertionType, reason }) =>
         assertionType === "agent-rubric" ? `"${guideId}" was not followed: ${reason}` : reason,
       );
     // A case promptfoo could not run has no grading to say: its error is why.
-    if (!success && unmetReasons.length === 0)
+    if (!isSuccessful && unmetReasons.length === 0)
       unmetReasons.push(error ?? "promptfoo failed this case without saying why.");
     return new EvalCaseReport(suiteName, prompt, totalTokens, unmetReasons, logPath, sessionId, sessionPath);
   }
@@ -456,12 +521,12 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
   #evalRunReportDTOOf(evalRunReport: EvalRunReport): RuntimeDTOs.EvalRunReport {
     return RuntimeDTOs.EvalRunReport.of({
       evalCaseReports: evalRunReport.evalCaseReports.map(
-        ({ suiteName, prompt, passed, tokens, unmetReasons, logPath, sessionId, sessionPath }) =>
+        ({ suiteName, prompt, hasPassed, tokenCount, unmetReasons, logPath, sessionId, sessionPath }) =>
           RuntimeDTOs.EvalCaseReport.of({
             suiteName,
             prompt,
-            passed,
-            tokens,
+            passed: hasPassed,
+            tokens: tokenCount,
             unmetReasons,
             ...(logPath === undefined ? {} : { logPath }),
             ...(sessionId === undefined ? {} : { sessionId }),

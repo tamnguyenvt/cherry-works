@@ -26,6 +26,20 @@ export class EvalSuiteFactory {
       );
     }
     const evalSuiteParse = EvalSuite.schema.safeParse(evalSuiteJson);
+    // A file expected read is refused naming it, before any case runs
+    // (EVAL-FR-039).
+    const readPathIssue = evalSuiteParse.error?.issues.find(({ path }) => path.at(-1) === "read");
+    if (readPathIssue !== undefined) {
+      const refusedReadPath = readPathIssue.path.reduce<unknown>(
+        (jsonValue, pathKey) => (jsonValue as Record<PropertyKey, unknown>)[pathKey],
+        evalSuiteJson,
+      );
+      throw new InvalidEvalSuiteFault(
+        `A case expects ${JSON.stringify(refusedReadPath)} read, and it is no path of a file of this repository: one from its root, not empty, not absolute, never leaving it, with no control character, "\\", "{" or "}".`,
+        `Name the file by its path from the repository's root, as in {"expect":{"read":"docs/guide.md"}}.`,
+        { internal: false },
+      );
+    }
     if (!evalSuiteParse.success)
       throw new InvalidEvalSuiteFault(
         `This file is not written as a suite of evaluation cases.`,

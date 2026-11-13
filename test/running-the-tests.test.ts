@@ -91,7 +91,7 @@ const charter = {
   [at("posture/secrets/index.md")]: posture("secrets", [".env", "**/*.pem"]),
 };
 
-test("a touched file that matches a guide's globs brings it up, and the case passes (FR-048)", async () => {
+test("a touched file that matches a guide's globs brings it up, and the case passes (CORE Story 27 scenario 2, FR-048, FR-172)", async () => {
   const run = commandLine({
     ...charter,
     ...suite({
@@ -208,7 +208,7 @@ test("a touched file no posture denies is allowed, and one a posture denies fail
   assert.match(result, /"secrets" denies this file\./);
 });
 
-test("an id of the wrong kind fails saying whose rule the case asked for", async () => {
+test("an id of the wrong kind fails saying whose rule the case asked for (CORE Story 27 scenario 2, FR-172)", async () => {
   const run = commandLine({
     ...charter,
     ...suite({

@@ -1,5 +1,11 @@
 import type { Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
+import { StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
+  AdapterFault,
+  UnauthorizedMcpFault,
+  UnreachableMcpOriginFault,
+} from "../app/port/out/calling-mcp-servers.port.js";
 import { FolderAddress } from "../app/port/out/folder-address.port.js";
 import { UnreadableFolderFault } from "../app/port/out/reading-files.port.js";
 import { PathOutsideFolderFault } from "../app/port/out/writing-files.port.js";
@@ -86,4 +92,19 @@ export async function readFolderEntries(folderUrl: URL): Promise<readonly Dirent
 /** One directory inside another. */
 export function resolveSubfolderUrl(folderUrl: URL, subfolderName: string): URL {
   return new URL(`${encodeURIComponent(subfolderName)}/`, folderUrl);
+}
+
+/** What the SDK raised, as this port raises it: a `401` the one refusal the
+ *  caller can act on, anything else an `UnreachableMcpOriginFault` saying what failed where,
+ *  what the SDK said kept as its cause for the log alone (SDK-FR-018). Never
+ *  what was sent: a credential is not in any message. */
+export function wrapMcpFault(raisedValue: unknown, failedCallText: string, fix: string): AdapterFault {
+  if (raisedValue instanceof AdapterFault) return raisedValue;
+  if (raisedValue instanceof StreamableHTTPError && raisedValue.code === 401)
+    return new UnauthorizedMcpFault(
+      `${failedCallText}: the mcp origin refused your credential.`,
+      'Run "cw mcp auth" at a terminal to sign in there again.',
+      { internal: false },
+    );
+  return new UnreachableMcpOriginFault(`${failedCallText}.`, fix, { internal: false, cause: raisedValue });
 }

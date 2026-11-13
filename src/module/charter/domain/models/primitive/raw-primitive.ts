@@ -1,5 +1,5 @@
 import { MissingIndexTextFault } from "../charter.fault.js";
-import type { AssetFile } from "./base-primitive.js";
+import type { AssetFile } from "./asset-file.js";
 import type { PrimitiveLayer } from "./primitive-layer.value-object.js";
 
 /** One primitive as it is handed in, raw — kept, or answered by an author —

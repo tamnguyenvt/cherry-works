@@ -1,32 +1,16 @@
 import { outputPath } from "../../constants.js";
+import { PrimitiveHelper } from "../../helper.js";
 import type { CharterRoot } from "../charter/charter-root.js";
-import { BasePrimitive } from "../primitive/base-primitive.js";
 import { MixinPrimitive } from "../primitive/mixin-primitive.js";
 import type { Primitive } from "../primitive/primitive.js";
 import { ScriptPrimitive } from "../primitive/script-primitive.js";
-import { CompiledPrimitive } from "./compiled-primitive.js";
+import { CompiledAsset, CompiledPrimitive } from "./compiled-primitive.js";
 import { StampedDocument } from "./stamped-document.value-object.js";
-
-/** What a body is read through to find the names in it: a fenced block, a link
- *  and a code span are each taken whole, so a name inside one is seen as part
- *  of it; what is left over is a name standing on its own (FR-147). */
-const PRIMITIVES_MENTION = new RegExp(
-  [
-    /^ {0,3}(`{3,}|~{3,})[\s\S]*?(?:^ {0,3}\1[^\n]*$|(?![\s\S]))/.source,
-    /\[[^\]\n]*\]\([^)\n]*\)/.source,
-    /`[^`\n]*`/.source,
-    BasePrimitive.referencePattern.source,
-  ].join("|"),
-  "gm",
-);
-
-/** A code span holding one name and nothing else. */
-const PRIMITIVES_EXACT_MENTION = new RegExp(`^\`${BasePrimitive.referencePattern.source}\`$`);
 
 /** Makes one primitive's compiled document. */
 export class CompiledPrimitiveFactory {
   /**
-   * One primitive as an agent opens it, in the output folder whichever layer
+   * One primitive as an agent opens it, in the compiled output whichever layer
    * brought it (FR-139, FR-140).
    *
    * Every kind, a template's included, is its headers and the whole of what it
@@ -50,26 +34,26 @@ export class CompiledPrimitiveFactory {
       // file as an error, and a build refused for it never reaches here (FR-009).
       mixins: charter.mixinsOf(primitive).flatMap((mixin) => (mixin instanceof MixinPrimitive ? [mixin] : [])),
       idReplacer: (body) =>
-        body.replace(PRIMITIVES_MENTION, (mentionText) => {
-          const isExactMention = PRIMITIVES_EXACT_MENTION.test(mentionText);
-          const isReference = /^\[\[[^\]]*\]\]$/.test(mentionText);
-          if (!isExactMention && !isReference) return mentionText;
-          const referencedId = (isExactMention ? mentionText.slice(1, -1) : mentionText).slice(2, -2);
+        PrimitiveHelper.rewriteStandaloneReferences(body, (referencedId, isInCodeSpan) => {
           const referencedPrimitive = charter.primitiveById.get(referencedId);
           // The id is the text, in a code span where the author wrote one.
           return referencedPrimitive === undefined
-            ? mentionText
-            : `[${isExactMention ? `\`${referencedId}\`` : referencedId}](${outputPath.getLinkTo(outputPath.getCompiledPrimitivePath(referencedPrimitive.kind, referencedPrimitive.headers.id))})`;
+            ? undefined
+            : `[${isInCodeSpan ? `\`${referencedId}\`` : referencedId}](${outputPath.getLinkTo(outputPath.getCompiledPrimitivePath(referencedPrimitive.kind, referencedPrimitive.headers.id))})`;
         }),
     });
     return new CompiledPrimitive(
       primitive.kind,
       primitive.headers.id,
       new StampedDocument(markdownText),
-      primitive.assets.map((assetFile) => ({
-        ...assetFile,
-        isExecutable: primitive instanceof ScriptPrimitive && primitive.isExecutionFile(assetFile.assetPath),
-      })),
+      primitive.assets.map(
+        (assetFile) =>
+          new CompiledAsset(
+            assetFile.assetPath,
+            assetFile.contents,
+            primitive instanceof ScriptPrimitive && primitive.isExecutionFile(assetFile.assetPath),
+          ),
+      ),
     );
   }
 
