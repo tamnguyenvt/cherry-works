@@ -34,11 +34,11 @@ export class CharterRoot {
     readonly faultsByFiles: FaultsByFile,
     /** The layer of everything kept, read as a primitive or not, by where it is
      *  kept: what a fault under it is weighed by (FR-005). */
-    readonly primitiveLayerByUri: Readonly<Record<string, PrimitiveLayer>> = {},
+    readonly primitiveLayerByUri: Readonly<Record<string, PrimitiveLayer>>,
     /** Where an author edits this charter, in the words of the store keeping
      *  it: what each agent is told to edit, never read off `cw`'s own layout
-     *  (SDK-FR-020, CORE-FR-213). Nothing where no store kept it. */
-    readonly charterPlace: string = "",
+     *  (SDK-FR-020, CORE-FR-213). */
+    readonly charterPlace: string,
   ) {}
 
   /** Everything wrong with this charter, under the file that has to change: the

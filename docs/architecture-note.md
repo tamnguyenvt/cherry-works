@@ -91,9 +91,12 @@ the subject in kebab-case, then the role its folder gives it —
 `in-memory-file-output.adapter.ts`, `adapter.fault.ts`, `add.command.ts`,
 `charter-root.factory.ts`, `primitive-layer.value-object.ts`. A model under a
 module's `domain/models/` keeps its subject alone (`charter-root.ts`), as do
-the files an agent's adapters keep of their own, `helper.ts`, `index.ts` and
-`main.ts`. A script asset keeps the name it is put down under
-(`sessionTokensCounter.mjs`). The class inside keeps its name.
+the files an agent's adapters keep of their own, `helper.ts`, `index.ts`, a
+module's `module.ts` and its `domain/constants.ts`, the kernel's
+`domain/schema.ts`, the composition root's `composition.ts` and `main.ts`. A
+script asset is `<kebab-subject>.script.mjs`
+(`session-tokens-counter.script.mjs`), and the build puts it down under the
+name it declares. The class inside keeps its name.
 
 ## How a module is laid out
 

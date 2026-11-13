@@ -10,14 +10,9 @@ import {
 import { printFault } from "./helper.js";
 
 const OPTIONS = {
-  exact: {
-    type: "boolean",
-    describe: "Count exactly, through the agent's own command line, and estimate too: with --agent",
-    default: false,
-  },
   agent: {
     type: "string",
-    describe: "The agent to count for: the one counted exactly with --exact, the one estimated alone without it",
+    describe: "The agent to count exactly through, by its own command line, beside the estimate",
   },
 } as const satisfies OptionSpec;
 
@@ -27,15 +22,13 @@ const OPTIONS = {
  *
  * One line per primitive, the largest first, then the total, said to be an
  * estimate; below, apart and outside the total, every guide loaded only when
- * a file it names is touched, with its globs. `--agent` narrows it to one
- * agent the repository compiles for. What the portal shows is the same answer
- * (EVAL-FR-007).
+ * a file it names is touched, with its globs, for every agent the repository
+ * compiles for. What the portal shows is the same answer (EVAL-FR-007).
  *
- * With `--exact --agent=<agent>`, each line is the estimate, the agent's own
- * exact count and how far apart they are, as a share of the exact count, then
- * the totals; a warning is said, and the count still succeeds, where the
- * totals are further apart than EVAL-SC-002 allows. `--exact` with no agent
- * named is refused, and nothing is counted.
+ * With `--agent=<agent>`, each line is the estimate, the agent's own exact
+ * count and how far apart they are, as a share of the exact count, then the
+ * totals; a warning is said, and the count still succeeds, where the totals
+ * are further apart than EVAL-SC-002 allows.
  */
 export class ContextCommand implements Command<typeof OPTIONS> {
   readonly name = "context";
@@ -44,18 +37,12 @@ export class ContextCommand implements Command<typeof OPTIONS> {
 
   async runCommand(
     { charterBuildingApp, charterRuntimeApp }: Context,
-    { exact: isExactAsked, agent: requestedAgent }: Options<typeof OPTIONS>,
+    { agent: requestedAgent }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    if (isExactAsked && requestedAgent === undefined)
-      return {
-        exitCode: EXIT_FAILURE,
-        problemText:
-          'Counting exactly needs the agent to count through named, and none was. Nothing was counted.\n  Run "cw context --exact --agent=<agent>", or "cw context" for the estimate, which needs nothing.\n',
-      };
     const mainContextAnswer =
-      isExactAsked && requestedAgent !== undefined
-        ? await charterRuntimeApp.countMainContext(requestedAgent)
-        : await charterBuildingApp.predictMainContext();
+      requestedAgent === undefined
+        ? await charterBuildingApp.predictMainContext()
+        : await charterRuntimeApp.countMainContext(requestedAgent);
     if (mainContextAnswer.type === "Fault")
       return { exitCode: EXIT_FAILURE, problemText: printFault(mainContextAnswer) };
     if (mainContextAnswer.type === "FaultsByFile") {
@@ -113,20 +100,11 @@ export class ContextCommand implements Command<typeof OPTIONS> {
       };
     }
 
-    const { contexts: compiledContexts } = mainContextAnswer.data;
-    if (compiledContexts.length === 0)
+    const { contexts } = mainContextAnswer.data;
+    if (contexts.length === 0)
       return {
         exitCode: EXIT_OK,
         resultText: 'No agent is chosen, so no agent loads anything of the charter. Run "cw init" to choose one.\n',
-      };
-    const contexts =
-      requestedAgent === undefined
-        ? compiledContexts
-        : compiledContexts.filter(({ data: { agent } }) => agent === requestedAgent);
-    if (contexts.length === 0)
-      return {
-        exitCode: EXIT_FAILURE,
-        problemText: `The repository does not compile for ${requestedAgent}, so nothing of it is loaded.\n  Name one it compiles for: ${compiledContexts.map(({ data: { agent } }) => agent).join(", ")}.\n`,
       };
 
     const loadLineOf = ({

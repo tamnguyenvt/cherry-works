@@ -272,6 +272,72 @@ test("the architecture guides name the use cases, repositories and services the 
   }
 });
 
+test("the architecture map names every operation of every driven port beside its port, the workspace's included (CORE Story 42 scenario 1)", () => {
+  // One item of the map's lists, with the lines it wraps onto: a port and its
+  // operations are named in one.
+  const architectureMapItems = guideTextById.get("architecture-map")!.split(/\n(?=\s*- )/);
+  const moduleFolderUrl = new URL("src/module/", repositoryUrl);
+  const drivenPortFileUrls = readdirSync(moduleFolderUrl, { withFileTypes: true })
+    .filter((moduleEntry) => moduleEntry.isDirectory())
+    .map((moduleEntry) => new URL(`${moduleEntry.name}/app/port/out/`, moduleFolderUrl))
+    .filter((portFolderUrl) => existsSync(portFolderUrl))
+    .flatMap((portFolderUrl) =>
+      readdirSync(portFolderUrl)
+        .filter((portFileName) => portFileName.endsWith(".port.ts"))
+        .map((portFileName) => new URL(portFileName, portFolderUrl)),
+    );
+  const unnamedOperations = drivenPortFileUrls.flatMap((portFileUrl) =>
+    [...readFileSync(portFileUrl, "utf8").matchAll(/^export interface (For\w+)[^{]*\{\n([\s\S]*?)^\}$/gm)].flatMap(
+      ([, portName, portBody]) =>
+        [...portBody!.matchAll(/^ {2}(?:readonly )?([a-z]\w*)\??\(/gm)]
+          .map((operationMatch) => operationMatch[1]!)
+          .filter(
+            (operationName) =>
+              !architectureMapItems.some(
+                (mapItem) => mapItem.includes(`\`${portName}\``) && mapItem.includes(`\`${operationName}\``),
+              ),
+          )
+          .map((operationName) => `${portName}.${operationName}`),
+    ),
+  );
+  assert.deepEqual(
+    unnamedOperations,
+    [],
+    "architecture-map does not name these driven-port operations beside their port",
+  );
+});
+
+test("no use case, service or model of a module, nor an agent's projection, reads cw's own layout of the charter: the store says where it is kept (CORE Story 55 scenario 24, SDK-FR-020)", () => {
+  const moduleFolderUrl = new URL("src/module/", repositoryUrl);
+  const hexagonFolderUrls = readdirSync(moduleFolderUrl, { withFileTypes: true })
+    .filter((moduleEntry) => moduleEntry.isDirectory())
+    .flatMap((moduleEntry) =>
+      ["app/", "domain/"].map((layerPath) => new URL(`${moduleEntry.name}/${layerPath}`, moduleFolderUrl)),
+    );
+  const projectionFolderUrls = ["claude/", "codex/"].map(
+    (agentPath) => new URL(`charter/infra/${agentPath}`, moduleFolderUrl),
+  );
+  const layoutReadingPaths = [...hexagonFolderUrls, ...projectionFolderUrls]
+    .filter((folderUrl) => existsSync(folderUrl))
+    .flatMap((folderUrl) =>
+      readdirSync(folderUrl, { recursive: true, encoding: "utf8" })
+        .filter((filePath) => filePath.endsWith(".ts") && !/\.probe\./.test(filePath))
+        .map((filePath) => new URL(filePath, folderUrl)),
+    )
+    // Where the layout is made, once, and the port lending it to the adapters.
+    .filter(
+      (fileUrl) =>
+        !fileUrl.pathname.endsWith("/charter/domain/constants.ts") &&
+        !fileUrl.pathname.endsWith("/charter/app/port/out/managing-charter.port.ts"),
+    )
+    .filter((fileUrl) =>
+      // Its name in code, a comment's words aside.
+      /\bcharterPath\b/.test(readFileSync(fileUrl, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")),
+    )
+    .map((fileUrl) => fileUrl.pathname.slice(moduleFolderUrl.pathname.length));
+  assert.deepEqual(layoutReadingPaths, []);
+});
+
 test("every file of src is named <kebab-subject>.<role>, but a model, a value object, an adapter's own model, helper.ts, index.ts, module.ts, the composition root and AGENTS.md (CORE Story 42 scenario 1, CORE Story 44, CORE Story 45)", () => {
   const sourceFolderUrl = new URL("src/", repositoryUrl);
   const misnamedPaths = readdirSync(sourceFolderUrl, { recursive: true, encoding: "utf8" })

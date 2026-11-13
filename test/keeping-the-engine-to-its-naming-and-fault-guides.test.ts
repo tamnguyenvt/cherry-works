@@ -368,6 +368,56 @@ test("a count is named a count, never as a list, and a binding renamed keeps the
   assert.deepEqual(countNamedAsListPlaces, []);
 });
 
+test("a binding holding an AgentProvider, or a list of them, is named for it, never agent alone, its type written or not (CORE Story 55, no-single-word-naming)", () => {
+  // Types are read as the compiler infers them: `(agent) =>` over a list of
+  // AgentProvider holds one though nothing names its type.
+  const sourceUrlByPath = new Map(sourcePaths.map((sourcePath) => [sourcePath, new URL(sourcePath, sourceFolderUrl)]));
+  const program = ts.createProgram(
+    [...sourceUrlByPath.values()].map((sourceUrl) => sourceUrl.pathname),
+    {
+      strict: true,
+      noEmit: true,
+      skipLibCheck: true,
+      module: ts.ModuleKind.NodeNext,
+      moduleResolution: ts.ModuleResolutionKind.NodeNext,
+      target: ts.ScriptTarget.ES2022,
+      jsx: ts.JsxEmit.ReactJSX,
+    },
+  );
+  const typeChecker = program.getTypeChecker();
+  const agentNamedPlaces = [...sourceUrlByPath].flatMap(([sourcePath, sourceUrl]) => {
+    const sourceFile = program.getSourceFile(sourceUrl.pathname)!;
+    return nodesOf(sourceFile).flatMap((node) => {
+      if (
+        !(
+          ts.isVariableDeclaration(node) ||
+          ts.isParameter(node) ||
+          ts.isBindingElement(node) ||
+          ts.isPropertyDeclaration(node) ||
+          ts.isPropertySignature(node)
+        ) ||
+        !(ts.isIdentifier(node.name) || ts.isPrivateIdentifier(node.name)) ||
+        isKeyOfOutsideShape(sourcePath, node)
+      )
+        return [];
+      const typeText = typeChecker.typeToString(
+        typeChecker.getNonNullableType(typeChecker.getTypeAtLocation(node.name)),
+      );
+      const bindingName = node.name.text.replace(/^#/, "");
+      if (typeText === "AgentProvider")
+        return /(?:^_?a|A)gentProvider$/.test(bindingName)
+          ? []
+          : [`${sourcePath}:${lineOf(sourceFile, node)} ${node.name.text} (no-single-word-naming)`];
+      if (/^(?:readonly )?AgentProvider\[\]$/.test(typeText))
+        return /(?:^a|A)gentProviders$/.test(bindingName)
+          ? []
+          : [`${sourcePath}:${lineOf(sourceFile, node)} ${node.name.text} (no-single-word-naming)`];
+      return [];
+    });
+  });
+  assert.deepEqual(agentNamedPlaces, []);
+});
+
 /** Whether an object's key is handed to a call before it is held by a name of
  *  the engine's own: the callee names it, as a transport's `fetch`, a prompt's
  *  `format` and a proxy's `get` are. */

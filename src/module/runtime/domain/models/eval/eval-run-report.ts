@@ -23,7 +23,7 @@ export class EvalCaseReport {
 export class EvalRunReport {
   constructor(
     readonly evalCaseReports: readonly EvalCaseReport[],
-    readonly agent: AgentProvider,
+    readonly agentProvider: AgentProvider,
   ) {}
 
   get totalTokens(): number {

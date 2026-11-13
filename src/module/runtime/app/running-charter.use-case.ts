@@ -239,7 +239,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
       if (agentCli === undefined || !("askAgent" in agentCli))
         throw new UnsupportedExactCountFault(
           `Counting exactly is not supported for ${agentProviderName} yet.`,
-          'Run "cw context" without --exact: the estimate needs nothing.',
+          'Run "cw context" with no agent named: the estimate needs nothing.',
           { internal: false },
         );
       const mainContextTextsAnswer = await this.#charterBuildingApp.readMainContextTexts();
@@ -250,13 +250,13 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
       if (agentTexts === undefined)
         throw new UnconfiguredExactCountAgentFault(
           `The repository does not compile for ${agentProviderName}, so there is nothing of it to count.`,
-          `Run "cw init" and add ${agentProviderName} to the settings, or name an agent it compiles for.`,
+          `Run "cw init" and add ${agentProviderName} to the settings, or name an agent it compiles for; or run "cw context" with no agent named: the estimate needs nothing.`,
           { internal: false },
         );
       if (!(await agentCli.isInstalled()))
         throw new MissingAgentCliFault(
           `Counting exactly runs ${agentProviderName}'s own command line, and it is not installed here.`,
-          'Run "cw context" without --exact: the estimate needs nothing.',
+          'Run "cw context" with no agent named: the estimate needs nothing.',
           { internal: false },
         );
       const mainContextsAnswer = await this.#charterBuildingApp.predictMainContext();
@@ -310,7 +310,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
         });
       const { totalDifferenceRatio } = mainContextCount;
       return RuntimeDTOs.MainContext.of({
-        agent: mainContextCount.agent.name,
+        agent: mainContextCount.agentProvider.name,
         sessionLoads: mainContextCount.sessionLoadCounts.map(mainContextLoadDTOOf),
         fileLoads: mainContextCount.fileLoadCounts.map(mainContextLoadDTOOf),
         totalTokens: mainContextCount.exactTotalTokens,
@@ -534,7 +534,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
           }),
       ),
       totalTokens: evalRunReport.totalTokens,
-      agent: evalRunReport.agent.name,
+      agent: evalRunReport.agentProvider.name,
     });
   }
 }

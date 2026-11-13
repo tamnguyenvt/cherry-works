@@ -13,7 +13,8 @@ import { buildCharterService } from "../src/module/charter/app/services/build-ch
 import { installCharterService } from "../src/module/charter/app/services/install-charter.service.js";
 import { loadCharterService } from "../src/module/charter/app/services/load-charter.service.js";
 import { loadMcpOriginsService } from "../src/module/charter/app/services/load-mcp-origins.service.js";
-import type { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
+import { charterPath } from "../src/module/charter/domain/constants.js";
+import { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
 import { PrimitiveFactory } from "../src/module/charter/domain/models/primitive/primitive.factory.js";
 import type { Primitive } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
@@ -40,6 +41,7 @@ import type { ForReadingFiles } from "../src/module/shared/app/port/out/reading-
 import type { ForReportingProgress } from "../src/module/shared/app/port/out/reporting-progress.port.js";
 import type { ForTellingTime } from "../src/module/shared/app/port/out/telling-time.port.js";
 import type { ForWritingFiles } from "../src/module/shared/app/port/out/writing-files.port.js";
+import { FaultsByFile } from "../src/module/shared/domain/models/fault/faults-by-file.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { SystemClock } from "../src/module/shared/infra/system-clock.adapter.js";
@@ -349,6 +351,12 @@ export function reviewingSessionsOf(
  *  as kept, or the headers and body an author answered. */
 export function readPrimitive(contents: RawPrimitive["contents"]): Primitive {
   return PrimitiveFactory.create(new RawPrimitive(PrimitiveLayer.REPO, "", "", contents, [], ""));
+}
+
+/** These primitives held as one charter, nothing wrong with any file of it,
+ *  kept where `cw` keeps its own: what a rule of the charter is asked of. */
+export function charterRootOf(primitives: readonly Primitive[]): CharterRoot {
+  return new CharterRoot(primitives, FaultsByFile.emptyFaultsByFile, {}, charterPath.charterFolderPath);
 }
 
 /** What the repository a test holds configured itself with, as the portal is

@@ -163,7 +163,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
   }
 
   /** Whether this primitive is available to an agent. No restriction means all. */
-  supportsAgent(_agent: AgentProvider): boolean {
+  supportsAgent(_agentProvider: AgentProvider): boolean {
     return true;
   }
 

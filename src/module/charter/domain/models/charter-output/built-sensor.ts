@@ -22,8 +22,8 @@ export class BuiltSensor {
 export class BuiltSensors extends CharterOutputItem {
   /** The one command an agent is given for a signal its charter's sensors fire
    *  on, whichever agent: `cw` runs every one of them (FR-175). */
-  getRunCommand(signal: string, agent?: AgentProvider): string {
-    return `cw sensor run ${signal}${agent === undefined ? "" : ` --agent ${agent.name}`}`;
+  getRunCommand(signal: string, agentProvider?: AgentProvider): string {
+    return `cw sensor run ${signal}${agentProvider === undefined ? "" : ` --agent ${agentProvider.name}`}`;
   }
 
   constructor(readonly sensors: readonly BuiltSensor[]) {
@@ -31,14 +31,14 @@ export class BuiltSensors extends CharterOutputItem {
   }
 
   /** Select only sensors that support the agent raising the signal. */
-  filterForAgent(agent: AgentProvider): BuiltSensors {
+  filterForAgent(raisingAgentProvider: AgentProvider): BuiltSensors {
     return new BuiltSensors(
       this.sensors.filter((builtSensor) => {
         const agentProviders = builtSensor["agent-provider"];
         return (
           agentProviders === undefined ||
           agentProviders.length === 0 ||
-          agentProviders.some((agentProvider) => agentProvider.name === agent.name)
+          agentProviders.some((agentProvider) => agentProvider.name === raisingAgentProvider.name)
         );
       }),
     );

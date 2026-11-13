@@ -22,7 +22,7 @@ export class Catalogue extends CharterOutputItem {
   /** Entries in the order they are to be listed: by id (SC-007). */
   constructor(
     readonly entries: readonly CatalogueEntry[],
-    readonly agent?: AgentProvider,
+    readonly agentProvider?: AgentProvider,
   ) {
     super();
   }
@@ -31,7 +31,7 @@ export class Catalogue extends CharterOutputItem {
    *  read in diffs, and a listing whose entries land one per line says what
    *  changed in the charter rather than that the listing changed. */
   get text(): string {
-    const agentName = this.agent?.name;
+    const agentName = this.agentProvider?.name;
     const catalogueEntries = this.entries
       .filter((catalogueEntry) =>
         agentName === undefined
@@ -53,7 +53,7 @@ export class Catalogue extends CharterOutputItem {
   filterByKind(kind: string): Catalogue {
     return new Catalogue(
       this.entries.filter((catalogueEntry) => catalogueEntry.kind === kind),
-      this.agent,
+      this.agentProvider,
     );
   }
 }

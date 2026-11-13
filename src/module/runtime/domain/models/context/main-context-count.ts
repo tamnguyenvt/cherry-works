@@ -42,7 +42,7 @@ export class MainContextCount {
   readonly fileLoadCounts: readonly MainContextLoadCount[];
 
   constructor(
-    readonly agent: AgentProvider,
+    readonly agentProvider: AgentProvider,
     loadCounts: readonly MainContextLoadCount[],
   ) {
     const loadCountsLargestFirst = [...loadCounts].sort(

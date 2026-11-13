@@ -83,10 +83,7 @@ export class FileCharterRepository implements ForManagingCharter {
     const findFileAddress = (path: string) => this.#fileReader.findFileAddress(path);
     return [
       ...readRawPrimitives(keptFiles, `${charterPath.primitivesFolderPath}/`, PrimitiveLayer.REPO, findFileAddress),
-      ...VendorRootFactory.create(
-        keptFiles.map(({ path }) => path),
-        findFileAddress,
-      ).vendors.flatMap(({ name }) =>
+      ...this.#readVendorRoot(keptFiles.map(({ path }) => path)).vendors.flatMap(({ name }) =>
         readRawPrimitives(
           keptFiles,
           `${charterPath.vendorsFolderPath}/${name}/${charterPath.primitivesFolderName}/`,
@@ -333,9 +330,7 @@ export class FileCharterRepository implements ForManagingCharter {
       ...(await this.#fileReader.listFiles(folderPath)).map(({ path }) => path),
       ...(await Promise.all((await this.#fileReader.listFolders(folderPath)).map(listFilePathsUnder))).flat(),
     ];
-    return VendorRootFactory.create(await listFilePathsUnder(charterPath.vendorsFolderPath), (folderPath) =>
-      this.#fileReader.findFileAddress(folderPath),
-    );
+    return this.#readVendorRoot(await listFilePathsUnder(charterPath.vendorsFolderPath));
   }
 
   async storeVendor(vendorSource: VendorSource): Promise<void> {
@@ -451,6 +446,19 @@ export class FileCharterRepository implements ForManagingCharter {
   async removeEvalSuite(name: string): Promise<void> {
     await assertNewLayout(this.#fileReader);
     await this.#fileWriter.deleteFile(`${charterPath.evalFolderPath}/${name}`);
+  }
+
+  /** The vendors these kept files make, each file's path handed from the
+   *  vendor folder and each vendor's uri said in this store's words. */
+  #readVendorRoot(keptFilePaths: readonly string[]): VendorRoot {
+    const vendorPathPrefix = `${charterPath.vendorsFolderPath}/`;
+    return VendorRootFactory.create(
+      keptFilePaths
+        .filter((filePath) => filePath.startsWith(vendorPathPrefix))
+        .map((filePath) => filePath.slice(vendorPathPrefix.length)),
+      charterPath.primitivesFolderName,
+      (vendorFolderPath) => this.#fileReader.findFileAddress(`${vendorPathPrefix}${vendorFolderPath}`),
+    );
   }
 
   /** Where a primitive of the repository's own layer is kept. */

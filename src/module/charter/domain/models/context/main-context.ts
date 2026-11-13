@@ -49,7 +49,7 @@ export class MainContext {
   readonly fileLoads: readonly MainContextLoad[];
 
   constructor(
-    readonly agent: AgentProvider,
+    readonly agentProvider: AgentProvider,
     loads: readonly MainContextLoad[],
     readonly isExact: boolean,
   ) {

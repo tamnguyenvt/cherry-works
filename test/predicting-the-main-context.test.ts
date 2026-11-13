@@ -149,12 +149,12 @@ test("the prediction lists what a session opens with, the largest first, with it
 });
 
 // How close the scaled count comes to the real agent's (EVAL-SC-002) is
-// measured against the real `claude` by `cw context --exact --agent=claude`, never here.
+// measured against the real `claude` by `cw context --agent=claude`, never here.
 test("the estimate is the tokenizer's count scaled to the agent's own (EVAL-FR-002)", async () => {
   const agentCli = new InMemoryAgentCli();
   const { cli } = surfaces(holding(), agentCli);
   // The text a skill puts there, as the agent's command line was handed it.
-  await printed(cli, ["context", "--exact", "--agent=claude"]);
+  await printed(cli, ["context", "--agent=claude"]);
   const refactoringPrompt = agentCli.prompts.find((prompt) => prompt.startsWith("refactoring:"))!;
 
   const { text } = await printed(cli, ["context"]);
@@ -258,7 +258,7 @@ test("counted exactly for the agent named, each primitive is listed with its est
   const { cli } = surfaces(holding(), agentCli);
   const { text: estimatedText } = await printed(cli, ["context"]);
 
-  const { code, text } = await printed(cli, ["context", "--exact", "--agent=claude"]);
+  const { code, text } = await printed(cli, ["context", "--agent=claude"]);
 
   assert.equal(code, EXIT_OK);
   assert.match(text, /claude opens a session with, estimated and counted exactly by claude:/);
@@ -306,7 +306,7 @@ test("totals more than 15% apart are warned of, and the count still succeeds (CO
   // Two tokens a word, against the estimate's 1.43: far past 15%.
   const { cli } = surfaces(holding(), new InMemoryAgentCli());
 
-  const { code, problem } = await printed(cli, ["context", "--exact", "--agent=claude"]);
+  const { code, problem } = await printed(cli, ["context", "--agent=claude"]);
 
   assert.equal(code, EXIT_OK);
   assert.match(problem, /The estimate is [\d.]+% from the exact count, past the 15% EVAL-SC-002 allows\./);
@@ -315,76 +315,61 @@ test("totals more than 15% apart are warned of, and the count still succeeds (CO
 test("totals within 15% are said to be within it, and no warning is said (CORE Story 55 scenario 34, EVAL-FR-004, EVAL-SC-002)", async () => {
   const { cli } = surfaces(holding(), new CloseAgentCli());
 
-  const { code, text, problem } = await printed(cli, ["context", "--exact", "--agent=claude"]);
+  const { code, text, problem } = await printed(cli, ["context", "--agent=claude"]);
 
   assert.equal(code, EXIT_OK);
   assert.equal(problem, "");
   assert.match(text, /Within the 15% EVAL-SC-002 allows\./);
 });
 
-test("counted exactly with no agent named is refused, naming --agent, and nothing is counted (CORE Story 55 scenario 35, EVAL-FR-004)", async () => {
+test("with no agent named, the estimate is listed alone, and no agent's command line is run (CORE Story 55 scenario 35, EVAL-FR-004)", async () => {
   const agentCli = new InMemoryAgentCli();
-  const { cli } = surfaces(holding(), agentCli);
+  const { cli } = surfaces(holding({ agents: ["claude", "codex"] }), agentCli);
 
-  const { code, text, problem } = await printed(cli, ["context", "--exact"]);
+  const { code, text, problem } = await printed(cli, ["context"]);
 
-  assert.equal(code, EXIT_FAILURE);
-  assert.equal(text, "");
-  assert.match(problem, /--agent/);
+  assert.equal(code, EXIT_OK);
+  assert.equal(problem, "");
+  assert.match(text, /claude opens a session with:/);
+  assert.match(text, /codex opens a session with:/);
+  assert.match(text, /in all, estimated/);
+  assert.doesNotMatch(text, /exact/);
   assert.deepEqual(agentCli.prompts, []);
 });
 
-test("counted exactly with no command line installed is refused, saying the estimate needs nothing (EVAL-FR-004)", async () => {
+test("counted exactly with no command line installed is refused, saying the estimate needs nothing (CORE Story 55 scenario 36, EVAL-FR-004)", async () => {
   const agentCli = new InMemoryAgentCli(false);
   const { cli } = surfaces(holding(), agentCli);
 
-  const { code, problem } = await printed(cli, ["context", "--exact", "--agent=claude"]);
+  const { code, problem } = await printed(cli, ["context", "--agent=claude"]);
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problem, /not installed/);
-  assert.match(problem, /without --exact/);
+  assert.match(problem, /"cw context" with no agent named: the estimate needs nothing/);
   assert.deepEqual(agentCli.prompts, []);
 });
 
-test("counted exactly for an agent it cannot count through is refused, saying the estimate needs nothing (EVAL-FR-004)", async () => {
+test("counted exactly for an agent it cannot count through is refused, saying the estimate needs nothing (CORE Story 55 scenario 36, EVAL-FR-004)", async () => {
   const agentCli = new InMemoryAgentCli();
   const { cli } = surfaces(holding({ agents: ["claude", "codex"] }), agentCli);
 
-  const { code, problem } = await printed(cli, ["context", "--exact", "--agent=codex"]);
+  const { code, problem } = await printed(cli, ["context", "--agent=codex"]);
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problem, /not supported for codex yet/);
-  assert.match(problem, /without --exact/);
+  assert.match(problem, /"cw context" with no agent named: the estimate needs nothing/);
   assert.deepEqual(agentCli.prompts, []);
 });
 
-test("counted exactly for an agent the repository does not compile for is refused, and nothing is counted (EVAL-FR-004)", async () => {
+test("counted exactly for an agent the repository does not compile for is refused, saying the estimate needs nothing, and nothing is counted (CORE Story 55 scenario 36, EVAL-FR-004)", async () => {
   const agentCli = new InMemoryAgentCli();
   const { cli } = surfaces(holding({ agents: ["codex"] }), agentCli);
 
-  const { code, problem } = await printed(cli, ["context", "--exact", "--agent=claude"]);
+  const { code, problem } = await printed(cli, ["context", "--agent=claude"]);
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problem, /does not compile for claude/);
-  assert.deepEqual(agentCli.prompts, []);
-});
-
-test("an agent named without --exact narrows the estimate to that agent, and one not compiled for is refused (EVAL-FR-001)", async () => {
-  const agentCli = new InMemoryAgentCli();
-  const { cli } = surfaces(holding({ agents: ["claude", "codex"] }), agentCli);
-
-  const { code, text } = await printed(cli, ["context", "--agent=codex"]);
-  const { code: uncompiledCode, problem: uncompiledProblem } = await printed(
-    surfaces(holding({ agents: ["codex"] }), agentCli).cli,
-    ["context", "--agent=claude"],
-  );
-
-  assert.equal(code, EXIT_OK);
-  assert.match(text, /codex opens a session with:/);
-  assert.doesNotMatch(text, /claude opens/);
-  assert.match(text, /in all, estimated/);
-  assert.equal(uncompiledCode, EXIT_FAILURE);
-  assert.match(uncompiledProblem, /does not compile for claude/);
+  assert.match(problem, /"cw context" with no agent named: the estimate needs nothing/);
   assert.deepEqual(agentCli.prompts, []);
 });
 

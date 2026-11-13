@@ -31,7 +31,7 @@ export class OutputPath {
 
   /** Where this item lands inside the output, by what it is. */
   getPath(charterOutputItem: CharterOutputItem): string {
-    if (charterOutputItem instanceof Catalogue) return this.getCatalogueFileName(charterOutputItem.agent?.name);
+    if (charterOutputItem instanceof Catalogue) return this.getCatalogueFileName(charterOutputItem.agentProvider?.name);
     if (charterOutputItem instanceof CharterMd) return this.charterMdFileName;
     if (charterOutputItem instanceof McpOrigins) return this.mcpOriginsFileName;
     if (charterOutputItem instanceof BuiltSensors) return this.sensorsFileName;

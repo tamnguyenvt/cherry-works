@@ -421,19 +421,37 @@ test("a build's plan is the domain's own, every file in it one of its planned fi
   assert.ok([...buildPlan.cleanupPlan, ...buildPlan.writePlans].every((writePlan) => writePlan instanceof WritePlan));
 });
 
-test("what each agent is told to edit names where a store of a test's own keeps the charter, never cw's own layout (CORE Story 55 scenario 24)", async () => {
-  const fileReaders = new InMemoryFileReaders({});
+test("what each agent is told to edit names where a store of a test's own keeps the charter, never cw's own layout, for every projection composed (CORE Story 55 scenario 24)", async () => {
   const { charterRepository, rawPrimitiveByKey } = charterKeptWithNoPath();
   rawPrimitiveByKey.delete("guide/broken-guide");
-  const { charterRuntimeApp } = charterAppsOver(charterRepository, { agents: ["claude", "codex"] }, fileReaders);
+  const composedAgentNames = Object.keys(agentProjectionByProviderOf(new InMemoryFileReaders({})));
+  assert.ok(composedAgentNames.length > 1, "fewer than two projections are composed");
 
-  answerTyped(await charterRuntimeApp.buildCharter(), "ProjectionPlanSummary");
+  for (const agentName of composedAgentNames) {
+    const fileReaders = new InMemoryFileReaders({});
+    const { charterRuntimeApp } = charterAppsOver(charterRepository, { agents: [agentName] }, fileReaders);
 
-  // The entry file of each agent, and the charter file every agent is sent to.
-  for (const toldFilePath of ["CLAUDE.md", "AGENTS.md", ".cw/out/CHARTER.md"]) {
-    const toldText = (await fileReaders.readIfThere(toldFilePath)) ?? "";
-    assert.match(toldText, /`db:\/\/charter\/`/, toldFilePath);
-    assert.doesNotMatch(toldText, /\.cw\/charter/, toldFilePath);
+    answerTyped(await charterRuntimeApp.buildCharter(), "ProjectionPlanSummary");
+
+    // Every file the build laid for this agent: the charter file every agent
+    // is sent to and one of the agent's own say where to edit, and neither it
+    // nor any of the agent's own names cw's layout.
+    const laidFiles = await fileReaders.readFilesRecursively("");
+    const toldFilePaths = laidFiles
+      .filter(({ contents }) => /`db:\/\/charter\/`/.test(contents))
+      .map(({ fileUrl }) => fileUrl.pathname);
+    assert.ok(
+      toldFilePaths.some((toldFilePath) => toldFilePath.endsWith("/.cw/out/CHARTER.md")),
+      `${agentName}: CHARTER.md names no place to edit`,
+    );
+    assert.ok(
+      toldFilePaths.some((toldFilePath) => !toldFilePath.includes("/.cw/out/")),
+      `${agentName}: no file of its own names the place to edit`,
+    );
+    for (const { fileUrl, contents } of laidFiles.filter(
+      ({ fileUrl }) => !fileUrl.pathname.includes("/.cw/out/") || fileUrl.pathname.endsWith("/.cw/out/CHARTER.md"),
+    ))
+      assert.doesNotMatch(contents, /\.cw\/charter/, `${agentName}: ${fileUrl.pathname}`);
   }
 });
 

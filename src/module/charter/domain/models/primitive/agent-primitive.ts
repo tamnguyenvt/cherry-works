@@ -57,9 +57,9 @@ export class AgentPrimitive extends BasePrimitive {
 
   /** The model this agent runs it on, as this agent names it; none where its
    *  model is named for another agent, or not at all. */
-  modelOf(provider: AgentProvider): string | undefined {
+  modelOf(agentProvider: AgentProvider): string | undefined {
     const [, modelProvider, model] = this.headers.model?.match(MODEL_REFERENCE) ?? [];
-    return modelProvider === provider.name ? model : undefined;
+    return modelProvider === agentProvider.name ? model : undefined;
   }
 
   /** One agent, or every fault its headers have (FR-004). */

@@ -1,4 +1,3 @@
-import { charterPath } from "../../constants.js";
 import { OldVendorLayoutFault } from "../charter.fault.js";
 import { Primitives } from "../primitive/primitive.js";
 import { VendorRoot } from "./vendor-root.js";
@@ -10,30 +9,30 @@ const VENDOR_NAME_DEPTH = 3;
  *  under its vendor folder. */
 export class VendorRootFactory {
   /**
-   * Each vendor at `<owner>/<repository>/<name>/primitive/` under the vendor
-   * folder, named by those three folders (FR-050, CORE-FR-196).
+   * Each vendor at `<owner>/<repository>/<name>/<primitives folder>/` under
+   * the vendor folder, named by those three folders (FR-050, CORE-FR-196).
+   * The store keeping them hands each file's path from its vendor folder, the
+   * folder a vendor keeps its primitives in, and `uriOf`: where a folder under
+   * the vendor folder is kept, in its keeper's words, said back and never read.
    *
    * A file kept anywhere else is a vendor installed the way an earlier
    * version laid one, refused naming the folder to take away before it is
    * installed again: nothing of it is read as a vendor.
-   *
-   * `uriOf` says where a folder is kept, in its keeper's words: said back,
-   * never read.
    */
-  static create(vendorFilePaths: readonly string[], uriOf: (folderPath: string) => string): VendorRoot {
-    const vendorPathPrefix = `${charterPath.vendorsFolderPath}/`;
+  static create(
+    vendorFilePaths: readonly string[],
+    primitivesFolderName: string,
+    uriOf: (vendorFolderPath: string) => string,
+  ): VendorRoot {
     // A file kept right in the vendor folder, its `.gitkeep`, is no vendor's.
-    const pathsUnderVendor = vendorFilePaths
-      .filter((filePath) => filePath.startsWith(vendorPathPrefix))
-      .map((filePath) => filePath.slice(vendorPathPrefix.length))
-      .filter((filePath) => filePath.includes("/"));
+    const pathsUnderVendor = vendorFilePaths.filter((filePath) => filePath.includes("/"));
 
     const oldFolderNames = [
       ...new Set(
         pathsUnderVendor
           .filter(
             (filePath) =>
-              filePath.split("/")[VENDOR_NAME_DEPTH] !== charterPath.primitivesFolderName ||
+              filePath.split("/")[VENDOR_NAME_DEPTH] !== primitivesFolderName ||
               filePath.split("/").length <= VENDOR_NAME_DEPTH + 1,
           )
           // A kind's folder right under the first is a vendor named by that
@@ -48,7 +47,7 @@ export class VendorRootFactory {
     ].sort();
     if (oldFolderNames.length > 0)
       throw new OldVendorLayoutFault(
-        `${oldFolderNames.map((folderName) => `${charterPath.vendorsFolderPath}/${folderName}`).join(", ")} ${oldFolderNames.length === 1 ? "is" : "are"} laid out the way an earlier version installed a vendor, not as <owner>/<repository>/<name>/${charterPath.primitivesFolderName}/.`,
+        `${oldFolderNames.map(uriOf).join(", ")} ${oldFolderNames.length === 1 ? "is" : "are"} laid out the way an earlier version installed a vendor, not as <owner>/<repository>/<name>/${primitivesFolderName}/.`,
         `Delete ${oldFolderNames.length === 1 ? "it" : "them"}, then install each source again with "cw vendor add".`,
         { internal: false },
       );
@@ -56,12 +55,7 @@ export class VendorRootFactory {
     const vendorNames = [
       ...new Set(pathsUnderVendor.map((filePath) => filePath.split("/").slice(0, VENDOR_NAME_DEPTH).join("/"))),
     ].sort();
-    return new VendorRoot(
-      vendorNames.map((vendorName) => ({
-        name: vendorName,
-        uri: uriOf(`${charterPath.vendorsFolderPath}/${vendorName}`),
-      })),
-    );
+    return new VendorRoot(vendorNames.map((vendorName) => ({ name: vendorName, uri: uriOf(vendorName) })));
   }
 
   private constructor() {}

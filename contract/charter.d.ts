@@ -3235,7 +3235,7 @@ declare abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeade
      *  did not know how it was written (FR-114). */
     hasWord(word: string): boolean;
     /** Whether this primitive is available to an agent. No restriction means all. */
-    supportsAgent(_agent: AgentProvider): boolean;
+    supportsAgent(_agentProvider: AgentProvider): boolean;
     /** Which kind this is. Each class declares it as a literal, and those
      *  literals are where `Kind` comes from. */
     abstract readonly kind: string;
@@ -3349,7 +3349,7 @@ declare class AgentPrimitive extends BasePrimitive {
     get modelProvider(): string | undefined;
     /** The model this agent runs it on, as this agent names it; none where its
      *  model is named for another agent, or not at all. */
-    modelOf(provider: AgentProvider): string | undefined;
+    modelOf(agentProvider: AgentProvider): string | undefined;
     /** One agent, or every fault its headers have (FR-004). */
     static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): AgentPrimitive;
 }
@@ -3581,7 +3581,7 @@ declare abstract class AgentBasedPrimitive<Headers extends AgentBasedHeaders = A
         mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
         "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
     }, z.core.$strip>;
-    supportsAgent(agent: AgentProvider): boolean;
+    supportsAgent(agentProvider: AgentProvider): boolean;
 }
 
 /** What the agent may and may not do, as permission lists (FR-004). */
@@ -4602,7 +4602,7 @@ declare class CharterRoot {
     readonly primitiveLayerByUri: Readonly<Record<string, PrimitiveLayer>>;
     /** Where an author edits this charter, in the words of the store keeping
      *  it: what each agent is told to edit, never read off `cw`'s own layout
-     *  (SDK-FR-020, CORE-FR-213). Nothing where no store kept it. */
+     *  (SDK-FR-020, CORE-FR-213). */
     readonly charterPlace: string;
     constructor(
     /** Every primitive this charter holds, whichever layer authored it: what
@@ -4619,11 +4619,11 @@ declare class CharterRoot {
     faultsByFiles: FaultsByFile, 
     /** The layer of everything kept, read as a primitive or not, by where it is
      *  kept: what a fault under it is weighed by (FR-005). */
-    primitiveLayerByUri?: Readonly<Record<string, PrimitiveLayer>>, 
+    primitiveLayerByUri: Readonly<Record<string, PrimitiveLayer>>, 
     /** Where an author edits this charter, in the words of the store keeping
      *  it: what each agent is told to edit, never read off `cw`'s own layout
-     *  (SDK-FR-020, CORE-FR-213). Nothing where no store kept it. */
-    charterPlace?: string);
+     *  (SDK-FR-020, CORE-FR-213). */
+    charterPlace: string);
     /** Everything wrong with this charter, under the file that has to change: the
      *  files that could not be read as a primitive at all, and what the ones that
      *  were read get wrong together. The two never name one file — a file reading
@@ -4937,10 +4937,10 @@ declare class BuiltSensors extends CharterOutputItem {
     readonly sensors: readonly BuiltSensor[];
     /** The one command an agent is given for a signal its charter's sensors fire
      *  on, whichever agent: `cw` runs every one of them (FR-175). */
-    getRunCommand(signal: string, agent?: AgentProvider): string;
+    getRunCommand(signal: string, agentProvider?: AgentProvider): string;
     constructor(sensors: readonly BuiltSensor[]);
     /** Select only sensors that support the agent raising the signal. */
-    filterForAgent(agent: AgentProvider): BuiltSensors;
+    filterForAgent(raisingAgentProvider: AgentProvider): BuiltSensors;
     /** What it holds: generated, and the charter's alone. Indented, since it is
      *  committed and read in diffs when a sensor's command changes. */
     get text(): string;
@@ -4968,9 +4968,9 @@ declare class BuiltSensors extends CharterOutputItem {
  */
 declare class Catalogue extends CharterOutputItem {
     readonly entries: readonly CatalogueEntry[];
-    readonly agent?: AgentProvider | undefined;
+    readonly agentProvider?: AgentProvider | undefined;
     /** Entries in the order they are to be listed: by id (SC-007). */
-    constructor(entries: readonly CatalogueEntry[], agent?: AgentProvider | undefined);
+    constructor(entries: readonly CatalogueEntry[], agentProvider?: AgentProvider | undefined);
     /** What it holds: the charter's own. Indented, since it is committed and
      *  read in diffs, and a listing whose entries land one per line says what
      *  changed in the charter rather than that the listing changed. */

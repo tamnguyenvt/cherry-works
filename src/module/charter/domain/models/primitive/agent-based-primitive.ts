@@ -15,8 +15,8 @@ export abstract class AgentBasedPrimitive<
 
   static override readonly schema = this.headersSchema();
 
-  override supportsAgent(agent: AgentProvider): boolean {
+  override supportsAgent(agentProvider: AgentProvider): boolean {
     const agentProviders = this.headers["agent-provider"];
-    return !agentProviders?.length || agentProviders.includes(agent.name);
+    return !agentProviders?.length || agentProviders.includes(agentProvider.name);
   }
 }

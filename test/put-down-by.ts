@@ -23,8 +23,13 @@ export async function putDownBy(
     await localRepo.createProjectionPlan(output),
     ...(await Promise.all(
       output.charterOutputItems.flatMap((charterOutputItem) =>
-        charterOutputItem instanceof Catalogue && charterOutputItem.agent !== undefined
-          ? [agentProjectionByProvider[charterOutputItem.agent.name]!.createAgentProjectionPlan(charter, output)]
+        charterOutputItem instanceof Catalogue && charterOutputItem.agentProvider !== undefined
+          ? [
+              agentProjectionByProvider[charterOutputItem.agentProvider.name]!.createAgentProjectionPlan(
+                charter,
+                output,
+              ),
+            ]
           : [],
       ),
     )),

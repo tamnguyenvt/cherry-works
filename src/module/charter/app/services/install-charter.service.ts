@@ -1,4 +1,4 @@
-import { charterPath, vendorSourcePath } from "../../domain/constants.js";
+import { vendorSourcePath } from "../../domain/constants.js";
 import { ReservedCharterNameFault, UnexpectedSourceShapeFault } from "../../domain/models/charter.fault.js";
 import { Primitives } from "../../domain/models/primitive/primitive.js";
 import { type SourceCharter, VendorSource } from "../../domain/models/vendor/vendor-source.js";
@@ -40,14 +40,14 @@ export class InstallCharterService {
     const heldCharterNames = vendorSource.charters.map(({ name }) => name);
     const hasOwnCharter = ownCharter !== undefined;
     const heldShapes = [
-      ...(hasOwnCharter ? [`a charter in "${charterPath.charterFolderPath}"`] : []),
+      ...(hasOwnCharter ? [`a charter in "${vendorSourcePath.ownCharterFolderPath}"`] : []),
       ...(heldCharterNames.length > 0 ? [`charters under "${vendorSourcePath.chartersFolderPath}/"`] : []),
       ...(vendorSource.hasSkills ? [`skills under "${vendorSourcePath.skillsFolderPath}/"`] : []),
     ];
     if (heldShapes.length === 0)
       throw new UnexpectedSourceShapeFault(
-        `${sourceUri} has no "${charterPath.charterFolderPath}" and no ${vendorSourcePath.skillFileName} under "${vendorSourcePath.skillsFolderPath}/", nor any charter under "${vendorSourcePath.chartersFolderPath}/".`,
-        `Check that the source holds "${charterPath.charterFolderPath}", charters under "${vendorSourcePath.chartersFolderPath}/" each in a folder holding its "${charterPath.charterFolderPath}", or skills under "${vendorSourcePath.skillsFolderPath}/" each in a folder holding its ${vendorSourcePath.skillFileName}, at the version asked for.`,
+        `${sourceUri} has no "${vendorSourcePath.ownCharterFolderPath}" and no ${vendorSourcePath.skillFileName} under "${vendorSourcePath.skillsFolderPath}/", nor any charter under "${vendorSourcePath.chartersFolderPath}/".`,
+        `Check that the source holds "${vendorSourcePath.ownCharterFolderPath}", charters under "${vendorSourcePath.chartersFolderPath}/" each in a folder holding its "${vendorSourcePath.ownCharterFolderPath}", or skills under "${vendorSourcePath.skillsFolderPath}/" each in a folder holding its ${vendorSourcePath.skillFileName}, at the version asked for.`,
         { internal: false },
       );
     if (selectedCharterNames.length > 0 && heldCharterNames.length === 0)
@@ -110,8 +110,8 @@ export class InstallCharterService {
         );
       if (!sourceCharter.hasCharter)
         throw new UnexpectedSourceShapeFault(
-          `"${sourceCharter.uri}" holds no "${charterPath.charterFolderPath}".`,
-          `Pick a charter whose folder holds "${charterPath.charterFolderPath}": ${heldCharterNames.filter((heldCharterName) => heldCharterName !== sourceCharter.name).join(", ")}.`,
+          `"${sourceCharter.uri}" holds no "${vendorSourcePath.ownCharterFolderPath}".`,
+          `Pick a charter whose folder holds "${vendorSourcePath.ownCharterFolderPath}": ${heldCharterNames.filter((heldCharterName) => heldCharterName !== sourceCharter.name).join(", ")}.`,
           { internal: false },
         );
       assertOneLevelDeep(sourceCharter);

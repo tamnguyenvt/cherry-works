@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { charterPath, vendorSourcePath } from "../src/module/charter/domain/constants.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
@@ -121,6 +122,12 @@ test("a version is what the source is pinned to", async () => {
 
   assert.equal(sourceFetcher.fetchedSources[0]?.version, "v1.2.0");
   assert.match(commandOutput, /v1\.2\.0/);
+});
+
+test("a source's own charter is where the store reads it, the folder a refusal of its shape names (CORE Story 2 scenario 4, CORE-FR-042)", () => {
+  // The store reads a source as a repository set up by cw is laid out; the
+  // source's layout says that folder again for the use case's refusals.
+  assert.equal(vendorSourcePath.ownCharterFolderPath, charterPath.charterFolderPath);
 });
 
 test("a source holding neither a charter folder nor a skill at the version asked for is refused as holding neither, saying how to make it one, and nothing is installed (CORE Story 2 scenario 4, CORE-FR-042, CORE Story 55 scenario 8)", async () => {

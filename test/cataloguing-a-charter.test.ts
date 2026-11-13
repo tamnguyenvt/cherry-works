@@ -122,8 +122,9 @@ test("the output keeps shared entries in catalogue and restricted entries only i
   const catalogues = charterOutput.charterOutputItems.filter(
     (charterOutputItem): charterOutputItem is Catalogue => charterOutputItem instanceof Catalogue,
   );
-  const sharedCatalogue = catalogues.find((catalogue) => catalogue.agent === undefined)!;
-  const catalogueOfAgent = (agentName: string) => catalogues.find((catalogue) => catalogue.agent?.name === agentName);
+  const sharedCatalogue = catalogues.find((catalogue) => catalogue.agentProvider === undefined)!;
+  const catalogueOfAgent = (agentName: string) =>
+    catalogues.find((catalogue) => catalogue.agentProvider?.name === agentName);
 
   assert.ok(sharedCatalogue.entries.every((catalogueEntry) => catalogueEntry.agentProviders === "all"));
   assert.ok(!sharedCatalogue.entries.some((catalogueEntry) => catalogueEntry.id === sensorId));

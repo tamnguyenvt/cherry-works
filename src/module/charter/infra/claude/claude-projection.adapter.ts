@@ -28,7 +28,7 @@ const CLAUDE_PLACE_BY_KIND: Readonly<Record<string, (id: string) => string>> = {
  * How many of claude's tokens one token of the tokenizer on this machine
  * stands for: what the estimate is scaled by to come within 15% of an exact
  * count (EVAL-SC-002). Fitted on an earlier state of this repository's
- * charter; `cw context --exact --agent=claude` checks it against the real `claude`.
+ * charter; `cw context --agent=claude` checks it against the real `claude`.
  */
 const CLAUDE_TOKEN_FACTOR = 1.43;
 

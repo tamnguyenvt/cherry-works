@@ -26,7 +26,8 @@ composition root's `composition.ts` and `main.ts` keep their bare names; a value
   its applications, ports, DTOs, the models its ports carry, and its
   adapters; the page takes types alone from it. Tests may reach further in.
 - `module/` decides: `charter/` and `runtime/`, `workspace/` — what a
-  repository configured itself with, `ManagingWorkspace` keeping it in
+  repository configured itself with, `ManagingWorkspace`, answering
+  `ForManagingWorkspace`, keeping it in
   `.cw/settings.json` and setting a repository up, knowing neither other
   module, which never read it (CORE-FR-231) — and the kernel they share,
   `shared/`, each laid out as `app/`, `domain/` and `infra/`
@@ -48,7 +49,7 @@ composition root's `composition.ts` and `main.ts` keep their bare names; a value
     primitives under `.cw/charter/primitive/` and its vendors under
     `.cw/charter/vendor/`, by layer, kind and id, with their index.md and
     assets (`loadCharter`, `createCharter`, `assertLayout`, `addPrimitive`,
-    `injectPrimitives`, `findCharterUri`, `rewritePrimitive`,
+    `injectPrimitives`, `findCharterUri`, `describeCharterPlace`, `rewritePrimitive`,
     `removePrimitive`, each kept inside the charter, CORE-FR-044), its vendors
     (`fetchVendorSource`, `removeTempSource`, `loadVendorRoot`,
     `storeVendor`, `findVendorUri`, `removeVendor`), its test cases (`loadTestSuites`, `writeTestSuite`,
@@ -57,39 +58,56 @@ composition root's `composition.ts` and `main.ts` keep their bare names; a value
     (`readCompiledOutputItem`, `describeItemPlace`, `resolveOutputLinks`: the output
     under `.cw/out/`, `$CW_OUT` in what it holds, where `helper.ts`'s
     `findItemPlace` says), each read as the store holds it now, an
-    evaluation's included (ADR-001);
-    `KeychainCredentialsRepository`, each credential one JSON secret in the
+    evaluation's included (ADR-001). The store says where the charter is
+    edited (`describeCharterPlace`), and a charter read carries it as
+    `CharterRoot.charterPlace`; the projections read that, never `charterPath`;
+    `KeychainCredentialsRepository` (`ForStoringCredentials`: `readCredential`,
+    `writeCredential`), each credential one JSON secret in the
     operating system's keychain, and `InMemoryCredentialsRepository`;
     `LocalRepoManipulator` and
-    `InMemoryLocalRepo`, which lay a build's output under
+    `InMemoryLocalRepo` (`ForManagingLocalOutput`: `createProjectionPlan`,
+    `writePlan`), which lay a build's output under
     `.cw/out/`, what the last build left there taken away, and write every
     file a build planned, each made over a checkout by `createCheckoutOutput`;
-    `GitSources`, `OAuth`, `Tiktoken`; and `helper.ts`: a charter folder's primitives, a source's
+    `GitSources` (`ForFetchingCharterSources`: `fetchCommit`, `listFilesAt`,
+    `readFileAt`, `readBytesAt`, `checkOutFolder`, `removeTempCommit`),
+    `OAuth` (`ForAuthorizingOAuthClients`: `authorizeInBrowser`,
+    `renewGrant`), `Tiktoken` (`ForCountingTokens`: `countTokens`); and `helper.ts`: a charter folder's primitives, a source's
     skills, refusing a repository or a source laid out the old way
     (`assertNewLayout`, `findOldLayoutPaths`, CORE-FR-226), where the output
     lands (`OUT_FOLDER`, under the workspace's folder `charterPath` names,
     `findItemPlace`), and the credential one kept secret holds
     (`parseCredentialSecret`).
-  - `runtime/infra/`: `FileSessionAnalysisRepository` (`loadSessionLogs`:
+  - `runtime/infra/`: `FileSessionAnalysisRepository` (`ForLoadingSessionAnalysis`: `loadSessionLogs`:
     each session's lines last written within a window, in the sessions folder
     it is set up with — the one the repository's settings name, or one it
-    finds from the repository's address and the home), `GitWorktrees` (each
+    finds from the repository's address and the home), `GitWorktrees`
+    (`ForKeepingWorktrees`: `addWorktree`, `removeWorktree`: each
     worktree under the folder it names, `worktreesFolderPath`: the log's
-    `logPath.evalWorktreesFolderPath`), `Promptfoo` (each run kept under
-    `logPath.evalRunsFolderPath`), `Shell`; each agent's own command line is
-    its agent's. Each reads the log's layout through the port it answers.
-  - `workspace/infra/`: `FileWorkspaceSettingsRepository`, the settings,
-    the workspace's ignore file (`log/`, CORE-FR-225) and its README, each at
-    its `settingsPath`.
-  - `shared/infra/`: `FileReaders`, `FileOutput`,
-    `McpClients`, `ConsoleReporter`, `SystemClock`, and `helper.ts`: a path
+    `logPath.evalWorktreesFolderPath`), `Promptfoo` (`ForRunningPromptfoo`: `isInstalled`,
+    `installPromptfoo`, `evaluateTest`, `readLogs`: each run kept under
+    `logPath.evalRunsFolderPath`), `Shell` (`ForRunningShellCommands`: `runShellCommand`); each
+    agent's own command line is its agent's (`ForCheckingAgentCli`:
+    `isInstalled`; `ForRunningAgentCli`: `askAgent`). Each reads the log's layout through the port it answers.
+  - `workspace/infra/`: `FileWorkspaceSettingsRepository`, answering
+    `ForStoringWorkspaceSettings` (`loadSettings`, `saveSettings`,
+    `keepLogIgnored`, `keepReadme`, each kept as `RawWorkspaceSettings`): the
+    settings, the workspace's ignore file (`log/`, CORE-FR-225) and its
+    README, each at its `settingsPath`.
+  - `shared/infra/`: `FileReaders` (`ForReadingFiles`: `readFilesRecursively`,
+    `readBytesRecursively`, `listFolders`, `listFiles`, `readIfThere`,
+    `readBytesIfThere`, `findFileAddress`), `FileOutput` (`ForWritingFiles`:
+    `writeFile`, `deleteFile`, `deleteFolder`, `deleteEmptyFolder`),
+    `McpClients` (`ForCallingMcpServers`: `connectServer`), `ConsoleReporter`
+    (`ForReportingProgress`: `reportProgress`, `reportProblem`), `SystemClock`
+    (`ForTellingTime`: `tellTime`), and `helper.ts`: a path
     read as an address, a checkout's path, a file's contents read as text or
     as bytes (`decodeContents`, `encodeContents`), and what an mcp server
     raised turned into a fault of the adapter's (`wrapMcpFault`).
 - `charter/infra/claude/`, `charter/infra/codex/` — each agent the engine
   compiles for, one folder per agent, holding its projection,
   `ClaudeProjection` and `CodexProjection` (`ForManagingLocalAgentOutput`,
-  CORE-FR-221): its files, each at its place, how each goes over what is
+  CORE-FR-221, `createAgentProjectionPlan`, `listMainContextTexts`): its files, each at its place, how each goes over what is
   there, its stamped files taken away, its links, its main context and its
   token factor, built on `agent-projection.base.ts` (`AgentProjection`) over
   the charter's `ProviderComponent` ← `DocumentBasedComponent` |
@@ -166,7 +184,8 @@ In each module:
   domain's, each in `<doing>.port.ts` of the module that asks it. Beside
   them, the storage ports, each carrying the domain's models (`RawPrimitive`,
   `RawTestSuite`, `RawVendorSource`, `McpCredential`…): `ForManagingCharter`,
-  `ForStoringCredentials`, `ForLoadingSessionAnalysis`; the output port,
+  `ForStoringCredentials`, `ForLoadingSessionAnalysis`,
+  `ForStoringWorkspaceSettings`; the output port,
   `ForManagingLocalOutput`, handed the compiled `CharterOutput` and
   answering the `ProjectionPlan` it would lay of the output, and laying every
   file a build planned; and `ForManagingLocalAgentOutput`, one agent's projection,
@@ -246,7 +265,8 @@ In each module:
     package does not export it.
   - `test/` — `TestSuite`, `TestCase`, `TestRoot`, `TestCaseReport`, their
     factories (`TestSuiteFactory`, `TestRootFactory`).
-  - `eval/` — `EvalSuite` (the cases of one file under `.cw/charter/eval/`),
+  - `eval/` — `RawEvalSuite`, a file of cases as it is kept; `EvalSuite`
+    (the cases of one file under `.cw/charter/eval/`),
     each case an `EvalCase` value object, made where the suite is read;
     `EvalRoot`, their factories.
   - `charter-output/` — what a build produces, knowing no agent and naming
@@ -261,7 +281,9 @@ In each module:
     `getLinkTo`), made once as `outputPath` in the domain's `constants.ts`
     and asked by everyone; the items, `Catalogue` (the shared one and each agent's), `CharterMd`,
     `McpOrigins`, `BuiltSensors` and `CompiledPrimitive`, each made by its
-    factory; `ProjectionPlan`, `ProjectionPlanSummary`, `StampedDocument`, and
+    factory; `McpDeclaredTools`, the tools each mcp declares as the last
+    build compiled it, and `McpOriginTools`, the tools each origin serves
+    with what is wrong with the mcps declaring them; `ProjectionPlan`, `ProjectionPlanSummary`, `StampedDocument`, and
     `StampedDocumentSpec`, a specification: whether a file on disk carries the
     stamp. What each agent reads of it is
     that agent's projection's, in its agent's folder.
@@ -277,11 +299,14 @@ In each module:
     short names, hashes; and `PrimitiveHelper`, re-exported.
   Runtime's domain keeps `models/` (`session/`, each stop of a session a
   `SessionAnalysisLine` value object made where the log is read; `eval/`;
-  `sensor/`; `log/`, `LogPath`), each
+  `sensor/`; `log/`, `LogPath`; `context/`, `MainContextCount`, one agent's
+  main context estimated and counted exactly, each line a
+  `MainContextLoadCount`), each
   factory beside its model, `services/`, and `constants.ts` holding `logPath`, a `LogPath`: the log's
-  folder, and the eval worktrees' and runs' under it; the workspace's `models/` holds
-  `WorkspaceSettings` and its factory, and its `constants.ts` `settingsPath`,
-  a `SettingsPath`: the workspace's folder, the settings file's, the ignore
+  folder, and the eval worktrees' and runs' under it; the workspace's
+  `models/settings/` holds `WorkspaceSettings` and its factory,
+  `RawWorkspaceSettings`, the settings as they are kept, and `SettingsPath`,
+  made once in its `constants.ts` as `settingsPath`: the workspace's folder, the settings file's, the ignore
   file's and the README's paths, and the line that ignores the log. The kernel's
   `domain/models/` holds `DomainFault` (`domain.fault.ts`), `AdapterFault`,
   `ApplicationFault`, `RefusedByOtherModuleFault` (`shared.fault.ts`) and

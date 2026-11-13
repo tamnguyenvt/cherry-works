@@ -94,13 +94,13 @@ test("a compiled charter's items are each known by their path inside the output 
   // agent reads names none.
   const agentCatalogues = charterOutput.charterOutputItems.filter(
     (charterOutputItem): charterOutputItem is Catalogue =>
-      charterOutputItem instanceof Catalogue && charterOutputItem.agent !== undefined,
+      charterOutputItem instanceof Catalogue && charterOutputItem.agentProvider !== undefined,
   );
-  assert.deepEqual(agentCatalogues.map((agentCatalogue) => agentCatalogue.agent!.name).sort(), hostNames);
+  assert.deepEqual(agentCatalogues.map((agentCatalogue) => agentCatalogue.agentProvider!.name).sort(), hostNames);
   for (const agentCatalogue of agentCatalogues)
     assert.ok(
-      outputPath.getPath(agentCatalogue).includes(agentCatalogue.agent!.name),
-      `${outputPath.getPath(agentCatalogue)} names ${agentCatalogue.agent!.name}`,
+      outputPath.getPath(agentCatalogue).includes(agentCatalogue.agentProvider!.name),
+      `${outputPath.getPath(agentCatalogue)} names ${agentCatalogue.agentProvider!.name}`,
     );
   for (const sharedItem of charterOutput.charterOutputItems.filter(
     (charterOutputItem) => !agentCatalogues.includes(charterOutputItem as Catalogue),

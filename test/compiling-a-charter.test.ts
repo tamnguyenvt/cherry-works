@@ -349,7 +349,7 @@ test("each item of the output is known by its path inside it and holds its text 
     assert.ok(!itemPath.startsWith("/") && !itemPath.startsWith(".cw/"), itemPath);
     assert.ok(charterOutputItem.text.length > 0, itemPath);
     assert.ok(!charterOutputItem.text.includes("/repo") && !charterOutputItem.text.includes(".cw/out"), itemPath);
-    const isForClaudeAlone = "agent" in charterOutputItem && charterOutputItem.agent !== undefined;
+    const isForClaudeAlone = "agentProvider" in charterOutputItem && charterOutputItem.agentProvider !== undefined;
     assert.equal(itemPath.includes("claude"), isForClaudeAlone, itemPath);
   }
   const counterScript = charterOutputItems.find(

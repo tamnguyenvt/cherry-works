@@ -1,13 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
 import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
 import { MixinPrimitive } from "../src/module/charter/domain/models/primitive/mixin-primitive.js";
 import { type Primitive, Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
 import { SkillPrimitive } from "../src/module/charter/domain/models/primitive/skill-primitive.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
-import { FaultsByFile } from "../src/module/shared/domain/models/fault/faults-by-file.js";
+import { charterRootOf } from "./use-cases-of.js";
 
 const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
 
@@ -49,7 +48,7 @@ const primitive = (
   );
 
 const faultsByFilesOf = (...primitives: Authored[]) =>
-  new CharterRoot(primitives, FaultsByFile.emptyFaultsByFile).compositeFaultsByFiles.faultsByFilePath;
+  charterRootOf(primitives).compositeFaultsByFiles.faultsByFilePath;
 
 const messages = (primitives: Authored[]) =>
   Object.values(faultsByFilesOf(...primitives))

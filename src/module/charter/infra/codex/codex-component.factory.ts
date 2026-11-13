@@ -20,7 +20,7 @@ export class CodexComponentFactory {
    * agent's native surfaces. Claude permission syntax is translated only where
    * a literal command prefix has the same scope as a Codex execution rule. */
   static create(charter: CharterRoot, charterOutput: CharterOutput): readonly CodexComponent[] {
-    const codexAgent = CodexComponents.agentProvider;
+    const codexAgentProvider = CodexComponents.agentProvider;
     const compiledPrimitives = charterOutput.charterOutputItems.filter(
       (charterOutputItem): charterOutputItem is CompiledPrimitive => charterOutputItem instanceof CompiledPrimitive,
     );
@@ -30,7 +30,7 @@ export class CodexComponentFactory {
     const entryLines = [
       "## Charter",
       `Read and follow [${resolveLaidText(outputPath.getLinkTo(outputPath.charterMdFileName))}](${outputPath.getLinkTo(outputPath.charterMdFileName)}) before working here. Edit the primitives under \`${charter.charterPlace}/\`, then run \`cw build\`; generated files are not edited by hand.`,
-      `Find primitives in [catalogue.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName())}) and [catalogue.codex.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName(codexAgent.name))}).`,
+      `Find primitives in [catalogue.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName())}) and [catalogue.codex.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName(codexAgentProvider.name))}).`,
       "### Guides",
     ];
     const documentComponents: CodexComponent[] = [];
@@ -42,7 +42,7 @@ export class CodexComponentFactory {
     const deniedReadPaths = new Set<string>();
     const deniedWritePaths = new Set<string>();
     for (const primitive of charter.primitives) {
-      if (!primitive.supportsAgent(codexAgent)) continue;
+      if (!primitive.supportsAgent(codexAgentProvider)) continue;
       const compiledPrimitive = compiledPrimitiveById.get(primitive.headers.id)!;
       // From the repository's root, which is where every pointer is read from.
       const compiledDocumentLink = resolveLaidText(outputPath.getLink(compiledPrimitive));
@@ -219,7 +219,7 @@ export class CodexComponentFactory {
                 primitive.normId,
                 primitive.composeDescription(),
                 `${pointerText}\nUse only the tools declared in that document. Native feature flags disable capability groups; remaining tools and MCP servers inherit the parent session's permissions.`,
-                primitive.modelOf(codexAgent),
+                primitive.modelOf(codexAgentProvider),
                 disabledFeatures,
                 !hasSkills,
               ),

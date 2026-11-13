@@ -72,7 +72,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   readonly #localRepo: ForManagingLocalOutput;
   readonly #agentProjectionByProvider: Readonly<Record<AgentProviderName, ForManagingLocalAgentOutput>>;
   readonly #tokenCounter: ForCountingTokens;
-  readonly #agents: readonly AgentProvider[];
+  readonly #agentProviders: readonly AgentProvider[];
   readonly #mainContextCeiling: number;
   readonly #mcpReaching: McpReaching | undefined;
 
@@ -126,7 +126,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     this.#localRepo = localRepo;
     this.#agentProjectionByProvider = agentProjectionByProvider;
     this.#tokenCounter = tokenCounter;
-    this.#agents = projectionSettings.agents.map((agentName) => this.#findAgentProvider(agentName));
+    this.#agentProviders = projectionSettings.agents.map((agentName) => this.#findAgentProvider(agentName));
     this.#mainContextCeiling = projectionSettings.mainContextCeiling ?? MainContext.defaultCeiling;
     this.#mcpReaching =
       mcpServers === undefined || charterAuthoringApp === undefined
@@ -208,7 +208,9 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
         doctorPlan === undefined || doctorPlan instanceof FaultsByFile
           ? undefined
           : this.#buildCharterService.previewPlan(doctorPlan.cleanupPlan, doctorPlan.writePlans);
-      const mainContexts = isHolding ? this.#agents.map((agent) => this.#estimateMainContext(charter, agent)) : [];
+      const mainContexts = isHolding
+        ? this.#agentProviders.map((agentProvider) => this.#estimateMainContext(charter, agentProvider))
+        : [];
 
       // A repository compiling for no agent is well — the neutral surface is
       // compiled for everybody (FR-019) — and the other two questions are
@@ -225,14 +227,14 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
           ? null
           : planSummary.addedPaths.length + planSummary.editedPaths.length + planSummary.deletedPaths.length;
       return CharterDTOs.DoctorOutcome.of({
-        agents: this.#agents.map((agent) => agent.name),
+        agents: this.#agentProviders.map((agentProvider) => agentProvider.name),
         errorCount,
         warnCount: faults.filter((fault) => fault.severity === "warn").length,
         pendingCount,
         faultsByFile: faultsByFileDTO,
         problemCount: [errorCount > 0, pendingCount !== 0].filter(Boolean).length,
         mainContexts: mainContexts.map((mainContext) => ({
-          agent: mainContext.agent.name,
+          agent: mainContext.agentProvider.name,
           totalTokens: mainContext.totalTokens,
         })),
         mainContextCeiling: this.#mainContextCeiling,
@@ -245,10 +247,10 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
       const charter = await this.#loadHoldingCharter();
       if (charter instanceof FaultsByFile) return this.faultsByFileDTOOf(charter);
       return CharterDTOs.MainContexts.of({
-        contexts: this.#agents.map((agent) => {
-          const mainContext = this.#estimateMainContext(charter, agent);
+        contexts: this.#agentProviders.map((agentProvider) => {
+          const mainContext = this.#estimateMainContext(charter, agentProvider);
           return CharterDTOs.MainContext.of({
-            agent: mainContext.agent.name,
+            agent: mainContext.agentProvider.name,
             isExact: mainContext.isExact,
             sessionLoads: mainContext.sessionLoads.map(this.#mainContextLoadDTOOf),
             fileLoads: mainContext.fileLoads.map(this.#mainContextLoadDTOOf),
@@ -433,9 +435,9 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
       const charter = await this.#loadHoldingCharter();
       if (charter instanceof FaultsByFile) return this.faultsByFileDTOOf(charter);
       return CharterDTOs.MainContextTexts.of({
-        agents: this.#agents.map((agent) => ({
-          agent: agent.name,
-          texts: this.#layMainContextTexts(charter, agent).map(({ id, kind, text, globs }) => ({
+        agents: this.#agentProviders.map((agentProvider) => ({
+          agent: agentProvider.name,
+          texts: this.#layMainContextTexts(charter, agentProvider).map(({ id, kind, text, globs }) => ({
             id,
             kind,
             text,
@@ -499,10 +501,10 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   /** What one agent puts into its main context of this charter, each text as
    *  its projection lays it: an agent reads what is laid (EVAL-FR-001,
    *  CORE-FR-221). */
-  #layMainContextTexts(charter: CharterRoot, agent: AgentProvider): readonly MainContextText[] {
-    return this.#agentProjectionByProvider[agent.name]!.listMainContextTexts(
+  #layMainContextTexts(charter: CharterRoot, agentProvider: AgentProvider): readonly MainContextText[] {
+    return this.#agentProjectionByProvider[agentProvider.name]!.listMainContextTexts(
       charter,
-      CompileService.compileCharterRoot(charter, [agent]),
+      CompileService.compileCharterRoot(charter, [agentProvider]),
     );
   }
 
@@ -515,11 +517,11 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   /** What one agent's main context of this charter comes to, counted by a
    *  tokenizer on this machine and scaled to that agent's: an estimate, with no
    *  key and no network (EVAL-FR-001, EVAL-FR-002, EVAL-SC-001, EVAL-SC-002). */
-  #estimateMainContext(charter: CharterRoot, agent: AgentProvider): MainContext {
-    const { tokenFactor } = this.#agentProjectionByProvider[agent.name]!;
+  #estimateMainContext(charter: CharterRoot, agentProvider: AgentProvider): MainContext {
+    const { tokenFactor } = this.#agentProjectionByProvider[agentProvider.name]!;
     return new MainContext(
-      agent,
-      this.#layMainContextTexts(charter, agent).map(
+      agentProvider,
+      this.#layMainContextTexts(charter, agentProvider).map(
         ({ id, kind, text, globs }) =>
           new MainContextLoad(id, kind, Math.round(this.#tokenCounter.countTokens(text) * tokenFactor), globs),
       ),
@@ -530,7 +532,12 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   /** The projection of each agent the repository compiles for, under its
    *  name. */
   get #chosenAgentProjectionByProvider(): Readonly<Record<AgentProviderName, ForManagingLocalAgentOutput>> {
-    return Object.fromEntries(this.#agents.map((agent) => [agent.name, this.#agentProjectionByProvider[agent.name]!]));
+    return Object.fromEntries(
+      this.#agentProviders.map((agentProvider) => [
+        agentProvider.name,
+        this.#agentProjectionByProvider[agentProvider.name]!,
+      ]),
+    );
   }
 
   /** The agent a name names; a name no projection was handed for is refused

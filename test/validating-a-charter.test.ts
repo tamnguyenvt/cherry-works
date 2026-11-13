@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
+import type { CharterRoot } from "../src/module/charter/domain/models/charter/charter-root.js";
 import { McpOrigins } from "../src/module/charter/domain/models/charter-output/mcp-origin.js";
 import { AgentPrimitive } from "../src/module/charter/domain/models/primitive/agent-primitive.js";
 import { CorpusPrimitive } from "../src/module/charter/domain/models/primitive/corpus-primitive.js";
@@ -13,7 +13,8 @@ import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/pr
 import { SkillPrimitive } from "../src/module/charter/domain/models/primitive/skill-primitive.js";
 import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
-import { FaultsByFile } from "../src/module/shared/domain/models/fault/faults-by-file.js";
+import type { FaultsByFile } from "../src/module/shared/domain/models/fault/faults-by-file.js";
+import { charterRootOf } from "./use-cases-of.js";
 
 const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
 
@@ -101,7 +102,7 @@ const namedMcps = (...mcps: Authored[]): Authored[] => [
 ];
 
 const faultsByFilesOf = (...primitives: Authored[]): FaultsByFile["faultsByFilePath"] =>
-  new CharterRoot(primitives, FaultsByFile.emptyFaultsByFile).compositeFaultsByFiles.faultsByFilePath;
+  charterRootOf(primitives).compositeFaultsByFiles.faultsByFilePath;
 
 const faultsIn = (faultsByFiles: FaultsByFile["faultsByFilePath"]) => Object.values(faultsByFiles).flat();
 
@@ -394,12 +395,11 @@ test("an agent holding an mcp no layer holds, a tool that mcp does not declare, 
 });
 
 test("a repository mcp and a vendor mcp at one endpoint and path are one mcp origin, under both, signed in to either way (FR-145)", () => {
-  const charter = new CharterRoot(
+  const charter = charterRootOf(
     namedMcps(
       mcp("billing", undefined, { path: "acme/billing", auth: ["oauth"], tools: ["search_code"] }),
       mcp("acme/code", "acme", { path: "acme/billing", auth: ["token"], tools: ["get_file_contents", "search_code"] }),
     ),
-    FaultsByFile.emptyFaultsByFile,
   );
 
   assert.deepEqual(JSON.parse(JSON.stringify(mcpOriginsOf(charter))), [
@@ -416,9 +416,8 @@ test("a repository mcp and a vendor mcp at one endpoint and path are one mcp ori
 });
 
 test("the same two at different paths are two mcp origins (FR-145)", () => {
-  const charter = new CharterRoot(
+  const charter = charterRootOf(
     namedMcps(mcp("billing", undefined, { path: "acme/billing" }), mcp("acme/code", "acme", { path: "acme/code" })),
-    FaultsByFile.emptyFaultsByFile,
   );
 
   assert.deepEqual(
@@ -438,7 +437,7 @@ test("a command's mcp origin carries its arguments and the variable its token is
     auth: ["token"],
     tokenEnv: "GITHUB_TOKEN",
   };
-  const charter = new CharterRoot(namedMcps(mcp("github", undefined, command)), FaultsByFile.emptyFaultsByFile);
+  const charter = charterRootOf(namedMcps(mcp("github", undefined, command)));
 
   const [mcpOrigin] = mcpOriginsOf(charter);
   assert.equal(mcpOrigin?.address, "npx -y server-github");

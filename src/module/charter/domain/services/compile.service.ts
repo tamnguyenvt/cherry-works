@@ -43,7 +43,7 @@ export class CompileService {
    */
   static compileCharterRoot(
     charter: CharterRoot,
-    agents: readonly AgentProvider[],
+    agentProviders: readonly AgentProvider[],
     toolsByOriginKey: ReadonlyMap<string, readonly McpToolDefinition[]> = new Map(),
   ): CharterOutput {
     // What `cw mcp serve` serves each mcp origin's tools under, `<prefix>__<tool>`:
@@ -80,7 +80,7 @@ export class CompileService {
     // layer brought it (FR-140).
     const charterOutput = new CharterOutput();
     charterOutput.add(new Catalogue(allCatalogue.entries.filter(({ agentProviders }) => agentProviders === "all")));
-    for (const agentProvider of agents)
+    for (const agentProvider of agentProviders)
       charterOutput.add(
         new Catalogue(
           allCatalogue.entries.filter(

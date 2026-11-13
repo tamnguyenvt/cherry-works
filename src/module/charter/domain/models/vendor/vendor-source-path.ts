@@ -12,6 +12,10 @@ export class VendorSourcePath {
    *  `charters/<name>/.cw/charter/` (CORE-FR-195). */
   readonly chartersFolderPath = "charters";
 
+  /** The folder a source, or each charter under `charters/<name>/`, keeps its
+   *  own charter in, as a repository set up by `cw` keeps one. */
+  readonly ownCharterFolderPath = ".cw/charter";
+
   /** The name a source's own charter, and the skills taken from it, are
    *  installed under beside the charters picked from it. */
   readonly ownCharterName = "root";

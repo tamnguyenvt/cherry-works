@@ -48,7 +48,7 @@ export class ClaudeComponentFactory {
    * not, since the server reads which mcp origins there are when it starts (FR-146).
    */
   static create(charter: CharterRoot, charterOutput: CharterOutput): readonly ClaudeComponent[] {
-    const claudeAgent = ClaudeComponents.agentProvider;
+    const claudeAgentProvider = ClaudeComponents.agentProvider;
     const compiledPrimitives = charterOutput.charterOutputItems.filter(
       (charterOutputItem): charterOutputItem is CompiledPrimitive => charterOutputItem instanceof CompiledPrimitive,
     );
@@ -60,14 +60,14 @@ export class ClaudeComponentFactory {
     const shortMcpIds: Readonly<Record<string, string>> = Object.fromEntries(
       mcpOrigins.origins.flatMap(({ names }) => Object.entries(names)),
     );
-    const builtSensors = charterOutput.findCharterOutputItem(BuiltSensors).filterForAgent(claudeAgent);
+    const builtSensors = charterOutput.findCharterOutputItem(BuiltSensors).filterForAgent(claudeAgentProvider);
     // Does this primitive ask something of the settings this agent runs on, rather
     // than compile to a file of its own? A posture says what may be run, a sensor
     // what runs when an event fires, and this agent reads both out of one file.
     const isSettingComponent = (primitive: Primitive) =>
       primitive.kind === PosturePrimitive.kind || primitive.kind === SensorPrimitive.kind;
     const settingPrimitives = charter.primitives.filter(
-      (primitive) => primitive.supportsAgent(claudeAgent) && isSettingComponent(primitive),
+      (primitive) => primitive.supportsAgent(claudeAgentProvider) && isSettingComponent(primitive),
     );
     const documentPrimitives = charter.primitives.filter((primitive) => !isSettingComponent(primitive));
 

@@ -33,67 +33,99 @@ failing.
 <!-- Add the checks this project needs, under either heading or one of your
 own: one line each, something a pass can find passing or failing — "Every
 endpoint checks the caller's role", "No query is built by string
-concatenation". The quality pass writes its report under `## Last pass` below
-this comment; leave that section to it. -->
-
-## Last pass
+concatenation". The quality pass writes its report under `## Last pass
 
 **Date**: 2026-11-13
 
-**Cross-check story**: [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3)
+**Cross-check story**: on request, on fix/quality-warns-after-core-55 (the working tree over 7bf015f), after it repaired the last pass's violations
 
-**Product grade**: **B** — the third pass found no error and fifteen warnings; every check passed twice with none skipped. The warnings were repaired after it, as the scenarios of [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) say, and proved by the checks and a review, not by a fourth pass.
-
-### How the pass ran
-
-The user had every violation repaired within [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) rather than written as stories of their own, and the pass run again: its scenarios 2–35 are those repairs.
-
-- **First pass** (five reviewers): grade F — QC-17 to QC-24 below. The baseline's flaky naming test was fixed first, `fix/probe-file-race-in-src`, landed in `008-sdk` as 6d71f9a.
-- **Second pass** (four reviewers): QC-17 to QC-21 resolved; two errors left in the guides — a bare-named `schema.ts` and DTO files reaching the whole kernel — with warnings; all repaired.
-- **Third pass** (two reviewers, at 9882351): no error; fifteen warnings, each repaired after it (below).
+**Product grade**: **B** — no error; three warnings: two ideas with several terms, `cw context` listing every agent where [EVAL-FR-001](spec-eval.md#eval-fr-001) speaks of one, and [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) too large. The pass first found C; the fix repaired on its branch the one error and the four warnings it had brought (QC-30, QC-31, QC-32, QC-35, QC-36), and the checks were run again.
 
 ### Scope and evidence
 
-Read `spec.md`, the three specs, `plan.json`, `docs/ADR.md`, `docs/architecture-note.md` and the handoff notes; checked the code and tests of every `Done` story against every item. Each reviewer was claude-opus-5-5.
+Read `spec.md`, the three specs, `plan.json`, `manifest.md`, `docs/reference.md`, `docs/architecture-note.md`, `docs/ADR.md` and the guides; checked the code and tests of every `Done` story against every item, hardest on what the fix changed. Two reviewers, each claude-opus-5-5: the stories against the code, and the guides with the specs against each other (/sdd-analyze).
 
 | Check | First run | Second run |
 |---|---|---|
-| `pnpm typecheck` | passed | passed |
-| `pnpm lint:deps` | no violation | — |
-| `pnpm test` (dependency rules, Biome, builds, tests) | 1023 passed; 0 failed; 0 skipped | 1023 passed; 0 failed; 0 skipped |
-| `node --test .cw/out/script/sdd-specs/specs.test.mjs .cw/out/script/sdd-clean/clean.test.mjs` | 82 passed; 0 failed | 82 passed; 0 failed |
+| `pnpm typecheck` | passed | — |
+| `pnpm lint:deps` | no violation (334 modules, 1105 dependencies) | — |
+| `pnpm test` (dependency rules, Biome, builds, tests), after the repairs | 1026 passed; 0 failed; 0 skipped | 1026 passed; 0 failed; 0 skipped |
+| `node --test .cw/out/script/sdd-specs/specs.test.mjs .cw/out/script/sdd-clean/clean.test.mjs`, after the repairs | 81 passed; 1 failed, its name not kept | 82 passed; 0 failed, and in four runs more |
 | `node .cw/out/script/sdd-specs/specs.mjs check` | passed | — |
-| `cw context --exact --agent=claude` ([EVAL-SC-002](spec-eval.md#eval-sc-002), the real `claude`) | estimated 5,847, exact 5,800, +0.8%, within 15% | — |
 
-`test/keeping-a-credential.test.ts` skips where the machine has no credential store; it ran on this one.
+The last pass's QC-25 to QC-29 are repaired: every refusal of an exact count says `cw context` with no agent named needs nothing, and `--agent` alone counts exactly (`src/module/runtime/app/running-charter.use-case.ts:241-259`, `src/presentation/cli/commands/context.command.ts:41-43`); the architecture map names every driven-port operation, beside its port; no binding holding an `AgentProvider` is named `agent`; the note on file names follows the guide.
 
 ### Results for each checklist item
 
-| Item | Third pass | After its repairs |
+| Item | Result | Violations |
 |---|---|---|
-| Every scenario of a `Done` story is held by a test or by its evidence | warn: braces, scenario labels, export guard by folder | pass |
-| Every test and static check passes twice, none skipped | pass | pass |
-| The code of each `Done` story does what its FR say | warn: an optional folder reader, faults naming `cw`'s layout, other repositories' sessions folders | pass |
-| No code beyond the FR, nothing out of scope built | pass | pass |
-| The code keeps the guides that apply to it | warn: map omitting the layout values, promptfoo port words, three single names, "host" and "built output" left in code | pass |
-| Consistent | warn: a missing file in the note, "the output", the settings module's name | pass |
-| Complete | pass | pass |
-| No conflict | pass | pass |
-| Roadmap | pass | pass |
-| Format | warn: ADR-001 cites no story | accepted: an ADR cites no spec, the user's rule |
+| Every scenario of a `Done` story is held by a test or by its evidence | **pass** | QC-36 repaired |
+| Every test and static check passes twice, none skipped | **pass** | the vendor's script tests failed once in six runs, and not in the five after |
+| The code of each `Done` story does what its FR say | **pass** | |
+| No code beyond the FR, nothing out of scope built | **pass** | |
+| The code keeps the guides that apply to it | **pass** | |
+| Consistent | **fail** | QC-33, QC-34 (warn); QC-32 repaired |
+| Complete | **pass** | |
+| No conflict | **pass** | QC-35 repaired |
+| Roadmap | **fail** | QC-37 (warn); QC-36 repaired; `check` passes; 69 stories, all `Done` |
+| Format | **pass** | QC-30, QC-31 repaired |
 
-### What the passes found, and how each was repaired
+### Violations and proposed repairs
 
-- **QC-17 — Done scenarios nothing proved**: six scenarios with no test and some seventy held in part; tests added for each, labels corrected ([CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) scenarios 2–11).
-- **QC-18 — tests and scenarios saying opposite things**: [CORE-FR-028](spec-core.md#core-fr-028) rewritten to the listing the user kept; CORE Stories 3, 6, 17, 27, 48 rewritten to their FR, with tests (scenarios 12–16).
-- **QC-19 — exports beyond the FR**: the store's layout one value, `charterPath`, as `outputPath` is; no loose constant or helper exported; projections told where the charter is edited by the store (`describeCharterPlace`) (scenarios 23–25). No CHANGELOG line: nothing is published under the contract yet.
-- **QC-20 — sessions ignoring the handed file adapters**: the default sessions store reads through them, a scheme no adapter reads answers a fault the caller corrects, every handed adapter is reached per operation (scenarios 26–28).
-- **QC-21 — evaluation beyond its FR**: kept, with [EVAL-FR-039](spec-eval.md#eval-fr-039) to [EVAL-FR-042](spec-eval.md#eval-fr-042); a read path's control characters and braces refused, a sessions folder inside this repository refused (scenarios 29–33).
-- **QC-22 — naming guides**: the guard widened (vague words, yes/no, counts, bare verbs, model functions and interfaces, private constructors, double imports, scripts and `main.ts`) and the code brought to it (scenarios 17–19).
-- **QC-23, QC-24 — spec format and terms**: requirements state behaviour; one term per thing, with Engine, Workspace, Local output defined and the retired terms refused by test (scenarios 20–22).
-- **Second and third passes**: zod reached only through the kernel's validator lib; the libraries in the kernel; a DTO-only kernel entry; `EvalCase` and `SessionAnalysisLine` value objects; `VendorSourcePath` kept off the package; `removeWorktree` refusing any folder but a named one under the worktrees folder; the promptfoo port in promptfoo's words; "host" and "built output" retired from code; faults naming no folder of `cw`'s.
-- **The estimate's accuracy** ([EVAL Story 9](spec-eval.md#eval-story-9---measure-the-tokenizer-accuracy-again-after-the-workspace-moved-priority-p3)): measured by `cw context --exact --agent=<agent>`, which estimates and counts exactly, lists both and warns past 15%; no agent named is refused (scenarios 34–35). The repository's own measuring script is gone.
+#### QC-30 — error: the core spec's **Input** names classes and fields
 
-### Plan the fixes
+The last `Then:` of `spec-core.md:7` names `CharterRoot.charterPlace`, `charterPath` and `AgentProvider`; the spec format lets an **Input** name commands, flags and output, never a class or a field.
 
-None: every violation was repaired within [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3), at the user's choice.
+Proposed repair: say it as behaviour — the store says where the charter is edited, and every agent's files say that place; every value naming an agent is named for it.
+
+Repaired: the `Then:` says it as behaviour.
+
+#### QC-31 — warn: the core spec's **Input** cites ids a later pass overwrites
+
+The same `Then:` cites "QC-25 to QC-29", ids of this file's `## Last pass`, which the next pass replaces.
+
+Proposed repair: say what was repaired, never the QC ids.
+
+Repaired: the `Then:` cites no QC id.
+
+#### QC-32 — warn: one refusal said three ways
+
+The refusal of an exact count reads "the estimate, with no agent named, needs nothing" in [EVAL-FR-004](spec-eval.md#eval-fr-004) (`spec-eval.md:230`), "the estimate needs nothing" in an edge case (`spec-eval.md:210`), and "`cw context` with no agent named needs nothing" in [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) scenario 36 (`spec-core.md:1182`).
+
+Proposed repair: one wording in all three, the one the command prints.
+
+Repaired: all three say `cw context` with no agent named needs nothing.
+
+#### QC-33 — warn: two ideas with several terms
+
+The agents a repository has are "configured" ([EVAL-FR-033](spec-eval.md#eval-fr-033) to [EVAL-FR-036](spec-eval.md#eval-fr-036), `spec-eval.md:261-264`), "chosen" ([CORE-FR-055](spec-core.md#core-fr-055), `spec-core.md:1399`) and those "the repository compiles for" ([EVAL-FR-004](spec-eval.md#eval-fr-004)); the agent given by `--agent` is "selected" ([EVAL-FR-033](spec-eval.md#eval-fr-033) to [EVAL-FR-038](spec-eval.md#eval-fr-038)) and "named" ([EVAL-FR-004](spec-eval.md#eval-fr-004)).
+
+Proposed repair: one term each, "chosen" and "named", in every spec.
+
+#### QC-34 — warn: `cw context` lists every agent where EVAL-FR-001 speaks of one
+
+[EVAL-FR-001](spec-eval.md#eval-fr-001) and the Key Entity "Prediction" speak of "the agent's main context"; `cw context` lists one prediction per agent chosen (`src/presentation/cli/commands/context.command.ts:20-25`), as `docs/reference.md:255` says, and with none chosen tells the developer to run `cw init` (`context.command.ts:107`), which no FR or edge case answers.
+
+Proposed repair: [EVAL-FR-001](spec-eval.md#eval-fr-001) predicts for each agent the repository chose; an edge case for a repository that chose none.
+
+#### QC-35 — warn: one scenario read two ways
+
+"no agent is asked" in [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) scenario 35 (`spec-core.md:1181`) reads as no agent's command line run, or as the developer not asked to choose one, against "When no agent is chosen, stop and ask" (`spec-core.md:7`).
+
+Proposed repair: "no agent's command line is run".
+
+Repaired: "no agent's command line is run", the test's name with it.
+
+#### QC-36 — warn: evidence names a command that no longer runs
+
+The evidence of [EVAL Story 8](spec-eval.md#eval-story-8---prove-the-tokenizer-accuracy-priority-p2), [EVAL Story 9](spec-eval.md#eval-story-9---measure-the-tokenizer-accuracy-again-after-the-workspace-moved-priority-p3) and [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) (`plan.json:522`, `:674`, `:689`) names the run `cw context --exact --agent=claude`, which the command line now refuses as an unknown argument; [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3)'s says "scenarios 2-35", while scenarios 34-36 were rewritten or added after it (each held by a test, `test/predicting-the-main-context.test.ts:256-374`).
+
+Proposed repair: run `cw context --agent=claude` again and record it as the evidence of the three stories, scenarios 34-36 named.
+
+Repaired, by the user's choice without running `claude` again: the three summaries keep the +0.8% measured at 09:05Z and say the count is now run as `cw context --agent=claude`; [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3)'s names scenarios 34-36 and the tests holding them.
+
+#### QC-37 — warn: CORE Story 55 is too large to review as one change
+
+[CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) holds 36 scenarios (`spec-core.md:1135`).
+
+Proposed repair: the repairs of a later pass go into a story of their own.
