@@ -1287,12 +1287,6 @@
       "good": true,
       "findings": []
     },
-    "src/hexagon/domain/models/charter/builtin/CwSessionCostSkill.ts": {
-      "hash": "f04dc8092ccc049f15a136c66dbe7d85184291eaabe47d6e506abff8c181ae25",
-      "assessed": "2026-11-05",
-      "good": true,
-      "findings": []
-    },
     "src/hexagon/domain/models/charter/builtin/CwSessionTokensCounterScript.ts": {
       "hash": "88bde57de1ce04714b65474212e850caa3f6e21227cc9d3f68bcef437b8b78e9",
       "assessed": "2026-11-05",
@@ -4581,12 +4575,6 @@
           "id": "2b211b75fd134215bd87d68120ce1ad18beda97adf926dacc9a80aa2a4c542b2"
         }
       ]
-    },
-    "test/the-cw-session-cost-skill.test.ts": {
-      "hash": "40e1e57e3912dd8a187122f213a6d96db03c511fe514f20ade75fb357399cd53",
-      "assessed": "2026-11-05",
-      "good": true,
-      "findings": []
     },
     "test/the-kinds.test.ts": {
       "hash": "c9293653ec3791038dc1164ad1a7d32e900e4ebe0d1b6841f181a7e355cc88fb",

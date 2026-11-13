@@ -49,7 +49,6 @@ test("every primitive of every layer is listed by id, each under the layer it ar
     answer.data.primitives.map(({ data: { id, layerName } }) => [id, layerName]),
     [
       ["cw-author", "builtin"],
-      ["cw-session-cost", "builtin"],
       ["cw-session-tokens-counter", "builtin"],
       ["cw-session-tokens-counter-on-stop", "builtin"],
       ["lint", "repo"],

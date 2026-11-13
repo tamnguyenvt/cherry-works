@@ -38,9 +38,8 @@ const at = (path: string) => new URL(path, root).href;
 const inRepo = (path: string) => new URL(path, repo).href;
 
 /** What the engine's own session primitives put under the workspace on every
- *  build, beside the authored charter's files (EVAL-FR-008, EVAL-FR-014). */
+ *  build, beside the authored charter's files (EVAL-FR-008). */
 const sessionCounterPaths = [
-  ".cw/out/skill/cw-session-cost/index.md",
   ".cw/out/script/cw-session-tokens-counter/index.md",
   ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs",
   ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md",
@@ -115,7 +114,6 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
     ".claude/settings.json",
     ".mcp.json",
     ".claude/skills/cw-author/SKILL.md",
-    ".claude/skills/cw-session-cost/SKILL.md",
     ".claude/rules/no-any.md",
   ]);
   assert.deepEqual(built.deleted, []);

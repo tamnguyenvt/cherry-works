@@ -13,8 +13,7 @@ export interface SessionAnalysisSummary {
     readonly sessionId: string;
     readonly model: string;
     readonly lastStopAt: string;
-    /** Its tokens by kind at that stop, which a cost is reckoned from
-     *  (EVAL-FR-014). */
+    /** Its tokens by kind at that stop (EVAL-FR-008). */
     readonly tokens: SessionAnalysisLine["tokens"];
     /** Its tokens so far, subagents included (EVAL-FR-008). */
     readonly totalTokens: number;

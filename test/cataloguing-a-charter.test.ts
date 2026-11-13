@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
-import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
 import { Catalogue } from "../src/module/charter/domain/models/charter-output/catalogue.js";
@@ -45,16 +44,9 @@ const builtinEntry = {
   description: new CwAuthorSkill().headers.description,
 };
 
-/** The skill that prices a session, and the script and the sensor the
- *  engine brings to count its tokens, catalogued as every charter's are
- *  (EVAL-FR-008, EVAL-FR-014). */
+/** The script and the sensor the engine brings to count a session's tokens,
+ *  catalogued as every charter's are (EVAL-FR-008). */
 const sessionCounterEntries = [
-  {
-    id: "cw-session-cost",
-    kind: "skill",
-    description: new CwSessionCostSkill().headers.description,
-    file: "$CW_OUT/skill/cw-session-cost/index.md",
-  },
   {
     id: "cw-session-tokens-counter",
     kind: "script",
@@ -162,14 +154,7 @@ test("the same charter catalogues in the same order however its files were read"
 
   const ids = (await catalogueOf(files)).entries.map((one) => one.id);
 
-  assert.deepEqual(ids, [
-    "cw-author",
-    "cw-session-cost",
-    "cw-session-tokens-counter",
-    "no-any",
-    "type-safety",
-    "writing-tests",
-  ]);
+  assert.deepEqual(ids, ["cw-author", "cw-session-tokens-counter", "no-any", "type-safety", "writing-tests"]);
 });
 
 test("the catalogue carries no body", async () => {

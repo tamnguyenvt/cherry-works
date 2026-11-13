@@ -501,7 +501,7 @@ for (const filesystemModule of [filesystem, filesystemPromises]) {
 syncBuiltinESMExports();
 const primitiveList = await charterAuthoringApp.listPrimitives();
 assert.equal(primitiveList.type, 'Primitives', JSON.stringify(primitiveList));
-for (const primitiveId of ['cw-author', 'cw-session-cost', 'cw-session-tokens-counter', 'cw-session-tokens-counter-on-stop']) assert.ok(primitiveList.data.primitives.some(primitive => primitive.data.id === primitiveId));
+for (const primitiveId of ['cw-author', 'cw-session-tokens-counter', 'cw-session-tokens-counter-on-stop']) assert.ok(primitiveList.data.primitives.some(primitive => primitive.data.id === primitiveId));
 const counterPrimitive = await charterAuthoringApp.openPrimitive('cw-session-tokens-counter');
 assert.ok(counterPrimitive.data.body.includes('session-analysis.jsonl'));
 const buildOutcome = await charterBuildingApp.buildCharter();

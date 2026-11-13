@@ -3,7 +3,8 @@
  * puts into Claude Code's main context is from the count the real `claude`
  * makes of it (EVAL-FR-004, EVAL-SC-002): `cw context` against
  * `cw context --exact`, at the commit checked out, over a copy of its `.cw`
- * whose one agent is claude, since no other is counted exactly. It runs the real `claude`,
+ * without the eval cases and the log, whose one agent is claude, since no
+ * other is counted exactly. It runs the real `claude`,
  * on whatever it is signed in with, so it spends tokens, and no substitute's
  * answer stands in for it. It prints each primitive's two counts, the totals
  * and their difference, and exits 1 when the totals differ by more than 15%.
@@ -11,9 +12,12 @@
  *   pnpm tokenizer-accuracy
  */
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
+import { EVAL_FOLDER_PATH } from "../src/module/charter/domain/constants.js";
+import { LOG_FOLDER_PATH } from "../src/module/runtime/domain/constants.js";
 
 const ROOT = join(import.meta.dirname, "..");
 /** How far the estimate may be from the exact count, of the exact count (EVAL-SC-002). */
@@ -78,10 +82,21 @@ const charterCopyFolder = await mkdtemp(join(tmpdir(), "cw-tokenizer-accuracy-")
 let estimatedContext: ReturnType<typeof claudeContextOf>;
 let exactContext: ReturnType<typeof claudeContextOf>;
 try {
+  // The charter alone is measured: no eval case and no log (EVAL Story 9).
+  const unmeasuredFolderPaths = [EVAL_FOLDER_PATH, LOG_FOLDER_PATH];
   await cp(join(ROOT, ".cw"), join(charterCopyFolder, ".cw"), {
     recursive: true,
-    filter: (sourcePath) => !sourcePath.includes(`${join(".cw", "eval")}`),
+    filter: (sourcePath) =>
+      !unmeasuredFolderPaths.some(
+        (folderPath) =>
+          sourcePath === join(ROOT, folderPath) || sourcePath.startsWith(`${join(ROOT, folderPath)}${sep}`),
+      ),
   });
+  const copiedUnmeasuredFolderPaths = unmeasuredFolderPaths.filter((folderPath) =>
+    existsSync(join(charterCopyFolder, folderPath)),
+  );
+  if (copiedUnmeasuredFolderPaths.length > 0)
+    throw new Error(`Nothing was measured: the charter's copy holds ${copiedUnmeasuredFolderPaths.join(" and ")}.`);
   await writeFile(join(charterCopyFolder, ".cw/settings.json"), JSON.stringify({ agents: [AGENT] }));
   estimatedContext = claudeContextOf(charterCopyFolder, []);
   exactContext = claudeContextOf(charterCopyFolder, ["--exact"]);

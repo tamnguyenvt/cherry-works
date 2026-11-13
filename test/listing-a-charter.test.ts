@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
-import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
 import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
@@ -79,10 +78,9 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
 };
 
 /** The lines the engine's own session primitives are listed by, in every
- *  repository: the skill that prices them, the counter's script, then the
- *  sensor that runs it (EVAL-FR-008, EVAL-FR-014). */
+ *  repository: the counter's script, then the sensor that runs it
+ *  (EVAL-FR-008). */
 const sessionCounterLines = [
-  `cw-session-cost  ${new CwSessionCostSkill().headers.description}`,
   `cw-session-tokens-counter  ${new CwSessionTokensCounterScript().headers.description}`,
   `cw-session-tokens-counter-on-stop  ${new CwSessionTokensSensor().headers.description}`,
 ];

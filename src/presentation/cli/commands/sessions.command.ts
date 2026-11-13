@@ -34,8 +34,8 @@ const OPTIONS = {
  * One line per day, its sessions under it, each with its model, its id and
  * the time of its last stop on this machine's clock; then the total. With none
  * kept, it says so, where it looked, and how one starts. With `--json`, the
- * summary as it was answered, each session's tokens by kind included, for
- * `cw-session-cost` to price (EVAL-FR-014).
+ * summary as it was answered, each session's tokens by kind included
+ * (EVAL-FR-008).
  */
 export class SessionsCommand implements Command<typeof OPTIONS> {
   readonly name = "sessions";

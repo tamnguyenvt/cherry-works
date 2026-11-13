@@ -211,8 +211,8 @@ In each module:
     path from the repository's root (CORE-FR-224). Where a build's output and
     each agent's files land is none of them: it is the projections'
     (CORE-FR-221).
-  - `builtin/`, beside `models/` — the engine's own layer: `cw-author`, `cw-session-cost`, the
-    session counter; listed in `BuiltinPrimitives.primitives`.
+  - `builtin/`, beside `models/` — the engine's own layer: `cw-author`, the session
+    counter; listed in `BuiltinPrimitives.primitives`.
   - `vendor/` — `VendorSource` (with its `SourceCharter` and `SourceSkill`),
     `RawVendorSource`, `VendorSourceOrigin`, `VendorRoot`, their factories.
   - `test/` — `TestSuite`, `TestCase`, `TestRoot`, `TestCaseReport`, their

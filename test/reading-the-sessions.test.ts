@@ -372,7 +372,7 @@ test("the summary reads what the counter kept when the agent stopped, on a disk 
   }
 });
 
-test("asked for JSON, the summary gives each session's tokens by kind, so a skill can price them (EVAL-FR-012, EVAL-FR-014)", async () => {
+test("asked for JSON, the summary gives each session's tokens by kind (EVAL-FR-008, EVAL-FR-012)", async () => {
   const cli = cliOver(machineHolding(keptLog));
 
   const { code, text } = await printed(cli, ["sessions", "--json"]);

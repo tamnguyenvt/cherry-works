@@ -267,14 +267,6 @@
       ]
     },
     {
-      "id": "EVAL Story 4",
-      "title": "Ask what the sessions cost",
-      "dependsOn": [
-        "EVAL Story 3",
-        "CORE Story 12"
-      ]
-    },
-    {
       "id": "EVAL Story 5",
       "title": "Search tools rather than load them all into context",
       "dependsOn": [
@@ -461,14 +453,13 @@
     },
     {
       "id": "EVAL Story 8",
-      "title": "Prove the pricing journeys and tokenizer accuracy",
+      "title": "Prove the tokenizer accuracy",
       "dependsOn": [
         "CORE Story 39",
-        "EVAL Story 1",
-        "EVAL Story 4"
+        "EVAL Story 1"
       ],
       "evidence": {
-        "summary": "pnpm test: 830 tests, 827 pass, 0 fail, 3 skipped; typecheck clean; tokenizer estimate 5,669 vs 5,565 exact (1.9%) at 94f4536, 2026-11-05T13:52Z; pricing skill 3/3 against the real claude",
+        "summary": "pnpm test: 830 tests, 827 pass, 0 fail, 3 skipped; typecheck clean; tokenizer estimate 5,669 vs 5,565 exact (1.9%) at 94f4536, 2026-11-05T13:52Z",
         "date": "2026-11-05"
       }
     },
@@ -615,10 +606,14 @@
     },
     {
       "id": "EVAL Story 9",
-      "title": "Prove the pricing journeys again after the workspace moved",
+      "title": "Measure the tokenizer accuracy again after the workspace moved",
       "dependsOn": [
         "CORE Story 43"
-      ]
+      ],
+      "evidence": {
+        "summary": "typecheck exit 0; pnpm test 945 pass, 0 fail; check exit 0; pnpm tokenizer-accuracy at 61bf5b1 on the charter alone, estimated 5,925 vs 6,054 exact (-2.1%), 2026-11-13T02:23Z; pricing dropped",
+        "date": "2026-11-13"
+      }
     },
     {
       "id": "CORE Story 55",

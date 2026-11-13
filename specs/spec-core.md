@@ -1139,7 +1139,7 @@ The repairs of the engine's contract, code and evidence are checked together bef
 
 **Acceptance Scenarios**:
 
-1. **Given** [SDK Story 8](spec-sdk.md#sdk-story-8---compose-the-engine-anywhere-from-cws-own-adapters-and-ones-own-priority-p1), [CORE Story 53](#core-story-53---keep-the-whole-engine-to-its-naming-and-fault-guides-priority-p2), [SDK Story 10](spec-sdk.md#sdk-story-10---trust-the-evidence-of-every-rewritten-done-story-priority-p2), [CORE Story 56](#core-story-56---prove-by-running-what-no-test-runs-yet-priority-p3) and [EVAL Story 9](spec-eval.md#eval-story-9---prove-the-pricing-journeys-again-after-the-workspace-moved-priority-p3) are Done, **When** the quality pass runs, **Then** it checks the code and every spec against the quality checklist and each reported violation becomes a repair story ([CORE-SC-026](#core-sc-026)).
+1. **Given** [SDK Story 8](spec-sdk.md#sdk-story-8---compose-the-engine-anywhere-from-cws-own-adapters-and-ones-own-priority-p1), [CORE Story 53](#core-story-53---keep-the-whole-engine-to-its-naming-and-fault-guides-priority-p2), [SDK Story 10](spec-sdk.md#sdk-story-10---trust-the-evidence-of-every-rewritten-done-story-priority-p2), [CORE Story 56](#core-story-56---prove-by-running-what-no-test-runs-yet-priority-p3) and [EVAL Story 9](spec-eval.md#eval-story-9---measure-the-tokenizer-accuracy-again-after-the-workspace-moved-priority-p3) are Done, **When** the quality pass runs, **Then** it checks the code and every spec against the quality checklist and each reported violation becomes a repair story ([CORE-SC-026](#core-sc-026)).
 
 ---
 

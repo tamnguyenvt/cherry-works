@@ -38,11 +38,11 @@ test("every kind the charter knows has a chip, carrying how many primitives of i
     // the view is waited for once, here.
     await page.getByRole("radio", { checked: true }).waitFor();
 
-    // The sensor, the two skills and the script the engine brings are counted
+    // The sensor, the skill and the script the engine brings are counted
     // with what the repository authored.
     assert.deepEqual(
       await chipsOf(page),
-      Primitives.kinds.map((kind, index) => [kind, ["1", "1", "2", "0", "0", "0", "1", "1", "0", "1", "0"][index]]),
+      Primitives.kinds.map((kind, index) => [kind, ["1", "1", "1", "0", "0", "0", "1", "1", "0", "1", "0"][index]]),
     );
   });
 });
@@ -133,7 +133,6 @@ test("the repository's tab lists what was authored here and what the engine brin
     await page.getByRole("table", { name: "skill primitives" }).waitFor();
     assert.deepEqual(await columnOf(page, 2).locator("div:nth-child(2)").allInnerTexts(), [
       "(built into cw)/skill/cw-author/index.md",
-      "(built into cw)/skill/cw-session-cost/index.md",
     ]);
   });
 });

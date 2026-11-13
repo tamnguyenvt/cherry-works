@@ -2,7 +2,7 @@
 
 **Created**: 2026-10-04
 
-**Updated**: 2026-11-10
+**Updated**: 2026-11-13
 
 **Input**: User description: "Phase 008, after Uber's efficient software factory: predict how many tokens the charter loads into the agent's main context; give the tokens a session used when it stops; let `cw mcp serve` search its tools…; evaluate the charter against a real model…"
 
@@ -13,6 +13,8 @@ Then: "Evaluate the charter under promptfoo alone…"
 Then: "Upgrade cw eval to support Codex and --agent=<agent>; without it, use the sole configured agent or ask the developer to choose among several…"
 
 Then: "…prove pricing skill results and measure tokenizer accuracy."
+
+Then: "Drop pricing the sessions: its code and its spec."
 
 ## Overview
 
@@ -33,6 +35,10 @@ A charter is paid for in tokens every turn an agent works under it, and is worth
 
 - Q: Does `cw mcp serve` search its tools itself? → A: No: the agent's own tool search does, which the build turns on, and the server keeps nothing between calls; an agent without a tool search of its own is sent every schema ([EVAL-FR-016](#eval-fr-016)).
 - Q: Why does a case run in a worktree of the last commit? → A: So it never runs in the working tree someone may be writing in; what it evaluates is the charter and its cases as they stand, committed or not, built into that worktree ([EVAL-FR-021](#eval-fr-021)).
+
+### Session 2026-11-13
+
+- Q: Does the engine bring a skill that prices the sessions kept? → A: No: pricing is dropped, its skill and its requirements with it; the sessions are counted in tokens alone.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -93,24 +99,6 @@ A developer wants to know where last week went. One command sums the sessions up
 3. **Given** no session kept yet, **When** the developer asks for the summary, **Then** it says none was kept and how one starts ([EVAL-FR-013](#eval-fr-013)).
 4. **Given** no span named, **When** the developer asks for the summary, **Then** the last 31 days are summed up, today among them ([EVAL-FR-030](#eval-fr-030)).
 5. **Given** a span longer than 31 days, **When** the developer asks for the summary, **Then** it is refused before anything is read, saying how long a span may be ([EVAL-FR-030](#eval-fr-030)).
-
----
-
-### EVAL Story 4 - Ask what the sessions cost (Priority: P2)
-
-**Status**: Done
-
-The developer asks their agent what last week cost. A skill the engine brings reads the kept sessions through the summary, asks whether to use prices they type in or the model provider's published prices as they stand today, fetches those when asked, and answers what each session and each day cost, saying which prices it used and when they were read.
-
-**Why this priority**: Money is what a team decides on, but prices change and differ by agreement; keeping them out of the engine keeps every number it gives true, and leaves the reckoning to a skill that can ask.
-
-**Independent Test**: With two sessions kept, invoke the skill; give it prices, and confirm each session's cost is those prices times its tokens, and that the answer names the prices used. Invoke it again asking for published prices, and confirm it says where it read them and when.
-
-**Acceptance Scenarios**:
-
-1. **Given** the sessions and prices the developer types in, **When** they invoke the skill, **Then** it answers each session's and each day's cost at those prices, naming them ([EVAL-FR-014](#eval-fr-014)).
-2. **Given** the sessions and a request for published prices, **When** they invoke the skill, **Then** it reads the model provider's price list, says where and when, and answers at those prices ([EVAL-FR-014](#eval-fr-014)).
-3. **Given** a session of a model no price is known for, **When** costs are answered, **Then** its tokens are given and its cost is said to be unknown, never guessed ([EVAL-FR-015](#eval-fr-015)).
 
 ---
 
@@ -179,39 +167,35 @@ An author evaluates the same charter with Claude Code or Codex. They select an a
 
 ---
 
-### EVAL Story 8 - Prove the pricing journeys and tokenizer accuracy (Priority: P2)
+### EVAL Story 8 - Prove the tokenizer accuracy (Priority: P2)
 
 **Status**: Done
 
-An author can inspect evidence that using the pricing skill produces correct session and daily costs, names its published price source and time, and leaves an unknown model unpriced. The tokenizer accuracy claim is supported by a measurement against the real agent rather than a substitute's fixed answer.
+The tokenizer accuracy claim is supported by a measurement against the real agent rather than a substitute's fixed answer.
 
-**Why this priority**: Instructions containing the right words do not alone prove the result promised to the developer.
+**Why this priority**: A number said to be close to the real count is worth only the measurement behind it.
 
-**Independent Test**: Use known session totals and typed prices, repeat with published prices while recording source and time, include an unknown model, and compare the estimate for one fixed charter with the real agent's exact count.
+**Independent Test**: Compare the estimate for one fixed charter with the real agent's exact count.
 
 **Acceptance Scenarios**:
 
-1. **Given** known session tokens and typed prices, **When** the skill is used, **Then** its session and daily costs match independently calculated expected amounts and name the prices used ([EVAL-FR-014](#eval-fr-014)).
-2. **Given** a request for published prices, **When** the skill is used, **Then** its answer uses those prices and records their source and reading time ([EVAL-FR-014](#eval-fr-014)).
-3. **Given** a model whose price is unknown, **When** the skill is used, **Then** its tokens are reported, its cost is explicitly unknown and it is excluded from priced totals with that exclusion stated ([EVAL-FR-015](#eval-fr-015)).
-4. **Given** one fixed charter and the supported real agent, **When** the estimate and exact count are measured, **Then** the estimate and the exact count differ by no more than 15%, and the measurement is recorded; a substitute's answer is not accepted as that measurement ([EVAL-FR-004](#eval-fr-004), [EVAL-SC-002](#eval-sc-002)).
+1. **Given** one fixed charter and the supported real agent, **When** the estimate and exact count are measured, **Then** the estimate and the exact count differ by no more than 15%, and the measurement is recorded; a substitute's answer is not accepted as that measurement ([EVAL-FR-004](#eval-fr-004), [EVAL-SC-002](#eval-sc-002)).
 
 ---
 
-### EVAL Story 9 - Prove the pricing journeys again after the workspace moved (Priority: P3)
+### EVAL Story 9 - Measure the tokenizer accuracy again after the workspace moved (Priority: P3)
 
-**Status**: Todo
+**Status**: Done
 
-An author reads evidence of the pricing journeys and the tokenizer's accuracy made after the workspace was split into the charter, the output and the log, measured on the charter alone.
+An author reads evidence of the tokenizer's accuracy made after the workspace was split into the charter, the output and the log, measured on the charter alone.
 
-**Why this priority**: The recorded runs predate the move, and the accuracy measurement still counts the eval cases and the log as part of the charter.
+**Why this priority**: The recorded measurement predates the move, and still counts the eval cases and the log as part of the charter.
 
-**Independent Test**: Run the three pricing journeys with the real agent and the tokenizer accuracy measurement on a fixed charter, and record each run.
+**Independent Test**: Run the tokenizer accuracy measurement on a fixed charter, and record the run.
 
 **Acceptance Scenarios**:
 
-1. **Given** the workspace in its three parts, **When** the three pricing journeys run with the real agent, **Then** each answers as [EVAL Story 8](#eval-story-8---prove-the-pricing-journeys-and-tokenizer-accuracy-priority-p2) states, and the run is recorded ([EVAL-FR-014](#eval-fr-014), [EVAL-FR-015](#eval-fr-015)).
-2. **Given** one fixed charter, **When** the estimate and the exact count are measured, **Then** what is measured is the charter alone — no eval case and no log — and the two differ by no more than 15%, recorded ([EVAL-SC-002](#eval-sc-002)).
+1. **Given** one fixed charter, **When** the estimate and the exact count are measured, **Then** what is measured is the charter alone — no eval case and no log — and the two differ by no more than 15%, recorded ([EVAL-SC-002](#eval-sc-002)).
 
 ---
 
@@ -253,11 +237,6 @@ An author reads evidence of the pricing journeys and the tokenizer's accuracy ma
 - <a id="eval-fr-012"></a>**EVAL-FR-012**: The engine MUST sum the sessions up by day and by session, in tokens, the largest first, each session counted once at the last stop it was kept at, over a span of time of at most 31 days, reading only the sessions kept within it.
 - <a id="eval-fr-030"></a>**EVAL-FR-030**: The summary's span MUST be the last 31 days, today among them, when none is named, and 31 days from or up to the one end named; a span longer than 31 days MUST be refused, saying how long one may be.
 - <a id="eval-fr-013"></a>**EVAL-FR-013**: With no session kept, the summary MUST say so and how one starts.
-
-**What a session costs**
-
-- <a id="eval-fr-014"></a>**EVAL-FR-014**: The engine MUST bring a skill that answers what the kept sessions cost, per session and per day, at prices the developer types in or at the model provider's published prices read when asked, naming the prices used and where and when they were read. The engine itself MUST price nothing.
-- <a id="eval-fr-015"></a>**EVAL-FR-015**: A session of a model no price is known for MUST be answered with its tokens and its cost said to be unknown.
 
 **An mcp origin's tools**
 
@@ -319,7 +298,7 @@ An author reads evidence of the pricing journeys and the tokenizer's accuracy ma
 
 - A view of many developers' sessions together, or sending a session's tokens anywhere.
 - Stopping or slowing a session that passes a mark.
-- Pricing anything inside the engine.
+- Pricing the sessions kept, in the engine or in a skill it brings.
 - Running evaluations in a pipeline on anyone's behalf, or more than once per case.
 - Evaluating an agent other than Claude Code or Codex.
 - Extending the counting of the sessions' tokens or exact main-context counting to Codex in this phase.

@@ -274,11 +274,6 @@ cw sessions --since 2026-10-01       # 31 days from that day at most
 cw sessions --since 2026-10-01 --until 2026-10-05 --json
 ```
 
-To put a price on it, ask your agent what last week cost: the built-in
-`cw-session-cost` skill reads the same summary, asks whether to use prices you
-type or the provider's published ones, and answers per session and per day,
-naming the prices it used.
-
 Both limits are set in `.cw/settings.json`; leave one out to keep its default:
 
 ```json

@@ -132,7 +132,7 @@ test("the prediction lists what a session opens with, the largest first, with it
   assert.deepEqual(
     sessionLoads.map(({ id }) => id).sort(),
     // The skills the engine brings are loaded as one authored here is.
-    ["CHARTER.md", "CLAUDE.md", "cw-author", "cw-session-cost", "plain-words", "refactoring", "reviewer"],
+    ["CHARTER.md", "CLAUDE.md", "cw-author", "plain-words", "refactoring", "reviewer"],
   );
   assert.deepEqual(
     sessionLoads.map(({ tokens }) => tokens),

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
-import { CwSessionCostSkill } from "../src/module/charter/domain/builtin/cw-session-cost-skill.js";
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
 import { outputPath } from "../src/module/charter/domain/constants.js";
@@ -44,16 +43,9 @@ const builtinEntry = {
   description: new CwAuthorSkill().headers.description,
 };
 
-/** The skill that prices a session, and the script and the sensor the
- *  engine brings to count its tokens, catalogued as every charter's are
- *  (EVAL-FR-008, EVAL-FR-014). */
+/** The script and the sensor the engine brings to count a session's tokens,
+ *  catalogued as every charter's are (EVAL-FR-008). */
 const sessionCounterEntries = [
-  {
-    id: "cw-session-cost",
-    kind: "skill",
-    description: new CwSessionCostSkill().headers.description,
-    file: ".cw/out/skill/cw-session-cost/index.md",
-  },
   {
     id: "cw-session-tokens-counter",
     kind: "script",
@@ -69,10 +61,8 @@ const sessionCounterEntries = [
 ];
 
 /** What the engine's session primitives compile to under the workspace: the
- *  pricing skill's document, the script's document and its one asset, then
- *  the sensor's document. */
+ *  script's document and its one asset, then the sensor's document. */
 const sessionCounterPaths = [
-  ".cw/out/skill/cw-session-cost/index.md",
   ".cw/out/script/cw-session-tokens-counter/index.md",
   ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs",
   ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md",
@@ -121,7 +111,6 @@ test("compiling produces the listing, the charter file, and what the installed a
     ".mcp.json",
     // The skills the engine brings, which every charter holds and reads first.
     ".claude/skills/cw-author/SKILL.md",
-    ".claude/skills/cw-session-cost/SKILL.md",
     // The one guide as the installed agent's own kinds have it.
     ".claude/rules/no-any.md",
   ]);
@@ -140,7 +129,7 @@ test("no listing and no projection can be produced without the others (SC-004)",
   // list, and no argument that narrows it to a single file. The second argument
   // says which agents are installed, never which file is wanted.
   assert.equal(CompileService.compileCharterRoot.length, 2);
-  assert.equal((await built(oneGuide)).written.length, 17);
+  assert.equal((await built(oneGuide)).written.length, 15);
 });
 
 test("a repository with no agent installed still compiles the whole neutral half (FR-019)", async () => {
@@ -278,7 +267,7 @@ test("a charter with a broken file still compiles what the readable files hold",
   assert.equal(Object.keys(charter.allFaultsByFiles.faultsByFilePath).length, 1);
   assert.deepEqual(
     JSON.parse(files[".cw/out/catalogue.json"] ?? "").map((one: { id: string }) => one.id),
-    ["cw-author", "cw-session-cost", "cw-session-tokens-counter", "no-any"],
+    ["cw-author", "cw-session-tokens-counter", "no-any"],
   );
 });
 

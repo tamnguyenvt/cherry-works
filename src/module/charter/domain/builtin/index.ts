@@ -1,6 +1,5 @@
 import type { Primitive } from "../models/primitive/primitive.js";
 import { CwAuthorSkill } from "./cw-author-skill.js";
-import { CwSessionCostSkill } from "./cw-session-cost-skill.js";
 import { CwSessionTokensCounterScript } from "./cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "./cw-session-tokens-sensor.js";
 
@@ -12,6 +11,5 @@ export class BuiltinPrimitives {
     new CwAuthorSkill(),
     new CwSessionTokensCounterScript(),
     new CwSessionTokensSensor(),
-    new CwSessionCostSkill(),
   ];
 }

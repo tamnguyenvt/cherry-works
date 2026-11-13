@@ -139,7 +139,6 @@ test("what the engine brings is no folder: it adds no read, and is read without 
 
   assert.deepEqual(ids(PrimitiveLayer.BUILTIN.name, charter), [
     "cw-author",
-    "cw-session-cost",
     "cw-session-tokens-counter",
     "cw-session-tokens-counter-on-stop",
   ]);
