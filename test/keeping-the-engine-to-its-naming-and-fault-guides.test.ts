@@ -9,10 +9,12 @@ const guideFolderUrl = new URL(".cw/charter/primitive/guide/", repositoryUrl);
 
 /** What the engine's own code is, read file by file: the files a generator
  *  wrote (the portal's shadcn components and their `cn`) and the assets put
- *  down as they are (`.script.mjs`) aside, as the guides exempt them. */
+ *  down as they are (`.script.mjs`) aside, as the guides exempt them, and the
+ *  probes a test beside this one puts in the page and takes away (`.probe.ts`). */
 const sourcePaths = readdirSync(sourceFolderUrl, { recursive: true, encoding: "utf8" }).filter(
   (sourcePath) =>
     /\.(ts|tsx)$/.test(sourcePath) &&
+    !sourcePath.endsWith(".probe.ts") &&
     !sourcePath.startsWith("presentation/portal/page/components/ui/") &&
     sourcePath !== "presentation/portal/page/lib/utils.ts",
 );
