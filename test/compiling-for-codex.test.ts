@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { outputPath } from "../src/module/charter/domain/constants.js";
-import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { CharterOutputService } from "../src/module/charter/domain/services/charter-output.service.js";
 import { CodexComponentFactory } from "../src/module/charter/infra/codex/codex-component.factory.js";
 import { CodexEntryFile } from "../src/module/charter/infra/codex/codex-entry-file.js";
 import { CodexProjection } from "../src/module/charter/infra/codex/codex-projection.adapter.js";
@@ -23,7 +23,7 @@ test("compilation supplies scoped instruction components without reading provide
   });
   const charter = await loadCharterRoot(fileReaders);
   fileReaders.calls.length = 0;
-  const output = CompileService.compileCharterRoot(charter, [new AgentProvider("codex")]);
+  const output = CharterOutputService.compileCharterRoot(charter, [new AgentProvider("codex")]);
   assert.deepEqual(fileReaders.calls, []);
   const codexComponents = CodexComponentFactory.create(charter, output);
   const scopedComponent = codexComponents.find(
@@ -51,10 +51,10 @@ test("compilation depends only on the charter, not existing provider files", asy
   });
   const charter = await loadCharterRoot(fileReaders);
   fileReaders.calls.length = 0;
-  const firstOutput = CompileService.compileCharterRoot(charter, [new AgentProvider("codex")]);
+  const firstOutput = CharterOutputService.compileCharterRoot(charter, [new AgentProvider("codex")]);
   assert.deepEqual(fileReaders.calls, []);
   fileReaders.writeFile(inRepo(".codex/config.toml"), "not valid TOML");
-  const secondOutput = CompileService.compileCharterRoot(charter, [new AgentProvider("codex")]);
+  const secondOutput = CharterOutputService.compileCharterRoot(charter, [new AgentProvider("codex")]);
   assert.deepEqual(secondOutput.charterOutputItems, firstOutput.charterOutputItems);
   assert.deepEqual(fileReaders.calls, []);
   assert.ok(

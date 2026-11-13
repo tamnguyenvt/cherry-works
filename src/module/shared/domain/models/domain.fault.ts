@@ -39,9 +39,10 @@ export class DomainFault extends Error {
   }
 }
 
-/** Several faults raised as one, carried as its cause: what a caller reading
- *  a whole charter collects and names every one of (FR-009). */
-export class ManyFindingsFault extends DomainFault {
+/** What is read of a model holds several faults at once, carried as its
+ *  cause: what a caller reading a whole model collects and names every one
+ *  of (FR-009). */
+export class UnsoundModelFault extends DomainFault {
   /** Every fault it carries, in the order they were found. */
   get faults(): readonly DomainFault[] {
     return this.cause as readonly DomainFault[];

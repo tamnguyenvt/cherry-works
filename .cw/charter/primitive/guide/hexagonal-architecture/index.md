@@ -164,7 +164,7 @@ imports. Each folder named below is a module's: `<module>/app/port/in/`,
     of what a repository keeps.
   - A service, `<name>.service.ts`: pure logic over several models, calling
     the factories: one class per file, holding no state, its methods static
-    (`CompileService.compileCharterRoot`), never constructed.
+    (`CharterOutputService.compileCharterRoot`), never constructed.
   - `libs/`, in the kernel alone — the libraries the domain reads with,
     each wrapped in one `<name>.lib.ts`, one class of static methods named
     after it (`GlobsLib.coversGlob`, `TomlLib.mergeTomlText`), never

@@ -16,7 +16,7 @@ import { CharterMd } from "../src/module/charter/domain/models/charter-output/ch
 import { CompiledPrimitive } from "../src/module/charter/domain/models/charter-output/compiled-primitive.js";
 import { McpOrigin, McpOrigins } from "../src/module/charter/domain/models/charter-output/mcp-origin.js";
 import { ProjectionPlan, WritePlan } from "../src/module/charter/domain/models/charter-output/projection-plan.js";
-import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { CharterOutputService } from "../src/module/charter/domain/services/charter-output.service.js";
 import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
@@ -74,7 +74,7 @@ const authoringCharterOver = (heldFileReaders: InMemoryFileReaders) => {
 test("a compiled charter's items are each known by their path inside the output and hold their text and assets; an item for one agent alone names that agent in its path, and none names where the output lands (CORE-FR-220, CORE Story 48 scenario 1)", async () => {
   const hostNames = ["claude", "codex"];
   const charterRoot = await loadCharterRoot(new InMemoryFileReaders(charterOfEveryKind));
-  const charterOutput = CompileService.compileCharterRoot(
+  const charterOutput = CharterOutputService.compileCharterRoot(
     charterRoot,
     hostNames.map((hostName) => new AgentProvider(hostName)),
   );

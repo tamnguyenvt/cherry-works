@@ -25,7 +25,7 @@ const adding = async (
 ) => {
   const held = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
@@ -43,7 +43,12 @@ const adding = async (
   if (answers !== undefined) prompts.inject(answers);
   try {
     const code = await new Commander(
-      commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo),
+      commandLineOf(
+        held,
+        new InMemoryFileOutput(held),
+        { charterAuthoringApp, charterRuntimeApp: charterRuntimeApps },
+        repo,
+      ),
       COMMANDS,
     ).runCommandLine(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };

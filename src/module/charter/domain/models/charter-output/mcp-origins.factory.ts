@@ -56,18 +56,18 @@ export class McpOriginsFactory {
       );
     }
     const charter = mcpOriginsSource;
-    const mcpsByKey = new Map<string, McpPrimitive[]>();
+    const mcpPrimitivesByOriginKey = new Map<string, McpPrimitive[]>();
     for (const primitive of [...charter.primitives].sort((leftPrimitive, rightPrimitive) =>
       leftPrimitive.headers.id < rightPrimitive.headers.id ? -1 : 1,
     )) {
       if (!(primitive instanceof McpPrimitive)) continue;
       const originKey = primitive.originKey;
-      mcpsByKey.set(originKey, [...(mcpsByKey.get(originKey) ?? []), primitive]);
+      mcpPrimitivesByOriginKey.set(originKey, [...(mcpPrimitivesByOriginKey.get(originKey) ?? []), primitive]);
     }
 
     return new McpOrigins(
-      [...mcpsByKey.entries()]
-        .sort(([oneKey], [anotherKey]) => (oneKey < anotherKey ? -1 : 1))
+      [...mcpPrimitivesByOriginKey.entries()]
+        .sort(([leftOriginKey], [rightOriginKey]) => (leftOriginKey < rightOriginKey ? -1 : 1))
         .map(([originKey, mcpsAtOrigin]) => {
           const [firstMcp] = mcpsAtOrigin as [(typeof mcpsAtOrigin)[number], ...typeof mcpsAtOrigin];
           const { endpoint, command, args: commandArguments = [], path } = firstMcp.headers;

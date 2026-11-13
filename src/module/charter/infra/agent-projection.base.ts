@@ -64,7 +64,7 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
 
   /** What else the last build left for this agent outside its own folders,
    *  each with what to write back where it is the repository's too. */
-  protected async planOtherCleanup(_checkoutPath: string): Promise<readonly WritePlan[]> {
+  protected async planOtherCleanup(_checkoutFolder: string): Promise<readonly WritePlan[]> {
     return [];
   }
 

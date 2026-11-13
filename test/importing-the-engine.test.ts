@@ -96,7 +96,7 @@ const progressReporter: ForReportingProgress = { reportProgress() {}, reportProb
 const clock: ForTellingTime = { tellTime() { return new Date(); } };
 const tokenCounter: ForCountingTokens = { countTokens(text) { return text.length; } };
 const shell: ForRunningShellCommands = { async runShellCommand(): Promise<ShellCommandResult> { return { exitCode: 0, stdout: '', stderr: '' }; } };
-const worktrees: ForKeepingWorktrees = { worktreesFolderPath: '.worktrees', async addWorktree() {}, async removeWorktree() {} };
+const worktreeKeeper: ForKeepingWorktrees = { worktreesFolderPath: '.worktrees', async addWorktree() {}, async removeWorktree() {} };
 const promptfooTestResult: PromptfooTestResult = { success: true, totalTokens: 0, componentResults: [] };
 const promptfooRunner: ForRunningPromptfoo = {
   installFolderPath: '/promptfoo', async isInstalled() { return true; }, async installPromptfoo() {},
@@ -111,7 +111,7 @@ const credentialsRepository: ForStoringCredentials = { async readCredential(addr
 const sourceFetcher: ForFetchingCharterSources = {
   async fetchCommit() { throw new AdapterFault('No source is reached here.', 'Vendor with cw.', { internal: false }); },
   async listFilesAt() { return []; }, async readFileAt() { return ''; }, async readBytesAt() { return new Uint8Array(); },
-  async checkOutFolder() {}, async removeTempCommit() {}
+  async checkOutFolder() {}, async removeFetchedCommit() {}
 };
 const sessionAnalysisRepository: ForLoadingSessionAnalysis = { async loadSessionLogs(writtenFromMs, writtenUntilMs): Promise<SessionLogs> { return new SessionLogs('sessions', []); } };
 let workspaceSettingsText: string | undefined;
@@ -127,7 +127,7 @@ const localOutput: ForManagingLocalOutput = {
   writePlan(projectionPlan: ProjectionPlan) { return ownLocalOutput.writePlan(projectionPlan); }
 };
 const agentCli: ForCheckingAgentCli = { async isInstalled() { return false; } };
-const replacedAdapters: Partial<EngineAdapters> = { fileReader, fileWriter, worktrees, oauthAuthorizer, mcpServers, tokenCounter, clock, shell, progressReporter, promptfooRunner, credentialsRepository, sourceFetcher, sessionAnalysisRepository, workspaceSettingsRepository, localOutput, agentProvider: { claude: { projection: new ClaudeProjection(fileReader), agentCli: agentCli } } };
+const replacedAdapters: Partial<EngineAdapters> = { fileReader, fileWriter, worktreeKeeper, oauthAuthorizer, mcpServers, tokenCounter, clock, shell, progressReporter, promptfooRunner, credentialsRepository, sourceFetcher, sessionAnalysisRepository, workspaceSettingsRepository, localOutput, agentProvider: { claude: { projection: new ClaudeProjection(fileReader), agentCli: agentCli } } };
 const composedApplications: ComposedApplications = await composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), replacedAdapters);
 const filesReplacedApplications: Promise<ComposedApplications> = composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), { fileReader, fileWriter });
 // An agent's projection and command line, and the charter's store, may be a tool's own too.
@@ -994,9 +994,9 @@ test("the installed package exports exactly what its contract names: the composi
     "loadCharterService",
     "installCharterService",
     "loadMcpOriginsService",
-    "CompileService",
-    "TestService",
-    "EvalService",
+    "CharterOutputService",
+    "TestSuiteService",
+    "EvalSuiteService",
     "composeEngine",
     "composeWorkspace",
     "Commander",
@@ -1249,12 +1249,13 @@ test("the contract recorded is the build split by module, so a declaration chang
   assert.deepEqual(Object.fromEntries(splitContractTextByFileName), Object.fromEntries(contractTextByFileName));
 });
 
-test("running a signal's sensors names the agent they run for, and the engine assumes none (SDK Story 8 scenario 6)", async () => {
+test("running a signal's sensors names the agent they run for, or that none is named, and the engine assumes none (SDK Story 8 scenario 6, CORE-FR-233)", async () => {
   const consumerSource = `
 import type { ForRunningCharter } from 'cherry-works';
 declare const charterRuntimeApp: ForRunningCharter;
 await charterRuntimeApp.runSensors('Stop', '{}', 'codex');
-// @ts-expect-error The agent the sensors run for is named.
+await charterRuntimeApp.runSensors('Stop', '{}', undefined);
+// @ts-expect-error The agent the sensors run for, or that none is, is said.
 await charterRuntimeApp.runSensors('Stop', '{}');
 `;
   await writeFile(join(consumerFolder, "named-agent.ts"), consumerSource);
@@ -1265,9 +1266,8 @@ await charterRuntimeApp.runSensors('Stop', '{}');
 const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = await composeOverMemory(['claude']);
 assert.equal((await charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
 assert.equal((await charterBuildingApp.buildCharter()).type, 'ProjectionPlanSummary');
-const unnamedAnswer = await charterRuntimeApp.runSensors('NoSensorSignal', '{}');
-assert.equal(unnamedAnswer.type, 'Fault', JSON.stringify(unnamedAnswer));
-assert.notEqual(unnamedAnswer.data.name, 'InternalFault');
+const unnamedAnswer = await charterRuntimeApp.runSensors('NoSensorSignal', '{}', undefined);
+assert.equal(unnamedAnswer.type, 'SensorRunOutcome', JSON.stringify(unnamedAnswer));
 assert.deepEqual(progressReporter.problems, []);
 assert.equal((await charterRuntimeApp.runSensors('NoSensorSignal', '{}', 'claude')).type, 'SensorRunOutcome');
 `,

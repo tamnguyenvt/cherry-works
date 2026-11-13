@@ -14,9 +14,11 @@ Then: "Upgrade cw eval to support Codex and --agent=<agent>; without it, use the
 
 Then: "…prove pricing skill results and measure tokenizer accuracy."
 
+Then: "Measure the tokenizer accuracy again, on the charter alone, now the workspace is split."
+
 Then: "Drop pricing the sessions: its code and its spec."
 
-Then: "Keep the read expectation, `cw eval-analyze` and each case's kept result, and write their requirements." Then: "`cw context` estimates with no agent named; `cw context --agent=<agent>` counts exactly for that agent beside the estimate; `--exact` is dropped."
+Then: "Keep the read expectation, `cw eval-analyze` and each case's kept result, and write their requirements." Then: "`cw context` estimates with no agent named; `cw context --agent=<agent>` counts exactly for that agent beside the estimate; `--exact` is dropped." Then: "Repair what the last quality pass found: one term for the agents a repository chose and one for the agent named; a prediction for each agent chosen, and what is said when none is."
 
 ## Overview
 
@@ -43,6 +45,8 @@ A charter is paid for in tokens every turn an agent works under it, and is worth
 - Q: Does the engine bring a skill that prices the sessions kept? → A: No: pricing is dropped, its skill and its requirements with it; the sessions are counted in tokens alone.
 - Q: Is the estimate's accuracy measured by a script of the repository's own, or by `cw context`? → A: By `cw context --agent=<agent>`: it counts exactly, estimates too, lists both and warns past the limit; `cw context` alone estimates; no release spends tokens on it ([EVAL-FR-004](#eval-fr-004)).
 - Q: Are the expectation that the agent reads a file, `cw eval-analyze` and each case's kept result, which no requirement asks for, kept or removed? → A: Kept, each with its requirement; judging whether the agent read a file is the engine's own, every other expectation promptfoo's ([EVAL-FR-020](#eval-fr-020), [EVAL-FR-039](#eval-fr-039), [EVAL-FR-040](#eval-fr-040), [EVAL-FR-041](#eval-fr-041)).
+- Q: What are the agents a repository has called, and the agent given by `--agent`? → A: The agents the repository "chose", and the agent "named", in every spec; "configured", "selected" and "compiles for" are retired ([EVAL-FR-004](#eval-fr-004), [EVAL-FR-033](#eval-fr-033) to [EVAL-FR-038](#eval-fr-038)).
+- Q: Is the main context predicted for one agent or for each? → A: For each agent the repository chose, one prediction each; a repository that chose none is told no agent loads anything, and to run `cw init` to choose one ([EVAL-FR-001](#eval-fr-001)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -148,25 +152,25 @@ An author wants to know that asking the agent to "plan this feature" invokes the
 
 ---
 
-### EVAL Story 7 - Evaluate with the selected configured agent (Priority: P2)
+### EVAL Story 7 - Evaluate with the agent named or chosen (Priority: P2)
 
 **Status**: Done
 
-An author evaluates the same charter with Claude Code or Codex. They select an agent explicitly with `--agent=<agent>`. Without that option, the evaluation uses the sole configured agent, or asks them to choose among the configured agents before running any case. An unattended run with several configured agents requires an explicit choice. The existing case expectations and report remain available with either agent.
+An author evaluates the same charter with Claude Code or Codex. They name an agent with `--agent=<agent>`. With no agent named, the evaluation uses the one agent the repository chose, or asks them to pick among the agents it chose before running any case. An unattended run in a repository that chose several agents requires an agent named. The existing case expectations and report remain available with either agent.
 
 **Why this priority**: Authors building for Codex need to prove that its charter works with the agent they actually use, without spending tokens on a different agent by accident.
 
-**Independent Test**: Run the same cases with Claude Code and Codex, including skill, guide and token expectations; confirm outcomes and token reports for each. Exercise explicit selection, automatic selection of a sole configured agent, and interactive selection among two agents. Confirm every invalid or unavailable selection stops before any case runs.
+**Independent Test**: Run the same cases with Claude Code and Codex, including skill, guide and token expectations; confirm outcomes and token reports for each. Exercise an agent named, the one agent chosen taken with none named, and a pick among two agents chosen. Confirm every agent named that is invalid or unavailable stops the run before any case runs.
 
 **Acceptance Scenarios**:
 
-1. **Given** Claude Code and Codex are configured, **When** the author explicitly selects either, **Then** all cases run with that agent, using the existing case format and expectations, and the report identifies it ([EVAL-FR-036](#eval-fr-036), [EVAL-FR-037](#eval-fr-037), [EVAL-SC-008](#eval-sc-008)).
-2. **Given** exactly one configured agent and no explicit selection, **When** evaluation starts, **Then** that agent is used without a selection prompt ([EVAL-FR-036](#eval-fr-036)).
-3. **Given** several configured agents and no explicit selection in an interactive terminal, **When** evaluation starts, **Then** the author must choose among those agents before any case runs; cancelling runs no case ([EVAL-FR-036](#eval-fr-036), [EVAL-FR-038](#eval-fr-038)).
-4. **Given** several configured agents and no explicit selection without interactive input, **When** evaluation starts, **Then** it refuses and asks for an explicit selection before any case runs ([EVAL-FR-033](#eval-fr-033)).
-5. **Given** an explicitly selected agent absent from settings, **When** evaluation starts, **Then** it refuses and names the agent and how to configure it ([EVAL-FR-034](#eval-fr-034)).
-6. **Given** missing settings or no configured agents, **When** evaluation starts, **Then** it refuses and explains how to configure an agent without choosing a default ([EVAL-FR-035](#eval-fr-035)).
-7. **Given** an unsupported agent name or the selected agent's command line is missing, **When** evaluation starts, **Then** it refuses before any case runs and explains what must be corrected, without falling back to another agent ([EVAL-FR-026](#eval-fr-026), [EVAL-FR-038](#eval-fr-038)).
+1. **Given** Claude Code and Codex chosen, **When** the author names either, **Then** all cases run with that agent, using the existing case format and expectations, and the report identifies it ([EVAL-FR-036](#eval-fr-036), [EVAL-FR-037](#eval-fr-037), [EVAL-SC-008](#eval-sc-008)).
+2. **Given** exactly one agent chosen and none named, **When** evaluation starts, **Then** that agent is used without asking ([EVAL-FR-036](#eval-fr-036)).
+3. **Given** several agents chosen and none named, at an interactive terminal, **When** evaluation starts, **Then** the author must pick among those agents before any case runs; cancelling runs no case ([EVAL-FR-036](#eval-fr-036), [EVAL-FR-038](#eval-fr-038)).
+4. **Given** several agents chosen and none named, with nobody to ask, **When** evaluation starts, **Then** it refuses before any case runs and asks for an agent named ([EVAL-FR-033](#eval-fr-033)).
+5. **Given** an agent named that the repository did not choose, **When** evaluation starts, **Then** it refuses, naming the agent and how to choose it ([EVAL-FR-034](#eval-fr-034)).
+6. **Given** missing settings or no agent chosen, **When** evaluation starts, **Then** it refuses and explains how to choose an agent, taking no default ([EVAL-FR-035](#eval-fr-035)).
+7. **Given** an unsupported agent named, or the named agent's command line missing, **When** evaluation starts, **Then** it refuses before any case runs and explains what must be corrected, without falling back to another agent ([EVAL-FR-026](#eval-fr-026), [EVAL-FR-038](#eval-fr-038)).
 8. **Given** cases expecting a skill, a guide or a token ceiling, **When** evaluated with Codex, **Then** each expectation is checked, failed expectations fail the run, tokens are reported and the working tree is preserved as with Claude Code ([EVAL-FR-021](#eval-fr-021), [EVAL-FR-022](#eval-fr-022), [EVAL-FR-023](#eval-fr-023), [EVAL-FR-024](#eval-fr-024), [EVAL-FR-025](#eval-fr-025), [EVAL-FR-037](#eval-fr-037)).
 
 ---
@@ -207,6 +211,7 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 
 - A charter holding nothing loaded when a session opens — the prediction says the total is none, and the health check is quiet ([EVAL-FR-002](#eval-fr-002), [EVAL-FR-006](#eval-fr-006)).
 - A guide naming files that every file in the repository matches — it is still listed apart: what is predicted is what the agent loads, not what it is likely to ([EVAL-FR-003](#eval-fr-003)).
+- A repository that chose no agent — no agent loads anything of the charter: the prediction says so and tells the developer to run `cw init` to choose one ([EVAL-FR-001](#eval-fr-001)).
 - An agent named whose command line is not installed — the prediction is refused, saying `cw context` with no agent named needs nothing ([EVAL-FR-004](#eval-fr-004)).
 - The agent's own record of a session changes shape between versions of the agent — the stop is let through untouched, and nothing is kept for it ([EVAL-FR-011](#eval-fr-011)).
 - A span named by one end only — 31 days from the day named, or up to it ([EVAL-FR-030](#eval-fr-030)).
@@ -224,10 +229,10 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 
 **The main context**
 
-- <a id="eval-fr-001"></a>**EVAL-FR-001**: The engine MUST predict, without running an agent, the tokens each primitive puts into the agent's main context when a session opens: the charter's always-loaded instructions, every guide that names no files in full, and the name and description of each skill, playbook and subagent.
+- <a id="eval-fr-001"></a>**EVAL-FR-001**: The engine MUST predict, without running an agent, for each agent the repository chose, the tokens each primitive puts into that agent's main context when a session opens: the charter's always-loaded instructions, every guide that names no files in full, and the name and description of each skill, playbook and subagent.
 - <a id="eval-fr-002"></a>**EVAL-FR-002**: The prediction MUST be listed per primitive, the largest first, with the total, and MUST say it is an estimate unless it was counted exactly.
 - <a id="eval-fr-003"></a>**EVAL-FR-003**: A guide that names files MUST be listed apart, as loaded when a file it names is touched, and MUST NOT be added to the total or held to the ceiling.
-- <a id="eval-fr-004"></a>**EVAL-FR-004**: Asked to count for the agent the developer names with `--agent`, with that agent's own command line installed, the engine MUST count the prediction exactly through it, run headless, estimate it too, and list both by primitive with how far apart they are, warning when the totals differ by more than [EVAL-SC-002](#eval-sc-002) allows; with no agent named it MUST estimate alone; asked for an agent it cannot count through — one it has no exact count for, or one the repository does not compile for — or whose command line is not installed, it MUST refuse, saying `cw context` with no agent named needs nothing.
+- <a id="eval-fr-004"></a>**EVAL-FR-004**: Asked to count for the agent the developer names with `--agent`, with that agent's own command line installed, the engine MUST count the prediction exactly through it, run headless, estimate it too, and list both by primitive with how far apart they are, warning when the totals differ by more than [EVAL-SC-002](#eval-sc-002) allows; with no agent named it MUST estimate alone; asked for an agent it cannot count through — one it has no exact count for, or one the repository did not choose — or whose command line is not installed, it MUST refuse, saying `cw context` with no agent named needs nothing.
 - <a id="eval-fr-005"></a>**EVAL-FR-005**: A build MUST say the predicted total in one line.
 - <a id="eval-fr-006"></a>**EVAL-FR-006**: The health check MUST warn when the predicted total passes the ceiling the repository sets, or 20,000 tokens where it sets none, naming both.
 - <a id="eval-fr-007"></a>**EVAL-FR-007**: The portal MUST show the prediction the command lists, as the command lists it.
@@ -258,12 +263,12 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 - <a id="eval-fr-025"></a>**EVAL-FR-025**: A run MUST report each case's outcome and tokens and the run's total, and MUST fail through its exit status when any case fails.
 - <a id="eval-fr-026"></a>**EVAL-FR-026**: A run MUST be refused before any case runs when the agent's own command line is not installed, or when a case names a skill or a guide the charter does not hold, saying which.
 - <a id="eval-fr-032"></a>**EVAL-FR-032**: The first run that needs promptfoo MUST fetch it, and what it needs to run the agent, once into a folder on the developer's machine outside every repository, saying so; later runs MUST use what was fetched, and nothing MUST be installed into the repository.
-- <a id="eval-fr-033"></a>**EVAL-FR-033**: When several agents are configured, no agent was explicitly selected and an interactive choice is unavailable, the evaluation MUST refuse before any case runs and tell the developer to select an agent explicitly.
-- <a id="eval-fr-034"></a>**EVAL-FR-034**: An explicitly selected agent absent from the configured agents MUST be refused before any case runs, naming the agent and telling the developer to add it to the settings.
-- <a id="eval-fr-035"></a>**EVAL-FR-035**: Missing settings or an empty configured agent list MUST cause the evaluation to refuse before any case runs and tell the developer to configure an agent; it MUST NOT choose a default agent.
-- <a id="eval-fr-036"></a>**EVAL-FR-036**: Evaluation MUST accept an explicit agent selection through `--agent=<agent>`, supporting `claude` and `codex`. Without it, it MUST use the sole configured agent or require an interactive choice among several configured agents before any case runs.
-- <a id="eval-fr-037"></a>**EVAL-FR-037**: Both Claude Code and Codex MUST support the existing evaluation case format, skill and guide expectations, token ceilings, per-case outcomes and token totals, failed-run exit status, isolated execution and cleanup. The report MUST identify the selected agent.
-- <a id="eval-fr-038"></a>**EVAL-FR-038**: An unsupported agent selection MUST be refused before any case runs, naming the supported choices. Cancelling an interactive selection MUST run no case. A failed selection or an unavailable selected agent MUST NOT cause a fallback to another agent.
+- <a id="eval-fr-033"></a>**EVAL-FR-033**: When the repository chose several agents, none is named and nobody can be asked, the evaluation MUST refuse before any case runs and tell the developer to name an agent with `--agent`.
+- <a id="eval-fr-034"></a>**EVAL-FR-034**: An agent named that the repository did not choose MUST be refused before any case runs, naming the agent and telling the developer how to choose it.
+- <a id="eval-fr-035"></a>**EVAL-FR-035**: Missing settings or no agent chosen MUST cause the evaluation to refuse before any case runs and tell the developer to choose an agent; it MUST NOT take a default agent.
+- <a id="eval-fr-036"></a>**EVAL-FR-036**: Evaluation MUST accept an agent named with `--agent=<agent>`, supporting `claude` and `codex`. With none named, it MUST use the one agent the repository chose, or have the developer pick among the several it chose, before any case runs.
+- <a id="eval-fr-037"></a>**EVAL-FR-037**: Both Claude Code and Codex MUST support the existing evaluation case format, skill and guide expectations, token ceilings, per-case outcomes and token totals, failed-run exit status, isolated execution and cleanup. The report MUST identify the agent it ran.
+- <a id="eval-fr-038"></a>**EVAL-FR-038**: An unsupported agent named MUST be refused before any case runs, naming the supported agents. Cancelling the pick MUST run no case. An agent refused or unavailable MUST NOT cause a fallback to another agent.
 - <a id="eval-fr-039"></a>**EVAL-FR-039**: A case MAY expect the agent to read a file of the repository, named by its path from the repository's root; the engine MUST judge it from the files the agent's tools read in that case, and MUST refuse, before any case runs, a path that is empty, absolute, leaves the repository, holds an empty or `.` segment, a backslash, a drive letter, a control character or a template's braces.
 - <a id="eval-fr-040"></a>**EVAL-FR-040**: Each case's result MUST be kept under the log, `.cw/log/`, as the case ran — its prompt, the agent, whether it passed and why, the tools the agent called and where the agent's own record of the session is — and the run MUST say where it is kept.
 - <a id="eval-fr-041"></a>**EVAL-FR-041**: The developer MUST be able to read the kept results again without running the agent: one by the path a run said, or the latest twenty of the repository, in words or as JSON.
@@ -271,7 +276,7 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 
 ### Key Entities
 
-- **Prediction**: what each primitive puts into the main context when a session opens, in tokens, estimated or exact, and their total.
+- **Prediction**: what each primitive puts into one chosen agent's main context when a session opens, in tokens, estimated or exact, and their total; one per agent the repository chose.
 - **Sessions**: what a developer's agent sessions used, one line per stop, kept on the developer's machine outside every repository ([EVAL-FR-009](#eval-fr-009)); never part of the log.
 - **Session line**: one stop of one session — when, which repository and model, and its tokens by kind so far, its subagents' included.
 - **Evaluation case**: a prompt, and what is expected of the agent given it: a skill invoked, a guide followed, a file read ([EVAL-FR-039](#eval-fr-039)), at most a number of tokens.

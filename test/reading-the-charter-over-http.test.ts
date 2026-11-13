@@ -44,7 +44,7 @@ const portal = (
   const charterAuthoringApp = authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), progressReporter, {
     sourceFetcher,
   });
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     fileReaders,
     new InMemoryFileOutput(fileReaders),
     new InMemoryTokenCounter(),
@@ -53,7 +53,7 @@ const portal = (
   );
   return buildPortalRoutes(
     wrapAppToShowPaths(charterAuthoringApp, "/repo"),
-    wrapAppToShowPaths(charterRuntimeApp, "/repo"),
+    wrapAppToShowPaths(charterRuntimeApps, "/repo"),
     workspaceSettingsLoaderOf(fileReaders),
   );
 };

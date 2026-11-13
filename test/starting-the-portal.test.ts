@@ -37,7 +37,7 @@ const portal = async (files: Readonly<Record<string, string>>) => {
     new InMemoryReporter(),
     { sourceFetcher },
   );
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     fileReaders,
     new InMemoryFileOutput(fileReaders),
     new InMemoryTokenCounter(),
@@ -51,7 +51,10 @@ const portal = async (files: Readonly<Record<string, string>>) => {
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
     const code = await new Commander(
-      commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), { charterAuthoringApp, charterRuntimeApp }),
+      commandLineOf(fileReaders, new InMemoryFileOutput(fileReaders), {
+        charterAuthoringApp,
+        charterRuntimeApp: charterRuntimeApps,
+      }),
       COMMANDS,
     ).runCommandLine(["portal"]);
     return { code, results: results.join(""), problems: problems.join("") };

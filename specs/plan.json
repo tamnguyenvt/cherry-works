@@ -342,7 +342,7 @@
     },
     {
       "id": "EVAL Story 7",
-      "title": "Evaluate with the selected configured agent",
+      "title": "Evaluate with the agent named or chosen",
       "dependsOn": [
         "EVAL Story 6"
       ]

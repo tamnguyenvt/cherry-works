@@ -20,7 +20,7 @@ test("a built charter runs the engine's own counter when the agent stops (EVAL-F
     [inRepo(".cw/settings.json")]: JSON.stringify({ agents: ["claude"] }),
   });
   const fileOutput = new InMemoryFileOutput(fileReaders);
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     fileReaders,
     fileOutput,
     new InMemoryTokenCounter(),
@@ -28,7 +28,7 @@ test("a built charter runs the engine's own counter when the agent stops (EVAL-F
     new InMemoryReporter(),
   );
 
-  await charterRuntimeApp.buildCharter();
+  await charterRuntimeApps.buildCharter();
 
   const claudeSettings = JSON.parse((await fileReaders.readIfThere(new URL(".claude/settings.json", repo))) ?? "{}");
   const stopCommands = (claudeSettings.hooks?.Stop ?? []).flatMap((entry: { hooks: { command: string }[] }) =>

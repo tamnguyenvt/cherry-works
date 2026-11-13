@@ -269,7 +269,7 @@ export class GitSources implements ForFetchingCharterSources {
 
   /** A store left behind is only a temporary folder, and never worth reporting
    *  a source that landed as one that failed. */
-  async removeTempCommit(storeFolder: string): Promise<void> {
+  async removeFetchedCommit(storeFolder: string): Promise<void> {
     await rm(storeFolder, { recursive: true, force: true }).catch(() => undefined);
   }
 }

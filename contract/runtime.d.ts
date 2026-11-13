@@ -711,9 +711,9 @@ declare namespace RuntimeDTOs {
  */
 interface ForRunningCharter {
     /** The sensors of one signal, run as one hook, each to its end whatever the
-     *  others do (CORE-FR-176 – CORE-FR-179), for the agent named: the engine
-     *  assumes none (CORE-FR-233). */
-    runSensors(signal: string, stdin: string, agentProviderName: AgentProviderName): Promise<RuntimeDTOs.SensorRunOutcome | FaultDTOs.Fault>;
+     *  others do (CORE-FR-176 – CORE-FR-179), for the agent named, or for none
+     *  named: the engine assumes none (CORE-FR-233). */
+    runSensors(signal: string, stdin: string, agentProviderName: AgentProviderName | undefined): Promise<RuntimeDTOs.SensorRunOutcome | FaultDTOs.Fault>;
     /** One call forwarded to the mcp origin serving it, reached for this call
      *  alone and let go once it has answered (EVAL-FR-031, FR-154). */
     callTool(servedToolName: string, toolArguments: Readonly<Record<string, unknown>>): Promise<RuntimeDTOs.ToolAnswer | FaultDTOs.Fault>;
@@ -721,12 +721,13 @@ interface ForRunningCharter {
      *  counted exactly by its own command line, beside its estimate, and
      *  whether the two totals are further apart than EVAL-SC-002 allows
      *  (EVAL-FR-004). Refused for an agent it cannot count through, one the
-     *  repository does not compile for, or one whose command line is not
+     *  repository did not choose, or one whose command line is not
      *  installed. */
     countMainContext(agentProviderName: AgentProviderName): Promise<RuntimeDTOs.MainContext | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
     /**
-     * Select an explicitly requested configured agent, or the sole configured
-     * agent. Several agents require a choice from the driver before execution.
+     * The agent named, which the repository must have chosen, or the one agent
+     * it chose; where it chose several and none is named, the driver picks one
+     * before anything runs.
      *
      * Every case kept beside the charter as the store holds it now, committed or
      * not, each handed once to promptfoo, which puts it to the agent, run

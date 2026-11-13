@@ -38,7 +38,7 @@ interface EngineAdapters {
         createFolderReader?(rootFolder: URL): ForReadingFiles;
     };
     readonly fileWriter: ForWritingFiles;
-    readonly worktrees: ForKeepingWorktrees;
+    readonly worktreeKeeper: ForKeepingWorktrees;
     readonly oauthAuthorizer: ForAuthorizingOAuthClients;
     readonly mcpServers: ForCallingMcpServers;
     readonly tokenCounter: ForCountingTokens;

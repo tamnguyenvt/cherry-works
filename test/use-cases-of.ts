@@ -191,7 +191,7 @@ export function commandLineOf(
  *  else for those the files hold when each operation is asked; over charter
  *  authoring's application; the mcp origins reached only where a test gives
  *  `mcpServers`, the sensors run through `shell`, the cases evaluated in
- *  worktrees `worktrees` adds through `promptfooRunner`, and the sessions read
+ *  worktrees `worktreeKeeper` adds through `promptfooRunner`, and the sessions read
  *  through `sessionAnalysisRepository`, or the one `sessionAnalysisRepositoryOf`
  *  sets up on the folder the settings name, where it gives them. */
 export function runningCharterOf(
@@ -205,7 +205,7 @@ export function runningCharterOf(
     credentialsRepository,
     oauthAuthorizer,
     shell = portNotGiven<ForRunningShellCommands>("shells"),
-    worktrees = portNotGiven<ForKeepingWorktrees>("worktrees"),
+    worktreeKeeper = portNotGiven<ForKeepingWorktrees>("worktreeKeeper"),
     promptfooRunner = portNotGiven<ForRunningPromptfoo>("promptfoo runs"),
     sessionAnalysisRepository = portNotGiven<ForLoadingSessionAnalysis>("sessions"),
     sessionAnalysisRepositoryOf,
@@ -230,7 +230,7 @@ export function runningCharterOf(
     readonly credentialsRepository?: ForStoringCredentials;
     readonly oauthAuthorizer?: ForAuthorizingOAuthClients;
     readonly shell?: ForRunningShellCommands;
-    readonly worktrees?: ForKeepingWorktrees;
+    readonly worktreeKeeper?: ForKeepingWorktrees;
     readonly promptfooRunner?: ForRunningPromptfoo;
     readonly sessionAnalysisRepository?: ForLoadingSessionAnalysis;
     readonly sessionAnalysisRepositoryOf?: (sessionAnalysisFolder: string | undefined) => ForLoadingSessionAnalysis;
@@ -265,7 +265,7 @@ export function runningCharterOf(
       fileReader,
       agentCliByProvider,
       shell,
-      worktrees,
+      worktreeKeeper,
       promptfooRunner,
       sessionAnalysisRepositoryOf?.(settings.sessionAnalysisFolder) ?? sessionAnalysisRepository,
       clock,
@@ -320,7 +320,7 @@ export function buildingCharterOf(
 }
 
 /** The charter's projection and runtime as testing it was: the cases
- *  evaluated in worktrees `worktrees` adds, through `promptfooRunner`, where a
+ *  evaluated in worktrees `worktreeKeeper` adds, through `promptfooRunner`, where a
  *  test gives them. */
 export function testingCharterOf(
   fileReader: ForReadingFiles,

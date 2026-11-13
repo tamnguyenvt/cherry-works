@@ -6,7 +6,7 @@ import {
   ProjectionPlanSummary,
   type WritePlan,
 } from "../../domain/models/charter-output/projection-plan.js";
-import { CompileService } from "../../domain/services/compile.service.js";
+import { CharterOutputService } from "../../domain/services/charter-output.service.js";
 import type { ForManagingCharter } from "../port/out/managing-charter.port.js";
 import type { ForManagingLocalAgentOutput } from "../port/out/managing-local-agent-output.port.js";
 import type { ForManagingLocalOutput } from "../port/out/managing-local-output.port.js";
@@ -66,7 +66,7 @@ export class BuildCharterService {
     );
     if (!faultsByFile.isEmpty) return faultsByFile;
 
-    const charterOutput = CompileService.compileCharterRoot(
+    const charterOutput = CharterOutputService.compileCharterRoot(
       charter,
       Object.keys(agentProjectionByProvider).map((agentName) => new AgentProvider(agentName)),
       toolsByOriginKey,

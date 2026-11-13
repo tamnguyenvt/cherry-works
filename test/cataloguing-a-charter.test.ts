@@ -4,7 +4,7 @@ import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-sk
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
 import { Catalogue } from "../src/module/charter/domain/models/charter-output/catalogue.js";
-import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { CharterOutputService } from "../src/module/charter/domain/services/charter-output.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
 import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
@@ -68,7 +68,7 @@ const load = (files: InMemoryFileReaders) => loadCharterRoot(files);
  *  to ask for it on its own (SC-004); each entry's file under `$CW_OUT/`
  *  (CORE-FR-221). */
 const catalogueOf = async (files: InMemoryFileReaders): Promise<Catalogue> => {
-  return CompileService.compileCharterRoot(await load(files), []).charterOutputItems.find(
+  return CharterOutputService.compileCharterRoot(await load(files), []).charterOutputItems.find(
     (charterOutputItem): charterOutputItem is Catalogue => charterOutputItem instanceof Catalogue,
   )!;
 };
@@ -114,7 +114,7 @@ test("a header the author left out is left out, not recorded as nothing", async 
 
 test("the output keeps shared entries in catalogue and restricted entries only in provider catalogues", async () => {
   const charter = await load(new InMemoryFileReaders());
-  const charterOutput = CompileService.compileCharterRoot(charter, [
+  const charterOutput = CharterOutputService.compileCharterRoot(charter, [
     new AgentProvider("claude"),
     new AgentProvider("codex"),
   ]);

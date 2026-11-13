@@ -58,7 +58,7 @@ const withTwoFiles = () => ({
 const authoring = (files: Readonly<Record<string, string>> = {}) => {
   const held = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
@@ -67,15 +67,15 @@ const authoring = (files: Readonly<Record<string, string>> = {}) => {
   );
   return {
     charterAuthoringApp,
-    charterRuntimeApp,
+    charterRuntimeApps,
     fileAt: (path: string) => held.readIfThere(new URL(path, repoPath)),
   };
 };
 
-const contextOver = ({ charterAuthoringApp, charterRuntimeApp }: ReturnType<typeof authoring>) =>
+const contextOver = ({ charterAuthoringApp, charterRuntimeApps }: ReturnType<typeof authoring>) =>
   commandContextOf({
     charterAuthoringApp,
-    charterRuntimeApp,
+    charterRuntimeApp: charterRuntimeApps,
   });
 
 test("suites() lists each file with its name, text and cases said, and one that does not read with its fault (FR-124)", async () => {

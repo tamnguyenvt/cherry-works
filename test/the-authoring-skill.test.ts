@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
 import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
-import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { CharterOutputService } from "../src/module/charter/domain/services/charter-output.service.js";
 import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
@@ -68,7 +68,7 @@ test("the skill as each agent reads it comes up for writing any primitive, and s
   const charterRoot = await loadCharterRoot(skillFileReaders);
   await putDownBy(
     charterRoot,
-    CompileService.compileCharterRoot(charterRoot, [new AgentProvider("claude"), new AgentProvider("codex")]),
+    CharterOutputService.compileCharterRoot(charterRoot, [new AgentProvider("claude"), new AgentProvider("codex")]),
     skillFileReaders,
   );
   const readText = async (path: string) => (await skillFileReaders.readIfThere(new URL(path, "file:///repo/"))) ?? "";

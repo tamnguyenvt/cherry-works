@@ -46,16 +46,16 @@ export class InMemorySources implements ForFetchingCharterSources {
    *  source it was fetched from, and the version asked for after an `@`:
    *  nothing is fetched, so nothing else names it. */
   #listSourceFiles(commit: string): Record<string, string | Uint8Array> {
-    const source = commit.split("@")[0] ?? commit;
+    const sourceAddress = commit.split("@")[0] ?? commit;
     const publishedCharter = {
       ".cw/charter/primitive/guide/published/index.md":
         "---\nkind: guide\nid: published\ndescription: Published.\n---\n",
       "README.md": "# Published\n",
     };
-    if (this.sourcesWithoutSubFolder.includes(source)) return { "README.md": "# Notes\n" };
-    if (this.sourcesHoldingRefusedFolder.includes(source))
+    if (this.sourcesWithoutSubFolder.includes(sourceAddress)) return { "README.md": "# Notes\n" };
+    if (this.sourcesHoldingRefusedFolder.includes(sourceAddress))
       return { ...publishedCharter, ".cw/charter/vendor/other/guide/x/index.md": "x" };
-    return this.sourceFilesBySource[source] ?? publishedCharter;
+    return this.sourceFilesBySource[sourceAddress] ?? publishedCharter;
   }
 
   async fetchCommit(source: string, version?: string): Promise<string> {
@@ -109,7 +109,7 @@ export class InMemorySources implements ForFetchingCharterSources {
         this.fileReaders.writeFile(resolveFileUrl(intoFolder, path.slice(fromPrefix.length)), contents);
   }
 
-  async removeTempCommit(commit: string): Promise<void> {
+  async removeFetchedCommit(commit: string): Promise<void> {
     this.forgottenCommits.push(commit);
   }
 }

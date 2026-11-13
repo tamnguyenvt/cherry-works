@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
-import { EvalService } from "../src/module/runtime/domain/services/eval.service.js";
+import { EvaluationAgentService } from "../src/module/runtime/domain/services/evaluation-agent.service.js";
 import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 
 const repositoryUrl = new URL("../", import.meta.url);
@@ -77,7 +77,7 @@ test("the workspace's folders are the charter module's layout, one value, and a 
 
 test("an agent is known by its name, not by which object carries it (CORE Story 45 scenario 1)", () => {
   assert.equal(
-    EvalService.selectEvaluationAgent(["codex", "codex"], ["claude", "codex"], "codex"),
+    EvaluationAgentService.selectEvaluationAgent(["codex", "codex"], ["claude", "codex"], "codex"),
     new AgentProvider("codex").name,
   );
   assert.equal(String(new AgentProvider("codex")), "codex");

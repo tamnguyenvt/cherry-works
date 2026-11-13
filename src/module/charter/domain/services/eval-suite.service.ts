@@ -4,7 +4,7 @@ import { InvalidEvalSuiteFault } from "../models/charter.fault.js";
 import type { EvalRoot } from "../models/eval/eval-root.js";
 
 /** Checks the evaluation cases against a charter. */
-export class EvalService {
+export class EvalSuiteService {
   /**
    * Every case naming what the charter does not hold, under the file it is in
    * (EVAL-FR-026): a skill to invoke that is no skill or playbook — a playbook is
@@ -54,8 +54,6 @@ export class EvalService {
     }
     return new FaultsByFile(faultsByFiles);
   }
-
-  /** Resolve a run's agent before any case can spend tokens. */
 
   private constructor() {}
 }

@@ -10,7 +10,7 @@ import { CharterOutput } from "../src/module/charter/domain/models/charter-outpu
 import { CharterOutputItem } from "../src/module/charter/domain/models/charter-output/charter-output-item.js";
 import { CompiledPrimitive } from "../src/module/charter/domain/models/charter-output/compiled-primitive.js";
 import { StampedDocumentSpec } from "../src/module/charter/domain/models/charter-output/stamped-document.specification.js";
-import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { CharterOutputService } from "../src/module/charter/domain/services/charter-output.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
 import { YamlLib } from "../src/module/shared/domain/libs/yaml.lib.js";
 import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
@@ -78,7 +78,7 @@ const oneGuide = { [new URL("guide/no-any/index.md", root).href]: primitive("gui
 const built = async (authored: Readonly<Record<string, string>>, agents: readonly AgentProvider[] = [CLAUDE]) => {
   const held = new InMemoryFileReaders(authored);
   const charter = await loadCharterRoot(held);
-  const written = await putDownBy(charter, CompileService.compileCharterRoot(charter, agents), held);
+  const written = await putDownBy(charter, CharterOutputService.compileCharterRoot(charter, agents), held);
 
   return {
     charter,
@@ -129,7 +129,7 @@ test("no listing and no projection can be produced without the others (SC-004)",
   // Not a test of what compiling returns but of what it offers: one call, one
   // list, and no argument that narrows it to a single file. The second argument
   // says which agents are installed, never which file is wanted.
-  assert.equal(CompileService.compileCharterRoot.length, 2);
+  assert.equal(CharterOutputService.compileCharterRoot.length, 2);
   assert.equal((await built(oneGuide)).written.length, 15);
 });
 
@@ -313,7 +313,7 @@ test("a charter compiles to a list of items, each of its own kind extending one 
   const held = new InMemoryFileReaders(oneGuide);
   const charter = await loadCharterRoot(held);
 
-  const charterOutput = CompileService.compileCharterRoot(charter, [CLAUDE]);
+  const charterOutput = CharterOutputService.compileCharterRoot(charter, [CLAUDE]);
 
   assert.ok(
     charterOutput.charterOutputItems.every((charterOutputItem) => charterOutputItem instanceof CharterOutputItem),
@@ -340,7 +340,7 @@ test("a charter compiles to a list of items, each of its own kind extending one 
 test("each item of the output is known by its path inside it and holds its text and its assets, one for one agent alone names that agent in its path, and none names where the output lands (CORE Story 48 scenario 1, CORE-FR-220, CORE Story 55 scenario 16)", async () => {
   const charter = await loadCharterRoot(new InMemoryFileReaders(oneGuide));
 
-  const charterOutputItems = CompileService.compileCharterRoot(charter, [CLAUDE]).charterOutputItems;
+  const charterOutputItems = CharterOutputService.compileCharterRoot(charter, [CLAUDE]).charterOutputItems;
 
   const itemPaths = charterOutputItems.map((charterOutputItem) => outputPath.getPath(charterOutputItem));
   assert.equal(new Set(itemPaths).size, itemPaths.length, "each path is one item's");
@@ -377,7 +377,7 @@ test("an agent's projection finds each item it needs by what it is, wherever the
     ].join("\n"),
   });
   const charter = await loadCharterRoot(held);
-  const charterOutput = CompileService.compileCharterRoot(charter, [CLAUDE]);
+  const charterOutput = CharterOutputService.compileCharterRoot(charter, [CLAUDE]);
   const reversedOutput = new CharterOutput();
   for (const charterOutputItem of [...charterOutput.charterOutputItems].reverse())
     reversedOutput.add(charterOutputItem);

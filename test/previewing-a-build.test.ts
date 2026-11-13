@@ -39,7 +39,7 @@ const compilingFor = (...agents: readonly string[]) => ({
  *  claims (FR-022). */
 const previewing = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
@@ -48,8 +48,8 @@ const previewing = (files: Readonly<Record<string, string>>) => {
   );
   return {
     held,
-    build: () => charterRuntimeApp.buildCharter(),
-    preview: () => charterRuntimeApp.previewCharterBuild(),
+    build: () => charterRuntimeApps.buildCharter(),
+    preview: () => charterRuntimeApps.previewCharterBuild(),
   };
 };
 

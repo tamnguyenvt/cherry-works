@@ -67,7 +67,7 @@ const building = (
   credentialsRepository?: InMemoryCredentialsRepository,
 ) => {
   const held = new InMemoryFileReaders(files);
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
@@ -77,7 +77,7 @@ const building = (
       ? {}
       : { mcpServers, credentialsRepository, oauthAuthorizer: new InMemoryOAuthAuthorizer() },
   );
-  return { held, build: () => charterRuntimeApp.buildCharter(), doctor: () => charterRuntimeApp.diagnoseCharter() };
+  return { held, build: () => charterRuntimeApps.buildCharter(), doctor: () => charterRuntimeApps.diagnoseCharter() };
 };
 
 /** Every file one build put down, whether it was there before or not. */

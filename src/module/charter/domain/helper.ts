@@ -52,21 +52,21 @@ export class ContentHelper {
   static formatFrontmatterValue(headerValue: unknown): string {
     if (Array.isArray(headerValue)) return `[${headerValue.map((listEntry) => JSON.stringify(listEntry)).join(", ")}]`;
     if (typeof headerValue === "boolean") return String(headerValue);
-    const line = String(headerValue);
-    return YAML_READS_OTHERWISE.test(line) ? JSON.stringify(line) : line;
+    const headerText = String(headerValue);
+    return YAML_READS_OTHERWISE.test(headerText) ? JSON.stringify(headerText) : headerText;
   }
 
   /** The headers and the body of a markdown file opening with a `---`
    *  frontmatter block, or nothing for a file that does not. */
   static parseFrontmatter(markdown: string): { headers: Readonly<Record<string, unknown>>; body: string } | undefined {
     const lines = markdown.replace(/^\uFEFF/, "").split(/\r?\n/);
-    const frontmatterEnd =
+    const frontmatterEndIndex =
       lines[0]?.trim() === "---" ? lines.findIndex((line, lineIndex) => lineIndex > 0 && line.trim() === "---") : -1;
-    if (frontmatterEnd === -1) return undefined;
+    if (frontmatterEndIndex === -1) return undefined;
     return {
-      headers: ContentHelper.parseFrontmatterFields(lines.slice(1, frontmatterEnd).join("\n")),
+      headers: ContentHelper.parseFrontmatterFields(lines.slice(1, frontmatterEndIndex).join("\n")),
       body: lines
-        .slice(frontmatterEnd + 1)
+        .slice(frontmatterEndIndex + 1)
         .join("\n")
         .replace(/^(\s*\n)+/, "")
         .trimEnd(),

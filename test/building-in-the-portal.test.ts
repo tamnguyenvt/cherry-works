@@ -42,7 +42,7 @@ const holding = (extra: Record<string, string> = {}) => ({
 /** What `cw doctor` printed over the same files the page reads. */
 const printedDoctorOf = async (files: InMemoryFileReaders) => {
   const charterAuthoringApp = authoringCharterOf(files, new InMemoryFileOutput(files), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     files,
     new InMemoryFileOutput(files),
     new InMemoryTokenCounter(),
@@ -54,7 +54,12 @@ const printedDoctorOf = async (files: InMemoryFileReaders) => {
   process.stdout.write = ((text: string) => (printedTexts.push(String(text)), true)) as typeof process.stdout.write;
   try {
     await new Commander(
-      commandLineOf(files, new InMemoryFileOutput(files), { charterAuthoringApp, charterRuntimeApp }, "/repo"),
+      commandLineOf(
+        files,
+        new InMemoryFileOutput(files),
+        { charterAuthoringApp, charterRuntimeApp: charterRuntimeApps },
+        "/repo",
+      ),
       COMMANDS,
     ).runCommandLine(["doctor"]);
   } finally {

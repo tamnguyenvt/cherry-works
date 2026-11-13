@@ -12,9 +12,9 @@ export class MissingAgentCliFault extends ApplicationFault {}
  *  (EVAL-FR-004). */
 export class UnsupportedExactCountFault extends ApplicationFault {}
 
-/** An exact count asked for an agent the repository does not compile for
+/** An exact count asked for an agent the repository did not choose
  *  (EVAL-FR-004). */
-export class UnconfiguredExactCountAgentFault extends ApplicationFault {}
+export class UnchosenExactCountAgentFault extends ApplicationFault {}
 
 /** An exact count of a primitive the estimate beside it does not hold: the
  *  engine's own fault (EVAL-FR-004). */
@@ -44,14 +44,14 @@ export class OverlongSessionSpanFault extends DomainFault {}
  *  (EVAL-FR-020). */
 export class UnsupportedEvaluationAgentFault extends DomainFault {}
 
-/** An evaluation in a repository that compiles for no agent this engine can
+/** An evaluation in a repository that chose no agent this engine can
  *  evaluate with (EVAL-FR-020). */
 export class NoEvaluationAgentFault extends DomainFault {}
 
-/** An evaluation asked of an agent the repository does not compile for
+/** An evaluation asked of an agent the repository did not choose
  *  (EVAL-FR-020). */
-export class UnconfiguredEvaluationAgentFault extends DomainFault {}
+export class UnchosenEvaluationAgentFault extends DomainFault {}
 
 /** An evaluation in a repository compiling for several agents, none asked
  *  for (EVAL-FR-020). */
-export class UnselectedEvaluationAgentFault extends DomainFault {}
+export class UnnamedEvaluationAgentFault extends DomainFault {}

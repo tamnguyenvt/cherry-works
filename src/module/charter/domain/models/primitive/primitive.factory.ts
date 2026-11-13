@@ -1,4 +1,4 @@
-import { type DomainFault, FaultHelper, ManyFindingsFault } from "../../../../shared/module.js";
+import { type DomainFault, FaultHelper, UnsoundModelFault } from "../../../../shared/module.js";
 import { ContentHelper } from "../../helper.js";
 import { InvalidPrimitiveFault } from "../charter.fault.js";
 import { BasePrimitive } from "./base-primitive.js";
@@ -12,7 +12,7 @@ export class PrimitiveFactory {
    * A primitive from the raw one: its index.md as kept, or the headers and
    * body an author answered.
    *
-   * Returns one, or throws a `ManyFindingsFault` carrying what is wrong with it, so
+   * Returns one, or throws an `UnsoundModelFault` carrying what is wrong with it, so
    * a caller reading a whole charter collects it under the file (FR-009).
    * What is checked is the same either way: a primitive gathered at the command
    * line holds what its kind requires, or it is refused before any file is
@@ -137,7 +137,7 @@ export class PrimitiveFactory {
         handedPrimitive.uri || undefined,
       );
     } catch (raisedValue) {
-      if (!(raisedValue instanceof ManyFindingsFault)) throw raisedValue;
+      if (!(raisedValue instanceof UnsoundModelFault)) throw raisedValue;
       schemaFaults = raisedValue.faults as readonly DomainFault[];
     }
     if (primitive === undefined || unknownHeaderFaults.length > 0)

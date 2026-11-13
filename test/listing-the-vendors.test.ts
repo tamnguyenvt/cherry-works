@@ -45,7 +45,7 @@ async function listing(fileReaders: InMemoryFileReaders) {
       new InMemoryReporter(),
       { sourceFetcher },
     );
-    const charterRuntimeApp = buildingCharterOf(
+    const charterRuntimeApps = buildingCharterOf(
       fileReaders,
       new InMemoryFileOutput(fileReaders),
       new InMemoryTokenCounter(),
@@ -56,7 +56,7 @@ async function listing(fileReaders: InMemoryFileReaders) {
       commandLineOf(
         fileReaders,
         new InMemoryFileOutput(fileReaders),
-        { charterAuthoringApp, charterRuntimeApp },
+        { charterAuthoringApp, charterRuntimeApp: charterRuntimeApps },
         "/repo",
       ),
       COMMANDS,
@@ -119,7 +119,7 @@ test("a charter holding a folder an earlier version laid out is refused when lis
       sourceFetcher: new InMemorySources(),
     },
   );
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     fileReaders,
     new InMemoryFileOutput(fileReaders),
     new InMemoryTokenCounter(),
@@ -129,7 +129,7 @@ test("a charter holding a folder an earlier version laid out is refused when lis
 
   for (const refusalText of [
     faultTextOf(await charterAuthoringApp.listPrimitives()),
-    faultTextOf(await charterRuntimeApp.buildCharter()),
+    faultTextOf(await charterRuntimeApps.buildCharter()),
   ]) {
     assert.match(
       refusalText,

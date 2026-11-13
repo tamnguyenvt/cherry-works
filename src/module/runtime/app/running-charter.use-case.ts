@@ -17,7 +17,7 @@ import {
   MissingEstimateFault,
   MissingMcpServersFault,
   RefusedMcpCredentialFault,
-  UnconfiguredExactCountAgentFault,
+  UnchosenExactCountAgentFault,
   UnknownToolFault,
   UnsupportedExactCountFault,
 } from "../domain/models/runtime.fault.js";
@@ -25,7 +25,7 @@ import { SensorAnswer, SensorAnswers } from "../domain/models/sensor/sensor-answ
 import { SessionAnalysisFactory } from "../domain/models/session/session-analysis.factory.js";
 import type { SessionAnalysisSummary } from "../domain/models/session/session-analysis-summary.js";
 import { SessionSpanFactory } from "../domain/models/session/session-span.factory.js";
-import { EvalService } from "../domain/services/eval.service.js";
+import { EvaluationAgentService } from "../domain/services/evaluation-agent.service.js";
 import type { ForRunningCharter, RuntimeSettings } from "./port/in/running-charter.port.js";
 import { RuntimeDTOs } from "./port/in/runtime.dto.js";
 import type { ForKeepingWorktrees } from "./port/out/keeping-worktrees.port.js";
@@ -47,7 +47,7 @@ const CONNECT_TIMEOUT_MS = 10_000;
  * origins declare, a token to one, a build into a working copy, what an agent
  * is sent when a session opens, the evaluation cases — it asks charter's
  * applications, in DTOs, and holds no model of the charter's (CORE-FR-229).
- * Which agents the repository compiles for, and where its sessions are kept,
+ * Which agents the repository chose, and where its sessions are kept,
  * it is handed when it is composed (CORE-FR-231).
  */
 export class RunningCharter extends ApplicationService implements ForRunningCharter {
@@ -56,7 +56,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
   readonly #fileReader: ForReadingFiles;
   readonly #agentCliByProvider: Readonly<Partial<Record<AgentProviderName, ForCheckingAgentCli | ForRunningAgentCli>>>;
   readonly #shell: ForRunningShellCommands;
-  readonly #worktrees: ForKeepingWorktrees;
+  readonly #worktreeKeeper: ForKeepingWorktrees;
   readonly #promptfooRunner: ForRunningPromptfoo;
   readonly #sessionAnalysisRepository: ForLoadingSessionAnalysis;
   readonly #clock: ForTellingTime;
@@ -82,7 +82,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
     shell: ForRunningShellCommands,
     /** What adds a working copy of the last commit for an evaluation, and
      *  removes it. */
-    worktrees: ForKeepingWorktrees,
+    worktreeKeeper: ForKeepingWorktrees,
     /** What runs and grades every evaluation case (EVAL-FR-020). */
     promptfooRunner: ForRunningPromptfoo,
     /** Where the logs of the sessions kept on this machine are read: where
@@ -91,7 +91,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
     /** What today is, which the span of the sessions is the last 31 days to
      *  when none is named (EVAL-FR-030). */
     clock: ForTellingTime,
-    /** Which agents the repository compiles for, and where its sessions are
+    /** Which agents the repository chose, and where its sessions are
      *  kept, as whoever composes this keeps them (CORE-FR-231). */
     runtimeSettings: RuntimeSettings,
     /** Where an internal fault is logged for whoever runs the system, before
@@ -106,7 +106,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
     this.#fileReader = fileReader;
     this.#agentCliByProvider = agentCliByProvider;
     this.#shell = shell;
-    this.#worktrees = worktrees;
+    this.#worktreeKeeper = worktreeKeeper;
     this.#promptfooRunner = promptfooRunner;
     this.#sessionAnalysisRepository = sessionAnalysisRepository;
     this.#clock = clock;
@@ -117,7 +117,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
   async runSensors(
     signal: string,
     stdin: string,
-    agentProviderName: AgentProviderName,
+    agentProviderName: AgentProviderName | undefined,
   ): Promise<RuntimeDTOs.SensorRunOutcome | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("RunningCharter.runSensors", async () => {
       const { commands } = this.answeredDTOOf(
@@ -248,9 +248,9 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
         ({ agent }) => agent === agentProviderName,
       );
       if (agentTexts === undefined)
-        throw new UnconfiguredExactCountAgentFault(
-          `The repository does not compile for ${agentProviderName}, so there is nothing of it to count.`,
-          `Run "cw init" and add ${agentProviderName} to the settings, or name an agent it compiles for; or run "cw context" with no agent named: the estimate needs nothing.`,
+        throw new UnchosenExactCountAgentFault(
+          `The repository did not choose ${agentProviderName}, so there is nothing of it to count.`,
+          `Run "cw init" and choose ${agentProviderName}, or name an agent it chose; or run "cw context" with no agent named: the estimate needs nothing.`,
           { internal: false },
         );
       if (!(await agentCli.isInstalled()))
@@ -326,7 +326,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
     requestedAgentProviderName?: string,
   ): Promise<RuntimeDTOs.EvalRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("RunningCharter.evaluateCharter", async () => {
-      const agentProviderName = EvalService.selectEvaluationAgent(
+      const agentProviderName = EvaluationAgentService.selectEvaluationAgent(
         this.#runtimeSettings.agents,
         Object.keys(this.#agentCliByProvider),
         requestedAgentProviderName,
@@ -338,8 +338,8 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
         return this.#evalRunReportDTOOf(new EvalRunReport([], new AgentProvider(agentProviderName)));
 
       // What a run stopped halfway left is swept (EVAL-FR-021).
-      for (const leftWorktreePath of await this.#fileReader.listFolders(this.#worktrees.worktreesFolderPath))
-        await this.#worktrees.removeWorktree(leftWorktreePath);
+      for (const leftWorktreePath of await this.#fileReader.listFolders(this.#worktreeKeeper.worktreesFolderPath))
+        await this.#worktreeKeeper.removeWorktree(leftWorktreePath);
 
       // What is evaluated is the charter and its cases as the store holds them
       // now, committed or not: each case's worktree is built from the same.
@@ -355,9 +355,9 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
       // Version control is asked before the agent's command line is asked
       // for or promptfoo installed: a folder under no repository, or with
       // nothing committed, is refused in git's words (CORE-FR-206).
-      const probeWorktreePath = `${this.#worktrees.worktreesFolderPath}/probe`;
-      await this.#worktrees.addWorktree(probeWorktreePath);
-      await this.#worktrees.removeWorktree(probeWorktreePath);
+      const probeWorktreePath = `${this.#worktreeKeeper.worktreesFolderPath}/probe`;
+      await this.#worktreeKeeper.addWorktree(probeWorktreePath);
+      await this.#worktreeKeeper.removeWorktree(probeWorktreePath);
 
       if (!(await this.#agentCliByProvider[agentProviderName]?.isInstalled()))
         throw new MissingAgentCliFault(
@@ -379,15 +379,15 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
       // be writing in.
       const evalCaseReports: EvalCaseReport[] = [];
       for (const [caseIndex, evalCase] of cases.entries()) {
-        const caseWorktreePath = `${this.#worktrees.worktreesFolderPath}/${caseIndex + 1}`;
-        await this.#worktrees.addWorktree(caseWorktreePath);
+        const caseWorktreePath = `${this.#worktreeKeeper.worktreesFolderPath}/${caseIndex + 1}`;
+        await this.#worktreeKeeper.addWorktree(caseWorktreePath);
         try {
           const buildAnswer = await this.#charterBuildingApp.buildCharterInto(caseWorktreePath);
           if (buildAnswer.type === "FaultsByFile") return buildAnswer;
           this.answeredDTOOf(buildAnswer);
           evalCaseReports.push(await this.#runWithPromptfoo(caseWorktreePath, evalCase, agentProviderName));
         } finally {
-          await this.#worktrees.removeWorktree(caseWorktreePath);
+          await this.#worktreeKeeper.removeWorktree(caseWorktreePath);
         }
       }
       return this.#evalRunReportDTOOf(new EvalRunReport(evalCaseReports, new AgentProvider(agentProviderName)));

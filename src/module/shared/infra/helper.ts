@@ -67,12 +67,6 @@ export function resolveCheckoutPath(checkoutPath: string, filePath: string): str
   return checkoutPath === "" ? filePath : filePath.slice(checkoutPath.length + 1);
 }
 
-/** The path a checkout's files are read under, ending in its separator, or
- *  nothing where the checkout is the repository itself. */
-export function formatCheckoutFolder(checkoutPath: string): string {
-  return checkoutPath === "" ? "" : `${checkoutPath.replace(/\/$/, "")}/`;
-}
-
 /** What one directory holds, and nothing where there is no such directory. */
 export async function readFolderEntries(folderUrl: URL): Promise<readonly Dirent[]> {
   try {

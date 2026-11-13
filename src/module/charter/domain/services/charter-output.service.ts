@@ -13,7 +13,7 @@ import { McpOriginsFactory } from "../models/charter-output/mcp-origins.factory.
 import { McpPrimitive } from "../models/primitive/mcp-primitive.js";
 import { Primitives } from "../models/primitive/primitive.js";
 /** Compiles a charter into what its readers and its agents are given. */
-export class CompileService {
+export class CharterOutputService {
   /**
    * Everything one reading of a charter compiles to (FR-021).
    *

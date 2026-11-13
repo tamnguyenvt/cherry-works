@@ -27,7 +27,7 @@ export interface ForFetchingCharterSources {
    * is fetched once. Its text is the adapter's own, for this port alone to
    * read. Nothing in the repository is touched; it is only what a relative source is
    * read from, and whose own version control settings reach it, where it has
-   * any. Whoever fetched it says `removeTempCommit` when done.
+   * any. Whoever fetched it says `removeFetchedCommit` when done.
    *
    * A source that cannot be reached, a version that is not there, and a machine
    * that cannot fetch at all each raise an `AdapterFault` saying so
@@ -58,5 +58,5 @@ export interface ForFetchingCharterSources {
 
   /** The temporary folder this commit was fetched into, removed with all it
    *  holds; nothing is asked of it afterwards. */
-  removeTempCommit(commit: string): Promise<void>;
+  removeFetchedCommit(commit: string): Promise<void>;
 }

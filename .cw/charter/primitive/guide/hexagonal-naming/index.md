@@ -23,7 +23,7 @@ layer a file is in before it is opened. Where it lives is
 | Model | `domain/models/<concept>/` | what it is in the business, a class; what makes one: its static `of`, or its factory's `create` where it is made out of what a repository keeps or a build compiles | `Catalogue`, `SkillPrimitive.of()`, `CatalogueFactory.create()` | `catalogue.ts` |
 | Value object | `domain/models/<concept>/` (or `domain/value-objects/`) | the value it holds, a class: immutable, with no identity, equal by what it holds, and held as a property by an entity or an aggregate | `PrimitiveLayer` | `primitive-layer.value-object.ts` |
 | Factory | beside the model it makes, `domain/models/<concept>/` | the model it makes, `Factory` last, a class whose static `create`, and every function it calls (`static #name`), is written in it | `CatalogueFactory.create()` | `catalogue.factory.ts` |
-| Domain service | `domain/services/`, never a model's folder: it works over several models | a class, `Service` last, of static methods named verb first for what they do over several models | `CompileService.compileCharterRoot()` | `compile.service.ts` |
+| Domain service | `domain/services/`, never a model's folder: it works over several models | a class, `Service` last, of static methods named verb first for what they do over several models | `CharterOutputService.compileCharterRoot()` | `charter-output.service.ts` |
 | DTO | `<module>/app/port/in/<module>.dto.ts` | `dto("<Model>", …)` or `dto("<Doing>Outcome", …)`, read as `<Module>DTOs.<Model>` | `CharterDTOs.Primitive`, `CharterDTOs.ExplanationOutcome`, `FaultDTOs.Fault` | `charter.dto.ts` |
 | Driven port | `app/port/out/` | `For<Doing>`, in the adapter's words — see [[driven-port-speaks-its-adapter]] | `ForFetchingCharterSources` | `fetching-charter-sources.port.ts` |
 | Driven adapter | `infra/`, its in-memory twin in `infra/in-memory/`; an agent's own in `infra/<agent>/` | the technology it speaks, then what it holds; its twin `InMemory<what it stands in for>` | `GitSources`, `InMemorySources` | `git-sources.adapter.ts`, `in-memory-sources.adapter.ts` |
@@ -91,8 +91,8 @@ stands behind it is chosen by who else follows it:
   a method shaping one DTO is that DTO, `Of` last: `#primitiveDTOOf()`,
   `faultsByFileDTOOf()`.
 - **Verb first everywhere else** — use cases and their private methods, services
-  of the application and of the domain (`CompileService.compileCharterRoot()`,
-  `TestService.runSuite()`),
+  of the application and of the domain (`CharterOutputService.compileCharterRoot()`,
+  `TestSuiteService.runSuite()`),
   repositories, adapters, drivers:
   `loadCharter()`, `findVendorUri()`, `readCredential()`. Never a
   bare verb (`run`, `execute`, `handle`): the verb says what, the noun says

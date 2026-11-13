@@ -32,7 +32,7 @@ const setUp = async (
 ) => {
   const held = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
@@ -49,7 +49,7 @@ const setUp = async (
     const commandLine = commandLineOf(
       held,
       new InMemoryFileOutput(held),
-      { charterAuthoringApp, charterRuntimeApp },
+      { charterAuthoringApp, charterRuntimeApp: charterRuntimeApps },
       repo,
     );
     const code = await new Commander(

@@ -84,7 +84,7 @@ Every later story, FR and SC writes these terms, and `test/naming-each-thing-onc
 
 Story: [CORE Story 42](../specs/spec-core.md#core-story-42---keep-the-engines-architecture-consistent-with-its-charter-priority-p2), [CORE Story 53](../specs/spec-core.md#core-story-53---keep-the-whole-engine-to-its-naming-and-fault-guides-priority-p2)
 
-Every file under `src/`, but the portal's page, is named as NestJS names one:
+Every file under `src/`, the portal's page's among them, is named as NestJS names one:
 the subject in kebab-case, then the role its folder gives it —
 `build-charter.service.ts`, `authoring-charter.use-case.ts`,
 `managing-charter.port.ts`, `file-charter.repository.ts`,
@@ -93,8 +93,10 @@ the subject in kebab-case, then the role its folder gives it —
 module's `domain/models/` keeps its subject alone (`charter-root.ts`), as do
 the files an agent's adapters keep of their own, `helper.ts`, `index.ts`, a
 module's `module.ts` and its `domain/constants.ts`, the kernel's
-`domain/schema.ts`, the composition root's `composition.ts` and `main.ts`. A
-script asset is `<kebab-subject>.script.mjs`
+`domain/schema.ts`, the composition root's `composition.ts`, and the entry
+files `main.ts` and the portal page's `main.tsx`; and what a generator wrote
+and keeps writing, the portal page's shadcn components under `components/ui/`
+and their `lib/utils.ts`, keeps the names it was given. A script asset is `<kebab-subject>.script.mjs`
 (`session-tokens-counter.script.mjs`), and the build puts it down under the
 name it declares. The class inside keeps its name.
 
@@ -113,7 +115,7 @@ Story: [CORE Story 44](../specs/spec-core.md#core-story-44---keep-a-repositorys-
   `KeychainCredentialsRepository`), with an `InMemory*` twin for tests.
 - **A domain service** is a class of static methods in `domain/services/`,
   `<Name>Service`, each named verb first for what it does over several
-  models (`CompileService.compileCharterRoot`, `TestService.runSuite`),
+  models (`CharterOutputService.compileCharterRoot`, `TestSuiteService.runSuite`),
   holding no state, never constructed, answering with a model.
 - **A factory** sits beside the models it makes, in their folder under
   `domain/models/` (`charter-output/charter-md.factory.ts`), a class

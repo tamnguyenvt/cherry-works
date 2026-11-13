@@ -15,7 +15,7 @@ import { McpPrimitive } from "../../domain/models/primitive/mcp-primitive.js";
 import { PrimitiveFactory } from "../../domain/models/primitive/primitive.factory.js";
 import { PrimitiveLayer } from "../../domain/models/primitive/primitive-layer.value-object.js";
 import { RawPrimitive } from "../../domain/models/primitive/raw-primitive.js";
-import { CompileService } from "../../domain/services/compile.service.js";
+import { CharterOutputService } from "../../domain/services/charter-output.service.js";
 import type { ForManagingCharter } from "../port/out/managing-charter.port.js";
 
 /** What the last build laid is read back through: the charter's repository. */
@@ -145,7 +145,7 @@ export class LoadMcpOriginsService {
 
     const { mcpServers, loadAccessToken } = mcpReaching;
     const mcpOriginResults = await Promise.all(
-      CompileService.compileCharterRoot(charter, [])
+      CharterOutputService.compileCharterRoot(charter, [])
         .findCharterOutputItem(McpOrigins)
         .origins.map(async (origin) => {
           const mcpPrimitives = origin.ids.flatMap((id) => mcpPrimitiveById.get(id) ?? []);

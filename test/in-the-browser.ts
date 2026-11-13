@@ -40,7 +40,7 @@ export async function inTheBrowser(
   const charterAuthoringApp = authoringCharterOf(files, new InMemoryFileOutput(files), new InMemoryReporter(), {
     sourceFetcher,
   });
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     files,
     new InMemoryFileOutput(files),
     new InMemoryTokenCounter(),
@@ -52,7 +52,7 @@ export async function inTheBrowser(
       new URL("../dist/portal/", import.meta.url),
       {
         charterAuthoringApp: wrapAppToShowPaths(charterAuthoringApp, "/repo"),
-        charterBuildingApp: wrapAppToShowPaths(charterRuntimeApp, "/repo"),
+        charterBuildingApp: wrapAppToShowPaths(charterRuntimeApps, "/repo"),
       },
       workspaceSettingsLoaderOf(files),
       PORT,

@@ -63,7 +63,7 @@ const writing = async (work: () => Promise<number>) => {
 const run = async (files: Readonly<Record<string, string>>, argv: readonly string[] = ["list"]) => {
   const readers = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(readers, new InMemoryFileOutput(readers), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     readers,
     new InMemoryFileOutput(readers),
     new InMemoryTokenCounter(),
@@ -71,7 +71,12 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
     new InMemoryReporter(),
   );
   const cli = new Commander(
-    commandLineOf(readers, new InMemoryFileOutput(readers), { charterAuthoringApp, charterRuntimeApp }, repo),
+    commandLineOf(
+      readers,
+      new InMemoryFileOutput(readers),
+      { charterAuthoringApp, charterRuntimeApp: charterRuntimeApps },
+      repo,
+    ),
     COMMANDS,
   );
   return writing(() => cli.runCommandLine(argv));

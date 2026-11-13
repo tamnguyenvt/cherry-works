@@ -36,7 +36,7 @@ const guide = (id: string, headers: readonly string[] = []) =>
 const authoring = (files: Readonly<Record<string, string>> = {}) => {
   const held = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
@@ -45,7 +45,7 @@ const authoring = (files: Readonly<Record<string, string>> = {}) => {
   );
   return {
     charterAuthoringApp,
-    charterRuntimeApp,
+    charterRuntimeApps,
     held,
     fileAt: (path: string) => held.readIfThere(new URL(path, repoPath)),
   };
@@ -148,7 +148,7 @@ test("a vendored and a builtin primitive open too, each under its own layer", as
 });
 
 test("what the engine brings is read as the running engine says it, whatever an earlier engine's build left behind, with nothing to refresh (CORE Story 12 scenario 3, FR-018, CORE Story 55 scenario 8)", async () => {
-  const { charterAuthoringApp, charterRuntimeApp, fileAt } = authoring({
+  const { charterAuthoringApp, charterRuntimeApps, fileAt } = authoring({
     [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
     [at(".cw/out/skill/cw-author/index.md")]: "What an earlier engine said.\n",
     [at(".claude/skills/cw-author/SKILL.md")]: "---\nname: cw-author\n---\n\nWhat an earlier engine said.\n",
@@ -159,7 +159,7 @@ test("what the engine brings is read as the running engine says it, whatever an 
   assert.equal(builtinPrimitiveDTO.layerName, "builtin");
 
   // The next build writes the running engine's word over the earlier one's.
-  answerOf(await charterRuntimeApp.buildCharter());
+  answerOf(await charterRuntimeApps.buildCharter());
   assert.doesNotMatch((await fileAt(".claude/skills/cw-author/SKILL.md")) ?? "", /What an earlier engine said/);
   assert.ok(((await fileAt(".cw/out/skill/cw-author/index.md")) ?? "").includes(new CwAuthorSkill().body.trim()));
 });
@@ -287,7 +287,7 @@ test("a vendored or builtin primitive is neither rewritten nor removed, naming w
 
 test("a removed primitive's file is gone and nothing else is, and what named it is dangling at the next check (FR-076)", async () => {
   const hosting = guide("uses-it", ['mixins: ["shared"]']);
-  const { charterAuthoringApp, charterRuntimeApp, fileAt } = authoring({
+  const { charterAuthoringApp, charterRuntimeApps, fileAt } = authoring({
     [at(".cw/charter/primitive/mixin/shared/index.md")]: primitive("mixin", "shared"),
     [at(".cw/charter/primitive/guide/uses-it/index.md")]: hosting,
   });
@@ -297,7 +297,7 @@ test("a removed primitive's file is gone and nothing else is, and what named it 
   assert.equal(primitiveDTO.data.file, "file:///repo/.cw/charter/primitive/mixin/shared/index.md");
   assert.equal(await fileAt("file:///repo/.cw/charter/primitive/mixin/shared/index.md"), undefined);
   assert.equal(await fileAt("file:///repo/.cw/charter/primitive/guide/uses-it/index.md"), hosting);
-  const { data } = answerOf(await charterRuntimeApp.diagnoseCharter());
+  const { data } = answerOf(await charterRuntimeApps.diagnoseCharter());
   assert.ok(
     data.faultsByFile.data.files["file:///repo/.cw/charter/primitive/guide/uses-it/index.md"]?.some(
       ({ data: { message } }) => /the mixin "shared"/.test(message),

@@ -98,7 +98,7 @@ export interface EngineAdapters {
     createFolderReader?(rootFolder: URL): ForReadingFiles;
   };
   readonly fileWriter: ForWritingFiles;
-  readonly worktrees: ForKeepingWorktrees;
+  readonly worktreeKeeper: ForKeepingWorktrees;
   readonly oauthAuthorizer: ForAuthorizingOAuthClients;
   readonly mcpServers: ForCallingMcpServers;
   readonly tokenCounter: ForCountingTokens;
@@ -169,7 +169,7 @@ export function composeEngine(
     fileReader,
     Object.fromEntries(Object.entries(agentProvider).map(([agentName, { agentCli }]) => [agentName, agentCli])),
     engineAdapters.shell,
-    engineAdapters.worktrees,
+    engineAdapters.worktreeKeeper,
     engineAdapters.promptfooRunner,
     engineAdapters.sessionAnalysisRepository,
     clock,
@@ -238,7 +238,7 @@ export async function composeApplications(
     localOutput: engineAdapters.localOutput ?? new LocalRepoManipulator(fileReader, fileWriter),
     fileReader,
     fileWriter,
-    worktrees: engineAdapters.worktrees ?? new GitWorktrees(repoFolder),
+    worktreeKeeper: engineAdapters.worktreeKeeper ?? new GitWorktrees(repoFolder),
     oauthAuthorizer: engineAdapters.oauthAuthorizer ?? new OAuth(),
     mcpServers: engineAdapters.mcpServers ?? new McpClients(),
     tokenCounter: engineAdapters.tokenCounter ?? new Tiktoken(),

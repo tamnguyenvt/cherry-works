@@ -89,14 +89,14 @@ export class OAuth implements ForAuthorizingOAuthClients {
 
     try {
       const oauthSession: OAuthSession = {};
-      const provider = this.#createOAuthProvider(
+      const oauthClientProvider = this.#createOAuthProvider(
         oauthSession,
         redirectUrl,
         (authorizationUrl) => showAuthorizationUrl(authorizationUrl.href),
         oauthState,
       );
-      if ((await auth(provider, { serverUrl: endpoint })) === "REDIRECT")
-        await auth(provider, { serverUrl: endpoint, authorizationCode: await authorizationCode });
+      if ((await auth(oauthClientProvider, { serverUrl: endpoint })) === "REDIRECT")
+        await auth(oauthClientProvider, { serverUrl: endpoint, authorizationCode: await authorizationCode });
       return readOAuthGrant(endpoint, oauthSession);
     } catch (raisedValue) {
       if (raisedValue instanceof AdapterFault) throw raisedValue;
@@ -130,9 +130,9 @@ export class OAuth implements ForAuthorizingOAuthClients {
     };
     // No redirect is followed and no registration made: the SDK falls back to
     // a new sign-in only where the refresh was refused, which is the answer.
-    const provider = this.#createOAuthProvider(oauthSession, "http://127.0.0.1/callback", () => undefined);
+    const oauthClientProvider = this.#createOAuthProvider(oauthSession, "http://127.0.0.1/callback", () => undefined);
     try {
-      if ((await auth(provider, { serverUrl: endpoint })) === "REDIRECT") return undefined;
+      if ((await auth(oauthClientProvider, { serverUrl: endpoint })) === "REDIRECT") return undefined;
     } catch (raisedValue) {
       if (raisedValue instanceof OAuthError) return undefined;
       throw new FailedRenewalFault(

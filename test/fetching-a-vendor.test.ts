@@ -72,7 +72,7 @@ async function installed(source: string, repo: string, version?: string): Promis
   const repoUrl = pathToFileURL(`${repo}/`);
   const fetchedCommit = await new GitSources(repoUrl).fetchCommit(source, version);
   await new GitSources(repoUrl).checkOutFolder(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter");
-  await gitSources.removeTempCommit(fetchedCommit);
+  await gitSources.removeFetchedCommit(fetchedCommit);
 }
 
 /** What the vendored guide says in this repository, read off disk. */
@@ -197,7 +197,7 @@ test("a fetch leaves nothing in the repository's own object store, and what is f
   const fetchedCommit = await new GitSources(repoUrl).fetchCommit(source);
 
   await assert.rejects(readFile(join(repo, ".git", "FETCH_HEAD")));
-  await gitSources.removeTempCommit(fetchedCommit);
+  await gitSources.removeFetchedCommit(fetchedCommit);
   await assert.rejects(gitSources.listFilesAt(fetchedCommit));
 });
 
@@ -207,7 +207,7 @@ test("a source is reached under the repository's own git config (CORE Story 37 s
   const repoUrl = pathToFileURL(`${repo}/`);
 
   const fetchedCommit = await new GitSources(repoUrl).fetchCommit("cw-team:charter");
-  t.after(() => gitSources.removeTempCommit(fetchedCommit));
+  t.after(() => gitSources.removeFetchedCommit(fetchedCommit));
   await new GitSources(repoUrl).checkOutFolder(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter");
 
   assert.match(await vendored(repo), /Reject any\./);
@@ -225,7 +225,7 @@ test("a repository's config that applies only where it stands reaches the fetch 
   });
 
   const fetchedCommit = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit("cw-team:charter");
-  t.after(() => gitSources.removeTempCommit(fetchedCommit));
+  t.after(() => gitSources.removeFetchedCommit(fetchedCommit));
 
   assert.ok((await gitSources.listFilesAt(fetchedCommit)).includes("README.md"));
 });
@@ -242,7 +242,7 @@ test("a repository whose config includes a file by a relative path still fetches
   await run("git", ["config", "--local", "include.path", "cw-included-config"], { cwd: repo });
 
   const fetchedCommit = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit("cw-team:charter");
-  t.after(() => gitSources.removeTempCommit(fetchedCommit));
+  t.after(() => gitSources.removeFetchedCommit(fetchedCommit));
 
   assert.ok((await gitSources.listFilesAt(fetchedCommit)).includes("README.md"));
 });
@@ -259,7 +259,7 @@ test("a global config reaches the fetch, read once (CORE Story 37 scenario 6)", 
   });
 
   const fetchedCommit = await new GitSources(pathToFileURL(`${repo}/`)).fetchCommit("cw-team:charter");
-  t.after(() => gitSources.removeTempCommit(fetchedCommit));
+  t.after(() => gitSources.removeFetchedCommit(fetchedCommit));
 
   assert.ok((await gitSources.listFilesAt(fetchedCommit)).includes("README.md"));
 });
@@ -384,7 +384,7 @@ test("a folder that cannot be written keeps what it held, with a fault saying so
   await mkdir(join(folder, ".cw", "charter", "vendor", "charter"), { recursive: true });
   await writeFile(join(folder, ".cw", "charter", "vendor", "charter", "kept.md"), "Kept.\n");
   const fetchedCommit = await new GitSources(folderUrl).fetchCommit(source);
-  t.after(() => gitSources.removeTempCommit(fetchedCommit));
+  t.after(() => gitSources.removeFetchedCommit(fetchedCommit));
   await chmod(join(folder, ".cw", "charter", "vendor"), 0o555);
 
   await assert.rejects(
@@ -417,7 +417,7 @@ test("a checkout git refuses leaves what the folder held (CORE-FR-205)", async (
   await mkdir(join(folder, ".cw", "charter", "vendor", "charter"), { recursive: true });
   await writeFile(join(folder, ".cw", "charter", "vendor", "charter", "kept.md"), "Kept.\n");
   const fetchedCommit = await new GitSources(folderUrl).fetchCommit(source);
-  t.after(() => gitSources.removeTempCommit(fetchedCommit));
+  t.after(() => gitSources.removeFetchedCommit(fetchedCommit));
 
   await assert.rejects(
     new GitSources(folderUrl).checkOutFolder(fetchedCommit, "no-such-folder", ".cw/charter/vendor/charter"),

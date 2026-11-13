@@ -4396,7 +4396,7 @@ interface ForFetchingCharterSources {
      * is fetched once. Its text is the adapter's own, for this port alone to
      * read. Nothing in the repository is touched; it is only what a relative source is
      * read from, and whose own version control settings reach it, where it has
-     * any. Whoever fetched it says `removeTempCommit` when done.
+     * any. Whoever fetched it says `removeFetchedCommit` when done.
      *
      * A source that cannot be reached, a version that is not there, and a machine
      * that cannot fetch at all each raise an `AdapterFault` saying so
@@ -4422,7 +4422,7 @@ interface ForFetchingCharterSources {
     checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
     /** The temporary folder this commit was fetched into, removed with all it
      *  holds; nothing is asked of it afterwards. */
-    removeTempCommit(commit: string): Promise<void>;
+    removeFetchedCommit(commit: string): Promise<void>;
 }
 
 /** Keeps a repository's charter, wherever it keeps it, and knows how: its
@@ -4444,8 +4444,9 @@ interface ForManagingCharter {
      *  where none stands there already, and a file already in its folder left
      *  as one of them; its uri. Refused, with nothing written, where it is kept
      *  already, would be kept inside another or around it, or would land outside
-     *  the charter (FR-167, CORE-FR-044). */
-    addPrimitive(rawPrimitive: RawPrimitive): Promise<string>;
+     *  the charter (FR-167, CORE-FR-044). Handed the primitive as authored, which
+     *  is kept nowhere yet. */
+    addPrimitive(primitive: Primitive): Promise<string>;
     /** New primitives of the repository's own layer kept together, each one's
      *  uri in order; refused, with nothing written, as one added is, and where
      *  any file is already in one's folder (CORE-FR-194). */
@@ -4467,11 +4468,11 @@ interface ForManagingCharter {
     removePrimitive(primitive: Primitive): Promise<void>;
     /** One commit of this source, at this version where one is named, fetched
      *  and read: its own charter, the charters it keeps apart, and its skills.
-     *  Whoever asked says `removeTempSource` once done. A source that cannot be
+     *  Whoever asked says `removeFetchedSource` once done. A source that cannot be
      *  reached raises an `AdapterFault` saying so (CORE-FR-190). */
     fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<RawVendorSource>;
     /** The temporary folder a source was fetched into, removed with all it holds. */
-    removeTempSource(rawVendorSource: RawVendorSource): Promise<void>;
+    removeFetchedSource(rawVendorSource: RawVendorSource): Promise<void>;
     /** Every vendor installed (FR-053). */
     loadVendorRoot(): Promise<VendorRoot>;
     /** One vendor of a source fetched and filtered kept under the name its
@@ -4738,9 +4739,9 @@ interface ForBuildingCharter {
      *  it is served by, with the mcp origin a call to it is forwarded to
      *  (FR-152 – FR-154). */
     listDeclaredTools(): Promise<CharterDTOs.DeclaredTools | FaultDTOs.Fault>;
-    /** The commands the last build laid for this signal of this agent
-     *  (CORE-FR-176). */
-    listSensorCommands(signal: string, agentProviderName: AgentProviderName): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault>;
+    /** The commands the last build laid for this signal of this agent; with no
+     *  agent named, of the sensors kept for no agent (CORE-FR-176, CORE-FR-233). */
+    listSensorCommands(signal: string, agentProviderName: AgentProviderName | undefined): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault>;
     /** The charter as the store holds it now, committed or not, built into the
      *  checkout `checkoutPath` names for the agents this was composed with,
      *  keeping the tools the last build kept; the repository's own working tree
@@ -4939,8 +4940,9 @@ declare class BuiltSensors extends CharterOutputItem {
      *  on, whichever agent: `cw` runs every one of them (FR-175). */
     getRunCommand(signal: string, agentProvider?: AgentProvider): string;
     constructor(sensors: readonly BuiltSensor[]);
-    /** Select only sensors that support the agent raising the signal. */
-    filterForAgent(raisingAgentProvider: AgentProvider): BuiltSensors;
+    /** Select only sensors that support the agent raising the signal; with no
+     *  agent named, only the sensors kept for no agent (CORE-FR-233). */
+    filterForAgent(raisingAgentProvider: AgentProvider | undefined): BuiltSensors;
     /** What it holds: generated, and the charter's alone. Indented, since it is
      *  committed and read in diffs when a sensor's command changes. */
     get text(): string;
@@ -5073,8 +5075,6 @@ declare class CharterMd extends CharterOutputItem {
     /** This file as a reader opens it: the stamp saying this engine wrote it,
      *  and the orientation itself. */
     private readonly stampedDocument;
-    static readonly type: "charter-md";
-    readonly type: "charter-md";
     constructor(
     /** This file as a reader opens it: the stamp saying this engine wrote it,
      *  and the orientation itself. */
@@ -5269,7 +5269,7 @@ declare abstract class AgentProjection implements ForManagingLocalAgentOutput {
     protected mergeComponentContents(_component: ProviderComponent, laidText: string, _currentText: string | undefined, _place: string): string;
     /** What else the last build left for this agent outside its own folders,
      *  each with what to write back where it is the repository's too. */
-    protected planOtherCleanup(_checkoutPath: string): Promise<readonly WritePlan[]>;
+    protected planOtherCleanup(_checkoutFolder: string): Promise<readonly WritePlan[]>;
     createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput): Promise<ProjectionPlan>;
 }
 
@@ -5349,7 +5349,7 @@ declare class FileCharterRepository implements ForManagingCharter {
     constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles, sourceFetcher: ForFetchingCharterSources);
     loadCharter(): Promise<readonly RawPrimitive[]>;
     createCharter(): Promise<void>;
-    addPrimitive(rawPrimitive: RawPrimitive): Promise<string>;
+    addPrimitive(primitive: Primitive): Promise<string>;
     injectPrimitives(rawPrimitives: readonly RawPrimitive[]): Promise<readonly string[]>;
     assertLayout(): Promise<void>;
     describeCharterPlace(): string;
@@ -5357,7 +5357,7 @@ declare class FileCharterRepository implements ForManagingCharter {
     rewritePrimitive(primitive: Primitive): Promise<void>;
     removePrimitive(primitive: Primitive): Promise<void>;
     fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<RawVendorSource>;
-    removeTempSource(rawVendorSource: RawVendorSource): Promise<void>;
+    removeFetchedSource(rawVendorSource: RawVendorSource): Promise<void>;
     loadVendorRoot(): Promise<VendorRoot>;
     storeVendor(vendorSource: VendorSource): Promise<void>;
     findVendorUri(vendorName: string): string;
@@ -5410,7 +5410,7 @@ declare class GitSources implements ForFetchingCharterSources {
     checkOutFolder(storeFolder: string, fromFolder: string, intoSubFolder: string): Promise<void>;
     /** A store left behind is only a temporary folder, and never worth reporting
      *  a source that landed as one that failed. */
-    removeTempCommit(storeFolder: string): Promise<void>;
+    removeFetchedCommit(storeFolder: string): Promise<void>;
 }
 
 /**

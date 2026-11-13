@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ContentHelper } from "../src/module/charter/domain/helper.js";
-import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { CharterOutputService } from "../src/module/charter/domain/services/charter-output.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
 import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
@@ -34,7 +34,7 @@ const load = (files: Readonly<Record<string, string>>, held = new InMemoryFileRe
 const putDown = async (files: Readonly<Record<string, string>>, agents: readonly AgentProvider[] = [CLAUDE]) => {
   const held = new InMemoryFileReaders(files);
   const charter = await load(files, held);
-  const written = await putDownBy(charter, CompileService.compileCharterRoot(charter, agents), held);
+  const written = await putDownBy(charter, CharterOutputService.compileCharterRoot(charter, agents), held);
 
   return Object.fromEntries(
     await Promise.all(written.map(async (path) => [path, await held.readFile(new URL(path, repo))] as const)),

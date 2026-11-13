@@ -51,7 +51,7 @@ composition root's `composition.ts` and `main.ts` keep their bare names; a value
     assets (`loadCharter`, `createCharter`, `assertLayout`, `addPrimitive`,
     `injectPrimitives`, `findCharterUri`, `describeCharterPlace`, `rewritePrimitive`,
     `removePrimitive`, each kept inside the charter, CORE-FR-044), its vendors
-    (`fetchVendorSource`, `removeTempSource`, `loadVendorRoot`,
+    (`fetchVendorSource`, `removeFetchedSource`, `loadVendorRoot`,
     `storeVendor`, `findVendorUri`, `removeVendor`), its test cases (`loadTestSuites`, `writeTestSuite`,
     `removeTestSuite`) and its eval cases (`loadEvalSuites`,
     `writeEvalSuite`, `removeEvalSuite`), and what the last build laid
@@ -70,7 +70,7 @@ composition root's `composition.ts` and `main.ts` keep their bare names; a value
     `.cw/out/`, what the last build left there taken away, and write every
     file a build planned, each made over a checkout by `createCheckoutOutput`;
     `GitSources` (`ForFetchingCharterSources`: `fetchCommit`, `listFilesAt`,
-    `readFileAt`, `readBytesAt`, `checkOutFolder`, `removeTempCommit`),
+    `readFileAt`, `readBytesAt`, `checkOutFolder`, `removeFetchedCommit`),
     `OAuth` (`ForAuthorizingOAuthClients`: `authorizeInBrowser`,
     `renewGrant`), `Tiktoken` (`ForCountingTokens`: `countTokens`); and `helper.ts`: a charter folder's primitives, a source's
     skills, refusing a repository or a source laid out the old way
@@ -106,10 +106,10 @@ composition root's `composition.ts` and `main.ts` keep their bare names; a value
     raised turned into a fault of the adapter's (`wrapMcpFault`).
 - `charter/infra/claude/`, `charter/infra/codex/` — each agent the engine
   compiles for, one folder per agent, holding its projection,
-  `ClaudeProjection` and `CodexProjection` (`ForManagingLocalAgentOutput`,
-  CORE-FR-221, `createAgentProjectionPlan`, `listMainContextTexts`): its files, each at its place, how each goes over what is
-  there, its stamped files taken away, its links, its main context and its
-  token factor, built on `agent-projection.base.ts` (`AgentProjection`) over
+  `ClaudeProjection` and `CodexProjection` (`ForManagingLocalAgentOutput`:
+  `createAgentProjectionPlan`, `listMainContextTexts`, CORE-FR-221): its
+  files, each at its place, how each goes over what is there, its stamped
+  files taken away, its links, its main context and its token factor, built on `agent-projection.base.ts` (`AgentProjection`) over
   the charter's `ProviderComponent` ← `DocumentBasedComponent` |
   `SettingBasedComponent`, with each agent's files (`ClaudeSkill`,
   `ClaudeRule`, `CodexConfig`…), its `<Agent>ComponentFactory` and its
@@ -291,9 +291,9 @@ In each module:
     context, counted, and the ceiling it is held to; each text of it is the
     agent's projection's (`listMainContextTexts`).
   - `mcp/` — `McpCredential`, `McpClientRegistration`, `McpAuthMethod`.
-  - `services/` — `CompileService` (`compileCharterRoot`: charter to output,
-    no file reads), `TestService` (`runSuite`, `runCase`,
-    `validateTestRoot`), `EvalService` (`validateEvalRoot`: the cases naming
+  - `services/` — `CharterOutputService` (`compileCharterRoot`: charter to output,
+    no file reads), `TestSuiteService` (`runSuite`, `runCase`,
+    `validateTestRoot`), `EvalSuiteService` (`validateEvalRoot`: the cases naming
     what the charter does not hold).
   - `helper.ts` — `ContentHelper`: frontmatter written out and read back,
     short names, hashes; and `PrimitiveHelper`, re-exported.

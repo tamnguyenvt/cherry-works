@@ -1,4 +1,4 @@
-import { DomainFault, ManyFindingsFault } from "../../../../shared/module.js";
+import { DomainFault, UnsoundModelFault } from "../../../../shared/module.js";
 import { vendorSourcePath } from "../../constants.js";
 import { ContentHelper } from "../../helper.js";
 import { InvalidSourceSkillFault } from "../charter.fault.js";
@@ -50,7 +50,7 @@ export class VendorSourceFactory {
           );
         } catch (raisedValue) {
           const faultMessages =
-            raisedValue instanceof ManyFindingsFault
+            raisedValue instanceof UnsoundModelFault
               ? raisedValue.faults.map((fault) => fault.message)
               : [`${raisedValue}`];
           throw new InvalidSourceSkillFault(

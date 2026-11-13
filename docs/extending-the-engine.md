@@ -140,7 +140,7 @@ Every adapter you may hand, as a `Partial<EngineAdapters>`:
 | `fileReader` | `ForReadingFiles` | the repository's files on disk |
 | `fileWriter` | `ForWritingFiles` | the repository's files on disk |
 | `sourceFetcher` | `ForFetchingCharterSources` | git, to fetch a vendor's source |
-| `worktrees` | `ForKeepingWorktrees` | git worktrees, one per evaluated case |
+| `worktreeKeeper` | `ForKeepingWorktrees` | git worktrees, one per evaluated case |
 | `shell` | `ForRunningShellCommands` | the shell, in the repository |
 | `promptfooRunner` | `ForRunningPromptfoo` | promptfoo, installed under the home's `.cherry-works` |
 | `mcpServers` | `ForCallingMcpServers` | MCP clients over HTTP and stdio |
@@ -159,7 +159,13 @@ replaces `cw`'s map. The easiest way to write a projection is to extend
 `AgentCli`:
 
 ```ts
-import { AgentCli, ClaudeProjection, CodexCli, CodexProjection } from "cherry-works";
+import { homedir } from "node:os";
+import { pathToFileURL } from "node:url";
+import { AgentCli, ClaudeProjection, CodexCli, CodexProjection, composeApplications, FileReaders } from "cherry-works";
+
+const repoFolder = pathToFileURL(`${process.cwd()}/`);
+const homeFolder = pathToFileURL(`${homedir()}/`);
+const fileReader = new FileReaders(repoFolder);
 
 class QuietClaudeCli extends AgentCli {
   async isInstalled() {
@@ -168,6 +174,7 @@ class QuietClaudeCli extends AgentCli {
 }
 
 const { engineApp } = await composeApplications(repoFolder, homeFolder, {
+  fileReader,
   agentProvider: {
     claude: { projection: new ClaudeProjection(fileReader), agentCli: new QuietClaudeCli() },
     codex: { projection: new CodexProjection(fileReader), agentCli: new CodexCli() },

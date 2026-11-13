@@ -40,6 +40,10 @@ export class UnknownVendorFault extends ApplicationFault {}
  *  (CORE-FR-193). */
 export class UnexpectedSourceShapeFault extends ApplicationFault {}
 
+/** A charter of a source named as a kind is, or as the source's own charter,
+ *  whose vendor folder would be another's (CORE-FR-195). */
+export class ReservedCharterNameFault extends ApplicationFault {}
+
 /** A test file asked for by a name no test file is under (FR-090, FR-092). */
 export class UnknownTestSuiteFault extends ApplicationFault {}
 
@@ -131,10 +135,6 @@ export class InvalidSourceAddressFault extends DomainFault {}
 
 /** Vendor folders laid out the way an earlier version installed them (FR-044). */
 export class OldVendorLayoutFault extends DomainFault {}
-
-/** A charter of a source named as a kind is, or as the source's own charter,
- *  whose vendor folder would be another's (CORE-FR-195). */
-export class ReservedCharterNameFault extends ApplicationFault {}
 
 /** A primitive no test case names, so nothing notices when it stops coming
  *  up where it should (FR-048). */

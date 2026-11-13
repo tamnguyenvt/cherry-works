@@ -4,7 +4,7 @@ import { Primitives } from "../src/module/charter/domain/models/primitive/primit
 import { SensorPrimitive } from "../src/module/charter/domain/models/primitive/sensor-primitive.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
-import { ManyFindingsFault } from "../src/module/shared/domain/models/domain.fault.js";
+import { UnsoundModelFault } from "../src/module/shared/domain/models/domain.fault.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
@@ -21,7 +21,7 @@ const repoPath = new URL("file:///repo/");
 const asking = async (argv: readonly string[]) => {
   const held = new InMemoryFileReaders({});
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
@@ -35,7 +35,12 @@ const asking = async (argv: readonly string[]) => {
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
     const code = await new Commander(
-      commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo),
+      commandLineOf(
+        held,
+        new InMemoryFileOutput(held),
+        { charterAuthoringApp, charterRuntimeApp: charterRuntimeApps },
+        repo,
+      ),
       COMMANDS,
     ).runCommandLine(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
@@ -80,7 +85,7 @@ test("a command is refused as a kind the charter does not have: a skill is what 
       readPrimitive(
         ["---", "kind: command", "id: release", "description: Cut a release.", "---", "", "Cut it."].join("\n"),
       ),
-    (raised: ManyFindingsFault) => /"command" is not a kind the charter knows/.test(String(raised.faults[0]?.message)),
+    (raised: UnsoundModelFault) => /"command" is not a kind the charter knows/.test(String(raised.faults[0]?.message)),
   );
 });
 
@@ -184,7 +189,7 @@ test("for every kind, what cw kinds names, what cw add asks for and what a refus
     try {
       readPrimitive(`---\nkind: ${kind}\nid: something\n---\n`);
     } catch (readFault) {
-      assert.ok(readFault instanceof ManyFindingsFault, String(readFault));
+      assert.ok(readFault instanceof UnsoundModelFault, String(readFault));
       refusalFix = readFault.faults.map(({ fix }) => fix).join("\n");
     }
     assert.ok(refusalFix.includes(sampleShownIn(kindAnswer)), `${kind}: ${refusalFix}`);
@@ -235,7 +240,7 @@ const refusalOf = (read: () => unknown) => {
   try {
     read();
   } catch (raised) {
-    assert.ok(raised instanceof ManyFindingsFault);
+    assert.ok(raised instanceof UnsoundModelFault);
     const [fault] = raised.faults;
     return { message: fault!.message, fix: fault!.fix };
   }

@@ -58,7 +58,7 @@ const aRepository = (
     [SESSION_COUNTER_COMMAND]: { exitCode: 0, stdout: "", stderr: "" },
     ...resultByCommand,
   });
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
@@ -73,8 +73,8 @@ const aRepository = (
   return {
     held,
     shell,
-    build: () => charterRuntimeApp.buildCharter(),
-    runSensors: charterRuntimeApp.runSensors.bind(charterRuntimeApp),
+    build: () => charterRuntimeApps.buildCharter(),
+    runSensors: charterRuntimeApps.runSensors.bind(charterRuntimeApps),
     claudeSettings,
   };
 };
@@ -455,6 +455,38 @@ test("cw sensor run, started by the host, runs a built signal's sensors in the s
     { status: lockedRun.status, stdout: lockedRun.stdout, stderr: lockedRun.stderr },
     { status: 2, stdout: "a\nb\n", stderr: "a release is open\n" },
   );
+});
+
+test("cw sensor run with no agent named runs only the sensors kept for no agent, and with one named, those kept for it too (CORE Story 29 scenario 10, CORE-FR-233, CORE-FR-234)", async (t) => {
+  const repoFolder = await mkdtemp(join(tmpdir(), "cw-sensor-"));
+  t.after(() => rm(repoFolder, { recursive: true, force: true }));
+  await mkdir(join(repoFolder, ".cw", "out"), { recursive: true });
+  await writeFile(join(repoFolder, ".cw", "settings.json"), JSON.stringify({ agents: ["claude"] }));
+  await writeFile(
+    join(repoFolder, ".cw", "out", "sensors.json"),
+    JSON.stringify({
+      sensors: [
+        { id: "claude-only", signal: "Stop", "agent-provider": ["claude"], command: "echo claude" },
+        { id: "shared", signal: "Stop", command: "echo shared" },
+      ],
+    }),
+  );
+  const runSignal = (...agentArgs: string[]) =>
+    spawnSync(
+      process.execPath,
+      ["--import", TSX, "--import", MODULE_LOADER, MAIN, "sensor", "run", "Stop", ...agentArgs],
+      {
+        cwd: repoFolder,
+        encoding: "utf8",
+        input: "{}",
+      },
+    );
+
+  const unnamedRun = runSignal();
+  const claudeRun = runSignal("--agent", "claude");
+
+  assert.deepEqual({ status: unnamedRun.status, stdout: unnamedRun.stdout }, { status: 0, stdout: "shared\n" });
+  assert.deepEqual({ status: claudeRun.status, stdout: claudeRun.stdout }, { status: 0, stdout: "claude\nshared\n" });
 });
 
 test("sensors run only for their declared provider from the built snapshot", async () => {

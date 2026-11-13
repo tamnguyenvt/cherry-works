@@ -65,8 +65,9 @@ export interface ForManagingCharter {
    *  where none stands there already, and a file already in its folder left
    *  as one of them; its uri. Refused, with nothing written, where it is kept
    *  already, would be kept inside another or around it, or would land outside
-   *  the charter (FR-167, CORE-FR-044). */
-  addPrimitive(rawPrimitive: RawPrimitive): Promise<string>;
+   *  the charter (FR-167, CORE-FR-044). Handed the primitive as authored, which
+   *  is kept nowhere yet. */
+  addPrimitive(primitive: Primitive): Promise<string>;
 
   /** New primitives of the repository's own layer kept together, each one's
    *  uri in order; refused, with nothing written, as one added is, and where
@@ -95,12 +96,12 @@ export interface ForManagingCharter {
 
   /** One commit of this source, at this version where one is named, fetched
    *  and read: its own charter, the charters it keeps apart, and its skills.
-   *  Whoever asked says `removeTempSource` once done. A source that cannot be
+   *  Whoever asked says `removeFetchedSource` once done. A source that cannot be
    *  reached raises an `AdapterFault` saying so (CORE-FR-190). */
   fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<RawVendorSource>;
 
   /** The temporary folder a source was fetched into, removed with all it holds. */
-  removeTempSource(rawVendorSource: RawVendorSource): Promise<void>;
+  removeFetchedSource(rawVendorSource: RawVendorSource): Promise<void>;
 
   /** Every vendor installed (FR-053). */
   loadVendorRoot(): Promise<VendorRoot>;

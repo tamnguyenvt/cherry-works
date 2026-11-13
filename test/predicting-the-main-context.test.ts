@@ -71,7 +71,7 @@ const surfaces = (files: Readonly<Record<string, string>>, agentCli: ForRunningA
     new InMemoryReporter(),
     { sourceFetcher },
   );
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     fileReaders,
     new InMemoryFileOutput(fileReaders),
     new InMemoryTokenCounter(),
@@ -84,7 +84,7 @@ const surfaces = (files: Readonly<Record<string, string>>, agentCli: ForRunningA
     commandLineOf(
       fileReaders,
       new InMemoryFileOutput(fileReaders),
-      { charterAuthoringApp, charterRuntimeApp },
+      { charterAuthoringApp, charterRuntimeApp: charterRuntimeApps },
       "/repo",
     ),
     COMMANDS,
@@ -92,7 +92,7 @@ const surfaces = (files: Readonly<Record<string, string>>, agentCli: ForRunningA
   return {
     portalRoutes: buildPortalRoutes(
       wrapAppToShowPaths(charterAuthoringApp, "/repo"),
-      wrapAppToShowPaths(charterRuntimeApp, "/repo"),
+      wrapAppToShowPaths(charterRuntimeApps, "/repo"),
       workspaceSettingsLoaderOf(fileReaders),
     ),
     fileReaders,
@@ -322,7 +322,7 @@ test("totals within 15% are said to be within it, and no warning is said (CORE S
   assert.match(text, /Within the 15% EVAL-SC-002 allows\./);
 });
 
-test("with no agent named, the estimate is listed alone, and no agent's command line is run (CORE Story 55 scenario 35, EVAL-FR-004)", async () => {
+test("with no agent named, the estimate is listed alone, one prediction for each agent chosen, and no agent's command line is run (CORE Story 55 scenario 35, EVAL-FR-001, EVAL-FR-004)", async () => {
   const agentCli = new InMemoryAgentCli();
   const { cli } = surfaces(holding({ agents: ["claude", "codex"] }), agentCli);
 
@@ -361,14 +361,14 @@ test("counted exactly for an agent it cannot count through is refused, saying th
   assert.deepEqual(agentCli.prompts, []);
 });
 
-test("counted exactly for an agent the repository does not compile for is refused, saying the estimate needs nothing, and nothing is counted (CORE Story 55 scenario 36, EVAL-FR-004)", async () => {
+test("counted exactly for an agent the repository did not choose is refused, saying the estimate needs nothing, and nothing is counted (CORE Story 55 scenario 36, EVAL-FR-004)", async () => {
   const agentCli = new InMemoryAgentCli();
   const { cli } = surfaces(holding({ agents: ["codex"] }), agentCli);
 
   const { code, problem } = await printed(cli, ["context", "--agent=claude"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(problem, /does not compile for claude/);
+  assert.match(problem, /did not choose claude/);
   assert.match(problem, /"cw context" with no agent named: the estimate needs nothing/);
   assert.deepEqual(agentCli.prompts, []);
 });
@@ -450,11 +450,12 @@ test("setup keeps the ceiling it is given, and the one already set when given no
   });
 });
 
-test("a repository compiling for no agent is told nothing is loaded", async () => {
+test("a repository that chose no agent is told nothing is loaded, and to run cw init to choose one (EVAL-FR-001)", async () => {
   const { cli } = surfaces(holding({ agents: [] }));
 
   const { code, text } = await printed(cli, ["context"]);
 
   assert.equal(code, EXIT_OK);
   assert.match(text, /No agent is chosen/);
+  assert.match(text, /Run "cw init" to choose one/);
 });

@@ -19,18 +19,23 @@ export class InMemoryFileReaders implements ForReadingFiles {
   /** The folder every path is from (SDK-FR-010). */
   readonly rootFolder: FolderURL;
 
-  private readonly contentsByFile = new Map<string, string | Uint8Array>();
-  private readonly modifiedAtByFile = new Map<string, Date>();
+  private readonly contentsByFile: Map<string, string | Uint8Array>;
+  private readonly modifiedAtByFile: Map<string, Date>;
 
   /** Every listing and every read served, in order, for a test that cares how
    *  often it was asked. */
-  readonly calls: string[] = [];
+  readonly calls: string[];
 
   constructor(
     contentsByFileAddress: Readonly<Record<string, string | Uint8Array>> = {},
     rootFolder: URL = new URL("file:///repo/"),
+    /** The reader whose files, and whose record of calls, these are too. */
+    sharingFileReaders?: InMemoryFileReaders,
   ) {
     this.rootFolder = FolderAddress.parseFolderUrl(rootFolder);
+    this.contentsByFile = sharingFileReaders?.contentsByFile ?? new Map();
+    this.modifiedAtByFile = sharingFileReaders?.modifiedAtByFile ?? new Map();
+    this.calls = sharingFileReaders?.calls ?? [];
     for (const [filePath, contents] of Object.entries(contentsByFileAddress))
       this.writeFile(new URL(filePath), contents);
   }
@@ -38,11 +43,7 @@ export class InMemoryFileReaders implements ForReadingFiles {
   /** The same files, every path from another folder: what a test reads a
    *  home's files through, beside the repository's. */
   createFolderReader(rootFolder: URL): InMemoryFileReaders {
-    return Object.assign(new InMemoryFileReaders({}, rootFolder), {
-      contentsByFile: this.contentsByFile,
-      modifiedAtByFile: this.modifiedAtByFile,
-      calls: this.calls,
-    });
+    return new InMemoryFileReaders({}, rootFolder, this);
   }
 
   /** Author or replace one file, modified now unless a test says when. */

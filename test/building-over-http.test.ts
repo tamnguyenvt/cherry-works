@@ -55,7 +55,7 @@ const surfaces = (files: Readonly<Record<string, string>>) => {
     new InMemoryReporter(),
     { sourceFetcher },
   );
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     fileReaders,
     new InMemoryFileOutput(fileReaders),
     new InMemoryTokenCounter(),
@@ -66,7 +66,7 @@ const surfaces = (files: Readonly<Record<string, string>>) => {
     commandLineOf(
       fileReaders,
       new InMemoryFileOutput(fileReaders),
-      { charterAuthoringApp, charterRuntimeApp },
+      { charterAuthoringApp, charterRuntimeApp: charterRuntimeApps },
       "/repo",
     ),
     COMMANDS,
@@ -74,7 +74,7 @@ const surfaces = (files: Readonly<Record<string, string>>) => {
   return {
     portalRoutes: buildPortalRoutes(
       wrapAppToShowPaths(charterAuthoringApp, "/repo"),
-      wrapAppToShowPaths(charterRuntimeApp, "/repo"),
+      wrapAppToShowPaths(charterRuntimeApps, "/repo"),
       workspaceSettingsLoaderOf(fileReaders),
     ),
     fileReaders,

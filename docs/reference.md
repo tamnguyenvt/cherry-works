@@ -14,7 +14,7 @@ with its mixins and assets.
 |---|---|---|
 | `guide`, no `globs` | `.claude/rules/<name>.md`, importing the compiled guide | Body embedded in root `AGENTS.md` |
 | `guide`, with `globs` | `.claude/rules/<name>.md` with `paths` | Body embedded in directory `AGENTS.md` files; `src/**/*.ts` → `src/AGENTS.md`, with the file condition retained |
-| `sensor` | `.claude/settings.json` hook → `cw sensor run <signal>` | `.codex/config.toml` hook → `cw sensor run <signal> --agent codex` |
+| `sensor` | `.claude/settings.json` hook → `cw sensor run <signal> --agent claude` | `.codex/config.toml` hook → `cw sensor run <signal> --agent codex` |
 | `skill` | `.claude/skills/<name>/SKILL.md`; invoke with `/<name>` | `.agents/skills/<name>/SKILL.md`; invoke with `$<name>` or choose through `/skills` |
 | `playbook` | `.claude/skills/<name>/SKILL.md`, sequencing other skills | `.agents/skills/<name>/SKILL.md`, sequencing other skills |
 | `agent` | `.claude/agents/<name>.md`, with `tools` and optional Claude model | `.codex/agents/<name>.toml`, with feature restrictions and optional Codex model; remaining tools inherit the parent scope |
@@ -471,7 +471,7 @@ other one is `cw`'s own. They are `agentProvider` (each agent's projection,
 `ForManagingLocalAgentOutput`, and command line, `ForCheckingAgentCli`, under
 the agent's name), `charterRepository` (`ForManagingCharter`), `sourceFetcher`
 (`ForFetchingCharterSources`), `fileReader` (`ForReadingFiles`), `fileWriter`
-(`ForWritingFiles`), `worktrees` (`ForKeepingWorktrees`), `oauthAuthorizer`
+(`ForWritingFiles`), `worktreeKeeper` (`ForKeepingWorktrees`), `oauthAuthorizer`
 (`ForAuthorizingOAuthClients`), `mcpServers` (`ForCallingMcpServers`),
 `tokenCounter` (`ForCountingTokens`), `clock` (`ForTellingTime`), `shell`
 (`ForRunningShellCommands`), `progressReporter` (`ForReportingProgress`),

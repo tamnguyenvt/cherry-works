@@ -1,4 +1,4 @@
-import { DomainFault, FaultsByFile, ManyFindingsFault } from "../../../../shared/module.js";
+import { DomainFault, FaultsByFile, UnsoundModelFault } from "../../../../shared/module.js";
 import { InconsistentCharterFault } from "../charter.fault.js";
 import { BasePrimitive } from "../primitive/base-primitive.js";
 import { PrimitiveFactory } from "../primitive/primitive.factory.js";
@@ -95,7 +95,7 @@ export class CharterRootFactory {
             faultsByFile[handedPrimitive.uri] = [raisedValue];
             continue;
           }
-          if (!(raisedValue instanceof ManyFindingsFault)) throw raisedValue;
+          if (!(raisedValue instanceof UnsoundModelFault)) throw raisedValue;
           // A finding is a fault the person can correct. An internal fault in the
           // same aggregate would otherwise be shown under the file (SDK-FR-018).
           const findingFaults = raisedValue.faults.filter(

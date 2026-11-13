@@ -73,11 +73,11 @@ export interface ForBuildingCharter {
    *  (FR-152 – FR-154). */
   listDeclaredTools(): Promise<CharterDTOs.DeclaredTools | FaultDTOs.Fault>;
 
-  /** The commands the last build laid for this signal of this agent
-   *  (CORE-FR-176). */
+  /** The commands the last build laid for this signal of this agent; with no
+   *  agent named, of the sensors kept for no agent (CORE-FR-176, CORE-FR-233). */
   listSensorCommands(
     signal: string,
-    agentProviderName: AgentProviderName,
+    agentProviderName: AgentProviderName | undefined,
   ): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault>;
 
   /** The charter as the store holds it now, committed or not, built into the

@@ -38,8 +38,8 @@ export class InMemoryLocalRepo implements ForManagingLocalOutput {
       charterOutput.charterOutputItems.map((charterOutputItem) => {
         const { text } = charterOutputItem;
         const path = outputPath.getPath(charterOutputItem);
-        const place = this.describeItemPlace(path);
-        return new WritePlan(place, place, text, this.textByPlace.get(place));
+        const itemPlace = this.describeItemPlace(path);
+        return new WritePlan(itemPlace, itemPlace, text, this.textByPlace.get(itemPlace));
       }),
     );
   }

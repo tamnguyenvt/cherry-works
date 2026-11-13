@@ -52,7 +52,7 @@ const portal = (files: Readonly<Record<string, string>>) => {
     new InMemoryReporter(),
     { sourceFetcher },
   );
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     fileReaders,
     new InMemoryFileOutput(fileReaders),
     new InMemoryTokenCounter(),
@@ -61,13 +61,13 @@ const portal = (files: Readonly<Record<string, string>>) => {
   );
   const portalRoutes = buildPortalRoutes(
     wrapAppToShowPaths(charterAuthoringApp, "/repo"),
-    wrapAppToShowPaths(charterRuntimeApp, "/repo"),
+    wrapAppToShowPaths(charterRuntimeApps, "/repo"),
     workspaceSettingsLoaderOf(fileReaders),
   );
   return {
     portalRoutes,
     charterAuthoringApp,
-    charterRuntimeApp,
+    charterRuntimeApps,
     fileAt: (path: string) => fileReaders.readIfThere(new URL(path, repoPath)),
   };
 };

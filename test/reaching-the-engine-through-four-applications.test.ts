@@ -221,7 +221,7 @@ async function applicationsInMemory() {
     fileReader,
     fileWriter,
     sourceFetcher,
-    worktrees: new InMemoryWorktrees(fileReader),
+    worktreeKeeper: new InMemoryWorktrees(fileReader),
     credentialsRepository: new InMemoryCredentialsRepository(),
     oauthAuthorizer: new InMemoryOAuthAuthorizer(),
     tokenCounter: new InMemoryTokenCounter(),
@@ -359,7 +359,7 @@ test("a driver port answers shapes made for the driver, and takes none of the do
   // What a driver writes and reads: DTOs, plain values, and the shapes each
   // port declares for it.
   const driverTypePattern =
-    /^(string|number|boolean|readonly string\[\]|Readonly<Record<string, unknown>>|\{ readonly exact: boolean \}|\(authorizationUrl: string\) => void|AgentProviderName|UnparsedHeaders|SettingsOptions|McpOriginAddress|readonly string\[\]|number)$/;
+    /^(string|number|boolean|readonly string\[\]|Readonly<Record<string, unknown>>|\{ readonly exact: boolean \}|\(authorizationUrl: string\) => void|AgentProviderName|AgentProviderName \| undefined|UnparsedHeaders|SettingsOptions|McpOriginAddress|readonly string\[\]|number)$/;
   for (const portName of Object.keys(operationNamesByPortName) as (keyof typeof operationNamesByPortName)[])
     for (const { operationName, parameterTypeTexts, answerTypeText } of operationsOf(portName)) {
       const answerMatch = answerTypeText.match(/^Promise<(.+)>$/);

@@ -17,9 +17,9 @@ import { EvalRootFactory } from "../domain/models/eval/eval-root.factory.js";
 import { McpPrimitive } from "../domain/models/primitive/mcp-primitive.js";
 import { PrimitiveLayer } from "../domain/models/primitive/primitive-layer.value-object.js";
 import { TestRootFactory } from "../domain/models/test/test-root.factory.js";
-import { CompileService } from "../domain/services/compile.service.js";
-import { EvalService } from "../domain/services/eval.service.js";
-import { TestService } from "../domain/services/test.service.js";
+import { CharterOutputService } from "../domain/services/charter-output.service.js";
+import { EvalSuiteService } from "../domain/services/eval-suite.service.js";
+import { TestSuiteService } from "../domain/services/test-suite.service.js";
 import type { ForAuthoringCharter } from "./port/in/authoring-charter.port.js";
 import type { AgentProviderName, ForBuildingCharter, ProjectionSettings } from "./port/in/building-charter.port.js";
 import { CharterDTOs } from "./port/in/charter.dto.js";
@@ -172,7 +172,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
       const charterFaultsByFile = this.#collectCharterFaults(charter);
       const isHolding = charterFaultsByFile.filterErrors().isEmpty;
       const allFaultsByFile = isHolding
-        ? charterFaultsByFile.mergeWith(TestService.validateTestRoot(charter, testRoot))
+        ? charterFaultsByFile.mergeWith(TestSuiteService.validateTestRoot(charter, testRoot))
         : charterFaultsByFile;
       const primitiveLayerByUri = charter.primitiveLayerByUri;
       const heardFaultsByFile = new FaultsByFile(
@@ -378,17 +378,18 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
 
   /** Read off the list the last build laid, through what laid it, each path
    *  into the compiled output in a command written as where the output lands;
-   *  it runs nothing (CORE-FR-176, FR-041, CORE-FR-221). */
+   *  it runs nothing; with no agent named, only the sensors kept for no agent
+   *  (CORE-FR-176, FR-041, CORE-FR-221, CORE-FR-233). */
   async listSensorCommands(
     signal: string,
-    agentName: AgentProviderName,
+    agentProviderName: AgentProviderName | undefined,
   ): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("BuildingCharter.listSensorCommands", async () => {
       const builtSensors = BuiltSensorsFactory.createFromBuiltText(
         await this.#charterRepository.readCompiledOutputItem(outputPath.sensorsFileName),
       );
       const commands = builtSensors
-        .filterForAgent(this.#findAgentProvider(agentName))
+        .filterForAgent(agentProviderName === undefined ? undefined : this.#findAgentProvider(agentProviderName))
         .sensors.filter((builtSensor) => builtSensor.signal === signal)
         .map((builtSensor) => this.#charterRepository.resolveOutputLinks(builtSensor.command));
       return CharterDTOs.SensorCommands.of({ commands });
@@ -459,7 +460,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
       for (const faultsByFile of [
         charter.allFaultsByFiles.filterErrors(),
         evalRoot.faultsByFiles,
-        EvalService.validateEvalRoot(charter, evalRoot),
+        EvalSuiteService.validateEvalRoot(charter, evalRoot),
       ])
         if (!faultsByFile.isEmpty) return this.faultsByFileDTOOf(faultsByFile);
       return CharterDTOs.EvalCases.of({
@@ -504,7 +505,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   #layMainContextTexts(charter: CharterRoot, agentProvider: AgentProvider): readonly MainContextText[] {
     return this.#agentProjectionByProvider[agentProvider.name]!.listMainContextTexts(
       charter,
-      CompileService.compileCharterRoot(charter, [agentProvider]),
+      CharterOutputService.compileCharterRoot(charter, [agentProvider]),
     );
   }
 

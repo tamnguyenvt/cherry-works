@@ -82,9 +82,9 @@ test("a path starting at / or stepping out with .. reaches nothing outside the r
   }
   const charterRepository = new FileCharterRepository(fileReaders, fileOutput, new InMemorySources(fileReaders));
   await assert.rejects(
-    charterRepository.addPrimitive(
+    charterRepository.injectPrimitives([
       new RawPrimitive(PrimitiveLayer.REPO, "guide", "../../../../outside", "written", [], ""),
-    ),
+    ]),
     /would land outside/,
   );
   assert.equal(await fileReaders.readFile(new URL("file:///outside.md")), "Not the repository's.");

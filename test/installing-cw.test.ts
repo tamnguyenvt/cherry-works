@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, relative } from "node:path";
@@ -119,12 +120,7 @@ test("run once through npm exec, cw works and nothing is left installed (CORE St
     );
     // Neither a global install under the prefix nor a local one in the folder
     // it ran in: what npm exec fetched stays in its cache, which it may clear.
-    assert.equal(
-      spawnSync("cw", ["--version"], { env: { PATH: join(prefixFolderPath, "bin") } }).error?.message.includes(
-        "ENOENT",
-      ),
-      true,
-    );
+    assert.equal(existsSync(prefixFolderPath), false, `npm exec installed under ${prefixFolderPath}`);
     assert.deepEqual((await readdir(workFolderPath)).sort(), ["cache"]);
   } finally {
     await rm(workFolderPath, { recursive: true, force: true });

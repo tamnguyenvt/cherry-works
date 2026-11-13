@@ -73,11 +73,11 @@ export {
 export { ApplicationFault } from "./domain/models/application.fault.js";
 export {
   DomainFault,
-  ManyFindingsFault,
   UnfaultedRaiseFault,
   UnmappedYamlFault,
   UnreadableTomlFault,
   UnreadableYamlFault,
+  UnsoundModelFault,
   UnwritableTomlFault,
 } from "./domain/models/domain.fault.js";
 export { Faults } from "./domain/models/fault/faults.js";
@@ -91,7 +91,6 @@ export { FileReaders } from "./infra/file-readers.adapter.js";
 export {
   decodeContents,
   encodeContents,
-  formatCheckoutFolder,
   resolveCheckoutPath,
   resolveFileUrl,
   resolveRepoPath,

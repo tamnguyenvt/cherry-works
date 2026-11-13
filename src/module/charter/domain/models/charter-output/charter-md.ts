@@ -25,9 +25,6 @@ import type { StampedDocument } from "./stamped-document.value-object.js";
  * is each agent's to carry, in its own kinds.
  */
 export class CharterMd extends CharterOutputItem {
-  static readonly type = "charter-md" as const;
-  readonly type = CharterMd.type;
-
   constructor(
     /** This file as a reader opens it: the stamp saying this engine wrote it,
      *  and the orientation itself. */

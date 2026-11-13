@@ -82,7 +82,7 @@ const surfaces = (
   const charterRuntimeApp = runningCharterOf(fileReaders, reporter, {
     fileWriter: fileOutput,
     tokenCounter: new InMemoryTokenCounter(),
-    worktrees,
+    worktreeKeeper: worktrees,
     agentCliByProvider: { claude: agentCli, codex: agentCli },
     promptfooRunner: promptfoo,
   });
@@ -420,7 +420,7 @@ test("an evaluation file that does not read refuses the run, and none written is
 });
 
 for (const agentName of ["claude", "codex"]) {
-  test(`explicit ${agentName} runs unchanged expectations and identifies the agent (EVAL Story 7 scenarios 1, 8)`, async () => {
+  test(`${agentName} named runs unchanged expectations and identifies the agent (EVAL Story 7 scenarios 1, 8)`, async () => {
     const promptfooRunner = new InMemoryPromptfoo();
     promptfooRunner.resultByPrompt.set(
       "plan",
@@ -453,7 +453,7 @@ for (const agentName of ["claude", "codex"]) {
       Object.keys(repositoryFiles).sort(),
     );
   });
-  test(`a sole configured ${agentName} is selected automatically (EVAL Story 7 scenario 2)`, async () => {
+  test(`the one agent chosen, ${agentName}, is taken with none named (EVAL Story 7 scenario 2)`, async () => {
     const promptfooRunner = new InMemoryPromptfoo();
     const repositoryFiles = {
       ...holding([{ prompt: "plan", expect: { invoke: "planning" } }]),
@@ -467,13 +467,13 @@ for (const agentName of ["claude", "codex"]) {
 
 for (const selectionCase of [
   { agents: ["claude", "codex"], argv: ["eval"], expectedProblem: /--agent/ },
-  { agents: ["claude"], argv: ["eval", "--agent=codex"], expectedProblem: /codex.*not configured|not.*codex/ },
+  { agents: ["claude"], argv: ["eval", "--agent=codex"], expectedProblem: /codex is not chosen/ },
   { agents: [], argv: ["eval"], expectedProblem: /cw init/ },
   { agents: undefined, argv: ["eval"], expectedProblem: /cw init/ },
   { agents: ["claude"], argv: ["eval", "--agent=unknown"], expectedProblem: /claude, codex/ },
   { agents: ["codex"], argv: ["eval"], expectedProblem: /codex.*not installed/, isInstalled: false },
 ]) {
-  test(`invalid selection ${JSON.stringify(selectionCase)} spends no tokens (EVAL Story 7 scenarios 4–7)`, async () => {
+  test(`an agent named or chosen that is refused, ${JSON.stringify(selectionCase)}, spends no tokens (EVAL Story 7 scenarios 4–7)`, async () => {
     const promptfooRunner = new InMemoryPromptfoo(false);
     const repositoryFiles = { ...holding([{ prompt: "plan", expect: { invoke: "planning" } }]) };
     if (selectionCase.agents === undefined) delete repositoryFiles[at(".cw/settings.json")];
@@ -490,7 +490,7 @@ for (const selectionCase of [
 }
 
 for (const selectedAgent of ["codex", undefined]) {
-  test(`interactive selection ${selectedAgent ?? "cancelled"} (EVAL Story 7 scenario 3)`, async () => {
+  test(`the agent picked at a terminal: ${selectedAgent ?? "cancelled"} (EVAL Story 7 scenario 3)`, async () => {
     const ttyDescriptor = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
     Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
     prompts.inject([selectedAgent]);

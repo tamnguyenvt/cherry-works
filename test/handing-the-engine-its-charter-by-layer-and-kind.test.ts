@@ -18,6 +18,7 @@ import { ProjectionPlan, WritePlan } from "../src/module/charter/domain/models/c
 import { RawEvalSuite } from "../src/module/charter/domain/models/eval/raw-eval-suite.js";
 import type { McpCredential } from "../src/module/charter/domain/models/mcp/mcp-credential.js";
 import { McpPrimitive } from "../src/module/charter/domain/models/primitive/mcp-primitive.js";
+import { PrimitiveFactory } from "../src/module/charter/domain/models/primitive/primitive.factory.js";
 import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
 import { RawPrimitive } from "../src/module/charter/domain/models/primitive/raw-primitive.js";
 import { RawTestSuite } from "../src/module/charter/domain/models/test/raw-test-suite.js";
@@ -34,6 +35,7 @@ import { InMemoryOAuthAuthorizer } from "../src/module/charter/infra/in-memory/i
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { LocalRepoManipulator } from "../src/module/charter/infra/local-repo-manipulator.adapter.js";
+import { composeApplications } from "../src/module/composition.js";
 import { SessionLogs } from "../src/module/runtime/domain/models/session/session-logs.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryPromptfoo } from "../src/module/runtime/infra/in-memory/in-memory-promptfoo.adapter.js";
@@ -130,13 +132,23 @@ function charterKeptWithNoPath(): {
     },
     async createCharter() {},
     async assertLayout() {},
-    async addPrimitive({ kind, id, text, assets }) {
-      const rawPrimitive = rawPrimitiveOf(PrimitiveLayer.REPO, kind, id, text, assets);
-      rawPrimitiveByKey.set(`${kind}/${id}`, rawPrimitive);
+    async addPrimitive(primitive) {
+      const rawPrimitive = rawPrimitiveOf(
+        PrimitiveLayer.REPO,
+        primitive.kind,
+        primitive.headers.id,
+        primitive.writeMarkdown(),
+        primitive.assets,
+      );
+      rawPrimitiveByKey.set(`${primitive.kind}/${primitive.headers.id}`, rawPrimitive);
       return rawPrimitive.uri;
     },
     async injectPrimitives(rawPrimitives) {
-      return Promise.all(rawPrimitives.map((rawPrimitive) => this.addPrimitive(rawPrimitive)));
+      return rawPrimitives.map(({ kind, id, text, assets }) => {
+        const rawPrimitive = rawPrimitiveOf(PrimitiveLayer.REPO, kind, id, text, assets);
+        rawPrimitiveByKey.set(`${kind}/${id}`, rawPrimitive);
+        return rawPrimitive.uri;
+      });
     },
     findCharterUri() {
       return "db://charter";
@@ -163,7 +175,7 @@ function charterKeptWithNoPath(): {
     async fetchVendorSource() {
       throw new Error("Nothing is fetched here.");
     },
-    async removeTempSource() {},
+    async removeFetchedSource() {},
     async loadVendorRoot() {
       return new VendorRoot([]);
     },
@@ -245,7 +257,7 @@ function charterTestingAppOver(
 ): CharterRuntimeApps {
   return runningCharterOf(fileReaders, new InMemoryReporter(), {
     fileWriter: new InMemoryFileOutput(fileReaders),
-    worktrees: new InMemoryWorktrees(fileReaders),
+    worktreeKeeper: new InMemoryWorktrees(fileReaders),
     agentCliByProvider: { claude: new InMemoryAgentCli() },
     promptfooRunner: promptfoo,
     workspaceSettings,
@@ -424,7 +436,13 @@ test("a build's plan is the domain's own, every file in it one of its planned fi
 test("what each agent is told to edit names where a store of a test's own keeps the charter, never cw's own layout, for every projection composed (CORE Story 55 scenario 24)", async () => {
   const { charterRepository, rawPrimitiveByKey } = charterKeptWithNoPath();
   rawPrimitiveByKey.delete("guide/broken-guide");
-  const composedAgentNames = Object.keys(agentProjectionByProviderOf(new InMemoryFileReaders({})));
+  // The agents composeApplications projects for by default, none handed.
+  const defaultFileReaders = new InMemoryFileReaders({});
+  const { workspaceApp } = await composeApplications(new URL("memory:/repo/"), new URL("memory:/home/"), {
+    fileReader: defaultFileReaders,
+    fileWriter: new InMemoryFileOutput(defaultFileReaders),
+  });
+  const composedAgentNames = workspaceApp.agentProviderNames;
   assert.ok(composedAgentNames.length > 1, "fewer than two projections are composed");
 
   for (const agentName of composedAgentNames) {
@@ -471,7 +489,7 @@ test("settings naming an agent this engine compiles for none under are refused, 
 test("a link kept under the charter folder is a file of it, so no primitive is written onto what it points to (CORE-FR-044)", async (t) => {
   const repoFolder = await mkdtemp(join(tmpdir(), "cw-repo-"));
   t.after(() => rm(repoFolder, { recursive: true, force: true }));
-  const guideFolder = join(repoFolder, ".cw", "charter", "primitive", "guide", "y");
+  const guideFolder = join(repoFolder, ".cw", "charter", "primitive", "guide", "kept-guide");
   await mkdir(guideFolder, { recursive: true });
   await writeFile(join(repoFolder, "outside.md"), "kept outside\n");
   await symlink(join(repoFolder, "outside.md"), join(guideFolder, "index.md"));
@@ -483,7 +501,9 @@ test("a link kept under the charter folder is a file of it, so no primitive is w
   );
 
   await assert.rejects(
-    charterRepository.addPrimitive(new RawPrimitive(PrimitiveLayer.REPO, "guide", "y", keptGuideText, [], "")),
+    charterRepository.addPrimitive(
+      PrimitiveFactory.create(new RawPrimitive(PrimitiveLayer.REPO, "guide", "kept-guide", keptGuideText, [], "")),
+    ),
     /is already there/,
   );
   assert.equal(readFileSync(join(repoFolder, "outside.md"), "utf8"), "kept outside\n");
@@ -491,10 +511,7 @@ test("a link kept under the charter folder is a file of it, so no primitive is w
 
 test("every other use case answers through stores of a tool's own that keep no path (CORE Story 44 scenarios 1, 2, CORE Story 47 scenario 2, CORE-SC-062, CORE Story 55 scenario 11)", async () => {
   const { charterRepository } = charterKeptWithNoPath();
-  const mcpText = McpPrimitive.of(McpPrimitive.sample, "Read the billing service.").writeMarkdown();
-  await charterRepository.addPrimitive(
-    new RawPrimitive(PrimitiveLayer.REPO, "mcp", McpPrimitive.sample.id, mcpText, [], ""),
-  );
+  await charterRepository.addPrimitive(McpPrimitive.of(McpPrimitive.sample, "Read the billing service."));
 
   // Test suites, by name.
   const keptTextByName = new Map<string, string>();
@@ -792,7 +809,7 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
   const { charterRepository, rawPrimitiveByKey } = charterKeptWithNoPath();
   rawPrimitiveByKey.delete("guide/broken-guide");
   await charterRepository.addPrimitive(
-    new RawPrimitive(PrimitiveLayer.REPO, "skill", "kept-skill", keptSkillText, [], ""),
+    PrimitiveFactory.create(new RawPrimitive(PrimitiveLayer.REPO, "skill", "kept-skill", keptSkillText, [], "")),
   );
   const keptFileReaders = new InMemoryFileReaders({});
   const { charterAuthoringApp: keptAuthoringApp, charterRuntimeApp: keptBuildingApp } = charterAppsOver(

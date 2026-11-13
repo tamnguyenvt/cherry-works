@@ -171,7 +171,7 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
   });
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     fileReaders,
     new InMemoryFileOutput(fileReaders),
     new InMemoryTokenCounter(),
@@ -181,7 +181,7 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
 
   // Sent and read back, the way the portal's page will read it.
   const doctorOutcomeDTO = CharterDTOs.DoctorOutcome.parse(
-    JSON.parse(JSON.stringify(await charterRuntimeApp.diagnoseCharter())),
+    JSON.parse(JSON.stringify(await charterRuntimeApps.diagnoseCharter())),
   );
   const { errorCount, warnCount, pendingCount, faultsByFile } = doctorOutcomeDTO.data;
 
@@ -222,14 +222,14 @@ test("what doctor reports is a result, never a problem", async () => {
 /** What `diagnoseCharter()` answers over these files, read back as the portal reads it. */
 const doctorOf = async (files: Readonly<Record<string, string>>) => {
   const fileReaders = new InMemoryFileReaders({ ...compilingFor("claude"), ...files });
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     fileReaders,
     new InMemoryFileOutput(fileReaders),
     new InMemoryTokenCounter(),
     { claude: new InMemoryAgentCli() },
     new InMemoryReporter(),
   );
-  return CharterDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterRuntimeApp.diagnoseCharter()))).data;
+  return CharterDTOs.DoctorOutcome.parse(JSON.parse(JSON.stringify(await charterRuntimeApps.diagnoseCharter()))).data;
 };
 
 const messagesUnder = (faultsByFile: CharterDTOs.DoctorOutcome["data"]["faultsByFile"], file: string) =>

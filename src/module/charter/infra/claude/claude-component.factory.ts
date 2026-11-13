@@ -42,7 +42,7 @@ export class ClaudeComponentFactory {
    *
    * Three kinds project nothing of their own. A `corpus` is cited rather than
    * loaded, a `mixin` has no life of its own — its body is written into each primitive
-   * that pulls it in, which `writeMarkdown` does when `compile` hands it the mixins — and an `mcp` is reached through
+   * that pulls it in, which `writeMarkdown` does when `CompiledPrimitiveFactory.create` hands it the mixins — and an `mcp` is reached through
    * `cw mcp serve` rather than read: the one entry of the agent's MCP
    * configuration that starts it, written whether the charter holds an mcp origin yet or
    * not, since the server reads which mcp origins there are when it starts (FR-146).

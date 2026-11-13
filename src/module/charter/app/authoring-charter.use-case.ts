@@ -6,7 +6,7 @@ import {
   Faults,
   type ForReportingProgress,
   type ForTellingTime,
-  ManyFindingsFault,
+  UnsoundModelFault,
 } from "../../shared/module.js";
 import { vendorSourcePath } from "../domain/constants.js";
 import { RepoLayerPrimitiveSpec } from "../domain/models/charter/repo-layer-primitive.specification.js";
@@ -51,7 +51,7 @@ import { TestSuite } from "../domain/models/test/test-suite.js";
 import { VendorSourceFactory } from "../domain/models/vendor/vendor-source.factory.js";
 import type { SourceCharter, VendorSource } from "../domain/models/vendor/vendor-source.js";
 import { VendorSourceOriginFactory } from "../domain/models/vendor/vendor-source-origin.factory.js";
-import { TestService } from "../domain/services/test.service.js";
+import { TestSuiteService } from "../domain/services/test-suite.service.js";
 import type { ForAuthoringCharter, McpOriginAddress, UnparsedHeaders } from "./port/in/authoring-charter.port.js";
 import { CharterDTOs } from "./port/in/charter.dto.js";
 import type { ForAuthorizingOAuthClients } from "./port/out/authorizing-oauth-clients.port.js";
@@ -349,7 +349,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       } catch (raisedValue) {
         // Every fault the answers have, not the first, the way a charter's are
         // read (FR-009).
-        if (!(raisedValue instanceof ManyFindingsFault)) throw raisedValue;
+        if (!(raisedValue instanceof UnsoundModelFault)) throw raisedValue;
         const findingFaults = raisedValue.faults.filter(
           (error): error is DomainFault => error instanceof DomainFault && !error.internal,
         );
@@ -436,7 +436,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
           ),
         );
       } catch (raisedValue) {
-        if (!(raisedValue instanceof ManyFindingsFault)) throw raisedValue;
+        if (!(raisedValue instanceof UnsoundModelFault)) throw raisedValue;
         const findingFaults = raisedValue.faults.filter(
           (error): error is DomainFault => error instanceof DomainFault && !error.internal,
         );
@@ -509,7 +509,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         await this.#charterRepository.storeVendor(filteredSource);
         return this.#vendorAddOutcomeDTOOf(filteredSource);
       } finally {
-        await this.#charterRepository.removeTempSource(rawVendorSource);
+        await this.#charterRepository.removeFetchedSource(rawVendorSource);
       }
     });
   }
@@ -591,7 +591,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         });
         return this.#vendorAddOutcomeDTOOf(filteredSource, this.#charterRepository.findCharterUri());
       } finally {
-        await this.#charterRepository.removeTempSource(rawVendorSource);
+        await this.#charterRepository.removeFetchedSource(rawVendorSource);
       }
     });
   }
@@ -827,7 +827,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       return CharterDTOs.TestRunReport.of({
         testCaseReports: Object.entries(testRoot.suitesByFile)
           .flatMap(([filePath, suite]) =>
-            TestService.runSuite(charter, testRoot.suiteNameByFile[filePath] ?? filePath, suite),
+            TestSuiteService.runSuite(charter, testRoot.suiteNameByFile[filePath] ?? filePath, suite),
           )
           .map(({ suiteName, situation, hasPassed, unmetFault }) =>
             CharterDTOs.TestCaseReport.of({
@@ -958,14 +958,22 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   async #writeNewPrimitive(primitive: Primitive): Promise<Primitive> {
     // The asset a script runs, empty, so its author knows where to write it; one
     // already standing there is theirs and is left as it is (FR-167).
-    const assets =
-      primitive instanceof ScriptPrimitive ? [new AssetFile(primitive.executionPathInFolder, new Uint8Array())] : [];
-    const markdownText = primitive.writeMarkdown();
-    const keptUri = await this.#charterRepository.addPrimitive(
-      new RawPrimitive(PrimitiveLayer.REPO, primitive.kind, primitive.headers.id, markdownText, assets, ""),
-    );
+    const addedPrimitive =
+      primitive instanceof ScriptPrimitive
+        ? ScriptPrimitive.of(primitive.headers, primitive.body, [
+            new AssetFile(primitive.executionPathInFolder, new Uint8Array()),
+          ])
+        : primitive;
+    const keptUri = await this.#charterRepository.addPrimitive(addedPrimitive);
     return PrimitiveFactory.create(
-      new RawPrimitive(PrimitiveLayer.REPO, primitive.kind, primitive.headers.id, markdownText, assets, keptUri),
+      new RawPrimitive(
+        PrimitiveLayer.REPO,
+        addedPrimitive.kind,
+        addedPrimitive.headers.id,
+        addedPrimitive.writeMarkdown(),
+        addedPrimitive.assets,
+        keptUri,
+      ),
     );
   }
 

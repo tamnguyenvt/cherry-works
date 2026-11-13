@@ -8,7 +8,7 @@ import type { TestRoot } from "../models/test/test-root.js";
 import type { TestSuite } from "../models/test/test-suite.js";
 
 /** Resolves the self-regression cases against a charter, and checks them. */
-export class TestService {
+export class TestSuiteService {
   /**
    * Every case of one suite, resolved against this charter, each under the name
    * of the file it is in (FR-048).
@@ -18,7 +18,7 @@ export class TestService {
    * against what the situation holds (FR-049).
    */
   static runSuite(charter: CharterRoot, suiteName: string, suite: TestSuite): readonly TestCaseReport[] {
-    return suite.cases.map((testCase) => TestService.runCase(charter, suiteName, testCase));
+    return suite.cases.map((testCase) => TestSuiteService.runCase(charter, suiteName, testCase));
   }
 
   /**
@@ -72,7 +72,7 @@ export class TestService {
       return new TestCaseReport(
         suiteName,
         testCase.describeCase(),
-        TestService.#findSensorFault(charter, writtenCase.when, writtenCase.expect.run),
+        TestSuiteService.#findSensorFault(charter, writtenCase.when, writtenCase.expect.run),
       );
     }
 
@@ -82,14 +82,14 @@ export class TestService {
         return new TestCaseReport(
           suiteName,
           testCase.describeCase(),
-          TestService.#findActivationFault(charter, touchFile, writtenCase.expect.activate),
+          TestSuiteService.#findActivationFault(charter, touchFile, writtenCase.expect.activate),
         );
       }
       if ("allow" in writtenCase.expect) {
         return new TestCaseReport(
           suiteName,
           testCase.describeCase(),
-          TestService.#findPostureFault(charter, touchFile, writtenCase.expect.allow),
+          TestSuiteService.#findPostureFault(charter, touchFile, writtenCase.expect.allow),
         );
       }
     }
@@ -109,7 +109,7 @@ export class TestService {
    *  A guide naming no files comes up every turn, so any file brings it up. */
   static #findActivationFault(charter: CharterRoot, filePath: string, id: string): UnmetExpectationFault | undefined {
     const declaredPrimitive = charter.primitiveById.get(id);
-    if (declaredPrimitive === undefined) return TestService.#createUnknownPrimitiveFault(id);
+    if (declaredPrimitive === undefined) return TestSuiteService.#createUnknownPrimitiveFault(id);
     if (declaredPrimitive.kind !== "guide")
       return new UnmetExpectationFault(
         `Coming up when a file is touched is a guide's rule, and "${id}" is a ${declaredPrimitive.kind}.`,
@@ -178,7 +178,7 @@ export class TestService {
   /** Why a raised event did not run this sensor, or nothing where it did. */
   static #findSensorFault(charter: CharterRoot, event: string, id: string): UnmetExpectationFault | undefined {
     const declaredPrimitive = charter.primitiveById.get(id);
-    if (declaredPrimitive === undefined) return TestService.#createUnknownPrimitiveFault(id);
+    if (declaredPrimitive === undefined) return TestSuiteService.#createUnknownPrimitiveFault(id);
     if (declaredPrimitive.kind !== "sensor")
       return new UnmetExpectationFault(
         `Running when an event is raised is a sensor's rule, and "${id}" is a ${declaredPrimitive.kind}.`,

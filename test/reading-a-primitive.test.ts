@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { InvalidPrimitiveFault } from "../src/module/charter/domain/models/charter.fault.js";
 import { type Primitive, Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
-import { type DomainFault, ManyFindingsFault } from "../src/module/shared/domain/models/domain.fault.js";
+import { type DomainFault, UnsoundModelFault } from "../src/module/shared/domain/models/domain.fault.js";
 import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { charterRootOf, readPrimitive } from "./use-cases-of.js";
 
@@ -27,7 +27,7 @@ const faultsIn = (text: string): readonly DomainFault[] => {
   try {
     readPrimitive(text);
   } catch (raised) {
-    assert.ok(raised instanceof ManyFindingsFault, String(raised));
+    assert.ok(raised instanceof UnsoundModelFault, String(raised));
     return raised.faults as readonly DomainFault[];
   }
   return assert.fail("this text was read as a primitive");

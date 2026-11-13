@@ -517,6 +517,8 @@ test("every file of the portal's page is named <kebab-subject>.<role>, but its e
 
 /** What a guide names of the compiler's settings, which no code holds. */
 const compilerSettingNames = new Set(["checkJs", "detectJSDocImports"]);
+/** The words a guide names a part's role by, written alone, which no code holds alone. */
+const roleWords = new Set(["For", "Loading", "Repository", "Service", "Factory"]);
 
 /** The guides this repository authored that say what the engine's parts are
  *  named and where they live; the vendored ones name no part of it. */
@@ -536,13 +538,14 @@ test("the naming and architecture guides name no type or operation the code does
       // A code span is a name where it is one identifier, called or not:
       // a type (`ForManagingCharter`), an operation (`loadCharter()`), a
       // private method (`#injectVendor`), a member (`CharterRootFactory.create`);
-      // an operation written bare (`storeVendor`); a role word alone
-      // (`Service`), a compiler setting (`checkJs`) or a file
-      // (`jsconfig.json`) is none.
+      // an operation written bare (`storeVendor`), a type of one word
+      // (`Shell`, `OAuth`); a role word alone (`Service`), a compiler
+      // setting (`checkJs`) or a file (`jsconfig.json`) is none.
       /^#?[A-Za-z]\w*(\.\w+)*(\(\))?$/.test(codeSpanMatch[1]!) &&
       !/\.(json|md|ts|tsx|js|mjs)$/.test(codeSpanMatch[1]!) &&
       !compilerSettingNames.has(codeSpanMatch[1]!) &&
-      /^#|\(\)$|\.|^[A-Z][a-z0-9]+[A-Z]|^[a-z]+[A-Z]\w*$/.test(codeSpanMatch[1]!)
+      !roleWords.has(codeSpanMatch[1]!) &&
+      /^#|\(\)$|\.|^[A-Z]\w*$|^[a-z]+[A-Z]\w*$/.test(codeSpanMatch[1]!)
         ? codeSpanMatch[1]!
             .replace(/\(\)$/, "")
             .split(".")

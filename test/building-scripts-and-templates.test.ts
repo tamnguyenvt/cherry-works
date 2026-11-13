@@ -52,14 +52,14 @@ const building = (files: Readonly<Record<string, string>>) => {
   const held = new InMemoryFileReaders(files);
   const fileOutput = new InMemoryFileOutput(held);
   const charterAuthoringApp = authoringCharterOf(held, fileOutput, new InMemoryReporter());
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     held,
     fileOutput,
     new InMemoryTokenCounter(),
     { claude: new InMemoryAgentCli() },
     new InMemoryReporter(),
   );
-  return { held, fileOutput, charterAuthoringApp, charterRuntimeApp, build: () => charterRuntimeApp.buildCharter() };
+  return { held, fileOutput, charterAuthoringApp, charterRuntimeApps, build: () => charterRuntimeApps.buildCharter() };
 };
 
 const filesOf = (
@@ -226,12 +226,12 @@ test("an id holding / is a folder in the charter and in the output alike (FR-141
 });
 
 test("an asset edited, added or deleted and not built leaves its copy as the last build left it, the preview says what a build would write and delete, and the health check says the output is out of date (FR-166, CORE Story 24 scenario 5, CORE Story 55 scenario 8)", async () => {
-  const { held, charterRuntimeApp, build } = building({
+  const { held, charterRuntimeApps, build } = building({
     ...script("check", { "run.sh": runFile, "old.sh": "true\n" }),
     [at("skill/release/index.md")]: skillNaming("[[check]]"),
   });
   await build();
-  assert.equal(answerOf(await charterRuntimeApp.diagnoseCharter()).data.pendingCount, 0);
+  assert.equal(answerOf(await charterRuntimeApps.diagnoseCharter()).data.pendingCount, 0);
 
   held.writeFile(new URL(at("script/check/run.sh")), "echo half written\n");
   held.writeFile(new URL(at("script/check/new.sh")), "echo new\n");
@@ -240,11 +240,11 @@ test("an asset edited, added or deleted and not built leaves its copy as the las
   assert.equal(await held.readFile(new URL(".cw/out/script/check/run.sh", repo)), runFile);
   assert.equal(await held.readFile(new URL(".cw/out/script/check/old.sh", repo)), "true\n");
   assert.equal(await held.readIfThere(new URL(".cw/out/script/check/new.sh", repo)), undefined);
-  const previewPlanFiles = filesOf(await charterRuntimeApp.previewCharterBuild());
+  const previewPlanFiles = filesOf(await charterRuntimeApps.previewCharterBuild());
   assert.ok(previewPlanFiles.edited.includes(".cw/out/script/check/run.sh"));
   assert.ok(previewPlanFiles.added.includes(".cw/out/script/check/new.sh"));
   assert.ok(previewPlanFiles.deleted.includes(".cw/out/script/check/old.sh"));
-  assert.equal(answerOf(await charterRuntimeApp.diagnoseCharter()).data.pendingCount, 3);
+  assert.equal(answerOf(await charterRuntimeApps.diagnoseCharter()).data.pendingCount, 3);
 });
 
 test("a primitive deleted from the charter has its copies deleted by the next build (FR-168)", async () => {
@@ -290,7 +290,7 @@ test("a script whose executionPath names no asset of it is an error under its in
 });
 
 test("a script or a template no primitive names is a warning, and the build still runs (FR-163)", async () => {
-  const { charterRuntimeApp, build } = building({
+  const { charterRuntimeApps, build } = building({
     ...script("check"),
     [at("template/note/index.md")]: template("note"),
     [at("template/used/index.md")]: template("used"),
@@ -298,7 +298,7 @@ test("a script or a template no primitive names is a warning, and the build stil
   });
 
   filesOf(await build());
-  const doctorOutcome = answerOf(await charterRuntimeApp.diagnoseCharter());
+  const doctorOutcome = answerOf(await charterRuntimeApps.diagnoseCharter());
 
   const warnedFiles = Object.entries(doctorOutcome.data.faultsByFile.data.files)
     .filter(([, faults]) => faults.some((fault) => fault.data.severity === "warn" && /names/.test(fault.data.message)))

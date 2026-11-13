@@ -30,15 +30,16 @@ export class BuiltSensors extends CharterOutputItem {
     super();
   }
 
-  /** Select only sensors that support the agent raising the signal. */
-  filterForAgent(raisingAgentProvider: AgentProvider): BuiltSensors {
+  /** Select only sensors that support the agent raising the signal; with no
+   *  agent named, only the sensors kept for no agent (CORE-FR-233). */
+  filterForAgent(raisingAgentProvider: AgentProvider | undefined): BuiltSensors {
     return new BuiltSensors(
       this.sensors.filter((builtSensor) => {
         const agentProviders = builtSensor["agent-provider"];
         return (
           agentProviders === undefined ||
           agentProviders.length === 0 ||
-          agentProviders.some((agentProvider) => agentProvider.name === raisingAgentProvider.name)
+          agentProviders.some((agentProvider) => agentProvider.name === raisingAgentProvider?.name)
         );
       }),
     );

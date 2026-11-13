@@ -11,7 +11,7 @@ import { PlaybookPrimitive } from "../src/module/charter/domain/models/primitive
 import { type Primitive, Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
 import { SkillPrimitive } from "../src/module/charter/domain/models/primitive/skill-primitive.js";
-import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { CharterOutputService } from "../src/module/charter/domain/services/charter-output.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
 import type { FaultsByFile } from "../src/module/shared/domain/models/fault/faults-by-file.js";
 import { charterRootOf } from "./use-cases-of.js";
@@ -85,7 +85,7 @@ const mcp = (id: string, vendor?: string, headers: Record<string, unknown> = {})
 
 /** Every mcp origin a charter's mcps reach, as a build writes them (FR-145). */
 const mcpOriginsOf = (charter: CharterRoot) =>
-  CompileService.compileCharterRoot(charter, []).charterOutputItems.find(
+  CharterOutputService.compileCharterRoot(charter, []).charterOutputItems.find(
     (charterOutputItem): charterOutputItem is McpOrigins => charterOutputItem instanceof McpOrigins,
   )!.origins;
 

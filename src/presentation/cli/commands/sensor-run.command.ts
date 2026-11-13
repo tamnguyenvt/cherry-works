@@ -10,7 +10,10 @@ import {
 import { printFault } from "./helper.js";
 
 const OPTIONS = {
-  agent: { type: "string", describe: "The agent raising the signal: claude or codex" },
+  agent: {
+    type: "string",
+    describe: "The agent raising the signal: claude or codex; with none named, only the sensors kept for no agent run",
+  },
   signal: {
     type: "string",
     describe: "The signal the agent fired, as a sensor names it: Stop, PreToolUse…",
@@ -42,8 +45,8 @@ export class SensorRunCommand implements Command<typeof OPTIONS> {
       };
     // Typed at a terminal, there is no event to wait for.
     const stdin = process.stdin.isTTY ? "" : await text(process.stdin);
-    // A hook written before hooks named their agent is Claude's.
-    const sensorRunOutcomeDTO = await charterRuntimeApp.runSensors(signal ?? "", stdin, agent ?? "claude");
+    // With no agent named, only the sensors kept for no agent run (CORE-FR-234).
+    const sensorRunOutcomeDTO = await charterRuntimeApp.runSensors(signal ?? "", stdin, agent);
     if (sensorRunOutcomeDTO.type === "Fault")
       return { exitCode: EXIT_FAILURE, problemText: printFault(sensorRunOutcomeDTO) };
     const { data: sensorRunOutcome } = sensorRunOutcomeDTO;

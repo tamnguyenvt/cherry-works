@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { ForAuthoringCharter } from "../src/module/charter/app/port/in/authoring-charter.port.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
+import { type ComposedEngine, composeApplications } from "../src/module/composition.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
@@ -89,7 +90,24 @@ const guideTextById = new Map(
 );
 
 test("every use case is named as its driver port, without For, and extends ApplicationService (CORE Story 42 scenario 1)", () => {
-  assert.equal(useCaseFileUrls.length, 3);
+  assert.ok(useCaseFileUrls.length > 0, "no use case is found");
+  const compositionText = readFileSync(new URL("src/module/composition.ts", repositoryUrl), "utf8");
+  const driverPortNames = fileUrlsUnder("app/port/in/")
+    .filter((portFileUrl) => portFileUrl.pathname.endsWith(".port.ts"))
+    .flatMap((portFileUrl) =>
+      [...readFileSync(portFileUrl, "utf8").matchAll(/^export interface (For\w+)/gm)].map((portMatch) => portMatch[1]!),
+    );
+  // Every driver port is answered by a use case, and every use case is composed.
+  assert.deepEqual(
+    driverPortNames.filter((driverPortName) => !useCaseNames.includes(driverPortName.replace(/^For/, ""))),
+    [],
+    "these driver ports have no use case",
+  );
+  assert.deepEqual(
+    useCaseNames.filter((useCaseName) => !compositionText.includes(`new ${useCaseName}(`)),
+    [],
+    "composition.ts composes no such use case",
+  );
   for (const useCaseFileUrl of useCaseFileUrls) {
     const useCaseFileName = fileNameOf(useCaseFileUrl);
     const useCaseText = readFileSync(useCaseFileUrl, "utf8");
@@ -363,6 +381,65 @@ test("every file of src is named <kebab-subject>.<role>, but a model, a value ob
   assert.deepEqual(misnamedPaths, []);
 });
 
+/** The roles each folder of src gives its files, as hexagonal-naming's File
+ *  column says; `""` is a subject alone, which only a model, a value object's
+ *  concept or an adapter's own model keeps. */
+const rolesByFolderPattern: readonly (readonly [RegExp, readonly string[]])[] = [
+  [/^module\/[\w-]+\/app\/$/, ["use-case", "base"]],
+  [/^module\/[\w-]+\/app\/port\/in\/$/, ["port", "dto", "schema"]],
+  [/^module\/[\w-]+\/app\/port\/out\/$/, ["port"]],
+  [/^module\/[\w-]+\/app\/services\/$/, ["service"]],
+  [/^module\/[\w-]+\/domain\/$/, []],
+  [/^module\/[\w-]+\/domain\/models\/$/, ["fault", "factory"]],
+  [/^module\/[\w-]+\/domain\/models\/[\w-]+\/$/, ["", "factory", "value-object", "specification", "helper"]],
+  [/^module\/[\w-]+\/domain\/value-objects\/$/, ["value-object"]],
+  [/^module\/[\w-]+\/domain\/services\/$/, ["service"]],
+  [/^module\/[\w-]+\/domain\/libs\/$/, ["lib"]],
+  [/^module\/charter\/domain\/builtin\/$/, [""]],
+  [/^module\/charter\/domain\/builtin\/scripts\/$/, ["script"]],
+  [/^module\/[\w-]+\/infra\/$/, ["adapter", "repository", "base"]],
+  [/^module\/[\w-]+\/infra\/in-memory\/$/, ["adapter", "repository"]],
+  [/^module\/[\w-]+\/infra\/(claude|codex)\/$/, ["", "adapter", "factory"]],
+  [/^presentation\/cli\/$/, ["commander"]],
+  [/^presentation\/cli\/commands\/$/, ["command", "interface"]],
+  [/^presentation\/mcp\/$/, ["server"]],
+  [/^presentation\/portal\/$/, ["server", "routes"]],
+];
+/** The files that keep the name they are given wherever they are. */
+const fixedFileNames = [
+  "helper.ts",
+  "index.ts",
+  "module.ts",
+  "constants.ts",
+  "schema.ts",
+  "composition.ts",
+  "AGENTS.md",
+];
+
+test("every file of src takes the role its folder gives it (CORE Story 42 scenario 1, CORE Story 44)", () => {
+  const sourceFolderUrl = new URL("src/", repositoryUrl);
+  const misplacedPaths = readdirSync(sourceFolderUrl, { recursive: true, encoding: "utf8" })
+    .filter(
+      (sourcePath) =>
+        !sourcePath.startsWith("presentation/portal/page/") &&
+        !/\.probe\./.test(sourcePath) &&
+        /\.(ts|mjs|d\.mts|md)$/.test(sourcePath),
+    )
+    .filter((sourcePath) => {
+      const fileName = sourcePath.split("/").at(-1)!;
+      if (fixedFileNames.includes(fileName)) return false;
+      const folderPath = sourcePath.slice(0, -fileName.length);
+      const [, fileRole = ""] = fileName.replace(/(\.d\.mts|\.mjs|\.ts|\.md)$/, "").split(".");
+      const folderRoles = rolesByFolderPattern.find(([folderPattern]) => folderPattern.test(folderPath))?.[1];
+      return folderRoles === undefined || !folderRoles.includes(fileRole);
+    });
+  assert.deepEqual(
+    misplacedPaths,
+    [],
+    "these files take a role their folder does not give, or sit in no folder of a role",
+  );
+});
+
 test("each renamed use case answers through its driver port as it did (CORE Story 42 scenario 2)", async () => {
   const heldFiles = new InMemoryFileReaders({});
   const charterAuthoringApp: ForAuthoringCharter = authoringCharterOf(
@@ -370,7 +447,7 @@ test("each renamed use case answers through its driver port as it did (CORE Stor
     new InMemoryFileOutput(heldFiles),
     new InMemoryReporter(),
   );
-  const charterRuntimeApp = buildingCharterOf(
+  const charterRuntimeApps = buildingCharterOf(
     heldFiles,
     new InMemoryFileOutput(heldFiles),
     new InMemoryTokenCounter(),
@@ -381,5 +458,43 @@ test("each renamed use case answers through its driver port as it did (CORE Stor
   assert.equal((await charterAuthoringApp.listKinds()).type, "PrimitiveKinds");
   assert.equal((await charterAuthoringApp.listVendors()).type, "VendorFolders");
   assert.equal((await charterAuthoringApp.listTestSuites()).type, "TestSuites");
-  assert.equal((await charterRuntimeApp.previewCharterBuild()).type, "ProjectionPlanSummary");
+  assert.equal((await charterRuntimeApps.previewCharterBuild()).type, "ProjectionPlanSummary");
+});
+
+test("each application composed lazily answers exactly its driver port's operations, each a function, so the cast it is composed under is checked (CORE-FR-222)", async () => {
+  const heldFiles = new InMemoryFileReaders({});
+  const { engineApp } = await composeApplications(new URL("memory:/repo/"), new URL("memory:/home/"), {
+    fileReader: heldFiles,
+    fileWriter: new InMemoryFileOutput(heldFiles),
+    progressReporter: new InMemoryReporter(),
+  });
+  const compositionText = readFileSync(new URL("src/module/composition.ts", repositoryUrl), "utf8");
+  const composedEngineBody = compositionText.match(/^export interface ComposedEngine \{\n([\s\S]*?)^\}$/m)![1]!;
+  const driverPortNameByAppName = new Map(
+    [...composedEngineBody.matchAll(/^ {2}readonly (\w+): (For\w+);$/gm)].map((appMatch) => [
+      appMatch[1]!,
+      appMatch[2]!,
+    ]),
+  );
+  assert.deepEqual([...driverPortNameByAppName.keys()].sort(), Object.keys(engineApp).sort());
+  for (const [appName, driverPortName] of driverPortNameByAppName) {
+    const driverPortFileUrl = fileUrlsUnder("app/port/in/").find(
+      (portFileUrl) => fileNameOf(portFileUrl) === `${kebabOf(driverPortName.replace(/^For/, ""))}.port.ts`,
+    )!;
+    const driverPortBody = readFileSync(driverPortFileUrl, "utf8").match(
+      new RegExp(`^export interface ${driverPortName} \\{\\n([\\s\\S]*?)^\\}$`, "m"),
+    )![1]!;
+    const portOperationNames = [...driverPortBody.matchAll(/^ {2}([a-z]\w*)\??\(/gm)].map(
+      (operationMatch) => operationMatch[1]!,
+    );
+    const composedApp = engineApp[appName as keyof ComposedEngine] as unknown as Record<string, unknown>;
+    assert.ok(portOperationNames.length > 0, `${driverPortName} holds no operation`);
+    assert.deepEqual(
+      Object.keys(composedApp).sort(),
+      [...portOperationNames].sort(),
+      `${appName} answers other operations than ${driverPortName}`,
+    );
+    for (const operationName of portOperationNames)
+      assert.equal(typeof composedApp[operationName], "function", `${appName}.${operationName} is not an operation`);
+  }
 });

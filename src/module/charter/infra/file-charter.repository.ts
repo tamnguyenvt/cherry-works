@@ -16,7 +16,7 @@ import {
   PrimitiveLayer,
   Primitives,
   RawEvalSuite,
-  type RawPrimitive,
+  RawPrimitive,
   RawSourceSkill,
   RawTestSuite,
   RawVendorSource,
@@ -105,8 +105,20 @@ export class FileCharterRepository implements ForManagingCharter {
       await this.#fileWriter.writeFile(`${folderPath}/.gitkeep`, "");
   }
 
-  async addPrimitive(rawPrimitive: RawPrimitive): Promise<string> {
-    const [addedUri = ""] = await this.#writePrimitives([rawPrimitive], false);
+  async addPrimitive(primitive: Primitive): Promise<string> {
+    const [addedUri = ""] = await this.#writePrimitives(
+      [
+        new RawPrimitive(
+          primitive.layer,
+          primitive.kind,
+          primitive.headers.id,
+          primitive.writeMarkdown(),
+          primitive.assets,
+          primitive.uri,
+        ),
+      ],
+      false,
+    );
     return addedUri;
   }
 
@@ -312,13 +324,13 @@ export class FileCharterRepository implements ForManagingCharter {
       );
       return new RawVendorSource(vendorSourceOrigin, fetchedCommit, ownCharter, sourceCharters, rawSourceSkills);
     } catch (raisedValue) {
-      await this.#sourceFetcher.removeTempCommit(fetchedCommit);
+      await this.#sourceFetcher.removeFetchedCommit(fetchedCommit);
       throw raisedValue;
     }
   }
 
-  async removeTempSource(rawVendorSource: RawVendorSource): Promise<void> {
-    await this.#sourceFetcher.removeTempCommit(rawVendorSource.commit);
+  async removeFetchedSource(rawVendorSource: RawVendorSource): Promise<void> {
+    await this.#sourceFetcher.removeFetchedCommit(rawVendorSource.commit);
   }
 
   async loadVendorRoot(): Promise<VendorRoot> {
