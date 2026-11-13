@@ -607,7 +607,11 @@
       "dependsOn": [
         "CORE Story 43",
         "SDK Story 8"
-      ]
+      ],
+      "evidence": {
+        "summary": "typecheck; biome; pnpm test 953 tests, 950 pass, 3 skipped, 0 fail, the count of CORE FR no story cites at 0 among them; specs check; pty cw init shows claude and codex unticked; cw init with no --agent stops naming the flag; buidl answers Did you mean build?",
+        "date": "2026-11-12"
+      }
     },
     {
       "id": "EVAL Story 9",

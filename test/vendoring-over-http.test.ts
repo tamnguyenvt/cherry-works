@@ -195,3 +195,89 @@ test("a name that is no folder is refused in the engine's words, and nothing is 
   assert.match(FaultDTOs.Fault.parse(await answer.json()).data.message, /No vendor folder is named/);
   assert.deepEqual(await installedVendors(charterAuthoringApp), ["file:///repo/.cw/charter/vendor/team/charter/root"]);
 });
+
+test("the portal serves the repository it was started in alone, and offers no way to point it at another (CORE Story 56 scenario 5)", async () => {
+  const { portalRoutes } = portal({
+    [new URL(".cw/charter/primitive/guide/ours/index.md", repoPath).href]: guide("ours"),
+    "file:///other/.cw/charter/primitive/guide/theirs/index.md": guide("theirs"),
+  });
+
+  for (const pointingRequest of [
+    "/charter/root/primitives?repo=file:///other/",
+    "/charter/root/primitives?cwd=/other",
+  ]) {
+    const primitivesResponse = await portalRoutes.request(pointingRequest, {
+      headers: { "X-Repository": "file:///other/" },
+    });
+    const primitiveIds = (
+      (await primitivesResponse.json()) as { data: { primitives: { data: { id: string } }[] } }
+    ).data.primitives.map((primitiveDTO) => primitiveDTO.data.id);
+    assert.ok(primitiveIds.includes("ours"), `${pointingRequest}: ${primitiveIds}`);
+    assert.ok(!primitiveIds.includes("theirs"), pointingRequest);
+  }
+  const portalDocument = portalRoutes.getOpenAPIDocument({ openapi: "3.0.0", info: { title: "cw", version: "0" } });
+  const parameterNames = Object.values(portalDocument.paths ?? {}).flatMap((pathItem) =>
+    Object.values(pathItem ?? {}).flatMap((operation) =>
+      ((operation as { parameters?: { name: string }[] }).parameters ?? []).map((parameter) => parameter.name),
+    ),
+  );
+  assert.ok(parameterNames.length > 0);
+  assert.deepEqual(
+    parameterNames.filter((parameterName) => /repo|folder|path|cwd|root|dir/i.test(parameterName)),
+    [],
+  );
+});
+
+test("with no network, everything the portal offers works but adding or updating a vendor source (CORE Story 56 scenario 5)", async () => {
+  /** A machine with no network: every source it would reach is unreachable. */
+  class OfflineSources extends InMemorySources {
+    override async fetchCommit(source: string, version?: string): Promise<string> {
+      if (!this.unreachableSources.includes(source)) this.unreachableSources.push(source);
+      return super.fetchCommit(source, version);
+    }
+  }
+  const { portalRoutes } = portal(
+    {
+      [new URL(".cw/settings.json", repoPath).href]: JSON.stringify({ agents: ["claude"] }),
+      [new URL(".cw/charter/primitive/guide/ours/index.md", repoPath).href]: guide("ours"),
+      [new URL(".cw/charter/vendor/acme/charter/root/primitive/guide/one/index.md", repoPath).href]: guide("one"),
+    },
+    new OfflineSources(),
+  );
+
+  for (const [routePath, requestInit] of [
+    ["/charter/root/primitives", undefined],
+    ["/charter/root/primitives/ours", undefined],
+    ["/charter/root/primitives/ours/explanation", undefined],
+    ["/charter/root/faults", undefined],
+    ["/definitions/kinds", undefined],
+    ["/definitions/kinds/guide/requirements", undefined],
+    ["/charter/root/build", undefined],
+    ["/charter/root/health", undefined],
+    ["/charter/root/context", undefined],
+    ["/settings", undefined],
+    ["/test-suites", undefined],
+    ["/vendors", undefined],
+    [
+      "/charter/root/primitives",
+      sending("POST", { kind: "guide", id: "added", headers: { description: "Added." }, body: "Body." }),
+    ],
+    ["/charter/root/build", sending("POST", {})],
+    [`/vendors/${encodeURIComponent("acme/charter/root")}`, sending("DELETE", {})],
+  ] as const) {
+    const routeResponse = await portalRoutes.request(routePath, requestInit);
+    assert.ok(
+      routeResponse.status < 300,
+      `${requestInit?.method ?? "GET"} ${routePath}: ${routeResponse.status} ${await routeResponse.text()}`,
+    );
+  }
+  // Added at its default, then updated to a version: both need the source.
+  for (const vendorRequest of [
+    { source: "git@github.com:team/charter.git" },
+    { source: "git@github.com:team/charter.git", version: "v2.0.0" },
+  ]) {
+    const vendorResponse = await portalRoutes.request("/vendors", sending("POST", vendorRequest));
+    assert.equal(vendorResponse.status, 422, JSON.stringify(vendorRequest));
+    assert.match(await vendorResponse.text(), /could not be fetched/);
+  }
+});

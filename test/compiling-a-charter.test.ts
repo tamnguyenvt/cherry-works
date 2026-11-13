@@ -346,3 +346,17 @@ test("a charter compiles to a list of items, each of its own kind extending one 
   );
   assert.equal(outputPath.getPath(charterOutput.findCharterOutputItem(CharterMd)), outputPath.charterMdFileName);
 });
+
+test("where the charter document explains ids, it names the layer the engine brings beside the repository's own (CORE Story 56 scenario 1)", async () => {
+  const { charter, files } = await built(oneGuide);
+  const charterText = files[".cw/out/CHARTER.md"] ?? "";
+  const idSectionText = charterText.slice(charterText.indexOf("## One id, one primitive"));
+
+  const layerNames = Object.values(charter.primitiveLayerByUri).map((primitiveLayer) => primitiveLayer.name);
+  assert.ok(layerNames.includes("repo") && layerNames.includes("builtin"), `${layerNames} read`);
+  assert.match(idSectionText, /^## One id, one primitive\n/);
+  assert.match(
+    idSectionText,
+    /whether this repository authored it, installed it from a vendor, or the engine brought it/,
+  );
+});

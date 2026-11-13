@@ -45,7 +45,7 @@ test("every acceptance scenario cites a requirement that is defined (CORE Story 
   assert.deepEqual(undefinedCitations, []);
 });
 
-test("every functional requirement is cited by a scenario, not only mentioned (CORE Story 41 scenario 2)", () => {
+test("every functional requirement is cited by a scenario, not only mentioned (CORE Story 41 scenario 2, CORE Story 56 scenario 6)", () => {
   const scenarioCitedIds = new Set(scenarioLines.flatMap(citedIdsOf));
   const unprovenRequirementIds = functionalRequirementIds.filter(
     (requirementId) => !scenarioCitedIds.has(requirementId),

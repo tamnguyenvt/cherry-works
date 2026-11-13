@@ -33,7 +33,8 @@ const OPTIONS = {
  *
  * Every question has a flag that answers it and a default that is taken when
  * nobody is at the terminal, so the whole run works unattended (FR-035,
- * SC-012).
+ * SC-012) — except the agent of a repository that has chosen none yet, which
+ * stops naming `--agent` (CORE-FR-056).
  */
 export class InitCommand implements Command<typeof OPTIONS> {
   readonly name = "init";
@@ -111,18 +112,16 @@ async function pickAgents(
   if (workspaceSettingsDTO.type === "Fault")
     return `${SETTINGS_FILE_PATH}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`;
   const agentsInSettings = workspaceSettingsDTO.data.agents;
-  // Keep the repository's choice; new repositories default to Claude for
-  // compatibility with earlier releases (FR-055).
-  const defaultAgents: readonly string[] = agentsInSettings.length > 0 ? agentsInSettings : ["claude"];
 
   // Nobody at the terminal is answered with what the settings already name,
   // which is what the prompt below would hand back on a return: a pipeline
   // finishes rather than waits on an answer that is never coming (FR-035,
-  // SC-012).
+  // SC-012). A repository that has chosen none yet has no such default,
+  // however many agents this engine compiles for (CORE-FR-055, CORE-FR-056).
   if (!process.stdin.isTTY) {
-    if (defaultAgents.length === 0)
+    if (agentsInSettings.length === 0)
       return `Nobody is at the terminal to choose an agent, and this repository has none chosen yet.\n  Run "cw init --agent <name>", naming one of: ${workspaceApp.agentProviderNames.join(", ")}.\n`;
-    return defaultAgents;
+    return agentsInSettings;
   }
 
   const { chosen: chosenAgents } = await prompts({
@@ -132,11 +131,11 @@ async function pickAgents(
     // What the settings already name arrives ticked, so a return keeps what this
     // repository is already running under and a second run is rechoosing rather
     // than starting over (FR-038). Nothing named yet — a repository being set up
-    // for the first time — arrives with Claude ticked (FR-055).
+    // for the first time — arrives with none ticked (CORE-FR-055).
     choices: workspaceApp.agentProviderNames.map((agentProviderName) => ({
       title: agentProviderName,
       value: agentProviderName,
-      selected: defaultAgents.includes(agentProviderName),
+      selected: agentsInSettings.includes(agentProviderName),
     })),
     // Ticking none of them is not an answer: a charter compiles for at least one
     // agent, so the prompt holds the submit until one is ticked (FR-033).

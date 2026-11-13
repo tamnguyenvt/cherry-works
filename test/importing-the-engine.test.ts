@@ -1157,3 +1157,45 @@ assert.equal((await charterRuntimeApp.runSensors('NoSensorSignal', '{}', 'claude
 `,
   );
 });
+
+test("an engine composed with a projection of a test's own for an agent cw does not know builds and runs its sensors for that agent, and names no agent of its own (CORE Story 56 scenario 10)", () => {
+  runConsumerCode(
+    memoryConsumerCode +
+      String.raw`
+import { outputPath, ProjectionPlan, WritePlan } from 'cherry-works';
+// Lays each item of the output under a folder of the agent's own.
+const quillProjection = {
+ tokenFactor: 1,
+ createCheckoutProjection() { return quillProjection; },
+ listMainContextTexts() { return []; },
+ async createAgentProjectionPlan(_charter, charterOutput) {
+  return new ProjectionPlan([], [], charterOutput.charterOutputItems.map((charterOutputItem) => {
+   const quillPath = '.quill/' + outputPath.getPath(charterOutputItem);
+   return new WritePlan(quillPath, quillPath, charterOutputItem.text);
+  }));
+ }
+};
+const shellCommands = [];
+const shell = { async runShellCommand(command) { shellCommands.push(command); return { exitCode: 0, stdout: 'checked', stderr: '' }; } };
+const quillCli = { async isInstalled() { return false; } };
+const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = await composeOverMemory(['quill'], {
+ agentProvider: { quill: { projection: quillProjection, agentCli: quillCli } },
+ shell,
+});
+assert.equal((await charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
+const addedAnswer = await charterAuthoringApp.addPrimitive('sensor', 'quill-check', { description: 'Check when quill stops.', signal: 'Stop', run: 'echo quill', 'agent-provider': ['quill'] }, 'Check.');
+assert.equal(addedAnswer.type, 'Primitive', JSON.stringify(addedAnswer));
+const buildAnswer = await charterBuildingApp.buildCharter();
+assert.equal(buildAnswer.type, 'PlanSummary', JSON.stringify(buildAnswer));
+const builtPaths = [...fileBytesByAddress.keys()].map(pathOf);
+assert.ok(builtPaths.some((builtPath) => builtPath.startsWith('.quill/')), builtPaths.join(', '));
+assert.deepEqual(builtPaths.filter((builtPath) => /^(\.claude|\.codex|\.agents)\/|^(CLAUDE|AGENTS)\.md$|^\.mcp\.json$/.test(builtPath)), []);
+const quillAnswer = await charterRuntimeApp.runSensors('Stop', '{}', 'quill');
+assert.equal(quillAnswer.type, 'SensorRunOutcome', JSON.stringify(quillAnswer));
+assert.deepEqual(shellCommands, ['echo quill']);
+// The engine's own sensor for the same signal is claude's, and runs for no other agent.
+assert.ok(!shellCommands.some((shellCommand) => shellCommand.includes('cw-session-tokens-counter')));
+assert.deepEqual(progressReporter.problems, []);
+`,
+  );
+});

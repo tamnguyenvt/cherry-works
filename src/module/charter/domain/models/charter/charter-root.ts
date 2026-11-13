@@ -6,7 +6,7 @@ import { AgentPrimitive } from "../primitive/agent-primitive.js";
 import { BasePrimitive } from "../primitive/base-primitive.js";
 import { McpPrimitive } from "../primitive/mcp-primitive.js";
 import type { Primitive } from "../primitive/primitive.js";
-import type { PrimitiveLayer } from "../primitive/primitive-layer.value-object.js";
+import { PrimitiveLayer } from "../primitive/primitive-layer.value-object.js";
 import { ScriptPrimitive } from "../primitive/script-primitive.js";
 import { SensorPrimitive } from "../primitive/sensor-primitive.js";
 
@@ -63,6 +63,9 @@ export class CharterRoot {
   agentFaultsByFilesOf(agentNames: readonly string[]): FaultsByFile {
     const faultsByFile: Record<string, readonly DomainFault[]> = {};
     for (const primitive of this.primitives) {
+      // One the engine brings has no file to change: an engine composed for
+      // none of its agents compiles it for none (CORE-FR-221).
+      if (primitive.layer === PrimitiveLayer.BUILTIN) continue;
       const namedAgents = [
         ...(primitive instanceof AgentBasedPrimitive
           ? (primitive.headers["agent-provider"] ?? []).map((agentName) => ["agent-provider", agentName] as const)

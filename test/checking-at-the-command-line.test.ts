@@ -186,6 +186,26 @@ test("a flag the command never declared is a usage error, not a fault of the cha
   assert.equal(code, EXIT_USAGE);
 });
 
+test("an unknown command is refused, and a near miss is answered with the command it most likely meant (CORE Story 56 scenario 3)", async () => {
+  const { code: nearMissCode, written: nearMissWritten } = await run({}, ["buidl"]);
+
+  assert.equal(nearMissCode, EXIT_USAGE);
+  assert.match(nearMissWritten.everything, /Did you mean build\?/);
+
+  const { code: unknownCode, written: unknownWritten } = await run({}, ["frobnicate"]);
+
+  assert.equal(unknownCode, EXIT_USAGE);
+  assert.match(unknownWritten.everything, /Unknown argument: frobnicate/);
+  assert.doesNotMatch(unknownWritten.everything, /Did you mean/);
+});
+
+test("an unknown flag is refused, naming it (CORE Story 56 scenario 3)", async () => {
+  const { code, written } = await run({}, ["build", "--bogus"]);
+
+  assert.equal(code, EXIT_USAGE);
+  assert.match(written.everything, /Unknown argument: bogus/);
+});
+
 /** What one command declares it takes. Written here rather than in `src`
  *  because nothing the engine offers takes an argument yet: what is under test
  *  is that a command which does gets it back typed. */

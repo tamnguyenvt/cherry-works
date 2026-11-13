@@ -6,6 +6,7 @@ import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memor
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
+import { FileWorkspaceSettingsRepository, ManagingWorkspace } from "../src/module/workspace/module.js";
 import { Commander } from "../src/presentation/cli/cli.commander.js";
 import { EXIT_FAILURE } from "../src/presentation/cli/commands/command.interface.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
@@ -17,8 +18,12 @@ const repoPath = new URL("file:///repo/");
 
 /** The command line as a user meets it, over a repository held in memory: the
  *  real `cw init`, the real service behind it, and files a test can read back
- *  out of. */
-const setUp = async (files: Readonly<Record<string, string>> = {}, argv: readonly string[] = ["init"]) => {
+ *  out of; for the agents `agentProviderNames` names where a test gives them. */
+const setUp = async (
+  files: Readonly<Record<string, string>> = {},
+  argv: readonly string[] = ["init"],
+  agentProviderNames?: readonly string[],
+) => {
   const held = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
   const charterRuntimeApp = buildingCharterOf(
@@ -35,8 +40,26 @@ const setUp = async (files: Readonly<Record<string, string>> = {}, argv: readonl
   process.stdout.write = ((text: string) => (results.push(text), true)) as typeof kept.out;
   process.stderr.write = ((text: string) => (problems.push(text), true)) as typeof kept.err;
   try {
+    const commandLine = commandLineOf(
+      held,
+      new InMemoryFileOutput(held),
+      { charterAuthoringApp, charterRuntimeApp },
+      repo,
+    );
     const code = await new Commander(
-      commandLineOf(held, new InMemoryFileOutput(held), { charterAuthoringApp, charterRuntimeApp }, repo),
+      agentProviderNames === undefined
+        ? commandLine
+        : {
+            ...commandLine,
+            composeApplications: async () => ({
+              ...(await commandLine.composeApplications()),
+              workspaceApp: new ManagingWorkspace(
+                new FileWorkspaceSettingsRepository(held, new InMemoryFileOutput(held)),
+                agentProviderNames,
+                new InMemoryReporter(),
+              ),
+            }),
+          },
       COMMANDS,
     ).runCommandLine(argv);
     return { code, held, results: results.join(""), problems: problems.join("") };
@@ -95,12 +118,31 @@ test("setup can choose Codex without it being installed on this machine", async 
   assert.equal(await held(files, "CLAUDE.md"), undefined);
 });
 
-test("with nobody to ask, Claude remains the default agent (FR-055)", async () => {
-  const { code, held: files, results } = await setUp();
+test("with nobody to ask and no agent chosen, setup stops naming the flag that answers it (CORE Story 56 scenario 2)", async () => {
+  const { code, held: files, problems } = await setUp();
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(problems, /Run "cw init --agent <name>", naming one of: claude, codex\./);
+  assert.equal(await held(files, ".cw/settings.json"), undefined);
+});
+
+test("with nobody to ask and no agent chosen, setup stops even where the engine compiles for one agent only (CORE Story 56 scenario 2)", async () => {
+  const { code, held: files, problems } = await setUp({}, ["init"], ["claude"]);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(problems, /Run "cw init --agent <name>", naming one of: claude\./);
+  assert.equal(await held(files, ".cw/settings.json"), undefined);
+});
+
+test("with nobody to ask, every other prompt takes its flag (CORE Story 56 scenario 2)", async () => {
+  const { code, held: files, results } = await setUp({}, ["init", "--agent", "codex", "--mainContextCeiling", "30000"]);
 
   assert.equal(code, 0);
-  assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["claude"] });
-  assert.match(results, /Compiling for: claude\./);
+  assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), {
+    agents: ["codex"],
+    mainContextCeiling: 30000,
+  });
+  assert.match(results, /Compiling for: codex\./);
 });
 
 test("setup given an agent this engine does not compile for is refused, and keeps nothing (FR-033)", async () => {

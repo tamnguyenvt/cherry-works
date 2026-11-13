@@ -256,7 +256,7 @@ function isPlainData(value: unknown): boolean {
   return Object.values(value).every(isPlainData);
 }
 
-test("every operation of the engine, called over a charter, answers the caller plain data, none of it the engine's own models (CORE Story 49 scenario 2)", async () => {
+test("every operation of the engine, called over a charter, answers the caller plain data, none of it the engine's own models (CORE Story 49 scenario 2, CORE Story 56 scenario 8)", async () => {
   const { workspaceApp, engineApp } = await applicationsInMemory();
   const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = engineApp;
   const mcpOriginAddress = { address: "https://mcp.example.test/", mcpId: "example" };

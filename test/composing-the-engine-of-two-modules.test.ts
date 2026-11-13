@@ -302,7 +302,7 @@ test("the engine's modules are charter, with its applications authoring and proj
   );
 });
 
-test("runtime asks the charter only through charter's applications, in answers made for that, and charter asks nothing of runtime (CORE Story 52 scenario 2)", async () => {
+test("runtime asks the charter only through charter's applications, in answers made for that, and charter asks nothing of runtime (CORE Story 52 scenario 2, CORE Story 56 scenario 9)", async () => {
   const adapters = adaptersInMemory(filesReachingEveryAdapter);
   const engineAdapters = pluginsInMemory(adapters);
   // The charter's part composed over runtime's own adapters made to fail if

@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
 import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
+import { CompileService } from "../src/module/charter/domain/services/compile.service.js";
+import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
+import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
+import { putDownBy } from "./put-down-by.js";
+import { loadCharterRoot } from "./use-cases-of.js";
 
 const skillBody = new CwAuthorSkill().body;
 
@@ -56,4 +61,31 @@ test("the skill the engine brings is of the engine's layer, at the name that lay
 
   assert.equal(cwAuthorSkill.layer.name, "builtin");
   assert.equal(cwAuthorSkill.uri, "(built into cw)/skill/cw-author/index.md");
+});
+
+test("the skill as each agent reads it comes up for writing any primitive, and sends a refusal to be answered and a refused build to cw doctor (CORE Story 56 scenario 4)", async () => {
+  const skillFileReaders = new InMemoryFileReaders({});
+  const charterRoot = await loadCharterRoot(skillFileReaders);
+  await putDownBy(
+    charterRoot,
+    CompileService.compileCharterRoot(charterRoot, [new AgentProvider("claude"), new AgentProvider("codex")]),
+    skillFileReaders,
+  );
+  const readText = async (path: string) => (await skillFileReaders.readIfThere(new URL(path, "file:///repo/"))) ?? "";
+
+  for (const skillPath of [".claude/skills/cw-author/SKILL.md", ".agents/skills/cw-author/SKILL.md"])
+    assert.match(
+      await readText(skillPath),
+      /Use when: write a rule; add a standard; write a skill; author a primitive of the charter\./,
+      skillPath,
+    );
+  const compiledBody = (await readText(".cw/out/skill/cw-author/index.md")).replace(/\s+/g, " ");
+  assert.match(
+    compiledBody,
+    /Run `cw add <kind> <id>[^.]*\. .*If cw refuses, it says why and shows the kind's sample: answer again with that in hand\./,
+  );
+  assert.match(
+    compiledBody,
+    /Run `cw build`\. If it refuses, `cw doctor` names each file with a problem and how to fix it\./,
+  );
 });
