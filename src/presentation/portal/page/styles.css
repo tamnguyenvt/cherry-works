@@ -3,6 +3,7 @@
 
 /* Only the page's own sources are scanned for the classes it uses. */
 @source "./";
+@source not "../../../../docs";
 
 @custom-variant dark (&:is(.dark *));
 
