@@ -47,7 +47,7 @@
   "scripts": {
     "build": "tsup && node --import tsx scripts/bundle-library-types.ts && tailwindcss -i src/presentation/portal/page/styles.css -o dist/portal/styles.css --minify",
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/presentation/portal/page",
-    "test": "pnpm run lint:deps && pnpm run lint && pnpm run build && node --import tsx --import ./scripts/module-loader.mjs --test \"test/**/*.test.ts\"",
+    "test": "pnpm run lint:deps && pnpm run lint && pnpm run build && node --import tsx --import ./scripts/module-loader.mjs --import ./scripts/test-environment.mjs --test \"test/**/*.test.ts\"",
     "cw": "node --import tsx --import ./scripts/module-loader.mjs main.ts",
     "lint:deps": "depcruise src main.ts",
     "lint": "biome check",

@@ -4,7 +4,7 @@
 
 ## 1.1.0 — 2026-11-14
 
-- **Breaking:** a charter store of your own hands the engine the vendors it keeps by name: `ForManagingCharter.loadVendorRoot()` answers a `RawVendorRoot`, and the engine makes the installed vendors from it. The port no longer lends `VendorRootFactory`. `FileCharterRepository` refuses a vendor laid out the old way itself, with the same message as before.
+- **Breaking:** a charter store of your own hands the engine the vendors it keeps by name: `ForManagingCharter.loadVendorRoot()` answers a `RawVendorRoot`, and the engine makes the installed vendors from it. The port no longer lends `VendorRootFactory`, and `VendorRoot` is no longer exported. `FileCharterRepository` refuses a vendor laid out the old way itself, with the same message as before.
 - **Breaking:** `WorkspaceSettings` holds the agents a repository chose as `agentProviders`, each an `AgentProvider`; `JSON.stringify` still writes `{ "agents": [...] }`, and `FileWorkspaceSettingsRepository` writes the settings file as before.
 - **Breaking:** `ProviderComponent` holds `agentProvider`, an `AgentProvider`, in place of `agentName`, and its file's content as `text`; `DocumentBasedComponent.document` is the `StampedDocument`, and `SettingBasedComponent` takes an `AgentProvider`.
 - **Breaking:** `CharterDTOs` lists `ProjectionPlanSummary` after the `Primitive` DTOs; no DTO itself changed.

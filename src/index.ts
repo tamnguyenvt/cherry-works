@@ -72,7 +72,6 @@ export {
   StampedDocument,
   TestSuite,
   Tiktoken,
-  VendorRoot,
   VendorSource,
   VendorSourceOrigin,
   WritePlan,

@@ -188,7 +188,7 @@ const { engineApp } = await composeApplications(repoFolder, homeFolder, {
 cases. `cw`'s own keeps them as files, through the file adapters; hand your own
 `ForManagingCharter` to keep them in a database instead, or extend
 `FileCharterRepository`. The models its methods take and answer, such as
-`RawPrimitive` and `VendorRoot`, are exported with it. A store is never asked
+`RawPrimitive` and `RawVendorRoot`, are exported with it. A store is never asked
 for a version or a checkout: an evaluation reads the charter and its cases as
 the store holds them now, committed or not, and lays the build into each
 case's worktree of the repository through `createCheckoutOutput` and

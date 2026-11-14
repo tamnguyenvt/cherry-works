@@ -80,7 +80,6 @@ export { RawTestSuite } from "./domain/models/test/raw-test-suite.js";
 export { TestSuite } from "./domain/models/test/test-suite.js";
 export { RawVendorRoot } from "./domain/models/vendor/raw-vendor-root.js";
 export { RawSourceSkill, RawVendorSource } from "./domain/models/vendor/raw-vendor-source.js";
-export { VendorRoot } from "./domain/models/vendor/vendor-root.js";
 export { SourceCharter, SourceSkill, VendorSource } from "./domain/models/vendor/vendor-source.js";
 export { VendorSourceOrigin } from "./domain/models/vendor/vendor-source-origin.value-object.js";
 export { AgentProjection } from "./infra/agent-projection.base.js";
