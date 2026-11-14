@@ -50,7 +50,7 @@ const KINDS = Object.freeze(PRIMITIVE_CLASSES.map((primitiveClass) => primitiveC
 export type Kind = (typeof KINDS)[number];
 
 /** Which class reads each kind. */
-const CLASS_OF = new Map<Kind, (typeof PRIMITIVE_CLASSES)[number]>(
+const PRIMITIVE_CLASS_BY_KIND = new Map<Kind, (typeof PRIMITIVE_CLASSES)[number]>(
   PRIMITIVE_CLASSES.map((primitiveClass) => [primitiveClass.kind, primitiveClass]),
 );
 
@@ -114,22 +114,22 @@ export class Primitives {
    * before there is anything to ask.
    */
   static headersOf(kind: Kind): readonly PrimitiveHeader[] {
-    const kindClass = CLASS_OF.get(kind)!;
+    const kindClass = PRIMITIVE_CLASS_BY_KIND.get(kind)!;
     const requiredHeaders = { ...BasePrimitive.requires, ...kindClass.requires };
 
     return Object.entries(kindClass.schema.shape)
-      .filter(([field]) => field !== "id")
-      .map(([field, type]) => {
+      .filter(([headerName]) => headerName !== "id")
+      .map(([headerName, headerSchema]) => {
         // What the header holds — an array of lines, a closed set, or one line —
         // with optional and readonly taken off: they wrap what is held rather than
         // being part of it.
-        let heldType: unknown = type;
+        let heldType: unknown = headerSchema;
         while (!(heldType instanceof z.ZodArray) && typeof (heldType as { unwrap?: unknown })?.unwrap === "function")
           heldType = (heldType as { unwrap: () => unknown }).unwrap();
         return new PrimitiveHeader(
-          field,
+          headerName,
           heldType instanceof z.ZodArray ? "list" : "line",
-          field in requiredHeaders,
+          headerName in requiredHeaders,
           heldType instanceof z.ZodEnum
             ? (heldType.options as readonly string[])
             : heldType === FlagSchema
@@ -144,7 +144,7 @@ export class Primitives {
    *  is read. What an author is shown beside the headers they are to answer, and
    *  the same sample a refused file is held up against (FR-001). */
   static sampleOf(kind: Kind): string {
-    return Object.entries({ kind, ...CLASS_OF.get(kind)!.sample })
+    return Object.entries({ kind, ...PRIMITIVE_CLASS_BY_KIND.get(kind)!.sample })
       .map(([field, sampleValue]) => `${field}: ${ContentHelper.formatFrontmatterValue(sampleValue)}`)
       .join("\n");
   }

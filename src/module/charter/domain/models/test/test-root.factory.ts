@@ -15,7 +15,7 @@ export class TestRootFactory {
    * read names every bad file rather than the first (FR-009).
    */
   static create(rawTestSuites: readonly RawTestSuite[]): TestRoot {
-    const suitesByFile: Record<string, TestSuite> = {};
+    const testSuiteByFile: Record<string, TestSuite> = {};
     const faultsByFile: Record<string, readonly DomainFault[]> = {};
 
     const suiteNameByFile = Object.fromEntries(rawTestSuites.map(({ uri, name }) => [uri, name]));
@@ -25,7 +25,7 @@ export class TestRootFactory {
       leftTestSuite.uri.localeCompare(rightTestSuite.uri),
     )) {
       try {
-        suitesByFile[uri] = TestSuiteFactory.create(text);
+        testSuiteByFile[uri] = TestSuiteFactory.create(text);
       } catch (raisedValue) {
         // A file not reading is this file being wrong; anything else is not ours
         // to swallow.
@@ -34,7 +34,7 @@ export class TestRootFactory {
       }
     }
 
-    return new TestRoot(suitesByFile, new FaultsByFile(faultsByFile), suiteNameByFile);
+    return new TestRoot(testSuiteByFile, new FaultsByFile(faultsByFile), suiteNameByFile);
   }
 
   private constructor() {}

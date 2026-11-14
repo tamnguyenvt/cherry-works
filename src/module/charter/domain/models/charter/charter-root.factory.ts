@@ -99,7 +99,7 @@ export class CharterRootFactory {
           // A finding is a fault the person can correct. An internal fault in the
           // same aggregate would otherwise be shown under the file (SDK-FR-018).
           const findingFaults = raisedValue.faults.filter(
-            (error): error is DomainFault => error instanceof DomainFault && !error.internal,
+            (raisedFault): raisedFault is DomainFault => raisedFault instanceof DomainFault && !raisedFault.internal,
           );
           if (findingFaults.length !== raisedValue.faults.length) throw raisedValue;
           faultsByFile[handedPrimitive.uri] = findingFaults;

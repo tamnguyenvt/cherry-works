@@ -18,11 +18,11 @@ export class CatalogueFactory {
    * Globs nobody wrote are left out rather than listed as nothing. Every other
    * header is read from the file the entry names.
    */
-  static create(charter: CharterRoot, fileOf: (primitive: Primitive) => string): Catalogue {
+  static create(charterRoot: CharterRoot, filePathOf: (primitive: Primitive) => string): Catalogue {
     return new Catalogue(
       // Ordered by id rather than by the order the files happened to be
       // read, so the same charter catalogues byte for byte the same (SC-007).
-      [...charter.primitives]
+      [...charterRoot.primitives]
         .sort((leftPrimitive, rightPrimitive) =>
           leftPrimitive.headers.id < rightPrimitive.headers.id
             ? -1
@@ -34,17 +34,17 @@ export class CatalogueFactory {
           const { description, globs } = primitive.headers;
           // Listed for every agent where it names none, and in each named
           // agent's own listing otherwise.
-          const agentProviders =
+          const agentProviderNames =
             primitive instanceof AgentBasedPrimitive ? primitive.headers["agent-provider"] : undefined;
           return new CatalogueEntry({
             agentProviders:
-              agentProviders === undefined || agentProviders.length === 0
+              agentProviderNames === undefined || agentProviderNames.length === 0
                 ? "all"
-                : agentProviders.map((agentName) => new AgentProvider(agentName)),
+                : agentProviderNames.map((agentProviderName) => new AgentProvider(agentProviderName)),
             kind: primitive.kind,
             id: primitive.headers.id,
             description,
-            file: fileOf(primitive),
+            file: filePathOf(primitive),
             ...(globs === undefined ? {} : { globs }),
           });
         }),

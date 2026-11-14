@@ -464,7 +464,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
       ])
         if (!faultsByFile.isEmpty) return this.faultsByFileDTOOf(faultsByFile);
       return CharterDTOs.EvalCases.of({
-        cases: Object.entries(evalRoot.suitesByFile).flatMap(([path, evalSuite]) =>
+        cases: Object.entries(evalRoot.evalSuiteByFile).flatMap(([path, evalSuite]) =>
           evalSuite.cases.map((evalCase) => {
             const guideBody =
               evalCase.expect.follow === undefined

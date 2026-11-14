@@ -29,7 +29,7 @@ export class McpOriginsFactory {
    * name (EVAL-FR-031).
    */
   static create(
-    charter: CharterRoot,
+    charterRoot: CharterRoot,
     shortMcpIds: ShortStrings,
     toolsByOriginKey?: ReadonlyMap<string, readonly McpToolDefinition[]>,
   ): McpOrigins;
@@ -55,9 +55,9 @@ export class McpOriginsFactory {
         ).map((origin) => new McpOrigin({ ...origin, auth: (origin.auth ?? []).map(McpAuthMethod.of) })),
       );
     }
-    const charter = mcpOriginsSource;
+    const charterRoot = mcpOriginsSource;
     const mcpPrimitivesByOriginKey = new Map<string, McpPrimitive[]>();
-    for (const primitive of [...charter.primitives].sort((leftPrimitive, rightPrimitive) =>
+    for (const primitive of [...charterRoot.primitives].sort((leftPrimitive, rightPrimitive) =>
       leftPrimitive.headers.id < rightPrimitive.headers.id ? -1 : 1,
     )) {
       if (!(primitive instanceof McpPrimitive)) continue;
@@ -76,8 +76,12 @@ export class McpOriginsFactory {
           const { endpoint, command, args: commandArguments = [], path } = firstMcpPrimitive.headers;
           const tokenEnv = mcpPrimitivesAtOrigin.find((mcpPrimitive) => mcpPrimitive.headers.tokenEnv !== undefined)
             ?.headers.tokenEnv;
-          const auths = new Set(mcpPrimitivesAtOrigin.flatMap((mcpPrimitive) => mcpPrimitive.headers.auth ?? []));
-          const declaredTools = new Set(mcpPrimitivesAtOrigin.flatMap((mcpPrimitive) => mcpPrimitive.headers.tools));
+          const authMethodNames = new Set(
+            mcpPrimitivesAtOrigin.flatMap((mcpPrimitive) => mcpPrimitive.headers.auth ?? []),
+          );
+          const declaredToolNames = new Set(
+            mcpPrimitivesAtOrigin.flatMap((mcpPrimitive) => mcpPrimitive.headers.tools),
+          );
           const listedTools = toolsByOriginKey.get(originKey);
 
           return new McpOrigin({
@@ -94,10 +98,10 @@ export class McpOriginsFactory {
               ? {}
               : { command: { command, args: commandArguments, ...(tokenEnv === undefined ? {} : { tokenEnv }) } }),
             ...(path === undefined ? {} : { path }),
-            auth: McpAuthMethod.names.filter((authName) => auths.has(authName)).map(McpAuthMethod.of),
+            auth: McpAuthMethod.names.filter((authName) => authMethodNames.has(authName)).map(McpAuthMethod.of),
             ...(listedTools !== undefined && {
               tools: listedTools
-                .filter(({ name }) => declaredTools.has(name))
+                .filter(({ name }) => declaredToolNames.has(name))
                 .sort((leftTool, rightTool) => leftTool.name.localeCompare(rightTool.name)),
             }),
           });

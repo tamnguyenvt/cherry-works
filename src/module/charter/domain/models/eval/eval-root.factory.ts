@@ -10,7 +10,7 @@ export class EvalRootFactory {
    *  path, each one that does not with its fault, so one read names every bad
    *  file (FR-009). */
   static create(rawEvalSuites: readonly RawEvalSuite[]): EvalRoot {
-    const suitesByFile: Record<string, EvalSuite> = {};
+    const evalSuiteByFile: Record<string, EvalSuite> = {};
     const faultsByFile: Record<string, readonly DomainFault[]> = {};
     const suiteNameByFile = Object.fromEntries(rawEvalSuites.map(({ uri, name }) => [uri, name]));
     const suiteTextByFile = Object.fromEntries(rawEvalSuites.map(({ uri, text }) => [uri, text]));
@@ -18,13 +18,13 @@ export class EvalRootFactory {
       leftEvalSuite.uri.localeCompare(rightEvalSuite.uri),
     )) {
       try {
-        suitesByFile[uri] = EvalSuiteFactory.create(text);
+        evalSuiteByFile[uri] = EvalSuiteFactory.create(text);
       } catch (raisedValue) {
         if (!(raisedValue instanceof DomainFault)) throw raisedValue;
         faultsByFile[uri] = [raisedValue];
       }
     }
-    return new EvalRoot(suitesByFile, new FaultsByFile(faultsByFile), suiteNameByFile, suiteTextByFile);
+    return new EvalRoot(evalSuiteByFile, new FaultsByFile(faultsByFile), suiteNameByFile, suiteTextByFile);
   }
 
   private constructor() {}

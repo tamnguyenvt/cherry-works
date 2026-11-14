@@ -36,9 +36,9 @@ export class VendorSourceFactory {
             { internal: false },
           );
         const { headers: skillHeaders, body } = skillFrontmatter;
-        let convertedSkill: SkillPrimitive;
+        let convertedSkillPrimitive: SkillPrimitive;
         try {
-          convertedSkill = SkillPrimitive.of(
+          convertedSkillPrimitive = SkillPrimitive.of(
             {
               id: skillHeaders.name,
               description: skillHeaders.description,
@@ -62,7 +62,7 @@ export class VendorSourceFactory {
         const leftOutHeaders = Object.keys(skillHeaders).filter(
           (header) => !(CONVERTED_HEADERS as readonly string[]).includes(header),
         );
-        sourceSkills.push(new SourceSkill(convertedSkill, leftOutHeaders, assets, uri, sourceFolder));
+        sourceSkills.push(new SourceSkill(convertedSkillPrimitive, leftOutHeaders, assets, uri, sourceFolder));
       } catch (raisedValue) {
         // A `SKILL.md` not reading is that skill being wrong; anything else
         // is not ours to swallow.

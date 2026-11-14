@@ -68,16 +68,16 @@ export class OutputPath {
    * beside it otherwise.
    */
   getLinkTo(path: string, suffix = ""): string {
-    const itemFolder = path.slice(0, path.lastIndexOf("/") + 1);
+    const itemFolderPath = path.slice(0, path.lastIndexOf("/") + 1);
     if (/^\.{1,2}\//.test(suffix)) {
       // The folder this names is written as it is named.
       const resolvedUrl = new URL(suffix, `https://charter.invalid/${path}`);
-      const encodedFolder = new URL(".", `https://charter.invalid/${path}`).pathname;
-      const resolvedPath = resolvedUrl.pathname.startsWith(encodedFolder)
-        ? `${itemFolder}${resolvedUrl.pathname.slice(encodedFolder.length)}`
+      const encodedFolderPath = new URL(".", `https://charter.invalid/${path}`).pathname;
+      const resolvedPath = resolvedUrl.pathname.startsWith(encodedFolderPath)
+        ? `${itemFolderPath}${resolvedUrl.pathname.slice(encodedFolderPath.length)}`
         : resolvedUrl.pathname.slice(1);
       return `${this.cwOutFolderPlaceholder}/${resolvedPath}${resolvedUrl.search}${resolvedUrl.hash}`;
     }
-    return `${this.cwOutFolderPlaceholder}/${suffix === "" ? path : `${itemFolder}${suffix}`}`;
+    return `${this.cwOutFolderPlaceholder}/${suffix === "" ? path : `${itemFolderPath}${suffix}`}`;
   }
 }

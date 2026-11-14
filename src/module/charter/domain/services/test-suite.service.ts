@@ -17,8 +17,8 @@ export class TestSuiteService {
    * questions a case may put is decided by matching what an author declared
    * against what the situation holds (FR-049).
    */
-  static runSuite(charter: CharterRoot, suiteName: string, suite: TestSuite): readonly TestCaseReport[] {
-    return suite.cases.map((testCase) => TestSuiteService.runCase(charter, suiteName, testCase));
+  static runSuite(charterRoot: CharterRoot, suiteName: string, testSuite: TestSuite): readonly TestCaseReport[] {
+    return testSuite.cases.map((testCase) => TestSuiteService.runCase(charterRoot, suiteName, testCase));
   }
 
   /**
@@ -31,14 +31,14 @@ export class TestSuiteService {
    * file is allowed names none, and a `deny` may name a command no case can
    * touch.
    */
-  static validateTestRoot(charter: CharterRoot, testRoot: TestRoot): FaultsByFile {
+  static validateTestRoot(charterRoot: CharterRoot, testRoot: TestRoot): FaultsByFile {
     const testedIds = new Set<string | undefined>(
-      Object.values(testRoot.suitesByFile).flatMap((testSuite) =>
+      Object.values(testRoot.testSuiteByFile).flatMap((testSuite) =>
         testSuite.cases.map((testCase) => testCase.activatedId),
       ),
     );
     const faultsByFiles: Record<string, readonly DomainFault[]> = {};
-    for (const primitive of charter.primitives) {
+    for (const primitive of charterRoot.primitives) {
       const { uri: primitiveUri } = primitive;
       const { id } = primitive.headers;
       // The engine's own are tested where the engine is, as a vendor's are in its
@@ -66,13 +66,13 @@ export class TestSuiteService {
    *  it. Which of the three it is falls out of what it holds — a touched file or
    *  a raised event, an activation or a permission — which is what the file it
    *  was written in holds too. */
-  static runCase(charter: CharterRoot, suiteName: string, testCase: TestCase): TestCaseReport {
+  static runCase(charterRoot: CharterRoot, suiteName: string, testCase: TestCase): TestCaseReport {
     const writtenCase = testCase.writtenCase;
     if ("when" in writtenCase) {
       return new TestCaseReport(
         suiteName,
         testCase.describeCase(),
-        TestSuiteService.#findSensorFault(charter, writtenCase.when, writtenCase.expect.run),
+        TestSuiteService.#findSensorFault(charterRoot, writtenCase.when, writtenCase.expect.run),
       );
     }
 
@@ -82,14 +82,14 @@ export class TestSuiteService {
         return new TestCaseReport(
           suiteName,
           testCase.describeCase(),
-          TestSuiteService.#findActivationFault(charter, touchFile, writtenCase.expect.activate),
+          TestSuiteService.#findActivationFault(charterRoot, touchFile, writtenCase.expect.activate),
         );
       }
       if ("allow" in writtenCase.expect) {
         return new TestCaseReport(
           suiteName,
           testCase.describeCase(),
-          TestSuiteService.#findPostureFault(charter, touchFile, writtenCase.expect.allow),
+          TestSuiteService.#findPostureFault(charterRoot, touchFile, writtenCase.expect.allow),
         );
       }
     }
@@ -107,12 +107,16 @@ export class TestSuiteService {
    *  other kind is the case asking the charter for something that kind never
    *  does — said as that rather than as a glob that did not match (FR-004).
    *  A guide naming no files comes up every turn, so any file brings it up. */
-  static #findActivationFault(charter: CharterRoot, filePath: string, id: string): UnmetExpectationFault | undefined {
-    const declaredPrimitive = charter.primitiveById.get(id);
-    if (declaredPrimitive === undefined) return TestSuiteService.#createUnknownPrimitiveFault(id);
+  static #findActivationFault(
+    charterRoot: CharterRoot,
+    filePath: string,
+    activatedId: string,
+  ): UnmetExpectationFault | undefined {
+    const declaredPrimitive = charterRoot.primitiveById.get(activatedId);
+    if (declaredPrimitive === undefined) return TestSuiteService.#createUnknownPrimitiveFault(activatedId);
     if (declaredPrimitive.kind !== "guide")
       return new UnmetExpectationFault(
-        `Coming up when a file is touched is a guide's rule, and "${id}" is a ${declaredPrimitive.kind}.`,
+        `Coming up when a file is touched is a guide's rule, and "${activatedId}" is a ${declaredPrimitive.kind}.`,
         `Expect a guide here, or put the situation that kind answers.`,
         { internal: false },
       );
@@ -122,7 +126,7 @@ export class TestSuiteService {
     return globs.some((glob) => GlobsLib.isMatchedByGlob(glob, filePath))
       ? undefined
       : new UnmetExpectationFault(
-          `This file matches none of the globs "${id}" speaks about: ${globs.join(", ")}.`,
+          `This file matches none of the globs "${activatedId}" speaks about: ${globs.join(", ")}.`,
           `Widen that guide's "globs", or touch a file it already speaks about.`,
           { internal: false },
         );
@@ -140,31 +144,31 @@ export class TestSuiteService {
    * alone is told which posture took it.
    */
   static #findPostureFault(
-    charter: CharterRoot,
+    charterRoot: CharterRoot,
     filePath: string,
     isAllowExpected: boolean,
   ): UnmetExpectationFault | undefined {
-    const denyingPostures = charter.primitives.filter(
+    const denyingPosturePrimitives = charterRoot.primitives.filter(
       (primitive) =>
         primitive.kind === "posture" && primitive.headers.deny.some((glob) => GlobsLib.isMatchedByGlob(glob, filePath)),
     );
     if (isAllowExpected)
-      return denyingPostures.length === 0
+      return denyingPosturePrimitives.length === 0
         ? undefined
         : new UnmetExpectationFault(
-            `${denyingPostures.map((posture) => `"${posture.headers.id}"`).join(", ")} denies this file.`,
+            `${denyingPosturePrimitives.map((posturePrimitive) => `"${posturePrimitive.headers.id}"`).join(", ")} denies this file.`,
             `Drop it from that posture's "deny", or expect "allow": false.`,
             { internal: false },
           );
 
-    const postures = charter.primitives.filter((primitive) => primitive.kind === "posture");
-    if (postures.length === 0)
+    const posturePrimitives = charterRoot.primitives.filter((primitive) => primitive.kind === "posture");
+    if (posturePrimitives.length === 0)
       return new UnmetExpectationFault(
         `This charter holds no posture, so it refuses nothing.`,
         `Author a posture denying this file, or expect "allow": true.`,
         { internal: false },
       );
-    return denyingPostures.length > 0
+    return denyingPosturePrimitives.length > 0
       ? undefined
       : new UnmetExpectationFault(
           `No posture denies this file.`,
@@ -176,21 +180,25 @@ export class TestSuiteService {
   }
 
   /** Why a raised event did not run this sensor, or nothing where it did. */
-  static #findSensorFault(charter: CharterRoot, event: string, id: string): UnmetExpectationFault | undefined {
-    const declaredPrimitive = charter.primitiveById.get(id);
-    if (declaredPrimitive === undefined) return TestSuiteService.#createUnknownPrimitiveFault(id);
+  static #findSensorFault(
+    charterRoot: CharterRoot,
+    eventName: string,
+    sensorId: string,
+  ): UnmetExpectationFault | undefined {
+    const declaredPrimitive = charterRoot.primitiveById.get(sensorId);
+    if (declaredPrimitive === undefined) return TestSuiteService.#createUnknownPrimitiveFault(sensorId);
     if (declaredPrimitive.kind !== "sensor")
       return new UnmetExpectationFault(
-        `Running when an event is raised is a sensor's rule, and "${id}" is a ${declaredPrimitive.kind}.`,
+        `Running when an event is raised is a sensor's rule, and "${sensorId}" is a ${declaredPrimitive.kind}.`,
         `Expect a sensor here, or put the situation that kind answers.`,
         { internal: false },
       );
 
     const { signal } = declaredPrimitive.headers;
-    return signal === event
+    return signal === eventName
       ? undefined
       : new UnmetExpectationFault(
-          `"${id}" fires on ${signal}, not on ${event}.`,
+          `"${sensorId}" fires on ${signal}, not on ${eventName}.`,
           `Raise the event it names, or declare the "signal" this case raises.`,
           { internal: false },
         );

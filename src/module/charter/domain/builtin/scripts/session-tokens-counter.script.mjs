@@ -42,22 +42,22 @@ try {
   let stopEventText = "";
   for await (const chunk of process.stdin) stopEventText += chunk;
   const stopEvent = JSON.parse(stopEventText);
-  const repositoryFolder = stopEvent.cwd || process.cwd();
+  const repositoryFolderPath = stopEvent.cwd || process.cwd();
 
   const transcriptPath = stopEvent.transcript_path;
   const mainMessages = assistantMessagesOf(await readFile(transcriptPath, "utf8"));
   if (mainMessages.length === 0) throw new Error("a session with nothing to count");
-  const subagentsFolder = join(dirname(transcriptPath), basename(transcriptPath, ".jsonl"), "subagents");
-  const subagentFiles = (await readdir(subagentsFolder).catch(() => [])).filter((subagentFile) => subagentFile.endsWith(".jsonl"));
+  const subagentsFolderPath = join(dirname(transcriptPath), basename(transcriptPath, ".jsonl"), "subagents");
+  const subagentFileNames = (await readdir(subagentsFolderPath).catch(() => [])).filter((subagentFileName) => subagentFileName.endsWith(".jsonl"));
   const subagentMessages = [];
-  for (const subagentFile of subagentFiles) subagentMessages.push(...assistantMessagesOf(await readFile(join(subagentsFolder, subagentFile), "utf8")));
+  for (const subagentFileName of subagentFileNames) subagentMessages.push(...assistantMessagesOf(await readFile(join(subagentsFolderPath, subagentFileName), "utf8")));
 
-  const tokens = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
+  const tokenCountByKind = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
   for (const message of [...mainMessages, ...subagentMessages])
-    for (const [kind, field] of Object.entries(USAGE_FIELDS)) tokens[kind] += message.usage[field];
-  const totalTokens = tokens.input + tokens.output + tokens.cacheWrite + tokens.cacheRead;
+    for (const [tokenKind, usageFieldName] of Object.entries(USAGE_FIELDS)) tokenCountByKind[tokenKind] += message.usage[usageFieldName];
+  const totalTokens = tokenCountByKind.input + tokenCountByKind.output + tokenCountByKind.cacheWrite + tokenCountByKind.cacheRead;
 
-  const repositorySettings = JSON.parse(await readFile(join(repositoryFolder, ".cw", "settings.json"), "utf8").catch(() => "{}"));
+  const repositorySettings = JSON.parse(await readFile(join(repositoryFolderPath, ".cw", "settings.json"), "utf8").catch(() => "{}"));
   const sessionContextMark = Number.isInteger(repositorySettings.sessionContextMark) && repositorySettings.sessionContextMark > 0 ? repositorySettings.sessionContextMark : DEFAULT_SESSION_CONTEXT_MARK;
 
   // A folder the repository set that is no absolute path or path under ~/
@@ -65,33 +65,33 @@ try {
   // in the repository. Each session keeps a folder of its own in it, named
   // by its id, which is letters, digits and dashes or nothing is kept.
   if (!/^[A-Za-z0-9_-]+$/.test(stopEvent.session_id)) throw new Error("a session id that names no folder");
-  const namedSessionsFolder = /^(\/|~\/)/.test(repositorySettings.sessionAnalysisFolder)
+  const namedSessionsFolderPath = /^(\/|~\/)/.test(repositorySettings.sessionAnalysisFolder)
     ? resolve(repositorySettings.sessionAnalysisFolder.replace(/^~(?=\/)/, homedir()))
     : undefined;
   // A folder inside the repository would be committed with it: refused, the
   // session kept in the default, and the refusal said (EVAL-FR-042).
-  const repositoryRelativePath = namedSessionsFolder === undefined ? undefined : relative(resolve(repositoryFolder), namedSessionsFolder);
+  const repositoryRelativePath = namedSessionsFolderPath === undefined ? undefined : relative(resolve(repositoryFolderPath), namedSessionsFolderPath);
   const isInsideRepository =
     repositoryRelativePath !== undefined &&
     repositoryRelativePath !== ".." &&
     !repositoryRelativePath.startsWith(`..${sep}`) &&
     !isAbsolute(repositoryRelativePath);
-  const sessionsFolder =
-    namedSessionsFolder !== undefined && !isInsideRepository
-      ? namedSessionsFolder
-      : join(homedir(), ".cherry-works", repositoryFolder.replace(/[^A-Za-z0-9]/g, "-"));
+  const sessionsFolderPath =
+    namedSessionsFolderPath !== undefined && !isInsideRepository
+      ? namedSessionsFolderPath
+      : join(homedir(), ".cherry-works", repositoryFolderPath.replace(/[^A-Za-z0-9]/g, "-"));
   const systemMessages = isInsideRepository
     ? [
-        "The sessionAnalysisFolder " + namedSessionsFolder + " of .cw/settings.json is inside this repository, so it is refused: " +
-          "this session is kept in " + sessionsFolder + " instead. Name a folder outside every repository, or drop it.",
+        "The sessionAnalysisFolder " + namedSessionsFolderPath + " of .cw/settings.json is inside this repository, so it is refused: " +
+          "this session is kept in " + sessionsFolderPath + " instead. Name a folder outside every repository, or drop it.",
       ]
     : [];
-  const sessionFolder = join(sessionsFolder, stopEvent.session_id);
-  const logFile = join(sessionFolder, "session-analysis.jsonl");
+  const sessionFolderPath = join(sessionsFolderPath, stopEvent.session_id);
+  const logFilePath = join(sessionFolderPath, "session-analysis.jsonl");
 
   // The session's total at the last stop kept of it, to tell whether this
   // one crossed a mark.
-  const keptLines = (await readFile(logFile, "utf8").catch(() => "")).split("\n").filter((line) => line !== "");
+  const keptLines = (await readFile(logFilePath, "utf8").catch(() => "")).split("\n").filter((line) => line !== "");
   let previousTotalTokens = 0;
   try {
     previousTotalTokens = JSON.parse(keptLines[keptLines.length - 1] || "{}").total || 0;
@@ -100,22 +100,22 @@ try {
   const sessionLine = {
     time: new Date().toISOString(),
     sessionId: stopEvent.session_id,
-    repository: repositoryFolder,
+    repository: repositoryFolderPath,
     model: mainMessages[mainMessages.length - 1].model,
-    tokens,
+    tokens: tokenCountByKind,
     total: totalTokens,
   };
   // One write per line, appended: two stops writing at once each keep their
   // own line.
-  await mkdir(sessionFolder, { recursive: true });
-  await appendFile(logFile, JSON.stringify(sessionLine) + "\n");
+  await mkdir(sessionFolderPath, { recursive: true });
+  await appendFile(logFilePath, JSON.stringify(sessionLine) + "\n");
 
   if (Math.floor(previousTotalTokens / sessionContextMark) < Math.floor(totalTokens / sessionContextMark)) {
     const tokensText = (tokenCount) => tokenCount.toLocaleString("en-US");
     systemMessages.push(
       "This session has used " + tokensText(totalTokens) + " tokens, subagents included: " +
-        tokensText(tokens.input) + " input, " + tokensText(tokens.output) + " output, " +
-        tokensText(tokens.cacheWrite) + " written to the cache, " + tokensText(tokens.cacheRead) + " read from it.",
+        tokensText(tokenCountByKind.input) + " input, " + tokensText(tokenCountByKind.output) + " output, " +
+        tokensText(tokenCountByKind.cacheWrite) + " written to the cache, " + tokensText(tokenCountByKind.cacheRead) + " read from it.",
     );
   }
   if (systemMessages.length > 0) process.stdout.write(JSON.stringify({ systemMessage: systemMessages.join("\n") }));

@@ -11,12 +11,12 @@ export class EvalSuiteService {
    * invoked the way a skill is — and a guide to follow that is no guide. Asked
    * before any case runs, so a run spends nothing on a case that cannot pass.
    */
-  static validateEvalRoot(charter: CharterRoot, evalRoot: EvalRoot): FaultsByFile {
+  static validateEvalRoot(charterRoot: CharterRoot, evalRoot: EvalRoot): FaultsByFile {
     const faultsByFiles: Record<string, readonly DomainFault[]> = {};
-    for (const [path, evalSuite] of Object.entries(evalRoot.suitesByFile)) {
+    for (const [path, evalSuite] of Object.entries(evalRoot.evalSuiteByFile)) {
       const faults = evalSuite.cases.flatMap(({ expect: { invoke: skillId, follow: guideId } }) => {
-        const skillPrimitive = skillId === undefined ? undefined : charter.primitiveById.get(skillId);
-        const guidePrimitive = guideId === undefined ? undefined : charter.primitiveById.get(guideId);
+        const skillPrimitive = skillId === undefined ? undefined : charterRoot.primitiveById.get(skillId);
+        const guidePrimitive = guideId === undefined ? undefined : charterRoot.primitiveById.get(guideId);
         return [
           ...(skillId === undefined || skillPrimitive?.kind === "skill" || skillPrimitive?.kind === "playbook"
             ? []

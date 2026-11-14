@@ -203,7 +203,7 @@ An integrator imports `cw`'s own store and an agent's projection from `cherry-wo
 2. **Given** `cw`'s own charter store and an agent's projection imported from the package, **When** an integrator extends them and composes the engine with the extended ones, **Then** a build answers through the extensions, and the script type-checks against the package alone ([SDK-FR-020](#sdk-fr-020), [SDK-FR-006](#sdk-fr-006)).
 3. **Given** a repository and a home at `memory:` addresses, **When** the engine is composed with no adapter handed, **Then** it is composed with no failure and no file-system call ([SDK-FR-011](#sdk-fr-011), [SDK-SC-006](#sdk-sc-006)).
 4. **Given** a sessions store, a settings store and a local output of an integrator's own, **When** the engine is composed with them and the use cases that use them run, **Then** each answers through the integrator's own, and `cw`'s own is never reached ([SDK-FR-020](#sdk-fr-020), [SDK-FR-003](#sdk-fr-003), [SDK-SC-005](#sdk-sc-005)).
-5. **Given** the contract recorded for the first release under it, **When** what it says of itself is read, **Then** it says how it was made and that nothing has been published under it yet ([SDK-FR-015](#sdk-fr-015), [SDK-FR-016](#sdk-fr-016)).
+5. **Given** the contract recorded by the last release, **When** what it says of itself is read, **Then** it says how it was made and that it is the contract of the last release ([SDK-FR-015](#sdk-fr-015), [SDK-FR-016](#sdk-fr-016)).
 6. **Given** an integrator composing the engine, **When** it runs a signal's sensors, **Then** it names the agent they run for, or that none is named, and the engine assumes none ([CORE-FR-233](spec-core.md#core-fr-233)).
 
 ---

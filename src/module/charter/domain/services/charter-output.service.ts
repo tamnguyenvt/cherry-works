@@ -42,7 +42,7 @@ export class CharterOutputService {
    * keeps none (EVAL-FR-031).
    */
   static compileCharterRoot(
-    charter: CharterRoot,
+    charterRoot: CharterRoot,
     agentProviders: readonly AgentProvider[],
     toolsByOriginKey: ReadonlyMap<string, readonly McpToolDefinition[]> = new Map(),
   ): CharterOutput {
@@ -51,14 +51,14 @@ export class CharterOutputService {
     // mcps come and go (FR-145). Written into `mcp-origins.json` beside each
     // mcp origin, so the server, which reads no charter, serves under these.
     const shortMcpIds = ContentHelper.shortenStringsOf(
-      charter.primitives
+      charterRoot.primitives
         .filter((primitive) => primitive.kind === McpPrimitive.kind)
         .map((mcpPrimitive) => mcpPrimitive.headers.id),
     );
     // In the order ids sort in, as the catalogue lists them, so the same
     // charter is put down in the same order however its files were read (SC-007).
     const compiledPrimitiveByPrimitive = new Map(
-      [...charter.primitives]
+      [...charterRoot.primitives]
         .sort((leftPrimitive, rightPrimitive) =>
           leftPrimitive.headers.id < rightPrimitive.headers.id
             ? -1
@@ -66,12 +66,12 @@ export class CharterOutputService {
               ? 1
               : 0,
         )
-        .map((primitive) => [primitive, CompiledPrimitiveFactory.create(charter, primitive)] as const),
+        .map((primitive) => [primitive, CompiledPrimitiveFactory.create(charterRoot, primitive)] as const),
     );
     // What `cw sensor run` runs, each sensor's command as built: written once,
     // read by every agent given one command per signal (FR-175, FR-179).
-    const builtSensors = BuiltSensorsFactory.create(charter, compiledPrimitiveByPrimitive);
-    const allCatalogue = CatalogueFactory.create(charter, (primitive) =>
+    const builtSensors = BuiltSensorsFactory.create(charterRoot, compiledPrimitiveByPrimitive);
+    const allCatalogue = CatalogueFactory.create(charterRoot, (primitive) =>
       outputPath.getLink(compiledPrimitiveByPrimitive.get(primitive)!),
     );
     // In the order a build lays them (FR-020, FR-021). What an agent opens
@@ -91,9 +91,9 @@ export class CharterOutputService {
           agentProvider,
         ),
       );
-    charterOutput.add(McpOriginsFactory.create(charter, shortMcpIds, toolsByOriginKey));
+    charterOutput.add(McpOriginsFactory.create(charterRoot, shortMcpIds, toolsByOriginKey));
     charterOutput.add(builtSensors);
-    charterOutput.add(CharterMdFactory.create(Primitives.classes, charter.charterPlace));
+    charterOutput.add(CharterMdFactory.create(Primitives.classes, charterRoot.charterPlace));
     for (const compiledPrimitive of compiledPrimitiveByPrimitive.values()) charterOutput.add(compiledPrimitive);
     return charterOutput;
   }

@@ -25,11 +25,11 @@ export class VendorRootFactory {
     uriOf: (vendorFolderPath: string) => string,
   ): VendorRoot {
     // A file kept right in the vendor folder, its `.gitkeep`, is no vendor's.
-    const pathsUnderVendor = vendorFilePaths.filter((filePath) => filePath.includes("/"));
+    const nestedVendorFilePaths = vendorFilePaths.filter((filePath) => filePath.includes("/"));
 
     const oldFolderNames = [
       ...new Set(
-        pathsUnderVendor
+        nestedVendorFilePaths
           .filter(
             (filePath) =>
               filePath.split("/")[VENDOR_NAME_DEPTH] !== primitivesFolderName ||
@@ -53,7 +53,7 @@ export class VendorRootFactory {
       );
 
     const vendorNames = [
-      ...new Set(pathsUnderVendor.map((filePath) => filePath.split("/").slice(0, VENDOR_NAME_DEPTH).join("/"))),
+      ...new Set(nestedVendorFilePaths.map((filePath) => filePath.split("/").slice(0, VENDOR_NAME_DEPTH).join("/"))),
     ].sort();
     return new VendorRoot(vendorNames.map((vendorName) => ({ name: vendorName, uri: uriOf(vendorName) })));
   }

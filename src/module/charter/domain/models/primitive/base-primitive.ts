@@ -41,11 +41,11 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
     headerSchema: Schema,
     headerRecord: Readonly<Record<string, unknown>>,
   ): Readonly<z.infer<Schema>> {
-    const parsedHeaders = headerSchema.safeParse(headerRecord);
-    if (parsedHeaders.success) return parsedHeaders.data;
+    const headersParse = headerSchema.safeParse(headerRecord);
+    if (headersParse.success) return headersParse.data;
 
     const { kind, sample } = sampledKind;
-    const refinementMessages = parsedHeaders.error.issues
+    const refinementMessages = headersParse.error.issues
       .filter((issue) => issue.code === "custom")
       .map((issue) => issue.message);
     const sampleLines = Object.entries({ kind, ...sample }).map(

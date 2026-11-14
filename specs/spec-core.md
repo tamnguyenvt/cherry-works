@@ -4,7 +4,7 @@
 
 **Updated**: 2026-11-14
 
-**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm…" Then: "The catalogue must not send an agent into the charter: build every primitive into the compiled output and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository … reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: … Add two kinds, `template` and `script` …; every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix …, so a skill is invoked as `/<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types…" Then: "Let the hooks go through … `cw sensor run <signal>` …" Then: "`cw vendor add mattpocock/skills --skill=grill-me`: a source holding a charter is installed as a charter; otherwise its `SKILL.md` are … converted into skills of the charter." Then: "`cw vendor inject` … writes what it takes straight into the repository's own charter. A source may gather many charters under `charters/` …" Then: "Git is only how a vendor source is fetched … carry binary assets whole, so the engine can be published for tools with no git and no disk." Then: "Delete the directory too if it is empty." Then: "Use the repository's own git config." Then: "Accept the quality-pass repair stories…" Then: "Make it modular…" Then: "Drop the modules…" Then: "Everything in the domain is a class…" Then: "Nothing inside the engine knows the repository's path…" Then: "… `.cw/` holds the charter (primitives, tests, eval cases, vendors), the output and the log. … A repository laid out the old way is refused, and the authoring skill moves it." Then: "Gather everything of the charter into one charter repository…" Then: "Split the engine into two modules … each adapter replaceable where the engine is composed, the engine never." Then: "The two modules are charter and runtime…" Then: "Hand the engine its adapters, one for every way out — each agent's projection and command line, the charter's store and the rest — the engine's own by default, any of it written anew." Then: "Export only what a tool needs of the engine: compose it handing only the adapters it replaces; keep the charter's store and the agents' projections and command lines out of the package's contract for now." Then: "Keep [SDK-FR-020](spec-sdk.md#sdk-fr-020): export `cw`'s own adapters for a tool to extend." Then: "Keep each compiled entry's path inside the output: the catalogue is written from it." Then: "When no agent is chosen, stop and ask." Then: "Repair what the quality pass of [CORE Story 55](#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) found: prove every Done scenario a test misses, make each test say what its scenario says, keep the engine to its naming guides, and say each thing in one term, as behaviour." Then: "Repair what the next quality pass found: `cw context` estimates with no agent named, `cw context --agent=<agent>` counts exactly beside the estimate, and `--exact` is dropped; the architecture map names every operation the engine asks of what is outside it; every value naming an agent is named for it; the place an author edits the charter is always the one its store says, and no agent's files are told cw's own layout." Then: "Fix what the old hand-over notes left: names the guides refuse, code nothing uses, tests and guards that could not fail, and docs behind the code." Then: "`cw sensor run` has no default agent: with none named, it runs only the sensors kept for no agent."
+**Input**: User descriptions: "Build the Cherry Works charter and its charter engine — a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm…" Then: "The catalogue must not send an agent into the charter: build every primitive into the compiled output and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository … reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: … Add two kinds, `template` and `script` …; every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix …, so a skill is invoked as `/<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types…" Then: "Let the hooks go through … `cw sensor run <signal>` …" Then: "`cw vendor add mattpocock/skills --skill=grill-me`: a source holding a charter is installed as a charter; otherwise its `SKILL.md` are … converted into skills of the charter." Then: "`cw vendor inject` … writes what it takes straight into the repository's own charter. A source may gather many charters under `charters/` …" Then: "Git is only how a vendor source is fetched … carry binary assets whole, so the engine can be published for tools with no git and no disk." Then: "Delete the directory too if it is empty." Then: "Use the repository's own git config." Then: "Accept the quality-pass repair stories…" Then: "Make it modular…" Then: "Drop the modules…" Then: "Everything in the domain is a class…" Then: "Nothing inside the engine knows the repository's path…" Then: "… `.cw/` holds the charter (primitives, tests, eval cases, vendors), the output and the log. … A repository laid out the old way is refused, and the authoring skill moves it." Then: "Gather everything of the charter into one charter repository…" Then: "Split the engine into two modules … each adapter replaceable where the engine is composed, the engine never." Then: "The two modules are charter and runtime…" Then: "Hand the engine its adapters, one for every way out — each agent's projection and command line, the charter's store and the rest — the engine's own by default, any of it written anew." Then: "Export only what a tool needs of the engine: compose it handing only the adapters it replaces; keep the charter's store and the agents' projections and command lines out of the package's contract for now." Then: "Keep [SDK-FR-020](spec-sdk.md#sdk-fr-020): export `cw`'s own adapters for a tool to extend." Then: "Keep each compiled entry's path inside the output: the catalogue is written from it." Then: "When no agent is chosen, stop and ask." Then: "Repair what the quality pass of [CORE Story 55](#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) found: prove every Done scenario a test misses, make each test say what its scenario says, keep the engine to its naming guides, and say each thing in one term, as behaviour." Then: "Repair what the next quality pass found: `cw context` estimates with no agent named, `cw context --agent=<agent>` counts exactly beside the estimate, and `--exact` is dropped; the architecture map names every operation the engine asks of what is outside it; every value naming an agent is named for it; the place an author edits the charter is always the one its store says, and no agent's files are told cw's own layout." Then: "Fix what the old hand-over notes left: names the guides refuse, code nothing uses, tests and guards that could not fail, and docs behind the code." Then: "`cw sensor run` has no default agent: with none named, it runs only the sensors kept for no agent." Then: "Bring the engine's source to the charter's coding rules, as the code smell assessment of 2026-11-14 found it, the product behaving as before; leave the tests and the scripts as they are, and make every installed vendor in the engine, whichever store keeps it, though the package's contract changes."
 
 ## Overview
 
@@ -83,9 +83,14 @@ A single charter covering design, planning and implementation at once has to be 
 - Q: Does the package export the workspace's folders as loose constants beside the values? → A: No: the layout of the store `cw` keeps is one value, as the output's layout is, and nothing is exported beside the values ([SDK-FR-020](spec-sdk.md#sdk-fr-020), [CORE-FR-215](#core-fr-215)).
 - Q: Which sensors does `cw sensor run` run when no agent is named? → A: Only those kept for no agent; no agent is taken by default, Claude included ([CORE-FR-234](#core-fr-234)).
 
+### Session 2026-11-14
+
+- Q: Is the charter store's handing of vendors it made itself repaired now, though it narrows the package's contract, or left to a later major release? → A: Repaired now: no store makes a model of the engine's; the next release is a major one ([CORE-FR-235](#core-fr-235), [CORE Story 64](#core-story-64---make-every-installed-vendor-in-the-engine-whichever-store-keeps-it-priority-p2)).
+- Q: Does the story narrowing the charter store's contract belong to the SDK spec, which keeps the contract? → A: No, to Core, beside the store it changes ([CORE Story 64](#core-story-64---make-every-installed-vendor-in-the-engine-whichever-store-keeps-it-priority-p2)).
+
 ## User Scenarios & Testing *(mandatory)*
 
-Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, Stories 10 to 12 agent authoring, Stories 13 to 15 distribution, [CORE Story 16](#core-story-16---open-every-primitive-as-it-was-compiled-priority-p1) the charter compiled for an agent to open, Stories 17 to 20 knowledge reached through MCP, Stories 21 to 25 the files an agent runs and fills, and how a primitive, its assets and the names in it are kept, [CORE Story 26](#core-story-26---invoke-a-skill-by-its-id-alone-priority-p2) the names an agent is given, [CORE Story 27](#core-story-27---name-every-primitive-by-its-id-alone-priority-p1) the name a primitive is known by, Stories 28 to 38 skills, sensors, vendor sources and assets, Stories 39 to 43 quality cross-checks and their repairs, Stories 44 to 52 the engine as stores, projections and two parts an integrator composes, Stories 53 and 56 repairs of Story 43's pass, and Story 55 the cross-check of those repairs. A story's priority ranks it among the stories of its own part of the product.
+Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, Stories 10 to 12 agent authoring, Stories 13 to 15 distribution, [CORE Story 16](#core-story-16---open-every-primitive-as-it-was-compiled-priority-p1) the charter compiled for an agent to open, Stories 17 to 20 knowledge reached through MCP, Stories 21 to 25 the files an agent runs and fills, and how a primitive, its assets and the names in it are kept, [CORE Story 26](#core-story-26---invoke-a-skill-by-its-id-alone-priority-p2) the names an agent is given, [CORE Story 27](#core-story-27---name-every-primitive-by-its-id-alone-priority-p1) the name a primitive is known by, Stories 28 to 38 skills, sensors, vendor sources and assets, Stories 39 to 43 quality cross-checks and their repairs, Stories 44 to 52 the engine as stores, projections and two parts an integrator composes, Stories 53 and 56 repairs of Story 43's pass, Story 55 the cross-check of those repairs, and Stories 57 to 66 the engine's source brought to the charter's coding rules, with Story 62 the cross-check of the first five. A story's priority ranks it among the stories of its own part of the product.
 
 ### CORE Story 1 - Author a charter and put the agent under it (Priority: P1)
 
@@ -1211,6 +1216,179 @@ A maintainer finds every requirement of the charter's engine proved by a scenari
 
 ---
 
+### CORE Story 57 - Read every value of the charter's rules by what it holds (Priority: P2)
+
+**Status**: Done
+
+A contributor reads any file of the charter's domain — its models, value objects, factories and services — and finds each value named for what it holds in that place, the type it holds last: never a single vague word, a past participle on its own, or a name that leaves its type out.
+
+**Why this priority**: The code smell assessment of 2026-11-14 found 49 such names there; a contributor copying one copies the habit, and a name hiding its type sends every reader to its declaration.
+
+**Independent Test**: Assess the charter's domain again against the charter's naming rule and find no such name; then run every test, and exercise every `cw` command and the portal, and confirm each answers as before.
+
+**Acceptance Scenarios**:
+
+1. **Given** the charter's domain, **When** it is assessed again against the charter's naming rule, **Then** no value is named by a single vague word, by a past participle on its own, or without the type it holds ([CORE-SC-071](#core-sc-071)).
+2. **Given** the values renamed, **When** every `cw` command, the portal, the package and every use case through its driver port are exercised, **Then** each answers as before, and the package's contract is left as it was ([CORE-SC-058](#core-sc-058), [CORE-SC-072](#core-sc-072)).
+
+---
+
+### CORE Story 58 - Read every value of the charter's application and adapters by what it holds (Priority: P2)
+
+**Status**: Todo
+
+A contributor reads any file of the charter's application — its use cases, services and ports — or of its adapters, each agent's included, and finds each value named for what it holds in that place, the type it holds last.
+
+**Why this priority**: The code smell assessment of 2026-11-14 found 57 such names there, most of them the charter itself named as if it were its source, and lists of names named as if they held what they name.
+
+**Independent Test**: Assess the charter's application and adapters again against the charter's naming rule and find no such name; then run every test, and exercise every `cw` command and the portal, and confirm each answers as before.
+
+**Acceptance Scenarios**:
+
+1. **Given** the charter's application and its adapters, each agent's included, **When** they are assessed again against the charter's naming rule, **Then** no value is named by a single vague word, by a past participle on its own, or without the type it holds ([CORE-SC-071](#core-sc-071)).
+2. **Given** the values renamed, **When** every `cw` command, the portal, the package and every use case through its driver port are exercised, **Then** each answers as before, and the package's contract is left as it was ([CORE-SC-058](#core-sc-058), [CORE-SC-072](#core-sc-072)).
+
+---
+
+### CORE Story 59 - Read every value of running, the settings and the kernel by what it holds (Priority: P2)
+
+**Status**: Todo
+
+A contributor reads any file of running, of the part keeping a repository's settings, or of the kernel the parts share, and finds each value named for what it holds in that place, the type it holds last.
+
+**Why this priority**: The code smell assessment of 2026-11-14 found 28 such names there, in the code every other part is built on.
+
+**Independent Test**: Assess running, the settings and the kernel again against the charter's naming rule and find no such name; then run every test, and exercise every `cw` command and the portal, and confirm each answers as before.
+
+**Acceptance Scenarios**:
+
+1. **Given** running, the settings and the kernel, **When** they are assessed again against the charter's naming rule, **Then** no value is named by a single vague word, by a past participle on its own, or without the type it holds ([CORE-SC-071](#core-sc-071)).
+2. **Given** the values renamed, **When** every `cw` command, the portal, the package and every use case through its driver port are exercised, **Then** each answers as before, and the package's contract is left as it was ([CORE-SC-058](#core-sc-058), [CORE-SC-072](#core-sc-072)).
+
+---
+
+### CORE Story 60 - Read every value of the command line, the portal and the mcp server by what it holds (Priority: P2)
+
+**Status**: Todo
+
+A contributor reads any file of the command line, of the portal, its page included, or of the mcp server, and finds each value named for what it holds in that place, the type it holds last.
+
+**Why this priority**: The code smell assessment of 2026-11-14 found 64 such names there, in the code a contributor adding a command or a view copies first.
+
+**Independent Test**: Assess the command line, the portal and the mcp server again against the charter's naming rule and find no such name; then run every test, and exercise every `cw` command, the portal and the mcp server, and confirm each answers as before.
+
+**Acceptance Scenarios**:
+
+1. **Given** the command line, the portal and the mcp server, **When** they are assessed again against the charter's naming rule, **Then** no value is named by a single vague word, by a past participle on its own, or without the type it holds ([CORE-SC-071](#core-sc-071)).
+2. **Given** the values renamed, **When** every `cw` command, the portal, the mcp server and the package are exercised, **Then** each answers as before, and the package's contract is left as it was ([CORE-SC-058](#core-sc-058), [CORE-SC-072](#core-sc-072)).
+
+---
+
+### CORE Story 61 - Name each part of the engine for the role it plays (Priority: P2)
+
+**Status**: Todo
+
+A contributor finds each part of the engine named and placed as its role says: what only a use case refuses is a refusal of the application's, the answers a part gives gathered in the order the naming guide sets, every function a maker of models calls a member of that maker, and each operation of the portal page named for what it acts on.
+
+**Why this priority**: The code smell assessment of 2026-11-14 found four parts named or placed against the naming guide; each sends a contributor copying it to the wrong layer.
+
+**Independent Test**: Assess the engine again against the naming guide and find no breach; then run every test, and exercise every `cw` command and the portal, and confirm each answers as before.
+
+**Acceptance Scenarios**:
+
+1. **Given** the engine's refusals, its answers, its makers of models and the portal page's operations, **When** they are assessed again against the naming guide, **Then** each is named and placed as its role says ([CORE-SC-071](#core-sc-071)).
+2. **Given** the parts renamed or moved, **When** every `cw` command, the portal, the package and every use case through its driver port are exercised, **Then** each answers as before, every refusal with the same message and fix, and the package's contract is left as it was ([CORE-SC-058](#core-sc-058), [CORE-SC-072](#core-sc-072)).
+
+---
+
+### CORE Story 62 - Quality cross-check of CORE Story 57, CORE Story 58, CORE Story 59, CORE Story 60, CORE Story 61 (Priority: P3)
+
+**Status**: Todo
+
+The renames of the engine's source are checked together before later work builds on them, and what the check finds is repaired here, before the pass is run again.
+
+**Why this priority**: It verifies the renames against the whole product, not only the findings they answer.
+
+**Independent Test**: Run the quality pass after the five named stories are Done.
+
+**Acceptance Scenarios**:
+
+1. **Given** [CORE Story 57](#core-story-57---read-every-value-of-the-charters-rules-by-what-it-holds-priority-p2), [CORE Story 58](#core-story-58---read-every-value-of-the-charters-application-and-adapters-by-what-it-holds-priority-p2), [CORE Story 59](#core-story-59---read-every-value-of-running-the-settings-and-the-kernel-by-what-it-holds-priority-p2), [CORE Story 60](#core-story-60---read-every-value-of-the-command-line-the-portal-and-the-mcp-server-by-what-it-holds-priority-p2) and [CORE Story 61](#core-story-61---name-each-part-of-the-engine-for-the-role-it-plays-priority-p2) are Done, **When** the quality pass runs, **Then** it checks the code and every spec against the quality checklist, each reported violation is repaired within this story, not as a story of its own, and the pass is run again ([CORE-SC-026](#core-sc-026)).
+
+---
+
+### CORE Story 63 - Keep the settings' rules with the settings (Priority: P2)
+
+**Status**: Todo
+
+A contributor finds what makes a repository's settings acceptable — at least one agent chosen, each one an agent the engine compiles for, a ceiling that is a number above zero — decided by the settings themselves, not by the operation that saves them, and the agents a repository chose held as agents, their names written only where the settings are kept or answered.
+
+**Why this priority**: A rule written in the operation that saves the settings is skipped by every other way of making them; and a name held where the agent is meant lets any word stand for an agent.
+
+**Independent Test**: Save settings with no agent, with an agent the engine does not compile for, and with a ceiling that is not above zero, and confirm each is refused as before; save good settings and read them back as before; assess the settings again against the architecture guide and find no breach.
+
+**Acceptance Scenarios**:
+
+1. **Given** settings choosing no agent, an agent the engine does not compile for, or a ceiling that is not a number above zero, **When** they are saved, through `cw init` or the settings' driver port, **Then** each is refused with the same message and fix as before, and nothing is written ([CORE-FR-236](#core-fr-236)).
+2. **Given** a repository's settings, **When** they are assessed again against the architecture guide, **Then** their rules are the settings' own and the agents they chose are held as agents ([CORE-FR-236](#core-fr-236), [CORE-SC-071](#core-sc-071)).
+3. **Given** the rules moved, **When** every `cw` command, the portal, the package and every use case through its driver port are exercised, **Then** each answers as before, and the package's contract is left as it was ([CORE-SC-058](#core-sc-058), [CORE-SC-072](#core-sc-072)).
+
+---
+
+### CORE Story 64 - Make every installed vendor in the engine, whichever store keeps it (Priority: P2)
+
+**Status**: Todo
+
+An integrator writing a charter store of their own hands the engine the vendor files it keeps, as it keeps them, and the engine makes the installed vendors out of them and refuses a vendor laid the old way. No store makes a model of the engine's, and none is lent what makes one.
+
+**Why this priority**: Every other part of the charter a store keeps it hands as it keeps it, for the engine to validate; a store making the vendors itself can skip the engine's rules for them. The change narrows the package's contract, so the next release is a major one.
+
+**Independent Test**: Compose the engine with a charter store of a test's own handing kept vendor files, list the vendors and inject one, and confirm the engine names each by its three folders and refuses one laid the old way; confirm the store's port lends no maker of a model; request a release that is not major and confirm it is refused.
+
+**Acceptance Scenarios**:
+
+1. **Given** a charter store of an integrator's own handing the vendor files it keeps, **When** the installed vendors are listed or one is injected, **Then** the engine makes each vendor, named by its three folders, as `cw`'s own store's are ([CORE-FR-050](#core-fr-050), [CORE-FR-235](#core-fr-235)).
+2. **Given** a vendor laid the old way, in `cw`'s own store or another, **When** the installed vendors are read, **Then** it is refused naming the folder to take away, as before, and nothing of it is read as a vendor ([CORE-FR-235](#core-fr-235)).
+3. **Given** the charter store's port, **When** an adapter is written against it, **Then** the port hands and takes the vendors as they are kept, and lends nothing that makes a model of the engine's ([CORE-FR-235](#core-fr-235)).
+4. **Given** the package's contract changed, **When** a release that is not major is requested, **Then** it is refused naming what changed ([SDK-FR-015](spec-sdk.md#sdk-fr-015)).
+5. **Given** the vendors made in the engine, **When** every `cw` command, the portal and every use case through its driver port are exercised, **Then** each answers as before ([CORE-SC-058](#core-sc-058)).
+
+---
+
+### CORE Story 65 - Write each file as the files before it (Priority: P3)
+
+**Status**: Todo
+
+A contributor reads each file of a pattern the engine already has — one agent's files beside the other agent's, a command beside the other commands — and finds it written as the files before it: the same shape, the same names for the same job.
+
+**Why this priority**: The code smell assessment of 2026-11-14 found nine files written apart from the files of their pattern; each makes the next contributor choose between two ways.
+
+**Independent Test**: Assess the engine again against the rule that a file follows the files before it and find no breach; then run every test, and exercise every `cw` command and the portal, and confirm each answers as before.
+
+**Acceptance Scenarios**:
+
+1. **Given** each file of a pattern the engine already has, **When** it is assessed again against the files before it, **Then** it has their shape and their names ([CORE-SC-071](#core-sc-071)).
+2. **Given** the files brought in line, **When** every `cw` command, the portal, the package and every use case through its driver port are exercised, **Then** each answers as before, and the package's contract is left as it was ([CORE-SC-058](#core-sc-058), [CORE-SC-072](#core-sc-072)).
+
+---
+
+### CORE Story 66 - Keep the command line's helpers where its helpers are (Priority: P3)
+
+**Status**: Todo
+
+A contributor looking for what the command line's commands share finds it all in one place, and none of it loose in the file that holds the commands together.
+
+**Why this priority**: The code smell assessment of 2026-11-14 found one helper outside the place the command line keeps its helpers.
+
+**Independent Test**: Assess the command line again against the rule on splitting functions and find no breach; then run every `cw` command and confirm each answers as before.
+
+**Acceptance Scenarios**:
+
+1. **Given** the command line, **When** it is assessed again against the rule on splitting functions, **Then** every helper its commands share sits where its helpers are kept ([CORE-SC-071](#core-sc-071)).
+2. **Given** the helper moved, **When** every `cw` command is run, including an unknown one, **Then** each answers as before ([CORE-SC-058](#core-sc-058), [CORE-SC-072](#core-sc-072)).
+
+---
+
 ### Edge Cases
 
 **The charter and its engine**
@@ -1626,6 +1804,8 @@ A maintainer finds every requirement of the charter's engine proved by a scenari
 - <a id="core-fr-232"></a>**CORE-FR-232**: Every operation a driver port offers MUST be named verb first, for what it acts on; no operation MUST be named by a bare verb or by a noun alone.
 - <a id="core-fr-233"></a>**CORE-FR-233**: Running a signal's sensors MUST be told the agent they run for, or that none is named; the engine MUST NOT assume one, and runs for none named as [CORE-FR-234](#core-fr-234) says.
 - <a id="core-fr-234"></a>**CORE-FR-234**: `cw sensor run <signal>` with an agent named with `--agent` MUST run the sensors of that signal kept for no agent and those kept for that agent; with no agent named, it MUST run only those kept for no agent, and MUST NOT take any agent by default.
+- <a id="core-fr-235"></a>**CORE-FR-235**: The store that keeps the charter MUST hand the vendors it keeps as it keeps them, each file by its place under the vendor folder and each vendor's folder by where the store keeps it, in its own words; the engine MUST make the installed vendors out of them, and refuse a vendor laid the old way, whichever store keeps them; the store's port MUST NOT lend a store what makes a model of the engine's.
+- <a id="core-fr-236"></a>**CORE-FR-236**: What makes a repository's settings acceptable — at least one agent chosen, each an agent the engine compiles for, a token ceiling that is a number above zero — MUST be decided by the settings themselves, whichever way they are made, and the agents a repository chose MUST be held as agents, their names written only where the settings are kept or answered.
 
 ### Key Entities
 
@@ -1739,6 +1919,8 @@ A maintainer finds every requirement of the charter's engine proved by a scenari
 - <a id="core-sc-068"></a>**CORE-SC-068**: 0 scenarios of `Done` stories whose behaviour can be run are proven only by matching the source's text.
 - <a id="core-sc-069"></a>**CORE-SC-069**: Across every spec, 0 terms name two things and 0 things carry two terms.
 - <a id="core-sc-070"></a>**CORE-SC-070**: 0 scenarios of `Done` stories are held by no test and by no run their evidence names, and 0 tests assert the opposite of the scenario they are labelled with.
+- <a id="core-sc-071"></a>**CORE-SC-071**: Assessed again against the charter's coding rules, the engine's source holds 0 of the findings the code smell assessment of 2026-11-14 recorded for it and the developer agreed to repair.
+- <a id="core-sc-072"></a>**CORE-SC-072**: Bringing the engine's source to its coding rules renames or narrows 0 names of the package's contract, but what [CORE-FR-235](#core-fr-235) changes.
 
 ## Assumptions
 
@@ -1798,8 +1980,11 @@ A maintainer finds every requirement of the charter's engine proved by a scenari
 - A web browser on the developer's machine, for the portal.
 - The public npm registry, reachable when `cw` is installed or upgraded, and a maintainer account holding publish rights for the package name, for a release.
 - For knowledge reached through MCP: each mcp origin's MCP server reachable over the network, or its command installed on the developer's machine; an account of the developer's own at each; and the operating system's credential store — the macOS keychain, or a Secret Service store on Linux.
+- A finding of the code smell assessment of 2026-11-14 whose repair would rename or narrow a name of the package's contract is not repaired by CORE Stories 57 to 63, 65 and 66: it is put to the developer when it is met ([CORE-SC-072](#core-sc-072)).
 
 ## Out of Scope
+
+- Bringing the tests, the release scripts and the build's configuration to the charter's coding rules: the code smell assessment of 2026-11-14 skipped them at the developer's word.
 
 - A dependency injection framework: the adapters are handed to the engine where it is composed.
 - A later application beyond the portal that runs or shows agent sessions, a terminal or a work-item board, and anything such an application stores for itself.

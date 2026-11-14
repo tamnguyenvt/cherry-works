@@ -19,30 +19,36 @@ export class BuiltSensorsFactory {
    * hold (FR-162).
    */
   static create(
-    charter: CharterRoot,
+    charterRoot: CharterRoot,
     compiledPrimitiveByPrimitive: ReadonlyMap<Primitive, CompiledPrimitive>,
   ): BuiltSensors {
     return new BuiltSensors(
-      [...charter.primitives]
+      [...charterRoot.primitives]
         .flatMap((primitive) => (primitive.kind === SensorPrimitive.kind ? [primitive] : []))
         .sort((leftSensorPrimitive, rightSensorPrimitive) =>
           leftSensorPrimitive.headers.id < rightSensorPrimitive.headers.id ? -1 : 1,
         )
         .map(
-          ({ headers: { id, signal, run: sensorRun, "agent-provider": agentProviders } }) =>
+          ({ headers: { id, signal, run: sensorRun, "agent-provider": agentProviderNames } }) =>
             new BuiltSensor({
               id,
               signal,
-              ...(agentProviders === undefined
+              ...(agentProviderNames === undefined
                 ? {}
-                : { "agent-provider": agentProviders.map((agentName) => new AgentProvider(agentName)) }),
+                : {
+                    "agent-provider": agentProviderNames.map(
+                      (agentProviderName) => new AgentProvider(agentProviderName),
+                    ),
+                  }),
               command: PrimitiveHelper.rewriteReferences(sensorRun, (reference, referencedId) => {
-                const scriptPrimitive = charter.primitiveById.get(referencedId);
-                const compiledScript = scriptPrimitive && compiledPrimitiveByPrimitive.get(scriptPrimitive);
-                const executionFile = compiledScript?.assets.find((asset) => asset.isExecutable)?.assetPath;
-                return compiledScript === undefined || executionFile === undefined
+                const scriptPrimitive = charterRoot.primitiveById.get(referencedId);
+                const compiledScriptPrimitive = scriptPrimitive && compiledPrimitiveByPrimitive.get(scriptPrimitive);
+                const executionFilePath = compiledScriptPrimitive?.assets.find(
+                  (asset) => asset.isExecutable,
+                )?.assetPath;
+                return compiledScriptPrimitive === undefined || executionFilePath === undefined
                   ? reference
-                  : outputPath.getLink(compiledScript, executionFile);
+                  : outputPath.getLink(compiledScriptPrimitive, executionFilePath);
               }),
             }),
         ),
@@ -67,12 +73,16 @@ export class BuiltSensorsFactory {
               readonly "agent-provider"?: readonly AgentProviderName[];
             })[]
           ).map(
-            ({ "agent-provider": agentProviders, ...builtSensor }) =>
+            ({ "agent-provider": agentProviderNames, ...builtSensor }) =>
               new BuiltSensor({
                 ...builtSensor,
-                ...(agentProviders === undefined
+                ...(agentProviderNames === undefined
                   ? {}
-                  : { "agent-provider": agentProviders.map((agentName) => new AgentProvider(agentName)) }),
+                  : {
+                      "agent-provider": agentProviderNames.map(
+                        (agentProviderName) => new AgentProvider(agentProviderName),
+                      ),
+                    }),
               }),
           ),
         );

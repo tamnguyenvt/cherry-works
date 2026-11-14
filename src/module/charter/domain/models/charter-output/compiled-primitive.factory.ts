@@ -28,14 +28,16 @@ export class CompiledPrimitiveFactory {
    * written: the charter has refused it, and a build never reaches here with one
    * (FR-147, FR-162).
    */
-  static create(charter: CharterRoot, primitive: Primitive): CompiledPrimitive {
+  static create(charterRoot: CharterRoot, primitive: Primitive): CompiledPrimitive {
     const markdownText = primitive.writeMarkdown({
       // A mixin nothing answers to is left out: the charter already names that
       // file as an error, and a build refused for it never reaches here (FR-009).
-      mixins: charter.mixinsOf(primitive).flatMap((mixin) => (mixin instanceof MixinPrimitive ? [mixin] : [])),
+      mixins: charterRoot
+        .mixinsOf(primitive)
+        .flatMap((mixinPrimitive) => (mixinPrimitive instanceof MixinPrimitive ? [mixinPrimitive] : [])),
       idReplacer: (body) =>
         PrimitiveHelper.rewriteStandaloneReferences(body, (referencedId, isInCodeSpan) => {
-          const referencedPrimitive = charter.primitiveById.get(referencedId);
+          const referencedPrimitive = charterRoot.primitiveById.get(referencedId);
           // The id is the text, in a code span where the author wrote one.
           return referencedPrimitive === undefined
             ? undefined

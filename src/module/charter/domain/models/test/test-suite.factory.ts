@@ -31,8 +31,8 @@ export class TestSuiteFactory {
       );
     }
 
-    const parsedSuite = TestSuite.schema.safeParse(parsedJson);
-    if (!parsedSuite.success)
+    const testSuiteParse = TestSuite.schema.safeParse(parsedJson);
+    if (!testSuiteParse.success)
       throw new InvalidTestSuiteFault(
         `This file is not written as a suite of cases.`,
         `Write it as ${TestSuite.sampleText}`,
@@ -41,7 +41,7 @@ export class TestSuiteFactory {
         },
       );
 
-    return new TestSuite(parsedSuite.data.description, parsedSuite.data.cases, text);
+    return new TestSuite(testSuiteParse.data.description, testSuiteParse.data.cases, text);
   }
 
   private constructor() {}

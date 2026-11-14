@@ -13,7 +13,7 @@ export class TestRoot {
   constructor(
     /** Every suite that reads, under its file, in the order their paths sort
      *  in. */
-    readonly suitesByFile: Readonly<Record<string, TestSuite>>,
+    readonly testSuiteByFile: Readonly<Record<string, TestSuite>>,
     /** The files that were meant to be suites and could not be read as one,
      *  and why. Held rather than raised: a run is refused for them, and a
      *  listing still shows them (FR-088). */

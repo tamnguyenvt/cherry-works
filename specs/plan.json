@@ -785,6 +785,74 @@
         "summary": "Quality passes 1-3 (F, then B with no error); every violation repaired within the story (scenarios 2-35); typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed; cw context --exact --agent=claude +0.8%. fix/quality-warns-after-core-55: scenarios 34-36 rewritten and added, each held by test/predicting-the-main-context.test.ts; pnpm test twice 1026 pass, 0 fail, 0 skipped; that count is now run as cw context --agent=claude, --exact dropped; its scenarios that tests hold proved again after CORE-FR-031, -035, -055, -175, -176, -222, -231, -233, -234 and EVAL-FR-005 were reworded: pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8, 1034 pass, 0 fail, 0 skipped",
         "date": "2026-11-14"
       }
+    },
+    {
+      "id": "CORE Story 57",
+      "title": "Read every value of the charter's rules by what it holds",
+      "dependsOn": [],
+      "evidence": {
+        "summary": "typecheck, lint:deps, lint, build, 1034 tests pass, contract/ unchanged; the 43 agreed no-single-word-naming findings of the charter domain reassessed by its declared names, none left; cw test, doctor and the session tokens counter run by hand answer as before; specs check passes",
+        "date": "2026-11-14"
+      }
+    },
+    {
+      "id": "CORE Story 58",
+      "title": "Read every value of the charter's application and adapters by what it holds",
+      "dependsOn": []
+    },
+    {
+      "id": "CORE Story 59",
+      "title": "Read every value of running, the settings and the kernel by what it holds",
+      "dependsOn": []
+    },
+    {
+      "id": "CORE Story 60",
+      "title": "Read every value of the command line, the portal and the mcp server by what it holds",
+      "dependsOn": []
+    },
+    {
+      "id": "CORE Story 61",
+      "title": "Name each part of the engine for the role it plays",
+      "dependsOn": []
+    },
+    {
+      "id": "CORE Story 62",
+      "title": "Quality cross-check of CORE Story 57, CORE Story 58, CORE Story 59, CORE Story 60, CORE Story 61",
+      "dependsOn": [
+        "CORE Story 57",
+        "CORE Story 58",
+        "CORE Story 59",
+        "CORE Story 60",
+        "CORE Story 61"
+      ]
+    },
+    {
+      "id": "CORE Story 63",
+      "title": "Keep the settings' rules with the settings",
+      "dependsOn": [
+        "CORE Story 62"
+      ]
+    },
+    {
+      "id": "CORE Story 64",
+      "title": "Make every installed vendor in the engine, whichever store keeps it",
+      "dependsOn": [
+        "CORE Story 62"
+      ]
+    },
+    {
+      "id": "CORE Story 65",
+      "title": "Write each file as the files before it",
+      "dependsOn": [
+        "CORE Story 62"
+      ]
+    },
+    {
+      "id": "CORE Story 66",
+      "title": "Keep the command line's helpers where its helpers are",
+      "dependsOn": [
+        "CORE Story 62"
+      ]
     }
   ]
 }

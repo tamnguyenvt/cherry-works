@@ -246,7 +246,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       // empty list, the way a file nothing is wrong with is left out of the
       // faults.
       const testCasesByFile = Object.fromEntries(
-        Object.entries(testRoot.suitesByFile)
+        Object.entries(testRoot.testSuiteByFile)
           .map(
             ([filePath, suite]) =>
               [
@@ -633,22 +633,22 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  is testing the charter's. */
   async listTestSuites(): Promise<CharterDTOs.TestSuites | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.listTestSuites", async () => {
-      const { suitesByFile, faultsByFiles, suiteNameByFile } = await this.#loadTestRoot();
+      const { testSuiteByFile, faultsByFiles, suiteNameByFile } = await this.#loadTestRoot();
       // In the order their paths sort in: one that reads with its name, body,
       // description and each case said; one that does not with its name and
       // the fault that says why (FR-124).
-      const suitePaths = [...Object.keys(suitesByFile), ...Object.keys(faultsByFiles.faultsByFilePath)].sort(
+      const suitePaths = [...Object.keys(testSuiteByFile), ...Object.keys(faultsByFiles.faultsByFilePath)].sort(
         (leftPath, rightPath) => leftPath.localeCompare(rightPath),
       );
       return CharterDTOs.TestSuites.of({
         testSuites: suitePaths.map((path) => {
-          const suite = suitesByFile[path];
+          const testSuite = testSuiteByFile[path];
           const [fault] = faultsByFiles.faultsByFilePath[path] ?? [];
           return CharterDTOs.TestSuite.of({
             name: suiteNameByFile[path] ?? path,
-            ...(suite === undefined ? {} : { text: suite.body }),
-            ...(suite?.description === undefined ? {} : { description: suite.description }),
-            cases: (suite?.cases ?? []).map(({ situation, expectation, activatedId }) =>
+            ...(testSuite === undefined ? {} : { text: testSuite.body }),
+            ...(testSuite?.description === undefined ? {} : { description: testSuite.description }),
+            cases: (testSuite?.cases ?? []).map(({ situation, expectation, activatedId }) =>
               CharterDTOs.TestCase.of({
                 situation,
                 expectation,
@@ -695,23 +695,23 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  it holds is evaluating the charter's. */
   async listEvalSuites(): Promise<CharterDTOs.EvalSuites | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.listEvalSuites", async () => {
-      const { suitesByFile, faultsByFiles, suiteNameByFile, suiteTextByFile } = await this.#loadEvalRoot();
+      const { evalSuiteByFile, faultsByFiles, suiteNameByFile, suiteTextByFile } = await this.#loadEvalRoot();
       // In the order their paths sort in: one that reads with its name, text,
       // description and each case said; one that does not with its name, its
       // text and the fault that says why.
-      const suitePaths = [...Object.keys(suitesByFile), ...Object.keys(faultsByFiles.faultsByFilePath)].sort(
+      const suitePaths = [...Object.keys(evalSuiteByFile), ...Object.keys(faultsByFiles.faultsByFilePath)].sort(
         (leftPath, rightPath) => leftPath.localeCompare(rightPath),
       );
       return CharterDTOs.EvalSuites.of({
         evalSuites: suitePaths.map((path) => {
-          const suite = suitesByFile[path];
+          const evalSuite = evalSuiteByFile[path];
           const suiteText = suiteTextByFile[path];
           const [fault] = faultsByFiles.faultsByFilePath[path] ?? [];
           return CharterDTOs.EvalSuite.of({
             name: suiteNameByFile[path] ?? path,
             ...(suiteText === undefined ? {} : { text: suiteText }),
-            ...(suite?.description === undefined ? {} : { description: suite.description }),
-            cases: (suite?.cases ?? []).map(({ prompt, expect }) => CharterDTOs.EvalCase.of({ prompt, ...expect })),
+            ...(evalSuite?.description === undefined ? {} : { description: evalSuite.description }),
+            cases: (evalSuite?.cases ?? []).map(({ prompt, expect }) => CharterDTOs.EvalCase.of({ prompt, ...expect })),
             ...(fault === undefined ? {} : { fault: this.findingDTOOf(fault) }),
           });
         }),
@@ -825,7 +825,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       if (!testRoot.faultsByFiles.isEmpty) return this.faultsByFileDTOOf(testRoot.faultsByFiles);
 
       return CharterDTOs.TestRunReport.of({
-        testCaseReports: Object.entries(testRoot.suitesByFile)
+        testCaseReports: Object.entries(testRoot.testSuiteByFile)
           .flatMap(([filePath, suite]) =>
             TestSuiteService.runSuite(charter, testRoot.suiteNameByFile[filePath] ?? filePath, suite),
           )

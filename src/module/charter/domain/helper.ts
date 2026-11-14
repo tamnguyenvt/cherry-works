@@ -85,7 +85,7 @@ export class ContentHelper {
    * the order the strings sort in.
    */
   static shortenStringsOf(strings: readonly string[]): ShortStrings {
-    const shortStrings: Record<string, string> = {};
+    const shortStringByLongString: Record<string, string> = {};
     const takenShortStrings = new Set<string>();
     for (const longString of [...new Set(strings)].sort()) {
       const firstSegment = longString.split("/")[0];
@@ -96,9 +96,9 @@ export class ContentHelper {
       let shortString = hashedString;
       for (let count = 2; takenShortStrings.has(shortString); count++) shortString = `${hashedString}_${count}`;
       takenShortStrings.add(shortString);
-      shortStrings[longString] = shortString;
+      shortStringByLongString[longString] = shortString;
     }
-    return shortStrings;
+    return shortStringByLongString;
   }
 
   /** The hash of one text, in hex: what tells two readings of a primitive apart,

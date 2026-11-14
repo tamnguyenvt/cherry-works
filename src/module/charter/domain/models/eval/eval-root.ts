@@ -6,7 +6,7 @@ import type { EvalSuite } from "./eval-suite.js";
 export class EvalRoot {
   constructor(
     /** Every suite that reads, under its path, in the order the paths sort in. */
-    readonly suitesByFile: Readonly<Record<string, EvalSuite>>,
+    readonly evalSuiteByFile: Readonly<Record<string, EvalSuite>>,
     readonly faultsByFiles: FaultsByFile,
     /** What each evaluation file is reported under, under its file: the name
      *  its store gave it. */
@@ -32,6 +32,6 @@ export class EvalRoot {
 
   /** No suite read and none refused: nothing was written to evaluate. */
   get isEmpty(): boolean {
-    return Object.keys(this.suitesByFile).length === 0 && this.faultsByFiles.isEmpty;
+    return Object.keys(this.evalSuiteByFile).length === 0 && this.faultsByFiles.isEmpty;
   }
 }
