@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.0 — 2026-11-14
+
 - The Cherry Works engine can now be customized with adapters of your own: `import { composeApplications } from "cherry-works"` and hand it the adapters you replace — where files are kept, the charter's store, each agent's projection and command line, and the rest. See [Extending the engine](docs/extending-the-engine.md).
 - **Breaking:** the workspace under `.cw/` is now laid out in three parts:
   - `.cw/charter/` — what you write: the primitives in `primitive/<kind>/`, the tests in `test/`, the evaluation cases in `eval/`, and the vendor sources you install in `vendor/`. Commit it.
@@ -9,6 +11,14 @@
   - `.cw/log/` — what `cw` records while it works, such as each evaluation's working copy and its results. Version control ignores it.
 
   A repository laid out the old way is refused until the `cw-author` skill moves it.
+- **Breaking:** a vendor source holds its primitives in `.cw/charter/primitive/`; a source laid out the old way is refused until it is moved.
+- **Breaking:** `cw sensor run <signal>` runs the sensors kept for the agent named with `--agent`, and with none named only the sensors kept for no agent. Run `cw build` after upgrading so each hook names its agent.
+- **Breaking:** `cw context --exact` is gone. `cw context --agent=<agent>` lists each primitive's estimate beside its count through that agent's command line, and warns where the totals differ by more than 15%; `cw context` alone estimates for every agent.
+- **Breaking:** `cw doctor` no longer reports a vendored file edited in this repository.
+- **Breaking:** the built-in `cw-session-cost` skill is gone; `cw sessions` still sums the tokens of the sessions kept on this machine, by day and by session.
+- `cw init`, `cw vendor add` and `cw vendor remove` work in a folder that is not a git repository; adding needs git on the machine only to reach the source.
+- A primitive's binary assets, such as images, are built and installed byte for byte.
+- On Codex, `cw build` replaces whole the hooks of a signal the charter's sensors run on, as it does on Claude.
 
 ## 0.9.0 — 2026-10-30
 
