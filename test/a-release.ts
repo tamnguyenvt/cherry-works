@@ -29,7 +29,8 @@ export interface ReleaseFixture {
 /** A release run by `scripts/release.ts` itself in a folder of its own, with
  *  git, npm and pnpm put in place by fakes: no registry, remote or real
  *  release is reached. Each fake command it ran is in `release-commands.jsonl`,
- *  the package.json it packed in `packed-package.json`, and the files the
+ *  the package.json it packed in `packed-package.json`, the contract the
+ *  suite was run against in `tested-contract.json`, and the files the
  *  release commit recorded in `recorded-release.json`. The
  *  folder is taken away whatever `readReleaseRun` does. */
 export async function inARelease(
@@ -80,7 +81,9 @@ if (commandName === 'pnpm') {
   fs.writeFileSync('checked-readme.txt', fs.readFileSync('README.md', 'utf8'));
   fs.mkdirSync('dist', { recursive: true });
   fs.copyFileSync('built-contract.d.ts', 'dist/index.d.ts');
-  if (releaseMode === 'tests-fail') process.exit(1);
+  if (commandArguments[0] === 'test')
+    fs.writeFileSync('tested-contract.json', JSON.stringify(fs.existsSync('contract') ? Object.fromEntries(fs.readdirSync('contract').sort().map((contractFileName) => [contractFileName, fs.readFileSync(path.join('contract', contractFileName), 'utf8')])) : null));
+  if (releaseMode === 'tests-fail' && commandArguments[0] === 'test') process.exit(1);
 } else if (commandName === 'npm') {
   if (commandArguments[0] === 'whoami') console.info('maintainer');
   if (commandArguments[0] === 'view' && commandArguments[2] === 'maintainers') {

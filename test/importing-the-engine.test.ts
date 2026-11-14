@@ -356,14 +356,14 @@ assert.doesNotMatch(JSON.stringify(sensorRunAnswer), /Store unavailable/);
 /** The engine composed over the tool's in-memory adapters, for Claude. */
 const failureConsumerCode =
   memoryConsumerCode +
-  String.raw`
+  `
 const { charterAuthoringApp, charterBuildingApp } = await composeOverMemory(['claude']);
 `;
 
 test("a refusal the caller can correct is answered as a fault DTO with its next move, and not logged (SDK Story 5 scenario 1)", () => {
   runConsumerCode(
     failureConsumerCode +
-      String.raw`
+      `
 const listAnswer = await charterAuthoringApp.listCatalogue('nonsense');
 assert.equal(listAnswer.type, 'Fault');
 assert.match(listAnswer.data.message, /"nonsense" is not a kind/);
@@ -489,7 +489,7 @@ assert.ok(doctorOutcome.data.errorCount > 0);
 test("builtin primitives and script bytes arrive inside the engine, without runtime disk reads (SDK Story 2 scenario 7)", () => {
   runConsumerCode(
     memoryConsumerCode +
-      String.raw`
+      `
 import filesystem from 'node:fs';
 import filesystemPromises from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
@@ -601,7 +601,7 @@ assert.deepEqual(problemTexts, []);
  *  call to the file system or to start a process is refused and counted. */
 const memoryAuthoringConsumerCode =
   memoryConsumerCode +
-  String.raw`
+  `
 import filesystem from 'node:fs';
 import filesystemPromises from 'node:fs/promises';
 import childProcess from 'node:child_process';
@@ -632,7 +632,7 @@ async function setUp() {
 test("setup through the installed engine keeps settings, empty kind files and its first build in memory (SDK Story 3 scenario 1)", () => {
   runConsumerCode(
     memoryAuthoringConsumerCode +
-      String.raw`
+      `
 const setupOutcome = await setUp();
 assert.equal(setupOutcome.type, 'ProjectionPlanSummary', JSON.stringify(setupOutcome));
 assert.deepEqual(JSON.parse(await fileReader.readIfThere('.cw/settings.json')), { agents: ['claude'] });
@@ -669,7 +669,7 @@ assert.equal(forbiddenCallCount, 0);
 test("an invalid addition through the installed engine answers faults and writes nothing (SDK Story 3 scenario 3)", () => {
   runConsumerCode(
     memoryAuthoringConsumerCode +
-      String.raw`
+      `
 await setUp();
 const originalFiles = [...fileBytesByAddress];
 const refusedPrimitive = await charterAuthoringApp.addPrimitive('guide', 'broken', {}, 'Body');
@@ -737,7 +737,7 @@ process.stdout.write(JSON.stringify([...fileBytesByAddress].map(([fileAddress, f
 test("every authoring operation honours a minimal read-after-write adapter (SDK Story 3 scenario 5)", () => {
   runConsumerCode(
     memoryAuthoringConsumerCode +
-      String.raw`
+      `
 assert.equal((await setUp()).type, 'ProjectionPlanSummary');
 assert.equal((await charterAuthoringApp.listPrimitiveRequirements('guide')).type, 'PrimitiveRequirements');
 assert.equal((await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', guideHeaders, 'First body.')).type, 'Primitive');
@@ -1121,7 +1121,7 @@ assert.equal(claudeProjection.plannedProjectionCount, 1);
 });
 
 test("the engine is composed at memory: addresses with no adapter handed, with no failure and no file-system call (SDK Story 8 scenario 3)", () => {
-  runConsumerCode(String.raw`
+  runConsumerCode(`
 import assert from 'node:assert/strict';
 import filesystem from 'node:fs';
 import filesystemPromises from 'node:fs/promises';
@@ -1149,7 +1149,7 @@ assert.deepEqual(Object.keys(engineApp), ['charterAuthoringApp', 'charterBuildin
 test("an engine composed before setup reads the settings again on its next call, and keeps the engine once they read (SDK Story 8 scenario 3, SDK-FR-011)", () => {
   runConsumerCode(
     memoryConsumerCode +
-      String.raw`
+      `
 const { workspaceApp, engineApp } = await composeApplications(repositoryAddress, homeAddress, { fileReader, fileWriter, tokenCounter, progressReporter, credentialsRepository, promptfooRunner });
 assert.equal(engineApp.charterBuildingApp.toJSON, undefined);
 assert.equal('buildCharter' in engineApp.charterBuildingApp, true);
@@ -1174,7 +1174,7 @@ assert.equal(fileBytesByAddress.has(codexEntryAddress), false);
 test("a sessions store, a settings store and a local output of a tool's own are what the use cases using them answer through (SDK Story 8 scenario 4)", () => {
   runConsumerCode(
     memoryConsumerCode +
-      String.raw`
+      `
 import { LocalRepoManipulator, RawWorkspaceSettings, SessionLogs } from 'cherry-works';
 const keptSettingsTexts = [];
 const workspaceSettingsRepository = {
@@ -1262,7 +1262,7 @@ await charterRuntimeApp.runSensors('Stop', '{}');
   typecheckConsumerSource("named-agent.ts");
   runConsumerCode(
     memoryConsumerCode +
-      String.raw`
+      `
 const shellCommands = [];
 const shell = { async runShellCommand(command) { shellCommands.push(command); return { exitCode: 0, stdout: '', stderr: '' }; } };
 const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = await composeOverMemory(['claude'], { shell });

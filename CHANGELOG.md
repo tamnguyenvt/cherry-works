@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.1.0 — 2026-11-14
+
+- **Breaking:** a charter store of your own hands the engine the vendors it keeps by name: `ForManagingCharter.loadVendorRoot()` answers a `RawVendorRoot`, and the engine makes the installed vendors from it. The port no longer lends `VendorRootFactory`. `FileCharterRepository` refuses a vendor laid out the old way itself, with the same message as before.
+- **Breaking:** `WorkspaceSettings` holds the agents a repository chose as `agentProviders`, each an `AgentProvider`; `JSON.stringify` still writes `{ "agents": [...] }`, and `FileWorkspaceSettingsRepository` writes the settings file as before.
+- **Breaking:** `ProviderComponent` holds `agentProvider`, an `AgentProvider`, in place of `agentName`, and its file's content as `text`; `DocumentBasedComponent.document` is the `StampedDocument`, and `SettingBasedComponent` takes an `AgentProvider`.
+- **Breaking:** `CharterDTOs` lists `ProjectionPlanSummary` after the `Primitive` DTOs; no DTO itself changed.
+- A change to the package's contract now takes at least a new minor version; a new major is the maintainer's choice.
+- Every value in the engine's source is named for what it holds. `cw` behaves as before.
+
 ## 1.0.0 — 2026-11-14
 
 - The Cherry Works engine can now be customized with adapters of your own: `import { composeApplications } from "cherry-works"` and hand it the adapters you replace — where files are kept, the charter's store, each agent's projection and command line, and the rest. See [Extending the engine](docs/extending-the-engine.md).

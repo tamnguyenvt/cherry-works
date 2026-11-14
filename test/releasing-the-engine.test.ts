@@ -534,6 +534,35 @@ test("a contract broken in a minor passes once its changelog names each change, 
   }
 });
 
+test("a release breaking the contract records the new contract before its suite runs, so the suite holds the build to it, and puts the last one back where the suite fails (SDK-FR-015)", async () => {
+  const namingChangelogText = "# Changelog\n\n## 1.1.0 — 2026-11-14\n\n- `ForReadingFiles` no longer lists files.\n";
+  for (const [releaseMode, releaseStatus] of [
+    ["publish", 0],
+    ["tests-fail", 1],
+  ] as const) {
+    await inARelease(
+      {
+        currentVersion: "1.0.0",
+        nextVersion: "1.1.0",
+        releaseMode,
+        builtContractText: NARROWED_CONTRACT,
+        lastContractText: LAST_CONTRACT,
+        changelogText: namingChangelogText,
+      },
+      async (releaseRun, fixtureFolder) => {
+        assert.equal(releaseRun.status, releaseStatus, releaseRun.stderr);
+        if (releaseMode === "publish") {
+          const testedContract = JSON.parse(await readFile(join(fixtureFolder, "tested-contract.json"), "utf8"));
+          assert.match(testedContract["index.d.ts"], /readIfThere/);
+          assert.doesNotMatch(testedContract["index.d.ts"], /listFiles/);
+        } else {
+          assert.equal(await readFile(join(fixtureFolder, "contract/index.d.ts"), "utf8"), LAST_CONTRACT);
+        }
+      },
+    );
+  }
+});
+
 test("a major release is refused until its changelog names each change that broke the contract (SDK Story 4 scenario 4)", async () => {
   const unnamingChangelogText =
     "# Changelog\n\n## 2.0.0 — 2026-11-03\n\n- Faster builds.\n- `ForReadingFilesSync` is new.\n\n## 1.1.0 — 2026-11-01\n\n- ForReadingFiles is documented.\n";

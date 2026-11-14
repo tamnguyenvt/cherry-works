@@ -191,10 +191,10 @@ try {
   const workFolder = await mkdtemp(join(tmpdir(), "cw-release-"));
   let isRecorded = false;
   try {
-    // The version written, and the suite run, which builds.
+    // The version written, and the library built, whose contract is judged.
     await writeFile(PACKAGE_JSON, packageJsonText.replace(`"version": "${currentVersion}"`, `"version": "${version}"`));
     await writeFile(README_MD, readmeText.replace(currentVersionLines[0]!, `Current version: **${version}**`));
-    if (spawnSync("pnpm", ["test"], { cwd: ROOT, stdio: "inherit" }).status !== 0)
+    if (spawnSync("pnpm", ["build"], { cwd: ROOT, stdio: "inherit" }).status !== 0)
       throw new ReleaseError(`the tests or the build of ${packageName} fail.`);
 
     // The library's contract against the last release's (SDK-FR-015): a
@@ -263,6 +263,15 @@ try {
       }
     }
 
+    // The contract recorded anew before the suite runs, since the suite holds
+    // the build to it; put back as it was unless the release is recorded.
+    await writeContractFolder(
+      ROOT,
+      await splitContract(ROOT, builtContractText, lastContractTextByFileName ?? new Map(), contractHeaderOf),
+    );
+    if (spawnSync("pnpm", ["test"], { cwd: ROOT, stdio: "inherit" }).status !== 0)
+      throw new ReleaseError(`the tests or the build of ${packageName} fail.`);
+
     // The install check (FR-135): the one tarball that will be published,
     // installed apart from this repository and used on a fresh one.
     const packResult = spawnSync("npm", ["pack", "--json", "--pack-destination", workFolder], rootSpawnOptions);
@@ -321,10 +330,6 @@ try {
     } else {
       // Record and push the release before publishing the checked tarball.
       // npm asks for the account's second factor at publish time.
-      await writeContractFolder(
-        ROOT,
-        await splitContract(ROOT, builtContractText, lastContractTextByFileName ?? new Map(), contractHeaderOf),
-      );
       if (spawnSync("git", ["add", "--all", "--", CONTRACT_FOLDER], rootSpawnOptions).status !== 0)
         throw new ReleaseError(`${CONTRACT_FOLDER}/ could not be added to the release commit.`);
       if (
