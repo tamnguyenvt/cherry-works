@@ -513,7 +513,8 @@ Only the root exports and the file-adapter duties below are the public contract.
 Internal paths cannot be imported. The contract follows semantic versioning from
 the first public release, 1.0.0, read conservatively: removing an exported name
 or changing an existing declaration in any way, even adding an optional member to
-it, is a major version; adding a newly named declaration is a minor version; a
+it, is at least a minor version, a major one being the maintainer's choice;
+adding a newly named declaration is a minor version; a
 change to comments or layout alone does not change the contract. No release
 judges whether a change to a declaration is compatible.
 
@@ -574,10 +575,10 @@ read as one: declaration by declaration, whichever file holds it, and token
 by token, so comments and
 layout are no change. The policy is conservative: an exported name removed or
 a declaration changed in any way, even by an optional member added to it,
-without a new major version is refused, naming each removal and each change
-apart; a newly named declaration added in a patch is refused too. Whether a
-change to a declaration is compatible is never judged. A major that changes the
-contract must name each changed declaration under its `## <version>` heading in
+in a patch is refused, naming each removal and each change apart and the
+minor to release; a newly named declaration added in a patch is refused too.
+Whether a change to a declaration is compatible is never judged. A release that
+breaks the contract, minor or major, must name each changed declaration under its `## <version>` heading in
 `CHANGELOG.md`. The file-adapter duties in
 [The engine as a library](#the-engine-as-a-library) are not compared: whoever
 changes them versions the change and names it in the changelog by hand.

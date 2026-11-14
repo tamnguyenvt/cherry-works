@@ -427,7 +427,7 @@ test("every command and the portal are handed the modules' applications and noth
   assert.deepEqual(portalPortNames.sort(), ["ForAuthoringCharter", "ForBuildingCharter"]);
 });
 
-test("the driver ports changed and the models made public are released only as a new major, the changelog naming each change, as is a change to a model a driven port names (CORE Story 49 scenario 4)", async () => {
+test("the driver ports changed and the models made public are released only as a new minor or major, the changelog naming each change, as is a change to a model a driven port names (CORE Story 49 scenario 4)", async () => {
   const builtContractText = readFileSync(new URL("dist/index.d.ts", repositoryUrl), "utf8");
   // The contract as a release before the four applications recorded it: one of
   // the seven driver ports there, exported.
@@ -438,10 +438,10 @@ test("the driver ports changed and the models made public are released only as a
     )
     .replace("export { ", "export { type ForKeepingCharter, ");
   await inARelease(
-    { currentVersion: "1.0.0", nextVersion: "1.1.0", releaseMode: "dry-run", builtContractText, lastContractText },
+    { currentVersion: "1.0.0", nextVersion: "1.0.1", releaseMode: "dry-run", builtContractText, lastContractText },
     async (releaseRun) => {
       assert.equal(releaseRun.status, 1);
-      assert.match(releaseRun.stderr, /1\.1\.0 is not a new major.*removes .*ForKeepingCharter.*Release 2\.0\.0/);
+      assert.match(releaseRun.stderr, /1\.0\.1 is a patch.*removes .*ForKeepingCharter.*Release 1\.1\.0/);
     },
   );
   // A model a driven port a tool may replace names is the contract too: the
@@ -455,14 +455,14 @@ test("the driver ports changed and the models made public are released only as a
   await inARelease(
     {
       currentVersion: "1.0.0",
-      nextVersion: "1.1.0",
+      nextVersion: "1.0.1",
       releaseMode: "dry-run",
       builtContractText,
       lastContractText: contractTextBeforeItemText,
     },
     async (releaseRun) => {
       assert.equal(releaseRun.status, 1);
-      assert.match(releaseRun.stderr, /1\.1\.0 is not a new major.*changes .*\bCharterOutputItem\b.*Release 2\.0\.0/);
+      assert.match(releaseRun.stderr, /1\.0\.1 is a patch.*changes .*\bCharterOutputItem\b.*Release 1\.1\.0/);
     },
   );
   const changelogText =

@@ -55,8 +55,9 @@ use cases are.
 
 - **The contract cannot change freely.** A change to a driver port, a DTO,
   a driven port, a model a port names or one of `cw`'s adapters is judged
-  by the version policy, and a breaking one moves `cw`'s major version, even
-  when `cw` behaves the same. Before 1.0.0 nothing is published, so a
+  by the version policy, and a breaking one moves at least `cw`'s minor
+  version, even when `cw` behaves the same; a major is the maintainer's
+  choice (2026-11-14). Before 1.0.0 nothing is published, so a
   rename breaks no integrator.
 - **A new kind of state** belongs to the module whose work it is, and is
   kept by an adapter of that module's port; a new agent is a projection of

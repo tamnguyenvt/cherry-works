@@ -85,7 +85,7 @@ A single charter covering design, planning and implementation at once has to be 
 
 ### Session 2026-11-14
 
-- Q: Is the charter store's handing of vendors it made itself repaired now, though it narrows the package's contract, or left to a later major release? → A: Repaired now: no store makes a model of the engine's; the next release is a major one in the code smell fix, where the engine makes the installed vendors out of the files a store keeps.
+- Q: Is the charter store's handing of vendors it made itself repaired now, though it narrows the package's contract, or left to a later major release? → A: Repaired now: no store makes a model of the engine's; the next release is at least a minor one in the code smell fix, where the engine makes the installed vendors out of the files a store keeps.
 - Q: Does the story narrowing the charter store's contract belong to the SDK spec, which keeps the contract? → A: No, to Core, beside the store it changes (the code smell fix).
 - Q: Are the code smell fixes split into a story per part, with a quality cross-check after them? → A: No: they are not a feature, so no numbered story; every fix left after [CORE Story 57](#core-story-57---read-every-value-of-the-charters-rules-by-what-it-holds-priority-p2), the settings' rules and the vendors made in the engine included, is one fix, named for what it fixes, on one branch, with no cross-check of its own.
 
@@ -1076,7 +1076,7 @@ An integrator builds a charter and gets one compiled output that names no place 
 
 **Status**: Done
 
-An integrator calling the engine, as the command line and the portal do, gets answers made for the caller, never the engine's own account of the charter, so the engine may change how it holds a charter without breaking them. What the engine hands the adapters an integrator may replace is part of its published contract, and changing it is a major release.
+An integrator calling the engine, as the command line and the portal do, gets answers made for the caller, never the engine's own account of the charter, so the engine may change how it holds a charter without breaking them. What the engine hands the adapters an integrator may replace is part of its published contract, and changing it is at least a minor release.
 
 **Why this priority**: A caller handed the engine's own account of the charter is tied to something free to change.
 
@@ -1125,7 +1125,7 @@ Whoever composes the engine hands it the engine's adapters, one for every way it
 
 An integrator reads the driver ports the library exports and finds each operation named for what it does and what it does it to — listing the charter, building the charter, listing the kinds — never by a bare verb or a noun alone, settled before the first release under the contract so no integrator is broken by them. A contributor reads any file of the engine and finds it written as the architecture and naming guides say: each fault raised by its own name, never a bare error; a value's rules beside it; a name saying what it holds; a file named for its subject and role; and the guides naming only what the code holds.
 
-**Why this priority**: After 1.0.0 every renamed operation is a major release; before it, renaming costs no integrator anything. The last review checked only the components it changed; a contributor copying any other file copies its breaches.
+**Why this priority**: After 1.0.0 every renamed operation is at least a minor release; before it, renaming costs no integrator anything. The last review checked only the components it changed; a contributor copying any other file copies its breaches.
 
 **Independent Test**: List every operation of every driver port the package exports and check each is named verb first for what it acts on; review the whole engine, the portal page included, against every guide that applies to it; then exercise every `cw` command, the portal, the package and every use case and confirm each answers as before.
 
@@ -1136,7 +1136,7 @@ An integrator reads the driver ports the library exports and finds each operatio
 3. **Given** every spec, **When** its terms are read, **Then** each names one thing — the agent a charter is built for, the set of adapters an integrator hands, the workspace's log and the developer's sessions, the charter and its primitives each told apart — and each thing has one term ([CORE-SC-069](#core-sc-069)).
 4. **Given** the operations renamed and the engine brought to its guides, **When** every `cw` command, the portal, the package and every use case through its driver port are exercised, **Then** each answers as before, but an evaluation, as the next scenario says ([CORE-FR-232](#core-fr-232), [CORE-SC-058](#core-sc-058)).
 5. **Given** a charter or its eval cases changed and not committed, **When** the charter is evaluated, **Then** each case's worktree of the last commit is built from the charter and cases as the store holds them now, and the repository's working tree is left as it was ([EVAL-FR-021](spec-eval.md#eval-fr-021)).
-6. **Given** the library's contract recorded module by module, **When** a release compares the build with it, **Then** a declaration is matched by its name wherever it sits, one narrowed without a new major is refused naming it and the contract is left as it was, and a release records the contract anew ([SDK-FR-015](spec-sdk.md#sdk-fr-015)).
+6. **Given** the library's contract recorded module by module, **When** a release compares the build with it, **Then** a declaration is matched by its name wherever it sits, one narrowed in a patch is refused naming it and the contract is left as it was, and a release records the contract anew ([SDK-FR-015](spec-sdk.md#sdk-fr-015)).
 7. **Given** a charter built, **When** its compiled output is read, **Then** it is a list of items, each known by its path inside the output, in the order a build lays them, and an agent's projection finds the item it needs by what it is ([CORE-FR-220](#core-fr-220)).
 
 ---
@@ -1628,7 +1628,7 @@ A contributor reads any file of the charter's domain — its models, value objec
 - <a id="core-fr-207"></a>**CORE-FR-207**: Every file under a primitive's folder MUST reach where it is built, installed or injected identical to its source, byte for byte, whatever it holds; and the preview MUST compare it as such.
 - <a id="core-fr-208"></a>**CORE-FR-208**: The ports a file is read and written through MUST carry bytes as well as text, so no adapter need decode a file the engine only copies.
 - <a id="core-fr-213"></a>**CORE-FR-213**: A store of an integrator's own MUST be able to keep a repository's state in any place and any layout, handing the engine each primitive, test suite, eval suite and vendor already read and known by its layer and kind, and being handed back what the engine writes; the engine MUST NOT read a layer, a kind, a vendor or a suite's name off where a file sits.
-- <a id="core-fr-214"></a>**CORE-FR-214**: How a repository's state is kept MUST NOT change what the command line or the portal answer; the published package MUST say where something is kept as the address its store gives, and that change MUST be released as a major one ([SDK-FR-015](spec-sdk.md#sdk-fr-015)).
+- <a id="core-fr-214"></a>**CORE-FR-214**: How a repository's state is kept MUST NOT change what the command line or the portal answer; the published package MUST say where something is kept as the address its store gives, and that change MUST be released as at least a minor one ([SDK-FR-015](spec-sdk.md#sdk-fr-015)).
 - <a id="core-fr-215"></a>**CORE-FR-215**: Every value the engine works with MUST be written one way, holding its data and the rules that belong to it, with nothing exported beside the values — the layout of the store `cw` keeps and the layout of the output each one value — so that a contributor finds each rule beside the value it is about.
 - <a id="core-fr-216"></a>**CORE-FR-216**: How the engine's values are written MUST NOT change what the command line, the portal or the published package answer; a name the published package exports MUST change only as [SDK-FR-015](spec-sdk.md#sdk-fr-015) versions it.
 - <a id="core-fr-217"></a>**CORE-FR-217**: Setting the engine up, and what it asks of its stores, MUST NOT carry a repository's address, nor where in the repository the workspace or an agent's folders keep anything; the repository's address MUST be given only to the store that keeps its files, once, when that store is set up.
@@ -1767,7 +1767,7 @@ A contributor reads any file of the charter's domain — its models, value objec
 
 ## Assumptions
 
-- **Setting the engine up with no address changes the published contract.** The release carrying it is a major one ([SDK-FR-015](spec-sdk.md#sdk-fr-015)).
+- **Setting the engine up with no address changes the published contract.** The release carrying it is at least a minor one ([SDK-FR-015](spec-sdk.md#sdk-fr-015)).
 - **Work is delivered one story at a time.** Each user story is built and reviewed as one change ([CORE-SC-026](#core-sc-026)): the story is the unit a reviewer can test on its own, so it is also the unit that is reviewed and merged. Its steps are not reviewed apart. The change must leave the repository working — it builds, its tests pass.
 - **From [CORE Story 55](#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) on, what a quality pass finds is repaired, never handed on as new stories.** Before it, each violation became a story of its own, as [CORE Story 39](#core-story-39---quality-cross-check-of-core-story-35-core-story-37-core-story-38-sdk-story-1-priority-p3) and [CORE Story 43](#core-story-43---quality-cross-check-of-core-story-40-core-story-41-sdk-story-5-core-story-42-sdk-story-6-priority-p3) did. Since, a cross-check story repairs what its own pass finds within itself and runs the pass again, as [CORE Story 55](#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) did; a pass run on request is repaired by a fix of its own, run again until it passes.
 - **Users are developers.** The command line is the product surface, not an implementation detail. The portal drives these same commands and adds no behaviour of its own.

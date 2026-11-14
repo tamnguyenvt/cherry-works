@@ -362,11 +362,11 @@ test("the package failing to publish says nothing was published, and how to publ
 });
 
 for (const [contractChange, builtContractText, nextVersion, changedName] of [
-  ["narrowed", NARROWED_CONTRACT, "1.1.0", "ForReadingFiles"],
+  ["narrowed", NARROWED_CONTRACT, "1.0.1", "ForReadingFiles"],
   ["changed", CHANGED_CONTRACT, "1.0.1", "ForReadingFiles"],
-  ["no longer exported", UNEXPORTED_CONTRACT, "1.1.0", "ForReadingFiles"],
+  ["no longer exported", UNEXPORTED_CONTRACT, "1.0.1", "ForReadingFiles"],
 ] as const) {
-  test(`a contract ${contractChange} without a new major is refused, naming what changed (SDK Story 4 scenario 3)`, async () => {
+  test(`a contract ${contractChange} in a patch is refused, naming what changed and the minor to release (SDK Story 4 scenario 3)`, async () => {
     await inARelease(
       {
         currentVersion: "1.0.0",
@@ -379,7 +379,7 @@ for (const [contractChange, builtContractText, nextVersion, changedName] of [
         assert.equal(releaseRun.status, 1);
         assert.match(
           releaseRun.stderr,
-          new RegExp(`${nextVersion.replaceAll(".", "\\.")} is not a new major.*${changedName}`),
+          new RegExp(`${nextVersion.replaceAll(".", "\\.")} is a patch.*${changedName}.*Release 1\\.1\\.0`),
         );
         assertNothingReleased(await releaseCommandsIn(fixtureFolder));
         assert.equal(JSON.parse(await readFile(join(fixtureFolder, "package.json"), "utf8")).version, "1.0.0");
@@ -408,7 +408,7 @@ test("a glob in a string type is no comment: changing it is refused in a patch",
     },
     async (releaseRun) => {
       assert.equal(releaseRun.status, 1);
-      assert.match(releaseRun.stderr, /1\.0\.1 is not a new major.*CharterGlob/);
+      assert.match(releaseRun.stderr, /1\.0\.1 is a patch.*CharterGlob/);
     },
   );
 });
@@ -512,6 +512,28 @@ test("a contract reworded in its comments alone passes in a patch", async () => 
   );
 });
 
+test("a contract broken in a minor passes once its changelog names each change, and is refused until it does (SDK Story 4 scenarios 3, 4)", async () => {
+  for (const [changelogText, releaseStatus] of [
+    ["# Changelog\n\n## 1.1.0 — 2026-11-14\n\n- Faster builds.\n", 1],
+    ["# Changelog\n\n## 1.1.0 — 2026-11-14\n\n- `ForReadingFiles` no longer lists files.\n", 0],
+  ] as const) {
+    await inARelease(
+      {
+        currentVersion: "1.0.0",
+        nextVersion: "1.1.0",
+        releaseMode: "dry-run",
+        builtContractText: NARROWED_CONTRACT,
+        lastContractText: LAST_CONTRACT,
+        changelogText,
+      },
+      async (releaseRun) => {
+        assert.equal(releaseRun.status, releaseStatus, releaseRun.stderr);
+        if (releaseStatus === 1) assert.match(releaseRun.stderr, /CHANGELOG\.md.*1\.1\.0.*ForReadingFiles/);
+      },
+    );
+  }
+});
+
 test("a major release is refused until its changelog names each change that broke the contract (SDK Story 4 scenario 4)", async () => {
   const unnamingChangelogText =
     "# Changelog\n\n## 2.0.0 — 2026-11-03\n\n- Faster builds.\n- `ForReadingFilesSync` is new.\n\n## 1.1.0 — 2026-11-01\n\n- ForReadingFiles is documented.\n";
@@ -546,18 +568,18 @@ test("a major release is refused until its changelog names each change that brok
   );
 });
 
-test("an optional member added to a declaration is a change to it, refused without a new major (SDK Story 7 scenario 1)", async () => {
+test("an optional member added to a declaration is a change to it, refused in a patch (SDK Story 7 scenario 1)", async () => {
   await inARelease(
     {
       currentVersion: "1.0.0",
-      nextVersion: "1.1.0",
+      nextVersion: "1.0.1",
       releaseMode: "dry-run",
       builtContractText: OPTIONAL_MEMBER_CONTRACT,
       lastContractText: LAST_CONTRACT,
     },
     async (releaseRun, fixtureFolder) => {
       assert.equal(releaseRun.status, 1);
-      assert.match(releaseRun.stderr, /1\.1\.0 is not a new major.*changes ForReadingFiles/);
+      assert.match(releaseRun.stderr, /1\.0\.1 is a patch.*changes ForReadingFiles/);
       assertNothingReleased(await releaseCommandsIn(fixtureFolder));
     },
   );
@@ -578,18 +600,18 @@ test("a contract changed only in its comments and layout passes in a patch (SDK 
   );
 });
 
-test("an exported name removed without a new major is refused, naming the removal (SDK Story 7 scenario 4, CORE Story 42 scenario 3)", async () => {
+test("an exported name removed in a patch is refused, naming the removal (SDK Story 7 scenario 4, CORE Story 42 scenario 3)", async () => {
   await inARelease(
     {
       currentVersion: "1.0.0",
-      nextVersion: "1.1.0",
+      nextVersion: "1.0.1",
       releaseMode: "dry-run",
       builtContractText: UNEXPORTED_CONTRACT,
       lastContractText: LAST_CONTRACT,
     },
     async (releaseRun, fixtureFolder) => {
       assert.equal(releaseRun.status, 1);
-      assert.match(releaseRun.stderr, /1\.1\.0 is not a new major.*removes export type ForReadingFiles/);
+      assert.match(releaseRun.stderr, /1\.0\.1 is a patch.*removes export type ForReadingFiles/);
       assertNothingReleased(await releaseCommandsIn(fixtureFolder));
     },
   );
@@ -628,14 +650,14 @@ test("the last contract is read as one folder, each declaration by its name whic
   await inARelease(
     {
       currentVersion: "1.0.0",
-      nextVersion: "1.1.0",
+      nextVersion: "1.0.1",
       releaseMode: "dry-run",
       builtContractText: NARROWED_CONTRACT,
       lastContractTextByFileName: LAST_CONTRACT_BY_FILE_NAME,
     },
     async (releaseRun, fixtureFolder) => {
       assert.equal(releaseRun.status, 1);
-      assert.match(releaseRun.stderr, /1\.1\.0 is not a new major.*changes ForReadingFiles/);
+      assert.match(releaseRun.stderr, /1\.0\.1 is a patch.*changes ForReadingFiles/);
       assert.equal(
         await readFile(join(fixtureFolder, "contract/shared.d.ts"), "utf8"),
         LAST_CONTRACT_BY_FILE_NAME["shared.d.ts"],

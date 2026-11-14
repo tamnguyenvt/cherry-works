@@ -199,7 +199,8 @@ try {
 
     // The library's contract against the last release's (SDK-FR-015): a
     // declaration gone or changed breaks it, since whether a tool implements a
-    // type or is handed one cannot be told; a new one adds to it.
+    // type or is handed one cannot be told; a new one adds to it. Either takes
+    // at least a new minor; a new major is the maintainer's to choose.
     const builtContractText = await readFile(LIBRARY_D_TS, "utf8");
     if (lastContractTextByFileName !== undefined) {
       // Every file of the folder read together, each declaration by its name
@@ -220,7 +221,7 @@ try {
       const addedNames = [...builtDeclarationByName.keys()].filter(
         (declarationName) => !lastDeclarationByName.has(declarationName),
       );
-      if (brokenNames.length > 0 && firstDifferenceIndex > 0) {
+      if (brokenNames.length > 0 && firstDifferenceIndex === 2) {
         const removedNames = brokenNames.filter((declarationName) => !builtDeclarationByName.has(declarationName));
         const changedNames = brokenNames.filter((declarationName) => builtDeclarationByName.has(declarationName));
         const breakingChangeTexts = [
@@ -228,7 +229,7 @@ try {
           changedNames.length > 0 ? `changes ${changedNames.join(", ")}` : "",
         ].filter((breakingChangeText) => breakingChangeText !== "");
         throw new ReleaseError(
-          `${version} is not a new major, yet against ${currentVersion} the contract of ${packageName} ${breakingChangeTexts.join(" and ")}. Release ${currentParts[0]! + 1}.0.0.`,
+          `${version} is a patch, yet against ${currentVersion} the contract of ${packageName} ${breakingChangeTexts.join(" and ")}. Release ${currentParts[0]}.${currentParts[1]! + 1}.0.`,
         );
       }
       if (addedNames.length > 0 && firstDifferenceIndex === 2) {

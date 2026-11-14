@@ -80,7 +80,7 @@ into your own editable charter instead, use `cw vendor inject`.
 
 | Charter | What it gives your agent | Install |
 | --- | --- | --- |
-| [sdd-charter](https://github.com/tamnguyenvt/sdd-charter) | Spec-driven development: a spec set with a status per story and a roadmap of their dependencies, and six commands (`/sdd-init`, `/sdd-plan`, `/sdd-implement`, `/sdd-bug-fix`, `/sdd-status`, `/sdd-report`) that take each story from request to merge, stopping for your yes at each step. | `cw vendor add git@github.com:tamnguyenvt/sdd-charter.git --ref v0.1.7` |
+| sdd-charter | Spec-driven development: a spec set with a status per story and a roadmap of their dependencies, and six commands (`/sdd-init`, `/sdd-plan`, `/sdd-implement`, `/sdd-bug-fix`, `/sdd-status`, `/sdd-report`) that take each story from request to merge, stopping for your yes at each step. | Not public: [contact the author](#contact) for access. |
 
 ## Work from the terminal or browser
 
@@ -112,3 +112,7 @@ cw eval --agent codex       # evaluate with the real agent; spends tokens
 
 This repository uses [its own charter](.cw/charter/) and keeps its product
 specifications in [specs/](specs/spec.md).
+
+## Contact
+
+Tam Nguyen — [tamnvt1@gmail.com](mailto:tamnvt1@gmail.com)

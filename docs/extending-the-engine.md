@@ -293,9 +293,10 @@ repository, a declarations file per module of the engine (`charter.d.ts`,
 each release is compared with it:
 
 - removing an export, or changing an existing declaration in any way — a
-  port gaining a method included — is a new major version;
+  port gaining a method included — is at least a new minor version, and a
+  new major only where the maintainer chooses one;
 - a new export is a new minor version.
 
-An adapter written against one major version keeps compiling and working
-until the next. Read the changelog's **Breaking** entries before moving to a
-new major.
+An adapter written against one minor version keeps compiling and working
+through its patches. Read the changelog's **Breaking** entries before moving
+to a new minor or major.
