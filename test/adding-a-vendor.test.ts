@@ -66,7 +66,7 @@ async function running(
   }
 }
 
-test("a source's charter folder is installed under the folder its owner and its repository name (FR-050)", async () => {
+test("a source's charter folder is installed under the folder its owner and its repository name (FR-050, CORE Story 30 scenario 1)", async () => {
   const { code, commandOutput, sourceFetcher } = await running(["vendor", "add", "git@github.com:team/charter.git"]);
 
   assert.equal(code, EXIT_OK);
@@ -96,7 +96,7 @@ test("the source is passed on as it was typed, whatever transport it names, into
   }
 });
 
-test("two repositories of one name under two owners land side by side (FR-050, SC-051)", async () => {
+test("two repositories of one name under two owners land side by side (FR-050, SC-051, CORE Story 2 scenario 1, CORE Story 30 scenario 2)", async () => {
   const sourceFetcher = new InMemorySources();
   await running(["vendor", "add", "acme/skills"], sourceFetcher);
   await running(["vendor", "add", "other/skills"], sourceFetcher);
@@ -117,7 +117,7 @@ test("a source whose address names no owner is refused, and nothing is installed
   }
 });
 
-test("a version is what the source is pinned to", async () => {
+test("a version is what the source is pinned to (CORE Story 2 scenario 1)", async () => {
   const { commandOutput, sourceFetcher } = await running(["vendor", "add", "team/charter", "--ref", "v1.2.0"]);
 
   assert.equal(sourceFetcher.fetchedSources[0]?.version, "v1.2.0");
@@ -146,7 +146,7 @@ test("a source holding neither a charter folder nor a skill at the version asked
   assert.match(commandOutput, /at the version asked for/);
 });
 
-test("a source that installs vendors of its own is refused: vendoring is one level deep", async () => {
+test("a source that installs vendors of its own is refused: vendoring is one level deep (CORE Story 2 scenario 5)", async () => {
   const sourceFetcher = new InMemorySources();
   sourceFetcher.sourcesHoldingRefusedFolder.push("team/stacked");
 

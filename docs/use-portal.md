@@ -36,7 +36,7 @@ Press **Ctrl+C** in the terminal to stop the server.
 | **Repo Charter** | Create and edit your repository's primitives |
 | **Vendor** | Install sources and inspect their read-only primitives |
 | **Test** | Edit test files and run their cases |
-| **Context** | See how much charter context each configured agent loads |
+| **Context** | See how much charter context each agent the repository chose loads |
 
 The header also has search, **Build** and **Doctor**. Search finds primitives
 across the repository, vendor and built-in layers.
@@ -118,16 +118,16 @@ Review it, then click **Build** inside the dialog to apply it. The result
 lists what was written or deleted. If the charter has errors, the dialog
 names the files and faults to fix before building.
 
-Building updates `.cw/out/` and the generated files for the configured agents.
+Building updates `.cw/out/` and the generated files for the agents the repository chose.
 Review those changes in Git together with the source changes.
 
 ## Check health and context
 
-Click **Doctor** to check the charter, configured agents and whether
+Click **Doctor** to check the charter, the agents the repository chose and whether
 generated output is behind. Follow the reported fix for each issue;
 when output needs rebuilding, the report offers a build.
 
-Open **Context** to see the estimated tokens each configured agent loads when
+Open **Context** to see the estimated tokens each agent the repository chose loads when
 a session opens, broken down by primitive. Guides loaded for matching files
 are listed separately and are not included in the session-opening total.
 The page also compares the total with the configured context ceiling.

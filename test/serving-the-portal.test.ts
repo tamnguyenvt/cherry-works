@@ -115,7 +115,7 @@ test("the token of the run is asked for on the page's address and on every call 
   }
 });
 
-test("a Host other than this machine's address and port is refused", async () => {
+test("a Host other than this machine's address and port is refused (CORE Story 5 scenario 8)", async () => {
   const { address, server } = startedPortalOf(await startPortal(await builtPage(), ...portalApps(), PORT));
   const path = `/${address.search}`;
   try {

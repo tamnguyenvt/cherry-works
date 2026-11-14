@@ -64,13 +64,13 @@ const PromptfooLogSchema = z.object({
  * DRIVEN ADAPTER: promptfoo, installed with npm into a folder of its own and run
  * as `promptfoo eval` (EVAL-FR-020, EVAL-FR-032).
  *
- * The selected agent runs through its promptfoo SDK provider in the working
+ * The evaluating agent runs through its promptfoo SDK provider in the working
  * folder. Claude Code uses the project's settings, every skill, edits accepted, and no
  * command, since no one is there to allow one. An `agent-rubric` is graded by
  * the same provider in the same folder, reading and searching only, with no
  * settings of the project's to sway it. Codex uses workspace-write for the
  * case and read-only for grading, without approval prompts or retries. Both
- * use the selected agent's sign-in, or the key the environment sets.
+ * use the evaluating agent's sign-in, or the key the environment sets.
  *
  * The provider finds the SDK from where the configuration is, so each test's
  * configuration is written into a folder under the one it is installed in,

@@ -2,7 +2,7 @@
 
 **Created**: 2026-10-04
 
-**Updated**: 2026-11-13
+**Updated**: 2026-11-14
 
 **Input**: User description: "Phase 008, after Uber's efficient software factory: predict how many tokens the charter loads into the agent's main context; give the tokens a session used when it stops; let `cw mcp serve` search its tools…; evaluate the charter against a real model…"
 
@@ -14,11 +14,9 @@ Then: "Upgrade cw eval to support Codex and --agent=<agent>; without it, use the
 
 Then: "…prove pricing skill results and measure tokenizer accuracy."
 
-Then: "Measure the tokenizer accuracy again, on the charter alone, now the workspace is split."
-
 Then: "Drop pricing the sessions: its code and its spec."
 
-Then: "Keep the read expectation, `cw eval-analyze` and each case's kept result, and write their requirements." Then: "`cw context` estimates with no agent named; `cw context --agent=<agent>` counts exactly for that agent beside the estimate; `--exact` is dropped." Then: "Repair what the last quality pass found: one term for the agents a repository chose and one for the agent named; a prediction for each agent chosen, and what is said when none is."
+Then: "Keep the read expectation, `cw eval-analyze` and each case's kept result, and write their requirements." Then: "`cw context` estimates with no agent named; `cw context --agent=<agent>` counts exactly for that agent beside the estimate; `--exact` is dropped." Then: "Repair what the last quality pass found: one term for the agents a repository chose and one for the agent named; a prediction for each agent chosen, and what is said when none is." Then: "Measure the tokenizer accuracy again, on the charter alone, now the workspace is split."
 
 ## Overview
 
@@ -46,6 +44,7 @@ A charter is paid for in tokens every turn an agent works under it, and is worth
 - Q: Is the estimate's accuracy measured by a script of the repository's own, or by `cw context`? → A: By `cw context --agent=<agent>`: it counts exactly, estimates too, lists both and warns past the limit; `cw context` alone estimates; no release spends tokens on it ([EVAL-FR-004](#eval-fr-004)).
 - Q: Are the expectation that the agent reads a file, `cw eval-analyze` and each case's kept result, which no requirement asks for, kept or removed? → A: Kept, each with its requirement; judging whether the agent read a file is the engine's own, every other expectation promptfoo's ([EVAL-FR-020](#eval-fr-020), [EVAL-FR-039](#eval-fr-039), [EVAL-FR-040](#eval-fr-040), [EVAL-FR-041](#eval-fr-041)).
 - Q: What are the agents a repository has called, and the agent given by `--agent`? → A: The agents the repository "chose", and the agent "named", in every spec; "configured", "selected" and "compiles for" are retired ([EVAL-FR-004](#eval-fr-004), [EVAL-FR-033](#eval-fr-033) to [EVAL-FR-038](#eval-fr-038)).
+- Q: May the spec name promptfoo, a library? → A: Yes: the developer chose it by name, it is fetched onto their machine and its grader judges their cases, so it is part of what they see and decide, not of how the engine is built ([EVAL-FR-020](#eval-fr-020), [EVAL-FR-032](#eval-fr-032)).
 - Q: Is the main context predicted for one agent or for each? → A: For each agent the repository chose, one prediction each; a repository that chose none is told no agent loads anything, and to run `cw init` to choose one ([EVAL-FR-001](#eval-fr-001)).
 
 ## User Scenarios & Testing *(mandatory)*
@@ -65,7 +64,7 @@ An author adds a guide with no files named, and three skills with long descripti
 1. **Given** a charter, **When** the developer asks for the prediction, **Then** every primitive that puts anything into the main context when a session opens is listed with its tokens, the largest first, with the total, said to be an estimate ([EVAL-FR-001](#eval-fr-001), [EVAL-FR-002](#eval-fr-002)).
 2. **Given** a guide that names files, **When** the prediction is listed, **Then** it is listed apart, as loaded when a file it names is touched, and is not in the total ([EVAL-FR-003](#eval-fr-003)).
 3. **Given** the agent's own command line installed and the developer naming that agent, **When** the prediction is listed, **Then** each number is counted through it and said to be exact, beside its estimate ([EVAL-FR-004](#eval-fr-004)).
-4. **Given** a build, **When** it finishes, **Then** it says the predicted total in one line ([EVAL-FR-005](#eval-fr-005)).
+4. **Given** a build, **When** it finishes, **Then** it says the predicted total in one line for each agent the repository chose, and nothing of it where it chose none ([EVAL-FR-005](#eval-fr-005)).
 5. **Given** a total above the repository's ceiling, or above 20,000 tokens where it set none, **When** the developer runs the health check, **Then** it warns, naming the total and the ceiling ([EVAL-FR-006](#eval-fr-006)).
 6. **Given** the portal, **When** the developer opens the charter, **Then** it shows the same list and total the command gives ([EVAL-FR-007](#eval-fr-007)).
 
@@ -233,7 +232,7 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 - <a id="eval-fr-002"></a>**EVAL-FR-002**: The prediction MUST be listed per primitive, the largest first, with the total, and MUST say it is an estimate unless it was counted exactly.
 - <a id="eval-fr-003"></a>**EVAL-FR-003**: A guide that names files MUST be listed apart, as loaded when a file it names is touched, and MUST NOT be added to the total or held to the ceiling.
 - <a id="eval-fr-004"></a>**EVAL-FR-004**: Asked to count for the agent the developer names with `--agent`, with that agent's own command line installed, the engine MUST count the prediction exactly through it, run headless, estimate it too, and list both by primitive with how far apart they are, warning when the totals differ by more than [EVAL-SC-002](#eval-sc-002) allows; with no agent named it MUST estimate alone; asked for an agent it cannot count through — one it has no exact count for, or one the repository did not choose — or whose command line is not installed, it MUST refuse, saying `cw context` with no agent named needs nothing.
-- <a id="eval-fr-005"></a>**EVAL-FR-005**: A build MUST say the predicted total in one line.
+- <a id="eval-fr-005"></a>**EVAL-FR-005**: A build MUST say the predicted total in one line for each agent the repository chose, and nothing of it where it chose none.
 - <a id="eval-fr-006"></a>**EVAL-FR-006**: The health check MUST warn when the predicted total passes the ceiling the repository sets, or 20,000 tokens where it sets none, naming both.
 - <a id="eval-fr-007"></a>**EVAL-FR-007**: The portal MUST show the prediction the command lists, as the command lists it.
 

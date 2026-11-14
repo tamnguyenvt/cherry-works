@@ -6,7 +6,7 @@ import type { RuntimeDTOs } from "./runtime.dto.js";
  *  whoever composes it, which keeps it (CORE-FR-231). */
 export interface RuntimeSettings {
   /** Which agents the repository chose: what an evaluation picks its
-   *  agent among (EVAL-FR-020). */
+   *  agent among (EVAL-FR-036). */
   readonly agents: readonly string[];
 }
 
@@ -65,7 +65,7 @@ export interface ForRunningCharter {
    * (EVAL-FR-026).
    */
   evaluateCharter(
-    requestedAgentProviderName?: string,
+    namedAgentProviderName?: string,
   ): Promise<RuntimeDTOs.EvalRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /** What promptfoo logged of an evaluation, the last one where no log is

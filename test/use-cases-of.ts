@@ -190,7 +190,7 @@ export function commandLineOf(
  *  command line composes them: for the settings `workspaceSettings` names, or
  *  else for those the files hold when each operation is asked; over charter
  *  authoring's application; the mcp origins reached only where a test gives
- *  `mcpServers`, the sensors run through `shell`, the cases evaluated in
+ *  `mcpServerCaller`, the sensors run through `shell`, the cases evaluated in
  *  worktrees `worktreeKeeper` adds through `promptfooRunner`, and the sessions read
  *  through `sessionAnalysisRepository`, or the one `sessionAnalysisRepositoryOf`
  *  sets up on the folder the settings name, where it gives them. */
@@ -201,7 +201,7 @@ export function runningCharterOf(
     fileWriter = unwritableFiles,
     tokenCounter = portNotGiven<ForCountingTokens>("token counters"),
     agentCliByProvider = {},
-    mcpServers,
+    mcpServerCaller,
     credentialsRepository,
     oauthAuthorizer,
     shell = portNotGiven<ForRunningShellCommands>("shells"),
@@ -226,7 +226,7 @@ export function runningCharterOf(
     readonly agentCliByProvider?: Readonly<
       Partial<Record<AgentProviderName, ForCheckingAgentCli | ForRunningAgentCli>>
     >;
-    readonly mcpServers?: ForCallingMcpServers;
+    readonly mcpServerCaller?: ForCallingMcpServers;
     readonly credentialsRepository?: ForStoringCredentials;
     readonly oauthAuthorizer?: ForAuthorizingOAuthClients;
     readonly shell?: ForRunningShellCommands;
@@ -257,7 +257,7 @@ export function runningCharterOf(
       },
       progressReporter,
       charterAuthoringApp,
-      mcpServers,
+      mcpServerCaller,
     );
     const charterRuntimeApp = new RunningCharter(
       charterAuthoringApp,
@@ -271,7 +271,7 @@ export function runningCharterOf(
       clock,
       { agents: settings.agents },
       progressReporter,
-      mcpServers,
+      mcpServerCaller,
     );
     return { charterBuildingApp, charterRuntimeApp };
   };

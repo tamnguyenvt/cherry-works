@@ -100,7 +100,7 @@ export interface EngineAdapters {
   readonly fileWriter: ForWritingFiles;
   readonly worktreeKeeper: ForKeepingWorktrees;
   readonly oauthAuthorizer: ForAuthorizingOAuthClients;
-  readonly mcpServers: ForCallingMcpServers;
+  readonly mcpServerCaller: ForCallingMcpServers;
   readonly tokenCounter: ForCountingTokens;
   readonly clock: ForTellingTime;
   readonly shell: ForRunningShellCommands;
@@ -110,10 +110,11 @@ export interface EngineAdapters {
   readonly credentialsRepository: ForStoringCredentials;
 }
 
-/** What a repository configured itself with that the applications are
- *  composed for, as the workspace module answers it (CORE-FR-231). */
+/** What a repository chose that the applications are composed for — the
+ *  agents it chose among them — as the workspace module answers it
+ *  (CORE-FR-231). */
 export interface EngineSettings {
-  readonly enabledAgents: readonly string[];
+  readonly agents: readonly string[];
   readonly mainContextCeiling?: number | undefined;
 }
 
@@ -134,7 +135,7 @@ export function composeEngine(
   engineSettings: EngineSettings,
   engineAdapters: Omit<EngineAdapters, "sourceFetcher" | "workspaceSettingsRepository">,
 ): ComposedEngine {
-  const { agentProvider, charterRepository, fileReader, clock, progressReporter, mcpServers } = engineAdapters;
+  const { agentProvider, charterRepository, fileReader, clock, progressReporter, mcpServerCaller } = engineAdapters;
 
   const charterAuthoringApp: ForAuthoringCharter = new AuthoringCharter(
     loadCharterService,
@@ -154,14 +155,14 @@ export function composeEngine(
     Object.fromEntries(Object.entries(agentProvider).map(([agentName, { projection }]) => [agentName, projection])),
     engineAdapters.tokenCounter,
     {
-      agents: engineSettings.enabledAgents,
+      agents: engineSettings.agents,
       ...(engineSettings.mainContextCeiling === undefined
         ? {}
         : { mainContextCeiling: engineSettings.mainContextCeiling }),
     },
     progressReporter,
     charterAuthoringApp,
-    mcpServers,
+    mcpServerCaller,
   );
   const charterRuntimeApp: ForRunningCharter = new RunningCharter(
     charterAuthoringApp,
@@ -173,9 +174,9 @@ export function composeEngine(
     engineAdapters.promptfooRunner,
     engineAdapters.sessionAnalysisRepository,
     clock,
-    { agents: engineSettings.enabledAgents },
+    { agents: engineSettings.agents },
     progressReporter,
-    mcpServers,
+    mcpServerCaller,
   );
   return { charterAuthoringApp, charterBuildingApp, charterRuntimeApp };
 }
@@ -240,7 +241,7 @@ export async function composeApplications(
     fileWriter,
     worktreeKeeper: engineAdapters.worktreeKeeper ?? new GitWorktrees(repoFolder),
     oauthAuthorizer: engineAdapters.oauthAuthorizer ?? new OAuth(),
-    mcpServers: engineAdapters.mcpServers ?? new McpClients(),
+    mcpServerCaller: engineAdapters.mcpServerCaller ?? new McpClients(),
     tokenCounter: engineAdapters.tokenCounter ?? new Tiktoken(),
     clock: engineAdapters.clock ?? new SystemClock(),
     shell: engineAdapters.shell ?? new Shell(repoFolder),
@@ -259,9 +260,9 @@ export async function composeApplications(
     const workspaceSettingsDTO = await workspaceApp.readWorkspaceSettings();
     const engineSettings: EngineSettings =
       workspaceSettingsDTO.type === "Fault"
-        ? { enabledAgents: [] }
+        ? { agents: [] }
         : {
-            enabledAgents: workspaceSettingsDTO.data.agents,
+            agents: workspaceSettingsDTO.data.agents,
             mainContextCeiling: workspaceSettingsDTO.data.mainContextCeiling,
           };
     // The sessions are read off the home's, wherever under it the
@@ -290,7 +291,7 @@ export async function composeApplications(
       ...defaultedEngineAdapters,
       sessionAnalysisRepository,
     });
-    if (engineSettings.enabledAgents.length > 0) composedEngine ??= settingsComposedEngine;
+    if (engineSettings.agents.length > 0) composedEngine ??= settingsComposedEngine;
     return composedEngine ?? settingsComposedEngine;
   };
   // Each application answers the operations of its use case, all of them

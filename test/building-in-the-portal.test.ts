@@ -74,7 +74,7 @@ const previewing = async (page: Page) => {
   await page.getByRole("table", { name: "Build plan" }).waitFor();
 };
 
-test("the preview lists every target with its change and a count, and writes nothing (FR-120)", async () => {
+test("the preview lists every target with its change and a count, and writes nothing (FR-120, CORE Story 7 scenario 1)", async () => {
   await inTheBrowser(holding(), async (page, files) => {
     await previewing(page);
 
@@ -88,7 +88,7 @@ test("the preview lists every target with its change and a count, and writes not
   });
 });
 
-test("building from the preview writes, and lists what it wrote (FR-120)", async () => {
+test("building from the preview writes, and lists what it wrote (FR-120, CORE Story 7 scenario 2)", async () => {
   await inTheBrowser(holding(), async (page, files) => {
     await previewing(page);
     await page.getByRole("dialog").getByRole("button", { name: "Build", exact: true }).click();
@@ -102,7 +102,7 @@ test("building from the preview writes, and lists what it wrote (FR-120)", async
   });
 });
 
-test("a charter with an error builds nothing, and its faults are shown under their files (FR-120)", async () => {
+test("a charter with an error builds nothing, and its faults are shown under their files (FR-120, CORE Story 7 scenario 3)", async () => {
   await inTheBrowser(
     holding({ [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }),
     async (page, files) => {
@@ -119,7 +119,7 @@ test("a charter with an error builds nothing, and its faults are shown under the
   );
 });
 
-test("Doctor shows the three answers and every warning, and builds when the output is behind (FR-121)", async () => {
+test("Doctor shows the three answers and every warning, and builds when the output is behind (FR-121, CORE Story 7 scenario 5, CORE Story 14 scenario 4)", async () => {
   await inTheBrowser(
     holding({ [at(".cw/charter/primitive/corpus/why/index.md")]: primitive("corpus", "why") }),
     async (page, files) => {

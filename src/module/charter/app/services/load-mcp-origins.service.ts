@@ -29,7 +29,7 @@ const LIST_TIMEOUT_MS = 10_000;
  *  `isRefused` says the mcp origin has just refused it — charter authoring's to
  *  keep (CORE-FR-229). */
 export interface McpReaching {
-  readonly mcpServers: ForCallingMcpServers;
+  readonly mcpServerCaller: ForCallingMcpServers;
   readonly loadAccessToken: (origin: McpOrigin, isRefused: boolean) => Promise<string>;
 }
 
@@ -143,7 +143,7 @@ export class LoadMcpOriginsService {
       return new McpOriginTools(toolsByOriginKey, FaultsByFile.emptyFaultsByFile);
     }
 
-    const { mcpServers, loadAccessToken } = mcpReaching;
+    const { mcpServerCaller, loadAccessToken } = mcpReaching;
     const mcpOriginResults = await Promise.all(
       CharterOutputService.compileCharterRoot(charter, [])
         .findCharterOutputItem(McpOrigins)
@@ -153,7 +153,7 @@ export class LoadMcpOriginsService {
           const originKey = mcpPrimitives[0]?.originKey;
           try {
             const accessToken = origin.auth.length > 0 ? await loadAccessToken(origin, false) : undefined;
-            const connection = await mcpServers.connectServer(origin, accessToken, LIST_TIMEOUT_MS);
+            const connection = await mcpServerCaller.connectServer(origin, accessToken, LIST_TIMEOUT_MS);
             await connection.closeConnection();
             const listedTools = connection.tools.map(
               ({ name, description, inputSchema }) => new McpToolDefinition(name, description ?? "", inputSchema),

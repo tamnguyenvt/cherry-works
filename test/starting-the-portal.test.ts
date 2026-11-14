@@ -79,7 +79,7 @@ test("settings that do not read leave a set-up repository ready to serve, the pa
   assert.equal((await workspaceSettingsLoaderOf(fileReaders)()).type, "Fault");
 });
 
-test("a folder with no version control never set up is refused, naming cw init and not git (CORE-FR-107)", async () => {
+test("a folder with no version control never set up is refused, naming cw init and not git (CORE-FR-107, CORE Story 35 scenario 3)", async () => {
   const { code, results, problems } = await portal({});
 
   assert.equal(code, EXIT_FAILURE);
@@ -89,7 +89,7 @@ test("a folder with no version control never set up is refused, naming cw init a
   assert.doesNotMatch(problems, /git/);
 });
 
-test("cw portal, in a folder with no version control that cw init set up, serves the charter (CORE Story 35 scenario 2, CORE-FR-107, CORE Story 55 scenario 8)", async (t) => {
+test("cw portal, in a folder with no version control that cw init set up, serves the charter (CORE Story 35 scenario 2, CORE-FR-107, CORE Story 55 scenario 8, CORE Story 5 scenario 1)", async (t) => {
   const plainFolderPath = await mkdtemp(join(tmpdir(), "cw-portal-anywhere-"));
   t.after(() => rm(plainFolderPath, { recursive: true, force: true }));
   // `pnpm test` builds this tree first: dist/ is what its source builds to.

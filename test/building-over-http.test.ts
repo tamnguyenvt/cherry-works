@@ -34,7 +34,7 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 const guide = (id: string, headers: readonly string[] = []) =>
   primitive("guide", id, ['globs: ["src/**/*.ts"]', ...headers]);
 
-/** A repository compiling for claude, one guide, and the case naming it. */
+/** A repository that chose claude, one guide, and the case naming it. */
 const holding = (extra: Readonly<Record<string, string>> = {}) => ({
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
   [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
@@ -84,13 +84,13 @@ const surfaces = (files: Readonly<Record<string, string>>) => {
 
 /** What one command printed, and its exit status. */
 const printed = async (cli: Commander, argv: readonly string[]) => {
-  const written: string[] = [];
+  const printedTexts: string[] = [];
   const kept = process.stdout.write;
   process.stdout.write = ((text: string | Uint8Array) => (
-    written.push(String(text)), true
+    printedTexts.push(String(text)), true
   )) as typeof process.stdout.write;
   try {
-    return { code: await cli.runCommandLine(argv), text: written.join("") };
+    return { code: await cli.runCommandLine(argv), text: printedTexts.join("") };
   } finally {
     process.stdout.write = kept;
   }
@@ -98,7 +98,7 @@ const printed = async (cli: Commander, argv: readonly string[]) => {
 
 const buildRequest = { method: "POST", headers: { "Content-Type": "application/json" } };
 
-test("the preview lists every target cw build --preview prints, and writes nothing (FR-120, SC-014)", async () => {
+test("the preview lists every target cw build --preview prints, and writes nothing (FR-120, SC-014, CORE Story 7 scenario 1)", async () => {
   const { portalRoutes, fileReaders, cli } = surfaces(holding());
 
   const answer = await portalRoutes.request("/charter/root/build");
@@ -214,6 +214,6 @@ test("the health check is what doctor answers, and names the faults cw doctor pr
   const { text } = await printed(cli, ["doctor"]);
   for (const [file, faults] of Object.entries(faultsByFile.data.files)) {
     assert.ok(text.includes(file));
-    for (const { data } of faults) assert.ok(text.includes(`${data.severity}: ${data.message}`));
+    for (const { data: fault } of faults) assert.ok(text.includes(`${fault.severity}: ${fault.message}`));
   }
 });

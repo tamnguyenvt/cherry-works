@@ -71,7 +71,10 @@ export interface ForManagingCharter {
 
   /** New primitives of the repository's own layer kept together, each one's
    *  uri in order; refused, with nothing written, as one added is, and where
-   *  any file is already in one's folder (CORE-FR-194). */
+   *  any file is already in one's folder (CORE-FR-194). Handed each as it is
+   *  kept, not as a `Primitive` the way `addPrimitive` is: what is injected is
+   *  a vendor's source copied byte for byte, and a primitive written again
+   *  from the model would not be those bytes. */
   injectPrimitives(rawPrimitives: readonly RawPrimitive[]): Promise<readonly string[]>;
 
   /** Refused where the repository is laid out in a way this store no longer

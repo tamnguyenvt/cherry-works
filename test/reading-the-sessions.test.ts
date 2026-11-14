@@ -139,7 +139,7 @@ const listedSummary = (text: string) =>
       : [{ sessionId, tokens: Number(sessionTokens.replaceAll(",", "")) }];
   });
 
-test("the summary lists each day and each session in it, the largest first, each session once at its last stop (EVAL-FR-012)", async () => {
+test("the summary lists each day and each session in it, the largest first, each session once at its last stop (EVAL-FR-012, EVAL Story 3 scenario 1)", async () => {
   const cli = cliOver(machineHolding(keptLog));
 
   const { code, text } = await printed(cli, ["sessions"]);
@@ -156,7 +156,7 @@ test("the summary lists each day and each session in it, the largest first, each
   assert.match(text, /84,000 tokens in all, 3 sessions, from 2026-09-03 until 2026-10-03\./);
 });
 
-test("a span counts only the sessions within it (EVAL-FR-012)", async () => {
+test("a span counts only the sessions within it (EVAL-FR-012, EVAL Story 3 scenario 2)", async () => {
   const cli = cliOver(machineHolding(keptLog));
 
   const { code, text } = await printed(cli, ["sessions", "--since", "2026-10-02", "--until", "2026-10-02"]);
@@ -179,7 +179,7 @@ test("a span counts only the sessions within it (EVAL-FR-012)", async () => {
   assert.match(emptySpanText, /No session has been kept for this repository from 2026-10-03 until 2026-11-02/);
 });
 
-test("a log last written outside the span is not read (EVAL-FR-012, EVAL-SC-007)", async () => {
+test("a log last written outside the span is not read (EVAL-FR-012, EVAL-SC-007, EVAL Story 3 scenario 2)", async () => {
   const oldLogFile = `${defaultSessionsFolder}session-old/session-analysis.jsonl`;
   const fileReaders = machineHolding({
     ...keptLog,
@@ -193,7 +193,7 @@ test("a log last written outside the span is not read (EVAL-FR-012, EVAL-SC-007)
   assert.ok(fileReaders.calls.includes(`read ${defaultSessionsFolder}session-c/session-analysis.jsonl`));
 });
 
-test("with no span named, the last 31 days are summed up, today among them (EVAL-FR-030)", async () => {
+test("with no span named, the last 31 days are summed up, today among them (EVAL-FR-030, EVAL Story 3 scenario 4)", async () => {
   const fileReaders = machineHolding({
     ...keptLog,
     [`${defaultSessionsFolder}session-first/session-analysis.jsonl`]: `${sessionAnalysisLine("session-first", "2026-09-03T12:00:00.000Z", 100)}\n`,
@@ -213,7 +213,7 @@ test("a span named by one end is 31 days from it or up to it (EVAL-FR-030)", asy
   assert.match((await printed(cli, ["sessions", "--until", "2026-10-01"])).text, /from 2026-09-01 until 2026-10-01\./);
 });
 
-test("a span longer than 31 days is refused before anything is read, saying how long one may be (EVAL-FR-030)", async () => {
+test("a span longer than 31 days is refused before anything is read, saying how long one may be (EVAL-FR-030, EVAL Story 3 scenario 5)", async () => {
   const fileReaders = machineHolding(keptLog);
 
   const { code, problem } = await printed(cliOver(fileReaders), [
@@ -277,7 +277,7 @@ test("only each session's own folder is looked in, however deep the folder named
   assert.ok(!fileReaders.calls.some((call) => call.startsWith("listed files under file:///home/dev/projects/a/")));
 });
 
-test("with no log yet, the summary says none was kept and how one starts (EVAL-FR-013)", async () => {
+test("with no log yet, the summary says none was kept and how one starts (EVAL-FR-013, EVAL Story 3 scenario 3)", async () => {
   const cli = cliOver(machineHolding({}));
 
   const { code, text } = await printed(cli, ["sessions"]);

@@ -28,7 +28,7 @@ const guide = (id: string) =>
     "",
   ].join("\n");
 
-const suiteText = (written: unknown) => `${JSON.stringify(written, undefined, 2)}\n`;
+const suiteText = (authoredSuite: unknown) => `${JSON.stringify(authoredSuite, undefined, 2)}\n`;
 
 /** A repository with one guide, one passing case and one failing one. */
 const withOnePassingOneFailing = () => ({
@@ -88,7 +88,7 @@ test("the test files are sent as suites() answers them (FR-124)", async () => {
   assert.deepEqual(CharterDTOs.TestSuites.parse(await answer.json()), await charterAuthoringApp.listTestSuites());
 });
 
-test("the outcome is how cw test resolves every case, each under its file (Story 9 scenario 2)", async () => {
+test("the outcome is how cw test resolves every case, each under its file (CORE Story 9 scenario 2)", async () => {
   const { portalRoutes, charterAuthoringApp } = portal(withOnePassingOneFailing());
 
   const answer = await portalRoutes.request("/test-suites/outcome");
@@ -97,7 +97,10 @@ test("the outcome is how cw test resolves every case, each under its file (Story
   const testRunReportDTO = CharterDTOs.TestRunReport.parse(await answer.json());
   assert.deepEqual(testRunReportDTO, await charterAuthoringApp.testCharter());
   assert.deepEqual(
-    testRunReportDTO.data.testCaseReports.map(({ data }) => [data.suiteName, data.passed]),
+    testRunReportDTO.data.testCaseReports.map(({ data: testCaseReport }) => [
+      testCaseReport.suiteName,
+      testCaseReport.passed,
+    ]),
     [
       ["guides.json", true],
       ["guides.json", false],
@@ -114,7 +117,7 @@ test("a run stopped by a test file that does not read is a 422 naming it (FR-088
   assert.match(JSON.stringify(FaultDTOs.FaultsByFile.parse(await answer.json())), /broken\.json/);
 });
 
-test("a test file posted is written under a free name, and answered with its path (Story 9 scenario 6)", async () => {
+test("a test file posted is written under a free name, and answered with its path (CORE Story 9 scenario 6)", async () => {
   const { portalRoutes, fileAt } = portal(withOnePassingOneFailing());
 
   const answer = await portalRoutes.request("/test-suites", sending("POST"));
@@ -125,7 +128,7 @@ test("a test file posted is written under a free name, and answered with its pat
   assert.ok(await fileAt(".cw/charter/test/untitled-1.json"));
 });
 
-test("text put that reads as a suite is written (Story 9 scenario 3)", async () => {
+test("text put that reads as a suite is written (CORE Story 9 scenario 3)", async () => {
   const { portalRoutes, fileAt } = portal(withOnePassingOneFailing());
   const text = suiteText({ cases: [{ do: { touchFile: "src/two.ts" }, expect: { activate: "no-any" } }] });
 
@@ -135,7 +138,7 @@ test("text put that reads as a suite is written (Story 9 scenario 3)", async () 
   assert.equal(await fileAt(".cw/charter/test/guides.json"), text);
 });
 
-test("text put that is not a suite is a 422 with the sample, and nothing is written (Story 9 scenario 4)", async () => {
+test("text put that is not a suite is a 422 with the sample, and nothing is written (CORE Story 9 scenario 4)", async () => {
   const files = withOnePassingOneFailing();
   const { portalRoutes, fileAt } = portal(files);
 
@@ -147,7 +150,7 @@ test("text put that is not a suite is a 422 with the sample, and nothing is writ
   assert.equal(await fileAt(".cw/charter/test/guides.json"), files[at(".cw/charter/test/guides.json")]);
 });
 
-test("a test file deleted is gone, and a name that is none is a 422 (Story 9 scenario 7)", async () => {
+test("a test file deleted is gone, and a name that is none is a 422 (CORE Story 9 scenario 7)", async () => {
   const { portalRoutes, fileAt } = portal(withOnePassingOneFailing());
 
   const refused = await portalRoutes.request("/test-suites/missing.json", sending("DELETE"));

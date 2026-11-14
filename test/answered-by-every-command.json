@@ -15,7 +15,7 @@
     {
       "args": "init --agent claude",
       "status": 0,
-      "stdout": "Set up this repository under a charter.\nCompiling for: claude.\nBuilt 13 files: 13 added, 0 changed.\nAuthor your first rule under .cw/charter/primitive/guide/, or ask your agent to write one, then run \"cw build\".\n",
+      "stdout": "Set up this repository under a charter.\nAgents chosen: claude.\nBuilt 13 files: 13 added, 0 changed.\nAuthor your first rule under .cw/charter/primitive/guide/, or ask your agent to write one, then run \"cw build\".\n",
       "stderr": ""
     },
     {

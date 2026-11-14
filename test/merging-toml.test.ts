@@ -69,7 +69,7 @@ test("TOML merging preserves quoted dotted keys, inline tables, multiline string
   assert.equal(parsed["instant"].toISOString(), "2026-10-30T12:34:56.000+07:00");
 });
 
-test("TOML merges in memory without state, preserves existing hook groups and does not duplicate generated hooks", async () => {
+test("TOML merges in memory without state, writes the hooks of a signal a sensor names over whole and does not duplicate them (CORE-FR-039)", async () => {
   const sensorFile = inRepo(".cw/charter/primitive/sensor/check/index.md");
   const { held, app } = building(
     'model = "mine"\n[[hooks.Stop]]\n[[hooks.Stop.hooks]]\ntype = "command"\ncommand = "echo user"\n',
@@ -81,8 +81,9 @@ test("TOML merges in memory without state, preserves existing hook groups and do
   assert.equal((await app.buildCharter()).type, "ProjectionPlanSummary");
   assert.equal(await held.readIfThere(inRepo(".cw/toml-projections.json")), undefined);
   const builtText = await held.readFile(inRepo(".codex/config.toml"));
-  assert.match(builtText, /echo user/);
-  assert.equal((builtText.match(/\[\[hooks.Stop\]\]/g) ?? []).length, 2);
+  assert.doesNotMatch(builtText, /echo user/);
+  assert.match(builtText, /model = "mine"/);
+  assert.equal((builtText.match(/\[\[hooks.Stop\]\]/g) ?? []).length, 1);
   const secondBuildAnswer = await app.buildCharter();
   assert.equal(secondBuildAnswer.type, "ProjectionPlanSummary");
   if (secondBuildAnswer.type === "ProjectionPlanSummary") assert.deepEqual(secondBuildAnswer.data.edited, []);

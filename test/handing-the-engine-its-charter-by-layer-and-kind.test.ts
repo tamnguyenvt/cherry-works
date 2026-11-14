@@ -198,7 +198,7 @@ function charterKeptWithNoPath(): {
   return { charterRepository, rawPrimitiveByKey };
 }
 
-/** The settings of a repository compiling for claude, as the command line
+/** The settings of a repository that chose claude, as the command line
  *  hands them, or none where it was never set up. */
 function settingsKeptInMemory(isSetUp = true): WorkspaceSettings {
   return { agents: isSetUp ? ["claude"] : [] };
@@ -373,10 +373,12 @@ test("a charter kept with no path is validated, listed, written and tested as th
     answerTyped<CharterDTOs.Primitives>(await filesAuthoringApp.listPrimitives(), "Primitives"),
   ];
   const primitiveKeysOf = (primitivesAnswer: typeof keptPrimitives) =>
-    primitivesAnswer.data.primitives.map(({ data }) => `${data.layerName} ${data.kind} ${data.id}`).sort();
+    primitivesAnswer.data.primitives
+      .map(({ data: primitive }) => `${primitive.layerName} ${primitive.kind} ${primitive.id}`)
+      .sort();
   assert.deepEqual(primitiveKeysOf(keptPrimitives), primitiveKeysOf(filesPrimitives));
   assert.equal(
-    keptPrimitives.data.primitives.find(({ data }) => data.id === "kept-guide")?.data.file,
+    keptPrimitives.data.primitives.find(({ data: primitive }) => primitive.id === "kept-guide")?.data.file,
     "db://charter:guide/kept-guide",
   );
 
@@ -530,7 +532,7 @@ test("every other use case answers through stores of a tool's own that keep no p
   const addedSuiteName = answerOf(await testsApp.addTestSuite());
   answerOf(await testsApp.writeTestSuite(addedSuiteName.data.name, testSuiteText));
   assert.deepEqual(
-    answerOf(await testsApp.listTestSuites()).data.testSuites.map(({ data }) => data.name),
+    answerOf(await testsApp.listTestSuites()).data.testSuites.map(({ data: testSuite }) => testSuite.name),
     [addedSuiteName.data.name],
   );
   answerOf(await testsApp.removeTestSuite(addedSuiteName.data.name));
@@ -599,7 +601,7 @@ test("every other use case answers through stores of a tool's own that keep no p
   assert.notEqual((await evaluatingApp.evaluateCharter()).type, "Fault");
 });
 
-test("the command line says where something is kept as the path from where it runs, and leaves what a primitive says as written (CORE Story 47, CORE-FR-214)", () => {
+test("the command line says where something is kept as the path from where it runs, and leaves what a primitive says as written (CORE Story 47, CORE-FR-214, CORE Story 47 scenario 4)", () => {
   const shownAnswer = showPathsFromFolder(
     {
       type: "Primitive",
@@ -635,7 +637,7 @@ test("the command line says where something is kept as the path from where it ru
   });
 });
 
-test("the command line says where to move a primitive kept where its kind and id do not say, as it said before (FR-141, CORE-FR-214)", async () => {
+test("the command line says where to move a primitive kept where its kind and id do not say, as it said before (FR-141, CORE-FR-214, CORE Story 47 scenario 4)", async () => {
   const fileReaders = new InMemoryFileReaders({
     "file:///repo/.cw/settings.json": `${JSON.stringify({ agents: ["claude"] })}\n`,
     "file:///repo/.cw/charter/primitive/guide/kept-guide.md": keptGuideText,
@@ -697,7 +699,7 @@ test("a word searched for is never found in where the repository sits on the mac
     answerTyped<CharterDTOs.Primitives>(
       await filesAuthoringApp.listPrimitives("guide/kept-guide"),
       "Primitives",
-    ).data.primitives.map(({ data }) => data.id),
+    ).data.primitives.map(({ data: primitive }) => primitive.id),
     ["kept-guide"],
   );
 });
@@ -986,7 +988,7 @@ test("a markdown file a source keeps on its own is no primitive of its charter, 
   };
   const addedPrimitiveIds = answerOf(
     await vendoringAppOver(new InMemoryFileReaders({})).addVendor("team/source"),
-  ).data.flatMap(({ primitives }) => primitives.map(({ data }) => data.id));
+  ).data.flatMap(({ primitives }) => primitives.map(({ data: primitive }) => primitive.id));
   assert.deepEqual(addedPrimitiveIds, ["published"]);
 
   const injectedFileReaders = new InMemoryFileReaders({});

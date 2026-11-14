@@ -130,7 +130,7 @@ test("a skill named is taken from a skills repository into the root vendor folde
   );
 });
 
-test("a SKILL.md is converted: its name the id and the one trigger, its description kept, disable-model-invocation kept, its body as written (CORE-FR-186)", async () => {
+test("a SKILL.md is converted: its name the id and the one trigger, its description kept, disable-model-invocation kept, its body as written (CORE-FR-186, CORE Story 32 scenario 2)", async () => {
   const { fileReaders, sourceFetcher } = withSkillsPublished();
 
   await running(["vendor", "add", "mattpocock/skills", "--skill", "grill-me"], fileReaders, sourceFetcher);
@@ -170,7 +170,7 @@ test("user-invocable: false is kept as disable-user-invocation: true, and every 
   assert.match(commandOutput, /allowed-tools/);
 });
 
-test("every file beside a SKILL.md arrives as an asset of the primitive, at the same path (CORE-FR-187)", async () => {
+test("every file beside a SKILL.md arrives as an asset of the primitive, at the same path (CORE-FR-187, CORE Story 32 scenario 3)", async () => {
   const { fileReaders, sourceFetcher } = withSkillsPublished();
 
   await running(["vendor", "add", "mattpocock/skills", "--skill", "grill-me"], fileReaders, sourceFetcher);
@@ -178,7 +178,7 @@ test("every file beside a SKILL.md arrives as an asset of the primitive, at the 
   assert.equal(await fileReaders.readFile(new URL(takenAt("skill/grill-me/agents/openai.yaml"))), "model: gpt\n");
 });
 
-test("a skills repository given with no --skill has every skill it holds taken, but none under node_modules (CORE-FR-185, CORE-FR-188)", async () => {
+test("a skills repository given with no --skill has every skill it holds taken, but none under node_modules (CORE-FR-185, CORE-FR-188, CORE Story 32 scenario 4)", async () => {
   const { fileReaders, sourceFetcher } = withSkillsPublished();
 
   const { code } = await running(["vendor", "add", "mattpocock/skills"], fileReaders, sourceFetcher);
@@ -189,7 +189,7 @@ test("a skills repository given with no --skill has every skill it holds taken, 
   await assert.rejects(() => fileReaders.readFile(new URL(takenAt("skill/some-package/index.md"))));
 });
 
-test("a --skill the source does not hold installs nothing, naming the skills it holds (CORE-FR-188)", async () => {
+test("a --skill the source does not hold installs nothing, naming the skills it holds (CORE-FR-188, CORE Story 32 scenario 5)", async () => {
   const { fileReaders, sourceFetcher } = withSkillsPublished();
 
   const { code, commandOutput } = await running(
@@ -204,7 +204,7 @@ test("a --skill the source does not hold installs nothing, naming the skills it 
   await assert.rejects(() => fileReaders.readFile(new URL(takenAt("skill/grill-me/index.md"))));
 });
 
-test("taking one skill leaves the others in its folder as they were, and taking one again replaces it whole (CORE-FR-189)", async () => {
+test("taking one skill leaves the others in its folder as they were, and taking one again replaces it whole (CORE-FR-189, CORE Story 32 scenario 6)", async () => {
   const { fileReaders, sourceFetcher } = withSkillsPublished();
   await running(["vendor", "add", "mattpocock/skills", "--skill", "grill-me"], fileReaders, sourceFetcher);
   fileReaders.writeFile(new URL(takenAt("skill/grill-me/stale.md")), "From before.\n");
@@ -218,7 +218,7 @@ test("taking one skill leaves the others in its folder as they were, and taking 
   assert.equal((await takenPrimitive(fileReaders, "grill-me")).headers.id, "grill-me");
 });
 
-test("installing into root again writes the latest over what it held, a charter or skills alike", async () => {
+test("installing into root again writes the latest over what it held, a charter or skills alike (CORE Story 32 scenario 7)", async () => {
   const charterHeld = withSkillsPublished(mattpocockSkills(), { [takenAt("guide/no-any/index.md")]: "x" });
 
   const skillsOverCharter = await running(
@@ -245,7 +245,21 @@ test("installing into root again writes the latest over what it held, a charter 
   await assert.rejects(() => skillsHeld.fileReaders.readFile(new URL(takenAt("skill/grill-me/index.md"))));
 });
 
-test("a SKILL.md with no description, a name that is no id, or a name two folders declare installs nothing, naming the files (CORE-FR-192)", async () => {
+test("skills taken into root holding a source's own charter are written beside its primitives, which are kept as they were (CORE Story 32 scenario 7, CORE-FR-191)", async () => {
+  const charterHeld = withSkillsPublished(mattpocockSkills(), { [takenAt("guide/no-any/index.md")]: "x" });
+
+  const { code } = await running(
+    ["vendor", "add", "mattpocock/skills"],
+    charterHeld.fileReaders,
+    charterHeld.sourceFetcher,
+  );
+
+  assert.equal(code, EXIT_OK);
+  assert.match(await charterHeld.fileReaders.readFile(new URL(takenAt("skill/grill-me/index.md"))), /id: grill-me/);
+  assert.equal(await charterHeld.fileReaders.readFile(new URL(takenAt("guide/no-any/index.md"))), "x");
+});
+
+test("a SKILL.md with no description, a name that is no id, or a name two folders declare installs nothing, naming the files (CORE-FR-192, CORE Story 32 scenario 8)", async () => {
   for (const [sourceFiles, namedFile] of [
     [{ "skills/a/SKILL.md": skillMd(["name: a"]) }, "skills/a/SKILL.md"],
     [{ "skills/b/SKILL.md": skillMd(["description: No name."]) }, "skills/b/SKILL.md"],
@@ -299,7 +313,7 @@ test("a source that cannot be reached is refused in git's words, and work in han
   assert.equal(await fileReaders.readFile(new URL("file:///repo/work.txt")), "In hand.\n");
 });
 
-test("a charter source given --skill takes only the skills named, and given none is installed whole, as before, its skill folders not taken (CORE-FR-193)", async () => {
+test("a charter source given --skill takes only the skills named, and given none is installed whole, as before, its skill folders not taken (CORE-FR-193, CORE Story 32 scenarios 10, 11)", async () => {
   const charterSource = {
     ".cw/charter/primitive/guide/no-any/index.md": "x",
     "skills/grill-me/SKILL.md": skillMd(["name: grill-me", "description: Grill."]),

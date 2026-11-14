@@ -72,7 +72,7 @@ function assertNothingReleased(releaseCommands: string[][]): void {
   );
 }
 
-test("a release that passes publishes cherry-works, cw and its library, at its version, and records the library's contract (SDK Story 4 scenario 1)", async () => {
+test("a release that passes publishes cherry-works, cw and its library, at its version, and records the library's contract (SDK Story 4 scenario 1, CORE Story 15 scenario 1)", async () => {
   await inARelease(
     {
       currentVersion: "1.0.0",
@@ -291,7 +291,7 @@ for (const [releaseMode, refusalPattern] of [
   });
 }
 
-test("a preflight check failing is a refusal that publishes nothing and names the check (SDK Story 6 scenario 1)", async () => {
+test("a preflight check failing is a refusal that publishes nothing and names the check (SDK Story 6 scenario 1, CORE Story 15 scenario 3)", async () => {
   await inARelease(
     {
       currentVersion: "1.0.0",
@@ -578,7 +578,7 @@ test("a contract changed only in its comments and layout passes in a patch (SDK 
   );
 });
 
-test("an exported name removed without a new major is refused, naming the removal (SDK Story 7 scenario 4)", async () => {
+test("an exported name removed without a new major is refused, naming the removal (SDK Story 7 scenario 4, CORE Story 42 scenario 3)", async () => {
   await inARelease(
     {
       currentVersion: "1.0.0",
@@ -612,7 +612,7 @@ interface ForReadingFiles {
 `,
 };
 
-test("the last contract is read as one folder, each declaration by its name whichever file holds it, and the release lays each where it was (CORE Story 53 scenario 6, SDK-FR-015)", async () => {
+test("the last contract is read as one folder, each declaration by its name whichever file holds it, and the release lays each where it was (CORE Story 53 scenario 6, SDK-FR-015, CORE Story 42 scenario 3)", async () => {
   await inARelease(
     {
       currentVersion: "1.0.0",

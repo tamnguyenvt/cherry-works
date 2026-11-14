@@ -84,7 +84,7 @@ function withChartersPublished(
 const checkedOutFolders = (sourceFetcher: InMemorySources) =>
   sourceFetcher.checkedOutFolders.map(({ fromFolder, intoSubFolder }) => [fromFolder, intoSubFolder]);
 
-test("a charter picked from a source of many lands in a vendor folder of its own, left unstaged, and the others do not arrive (CORE-FR-195, CORE-FR-196, CORE-SC-052)", async () => {
+test("a charter picked from a source of many lands in a vendor folder of its own, left unstaged, and the others do not arrive (CORE-FR-195, CORE-FR-196, CORE-SC-052, CORE Story 33 scenario 1)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished();
 
   const { code, commandOutput } = await running(
@@ -112,7 +112,7 @@ test("a charter picked from a source of many lands in a vendor folder of its own
   );
 });
 
-test("each charter picked is a vendor of its own: listed, read, brought up to date, and removed on its own (CORE-FR-196)", async () => {
+test("each charter picked is a vendor of its own: listed, read, brought up to date, and removed on its own (CORE-FR-196, CORE Story 33 scenario 2)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished();
   await running(
     ["vendor", "add", "acme/charters", "--charter", "baseline", "--charter", "sdd"],
@@ -166,7 +166,7 @@ test("each charter picked is a vendor of its own: listed, read, brought up to da
   );
 });
 
-test("a source holding charters under charters/ alone, given neither flag, installs every charter it holds, asking nothing (CORE-FR-193)", async () => {
+test("a source holding charters under charters/ alone, given neither flag, installs every charter it holds, asking nothing (CORE-FR-193, CORE Story 33 scenario 3)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished();
 
   const { code, commandOutput } = await running(["vendor", "add", "acme/charters"], fileReaders, sourceFetcher);
@@ -178,7 +178,7 @@ test("a source holding charters under charters/ alone, given neither flag, insta
   ]);
 });
 
-test("a source of every shape gives its one charter with neither flag, skills alone with --skill, and both with both (CORE-FR-193)", async () => {
+test("a source of every shape gives its one charter with neither flag, skills alone with --skill, and both with both (CORE-FR-193, CORE Story 33 scenario 4)", async () => {
   const everyShape = {
     ".cw/charter/primitive/guide/own/index.md": guide("own"),
     ...acmeCharters(),
@@ -231,7 +231,7 @@ test("a source of every shape gives its one charter with neither flag, skills al
   );
 });
 
-test("a --charter the source does not hold installs nothing, naming the charters it holds (CORE-FR-197)", async () => {
+test("a --charter the source does not hold installs nothing, naming the charters it holds (CORE-FR-197, CORE Story 33 scenario 5)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished();
 
   const { code, commandOutput } = await running(
@@ -246,7 +246,7 @@ test("a --charter the source does not hold installs nothing, naming the charters
   assert.deepEqual(sourceFetcher.checkedOutFolders, []);
 });
 
-test("a flag for a shape the source does not hold is refused, taking nothing, saying which shapes it holds (CORE-FR-193)", async () => {
+test("a flag for a shape the source does not hold is refused, taking nothing, saying which shapes it holds (CORE-FR-193, CORE Story 33 scenario 6)", async () => {
   const skillsOnly = withChartersPublished({ "skills/grill-me/SKILL.md": skillMd("grill-me") });
   const charterRefuseOutcome = await running(
     ["vendor", "add", "acme/charters", "--charter", "baseline"],
@@ -270,7 +270,7 @@ test("a flag for a shape the source does not hold is refused, taking nothing, sa
   assert.deepEqual(chartersOnly.sourceFetcher.checkedOutFolders, []);
 });
 
-test("a folder under charters/ named as a kind is refused when picked, naming the folder (CORE-FR-197)", async () => {
+test("a folder under charters/ named as a kind is refused when picked, naming the folder (CORE-FR-197, CORE Story 33 scenario 7)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished({
     ...acmeCharters(),
     "charters/guide/.cw/charter/primitive/guide/x/index.md": guide("x"),
@@ -287,7 +287,7 @@ test("a folder under charters/ named as a kind is refused when picked, naming th
   assert.deepEqual(sourceFetcher.checkedOutFolders, []);
 });
 
-test("a folder under charters/ holding no charter folder is refused when picked, naming the folder (CORE-FR-197)", async () => {
+test("a folder under charters/ holding no charter folder is refused when picked, naming the folder (CORE-FR-197, CORE Story 33 scenario 7)", async () => {
   for (const [name, sourceFiles] of [
     ["notes", { ...acmeCharters(), "charters/notes/README.md": "# Notes\n" }],
   ] as const) {

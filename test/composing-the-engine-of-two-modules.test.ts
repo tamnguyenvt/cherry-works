@@ -103,8 +103,8 @@ function adaptersInMemory(files: Readonly<Record<string, string>>) {
   const sourceFetcher = new InMemorySources(fileReader);
   const promptfooRunner = new InMemoryPromptfoo();
   promptfooRunner.folderFiles = fileReader;
-  const mcpServers = new InMemoryMcpServers();
-  mcpServers.servers.set(billingEndpoint, {
+  const mcpServerCaller = new InMemoryMcpServers();
+  mcpServerCaller.servers.set(billingEndpoint, {
     tools: [{ name: "get_file_contents", inputSchema: { type: "object" } }],
   });
   return {
@@ -117,7 +117,7 @@ function adaptersInMemory(files: Readonly<Record<string, string>>) {
     tokenCounter: new InMemoryTokenCounter(),
     shell: new InMemoryShellCommands({}),
     progressReporter: new InMemoryReporter(),
-    mcpServers,
+    mcpServerCaller,
     clock: new InMemoryClock(new Date("2026-11-10T00:00:00Z")),
     promptfooRunner,
   };
@@ -187,7 +187,7 @@ async function printedBy(commandLine: CommandLine, argv: readonly string[]) {
   try {
     return {
       code: await new Commander(commandLine, COMMANDS).runCommandLine(argv),
-      result: stdoutTexts.join(""),
+      outputText: stdoutTexts.join(""),
       problem: stderrTexts.join(""),
     };
   } finally {
@@ -196,7 +196,7 @@ async function printedBy(commandLine: CommandLine, argv: readonly string[]) {
   }
 }
 
-const claudeSettings = { enabledAgents: ["claude"] };
+const claudeSettings = { agents: ["claude"] };
 
 /** Each operation that reaches an adapter, asked in turn of the applications
  *  composed over `filesReachingEveryAdapter`, under its name with what it
@@ -382,7 +382,7 @@ test("runtime asks the charter only through charter's applications, in answers m
     adapters.clock,
     { agents: ["claude"] },
     adapters.progressReporter,
-    adapters.mcpServers,
+    adapters.mcpServerCaller,
   );
 
   answerOf(await charterRuntimeApp.runSensors("Stop", "", "claude"));
@@ -438,7 +438,7 @@ const OWN_ADAPTER_CLASS_NAMES_BY_KEY = {
   fileWriter: ["FileOutput"],
   worktreeKeeper: ["GitWorktrees"],
   oauthAuthorizer: ["OAuth"],
-  mcpServers: ["McpClients"],
+  mcpServerCaller: ["McpClients"],
   tokenCounter: ["Tiktoken"],
   clock: ["SystemClock"],
   shell: ["Shell"],
@@ -592,12 +592,12 @@ const ADAPTER_KEYS_BY_OPERATION_NAME: Readonly<Record<string, readonly string[]>
     "fileReader",
     "fileWriter",
     "localOutput",
-    "mcpServers",
+    "mcpServerCaller",
   ],
   predictMainContext: ["agentProvider", "charterRepository", "fileReader", "tokenCounter"],
   addVendor: ["charterRepository", "fileReader", "sourceFetcher"],
   runSensors: ["charterRepository", "fileReader", "shell"],
-  callTool: ["charterRepository", "credentialsRepository", "fileReader", "mcpServers"],
+  callTool: ["charterRepository", "credentialsRepository", "fileReader", "mcpServerCaller"],
   evaluateCharter: [
     "agentProvider",
     "charterRepository",
@@ -821,7 +821,7 @@ test("the eval cases are listed, added, rewritten and removed by the one store t
     (await adapters.fileReader.readFilesRecursively(".cw/charter/eval")).map(({ path }) => path).sort();
 
   assert.deepEqual(
-    answerOf(await charterAuthoringApp.listEvalSuites()).data.evalSuites.map(({ data }) => data.name),
+    answerOf(await charterAuthoringApp.listEvalSuites()).data.evalSuites.map(({ data: evalSuite }) => evalSuite.name),
     ["skills.json"],
   );
   const addedName = answerOf(await charterAuthoringApp.addEvalSuite()).data.name;
@@ -1023,7 +1023,7 @@ test("an evaluation keeps each case's working copy and what its run leaves under
   }
 });
 
-test("the workspace module keeps which agents are enabled in .cw/settings.json, and the command line hands them to the applications it composes (CORE Story 52 scenario 12)", async () => {
+test("the workspace module keeps which agents a repository chose in .cw/settings.json, and the command line hands them to the applications it composes (CORE Story 52 scenario 12)", async () => {
   const adapters = adaptersInMemory(filesInThreeParts);
   const composedAgentNames: (readonly string[])[] = [];
   const commandLine = commandLineOver(adapters);
@@ -1041,10 +1041,10 @@ test("the workspace module keeps which agents are enabled in .cw/settings.json, 
   assert.deepEqual(JSON.parse((await adapters.fileReader.readIfThere(".cw/settings.json")) ?? "{}"), {
     agents: ["codex"],
   });
-  const { code, result } = await printedBy(recordingCommandLine, ["doctor"]);
-  assert.equal(code, EXIT_OK, result);
+  const { code, outputText } = await printedBy(recordingCommandLine, ["doctor"]);
+  assert.equal(code, EXIT_OK, outputText);
   assert.deepEqual(composedAgentNames.at(-1), ["codex"]);
-  assert.match(result, /codex/);
+  assert.match(outputText, /codex/);
 });
 
 test("neither the charter nor runtime reads or writes .cw/settings.json: run, each of their operations reaches other files, and only the workspace's store reads it (CORE Story 52 scenario 12)", async () => {

@@ -104,7 +104,7 @@ const promptfooRunner: ForRunningPromptfoo = {
   async readLogs(): Promise<readonly PromptfooLog[]> { return []; }
 };
 const upstreamTool: UpstreamTool = { name: 'echo', inputSchema: {} };
-const mcpServers: ForCallingMcpServers = { async connectServer(mcpServerAddress: McpServerAddress): Promise<McpServerConnection> { return { tools: [upstreamTool], async callTool(): Promise<ToolAnswer> { throw new UnauthorizedMcpFault('Refused.', 'Sign in again.'); }, async closeConnection() {} }; } };
+const mcpServerCaller: ForCallingMcpServers = { async connectServer(mcpServerAddress: McpServerAddress): Promise<McpServerConnection> { return { tools: [upstreamTool], async callTool(): Promise<ToolAnswer> { throw new UnauthorizedMcpFault('Refused.', 'Sign in again.'); }, async closeConnection() {} }; } };
 const oauthAuthorizer: ForAuthorizingOAuthClients = { async authorizeInBrowser(endpoint): Promise<OAuthGrant> { return { accessToken: 'token', client: new McpClientRegistration({ clientId: 'client', issuer: endpoint }) }; }, async renewGrant() { return undefined; } };
 const credentialByAddress = new Map<string, McpCredential>([['https://mcp.example/mcp', new McpCredential({ address: 'https://mcp.example/mcp', method: McpAuthMethod.TOKEN, accessToken: 'token' })]]);
 const credentialsRepository: ForStoringCredentials = { async readCredential(address) { return credentialByAddress.get(address); }, async writeCredential(mcpCredential) { credentialByAddress.set(mcpCredential.address, mcpCredential); } };
@@ -127,7 +127,7 @@ const localOutput: ForManagingLocalOutput = {
   writePlan(projectionPlan: ProjectionPlan) { return ownLocalOutput.writePlan(projectionPlan); }
 };
 const agentCli: ForCheckingAgentCli = { async isInstalled() { return false; } };
-const replacedAdapters: Partial<EngineAdapters> = { fileReader, fileWriter, worktreeKeeper, oauthAuthorizer, mcpServers, tokenCounter, clock, shell, progressReporter, promptfooRunner, credentialsRepository, sourceFetcher, sessionAnalysisRepository, workspaceSettingsRepository, localOutput, agentProvider: { claude: { projection: new ClaudeProjection(fileReader), agentCli: agentCli } } };
+const replacedAdapters: Partial<EngineAdapters> = { fileReader, fileWriter, worktreeKeeper, oauthAuthorizer, mcpServerCaller, tokenCounter, clock, shell, progressReporter, promptfooRunner, credentialsRepository, sourceFetcher, sessionAnalysisRepository, workspaceSettingsRepository, localOutput, agentProvider: { claude: { projection: new ClaudeProjection(fileReader), agentCli: agentCli } } };
 const composedApplications: ComposedApplications = await composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), replacedAdapters);
 const filesReplacedApplications: Promise<ComposedApplications> = composeApplications(new URL('memory:/r/'), new URL('memory:/home/'), { fileReader, fileWriter });
 // An agent's projection and command line, and the charter's store, may be a tool's own too.
@@ -1236,7 +1236,7 @@ test("the contract recorded for the first release under it is one folder, a file
   }
 });
 
-test("the contract recorded is the build split by module, so a declaration changed in the code and not in contract/ fails (CORE Story 53 scenario 6, CORE Story 55 scenario 25)", async () => {
+test("the contract recorded is the build split by module, so a declaration changed in the code and not in contract/ fails (CORE Story 53 scenario 6, CORE Story 55 scenario 25, CORE Story 45 scenario 2)", async () => {
   const repositoryPath = fileURLToPath(repositoryUrl);
   const contractTextByFileName = (await readContractFolder(repositoryPath))!;
   const builtContractText = await readFile(new URL("dist/index.d.ts", repositoryUrl), "utf8");
@@ -1263,13 +1263,24 @@ await charterRuntimeApp.runSensors('Stop', '{}');
   runConsumerCode(
     memoryConsumerCode +
       String.raw`
-const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = await composeOverMemory(['claude']);
+const shellCommands = [];
+const shell = { async runShellCommand(command) { shellCommands.push(command); return { exitCode: 0, stdout: '', stderr: '' }; } };
+const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = await composeOverMemory(['claude'], { shell });
 assert.equal((await charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
+// One sensor on Stop kept for claude, one kept for no agent.
+const claudeSensorAnswer = await charterAuthoringApp.addPrimitive('sensor', 'claude-check', { description: 'Check when claude stops.', signal: 'Stop', run: 'echo claude-check', 'agent-provider': ['claude'] }, 'Check.');
+assert.equal(claudeSensorAnswer.type, 'Primitive', JSON.stringify(claudeSensorAnswer));
+const everyAgentSensorAnswer = await charterAuthoringApp.addPrimitive('sensor', 'every-agent-check', { description: 'Check when any agent stops.', signal: 'Stop', run: 'echo every-agent-check' }, 'Check.');
+assert.equal(everyAgentSensorAnswer.type, 'Primitive', JSON.stringify(everyAgentSensorAnswer));
 assert.equal((await charterBuildingApp.buildCharter()).type, 'ProjectionPlanSummary');
-const unnamedAnswer = await charterRuntimeApp.runSensors('NoSensorSignal', '{}', undefined);
+const unnamedAnswer = await charterRuntimeApp.runSensors('Stop', '{}', undefined);
 assert.equal(unnamedAnswer.type, 'SensorRunOutcome', JSON.stringify(unnamedAnswer));
+// With no agent named, the sensor kept for no agent runs alone: an engine assuming claude would run claude's too.
+assert.deepEqual(shellCommands, ['echo every-agent-check']);
 assert.deepEqual(progressReporter.problems, []);
-assert.equal((await charterRuntimeApp.runSensors('NoSensorSignal', '{}', 'claude')).type, 'SensorRunOutcome');
+shellCommands.length = 0;
+assert.equal((await charterRuntimeApp.runSensors('Stop', '{}', 'claude')).type, 'SensorRunOutcome');
+assert.ok(shellCommands.includes('echo claude-check') && shellCommands.includes('echo every-agent-check'), shellCommands.join(', '));
 `,
   );
 });

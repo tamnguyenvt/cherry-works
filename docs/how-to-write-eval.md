@@ -91,7 +91,7 @@ the agent trace when diagnosing a failure.
 
 Commit the suites and charter before running: `cw eval` evaluates the last
 commit, rebuilding the charter in an isolated worktree for each case. It
-uses the selected provider's sign-in or configured API key and spends tokens.
+uses the evaluating agent's sign-in or the API key the environment sets, and spends tokens.
 
 ```bash
 cw eval --agent codex

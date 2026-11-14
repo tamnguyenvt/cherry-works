@@ -58,13 +58,13 @@ function cleanFolderHref(folderUrl: URL): string {
 }
 
 /** The path from the repository of a path from a checkout of it. */
-export function resolveRepoPath(checkoutPath: string, repoRelativePath: string): string {
-  return checkoutPath === "" ? repoRelativePath : `${checkoutPath}/${repoRelativePath}`;
+export function resolveRepoPath(checkoutFolder: string, repoRelativePath: string): string {
+  return checkoutFolder === "" ? repoRelativePath : `${checkoutFolder}/${repoRelativePath}`;
 }
 
 /** The path from a checkout of the repository of a path from the repository. */
-export function resolveCheckoutPath(checkoutPath: string, filePath: string): string {
-  return checkoutPath === "" ? filePath : filePath.slice(checkoutPath.length + 1);
+export function resolveCheckoutPath(checkoutFolder: string, filePath: string): string {
+  return checkoutFolder === "" ? filePath : filePath.slice(checkoutFolder.length + 1);
 }
 
 /** What one directory holds, and nothing where there is no such directory. */

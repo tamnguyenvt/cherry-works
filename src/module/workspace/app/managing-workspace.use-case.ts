@@ -44,7 +44,7 @@ export class ManagingWorkspace extends ApplicationService implements ForManaging
       // A charter is authored to instruct an agent (FR-033).
       if (agents.length === 0)
         throw new NoAgentFault(
-          `Setup was given no agent to compile for, and a charter compiles for at least one.`,
+          `Setup was given no agent to choose, and a repository chooses at least one.`,
           `Choose at least one of: ${this.agentProviderNames.join(", ")}.`,
           { internal: false },
         );

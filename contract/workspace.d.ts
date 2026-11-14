@@ -49,7 +49,7 @@ interface ForManagingWorkspace {
      *  was composed to compile for (CORE-FR-221). */
     readonly agentProviderNames: readonly string[];
     /** The settings the repository keeps; none is a repository never set up,
-     *  which compiles for no agent (FR-019). */
+     *  which chose no agent (FR-019). */
     readWorkspaceSettings(): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
     /**
      * The repository set up for these agents (FR-032 – FR-038): its settings
@@ -71,8 +71,8 @@ declare class RawWorkspaceSettings {
 }
 
 /**
- * What a repository configured itself with — which agents it compiles its
- * charter for, the ceiling of a main context, where its sessions are kept on
+ * What a repository configured itself with — which agents it chose, the
+ * ceiling of a main context, where its sessions are kept on
  * this machine (FR-033, EVAL-FR-006, EVAL-FR-012). Kept by the workspace
  * module alone, and handed to the applications that run by it (CORE-FR-231).
  */

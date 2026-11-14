@@ -62,7 +62,7 @@ const unread = applicationsOver(new InMemoryFileReaders({}));
 /** Everything one run wrote, kept apart the way a pipeline reads it: results
  *  from stdout, problems from stderr. The command line writes to the process it
  *  runs in, so a test that wants to read what a user reads listens there. */
-class Written {
+class PrintedOutput {
   readonly results: string[] = [];
   readonly problems: string[] = [];
 
@@ -72,11 +72,13 @@ class Written {
 }
 
 /** Run something with both streams held, and give back what it wrote. */
-const writing = async (work: () => Promise<number>): Promise<{ code: number; written: Written }> => {
-  const written = new Written();
+const printedOutputOf = async (
+  work: () => Promise<number>,
+): Promise<{ code: number; printedOutput: PrintedOutput }> => {
+  const printedOutput = new PrintedOutput();
   const streams = [
-    { stream: process.stdout, kept: process.stdout.write, into: written.results },
-    { stream: process.stderr, kept: process.stderr.write, into: written.problems },
+    { stream: process.stdout, kept: process.stdout.write, into: printedOutput.results },
+    { stream: process.stderr, kept: process.stderr.write, into: printedOutput.problems },
   ];
   for (const { stream, into } of streams) {
     stream.write = ((text: string | Uint8Array) => {
@@ -85,7 +87,7 @@ const writing = async (work: () => Promise<number>): Promise<{ code: number; wri
     }) as typeof stream.write;
   }
   try {
-    return { code: await work(), written };
+    return { code: await work(), printedOutput };
   } finally {
     for (const { stream, kept } of streams) stream.write = kept;
   }
@@ -101,11 +103,11 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
     commandLineOf(heldFiles, new InMemoryFileOutput(heldFiles), applicationsOver(heldFiles), repo),
     COMMANDS,
   );
-  return writing(() => cli.runCommandLine(argv));
+  return printedOutputOf(() => cli.runCommandLine(argv));
 };
 
 test("a charter with nothing wrong passes, and says so", async () => {
-  const { written } = await run({
+  const { printedOutput } = await run({
     [new URL("guide/no-any/index.md", root).href]: guide("no-any", ['mixins: ["ts-defaults"]']),
     [new URL("mixin/ts-defaults/index.md", root).href]: primitive("mixin", "ts-defaults"),
     ...pinningDown("no-any"),
@@ -113,71 +115,71 @@ test("a charter with nothing wrong passes, and says so", async () => {
 
   // Whether this repository is built is a question of its own, and not this
   // one: what a charter with nothing wrong answers is that it holds.
-  assert.deepEqual(written.problems, []);
-  assert.match(written.everything, /Charter: {2}good\./);
+  assert.deepEqual(printedOutput.problems, []);
+  assert.match(printedOutput.everything, /Charter: {2}good\./);
 });
 
-test("a file that is no primitive at all is named, with the problem and the next move", async () => {
-  const { code, written } = await run({
+test("a file that is no primitive at all is named, with the problem and the next move (CORE Story 1 scenario 3)", async () => {
+  const { code, printedOutput } = await run({
     [new URL("skill/refactoring/index.md", root).href]: primitive("skill", "refactoring"),
   });
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /skill\/refactoring\/index\.md/);
-  assert.match(written.everything, /triggers/);
+  assert.match(printedOutput.everything, /skill\/refactoring\/index\.md/);
+  assert.match(printedOutput.everything, /triggers/);
 });
 
 test("what is wrong is part of the report, not the command going wrong", async () => {
-  const { written } = await run({
+  const { printedOutput } = await run({
     [new URL("skill/refactoring/index.md", root).href]: primitive("skill", "refactoring"),
   });
 
   // The command ran and this is what it found, so all of it is the result: a
   // pipeline reads the report on one stream and gates on the exit status.
-  assert.deepEqual(written.problems, []);
-  assert.match(written.everything, /triggers/);
+  assert.deepEqual(printedOutput.problems, []);
+  assert.match(printedOutput.everything, /triggers/);
 });
 
 test("a file is named as the user would type it, under the repository they ran in", async () => {
-  const { written } = await run({
+  const { printedOutput } = await run({
     [new URL("guide/no-any/index.md", root).href]: guide("no-any", ['mixins: ["absent"]']),
   });
 
-  assert.match(written.everything, /^\.cw\/charter\/primitive\/guide\/no-any\/index\.md$/m);
+  assert.match(printedOutput.everything, /^\.cw\/charter\/primitive\/guide\/no-any\/index\.md$/m);
 });
 
-test("what is wrong with the charter as a whole fails the run too", async () => {
-  const { code, written } = await run({
+test("what is wrong with the charter as a whole fails the run too (CORE Story 2 scenario 2)", async () => {
+  const { code, printedOutput } = await run({
     [new URL("guide/no-any/index.md", root).href]: guide("no-any"),
     [new URL("file:///repo/.cw/charter/vendor/acme/charter/root/primitive/guide/no-any/index.md").href]:
       guide("no-any"),
   });
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /already declared/);
+  assert.match(printedOutput.everything, /already declared/);
 });
 
 test("every bad file is named in one run, not the first one found", async () => {
-  const { written } = await run({
+  const { printedOutput } = await run({
     [new URL("guide/no-any/index.md", root).href]: guide("no-any"),
     [new URL("guide/copied/index.md", root).href]: guide("no-any"),
     [new URL("guide/other/index.md", root).href]: guide("other", ['mixins: ["absent"]']),
   });
 
-  assert.match(written.everything, /guide\/copied\/index\.md/);
-  assert.match(written.everything, /guide\/other\/index\.md/);
+  assert.match(printedOutput.everything, /guide\/copied\/index\.md/);
+  assert.match(printedOutput.everything, /guide\/other\/index\.md/);
 });
 
 test("a warning is said and lets the run through", async () => {
-  const { written } = await run({
+  const { printedOutput } = await run({
     [new URL("guide/no-any/index.md", root).href]: guide("no-any", ["rationale: absent"]),
     ...pinningDown("no-any"),
   });
 
   // Said, and the charter still holds: a warning is worth saying and not worth
   // stopping on.
-  assert.match(written.everything, /good, with 1 warning/);
-  assert.match(written.everything, /warn: .*absent/);
+  assert.match(printedOutput.everything, /good, with 1 warning/);
+  assert.match(printedOutput.everything, /warn: .*absent/);
 });
 
 test("a flag the command never declared is a usage error, not a fault of the charter's", async () => {
@@ -187,26 +189,26 @@ test("a flag the command never declared is a usage error, not a fault of the cha
 });
 
 test("an unknown command is refused, and a near miss is answered with the command it most likely meant (CORE Story 56 scenario 3)", async () => {
-  const { code: nearMissCode, written: nearMissWritten } = await run({}, ["buidl"]);
+  const { code: nearMissCode, printedOutput: nearMissPrintedOutput } = await run({}, ["buidl"]);
 
   assert.equal(nearMissCode, EXIT_USAGE);
-  assert.match(nearMissWritten.everything, /Did you mean build\?/);
+  assert.match(nearMissPrintedOutput.everything, /Did you mean build\?/);
 
-  const { code: unknownCode, written: unknownWritten } = await run({}, ["frobnicate"]);
+  const { code: unknownCode, printedOutput: unknownPrintedOutput } = await run({}, ["frobnicate"]);
 
   assert.equal(unknownCode, EXIT_USAGE);
-  assert.match(unknownWritten.everything, /Unknown argument: frobnicate/);
-  assert.doesNotMatch(unknownWritten.everything, /Did you mean/);
+  assert.match(unknownPrintedOutput.everything, /Unknown argument: frobnicate/);
+  assert.doesNotMatch(unknownPrintedOutput.everything, /Did you mean/);
 });
 
 test("an unknown flag is refused, naming it (CORE Story 56 scenario 3)", async () => {
-  const { code, written } = await run({}, ["build", "--bogus"]);
+  const { code, printedOutput } = await run({}, ["build", "--bogus"]);
 
   assert.equal(code, EXIT_USAGE);
-  assert.match(written.everything, /Unknown argument: bogus/);
+  assert.match(printedOutput.everything, /Unknown argument: bogus/);
 });
 
-/** What one command declares it takes. Written here rather than in `src`
+/** What one command declares it takes. PrintedOutput here rather than in `src`
  *  because nothing the engine offers takes an argument yet: what is under test
  *  is that a command which does gets it back typed. */
 const COUNTED = {
@@ -233,10 +235,10 @@ test("a command reads the options it declared, under the types it declared", asy
     [new CountingCommand()],
   );
 
-  const { code, written } = await writing(() => cli.runCommandLine(["count", "--times", "3"]));
+  const { code, printedOutput } = await printedOutputOf(() => cli.runCommandLine(["count", "--times", "3"]));
 
   assert.equal(code, EXIT_OK);
-  assert.deepEqual(written.results, ["4\n"]);
+  assert.deepEqual(printedOutput.results, ["4\n"]);
 });
 
 test("an option a command declared a default for arrives without being typed", async () => {
@@ -245,7 +247,7 @@ test("an option a command declared a default for arrives without being typed", a
     [new CountingCommand()],
   );
 
-  const { written } = await writing(() => cli.runCommandLine(["count"]));
+  const { printedOutput } = await printedOutputOf(() => cli.runCommandLine(["count"]));
 
-  assert.deepEqual(written.results, ["2\n"]);
+  assert.deepEqual(printedOutput.results, ["2\n"]);
 });

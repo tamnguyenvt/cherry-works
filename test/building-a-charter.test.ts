@@ -49,7 +49,7 @@ const sessionCounterPaths = [
 const sessionCounterStopHook = { hooks: [{ type: "command", command: "cw sensor run Stop --agent claude" }] };
 
 /** What a repository answered at setup, kept in its own settings: which agents
- *  it compiles its charter for (FR-033). Every repository a build test authors
+ *  it chose (FR-033). Every repository a build test authors
  *  says so, because one naming none has no host surface to build. */
 const settingsFile = inRepo(".cw/settings.json");
 const compilingFor = (...agents: readonly string[]) => ({
@@ -59,11 +59,11 @@ const compilingFor = (...agents: readonly string[]) => ({
 /** A charter on files a test can both write into and read back out of: the
  *  build puts its files where the next build finds them, which is what makes a
  *  second build over a changed charter the real thing. */
-/** A build over these files; given `mcpServers` and `credentialsRepository`, it asks each
+/** A build over these files; given `mcpServerCaller` and `credentialsRepository`, it asks each
  *  mcp origin for its tools through them (EVAL-FR-031), and otherwise asks none. */
 const building = (
   files: Readonly<Record<string, string>>,
-  mcpServers?: InMemoryMcpServers,
+  mcpServerCaller?: InMemoryMcpServers,
   credentialsRepository?: InMemoryCredentialsRepository,
 ) => {
   const held = new InMemoryFileReaders(files);
@@ -73,9 +73,9 @@ const building = (
     new InMemoryTokenCounter(),
     { claude: new InMemoryAgentCli() },
     new InMemoryReporter(),
-    mcpServers === undefined || credentialsRepository === undefined
+    mcpServerCaller === undefined || credentialsRepository === undefined
       ? {}
-      : { mcpServers, credentialsRepository, oauthAuthorizer: new InMemoryOAuthAuthorizer() },
+      : { mcpServerCaller, credentialsRepository, oauthAuthorizer: new InMemoryOAuthAuthorizer() },
   );
   return { held, build: () => charterRuntimeApps.buildCharter(), doctor: () => charterRuntimeApps.diagnoseCharter() };
 };
@@ -96,7 +96,7 @@ const filesOf = (
 /** What one file holds after a build. */
 const contentsOf = async (fileReaders: InMemoryFileReaders, path: string) => fileReaders.readFile(new URL(path, repo));
 
-test("a build puts down everything one reading of the charter produces (FR-021)", async () => {
+test("a build puts down everything one reading of the charter produces (FR-021, CORE Story 1 scenario 2)", async () => {
   const { held, build } = building({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
 
   const built = filesOf(await build());
@@ -123,7 +123,7 @@ test("a build puts down everything one reading of the charter produces (FR-021)"
   );
 });
 
-test("an id holding / is built as one file in its kind's folder, each / as -, and into a host file named the same way (FR-141)", async () => {
+test("an id holding / is built as one file in its kind's folder, each / as -, and into a host file named the same way (FR-141, CORE Story 23 scenario 7)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/mfbs/no-any/index.md")]: guide("mfbs/no-any"),
@@ -140,7 +140,7 @@ test("an id holding / is built as one file in its kind's folder, each / as -, an
   assert.equal(catalogue.find((entry) => entry.id === "mfbs/no-any")?.file, ".cw/out/guide/mfbs/no-any/index.md");
 });
 
-test("what the engine brings is compiled to the agent's skill surface, and nothing is written for it under the workspace (FR-021, FR-022)", async () => {
+test("what the engine brings is compiled to the agent's skill surface, and nothing is written for it under the workspace (FR-021, FR-022, CORE Story 12 scenario 2)", async () => {
   const { held, build } = building(compilingFor("claude"));
 
   const built = filesOf(await build());
@@ -200,7 +200,7 @@ test("files an earlier version named skill-<id> and guide-<id> are deleted, and 
   assert.equal(await contentsOf(held, ".claude/skills/review/SKILL.md"), compiledSkillText);
 });
 
-test("a projection whose primitive is gone is taken away by the next build (FR-020)", async () => {
+test("a projection whose primitive is gone is taken away by the next build (FR-020, CORE Story 1 scenario 2, CORE Story 16 scenario 4)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: guide("no-any"),
@@ -300,7 +300,7 @@ test("where the entry file sends a reader is where the build put the orientation
   assert.ok(wrote(built).includes(link ?? ""));
 });
 
-test("everything outside the section of an entry file is left exactly as it was (FR-051)", async () => {
+test("everything outside the section of an entry file is left exactly as it was (FR-051, CORE Story 1 scenario 7)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: guide("no-any"),
@@ -363,7 +363,7 @@ test("an entry file carrying the charter's section twice over carries it once af
   assert.ok(builtAgain.unchanged.includes("CLAUDE.md"));
 });
 
-test("a second build leaves the entry file byte for byte as the first did (SC-007)", async () => {
+test("a second build leaves the entry file byte for byte as the first did (SC-007, CORE Story 1 scenario 7)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: guide("no-any"),
@@ -378,7 +378,7 @@ test("a second build leaves the entry file byte for byte as the first did (SC-00
   assert.ok(built.unchanged.includes("CLAUDE.md"));
 });
 
-test("a repository compiling for no agent has no entry file written for it (FR-019, FR-051)", async () => {
+test("a repository that chose no agent has no entry file written for it (FR-019, FR-051)", async () => {
   const { held, build } = building({ ...compilingFor(), [at("guide/no-any/index.md")]: guide("no-any") });
 
   const built = filesOf(await build());
@@ -401,7 +401,7 @@ test("a charter with an error builds nothing at all, and says which files (FR-00
   await assert.rejects(() => contentsOf(held, "file:///repo/.cw/out/CHARTER.md"));
 });
 
-test("a skill no longer marked disable-user-invocation is a command again at the next build (CORE-FR-174)", async () => {
+test("a skill no longer marked disable-user-invocation is a command again at the next build (CORE-FR-174, CORE Story 28 scenario 3)", async () => {
   const skillFile = at("skill/ship-review/index.md");
   const { held, build } = building({
     ...compilingFor("claude"),
@@ -419,7 +419,7 @@ test("a skill no longer marked disable-user-invocation is a command again at the
   assert.doesNotMatch(await contentsOf(held, ".claude/skills/ship-review/SKILL.md"), /user-invocable/);
 });
 
-test("a disable-user-invocation that is neither true nor false stops the build under its file (CORE-FR-173)", async () => {
+test("a disable-user-invocation that is neither true nor false stops the build under its file (CORE-FR-173, CORE Story 28 scenario 4)", async () => {
   for (const kind of ["skill", "playbook"]) {
     const { held, build } = building({
       ...compilingFor("claude"),
@@ -442,7 +442,7 @@ test("a disable-user-invocation that is neither true nor false stops the build u
   }
 });
 
-test("a disable-model-invocation that is neither true nor false stops the build under its file (CORE-FR-181)", async () => {
+test("a disable-model-invocation that is neither true nor false stops the build under its file (CORE-FR-181, CORE Story 31 scenario 3)", async () => {
   for (const kind of ["skill", "playbook"]) {
     const { held, build } = building({
       ...compilingFor("claude"),
@@ -465,7 +465,7 @@ test("a disable-model-invocation that is neither true nor false stops the build 
   }
 });
 
-test("a skill nobody could open, kept from both the user and the agent, stops the build under its file (CORE-FR-183)", async () => {
+test("a skill nobody could open, kept from both the user and the agent, stops the build under its file (CORE-FR-183, CORE Story 31 scenario 4)", async () => {
   for (const kind of ["skill", "playbook"]) {
     const { held, build } = building({
       ...compilingFor("claude"),
@@ -489,7 +489,7 @@ test("a skill nobody could open, kept from both the user and the agent, stops th
   }
 });
 
-test("a body naming [[<id>]] no layer holds stops the build (FR-143, FR-162)", async () => {
+test("a body naming [[<id>]] no layer holds stops the build (FR-143, FR-162, CORE Story 17 scenario 3, CORE Story 21 scenario 10)", async () => {
   for (const mentionedReference of ["[[missing]]", "[[team/missing]]"]) {
     const { build } = building({
       ...compilingFor("claude"),
@@ -580,21 +580,21 @@ const toolNamed = (name: string) => ({
 });
 
 test("a build asks each mcp origin for its tools and keeps those its mcps declare, with what each takes, beside it (EVAL-FR-031)", async () => {
-  const mcpServers = new InMemoryMcpServers();
-  mcpServers.servers.set(LINEAR, { tools: ["create_issue", "list_issues", "delete_team"].map(toolNamed) });
+  const mcpServerCaller = new InMemoryMcpServers();
+  mcpServerCaller.servers.set(LINEAR, { tools: ["create_issue", "list_issues", "delete_team"].map(toolNamed) });
   const credentialsRepository = new InMemoryCredentialsRepository();
   await credentialsRepository.secrets.set(
     LINEAR,
     JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }),
   );
-  const { held, build } = building(linearDeclared, mcpServers, credentialsRepository);
+  const { held, build } = building(linearDeclared, mcpServerCaller, credentialsRepository);
 
   filesOf(await build());
 
   const [linearOrigin] = JSON.parse(await contentsOf(held, ".cw/out/mcp-origins.json")).origins;
   assert.deepEqual(linearOrigin.tools, [toolNamed("create_issue"), toolNamed("list_issues")]);
-  assert.deepEqual(mcpServers.connected, [{ address: LINEAR, accessToken: "linear token" }]);
-  assert.deepEqual(mcpServers.closed, [LINEAR]);
+  assert.deepEqual(mcpServerCaller.connected, [{ address: LINEAR, accessToken: "linear token" }]);
+  assert.deepEqual(mcpServerCaller.closed, [LINEAR]);
 });
 
 /** What a build that was refused says, under each file. */
@@ -603,10 +603,10 @@ const faultsOf = (planSummaryDTO: CharterDTOs.ProjectionPlanSummary | FaultDTOs.
   return JSON.stringify(planSummaryDTO.data);
 };
 
-test("an mcp origin the build cannot ask for its tools stops the build, under the mcp's file, and writes nothing (EVAL-FR-031)", async () => {
-  const mcpServers = new InMemoryMcpServers();
-  mcpServers.servers.set(LINEAR, { tools: ["list_issues", "create_issue"].map(toolNamed) });
-  const { held, build } = building(linearDeclared, mcpServers, new InMemoryCredentialsRepository());
+test("an mcp origin the build cannot ask for its tools stops the build, under the mcp's file, and writes nothing (EVAL-FR-031, EVAL Story 5 scenario 5)", async () => {
+  const mcpServerCaller = new InMemoryMcpServers();
+  mcpServerCaller.servers.set(LINEAR, { tools: ["list_issues", "create_issue"].map(toolNamed) });
+  const { held, build } = building(linearDeclared, mcpServerCaller, new InMemoryCredentialsRepository());
 
   const faultsText = faultsOf(await build());
 
@@ -616,15 +616,15 @@ test("an mcp origin the build cannot ask for its tools stops the build, under th
   assert.equal(await held.readIfThere(new URL(".cw/out/mcp-origins.json", repo)), undefined);
 });
 
-test("a tool an mcp declares that its mcp origin does not list stops the build, naming the tools it lists, and writes nothing (EVAL-FR-031, CORE Story 19 scenario 6, CORE Story 55 scenario 8)", async () => {
-  const mcpServers = new InMemoryMcpServers();
-  mcpServers.servers.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
+test("a tool an mcp declares that its mcp origin does not list stops the build, naming the tools it lists, and writes nothing (EVAL-FR-031, CORE Story 19 scenario 6, CORE Story 55 scenario 8, EVAL Story 5 scenario 5)", async () => {
+  const mcpServerCaller = new InMemoryMcpServers();
+  mcpServerCaller.servers.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
   const credentialsRepository = new InMemoryCredentialsRepository();
   await credentialsRepository.secrets.set(
     LINEAR,
     JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }),
   );
-  const { held, build } = building(linearDeclared, mcpServers, credentialsRepository);
+  const { held, build } = building(linearDeclared, mcpServerCaller, credentialsRepository);
   const filesBefore = await held.readFilesRecursively(repo);
 
   const faultsText = faultsOf(await build());
@@ -658,7 +658,7 @@ test("a charter with no mcp still writes the list, empty, for the server to find
   assert.equal(await contentsOf(held, ".cw/out/mcp-origins.json"), '{\n  "origins": []\n}\n');
 });
 
-test("a charter with an mcp gives the host one cw entry, beside the repository's own left untouched (FR-146)", async () => {
+test("a charter with an mcp gives the host one cw entry, beside the repository's own left untouched (FR-146, CORE Story 17 scenario 6)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Read [[billing]]."),
@@ -681,7 +681,7 @@ test("a charter with an mcp gives the host one cw entry, beside the repository's
   });
 });
 
-test("the cw entry is written before the charter holds any mcp, so an mcp origin added later needs no setup (FR-146)", async () => {
+test("the cw entry is written before the charter holds any mcp, so an mcp origin added later needs no setup (FR-146, CORE Story 17 scenario 6)", async () => {
   const { held, build } = building({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
 
   filesOf(await build());
@@ -691,7 +691,7 @@ test("the cw entry is written before the charter holds any mcp, so an mcp origin
   });
 });
 
-test("a repository compiling for no agent has no MCP configuration written for it (FR-146)", async () => {
+test("a repository that chose no agent has no MCP configuration written for it (FR-146)", async () => {
   const { held, build } = building({ [at("guide/no-any/index.md")]: guide("no-any") });
 
   filesOf(await build());
@@ -787,7 +787,7 @@ test("once compiled, an mcp origin, a script or a template a body names is a lin
     );
 });
 
-test("a body naming [[<id>]] of every kind the charter holds compiles to a link to that primitive's file in its place (CORE Story 27 scenario 3, CORE-FR-147, CORE Story 55 scenario 8)", async () => {
+test("a body naming [[<id>]] of every kind the charter holds compiles to a link to that primitive's file in its place (CORE Story 27 scenario 3, CORE-FR-147, CORE Story 55 scenario 8, CORE Story 22 scenario 1, CORE Story 25 scenario 3)", async () => {
   const idByKind: Readonly<Record<string, string>> = {
     guide: "types",
     skill: "review",
@@ -834,7 +834,7 @@ test("a body naming [[<id>]] of every kind the charter holds compiles to a link 
   assert.ok(!compiledDocument.includes("[["), compiledDocument);
 });
 
-test("a name alone in a code span keeps the span as the link's text; one inside a longer span, a fenced block or a link is left as written (FR-147)", async () => {
+test("a name alone in a code span keeps the span as the link's text; one inside a longer span, a fenced block or a link is left as written (FR-147, CORE Story 25 scenario 4)", async () => {
   const body = [
     "Run `[[check]]` first.",
     "Try `cw explain [[check]]` when unsure.",
@@ -891,7 +891,7 @@ test("a mixin's body lent to a primitive holds its links as that primitive's doc
   );
 });
 
-test("a template's body names a script as a link, as any compiled document does (FR-147)", async () => {
+test("a template's body names a script as a link, as any compiled document does (FR-147, CORE Story 25 scenario 5)", async () => {
   const { held, build } = building({
     [at("template/note/index.md")]: primitive("template", "note", [], "Checked by [[check]]."),
     [at("skill/release/index.md")]: primitive("skill", "release", ['triggers: ["release"]'], "Fill [[note]]."),
@@ -906,7 +906,7 @@ test("a template's body names a script as a link, as any compiled document does 
     ),
   );
 });
-test("a sensor's run naming a script is, in the command built for it, the built file's path from the repository's root (FR-169)", async () => {
+test("a sensor's run naming a script is, in the command built for it, the built file's path from the repository's root (FR-169, CORE Story 25 scenario 1, CORE Story 27 scenario 4)", async () => {
   const { held, build } = building({
     ...compilingFor("claude"),
     [at("sensor/check-on-stop/index.md")]: primitive("sensor", "check-on-stop", [
@@ -931,7 +931,7 @@ test("a sensor's run naming a script is, in the command built for it, the built 
   assert.notEqual(await held.readIfThere(new URL(".cw/out/script/release/check/bin/run.sh", repo)), undefined);
 });
 
-test("a sensor's run naming a script no layer holds stops the build, under the sensor's file (FR-162)", async () => {
+test("a sensor's run naming a script no layer holds stops the build, under the sensor's file (FR-162, CORE Story 25 scenario 2)", async () => {
   const { build } = building({
     [at("sensor/check-on-stop/index.md")]: primitive("sensor", "check-on-stop", ["signal: Stop", 'run: "[[missing]]"']),
   });
@@ -967,7 +967,7 @@ test("building twice over an unchanged charter writes the same files and takes n
   assert.deepEqual(second.deleted, []);
 });
 
-test("a charter naming no agent still gets the surface every reader shares (FR-019)", async () => {
+test("a charter naming no agent still gets the surface every reader shares (FR-019, CORE Story 1 scenario 11)", async () => {
   const { build } = building({ [at("guide/no-any/index.md")]: guide("no-any") });
 
   const built = filesOf(await build());
@@ -988,7 +988,7 @@ test("an agent this engine cannot compile for stops the build before it reads a 
 
   // Raised rather than reported: settings this engine cannot act on leave it
   // nothing to build against, and the user is sent back to `cw init`.
-  assert.match(faultTextOf(await build()), /compiles for "nowhere"/);
+  assert.match(faultTextOf(await build()), /chooses "nowhere", and this engine compiles for no such agent/);
 });
 
 test("what the charter speaks for is replaced; the rest of a host's settings is left alone (FR-018)", async () => {

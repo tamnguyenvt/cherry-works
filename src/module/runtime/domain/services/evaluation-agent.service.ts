@@ -14,37 +14,39 @@ export class EvaluationAgentService {
    * is refused before anything runs (EVAL-FR-033 – EVAL-FR-038).
    */
   static selectEvaluationAgent(
-    chosenAgents: readonly string[],
-    supportedAgents: readonly string[],
-    requestedAgent?: string,
+    chosenAgentNames: readonly string[],
+    supportedAgentNames: readonly string[],
+    namedAgentName?: string,
   ): string {
-    if (requestedAgent !== undefined && !supportedAgents.includes(requestedAgent))
+    if (namedAgentName !== undefined && !supportedAgentNames.includes(namedAgentName))
       throw new UnsupportedEvaluationAgentFault(
-        `Unsupported evaluation agent "${requestedAgent}".`,
-        `Choose one of: ${supportedAgents.join(", ")}.`,
+        `Unsupported evaluation agent "${namedAgentName}".`,
+        `Name one of: ${supportedAgentNames.join(", ")}.`,
         { internal: false },
       );
-    const evaluableAgents = supportedAgents.filter((supportedAgent) => chosenAgents.includes(supportedAgent));
-    if (evaluableAgents.length === 0)
+    const evaluableAgentNames = supportedAgentNames.filter((supportedAgentName) =>
+      chosenAgentNames.includes(supportedAgentName),
+    );
+    if (evaluableAgentNames.length === 0)
       throw new NoEvaluationAgentFault("No agent is chosen.", 'Run "cw init" to choose one.', {
         internal: false,
       });
-    if (requestedAgent !== undefined) {
-      if (!evaluableAgents.includes(requestedAgent))
+    if (namedAgentName !== undefined) {
+      if (!evaluableAgentNames.includes(namedAgentName))
         throw new UnchosenEvaluationAgentFault(
-          `Agent ${requestedAgent} is not chosen.`,
-          `Run "cw init" and choose ${requestedAgent}.`,
+          `Agent ${namedAgentName} is not chosen.`,
+          `Run "cw init" and choose ${namedAgentName}.`,
           { internal: false },
         );
-      return requestedAgent;
+      return namedAgentName;
     }
-    if (evaluableAgents.length !== 1)
+    if (evaluableAgentNames.length !== 1)
       throw new UnnamedEvaluationAgentFault(
         "Several agents are chosen and none is named.",
         'Run "cw eval --agent=<agent>" to name one.',
         { internal: false },
       );
-    return evaluableAgents[0]!;
+    return evaluableAgentNames[0]!;
   }
 
   private constructor() {}

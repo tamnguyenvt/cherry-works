@@ -3,14 +3,22 @@
     {
       "id": "CORE Story 1",
       "title": "Author a charter and put the agent under it",
-      "dependsOn": []
+      "dependsOn": [],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 2",
       "title": "Adopt shared governance without copying files",
       "dependsOn": [
         "CORE Story 1"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 3",
@@ -28,14 +36,22 @@
       "title": "Create a correctly-shaped primitive without looking anything up",
       "dependsOn": [
         "CORE Story 1"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 5",
       "title": "See what the charter holds and why each rule comes up",
       "dependsOn": [
         "CORE Story 1"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 6",
@@ -53,7 +69,11 @@
       "title": "Build, preview and check the repository's health",
       "dependsOn": [
         "CORE Story 5"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 8",
@@ -61,7 +81,11 @@
       "dependsOn": [
         "CORE Story 5",
         "CORE Story 2"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 9",
@@ -69,28 +93,44 @@
       "dependsOn": [
         "CORE Story 5",
         "CORE Story 3"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 10",
       "title": "Write a primitive with no terminal to answer at",
       "dependsOn": [
         "CORE Story 4"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 11",
       "title": "Ask a kind what it requires, rather than being told",
       "dependsOn": [
         "CORE Story 10"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 12",
       "title": "The instructions arrive with the engine, not with the repository",
       "dependsOn": [
         "CORE Story 10"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 13",
@@ -108,14 +148,22 @@
       "title": "Know which `cw` is running, and move to another",
       "dependsOn": [
         "CORE Story 13"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 15",
       "title": "Publish a release that users can trust",
       "dependsOn": [
         "CORE Story 13"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 16",
@@ -155,14 +203,22 @@
       "title": "Give the agent one server that reaches every mcp origin",
       "dependsOn": [
         "CORE Story 17"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 20",
       "title": "Hold a subagent to the mcp origins it lists",
       "dependsOn": [
         "CORE Story 19"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 21",
@@ -225,7 +281,11 @@
       "title": "Invoke a skill by its id alone",
       "dependsOn": [
         "CORE Story 16"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 27",
@@ -243,7 +303,11 @@
       "title": "Keep a step skill out of the user's commands",
       "dependsOn": [
         "CORE Story 26"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 29",
@@ -252,8 +316,8 @@
         "CORE Story 25"
       ],
       "evidence": {
-        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
-        "date": "2026-11-13"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
       }
     },
     {
@@ -261,14 +325,22 @@
       "title": "Name every vendor folder by its owner and its repository",
       "dependsOn": [
         "CORE Story 2"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 31",
       "title": "Keep a skill out of the agent's own reach",
       "dependsOn": [
         "CORE Story 28"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 32",
@@ -277,21 +349,33 @@
         "CORE Story 30",
         "CORE Story 31",
         "CORE Story 23"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 33",
       "title": "Pick charters from a source that gathers many",
       "dependsOn": [
         "CORE Story 32"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 34",
       "title": "Inject a charter or a skill into the repository's own charter",
       "dependsOn": [
         "CORE Story 33"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "EVAL Story 1",
@@ -300,8 +384,8 @@
         "CORE Story 16"
       ],
       "evidence": {
-        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
-        "date": "2026-11-13"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
       }
     },
     {
@@ -320,14 +404,22 @@
       "title": "Read back the sessions kept",
       "dependsOn": [
         "EVAL Story 2"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "EVAL Story 5",
       "title": "Search tools rather than load them all into context",
       "dependsOn": [
         "CORE Story 20"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "EVAL Story 6",
@@ -345,7 +437,11 @@
       "title": "Evaluate with the agent named or chosen",
       "dependsOn": [
         "EVAL Story 6"
-      ]
+      ],
+      "evidence": {
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
+      }
     },
     {
       "id": "CORE Story 35",
@@ -574,8 +670,8 @@
         "CORE Story 47"
       ],
       "evidence": {
-        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
-        "date": "2026-11-13"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
       }
     },
     {
@@ -586,8 +682,8 @@
         "CORE Story 49"
       ],
       "evidence": {
-        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
-        "date": "2026-11-13"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
       }
     },
     {
@@ -599,8 +695,8 @@
         "CORE Story 48"
       ],
       "evidence": {
-        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
-        "date": "2026-11-13"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
       }
     },
     {
@@ -625,8 +721,8 @@
         "CORE Story 43"
       ],
       "evidence": {
-        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
-        "date": "2026-11-13"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
       }
     },
     {
@@ -660,8 +756,8 @@
         "SDK Story 8"
       ],
       "evidence": {
-        "summary": "Proved again by CORE Story 55's run after its scenarios or cited FR were reworded: typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed",
-        "date": "2026-11-13"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
+        "date": "2026-11-14"
       }
     },
     {
@@ -686,8 +782,8 @@
         "EVAL Story 9"
       ],
       "evidence": {
-        "summary": "Quality passes 1-3 (F, then B with no error); every violation repaired within the story (scenarios 2-35); typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed; cw context --exact --agent=claude +0.8%. fix/quality-warns-after-core-55: scenarios 34-36 rewritten and added, each held by test/predicting-the-main-context.test.ts; pnpm test twice 1026 pass, 0 fail, 0 skipped; that count is now run as cw context --agent=claude, --exact dropped",
-        "date": "2026-11-13"
+        "summary": "Quality passes 1-3 (F, then B with no error); every violation repaired within the story (scenarios 2-35); typecheck exit 0; pnpm test twice 1023 pass, 0 fail, 0 skipped; specs check passed; cw context --exact --agent=claude +0.8%. fix/quality-warns-after-core-55: scenarios 34-36 rewritten and added, each held by test/predicting-the-main-context.test.ts; pnpm test twice 1026 pass, 0 fail, 0 skipped; that count is now run as cw context --agent=claude, --exact dropped; its scenarios that tests hold proved again after CORE-FR-031, -035, -055, -175, -176, -222, -231, -233, -234 and EVAL-FR-005 were reworded: pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8, 1034 pass, 0 fail, 0 skipped",
+        "date": "2026-11-14"
       }
     }
   ]

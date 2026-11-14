@@ -15,7 +15,7 @@ import { buildingCharterOf } from "./use-cases-of.js";
 const repo = new URL("file:///repo/");
 const inRepo = (path: string) => new URL(path, repo).href;
 
-test("a built charter runs the engine's own counter when the agent stops (EVAL-FR-008)", async () => {
+test("a built charter runs the engine's own counter when the agent stops (EVAL-FR-008, EVAL Story 2 scenario 1)", async () => {
   const fileReaders = new InMemoryFileReaders({
     [inRepo(".cw/settings.json")]: JSON.stringify({ agents: ["claude"] }),
   });
@@ -151,7 +151,7 @@ async function aMachine(settings: object = { agents: ["claude"] }) {
   };
 }
 
-test("each stop is kept as one line outside this repository, by kind, subagents counted in, a message counted once (EVAL-FR-008, EVAL-FR-009)", async () => {
+test("each stop is kept as one line outside this repository, by kind, subagents counted in, a message counted once (EVAL-FR-008, EVAL-FR-009, EVAL Story 2 scenario 1)", async () => {
   const machine = await aMachine();
   try {
     await machine.writeSession(
@@ -256,7 +256,7 @@ for (const repoSessionsFolderName of ["logs/sessions", "..sessions"])
     }
   });
 
-test("below its next mark, a stop shows nothing (EVAL-FR-010)", async () => {
+test("below its next mark, a stop shows nothing (EVAL-FR-010, EVAL Story 2 scenario 3)", async () => {
   const machine = await aMachine();
   try {
     await machine.writeSession("session-b", [assistantLine("msg-1", { input: 10, output: 10, cacheRead: 99_000 })]);
@@ -271,7 +271,7 @@ test("below its next mark, a stop shows nothing (EVAL-FR-010)", async () => {
   }
 });
 
-test("crossing a mark shows the developer one line, which the model is not sent, and the next stop below the next mark shows nothing (EVAL-FR-010)", async () => {
+test("crossing a mark shows the developer one line, which the model is not sent, and the next stop below the next mark shows nothing (EVAL-FR-010, EVAL Story 2 scenario 2)", async () => {
   const machine = await aMachine();
   try {
     await machine.writeSession("session-c", [assistantLine("msg-1", { input: 10, output: 10, cacheRead: 90_000 })]);
@@ -316,7 +316,7 @@ test("the repository sets its own mark (EVAL-FR-010)", async () => {
   }
 });
 
-test("a record that cannot be read lets the agent stop, with nothing shown and nothing kept (EVAL-FR-011)", async () => {
+test("a record that cannot be read lets the agent stop, with nothing shown and nothing kept (EVAL-FR-011, EVAL Story 2 scenario 4)", async () => {
   const machine = await aMachine({ agents: ["claude"], sessionContextMark: 1 });
   try {
     await machine.writeSession("session-e", ["not json at all", assistantLine("msg-1", { input: 600, output: 600 })]);

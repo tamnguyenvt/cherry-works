@@ -33,6 +33,11 @@ const CODEX_PLACE_BY_KIND: Readonly<Record<string, (id: string) => string>> = {
  *  machinery and every agent's. */
 const UNSEARCHED_FOLDERS = [".git", ".cw", ".claude", ".codex", ".agents", "node_modules"];
 
+/** The configuration's tables whose every entry the charter gives is the
+ *  charter's whole: the hook groups under each signal its sensors name
+ *  (CORE-FR-039). */
+const CHARTER_WHOLE_TABLE_PATHS = ["hooks"];
+
 /** What starts and ends the charter's section of an entry file. */
 const SECTION_PATTERN = /<!-- CHERRYWORKS START -->[\s\S]*?<!-- CHERRYWORKS END -->\n?/g;
 
@@ -81,7 +86,7 @@ export class CodexProjection extends AgentProjection {
   ): string {
     switch (component.kind) {
       case "config":
-        return TomlLib.mergeTomlText(currentText, laidText, place);
+        return TomlLib.mergeTomlText(currentText, laidText, place, CHARTER_WHOLE_TABLE_PATHS);
       case "entry-file":
         return mergeEntryFileText(currentText, laidText);
       default:
@@ -93,9 +98,9 @@ export class CodexProjection extends AgentProjection {
    *  the repository's own where some is: a stamped section does not make the
    *  text around it the build's (FR-020). Only folders are walked, not every
    *  file of the repository read. */
-  protected override async planOtherCleanup(checkoutPath: string): Promise<readonly WritePlan[]> {
+  protected override async planOtherCleanup(checkoutFolder: string): Promise<readonly WritePlan[]> {
     const entryCleanupPlan: WritePlan[] = [];
-    let entryFolderPaths = await this.fileReader.listFolders(checkoutPath);
+    let entryFolderPaths = await this.fileReader.listFolders(checkoutFolder);
     while (entryFolderPaths.length > 0) {
       const nextEntryFolderPaths: string[] = [];
       for (const entryFolderPath of entryFolderPaths) {
@@ -107,7 +112,7 @@ export class CodexProjection extends AgentProjection {
           const userText = contents.replace(SECTION_PATTERN, "");
           entryCleanupPlan.push(
             new WritePlan(
-              resolveCheckoutPath(checkoutPath, filePath),
+              resolveCheckoutPath(checkoutFolder, filePath),
               filePath,
               contents.includes("<!-- CHERRYWORKS START -->") && userText.trim() !== "" ? userText : undefined,
               contents,

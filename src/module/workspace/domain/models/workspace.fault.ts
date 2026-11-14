@@ -6,7 +6,7 @@ import { ApplicationFault, DomainFault } from "../../../shared/module.js";
  * apart, by the `name` its fault DTO carries, never by the class.
  */
 
-/** Setup given no agent to compile for (FR-033). */
+/** Setup given no agent to choose (FR-033). */
 export class NoAgentFault extends ApplicationFault {}
 
 /** An agent this engine compiles for none of (FR-033). */

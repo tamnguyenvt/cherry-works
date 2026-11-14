@@ -35,7 +35,7 @@ const compilingFor = (...agents: readonly string[]) => ({
 });
 
 /** Everything one run wrote, kept apart the way a pipeline reads it. */
-class Written {
+class PrintedOutput {
   readonly results: string[] = [];
   readonly problems: string[] = [];
 
@@ -45,11 +45,13 @@ class Written {
 }
 
 /** Run something with both streams held, and give back what it wrote. */
-const writing = async (work: () => Promise<number>): Promise<{ code: number; written: Written }> => {
-  const written = new Written();
+const printedOutputOf = async (
+  work: () => Promise<number>,
+): Promise<{ code: number; printedOutput: PrintedOutput }> => {
+  const printedOutput = new PrintedOutput();
   const streams = [
-    { stream: process.stdout, kept: process.stdout.write, into: written.results },
-    { stream: process.stderr, kept: process.stderr.write, into: written.problems },
+    { stream: process.stdout, kept: process.stdout.write, into: printedOutput.results },
+    { stream: process.stderr, kept: process.stderr.write, into: printedOutput.problems },
   ];
   for (const { stream, into } of streams) {
     stream.write = ((text: string | Uint8Array) => {
@@ -58,7 +60,7 @@ const writing = async (work: () => Promise<number>): Promise<{ code: number; wri
     }) as typeof stream.write;
   }
   try {
-    return { code: await work(), written };
+    return { code: await work(), printedOutput };
   } finally {
     for (const { stream, kept } of streams) stream.write = kept;
   }
@@ -95,10 +97,14 @@ const commandLine = (files: Readonly<Record<string, string>>) => {
     ),
     COMMANDS,
   );
-  return { fileReaders, sourceFetcher, run: (argv: readonly string[]) => writing(() => cli.runCommandLine(argv)) };
+  return {
+    fileReaders,
+    sourceFetcher,
+    run: (argv: readonly string[]) => printedOutputOf(() => cli.runCommandLine(argv)),
+  };
 };
 
-test("a repository with nothing wrong passes, and says so of each thing it looked at (FR-040)", async () => {
+test("a repository with nothing wrong passes, and says so of each thing it looked at (FR-040, CORE Story 3 scenario 5)", async () => {
   const { run } = commandLine({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: guide("no-any"),
@@ -106,33 +112,33 @@ test("a repository with nothing wrong passes, and says so of each thing it looke
   });
   await run(["build"]);
 
-  const { code, written } = await run(["doctor"]);
+  const { code, printedOutput } = await run(["doctor"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(written.everything, /Agents: {3}claude\./);
-  assert.match(written.everything, /✔ Charter: {2}good\./);
-  assert.match(written.everything, /✔ Built: {4}up to date\./);
-  assert.match(written.everything, /Nothing to fix\./);
+  assert.match(printedOutput.everything, /Agents: {3}claude\./);
+  assert.match(printedOutput.everything, /✔ Charter: {2}good\./);
+  assert.match(printedOutput.everything, /✔ Built: {4}up to date\./);
+  assert.match(printedOutput.everything, /Nothing to fix\./);
 });
 
-test("the report starts with the version of cw that wrote it (FR-132)", async () => {
+test("the report starts with the version of cw that wrote it (FR-132, CORE Story 14 scenario 4)", async () => {
   const { run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
 
-  const { written } = await run(["doctor"]);
+  const { printedOutput } = await run(["doctor"]);
 
-  assert.match(written.results.join(""), /^cw 1\.2\.3\n/);
+  assert.match(printedOutput.results.join(""), /^cw 1\.2\.3\n/);
 });
 
 test("a repository that has never been built is out of date, and fails (FR-040)", async () => {
   const { run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
 
-  const { code, written } = await run(["doctor"]);
+  const { code, printedOutput } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /⚠ Built: {4}15 files out of date\. Run "cw build"\./);
+  assert.match(printedOutput.everything, /⚠ Built: {4}15 files out of date\. Run "cw build"\./);
 });
 
-test("staleness is the preview run, not a record kept of the last build (FR-040)", async () => {
+test("staleness is the preview run, not a record kept of the last build (FR-040, CORE Story 3 scenario 5)", async () => {
   const { fileReaders, run } = commandLine({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: guide("no-any"),
@@ -140,10 +146,10 @@ test("staleness is the preview run, not a record kept of the last build (FR-040)
   await run(["build"]);
   fileReaders.writeFile(new URL("guide/no-any/index.md", root), guide("no-any", "Never write `any`."));
 
-  const { code, written } = await run(["doctor"]);
+  const { code, printedOutput } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /Built: {4}1 file out of date/);
+  assert.match(printedOutput.everything, /Built: {4}1 file out of date/);
 });
 
 test("a charter with an error is counted, and read where every fault is (FR-040, SC-003)", async () => {
@@ -152,18 +158,18 @@ test("a charter with an error is counted, and read where every fault is (FR-040,
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]', 'mixins: ["nowhere"]']),
   });
 
-  const { code, written } = await run(["doctor"]);
+  const { code, printedOutput } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /✘ Charter: {2}1 error\./);
+  assert.match(printedOutput.everything, /✘ Charter: {2}1 error\./);
   // Counted above, and written out below: the file that has to change, and what
   // is wrong with it (FR-009, SC-003).
-  assert.match(written.everything, /\.cw\/charter\/primitive\/guide\/no-any\/index\.md/);
-  assert.match(written.everything, /error: This pulls in the mixin "nowhere"/);
+  assert.match(printedOutput.everything, /\.cw\/charter\/primitive\/guide\/no-any\/index\.md/);
+  assert.match(printedOutput.everything, /error: This pulls in the mixin "nowhere"/);
   // A charter that does not hold previews nothing, so what is built cannot be
   // answered.
-  assert.match(written.everything, /Built: {4}Fix the charter's errors, then run "cw build"\./);
-  assert.match(written.everything, /2 things to fix\./);
+  assert.match(printedOutput.everything, /Built: {4}Fix the charter's errors, then run "cw build"\./);
+  assert.match(printedOutput.everything, /2 things to fix\./);
 });
 
 test("what validating finds reaches a driver as its DTO: counted, and every fault named from the repository (FR-009, FR-040)", async () => {
@@ -199,24 +205,24 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
   );
 });
 
-test("a repository compiling for no agent is told what that means, and passes (FR-019, FR-040)", async () => {
+test("a repository that chose no agent is told what that means, and passes (FR-019, FR-040)", async () => {
   const { run } = commandLine({ ...compilingFor(), [at("guide/no-any/index.md")]: guide("no-any") });
   await run(["build"]);
 
-  const { code, written } = await run(["doctor"]);
+  const { code, printedOutput } = await run(["doctor"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(written.everything, /Agents: {3}none chosen/);
+  assert.match(printedOutput.everything, /Agents: {3}none chosen/);
 });
 
 test("what doctor reports is a result, never a problem", async () => {
   const { run } = commandLine({ ...compilingFor("claude"), [at("guide/no-any/index.md")]: guide("no-any") });
 
-  const { written } = await run(["doctor"]);
+  const { printedOutput } = await run(["doctor"]);
 
   // Nothing here went wrong: the report is what was asked for, and the exit
   // status is what a pipeline gates on.
-  assert.deepEqual(written.problems, []);
+  assert.deepEqual(printedOutput.problems, []);
 });
 
 /** What `diagnoseCharter()` answers over these files, read back as the portal reads it. */
@@ -235,7 +241,7 @@ const doctorOf = async (files: Readonly<Record<string, string>>) => {
 const messagesUnder = (faultsByFile: CharterDTOs.DoctorOutcome["data"]["faultsByFile"], file: string) =>
   (faultsByFile.data.files[file] ?? []).map(({ data: { severity, message } }) => `${severity}: ${message}`);
 
-test("a guide and a sensor no test case names are each a warning under their own file, and a posture is none (FR-014)", async () => {
+test("a guide and a sensor no test case names are each a warning under their own file, and a posture is none (FR-014, CORE Story 7 scenario 5)", async () => {
   const { errorCount, warnCount, faultsByFile } = await doctorOf({
     [at("guide/no-any/index.md")]: guide("no-any"),
     [at("sensor/lint/index.md")]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
@@ -289,11 +295,11 @@ test("a vendor's warnings are left out, since it is tested in its own repository
     [inRepo(".cw/charter/vendor/team/rules/root/primitive/guide/no-class/index.md")]: guide("no-class"),
   });
 
-  const { written } = await run(["doctor"]);
+  const { printedOutput } = await run(["doctor"]);
 
-  assert.match(written.everything, /⚠ Charter: {2}good, with 1 warning\./);
-  assert.match(written.everything, /\.cw\/charter\/primitive\/guide\/no-any\/index\.md/);
-  assert.doesNotMatch(written.everything, /\.cw\/charter\/vendor\/team/);
+  assert.match(printedOutput.everything, /⚠ Charter: {2}good, with 1 warning\./);
+  assert.match(printedOutput.everything, /\.cw\/charter\/primitive\/guide\/no-any\/index\.md/);
+  assert.doesNotMatch(printedOutput.everything, /\.cw\/charter\/vendor\/team/);
 });
 
 test("a vendor's error is still said, since it stops the build (FR-014)", async () => {
@@ -306,11 +312,14 @@ test("a vendor's error is still said, since it stops the build (FR-014)", async 
     [inRepo(".cw/charter/vendor/team/rules/root/primitive/guide/broken/index.md")]: "---\nkind: guide\n---\n",
   });
 
-  const { code, written } = await run(["doctor"]);
+  const { code, printedOutput } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(written.everything, /\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/broken\/index\.md/);
-  assert.doesNotMatch(written.everything, /No test case names "no-class"/);
+  assert.match(
+    printedOutput.everything,
+    /\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/broken\/index\.md/,
+  );
+  assert.doesNotMatch(printedOutput.everything, /No test case names "no-class"/);
 });
 
 test("a guide warned about twice keeps both warnings under its file", async () => {
@@ -333,7 +342,7 @@ test("a test file that does not read raises no warning of its own; cw test names
   assert.deepEqual(Object.keys(faultsByFile.data.files), ["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]);
 });
 
-test("warnings alone let the build through, and doctor passes once it is built (FR-014)", async () => {
+test("warnings alone let the build through, and doctor passes once it is built (FR-014, CORE Story 7 scenario 5)", async () => {
   const { run } = commandLine({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: guide("no-any"),
@@ -342,10 +351,10 @@ test("warnings alone let the build through, and doctor passes once it is built (
   });
   assert.equal((await run(["build"])).code, EXIT_OK);
 
-  const { code, written } = await run(["doctor"]);
+  const { code, printedOutput } = await run(["doctor"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(written.everything, /⚠ Charter: {2}good, with 3 warnings\./);
+  assert.match(printedOutput.everything, /⚠ Charter: {2}good, with 3 warnings\./);
 });
 
 test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-144, CORE Story 17 scenario 4, CORE Story 55 scenario 8)", async () => {
@@ -368,7 +377,7 @@ test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-14
   // The build still runs over it, and builds the mcp's document.
   const { fileReaders, run } = commandLine({ ...compilingFor("claude"), ...charterFiles });
   const buildRun = await run(["build"]);
-  assert.equal(buildRun.code, EXIT_OK, buildRun.written.everything);
+  assert.equal(buildRun.code, EXIT_OK, buildRun.printedOutput.everything);
   assert.notEqual(
     await fileReaders.readIfThere(new URL(".cw/out/mcp/mfbs/billing/index.md", "file:///repo/")),
     undefined,
@@ -387,20 +396,20 @@ test("a primitive kept as <kind>/<id>.md, or in a folder its kind and id do not 
   const listRun = await run(["list"]);
 
   assert.equal(doctorRun.code, EXIT_FAILURE);
-  assert.match(doctorRun.written.everything, /guide\/kept-guide\.md/);
+  assert.match(doctorRun.printedOutput.everything, /guide\/kept-guide\.md/);
   assert.match(
-    doctorRun.written.everything,
+    doctorRun.printedOutput.everything,
     /Move it to "[^"]*\.cw\/charter\/primitive\/guide\/kept-guide\/index\.md"/,
   );
-  assert.match(doctorRun.written.everything, /guide\/elsewhere\/index\.md/);
+  assert.match(doctorRun.printedOutput.everything, /guide\/elsewhere\/index\.md/);
   assert.match(
-    doctorRun.written.everything,
+    doctorRun.printedOutput.everything,
     /Move its folder to "[^"]*\.cw\/charter\/primitive\/guide\/house-style\/"/,
   );
   assert.equal(buildRun.code, EXIT_FAILURE);
-  assert.match(buildRun.written.everything, /Move it to "[^"]*guide\/kept-guide\/index\.md"/);
+  assert.match(buildRun.printedOutput.everything, /Move it to "[^"]*guide\/kept-guide\/index\.md"/);
   assert.deepEqual(await fileReaders.readFilesRecursively(new URL("file:///repo/.cw/out/")), []);
   assert.equal(await fileReaders.readIfThere(new URL("file:///repo/CLAUDE.md")), undefined);
   assert.equal(listRun.code, EXIT_FAILURE);
-  assert.match(listRun.written.everything, /cw doctor/);
+  assert.match(listRun.printedOutput.everything, /cw doctor/);
 });

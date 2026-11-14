@@ -79,7 +79,7 @@ const setUp = async (
  *  written. */
 const held = (files: InMemoryFileReaders, path: string) => files.readIfThere(new URL(path, repoPath));
 
-test("setting up writes a directory per kind, so a charter has somewhere to be authored (FR-037)", async () => {
+test("setting up writes a directory per kind, so a charter has somewhere to be authored (FR-037, CORE Story 1 scenario 1)", async () => {
   const { code, held: files } = await setUp({}, ["init", "--agent", "claude"]);
 
   assert.equal(code, 0);
@@ -101,7 +101,7 @@ test("setting up writes the workspace's README, naming Cherry Works, the cw that
   assert.equal(await held(keptFiles, ".cw/README.md"), "# Ours\n");
 });
 
-test("what the repository answered is what its settings keep (FR-033, FR-037)", async () => {
+test("what the repository answered is what its settings keep (FR-033, FR-037, CORE Story 1 scenario 1)", async () => {
   const { held: files } = await setUp({}, ["init", "--agent", "claude"]);
 
   assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["claude"] });
@@ -114,7 +114,7 @@ test("an agent this engine does not compile for is refused, naming the ones it d
   assert.match(problems, /no agent called "cursor"/);
 });
 
-test("setup can choose Codex without it being installed on this machine", async () => {
+test("setup can choose Codex without it being installed on this machine (CORE Story 1 scenario 12)", async () => {
   const { code, held: files, results } = await setUp({}, ["init", "--agent", "codex"]);
   assert.doesNotMatch(results, /Warning: Codex sensor.*cw-session-tokens-counter-on-stop/);
   assert.equal(code, 0);
@@ -148,7 +148,7 @@ test("with nobody to ask, every other prompt takes its flag (CORE Story 56 scena
     agents: ["codex"],
     mainContextCeiling: 30000,
   });
-  assert.match(results, /Compiling for: codex\./);
+  assert.match(results, /Agents chosen: codex\./);
 });
 
 test("setup given an agent this engine does not compile for is refused, and keeps nothing (FR-033)", async () => {
@@ -167,7 +167,7 @@ test("what this repository already chose is the default the next run keeps (FR-0
   assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["claude"] });
 });
 
-test("setting up builds the charter, so the agent can author with the skill the engine brings (FR-057)", async () => {
+test("setting up builds the charter, so the agent can author with the skill the engine brings (FR-057, CORE Story 1 scenario 1)", async () => {
   const { code, held: files, results } = await setUp({}, ["init", "--agent", "claude"]);
 
   assert.equal(code, 0);
@@ -214,7 +214,7 @@ test("setting up over a charter that does not hold keeps what it configured, bui
   assert.match(problems, /\.cw\/charter\/primitive\/guide\/broken\/index\.md/);
 });
 
-test("setting up authors nothing for what the engine brings: it is supplied on every read (FR-016, FR-020)", async () => {
+test("setting up authors nothing for what the engine brings: it is supplied on every read (FR-016, FR-020, CORE Story 12 scenario 7)", async () => {
   const { code, held: files } = await setUp({}, ["init", "--agent", "claude"]);
 
   assert.equal(code, 0);
@@ -347,7 +347,7 @@ test("setting up at a terminal with no agent chosen yet offers every agent, none
   // What the terminal showed, its colours and cursor moves taken out: an
   // unticked agent is drawn ◯, a ticked one ◉.
   const shownText = results.replace(new RegExp(`${String.fromCharCode(27)}\\[[0-9;?]*[A-Za-z]`, "g"), "");
-  assert.match(shownText, /Which agents does this charter compile for\?/);
+  assert.match(shownText, /Which agents does this repository choose\?/);
   for (const agentProviderName of ["claude", "codex"])
     assert.match(shownText, new RegExp(`^◯ +${agentProviderName}\\b`, "m"), agentProviderName);
   assert.doesNotMatch(shownText, /◉/);
@@ -381,8 +381,8 @@ test("setting up again at a terminal offers what the repository chose before as 
   });
 
   assert.equal(code, 0);
-  assert.match(results, /Which agents does this charter compile for\?/, "the agent was asked at the terminal");
+  assert.match(results, /Which agents does this repository choose\?/, "the agent was asked at the terminal");
   assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["codex"] });
-  assert.match(results, /Compiling for: codex\./);
+  assert.match(results, /Agents chosen: codex\./);
   assert.equal(await held(files, authoredGuidePath), authoredGuideText);
 });

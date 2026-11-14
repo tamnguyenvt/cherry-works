@@ -79,7 +79,7 @@ async function installed(source: string, repo: string, version?: string): Promis
 const vendored = (repo: string) =>
   readFile(join(repo, ".cw", "charter", "vendor", "charter", "guide", "no-any", "index.md"), "utf8");
 
-test("a source's charter folder checked out at its commit lands where it is told, left unstaged and uncommitted", async (t) => {
+test("a source's charter folder checked out at its commit lands where it is told, left unstaged and uncommitted (CORE Story 2 scenario 1)", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   const { stdout: headBefore } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
 
@@ -118,7 +118,7 @@ test("a version names what is fetched", async (t) => {
   assert.match(await vendored(repo), /Reject any\./);
 });
 
-test("installing a source already there brings it up to date", async (t) => {
+test("installing a source already there brings it up to date (CORE Story 2 scenario 3)", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   await installed(source, repo);
 
@@ -303,7 +303,7 @@ test("in a folder with no version control, a source is installed, then removed w
   assert.equal(await readFile(join(folder, "work.txt"), "utf8"), "In hand.\n");
 });
 
-test("in a repository with work in hand, removing commits nothing and leaves that work as it was (CORE Story 37 scenario 2)", async (t) => {
+test("in a repository with work in hand, removing commits nothing and leaves that work as it was (CORE Story 37 scenario 2, CORE Story 2 scenario 3)", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   const charterAuthoringApp = charterAuthoringIn(repo);
   const [{ folder: installedUri } = { folder: "" }] = answerOf(await charterAuthoringApp.addVendor(source)).data;
@@ -552,7 +552,7 @@ test("a source fetched once is read at its commit: every file it holds, and what
   );
 });
 
-test("one folder of a commit fetched is checked out over a folder here, whole, left unstaged and uncommitted (CORE-FR-187, CORE-FR-189)", async (t) => {
+test("one folder of a commit fetched is checked out over a folder here, whole, left unstaged and uncommitted (CORE-FR-187, CORE-FR-189, CORE Story 32 scenario 3)", async (t) => {
   const [source, repo] = [await publishedSkills(t), await repository(t)];
   const repoUrl = pathToFileURL(`${repo}/`);
   const fetchedCommit = await new GitSources(repoUrl).fetchCommit(source);

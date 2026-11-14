@@ -35,7 +35,7 @@ const load = (files: Readonly<Record<string, string>>, held = new InMemoryFileRe
 
 /** What one of the files every reader shares holds, once this charter is put
  *  down. */
-const written = async (files: Readonly<Record<string, string>>, path: string) => {
+const sharedFileTextOf = async (files: Readonly<Record<string, string>>, path: string) => {
   const held = new InMemoryFileReaders(files);
   const charter = await load(files, held);
 
@@ -48,41 +48,41 @@ const written = async (files: Readonly<Record<string, string>>, path: string) =>
 const oneGuide = { [at("guide/no-any/index.md")]: primitive("guide", "no-any", "Never write `any`.") };
 
 test("the charter file is among what a charter is put down as, whatever it holds", async () => {
-  assert.ok((await written(oneGuide, CHARTER_MD)).startsWith("# Charter\n"));
+  assert.ok((await sharedFileTextOf(oneGuide, CHARTER_MD)).startsWith("# Charter\n"));
 });
 
 test("a charter with no primitive at all still compiles it (FR-019)", async () => {
-  assert.ok((await written({}, CHARTER_MD)).startsWith("# Charter\n"));
+  assert.ok((await sharedFileTextOf({}, CHARTER_MD)).startsWith("# Charter\n"));
 });
 
-test("the charter file sends an agent to the catalogue first, and to no reduced copy of it", async () => {
-  const contents = await written(oneGuide, CHARTER_MD);
+test("the charter file sends an agent to the catalogue first, and to no reduced copy of it (CORE Story 1 scenario 10)", async () => {
+  const contents = await sharedFileTextOf(oneGuide, CHARTER_MD);
 
   // Named beside it, since the listing lands in the same folder it does.
   assert.ok(contents.includes("catalogue.<provider>.json"));
   assert.ok(!contents.includes("catalog.min.json"));
 });
 
-test("the charter file says, for every kind, when it applies (FR-001)", async () => {
-  const contents = await written(oneGuide, CHARTER_MD);
+test("the charter file says, for every kind, when it applies (FR-001, CORE Story 1 scenario 10)", async () => {
+  const contents = await sharedFileTextOf(oneGuide, CHARTER_MD);
 
   // A place a kind's line names is written from the charter file's own folder, where it lands.
-  for (const one of Primitives.classes) {
+  for (const primitiveClass of Primitives.classes) {
     assert.ok(
-      contents.includes(`- **${one.kind}** — ${one.activatesWhen.replaceAll("$CW_OUT/", "./")}.`),
-      `${one.kind} is not said`,
+      contents.includes(`- **${primitiveClass.kind}** — ${primitiveClass.activatesWhen.replaceAll("$CW_OUT/", "./")}.`),
+      `${primitiveClass.kind} is not said`,
     );
   }
 });
 
-test("the charter file carries no body: a body is opened when it activates (FR-013)", async () => {
+test("the charter file carries no body: a body is opened when it activates (FR-013, CORE Story 1 scenario 10)", async () => {
   const files = {
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", "SECRET BODY TEXT"),
     [at("mixin/house-style/index.md")]: primitive("mixin", "house-style", "SECRET MIXIN TEXT"),
     [at("corpus/type-safety/index.md")]: primitive("corpus", "type-safety", "SECRET CORPUS TEXT"),
   };
 
-  const contents = await written(files, CHARTER_MD);
+  const contents = await sharedFileTextOf(files, CHARTER_MD);
   for (const secret of ["SECRET BODY TEXT", "SECRET MIXIN TEXT", "SECRET CORPUS TEXT"]) {
     assert.ok(!contents.includes(secret), `the charter file carries ${secret}`);
   }
@@ -96,5 +96,5 @@ test("the charter file does not grow with the charter: what grows is the listing
     ]),
   );
 
-  assert.equal(await written(forty, CHARTER_MD), await written(oneGuide, CHARTER_MD));
+  assert.equal(await sharedFileTextOf(forty, CHARTER_MD), await sharedFileTextOf(oneGuide, CHARTER_MD));
 });

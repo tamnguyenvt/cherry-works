@@ -56,7 +56,7 @@ export interface ForFetchingCharterSources {
    */
   checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
 
-  /** The temporary folder this commit was fetched into, removed with all it
-   *  holds; nothing is asked of it afterwards. */
+  /** This fetched commit let go, with all the adapter kept to answer for it;
+   *  nothing is asked of it afterwards. */
   removeFetchedCommit(commit: string): Promise<void>;
 }

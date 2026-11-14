@@ -40,10 +40,17 @@ export class TomlLib {
    * file's text as it is where nothing it says changes, and otherwise the two
    * merged. Tables merge field by field at every depth; an entry of an array of
    * tables the file already holds is not added twice; a scalar or a scalar array
-   * is the charter's whole. A file that is not TOML is refused, naming where it
-   * is.
+   * is the charter's whole, and so is every entry the charter gives of a table
+   * `replacedEntryTablePaths` names by its dotted path, the file's own entries
+   * under the same keys dropped. A file that is not TOML is refused, naming
+   * where it is.
    */
-  static mergeTomlText(currentText: string | undefined, charterText: string, place: string): string {
+  static mergeTomlText(
+    currentText: string | undefined,
+    charterText: string,
+    place: string,
+    replacedEntryTablePaths: readonly string[] = [],
+  ): string {
     let currentTable: Readonly<Record<string, unknown>>;
     try {
       currentTable = parse(currentText ?? "", { integersAsBigInt: true });
@@ -54,7 +61,12 @@ export class TomlLib {
         { internal: false, cause },
       );
     }
-    const mergedTable = TomlLib.#mergeTomlTables(currentTable, TomlLib.parseTomlTable(charterText));
+    const mergedTable = TomlLib.#mergeTomlTables(
+      currentTable,
+      TomlLib.parseTomlTable(charterText),
+      "",
+      replacedEntryTablePaths,
+    );
     return currentText !== undefined && TomlLib.#isSameTomlValue(currentTable, mergedTable)
       ? currentText
       : TomlLib.writeTomlText(mergedTable);
@@ -91,18 +103,30 @@ export class TomlLib {
   }
 
   /** Tables merge recursively. Array-table entries append unless an equal entry already exists;
-   * scalar arrays (for example command args) are replaced as one value. */
+   * scalar arrays (for example command args) are replaced as one value, and so is every entry
+   * of a table at a path `replacedEntryTablePaths` names. */
   static #mergeTomlTables(
     currentTable: Readonly<Record<string, unknown>>,
     desiredTable: Readonly<Record<string, unknown>>,
+    tablePath: string,
+    replacedEntryTablePaths: readonly string[],
   ): Record<string, unknown> {
     return Object.fromEntries(
       [...new Set([...Object.keys(currentTable), ...Object.keys(desiredTable)])].map((tableKey) => {
         if (!Object.hasOwn(desiredTable, tableKey)) return [tableKey, currentTable[tableKey]];
         const currentValue = currentTable[tableKey];
         const desiredValue = desiredTable[tableKey];
+        if (replacedEntryTablePaths.includes(tablePath)) return [tableKey, desiredValue];
         if (TomlLib.#isTomlTable(currentValue) && TomlLib.#isTomlTable(desiredValue))
-          return [tableKey, TomlLib.#mergeTomlTables(currentValue, desiredValue)];
+          return [
+            tableKey,
+            TomlLib.#mergeTomlTables(
+              currentValue,
+              desiredValue,
+              tablePath === "" ? tableKey : `${tablePath}.${tableKey}`,
+              replacedEntryTablePaths,
+            ),
+          ];
         if (
           Array.isArray(currentValue) &&
           Array.isArray(desiredValue) &&

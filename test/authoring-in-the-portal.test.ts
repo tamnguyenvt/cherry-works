@@ -80,7 +80,7 @@ test("for every kind, New asks the id, the description, every header that kind r
   });
 });
 
-test("New asks the kind, the id and every header the kind takes, each in its shape (FR-117, FR-118)", async () => {
+test("New asks the kind, the id and every header the kind takes, each in its shape (FR-117, FR-118, CORE Story 6 scenario 10)", async () => {
   await inTheBrowser({}, async (page) => {
     await startingNew(page, "guide");
 
@@ -133,12 +133,12 @@ test("creating writes the file cw add writes, with the body typed, and the listi
     }).writeMarkdown();
     assert.equal(await fileIn(files, ".cw/charter/primitive/guide/no-any/index.md"), expectedMarkdown);
     await page.getByRole("button", { name: "no-any", exact: true }).waitFor();
-    // Nothing was compiled (Story 6 scenario 8).
+    // Nothing was compiled (CORE Story 6 scenario 8).
     assert.deepEqual((await files.readFilesRecursively(new URL(at(".cw/out/")))).length, 0);
   });
 });
 
-test("creating a script writes its index.md in the folders its id names, and an empty asset at its executionPath (FR-141, FR-167)", async () => {
+test("creating a script writes its index.md in the folders its id names, and an empty asset at its executionPath (FR-141, FR-167, CORE Story 23 scenario 1, CORE Story 24 scenario 2)", async () => {
   await inTheBrowser({}, async (page, files) => {
     await startingNew(page, "script");
     await page.getByRole("dialog").getByLabel("id", { exact: true }).fill("release/check");
@@ -157,7 +157,7 @@ test("creating a script writes its index.md in the folders its id names, and an 
   });
 });
 
-test("answers the kind refuses, and an id already claimed, are shown in the engine's words and nothing is written", async () => {
+test("answers the kind refuses, and an id already claimed, are shown in the engine's words and nothing is written (CORE Story 6 scenario 3)", async () => {
   await inTheBrowser({ [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any") }, async (page, files) => {
     await startingNew(page, "guide");
     await page.getByRole("dialog").getByLabel("id", { exact: true }).fill("Not A Slug");
@@ -183,7 +183,7 @@ test("answers the kind refuses, and an id already claimed, are shown in the engi
   });
 });
 
-test("an existing primitive opens locked to its id, saves over its file and deletes it (Story 6 scenarios 4 – 6)", async () => {
+test("an existing primitive opens locked to its id, saves over its file and deletes it (CORE Story 6 scenarios 4 – 6)", async () => {
   await inTheBrowser({ [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any") }, async (page, files) => {
     await opening(page, "no-any");
     await page.getByRole("dialog").getByLabel("description", { exact: true }).waitFor();
@@ -235,7 +235,7 @@ test("a primitive whose id holds / opens, saves and deletes like any other (FR-1
   );
 });
 
-test("a save over a file changed on disk is refused naming it, and the other change stays (Story 6 scenario 9)", async () => {
+test("a save over a file changed on disk is refused naming it, and the other change stays (CORE Story 6 scenario 9)", async () => {
   await inTheBrowser({ [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any") }, async (page, files) => {
     await opening(page, "no-any");
     await page.getByRole("dialog").getByLabel("description", { exact: true }).waitFor();
@@ -254,7 +254,7 @@ test("a save over a file changed on disk is refused naming it, and the other cha
   });
 });
 
-test("a vendored primitive opens read-only, saying how to differ from it (Story 6 scenario 7)", async () => {
+test("a vendored primitive opens read-only, saying how to differ from it (CORE Story 6 scenario 7)", async () => {
   await inTheBrowser(
     { [at(".cw/charter/vendor/team/rules/root/primitive/guide/theirs/index.md")]: guide("theirs") },
     async (page) => {
@@ -274,7 +274,7 @@ test("a vendored primitive opens read-only, saying how to differ from it (Story 
   );
 });
 
-test("Preview renders the body, raw HTML shown as text rather than run (FR-119)", async () => {
+test("Preview renders the body, raw HTML shown as text rather than run (FR-119, CORE Story 6 scenario 11)", async () => {
   const body = "# Heading\n\n<img src=x onerror=\"document.title='ran'\">";
   const withHtml = [
     "---",

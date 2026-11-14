@@ -314,7 +314,7 @@ const MainContextSchema = dto(
   }),
 );
 
-/** The main context of every agent the repository compiles for. */
+/** The main context of every agent the repository chose. */
 const MainContextsSchema = dto(
   "MainContexts",
   z.object({
@@ -372,7 +372,7 @@ const SensorCommandsSchema = dto(
   }),
 );
 
-/** What each agent the repository compiles for is sent of the charter when a
+/** What each agent the repository chose is sent of the charter when a
  *  session opens, each text as the build lays it: what runtime has the agent's
  *  own command line count exactly. */
 const MainContextTextsSchema = dto(
@@ -423,7 +423,7 @@ const CharterLayoutSchema = dto(
   }),
 );
 
-/** What checking a repository found (FR-040): which agents it compiles for;
+/** What checking a repository found (FR-040): which agents it chose;
  *  every fault in its charter under its file, how many of them are errors and
  *  how many warnings; how many files a build would still change — `null` where
  *  the charter does not hold and nothing was previewed; and how many of those

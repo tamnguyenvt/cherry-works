@@ -4420,8 +4420,8 @@ interface ForFetchingCharterSources {
      * CORE-FR-190).
      */
     checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
-    /** The temporary folder this commit was fetched into, removed with all it
-     *  holds; nothing is asked of it afterwards. */
+    /** This fetched commit let go, with all the adapter kept to answer for it;
+     *  nothing is asked of it afterwards. */
     removeFetchedCommit(commit: string): Promise<void>;
 }
 
@@ -4449,7 +4449,10 @@ interface ForManagingCharter {
     addPrimitive(primitive: Primitive): Promise<string>;
     /** New primitives of the repository's own layer kept together, each one's
      *  uri in order; refused, with nothing written, as one added is, and where
-     *  any file is already in one's folder (CORE-FR-194). */
+     *  any file is already in one's folder (CORE-FR-194). Handed each as it is
+     *  kept, not as a `Primitive` the way `addPrimitive` is: what is injected is
+     *  a vendor's source copied byte for byte, and a primitive written again
+     *  from the model would not be those bytes. */
     injectPrimitives(rawPrimitives: readonly RawPrimitive[]): Promise<readonly string[]>;
     /** Refused where the repository is laid out in a way this store no longer
      *  keeps, naming what moves it (CORE-FR-226). */
@@ -4697,7 +4700,7 @@ declare class CharterRoot {
 
 /**
  * DRIVER PORT — projecting the charter: the charter charter authoring keeps,
- * built and laid onto each agent the repository uses; the build and
+ * built and laid onto each agent the repository chose; the build and
  * its preview, the health check, the estimated main context, and what the
  * last build laid to be served or run — the tools of the mcp origins, the
  * sensors (CORE-FR-222). Runtime asks it, through this port alone, for the
@@ -4705,7 +4708,7 @@ declare class CharterRoot {
  * agent is sent when a session opens, and an evaluation's cases
  * (CORE-FR-229).
  *
- * Which agents it builds for is what it was composed with, never what it reads
+ * Which agents the repository chose is what it was composed with, never what it reads
  * (CORE-FR-231). Every answer is a DTO, told apart from the others it may be
  * by its `type`; whatever stops an operation is among them, a
  * `FaultDTOs.Fault`, and never thrown (SDK-FR-004, SDK-FR-017, SDK-FR-018).
@@ -4713,13 +4716,13 @@ declare class CharterRoot {
 interface ForBuildingCharter {
     /**
      * The three questions about this repository, asked in one go (FR-040): which
-     * agents it compiles for, what validating its charter finds — its test files'
+     * agents it chose, what validating its charter finds — its test files'
      * findings among it — and how many files a build would still change, with
      * the main context each agent opens with, estimated. Reads and says
      * (FR-041).
      */
     diagnoseCharter(): Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault>;
-    /** What each agent this repository compiles for is sent of the charter when
+    /** What each agent this repository chose is sent of the charter when
      *  a session opens, estimated by a tokenizer on this machine (EVAL-FR-001,
      *  EVAL-FR-002). Reads and says (FR-041). */
     predictMainContext(): Promise<CharterDTOs.MainContexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
@@ -4743,11 +4746,11 @@ interface ForBuildingCharter {
      *  agent named, of the sensors kept for no agent (CORE-FR-176, CORE-FR-233). */
     listSensorCommands(signal: string, agentProviderName: AgentProviderName | undefined): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault>;
     /** The charter as the store holds it now, committed or not, built into the
-     *  checkout `checkoutPath` names for the agents this was composed with,
+     *  checkout `checkoutFolder` names for the agents the repository chose,
      *  keeping the tools the last build kept; the repository's own working tree
      *  is left as it was (EVAL-FR-021). */
-    buildCharterInto(checkoutPath: string): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-    /** What each agent this repository compiles for is sent of the charter when
+    buildCharterInto(checkoutFolder: string): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    /** What each agent this repository chose is sent of the charter when
      *  a session opens, each text as the build lays it, for an exact count
      *  (EVAL-FR-004). */
     readMainContextTexts(): Promise<CharterDTOs.MainContextTexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
@@ -4933,12 +4936,13 @@ declare class BuiltSensor {
 }
 
 /** Every sensor the last build compiled, in order of id: what
- *  `cw sensor run <signal>` reads, since it reads no charter (FR-179). */
+ *  `cw sensor run <signal> --agent <agent>` reads, since it reads no charter
+ *  (FR-179). */
 declare class BuiltSensors extends CharterOutputItem {
     readonly sensors: readonly BuiltSensor[];
     /** The one command an agent is given for a signal its charter's sensors fire
-     *  on, whichever agent: `cw` runs every one of them (FR-175). */
-    getRunCommand(signal: string, agentProvider?: AgentProvider): string;
+     *  on, naming that agent: `cw` runs every one of them kept for it (FR-175). */
+    getRunCommand(signal: string, agentProvider: AgentProvider): string;
     constructor(sensors: readonly BuiltSensor[]);
     /** Select only sensors that support the agent raising the signal; with no
      *  agent named, only the sensors kept for no agent (CORE-FR-233). */
@@ -5324,7 +5328,7 @@ declare class CodexProjection extends AgentProjection {
      *  the repository's own where some is: a stamped section does not make the
      *  text around it the build's (FR-020). Only folders are walked, not every
      *  file of the repository read. */
-    protected planOtherCleanup(checkoutPath: string): Promise<readonly WritePlan[]>;
+    protected planOtherCleanup(checkoutFolder: string): Promise<readonly WritePlan[]>;
     listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
 }
 
@@ -5395,22 +5399,22 @@ declare class GitSources implements ForFetchingCharterSources {
     fetchCommit(source: string, version?: string): Promise<string>;
     /** `git ls-tree -r`, the paths split on the NUL `-z` ends each with, so a
      *  path holding a newline or a quote is read as it is. */
-    listFilesAt(storeFolder: string): Promise<readonly string[]>;
+    listFilesAt(commit: string): Promise<readonly string[]>;
     /** `git show FETCH_HEAD:<path>`. */
-    readFileAt(storeFolder: string, path: string): Promise<string>;
+    readFileAt(commit: string, path: string): Promise<string>;
     /** `git cat-file blob FETCH_HEAD:<path>`, its output taken as bytes: the
      *  blob as it was committed, with no textconv a user's own git config sets
      *  (CORE-FR-207). */
-    readBytesAt(storeFolder: string, path: string): Promise<Uint8Array>;
+    readBytesAt(commit: string, path: string): Promise<Uint8Array>;
     /** `git read-tree --prefix` into an index of the store's, and `checkout-index`
      *  into a work tree of the store's, then a copy beside the folder, swapped with
      *  it once whole, the folder put back if the swap fails. The
      *  repository's own index, and what is staged in it, is never read from or
      *  written to. */
-    checkOutFolder(storeFolder: string, fromFolder: string, intoSubFolder: string): Promise<void>;
+    checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
     /** A store left behind is only a temporary folder, and never worth reporting
      *  a source that landed as one that failed. */
-    removeFetchedCommit(storeFolder: string): Promise<void>;
+    removeFetchedCommit(commit: string): Promise<void>;
 }
 
 /**

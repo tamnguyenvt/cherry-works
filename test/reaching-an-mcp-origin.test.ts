@@ -40,7 +40,8 @@ test("an mcp origin at an endpoint lists its tools, and a call reaches it with t
   assert.equal(connection.tools[0]?.description, "Answers what it was handed.");
   assert.equal(textOf(toolAnswer), "echo: hello");
   assert.ok(
-    mcpTestServer.authorizations.length > 0 && mcpTestServer.authorizations.every((one) => one === "Bearer dev-token"),
+    mcpTestServer.authorizations.length > 0 &&
+      mcpTestServer.authorizations.every((authorization) => authorization === "Bearer dev-token"),
   );
 });
 
@@ -114,7 +115,7 @@ test("an mcp origin that does not answer in time is an AdapterFault, and the wai
   assert.ok(Date.now() - startedAt < 3_000);
 });
 
-test("an mcp origin declared by a command is started, lists its tools, and reads its token from the variable named", async (t) => {
+test("an mcp origin declared by a command is started, lists its tools, and reads its token from the variable named (CORE Story 19 scenario 8)", async (t) => {
   const localMcpOrigin = aLocalMcpOrigin("PLACE_TOKEN");
 
   const connection = await new McpClients().connectServer(localMcpOrigin, "local-token", 10_000);
@@ -126,7 +127,7 @@ test("an mcp origin declared by a command is started, lists its tools, and reads
   assert.ok(!localMcpOrigin.command.args.some((arg) => arg.includes("local-token")));
 });
 
-test("a command's process is stopped when its mcp origin is let go", async () => {
+test("a command's process is stopped when its mcp origin is let go (CORE Story 19 scenario 8)", async () => {
   const connection = await new McpClients().connectServer(aLocalMcpOrigin(), undefined, 10_000);
   const processId = Number(textOf(await connection.callTool("process_id", {}, undefined)));
 

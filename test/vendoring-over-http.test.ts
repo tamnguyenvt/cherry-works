@@ -54,7 +54,7 @@ const sending = (method: string, json: unknown) => ({
   body: JSON.stringify(json),
 });
 
-test("the vendors are sent as the folders installed() answers (FR-122)", async () => {
+test("the vendors are sent as the folders installed() answers (FR-122, CORE Story 8 scenario 7)", async () => {
   const { portalRoutes, charterAuthoringApp } = portal({
     [new URL(".cw/charter/vendor/acme/charter/root/primitive/guide/one/index.md", repoPath).href]: guide("one"),
   });
@@ -97,7 +97,7 @@ test("a source posted is installed as cw vendor add installs it, and the portal 
   };
   assert.deepEqual(
     primitivesListing.data.primitives
-      .filter(({ data }) => data.layerName === "vendor")
+      .filter(({ data: primitive }) => primitive.layerName === "vendor")
       .map(({ data: { id, file } }) => [id, file]),
     [["published", ".cw/charter/vendor/team/charter/root/primitive/guide/published/index.md"]],
   );
@@ -154,7 +154,7 @@ const installedVendors = async (charterAuthoringApp: ForAuthoringCharter) => [
   ...answerOf(await charterAuthoringApp.listVendors()).data.folders,
 ];
 
-test("a vendor an earlier version laid out in one folder is refused when deleted, saying to install it again (Story 8 scenario 5, FR-180)", async () => {
+test("a vendor an earlier version laid out in one folder is refused when deleted, saying to install it again (CORE Story 8 scenario 5, FR-180)", async () => {
   const { portalRoutes } = portal({
     [new URL(".cw/charter/vendor/charter/guide/one/index.md", repoPath).href]: guide("one"),
   });
@@ -170,7 +170,7 @@ test("a vendor an earlier version laid out in one folder is refused when deleted
   assert.match(faultDTO.data.fix, /install each source again with "cw vendor add"/);
 });
 
-test("a vendor under its owner is taken away by its folder name, owner, repository and name (Story 8 scenario 5, FR-050)", async () => {
+test("a vendor under its owner is taken away by its folder name, owner, repository and name (CORE Story 8 scenario 5, FR-050)", async () => {
   const { portalRoutes, charterAuthoringApp } = portal(filesHoldingVendor("team/charter/root"));
 
   const answer = await portalRoutes.request(

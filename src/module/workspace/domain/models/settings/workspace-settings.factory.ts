@@ -6,7 +6,7 @@ import { WorkspaceSettings } from "./workspace-settings.js";
 export class WorkspaceSettingsFactory {
   /**
    * The settings kept say, every agent among `supportedAgents`. None kept is
-   * a repository never set up, which compiles for no agent (FR-019). Text that
+   * a repository never set up, which chose no agent (FR-019). Text that
    * does not read is refused, saying what to correct (FR-037).
    */
   static create(rawSettings: RawWorkspaceSettings | undefined, supportedAgents: readonly string[]): WorkspaceSettings {
@@ -50,7 +50,7 @@ export class WorkspaceSettingsFactory {
     };
     if (!Array.isArray(agents))
       return new InvalidSettingsFault(
-        `"agents" is what this repository compiles its charter for, and it is not a list of names here.`,
+        `"agents" lists the agents this repository chose, and it is not a list of names here.`,
         `Write it as a list of names, as in { "agents": ["claude"] }.`,
         { internal: false },
       );
@@ -59,7 +59,7 @@ export class WorkspaceSettingsFactory {
       typeof agentName === "string" && supportedAgents.includes(agentName);
     if (!agents.every(isSupported))
       return new InvalidSettingsFault(
-        `This says it compiles for ${agents
+        `This chooses ${agents
           .filter((agentName) => !isSupported(agentName))
           .map((agentName) => `"${String(agentName)}"`)
           .join(", ")}, and this engine compiles for no such agent.`,

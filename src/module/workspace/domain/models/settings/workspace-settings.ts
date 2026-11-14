@@ -1,8 +1,8 @@
 import { z } from "#module/shared/module.js";
 
 /**
- * What a repository configured itself with — which agents it compiles its
- * charter for, the ceiling of a main context, where its sessions are kept on
+ * What a repository configured itself with — which agents it chose, the
+ * ceiling of a main context, where its sessions are kept on
  * this machine (FR-033, EVAL-FR-006, EVAL-FR-012). Kept by the workspace
  * module alone, and handed to the applications that run by it (CORE-FR-231).
  */

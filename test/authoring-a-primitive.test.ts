@@ -74,9 +74,9 @@ test("a primitive added with a body is the file cw add writes, with the body und
   await withBody.charterAuthoringApp.addPrimitive("guide", "no-any", headers, "# No any\n\nNever write `any`.");
   await withoutBody.charterAuthoringApp.addPrimitive("guide", "no-any", headers);
 
-  const written = (await withBody.fileAt(".cw/charter/primitive/guide/no-any/index.md")) ?? "";
+  const savedPrimitiveText = (await withBody.fileAt(".cw/charter/primitive/guide/no-any/index.md")) ?? "";
   const scaffolded = (await withoutBody.fileAt(".cw/charter/primitive/guide/no-any/index.md")) ?? "";
-  assert.equal(written, `${scaffolded.trimEnd()}\n\n# No any\n\nNever write \`any\`.\n`);
+  assert.equal(savedPrimitiveText, `${scaffolded.trimEnd()}\n\n# No any\n\nNever write \`any\`.\n`);
 });
 
 test("a disable-user-invocation answered as a line is written as the yes or no it is, and read back so (CORE-FR-173)", async () => {
@@ -88,13 +88,13 @@ test("a disable-user-invocation answered as a line is written as the yes or no i
     "disable-user-invocation": "true",
   });
 
-  const written = (await fileAt(".cw/charter/primitive/skill/ship-review/index.md")) ?? "";
-  assert.match(written, /\ndisable-user-invocation: true\n/);
-  const { data } = CharterDTOs.Primitive.parse(await charterAuthoringApp.openPrimitive("ship-review"));
-  assert.equal(data.headers["disable-user-invocation"], "true");
+  const savedPrimitiveText = (await fileAt(".cw/charter/primitive/skill/ship-review/index.md")) ?? "";
+  assert.match(savedPrimitiveText, /\ndisable-user-invocation: true\n/);
+  const { data: openedPrimitive } = CharterDTOs.Primitive.parse(await charterAuthoringApp.openPrimitive("ship-review"));
+  assert.equal(openedPrimitive.headers["disable-user-invocation"], "true");
 });
 
-test("an id another layer already holds is refused naming its file, and nothing is written (FR-014)", async () => {
+test("an id another layer already holds is refused naming its file, and nothing is written (FR-014, CORE Story 10 scenario 5)", async () => {
   const { charterAuthoringApp, fileAt } = authoring({
     [at(".cw/charter/vendor/team/rules/root/primitive/guide/no-any/index.md")]: guide("no-any"),
   });
@@ -119,15 +119,15 @@ test("a primitive opens with its headers, body, file, layer and revision, whatev
     [at(".cw/charter/primitive/guide/broken/index.md")]: guide("broken", ['mixins: ["nowhere"]']),
   });
 
-  const { data } = CharterDTOs.Primitive.parse(await charterAuthoringApp.openPrimitive("no-any"));
+  const { data: openedPrimitive } = CharterDTOs.Primitive.parse(await charterAuthoringApp.openPrimitive("no-any"));
 
   // The hash is of the primitive written out, which is what a save writes.
-  assert.equal(data.hash, ContentHelper.createContentHash(text));
-  assert.equal(data.body, "The body of no-any.");
-  assert.equal(data.file, "file:///repo/.cw/charter/primitive/guide/no-any/index.md");
-  assert.equal(data.layerName, "repo");
-  assert.deepEqual(data.headers.globs, ["src/**/*.ts"]);
-  assert.equal(data.headers.rationale, "why");
+  assert.equal(openedPrimitive.hash, ContentHelper.createContentHash(text));
+  assert.equal(openedPrimitive.body, "The body of no-any.");
+  assert.equal(openedPrimitive.file, "file:///repo/.cw/charter/primitive/guide/no-any/index.md");
+  assert.equal(openedPrimitive.layerName, "repo");
+  assert.deepEqual(openedPrimitive.headers.globs, ["src/**/*.ts"]);
+  assert.equal(openedPrimitive.headers.rationale, "why");
 });
 
 test("a vendored and a builtin primitive open too, each under its own layer", async () => {
@@ -297,9 +297,9 @@ test("a removed primitive's file is gone and nothing else is, and what named it 
   assert.equal(primitiveDTO.data.file, "file:///repo/.cw/charter/primitive/mixin/shared/index.md");
   assert.equal(await fileAt("file:///repo/.cw/charter/primitive/mixin/shared/index.md"), undefined);
   assert.equal(await fileAt("file:///repo/.cw/charter/primitive/guide/uses-it/index.md"), hosting);
-  const { data } = answerOf(await charterRuntimeApps.diagnoseCharter());
+  const { data: charterDiagnosis } = answerOf(await charterRuntimeApps.diagnoseCharter());
   assert.ok(
-    data.faultsByFile.data.files["file:///repo/.cw/charter/primitive/guide/uses-it/index.md"]?.some(
+    charterDiagnosis.faultsByFile.data.files["file:///repo/.cw/charter/primitive/guide/uses-it/index.md"]?.some(
       ({ data: { message } }) => /the mixin "shared"/.test(message),
     ),
   );

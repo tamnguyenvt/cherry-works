@@ -66,10 +66,10 @@ test("the listing is sent as every primitive the charter read, each under its la
 
   assert.equal(answer.status, 200);
   // Parsed by its schema, which is how the page reads it.
-  const { type, data } = CharterDTOs.Primitives.parse(await answer.json());
+  const { type, data: primitivesListing } = CharterDTOs.Primitives.parse(await answer.json());
   assert.equal(type, "Primitives");
   assert.deepEqual(
-    data.primitives.map((one) => [one.data.id, one.data.layerName]),
+    primitivesListing.primitives.map((primitiveDTO) => [primitiveDTO.data.id, primitiveDTO.data.layerName]),
     [
       ["cw-author", "builtin"],
       ["cw-session-tokens-counter", "builtin"],
@@ -90,7 +90,7 @@ test("a word sent with the listing narrows it to what mentions the word, and an 
     await (await portalRoutes.request("/charter/root/primitives?matching=WHY")).json(),
   );
   assert.deepEqual(
-    narrowed.data.primitives.map((one) => one.data.id),
+    narrowed.data.primitives.map((primitiveDTO) => primitiveDTO.data.id),
     ["why"],
   );
 
@@ -108,18 +108,18 @@ test("one primitive is explained by kind and id, with when it comes up (FR-029, 
   }).request("/charter/root/primitives/no-any/explanation");
 
   assert.equal(answer.status, 200);
-  const { data } = CharterDTOs.ExplanationOutcome.parse(await answer.json());
-  assert.equal(data.primitive.data.id, "no-any");
-  assert.equal(data.activatesWhen, GuidePrimitive.activatesWhen);
-  assert.equal(data.rationale?.data.id, "why");
+  const { data: explanationOutcome } = CharterDTOs.ExplanationOutcome.parse(await answer.json());
+  assert.equal(explanationOutcome.primitive.data.id, "no-any");
+  assert.equal(explanationOutcome.activatesWhen, GuidePrimitive.activatesWhen);
+  assert.equal(explanationOutcome.rationale?.data.id, "why");
 });
 
 test("an id the charter holds nothing of is explained as a fault under no file", async () => {
   const answer = await portal({}).request("/charter/root/primitives/nowhere/explanation");
 
   assert.equal(answer.status, 422);
-  const { data } = FaultDTOs.Fault.parse(await answer.json());
-  assert.match(data.message, /holds no "nowhere"/);
+  const { data: fault } = FaultDTOs.Fault.parse(await answer.json());
+  assert.match(fault.message, /holds no "nowhere"/);
 });
 
 test("a charter with an error explains nothing and hands back what is wrong under its file", async () => {
@@ -137,9 +137,9 @@ test("every kind is sent with the line saying when it comes up, whatever the cha
   const answer = await portal({}).request("/definitions/kinds");
 
   assert.equal(answer.status, 200);
-  const { data } = CharterDTOs.PrimitiveKinds.parse(await answer.json());
-  assert.deepEqual(Object.keys(data).sort(), [...Primitives.kinds].sort());
-  assert.equal(data.guide, GuidePrimitive.activatesWhen);
+  const { data: activatesWhenByKind } = CharterDTOs.PrimitiveKinds.parse(await answer.json());
+  assert.deepEqual(Object.keys(activatesWhenByKind).sort(), [...Primitives.kinds].sort());
+  assert.equal(activatesWhenByKind.guide, GuidePrimitive.activatesWhen);
 });
 
 test("a charter with an error lists nothing and hands back what is wrong under its file (FR-013)", async () => {
@@ -148,9 +148,9 @@ test("a charter with an error lists nothing and hands back what is wrong under i
   );
 
   assert.equal(answer.status, 422);
-  const { type, data } = FaultDTOs.FaultsByFile.parse(await answer.json());
+  const { type, data: faultsByFile } = FaultDTOs.FaultsByFile.parse(await answer.json());
   assert.equal(type, "FaultsByFile");
-  assert.deepEqual(Object.keys(data.files), [".cw/charter/primitive/guide/no-any/index.md"]);
+  assert.deepEqual(Object.keys(faultsByFile.files), [".cw/charter/primitive/guide/no-any/index.md"]);
 });
 
 test("what validating found is sent as it stands, a charter that holds having nothing wrong (FR-013)", async () => {
@@ -165,16 +165,16 @@ test("what validating found is sent as it stands, a charter that holds having no
   assert.equal(holds.status, 200);
   assert.deepEqual(FaultDTOs.FaultsByFile.parse(await holds.json()).data.files, {});
 
-  const wrong = await portal({ [at("guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }).request(
-    "/charter/root/faults",
-  );
+  const invalidMixinAnswer = await portal({
+    [at("guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']),
+  }).request("/charter/root/faults");
 
   // Read even where the charter does not hold: what is wrong is what this route
   // is for, so it is the answer and not a refusal.
-  assert.equal(wrong.status, 200);
-  const { data } = FaultDTOs.FaultsByFile.parse(await wrong.json());
+  assert.equal(invalidMixinAnswer.status, 200);
+  const { data: faultsByFile } = FaultDTOs.FaultsByFile.parse(await invalidMixinAnswer.json());
   assert.ok(
-    data.files[".cw/charter/primitive/guide/no-any/index.md"]?.some(({ data: { message } }) =>
+    faultsByFile.files[".cw/charter/primitive/guide/no-any/index.md"]?.some(({ data: { message } }) =>
       /the mixin "nowhere"/.test(message),
     ),
   );
@@ -188,8 +188,8 @@ test("the charter is read again on every call, so what changed on disk is what t
   fileReaders.writeFile(new URL(at("corpus/why/index.md")), primitive("corpus", "why"));
   const answer = await portalRoutes.request("/charter/root/primitives");
 
-  const { data } = CharterDTOs.Primitives.parse(await answer.json());
-  assert.ok(data.primitives.some((one) => one.data.id === "why"));
+  const { data: primitivesListing } = CharterDTOs.Primitives.parse(await answer.json());
+  assert.ok(primitivesListing.primitives.some((primitiveDTO) => primitiveDTO.data.id === "why"));
 });
 
 test("a fault raised rather than given back is sent as a fault, under no file (plan §12.2)", async () => {
@@ -198,9 +198,9 @@ test("a fault raised rather than given back is sent as a fault, under no file (p
   const answer = await portal({ "file:///repo/.cw/settings.json": "not json" }).request("/settings");
 
   assert.equal(answer.status, 422);
-  const { type, data } = FaultDTOs.Fault.parse(await answer.json());
+  const { type, data: fault } = FaultDTOs.Fault.parse(await answer.json());
   assert.equal(type, "Fault");
-  assert.match(data.message, /not JSON/);
+  assert.match(fault.message, /not JSON/);
 });
 
 test("what the engine never meant to say is a 500 with an internal fault that says none of it, the whole of it logged (plan §12.2, SDK-FR-017, SDK-FR-018)", async (t) => {

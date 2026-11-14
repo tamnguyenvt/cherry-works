@@ -70,7 +70,7 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
 
   async createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput): Promise<ProjectionPlan> {
     const components = this.listComponents(charter, charterOutput);
-    const checkoutPath = this.checkoutFolder;
+    const checkoutFolder = this.checkoutFolder;
     const [cleanupPlan, layingPlan] = await Promise.all([
       // Every stamped file the last build left in this agent's own folders —
       // the stamp is what tells it from one written by hand there — and what
@@ -78,7 +78,7 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
       (async (): Promise<readonly WritePlan[]> => {
         const folderFileLists = await Promise.all(
           this.ownedFolders.map((folderPath) =>
-            this.fileReader.readFilesRecursively(resolveRepoPath(checkoutPath, folderPath)),
+            this.fileReader.readFilesRecursively(resolveRepoPath(checkoutFolder, folderPath)),
           ),
         );
         return [
@@ -86,9 +86,10 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
             .flat()
             .filter(({ contents }) => new StampedDocumentSpec().isSatisfiedBy(contents))
             .map(
-              ({ path, contents }) => new WritePlan(resolveCheckoutPath(checkoutPath, path), path, undefined, contents),
+              ({ path, contents }) =>
+                new WritePlan(resolveCheckoutPath(checkoutFolder, path), path, undefined, contents),
             ),
-          ...(await this.planOtherCleanup(checkoutPath)),
+          ...(await this.planOtherCleanup(checkoutFolder)),
         ];
       })(),
       // Every file of this agent the output would write, one entry to a path,
@@ -97,7 +98,7 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
         const writePlanByPath = new Map<string, WritePlan>();
         for (const component of components) {
           const place = this.findComponentPlace(component);
-          const filePath = resolveRepoPath(checkoutPath, place);
+          const filePath = resolveRepoPath(checkoutFolder, place);
           const heldContents = await this.fileReader.readIfThere(filePath);
           const plannedContents = writePlanByPath.get(place)?.contents;
           const currentText = typeof plannedContents === "string" ? plannedContents : heldContents;

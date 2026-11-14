@@ -33,13 +33,13 @@ const faultsIn = (text: string): readonly DomainFault[] => {
   return assert.fail("this text was read as a primitive");
 };
 
-const messages = (faults: readonly DomainFault[]) => faults.map((one) => one.message).join("\n");
+const messages = (faults: readonly DomainFault[]) => faults.map((fault) => fault.message).join("\n");
 
 test("the headers and the body are read apart", () => {
-  const one = primitive(guide);
-  assert.equal(one.headers.id, "no-any");
-  assert.deepEqual(one.kind === "guide" ? one.headers.globs : [], ["src/**/*.ts"]);
-  assert.equal(one.body, "Body. Loaded only when the primitive activates.");
+  const guidePrimitive = primitive(guide);
+  assert.equal(guidePrimitive.headers.id, "no-any");
+  assert.deepEqual(guidePrimitive.kind === "guide" ? guidePrimitive.headers.globs : [], ["src/**/*.ts"]);
+  assert.equal(guidePrimitive.body, "Body. Loaded only when the primitive activates.");
 });
 
 test("a file is read as the kind it declares, wherever it sits", () => {
@@ -53,17 +53,17 @@ test("a file that declares no kind is refused, saying so", () => {
 });
 
 test("a kind the charter does not know is refused, naming it and listing the ones it knows", () => {
-  const [found, ...rest] = faultsIn(guide.replace("kind: guide", "kind: concern"));
-  assert.deepEqual(rest, []);
-  assert.match(found?.message ?? "", /concern/);
-  assert.match(found?.fix ?? "", /playbook/);
+  const [kindFault, ...otherFaults] = faultsIn(guide.replace("kind: guide", "kind: concern"));
+  assert.deepEqual(otherFaults, []);
+  assert.match(kindFault?.message ?? "", /concern/);
+  assert.match(kindFault?.fix ?? "", /playbook/);
 });
 
 test("headers the kind refuses are one fault, showing the kind's sample", () => {
-  const [found, ...rest] = faultsIn("---\nkind: guide\nid: No Any\n---\n");
-  assert.deepEqual(rest, []);
-  assert.match(found?.message ?? "", /not what a guide holds/);
-  assert.match(found?.fix ?? "", /kind: guide\nid: no-any\ndescription: Reject the any type/);
+  const [kindFault, ...otherFaults] = faultsIn("---\nkind: guide\nid: No Any\n---\n");
+  assert.deepEqual(otherFaults, []);
+  assert.match(kindFault?.message ?? "", /not what a guide holds/);
+  assert.match(kindFault?.fix ?? "", /kind: guide\nid: no-any\ndescription: Reject the any type/);
 });
 
 test("every kind's sample reads as that kind, since it is what a refused author is shown", () => {
@@ -75,8 +75,8 @@ test("every kind's sample reads as that kind, since it is what a refused author 
 });
 
 test("a guide that names no files still reads", () => {
-  const one = primitive(guide.replace('globs: ["src/**/*.ts"]\n', ""));
-  assert.equal(one.headers.globs, undefined);
+  const guidePrimitive = primitive(guide.replace('globs: ["src/**/*.ts"]\n', ""));
+  assert.equal(guidePrimitive.headers.globs, undefined);
 });
 
 test("a mixin that pulls in mixins of its own is refused", () => {

@@ -40,7 +40,7 @@ interface EngineAdapters {
     readonly fileWriter: ForWritingFiles;
     readonly worktreeKeeper: ForKeepingWorktrees;
     readonly oauthAuthorizer: ForAuthorizingOAuthClients;
-    readonly mcpServers: ForCallingMcpServers;
+    readonly mcpServerCaller: ForCallingMcpServers;
     readonly tokenCounter: ForCountingTokens;
     readonly clock: ForTellingTime;
     readonly shell: ForRunningShellCommands;

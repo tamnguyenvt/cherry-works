@@ -5,7 +5,7 @@ import type { TestSuite } from "../src/module/charter/domain/models/test/test-su
 import { DomainFault } from "../src/module/shared/domain/models/domain.fault.js";
 
 /** One test file, written the way an author writes it. */
-const file = (written: unknown) => JSON.stringify(written, null, 2);
+const suiteText = (authoredSuite: unknown) => JSON.stringify(authoredSuite, null, 2);
 
 /** Every case of one suite as its author wrote it down: what a case holds is
  *  what these are about, and the case itself is what says the situation. */
@@ -27,7 +27,7 @@ const said = (fault: DomainFault) => `${fault.message}\n${fault.fix}`;
 
 test("a touched file is read with the primitive it is expected to bring up", () => {
   const suite = TestSuiteFactory.create(
-    file({
+    suiteText({
       description: "Type guides must come up when application code is touched.",
       cases: [{ do: { touchFile: "src/services/user.ts" }, expect: { activate: "no-any" } }],
     }),
@@ -41,7 +41,7 @@ test("a touched file is read with the primitive it is expected to bring up", () 
 
 test("a touched file is read with the permission it is expected to meet, either way", () => {
   const suite = TestSuiteFactory.create(
-    file({
+    suiteText({
       cases: [
         { do: { touchFile: ".env" }, expect: { allow: false } },
         { do: { touchFile: "src/one.ts" }, expect: { allow: true } },
@@ -56,14 +56,14 @@ test("a touched file is read with the permission it is expected to meet, either 
 });
 
 test("a raised event is read with the sensor it is expected to run", () => {
-  const suite = TestSuiteFactory.create(file({ cases: [{ when: "PreToolUse", expect: { run: "no-secrets" } }] }));
+  const suite = TestSuiteFactory.create(suiteText({ cases: [{ when: "PreToolUse", expect: { run: "no-secrets" } }] }));
 
   assert.deepEqual(writtenCasesOf(suite), [{ when: "PreToolUse", expect: { run: "no-secrets" } }]);
 });
 
 test("one file holds as many cases as it describes, in the order they are written", () => {
   const suite = TestSuiteFactory.create(
-    file({
+    suiteText({
       cases: [
         { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
         { when: "Stop", expect: { run: "tests" } },
@@ -84,7 +84,7 @@ test("a file that is not JSON is refused, saying so", () => {
 });
 
 test("a file the shape refuses is shown a suite that reads, rather than told which field went wrong", () => {
-  const fault = refusing(file({ cases: [{ expect: { activate: "no-any" } }] }));
+  const fault = refusing(suiteText({ cases: [{ expect: { activate: "no-any" } }] }));
 
   assert.match(said(fault), /is not written as a suite of cases/);
   assert.match(said(fault), /"do": \{ "touchFile": "src\/one\.ts" \}/);
@@ -93,45 +93,48 @@ test("a file the shape refuses is shown a suite that reads, rather than told whi
 });
 
 test("a file describing no case is refused, since running it would assert nothing", () => {
-  assert.ok(refusing(file({ description: "Meant to pin the guides down.", cases: [] })) !== undefined);
+  assert.ok(refusing(suiteText({ description: "Meant to pin the guides down.", cases: [] })) !== undefined);
 });
 
 test("a case putting both a touched file and an event is refused, since a case is one situation", () => {
   assert.ok(
-    refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, when: "Stop", expect: { activate: "no-any" } }] })) !==
-      undefined,
+    refusing(
+      suiteText({ cases: [{ do: { touchFile: "src/one.ts" }, when: "Stop", expect: { activate: "no-any" } }] }),
+    ) !== undefined,
   );
 });
 
 test("a raised event expecting a permission is refused, since an event touches no file", () => {
-  assert.ok(refusing(file({ cases: [{ when: "PreToolUse", expect: { allow: false } }] })) !== undefined);
+  assert.ok(refusing(suiteText({ cases: [{ when: "PreToolUse", expect: { allow: false } }] })) !== undefined);
 });
 
 test("a case expecting both an activation and a permission is refused", () => {
   assert.ok(
-    refusing(file({ cases: [{ do: { touchFile: ".env" }, expect: { activate: "no-any", allow: false } }] })) !==
+    refusing(suiteText({ cases: [{ do: { touchFile: ".env" }, expect: { activate: "no-any", allow: false } }] })) !==
       undefined,
   );
 });
 
 test("a case raising an event nothing raises is refused", () => {
-  assert.ok(refusing(file({ cases: [{ when: "OnSave", expect: { run: "tests" } }] })) !== undefined);
+  assert.ok(refusing(suiteText({ cases: [{ when: "OnSave", expect: { run: "tests" } }] })) !== undefined);
 });
 
 test("an expectation that is not an id is refused, since nothing answers to it (FR-172)", () => {
   assert.ok(
-    refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] })) !==
+    refusing(suiteText({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "guide:no-any" } }] })) !==
       undefined,
   );
   assert.ok(
-    refusing(file({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "No Any" } }] })) !== undefined,
+    refusing(suiteText({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "No Any" } }] })) !== undefined,
   );
 });
 
 test("a field nothing reads is refused rather than passed over", () => {
   assert.ok(
     refusing(
-      file({ cases: [{ do: { touchFile: "src/one.ts", request: "add a field" }, expect: { activate: "no-any" } }] }),
+      suiteText({
+        cases: [{ do: { touchFile: "src/one.ts", request: "add a field" }, expect: { activate: "no-any" } }],
+      }),
     ) !== undefined,
   );
 });

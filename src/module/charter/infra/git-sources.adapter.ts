@@ -136,7 +136,8 @@ export class GitSources implements ForFetchingCharterSources {
 
   /** `git ls-tree -r`, the paths split on the NUL `-z` ends each with, so a
    *  path holding a newline or a quote is read as it is. */
-  async listFilesAt(storeFolder: string): Promise<readonly string[]> {
+  async listFilesAt(commit: string): Promise<readonly string[]> {
+    const storeFolder = commit;
     try {
       const { stdout } = await runGit("git", ["ls-tree", "-r", "-z", "--name-only", FETCHED_REF], {
         cwd: storeFolder,
@@ -154,7 +155,8 @@ export class GitSources implements ForFetchingCharterSources {
   }
 
   /** `git show FETCH_HEAD:<path>`. */
-  async readFileAt(storeFolder: string, path: string): Promise<string> {
+  async readFileAt(commit: string, path: string): Promise<string> {
+    const storeFolder = commit;
     try {
       return (
         await runGit("git", ["show", `${FETCHED_REF}:${path}`], {
@@ -175,7 +177,8 @@ export class GitSources implements ForFetchingCharterSources {
   /** `git cat-file blob FETCH_HEAD:<path>`, its output taken as bytes: the
    *  blob as it was committed, with no textconv a user's own git config sets
    *  (CORE-FR-207). */
-  async readBytesAt(storeFolder: string, path: string): Promise<Uint8Array> {
+  async readBytesAt(commit: string, path: string): Promise<Uint8Array> {
+    const storeFolder = commit;
     try {
       return new Uint8Array(
         (
@@ -201,7 +204,8 @@ export class GitSources implements ForFetchingCharterSources {
    *  it once whole, the folder put back if the swap fails. The
    *  repository's own index, and what is staged in it, is never read from or
    *  written to. */
-  async checkOutFolder(storeFolder: string, fromFolder: string, intoSubFolder: string): Promise<void> {
+  async checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void> {
+    const storeFolder = commit;
     const repoFolder = fileURLToPath(this.#repoFolder);
     const checkoutFolder = join(storeFolder, "cw-checkout");
     const intoFolder = join(repoFolder, intoSubFolder);
@@ -269,7 +273,8 @@ export class GitSources implements ForFetchingCharterSources {
 
   /** A store left behind is only a temporary folder, and never worth reporting
    *  a source that landed as one that failed. */
-  async removeFetchedCommit(storeFolder: string): Promise<void> {
+  async removeFetchedCommit(commit: string): Promise<void> {
+    const storeFolder = commit;
     await rm(storeFolder, { recursive: true, force: true }).catch(() => undefined);
   }
 }

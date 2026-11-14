@@ -23,7 +23,7 @@ const OPTIONS = {
  * One line per primitive, the largest first, then the total, said to be an
  * estimate; below, apart and outside the total, every guide loaded only when
  * a file it names is touched, with its globs, for every agent the repository
- * compiles for. What the portal shows is the same answer (EVAL-FR-007).
+ * chose. What the portal shows is the same answer (EVAL-FR-007).
  *
  * With `--agent=<agent>`, each line is the estimate, the agent's own exact
  * count and how far apart they are, as a share of the exact count, then the
@@ -37,12 +37,12 @@ export class ContextCommand implements Command<typeof OPTIONS> {
 
   async runCommand(
     { charterBuildingApp, charterRuntimeApp }: Context,
-    { agent: requestedAgent }: Options<typeof OPTIONS>,
+    { agent: namedAgentName }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     const mainContextAnswer =
-      requestedAgent === undefined
+      namedAgentName === undefined
         ? await charterBuildingApp.predictMainContext()
-        : await charterRuntimeApp.countMainContext(requestedAgent);
+        : await charterRuntimeApp.countMainContext(namedAgentName);
     if (mainContextAnswer.type === "Fault")
       return { exitCode: EXIT_FAILURE, problemText: printFault(mainContextAnswer) };
     if (mainContextAnswer.type === "FaultsByFile") {

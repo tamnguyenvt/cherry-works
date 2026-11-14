@@ -136,7 +136,7 @@ const aBuiltRepository = async () => {
   return repo;
 };
 
-test("cw mcp serve, started by an agent, serves a built repository's mcp origins over stdio and stops them with it (FR-152, FR-153)", async (t) => {
+test("cw mcp serve, started by an agent, serves a built repository's mcp origins over stdio and stops them with it (FR-152, FR-153, CORE Story 19 scenario 1)", async (t) => {
   const repo = await aBuiltRepository();
   t.after(() => rm(repo, { recursive: true, force: true }));
   const transport = new StdioClientTransport({
@@ -164,7 +164,7 @@ test("cw mcp serve, started by an agent, serves a built repository's mcp origins
   assert.match(said.join(""), /local declares "missing_tool"/);
 });
 
-test("cw mcp serve in a repository never built stops, saying to build (FR-152)", async (t) => {
+test("cw mcp serve in a repository never built stops, saying to build (FR-152, CORE Story 19 scenario 7)", async (t) => {
   const repo = await mkdtemp(join(tmpdir(), "cw-serve-"));
   t.after(() => rm(repo, { recursive: true, force: true }));
 

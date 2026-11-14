@@ -122,7 +122,7 @@ const listedLoads = (text: string) =>
     return tokens === undefined ? [] : [{ tokens: Number(tokens.replaceAll(",", "")), kind, id }];
   });
 
-test("the prediction lists what a session opens with, the largest first, with its total said to be an estimate (EVAL-FR-001, EVAL-FR-002)", async () => {
+test("the prediction lists what a session opens with, the largest first, with its total said to be an estimate (EVAL-FR-001, EVAL-FR-002, EVAL Story 1 scenario 1)", async () => {
   const { cli } = surfaces(holding());
 
   const { code, text } = await printed(cli, ["context"]);
@@ -137,7 +137,7 @@ test("the prediction lists what a session opens with, the largest first, with it
   );
   assert.deepEqual(
     sessionLoads.map(({ tokens }) => tokens),
-    sessionLoads.map(({ tokens }) => tokens).sort((one, other) => other - one),
+    sessionLoads.map(({ tokens }) => tokens).sort((leftTokens, rightTokens) => rightTokens - leftTokens),
   );
   const total = sessionLoads.reduce((sum, { tokens }) => sum + tokens, 0);
   assert.match(text, new RegExp(`${total.toLocaleString("en-US")} tokens in all, estimated`));
@@ -167,7 +167,7 @@ test("the estimate is the tokenizer's count scaled to the agent's own (EVAL-FR-0
   );
 });
 
-test("a guide naming files is listed apart, as loaded when one is touched, and is not in the total (EVAL-FR-003)", async () => {
+test("a guide naming files is listed apart, as loaded when one is touched, and is not in the total (EVAL-FR-003, EVAL Story 1 scenario 2)", async () => {
   const { portalRoutes } = surfaces(holding());
 
   const answer = await portalRoutes.request("/charter/root/context");
@@ -186,7 +186,7 @@ test("a guide naming files is listed apart, as loaded when one is touched, and i
   );
 });
 
-test("each mcp is counted by the names of the tools the server lists for it, and no schema (EVAL-FR-029)", async () => {
+test("each mcp is counted by the names of the tools the server lists for it, and no schema (EVAL-FR-029, EVAL Story 5 scenario 4)", async () => {
   const { portalRoutes } = surfaces({
     ...holding(),
     [at(".cw/charter/primitive/mcp/linear/index.md")]: primitive(
@@ -373,7 +373,7 @@ test("counted exactly for an agent the repository did not choose is refused, say
   assert.deepEqual(agentCli.prompts, []);
 });
 
-test("a build says the predicted total in one line (EVAL-FR-005)", async () => {
+test("a build says the predicted total in one line (EVAL-FR-005, EVAL Story 1 scenario 4)", async () => {
   const { cli, portalRoutes } = surfaces(holding());
   const predicted = CharterDTOs.MainContexts.parse(await (await portalRoutes.request("/charter/root/context")).json());
 
@@ -385,7 +385,25 @@ test("a build says the predicted total in one line (EVAL-FR-005)", async () => {
   assert.match(text, new RegExp(`claude opens a session with about ${totalTokens} tokens of the charter`));
 });
 
-test("the health check warns once the total passes the repository's ceiling, naming both (EVAL-FR-006)", async () => {
+test("a build says the predicted total in one line for each agent chosen, and none where none is (EVAL-FR-005, EVAL Story 1 scenario 4)", async () => {
+  const { cli: twoAgentsCli } = surfaces(holding({ agents: ["claude", "codex"] }));
+  const { cli: noAgentCli } = surfaces(holding({ agents: [] }));
+
+  const twoAgentsBuildOutput = await printed(twoAgentsCli, ["build"]);
+  const noAgentBuildOutput = await printed(noAgentCli, ["build"]);
+
+  assert.equal(twoAgentsBuildOutput.code, EXIT_OK);
+  for (const agentName of ["claude", "codex"])
+    assert.equal(
+      twoAgentsBuildOutput.text
+        .split("\n")
+        .filter((line) => line.startsWith(`${agentName} opens a session with about `)).length,
+      1,
+    );
+  assert.doesNotMatch(noAgentBuildOutput.text, /opens a session with/);
+});
+
+test("the health check warns once the total passes the repository's ceiling, naming both (EVAL-FR-006, EVAL Story 1 scenario 5)", async () => {
   const { cli, portalRoutes } = surfaces(holding({ agents: ["claude"], mainContextCeiling: 100 }));
   const { portalRoutes: underCeilingRoutes } = surfaces(holding());
 
@@ -398,7 +416,7 @@ test("the health check warns once the total passes the repository's ceiling, nam
   assert.match(text, /⚠ Context: {2}claude opens a session with about [\d,]+ tokens, past the ceiling of 100\./);
 });
 
-test("the health check is quiet under the 20,000 a repository setting none is held to (EVAL-FR-006)", async () => {
+test("the health check is quiet under the 20,000 a repository setting none is held to (EVAL-FR-006, EVAL Story 1 scenario 5)", async () => {
   const { cli, portalRoutes } = surfaces(holding());
 
   const { text } = await printed(cli, ["doctor"]);
@@ -414,7 +432,7 @@ test("the health check is quiet under the 20,000 a repository setting none is he
   assert.equal(doctorOutcome.data.mainContexts[0]?.agent, "claude");
 });
 
-test("the portal is given the same list and total the command prints, and the whole settings (EVAL-FR-007)", async () => {
+test("the portal is given the same list and total the command prints, and the whole settings (EVAL-FR-007, EVAL Story 1 scenario 6)", async () => {
   const { cli, portalRoutes } = surfaces(holding({ agents: ["claude"], mainContextCeiling: 30_000 }));
 
   const { text } = await printed(cli, ["context"]);

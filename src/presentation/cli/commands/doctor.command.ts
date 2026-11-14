@@ -6,7 +6,7 @@ import { printFault, printFaultsByFile } from "./helper.js";
  * (FR-040), and everything wrong with its charter written out under them
  * (FR-009, FR-010).
  *
- * Which agents it compiles for, whether its charter holds, and whether what agents
+ * Which agents it chose, whether its charter holds, and whether what agents
  * read is still what the charter compiles to. All three are `diagnoseCharter()`'s answer, worked out behind the
  * port — how many are unwell included — so this command and the portal's
  * health check say one thing, nothing here is a second opinion, and staleness
@@ -65,7 +65,7 @@ export class DoctorCommand implements Command {
         // Which cw wrote the report, so one pasted into a bug report names
         // the release it came from (FR-132).
         `cw ${version}`,
-        // A repository that compiles for none is set up and building: the
+        // A repository that chose none is set up and building: the
         // neutral surface is compiled for everybody (FR-019).
         agents.length === 0
           ? `${markByStanding.good} Agents:   none chosen, so only the neutral surface is compiled.`

@@ -250,6 +250,34 @@ test("no variable, parameter or binding of the engine, its scripts and main.ts i
   assert.deepEqual(vaguelyNamedPlaces, []);
 });
 
+/** The words no-single-word-naming names itself: what the engine's tests are
+ *  held to, the longer list above being the engine's own. */
+const guideVagueNames = new Set(
+  "it one data item result known named mentioned cited found written merged done".split(" "),
+);
+
+test("no variable, parameter or binding of the engine's tests is named by a word no-single-word-naming names", () => {
+  const vaguelyNamedPlaces = readdirSync(new URL("test/", repositoryUrl), { recursive: true, encoding: "utf8" })
+    .filter((testPath) => /\.(ts|tsx)$/.test(testPath))
+    .flatMap((testPath) => {
+      const testFile = ts.createSourceFile(
+        testPath,
+        readFileSync(new URL(`test/${testPath}`, repositoryUrl), "utf8"),
+        ts.ScriptTarget.Latest,
+        true,
+        testPath.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+      );
+      return nodesOf(testFile).flatMap((node) =>
+        (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isBindingElement(node)) &&
+        ts.isIdentifier(node.name) &&
+        guideVagueNames.has(node.name.text)
+          ? [`test/${testPath}:${lineOf(testFile, node)} ${node.name.text} (no-single-word-naming)`]
+          : [],
+      );
+    });
+  assert.deepEqual(vaguelyNamedPlaces, []);
+});
+
 test("no file of the engine, its scripts and main.ts imports one module twice, nor re-exports from one module twice: its types and values come in one line", () => {
   const twiceImportedPlaces = [...sourceFileByPath, ...scriptFileByPath].flatMap(([sourcePath, sourceFile]) => {
     const specifierKeys = new Set<string>();

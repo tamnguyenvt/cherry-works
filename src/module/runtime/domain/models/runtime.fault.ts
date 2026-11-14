@@ -41,17 +41,17 @@ export class ReversedSessionSpanFault extends DomainFault {}
 export class OverlongSessionSpanFault extends DomainFault {}
 
 /** An evaluation asked of an agent this engine does not compile for
- *  (EVAL-FR-020). */
+ *  (EVAL-FR-038). */
 export class UnsupportedEvaluationAgentFault extends DomainFault {}
 
 /** An evaluation in a repository that chose no agent this engine can
- *  evaluate with (EVAL-FR-020). */
+ *  evaluate with (EVAL-FR-035). */
 export class NoEvaluationAgentFault extends DomainFault {}
 
 /** An evaluation asked of an agent the repository did not choose
- *  (EVAL-FR-020). */
+ *  (EVAL-FR-034). */
 export class UnchosenEvaluationAgentFault extends DomainFault {}
 
-/** An evaluation in a repository compiling for several agents, none asked
- *  for (EVAL-FR-020). */
+/** An evaluation in a repository that chose several agents and named none
+ *  (EVAL-FR-033). */
 export class UnnamedEvaluationAgentFault extends DomainFault {}

@@ -12,7 +12,7 @@ import {
 import { printFault, printFaultsByFile } from "./helper.js";
 
 const OPTIONS = {
-  agent: { type: "string", describe: "Evaluate with a configured agent: claude or codex" },
+  agent: { type: "string", describe: "Evaluate with an agent the repository chose: claude or codex" },
 } as const satisfies OptionSpec;
 
 /**
@@ -32,24 +32,24 @@ export class EvalCommand implements Command<typeof OPTIONS> {
 
   async runCommand(
     { charterRuntimeApp, workspaceSettings }: Context,
-    { agent: requestedAgent }: Options<typeof OPTIONS>,
+    { agent: namedAgentName }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    let selectedAgent = requestedAgent;
-    if (selectedAgent === undefined) {
-      const configuredAgents = [...new Set(workspaceSettings.agents)];
-      if (configuredAgents.length > 1 && process.stdin.isTTY) {
+    let evaluationAgentName = namedAgentName;
+    if (evaluationAgentName === undefined) {
+      const chosenAgentNames = [...new Set(workspaceSettings.agents)];
+      if (chosenAgentNames.length > 1 && process.stdin.isTTY) {
         const promptAnswer = await prompts({
           type: "select",
           name: "agent",
           message: "Which agent should evaluate this charter?",
-          choices: configuredAgents.map((agentName) => ({ title: agentName, value: agentName })),
+          choices: chosenAgentNames.map((agentName) => ({ title: agentName, value: agentName })),
         });
         if (promptAnswer.agent === undefined)
           return { exitCode: EXIT_FAILURE, problemText: "Evaluation cancelled. No case was run.\n" };
-        selectedAgent = promptAnswer.agent;
+        evaluationAgentName = promptAnswer.agent;
       }
     }
-    const evalRunReportDTO = await charterRuntimeApp.evaluateCharter(selectedAgent);
+    const evalRunReportDTO = await charterRuntimeApp.evaluateCharter(evaluationAgentName);
     if (evalRunReportDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(evalRunReportDTO) };
     if (evalRunReportDTO.type === "FaultsByFile")
       return { exitCode: EXIT_FAILURE, problemText: `No case was run.\n\n${printFaultsByFile(evalRunReportDTO)}` };

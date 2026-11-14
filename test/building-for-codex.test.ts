@@ -65,7 +65,7 @@ test("a Claude-only build does not clean nested Codex instructions", async () =>
   assert.equal(await held.readFile(inRepo("src/AGENTS.md")), generatedText);
 });
 
-test("Codex builds guides, skills, playbooks and model-specific agents without Claude files", async () => {
+test("Codex builds guides, skills, playbooks and model-specific agents without Claude files (CORE Story 1 scenario 12)", async () => {
   const { held, charterRuntimeApps } = building({
     [inRepo(".cw/charter/primitive/guide/types/index.md").href]: primitiveText(
       "guide",
@@ -260,11 +260,11 @@ test("Codex translates only literal Bash prefixes, with native deny precedence a
   assert.equal(await held.readFile(inRepo(".codex/rules/handwritten.rules")), "# My own rules.\n");
 });
 
-test("Codex installs native sensors with compiled script paths and preserves existing hook groups", async () => {
+test("Codex installs native sensors with compiled script paths, writes the hooks of each signal they name over whole and keeps the rest (CORE Story 29 scenario 2, CORE-FR-039)", async () => {
   const stopFile = inRepo(".cw/charter/primitive/sensor/check-stop/index.md");
   const startFile = inRepo(".cw/charter/primitive/sensor/check-start/index.md");
   const configText =
-    '[mcp_servers.other]\ncommand = "other"\n\n[[hooks.Stop]]\n[[hooks.Stop.hooks]]\ntype = "command"\ncommand = "echo user hook"\n';
+    '[mcp_servers.other]\ncommand = "other"\n\n[[hooks.Stop]]\n[[hooks.Stop.hooks]]\ntype = "command"\ncommand = "echo user hook"\n\n[[hooks.PreCompact]]\n[[hooks.PreCompact.hooks]]\ntype = "command"\ncommand = "echo user compact"\n';
   const { held, charterRuntimeApps } = building({
     [inRepo(".codex/config.toml").href]: configText,
     [stopFile.href]: primitiveText("sensor", "check-stop", "signal: Stop\nrun: 'node \"[[team/check]]\"'\n"),
@@ -283,10 +283,12 @@ test("Codex installs native sensors with compiled script paths and preserves exi
   });
   assert.equal((await charterRuntimeApps.buildCharter()).type, "ProjectionPlanSummary");
   const builtConfigText = await held.readFile(inRepo(".codex/config.toml"));
-  assert.match(builtConfigText, /command = "other"/);
-  assert.match(builtConfigText, /command = "echo user hook"/);
+  assert.match(builtConfigText, /\[mcp_servers.other\]\ncommand = "other"/);
+  assert.doesNotMatch(builtConfigText, /echo user hook/);
+  assert.match(builtConfigText, /\[\[hooks.PreCompact\]\]/);
+  assert.match(builtConfigText, /command = "echo user compact"/);
   assert.match(builtConfigText, /\[\[hooks.SessionStart\]\]/);
-  assert.equal((builtConfigText.match(/\[\[hooks.Stop\]\]/g) ?? []).length, 2);
+  assert.equal((builtConfigText.match(/\[\[hooks.Stop\]\]/g) ?? []).length, 1);
   assert.ok(
     builtConfigText.includes(
       JSON.stringify('cd -- "$(git rev-parse --show-toplevel)" && cw sensor run Stop --agent codex'),
@@ -302,9 +304,15 @@ test("Codex installs native sensors with compiled script paths and preserves exi
   assert.equal((await charterRuntimeApps.buildCharter()).type, "ProjectionPlanSummary");
   const cleanedConfigText = await held.readFile(inRepo(".codex/config.toml"));
   assert.match(cleanedConfigText, /command = "other"/);
-  assert.match(cleanedConfigText, /command = "echo user hook"/);
-  assert.match(cleanedConfigText, /cw sensors:|hooks.SessionStart/);
-  assert.equal((cleanedConfigText.match(/\[\[hooks.Stop\]\]/g) ?? []).length, 2);
+  assert.doesNotMatch(cleanedConfigText, /echo user hook/);
+  assert.match(cleanedConfigText, /command = "echo user compact"/);
+  assert.match(cleanedConfigText, /hooks.SessionStart/);
+  assert.equal((cleanedConfigText.match(/\[\[hooks.Stop\]\]/g) ?? []).length, 1);
+  assert.ok(
+    cleanedConfigText.includes(
+      JSON.stringify('cd -- "$(git rev-parse --show-toplevel)" && cw sensor run Stop --agent codex'),
+    ),
+  );
 });
 
 test("Codex filesystem posture merges a native profile and preserves it until manually removed", async () => {

@@ -22,7 +22,7 @@ const withTwoVendors = () => ({
   [vendoredAt("acme/charters/baseline", "guide/old/index.md")]: primitive("guide", "old"),
 });
 
-test("with no vendor installed, the vendor tab says so, and adding one lists the reserved directories (Story 8 scenario 1)", async () => {
+test("with no vendor installed, the vendor tab says so, and adding one lists the reserved directories (CORE Story 8 scenario 1)", async () => {
   await inTheBrowser({ [at("guide/no-any/index.md")]: primitive("guide", "no-any") }, async (page) => {
     await page.getByRole("tab", { name: "Vendor" }).click();
     await page.getByText("No vendor source installed").waitFor();
@@ -35,7 +35,7 @@ test("with no vendor installed, the vendor tab says so, and adding one lists the
   });
 });
 
-test("each source installed shows its folder and its primitives by kind (Story 8 scenario 4)", async () => {
+test("each source installed shows its folder and its primitives by kind (CORE Story 8 scenario 4, CORE Story 8 scenario 7)", async () => {
   await inTheBrowser(withTwoVendors(), async (page) => {
     await page.getByRole("tab", { name: "Vendor" }).click();
     const acme = page.getByLabel(".cw/charter/vendor/acme/charter/root", { exact: true });
@@ -56,7 +56,7 @@ test("each source installed shows its folder and its primitives by kind (Story 8
   });
 });
 
-test("a source added from the dialog is installed through the engine, and the dialog closes (Story 8 scenario 2)", async () => {
+test("a source added from the dialog is installed through the engine, and the dialog closes (CORE Story 8 scenario 2)", async () => {
   const sourceFetcher = new InMemorySources();
   await inTheBrowser(
     {},
@@ -156,7 +156,7 @@ test("a source whose charter would land on a name reserved for a kind installs n
   );
 });
 
-test("Remove takes a source under its owner away by owner, repository and name (Story 8 scenario 5, FR-050)", async () => {
+test("Remove takes a source under its owner away by owner, repository and name (CORE Story 8 scenario 5, FR-050)", async () => {
   const sourceFetcher = new InMemorySources();
   await inTheBrowser(
     { ...withTwoVendors(), [vendoredAt("team/rules/root", "guide/one-rule/index.md")]: primitive("guide", "one-rule") },
@@ -174,7 +174,7 @@ test("Remove takes a source under its owner away by owner, repository and name (
   );
 });
 
-test("Remove takes the source away through the engine (Story 8 scenario 5)", async () => {
+test("Remove takes the source away through the engine (CORE Story 8 scenario 5)", async () => {
   const sourceFetcher = new InMemorySources();
   await inTheBrowser(
     withTwoVendors(),

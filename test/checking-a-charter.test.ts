@@ -52,7 +52,7 @@ const faultsByFilesOf = (...primitives: Authored[]) =>
 
 const messages = (primitives: Authored[]) =>
   Object.values(faultsByFilesOf(...primitives))
-    .flatMap((one) => one.map((fault) => fault.message))
+    .flatMap((fileFaults) => fileFaults.map((fault) => fault.message))
     .join("\n");
 
 test("a mixin that covers its host is nothing to report", () => {
@@ -93,7 +93,7 @@ test("globs that speak about different files are refused, naming the host", () =
   assert.deepEqual(Object.keys(faultsByFiles), [new URL("guide/no-any/index.md", root).href]);
   assert.match(
     Object.values(faultsByFiles)
-      .flatMap((one) => one.map((fault) => fault.message))
+      .flatMap((fileFaults) => fileFaults.map((fault) => fault.message))
       .join("\n"),
     /docs-tone/,
   );
@@ -134,7 +134,7 @@ test("a mixin this charter does not hold is reported once", () => {
   assert.equal(Object.keys(faultsByFiles).length, 1);
   assert.match(
     Object.values(faultsByFiles)
-      .flatMap((one) => one.map((fault) => fault.message))
+      .flatMap((fileFaults) => fileFaults.map((fault) => fault.message))
       .join("\n"),
     /pulls in the mixin "absent".*holds no mixin/s,
   );

@@ -17,7 +17,7 @@ const guide = (id: string) =>
     "",
   ].join("\n");
 
-const suiteText = (written: unknown) => `${JSON.stringify(written, undefined, 2)}\n`;
+const suiteText = (authoredSuite: unknown) => `${JSON.stringify(authoredSuite, undefined, 2)}\n`;
 
 /** One guide; `guides.json` with a passing case, a failing one and one naming
  *  an id the charter does not hold; and `posture.json`, all passing. */
@@ -46,7 +46,7 @@ test("with no test file, the test view says so and where they live", async () =>
   });
 });
 
-test("the test view lists each file with its description and case count, and its cases once opened (Story 9 scenario 1)", async () => {
+test("the test view lists each file with its description and case count, and its cases once opened (CORE Story 9 scenario 1)", async () => {
   await inTheBrowser(withTwoFiles(), async (page) => {
     await page.getByRole("tab", { name: "Test" }).click();
     await page.getByText("4 cases in 2 files").waitFor();
@@ -60,7 +60,7 @@ test("the test view lists each file with its description and case count, and its
   });
 });
 
-test("Run all tests says how many pass, marks each case, says why one failed, and opens its file (Story 9 scenarios 2, 8)", async () => {
+test("Run all tests says how many pass, marks each case, says why one failed, and opens its file (CORE Story 9 scenarios 2, 8)", async () => {
   await inTheBrowser(withTwoFiles(), async (page) => {
     await page.getByRole("tab", { name: "Test" }).click();
     await page.getByRole("button", { name: "Run all tests" }).click();
@@ -75,7 +75,7 @@ test("Run all tests says how many pass, marks each case, says why one failed, an
   });
 });
 
-test("an expected id opens its primitive, and one the charter does not hold is marked (Story 9 scenario 5)", async () => {
+test("an expected id opens its primitive, and one the charter does not hold is marked (CORE Story 9 scenario 5)", async () => {
   await inTheBrowser(withTwoFiles(), async (page) => {
     await page.getByRole("tab", { name: "Test" }).click();
     const guides = page.getByLabel("guides.json", { exact: true });
@@ -89,7 +89,7 @@ test("an expected id opens its primitive, and one the charter does not hold is m
   });
 });
 
-test("a save that reads is written and clears the outcome; one that does not is refused in the dialog (Story 9 scenarios 3, 4)", async () => {
+test("a save that reads is written and clears the outcome; one that does not is refused in the dialog (CORE Story 9 scenarios 3, 4)", async () => {
   await inTheBrowser(withTwoFiles(), async (page, files) => {
     await page.getByRole("tab", { name: "Test" }).click();
     await page.getByRole("button", { name: "Run all tests" }).click();
@@ -112,7 +112,7 @@ test("a save that reads is written and clears the outcome; one that does not is 
   });
 });
 
-test("New test file writes one and opens its text; Delete file removes it (Story 9 scenarios 6, 7)", async () => {
+test("New test file writes one and opens its text; Delete file removes it (CORE Story 9 scenarios 6, 7)", async () => {
   await inTheBrowser(withTwoFiles(), async (page, files) => {
     await page.getByRole("tab", { name: "Test" }).click();
     await page.getByRole("button", { name: "New test file" }).click();

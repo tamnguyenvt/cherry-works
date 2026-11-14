@@ -8,7 +8,7 @@ import { dto, groupByType, StringsSchema, z } from "#module/shared/app/port/in/i
  */
 
 /** What a repository configured itself with: whether it was ever set up, which
- *  agents it compiles for, the ceiling a main context is held to — 20,000
+ *  agents it chose, the ceiling a main context is held to — 20,000
  *  where it set none — and where its sessions are kept on this machine, where
  *  it named a folder of its own. */
 const WorkspaceSettingsSchema = dto(

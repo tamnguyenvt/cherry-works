@@ -96,7 +96,7 @@ test("every id in an explanation opens its own (FR-116)", async () => {
   });
 });
 
-test("a script's explanation names the primitives whose body names it (FR-163)", async () => {
+test("a script's explanation names the primitives whose body names it (FR-163, CORE Story 22 scenario 3)", async () => {
   const naming = {
     [at("script/check/index.md")]: primitive("script", "check", ["executionPath: ./run.sh"]),
     [at("script/check/run.sh")]: "true\n",

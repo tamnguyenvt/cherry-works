@@ -39,7 +39,7 @@ const fullListOf = async (files: Readonly<Record<string, string>>, matching?: st
 
 const idsIn = (answer: CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault) => {
   assert.equal(answer.type, "Primitives");
-  return CharterDTOs.Primitives.parse(answer).data.primitives.map(({ data }) => data.id);
+  return CharterDTOs.Primitives.parse(answer).data.primitives.map(({ data: primitive }) => primitive.id);
 };
 
 test("every primitive of every layer is listed by id, each under the layer it arrived in (FR-112)", async () => {
@@ -60,11 +60,11 @@ test("every primitive of every layer is listed by id, each under the layer it ar
 
 test("each primitive carries every header it declared, the ones the catalogue does not record included", async () => {
   const answer = CharterDTOs.Primitives.parse(await fullListOf(charter));
-  const sensor = answer.data.primitives.find(({ data }) => data.id === "lint")!;
+  const sensorPrimitiveDTO = answer.data.primitives.find(({ data: primitive }) => primitive.id === "lint")!;
 
-  assert.equal(sensor.data.file, "file:///repo/.cw/charter/primitive/sensor/lint/index.md");
-  assert.equal(sensor.data.headers.signal, "PostToolUse");
-  assert.equal(sensor.data.headers.run, "pnpm lint");
+  assert.equal(sensorPrimitiveDTO.data.file, "file:///repo/.cw/charter/primitive/sensor/lint/index.md");
+  assert.equal(sensorPrimitiveDTO.data.headers.signal, "PostToolUse");
+  assert.equal(sensorPrimitiveDTO.data.headers.run, "pnpm lint");
 });
 
 test("a word keeps only the primitives mentioning it, in a header value as much as in a description (FR-114, CORE Story 5 scenario 3, CORE Story 55 scenario 11)", async () => {

@@ -47,7 +47,7 @@ test("the launcher imports no package, so it loads on any Node (FR-128)", async 
   assert.deepEqual([...(await importedPackagesOf("dist/cw.js"))], []);
 });
 
-test("the package holds the program, the page, the library, the README and the license, and nothing else of the repository (FR-130)", () => {
+test("the package holds the program, the page, the library, the README and the license, and nothing else of the repository (FR-130, CORE Story 15 scenario 5)", () => {
   const packDryRun = spawnSync("npm", ["pack", "--dry-run", "--json"], { cwd: root, encoding: "utf8" });
   assert.equal(packDryRun.status, 0, packDryRun.stderr);
   const packedPaths: string[] = JSON.parse(packDryRun.stdout)[0].files.map(({ path }: { path: string }) => path);
@@ -104,7 +104,7 @@ test("on the Node it needs, the launcher hands over to cw", () => {
   assert.match(launcherRun.stdout, /^Usage: cw <command> \[options\]/);
 });
 
-test("cw --version prints the version it was published as, and nothing else (FR-131)", () => {
+test("cw --version prints the version it was published as, and nothing else (FR-131, CORE Story 14 scenario 1)", () => {
   const versionRun = spawnSync(process.execPath, ["dist/cw.js", "--version"], { cwd: root, encoding: "utf8" });
 
   assert.equal(versionRun.status, 0, versionRun.stderr);

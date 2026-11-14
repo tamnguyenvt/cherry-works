@@ -45,8 +45,8 @@ const load = (files: InMemoryFileReaders) => loadCharterRoot(files);
 /** What one layer of a charter declares, by id. */
 const ids = (layerName: LayerName, charter: CharterRoot) =>
   charter.primitives
-    .filter((one) => one.layer.name === layerName)
-    .map((one) => one.headers.id)
+    .filter((primitive) => primitive.layer.name === layerName)
+    .map((primitive) => primitive.headers.id)
     .sort();
 
 /** What reading the charter asks of the files before it reads them: whether
@@ -58,7 +58,7 @@ test("every file the root lists is read as a primitive", async () => {
   assert.deepEqual(ids(PrimitiveLayer.REPO.name, charter), ["no-any", "type-safety"]);
 });
 
-test("the charter is read once, and its vendors once more, however many are installed", async () => {
+test("the charter is read once, and its vendors once more, however many are installed (CORE Story 1 scenario 9)", async () => {
   const files = charterHolding();
   files.writeFile(new URL("team/rules/root/primitive/guide/no-any/index.md", vendorRoot), primitive("guide", "no-any"));
 
@@ -94,7 +94,7 @@ test("a load reads what is there now, not what was there before", async () => {
   const charter = await load(files);
 
   assert.deepEqual(ids(PrimitiveLayer.REPO.name, charter), ["naming", "no-any"]);
-  assert.equal(charter.primitives.find((one) => one.headers.id === "no-any")?.body, "A rewritten body.");
+  assert.equal(charter.primitives.find((primitive) => primitive.headers.id === "no-any")?.body, "A rewritten body.");
 });
 
 test("what a vendor published is read as a layer of its own", async () => {
@@ -105,7 +105,7 @@ test("what a vendor published is read as a layer of its own", async () => {
   const charter = await load(files);
 
   assert.deepEqual(ids(PrimitiveLayer.REPO.name, charter), ["no-any", "type-safety"]);
-  assert.deepEqual([...new Set(charter.primitives.map((one) => one.layer.name))].sort(), [
+  assert.deepEqual([...new Set(charter.primitives.map((primitive) => primitive.layer.name))].sort(), [
     PrimitiveLayer.BUILTIN.name,
     PrimitiveLayer.REPO.name,
     PrimitiveLayer.vendorName,
@@ -121,18 +121,18 @@ test("each vendor is its own layer, and a repository with none has none", async 
     primitive("skill", "naming"),
   );
 
-  assert.deepEqual([...new Set((await load(files)).primitives.map((one) => one.layer.name))].sort(), [
+  assert.deepEqual([...new Set((await load(files)).primitives.map((primitive) => primitive.layer.name))].sort(), [
     PrimitiveLayer.BUILTIN.name,
     PrimitiveLayer.REPO.name,
     PrimitiveLayer.vendorName,
   ]);
   assert.deepEqual(
-    [...new Set((await load(charterHolding())).primitives.map((one) => one.layer.name))],
+    [...new Set((await load(charterHolding())).primitives.map((primitive) => primitive.layer.name))],
     [PrimitiveLayer.BUILTIN.name, PrimitiveLayer.REPO.name],
   );
 });
 
-test("what the engine brings is no folder: it adds no read, and is read without a fault (FR-016, FR-022)", async () => {
+test("what the engine brings is no folder: it adds no read, and is read without a fault (FR-016, FR-022, CORE Story 12 scenarios 1, 7)", async () => {
   const files = charterHolding();
 
   const charter = await load(files);
@@ -195,7 +195,7 @@ test("what the engine brings ready-made is checked against its kind like any fil
   assert.deepEqual(Object.keys(charter.faultsByFiles.faultsByFilePath), ["(built into cw)/skill/cw-author/index.md"]);
 });
 
-test("a repository claiming what the engine brings is the collision, filed against its own file (FR-019)", () => {
+test("a repository claiming what the engine brings is the collision, filed against its own file (FR-019, CORE Story 12 scenario 5)", () => {
   const charter = CharterRootFactory.create(
     [
       new RawPrimitive(
@@ -316,7 +316,7 @@ test("what only shows when files are read together is kept apart from what one f
   ]);
 });
 
-test("a primitive is read from its folder, and every other file under it is one of its assets, another index.md included (FR-141, FR-168)", async () => {
+test("a primitive is read from its folder, and every other file under it is one of its assets, another index.md included (FR-141, FR-168, CORE Story 23 scenario 3)", async () => {
   const files = charterHolding();
   files.writeFile(new URL("skill/team/index.md", root), primitive("skill", "team"));
   files.writeFile(new URL("skill/team/checklist.md", root), "Check it.\n");

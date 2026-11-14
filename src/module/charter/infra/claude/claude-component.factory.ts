@@ -126,8 +126,8 @@ export class ClaudeComponentFactory {
    *
    * One fragment for the whole charter, because the agent keeps one such file: every
    * posture's permissions are the permissions, each thing once, and every event a
-   * sensor fires on is one hook, `cw sensor run <event>`, which runs that event's
-   * sensors as the last build wrote them (FR-175). A charter reaching a mcp origin
+   * sensor fires on is one hook, `cw sensor run <event> --agent claude`, which runs
+   * that event's sensors kept for Claude as the last build wrote them (FR-175). A charter reaching a mcp origin
    * turns the agent's own tool search on (EVAL-FR-016).
    *
    * What the repository set for itself is not here at all: that is on disk, and

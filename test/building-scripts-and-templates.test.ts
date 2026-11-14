@@ -118,7 +118,7 @@ test("a template is compiled like any other primitive, its headers then its body
   assert.ok(rebuiltDocument.includes("# Shipped {{version}}"));
   assert.ok(!rebuiltDocument.includes(releaseNote));
 });
-test("every asset of a primitive is copied beside its compiled document byte for byte, whatever its kind (FR-168)", async () => {
+test("every asset of a primitive is copied beside its compiled document byte for byte, whatever its kind (FR-168, CORE Story 23 scenario 2)", async () => {
   const { held, build } = building({
     ...script("check-changelog", {
       "run.sh": runFile,
@@ -147,7 +147,7 @@ test("every asset of a primitive is copied beside its compiled document byte for
   assert.ok(compiledDocument.includes("Takes the version as its one argument."));
 });
 
-test("of a built script, the asset it runs is executable and no other; a built template is not (FR-160)", async () => {
+test("of a built script, the asset it runs is executable and no other; a built template is not (FR-160, CORE Story 21 scenario 4, CORE Story 24 scenario 3)", async () => {
   const { fileOutput, build } = building({
     ...script("check", { "run.sh": runFile, "lib.sh": "true\n" }),
     [at("template/note/index.md")]: template("note"),
@@ -162,7 +162,7 @@ test("of a built script, the asset it runs is executable and no other; a built t
   assert.ok(!fileOutput.executables.has(inRepo(".cw/out/template/note/index.md")));
 });
 
-test("the catalogue names each primitive's compiled file, and a listing the index.md it was authored in (FR-164, FR-140, CORE Story 21 scenario 7, CORE Story 55 scenario 8)", async () => {
+test("the catalogue names each primitive's compiled file, and a listing the index.md it was authored in (FR-164, FR-140, CORE Story 21 scenario 7, CORE Story 55 scenario 8, CORE Story 16 scenarios 2, 6, CORE Story 22 scenario 1, CORE Story 23 scenario 2)", async () => {
   const { held, charterAuthoringApp, build } = building({
     [inRepo(".cw/settings.json")]: '{"agents":["claude"]}',
     ...script("check"),
@@ -247,7 +247,7 @@ test("an asset edited, added or deleted and not built leaves its copy as the las
   assert.equal(answerOf(await charterRuntimeApps.diagnoseCharter()).data.pendingCount, 3);
 });
 
-test("a primitive deleted from the charter has its copies deleted by the next build (FR-168)", async () => {
+test("a primitive deleted from the charter has its copies deleted by the next build (FR-168, CORE Story 23 scenario 6)", async () => {
   const { held, build } = building({
     ...script("check"),
     [at("skill/release/index.md")]: primitive("skill", "release", ['triggers: ["release"]'], "Tag it."),
@@ -261,7 +261,7 @@ test("a primitive deleted from the charter has its copies deleted by the next bu
   assert.ok(built.deleted.includes(".cw/out/script/check/index.md"));
 });
 
-test("a script whose executionPath is missing, not a path from its index.md, leaves its folder, or holds what a shell would read is refused with the kind's sample (FR-165)", async () => {
+test("a script whose executionPath is missing, not a path from its index.md, leaves its folder, or holds what a shell would read is refused with the kind's sample (FR-165, CORE Story 24 scenario 4)", async () => {
   for (const headers of [
     [],
     ["executionPath: run.sh"],
@@ -280,7 +280,7 @@ test("a script whose executionPath is missing, not a path from its index.md, lea
   }
 });
 
-test("a script whose executionPath names no asset of it is an error under its index.md (FR-165)", async () => {
+test("a script whose executionPath names no asset of it is an error under its index.md (FR-165, CORE Story 24 scenario 4)", async () => {
   const { build } = building({
     [at("script/check/index.md")]: primitive("script", "check", ["executionPath: ./run.sh"], ""),
     [at("script/check/other.sh")]: runFile,
@@ -289,7 +289,7 @@ test("a script whose executionPath names no asset of it is an error under its in
   assert.match(errorsUnder(faultsOf(await build()), "script/check/index.md").join(), /holds no such file/);
 });
 
-test("a script or a template no primitive names is a warning, and the build still runs (FR-163)", async () => {
+test("a script or a template no primitive names is a warning, and the build still runs (FR-163, CORE Story 21 scenario 8)", async () => {
   const { charterRuntimeApps, build } = building({
     ...script("check"),
     [at("template/note/index.md")]: template("note"),
@@ -308,7 +308,7 @@ test("a script or a template no primitive names is a warning, and the build stil
   assert.ok(!warnedFiles.some((file) => file.endsWith("template/used/index.md")));
 });
 
-test("a vendor's assets, and its templates, are built into the repository's output folder like ones it authored (CORE Story 21 scenario 9, FR-159, CORE Story 55 scenario 8)", async () => {
+test("a vendor's assets, and its templates, are built into the repository's output folder like ones it authored (CORE Story 21 scenario 9, FR-159, CORE Story 55 scenario 8, CORE Story 24 scenario 6)", async () => {
   const { held, build } = building({
     [inRepo(".cw/charter/vendor/team/rules/root/primitive/script/check/index.md")]: primitive(
       "script",
@@ -329,7 +329,7 @@ test("a vendor's assets, and its templates, are built into the repository's outp
   assert.ok(compiledTemplate.includes(releaseNote));
 });
 
-test("asking a script what it requires names its executionPath (Story 24 scenario 1)", async () => {
+test("asking a script what it requires names its executionPath (CORE Story 24 scenario 1, CORE Story 21 scenario 1)", async () => {
   const { charterAuthoringApp } = building({});
 
   for (const [kind, field] of [["script", "executionPath"]] as const) {
@@ -341,7 +341,7 @@ test("asking a script what it requires names its executionPath (Story 24 scenari
   }
 });
 
-test("a script is added as its index.md and an empty asset at its executionPath (FR-167)", async () => {
+test("a script is added as its index.md and an empty asset at its executionPath (FR-167, CORE Story 24 scenario 2)", async () => {
   const { held, charterAuthoringApp } = building({});
 
   const primitiveDTO = answerOf(
@@ -359,7 +359,7 @@ test("a script is added as its index.md and an empty asset at its executionPath 
   assert.equal(await held.readFile(new URL(at("script/release/check/run.sh"))), "");
 });
 
-test("a primitive added inside another's folder, or around one, is refused and nothing is written (FR-167)", async () => {
+test("a primitive added inside another's folder, or around one, is refused and nothing is written (FR-167, CORE Story 23 scenario 4)", async () => {
   const { held, charterAuthoringApp } = building({
     [at("skill/team/review/index.md")]: primitive("skill", "team/review", ['triggers: ["review"]'], ""),
   });
@@ -373,7 +373,7 @@ test("a primitive added inside another's folder, or around one, is refused and n
   assert.equal(await held.readIfThere(new URL(at("skill/team/index.md"))), undefined);
 });
 
-test("deleting a primitive takes every asset of it with it (FR-167)", async () => {
+test("deleting a primitive takes every asset of it with it (FR-167, CORE Story 23 scenario 6)", async () => {
   const { held, charterAuthoringApp } = building({
     ...script("check", { "run.sh": runFile, "lib/versions.sh": "true\n" }),
     ...script("other"),
@@ -416,7 +416,7 @@ test("a template declaring a header no kind takes is refused naming that header,
   assert.equal(await held.readIfThere(new URL(at("template/release-note/index.md"))), undefined);
 });
 
-test("a template asks for nothing beyond what every primitive does (FR-158)", async () => {
+test("a template asks for nothing beyond what every primitive does (FR-158, CORE Story 21 scenario 1)", async () => {
   const { charterAuthoringApp } = building({});
 
   const primitiveRequirementsDTO = answerOf(await charterAuthoringApp.listPrimitiveRequirements("template"));

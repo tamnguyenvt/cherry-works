@@ -82,7 +82,7 @@ const charter = {
   [new URL("guide/small-diffs/index.md", vendored).href]: primitive("guide", "small-diffs"),
 };
 
-test("an id is traced in one command to the file that declares it", async () => {
+test("an id is traced in one command to the file that declares it (CORE Story 1 scenario 8, CORE Story 3 scenario 1, CORE Story 27 scenario 5)", async () => {
   const { code, results } = await run(charter, ["explain", "no-any"]);
 
   assert.equal(code, EXIT_OK);
@@ -152,7 +152,7 @@ test("what explaining finds reaches a driver as its DTO, saying when the primiti
   assert.equal(explanationOutcomeDTO.data.primitive.data.headers.rationale, "gone");
 });
 
-test("a vendored id is named the same way, and says which layer it came from", async () => {
+test("a vendored id is named the same way, and says which layer it came from (CORE Story 3 scenario 1)", async () => {
   const { code, results } = await run(charter, ["explain", "small-diffs"]);
 
   assert.equal(code, EXIT_OK);
@@ -160,7 +160,7 @@ test("a vendored id is named the same way, and says which layer it came from", a
   assert.match(results, /installed from a vendor/);
 });
 
-test("what the engine brings is explained and listed like any other, under the layer it came from, saying which layer that is (CORE Story 12 scenario 4, FR-019, FR-020, CORE Story 55 scenario 8)", async () => {
+test("what the engine brings is explained and listed like any other, under the layer it came from, saying which layer that is (CORE Story 12 scenario 4, FR-019, FR-020, CORE Story 55 scenario 8, CORE Story 3 scenario 1)", async () => {
   const explained = await run(charter, ["explain", "cw-author"]);
 
   assert.equal(explained.code, EXIT_OK);
@@ -245,7 +245,7 @@ const naming = {
   ),
 };
 
-test("an explanation says which primitives name a script or a template in their body (FR-163)", async () => {
+test("an explanation says which primitives name a script or a template in their body (FR-163, CORE Story 22 scenario 3)", async () => {
   const script = await run(naming, ["explain", "check"]);
   assert.equal(script.code, EXIT_OK);
   assert.deepEqual(
@@ -269,7 +269,7 @@ test("an explanation says which primitives name an mcp origin, in a body or amon
   );
 });
 
-test("a script only a sensor runs is mentioned in that sensor, and is not warned about as one nothing names (FR-163)", async () => {
+test("a script only a sensor runs is mentioned in that sensor, and is not warned about as one nothing names (FR-163, CORE Story 25 scenario 2)", async () => {
   const onlySensor = {
     [new URL("script/check/index.md", root).href]: saying("script", "check", ["executionPath: ./run.sh"], ""),
     [new URL("script/check/run.sh", root).href]: "true\n",
@@ -279,7 +279,7 @@ test("a script only a sensor runs is mentioned in that sensor, and is not warned
       ["signal: Stop", 'run: "[[check]]"'],
       "",
     ),
-    ...suite({ cases: [{ when: "Stop", expect: { run: "check-on-stop" } }] }),
+    ...suiteFilesOf({ cases: [{ when: "Stop", expect: { run: "check-on-stop" } }] }),
   };
 
   const explained = await run(onlySensor, ["explain", "check"]);
@@ -310,8 +310,9 @@ test("a rationale citing a corpus the charter does not hold is named, and marked
 
 /** One test file, written the way an author writes it, in the folder tests are
  *  read from. */
-const suite = (written: unknown, name = "activation") => ({
-  [new URL(`.cw/charter/test/${name}.json`, "file:///repo/").href]: `${JSON.stringify(written, undefined, 2)}\n`,
+const suiteFilesOf = (authoredSuite: unknown, suiteName = "activation") => ({
+  [new URL(`.cw/charter/test/${suiteName}.json`, "file:///repo/").href]:
+    `${JSON.stringify(authoredSuite, undefined, 2)}\n`,
 });
 
 const pinnedDown = {
@@ -320,7 +321,7 @@ const pinnedDown = {
     "signal: PreToolUse",
     'run: "pnpm test"',
   ]),
-  ...suite({
+  ...suiteFilesOf({
     cases: [
       { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
       { do: { touchFile: ".env" }, expect: { allow: false } },
@@ -351,7 +352,7 @@ test("a sensor is pinned down by the case that fires its signal", async () => {
 
 test("a primitive no case names is explained with no situation under it", async () => {
   const { code, results } = await run(
-    { ...pinnedDown, ...suite({ cases: [{ do: { touchFile: ".env" }, expect: { allow: false } }] }) },
+    { ...pinnedDown, ...suiteFilesOf({ cases: [{ do: { touchFile: ".env" }, expect: { allow: false } }] }) },
     ["explain", "no-any"],
   );
 

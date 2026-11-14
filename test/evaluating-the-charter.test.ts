@@ -110,7 +110,7 @@ const printed = async (cli: Commander, argv: readonly string[]) => {
   process.stderr.write = ((chunk: string) => problems.push(chunk) > 0) as typeof process.stderr.write;
   try {
     const code = await cli.runCommandLine(argv);
-    return { code, result: results.join(""), problem: problems.join("") };
+    return { code, outputText: results.join(""), problem: problems.join("") };
   } finally {
     process.stdout.write = stdoutWrite;
     process.stderr.write = stderrWrite;
@@ -141,16 +141,16 @@ test("a case expecting a skill is handed to promptfoo as skill-used, and passes 
     promptfoo,
   );
 
-  const { code, result } = await printed(cli, ["eval"]);
+  const { code, outputText } = await printed(cli, ["eval"]);
 
   assert.deepEqual(promptfoo.evaluatedTests[0]?.assertions, [{ type: "skill-used", value: "planning" }]);
   assert.equal(code, EXIT_FAILURE);
-  assert.match(result, /pass\s+1,200 tokens\s+plan this feature: export/);
+  assert.match(outputText, /pass\s+1,200 tokens\s+plan this feature: export/);
   assert.match(
-    result,
+    outputText,
     /FAIL\s+800 tokens\s+refactor this file\n\s+Missing required skill\(s\): refactoring\. Actual skills: planning/,
   );
-  assert.match(result, /1 of 2 cases failed, 2,000 tokens in all\./);
+  assert.match(outputText, /1 of 2 cases failed, 2,000 tokens in all\./);
 });
 
 test("a case expecting a guide followed is handed to promptfoo as an agent-rubric with the guide, and fails with the grader's reason (EVAL Story 6 scenario 2)", async () => {
@@ -161,7 +161,7 @@ test("a case expecting a guide followed is handed to promptfoo as an agent-rubri
   );
   const { cli } = surfaces(holding([{ prompt: "write a parser", expect: { follow: "plain-names" } }]), promptfoo);
 
-  const { code, result } = await printed(cli, ["eval"]);
+  const { code, outputText } = await printed(cli, ["eval"]);
 
   const [rubricAssertion] = promptfoo.evaluatedTests[0]?.assertions ?? [];
   assert.equal(rubricAssertion?.type, "agent-rubric");
@@ -169,7 +169,7 @@ test("a case expecting a guide followed is handed to promptfoo as an agent-rubri
   assert.match(rubricAssertion.value, /Never name a variable `data`\./);
   assert.equal(code, EXIT_FAILURE);
   assert.match(
-    result,
+    outputText,
     /FAIL\s+1,000 tokens\s+write a parser\n\s+"plain-names" was not followed: It names a variable data\./,
   );
 });
@@ -211,7 +211,7 @@ test("a case naming a number of tokens is handed to promptfoo as a check of the 
   );
   const { cli } = surfaces(holding([{ prompt: "plan this feature", expect: { maxTokens: 20_000 } }]), promptfoo);
 
-  const { code, result } = await printed(cli, ["eval"]);
+  const { code, outputText } = await printed(cli, ["eval"]);
 
   const [tokenAssertion] = promptfoo.evaluatedTests[0]?.assertions ?? [];
   assert.equal(tokenAssertion?.type, "javascript");
@@ -219,7 +219,7 @@ test("a case naming a number of tokens is handed to promptfoo as a check of the 
   assert.match(tokenAssertion.value, /tokenUsage/);
   assert.match(tokenAssertion.value, /20000/);
   assert.equal(code, EXIT_FAILURE);
-  assert.match(result, /The agent used 30000 tokens, more than the 20000 this case allows\./);
+  assert.match(outputText, /The agent used 30000 tokens, more than the 20000 this case allows\./);
 });
 
 test("a case promptfoo could not run fails with promptfoo's error", async () => {
@@ -232,10 +232,10 @@ test("a case promptfoo could not run fails with promptfoo's error", async () => 
   });
   const { cli } = surfaces(holding([{ prompt: "plan this feature", expect: { invoke: "planning" } }]), promptfoo);
 
-  const { code, result } = await printed(cli, ["eval"]);
+  const { code, outputText } = await printed(cli, ["eval"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(result, /Error calling Claude Agent SDK: not signed in/);
+  assert.match(outputText, /Error calling Claude Agent SDK: not signed in/);
 });
 
 test("every case passing passes the run, each case's tokens and the total said (EVAL Story 6 scenario 4)", async () => {
@@ -256,12 +256,12 @@ test("every case passing passes the run, each case's tokens and the total said (
     promptfoo,
   );
 
-  const { code, result } = await printed(cli, ["eval"]);
+  const { code, outputText } = await printed(cli, ["eval"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(result, /pass\s+4,000 tokens\s+plan this feature/);
-  assert.match(result, /pass\s+6,000 tokens\s+refactor this/);
-  assert.match(result, /2 cases passed, 10,000 tokens in all\./);
+  assert.match(outputText, /pass\s+4,000 tokens\s+plan this feature/);
+  assert.match(outputText, /pass\s+6,000 tokens\s+refactor this/);
+  assert.match(outputText, /2 cases passed, 10,000 tokens in all\./);
 });
 
 test("each case runs once in a worktree of its own under .cw/log/eval/worktrees/ with its charter built, removed afterwards, the working tree left as it was (EVAL Story 6 scenario 5)", async () => {
@@ -413,9 +413,9 @@ test("an evaluation file that does not read refuses the run, and none written is
   assert.match(refused.problem, /\.cw\/charter\/eval\/skills\.json/);
 
   const { [at(".cw/charter/eval/skills.json")]: _evalFile, ...withoutEvals } = holding([]);
-  const { code, result } = await printed(surfaces(withoutEvals, promptfoo).cli, ["eval"]);
+  const { code, outputText } = await printed(surfaces(withoutEvals, promptfoo).cli, ["eval"]);
   assert.equal(code, EXIT_OK);
-  assert.match(result, /No evaluation: \.cw\/charter\/eval\/ holds no case\./);
+  assert.match(outputText, /No evaluation: \.cw\/charter\/eval\/ holds no case\./);
   assert.equal(promptfoo.evaluatedTests.length, 0);
 });
 
@@ -433,8 +433,8 @@ for (const agentName of ["claude", "codex"]) {
     const { cli, worktrees, fileReaders } = surfaces(repositoryFiles, promptfooRunner);
     const commandOutput = await printed(cli, ["eval", `--agent=${agentName}`]);
     assert.equal(commandOutput.code, EXIT_FAILURE);
-    assert.match(commandOutput.result, new RegExp(`Agent: ${agentName}`));
-    assert.match(commandOutput.result, /123 tokens/);
+    assert.match(commandOutput.outputText, new RegExp(`Agent: ${agentName}`));
+    assert.match(commandOutput.outputText, /123 tokens/);
     assert.equal(promptfooRunner.evaluatedTests[0]?.provider, agentName);
     assert.deepEqual(
       promptfooRunner.evaluatedTests[0]?.assertions.map(({ type }) => type),
@@ -489,11 +489,11 @@ for (const selectionCase of [
   });
 }
 
-for (const selectedAgent of ["codex", undefined]) {
-  test(`the agent picked at a terminal: ${selectedAgent ?? "cancelled"} (EVAL Story 7 scenario 3)`, async () => {
+for (const pickedAgentName of ["codex", undefined]) {
+  test(`the agent picked at a terminal: ${pickedAgentName ?? "cancelled"} (EVAL Story 7 scenario 3)`, async () => {
     const ttyDescriptor = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
     Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
-    prompts.inject([selectedAgent]);
+    prompts.inject([pickedAgentName]);
     try {
       const promptfooRunner = new InMemoryPromptfoo();
       const repositoryFiles = {
@@ -501,9 +501,9 @@ for (const selectedAgent of ["codex", undefined]) {
         [at(".cw/settings.json")]: JSON.stringify({ agents: ["claude", "codex"] }),
       };
       const commandOutput = await printed(surfaces(repositoryFiles, promptfooRunner).cli, ["eval"]);
-      assert.equal(commandOutput.code, selectedAgent === undefined ? EXIT_FAILURE : EXIT_OK);
-      assert.equal(promptfooRunner.evaluatedTests.length, selectedAgent === undefined ? 0 : 1);
-      if (selectedAgent !== undefined) assert.equal(promptfooRunner.evaluatedTests[0]?.provider, selectedAgent);
+      assert.equal(commandOutput.code, pickedAgentName === undefined ? EXIT_FAILURE : EXIT_OK);
+      assert.equal(promptfooRunner.evaluatedTests.length, pickedAgentName === undefined ? 0 : 1);
+      if (pickedAgentName !== undefined) assert.equal(promptfooRunner.evaluatedTests[0]?.provider, pickedAgentName);
     } finally {
       if (ttyDescriptor === undefined) delete (process.stdin as { isTTY?: boolean }).isTTY;
       else Object.defineProperty(process.stdin, "isTTY", ttyDescriptor);
@@ -583,19 +583,19 @@ test("the run says where each case's result and the agent's session record are k
   });
   const { cli } = surfaces(holding([{ prompt: "plan", expect: { invoke: "planning" } }]), promptfoo);
   const evalOutput = await printed(cli, ["eval"]);
-  assert.match(evalOutput.result, /Log: \/logs\/case.json/);
-  assert.match(evalOutput.result, /Session log: \/sessions\/session-one.jsonl/);
+  assert.match(evalOutput.outputText, /Log: \/logs\/case.json/);
+  assert.match(evalOutput.outputText, /Session log: \/sessions\/session-one.jsonl/);
   const evaluateCount = promptfoo.evaluatedTests.length;
   const analysisOutput = await printed(cli, ["eval-analyze", "--log", "/logs/case.json"]);
   assert.equal(analysisOutput.code, EXIT_OK);
-  assert.match(analysisOutput.result, /FAIL codex/);
-  assert.match(analysisOutput.result, /Missing required skill/);
-  assert.match(analysisOutput.result, /cat instructions.md/);
-  assert.match(analysisOutput.result, /I read the instructions/);
-  assert.match(analysisOutput.result, /Session log: \/sessions\/session-one.jsonl/);
+  assert.match(analysisOutput.outputText, /FAIL codex/);
+  assert.match(analysisOutput.outputText, /Missing required skill/);
+  assert.match(analysisOutput.outputText, /cat instructions.md/);
+  assert.match(analysisOutput.outputText, /I read the instructions/);
+  assert.match(analysisOutput.outputText, /Session log: \/sessions\/session-one.jsonl/);
   const jsonOutput = await printed(cli, ["eval-analyze", "--json"]);
-  assert.equal(JSON.parse(jsonOutput.result).data.logs[0].sessionId, "session-one");
-  assert.equal(JSON.parse(jsonOutput.result).data.logs[0].agent, "codex");
+  assert.equal(JSON.parse(jsonOutput.outputText).data.logs[0].sessionId, "session-one");
+  assert.equal(JSON.parse(jsonOutput.outputText).data.logs[0].agent, "codex");
   assert.equal(promptfoo.evaluatedTests.length, evaluateCount);
 });
 
@@ -622,10 +622,10 @@ test("with no agent and no promptfoo installed, eval-analyze reads a kept result
   const jsonOutput = await printed(cli, ["eval-analyze", "--json"]);
 
   assert.equal(wordsOutput.code, EXIT_OK);
-  assert.match(wordsOutput.result, /read the guide/);
-  assert.match(wordsOutput.result, /docs\/guide\.md/);
+  assert.match(wordsOutput.outputText, /read the guide/);
+  assert.match(wordsOutput.outputText, /docs\/guide\.md/);
   assert.equal(jsonOutput.code, EXIT_OK);
-  assert.equal(JSON.parse(jsonOutput.result).data.logs[0].prompt, "read the guide");
+  assert.equal(JSON.parse(jsonOutput.outputText).data.logs[0].prompt, "read the guide");
   assert.equal(promptfoo.evaluatedTests.length, 0);
   assert.equal(promptfoo.installCount, 0);
 });
@@ -635,11 +635,11 @@ test("eval-analyze explains an empty history without running an agent", async ()
   const { cli } = surfaces(holding([]), promptfoo);
   const analysisOutput = await printed(cli, ["eval-analyze"]);
   assert.equal(analysisOutput.code, EXIT_OK);
-  assert.match(analysisOutput.result, /No saved evaluation log/);
+  assert.match(analysisOutput.outputText, /No saved evaluation log/);
   assert.equal(promptfoo.evaluatedTests.length, 0);
 });
 
-test("a case outside a git repository is refused in git's words, naming git init, and nothing is left behind (CORE-FR-206)", async () => {
+test("a case outside a git repository is refused in git's words, naming git init, and nothing is left behind (CORE-FR-206, CORE Story 35 scenario 4)", async () => {
   const promptfoo = new InMemoryPromptfoo();
   const files = holding([{ prompt: "plan this feature", expect: { invoke: "planning" } }]);
   const { cli, worktrees, fileReaders } = surfaces(files, promptfoo, new InMemoryAgentCli(), false);
@@ -679,7 +679,7 @@ test("no case outside a git repository answers that there is none, as in a repos
   const commandOutput = await printed(cli, ["eval"]);
 
   assert.equal(commandOutput.code, EXIT_OK);
-  assert.match(commandOutput.result, /holds no case/);
+  assert.match(commandOutput.outputText, /holds no case/);
 });
 
 test("a folder of notes and no case outside a git repository answers that there is none (CORE-FR-206)", async () => {
@@ -696,7 +696,7 @@ test("a folder of notes and no case outside a git repository answers that there 
   const commandOutput = await printed(cli, ["eval"]);
 
   assert.equal(commandOutput.code, EXIT_OK);
-  assert.match(commandOutput.result, /holds no case/);
+  assert.match(commandOutput.outputText, /holds no case/);
 });
 
 test("what a stopped run left, and no case, outside a git repository answers that there is none (CORE-FR-206)", async () => {
@@ -711,5 +711,5 @@ test("what a stopped run left, and no case, outside a git repository answers tha
   const commandOutput = await printed(cli, ["eval"]);
 
   assert.equal(commandOutput.code, EXIT_OK);
-  assert.match(commandOutput.result, /holds no case/);
+  assert.match(commandOutput.outputText, /holds no case/);
 });

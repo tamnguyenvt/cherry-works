@@ -61,7 +61,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
   readonly #sessionAnalysisRepository: ForLoadingSessionAnalysis;
   readonly #clock: ForTellingTime;
   readonly #runtimeSettings: RuntimeSettings;
-  readonly #mcpServers: ForCallingMcpServers | undefined;
+  readonly #mcpServerCaller: ForCallingMcpServers | undefined;
 
   constructor(
     /** Charter authoring's application: the developer's token to an mcp
@@ -98,7 +98,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
      *  the caller is answered in the system's own words (SDK-FR-017). */
     progressReporter: ForReportingProgress,
     /** The mcp origins' MCP servers, what a call is forwarded through (FR-154). */
-    mcpServers?: ForCallingMcpServers,
+    mcpServerCaller?: ForCallingMcpServers,
   ) {
     super(progressReporter);
     this.#charterAuthoringApp = charterAuthoringApp;
@@ -111,7 +111,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
     this.#sessionAnalysisRepository = sessionAnalysisRepository;
     this.#clock = clock;
     this.#runtimeSettings = runtimeSettings;
-    this.#mcpServers = mcpServers;
+    this.#mcpServerCaller = mcpServerCaller;
   }
 
   async runSensors(
@@ -150,8 +150,8 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
     toolArguments: Readonly<Record<string, unknown>>,
   ): Promise<RuntimeDTOs.ToolAnswer | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("RunningCharter.callTool", async () => {
-      const mcpServers = this.#mcpServers;
-      if (mcpServers === undefined)
+      const mcpServerCaller = this.#mcpServerCaller;
+      if (mcpServerCaller === undefined)
         throw new MissingMcpServersFault(
           "This engine was set up with no way to reach an mcp origin.",
           "Set it up with the MCP servers.",
@@ -184,7 +184,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
         origin.endpoint === undefined ? Promise.resolve(undefined) : loadAccessToken(isRefused);
       try {
         const connectToken = origin.auth.length > 0 ? await loadAccessToken(false) : undefined;
-        const connection = await mcpServers.connectServer(
+        const connection = await mcpServerCaller.connectServer(
           {
             address: origin.address,
             ...(origin.endpoint === undefined ? {} : { endpoint: origin.endpoint }),
@@ -229,7 +229,8 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
    * line's own instructions taken away. Each is put beside its estimate, and
    * the domain says whether the totals are further apart than EVAL-SC-002
    * allows (EVAL-FR-004). Refused before anything runs where the agent cannot
-   * be counted through, is not compiled for, or has no command line installed.
+   * be counted through, the repository did not choose, or has no command line
+   * installed.
    */
   async countMainContext(
     agentProviderName: AgentProviderName,
@@ -323,13 +324,13 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
   }
 
   async evaluateCharter(
-    requestedAgentProviderName?: string,
+    namedAgentProviderName?: string,
   ): Promise<RuntimeDTOs.EvalRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("RunningCharter.evaluateCharter", async () => {
       const agentProviderName = EvaluationAgentService.selectEvaluationAgent(
         this.#runtimeSettings.agents,
         Object.keys(this.#agentCliByProvider),
-        requestedAgentProviderName,
+        namedAgentProviderName,
       );
 
       // A repository that wrote no case is told so, and nothing is written or

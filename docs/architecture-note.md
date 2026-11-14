@@ -5,6 +5,8 @@ note is rewritten whenever the code or the user's word changes it, and says
 only what is true now; a decision that breaks the architecture's design is an
 ADR instead, never rewritten.
 
+![The engine of cw: the charter, runtime and workspace modules, driven by the command line, the portal, the MCP gateway and the SDK](images/architecture.svg)
+
 ## A primitive is named by its id alone
 
 Story: [CORE Story 27](../specs/spec-core.md#core-story-27---name-every-primitive-by-its-id-alone-priority-p1), [CORE Story 40](../specs/spec-core.md#core-story-40---read-one-consistent-account-of-the-charters-behaviour-priority-p1)

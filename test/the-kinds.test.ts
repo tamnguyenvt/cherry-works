@@ -55,8 +55,8 @@ const asking = async (argv: readonly string[]) => {
  *  the values it may hold where the set is closed. */
 const headersNamedIn = (answer: string) =>
   answer.split("\n").flatMap((line) => {
-    const named = /^ {2}(\S+)\s+(line|list)(?:, one of .+)?$/.exec(line);
-    return named === null ? [] : [{ field: named[1]!, shape: named[2]! }];
+    const headerMatch = /^ {2}(\S+)\s+(line|list)(?:, one of .+)?$/.exec(line);
+    return headerMatch === null ? [] : [{ field: headerMatch[1]!, shape: headerMatch[2]! }];
   });
 
 /** The frontmatter block of the sample the answer showed, as an author would
@@ -96,7 +96,7 @@ test("Primitives.isKind accepts only the closed set", () => {
   }
 });
 
-test("cw kinds <kind> names what that kind's contract requires, and no more (FR-001, FR-004)", async () => {
+test("cw kinds <kind> names what that kind's contract requires, and no more (FR-001, FR-004, CORE Story 11 scenario 1)", async () => {
   for (const kind of Primitives.kinds) {
     const { code, results } = await asking(["kinds", kind]);
 
@@ -130,7 +130,7 @@ test("a header read from a closed set carries its values, and no other header do
   assert.match(results, new RegExp(`signal\\s+line, one of ${SensorPrimitive.signals.join(", ")}\n`));
 });
 
-test("the sample it shows is a primitive of that kind, as an author writes one (FR-001)", async () => {
+test("the sample it shows is a primitive of that kind, as an author writes one (FR-001, CORE Story 11 scenario 1)", async () => {
   for (const kind of Primitives.kinds) {
     const { results } = await asking(["kinds", kind]);
     const samplePrimitive = readPrimitive(["---", sampleShownIn(results), "---", "", "What it has to say."].join("\n"));
@@ -147,7 +147,7 @@ test("an agent is shown holding an mcp origin under its tools, in the charter's 
   assert.match(sampleShownIn(agentKind), /tools: .*"\[\[mfbs\/billing\]\]:search_code"/);
 });
 
-test("the headers it names are the ones cw add takes, one flag apiece (FR-004, spec Story 2 scenario 4)", async () => {
+test("the headers it names are the ones cw add takes, one flag apiece (FR-004, CORE Story 11 scenario 1)", async () => {
   for (const kind of Primitives.kinds) {
     const { results } = await asking(["kinds", kind]);
     const flags = headersNamedIn(results).flatMap(({ field }) => [
@@ -197,7 +197,7 @@ test("for every kind, what cw kinds names, what cw add asks for and what a refus
   }
 });
 
-test("cw kinds with no kind answers as it does today: one line per kind (FR-002)", async () => {
+test("cw kinds with no kind answers as it does today: one line per kind (FR-002, CORE Story 11 scenario 2)", async () => {
   const { code, results } = await asking(["kinds"]);
 
   assert.equal(code, EXIT_OK);
@@ -210,7 +210,7 @@ test("cw kinds with no kind answers as it does today: one line per kind (FR-002)
   );
 });
 
-test("a word that is no kind is answered with every kind there is (FR-003)", async () => {
+test("a word that is no kind is answered with every kind there is (FR-003, CORE Story 11 scenario 3)", async () => {
   const { code, problems } = await asking(["kinds", "rule"]);
 
   assert.equal(code, EXIT_FAILURE);
@@ -265,7 +265,7 @@ test("an mcp is read in either shape the data model writes (FR-142)", () => {
   assert.equal(mcpOf("endpoint: http://127.0.0.1:8080/mcp", "auth: [token]").kind, "mcp");
 });
 
-test("an mcp declaring both shapes, or neither, is refused with the sample of the one it was nearer (FR-142)", () => {
+test("an mcp declaring both shapes, or neither, is refused with the sample of the one it was nearer (FR-142, CORE Story 17 scenario 8)", () => {
   const bothShapesRefusal = refusalOf(() =>
     mcpOf("endpoint: https://mcp.example.com/", "command: npx", "auth: [token]"),
   );
@@ -277,7 +277,7 @@ test("an mcp declaring both shapes, or neither, is refused with the sample of th
   assert.match(noShapeRefusal.fix, /endpoint: https:\/\/api\.githubcopilot\.com\/mcp\//);
 });
 
-test("a command taking a token without naming where it reads it is refused with the command's sample (FR-142)", () => {
+test("a command taking a token without naming where it reads it is refused with the command's sample (FR-142, CORE Story 17 scenario 8)", () => {
   const tokenEnvRefusal = refusalOf(() => mcpOf("command: npx", "auth: [token]"));
 
   assert.match(tokenEnvRefusal.message, /"tokenEnv"/);
@@ -293,7 +293,7 @@ test("an mcp is refused a way of signing in its shape does not take (FR-142)", (
   );
 });
 
-test("an id longer than 40 characters is refused, so a host's names for it stay within what it takes (FR-157)", () => {
+test("an id longer than 40 characters is refused, so a host's names for it stay within what it takes (FR-157, CORE Story 23 scenario 8)", () => {
   const guideWithId = (id: string) =>
     readPrimitive(["---", "kind: guide", `id: ${id}`, "description: About it.", "---", ""].join("\n"));
 

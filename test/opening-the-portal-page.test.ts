@@ -11,7 +11,7 @@ test("the header reads as the mockup draws it: the brand, the search, Build and 
     assert.deepEqual(
       await header
         .getByRole("button")
-        .evaluateAll((buttons) => buttons.map((one) => one.getAttribute("aria-label") ?? one.textContent)),
+        .evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label") ?? button.textContent)),
       ["Build", "Doctor"],
     );
   });

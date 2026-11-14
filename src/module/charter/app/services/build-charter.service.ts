@@ -34,9 +34,10 @@ export class BuildCharterService {
    * handed to `executePlan` or to `previewPlan`, so a preview and the build after
    * it are looking at one plan rather than at two readings that may have drifted.
    *
-   * Reads, and only reads. Which agents are compiled for is what the repository
-   * said at setup, never what happens to be installed on the machine running this
-   * (FR-033); one naming none still gets the surface every reader shares (FR-019).
+   * Reads, and only reads. Which agents the repository chose at setup is what
+   * a build lays a surface for, never what happens to be installed on the
+   * machine running this (FR-033); one naming none still gets the surface every
+   * reader shares (FR-019).
    *
    * What each mcp origin lists is asked of it through `mcpReaching` where
    * `shouldRefreshMcpOrigins` says so, and read off what the last build kept otherwise;

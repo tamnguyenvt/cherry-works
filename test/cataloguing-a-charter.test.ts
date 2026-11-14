@@ -75,9 +75,9 @@ const catalogueOf = async (files: InMemoryFileReaders): Promise<Catalogue> => {
 
 /** The bytes a listing lands on disk as, which is what an agent pays to read
  *  (SC-005). */
-const written = (entries: readonly unknown[]) => JSON.stringify(entries);
+const catalogueTextOf = (entries: readonly unknown[]) => JSON.stringify(entries);
 
-test("the catalogue records what a primitive is called, what it is for, the files and providers it applies to and where its body is", async () => {
+test("the catalogue records what a primitive is called, what it is for, the files and providers it applies to and where its body is (CORE Story 27 scenario 5)", async () => {
   const catalogue = await catalogueOf(
     new InMemoryFileReaders({
       [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", {
@@ -107,9 +107,16 @@ test("a header the author left out is left out, not recorded as nothing", async 
     new InMemoryFileReaders({ [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any") }),
   );
 
-  const entry = catalogue.entries.find((one) => one.id === "no-any");
+  const guideCatalogueEntry = catalogue.entries.find((catalogueEntry) => catalogueEntry.id === "no-any");
 
-  assert.deepEqual(Object.keys(entry!).sort(), ["agentProviders", "description", "file", "globs", "id", "kind"]);
+  assert.deepEqual(Object.keys(guideCatalogueEntry!).sort(), [
+    "agentProviders",
+    "description",
+    "file",
+    "globs",
+    "id",
+    "kind",
+  ]);
 });
 
 test("the output keeps shared entries in catalogue and restricted entries only in provider catalogues", async () => {
@@ -140,10 +147,10 @@ test("a vendored primitive is catalogued at its compiled file, as every layer's 
   const vendored = new URL("team/rules/root/primitive/guide/no-any/index.md", vendorRoot);
   const catalogue = await catalogueOf(new InMemoryFileReaders({ [vendored.href]: primitive("guide", "no-any") }));
 
-  const entry = catalogue.entries.find((one) => one.kind === "guide");
+  const noAnyCatalogueEntry = catalogue.entries.find((catalogueEntry) => catalogueEntry.kind === "guide");
 
-  assert.equal(entry!.id, "no-any");
-  assert.equal(entry!.file, "$CW_OUT/guide/no-any/index.md");
+  assert.equal(noAnyCatalogueEntry!.id, "no-any");
+  assert.equal(noAnyCatalogueEntry!.file, "$CW_OUT/guide/no-any/index.md");
 });
 
 test("the same charter catalogues in the same order however its files were read", async () => {
@@ -153,7 +160,7 @@ test("the same charter catalogues in the same order however its files were read"
     [new URL("corpus/type-safety/index.md", root).href]: primitive("corpus", "type-safety"),
   });
 
-  const ids = (await catalogueOf(files)).entries.map((one) => one.id);
+  const ids = (await catalogueOf(files)).entries.map((catalogueEntry) => catalogueEntry.id);
 
   assert.deepEqual(ids, ["cw-author", "cw-session-tokens-counter", "no-any", "type-safety", "writing-tests"]);
 });
@@ -165,5 +172,5 @@ test("the catalogue carries no body", async () => {
 
   const catalogue = await catalogueOf(files);
 
-  assert.ok(!written(catalogue.entries).includes("SECRET BODY TEXT"));
+  assert.ok(!catalogueTextOf(catalogue.entries).includes("SECRET BODY TEXT"));
 });

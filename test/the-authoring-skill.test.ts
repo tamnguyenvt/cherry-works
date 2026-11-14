@@ -11,8 +11,10 @@ import { loadCharterRoot } from "./use-cases-of.js";
 
 const skillBody = new CwAuthorSkill().body;
 
-test("the body names no header of any kind, so a kind can change without it (FR-023, SC-002)", () => {
-  const headerNames = [...new Set(Primitives.classes.flatMap((one) => Object.keys(one.schema.shape)))];
+test("the body names no header of any kind, so a kind can change without it (FR-023, SC-002, CORE Story 12 scenario 8)", () => {
+  const headerNames = [
+    ...new Set(Primitives.classes.flatMap((primitiveClass) => Object.keys(primitiveClass.schema.shape))),
+  ];
 
   // A header named as a header is written: `name: value`, `name=value`, or
   // `name` on its own. The same word in a sentence is only a word.
@@ -24,8 +26,8 @@ test("the body names no header of any kind, so a kind can change without it (FR-
   assert.deepEqual(namedHeaders, []);
 });
 
-test("every command the body names is one cw answers", () => {
-  const commandNames = COMMANDS.map((one) => one.name.split(" ")[0]);
+test("every command the body names is one cw answers (CORE Story 12 scenario 8)", () => {
+  const commandNames = COMMANDS.map((command) => command.name.split(" ")[0]);
 
   const namedCommands = [...skillBody.matchAll(/`cw ([a-z]+)/g)].map(([, name]) => name);
 
@@ -35,7 +37,7 @@ test("every command the body names is one cw answers", () => {
   );
 });
 
-test("the body says the procedure in order: ask the kind, add with flags, build (FR-024)", () => {
+test("the body says the procedure in order: ask the kind, add with flags, build (FR-024, CORE Story 12 scenario 8)", () => {
   const steps = ["`cw kinds`", "`cw kinds <kind>`", "`cw add <kind> <id> --header <name>=<value>`", "`cw build`"];
 
   const positions = steps.map((step) => skillBody.indexOf(step));
@@ -50,7 +52,7 @@ test("the body says the procedure in order: ask the kind, add with flags, build 
   );
 });
 
-test("the body says whose it is, and what it does not cover (FR-025, FR-027)", () => {
+test("the body says whose it is, and what it does not cover (FR-025, FR-027, CORE Story 12 scenario 8)", () => {
   assert.match(skillBody, /not authored in this\s+repository/);
   assert.match(skillBody, /writes a primitive of its own/);
   assert.match(skillBody, /Changing or removing one that already exists\s+is not what it covers/);

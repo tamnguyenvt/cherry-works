@@ -51,7 +51,7 @@ test("a word nothing mentions says so", async () => {
   });
 });
 
-test("choosing a result opens it where it is listed: its layer's tab, its kind (Story 5, scenario 7)", async () => {
+test("choosing a result opens it where it is listed: its layer's tab, its kind (CORE Story 5 scenario 7)", async () => {
   await inTheBrowser(charter, async (page) => {
     await page.getByPlaceholder("Search everything").fill("lint");
     await page.getByRole("option", { name: /lint-clean/ }).click();
@@ -68,7 +68,7 @@ test("choosing a result opens it where it is listed: its layer's tab, its kind (
   });
 });
 
-test("Escape clears the search and leaves the tab as it was", async () => {
+test("Escape clears the search and leaves the tab as it was (CORE Story 5 scenario 7)", async () => {
   await inTheBrowser(charter, async (page) => {
     await page.getByRole("tab", { name: "Vendor" }).click();
     await page.getByPlaceholder("Search everything").fill("lint");

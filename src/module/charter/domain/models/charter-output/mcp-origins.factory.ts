@@ -68,24 +68,27 @@ export class McpOriginsFactory {
     return new McpOrigins(
       [...mcpPrimitivesByOriginKey.entries()]
         .sort(([leftOriginKey], [rightOriginKey]) => (leftOriginKey < rightOriginKey ? -1 : 1))
-        .map(([originKey, mcpsAtOrigin]) => {
-          const [firstMcp] = mcpsAtOrigin as [(typeof mcpsAtOrigin)[number], ...typeof mcpsAtOrigin];
-          const { endpoint, command, args: commandArguments = [], path } = firstMcp.headers;
-          const tokenEnv = mcpsAtOrigin.find((mcpPrimitive) => mcpPrimitive.headers.tokenEnv !== undefined)?.headers
-            .tokenEnv;
-          const auths = new Set(mcpsAtOrigin.flatMap((mcpPrimitive) => mcpPrimitive.headers.auth ?? []));
-          const declaredTools = new Set(mcpsAtOrigin.flatMap((mcpPrimitive) => mcpPrimitive.headers.tools));
+        .map(([originKey, mcpPrimitivesAtOrigin]) => {
+          const [firstMcpPrimitive] = mcpPrimitivesAtOrigin as [
+            (typeof mcpPrimitivesAtOrigin)[number],
+            ...typeof mcpPrimitivesAtOrigin,
+          ];
+          const { endpoint, command, args: commandArguments = [], path } = firstMcpPrimitive.headers;
+          const tokenEnv = mcpPrimitivesAtOrigin.find((mcpPrimitive) => mcpPrimitive.headers.tokenEnv !== undefined)
+            ?.headers.tokenEnv;
+          const auths = new Set(mcpPrimitivesAtOrigin.flatMap((mcpPrimitive) => mcpPrimitive.headers.auth ?? []));
+          const declaredTools = new Set(mcpPrimitivesAtOrigin.flatMap((mcpPrimitive) => mcpPrimitive.headers.tools));
           const listedTools = toolsByOriginKey.get(originKey);
 
           return new McpOrigin({
-            ids: mcpsAtOrigin.map((mcpPrimitive) => mcpPrimitive.headers.id),
+            ids: mcpPrimitivesAtOrigin.map((mcpPrimitive) => mcpPrimitive.headers.id),
             names: Object.fromEntries(
-              mcpsAtOrigin.map((mcpPrimitive) => [
+              mcpPrimitivesAtOrigin.map((mcpPrimitive) => [
                 mcpPrimitive.headers.id,
                 shortMcpIds[mcpPrimitive.headers.id] as string,
               ]),
             ),
-            address: firstMcp.address,
+            address: firstMcpPrimitive.address,
             ...(endpoint === undefined ? {} : { endpoint }),
             ...(command === undefined
               ? {}

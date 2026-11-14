@@ -87,20 +87,20 @@ const valued = (field: string) =>
         ? "./something/run.sh"
         : `what ${field} holds`;
 
-test("a kind is asked what it requires, and nothing else (FR-004, FR-039)", () => {
-  for (const one of Primitives.classes)
+test("a kind is asked what it requires, and nothing else (FR-004, FR-039, CORE Story 4 scenario 1)", () => {
+  for (const primitiveClass of Primitives.classes)
     assert.deepEqual(
-      Primitives.headersOf(one.kind)
+      Primitives.headersOf(primitiveClass.kind)
         .filter(({ isRequired }) => isRequired)
         .map(({ field }) => field),
-      ["description", ...Object.keys(one.requires)],
+      ["description", ...Object.keys(primitiveClass.requires)],
     );
 });
 
 test("what a kind says a header holds is what its schema reads it as (FR-004)", () => {
-  for (const one of Primitives.classes)
-    for (const [field, shape] of Object.entries({ description: "line", ...one.requires }))
-      assert.equal(Primitives.headersOf(one.kind).find((taken) => taken.field === field)?.shape, shape);
+  for (const primitiveClass of Primitives.classes)
+    for (const [field, shape] of Object.entries({ description: "line", ...primitiveClass.requires }))
+      assert.equal(Primitives.headersOf(primitiveClass.kind).find((taken) => taken.field === field)?.shape, shape);
 });
 
 /** Every kind a terminal can answer whole. An mcp needs `endpoint` or
@@ -108,7 +108,7 @@ test("what a kind says a header holds is what its schema reads it as (FR-004)", 
  *  choice, so it is written from flags alone (plan §19.1). */
 const answerableKinds = Primitives.kinds.filter((kind) => kind !== "mcp");
 
-test("what is answered is what the file holds, read back as the same primitive (FR-039)", async () => {
+test("what is answered is what the file holds, read back as the same primitive (FR-039, CORE Story 4 scenario 1)", async () => {
   for (const kind of answerableKinds) {
     const { code, held: files } = await adding(["add", kind, "something"], answering(kind));
     const keptText = (await held(files, `.cw/charter/primitive/${kind}/something/index.md`)) ?? "";
@@ -121,7 +121,7 @@ test("what is answered is what the file holds, read back as the same primitive (
   }
 });
 
-test("an id holding / is written as one file in its kind's folder, each / as - (FR-141)", async () => {
+test("an id holding / is written as one file in its kind's folder, each / as - (FR-141, CORE Story 23 scenario 1)", async () => {
   const { code, held: files } = await adding(["add", "guide", "mfbs/no-any"], ["what description holds"]);
   const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/guide/mfbs/no-any/index.md")) ?? "");
 
@@ -129,7 +129,7 @@ test("an id holding / is written as one file in its kind's folder, each / as - (
   assert.equal(keptPrimitive.headers.id, "mfbs/no-any");
 });
 
-test("a successful add compiles nothing: its file alone is written, for its author to write the body into and build (CORE Story 10 scenario 7, FR-074, FR-079, CORE Story 55 scenario 8)", async () => {
+test("a successful add compiles nothing: its file alone is written, for its author to write the body into and build (CORE Story 10 scenario 7, FR-074, FR-079, CORE Story 55 scenario 8, CORE Story 10 scenario 1)", async () => {
   const settingsText = `${JSON.stringify({ agents: ["claude"] })}\n`;
   const {
     code,
@@ -187,7 +187,7 @@ test("an id with an empty segment is refused with the kind's sample, and nothing
   }
 });
 
-test("a word that is no kind is refused, naming every kind there is (FR-001, FR-039)", async () => {
+test("a word that is no kind is refused, naming every kind there is (FR-001, FR-039, CORE Story 4 scenario 2)", async () => {
   const { code, problems } = await adding(["add", "rule", "no-any"], []);
 
   assert.equal(code, EXIT_FAILURE);
@@ -239,7 +239,7 @@ test("nobody at the terminal is told what the kind requires, and nothing is writ
   assert.equal(await held(files, ".cw/charter/primitive/skill/refactoring/index.md"), undefined);
 });
 
-test("a file that is already there is never written over (FR-039)", async () => {
+test("a file that is already there is never written over (FR-039, CORE Story 4 scenario 3)", async () => {
   const authoredText = readPrimitive({
     headers: { kind: "guide", id: "no-any", description: "Authored.", globs: ["src/**/*.ts"] },
     body: "BODY",
@@ -257,7 +257,7 @@ test("a file that is already there is never written over (FR-039)", async () => 
   assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), authoredText);
 });
 
-test("what is typed as flags is the file that is written from answers, word for word (FR-014, SC-005)", async () => {
+test("what is typed as flags is the file that is written from answers, word for word (FR-014, SC-005, CORE Story 10 scenario 1)", async () => {
   for (const kind of answerableKinds) {
     const typed = await adding(["add", kind, "something", ...flagging(kind)]);
     const answered = await adding(["add", kind, "something"], answering(kind));
@@ -270,7 +270,7 @@ test("what is typed as flags is the file that is written from answers, word for 
   }
 });
 
-test("a header typed as a flag is an answer, so nothing is asked at a terminal either (FR-009)", async () => {
+test("a header typed as a flag is an answer, so nothing is asked at a terminal either (FR-009, CORE Story 10 scenario 6)", async () => {
   // Somebody is at the terminal and has typed nothing to be asked with: a
   // question would be answered with nothing and refuse the run, so a run that
   // writes the file is a run that asked none.
@@ -280,7 +280,7 @@ test("a header typed as a flag is an answer, so nothing is asked at a terminal e
   assert.match((await held(files, ".cw/charter/primitive/skill/refactoring/index.md")) ?? "", /triggers:/);
 });
 
-test("a list header typed twice holds both, in the order they were typed (FR-007)", async () => {
+test("a list header typed twice holds both, in the order they were typed (FR-007, CORE Story 10 scenario 2)", async () => {
   const { code, held: files } = await adding([
     "add",
     "skill",
@@ -313,7 +313,7 @@ test("a header holding one line is refused where it was typed twice, naming it (
   assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), undefined);
 });
 
-test("a flag naming nothing to put a value under is refused, quoting it (FR-008)", async () => {
+test("a flag naming nothing to put a value under is refused, quoting it (FR-008, CORE Story 10 scenario 8)", async () => {
   const { code, problems, held: files } = await adding(["add", "guide", "no-any", "--header", "description"]);
 
   assert.equal(code, EXIT_FAILURE);
@@ -321,7 +321,7 @@ test("a flag naming nothing to put a value under is refused, quoting it (FR-008)
   assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), undefined);
 });
 
-test("a value holding an = is kept whole, everything after the first one (FR-008)", async () => {
+test("a value holding an = is kept whole, everything after the first one (FR-008, CORE Story 10 scenario 8)", async () => {
   const { code, held: files } = await adding([
     "add",
     "guide",
@@ -335,7 +335,7 @@ test("a value holding an = is kept whole, everything after the first one (FR-008
   assert.equal(keptPrimitive.headers.description, "Reject a = where an == was meant.");
 });
 
-test("a header the kind does not take is named, and nothing is written (FR-011)", async () => {
+test("a header the kind does not take is named, and nothing is written (FR-011, CORE Story 10 scenario 4)", async () => {
   const {
     code,
     problems,
@@ -383,7 +383,7 @@ test("a header the kind requires and nobody answered is refused in the same word
   }
 });
 
-test("adding a script says the file it runs was written too, so its author knows where to write it (FR-167)", async () => {
+test("adding a script says the file it runs was written too, so its author knows where to write it (FR-167, CORE Story 24 scenario 2)", async () => {
   const { code, results } = await adding([
     "add",
     "script",

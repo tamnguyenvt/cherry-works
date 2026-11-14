@@ -78,21 +78,21 @@ const oneGuide = { [new URL("guide/no-any/index.md", root).href]: primitive("gui
 const built = async (authored: Readonly<Record<string, string>>, agents: readonly AgentProvider[] = [CLAUDE]) => {
   const held = new InMemoryFileReaders(authored);
   const charter = await loadCharterRoot(held);
-  const written = await putDownBy(charter, CharterOutputService.compileCharterRoot(charter, agents), held);
+  const writtenPaths = await putDownBy(charter, CharterOutputService.compileCharterRoot(charter, agents), held);
 
   return {
     charter,
-    written,
+    writtenPaths,
     files: Object.fromEntries(
-      await Promise.all(written.map(async (path) => [path, await held.readFile(new URL(path, repo))] as const)),
+      await Promise.all(writtenPaths.map(async (path) => [path, await held.readFile(new URL(path, repo))] as const)),
     ) as Readonly<Record<string, string>>,
   };
 };
 
-test("compiling produces the listing, the charter file, and what the installed agent reads", async () => {
-  const { written } = await built(oneGuide);
+test("compiling produces the listing, the charter file, and what the chosen agent reads", async () => {
+  const { writtenPaths } = await built(oneGuide);
 
-  assert.deepEqual(written, [
+  assert.deepEqual(writtenPaths, [
     ".cw/out/catalogue.json",
     ".cw/out/catalogue.claude.json",
     ".cw/out/mcp-origins.json",
@@ -112,31 +112,31 @@ test("compiling produces the listing, the charter file, and what the installed a
     ".mcp.json",
     // The skills the engine brings, which every charter holds and reads first.
     ".claude/skills/cw-author/SKILL.md",
-    // The one guide as the installed agent's own kinds have it.
+    // The one guide as the chosen agent's own kinds have it.
     ".claude/rules/no-any.md",
   ]);
 });
 
 test("every compiled file is written at a path from the repository", async () => {
-  const { written } = await built(oneGuide);
+  const { writtenPaths } = await built(oneGuide);
 
   // Relative to the repository holding the charter, so the same charter compiles
   // the same on every machine that checks it out.
-  for (const path of written) assert.ok(!path.startsWith("/"), `${path} is not from the repository`);
+  for (const path of writtenPaths) assert.ok(!path.startsWith("/"), `${path} is not from the repository`);
 });
 
 test("no listing and no projection can be produced without the others (SC-004)", async () => {
   // Not a test of what compiling returns but of what it offers: one call, one
   // list, and no argument that narrows it to a single file. The second argument
-  // says which agents are installed, never which file is wanted.
+  // says which agents the repository chose, never which file is wanted.
   assert.equal(CharterOutputService.compileCharterRoot.length, 2);
-  assert.equal((await built(oneGuide)).written.length, 15);
+  assert.equal((await built(oneGuide)).writtenPaths.length, 15);
 });
 
-test("a repository with no agent installed still compiles the whole neutral half (FR-019)", async () => {
-  const { written } = await built(oneGuide, []);
+test("a repository that chose no agent still compiles the whole neutral half (FR-019)", async () => {
+  const { writtenPaths } = await built(oneGuide, []);
 
-  assert.deepEqual(written, [
+  assert.deepEqual(writtenPaths, [
     ".cw/out/catalogue.json",
     ".cw/out/mcp-origins.json",
     ".cw/out/sensors.json",
@@ -165,7 +165,7 @@ test("the full catalogue is written as the catalogue says it, one entry per line
   assert.ok(contents.includes("\n  {\n"));
 });
 
-test("every primitive compiles to one document holding its headers, then its mixins' bodies, then its own (FR-139)", async () => {
+test("every primitive compiles to one document holding its headers, then its mixins' bodies, then its own (FR-139, CORE Story 16 scenario 1)", async () => {
   const { files } = await built({
     [new URL("mixin/house-style/index.md", root).href]: [
       "---",
@@ -216,7 +216,7 @@ test("a mixin at the end lends its body after its host's, and one at the start b
   assert.match(files[".cw/out/guide/no-any/index.md"] ?? "", /---\n\nOPENING\n\nSETTING\n\nOWN BODY\n\nCLOSING\n/);
 });
 
-test("what the engine brings compiles to a file on disk like any other primitive (SC-033)", async () => {
+test("what the engine brings compiles to a file on disk like any other primitive (SC-033, CORE Story 16 scenarios 2, 3)", async () => {
   const { files } = await built(oneGuide);
 
   const catalogue: readonly { id: string; file: string }[] = JSON.parse(files[".cw/out/catalogue.json"] ?? "");
@@ -251,7 +251,7 @@ test("the same charter compiles byte for byte the same however its files were re
   assert.deepEqual((await built(reversed)).files, (await built(authored)).files);
 });
 
-test("a body reaches no listing: what carries a body is what an agent opens (FR-013)", async () => {
+test("a body reaches no listing: what carries a body is what an agent opens (FR-013, CORE Story 1 scenario 10)", async () => {
   const { files } = await built({
     [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", "SECRET BODY TEXT"),
   });
@@ -267,7 +267,7 @@ test("a charter with a broken file still compiles what the readable files hold",
 
   assert.equal(Object.keys(charter.allFaultsByFiles.faultsByFilePath).length, 1);
   assert.deepEqual(
-    JSON.parse(files[".cw/out/catalogue.json"] ?? "").map((one: { id: string }) => one.id),
+    JSON.parse(files[".cw/out/catalogue.json"] ?? "").map((catalogueEntry: { id: string }) => catalogueEntry.id),
     ["cw-author", "cw-session-tokens-counter", "no-any"],
   );
 });

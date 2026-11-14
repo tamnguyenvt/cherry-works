@@ -14,8 +14,8 @@ export type { AgentProviderName };
 /** What a repository configured itself with that a projection is built for,
  *  handed by whoever composes it, which keeps it (CORE-FR-231). */
 export interface ProjectionSettings {
-  /** Which agents this repository compiles its charter for (FR-033). None is
-   *  a repository that compiles for none and still gets the neutral surface
+  /** Which agents this repository chose (FR-033). None is a repository
+   *  that chose none and still gets the neutral surface
    *  (FR-019). */
   readonly agents: readonly string[];
   /** The tokens past which the health check warns of the main context a
@@ -25,7 +25,7 @@ export interface ProjectionSettings {
 
 /**
  * DRIVER PORT — projecting the charter: the charter charter authoring keeps,
- * built and laid onto each agent the repository uses; the build and
+ * built and laid onto each agent the repository chose; the build and
  * its preview, the health check, the estimated main context, and what the
  * last build laid to be served or run — the tools of the mcp origins, the
  * sensors (CORE-FR-222). Runtime asks it, through this port alone, for the
@@ -33,7 +33,7 @@ export interface ProjectionSettings {
  * agent is sent when a session opens, and an evaluation's cases
  * (CORE-FR-229).
  *
- * Which agents it builds for is what it was composed with, never what it reads
+ * Which agents the repository chose is what it was composed with, never what it reads
  * (CORE-FR-231). Every answer is a DTO, told apart from the others it may be
  * by its `type`; whatever stops an operation is among them, a
  * `FaultDTOs.Fault`, and never thrown (SDK-FR-004, SDK-FR-017, SDK-FR-018).
@@ -41,14 +41,14 @@ export interface ProjectionSettings {
 export interface ForBuildingCharter {
   /**
    * The three questions about this repository, asked in one go (FR-040): which
-   * agents it compiles for, what validating its charter finds — its test files'
+   * agents it chose, what validating its charter finds — its test files'
    * findings among it — and how many files a build would still change, with
    * the main context each agent opens with, estimated. Reads and says
    * (FR-041).
    */
   diagnoseCharter(): Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault>;
 
-  /** What each agent this repository compiles for is sent of the charter when
+  /** What each agent this repository chose is sent of the charter when
    *  a session opens, estimated by a tokenizer on this machine (EVAL-FR-001,
    *  EVAL-FR-002). Reads and says (FR-041). */
   predictMainContext(): Promise<CharterDTOs.MainContexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
@@ -81,14 +81,14 @@ export interface ForBuildingCharter {
   ): Promise<CharterDTOs.SensorCommands | FaultDTOs.Fault>;
 
   /** The charter as the store holds it now, committed or not, built into the
-   *  checkout `checkoutPath` names for the agents this was composed with,
+   *  checkout `checkoutFolder` names for the agents the repository chose,
    *  keeping the tools the last build kept; the repository's own working tree
    *  is left as it was (EVAL-FR-021). */
   buildCharterInto(
-    checkoutPath: string,
+    checkoutFolder: string,
   ): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
-  /** What each agent this repository compiles for is sent of the charter when
+  /** What each agent this repository chose is sent of the charter when
    *  a session opens, each text as the build lays it, for an exact count
    *  (EVAL-FR-004). */
   readMainContextTexts(): Promise<CharterDTOs.MainContextTexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;

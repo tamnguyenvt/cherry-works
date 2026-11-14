@@ -80,18 +80,20 @@ const mcpOriginsServed = ({ origins = ORIGINS as readonly McpOrigin[] | null } =
   });
   const credentialsRepository = new InMemoryCredentialsRepository();
   const oauthAuthorizer = new InMemoryOAuthAuthorizer();
-  const mcpServers = new InMemoryMcpServers();
-  mcpServers.servers.set(GITHUB, { tools: ["get_file_contents", "search_code", "delete_repository"].map(toolNamed) });
-  mcpServers.servers.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
+  const mcpServerCaller = new InMemoryMcpServers();
+  mcpServerCaller.servers.set(GITHUB, {
+    tools: ["get_file_contents", "search_code", "delete_repository"].map(toolNamed),
+  });
+  mcpServerCaller.servers.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
   const charterRuntimeApps = buildingCharterOf(
     held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
     {},
     new InMemoryReporter(),
-    { mcpServers, credentialsRepository, oauthAuthorizer },
+    { mcpServerCaller, credentialsRepository, oauthAuthorizer },
   );
-  return { held, credentialsRepository, oauthAuthorizer, mcpServers, charterRuntimeApps };
+  return { held, credentialsRepository, oauthAuthorizer, mcpServerCaller, charterRuntimeApps };
 };
 
 const signIn = (
@@ -111,13 +113,13 @@ const signedInMcpOrigins = async () => {
   return mcpOrigins;
 };
 
-test("the tools served are exactly the declared ones, each under its id's prefix (FR-153, SC-037)", async () => {
+test("the tools served are exactly the declared ones, each under its id's prefix (FR-153, SC-037, CORE Story 19 scenario 1, EVAL Story 5 scenario 2)", async () => {
   const { charterRuntimeApps } = await signedInMcpOrigins();
 
   const servedTools = answerOf(await charterRuntimeApps.listServedTools());
 
   assert.deepEqual(
-    servedTools.data.tools.map(({ data }) => data.name),
+    servedTools.data.tools.map(({ data: servedTool }) => servedTool.name),
     [
       servedName("github/billing", "get_file_contents"),
       servedName("github/billing", "search_code"),
@@ -132,15 +134,17 @@ test("a served tool's description names its mcp origin, and its input schema is 
   const servedTools = answerOf(await charterRuntimeApps.listServedTools());
 
   const searchCode = servedTools.data.tools.find(
-    ({ data }) => data.name === servedName("github/billing", "search_code"),
+    ({ data: servedTool }) => servedTool.name === servedName("github/billing", "search_code"),
   );
-  const listIssues = servedTools.data.tools.find(({ data }) => data.name === servedName("linear", "list_issues"));
+  const listIssuesTool = servedTools.data.tools.find(
+    ({ data: servedTool }) => servedTool.name === servedName("linear", "list_issues"),
+  );
   assert.equal(searchCode?.data.description, "[github/billing — acme/billing] search_code at its mcp origin");
-  assert.equal(listIssues?.data.description, "[linear] list_issues at its mcp origin");
+  assert.equal(listIssuesTool?.data.description, "[linear] list_issues at its mcp origin");
   assert.deepEqual(searchCode?.data.inputSchema, { type: "object", properties: {} });
 });
 
-test("a declared tool its mcp origin does not have is said, naming the mcp and the tool, and the rest are served (FR-153)", async () => {
+test("a declared tool its mcp origin does not have is said, naming the mcp and the tool, and the rest are served (FR-153, CORE Story 19 scenario 10)", async () => {
   const { charterRuntimeApps } = await signedInMcpOrigins();
 
   const servedTools = answerOf(await charterRuntimeApps.listServedTools());
@@ -148,19 +152,21 @@ test("a declared tool its mcp origin does not have is said, naming the mcp and t
   assert.ok(
     servedTools.data.problems.some((problem) => problem.includes("linear") && problem.includes("create_issue")),
   );
-  assert.ok(servedTools.data.tools.some(({ data }) => data.name === servedName("linear", "list_issues")));
+  assert.ok(
+    servedTools.data.tools.some(({ data: servedTool }) => servedTool.name === servedName("linear", "list_issues")),
+  );
 });
 
-test("the tools are listed off what the build kept, reaching no mcp origin (EVAL-FR-031)", async () => {
-  const { charterRuntimeApps, mcpServers } = await signedInMcpOrigins();
+test("the tools are listed off what the build kept, reaching no mcp origin (EVAL-FR-031, CORE Story 19 scenarios 5, 10, EVAL Story 5 scenario 2)", async () => {
+  const { charterRuntimeApps, mcpServerCaller } = await signedInMcpOrigins();
 
   await charterRuntimeApps.listServedTools();
 
-  assert.deepEqual(mcpServers.connected, []);
+  assert.deepEqual(mcpServerCaller.connected, []);
 });
 
-test("a call to a tool that was not served is refused, and reaches no mcp origin (FR-153, SC-037)", async () => {
-  const { charterRuntimeApps, mcpServers } = await signedInMcpOrigins();
+test("a call to a tool that was not served is refused, and reaches no mcp origin (FR-153, SC-037, CORE Story 19 scenario 2)", async () => {
+  const { charterRuntimeApps, mcpServerCaller } = await signedInMcpOrigins();
 
   const unlistedToolFault = faultOf(
     await charterRuntimeApps.callTool(servedName("github/billing", "delete_repository"), {}),
@@ -171,41 +177,45 @@ test("a call to a tool that was not served is refused, and reaches no mcp origin
   assert.match(unlistedToolFault.message, /delete_repository/);
   assert.equal(unknown.name, "UnknownToolFault");
   assert.match(unknown.message, /nothing__at_all/);
-  assert.deepEqual(mcpServers.calls, []);
+  assert.deepEqual(mcpServerCaller.calls, []);
 });
 
-test("a call reaches its mcp origin under the developer's own credential, and the answer comes back as it came (FR-154, SC-035)", async () => {
-  const { charterRuntimeApps, mcpServers } = await signedInMcpOrigins();
+test("a call reaches its mcp origin under the developer's own credential, and the answer comes back as it came (FR-154, SC-035, CORE Story 19 scenario 3, EVAL Story 5 scenario 2)", async () => {
+  const { charterRuntimeApps, mcpServerCaller } = await signedInMcpOrigins();
   const mcpOriginAnswer = {
     content: [{ type: "text", text: "3 issues" }],
     isError: false,
     structuredContent: { count: 3 },
   };
-  mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], answerCall: () => mcpOriginAnswer });
+  mcpServerCaller.servers.set(LINEAR, { tools: [toolNamed("list_issues")], answerCall: () => mcpOriginAnswer });
 
   const toolAnswer = answerOf(await charterRuntimeApps.callTool(servedName("linear", "list_issues"), { team: "core" }));
 
-  assert.deepEqual(mcpServers.calls, [
+  assert.deepEqual(mcpServerCaller.calls, [
     { address: LINEAR, toolName: "list_issues", toolArguments: { team: "core" }, accessToken: `${LINEAR} token` },
   ]);
   assert.deepEqual(toolAnswer.data, mcpOriginAnswer);
 });
 
-test("a call to an mcp origin not signed in to answers why, naming the command, and reaches it not (FR-154, SC-039)", async () => {
-  const { charterRuntimeApps, mcpServers, credentialsRepository } = mcpOriginsServed();
+test("a call to an mcp origin not signed in to answers why, naming the command, and reaches it not (FR-154, SC-039, CORE Story 19 scenario 4)", async () => {
+  const { charterRuntimeApps, mcpServerCaller, credentialsRepository } = mcpOriginsServed();
   await signIn(credentialsRepository, GITHUB);
 
   const servedTools = answerOf(await charterRuntimeApps.listServedTools());
   const toolFault = faultOf(await charterRuntimeApps.callTool(servedName("linear", "list_issues"), {}));
 
   assert.match(`${toolFault.message} ${toolFault.fix}`, /cw mcp auth linear/);
-  assert.ok(mcpServers.calls.every(({ address }) => address !== LINEAR));
-  assert.ok(servedTools.data.tools.some(({ data }) => data.name === servedName("github/billing", "search_code")));
+  assert.ok(mcpServerCaller.calls.every(({ address }) => address !== LINEAR));
+  assert.ok(
+    servedTools.data.tools.some(
+      ({ data: servedTool }) => servedTool.name === servedName("github/billing", "search_code"),
+    ),
+  );
 });
 
-test("a call to an mcp origin that cannot be reached answers why, and every other mcp origin answers (FR-154, SC-039)", async () => {
-  const { charterRuntimeApps, mcpServers } = await signedInMcpOrigins();
-  mcpServers.servers.delete(GITHUB);
+test("a call to an mcp origin that cannot be reached answers why, and every other mcp origin answers (FR-154, SC-039, CORE Story 19 scenario 9)", async () => {
+  const { charterRuntimeApps, mcpServerCaller } = await signedInMcpOrigins();
+  mcpServerCaller.servers.delete(GITHUB);
 
   const unreachableFault = faultOf(await charterRuntimeApps.callTool(servedName("github/billing", "search_code"), {}));
   const reachableAnswer = answerOf(await charterRuntimeApps.callTool(servedName("linear", "list_issues"), {}));
@@ -215,7 +225,7 @@ test("a call to an mcp origin that cannot be reached answers why, and every othe
 });
 
 test("an expired credential is renewed before the call, asking nobody, and the renewal is kept (FR-151)", async () => {
-  const { charterRuntimeApps, mcpServers, credentialsRepository, oauthAuthorizer } = mcpOriginsServed();
+  const { charterRuntimeApps, mcpServerCaller, credentialsRepository, oauthAuthorizer } = mcpOriginsServed();
   await signIn(credentialsRepository, GITHUB);
   await signIn(credentialsRepository, LINEAR, {
     method: "oauth",
@@ -231,12 +241,12 @@ test("an expired credential is renewed before the call, asking nobody, and the r
 
   await charterRuntimeApps.callTool(servedName("linear", "list_issues"), {});
 
-  assert.equal(mcpServers.calls.at(-1)?.accessToken, "renewed");
+  assert.equal(mcpServerCaller.calls.at(-1)?.accessToken, "renewed");
   assert.equal(JSON.parse(credentialsRepository.secrets.get(LINEAR) ?? "").accessToken, "renewed");
 });
 
 test("a call the mcp origin refuses with 401 is tried once more after a renewal (FR-151)", async () => {
-  const { charterRuntimeApps, mcpServers, credentialsRepository, oauthAuthorizer } = mcpOriginsServed();
+  const { charterRuntimeApps, mcpServerCaller, credentialsRepository, oauthAuthorizer } = mcpOriginsServed();
   await signIn(credentialsRepository, GITHUB);
   await signIn(credentialsRepository, LINEAR, {
     method: "oauth",
@@ -244,7 +254,7 @@ test("a call the mcp origin refuses with 401 is tried once more after a renewal 
     client: { clientId: "cw", issuer: LINEAR },
   });
   oauthAuthorizer.renewedGrant = { accessToken: "renewed", client: { clientId: "cw", issuer: LINEAR } };
-  mcpServers.servers.set(LINEAR, {
+  mcpServerCaller.servers.set(LINEAR, {
     tools: [toolNamed("list_issues")],
     acceptsToken: (accessToken) => accessToken === "renewed",
   });
@@ -252,25 +262,25 @@ test("a call the mcp origin refuses with 401 is tried once more after a renewal 
   const toolAnswer = answerOf(await charterRuntimeApps.callTool(servedName("linear", "list_issues"), {}));
 
   assert.deepEqual(
-    mcpServers.calls.map(({ accessToken }) => accessToken),
+    mcpServerCaller.calls.map(({ accessToken }) => accessToken),
     [`${LINEAR} token`, "renewed"],
   );
   assert.equal(toolAnswer.data.isError, undefined);
 });
 
 test("a 401 that no renewal gets past answers to sign in again, naming the command (FR-151)", async () => {
-  const { charterRuntimeApps, mcpServers } = await signedInMcpOrigins();
-  mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], acceptsToken: () => false });
+  const { charterRuntimeApps, mcpServerCaller } = await signedInMcpOrigins();
+  mcpServerCaller.servers.set(LINEAR, { tools: [toolNamed("list_issues")], acceptsToken: () => false });
 
   const toolFault = faultOf(await charterRuntimeApps.callTool(servedName("linear", "list_issues"), {}));
 
   assert.match(`${toolFault.message} ${toolFault.fix}`, /cw mcp auth linear/);
-  assert.equal(mcpServers.calls.length, 1);
+  assert.equal(mcpServerCaller.calls.length, 1);
 });
 
 test("no token appears in anything served, said or answered (SC-036)", async () => {
-  const { charterRuntimeApps, mcpServers } = await signedInMcpOrigins();
-  mcpServers.servers.set(LINEAR, { tools: [toolNamed("list_issues")], acceptsToken: () => false });
+  const { charterRuntimeApps, mcpServerCaller } = await signedInMcpOrigins();
+  mcpServerCaller.servers.set(LINEAR, { tools: [toolNamed("list_issues")], acceptsToken: () => false });
 
   const servedTools = answerOf(await charterRuntimeApps.listServedTools());
   const toolAnswer = await charterRuntimeApps.callTool(servedName("linear", "list_issues"), {});
@@ -298,12 +308,12 @@ test("a list of mcp origins written without names serves nothing of it, saying t
   assert.ok(servedTools.data.problems.some((problem) => problem.includes("linear") && problem.includes("cw build")));
 });
 
-test("an mcp origin reached for a call is let go once it has answered", async () => {
-  const { charterRuntimeApps, mcpServers } = await signedInMcpOrigins();
+test("an mcp origin reached for a call is let go once it has answered (CORE Story 19 scenario 8)", async () => {
+  const { charterRuntimeApps, mcpServerCaller } = await signedInMcpOrigins();
 
   await charterRuntimeApps.callTool(servedName("linear", "list_issues"), {});
 
-  assert.deepEqual(mcpServers.closed, [LINEAR]);
+  assert.deepEqual(mcpServerCaller.closed, [LINEAR]);
 });
 
 test("MCP reads only the shared catalogue, since its primitives are shared", async () => {
@@ -345,15 +355,15 @@ test("the repository and a vendor declaring one address under two ids are listed
   });
   const credentialsRepository = new InMemoryCredentialsRepository();
   await signIn(credentialsRepository, GITHUB);
-  const mcpServers = new InMemoryMcpServers();
-  mcpServers.servers.set(GITHUB, { tools: ["get_file_contents", "search_code"].map(toolNamed) });
+  const mcpServerCaller = new InMemoryMcpServers();
+  mcpServerCaller.servers.set(GITHUB, { tools: ["get_file_contents", "search_code"].map(toolNamed) });
   const charterRuntimeApps = buildingCharterOf(
     held,
     new InMemoryFileOutput(held),
     new InMemoryTokenCounter(),
     {},
     new InMemoryReporter(),
-    { mcpServers, credentialsRepository, oauthAuthorizer: new InMemoryOAuthAuthorizer() },
+    { mcpServerCaller, credentialsRepository, oauthAuthorizer: new InMemoryOAuthAuthorizer() },
   );
 
   const planSummaryDTO = await charterRuntimeApps.buildCharter();
@@ -365,7 +375,7 @@ test("the repository and a vendor declaring one address under two ids are listed
   assert.deepEqual(builtOrigins[0].ids, ["acme/code", "billing"]);
   const servedTools = answerOf(await charterRuntimeApps.listServedTools());
   assert.deepEqual(
-    servedTools.data.tools.map(({ data }) => data.name).sort(),
+    servedTools.data.tools.map(({ data: servedTool }) => servedTool.name).sort(),
     [
       `${builtOrigins[0].names["acme/code"]}__get_file_contents`,
       `${builtOrigins[0].names.billing}__search_code`,

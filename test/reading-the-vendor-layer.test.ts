@@ -54,7 +54,7 @@ test("a charter picked from a source of many is read as a vendor layer, beside a
   });
 });
 
-test("a repository with no vendor still has every kind's chip on the vendor tab, each empty", async () => {
+test("a repository with no vendor still has every kind's chip on the vendor tab, each empty (CORE Story 5 scenario 6)", async () => {
   await inTheBrowser({ [at("guide/no-any/index.md")]: primitive("guide", "no-any") }, async (page) => {
     await page.getByRole("tab", { name: "Vendor" }).click();
     await page.getByText("No guide in this charter yet.").waitFor();

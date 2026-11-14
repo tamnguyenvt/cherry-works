@@ -17,7 +17,7 @@ const primitive = (kind: string, id: string, headers: readonly string[]) =>
     "",
   ].join("\n");
 
-/** A repository compiling for claude, a guide on every turn and one loaded
+/** A repository that chose claude, a guide on every turn and one loaded
  *  when a file it names is touched. */
 const holding = {
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"], mainContextCeiling: 30 })}\n`,
@@ -25,7 +25,7 @@ const holding = {
   [at(".cw/charter/primitive/guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
 };
 
-test("the Context tab shows what a session opens with, the total against the ceiling, and the guides loaded on a touch apart (EVAL-FR-007)", async () => {
+test("the Context tab shows what a session opens with, the total against the ceiling, and the guides loaded on a touch apart (EVAL-FR-007, EVAL Story 1 scenario 6)", async () => {
   await inTheBrowser(holding, async (page) => {
     await page.getByRole("tab", { name: "Context" }).click();
 
@@ -43,4 +43,19 @@ test("the Context tab shows what a session opens with, the total against the cei
       /claude opens a session with [\d,]+ tokens of the charter, estimated · past the ceiling of 30/,
     );
   });
+});
+
+test("the Context tab of a repository that chose no agent says so, and how to choose one, as cw context does (EVAL-FR-001, EVAL-FR-007)", async () => {
+  await inTheBrowser(
+    {
+      [at(".cw/settings.json")]: `${JSON.stringify({ agents: [] })}\n`,
+      [at(".cw/charter/primitive/guide/plain-words/index.md")]: primitive("guide", "plain-words", []),
+    },
+    async (page) => {
+      await page.getByRole("tab", { name: "Context" }).click();
+      await page
+        .getByText('No agent is chosen, so no agent loads anything of the charter. Run "cw init" to choose one.')
+        .waitFor();
+    },
+  );
 });

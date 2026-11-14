@@ -302,8 +302,8 @@ test("the mcp origins are served from what the build put out, read back from whe
       return ownLocalRepo.readCompiledOutputItem(itemPath);
     }
   }
-  const mcpServers = new InMemoryMcpServers();
-  mcpServers.servers.set("node", {
+  const mcpServerCaller = new InMemoryMcpServers();
+  mcpServerCaller.servers.set("node", {
     tools: [{ name: "echo", description: "Echoes.", inputSchema: { type: "object" } }],
   });
   const charterRuntimeApp = runningCharterOf(heldFileReaders, new InMemoryReporter(), {
@@ -314,7 +314,7 @@ test("the mcp origins are served from what the build put out, read back from whe
     charterRepository: new OwnLaidCharterRepository(heldFileReaders, fileWriter, new InMemorySources()),
     workspaceSettings: { agents: ["claude"] },
     agentProjectionByProvider: { claude: new ClaudeProjection(heldFileReaders) },
-    mcpServers,
+    mcpServerCaller,
     credentialsRepository: new InMemoryCredentialsRepository(),
     oauthAuthorizer: new InMemoryOAuthAuthorizer(),
     clock: new InMemoryClock(new Date("2026-11-07T00:00:00Z")),
@@ -331,7 +331,7 @@ test("the mcp origins are served from what the build put out, read back from whe
   assert.equal(servedTools.type, "ServedTools");
   if (servedTools.type === "ServedTools") {
     assert.deepEqual(
-      servedTools.data.tools.map(({ data }) => data.name),
+      servedTools.data.tools.map(({ data: servedTool }) => servedTool.name),
       [`${laidOrigin?.names.local}__echo`],
     );
     assert.deepEqual(servedTools.data.problems, []);
@@ -385,7 +385,9 @@ test("a search reads when a kind comes up as the domain says it, its paths under
   const matchedIdsOf = async (matching: string) => {
     const primitivesDTO = await charterAuthoringApp.listPrimitives(matching);
     assert.equal(primitivesDTO.type, "Primitives");
-    return primitivesDTO.type === "Primitives" ? primitivesDTO.data.primitives.map(({ data }) => data.id) : [];
+    return primitivesDTO.type === "Primitives"
+      ? primitivesDTO.data.primitives.map(({ data: primitive }) => primitive.id)
+      : [];
   };
 
   assert.ok((await matchedIdsOf("$CW_OUT/script")).includes("check"));

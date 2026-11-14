@@ -48,7 +48,7 @@ interface DeclaredTool {
  * the sensors (CORE-FR-222). What runtime asks of it is answered here in DTOs
  * (CORE-FR-229).
  *
- * Which agents it builds for, and the ceiling of a main context, it is handed
+ * Which agents the repository chose, and the ceiling of a main context, it is handed
  * when it is composed, by whoever keeps them (CORE-FR-231). Every use case
  * here is the same two steps: read the charter, then ask it, or read what the
  * last build laid through what laid it. What it answers a driver with is the
@@ -99,12 +99,12 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
      *  lands, and writes every file a build planned (CORE-FR-221). */
     localRepo: ForManagingLocalOutput,
     /** What each agent reads of a charter, and where, under the agent's name:
-     *  the agents a repository may compile for are these names, and teaching
+     *  the agents a repository may choose are these names, and teaching
      *  the engine an agent is one more of them (FR-018, CORE-FR-221). */
     agentProjectionByProvider: Readonly<Record<AgentProviderName, ForManagingLocalAgentOutput>>,
     /** What a main context is estimated by, on this machine (EVAL-FR-001). */
     tokenCounter: ForCountingTokens,
-    /** Which agents the repository compiles for, and its context ceiling, as
+    /** Which agents the repository chose, and its context ceiling, as
      *  whoever composes this keeps them (CORE-FR-231). */
     projectionSettings: ProjectionSettings,
     /** Where an internal fault is logged for whoever runs the system, before
@@ -116,7 +116,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     /** The mcp origins' MCP servers: what a build asks each mcp origin for its
      *  tools with, and stops where one cannot be asked (EVAL-FR-031). Without
      *  them, a build keeps the tools the last one kept. */
-    mcpServers?: ForCallingMcpServers,
+    mcpServerCaller?: ForCallingMcpServers,
   ) {
     super(progressReporter);
     this.#buildCharterService = buildCharterService;
@@ -129,10 +129,10 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     this.#agentProviders = projectionSettings.agents.map((agentName) => this.#findAgentProvider(agentName));
     this.#mainContextCeiling = projectionSettings.mainContextCeiling ?? MainContext.defaultCeiling;
     this.#mcpReaching =
-      mcpServers === undefined || charterAuthoringApp === undefined
+      mcpServerCaller === undefined || charterAuthoringApp === undefined
         ? undefined
         : {
-            mcpServers,
+            mcpServerCaller,
             loadAccessToken: async (origin, isRefused) =>
               this.answeredDTOOf(
                 await charterAuthoringApp.getAccessToken(
@@ -149,7 +149,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
 
   /**
    * The three questions about this repository, asked in one go (FR-040): which
-   * agents it compiles for, what validating its charter finds, and how many of
+   * agents it chose, what validating its charter finds, and how many of
    * those are unwell.
    *
    * Where the charter holds, what a build would still change is the preview run
@@ -212,7 +212,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
         ? this.#agentProviders.map((agentProvider) => this.#estimateMainContext(charter, agentProvider))
         : [];
 
-      // A repository compiling for no agent is well — the neutral surface is
+      // A repository that chose no agent is well — the neutral surface is
       // compiled for everybody (FR-019) — and the other two questions are
       // unwell with an error in the charter, or a build still to run or one
       // that cannot be known. A main context past the ceiling is a warning
@@ -267,7 +267,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
    * Read, ask what is wrong, take away what the last build left, then compile and
    * write. A charter with an error is refused before anything is touched, so a
    * half-built surface never stands — and a warning is not an error (FR-005,
-   * FR-009). Which agents are compiled for is what this was composed with,
+   * FR-009). Which agents the repository chose is what a build lays a surface for,
    * never what happens to be installed on the machine running this (FR-033).
    */
   async buildCharter(): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
@@ -397,13 +397,13 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   }
 
   async buildCharterInto(
-    checkoutPath: string,
+    checkoutFolder: string,
   ): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("BuildingCharter.buildCharterInto", async () => {
       // The charter as the store holds it now, committed or not, laid into
       // the checkout by the output and each agent's projection made over it:
       // no path of it crosses a driven port after this (EVAL-FR-021).
-      const checkoutLocalOutput = this.#localRepo.createCheckoutOutput(checkoutPath);
+      const checkoutLocalOutput = this.#localRepo.createCheckoutOutput(checkoutFolder);
       const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
       const charterErrorFaultsByFile = this.#collectCharterFaults(charter).filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
@@ -412,7 +412,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
         Object.fromEntries(
           Object.entries(this.#chosenAgentProjectionByProvider).map(([agentName, agentProjection]) => [
             agentName,
-            agentProjection.createCheckoutProjection(checkoutPath),
+            agentProjection.createCheckoutProjection(checkoutFolder),
           ]),
         ),
         checkoutLocalOutput,
@@ -530,7 +530,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     );
   }
 
-  /** The projection of each agent the repository compiles for, under its
+  /** The projection of each agent the repository chose, under its
    *  name. */
   get #chosenAgentProjectionByProvider(): Readonly<Record<AgentProviderName, ForManagingLocalAgentOutput>> {
     return Object.fromEntries(

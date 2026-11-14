@@ -158,7 +158,7 @@ charter's two applications, in DTOs, and holds no model of the charter's
   the estimated main context, the tools the mcp origins serve; and for
   runtime the tools they declare, the commands of a signal, a build into a
   working copy, what an agent is sent when a session opens, and an
-  evaluation's cases). Which agents it builds for, it is handed as
+  evaluation's cases). Which agents the repository chose, it is handed as
   `ProjectionSettings` when it is composed.
 - `runtime/` — `RunningCharter` in `app/running-charter.use-case.ts`,
   answering `ForRunningCharter`: the sensors of a signal, the calls forwarded

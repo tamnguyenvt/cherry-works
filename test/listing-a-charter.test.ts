@@ -112,7 +112,7 @@ test("every primitive is listed, ordered by id, with what it is for", async () =
   );
 });
 
-test("the full listing opens each primitive on its id and description, with the file it was authored in and the files it applies to each on a line of its own beneath (CORE Story 3 scenario 10, FR-028, FR-140, CORE Story 55 scenario 12)", async () => {
+test("the full listing opens each primitive on its id and description, with the file it was authored in and the files it applies to each on a line of its own beneath (CORE Story 3 scenario 10, FR-028, FR-140, CORE Story 55 scenario 12, CORE Story 27 scenario 5)", async () => {
   const { code, results } = await run(charter);
 
   assert.equal(code, EXIT_OK);
@@ -130,7 +130,7 @@ test("the full listing opens each primitive on its id and description, with the 
   assert.doesNotMatch(results, /tags:/);
 });
 
-test("a listing is read off the charter, so every layer is named where it was authored, not where it compiled (FR-140)", async () => {
+test("a listing is read off the charter, so every layer is named where it was authored, not where it compiled (FR-140, CORE Story 16 scenario 6)", async () => {
   const { results } = await run({
     "file:///repo/.cw/charter/vendor/team/rules/root/primitive/guide/no-console/index.md": primitive(
       "guide",
@@ -211,7 +211,7 @@ test("a repository that authored nothing is listed what the engine brings (FR-01
   );
 });
 
-test("cw kinds says every kind and when each comes up, in a repository that authored none of them", async () => {
+test("cw kinds says every kind and when each comes up, in a repository that authored none of them (CORE Story 11 scenario 2)", async () => {
   const { code, results } = await run({}, ["kinds"]);
 
   assert.equal(code, EXIT_OK);

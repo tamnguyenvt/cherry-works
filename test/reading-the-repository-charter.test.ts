@@ -38,7 +38,7 @@ const charter = {
   [at("mixin/voice/index.md")]: primitive("mixin", "voice"),
 };
 
-test("every kind the charter knows has a chip, carrying how many primitives of it are held", async () => {
+test("every kind the charter knows has a chip, carrying how many primitives of it are held (CORE Story 5 scenario 1)", async () => {
   await inTheBrowser(charter, async (page) => {
     // Every assertion below reads what is there rather than waiting for it, so
     // the view is waited for once, here.
@@ -53,14 +53,14 @@ test("every kind the charter knows has a chip, carrying how many primitives of i
   });
 });
 
-test("the line above the table says when the shown kind comes up, in the words the kind declares", async () => {
+test("the line above the table says when the shown kind comes up, in the words the kind declares (CORE Story 5 scenario 2)", async () => {
   await inTheBrowser(charter, async (page) => {
     assert.equal(await shownKindOf(page), "guide");
     assert.equal(await page.getByLabel("Activates when").innerText(), GuidePrimitive.activatesWhen);
   });
 });
 
-test("a guide is listed with what it is for, the file it is in, the globs it matches and the corpus it cites", async () => {
+test("a guide is listed with what it is for, the file it is in, the globs it matches and the corpus it cites (CORE Story 5 scenario 2)", async () => {
   await inTheBrowser(charter, async (page) => {
     const row = rowsOf(page);
 
@@ -92,7 +92,7 @@ test("a mixin is listed without a column for the mixins it may not name", async 
   });
 });
 
-test("a kind the charter holds nothing of says so in place of a table", async () => {
+test("a kind the charter holds nothing of says so in place of a table (CORE Story 5 scenario 6)", async () => {
   await inTheBrowser(charter, async (page) => {
     await page.getByRole("radio", { name: "posture" }).click();
 
@@ -101,7 +101,7 @@ test("a kind the charter holds nothing of says so in place of a table", async ()
   });
 });
 
-test("the charter is read again when the tab is shown again, so a file written meanwhile is listed", async () => {
+test("the charter is read again when the tab is shown again, so a file written meanwhile is listed (CORE Story 5 scenario 9)", async () => {
   await inTheBrowser(charter, async (page, files) => {
     await rowsOf(page).waitFor();
 

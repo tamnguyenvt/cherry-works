@@ -6,7 +6,7 @@ import { printFault, printFaultsByFile } from "./helper.js";
 const OPTIONS = {
   agent: {
     type: "string",
-    describe: "Which agent this charter compiles for",
+    describe: "Which agent this repository chooses",
   },
   mainContextCeiling: {
     type: "number",
@@ -25,8 +25,8 @@ const OPTIONS = {
  *
  * Which agent is one such answer, and it is asked of the list this engine
  * compiles for rather than of the machine: whether claude is installed here is
- * no business of a charter's. Choose claude and the build setup runs compiles
- * everything for claude, `.claude/` created if it was not there.
+ * no business of a charter's. Choose claude, and the build that follows
+ * compiles everything for claude, creating `.claude/` if it is not there.
  *
  * A repository already set up answers with what it is already running under, so
  * running this again is rechoosing rather than starting over (FR-038).
@@ -43,15 +43,15 @@ export class InitCommand implements Command<typeof OPTIONS> {
 
   async runCommand(
     { workspaceApp, composeApplications, version }: Context,
-    { agent, mainContextCeiling }: Options<typeof OPTIONS>,
+    { agent: namedAgentName, mainContextCeiling }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    // Which agents this repository compiles for, answered by the first of
+    // Which agents this repository chooses, answered by the first of
     // these that applies: what was typed, and otherwise whoever is at the
     // terminal choosing from the ones this engine compiles for.
     //
     // Nothing is detected. What is installed on this machine does not decide
-    // what a repository's charter compiles for — a charter choosing claude
-    // compiles for claude whether claude is here or not, and the build creates
+    // which agents a repository chooses — a repository choosing claude has its
+    // charter built for claude whether claude is here or not, and the build creates
     // the directory it reads from either way.
     //
     // What the repository is already running under is the choice already
@@ -60,8 +60,8 @@ export class InitCommand implements Command<typeof OPTIONS> {
     // never coming (FR-035, FR-038, SC-012). A repository that has chosen none
     // yet has no such default, so that run is refused, naming the flag that
     // answers it.
-    let agents: readonly string[];
-    if (agent !== undefined) agents = [agent];
+    let chosenAgentNames: readonly string[];
+    if (namedAgentName !== undefined) chosenAgentNames = [namedAgentName];
     else {
       const keptSettingsDTO = await workspaceApp.readWorkspaceSettings();
       if (keptSettingsDTO.type === "Fault")
@@ -82,12 +82,12 @@ export class InitCommand implements Command<typeof OPTIONS> {
             exitCode: EXIT_FAILURE,
             problemText: `Nobody is at the terminal to choose an agent, and this repository has none chosen yet.\n  Run "cw init --agent <name>", naming one of: ${workspaceApp.agentProviderNames.join(", ")}.\n`,
           };
-        agents = agentsInSettings;
+        chosenAgentNames = agentsInSettings;
       } else {
-        const { chosen: chosenAgents } = await prompts({
+        const { chosen: pickedAgentNames } = await prompts({
           type: "multiselect",
           name: "chosen",
-          message: "Which agents does this charter compile for?",
+          message: "Which agents does this repository choose?",
           // What the settings already name arrives ticked, so a return keeps what this
           // repository is already running under and a second run is rechoosing rather
           // than starting over (FR-038). Nothing named yet — a repository being set up
@@ -97,21 +97,21 @@ export class InitCommand implements Command<typeof OPTIONS> {
             value: agentProviderName,
             selected: agentsInSettings.includes(agentProviderName),
           })),
-          // Ticking none of them is not an answer: a charter compiles for at least one
+          // Ticking none of them is not an answer: a repository chooses at least one
           // agent, so the prompt holds the submit until one is ticked (FR-033).
           min: 1,
         });
-        if (chosenAgents === undefined)
+        if (pickedAgentNames === undefined)
           return {
             exitCode: EXIT_FAILURE,
             problemText: 'Setup was stopped before it had its answers.\n  Run "cw init" again.\n',
           };
-        agents = chosenAgents as readonly string[];
+        chosenAgentNames = pickedAgentNames as readonly string[];
       }
     }
     // No agent, one this engine does not compile for, and a ceiling that is
     // no whole number are the workspace module's to refuse (FR-033).
-    const workspaceSettingsDTO = await workspaceApp.setUpWorkspace(agents, version, mainContextCeiling);
+    const workspaceSettingsDTO = await workspaceApp.setUpWorkspace(chosenAgentNames, version, mainContextCeiling);
     if (workspaceSettingsDTO.type === "Fault")
       return { exitCode: EXIT_FAILURE, problemText: printFault(workspaceSettingsDTO) };
     const { charterAuthoringApp, charterBuildingApp } = (await composeApplications()).engineApp;
@@ -119,7 +119,7 @@ export class InitCommand implements Command<typeof OPTIONS> {
     if (charterLayoutDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(charterLayoutDTO) };
     const planSummaryDTO = await charterBuildingApp.buildCharter();
     if (planSummaryDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(planSummaryDTO) };
-    const setUpLines = ["Set up this repository under a charter.", `Compiling for: ${agents.join(", ")}.`];
+    const setUpLines = ["Set up this repository under a charter.", `Agents chosen: ${chosenAgentNames.join(", ")}.`];
 
     // Set up either way; a charter already here that does not hold is not
     // built, and is said in the build's own words (FR-057).

@@ -2,7 +2,7 @@
 
 **Created**: 2026-11-02
 
-**Updated**: 2026-11-13
+**Updated**: 2026-11-14
 
 **Input**: User description: "Publish the Cherry Works hexagon as an npm package, so a third party can import the engine's logic and write driver and driven adapters of their own, without `main.ts`, the command line or any adapter of this repository; a repository's address need not be a `file:` one; a test proves authoring through the built package on in-memory adapters, touching no disk." Then: "Ship the repositories as adapters in a package of their own…"
 

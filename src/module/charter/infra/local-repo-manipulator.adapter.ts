@@ -48,14 +48,14 @@ export class LocalRepoManipulator implements ForManagingLocalOutput {
   }
 
   async createProjectionPlan(charterOutput: CharterOutput): Promise<ProjectionPlan> {
-    const checkoutPath = this.#checkoutFolder;
     const [cleanupPlan, layingPlan] = await Promise.all([
       // Everything the last build left under the compiled output, which nothing
       // else writes (FR-020).
       (async (): Promise<readonly WritePlan[]> => {
-        const outFiles = await this.#fileReader.readFilesRecursively(resolveRepoPath(checkoutPath, OUT_FOLDER));
+        const outFiles = await this.#fileReader.readFilesRecursively(resolveRepoPath(this.#checkoutFolder, OUT_FOLDER));
         return outFiles.map(
-          ({ path, contents }) => new WritePlan(resolveCheckoutPath(checkoutPath, path), path, undefined, contents),
+          ({ path, contents }) =>
+            new WritePlan(resolveCheckoutPath(this.#checkoutFolder, path), path, undefined, contents),
         );
       })(),
       // Everything the output would write (FR-020, FR-021), one entry to a
@@ -66,7 +66,7 @@ export class LocalRepoManipulator implements ForManagingLocalOutput {
 
         for (const charterOutputItem of charterOutput.charterOutputItems) {
           const itemPlace = findItemPlace(outputPath.getPath(charterOutputItem));
-          const filePath = resolveRepoPath(checkoutPath, itemPlace);
+          const filePath = resolveRepoPath(this.#checkoutFolder, itemPlace);
           // Each path into the output written from where the item lands: a
           // document's from its own folder, so its links resolve as written;
           // any other file's from the repository's root, where a command runs.
@@ -87,7 +87,7 @@ export class LocalRepoManipulator implements ForManagingLocalOutput {
           const itemFolder = itemPlace.slice(0, itemPlace.lastIndexOf("/") + 1);
           for (const { assetPath: assetFileName, contents: assetBytes, isExecutable } of charterOutputItem.assets) {
             const assetPath = `${itemFolder}${assetFileName}`;
-            const assetFilePath = resolveRepoPath(checkoutPath, assetPath);
+            const assetFilePath = resolveRepoPath(this.#checkoutFolder, assetPath);
             writePlanByPath.set(
               assetPath,
               new WritePlan(

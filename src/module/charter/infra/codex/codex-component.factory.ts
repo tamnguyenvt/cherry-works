@@ -1,4 +1,5 @@
 import {
+  BuiltSensors,
   type CharterOutput,
   type CharterRoot,
   CompiledPrimitive,
@@ -160,7 +161,7 @@ export class CodexComponentFactory {
           if (!sensorHooks.some((hook) => hook.event === event))
             sensorHooks.push({
               event,
-              command: `cd -- "$(git rev-parse --show-toplevel)" && cw sensor run ${event} --agent codex`,
+              command: `cd -- "$(git rev-parse --show-toplevel)" && ${charterOutput.findCharterOutputItem(BuiltSensors).getRunCommand(event, codexAgentProvider)}`,
               description: `cw sensors: ${event}`,
             });
           break;

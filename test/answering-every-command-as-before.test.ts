@@ -12,7 +12,7 @@ const recordedAnswersUrl = new URL("answered-by-every-command.json", import.meta
 /** Clear of the default port, and of the other tests' portals. */
 const PORT = 47392;
 
-test("every cw command and the portal answer as they did when recorded (CORE Story 44 scenario 3, CORE Story 46 scenario 4, CORE Story 49 scenario 3, CORE Story 52 scenario 6, CORE Story 56 scenario 7, CORE Story 55 scenarios 10, 19)", async () => {
+test("every cw command and the portal answer as they did when recorded (CORE Story 44 scenario 3, CORE Story 46 scenario 4, CORE Story 49 scenario 3, CORE Story 52 scenario 6, CORE Story 56 scenario 7, CORE Story 55 scenarios 10, 19, CORE Story 45 scenario 2)", async () => {
   const currentAnswers = await answersOfEveryCommand(fileURLToPath(new URL("../dist/cw.js", import.meta.url)), PORT);
   if (process.env.CW_RECORD_ANSWERS === "1") {
     await writeFile(recordedAnswersUrl, `${JSON.stringify(currentAnswers, null, 2)}\n`);

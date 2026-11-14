@@ -21,8 +21,10 @@ const OPTIONS = {
 } as const satisfies OptionSpec;
 
 /**
- * `cw sensor run <signal>`: the one hook an agent is given for a signal, running
- * every sensor of it as the last build wrote them (CORE-FR-175 – CORE-FR-179).
+ * `cw sensor run <signal> --agent <agent>`: the one hook an agent is given for
+ * a signal, running the sensors of it that run for that agent, as the last
+ * build wrote them; with no agent named, only those kept for no agent
+ * (CORE-FR-175 – CORE-FR-179, CORE-FR-234).
  *
  * The event the agent hands over on standard input is read whole and handed to
  * each sensor; what they came to is answered as the agent reads one hook's:

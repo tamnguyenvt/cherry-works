@@ -84,7 +84,7 @@ const mcpOriginsOver = (origins: readonly McpOrigin[] | null = ORIGINS) => {
           new InMemoryTokenCounter(),
           { claude: new InMemoryAgentCli() },
           new InMemoryReporter(),
-          { mcpServers: new InMemoryMcpServers(), credentialsRepository, oauthAuthorizer },
+          { mcpServerCaller: new InMemoryMcpServers(), credentialsRepository, oauthAuthorizer },
         ),
       },
       "/repo",
@@ -118,7 +118,7 @@ const running = async (
   }
 };
 
-test("listSignInStatuses() answers one row per address taking a sign-in, its ids whatever their path, and asks nothing (FR-150)", async () => {
+test("listSignInStatuses() answers one row per address taking a sign-in, its ids whatever their path, and asks nothing (FR-150, CORE Story 18 scenario 2)", async () => {
   const { charterAuthoringApp, credentialsRepository } = mcpOriginsOver();
   await credentialsRepository.secrets.set(
     LINEAR,
@@ -126,7 +126,9 @@ test("listSignInStatuses() answers one row per address taking a sign-in, its ids
   );
 
   assert.deepEqual(
-    answerOf(await charterAuthoringApp.listSignInStatuses()).data.signInStatuses.map((one) => one.data),
+    answerOf(await charterAuthoringApp.listSignInStatuses()).data.signInStatuses.map(
+      (signInStatus) => signInStatus.data,
+    ),
     [
       { address: GITHUB, ids: ["github/billing", "github/web"], auth: ["oauth", "token"], signedIn: false },
       { address: LINEAR, ids: ["linear"], auth: ["token"], signedIn: true, method: "token" },
@@ -145,7 +147,9 @@ test("an mcp the charter holds is signed in to before any build has listed it (F
   for (const [href, text] of Object.entries(charterFilesOf([githubOrigin]))) held.writeFile(new URL(href), text);
 
   assert.deepEqual(
-    answerOf(await charterAuthoringApp.listSignInStatuses()).data.signInStatuses.map((one) => one.data.ids),
+    answerOf(await charterAuthoringApp.listSignInStatuses()).data.signInStatuses.map(
+      (signInStatus) => signInStatus.data.ids,
+    ),
     [["github/billing"]],
   );
   await charterAuthoringApp.signInWithToken(GITHUB, "gh-token");
@@ -195,7 +199,7 @@ test("an OAuth sign-in keeps what the mcp origin issued, with its registration (
   });
 });
 
-test("cw mcp auth at a terminal asks about each address not signed in, then asks nothing the next time, and no file changes (Story 18, 1 – 3, 5; CORE Story 18 scenarios 1, 5, CORE Story 55 scenario 8)", async () => {
+test("cw mcp auth at a terminal asks about each address not signed in, then asks nothing the next time, and no file changes (CORE Story 18 scenarios 1 – 3, 5, CORE Story 55 scenario 8)", async () => {
   const { cli, credentialsRepository, held } = mcpOriginsOver();
   const filesBefore = await held.readFilesRecursively(repoPath);
 
@@ -312,7 +316,7 @@ test("cw mcp auth signs in by OAuth where chosen, printing the address to open",
   assert.equal(JSON.parse(credentialsRepository.secrets.get(GITHUB) ?? "").method, "oauth");
 });
 
-test("cw mcp auth without a terminal asks nothing, names each address not signed in, and fails (Story 18, 4)", async () => {
+test("cw mcp auth without a terminal asks nothing, names each address not signed in, and fails (CORE Story 18 scenario 4)", async () => {
   const { cli, credentialsRepository } = mcpOriginsOver();
 
   const run = await running(cli, ["mcp", "auth"], { atTerminal: false });
@@ -324,7 +328,7 @@ test("cw mcp auth without a terminal asks nothing, names each address not signed
   assert.equal(credentialsRepository.secrets.size, 0);
 });
 
-test("cw mcp auth --status lists each address, its ids and whether signed in, and changes nothing (Story 18, 6)", async () => {
+test("cw mcp auth --status lists each address, its ids and whether signed in, and changes nothing (CORE Story 18 scenario 6)", async () => {
   const { cli, credentialsRepository } = mcpOriginsOver();
   await credentialsRepository.secrets.set(
     LINEAR,
@@ -344,7 +348,7 @@ test("cw mcp auth --status lists each address, its ids and whether signed in, an
   assert.equal(credentialsRepository.secrets.size, 1);
 });
 
-test("cw mcp auth <id> signs in again at that id's address alone, whatever was kept (Story 18, 7)", async () => {
+test("cw mcp auth <id> signs in again at that id's address alone, whatever was kept (CORE Story 18 scenario 7)", async () => {
   const { cli, credentialsRepository } = mcpOriginsOver();
   await credentialsRepository.secrets.set(
     GITHUB,

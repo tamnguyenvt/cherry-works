@@ -740,7 +740,7 @@ interface ForRunningCharter {
      * charter does not hold are given back as faults, with no case run
      * (EVAL-FR-026).
      */
-    evaluateCharter(requestedAgentProviderName?: string): Promise<RuntimeDTOs.EvalRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    evaluateCharter(namedAgentProviderName?: string): Promise<RuntimeDTOs.EvalRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
     /** What promptfoo logged of an evaluation, the last one where no log is
      *  named, read back. */
     analyzeEvalLog(logFilePath?: string): Promise<RuntimeDTOs.EvalLogAnalysis | FaultDTOs.Fault>;
@@ -851,7 +851,7 @@ interface PromptUsage {
 /**
  * DRIVEN PORT — promptfoo, the evaluation framework a charter is evaluated
  * under (EVAL-FR-020, EVAL-FR-032): installed once onto this machine, then
- * handed one test at a time, which it runs against the selected agent in the folder
+ * handed one test at a time, which it runs against its provider's agent in the folder
  * named and grades by the assertions it carries.
  */
 interface ForRunningPromptfoo {
@@ -861,7 +861,7 @@ interface ForRunningPromptfoo {
     installPromptfoo(): Promise<void>;
     /** Where it is installed, as the developer would find it. */
     readonly installFolderPath: string;
-    /** One test run with `promptfoo eval`: its prompt put to the selected agent,
+    /** One test run with `promptfoo eval`: its prompt put to its provider's agent,
      *  headless, in the working folder, with the project's settings and skills
      *  and edits accepted, on whatever it is signed in with; and how it came
      *  out. A run promptfoo itself fails raises an `AdapterFault`. */
@@ -877,7 +877,7 @@ interface PromptfooTest {
     readonly provider: string;
     readonly description: string;
     readonly prompt: string;
-    /** The folder the selected agent runs in, by its path from the repository. */
+    /** The folder the provider's agent runs in, by its path from the repository. */
     readonly workingPath: string;
     readonly assertions: readonly PromptfooAssertion[];
 }
@@ -1035,13 +1035,13 @@ declare class GitWorktrees implements ForKeepingWorktrees {
  * DRIVEN ADAPTER: promptfoo, installed with npm into a folder of its own and run
  * as `promptfoo eval` (EVAL-FR-020, EVAL-FR-032).
  *
- * The selected agent runs through its promptfoo SDK provider in the working
+ * The evaluating agent runs through its promptfoo SDK provider in the working
  * folder. Claude Code uses the project's settings, every skill, edits accepted, and no
  * command, since no one is there to allow one. An `agent-rubric` is graded by
  * the same provider in the same folder, reading and searching only, with no
  * settings of the project's to sway it. Codex uses workspace-write for the
  * case and read-only for grading, without approval prompts or retries. Both
- * use the selected agent's sign-in, or the key the environment sets.
+ * use the evaluating agent's sign-in, or the key the environment sets.
  *
  * The provider finds the SDK from where the configuration is, so each test's
  * configuration is written into a folder under the one it is installed in,

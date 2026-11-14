@@ -18,7 +18,7 @@ export interface ForManagingWorkspace {
   readonly agentProviderNames: readonly string[];
 
   /** The settings the repository keeps; none is a repository never set up,
-   *  which compiles for no agent (FR-019). */
+   *  which chose no agent (FR-019). */
   readWorkspaceSettings(): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
 
   /**

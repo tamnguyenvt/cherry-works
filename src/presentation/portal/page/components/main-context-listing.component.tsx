@@ -21,7 +21,11 @@ export function MainContextListing() {
 
   const { contexts } = mainContextsQuery.data.data;
   if (contexts.length === 0)
-    return <p className="text-xs text-zinc-500">No agent is chosen, so no agent loads anything of the charter.</p>;
+    return (
+      <p className="text-xs text-zinc-500">
+        No agent is chosen, so no agent loads anything of the charter. Run "cw init" to choose one.
+      </p>
+    );
   const mainContextCeiling =
     settingsQuery.data?.type === "WorkspaceSettings" ? settingsQuery.data.data.mainContextCeiling : undefined;
 

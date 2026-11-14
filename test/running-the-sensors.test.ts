@@ -79,7 +79,7 @@ const aRepository = (
   };
 };
 
-test("a host is given one command per signal its sensors name, and none of the sensors' own (CORE-FR-175, CORE-SC-047)", async () => {
+test("a host is given one command per signal its sensors name, and none of the sensors' own (CORE-FR-175, CORE-SC-047, CORE Story 29 scenario 1)", async () => {
   const { held, build, claudeSettings } = aRepository({
     [at("sensor/say-a/index.md")]: sensor("say-a", "Stop", "echo a"),
     [at("sensor/say-b/index.md")]: sensor("say-b", "Stop", "echo b"),
@@ -127,7 +127,7 @@ test("each sensor's command is built into the output, in order of id, its script
   });
 });
 
-test("the hooks under a signal the charter's sensors name are the charter's whole, written over what is there (CORE-FR-039)", async () => {
+test("the hooks under a signal the charter's sensors name are the charter's whole, written over what is there (CORE-FR-039, CORE Story 29 scenario 2)", async () => {
   const { build, claudeSettings } = aRepository({
     [at("sensor/say-a/index.md")]: sensor("say-a", "Stop", "echo a"),
     // One the repository set for itself, and the ones an earlier build wrote
@@ -142,7 +142,7 @@ test("the hooks under a signal the charter's sensors name are the charter's whol
   assert.deepEqual((await claudeSettings()).hooks, { Stop: [hookEntry("cw sensor run Stop --agent claude")] });
 });
 
-test("a signal whose last sensor is removed keeps the command the last build wrote, which runs nothing (CORE-FR-175, CORE-FR-176)", async () => {
+test("a signal whose last sensor is removed keeps the command the last build wrote, which runs nothing (CORE-FR-175, CORE-FR-176, CORE Story 29 scenario 3)", async () => {
   const { held, shell, build, runSensors, claudeSettings } = aRepository({
     [at("sensor/guard/index.md")]: sensor("guard", "PreToolUse", "./bin/guard"),
   });
@@ -160,7 +160,7 @@ test("a signal whose last sensor is removed keeps the command the last build wro
   assert.deepEqual(shell.runs, []);
 });
 
-test("the sensors of one signal run all at once, each given the same event (CORE-FR-176)", async () => {
+test("the sensors of one signal run all at once, each given the same event (CORE-FR-176, CORE Story 29 scenario 4)", async () => {
   const { shell, build, runSensors } = aRepository({
     [at("sensor/say-a/index.md")]: sensor("say-a", "Stop", "echo a"),
     [at("sensor/say-b/index.md")]: sensor("say-b", "Stop", "echo b"),
@@ -179,7 +179,7 @@ test("the sensors of one signal run all at once, each given the same event (CORE
   assert.ok(shell.runs.every(({ workingPath }) => workingPath === ""));
 });
 
-test("one sensor exiting 2 makes the command exit 2 with its error, and the other still runs to its end (CORE-FR-177)", async () => {
+test("one sensor exiting 2 makes the command exit 2 with its error, and the other still runs to its end (CORE-FR-177, CORE Story 29 scenario 5)", async () => {
   const { shell, build, runSensors } = aRepository(
     {
       [at("sensor/gate/index.md")]: sensor("gate", "Stop", "./gate"),
@@ -215,7 +215,7 @@ test("two sensors both exiting 2 give the error of each, in order of id (CORE-FR
   assert.equal(sensorRunOutcome.data.problem, "a\nb\n");
 });
 
-test("one sensor exiting 1 makes the command exit 1, and the other still runs to its end (CORE-FR-177)", async () => {
+test("one sensor exiting 1 makes the command exit 1, and the other still runs to its end (CORE-FR-177, CORE Story 29 scenario 6)", async () => {
   const { shell, build, runSensors } = aRepository(
     {
       [at("sensor/broken/index.md")]: sensor("broken", "Stop", "./broken"),
@@ -235,7 +235,7 @@ test("one sensor exiting 1 makes the command exit 1, and the other still runs to
   assert.ok(shell.finished.includes("echo a"));
 });
 
-test("sensors answering in plain text reach the host as one answer, in order of id (CORE-FR-178, CORE-SC-048)", async () => {
+test("sensors answering in plain text reach the host as one answer, in order of id (CORE-FR-178, CORE-SC-048, CORE Story 29 scenario 7)", async () => {
   const { build, runSensors } = aRepository(
     {
       [at("sensor/say-b/index.md")]: sensor("say-b", "Stop", "echo b"),
@@ -337,7 +337,7 @@ test("a PermissionRequest denial wins over an earlier allowance without carrying
   });
 });
 
-test("a block and context from two sensors both reach the host (CORE-FR-178)", async () => {
+test("a block and context from two sensors both reach the host (CORE-FR-178, CORE Story 29 scenario 7)", async () => {
   const { build, runSensors } = aRepository(
     {
       [at("sensor/block/index.md")]: sensor("block", "UserPromptSubmit", "./block"),
@@ -371,7 +371,7 @@ test("a block and context from two sensors both reach the host (CORE-FR-178)", a
   });
 });
 
-test("a sensor changed in the charter and not built runs as last built (CORE-FR-179)", async () => {
+test("a sensor changed in the charter and not built runs as last built (CORE-FR-179, CORE Story 29 scenario 8)", async () => {
   const { held, shell, build, runSensors } = aRepository({
     [at("sensor/say-a/index.md")]: sensor("say-a", "Stop", "echo a"),
   });

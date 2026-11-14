@@ -5,7 +5,7 @@ For a first rule, start with [Writing a charter](writing-a-charter.md).
 
 ## Charter → agent outputs
 
-Choose one with `cw init --agent claude` or `cw init --agent codex`. To build for
+Choose one with `cw init --agent claude` or `cw init --agent codex`. To choose
 both, set `"agents": ["claude", "codex"]` in `.cw/settings.json`, then run `cw build`.
 Every primitive also has a shared compiled document under `.cw/out/<kind>/<id>/`,
 with its mixins and assets.
@@ -204,17 +204,17 @@ cw eval --agent=codex
 ```
 
 Every case is handed to [promptfoo](https://www.promptfoo.dev), which puts its
-prompt to the selected agent run headless, in a worktree of your last commit with the
+prompt to the agent you name or pick, run headless, in a worktree of your last commit with the
 charter built, so your working tree is never touched. You never write a
-promptfoo configuration. Choose `claude` or `codex` with `--agent`. Without
-that option, the sole agent in settings is used; with several agents, you are
-asked to choose. Without an interactive terminal, pass `--agent`. Missing
-settings, an unconfigured agent, or an unavailable agent CLI stops the run.
+promptfoo configuration. Name `claude` or `codex` with `--agent`. Without
+that option, the one agent the repository chose is used; where it chose several,
+you are asked to pick one. Without an interactive terminal, pass `--agent`. Missing
+settings, an agent the repository did not choose, or an unavailable agent CLI stops the run.
 The first run installs promptfoo, the Claude Agent SDK and the Codex SDK under `~/.cherry-works/promptfoo/`, and later runs reuse them.
 
 The report gives each case's outcome and tokens, and the run's total. A case
 that misses what it expects fails the run, with what the agent did instead.
-It runs on the selected agent's sign-in, or its API key when set, and spends real tokens: commit before you run it, and keep the cases
+It runs on that agent's sign-in, or its API key when set, and spends real tokens: commit before you run it, and keep the cases
 few.
 
 ### Saved evaluation logs
@@ -472,7 +472,7 @@ other one is `cw`'s own. They are `agentProvider` (each agent's projection,
 the agent's name), `charterRepository` (`ForManagingCharter`), `sourceFetcher`
 (`ForFetchingCharterSources`), `fileReader` (`ForReadingFiles`), `fileWriter`
 (`ForWritingFiles`), `worktreeKeeper` (`ForKeepingWorktrees`), `oauthAuthorizer`
-(`ForAuthorizingOAuthClients`), `mcpServers` (`ForCallingMcpServers`),
+(`ForAuthorizingOAuthClients`), `mcpServerCaller` (`ForCallingMcpServers`),
 `tokenCounter` (`ForCountingTokens`), `clock` (`ForTellingTime`), `shell`
 (`ForRunningShellCommands`), `progressReporter` (`ForReportingProgress`),
 `promptfooRunner` (`ForRunningPromptfoo`) and `credentialsRepository`

@@ -16,7 +16,7 @@ cw add guide explain-failures --header description="Explain failures and the nex
 cw edit explain-failures
 ```
 
-`cw init` asks which agent to compile for and builds the initial charter. If
+`cw init` asks which agents the repository chooses and builds the initial charter. If
 the repository is already initialized, start with `cw kinds guide`.
 `cw add` writes the primitive; it does not build it. `cw edit` opens the source
 in `$VISUAL` or `$EDITOR`.

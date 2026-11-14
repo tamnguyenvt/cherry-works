@@ -42,7 +42,7 @@ test("inject converts a skill with assets into the own charter despite dirty wor
   assert.deepEqual(sourceFetcher.fetchedSources, [{ source: "team/source", version: "v1" }]);
 });
 
-test("inject takes single and gathered charters with assets and explicit or default selection (scenario 2)", async () => {
+test("inject takes single and gathered charters with assets and explicit or default selection (scenario 2) (CORE Story 34 scenario 2)", async () => {
   for (const sourceFolder of [".cw/charter/primitive", "charters/baseline/.cw/charter/primitive"]) {
     for (const charterNames of sourceFolder.startsWith("charters/") ? [[], ["baseline"]] : [[]]) {
       const { charterAuthoringApp, fileReader } = createVendoringFixture({

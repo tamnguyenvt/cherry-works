@@ -96,7 +96,7 @@ const namedMcps = (...mcps: Authored[]): Authored[] => [
     "guide/no-any/index.md",
     {},
     undefined,
-    `Read the reasons in ${mcps.map((one) => `[[${one.headers.id}]]`).join(" and ")}.`,
+    `Read the reasons in ${mcps.map((mcpPrimitive) => `[[${mcpPrimitive.headers.id}]]`).join(" and ")}.`,
   ),
   ...mcps,
 ];
@@ -108,7 +108,7 @@ const faultsIn = (faultsByFiles: FaultsByFile["faultsByFilePath"]) => Object.val
 
 const messages = (faultsByFiles: FaultsByFile["faultsByFilePath"]) =>
   Object.values(faultsByFiles)
-    .flatMap((one) => one.map((fault) => fault.message))
+    .flatMap((fileFaults) => fileFaults.map((fault) => fault.message))
     .join("\n");
 
 test("a charter whose files each hold their own contract has nothing left to answer", () => {
@@ -131,7 +131,7 @@ test("two ids one host name would be given are a collision under the second file
   assert.match(messages(faultsByFiles), /"a-b" and "a\/b" are both named "a-b"/);
 });
 
-test("one id under two kinds is a collision naming both files, whatever the kinds (FR-015, Story 27)", () => {
+test("one id under two kinds is a collision naming both files, whatever the kinds (FR-015, CORE Story 26 scenarios 2, 3, CORE Story 27 scenario 1)", () => {
   const triggered = { id: "release", description: "How a release runs.", triggers: ["a release"] };
   const faultsByFiles = faultsByFilesOf(
     guide("release"),
@@ -181,7 +181,7 @@ test("a vendored layer is asked the same questions the repository's own is", () 
   assert.deepEqual(Object.keys(faultsByFiles), [copiedPrimitive.uri]);
 });
 
-test("a vendor claiming an id this repository authored is a collision, naming both files", () => {
+test("a vendor claiming an id this repository authored is a collision, naming both files (CORE Story 2 scenario 2)", () => {
   const copiedPrimitive = guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team");
   const faultsByFiles = faultsByFilesOf(guide("no-any"), copiedPrimitive);
 
@@ -216,12 +216,12 @@ test("a rationale the charter holds a corpus for is nothing to report", () => {
   );
 });
 
-test("a rationale no corpus answers to is said, and does not fail the charter", () => {
+test("a rationale no corpus answers to is said, and does not fail the charter (CORE Story 1 scenario 13)", () => {
   const faultsByFiles = faultsByFilesOf(guide("no-any", "guide/no-any/index.md", { rationale: "absent" }));
 
   assert.deepEqual(Object.keys(faultsByFiles), [at("guide/no-any/index.md")]);
   assert.deepEqual(
-    faultsIn(faultsByFiles).map((one) => one.severity),
+    faultsIn(faultsByFiles).map((fault) => fault.severity),
     ["warn"],
   );
   assert.match(messages(faultsByFiles), /"absent"/);
@@ -259,7 +259,7 @@ test("a rationale or a mixin naming a primitive of another kind is one nothing a
   assert.match(messages(faultsByFiles), /holds no corpus of that id/);
 });
 
-test("a body naming [[<id>]] of any kind the charter holds is nothing to report (FR-147, Story 27)", () => {
+test("a body naming [[<id>]] of any kind the charter holds is nothing to report (FR-147, CORE Story 27 scenario 3)", () => {
   assert.deepEqual(
     faultsByFilesOf(
       guide("small-diffs"),
@@ -284,7 +284,7 @@ test("a corpus no primitive cites is said under its own file, and does not fail 
 
   assert.deepEqual(Object.keys(faultsByFiles), [at("corpus/type-safety/index.md")]);
   assert.deepEqual(
-    faultsIn(faultsByFiles).map((one) => one.severity),
+    faultsIn(faultsByFiles).map((fault) => fault.severity),
     ["warn"],
   );
   assert.match(messages(faultsByFiles), /No primitive cites "type-safety"/);
@@ -295,7 +295,7 @@ test("a mixin no primitive pulls in is said under its own file, and does not fai
 
   assert.deepEqual(Object.keys(faultsByFiles), [at("mixin/ts-defaults/index.md")]);
   assert.deepEqual(
-    faultsIn(faultsByFiles).map((one) => one.severity),
+    faultsIn(faultsByFiles).map((fault) => fault.severity),
     ["warn"],
   );
   assert.match(messages(faultsByFiles), /No primitive pulls in the mixin "ts-defaults"/);
@@ -331,7 +331,7 @@ test("an mcp a body names is nothing to report, whichever layer authored it (FR-
   assert.deepEqual(faultsByFilesOf(namingGuide, mcp("mfbs/billing", "team")), {});
 });
 
-test("a body naming an mcp no layer holds is an error under its file, once however often it names it (FR-143)", () => {
+test("a body naming an mcp no layer holds is an error under its file, once however often it names it (FR-143, CORE Story 17 scenario 3, CORE Story 21 scenario 10)", () => {
   const faultsByFiles = faultsByFilesOf(
     guide("no-any", "guide/no-any/index.md", {}, undefined, "Ask [[missing]], and then [[missing]] again."),
   );
@@ -373,7 +373,7 @@ test("an agent holding an mcp, whole or one tool it declares, is nothing to repo
   );
 });
 
-test("an agent holding an mcp no layer holds, a tool that mcp does not declare, or a name not written as one, is an error under its file (FR-156)", () => {
+test("an agent holding an mcp no layer holds, a tool that mcp does not declare, or a name not written as one, is an error under its file (FR-156, CORE Story 20 scenario 4)", () => {
   const faultsByFiles = faultsByFilesOf(
     agent("scanner", [
       "[[missing]]",

@@ -9,6 +9,8 @@ This guide is for tool authors. It shows how to compose the engine, how to
 read what it answers, and how to hand it adapters of your own. The precise
 contract is in [the reference](reference.md#the-engine-as-a-library).
 
+![The engine of cw: the charter, runtime and workspace modules, driven by the command line, the portal, the MCP gateway and the SDK](images/architecture.svg)
+
 ## What you can change
 
 - **Call the engine** through four applications: the workspace (a repository's
@@ -52,7 +54,7 @@ It answers `workspaceApp` and `engineApp`:
 
 | Application | Port | What it does |
 |---|---|---|
-| `workspaceApp` | `ForManagingWorkspace` | reads and writes `.cw/settings.json`: which agents a repository builds for |
+| `workspaceApp` | `ForManagingWorkspace` | reads and writes `.cw/settings.json`: which agents a repository chose |
 | `engineApp.charterAuthoringApp` | `ForAuthoringCharter` | primitives, vendors, test and eval files, the tests, signing in to mcp origins |
 | `engineApp.charterBuildingApp` | `ForBuildingCharter` | the build, its preview, the health check, the context, the sensors |
 | `engineApp.charterRuntimeApp` | `ForRunningCharter` | runs evaluations, executes sensors for the agent you name, and serves the mcp gateway |
@@ -76,7 +78,7 @@ const { workspaceApp } = await composeApplications(repoFolder, homeFolder);
 const settingsAnswer = await workspaceApp.setUpWorkspace(["claude"], VERSION);
 if (settingsAnswer.type === "Fault") throw new Error(settingsAnswer.data.message);
 
-// Compose again: the engine now builds for the settings just written.
+// Compose again: the engine now builds for the agents just chosen.
 const { engineApp } = await composeApplications(repoFolder, homeFolder);
 await engineApp.charterAuthoringApp.setUpCharter();
 
@@ -143,7 +145,7 @@ Every adapter you may hand, as a `Partial<EngineAdapters>`:
 | `worktreeKeeper` | `ForKeepingWorktrees` | git worktrees, one per evaluated case |
 | `shell` | `ForRunningShellCommands` | the shell, in the repository |
 | `promptfooRunner` | `ForRunningPromptfoo` | promptfoo, installed under the home's `.cherry-works` |
-| `mcpServers` | `ForCallingMcpServers` | MCP clients over HTTP and stdio |
+| `mcpServerCaller` | `ForCallingMcpServers` | MCP clients over HTTP and stdio |
 | `oauthAuthorizer` | `ForAuthorizingOAuthClients` | OAuth in the browser |
 | `credentialsRepository` | `ForStoringCredentials` | the operating system's keychain |
 | `tokenCounter` | `ForCountingTokens` | an offline tokenizer |

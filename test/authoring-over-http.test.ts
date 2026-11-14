@@ -193,7 +193,7 @@ test("a sensor with no command and a mixin naming a mixin are refused in the eng
   assert.deepEqual(await fileReaders.readFilesRecursively(repoPath), filesBefore);
 });
 
-test("a repository primitive is deleted with 204, and a vendored one is refused with 422 (FR-076, FR-077)", async () => {
+test("a repository primitive is deleted with 204, and a vendored one is refused with 422 (FR-076, FR-077, CORE Story 23 scenario 6)", async () => {
   const { portalRoutes, fileAt } = portal({
     [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
     [at(".cw/charter/vendor/team/rules/root/primitive/guide/theirs/index.md")]: guide("theirs"),
@@ -304,9 +304,9 @@ test("what a kind requires is sent under /definitions, a closed header with its 
 
   const answer = await portalRoutes.request("/definitions/kinds/sensor/requirements");
   assert.equal(answer.status, 200);
-  const { data } = CharterDTOs.PrimitiveRequirements.parse(await answer.json());
+  const { data: primitiveRequirements } = CharterDTOs.PrimitiveRequirements.parse(await answer.json());
   assert.deepEqual(
-    data.headers.find(({ data: { field } }) => field === "signal")?.data.allowedValues,
+    primitiveRequirements.headers.find(({ data: { field } }) => field === "signal")?.data.allowedValues,
     SensorPrimitive.signals,
   );
 

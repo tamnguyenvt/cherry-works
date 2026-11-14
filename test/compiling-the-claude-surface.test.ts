@@ -34,10 +34,10 @@ const load = (files: Readonly<Record<string, string>>, held = new InMemoryFileRe
 const putDown = async (files: Readonly<Record<string, string>>, agents: readonly AgentProvider[] = [CLAUDE]) => {
   const held = new InMemoryFileReaders(files);
   const charter = await load(files, held);
-  const written = await putDownBy(charter, CharterOutputService.compileCharterRoot(charter, agents), held);
+  const writtenPaths = await putDownBy(charter, CharterOutputService.compileCharterRoot(charter, agents), held);
 
   return Object.fromEntries(
-    await Promise.all(written.map(async (path) => [path, await held.readFile(new URL(path, repo))] as const)),
+    await Promise.all(writtenPaths.map(async (path) => [path, await held.readFile(new URL(path, repo))] as const)),
   ) as Readonly<Record<string, string>>;
 };
 
@@ -123,7 +123,7 @@ test("a guide that names no files is a rule with no paths, loaded every session 
   assert.ok(!carried.includes("paths:"));
 });
 
-test("a guide and a skill of the same id stay two files, each named by its id alone (FR-171)", async () => {
+test("a guide and a skill of the same id stay two files, each named by its id alone (FR-171, CORE Story 26 scenario 1)", async () => {
   const files = await projected({
     [at("guide/review/index.md")]: primitive("guide", "review", "Ours as a rule.", ['globs: ["src/**/*.ts"]']),
     [at("skill/review/index.md")]: primitive("skill", "review", "Ours as know-how.", ['triggers: ["a review"]']),
@@ -137,7 +137,7 @@ test("a guide and a skill of the same id stay two files, each named by its id al
   ]);
 });
 
-test("an id holding / names a host file with it written as -, a role's too (FR-141)", async () => {
+test("an id holding / names a host file with it written as -, a role's too (FR-141, CORE Story 23 scenario 7, CORE Story 26 scenario 1)", async () => {
   const files = await projected({
     [at("agent/release/ship/index.md")]: primitive("agent", "release/ship", "Run the build, then push.", [
       'tools: ["Bash"]',
@@ -214,7 +214,7 @@ test("a role carries the model its charter names for this host, and none where i
   assert.ok(!files[".claude/agents/reviewer.md"]?.includes("model:"));
 });
 
-test("a role holds each mcp it lists, whole or one tool, under the name this host is given it by, and no mcp origin its body only names (FR-156)", async () => {
+test("a role holds each mcp it lists, whole or one tool, under the name this host is given it by, and no mcp origin its body only names (FR-156, CORE Story 20 scenarios 1, 2, 3, CORE Story 25 scenario 6, CORE Story 27 scenario 4, EVAL Story 5 scenario 3)", async () => {
   const files = await projected({
     [at("mcp/linear/index.md")]: primitive("mcp", "linear", "Issues.", [
       "endpoint: https://mcp.linear.app/mcp",
@@ -250,7 +250,7 @@ test("a role holds each mcp it lists, whole or one tool, under the name this hos
   assert.ok(!contents.includes(`${servedNames["sentry"]}__`));
 });
 
-test("a charter reaching an mcp origin turns the host's own tool search on, and one reaching none leaves the settings alone (EVAL-FR-016)", async () => {
+test("a charter reaching an mcp origin turns the host's own tool search on, and one reaching none leaves the settings alone (EVAL-FR-016, EVAL Story 5 scenario 1)", async () => {
   const reachingFiles = await projected({
     [at("mcp/linear/index.md")]: primitive("mcp", "linear", "Issues.", [
       "endpoint: https://mcp.linear.app/mcp",
@@ -312,7 +312,7 @@ test("a playbook is loaded the way a skill is, since this host has one kind for 
   );
 });
 
-test("a skill or a playbook marked disable-user-invocation is no command the user types, and still a skill the agent opens (CORE-FR-173, CORE-FR-174)", async () => {
+test("a skill or a playbook marked disable-user-invocation is no command the user types, and still a skill the agent opens (CORE-FR-173, CORE-FR-174, CORE Story 28 scenarios 1, 2)", async () => {
   const files = await projected({
     [at("playbook/ship/index.md")]: primitive("playbook", "ship", "Run [[ship-review]], then tag.", [
       'triggers: ["ship this"]',
@@ -341,7 +341,7 @@ test("a skill or a playbook marked disable-user-invocation is no command the use
     assert.doesNotMatch(files[commandSkillFile] ?? "", /user-invocable/, commandSkillFile);
 });
 
-test("a skill or a playbook marked disable-model-invocation is a command the agent does not open by itself (CORE-FR-181, CORE-FR-182)", async () => {
+test("a skill or a playbook marked disable-model-invocation is a command the agent does not open by itself (CORE-FR-181, CORE-FR-182, CORE Story 31 scenarios 1, 2)", async () => {
   const files = await projected({
     [at("skill/grill/index.md")]: primitive("skill", "grill", "Interview the user.", [
       'triggers: ["grill me"]',
@@ -421,7 +421,7 @@ test("a mixin's body is written before its host's, which is the one place a mixi
   assert.ok(contents.indexOf("No jargon.") < contents.indexOf("Run the build, then push."));
 });
 
-test("nothing is compiled for an agent that was not named as installed", async () => {
+test("nothing is compiled for an agent the repository did not choose", async () => {
   const files = await putDown(aRole, []);
 
   assert.deepEqual(Object.keys(files), [

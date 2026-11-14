@@ -227,7 +227,7 @@ async function applicationsInMemory() {
     tokenCounter: new InMemoryTokenCounter(),
     shell: new InMemoryShellCommands({}),
     progressReporter: new InMemoryReporter(),
-    mcpServers: new InMemoryMcpServers(),
+    mcpServerCaller: new InMemoryMcpServers(),
     clock: new InMemoryClock(new Date("2026-11-10T00:00:00Z")),
     promptfooRunner,
     agentProvider: {

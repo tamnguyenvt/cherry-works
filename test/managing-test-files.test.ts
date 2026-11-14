@@ -35,7 +35,7 @@ const guide = (id: string, globs: readonly string[]) =>
 
 const settings = { [at(".cw/settings.json")]: `${JSON.stringify({ agents: [] })}\n` };
 
-const suiteText = (written: unknown) => `${JSON.stringify(written, undefined, 2)}\n`;
+const suiteText = (authoredSuite: unknown) => `${JSON.stringify(authoredSuite, undefined, 2)}\n`;
 
 /** One suite putting all three shapes, and one file that does not read. */
 const withTwoFiles = () => ({
@@ -85,7 +85,7 @@ test("suites() lists each file with its name, text and cases said, and one that 
   const { testSuites } = answerOf(await charterAuthoringApp.listTestSuites()).data;
 
   assert.deepEqual(
-    testSuites.map(({ data }) => data.name),
+    testSuites.map(({ data: testSuite }) => testSuite.name),
     ["broken.json", "shapes.json"],
   );
   const [broken, shapes] = testSuites;
@@ -97,7 +97,7 @@ test("suites() lists each file with its name, text and cases said, and one that 
   assert.equal(shapes?.data.description, "All three shapes.");
   assert.equal(shapes?.data.fault, undefined);
   assert.deepEqual(
-    shapes?.data.cases.map(({ data }) => data),
+    shapes?.data.cases.map(({ data: testCase }) => testCase),
     [
       { situation: "touching src/one.ts", expectation: "activates no-any", id: "no-any" },
       { situation: "touching .env", expectation: "is denied" },
@@ -127,7 +127,10 @@ test("a run names the test file each case came from (FR-125)", async () => {
   assert.equal(testRunReportDTO.type, "TestRunReport");
   if (testRunReportDTO.type !== "TestRunReport") return;
   assert.deepEqual(
-    testRunReportDTO.data.testCaseReports.map(({ data }) => [data.suiteName, data.passed]),
+    testRunReportDTO.data.testCaseReports.map(({ data: testCaseReport }) => [
+      testCaseReport.suiteName,
+      testCaseReport.passed,
+    ]),
     [
       ["one.json", true],
       ["two.json", false],

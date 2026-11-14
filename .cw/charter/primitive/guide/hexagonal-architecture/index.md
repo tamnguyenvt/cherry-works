@@ -54,10 +54,13 @@ the import rules; run it after any change that adds an import.
 ## Inside `src/module/`
 
 The hexagon is made of modules, each laid out as below, and a kernel they
-share, `shared/`, holding what is neither's (CORE-FR-222). Here the modules
-are `charter/` and `runtime/`: runtime asks the charter through the charter's
-driver ports alone, in DTOs, and never the other way round; the kernel
-imports neither (CORE-FR-229). Each module holds `app/` — its use cases,
+share, `shared/`, holding what is none's (CORE-FR-222). Here the modules
+are `charter/`, `runtime/` and `workspace/`: runtime asks the charter through
+the charter's driver ports alone, in DTOs, and never the other way round
+(CORE-FR-229); the workspace keeps what a repository configured itself with,
+the agents it chose among it, knows neither of the other two, and is read by
+neither — whoever composes the engine hands its settings to them
+(CORE-FR-231); the kernel imports none of the three. Each module holds `app/` — its use cases,
 services and ports, `app/port/in/` and `app/port/out/` —
 `domain/`, and `infra/`, its adapters, and `module.ts` beside them: what the
 module lets the code outside it reach, and the only file of it that code
@@ -194,7 +197,9 @@ Never turn `checkJs` off to make a change pass.
 | `module/*/app/port/in/*.dto.ts`, `dto.schema.ts`, `shared/app/port/in/index.ts` | other DTOs, the kernel's DTO entry `shared/app/port/in/index.ts` and the validator lib — never `shared/module.ts`, which reaches its adapters |
 | `module/runtime/**` | of `module/charter/`, its driver ports alone |
 | `module/charter/**` | nothing of `module/runtime/` |
-| `module/shared/**` | nothing of either module |
+| `module/workspace/**` | nothing of `module/charter/` or `module/runtime/` |
+| `module/charter/**`, `module/runtime/**` | nothing of `module/workspace/` |
+| `module/shared/**` | nothing of any module |
 | `main.ts` / `main.js`, `module/composition.ts` | everything |
 
 A driving adapter and a driven adapter never import each other; no cycles.
