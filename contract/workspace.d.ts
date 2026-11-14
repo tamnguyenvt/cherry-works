@@ -77,7 +77,7 @@ declare class RawWorkspaceSettings {
  * module alone, and handed to the applications that run by it (CORE-FR-231).
  */
 declare class WorkspaceSettings {
-    readonly agents: readonly string[];
+    readonly agentProviders: readonly AgentProvider[];
     readonly mainContextCeiling?: number | undefined;
     readonly sessionAnalysisFolder?: string | undefined;
     /** The tokens of main context past which the health check warns where the
@@ -91,7 +91,14 @@ declare class WorkspaceSettings {
         sessionContextMark: z.ZodOptional<z.ZodNumber>;
         sessionAnalysisFolder: z.ZodOptional<z.ZodString>;
     }, z.core.$strip>;
-    constructor(agents: readonly string[], mainContextCeiling?: number | undefined, sessionAnalysisFolder?: string | undefined);
+    constructor(agentProviders: readonly AgentProvider[], mainContextCeiling?: number | undefined, sessionAnalysisFolder?: string | undefined);
+    /** Written as the settings file holds them, each agent by its name
+     *  (FR-033). */
+    toJSON(): {
+        agents: readonly string[];
+        mainContextCeiling?: number;
+        sessionAnalysisFolder?: string;
+    };
     /** The ceiling the health check holds a main context to. */
     get mainContextCeilingOrDefault(): number;
 }
@@ -120,7 +127,7 @@ declare class FileWorkspaceSettingsRepository implements ForStoringWorkspaceSett
     #private;
     constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles);
     loadSettings(): Promise<RawWorkspaceSettings | undefined>;
-    saveSettings({ agents, mainContextCeiling }: WorkspaceSettings): Promise<void>;
+    saveSettings({ agentProviders, mainContextCeiling }: WorkspaceSettings): Promise<void>;
     keepLogIgnored(): Promise<void>;
     keepReadme(cwVersion: string): Promise<void>;
 }
