@@ -1,4 +1,4 @@
-import { ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
+import { type AgentProvider, ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
 /** Events supported by Codex command hooks, independent of charter signals. */
 const CODEX_HOOK_EVENTS = [
@@ -30,9 +30,11 @@ export class CodexConfig extends ProviderComponent {
     return CODEX_HOOK_EVENTS;
   }
 
-  readonly kind = "config";
+  static readonly kind = "config" as const;
 
-  constructor(document: string, warnings: readonly string[]) {
-    super("codex", "charter", "config", document, warnings);
+  readonly kind = CodexConfig.kind;
+
+  constructor(agentProvider: AgentProvider, text: string, warnings: readonly string[]) {
+    super(agentProvider, "charter", "config", text, warnings);
   }
 }

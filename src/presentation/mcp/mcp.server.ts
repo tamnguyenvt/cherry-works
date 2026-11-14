@@ -26,7 +26,7 @@ export async function startMcpServer(
   charterRuntimeApp: Pick<ForRunningCharter, "callTool">,
   transport: Transport,
   version = "0.0.0",
-): Promise<{ serverClosed: Promise<void> }> {
+): Promise<{ serverClosePromise: Promise<void> }> {
   const server = new Server({ name: "cw", version }, { capabilities: { tools: {} } });
   // A fault is said as the protocol says a refusal, an error the agent reads:
   // the JSON-RPC error the server answers with is read off what is thrown,
@@ -51,7 +51,7 @@ export async function startMcpServer(
       };
     return toolAnswerDTO.data as CallToolResult;
   });
-  const serverClosed = new Promise<void>((resolve) => (server.onclose = resolve));
+  const serverClosePromise = new Promise<void>((resolve) => (server.onclose = resolve));
   await server.connect(transport);
-  return { serverClosed };
+  return { serverClosePromise };
 }

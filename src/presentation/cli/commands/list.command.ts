@@ -48,10 +48,10 @@ export class ListCommand implements Command<typeof OPTIONS> {
     if (catalogueDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(catalogueDTO) };
 
     if (catalogueDTO.type === "FaultsByFile") {
-      const noOfFiles = Object.keys(catalogueDTO.data.files).length;
+      const faultyFileCount = Object.keys(catalogueDTO.data.files).length;
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `Nothing was listed: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+        problemText: `Nothing was listed: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
       };
     }
 

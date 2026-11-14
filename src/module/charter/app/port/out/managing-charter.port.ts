@@ -4,8 +4,8 @@ import type { Primitive } from "../../../domain/models/primitive/primitive.js";
 import type { RawPrimitive } from "../../../domain/models/primitive/raw-primitive.js";
 import type { RawTestSuite } from "../../../domain/models/test/raw-test-suite.js";
 import type { TestSuite } from "../../../domain/models/test/test-suite.js";
+import type { RawVendorRoot } from "../../../domain/models/vendor/raw-vendor-root.js";
 import type { RawVendorSource } from "../../../domain/models/vendor/raw-vendor-source.js";
-import type { VendorRoot } from "../../../domain/models/vendor/vendor-root.js";
 import type { VendorSource } from "../../../domain/models/vendor/vendor-source.js";
 import type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.value-object.js";
 
@@ -16,6 +16,7 @@ export {
   type ForWritingFiles,
   OccupiedPrimitiveFileFault,
   OldLayoutFault,
+  OldVendorLayoutFault,
   OverlappingPrimitiveFoldersFault,
   type ReadFile,
 } from "../../../../shared/module.js";
@@ -36,9 +37,8 @@ export { RawPrimitive } from "../../../domain/models/primitive/raw-primitive.js"
 export { SkillPrimitive } from "../../../domain/models/primitive/skill-primitive.js";
 export { RawTestSuite } from "../../../domain/models/test/raw-test-suite.js";
 export type { TestSuite } from "../../../domain/models/test/test-suite.js";
+export { RawVendorRoot } from "../../../domain/models/vendor/raw-vendor-root.js";
 export { RawSourceSkill, RawVendorSource } from "../../../domain/models/vendor/raw-vendor-source.js";
-export { VendorRootFactory } from "../../../domain/models/vendor/vendor-root.factory.js";
-export { VendorRoot } from "../../../domain/models/vendor/vendor-root.js";
 export { SourceCharter, SourceSkill, VendorSource } from "../../../domain/models/vendor/vendor-source.js";
 export type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.value-object.js";
 export { VendorSourcePath } from "../../../domain/models/vendor/vendor-source-path.js";
@@ -106,8 +106,10 @@ export interface ForManagingCharter {
   /** The temporary folder a source was fetched into, removed with all it holds. */
   removeFetchedSource(rawVendorSource: RawVendorSource): Promise<void>;
 
-  /** Every vendor installed (FR-053). */
-  loadVendorRoot(): Promise<VendorRoot>;
+  /** The name of every vendor kept, `<owner>/<repository>/<name>`; a vendor
+   *  laid out the way an earlier version installed one is refused by the
+   *  store, naming the folder to delete (FR-053, FR-180). */
+  loadVendorRoot(): Promise<RawVendorRoot>;
 
   /** One vendor of a source fetched and filtered kept under the name its
    *  origin gives it: each charter's primitives copied whole, as the source

@@ -185,3 +185,9 @@ export function showPathsInApps<Apps extends EngineApps>(engineApps: Apps, cwd: 
     charterRuntimeApp: wrapAppToShowPaths(engineApps.charterRuntimeApp, cwd),
   };
 }
+
+/** The words one command is typed by, without the arguments it takes: the name
+ *  says where the command sits, and `<id>` is not a place. */
+export function listCommandWords(name: string): readonly string[] {
+  return name.split(" ").filter((word) => !word.startsWith("<") && !word.startsWith("["));
+}

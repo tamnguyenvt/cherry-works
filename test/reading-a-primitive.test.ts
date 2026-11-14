@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { InvalidPrimitiveFault } from "../src/module/charter/domain/models/charter.fault.js";
 import { type Primitive, Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
+import { AgentProvider } from "../src/module/shared/domain/models/agent/agent-provider.value-object.js";
 import { type DomainFault, UnsoundModelFault } from "../src/module/shared/domain/models/domain.fault.js";
-import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
 import { charterRootOf, readPrimitive } from "./use-cases-of.js";
 
 const guide = [

@@ -22,8 +22,8 @@ import { PrimitiveFactory } from "../src/module/charter/domain/models/primitive/
 import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
 import { RawPrimitive } from "../src/module/charter/domain/models/primitive/raw-primitive.js";
 import { RawTestSuite } from "../src/module/charter/domain/models/test/raw-test-suite.js";
+import { RawVendorRoot } from "../src/module/charter/domain/models/vendor/raw-vendor-root.js";
 import { RawVendorSource } from "../src/module/charter/domain/models/vendor/raw-vendor-source.js";
-import { VendorRoot } from "../src/module/charter/domain/models/vendor/vendor-root.js";
 import { SourceCharter } from "../src/module/charter/domain/models/vendor/vendor-source.js";
 import { VendorSourceOrigin } from "../src/module/charter/domain/models/vendor/vendor-source-origin.value-object.js";
 import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
@@ -177,7 +177,7 @@ function charterKeptWithNoPath(): {
     },
     async removeFetchedSource() {},
     async loadVendorRoot() {
-      return new VendorRoot([]);
+      return new RawVendorRoot([]);
     },
     async storeVendor() {},
     findVendorUri(vendorName) {
@@ -543,11 +543,7 @@ test("every other use case answers through stores of a tool's own that keep no p
   const vendoringApp = charterAuthoringAppOver({
     ...charterRepository,
     async loadVendorRoot() {
-      const installedVendors = [...installedVendorNames].map((vendorName) => ({
-        name: vendorName,
-        uri: `db://vendor:${vendorName}`,
-      }));
-      return new VendorRoot(installedVendors);
+      return new RawVendorRoot([...installedVendorNames]);
     },
     async removeVendor(vendorName) {
       installedVendorNames.delete(vendorName);

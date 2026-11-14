@@ -47,7 +47,7 @@ export class ClaudeComponentFactory {
    * configuration that starts it, written whether the charter holds an mcp origin yet or
    * not, since the server reads which mcp origins there are when it starts (FR-146).
    */
-  static create(charter: CharterRoot, charterOutput: CharterOutput): readonly ClaudeComponent[] {
+  static create(charterRoot: CharterRoot, charterOutput: CharterOutput): readonly ClaudeComponent[] {
     const claudeAgentProvider = ClaudeComponents.agentProvider;
     const compiledPrimitives = charterOutput.charterOutputItems.filter(
       (charterOutputItem): charterOutputItem is CompiledPrimitive => charterOutputItem instanceof CompiledPrimitive,
@@ -66,47 +66,50 @@ export class ClaudeComponentFactory {
     // what runs when an event fires, and this agent reads both out of one file.
     const isSettingComponent = (primitive: Primitive) =>
       primitive.kind === PosturePrimitive.kind || primitive.kind === SensorPrimitive.kind;
-    const settingPrimitives = charter.primitives.filter(
+    const settingPrimitives = charterRoot.primitives.filter(
       (primitive) => primitive.supportsAgent(claudeAgentProvider) && isSettingComponent(primitive),
     );
-    const documentPrimitives = charter.primitives.filter((primitive) => !isSettingComponent(primitive));
+    const documentPrimitives = charterRoot.primitives.filter((primitive) => !isSettingComponent(primitive));
 
     // A subagent holds the tools it lists and nothing else. An mcp origin it lists,
     // `[[<id>]]` whole or `[[<id>]]:<tool>` one tool, is written as this agent is
     // given each of its tools, `mcp__cw__<served name>__<tool>` (FR-156); the
     // charter has refused an mcp origin or tool it does not hold.
     const toolsByMcpId = new Map(
-      charter.primitives.flatMap((primitive) =>
+      charterRoot.primitives.flatMap((primitive) =>
         primitive instanceof McpPrimitive ? [[primitive.headers.id, primitive.headers.tools] as const] : [],
       ),
     );
-    const listAgentTools = (agent: AgentPrimitive) =>
-      agent.headers.tools.flatMap((tool) => {
+    const listAgentTools = (agentPrimitive: AgentPrimitive) =>
+      agentPrimitive.headers.tools.flatMap((tool) => {
         const { mcpId, toolName: mcpTool } = PrimitiveHelper.parseToolReference(tool) ?? {};
         if (mcpId === undefined) return [tool];
         return (mcpTool === undefined ? (toolsByMcpId.get(mcpId) ?? []) : [mcpTool]).map(
-          (oneTool) => `mcp__${ClaudeMcpConfig.cwMcpName}__${shortMcpIds[mcpId]}__${oneTool}`,
+          (mcpToolName) => `mcp__${ClaudeMcpConfig.cwMcpName}__${shortMcpIds[mcpId]}__${mcpToolName}`,
         );
       });
 
     return [
       // The section of `CLAUDE.md` that sends this agent to the charter at all
       // (FR-051).
-      new ClaudeEntryFile(ClaudeComponentFactory.#composeEntryFileSection(charter.charterPlace)),
+      new ClaudeEntryFile(
+        claudeAgentProvider,
+        ClaudeComponentFactory.#composeEntryFileSection(charterRoot.charterPlace),
+      ),
       ...(settingPrimitives.length === 0 && toolsByMcpId.size === 0
         ? []
         : [
             new ClaudeSettings(
-              "claude",
+              claudeAgentProvider,
               ClaudeSettings.kind,
-              ClaudeComponentFactory.#createClaudeSettings(charter, builtSensors, settingPrimitives),
+              ClaudeComponentFactory.#createClaudeSettings(charterRoot, builtSensors, settingPrimitives),
             ),
           ]),
       // The one entry the charter speaks for, under `mcpServers`, in the file
       // this agent starts a project's servers from. That file is the
       // repository's too, so the entry is written into it, and never taken
       // away (FR-146).
-      new ClaudeMcpConfig("claude", ClaudeMcpConfig.kind, {
+      new ClaudeMcpConfig(claudeAgentProvider, ClaudeMcpConfig.kind, {
         mcpServers: { [ClaudeMcpConfig.cwMcpName]: { command: "cw", args: ["mcp", "serve"] } },
       }),
       ...documentPrimitives.flatMap(
@@ -134,7 +137,7 @@ export class ClaudeComponentFactory {
    * reading it together with this is the projection's (FR-020).
    */
   static #createClaudeSettings(
-    charter: CharterRoot,
+    charterRoot: CharterRoot,
     builtSensors: BuiltSensors,
     settingPrimitives: readonly Primitive[],
   ): ClaudeSettingsFields {
@@ -180,7 +183,7 @@ export class ClaudeComponentFactory {
           }),
       // A charter reaching an mcp origin has its tools' schemas deferred by the agent
       // itself, the one server listing every tool (EVAL-FR-016).
-      ...(charter.primitives.some((primitive) => primitive instanceof McpPrimitive) && {
+      ...(charterRoot.primitives.some((primitive) => primitive instanceof McpPrimitive) && {
         env: ClaudeSettings.toolSearchEnv,
       }),
     };
@@ -221,9 +224,10 @@ export class ClaudeComponentFactory {
         // naming files is pointed to from the repository's root instead, and
         // read only once one of them is touched.
         const { globs = [] } = documentPrimitive.headers;
-        if (globs.length === 0) return new ClaudeRule("claude", "guide", primitiveId, {}, `@${compiledDocumentLink}\n`);
+        if (globs.length === 0)
+          return new ClaudeRule(ClaudeComponents.agentProvider, "guide", primitiveId, {}, `@${compiledDocumentLink}\n`);
         return new ClaudeRule(
-          "claude",
+          ClaudeComponents.agentProvider,
           "guide",
           primitiveId,
           { paths: globs },
@@ -234,7 +238,7 @@ export class ClaudeComponentFactory {
         const { tools } = documentPrimitive.headers;
         const claudeModel = documentPrimitive.modelOf(ClaudeComponents.agentProvider);
         return new ClaudeAgent(
-          "claude",
+          ClaudeComponents.agentProvider,
           "agent",
           primitiveId,
           {
@@ -255,7 +259,7 @@ export class ClaudeComponentFactory {
       case SkillPrimitive.kind:
       case PlaybookPrimitive.kind:
         return new ClaudeSkill(
-          "claude",
+          ClaudeComponents.agentProvider,
           documentPrimitive.kind,
           primitiveId,
           {

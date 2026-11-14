@@ -1,5 +1,13 @@
 import { DEFAULT_PORT, startPortal } from "../../portal/portal.server.js";
-import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 
 const OPTIONS = {
   port: {
@@ -7,7 +15,7 @@ const OPTIONS = {
     describe: "Which port to serve on, the next free one when it is taken",
     default: DEFAULT_PORT,
   },
-} as const;
+} as const satisfies OptionSpec;
 
 /**
  * `cw portal`: serve this repository's charter to a browser on this machine

@@ -49,12 +49,12 @@ async function keepsACredential(
 
 test("a credential written is read back and replaced, in memory", async (t) => {
   const credentialsRepository = new InMemoryCredentialsRepository();
-  await keepsACredential(t, credentialsRepository, (address) => credentialsRepository.secrets.delete(address));
+  await keepsACredential(t, credentialsRepository, (address) => credentialsRepository.secretByAddress.delete(address));
 });
 
 test("a secret that does not read as a credential is none: signing in again replaces it", async () => {
   const credentialsRepository = new InMemoryCredentialsRepository();
-  credentialsRepository.secrets.set("https://a.example/mcp", "not json");
+  credentialsRepository.secretByAddress.set("https://a.example/mcp", "not json");
 
   assert.equal(await credentialsRepository.readCredential("https://a.example/mcp"), undefined);
 });

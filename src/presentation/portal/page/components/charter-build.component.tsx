@@ -1,6 +1,6 @@
 import type { CharterDTOs } from "#module/charter/module.js";
 import type { FaultDTOs } from "#module/shared/module.js";
-import { useBuild, useBuildPreview } from "../portal.queries.js";
+import { useBuildCharter, useBuildPreview } from "../portal.queries.js";
 import { DIALOG_FOOTER_CLASS_NAME } from "./dialog-footer.constants.js";
 import { FaultAlert } from "./fault-alert.component.js";
 import { FaultsByFileTable } from "./faults-by-file-table.component.js";
@@ -20,7 +20,7 @@ export type BuildAnswer = CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsBy
  */
 export function BuildPreview({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) => void }) {
   const previewQuery = useBuildPreview();
-  const buildMutation = useBuild();
+  const buildMutation = useBuildCharter();
 
   if (previewQuery.data === undefined) return null;
   const planSummaryDTO = previewQuery.data;
@@ -58,8 +58,8 @@ export function BuildPreview({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) 
         ))}
         <Table aria-label="Build plan">
           <TableBody>
-            {planTargets.map(([change, path]) => (
-              <PathRow key={path} pathChange={change} path={path} />
+            {planTargets.map(([pathChange, path]) => (
+              <PathRow key={path} pathChange={pathChange} path={path} />
             ))}
           </TableBody>
         </Table>
@@ -116,7 +116,7 @@ export function BuildOutcome({ buildAnswer }: { buildAnswer: BuildAnswer }) {
 
 /** The colours a change to a path is tagged in: what is written anew in
  *  green, what is written over in blue, what goes in red, the rest grey. */
-const PATH_CHANGE_COLORS: Record<string, string> = {
+const COLOR_CLASS_NAME_BY_PATH_CHANGE: Record<string, string> = {
   create: "bg-[#f0fdf4] text-[#15803d]",
   wrote: "bg-[#f0fdf4] text-[#15803d]",
   update: "bg-[#eff6ff] text-[#1d4ed8]",
@@ -132,7 +132,7 @@ function PathRow({ pathChange, path }: { pathChange: string; path: string }) {
     <TableRow className="border-zinc-100 hover:bg-transparent">
       <TableCell className="w-28 py-[11px] pl-4">
         <span
-          className={`rounded-[5px] px-[7px] py-0.5 text-[9.5px] font-bold tracking-[0.04em] uppercase ${PATH_CHANGE_COLORS[pathChange]}`}
+          className={`rounded-[5px] px-[7px] py-0.5 text-[9.5px] font-bold tracking-[0.04em] uppercase ${COLOR_CLASS_NAME_BY_PATH_CHANGE[pathChange]}`}
         >
           {pathChange}
         </span>

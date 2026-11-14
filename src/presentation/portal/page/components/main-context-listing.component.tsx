@@ -19,8 +19,8 @@ export function MainContextListing() {
       <p className="text-xs text-zinc-500">Nothing was counted: the charter does not hold. Open Doctor to see why.</p>
     );
 
-  const { contexts } = mainContextsQuery.data.data;
-  if (contexts.length === 0)
+  const { contexts: mainContexts } = mainContextsQuery.data.data;
+  if (mainContexts.length === 0)
     return (
       <p className="text-xs text-zinc-500">
         No agent is chosen, so no agent loads anything of the charter. Run "cw init" to choose one.
@@ -31,7 +31,7 @@ export function MainContextListing() {
 
   return (
     <div className="space-y-6">
-      {contexts.map(({ data: { agent, isExact, sessionLoads, fileLoads, totalTokens } }) => (
+      {mainContexts.map(({ data: { agent, isExact, sessionLoads, fileLoads, totalTokens } }) => (
         <section key={agent} className="space-y-3" aria-label={`${agent} main context`}>
           <h2 className="text-[13px] font-semibold">
             {agent} opens a session with {totalTokens.toLocaleString("en-US")} tokens of the charter,{" "}

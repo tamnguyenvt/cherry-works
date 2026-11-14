@@ -27,7 +27,7 @@ const PARALLEL_RUNNER_COUNT = 4;
  */
 export class ClaudeCli extends AgentCli implements ForRunningAgentCli {
   #runningCount = 0;
-  readonly #queue: (() => void)[] = [];
+  readonly #waitingRunResolvers: (() => void)[] = [];
 
   async isInstalled(): Promise<boolean> {
     try {
@@ -44,19 +44,20 @@ export class ClaudeCli extends AgentCli implements ForRunningAgentCli {
     // `PARALLEL_RUNNER_COUNT` others. A run that stopped with an error, or the
     // model never answered, such as one not signed in, is raised rather than
     // read.
-    if (this.#runningCount >= PARALLEL_RUNNER_COUNT) await new Promise<void>((resolve) => this.#queue.push(resolve));
+    if (this.#runningCount >= PARALLEL_RUNNER_COUNT)
+      await new Promise<void>((resolve) => this.#waitingRunResolvers.push(resolve));
     this.#runningCount++;
-    let emptyFolder: string | undefined;
+    let emptyFolderPath: string | undefined;
     let printedJson: string;
     try {
-      emptyFolder = await mkdtemp(join(tmpdir(), "cw-claude-"));
+      emptyFolderPath = await mkdtemp(join(tmpdir(), "cw-claude-"));
       printedJson = await new Promise<string>((resolve, reject) => {
         // Nothing of its own loaded: no tool, no MCP server and no settings file.
         const claudeProcess = spawn(
           "claude",
           ["-p", "--output-format", "json", "--tools", "", "--strict-mcp-config", "--setting-sources", ""],
           {
-            cwd: emptyFolder,
+            cwd: emptyFolderPath,
             stdio: ["pipe", "pipe", "pipe"],
           },
         );
@@ -89,9 +90,9 @@ export class ClaudeCli extends AgentCli implements ForRunningAgentCli {
           { internal: false },
         );
     } finally {
-      if (emptyFolder !== undefined) await rm(emptyFolder, { recursive: true, force: true });
+      if (emptyFolderPath !== undefined) await rm(emptyFolderPath, { recursive: true, force: true });
       this.#runningCount--;
-      this.#queue.shift()?.();
+      this.#waitingRunResolvers.shift()?.();
     }
     type InputUsage = { input_tokens: number; cache_creation_input_tokens: number; cache_read_input_tokens: number };
     const { result: resultText, usage } = JSON.parse(printedJson) as {

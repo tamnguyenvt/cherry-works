@@ -313,7 +313,7 @@ In each module:
   `DomainFaultFactory`, and under `fault/` `Faults`, faults under no file
   yet, and `FaultsByFile`, every fault under the file it is wrong with; its
   `helper.ts` holds `FaultHelper`; its `schema.ts` the schemas every module
-  shares; and its `value-objects/`
+  shares; and its `models/agent/`
   holds `AgentProvider`, an agent by its name, whichever names the
   projections the application was handed answer to (CORE-FR-221,
   CORE-FR-229).

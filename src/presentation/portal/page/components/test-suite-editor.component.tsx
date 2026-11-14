@@ -11,54 +11,60 @@ import { Button } from "./ui/button.js";
  * of one that reads, and nothing is written (Story 9 scenarios 3, 4, 7).
  */
 export function TestSuiteEditor({
-  name,
+  testSuiteName,
   onDone,
   onClose,
 }: {
-  name: string;
+  testSuiteName: string;
   onDone: (doneText: string, detailText: string) => void;
   onClose: () => void;
 }) {
   const testSuitesQuery = useTestSuites();
   const testSuite =
     testSuitesQuery.data?.type === "TestSuites"
-      ? testSuitesQuery.data.data.testSuites.find(({ data: listedSuite }) => listedSuite.name === name)
+      ? testSuitesQuery.data.data.testSuites.find(({ data: listedSuite }) => listedSuite.name === testSuiteName)
       : undefined;
   // The text is read once, when the file is first in the listing: a listing
   // asked again while it is being edited does not write over what was typed. A
   // file that does not read has none to show, and opens empty.
   if (testSuite === undefined) return null;
   return (
-    <TestSuiteText key={name} name={name} initialText={testSuite.data.text ?? ""} onDone={onDone} onClose={onClose} />
+    <TestSuiteText
+      key={testSuiteName}
+      testSuiteName={testSuiteName}
+      initialText={testSuite.data.text ?? ""}
+      onDone={onDone}
+      onClose={onClose}
+    />
   );
 }
 
 function TestSuiteText({
-  name,
+  testSuiteName,
   initialText,
   onDone,
   onClose,
 }: {
-  name: string;
+  testSuiteName: string;
   initialText: string;
   onDone: (doneText: string, detailText: string) => void;
   onClose: () => void;
 }) {
   const [text, setText] = useState(initialText);
-  const [refusal, setRefusal] = useState<FaultDTOs.Fault | null>(null);
-  const writeTestSuite = useWriteTestSuite();
-  const removeTestSuite = useRemoveTestSuite();
+  const [refusalFault, setRefusalFault] = useState<FaultDTOs.Fault | null>(null);
+  const writeTestSuiteMutation = useWriteTestSuite();
+  const removeTestSuiteMutation = useRemoveTestSuite();
 
   const saveText = async () => {
-    const testSuiteNameDTO = await writeTestSuite.mutateAsync({ name, text });
-    if (testSuiteNameDTO.type === "Fault") return setRefusal(testSuiteNameDTO);
-    onDone("Saved", `.cw/charter/test/${name} rewritten · run the cases again`);
+    const testSuiteNameDTO = await writeTestSuiteMutation.mutateAsync({ name: testSuiteName, text });
+    if (testSuiteNameDTO.type === "Fault") return setRefusalFault(testSuiteNameDTO);
+    onDone("Saved", `.cw/charter/test/${testSuiteName} rewritten · run the cases again`);
   };
 
   const deleteFile = async () => {
-    const refusedDTO = await removeTestSuite.mutateAsync(name);
-    if (refusedDTO !== null) return setRefusal(refusedDTO);
-    onDone("Test file deleted", `.cw/charter/test/${name} removed`);
+    const refusedDTO = await removeTestSuiteMutation.mutateAsync(testSuiteName);
+    if (refusedDTO !== null) return setRefusalFault(refusedDTO);
+    onDone("Test file deleted", `.cw/charter/test/${testSuiteName} removed`);
   };
 
   return (
@@ -74,12 +80,12 @@ function TestSuiteText({
         value={text}
         onChange={(event) => setText(event.target.value)}
       />
-      {refusal !== null && (
+      {refusalFault !== null && (
         <Alert variant="destructive" className="rounded-xl border-[#f6d9d9] bg-[#fef6f6]">
           <AlertTitle className="text-[12.5px] font-bold text-foreground">Refused, and nothing was written</AlertTitle>
           <AlertDescription>
             <p className="break-words whitespace-pre-line">
-              {refusal.data.message} <span className="text-muted-foreground">{refusal.data.fix}</span>
+              {refusalFault.data.message} <span className="text-muted-foreground">{refusalFault.data.fix}</span>
             </p>
           </AlertDescription>
         </Alert>
@@ -88,7 +94,7 @@ function TestSuiteText({
         Read only when tests run — never compiled, never read by an agent.
       </p>
       <div className={DIALOG_FOOTER_CLASS_NAME}>
-        <Button disabled={writeTestSuite.isPending} onClick={() => void saveText()}>
+        <Button disabled={writeTestSuiteMutation.isPending} onClick={() => void saveText()}>
           Save
         </Button>
         <Button variant="outline" onClick={onClose}>
@@ -97,7 +103,7 @@ function TestSuiteText({
         <Button
           variant="destructive"
           className="ml-auto"
-          disabled={removeTestSuite.isPending}
+          disabled={removeTestSuiteMutation.isPending}
           onClick={() => void deleteFile()}
         >
           Delete file

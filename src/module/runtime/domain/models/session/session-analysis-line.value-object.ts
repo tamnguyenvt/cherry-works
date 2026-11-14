@@ -27,7 +27,7 @@ export class SessionAnalysisLine {
   readonly repository: string;
   readonly model: string;
   readonly tokens: z.infer<typeof SessionAnalysisLineSchema>["tokens"];
-  readonly total: number;
+  readonly totalTokens: number;
 
   constructor(sessionAnalysisLine: z.infer<typeof SessionAnalysisLineSchema>) {
     this.stopTimeText = sessionAnalysisLine.time;
@@ -35,7 +35,7 @@ export class SessionAnalysisLine {
     this.repository = sessionAnalysisLine.repository;
     this.model = sessionAnalysisLine.model;
     this.tokens = sessionAnalysisLine.tokens;
-    this.total = sessionAnalysisLine.total;
+    this.totalTokens = sessionAnalysisLine.total;
   }
 
   static get schema(): typeof SessionAnalysisLineSchema {

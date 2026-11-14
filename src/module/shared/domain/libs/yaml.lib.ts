@@ -14,10 +14,10 @@ export class YamlLib {
    * `UnreadableYamlFault`, its message what the parser said; one that is not a
    * mapping of names to values, an `UnmappedYamlFault`.
    */
-  static parseYamlFields(block: string): Readonly<Record<string, unknown>> {
+  static parseYamlFields(yamlText: string): Readonly<Record<string, unknown>> {
     let yamlValue: unknown;
     try {
-      yamlValue = parse(block, { merge: false });
+      yamlValue = parse(yamlText, { merge: false });
     } catch (cause) {
       throw new UnreadableYamlFault((cause as Error).message.split("\n")[0]!, "Correct the YAML notation.", {
         internal: false,

@@ -358,13 +358,13 @@ export class Promptfoo implements ForRunningPromptfoo {
   }
 
   /** Resolve only existing local session files, never manufacture a path from an id. */
-  private async findSessionLog(agent: string, sessionId: string): Promise<string | undefined> {
+  private async findSessionLog(agentName: string, sessionId: string): Promise<string | undefined> {
     if (!/^[A-Za-z0-9-]+$/.test(sessionId)) return undefined;
-    const pendingFolders = this.agentSessionFolders.filter((folderPath) =>
-      agent === "codex" ? !folderPath.endsWith("projects") : folderPath.endsWith("projects"),
+    const pendingFolderPaths = this.agentSessionFolders.filter((folderPath) =>
+      agentName === "codex" ? !folderPath.endsWith("projects") : folderPath.endsWith("projects"),
     );
-    while (pendingFolders.length) {
-      const folderPath = pendingFolders.pop()!;
+    while (pendingFolderPaths.length) {
+      const folderPath = pendingFolderPaths.pop()!;
       let folderEntries: Dirent[];
       try {
         folderEntries = await readdir(folderPath, { withFileTypes: true });
@@ -378,7 +378,7 @@ export class Promptfoo implements ForRunningPromptfoo {
       }
       for (const folderEntry of folderEntries) {
         const entryPath = join(folderPath, folderEntry.name);
-        if (folderEntry.isDirectory()) pendingFolders.push(entryPath);
+        if (folderEntry.isDirectory()) pendingFolderPaths.push(entryPath);
         else if (
           folderEntry.isFile() &&
           folderEntry.name.endsWith(".jsonl") &&

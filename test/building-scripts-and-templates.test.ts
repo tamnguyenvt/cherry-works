@@ -156,10 +156,10 @@ test("of a built script, the asset it runs is executable and no other; a built t
 
   await build();
 
-  assert.ok(fileOutput.executables.has(inRepo(".cw/out/script/check/run.sh")));
-  assert.ok(!fileOutput.executables.has(inRepo(".cw/out/script/check/lib.sh")));
-  assert.ok(!fileOutput.executables.has(inRepo(".cw/out/script/check/index.md")));
-  assert.ok(!fileOutput.executables.has(inRepo(".cw/out/template/note/index.md")));
+  assert.ok(fileOutput.executableFileHrefs.has(inRepo(".cw/out/script/check/run.sh")));
+  assert.ok(!fileOutput.executableFileHrefs.has(inRepo(".cw/out/script/check/lib.sh")));
+  assert.ok(!fileOutput.executableFileHrefs.has(inRepo(".cw/out/script/check/index.md")));
+  assert.ok(!fileOutput.executableFileHrefs.has(inRepo(".cw/out/template/note/index.md")));
 });
 
 test("the catalogue names each primitive's compiled file, and a listing the index.md it was authored in (FR-164, FR-140, CORE Story 21 scenario 7, CORE Story 55 scenario 8, CORE Story 16 scenarios 2, 6, CORE Story 22 scenario 1, CORE Story 23 scenario 2)", async () => {

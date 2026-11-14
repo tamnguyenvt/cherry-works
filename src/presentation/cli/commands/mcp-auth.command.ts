@@ -44,13 +44,16 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
   readonly summary = "Sign in, as yourself, to every mcp origin the charter reaches";
   readonly options = OPTIONS;
 
-  async runCommand({ charterAuthoringApp }: Context, { id, status }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async runCommand(
+    { charterAuthoringApp }: Context,
+    { id, status: isStatusOnly }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
     const signInStatusesDTO = await charterAuthoringApp.listSignInStatuses();
     if (signInStatusesDTO.type === "Fault")
       return { exitCode: EXIT_FAILURE, problemText: printFault(signInStatusesDTO) };
     const signInStatuses = signInStatusesDTO.data.signInStatuses.map((signInStatusDTO) => signInStatusDTO.data);
 
-    if (status)
+    if (isStatusOnly)
       return {
         exitCode: EXIT_OK,
         resultText:

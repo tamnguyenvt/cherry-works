@@ -62,6 +62,7 @@ export {
   RawPrimitive,
   RawSourceSkill,
   RawTestSuite,
+  RawVendorRoot,
   RawVendorSource,
   SensorPrimitive,
   SettingBasedComponent,

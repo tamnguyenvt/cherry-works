@@ -216,7 +216,7 @@ async function applicationsInMemory() {
   const fileWriter = new InMemoryFileOutput(fileReader);
   const sourceFetcher = new InMemorySources(fileReader);
   const promptfooRunner = new InMemoryPromptfoo();
-  promptfooRunner.folderFiles = fileReader;
+  promptfooRunner.workingFolderFileReaders = fileReader;
   return composeApplications(repoFolder, homeFolder, {
     fileReader,
     fileWriter,

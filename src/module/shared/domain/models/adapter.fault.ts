@@ -70,6 +70,9 @@ export class FileOutsideFolderFault extends AdapterFault {}
 /** A repository, or a source, laid out the old way (CORE-FR-226). */
 export class OldLayoutFault extends AdapterFault {}
 
+/** Vendor folders laid out the way an earlier version installed them (FR-180). */
+export class OldVendorLayoutFault extends AdapterFault {}
+
 /** A machine with no git to reach a source with (CORE-FR-205). */
 export class MissingGitFault extends AdapterFault {}
 

@@ -13,7 +13,7 @@ import { buildPortalRoutes } from "./portal.routes.js";
 export const DEFAULT_PORT = 9927;
 
 /**
- * Serve the routes and the page built into `page` on this machine alone
+ * Serve the routes and the page built into `pageFolderUrl` on this machine alone
  * (FR-003), from `port` or the next free one when it is taken. The address
  * answered carries the token of this run (plan §6).
  *
@@ -26,7 +26,7 @@ export const DEFAULT_PORT = 9927;
  * place of the address.
  */
 export async function startPortal(
-  page: URL,
+  pageFolderUrl: URL,
   {
     charterAuthoringApp,
     charterBuildingApp,
@@ -34,7 +34,7 @@ export async function startPortal(
   loadWorkspaceSettings: () => Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>,
   port = DEFAULT_PORT,
 ): Promise<{ address: URL; server: ServerType } | string> {
-  const isPageBuilt = await access(new URL("index.html", page)).then(
+  const isPageBuilt = await access(new URL("index.html", pageFolderUrl)).then(
     () => true,
     () => false,
   );
@@ -71,7 +71,7 @@ export async function startPortal(
         })
         .use("/api/*", bearerAuth({ token }))
         .route("/api", buildPortalRoutes(charterAuthoringApp, charterBuildingApp, loadWorkspaceSettings))
-        .use("/*", serveStatic({ root: fileURLToPath(page) }));
+        .use("/*", serveStatic({ root: fileURLToPath(pageFolderUrl) }));
       const server = await new Promise<ServerType>((resolve, reject) => {
         const listeningServer = serve({ fetch: portalApp.fetch, hostname: "127.0.0.1", port: candidatePort }, () =>
           resolve(listeningServer),

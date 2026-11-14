@@ -45,13 +45,15 @@ export function PrimitiveExplanation({ id, onExplain }: { id: string; onExplain:
   );
   // A rationale the charter holds no corpus for is still what the author
   // wrote, so it is said, and said not to resolve, rather than left out.
-  const unresolvedRationale =
+  const unresolvedRationaleId =
     rationale === undefined && typeof headers.rationale === "string" ? headers.rationale : undefined;
-  const testCases = Object.entries(testCasesByFile.data);
+  const testFileSituationEntries = Object.entries(testCasesByFile.data);
   // What this one primitive declared, beside what its kind says of all of
   // them: "the harness runs what it says to `run`" is read with what it says.
   // Its id and description are said above.
-  const declaredHeaders = Object.entries(headers).filter(([name]) => name !== "id" && name !== "description");
+  const declaredHeaders = Object.entries(headers).filter(
+    ([headerName]) => headerName !== "id" && headerName !== "description",
+  );
 
   return (
     <div className="-mx-5 -my-[18px]">
@@ -62,16 +64,16 @@ export function PrimitiveExplanation({ id, onExplain }: { id: string; onExplain:
       {declaredHeaders.length > 0 && (
         <ExplanationSection title="What it declares">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-mono text-[11.5px]">
-            {declaredHeaders.map(([name, headerValue]) => (
-              <div key={name} className="contents">
-                <dt className="text-zinc-400">{name}</dt>
+            {declaredHeaders.map(([headerName, headerValue]) => (
+              <div key={headerName} className="contents">
+                <dt className="text-zinc-400">{headerName}</dt>
                 <dd>{typeof headerValue === "string" ? headerValue : headerValue.join(", ")}</dd>
               </div>
             ))}
           </dl>
         </ExplanationSection>
       )}
-      {(useMixins.length > 0 || rationale !== undefined || unresolvedRationale !== undefined) && (
+      {(useMixins.length > 0 || rationale !== undefined || unresolvedRationaleId !== undefined) && (
         <ExplanationSection title="What it pulls in">
           {useMixins.map((relatedPrimitive) => (
             <div key={relatedPrimitive.data.id}>
@@ -83,9 +85,9 @@ export function PrimitiveExplanation({ id, onExplain }: { id: string; onExplain:
               {renderPrimitiveLink(rationale)} <span className="text-zinc-500">the reasoning it cites</span>
             </div>
           )}
-          {unresolvedRationale !== undefined && (
+          {unresolvedRationaleId !== undefined && (
             <div className="text-destructive">
-              <span className="font-mono">{unresolvedRationale}</span> (does not resolve)
+              <span className="font-mono">{unresolvedRationaleId}</span> (does not resolve)
             </div>
           )}
         </ExplanationSection>
@@ -112,12 +114,12 @@ export function PrimitiveExplanation({ id, onExplain }: { id: string; onExplain:
         </ExplanationSection>
       )}
       <ExplanationSection title="Tested by">
-        {testCases.length === 0 ? (
+        {testFileSituationEntries.length === 0 ? (
           <span className="text-zinc-400">No test case names it.</span>
         ) : (
-          testCases.map(([testFile, situations]) => (
-            <div key={testFile}>
-              <span className="font-mono text-[11px] text-foreground">{testFile}</span>
+          testFileSituationEntries.map(([testFilePath, situations]) => (
+            <div key={testFilePath}>
+              <span className="font-mono text-[11px] text-foreground">{testFilePath}</span>
               {situations.map((situation) => (
                 <div key={situation} className="py-0.5 pl-3 font-mono text-[11px]">
                   {situation}

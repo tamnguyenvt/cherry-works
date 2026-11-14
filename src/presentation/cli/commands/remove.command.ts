@@ -1,5 +1,5 @@
 import prompts from "prompts";
-import { REPO_LAYER } from "#module/charter/module.js";
+import { REPO_LAYER_NAME } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
@@ -54,7 +54,7 @@ export class RemoveCommand implements Command<typeof OPTIONS> {
 
     // Only what this repository authored is asked about: anything else is
     // refused by `removePrimitive` itself, and a question before a refusal asks nothing.
-    if (!isAnsweredYes && primitive.layerName === REPO_LAYER) {
+    if (!isAnsweredYes && primitive.layerName === REPO_LAYER_NAME) {
       if (!process.stdin.isTTY)
         return {
           exitCode: EXIT_FAILURE,

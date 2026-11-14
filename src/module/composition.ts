@@ -155,7 +155,7 @@ export function composeEngine(
     Object.fromEntries(Object.entries(agentProvider).map(([agentName, { projection }]) => [agentName, projection])),
     engineAdapters.tokenCounter,
     {
-      agents: engineSettings.agents,
+      agentNames: engineSettings.agents,
       ...(engineSettings.mainContextCeiling === undefined
         ? {}
         : { mainContextCeiling: engineSettings.mainContextCeiling }),

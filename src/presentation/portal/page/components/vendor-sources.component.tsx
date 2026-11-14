@@ -16,23 +16,25 @@ export function VendorSources() {
   const { openDialog } = useDialog();
   const vendorFoldersQuery = useVendorFolders();
   const primitivesQuery = usePrimitives();
-  const removeVendor = useRemoveVendor();
+  const removeVendorMutation = useRemoveVendor();
 
   if (vendorFoldersQuery.data === undefined) return null;
   if (vendorFoldersQuery.data.type === "Fault") return <FaultAlert fault={vendorFoldersQuery.data} />;
-  const { folders } = vendorFoldersQuery.data.data;
+  const { folders: vendorFolderPaths } = vendorFoldersQuery.data.data;
   const vendoredPrimitives =
     primitivesQuery.data?.type === "Primitives"
       ? primitivesQuery.data.data.primitives.filter(({ data: primitive }) => primitive.layerName === "vendor")
       : [];
 
-  const removeInstall = async (vendorFolder: string) => {
-    const refusedDTO = await removeVendor.mutateAsync(vendorFolder.slice(".cw/charter/vendor/".length));
+  const removeInstall = async (vendorFolderPath: string) => {
+    const refusedDTO = await removeVendorMutation.mutateAsync(vendorFolderPath.slice(".cw/charter/vendor/".length));
     if (refusedDTO !== null) return void toast.error(refusedDTO.data.message, { description: refusedDTO.data.fix });
-    toast("Vendor source removed", { description: `${vendorFolder} · run Build to compile the charter without it` });
+    toast("Vendor source removed", {
+      description: `${vendorFolderPath} · run Build to compile the charter without it`,
+    });
   };
 
-  if (folders.length === 0)
+  if (vendorFolderPaths.length === 0)
     return (
       <div
         className="flex items-center gap-[9px] rounded-xl border border-dashed px-[15px] py-3.5"
@@ -53,29 +55,33 @@ export function VendorSources() {
       <h2 className="px-3.5 py-[11px] text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">
         Vendor sources
       </h2>
-      {folders.map((vendorFolder) => {
+      {vendorFolderPaths.map((vendorFolderPath) => {
         const primitivesOfFolder = vendoredPrimitives.filter(({ data: primitive }) =>
-          primitive.file.startsWith(`${vendorFolder}/`),
+          primitive.file.startsWith(`${vendorFolderPath}/`),
         );
-        const countsByKind = [...new Set(primitivesOfFolder.map(({ data: primitive }) => primitive.kind))]
+        const kindCountEntries = [...new Set(primitivesOfFolder.map(({ data: primitive }) => primitive.kind))]
           .sort()
           .map(
             (kind) =>
               [kind, primitivesOfFolder.filter(({ data: primitive }) => primitive.kind === kind).length] as const,
           );
         return (
-          <div key={vendorFolder} className="flex flex-col gap-2.5 bg-[#f6f2ff] px-3.5 py-3" aria-label={vendorFolder}>
+          <div
+            key={vendorFolderPath}
+            className="flex flex-col gap-2.5 bg-[#f6f2ff] px-3.5 py-3"
+            aria-label={vendorFolderPath}
+          >
             <div className="min-w-0 space-y-0.5">
-              <div className="text-[12.5px] font-semibold">{vendorFolder.slice(".cw/charter/vendor/".length)}</div>
+              <div className="text-[12.5px] font-semibold">{vendorFolderPath.slice(".cw/charter/vendor/".length)}</div>
               <div className="text-[11px] text-zinc-500">
-                <span className="font-mono">{vendorFolder}/</span> · read-only
+                <span className="font-mono">{vendorFolderPath}/</span> · read-only
               </div>
             </div>
             <dl
               className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1.5 text-[11.5px] text-zinc-500"
               aria-label="Primitives by kind"
             >
-              {countsByKind.map(([kind, count]) => (
+              {kindCountEntries.map(([kind, count]) => (
                 <div key={kind} className="contents">
                   <dt>{kind}</dt>
                   <dd className="font-mono text-[10.5px] text-zinc-400">{count}</dd>
@@ -86,8 +92,8 @@ export function VendorSources() {
               size="sm"
               variant="outline"
               className="self-start"
-              disabled={removeVendor.isPending}
-              onClick={() => void removeInstall(vendorFolder)}
+              disabled={removeVendorMutation.isPending}
+              onClick={() => void removeInstall(vendorFolderPath)}
             >
               Remove
             </Button>

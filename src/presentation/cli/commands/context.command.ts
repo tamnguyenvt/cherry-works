@@ -46,10 +46,10 @@ export class ContextCommand implements Command<typeof OPTIONS> {
     if (mainContextAnswer.type === "Fault")
       return { exitCode: EXIT_FAILURE, problemText: printFault(mainContextAnswer) };
     if (mainContextAnswer.type === "FaultsByFile") {
-      const noOfFiles = Object.keys(mainContextAnswer.data.files).length;
+      const faultyFileCount = Object.keys(mainContextAnswer.data.files).length;
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `Nothing was counted: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+        problemText: `Nothing was counted: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
       };
     }
 

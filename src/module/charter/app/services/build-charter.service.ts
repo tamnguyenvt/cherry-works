@@ -52,7 +52,7 @@ export class BuildCharterService {
    * kept is read back through `charterRepository` (CORE-FR-221).
    */
   async planBuild(
-    charter: CharterRoot,
+    charterRoot: CharterRoot,
     agentProjectionByProvider: Readonly<Record<AgentProviderName, ForManagingLocalAgentOutput>>,
     localRepo: ForManagingLocalOutput,
     charterRepository: Pick<ForManagingCharter, "readCompiledOutputItem" | "describeItemPlace">,
@@ -60,7 +60,7 @@ export class BuildCharterService {
     { shouldRefreshMcpOrigins }: { readonly shouldRefreshMcpOrigins: boolean },
   ): Promise<ProjectionPlan | FaultsByFile> {
     const { toolsByOriginKey, faultsByFile } = await this.#loadMcpOriginsService.loadToolsByOriginKey(
-      charter,
+      charterRoot,
       charterRepository,
       mcpReaching,
       shouldRefreshMcpOrigins,
@@ -68,14 +68,14 @@ export class BuildCharterService {
     if (!faultsByFile.isEmpty) return faultsByFile;
 
     const charterOutput = CharterOutputService.compileCharterRoot(
-      charter,
+      charterRoot,
       Object.keys(agentProjectionByProvider).map((agentName) => new AgentProvider(agentName)),
       toolsByOriginKey,
     );
     const buildPlans = await Promise.all([
       localRepo.createProjectionPlan(charterOutput),
       ...Object.values(agentProjectionByProvider).map((agentProjection) =>
-        agentProjection.createAgentProjectionPlan(charter, charterOutput),
+        agentProjection.createAgentProjectionPlan(charterRoot, charterOutput),
       ),
     ]);
     return new ProjectionPlan(
@@ -98,19 +98,24 @@ export class BuildCharterService {
    * file is unchanged is one that is fully built (SC-007).
    */
   previewPlan(
-    cleanupPlan: readonly WritePlan[],
-    projectionPlan: readonly WritePlan[],
+    cleanupWritePlans: readonly WritePlan[],
+    projectionWritePlans: readonly WritePlan[],
     warnings: readonly string[] = [],
   ): ProjectionPlanSummary {
     return new ProjectionPlanSummary(
-      projectionPlan.filter((writePlan) => writePlan.heldContents === undefined).map((writePlan) => writePlan.path),
-      projectionPlan
+      projectionWritePlans
+        .filter((writePlan) => writePlan.heldContents === undefined)
+        .map((writePlan) => writePlan.path),
+      projectionWritePlans
         .filter((writePlan) => writePlan.heldContents !== undefined && !this.#isUnchanged(writePlan))
         .map((writePlan) => writePlan.path),
-      cleanupPlan
-        .filter((cleanupFile) => !projectionPlan.some((projectionFile) => projectionFile.path === cleanupFile.path))
-        .map((cleanupFile) => cleanupFile.path),
-      projectionPlan.filter((writePlan) => this.#isUnchanged(writePlan)).map((writePlan) => writePlan.path),
+      cleanupWritePlans
+        .filter(
+          (cleanupWritePlan) =>
+            !projectionWritePlans.some((projectionWritePlan) => projectionWritePlan.path === cleanupWritePlan.path),
+        )
+        .map((cleanupWritePlan) => cleanupWritePlan.path),
+      projectionWritePlans.filter((writePlan) => this.#isUnchanged(writePlan)).map((writePlan) => writePlan.path),
       warnings,
     );
   }

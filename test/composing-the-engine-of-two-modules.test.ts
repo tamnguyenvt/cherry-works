@@ -102,9 +102,9 @@ function adaptersInMemory(files: Readonly<Record<string, string>>) {
   const fileWriter = new InMemoryFileOutput(fileReader);
   const sourceFetcher = new InMemorySources(fileReader);
   const promptfooRunner = new InMemoryPromptfoo();
-  promptfooRunner.folderFiles = fileReader;
+  promptfooRunner.workingFolderFileReaders = fileReader;
   const mcpServerCaller = new InMemoryMcpServers();
-  mcpServerCaller.servers.set(billingEndpoint, {
+  mcpServerCaller.mcpServerByAddress.set(billingEndpoint, {
     tools: [{ name: "get_file_contents", inputSchema: { type: "object" } }],
   });
   return {
@@ -523,7 +523,7 @@ test("the published package composes the engine of its two parts, which hold no 
     const adapters = adaptersInMemory(filesReachingEveryAdapter);
     // Not yet installed, so the evaluation reports that it installs it.
     const promptfooRunner = new InMemoryPromptfoo(false);
-    promptfooRunner.folderFiles = adapters.fileReader;
+    promptfooRunner.workingFolderFileReaders = adapters.fileReader;
     const handedAdapters: Partial<EngineAdapters> = Object.fromEntries(
       Object.entries({ ...pluginsInMemory(adapters), promptfooRunner }).filter(
         ([handedAdapterKey]) =>
@@ -627,7 +627,7 @@ test("each adapter the engine is composed with, handed as a test's own, is what 
   const adapters = adaptersInMemory(filesReachingEveryAdapter);
   // Not yet installed, so the evaluation reports that it installs it.
   adapters.promptfooRunner = new InMemoryPromptfoo(false);
-  adapters.promptfooRunner.folderFiles = adapters.fileReader;
+  adapters.promptfooRunner.workingFolderFileReaders = adapters.fileReader;
   const countedAdapters = Object.fromEntries(
     Object.entries(adapters).map(([adapterKey, adapter]) => [
       adapterKey,

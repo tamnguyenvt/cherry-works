@@ -7,13 +7,13 @@
 export { AuthoringCharter } from "./app/authoring-charter.use-case.js";
 export { BuildingCharter } from "./app/building-charter.use-case.js";
 export {
-  BUILTIN_LAYER,
+  BUILTIN_LAYER_NAME,
   type ForAuthoringCharter,
   type LayerName,
   type McpOriginAddress,
-  REPO_LAYER,
+  REPO_LAYER_NAME,
   type UnparsedHeaders,
-  VENDOR_LAYER,
+  VENDOR_LAYER_NAME,
 } from "./app/port/in/authoring-charter.port.js";
 export type { AgentProviderName, ForBuildingCharter, ProjectionSettings } from "./app/port/in/building-charter.port.js";
 export { CharterDTOs } from "./app/port/in/charter.dto.js";
@@ -78,6 +78,7 @@ export { PrimitiveLayer } from "./domain/models/primitive/primitive-layer.value-
 export { RawPrimitive } from "./domain/models/primitive/raw-primitive.js";
 export { RawTestSuite } from "./domain/models/test/raw-test-suite.js";
 export { TestSuite } from "./domain/models/test/test-suite.js";
+export { RawVendorRoot } from "./domain/models/vendor/raw-vendor-root.js";
 export { RawSourceSkill, RawVendorSource } from "./domain/models/vendor/raw-vendor-source.js";
 export { VendorRoot } from "./domain/models/vendor/vendor-root.js";
 export { SourceCharter, SourceSkill, VendorSource } from "./domain/models/vendor/vendor-source.js";

@@ -46,6 +46,7 @@ export {
   NoFolderAddressFault,
   OccupiedPrimitiveFileFault,
   OldLayoutFault,
+  OldVendorLayoutFault,
   OverlappingPrimitiveFoldersFault,
   PathOutsideFolderFault,
   RefusedSecretStoreFault,
@@ -70,6 +71,7 @@ export {
   UnwritableFileFault,
   UnwritableSourceStoreFault,
 } from "./domain/models/adapter.fault.js";
+export { AgentProvider, type AgentProviderName } from "./domain/models/agent/agent-provider.value-object.js";
 export { ApplicationFault } from "./domain/models/application.fault.js";
 export {
   DomainFault,
@@ -84,7 +86,6 @@ export { Faults } from "./domain/models/fault/faults.js";
 export { FaultsByFile } from "./domain/models/fault/faults-by-file.js";
 export { RefusedByOtherModuleFault } from "./domain/models/shared.fault.js";
 export { FlagSchema, GoodArraySchema, GoodLineSchema } from "./domain/schema.js";
-export { AgentProvider, type AgentProviderName } from "./domain/value-objects/agent-provider.value-object.js";
 export { ConsoleReporter } from "./infra/console-reporter.adapter.js";
 export { FileOutput } from "./infra/file-output.adapter.js";
 export { FileReaders } from "./infra/file-readers.adapter.js";

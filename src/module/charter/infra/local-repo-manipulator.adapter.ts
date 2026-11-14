@@ -48,7 +48,7 @@ export class LocalRepoManipulator implements ForManagingLocalOutput {
   }
 
   async createProjectionPlan(charterOutput: CharterOutput): Promise<ProjectionPlan> {
-    const [cleanupPlan, layingPlan] = await Promise.all([
+    const [cleanupWritePlans, layingWritePlans] = await Promise.all([
       // Everything the last build left under the compiled output, which nothing
       // else writes (FR-020).
       (async (): Promise<readonly WritePlan[]> => {
@@ -84,9 +84,9 @@ export class LocalRepoManipulator implements ForManagingLocalOutput {
           // hold and compared with the bytes there now, so a file no text says is
           // still kept whole (CORE-FR-207).
           if (!(charterOutputItem instanceof CompiledPrimitive)) continue;
-          const itemFolder = itemPlace.slice(0, itemPlace.lastIndexOf("/") + 1);
+          const itemFolderPath = itemPlace.slice(0, itemPlace.lastIndexOf("/") + 1);
           for (const { assetPath: assetFileName, contents: assetBytes, isExecutable } of charterOutputItem.assets) {
-            const assetPath = `${itemFolder}${assetFileName}`;
+            const assetPath = `${itemFolderPath}${assetFileName}`;
             const assetFilePath = resolveRepoPath(this.#checkoutFolder, assetPath);
             writePlanByPath.set(
               assetPath,
@@ -104,7 +104,7 @@ export class LocalRepoManipulator implements ForManagingLocalOutput {
         return [...writePlanByPath.values()];
       })(),
     ]);
-    return new ProjectionPlan([], cleanupPlan, layingPlan);
+    return new ProjectionPlan([], cleanupWritePlans, layingWritePlans);
   }
 
   async writePlan(projectionPlan: ProjectionPlan): Promise<void> {

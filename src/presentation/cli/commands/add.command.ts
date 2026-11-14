@@ -56,7 +56,7 @@ export class AddCommand implements Command<typeof OPTIONS> {
     if (primitiveRequirementsDTO.type === "Fault")
       return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveRequirementsDTO) };
     const primitiveHeaders = primitiveRequirementsDTO.data.headers.map((primitiveHeader) => primitiveHeader.data);
-    const listFields = new Set(
+    const listFieldNames = new Set(
       primitiveHeaders
         .filter((primitiveHeader) => primitiveHeader.shape === "list")
         .map((primitiveHeader) => primitiveHeader.field),
@@ -78,20 +78,20 @@ export class AddCommand implements Command<typeof OPTIONS> {
     // be a question with no wrong answer.
     const typedHeaders = header.length > 0 ? parseKVParams(header, "header") : undefined;
     if (typeof typedHeaders === "string") return { exitCode: EXIT_FAILURE, problemText: typedHeaders };
-    const repeatedField = Object.entries(typedHeaders ?? {}).find(
-      ([field, values]) => !listFields.has(field) && values.length > 1,
+    const repeatedFieldName = Object.entries(typedHeaders ?? {}).find(
+      ([field, values]) => !listFieldNames.has(field) && values.length > 1,
     )?.[0];
-    if (repeatedField !== undefined)
+    if (repeatedFieldName !== undefined)
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `"${repeatedField}" holds one line, and was typed ${typedHeaders?.[repeatedField]?.length} times.\n  Type "--header ${repeatedField}=..." once.\n`,
+        problemText: `"${repeatedFieldName}" holds one line, and was typed ${typedHeaders?.[repeatedFieldName]?.length} times.\n  Type "--header ${repeatedFieldName}=..." once.\n`,
       };
     let headerAnswers: Record<string, string | readonly string[]>;
     if (typedHeaders !== undefined)
       headerAnswers = Object.fromEntries(
         Object.entries(typedHeaders).map(([field, values]) => [
           field,
-          listFields.has(field) ? values : (values[0] ?? ""),
+          listFieldNames.has(field) ? values : (values[0] ?? ""),
         ]),
       );
     else {

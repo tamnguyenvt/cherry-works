@@ -30,8 +30,8 @@ const openInBrowser = (authorizationUrl: string) => void fetch(authorizationUrl)
 
 /** A kept credential made to have expired a minute ago. */
 const expire = async (credentialsRepository: InMemoryCredentialsRepository, address: string) => {
-  const credential = JSON.parse(credentialsRepository.secrets.get(address) ?? "");
-  await credentialsRepository.secrets.set(
+  const credential = JSON.parse(credentialsRepository.secretByAddress.get(address) ?? "");
+  await credentialsRepository.secretByAddress.set(
     address,
     JSON.stringify({ ...credential, expiresAt: new Date(Date.now() - 60_000).toISOString() }),
   );
@@ -82,7 +82,7 @@ test("an OAuth sign-in against an mcp origin ends with a credential in the store
     openInBrowser(authorizationUrl);
   });
 
-  const credential = JSON.parse(credentialsRepository.secrets.get(origin.address) ?? "");
+  const credential = JSON.parse(credentialsRepository.secretByAddress.get(origin.address) ?? "");
   assert.equal(shown.length, 1);
   assert.match(shown[0] ?? "", /code_challenge=/);
   assert.equal(credential.method, "oauth");
@@ -112,7 +112,7 @@ test("an expired credential is renewed on use, asking nothing, and the renewal k
 
   await expire(credentialsRepository, origin.address);
   assert.equal(await accessTokenOf(credentialsRepository, oauth, origin), "access-renewed-1");
-  const renewedCredential = JSON.parse(credentialsRepository.secrets.get(origin.address) ?? "");
+  const renewedCredential = JSON.parse(credentialsRepository.secretByAddress.get(origin.address) ?? "");
   assert.equal(renewedCredential.refreshToken, "refresh-1");
   assert.ok(Date.parse(renewedCredential.expiresAt) > Date.now());
   assert.equal(oauthTestServer.issued.authorization_code, 1);
@@ -142,7 +142,7 @@ test("a token credential never expires as far as cw knows, and is used as kept",
     endpoint: "https://mcp.linear.app/mcp",
     auth: [McpAuthMethod.TOKEN],
   });
-  await credentialsRepository.secrets.set(
+  await credentialsRepository.secretByAddress.set(
     origin.address,
     JSON.stringify({ address: origin.address, method: "token", accessToken: "lin" }),
   );
@@ -172,7 +172,7 @@ test("a credential kept for an mcp origin now at plain http on another machine i
     endpoint: "http://mcp.example/mcp",
     auth: [McpAuthMethod.TOKEN],
   });
-  await credentialsRepository.secrets.set(
+  await credentialsRepository.secretByAddress.set(
     origin.address,
     JSON.stringify({ address: origin.address, method: "token", accessToken: "t" }),
   );

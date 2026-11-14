@@ -49,7 +49,7 @@ export class GitSources implements ForFetchingCharterSources {
   /** `git init --bare` first, as nothing else needs a folder: a refusal with
    *  no such command is a machine without git, not a source out of reach. */
   async fetchCommit(source: string, version?: string): Promise<string> {
-    const storeFolder = await mkdtemp(join(tmpdir(), "cw-source-")).catch((storeError: unknown) => {
+    const storeFolderPath = await mkdtemp(join(tmpdir(), "cw-source-")).catch((storeError: unknown) => {
       throw new UnwritableSourceStoreFault(
         "A temporary folder for the source could not be made.",
         "Check that the temporary folder can be written.",
@@ -57,9 +57,9 @@ export class GitSources implements ForFetchingCharterSources {
       );
     });
     try {
-      await runGit("git", ["init", "--quiet", "--bare", storeFolder]);
+      await runGit("git", ["init", "--quiet", "--bare", storeFolderPath]);
     } catch (raisedValue) {
-      await rm(storeFolder, { recursive: true, force: true });
+      await rm(storeFolderPath, { recursive: true, force: true });
       if ((raisedValue as NodeJS.ErrnoException).code === "ENOENT")
         throw new MissingGitFault(
           "git is not installed here.",
@@ -73,19 +73,19 @@ export class GitSources implements ForFetchingCharterSources {
       );
     }
     try {
-      const repoFolder = fileURLToPath(this.#repoFolder);
+      const repoFolderPath = fileURLToPath(this.#repoFolder);
       // Read where the repository is, so what only applies there applies, every
       // scope at once and includes already expanded: a key with no value is a
       // `true`, and what says how a repository is laid out is the store's own.
-      const { stdout: repoConfigText } = await runGit("git", ["config", "--list", "--null"], { cwd: repoFolder }).catch(
-        (configError: unknown) => {
-          throw new UnreadableGitConfigFault(
-            "This repository's git config could not be read.",
-            "Check this repository's git config, and run this again.",
-            { internal: false, cause: configError },
-          );
-        },
-      );
+      const { stdout: repoConfigText } = await runGit("git", ["config", "--list", "--null"], {
+        cwd: repoFolderPath,
+      }).catch((configError: unknown) => {
+        throw new UnreadableGitConfigFault(
+          "This repository's git config could not be read.",
+          "Check this repository's git config, and run this again.",
+          { internal: false, cause: configError },
+        );
+      });
       const repoConfigEntries = repoConfigText
         .split("\0")
         .filter((configEntry) => configEntry !== "")
@@ -102,19 +102,19 @@ export class GitSources implements ForFetchingCharterSources {
         ]),
       );
       await runGit("git", ["fetch", "--quiet", "--no-tags", "--", source, version ?? "HEAD"], {
-        cwd: repoFolder,
+        cwd: repoFolderPath,
         env: {
           ...process.env,
           ...repoConfigEnv,
           GIT_CONFIG_COUNT: String(repoConfigEntries.length),
           GIT_CONFIG_NOSYSTEM: "1",
           GIT_CONFIG_GLOBAL: devNull,
-          GIT_DIR: storeFolder,
+          GIT_DIR: storeFolderPath,
         },
       });
-      return storeFolder;
+      return storeFolderPath;
     } catch (raisedValue) {
-      await rm(storeFolder, { recursive: true, force: true });
+      await rm(storeFolderPath, { recursive: true, force: true });
       if (raisedValue instanceof AdapterFault) throw raisedValue;
       // Said without the user and password an address may carry: git's words
       // name the address, and they are sent on to whoever asked, while what git
@@ -137,11 +137,11 @@ export class GitSources implements ForFetchingCharterSources {
   /** `git ls-tree -r`, the paths split on the NUL `-z` ends each with, so a
    *  path holding a newline or a quote is read as it is. */
   async listFilesAt(commit: string): Promise<readonly string[]> {
-    const storeFolder = commit;
+    const storeFolderPath = commit;
     try {
       const { stdout } = await runGit("git", ["ls-tree", "-r", "-z", "--name-only", FETCHED_REF], {
-        cwd: storeFolder,
-        env: { ...process.env, GIT_DIR: storeFolder },
+        cwd: storeFolderPath,
+        env: { ...process.env, GIT_DIR: storeFolderPath },
         maxBuffer: 64 * 1024 * 1024,
       });
       return stdout.split("\0").filter((path) => path !== "");
@@ -156,12 +156,12 @@ export class GitSources implements ForFetchingCharterSources {
 
   /** `git show FETCH_HEAD:<path>`. */
   async readFileAt(commit: string, path: string): Promise<string> {
-    const storeFolder = commit;
+    const storeFolderPath = commit;
     try {
       return (
         await runGit("git", ["show", `${FETCHED_REF}:${path}`], {
-          cwd: storeFolder,
-          env: { ...process.env, GIT_DIR: storeFolder },
+          cwd: storeFolderPath,
+          env: { ...process.env, GIT_DIR: storeFolderPath },
           maxBuffer: 64 * 1024 * 1024,
         })
       ).stdout;
@@ -178,13 +178,13 @@ export class GitSources implements ForFetchingCharterSources {
    *  blob as it was committed, with no textconv a user's own git config sets
    *  (CORE-FR-207). */
   async readBytesAt(commit: string, path: string): Promise<Uint8Array> {
-    const storeFolder = commit;
+    const storeFolderPath = commit;
     try {
       return new Uint8Array(
         (
           await runGit("git", ["cat-file", "blob", `${FETCHED_REF}:${path}`], {
-            cwd: storeFolder,
-            env: { ...process.env, GIT_DIR: storeFolder },
+            cwd: storeFolderPath,
+            env: { ...process.env, GIT_DIR: storeFolderPath },
             maxBuffer: 64 * 1024 * 1024,
             encoding: "buffer",
           })
@@ -205,17 +205,17 @@ export class GitSources implements ForFetchingCharterSources {
    *  repository's own index, and what is staged in it, is never read from or
    *  written to. */
   async checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void> {
-    const storeFolder = commit;
-    const repoFolder = fileURLToPath(this.#repoFolder);
-    const checkoutFolder = join(storeFolder, "cw-checkout");
-    const intoFolder = join(repoFolder, intoSubFolder);
-    const copyFolder = `${intoFolder}.cw-checkout`;
-    const previousFolder = `${intoFolder}.cw-previous`;
+    const storeFolderPath = commit;
+    const repoFolderPath = fileURLToPath(this.#repoFolder);
+    const checkoutFolderPath = join(storeFolderPath, "cw-checkout");
+    const intoFolderPath = join(repoFolderPath, intoSubFolder);
+    const copyFolderPath = `${intoFolderPath}.cw-checkout`;
+    const previousFolderPath = `${intoFolderPath}.cw-previous`;
     // A link a source put on the way here would carry all that follows out of its folder (CORE-FR-044).
     const intoFolderNames = intoSubFolder.split("/");
     for (const [folderNameIndex] of intoFolderNames.entries()) {
       const stepPath = intoFolderNames.slice(0, folderNameIndex + 1).join("/");
-      const stepStats = await lstat(join(repoFolder, stepPath)).catch(() => undefined);
+      const stepStats = await lstat(join(repoFolderPath, stepPath)).catch(() => undefined);
       if (stepStats === undefined) break;
       if (stepStats.isSymbolicLink())
         throw new LinkedFolderFault(
@@ -226,29 +226,29 @@ export class GitSources implements ForFetchingCharterSources {
     }
     const checkoutEnv = {
       ...process.env,
-      GIT_DIR: storeFolder,
-      GIT_WORK_TREE: checkoutFolder,
-      GIT_INDEX_FILE: join(storeFolder, "cw-checkout-index"),
+      GIT_DIR: storeFolderPath,
+      GIT_WORK_TREE: checkoutFolderPath,
+      GIT_INDEX_FILE: join(storeFolderPath, "cw-checkout-index"),
     };
     try {
-      for (const staleFolder of [checkoutFolder, copyFolder, previousFolder])
-        await rm(staleFolder, { recursive: true, force: true });
+      for (const staleFolderPath of [checkoutFolderPath, copyFolderPath, previousFolderPath])
+        await rm(staleFolderPath, { recursive: true, force: true });
       await rm(checkoutEnv.GIT_INDEX_FILE, { force: true });
-      await mkdir(checkoutFolder);
+      await mkdir(checkoutFolderPath);
       await runGit(
         "git",
         ["read-tree", `--prefix=${intoSubFolder}/`, fromFolder === "" ? FETCHED_REF : `${FETCHED_REF}:${fromFolder}`],
-        { cwd: checkoutFolder, env: checkoutEnv },
+        { cwd: checkoutFolderPath, env: checkoutEnv },
       );
-      await runGit("git", ["checkout-index", "--all", "--force"], { cwd: checkoutFolder, env: checkoutEnv });
-      await cp(join(checkoutFolder, intoSubFolder), copyFolder, { recursive: true, verbatimSymlinks: true });
-      await rename(intoFolder, previousFolder).catch((renameError: NodeJS.ErrnoException) => {
+      await runGit("git", ["checkout-index", "--all", "--force"], { cwd: checkoutFolderPath, env: checkoutEnv });
+      await cp(join(checkoutFolderPath, intoSubFolder), copyFolderPath, { recursive: true, verbatimSymlinks: true });
+      await rename(intoFolderPath, previousFolderPath).catch((renameError: NodeJS.ErrnoException) => {
         if (renameError.code !== "ENOENT") throw renameError;
       });
-      await rename(copyFolder, intoFolder);
+      await rename(copyFolderPath, intoFolderPath);
     } catch (checkoutError) {
-      await rm(copyFolder, { recursive: true, force: true });
-      await rename(previousFolder, intoFolder).catch((renameError: NodeJS.ErrnoException) => {
+      await rm(copyFolderPath, { recursive: true, force: true });
+      await rename(previousFolderPath, intoFolderPath).catch((renameError: NodeJS.ErrnoException) => {
         if (renameError.code !== "ENOENT")
           throw new UnrestoredFolderFault(
             `What "${intoSubFolder}" held could not be put back.`,
@@ -262,7 +262,7 @@ export class GitSources implements ForFetchingCharterSources {
         { internal: false, cause: checkoutError },
       );
     }
-    await rm(previousFolder, { recursive: true, force: true }).catch((rmError: unknown) => {
+    await rm(previousFolderPath, { recursive: true, force: true }).catch((rmError: unknown) => {
       throw new LeftoverFolderFault(
         `"${intoSubFolder}.cw-previous" could not be deleted.`,
         `"${intoSubFolder}" is in place: delete "${intoSubFolder}.cw-previous" beside it.`,
@@ -274,7 +274,7 @@ export class GitSources implements ForFetchingCharterSources {
   /** A store left behind is only a temporary folder, and never worth reporting
    *  a source that landed as one that failed. */
   async removeFetchedCommit(commit: string): Promise<void> {
-    const storeFolder = commit;
-    await rm(storeFolder, { recursive: true, force: true }).catch(() => undefined);
+    const storeFolderPath = commit;
+    await rm(storeFolderPath, { recursive: true, force: true }).catch(() => undefined);
   }
 }

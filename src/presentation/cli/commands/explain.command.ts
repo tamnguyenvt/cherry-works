@@ -1,4 +1,4 @@
-import { BUILTIN_LAYER, type LayerName, REPO_LAYER, VENDOR_LAYER } from "#module/charter/module.js";
+import { BUILTIN_LAYER_NAME, type LayerName, REPO_LAYER_NAME, VENDOR_LAYER_NAME } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
@@ -23,9 +23,9 @@ const OPTIONS = {
  *  a charter is made of, and the path above already names the vendor it was
  *  installed as (FR-023, FR-017). */
 const SAID_BY_LAYER: Readonly<Record<LayerName, string>> = {
-  [REPO_LAYER]: "authored in this repository",
-  [VENDOR_LAYER]: "installed from a vendor",
-  [BUILTIN_LAYER]: "built into cw, and not authored in this repository",
+  [REPO_LAYER_NAME]: "authored in this repository",
+  [VENDOR_LAYER_NAME]: "installed from a vendor",
+  [BUILTIN_LAYER_NAME]: "built into cw, and not authored in this repository",
 };
 
 /**
@@ -56,10 +56,10 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
       return { exitCode: EXIT_FAILURE, problemText: printFault(explanationOutcomeDTO) };
 
     if (explanationOutcomeDTO.type === "FaultsByFile") {
-      const noOfFiles = Object.keys(explanationOutcomeDTO.data.files).length;
+      const faultyFileCount = Object.keys(explanationOutcomeDTO.data.files).length;
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `Nothing was explained: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+        problemText: `Nothing was explained: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
       };
     }
 
@@ -69,12 +69,12 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
     // is read off the primitive's own header, and said as not resolving rather
     // than left out, since it is a warning and the explanation still stands
     // (FR-029).
-    const citedRationale = primitive.data.headers.rationale;
+    const rationaleId = primitive.data.headers.rationale;
     // What this one primitive declared, beside what its kind says of all of
     // them: the line above says a sensor runs what it names, and this is where
     // what it names is read. Its id and description are said on the first line.
     const declaredHeaders = Object.entries(primitive.data.headers).filter(
-      ([name]) => name !== "id" && name !== "description",
+      ([headerName]) => headerName !== "id" && headerName !== "description",
     );
     return {
       exitCode: EXIT_OK,
@@ -84,14 +84,14 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
         `  ${SAID_BY_LAYER[primitive.data.layerName]}`,
         `  comes up when ${activatesWhen}`,
         ...declaredHeaders.map(
-          ([name, headerValue]) =>
-            `  declares ${name}: ${typeof headerValue === "string" ? headerValue : headerValue.join(", ")}`,
+          ([headerName, headerValue]) =>
+            `  declares ${headerName}: ${typeof headerValue === "string" ? headerValue : headerValue.join(", ")}`,
         ),
         ...useMixins.map(({ data: mixinEntry }) => `  uses mixin ${mixinEntry.id}`),
         ...(rationale !== undefined
           ? [`  rationale ${rationale.data.id}`]
-          : citedRationale !== undefined
-            ? [`  rationale ${String(citedRationale)} (does not resolve)`]
+          : rationaleId !== undefined
+            ? [`  rationale ${String(rationaleId)} (does not resolve)`]
             : []),
         ...usedByPrimitives.map(({ data: pullerPrimitive }) => `  mixin of ${pullerPrimitive.id}`),
         ...citers.map(({ data: citerEntry }) => `  rationale of ${citerEntry.id}`),

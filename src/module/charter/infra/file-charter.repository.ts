@@ -19,12 +19,11 @@ import {
   RawPrimitive,
   RawSourceSkill,
   RawTestSuite,
+  RawVendorRoot,
   RawVendorSource,
   SkillPrimitive,
   SourceCharter,
   type TestSuite,
-  type VendorRoot,
-  VendorRootFactory,
   type VendorSource,
   type VendorSourceOrigin,
   vendorSourcePath,
@@ -35,7 +34,8 @@ import {
   createOldLayoutFault,
   findItemPlace,
   findOldLayoutPaths,
-  findSkillFiles,
+  findSkillFilePaths,
+  findVendorNames,
   OUT_FOLDER,
   readRawPrimitives,
 } from "./helper.js";
@@ -81,13 +81,19 @@ export class FileCharterRepository implements ForManagingCharter {
       )
     ).flat();
     const findFileAddress = (path: string) => this.#fileReader.findFileAddress(path);
+    const vendorPathPrefix = `${charterPath.vendorsFolderPath}/`;
     return [
       ...readRawPrimitives(keptFiles, `${charterPath.primitivesFolderPath}/`, PrimitiveLayer.REPO, findFileAddress),
-      ...this.#readVendorRoot(keptFiles.map(({ path }) => path)).vendors.flatMap(({ name }) =>
+      ...findVendorNames(
+        keptFiles
+          .filter(({ path }) => path.startsWith(vendorPathPrefix))
+          .map(({ path }) => path.slice(vendorPathPrefix.length)),
+        findFileAddress,
+      ).flatMap((vendorName) =>
         readRawPrimitives(
           keptFiles,
-          `${charterPath.vendorsFolderPath}/${name}/${charterPath.primitivesFolderName}/`,
-          PrimitiveLayer.vendorLayerOf(name),
+          `${charterPath.vendorsFolderPath}/${vendorName}/${charterPath.primitivesFolderName}/`,
+          PrimitiveLayer.vendorLayerOf(vendorName),
           findFileAddress,
         ),
       ),
@@ -152,14 +158,14 @@ export class FileCharterRepository implements ForManagingCharter {
       // Going down from a kind's folder the first index.md is the primitive, so
       // a folder inside another primitive's would be one of its assets, and one
       // holding a primitive would take it for one of its own (FR-167).
-      const primitiveFolder = indexPath.slice(0, -BasePrimitive.indexFileName.length);
-      const kindFolder = `${charterPath.primitivesFolderPath}/${rawPrimitive.kind}/`;
+      const primitiveFolderPath = indexPath.slice(0, -BasePrimitive.indexFileName.length);
+      const kindFolderPath = `${charterPath.primitivesFolderPath}/${rawPrimitive.kind}/`;
       const indexPathInTheWay = [...charterFilePaths, ...addedIndexPaths].find(
         (charterFilePath) =>
-          charterFilePath.startsWith(kindFolder) &&
+          charterFilePath.startsWith(kindFolderPath) &&
           charterFilePath.endsWith(`/${BasePrimitive.indexFileName}`) &&
-          (primitiveFolder.startsWith(charterFilePath.slice(0, charterFilePath.lastIndexOf("/") + 1)) ||
-            charterFilePath.startsWith(primitiveFolder)),
+          (primitiveFolderPath.startsWith(charterFilePath.slice(0, charterFilePath.lastIndexOf("/") + 1)) ||
+            charterFilePath.startsWith(primitiveFolderPath)),
       );
       if (indexPathInTheWay !== undefined && isFolderOwned)
         throw new OverlappingPrimitiveFoldersFault(
@@ -174,7 +180,7 @@ export class FileCharterRepository implements ForManagingCharter {
           { internal: false },
         );
       const heldPath = isFolderOwned
-        ? charterFilePaths.find((charterFilePath) => charterFilePath.startsWith(primitiveFolder))
+        ? charterFilePaths.find((charterFilePath) => charterFilePath.startsWith(primitiveFolderPath))
         : undefined;
       if (heldPath !== undefined)
         throw new OverlappingPrimitiveFoldersFault(
@@ -190,20 +196,20 @@ export class FileCharterRepository implements ForManagingCharter {
       // An asset already standing there is its author's, and is left as it is
       // (FR-167).
       for (const assetFile of rawPrimitive.assets) {
-        const assetPath = `${primitiveFolder}${assetFile.assetPath}`;
+        const assetPath = `${primitiveFolderPath}${assetFile.assetPath}`;
         if (
           !new URL(assetPath.split("/").map(encodeURIComponent).join("/"), UNROOTED_FOLDER).href.startsWith(
-            new URL(primitiveFolder, UNROOTED_FOLDER).href,
+            new URL(primitiveFolderPath, UNROOTED_FOLDER).href,
           )
         )
           throw isFolderOwned
             ? new FileOutsideFolderFault(
-                `${assetFile.assetPath} would land outside ${primitiveFolder}.`,
+                `${assetFile.assetPath} would land outside ${primitiveFolderPath}.`,
                 "Inject from a source whose files stay inside each primitive's folder.",
                 { internal: false },
               )
             : new FileOutsideFolderFault(
-                `${assetFile.assetPath} would land outside ${primitiveFolder}.`,
+                `${assetFile.assetPath} would land outside ${primitiveFolderPath}.`,
                 "Keep every file of a primitive inside its folder.",
                 { internal: false },
               );
@@ -237,10 +243,10 @@ export class FileCharterRepository implements ForManagingCharter {
   async removePrimitive(primitive: Primitive): Promise<void> {
     await assertNewLayout(this.#fileReader);
     const indexPath = this.#findIndexPath(primitive.kind, primitive.headers.id);
-    const primitiveFolder = indexPath.slice(0, -BasePrimitive.indexFileName.length);
+    const primitiveFolderPath = indexPath.slice(0, -BasePrimitive.indexFileName.length);
     const removedPaths = [
       indexPath,
-      ...primitive.assets.map((assetFile) => `${primitiveFolder}${assetFile.assetPath}`),
+      ...primitive.assets.map((assetFile) => `${primitiveFolderPath}${assetFile.assetPath}`),
     ];
     this.#assertInsideCharter(removedPaths);
     for (const path of removedPaths) await this.#fileWriter.deleteFile(path);
@@ -271,8 +277,8 @@ export class FileCharterRepository implements ForManagingCharter {
             .map(async (path) => ({ path, contents: await this.#sourceFetcher.readBytesAt(fetchedCommit, path) })),
         );
       /** One charter of the source, under this folder of it: "" for its own. */
-      const loadSourceCharter = async (charterName: string, charterSource: string): Promise<SourceCharter> => {
-        const sourcePrefix = charterSource === "" ? "" : `${charterSource}/`;
+      const loadSourceCharter = async (charterName: string, charterFolderPath: string): Promise<SourceCharter> => {
+        const sourcePrefix = charterFolderPath === "" ? "" : `${charterFolderPath}/`;
         const charterPrefix = `${sourcePrefix}${charterPath.primitivesFolderPath}/`;
         return new SourceCharter(
           charterName,
@@ -285,7 +291,7 @@ export class FileCharterRepository implements ForManagingCharter {
             PrimitiveLayer.REPO,
             (path) => path,
           ).filter(({ isKeptApart }) => isKeptApart),
-          charterSource,
+          charterFolderPath,
           `${sourcePrefix}${charterPath.vendorsFolderPath}`,
           `${sourcePrefix}${charterPath.primitivesFolderPath}`,
         );
@@ -309,15 +315,15 @@ export class FileCharterRepository implements ForManagingCharter {
         ),
       );
       const rawSourceSkills = await Promise.all(
-        findSkillFiles(sourcePaths).map(async (skillFile) => {
-          const skillFolderPrefix = skillFile.slice(0, -vendorSourcePath.skillFileName.length);
+        findSkillFilePaths(sourcePaths).map(async (skillFilePath) => {
+          const skillFolderPrefix = skillFilePath.slice(0, -vendorSourcePath.skillFileName.length);
           const assets = (await readFilesUnder(skillFolderPrefix))
-            .filter(({ path }) => path !== skillFile)
+            .filter(({ path }) => path !== skillFilePath)
             .map(({ path, contents }) => new AssetFile(path.slice(skillFolderPrefix.length), contents));
           return new RawSourceSkill(
-            await this.#sourceFetcher.readFileAt(fetchedCommit, skillFile),
+            await this.#sourceFetcher.readFileAt(fetchedCommit, skillFilePath),
             assets,
-            skillFile,
+            skillFilePath,
             skillFolderPrefix.slice(0, -1),
           );
         }),
@@ -333,7 +339,7 @@ export class FileCharterRepository implements ForManagingCharter {
     await this.#sourceFetcher.removeFetchedCommit(rawVendorSource.commit);
   }
 
-  async loadVendorRoot(): Promise<VendorRoot> {
+  async loadVendorRoot(): Promise<RawVendorRoot> {
     await assertNewLayout(this.#fileReader);
     // The path of every file kept under the vendor folder. Listed, never read:
     // a link a source left there is no file of a vendor's, and reading it would
@@ -342,7 +348,15 @@ export class FileCharterRepository implements ForManagingCharter {
       ...(await this.#fileReader.listFiles(folderPath)).map(({ path }) => path),
       ...(await Promise.all((await this.#fileReader.listFolders(folderPath)).map(listFilePathsUnder))).flat(),
     ];
-    return this.#readVendorRoot(await listFilePathsUnder(charterPath.vendorsFolderPath));
+    const vendorPathPrefix = `${charterPath.vendorsFolderPath}/`;
+    return new RawVendorRoot(
+      findVendorNames(
+        (await listFilePathsUnder(charterPath.vendorsFolderPath))
+          .filter((filePath) => filePath.startsWith(vendorPathPrefix))
+          .map((filePath) => filePath.slice(vendorPathPrefix.length)),
+        (path) => this.#fileReader.findFileAddress(path),
+      ),
+    );
   }
 
   async storeVendor(vendorSource: VendorSource): Promise<void> {
@@ -362,13 +376,13 @@ export class FileCharterRepository implements ForManagingCharter {
     for (const { name, sourceFolder } of vendorSource.charters)
       writeOrCopyPlans.push(new CopyPlan(sourceFolder, findPrimitivesFolder(name)));
     for (const { convertedSkill, sourceFolder } of vendorSource.skills) {
-      const skillFolder = `${findPrimitivesFolder(vendorSourcePath.ownCharterName)}/${SkillPrimitive.kind}/${convertedSkill.headers.id}`;
+      const skillFolderPath = `${findPrimitivesFolder(vendorSourcePath.ownCharterName)}/${SkillPrimitive.kind}/${convertedSkill.headers.id}`;
       const [indexPath, skillFilePath] = [
-        `${skillFolder}/${SkillPrimitive.indexFileName}`,
-        `${skillFolder}/${vendorSourcePath.skillFileName}`,
+        `${skillFolderPath}/${SkillPrimitive.indexFileName}`,
+        `${skillFolderPath}/${vendorSourcePath.skillFileName}`,
       ];
       writeOrCopyPlans.push(
-        new CopyPlan(sourceFolder, skillFolder),
+        new CopyPlan(sourceFolder, skillFolderPath),
         new WritePlan(indexPath, indexPath, convertedSkill.writeMarkdown()),
       );
       cleanupPlans.push(new WritePlan(skillFilePath, skillFilePath));
@@ -400,12 +414,12 @@ export class FileCharterRepository implements ForManagingCharter {
 
   async removeVendor(vendorName: string): Promise<void> {
     await assertNewLayout(this.#fileReader);
-    const vendorFolder = `${charterPath.vendorsFolderPath}/${vendorName}`;
-    await this.#fileWriter.deleteFolder(vendorFolder);
+    const vendorFolderPath = `${charterPath.vendorsFolderPath}/${vendorName}`;
+    await this.#fileWriter.deleteFolder(vendorFolderPath);
     // Each folder above it goes too once nothing is left in it, up to the
     // vendor folder and never past it.
     for (
-      let parentFolderNames = vendorFolder.split("/").slice(0, -1);
+      let parentFolderNames = vendorFolderPath.split("/").slice(0, -1);
       `${parentFolderNames.join("/")}/`.startsWith(`${charterPath.vendorsFolderPath}/`);
       parentFolderNames = parentFolderNames.slice(0, -1)
     )
@@ -458,19 +472,6 @@ export class FileCharterRepository implements ForManagingCharter {
   async removeEvalSuite(name: string): Promise<void> {
     await assertNewLayout(this.#fileReader);
     await this.#fileWriter.deleteFile(`${charterPath.evalFolderPath}/${name}`);
-  }
-
-  /** The vendors these kept files make, each file's path handed from the
-   *  vendor folder and each vendor's uri said in this store's words. */
-  #readVendorRoot(keptFilePaths: readonly string[]): VendorRoot {
-    const vendorPathPrefix = `${charterPath.vendorsFolderPath}/`;
-    return VendorRootFactory.create(
-      keptFilePaths
-        .filter((filePath) => filePath.startsWith(vendorPathPrefix))
-        .map((filePath) => filePath.slice(vendorPathPrefix.length)),
-      charterPath.primitivesFolderName,
-      (vendorFolderPath) => this.#fileReader.findFileAddress(`${vendorPathPrefix}${vendorFolderPath}`),
-    );
   }
 
   /** Where a primitive of the repository's own layer is kept. */

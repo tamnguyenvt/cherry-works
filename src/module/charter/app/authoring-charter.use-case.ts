@@ -48,6 +48,8 @@ import { TestRootFactory } from "../domain/models/test/test-root.factory.js";
 import type { TestRoot } from "../domain/models/test/test-root.js";
 import { TestSuiteFactory } from "../domain/models/test/test-suite.factory.js";
 import { TestSuite } from "../domain/models/test/test-suite.js";
+import { VendorRootFactory } from "../domain/models/vendor/vendor-root.factory.js";
+import type { VendorRoot } from "../domain/models/vendor/vendor-root.js";
 import { VendorSourceFactory } from "../domain/models/vendor/vendor-source.factory.js";
 import type { SourceCharter, VendorSource } from "../domain/models/vendor/vendor-source.js";
 import { VendorSourceOriginFactory } from "../domain/models/vendor/vendor-source-origin.factory.js";
@@ -143,11 +145,11 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
 
       // A warning is said and lets the run through; what refuses it is only the
       // errors among the faults (FR-005, FR-009).
-      const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
-      const charterErrorFaultsByFile = charter.allFaultsByFiles.filterErrors();
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
-      const catalogue = CatalogueFactory.create(charter, (primitive) => primitive.uri);
+      const catalogue = CatalogueFactory.create(charterRoot, (primitive) => primitive.uri);
       return CharterDTOs.Catalogue.of({
         // Each entry copied out of its model, so the caller is answered plain
         // data (CORE-FR-223).
@@ -174,15 +176,15 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     searchText?: string,
   ): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.listPrimitives", async () => {
-      const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
-      const charterErrorFaultsByFile = charter.allFaultsByFiles.filterErrors();
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
       // Ordered by id, the way the catalogue orders its entries.
       const shownPrimitives =
         searchText === undefined
-          ? charter.primitives
-          : charter.primitives.filter((primitive) => primitive.hasWord(searchText));
+          ? charterRoot.primitives
+          : charterRoot.primitives.filter((primitive) => primitive.hasWord(searchText));
       return CharterDTOs.Primitives.of({
         primitives: [...shownPrimitives]
           .sort((leftPrimitive, rightPrimitive) =>
@@ -221,11 +223,11 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       // Held to the shape an id is written in before anything is read: text
       // that is not one names nothing to look for (FR-014).
       const primitiveId = Primitives.idOf(id);
-      const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
-      const charterErrorFaultsByFile = charter.allFaultsByFiles.filterErrors();
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
-      const declaredPrimitive = charter.primitiveById.get(primitiveId);
+      const declaredPrimitive = charterRoot.primitiveById.get(primitiveId);
       if (declaredPrimitive === undefined)
         throw new UnknownIdFault(
           `This charter holds no "${id}".`,
@@ -259,17 +261,17 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
           .filter(([, situations]) => situations.length > 0),
       );
 
-      const rationalePrimitive = charter.rationaleOf(declaredPrimitive);
+      const rationalePrimitive = charterRoot.rationaleOf(declaredPrimitive);
       return CharterDTOs.ExplanationOutcome.of({
         primitive: this.#primitiveDTOOf(declaredPrimitive),
         // When it comes up is its kind's to say, in the words `cw kinds` says it
         // in, so it is read off the class that reads the kind (FR-029).
         activatesWhen: declaredPrimitive.activatesWhen,
-        useMixins: charter.mixinsOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
+        useMixins: charterRoot.mixinsOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
         ...(rationalePrimitive === undefined ? {} : { rationale: this.#primitiveDTOOf(rationalePrimitive) }),
-        usedByPrimitives: charter.pullersOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
-        citers: charter.citersOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
-        mentioners: charter.mentionersOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
+        usedByPrimitives: charterRoot.pullersOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
+        citers: charterRoot.citersOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
+        mentioners: charterRoot.mentionersOf(declaredPrimitive).map((primitive) => this.#primitiveDTOOf(primitive)),
         testCasesByFile: CharterDTOs.TestCasesByFile.of(testCasesByFile),
       });
     });
@@ -351,14 +353,14 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         // read (FR-009).
         if (!(raisedValue instanceof UnsoundModelFault)) throw raisedValue;
         const findingFaults = raisedValue.faults.filter(
-          (error): error is DomainFault => error instanceof DomainFault && !error.internal,
+          (raisedFault): raisedFault is DomainFault => raisedFault instanceof DomainFault && !raisedFault.internal,
         );
         if (findingFaults.length !== raisedValue.faults.length) throw raisedValue;
         return this.faultsDTOOf(new Faults(findingFaults));
       }
 
-      const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
-      const claimingPrimitive = charter.primitiveById.get(id);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      const claimingPrimitive = charterRoot.primitiveById.get(id);
       if (claimingPrimitive !== undefined)
         throw new ClaimedIdFault(
           `"${id}" is already there, declared by ${claimingPrimitive.uri}, and one id names one primitive in the whole charter.`,
@@ -438,7 +440,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       } catch (raisedValue) {
         if (!(raisedValue instanceof UnsoundModelFault)) throw raisedValue;
         const findingFaults = raisedValue.faults.filter(
-          (error): error is DomainFault => error instanceof DomainFault && !error.internal,
+          (raisedFault): raisedFault is DomainFault => raisedFault instanceof DomainFault && !raisedFault.internal,
         );
         if (findingFaults.length !== raisedValue.faults.length) throw raisedValue;
         return this.faultsDTOOf(new Faults(findingFaults));
@@ -604,9 +606,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  changing nothing. */
   async removeVendor(name: string): Promise<CharterDTOs.VendorFolder | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.removeVendor", async () => {
-      const installedVendor = (await this.#charterRepository.loadVendorRoot()).vendors.find(
-        (listedVendor) => listedVendor.name === name,
-      );
+      const installedVendor = (await this.#loadVendorRoot()).vendors.find((listedVendor) => listedVendor.name === name);
       if (installedVendor === undefined)
         throw new UnknownVendorFault(
           `No vendor folder is named "${name}".`,
@@ -623,7 +623,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       // Listed the way the charter finds its vendor layers, so what is listed is
       // what the charter reads (FR-053).
       return CharterDTOs.VendorFolders.of({
-        folders: (await this.#charterRepository.loadVendorRoot()).vendors.map(({ uri }) => uri),
+        folders: (await this.#loadVendorRoot()).vendors.map(({ uri }) => uri),
       });
     });
   }
@@ -811,10 +811,10 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    */
   async testCharter(): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.testCharter", async () => {
-      const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
       // A warning is said and lets the run through; what refuses it is only the
       // errors among the faults (FR-005).
-      const charterErrorFaultsByFile = charter.allFaultsByFiles.filterErrors();
+      const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
       const testRoot = TestRootFactory.create(await this.#charterRepository.loadTestSuites());
@@ -827,7 +827,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       return CharterDTOs.TestRunReport.of({
         testCaseReports: Object.entries(testRoot.testSuiteByFile)
           .flatMap(([filePath, suite]) =>
-            TestSuiteService.runSuite(charter, testRoot.suiteNameByFile[filePath] ?? filePath, suite),
+            TestSuiteService.runSuite(charterRoot, testRoot.suiteNameByFile[filePath] ?? filePath, suite),
           )
           .map(({ suiteName, situation, hasPassed, unmetFault }) =>
             CharterDTOs.TestCaseReport.of({
@@ -884,10 +884,10 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
           'Declare its endpoint as https://, then run "cw build".',
           { internal: false },
         );
-      const signInAgain = `Run "cw mcp auth ${mcpId}" at a terminal to sign in there.`;
+      const signInAgainFix = `Run "cw mcp auth ${mcpId}" at a terminal to sign in there.`;
       const credential = await this.#credentialsRepository.readCredential(address);
       if (credential === undefined)
-        throw new NotSignedInFault(`You are not signed in to ${address}.`, signInAgain, { internal: false });
+        throw new NotSignedInFault(`You are not signed in to ${address}.`, signInAgainFix, { internal: false });
 
       // A credential the mcp origin has just refused is renewed as an expired one is:
       // the mcp origin knows better than `expiresAt` (FR-151).
@@ -902,9 +902,13 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
           ? await this.#oauthAuthorizer.renewGrant(endpoint, { ...tokens, client })
           : undefined;
       if (renewedGrant === undefined)
-        throw new ExpiredSignInFault(`Your sign-in to ${address} has expired and could not be renewed.`, signInAgain, {
-          internal: false,
-        });
+        throw new ExpiredSignInFault(
+          `Your sign-in to ${address} has expired and could not be renewed.`,
+          signInAgainFix,
+          {
+            internal: false,
+          },
+        );
 
       await this.#credentialsRepository.writeCredential({
         address,
@@ -921,8 +925,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  raises it: there is no file it is wrong with. */
   async #findPrimitiveById(id: string): Promise<Primitive> {
     const primitiveId = Primitives.idOf(id);
-    const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
-    const primitive = charter.primitiveById.get(primitiveId);
+    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+    const primitive = charterRoot.primitiveById.get(primitiveId);
     if (primitive === undefined)
       throw new UnknownIdFault(`This charter holds no "${id}".`, 'Run "cw list --min" to see every id it does hold.', {
         internal: false,
@@ -1001,6 +1005,14 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     return EvalRootFactory.create(await this.#charterRepository.loadEvalSuites());
   }
 
+  /** What this repository installed from others, as `VendorRootFactory.create`
+   *  makes it of the vendors its store keeps (FR-053). */
+  async #loadVendorRoot(): Promise<VendorRoot> {
+    return VendorRootFactory.create(await this.#charterRepository.loadVendorRoot(), (vendorName) =>
+      this.#charterRepository.findVendorUri(vendorName),
+    );
+  }
+
   /** Refused unless a file of evaluation cases is listed under this name, so
    *  nothing but one is ever written over or taken away. */
   async #ensureEvalSuiteNamed(evalSuiteName: string): Promise<void> {
@@ -1023,12 +1035,12 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    * would never be listed for the sign-in that lets it build.
    */
   async #loadSignInAddresses(): Promise<readonly Pick<McpOrigin, "address" | "endpoint" | "ids" | "auth">[]> {
-    const charter = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
     const signInAddressByAddress = new Map<
       string,
       { endpoint?: string; ids: Set<string>; auth: Set<McpAuthMethodName> }
     >();
-    for (const mcpPrimitive of charter.primitives) {
+    for (const mcpPrimitive of charterRoot.primitives) {
       if (!(mcpPrimitive instanceof McpPrimitive) || mcpPrimitive.headers.auth === undefined) continue;
       const { id, endpoint, auth } = mcpPrimitive.headers;
       const signInAddress = signInAddressByAddress.get(mcpPrimitive.address) ?? {

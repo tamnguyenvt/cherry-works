@@ -1,3 +1,5 @@
+import type { AgentProvider } from "#module/shared/module.js";
+
 /**
  * One file an agent reads, whichever agent: what it is and what it holds, so
  * laying it knows nothing of the agent that asked for it but its kind there
@@ -11,7 +13,7 @@
 export abstract class ProviderComponent {
   constructor(
     /** The agent that reads it. */
-    readonly agentName: string,
+    readonly agentProvider: AgentProvider,
     /** The kind of the primitive it was compiled from, or `charter` where it
      *  is the whole charter's. */
     readonly primitiveKind: string,
@@ -20,13 +22,9 @@ export abstract class ProviderComponent {
     readonly id: string,
     /** The whole of what the file holds, or of this engine's part of it, each
      *  path into the compiled output under `$CW_OUT/`. */
-    readonly document: string,
+    readonly text: string,
     readonly warnings: readonly string[] = [],
   ) {}
-
-  get text(): string {
-    return this.document;
-  }
 
   /** Which of its agent's kinds this is. Each class declares it as a literal. */
   abstract readonly kind: string;

@@ -6,7 +6,7 @@ import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-s
 import { Catalogue } from "../src/module/charter/domain/models/charter-output/catalogue.js";
 import { CharterOutputService } from "../src/module/charter/domain/services/charter-output.service.js";
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
-import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
+import { AgentProvider } from "../src/module/shared/domain/models/agent/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 

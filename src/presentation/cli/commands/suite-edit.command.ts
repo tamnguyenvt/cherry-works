@@ -30,16 +30,19 @@ export class SuiteEditCommand implements Command<typeof OPTIONS> {
   readonly summary = "Open one test file in your editor";
   readonly options = OPTIONS;
 
-  async runCommand({ cwd, charterAuthoringApp }: Context, { name }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async runCommand(
+    { cwd, charterAuthoringApp }: Context,
+    { name: testSuiteName }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
     const testSuitesDTO = await charterAuthoringApp.listTestSuites();
     if (testSuitesDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(testSuitesDTO) };
-    if (!testSuitesDTO.data.testSuites.some((testSuite) => testSuite.data.name === name))
+    if (!testSuitesDTO.data.testSuites.some((testSuite) => testSuite.data.name === testSuiteName))
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `${charterPath.testFolderPath}/ holds no test file called "${name ?? ""}".\n  Run "cw suite add" to write a new one.\n`,
+        problemText: `${charterPath.testFolderPath}/ holds no test file called "${testSuiteName ?? ""}".\n  Run "cw suite add" to write a new one.\n`,
       };
 
-    const filePath = `${charterPath.testFolderPath}/${name}`;
+    const filePath = `${charterPath.testFolderPath}/${testSuiteName}`;
     const editorProblem = await editInEditor(cwd, filePath);
     if (editorProblem !== undefined) return { exitCode: EXIT_FAILURE, problemText: editorProblem };
 

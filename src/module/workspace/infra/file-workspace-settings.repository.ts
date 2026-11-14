@@ -25,12 +25,12 @@ export class FileWorkspaceSettingsRepository implements ForStoringWorkspaceSetti
     return settingsText === undefined ? undefined : new RawWorkspaceSettings(settingsText);
   }
 
-  async saveSettings({ agents, mainContextCeiling }: WorkspaceSettings): Promise<void> {
+  async saveSettings({ agentProviders, mainContextCeiling }: WorkspaceSettings): Promise<void> {
     const keptCeiling =
       mainContextCeiling === WorkspaceSettings.defaultMainContextCeiling ? undefined : mainContextCeiling;
     await this.#fileWriter.writeFile(
       settingsPath.settingsFilePath,
-      `${JSON.stringify({ agents, ...(keptCeiling === undefined ? {} : { mainContextCeiling: keptCeiling }) }, null, 2)}\n`,
+      `${JSON.stringify({ agents: agentProviders.map(({ name }) => name), ...(keptCeiling === undefined ? {} : { mainContextCeiling: keptCeiling }) }, null, 2)}\n`,
     );
   }
 

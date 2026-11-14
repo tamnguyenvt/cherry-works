@@ -13,7 +13,7 @@ export class InMemoryFileOutput implements ForWritingFiles {
   constructor(private readonly fileReaders: InMemoryFileReaders) {}
 
   /** Every file last written as executable, for a test asking which. */
-  readonly executables = new Set<string>();
+  readonly executableFileHrefs = new Set<string>();
 
   async writeFile(
     filePath: string,
@@ -22,8 +22,8 @@ export class InMemoryFileOutput implements ForWritingFiles {
   ): Promise<void> {
     const fileUrl = resolveFileUrl(this.fileReaders.rootFolder, filePath);
     this.fileReaders.writeFile(fileUrl, contents);
-    if (options.isExecutable === true) this.executables.add(fileUrl.href);
-    else this.executables.delete(fileUrl.href);
+    if (options.isExecutable === true) this.executableFileHrefs.add(fileUrl.href);
+    else this.executableFileHrefs.delete(fileUrl.href);
   }
 
   async deleteFile(filePath: string): Promise<void> {

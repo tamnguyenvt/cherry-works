@@ -25,6 +25,10 @@ export class ReadOnlyPrimitiveFault extends ApplicationFault {}
 /** A sign-in given no token (FR-148). */
 export class EmptyTokenFault extends ApplicationFault {}
 
+/** A vendor whose primitives have no folder to land in: the store refused
+ *  where they would go (FR-167). */
+export class UnplaceableVendorFault extends ApplicationFault {}
+
 /** A sign-in at an address no mcp in the charter is at (FR-148, FR-149). */
 export class UnknownSignInAddressFault extends ApplicationFault {}
 
@@ -125,16 +129,9 @@ export class UnmetExpectationFault extends DomainFault {}
  *  naming what the charter does not hold (EVAL-FR-026). */
 export class InvalidEvalSuiteFault extends DomainFault {}
 
-/** A vendor whose primitives have no folder to land in: the store refused
- *  where they would go (FR-167). */
-export class UnplaceableVendorFault extends DomainFault {}
-
 /** A vendor source whose address names no owner and repository, so no
  *  folder to land in (FR-044). */
 export class InvalidSourceAddressFault extends DomainFault {}
-
-/** Vendor folders laid out the way an earlier version installed them (FR-044). */
-export class OldVendorLayoutFault extends DomainFault {}
 
 /** A primitive no test case names, so nothing notices when it stops coming
  *  up where it should (FR-048). */

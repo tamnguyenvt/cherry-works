@@ -40,9 +40,9 @@ export class VendorInjectCommand implements Command<typeof OPTIONS> {
 
   async runCommand(
     { charterAuthoringApp }: Context,
-    { source, ref, charter, skill }: Options<typeof OPTIONS>,
+    { source, ref, charter: charterNames, skill: skillNames }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    const vendorAddOutcomeDTO = await charterAuthoringApp.injectVendor(source ?? "", ref, skill, charter);
+    const vendorAddOutcomeDTO = await charterAuthoringApp.injectVendor(source ?? "", ref, skillNames, charterNames);
     if (vendorAddOutcomeDTO.type === "Fault")
       return { exitCode: EXIT_FAILURE, problemText: printFault(vendorAddOutcomeDTO) };
     const vendorInstalls = vendorAddOutcomeDTO.data;

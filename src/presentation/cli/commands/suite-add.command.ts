@@ -13,12 +13,12 @@ export class SuiteAddCommand implements Command {
   async runCommand({ charterAuthoringApp }: Context): Promise<Outcome> {
     const testSuiteNameDTO = await charterAuthoringApp.addTestSuite();
     if (testSuiteNameDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(testSuiteNameDTO) };
-    const { name } = testSuiteNameDTO.data;
+    const { name: testSuiteName } = testSuiteNameDTO.data;
     return {
       exitCode: EXIT_OK,
       resultText: [
-        `Wrote ${charterPath.testFolderPath}/${name}.`,
-        `Run "cw suite edit ${name}" to write its cases, then "cw test".`,
+        `Wrote ${charterPath.testFolderPath}/${testSuiteName}.`,
+        `Run "cw suite edit ${testSuiteName}" to write its cases, then "cw test".`,
         "",
       ].join("\n"),
     };

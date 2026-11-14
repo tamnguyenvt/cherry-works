@@ -10,10 +10,10 @@ import { parseCredentialSecret } from "./helper.js";
 
 /** Every secret `cw` keeps is under this service, one account per key
  *  (data-model §17.3). */
-const SERVICE = "cherry-works";
+const KEYCHAIN_SERVICE_NAME = "cherry-works";
 
 /** `security` exits with this when the keychain has no such item. */
-const MACOS_NOT_FOUND = 44;
+const MACOS_NOT_FOUND_EXIT_CODE = 44;
 
 type CommandOutput = { exitCode: number; stdout: string; stderr: string };
 
@@ -22,15 +22,15 @@ type CommandOutput = { exitCode: number; stdout: string; stderr: string };
  *  not there is a failure like any other, said in `stderr`. */
 function runSecretCommand(command: string, commandArguments: readonly string[], stdin = ""): Promise<CommandOutput> {
   return new Promise((resolve) => {
-    const child = spawn(command, commandArguments, { stdio: ["pipe", "pipe", "pipe"] });
+    const secretProcess = spawn(command, commandArguments, { stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (chunk) => (stdout += chunk));
-    child.stderr.on("data", (chunk) => (stderr += chunk));
-    child.on("error", (spawnError) => resolve({ exitCode: -1, stdout, stderr: `${spawnError.message}` }));
-    child.on("close", (exitCode) => resolve({ exitCode: exitCode ?? -1, stdout, stderr }));
-    child.stdin.on("error", () => {});
-    child.stdin.end(stdin);
+    secretProcess.stdout.on("data", (chunk) => (stdout += chunk));
+    secretProcess.stderr.on("data", (chunk) => (stderr += chunk));
+    secretProcess.on("error", (spawnError) => resolve({ exitCode: -1, stdout, stderr: `${spawnError.message}` }));
+    secretProcess.on("close", (exitCode) => resolve({ exitCode: exitCode ?? -1, stdout, stderr }));
+    secretProcess.stdin.on("error", () => {});
+    secretProcess.stdin.end(stdin);
   });
 }
 
@@ -58,12 +58,19 @@ export class KeychainCredentialsRepository implements ForStoringCredentials {
     this.refuseUnsupportedPlatform();
     const commandOutputOfRead =
       this.platform === "darwin"
-        ? await runSecretCommand("security", ["find-generic-password", "-s", SERVICE, "-a", address, "-w"])
-        : await runSecretCommand("secret-tool", ["lookup", "service", SERVICE, "account", address]);
+        ? await runSecretCommand("security", [
+            "find-generic-password",
+            "-s",
+            KEYCHAIN_SERVICE_NAME,
+            "-a",
+            address,
+            "-w",
+          ])
+        : await runSecretCommand("secret-tool", ["lookup", "service", KEYCHAIN_SERVICE_NAME, "account", address]);
     if (commandOutputOfRead.exitCode === 0) return parseCredentialSecret(commandOutputOfRead.stdout.replace(/\n$/, ""));
     const isNothingThere =
       this.platform === "darwin"
-        ? commandOutputOfRead.exitCode === MACOS_NOT_FOUND
+        ? commandOutputOfRead.exitCode === MACOS_NOT_FOUND_EXIT_CODE
         : commandOutputOfRead.stderr.trim() === "";
     if (isNothingThere) return undefined;
     this.throwFault("read", address, commandOutputOfRead.stderr);
@@ -86,11 +93,18 @@ export class KeychainCredentialsRepository implements ForStoringCredentials {
         ? await runSecretCommand(
             "security",
             ["-i"],
-            `add-generic-password -U -s ${SERVICE} -a "${credential.address}" -X ${Buffer.from(secret).toString("hex")}\n`,
+            `add-generic-password -U -s ${KEYCHAIN_SERVICE_NAME} -a "${credential.address}" -X ${Buffer.from(secret).toString("hex")}\n`,
           )
         : await runSecretCommand(
             "secret-tool",
-            ["store", `--label=${SERVICE} ${credential.address}`, "service", SERVICE, "account", credential.address],
+            [
+              "store",
+              `--label=${KEYCHAIN_SERVICE_NAME} ${credential.address}`,
+              "service",
+              KEYCHAIN_SERVICE_NAME,
+              "account",
+              credential.address,
+            ],
             secret,
           );
     if (commandOutputOfWrite.exitCode !== 0) this.throwFault("write", credential.address);

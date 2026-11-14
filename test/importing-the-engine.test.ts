@@ -245,7 +245,7 @@ test("the library refuses internal imports and exports only its public contract 
 import assert from 'node:assert/strict';
 import * as engine from 'cherry-works';
 for (const publicName of ['AdapterFault', 'CharterDTOs', 'FaultDTOs', 'McpClientRegistration', 'McpCredential', 'RuntimeDTOs', 'UnauthorizedMcpFault', 'VERSION', 'WorkspaceDTOs', 'composeApplications', 'FileCharterRepository', 'ClaudeProjection', 'CodexProjection', 'AgentProjection', 'AgentCli', 'ClaudeCli', 'CodexCli', 'RawPrimitive']) assert.equal(publicName in engine, true, publicName);
-for (const privateName of ['AuthoringCharter', 'BuildingCharter', 'RunningCharter', 'buildCharterService', 'loadCharterService', 'BUILTIN_LAYER', 'TEST_DIRECTORY', 'composeEngine', 'composeWorkspace', 'WorkspaceSettingsSchema', 'folderURL', 'loadCharterRoot', 'RepoLayerPrimitiveSpec', 'BUILTIN_PRIMITIVES', 'FileSettingsRepository', 'ManagingWorkspace', 'InMemoryFileReaders', 'Commander']) assert.equal(privateName in engine, false, privateName);
+for (const privateName of ['AuthoringCharter', 'BuildingCharter', 'RunningCharter', 'buildCharterService', 'loadCharterService', 'BUILTIN_LAYER_NAME', 'TEST_DIRECTORY', 'composeEngine', 'composeWorkspace', 'WorkspaceSettingsSchema', 'folderURL', 'loadCharterRoot', 'RepoLayerPrimitiveSpec', 'BUILTIN_PRIMITIVES', 'FileSettingsRepository', 'ManagingWorkspace', 'InMemoryFileReaders', 'Commander']) assert.equal(privateName in engine, false, privateName);
 for (const privatePath of ['domain/models/DomainFault', 'storage/FileCharterRepository', 'index.js', 'dist/index.js', 'dist/main.js', 'src/module/charter/module.js', 'application/RunningCharter']) await assert.rejects(import('cherry-works/' + privatePath), {code: 'ERR_PACKAGE_PATH_NOT_EXPORTED'});
 `);
 });
@@ -1179,7 +1179,7 @@ import { LocalRepoManipulator, RawWorkspaceSettings, SessionLogs } from 'cherry-
 const keptSettingsTexts = [];
 const workspaceSettingsRepository = {
  async loadSettings() { const keptSettingsText = keptSettingsTexts.at(-1); return keptSettingsText === undefined ? undefined : new RawWorkspaceSettings(keptSettingsText); },
- async saveSettings(workspaceSettings) { keptSettingsTexts.push(JSON.stringify({ agents: workspaceSettings.agents })); },
+ async saveSettings(workspaceSettings) { keptSettingsTexts.push(JSON.stringify({ agents: workspaceSettings.agentProviders })); },
  async keepLogIgnored() {},
  async keepReadme() {},
 };

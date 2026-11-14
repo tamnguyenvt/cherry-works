@@ -16,3 +16,6 @@ CLAUDE.md
 .sdd/
 learning/
 specs/handoff/
+
+# The sdd-charter vendor is kept on this machine only, never shared.
+.cw/charter/vendor/tamnguyenvt/sdd-charter/

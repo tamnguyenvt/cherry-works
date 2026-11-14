@@ -26,7 +26,7 @@ import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { LocalRepoManipulator } from "../src/module/charter/infra/local-repo-manipulator.adapter.js";
 import { InMemoryShellCommands } from "../src/module/runtime/infra/in-memory/in-memory-shell-commands.adapter.js";
-import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
+import { AgentProvider } from "../src/module/shared/domain/models/agent/agent-provider.value-object.js";
 import { InMemoryClock } from "../src/module/shared/infra/in-memory/in-memory-clock.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
@@ -213,7 +213,7 @@ test("an output writer of a tool author's own is handed the whole of what the ch
   assert.equal(planSummaryDTO.type, "ProjectionPlanSummary");
   if (planSummaryDTO.type === "ProjectionPlanSummary")
     for (const place of places) assert.ok(planSummaryDTO.data.added.includes(place), `${place} is added`);
-  assert.equal(recordingLocalRepo.laidPlans.length, 1);
+  assert.equal(recordingLocalRepo.laidProjectionPlans.length, 1);
   assert.equal(
     (await heldFileReaders.readBytesRecursively("")).length,
     filesBefore,
@@ -282,9 +282,9 @@ test("a projection of a tool author's own, handed for an agent, is handed the sa
   );
   assert.deepEqual(ownHandedRecord?.charterOutput, cwHandedRecord?.charterOutput);
   // What the author's projection decided is what the build lays.
-  const [laidPlan] = ownLocalRepo.laidPlans;
-  assert.ok(laidPlan !== undefined);
-  const laidPaths = laidPlan.writePlans.map(({ path }) => path);
+  const [laidProjectionPlan] = ownLocalRepo.laidProjectionPlans;
+  assert.ok(laidProjectionPlan !== undefined);
+  const laidPaths = laidProjectionPlan.writePlans.map(({ path }) => path);
   for (const path of ownHandedRecord!.charterOutput.charterOutputItems.map((charterOutputItem) =>
     outputPath.getPath(charterOutputItem),
   ))
@@ -303,7 +303,7 @@ test("the mcp origins are served from what the build put out, read back from whe
     }
   }
   const mcpServerCaller = new InMemoryMcpServers();
-  mcpServerCaller.servers.set("node", {
+  mcpServerCaller.mcpServerByAddress.set("node", {
     tools: [{ name: "echo", description: "Echoes.", inputSchema: { type: "object" } }],
   });
   const charterRuntimeApp = runningCharterOf(heldFileReaders, new InMemoryReporter(), {

@@ -499,12 +499,12 @@ export const CharterDTOs = groupByType(
   MainContextLoadSchema,
   MainContextTextsSchema,
   MainContextsSchema,
-  ProjectionPlanSummarySchema,
   PrimitiveSchema,
   PrimitiveHeaderSchema,
   PrimitiveKindsSchema,
   PrimitiveRequirementsSchema,
   PrimitivesSchema,
+  ProjectionPlanSummarySchema,
   SensorCommandsSchema,
   ServedToolSchema,
   ServedToolsSchema,
@@ -542,12 +542,12 @@ export namespace CharterDTOs {
   export type MainContextLoad = z.infer<typeof CharterDTOs.MainContextLoad>;
   export type MainContextTexts = z.infer<typeof CharterDTOs.MainContextTexts>;
   export type MainContexts = z.infer<typeof CharterDTOs.MainContexts>;
-  export type ProjectionPlanSummary = z.infer<typeof CharterDTOs.ProjectionPlanSummary>;
   export type Primitive = z.infer<typeof CharterDTOs.Primitive>;
   export type PrimitiveHeader = z.infer<typeof CharterDTOs.PrimitiveHeader>;
   export type PrimitiveKinds = z.infer<typeof CharterDTOs.PrimitiveKinds>;
   export type PrimitiveRequirements = z.infer<typeof CharterDTOs.PrimitiveRequirements>;
   export type Primitives = z.infer<typeof CharterDTOs.Primitives>;
+  export type ProjectionPlanSummary = z.infer<typeof CharterDTOs.ProjectionPlanSummary>;
   export type SensorCommands = z.infer<typeof CharterDTOs.SensorCommands>;
   export type ServedTool = z.infer<typeof CharterDTOs.ServedTool>;
   export type ServedTools = z.infer<typeof CharterDTOs.ServedTools>;

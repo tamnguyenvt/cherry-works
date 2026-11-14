@@ -15,7 +15,7 @@ export interface ShellCommandRun {
  */
 export class InMemoryShellCommands implements ForRunningShellCommands {
   readonly runs: ShellCommandRun[] = [];
-  readonly finished: string[] = [];
+  readonly finishedCommands: string[] = [];
   mostRunningAtOnce = 0;
   #runningCount = 0;
 
@@ -27,7 +27,7 @@ export class InMemoryShellCommands implements ForRunningShellCommands {
     this.mostRunningAtOnce = Math.max(this.mostRunningAtOnce, this.#runningCount);
     await new Promise((resolve) => setTimeout(resolve, 0));
     this.#runningCount -= 1;
-    this.finished.push(command);
+    this.finishedCommands.push(command);
     return this.resultByCommand[command] ?? { exitCode: 127, stdout: "", stderr: `${command}: command not found\n` };
   }
 }

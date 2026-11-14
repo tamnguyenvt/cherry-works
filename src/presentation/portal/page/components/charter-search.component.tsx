@@ -16,15 +16,15 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
  */
 export function CharterSearch({ onPick }: { onPick: (primitive: CharterDTOs.Primitive) => void }) {
   const [word, setWord] = useState("");
-  const [listShown, setListShown] = useState(false);
+  const [isListShown, setIsListShown] = useState(false);
   const { data: primitivesAnswer } = usePrimitives(word);
 
   return (
     <Command
       shouldFilter={false}
       className="relative w-full overflow-visible rounded-[9px] border bg-zinc-50 text-zinc-400 focus-within:border-foreground focus-within:bg-background focus-within:text-zinc-500 [&_[data-slot=command-input-wrapper]]:h-[32px] [&_[data-slot=command-input-wrapper]]:border-0 [&_[data-slot=command-input]]:h-8 [&_[data-slot=command-input]]:text-[12.5px] [&_[data-slot=command-input]]:text-foreground [&_[data-slot=command-input]]:placeholder:text-zinc-400"
-      onFocus={() => setListShown(true)}
-      onBlur={() => setListShown(false)}
+      onFocus={() => setIsListShown(true)}
+      onBlur={() => setIsListShown(false)}
     >
       <CommandInput
         placeholder="Search everything"
@@ -33,7 +33,7 @@ export function CharterSearch({ onPick }: { onPick: (primitive: CharterDTOs.Prim
         onValueChange={setWord}
         onKeyDown={(event) => event.key === "Escape" && setWord("")}
       />
-      {listShown && word !== "" && (
+      {isListShown && word !== "" && (
         // Pressed in the list without taking the focus from the box, so the
         // list is still there when the click that chooses from it lands.
         <CommandList
@@ -68,7 +68,7 @@ export function CharterSearch({ onPick }: { onPick: (primitive: CharterDTOs.Prim
                         className="grid cursor-pointer grid-cols-[74px_minmax(0,1fr)_max-content] items-baseline gap-2.5 rounded-lg px-[11px] py-2 data-[selected=true]:bg-zinc-50 data-[selected=true]:outline data-[selected=true]:outline-zinc-200"
                         onSelect={() => {
                           setWord("");
-                          setListShown(false);
+                          setIsListShown(false);
                           onPick(primitive);
                         }}
                       >
@@ -77,14 +77,14 @@ export function CharterSearch({ onPick }: { onPick: (primitive: CharterDTOs.Prim
                         </span>
                         <span className="min-w-0">
                           <span className="block truncate font-mono text-xs text-foreground">
-                            <Highlighted text={String(headers.id)} word={word} />
+                            <HighlightedWordText text={String(headers.id)} word={word} />
                           </span>
                           <span className="mt-0.5 block truncate text-[11px] leading-[1.45] text-zinc-400">
-                            <Highlighted text={description} word={word} />
+                            <HighlightedWordText text={description} word={word} />
                           </span>
                         </span>
                         <Badge
-                          className={`rounded-[5px] px-1.5 py-0.5 font-mono text-[9.5px] font-bold tracking-[0.03em] ${LAYER_COLORS[layerName]}`}
+                          className={`rounded-[5px] px-1.5 py-0.5 font-mono text-[9.5px] font-bold tracking-[0.03em] ${COLOR_CLASS_NAME_BY_LAYER[layerName]}`}
                         >
                           {layerName}
                         </Badge>
@@ -102,7 +102,7 @@ export function CharterSearch({ onPick }: { onPick: (primitive: CharterDTOs.Prim
 }
 
 /** The colours a layer is tagged in, as the mockup tags them. */
-const LAYER_COLORS: Record<CharterDTOs.Primitive["data"]["layerName"], string> = {
+const COLOR_CLASS_NAME_BY_LAYER: Record<CharterDTOs.Primitive["data"]["layerName"], string> = {
   repo: "bg-[#eff6ff] text-[#1d4ed8]",
   vendor: "bg-[#f6f2ff] text-[#7c3aed]",
   builtin: "bg-zinc-100 text-zinc-700",
@@ -110,7 +110,7 @@ const LAYER_COLORS: Record<CharterDTOs.Primitive["data"]["layerName"], string> =
 
 /** One line with the first place the word appears in it marked, ignoring case,
  *  as the engine matched it. */
-function Highlighted({ text, word }: { text: string; word: string }) {
+function HighlightedWordText({ text, word }: { text: string; word: string }) {
   const matchIndex = text.toLowerCase().indexOf(word.toLowerCase());
   if (matchIndex === -1 || word === "") return <>{text}</>;
   return (

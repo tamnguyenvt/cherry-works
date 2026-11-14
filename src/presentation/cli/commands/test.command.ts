@@ -31,25 +31,25 @@ export class TestCommand implements Command {
     if (testRunReportDTO.type === "FaultsByFile")
       return { exitCode: EXIT_FAILURE, problemText: `Nothing was resolved.\n\n${printFaultsByFile(testRunReportDTO)}` };
 
-    const cases = testRunReportDTO.data.testCaseReports;
+    const testCaseReports = testRunReportDTO.data.testCaseReports;
 
-    if (cases.length === 0) {
+    if (testCaseReports.length === 0) {
       return {
         exitCode: EXIT_OK,
         resultText: `No tests: ${charterPath.testFolderPath}/ holds no case.\nWrite one as ${charterPath.testFolderPath}/<name>.json to pin a situation down.\n`,
       };
     }
 
-    const failedCases = cases.filter((testCaseReport) => !testCaseReport.data.passed);
+    const failedTestCaseReports = testCaseReports.filter((testCaseReport) => !testCaseReport.data.passed);
 
     return {
-      exitCode: failedCases.length === 0 ? EXIT_OK : EXIT_FAILURE,
+      exitCode: failedTestCaseReports.length === 0 ? EXIT_OK : EXIT_FAILURE,
       resultText: [
         // One case: the situation it put, whether the charter answered it as
         // expected, and under a failing one why it did not (FR-048). A case is
         // named by what it puts rather than by a title its author also had to
         // write, so a failing line already says what broke.
-        ...cases.flatMap((testCaseReport) => [
+        ...testCaseReports.flatMap((testCaseReport) => [
           `  ${testCaseReport.data.passed ? "pass" : "FAIL"}  ${testCaseReport.data.situation}`,
           ...(testCaseReport.data.unmet === undefined
             ? []
@@ -59,9 +59,9 @@ export class TestCommand implements Command {
               ]),
         ]),
         "",
-        failedCases.length === 0
-          ? `${cases.length} case${cases.length === 1 ? "" : "s"} passed.`
-          : `${failedCases.length} of ${cases.length} case${cases.length === 1 ? "" : "s"} failed.`,
+        failedTestCaseReports.length === 0
+          ? `${testCaseReports.length} case${testCaseReports.length === 1 ? "" : "s"} passed.`
+          : `${failedTestCaseReports.length} of ${testCaseReports.length} case${testCaseReports.length === 1 ? "" : "s"} failed.`,
         "",
       ].join("\n"),
     };

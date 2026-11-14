@@ -16,12 +16,12 @@ export class VendorListCommand implements Command {
   async runCommand({ charterAuthoringApp }: Context): Promise<Outcome> {
     const vendorFoldersDTO = await charterAuthoringApp.listVendors();
     if (vendorFoldersDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(vendorFoldersDTO) };
-    const { folders } = vendorFoldersDTO.data;
-    if (folders.length === 0)
+    const { folders: vendorFolderPaths } = vendorFoldersDTO.data;
+    if (vendorFolderPaths.length === 0)
       return {
         exitCode: EXIT_OK,
         resultText: 'No vendor source is installed. Run "cw vendor add <source>" to install one.\n',
       };
-    return { exitCode: EXIT_OK, resultText: `${folders.join("\n")}\n` };
+    return { exitCode: EXIT_OK, resultText: `${vendorFolderPaths.join("\n")}\n` };
   }
 }

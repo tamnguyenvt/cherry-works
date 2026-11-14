@@ -71,7 +71,7 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
   async createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput): Promise<ProjectionPlan> {
     const components = this.listComponents(charter, charterOutput);
     const checkoutFolder = this.checkoutFolder;
-    const [cleanupPlan, layingPlan] = await Promise.all([
+    const [cleanupWritePlans, layingWritePlans] = await Promise.all([
       // Every stamped file the last build left in this agent's own folders —
       // the stamp is what tells it from one written by hand there — and what
       // else it left for this agent (FR-020).
@@ -115,14 +115,15 @@ export abstract class AgentProjection implements ForManagingLocalAgentOutput {
     ]);
     // A file the last build wrote and this one takes only part of — an entry
     // file whose own text stays — is written back as that text.
-    const preservedFiles = cleanupPlan.filter(
+    const preservedWritePlans = cleanupWritePlans.filter(
       (writePlan) =>
-        writePlan.contents !== undefined && !layingPlan.some((layingFile) => layingFile.path === writePlan.path),
+        writePlan.contents !== undefined &&
+        !layingWritePlans.some((layingWritePlan) => layingWritePlan.path === writePlan.path),
     );
     return new ProjectionPlan(
       components.flatMap((component) => component.warnings),
-      cleanupPlan,
-      [...layingPlan, ...preservedFiles],
+      cleanupWritePlans,
+      [...layingWritePlans, ...preservedWritePlans],
     );
   }
 }

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
 import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { CharterOutputService } from "../src/module/charter/domain/services/charter-output.service.js";
-import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
+import { AgentProvider } from "../src/module/shared/domain/models/agent/agent-provider.value-object.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
 import { putDownBy } from "./put-down-by.js";

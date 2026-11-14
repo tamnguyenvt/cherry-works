@@ -76,7 +76,7 @@ const surfaces = (
   const fileReaders = new InMemoryFileReaders(files);
   const sourceFetcher = new InMemorySources(fileReaders);
   const worktrees = worktreesOf(fileReaders);
-  promptfoo.folderFiles = fileReaders;
+  promptfoo.workingFolderFileReaders = fileReaders;
   const fileOutput = new InMemoryFileOutput(fileReaders);
   const reporter = new InMemoryReporter();
   const charterRuntimeApp = runningCharterOf(fileReaders, reporter, {
@@ -281,7 +281,9 @@ test("each case runs once in a worktree of its own under .cw/log/eval/worktrees/
   assert.notEqual(firstTest.workingPath, secondTest.workingPath);
   assert.ok(firstTest.workingPath.startsWith(".cw/log/eval/worktrees/"));
   // The charter was built in the worktree before promptfoo ran the agent there.
-  assert.ok(firstTest.builtFiles.some((file) => file.endsWith(".claude/skills/planning/SKILL.md")));
+  assert.ok(
+    firstTest.builtFilePaths.some((builtFilePath) => builtFilePath.endsWith(".claude/skills/planning/SKILL.md")),
+  );
   // Every worktree removed, and the working tree holding exactly what it held.
   assert.deepEqual(worktrees.worktreePaths, []);
   const heldNow = (await fileReaders.readFilesRecursively(new URL("file:///")))
@@ -332,7 +334,7 @@ test("a charter changed and not yet committed is evaluated as it stands: each ca
   // held none of the charter, was built from it.
   assert.equal(evaluatedTest.prompt, "plan this feature");
   assert.ok(
-    evaluatedTest.builtFiles.some((builtFilePath) => builtFilePath.endsWith(".claude/skills/planning/SKILL.md")),
+    evaluatedTest.builtFilePaths.some((builtFilePath) => builtFilePath.endsWith(".claude/skills/planning/SKILL.md")),
   );
   assert.deepEqual(worktrees.worktreePaths, []);
   const heldFileHrefs = (await fileReaders.readFilesRecursively(new URL("file:///")))
@@ -441,7 +443,7 @@ for (const agentName of ["claude", "codex"]) {
       ["skill-used", "agent-rubric", "javascript"],
     );
     assert.ok(
-      promptfooRunner.evaluatedTests[0]?.builtFiles.some((filePath) =>
+      promptfooRunner.evaluatedTests[0]?.builtFilePaths.some((filePath) =>
         filePath.endsWith(
           agentName === "codex" ? ".agents/skills/planning/SKILL.md" : ".claude/skills/planning/SKILL.md",
         ),

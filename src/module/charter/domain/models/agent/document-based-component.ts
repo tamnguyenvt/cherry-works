@@ -1,3 +1,4 @@
+import type { AgentProvider } from "#module/shared/module.js";
 import { ContentHelper } from "../../helper.js";
 import { StampedDocument } from "../charter-output/stamped-document.value-object.js";
 import { ProviderComponent } from "./provider-component.js";
@@ -25,8 +26,12 @@ export type NoHeaders = Record<string, never>;
  * projection's (CORE-FR-221).
  */
 export abstract class DocumentBasedComponent<Headers extends object = NoHeaders> extends ProviderComponent {
+  /** The file this agent reads: its frontmatter, its body, and the stamp
+   *  saying this engine wrote it. */
+  readonly document: StampedDocument;
+
   constructor(
-    agentName: string,
+    agentProvider: AgentProvider,
     primitiveKind: string,
     /** What this agent calls this one: the charter id with the `/` a filename
      *  does not carry written `-`, so `acme/review` is `acme-review` (FR-141,
@@ -70,6 +75,7 @@ export abstract class DocumentBasedComponent<Headers extends object = NoHeaders>
         .filter((block) => block !== "")
         .join("\n\n"),
     );
-    super(agentName, primitiveKind, name, stampedDocument.text);
+    super(agentProvider, primitiveKind, name, stampedDocument.text);
+    this.document = stampedDocument;
   }
 }

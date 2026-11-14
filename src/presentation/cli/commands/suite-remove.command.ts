@@ -28,8 +28,11 @@ export class SuiteRemoveCommand implements Command<typeof OPTIONS> {
   readonly summary = "Delete one test file";
   readonly options = OPTIONS;
 
-  async runCommand({ charterAuthoringApp }: Context, { name }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const testSuiteNameDTO = await charterAuthoringApp.removeTestSuite(name ?? "");
+  async runCommand(
+    { charterAuthoringApp }: Context,
+    { name: testSuiteName }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
+    const testSuiteNameDTO = await charterAuthoringApp.removeTestSuite(testSuiteName ?? "");
     if (testSuiteNameDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(testSuiteNameDTO) };
     return { exitCode: EXIT_OK, resultText: `Removed ${charterPath.testFolderPath}/${testSuiteNameDTO.data.name}.\n` };
   }

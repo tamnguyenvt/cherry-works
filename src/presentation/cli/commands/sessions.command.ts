@@ -79,14 +79,14 @@ export class SessionsCommand implements Command<typeof OPTIONS> {
           ([
             day,
             {
-              data: { sessions: daySessions, sessionCount: daySessionCount, totalTokens: dayTokens },
+              data: { sessions: daySessions, sessionCount: daySessionCount, totalTokens: dayTokenCount },
             },
           ]) => [
-            `${day}  ${formatTokenCount(dayTokens)} tokens, ${daySessionCount} session${daySessionCount === 1 ? "" : "s"}`,
-            ...daySessions.map(({ sessionId, lastStopAt, model, totalTokens: sessionTokens }) => {
+            `${day}  ${formatTokenCount(dayTokenCount)} tokens, ${daySessionCount} session${daySessionCount === 1 ? "" : "s"}`,
+            ...daySessions.map(({ sessionId, lastStopAt, model, totalTokens: sessionTokenCount }) => {
               const stopDate = new Date(lastStopAt);
               const stopTime = `${String(stopDate.getHours()).padStart(2, "0")}:${String(stopDate.getMinutes()).padStart(2, "0")}`;
-              return `  ${formatTokenCount(sessionTokens).padStart(11)}  ${model}  ${sessionId}  last stop ${stopTime}`;
+              return `  ${formatTokenCount(sessionTokenCount).padStart(11)}  ${model}  ${sessionId}  last stop ${stopTime}`;
             }),
           ],
         ),

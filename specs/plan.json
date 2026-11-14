@@ -794,65 +794,6 @@
         "summary": "typecheck, lint:deps, lint, build, 1034 tests pass, contract/ unchanged; the 43 agreed no-single-word-naming findings of the charter domain reassessed by its declared names, none left; cw test, doctor and the session tokens counter run by hand answer as before; specs check passes",
         "date": "2026-11-14"
       }
-    },
-    {
-      "id": "CORE Story 58",
-      "title": "Read every value of the charter's application and adapters by what it holds",
-      "dependsOn": []
-    },
-    {
-      "id": "CORE Story 59",
-      "title": "Read every value of running, the settings and the kernel by what it holds",
-      "dependsOn": []
-    },
-    {
-      "id": "CORE Story 60",
-      "title": "Read every value of the command line, the portal and the mcp server by what it holds",
-      "dependsOn": []
-    },
-    {
-      "id": "CORE Story 61",
-      "title": "Name each part of the engine for the role it plays",
-      "dependsOn": []
-    },
-    {
-      "id": "CORE Story 62",
-      "title": "Quality cross-check of CORE Story 57, CORE Story 58, CORE Story 59, CORE Story 60, CORE Story 61",
-      "dependsOn": [
-        "CORE Story 57",
-        "CORE Story 58",
-        "CORE Story 59",
-        "CORE Story 60",
-        "CORE Story 61"
-      ]
-    },
-    {
-      "id": "CORE Story 63",
-      "title": "Keep the settings' rules with the settings",
-      "dependsOn": [
-        "CORE Story 62"
-      ]
-    },
-    {
-      "id": "CORE Story 64",
-      "title": "Make every installed vendor in the engine, whichever store keeps it",
-      "dependsOn": [
-        "CORE Story 62"
-      ]
-    },
-    {
-      "id": "CORE Story 65",
-      "title": "Write each file as the files before it",
-      "dependsOn": [
-        "CORE Story 62"
-      ]
-    },
-    {
-      "id": "CORE Story 66",
-      "title": "Keep the command line's helpers where its helpers are",
-      "dependsOn": [
-        "CORE Story 62"
-      ]
     }
   ]
 }

@@ -5,6 +5,7 @@ import {
   charterPath,
   type ForReadingFiles,
   OldLayoutFault,
+  OldVendorLayoutFault,
   outputPath,
   type PrimitiveLayer,
   Primitives,
@@ -26,7 +27,7 @@ const SKILLS_FOLDER_DEPTH = 3;
 
 /** Where a skills repository keeps what it depends on, never a skill of its
  *  own (CORE-FR-185). */
-const DEPENDENCIES_FOLDER = "node_modules";
+const DEPENDENCIES_FOLDER_NAME = "node_modules";
 
 /** The parts a repository laid out the old way keeps right under its
  *  workspace, beside the charter, as their paths from the repository. */
@@ -78,36 +79,86 @@ export async function assertNewLayout(fileReader: ForReadingFiles): Promise<void
   if (oldPaths.length > 0) throw createOldLayoutFault("This repository", oldPaths);
 }
 
+/** How deep a vendor's name goes under the vendor folder:
+ *  `<owner>/<repository>/<name>` (FR-050, CORE-FR-196). */
+const VENDOR_NAME_DEPTH = 3;
+
+/**
+ * The name of each vendor these files under the vendor folder keep, each file
+ * by its path from that folder: every vendor at
+ * `<owner>/<repository>/<name>/<primitives folder>/`, named by those three
+ * folders. A file kept anywhere else is a vendor installed the way an earlier
+ * version laid one, refused naming the folder to take away before it is
+ * installed again: nothing of it is read as a vendor (FR-180).
+ */
+export function findVendorNames(
+  vendorFilePaths: readonly string[],
+  findFileAddress: (path: string) => string,
+): readonly string[] {
+  // A file kept right in the vendor folder, its `.gitkeep`, is no vendor's.
+  const nestedVendorFilePaths = vendorFilePaths.filter((filePath) => filePath.includes("/"));
+  const oldFolderNames = [
+    ...new Set(
+      nestedVendorFilePaths
+        .filter(
+          (filePath) =>
+            filePath.split("/")[VENDOR_NAME_DEPTH] !== charterPath.primitivesFolderName ||
+            filePath.split("/").length <= VENDOR_NAME_DEPTH + 1,
+        )
+        // A kind's folder right under the first is a vendor named by that
+        // one folder alone; otherwise the owner and the repository name it.
+        .map((filePath) =>
+          filePath
+            .split("/")
+            .slice(0, Primitives.isKind(filePath.split("/")[1]) ? 1 : 2)
+            .join("/"),
+        ),
+    ),
+  ].sort();
+  if (oldFolderNames.length > 0)
+    throw new OldVendorLayoutFault(
+      `${oldFolderNames.map((oldFolderName) => findFileAddress(`${charterPath.vendorsFolderPath}/${oldFolderName}`)).join(", ")} ${oldFolderNames.length === 1 ? "is" : "are"} laid out the way an earlier version installed a vendor, not as <owner>/<repository>/<name>/${charterPath.primitivesFolderName}/.`,
+      `Delete ${oldFolderNames.length === 1 ? "it" : "them"}, then install each source again with "cw vendor add".`,
+      { internal: false },
+    );
+  return [
+    ...new Set(nestedVendorFilePaths.map((filePath) => filePath.split("/").slice(0, VENDOR_NAME_DEPTH).join("/"))),
+  ].sort();
+}
+
 export function readRawPrimitives(
   keptFiles: readonly ReadFile<Uint8Array>[],
-  layerFolder: string,
+  layerFolderPath: string,
   primitiveLayer: PrimitiveLayer,
   findFileAddress: (path: string) => string,
 ): readonly RawPrimitive[] {
   const filesInKindFolders = keptFiles.filter(({ path }) =>
-    Primitives.kinds.some((kind) => path.startsWith(`${layerFolder}${kind}/`)),
+    Primitives.kinds.some((kind) => path.startsWith(`${layerFolderPath}${kind}/`)),
   );
-  const findPrimitiveFolder = (indexPath: string) => indexPath.slice(0, -BasePrimitive.indexFileName.length);
+  const findPrimitiveFolderPath = (indexPath: string) => indexPath.slice(0, -BasePrimitive.indexFileName.length);
   const indexFiles = filesInKindFolders.filter(({ path }) => path.endsWith(`/${BasePrimitive.indexFileName}`));
   const primitiveIndexFiles = indexFiles.filter(
     ({ path }) =>
       !indexFiles.some(
-        (otherIndexFile) => otherIndexFile.path !== path && path.startsWith(findPrimitiveFolder(otherIndexFile.path)),
+        (otherIndexFile) =>
+          otherIndexFile.path !== path && path.startsWith(findPrimitiveFolderPath(otherIndexFile.path)),
       ),
   );
   const isUnderAPrimitive = (path: string) =>
-    primitiveIndexFiles.some((indexFile) => path.startsWith(findPrimitiveFolder(indexFile.path)));
+    primitiveIndexFiles.some((indexFile) => path.startsWith(findPrimitiveFolderPath(indexFile.path)));
   const readKind = (pathInLayer: string) => pathInLayer.slice(0, pathInLayer.indexOf("/"));
   const readId = (pathInLayer: string) => pathInLayer.slice(pathInLayer.indexOf("/") + 1);
-  const findFolderUri = (kind: string, id: string) => findFileAddress(`${layerFolder}${kind}/${id}/`);
+  const findFolderUri = (kind: string, id: string) => findFileAddress(`${layerFolderPath}${kind}/${id}/`);
   // Read as bytes, so an asset, and an index.md, reach the charter as they are
   // (CORE-FR-207).
   return [
     ...primitiveIndexFiles.map(({ path, contents }) => {
-      const pathInLayer = findPrimitiveFolder(path).slice(layerFolder.length, -1);
+      const pathInLayer = findPrimitiveFolderPath(path).slice(layerFolderPath.length, -1);
       const assets = filesInKindFolders
-        .filter((assetFile) => assetFile.path !== path && assetFile.path.startsWith(findPrimitiveFolder(path)))
-        .map((assetFile) => new AssetFile(assetFile.path.slice(findPrimitiveFolder(path).length), assetFile.contents));
+        .filter((assetFile) => assetFile.path !== path && assetFile.path.startsWith(findPrimitiveFolderPath(path)))
+        .map(
+          (assetFile) => new AssetFile(assetFile.path.slice(findPrimitiveFolderPath(path).length), assetFile.contents),
+        );
       return new RawPrimitive(
         primitiveLayer,
         readKind(pathInLayer),
@@ -122,7 +173,7 @@ export function readRawPrimitives(
     ...filesInKindFolders
       .filter(({ path }) => path.endsWith(".md") && !isUnderAPrimitive(path))
       .map(({ path, contents }) => {
-        const pathInLayer = path.slice(layerFolder.length, -".md".length);
+        const pathInLayer = path.slice(layerFolderPath.length, -".md".length);
         return new RawPrimitive(
           primitiveLayer,
           readKind(pathInLayer),
@@ -137,21 +188,24 @@ export function readRawPrimitives(
   ];
 }
 
-export function findSkillFiles(sourcePaths: readonly string[]): readonly string[] {
-  const skillFolders = sourcePaths
+export function findSkillFilePaths(sourcePaths: readonly string[]): readonly string[] {
+  const skillFolderPaths = sourcePaths
     .filter(
       (sourcePath) =>
         sourcePath.startsWith(`${vendorSourcePath.skillsFolderPath}/`) &&
         sourcePath.endsWith(`/${vendorSourcePath.skillFileName}`),
     )
-    .map((skillFile) => skillFile.slice(0, -`/${vendorSourcePath.skillFileName}`.length))
-    .filter((skillFolder) => {
-      const folderNames = skillFolder.split("/");
-      return folderNames.length - 1 <= SKILLS_FOLDER_DEPTH && !folderNames.includes(DEPENDENCIES_FOLDER);
+    .map((skillFilePath) => skillFilePath.slice(0, -`/${vendorSourcePath.skillFileName}`.length))
+    .filter((skillFolderPath) => {
+      const folderNames = skillFolderPath.split("/");
+      return folderNames.length - 1 <= SKILLS_FOLDER_DEPTH && !folderNames.includes(DEPENDENCIES_FOLDER_NAME);
     });
-  return skillFolders
-    .filter((skillFolder) => !skillFolders.some((outerFolder) => skillFolder.startsWith(`${outerFolder}/`)))
-    .map((skillFolder) => `${skillFolder}/${vendorSourcePath.skillFileName}`);
+  return skillFolderPaths
+    .filter(
+      (skillFolderPath) =>
+        !skillFolderPaths.some((outerFolderPath) => skillFolderPath.startsWith(`${outerFolderPath}/`)),
+    )
+    .map((skillFolderPath) => `${skillFolderPath}/${vendorSourcePath.skillFileName}`);
 }
 
 /** The folder a build's own output is laid in, from the repository's root:

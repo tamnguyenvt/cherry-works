@@ -38,17 +38,17 @@ export class SensorRunCommand implements Command<typeof OPTIONS> {
 
   async runCommand(
     { charterRuntimeApp, workspaceApp }: Context,
-    { signal, agent }: Options<typeof OPTIONS>,
+    { signal, agent: namedAgentName }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    if (agent !== undefined && !workspaceApp.agentProviderNames.includes(agent))
+    if (namedAgentName !== undefined && !workspaceApp.agentProviderNames.includes(namedAgentName))
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `Unknown sensor agent "${agent}".\n  Name any of: ${workspaceApp.agentProviderNames.join(", ")}.\n`,
+        problemText: `Unknown sensor agent "${namedAgentName}".\n  Name any of: ${workspaceApp.agentProviderNames.join(", ")}.\n`,
       };
     // Typed at a terminal, there is no event to wait for.
-    const stdin = process.stdin.isTTY ? "" : await text(process.stdin);
+    const eventText = process.stdin.isTTY ? "" : await text(process.stdin);
     // With no agent named, only the sensors kept for no agent run (CORE-FR-234).
-    const sensorRunOutcomeDTO = await charterRuntimeApp.runSensors(signal ?? "", stdin, agent);
+    const sensorRunOutcomeDTO = await charterRuntimeApp.runSensors(signal ?? "", eventText, namedAgentName);
     if (sensorRunOutcomeDTO.type === "Fault")
       return { exitCode: EXIT_FAILURE, problemText: printFault(sensorRunOutcomeDTO) };
     const { data: sensorRunOutcome } = sensorRunOutcomeDTO;

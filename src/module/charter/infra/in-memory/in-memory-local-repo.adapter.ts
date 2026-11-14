@@ -11,7 +11,7 @@ import {
  *  that asks what a build handed its projection. */
 export class InMemoryLocalRepo implements ForManagingLocalOutput {
   readonly charterOutputs: CharterOutput[] = [];
-  readonly laidPlans: ProjectionPlan[] = [];
+  readonly laidProjectionPlans: ProjectionPlan[] = [];
   /** What each place holds, as the last plan laid it or as a test sets it. */
   readonly textByPlace = new Map<string, string>();
 
@@ -45,7 +45,7 @@ export class InMemoryLocalRepo implements ForManagingLocalOutput {
   }
 
   async writePlan(projectionPlan: ProjectionPlan): Promise<void> {
-    this.laidPlans.push(projectionPlan);
+    this.laidProjectionPlans.push(projectionPlan);
     for (const { path, contents } of projectionPlan.writePlans)
       if (typeof contents === "string") this.textByPlace.set(path, contents);
   }

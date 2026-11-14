@@ -10,9 +10,9 @@ import { UnreadableTomlFault, UnwritableTomlFault } from "../models/domain.fault
 export class TomlLib {
   /** The table one TOML document holds. A document that does not parse raises
    *  a fault the person corrects. */
-  static parseTomlTable(document: string): Readonly<Record<string, unknown>> {
+  static parseTomlTable(tomlText: string): Readonly<Record<string, unknown>> {
     try {
-      return parse(document, { integersAsBigInt: true });
+      return parse(tomlText, { integersAsBigInt: true });
     } catch (cause) {
       throw new UnreadableTomlFault(
         `TOML is not readable: ${(cause as Error).message.split("\n")[0]}`,
@@ -48,7 +48,7 @@ export class TomlLib {
   static mergeTomlText(
     currentText: string | undefined,
     charterText: string,
-    place: string,
+    filePath: string,
     replacedEntryTablePaths: readonly string[] = [],
   ): string {
     let currentTable: Readonly<Record<string, unknown>>;
@@ -56,7 +56,7 @@ export class TomlLib {
       currentTable = parse(currentText ?? "", { integersAsBigInt: true });
     } catch (cause) {
       throw new UnreadableTomlFault(
-        `"${place}" is not readable TOML: ${(cause as Error).message.split("\n")[0]}`,
+        `"${filePath}" is not readable TOML: ${(cause as Error).message.split("\n")[0]}`,
         "Correct that file before building; no files have been written.",
         { internal: false, cause },
       );

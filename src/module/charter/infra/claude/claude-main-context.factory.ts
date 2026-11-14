@@ -34,7 +34,7 @@ export class ClaudeMainContextFactory {
    * sends a schema only once the agent searches for it (EVAL-FR-029).
    */
   static create(
-    charter: CharterRoot,
+    charterRoot: CharterRoot,
     charterOutput: CharterOutput,
     placeOf: (claudeComponent: ClaudeEntryFile | ClaudeRule) => string,
   ): readonly MainContextText[] {
@@ -43,7 +43,7 @@ export class ClaudeMainContextFactory {
       (charterOutputItem): charterOutputItem is CompiledPrimitive => charterOutputItem instanceof CompiledPrimitive,
     );
     const mcpOrigins = charterOutput.findCharterOutputItem(McpOrigins);
-    const claudeComponents = ClaudeComponentFactory.create(charter, charterOutput);
+    const claudeComponents = ClaudeComponentFactory.create(charterRoot, charterOutput);
     const servedPrefixById = new Map(mcpOrigins.origins.flatMap(({ names }) => Object.entries(names)));
     const compiledPrimitiveById = new Map(
       compiledPrimitives.map((compiledPrimitive) => [compiledPrimitive.id, compiledPrimitive]),
@@ -55,7 +55,7 @@ export class ClaudeMainContextFactory {
         ? []
         : [new MainContextText(placeOf(entryFile), "charter", resolveLaidText(entryFile.text, placeOf(entryFile)))]),
       new MainContextText("CHARTER.md", "charter", charterMd.text),
-      ...charter.primitives
+      ...charterRoot.primitives
         .filter((primitive) => primitive.supportsAgent(ClaudeComponents.agentProvider))
         .flatMap((primitive): MainContextText[] => {
           const claudeComponent = claudeComponents.find(

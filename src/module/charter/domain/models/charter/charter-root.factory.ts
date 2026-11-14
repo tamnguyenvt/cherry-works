@@ -51,9 +51,6 @@ export class CharterRootFactory {
         .filter(({ layer }) => layer.name === layerName)
         .sort((leftPrimitive, rightPrimitive) => leftPrimitive.uri.localeCompare(rightPrimitive.uri))) {
         primitiveLayerByUri[handedPrimitive.uri] = handedPrimitive.layer;
-        const folderUriOf = (kind: string, id: string) =>
-          (handedPrimitive instanceof RawPrimitive ? handedPrimitive.folderUriOf?.(kind, id) : undefined) ??
-          `${kind}/${id}/`;
         // A primitive is a folder holding its index.md; a markdown file of its own
         // is how an earlier version kept one, and is sent where it belongs now
         // (FR-141).
@@ -61,7 +58,7 @@ export class CharterRootFactory {
           faultsByFile[handedPrimitive.uri] = [
             new InconsistentCharterFault(
               `This is a markdown file of its own, and a primitive is a folder holding its ${BasePrimitive.indexFileName}.`,
-              `Move it to "${folderUriOf(handedPrimitive.kind, handedPrimitive.id)}${BasePrimitive.indexFileName}".`,
+              `Move it to "${CharterRootFactory.#folderUriOf(handedPrimitive, handedPrimitive.kind, handedPrimitive.id)}${BasePrimitive.indexFileName}".`,
               { internal: false },
             ),
           ];
@@ -78,7 +75,7 @@ export class CharterRootFactory {
             faultsByFile[handedPrimitive.uri] = [
               new InconsistentCharterFault(
                 `This declares "${primitive.kind}" "${primitive.headers.id}", and it is kept at "${handedPrimitive.kind}/${handedPrimitive.id}/${BasePrimitive.indexFileName}"; a primitive is kept at "<kind>/<id>/${BasePrimitive.indexFileName}".`,
-                `Move its folder to "${folderUriOf(primitive.kind, primitive.headers.id)}", or declare the kind and id its folder says.`,
+                `Move its folder to "${CharterRootFactory.#folderUriOf(handedPrimitive, primitive.kind, primitive.headers.id)}", or declare the kind and id its folder says.`,
                 { internal: false },
               ),
             ];
@@ -107,6 +104,15 @@ export class CharterRootFactory {
       }
 
     return new CharterRoot(primitives, new FaultsByFile(faultsByFile), primitiveLayerByUri, charterPlace);
+  }
+
+  /** Where the folder of a primitive of this kind and id is kept, as the
+   *  store handing it says, else as the charter lays one out (FR-141). */
+  static #folderUriOf(handedPrimitive: RawPrimitive | Primitive, kind: string, id: string): string {
+    return (
+      (handedPrimitive instanceof RawPrimitive ? handedPrimitive.folderUriOf?.(kind, id) : undefined) ??
+      `${kind}/${id}/`
+    );
   }
 
   private constructor() {}

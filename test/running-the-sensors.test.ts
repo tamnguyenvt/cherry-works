@@ -196,7 +196,7 @@ test("one sensor exiting 2 makes the command exit 2 with its error, and the othe
 
   assert.equal(sensorRunOutcome.data.exitCode, 2);
   assert.equal(sensorRunOutcome.data.problem, "a release is open\n");
-  assert.ok(shell.finished.includes("echo a"));
+  assert.ok(shell.finishedCommands.includes("echo a"));
 });
 
 test("two sensors both exiting 2 give the error of each, in order of id (CORE-FR-177)", async () => {
@@ -232,7 +232,7 @@ test("one sensor exiting 1 makes the command exit 1, and the other still runs to
 
   assert.equal(sensorRunOutcome.data.exitCode, 1);
   assert.equal(sensorRunOutcome.data.problem, "no such file\n");
-  assert.ok(shell.finished.includes("echo a"));
+  assert.ok(shell.finishedCommands.includes("echo a"));
 });
 
 test("sensors answering in plain text reach the host as one answer, in order of id (CORE-FR-178, CORE-SC-048, CORE Story 29 scenario 7)", async () => {

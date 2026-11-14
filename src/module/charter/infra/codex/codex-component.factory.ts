@@ -20,7 +20,7 @@ export class CodexComponentFactory {
   /** Translate charter activation, execution permissions and sensors into the
    * agent's native surfaces. Claude permission syntax is translated only where
    * a literal command prefix has the same scope as a Codex execution rule. */
-  static create(charter: CharterRoot, charterOutput: CharterOutput): readonly CodexComponent[] {
+  static create(charterRoot: CharterRoot, charterOutput: CharterOutput): readonly CodexComponent[] {
     const codexAgentProvider = CodexComponents.agentProvider;
     const compiledPrimitives = charterOutput.charterOutputItems.filter(
       (charterOutputItem): charterOutputItem is CompiledPrimitive => charterOutputItem instanceof CompiledPrimitive,
@@ -30,7 +30,7 @@ export class CodexComponentFactory {
     );
     const entryLines = [
       "## Charter",
-      `Read and follow [${resolveLaidText(outputPath.getLinkTo(outputPath.charterMdFileName))}](${outputPath.getLinkTo(outputPath.charterMdFileName)}) before working here. Edit the primitives under \`${charter.charterPlace}/\`, then run \`cw build\`; generated files are not edited by hand.`,
+      `Read and follow [${resolveLaidText(outputPath.getLinkTo(outputPath.charterMdFileName))}](${outputPath.getLinkTo(outputPath.charterMdFileName)}) before working here. Edit the primitives under \`${charterRoot.charterPlace}/\`, then run \`cw build\`; generated files are not edited by hand.`,
       `Find primitives in [catalogue.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName())}) and [catalogue.codex.json](${outputPath.getLinkTo(outputPath.getCatalogueFileName(codexAgentProvider.name))}).`,
       "### Guides",
     ];
@@ -39,10 +39,10 @@ export class CodexComponentFactory {
     const sensorHooks: CodexHook[] = [];
     const warnings: string[] = [];
     const guideSectionsByFolder = new Map<string, string[]>();
-    const filesystem: Record<string, "read" | "write" | "deny"> = {};
+    const accessByPath: Record<string, "read" | "write" | "deny"> = {};
     const deniedReadPaths = new Set<string>();
     const deniedWritePaths = new Set<string>();
-    for (const primitive of charter.primitives) {
+    for (const primitive of charterRoot.primitives) {
       if (!primitive.supportsAgent(codexAgentProvider)) continue;
       const compiledPrimitive = compiledPrimitiveById.get(primitive.headers.id)!;
       // From the repository's root, which is where every pointer is read from.
@@ -119,7 +119,7 @@ export class CodexComponentFactory {
                 ) {
                   if (decision === "deny")
                     (tool === "Read" || barePath !== undefined ? deniedReadPaths : deniedWritePaths).add(path);
-                  else if (filesystem[path] !== "write") filesystem[path] = tool === "Read" ? "read" : "write";
+                  else if (accessByPath[path] !== "write") accessByPath[path] = tool === "Read" ? "read" : "write";
                   continue;
                 }
               }
@@ -177,7 +177,7 @@ export class CodexComponentFactory {
           } else {
             documentComponents.push(
               new CodexSkill(
-                "codex",
+                codexAgentProvider,
                 primitive.kind,
                 primitive.normId,
                 { name: primitive.normId, description: primitive.composeDescription() },
@@ -187,7 +187,7 @@ export class CodexComponentFactory {
             if (primitive.headers["disable-model-invocation"] === true)
               documentComponents.push(
                 new CodexSkillPolicy(
-                  "codex",
+                  codexAgentProvider,
                   primitive.kind,
                   primitive.normId,
                   `# ${StampedDocument.stampText}. Do not edit; edit the charter and build again.\npolicy:\n  allow_implicit_invocation: false\n`,
@@ -213,7 +213,7 @@ export class CodexComponentFactory {
           );
           documentComponents.push(
             new CodexAgent(
-              "codex",
+              codexAgentProvider,
               "agent",
               primitive.normId,
               CodexComponentFactory.#composeAgentText(
@@ -230,13 +230,13 @@ export class CodexComponentFactory {
         }
       }
     }
-    for (const path of deniedWritePaths) filesystem[path] = "read";
-    for (const path of deniedReadPaths) filesystem[path] = "deny";
-    if (Object.keys(filesystem).length > 0)
+    for (const path of deniedWritePaths) accessByPath[path] = "read";
+    for (const path of deniedReadPaths) accessByPath[path] = "deny";
+    if (Object.keys(accessByPath).length > 0)
       warnings.push(
         'Codex permissions: profile "cw" is selected by default_permissions. Remove legacy sandbox_mode settings from all active layers; native deny blocks both reading and writing, and glob enforcement depends on the platform.',
       );
-    const scopedEntries = [...guideSectionsByFolder]
+    const scopedEntryFiles = [...guideSectionsByFolder]
       .sort(([leftFolder], [rightFolder]) => leftFolder.localeCompare(rightFolder))
       .map(([folderPath, sections]) =>
         CodexComponentFactory.#createEntryFile(
@@ -250,13 +250,17 @@ export class CodexComponentFactory {
     );
     return [
       CodexComponentFactory.#createEntryFile(entryLines.join("\n\n")),
-      ...scopedEntries,
-      new CodexConfig(CodexComponentFactory.#composeConfigText(sensorHooks, filesystem), warnings),
+      ...scopedEntryFiles,
+      new CodexConfig(
+        codexAgentProvider,
+        CodexComponentFactory.#composeConfigText(sensorHooks, accessByPath),
+        warnings,
+      ),
       ...(commandRules.length === 0
         ? []
         : [
             new CodexRules(
-              "codex",
+              codexAgentProvider,
               "charter",
               CodexRules.kind,
               [
@@ -278,7 +282,7 @@ export class CodexComponentFactory {
   static #createEntryFile(document: string, folderPath = ""): CodexEntryFile {
     const sectionText = folderPath === "" ? document : new StampedDocument(document).text.trimEnd();
     return new CodexEntryFile(
-      "codex",
+      CodexComponents.agentProvider,
       "charter",
       folderPath,
       `<!-- CHERRYWORKS START -->\n${sectionText}\n<!-- CHERRYWORKS END -->\n`,
@@ -313,12 +317,14 @@ export class CodexComponentFactory {
    *  permissions profile where any path is ruled, and the hooks. */
   static #composeConfigText(
     hooks: readonly CodexHook[],
-    filesystem: Readonly<Record<string, "read" | "write" | "deny">>,
+    accessByPath: Readonly<Record<string, "read" | "write" | "deny">>,
   ): string {
-    const hasPermissions = Object.keys(filesystem).length > 0;
-    const absolutePaths = Object.entries(filesystem).filter(([path]) => path.startsWith("/") || path.startsWith("~/"));
-    const workspacePaths = Object.fromEntries(
-      Object.entries(filesystem).filter(([path]) => !path.startsWith("/") && !path.startsWith("~/")),
+    const hasPermissions = Object.keys(accessByPath).length > 0;
+    const absolutePaths = Object.entries(accessByPath).filter(
+      ([path]) => path.startsWith("/") || path.startsWith("~/"),
+    );
+    const workspaceAccessByPath = Object.fromEntries(
+      Object.entries(accessByPath).filter(([path]) => !path.startsWith("/") && !path.startsWith("~/")),
     );
     return [
       "project_doc_max_bytes = 1048576", // 1 MiB of project instructions.
@@ -341,7 +347,7 @@ export class CodexComponentFactory {
                     .map(([path, access]) => `${JSON.stringify(path)} = ${JSON.stringify(access)}`),
                 ]),
             '[permissions.cw.filesystem.":workspace_roots"]',
-            ...Object.entries({ ".": "write", ...workspacePaths })
+            ...Object.entries({ ".": "write", ...workspaceAccessByPath })
               .sort(([leftPath], [rightPath]) => leftPath.localeCompare(rightPath))
               .map(([path, access]) => `${JSON.stringify(path)} = ${JSON.stringify(access)}`),
           ]

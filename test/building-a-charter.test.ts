@@ -581,9 +581,11 @@ const toolNamed = (name: string) => ({
 
 test("a build asks each mcp origin for its tools and keeps those its mcps declare, with what each takes, beside it (EVAL-FR-031)", async () => {
   const mcpServerCaller = new InMemoryMcpServers();
-  mcpServerCaller.servers.set(LINEAR, { tools: ["create_issue", "list_issues", "delete_team"].map(toolNamed) });
+  mcpServerCaller.mcpServerByAddress.set(LINEAR, {
+    tools: ["create_issue", "list_issues", "delete_team"].map(toolNamed),
+  });
   const credentialsRepository = new InMemoryCredentialsRepository();
-  await credentialsRepository.secrets.set(
+  await credentialsRepository.secretByAddress.set(
     LINEAR,
     JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }),
   );
@@ -593,8 +595,8 @@ test("a build asks each mcp origin for its tools and keeps those its mcps declar
 
   const [linearOrigin] = JSON.parse(await contentsOf(held, ".cw/out/mcp-origins.json")).origins;
   assert.deepEqual(linearOrigin.tools, [toolNamed("create_issue"), toolNamed("list_issues")]);
-  assert.deepEqual(mcpServerCaller.connected, [{ address: LINEAR, accessToken: "linear token" }]);
-  assert.deepEqual(mcpServerCaller.closed, [LINEAR]);
+  assert.deepEqual(mcpServerCaller.serverConnections, [{ address: LINEAR, accessToken: "linear token" }]);
+  assert.deepEqual(mcpServerCaller.closedServerAddresses, [LINEAR]);
 });
 
 /** What a build that was refused says, under each file. */
@@ -605,7 +607,7 @@ const faultsOf = (planSummaryDTO: CharterDTOs.ProjectionPlanSummary | FaultDTOs.
 
 test("an mcp origin the build cannot ask for its tools stops the build, under the mcp's file, and writes nothing (EVAL-FR-031, EVAL Story 5 scenario 5)", async () => {
   const mcpServerCaller = new InMemoryMcpServers();
-  mcpServerCaller.servers.set(LINEAR, { tools: ["list_issues", "create_issue"].map(toolNamed) });
+  mcpServerCaller.mcpServerByAddress.set(LINEAR, { tools: ["list_issues", "create_issue"].map(toolNamed) });
   const { held, build } = building(linearDeclared, mcpServerCaller, new InMemoryCredentialsRepository());
 
   const faultsText = faultsOf(await build());
@@ -618,9 +620,9 @@ test("an mcp origin the build cannot ask for its tools stops the build, under th
 
 test("a tool an mcp declares that its mcp origin does not list stops the build, naming the tools it lists, and writes nothing (EVAL-FR-031, CORE Story 19 scenario 6, CORE Story 55 scenario 8, EVAL Story 5 scenario 5)", async () => {
   const mcpServerCaller = new InMemoryMcpServers();
-  mcpServerCaller.servers.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
+  mcpServerCaller.mcpServerByAddress.set(LINEAR, { tools: ["list_issues"].map(toolNamed) });
   const credentialsRepository = new InMemoryCredentialsRepository();
-  await credentialsRepository.secrets.set(
+  await credentialsRepository.secretByAddress.set(
     LINEAR,
     JSON.stringify({ address: LINEAR, method: "token", accessToken: "linear token" }),
   );

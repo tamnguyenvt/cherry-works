@@ -9,7 +9,7 @@ export interface CodexCommandRule {
 /** Execution policy for command prefixes outside the sandbox, not Markdown
  * guidance or file glob rules. Native Codex resolves conflicting decisions. */
 export class CodexRules extends ProviderComponent {
-  static readonly kind = "rules";
+  static readonly kind = "rules" as const;
   readonly kind = CodexRules.kind;
 
   /** Where it lands, from the repository's root, whether this charter

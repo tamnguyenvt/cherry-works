@@ -42,7 +42,7 @@ export function CharterListing({
 
   if (kindsQuery.data === undefined || primitivesQuery.data === undefined) return null;
   if (kindsQuery.data.type === "Fault") return <FaultAlert fault={kindsQuery.data} />;
-  const kinds = kindsQuery.data.data;
+  const activatesWhenByKind = kindsQuery.data.data;
   const primitivesAnswer = primitivesQuery.data;
   // A charter the engine will not read is not a charter holding nothing: what
   // is wrong with it is what there is to show, under each file (FR-115).
@@ -55,7 +55,7 @@ export function CharterListing({
     layerNames.includes(primitive.layerName),
   );
   const primitiveCountByKind = new Map(
-    Object.keys(kinds).map((kindName) => [
+    Object.keys(activatesWhenByKind).map((kindName) => [
       kindName,
       primitives.filter(({ data: primitive }) => primitive.kind === kindName).length,
     ]),
@@ -63,7 +63,8 @@ export function CharterListing({
   // What is shown until a chip is picked: the first kind anything was authored
   // of, so a reader lands on a table rather than on an empty state, and the
   // first kind there is where these layerNames hold nothing at all.
-  const shownKind = kind ?? [...primitiveCountByKind].find(([, count]) => count > 0)?.[0] ?? Object.keys(kinds)[0]!;
+  const shownKind =
+    kind ?? [...primitiveCountByKind].find(([, count]) => count > 0)?.[0] ?? Object.keys(activatesWhenByKind)[0]!;
   const listedPrimitives = primitives.filter(({ data: primitive }) => primitive.kind === shownKind);
 
   return (
@@ -114,7 +115,7 @@ export function CharterListing({
           Activates when
         </span>
         <span className="text-xs leading-normal text-zinc-700" aria-label="Activates when">
-          {kinds[shownKind]}
+          {activatesWhenByKind[shownKind]}
         </span>
       </p>
 
@@ -123,7 +124,7 @@ export function CharterListing({
           No {shownKind} in this charter yet.
         </p>
       ) : (
-        <Rows kind={shownKind} listedPrimitives={listedPrimitives} />
+        <PrimitiveRows kind={shownKind} listedPrimitives={listedPrimitives} />
       )}
     </div>
   );
@@ -166,7 +167,7 @@ function listHeaderValues(headerValue: string | readonly string[] | undefined): 
  * a corpus for why; every kind but a mixin may pull mixins in, and a mixin may
  * not, so it has no column for them.
  */
-function Rows({
+function PrimitiveRows({
   kind,
   listedPrimitives,
 }: {
@@ -221,14 +222,14 @@ function Rows({
                     {/* A guide declaring no globs is carried on every turn, as if
                         it matched every file, which is worth reading as something
                         rather than as a blank. */}
-                    <Chips
-                      namedIds={globs}
+                    <HeaderValueChips
+                      headerValues={globs}
                       noneText="all patterns"
                       isNoneNoticed={globs === undefined}
                       label="Matching globs"
                     />
-                    <Chips
-                      namedIds={listHeaderValues(headers.rationale)}
+                    <HeaderValueChips
+                      headerValues={listHeaderValues(headers.rationale)}
                       noneText="none"
                       isNoneNoticed={false}
                       label="Rationale"
@@ -236,8 +237,8 @@ function Rows({
                   </>
                 )}
                 {isMixingIn && (
-                  <Chips
-                    namedIds={listHeaderValues(headers.mixins)}
+                  <HeaderValueChips
+                    headerValues={listHeaderValues(headers.mixins)}
                     noneText="none"
                     isNoneNoticed={false}
                     label="Mixins"
@@ -266,13 +267,13 @@ function Rows({
 /** One cell of what a primitive named — globs, a rationale, mixins — or the
  *  word for having named none, said plainly where nothing being there is worth
  *  noticing and quietly where it is ordinary. */
-function Chips({
-  namedIds,
+function HeaderValueChips({
+  headerValues,
   noneText,
   isNoneNoticed,
   label,
 }: {
-  namedIds: readonly string[] | undefined;
+  headerValues: readonly string[] | undefined;
   noneText: string;
   isNoneNoticed: boolean;
   label: string;
@@ -280,16 +281,16 @@ function Chips({
   return (
     <TableCell aria-label={label}>
       <div className="flex min-w-0 flex-wrap content-start justify-end gap-1">
-        {namedIds === undefined || namedIds.length === 0 ? (
+        {headerValues === undefined || headerValues.length === 0 ? (
           <span className={`text-[10.5px] ${isNoneNoticed ? "text-destructive" : "text-zinc-300"}`}>{noneText}</span>
         ) : (
-          namedIds.map((namedId) => (
+          headerValues.map((headerValue) => (
             <Badge
-              key={namedId}
-              title={namedId}
+              key={headerValue}
+              title={headerValue}
               className="block max-w-full truncate rounded-[5px] bg-zinc-100 px-1.5 py-0.5 font-mono text-[10px] font-normal text-zinc-700"
             >
-              {namedId}
+              {headerValue}
             </Badge>
           ))
         )}

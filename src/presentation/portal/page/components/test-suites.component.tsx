@@ -24,8 +24,8 @@ export function TestSuites() {
   const testSuitesQuery = useTestSuites();
   const testOutcomeQuery = useTestOutcome();
   const primitivesQuery = usePrimitives();
-  const addTestSuite = useAddTestSuite();
-  const [openedName, setOpenedName] = useState<string | null>(null);
+  const addTestSuiteMutation = useAddTestSuite();
+  const [openedTestSuiteName, setOpenedTestSuiteName] = useState<string | null>(null);
 
   if (testSuitesQuery.data === undefined) return null;
   if (testSuitesQuery.data.type === "Fault") return <FaultAlert fault={testSuitesQuery.data} />;
@@ -43,18 +43,20 @@ export function TestSuites() {
   const runAllTests = async () => {
     const { data: outcomeDTO } = await testOutcomeQuery.refetch();
     if (outcomeDTO?.type !== "TestRunReport") return;
-    const firstFailed = outcomeDTO.data.testCaseReports.find(({ data: testCaseReport }) => !testCaseReport.passed);
-    if (firstFailed !== undefined) setOpenedName(firstFailed.data.suiteName);
+    const firstFailedTestCaseReport = outcomeDTO.data.testCaseReports.find(
+      ({ data: testCaseReport }) => !testCaseReport.passed,
+    );
+    if (firstFailedTestCaseReport !== undefined) setOpenedTestSuiteName(firstFailedTestCaseReport.data.suiteName);
   };
 
   const addSuite = async () => {
-    const testSuiteNameDTO = await addTestSuite.mutateAsync();
+    const testSuiteNameDTO = await addTestSuiteMutation.mutateAsync();
     if (testSuiteNameDTO.type === "Fault")
       return void toast.error(testSuiteNameDTO.data.message, { description: testSuiteNameDTO.data.fix });
-    const { name } = testSuiteNameDTO.data;
-    setOpenedName(name);
-    openDialog("testSuite", { name });
-    toast("Test file created", { description: `.cw/charter/test/${name} · edit the cases, then run them` });
+    const { name: testSuiteName } = testSuiteNameDTO.data;
+    setOpenedTestSuiteName(testSuiteName);
+    openDialog("testSuite", { name: testSuiteName });
+    toast("Test file created", { description: `.cw/charter/test/${testSuiteName} · edit the cases, then run them` });
   };
 
   return (
@@ -78,7 +80,7 @@ export function TestSuites() {
           A case names the file a change touches or the event it raises, then says what must come up. It runs nothing
           and asks no agent.
         </span>
-        <Button variant="outline" disabled={addTestSuite.isPending} onClick={() => void addSuite()}>
+        <Button variant="outline" disabled={addTestSuiteMutation.isPending} onClick={() => void addSuite()}>
           New test file
         </Button>
         <Button disabled={testOutcomeQuery.isFetching} onClick={() => void runAllTests()}>
@@ -101,7 +103,7 @@ export function TestSuites() {
           testRunReport?.data.testCaseReports.filter(
             ({ data: testCaseReport }) => testCaseReport.suiteName === testSuite.name,
           ) ?? [];
-        const failedInSuite = testCaseReports.filter(({ data: testCaseReport }) => !testCaseReport.passed).length;
+        const suiteFailedCount = testCaseReports.filter(({ data: testCaseReport }) => !testCaseReport.passed).length;
         return (
           <section
             key={testSuite.name}
@@ -112,14 +114,16 @@ export function TestSuites() {
               <button
                 type="button"
                 className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-2.5 text-left"
-                aria-expanded={openedName === testSuite.name}
-                onClick={() => setOpenedName(openedName === testSuite.name ? null : testSuite.name)}
+                aria-expanded={openedTestSuiteName === testSuite.name}
+                onClick={() => setOpenedTestSuiteName(openedTestSuiteName === testSuite.name ? null : testSuite.name)}
               >
                 <span className="font-mono text-[11.5px] font-bold">{testSuite.name}</span>
                 <span className="min-w-0 flex-1 text-[11.5px] text-zinc-500">{testSuite.description}</span>
-                <span className={`font-mono text-[10.5px] ${failedInSuite > 0 ? "text-destructive" : "text-zinc-400"}`}>
+                <span
+                  className={`font-mono text-[10.5px] ${suiteFailedCount > 0 ? "text-destructive" : "text-zinc-400"}`}
+                >
                   {testSuite.cases.length} case{testSuite.cases.length === 1 ? "" : "s"}
-                  {failedInSuite > 0 && ` · ${failedInSuite} failing`}
+                  {suiteFailedCount > 0 && ` · ${suiteFailedCount} failing`}
                 </span>
               </button>
               <Button
@@ -135,7 +139,7 @@ export function TestSuites() {
                 {testSuite.fault.data.message} <span className="text-zinc-400">{testSuite.fault.data.fix}</span>
               </p>
             )}
-            {openedName === testSuite.name &&
+            {openedTestSuiteName === testSuite.name &&
               testSuite.cases.map(({ data: testCase }, caseIndex) => (
                 <TestCaseRow
                   // biome-ignore lint/suspicious/noArrayIndexKey: a case has no identity but its place in the file.

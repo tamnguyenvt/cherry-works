@@ -17,7 +17,7 @@ export class CodexMainContextFactory {
    * system prompt, each entry file laid at `placeOf` it. Scoped guide bodies
    * are charged only when their globs apply. */
   static create(
-    charter: CharterRoot,
+    charterRoot: CharterRoot,
     charterOutput: CharterOutput,
     placeOf: (codexEntryFile: CodexEntryFile) => string,
   ): readonly MainContextText[] {
@@ -29,30 +29,30 @@ export class CodexMainContextFactory {
       compiledPrimitives.map((compiledPrimitive) => [compiledPrimitive.id, compiledPrimitive]),
     );
     return [
-      ...CodexComponentFactory.create(charter, charterOutput).flatMap((component): MainContextText[] => {
-        if (component instanceof CodexEntryFile)
+      ...CodexComponentFactory.create(charterRoot, charterOutput).flatMap((codexComponent): MainContextText[] => {
+        if (codexComponent instanceof CodexEntryFile)
           return [
             new MainContextText(
-              placeOf(component),
+              placeOf(codexComponent),
               "charter",
-              resolveLaidText(component.text, placeOf(component)),
-              component.folder === "" ? undefined : [`${component.folder}/**`],
+              resolveLaidText(codexComponent.text, placeOf(codexComponent)),
+              codexComponent.folderPath === "" ? undefined : [`${codexComponent.folderPath}/**`],
             ),
           ];
-        if (component instanceof CodexSkill) {
-          const primitive = charter.primitives.find((primitive) => primitive.normId === component.name)!;
+        if (codexComponent instanceof CodexSkill) {
+          const skillPrimitive = charterRoot.primitives.find((primitive) => primitive.normId === codexComponent.name)!;
           return [
             new MainContextText(
-              primitive.headers.id,
-              primitive.kind,
-              `${component.headers.name}: ${component.headers.description}`,
+              skillPrimitive.headers.id,
+              skillPrimitive.kind,
+              `${codexComponent.headers.name}: ${codexComponent.headers.description}`,
             ),
           ];
         }
         return [];
       }),
       new MainContextText("CHARTER.md", "charter", charterMd.text),
-      ...charter.primitives
+      ...charterRoot.primitives
         .filter((primitive) => primitive.supportsAgent(CodexComponents.agentProvider))
         .flatMap((primitive): MainContextText[] => {
           if (primitive.kind === "agent")

@@ -1,4 +1,4 @@
-import { BUILTIN_LAYER } from "#module/charter/module.js";
+import { BUILTIN_LAYER_NAME } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
@@ -38,7 +38,7 @@ export class EditCommand implements Command<typeof OPTIONS> {
     const primitiveDTO = await charterAuthoringApp.openPrimitive(id ?? "");
     if (primitiveDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveDTO) };
     const primitive = primitiveDTO.data;
-    if (primitive.layerName === BUILTIN_LAYER)
+    if (primitive.layerName === BUILTIN_LAYER_NAME)
       return {
         exitCode: EXIT_FAILURE,
         problemText: `${primitive.id} is built into cw, and there is no file of it in this repository to edit.\n  To differ from it, run "cw add" for a primitive of your own under an id of its own.\n`,

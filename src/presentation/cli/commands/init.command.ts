@@ -1,6 +1,14 @@
 import prompts from "prompts";
 import { settingsPath } from "#module/workspace/module.js";
-import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import { printFault, printFaultsByFile } from "./helper.js";
 
 const OPTIONS = {
@@ -12,7 +20,7 @@ const OPTIONS = {
     type: "number",
     describe: "The tokens of main context past which the health check warns; 20000 unless set",
   },
-} as const;
+} as const satisfies OptionSpec;
 
 /**
  * `cw init`: set this repository up under a charter (FR-032 – FR-037).
@@ -124,11 +132,11 @@ export class InitCommand implements Command<typeof OPTIONS> {
     // Set up either way; a charter already here that does not hold is not
     // built, and is said in the build's own words (FR-057).
     if (planSummaryDTO.type === "FaultsByFile") {
-      const noOfFiles = Object.keys(planSummaryDTO.data.files).length;
+      const faultyFileCount = Object.keys(planSummaryDTO.data.files).length;
       return {
         exitCode: EXIT_FAILURE,
         resultText: [...setUpLines, ""].join("\n"),
-        problemText: `Nothing was built: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
+        problemText: `Nothing was built: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
       };
     }
 

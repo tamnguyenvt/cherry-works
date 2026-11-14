@@ -31,8 +31,8 @@ export class VendorRemoveCommand implements Command<typeof OPTIONS> {
   readonly summary = "Take an installed charter away";
   readonly options = OPTIONS;
 
-  async runCommand({ charterAuthoringApp }: Context, { name }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const vendorFolderDTO = await charterAuthoringApp.removeVendor(name ?? "");
+  async runCommand({ charterAuthoringApp }: Context, { name: vendorName }: Options<typeof OPTIONS>): Promise<Outcome> {
+    const vendorFolderDTO = await charterAuthoringApp.removeVendor(vendorName ?? "");
     if (vendorFolderDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(vendorFolderDTO) };
     const { folder: folderPath } = vendorFolderDTO.data;
 

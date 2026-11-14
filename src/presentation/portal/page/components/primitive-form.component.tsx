@@ -110,11 +110,11 @@ function PrimitiveEditor({
   const { data: kindsAnswer } = useKinds();
   const { data: requirementsAnswer } = usePrimitiveRequirements(kind);
   const { data: primitivesAnswer } = usePrimitives();
-  const addPrimitive = useAddPrimitive();
-  const rewritePrimitive = useRewritePrimitive();
-  const removePrimitive = useRemovePrimitive();
+  const addPrimitiveMutation = useAddPrimitive();
+  const rewritePrimitiveMutation = useRewritePrimitive();
+  const removePrimitiveMutation = useRemovePrimitive();
 
-  const kinds = kindsAnswer === undefined ? [] : Object.keys(kindsAnswer.data);
+  const kindNames = kindsAnswer === undefined ? [] : Object.keys(kindsAnswer.data);
   const headers = requirementsAnswer?.type === "PrimitiveRequirements" ? requirementsAnswer.data.headers : [];
   // The corpus a rationale may cite is whatever the charter holds of it now; a
   // charter the engine will not read offers none.
@@ -144,8 +144,8 @@ function PrimitiveEditor({
   const savePrimitive = async () => {
     const primitiveDTO =
       openedPrimitive === null
-        ? await addPrimitive.mutateAsync({ kind, id, headers: answeredHeaders, body })
-        : await rewritePrimitive.mutateAsync({
+        ? await addPrimitiveMutation.mutateAsync({ kind, id, headers: answeredHeaders, body })
+        : await rewritePrimitiveMutation.mutateAsync({
             param: { id: openedPrimitive.data.id },
             header: { "if-match": entityTag },
             json: { headers: answeredHeaders, body },
@@ -161,14 +161,14 @@ function PrimitiveEditor({
 
   const deletePrimitive = async () => {
     if (openedPrimitive === null) return;
-    const refusedDTO = await removePrimitive.mutateAsync(openedPrimitive.data.id);
+    const refusedDTO = await removePrimitiveMutation.mutateAsync(openedPrimitive.data.id);
     if (refusedDTO !== null) return showRefusedFaults(refusedDTO);
     onDone("Primitive deleted", `${openedPrimitive.data.file} · what still names it is reported by Doctor`);
   };
 
   return (
     <div className="space-y-3.5">
-      <div className={FORM_ROWS}>
+      <div className={FORM_ROWS_CLASS_NAME}>
         {openedPrimitive === null ? (
           <>
             <FormRow label="kind" htmlFor="primitive-kind">
@@ -177,7 +177,7 @@ function PrimitiveEditor({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {kinds.map((kindName) => (
+                  {kindNames.map((kindName) => (
                     <SelectItem key={kindName} value={kindName}>
                       {kindName}
                     </SelectItem>
@@ -284,7 +284,7 @@ function ReadOnlyPrimitive({ openedPrimitive }: { openedPrimitive: CharterDTOs.P
           To differ from it, author a primitive of your own under an id of its own.
         </AlertDescription>
       </Alert>
-      <div className={FORM_ROWS}>
+      <div className={FORM_ROWS_CLASS_NAME}>
         <FormRow label="kind">
           <span className="font-mono text-[11.5px]">{kind}</span>
         </FormRow>
@@ -310,7 +310,8 @@ function ReadOnlyPrimitive({ openedPrimitive }: { openedPrimitive: CharterDTOs.P
 }
 
 /** The box the form's rows are drawn in, a rule between each. */
-const FORM_ROWS = "overflow-hidden rounded-[11px] border border-[#f0f0f0] bg-background divide-y divide-zinc-100";
+const FORM_ROWS_CLASS_NAME =
+  "overflow-hidden rounded-[11px] border border-[#f0f0f0] bg-background divide-y divide-zinc-100";
 
 /** One row of the form: the header's name, what answers it, and a hint. */
 function FormRow({

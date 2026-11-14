@@ -12,9 +12,9 @@ import type { CharterDTOs } from "./charter.dto.js";
 export type { LayerName } from "../../../domain/models/primitive/primitive-layer.value-object.js";
 
 /** The names of the three layers a primitive may come from. */
-export const BUILTIN_LAYER = PrimitiveLayer.BUILTIN.name;
-export const REPO_LAYER = PrimitiveLayer.REPO.name;
-export const VENDOR_LAYER = PrimitiveLayer.vendorName;
+export const BUILTIN_LAYER_NAME = PrimitiveLayer.BUILTIN.name;
+export const REPO_LAYER_NAME = PrimitiveLayer.REPO.name;
+export const VENDOR_LAYER_NAME = PrimitiveLayer.vendorName;
 
 /** What one primitive's author answered, under the header each answer fills
  *  in: a line, or the entries of a list — not yet read by the kind's schema,

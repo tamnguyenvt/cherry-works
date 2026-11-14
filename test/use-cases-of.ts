@@ -252,7 +252,7 @@ export function runningCharterOf(
       agentProjectionByProvider,
       tokenCounter,
       {
-        agents: settings.agents,
+        agentNames: settings.agents,
         ...(settings.mainContextCeiling === undefined ? {} : { mainContextCeiling: settings.mainContextCeiling }),
       },
       progressReporter,

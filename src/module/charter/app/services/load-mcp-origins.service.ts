@@ -46,15 +46,15 @@ export class LoadMcpOriginsService {
    */
   async loadMcpOrigins(compiledOutputReader: CompiledOutputReader): Promise<McpOrigins> {
     const mcpOriginsPlace = compiledOutputReader.describeItemPlace(outputPath.mcpOriginsFileName);
-    const contents = await compiledOutputReader.readCompiledOutputItem(outputPath.mcpOriginsFileName);
-    if (contents === undefined)
+    const mcpOriginsText = await compiledOutputReader.readCompiledOutputItem(outputPath.mcpOriginsFileName);
+    if (mcpOriginsText === undefined)
       throw new MissingMcpOriginsFault(
         `There is no ${mcpOriginsPlace}, so no mcp origin has been listed yet.`,
         'Run "cw build" first.',
         { internal: false },
       );
 
-    const mcpOrigins = McpOriginsFactory.create(contents);
+    const mcpOrigins = McpOriginsFactory.create(mcpOriginsText);
     if (mcpOrigins !== undefined) return mcpOrigins;
     throw new UnreadableMcpOriginsFault(
       `${mcpOriginsPlace} does not hold a list of mcp origins.`,
@@ -73,10 +73,10 @@ export class LoadMcpOriginsService {
    * as none: the caller says so, naming it, and serves the rest.
    */
   async loadMcpTools(compiledOutputReader: CompiledOutputReader, mcpIds: readonly string[]): Promise<McpDeclaredTools> {
-    const toolsById = new Map<string, readonly string[] | undefined>();
+    const toolNamesById = new Map<string, readonly string[] | undefined>();
     for (const id of mcpIds) {
-      if (toolsById.has(id)) continue;
-      toolsById.set(id, undefined);
+      if (toolNamesById.has(id)) continue;
+      toolNamesById.set(id, undefined);
       const compiledMcpPath = outputPath.getCompiledPrimitivePath(McpPrimitive.kind, id);
       const compiledDocument = await compiledOutputReader.readCompiledOutputItem(compiledMcpPath);
       if (compiledDocument === undefined) continue;
@@ -91,12 +91,12 @@ export class LoadMcpOriginsService {
             compiledOutputReader.describeItemPlace(compiledMcpPath),
           ),
         );
-        if (primitive instanceof McpPrimitive) toolsById.set(id, primitive.headers.tools);
+        if (primitive instanceof McpPrimitive) toolNamesById.set(id, primitive.headers.tools);
       } catch {
         // Said by the caller, as a missing one is.
       }
     }
-    return new McpDeclaredTools(toolsById);
+    return new McpDeclaredTools(toolNamesById);
   }
 
   /**
@@ -111,13 +111,13 @@ export class LoadMcpOriginsService {
    * kept.
    */
   async loadToolsByOriginKey(
-    charter: CharterRoot,
+    charterRoot: CharterRoot,
     compiledOutputReader: CompiledOutputReader,
     mcpReaching: McpReaching | undefined,
     shouldRefreshMcpOrigins: boolean,
   ): Promise<McpOriginTools> {
     const mcpPrimitiveById = new Map(
-      charter.primitives.flatMap((primitive) =>
+      charterRoot.primitives.flatMap((primitive) =>
         primitive instanceof McpPrimitive ? [[primitive.headers.id, primitive] as const] : [],
       ),
     );
@@ -145,7 +145,7 @@ export class LoadMcpOriginsService {
 
     const { mcpServerCaller, loadAccessToken } = mcpReaching;
     const mcpOriginResults = await Promise.all(
-      CharterOutputService.compileCharterRoot(charter, [])
+      CharterOutputService.compileCharterRoot(charterRoot, [])
         .findCharterOutputItem(McpOrigins)
         .origins.map(async (origin) => {
           const mcpPrimitives = origin.ids.flatMap((id) => mcpPrimitiveById.get(id) ?? []);
@@ -162,10 +162,12 @@ export class LoadMcpOriginsService {
             const faultsByFile = new FaultsByFile(
               Object.fromEntries(
                 mcpPrimitives.flatMap((mcpPrimitive) => {
-                  const missingTools = mcpPrimitive.headers.tools.filter((tool) => !listedToolNames.has(tool));
-                  if (missingTools.length === 0) return [];
+                  const missingToolNames = mcpPrimitive.headers.tools.filter(
+                    (toolName) => !listedToolNames.has(toolName),
+                  );
+                  if (missingToolNames.length === 0) return [];
                   const fault = new UnlistedMcpToolFault(
-                    `${origin.address} has no tool ${missingTools.map((tool) => `"${tool}"`).join(", ")}, which this mcp declares.`,
+                    `${origin.address} has no tool ${missingToolNames.map((toolName) => `"${toolName}"`).join(", ")}, which this mcp declares.`,
                     `Declare only tools it lists: ${[...listedToolNames].sort().join(", ")}.`,
                     { internal: false },
                   );

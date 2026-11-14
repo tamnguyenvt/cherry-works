@@ -1,4 +1,4 @@
-import { ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
+import { type AgentProvider, ProviderComponent } from "../../app/port/out/managing-local-agent-output.port.js";
 
 /**
  * The one line that gets the charter read at all: the section this charter keeps
@@ -20,8 +20,8 @@ export class ClaudeEntryFile extends ProviderComponent {
   static readonly kind = "entry-file" as const;
   readonly kind = ClaudeEntryFile.kind;
 
-  constructor(document: string) {
+  constructor(agentProvider: AgentProvider, text: string) {
     // The repository's own, at its root: its id is that folder.
-    super("claude", "charter", "", document);
+    super(agentProvider, "charter", "", text);
   }
 }

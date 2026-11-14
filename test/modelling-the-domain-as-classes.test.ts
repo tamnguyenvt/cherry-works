@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { EvaluationAgentService } from "../src/module/runtime/domain/services/evaluation-agent.service.js";
-import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
+import { AgentProvider } from "../src/module/shared/domain/models/agent/agent-provider.value-object.js";
 
 const repositoryUrl = new URL("../", import.meta.url);
 /** Each module's domain, and the kernel's (CORE-FR-222). */

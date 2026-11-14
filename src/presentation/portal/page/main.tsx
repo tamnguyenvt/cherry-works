@@ -20,7 +20,7 @@ const TABS = [
 ] as const;
 
 /** The white sheet a tab's view is drawn in, over the grey of the page. */
-const SHEET = "rounded-2xl border bg-background px-[22px] py-5";
+const SHEET_CLASS_NAME = "rounded-2xl border bg-background px-[22px] py-5";
 
 /** The page's shell: the header, the tabs, the sheet each view is rendered
  *  into, and the dialog and the toasts every view speaks through (plan §12.5).
@@ -32,7 +32,7 @@ const SHEET = "rounded-2xl border bg-background px-[22px] py-5";
  *  from the search is shown where it is listed — its layer's tab, its kind — as
  *  well as opened (FR-114). */
 function Portal() {
-  const [tab, setTab] = useState("repo");
+  const [shownTabValue, setShownTabValue] = useState("repo");
   // The kind the listing shows, or nothing for its own first choice; a tab
   // shown afresh starts from nothing again.
   const [shownKind, setShownKind] = useState<string | null>(null);
@@ -51,7 +51,7 @@ function Portal() {
         <div className="ml-auto flex w-full max-w-[460px]">
           <CharterSearch
             onPick={({ data: { id, kind, layerName } }) => {
-              setTab(layerName === "vendor" ? "vendor" : "repo");
+              setShownTabValue(layerName === "vendor" ? "vendor" : "repo");
               setShownKind(kind);
               openDialog("primitive", { id });
             }}
@@ -67,9 +67,9 @@ function Portal() {
 
       <main className="mx-auto max-w-[1120px] px-[26px] pt-[22px] pb-[60px]">
         <Tabs
-          value={tab}
+          value={shownTabValue}
           onValueChange={(tabValue) => {
-            setTab(tabValue);
+            setShownTabValue(tabValue);
             setShownKind(null);
           }}
         >
@@ -89,22 +89,22 @@ function Portal() {
               (FR-110). The repository's tab holds what the engine brings beside
               what was authored here; the vendor's is read-only (FR-112), beside
               the sources it was installed from (FR-122). */}
-          <TabsContent value="repo" className={SHEET}>
+          <TabsContent value="repo" className={SHEET_CLASS_NAME}>
             <CharterListing layerNames={["repo", "builtin"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
           <TabsContent
             value="vendor"
-            className={`${SHEET} grid items-start gap-4 md:has-[>section]:grid-cols-[210px_minmax(0,1fr)]`}
+            className={`${SHEET_CLASS_NAME} grid items-start gap-4 md:has-[>section]:grid-cols-[210px_minmax(0,1fr)]`}
           >
             <VendorSources />
             <CharterListing layerNames={["vendor"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
-          <TabsContent value="test" className={SHEET}>
+          <TabsContent value="test" className={SHEET_CLASS_NAME}>
             <TestSuites />
           </TabsContent>
           {/* What the charter costs the agent's main context, as `cw context`
               lists it (EVAL-FR-007). */}
-          <TabsContent value="context" className={SHEET}>
+          <TabsContent value="context" className={SHEET_CLASS_NAME}>
             <MainContextListing />
           </TabsContent>
         </Tabs>

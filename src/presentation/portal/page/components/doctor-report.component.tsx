@@ -1,4 +1,4 @@
-import { useBuild, useHealth } from "../portal.queries.js";
+import { useBuildCharter, useHealth } from "../portal.queries.js";
 import type { BuildAnswer } from "./charter-build.component.js";
 import { DIALOG_FOOTER_CLASS_NAME } from "./dialog-footer.constants.js";
 import { FaultAlert } from "./fault-alert.component.js";
@@ -16,7 +16,7 @@ import { Button } from "./ui/button.js";
  */
 export function DoctorReport({ onBuilt }: { onBuilt: (buildAnswer: BuildAnswer) => void }) {
   const healthQuery = useHealth();
-  const buildMutation = useBuild();
+  const buildMutation = useBuildCharter();
 
   if (healthQuery.data === undefined) return null;
   if (healthQuery.data.type === "Fault") return <FaultAlert fault={healthQuery.data} />;

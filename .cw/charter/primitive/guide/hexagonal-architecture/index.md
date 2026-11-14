@@ -128,8 +128,8 @@ imports. Each folder named below is a module's: `<module>/app/port/in/`,
   factories that make them side by side; a module's faults sit in `models/`
   itself (`charter.fault.ts`). `services/` holds the domain services, apart
   from every model: a service works over several models, so the folder of
-  any one of them is the wrong place for it. A domain may keep its value
-  objects in `value-objects/` beside `models/` (the kernel's `AgentProvider`).
+  any one of them is the wrong place for it. A value object sits in the
+  folder of its concept (the kernel's `AgentProvider`, in `models/agent/`).
   A value object is a value an entity or an aggregate holds as a property;
   a value no model holds is no value object. A module's layout — a
   folder's path, a file's name — is one model of its own, made once in its

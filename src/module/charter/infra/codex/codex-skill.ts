@@ -6,5 +6,6 @@ export interface CodexSkillHeaders {
 }
 
 export class CodexSkill extends DocumentBasedComponent<CodexSkillHeaders> {
-  readonly kind = "skill";
+  static readonly kind = "skill" as const;
+  readonly kind = CodexSkill.kind;
 }

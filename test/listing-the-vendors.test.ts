@@ -96,11 +96,12 @@ test("a folder laid out the way an earlier version installed a vendor is refused
       [new URL(`.cw/charter/vendor/${vendorFilePath}`, repoPath).href]: guide("old"),
     });
 
-    const { message, fix } = faultOf(
+    const { name, message, fix } = faultOf(
       await authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), {
         sourceFetcher: new InMemorySources(),
       }).listVendors(),
     );
+    assert.equal(name, "OldVendorLayoutFault", vendorFilePath);
     assert.match(message, /is laid out the way an earlier version installed a vendor/, vendorFilePath);
     assert.match(fix, /install each source again with "cw vendor add"/, vendorFilePath);
   }

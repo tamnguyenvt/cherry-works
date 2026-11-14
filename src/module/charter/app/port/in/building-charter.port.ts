@@ -17,7 +17,7 @@ export interface ProjectionSettings {
   /** Which agents this repository chose (FR-033). None is a repository
    *  that chose none and still gets the neutral surface
    *  (FR-019). */
-  readonly agents: readonly string[];
+  readonly agentNames: readonly string[];
   /** The tokens past which the health check warns of the main context a
    *  session opens with (EVAL-FR-006); none is 20,000. */
   readonly mainContextCeiling?: number;

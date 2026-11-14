@@ -49,10 +49,10 @@ export class BuildCommand implements Command<typeof OPTIONS> {
       if (planSummaryDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(planSummaryDTO) };
 
       if (planSummaryDTO.type === "FaultsByFile") {
-        const noOfFiles = Object.keys(planSummaryDTO.data.files).length;
+        const faultyFileCount = Object.keys(planSummaryDTO.data.files).length;
         return {
           exitCode: EXIT_FAILURE,
-          problemText: `Nothing was previewed: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
+          problemText: `Nothing was previewed: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
         };
       }
 
@@ -86,10 +86,10 @@ export class BuildCommand implements Command<typeof OPTIONS> {
     if (planSummaryDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(planSummaryDTO) };
 
     if (planSummaryDTO.type === "FaultsByFile") {
-      const noOfFiles = Object.keys(planSummaryDTO.data.files).length;
+      const faultyFileCount = Object.keys(planSummaryDTO.data.files).length;
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `Nothing was built: ${noOfFiles} file${noOfFiles === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
+        problemText: `Nothing was built: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
       };
     }
 

@@ -3,10 +3,11 @@ import { ProviderComponent } from "../../app/port/out/managing-local-agent-outpu
 /** Instructions kept inside the repository's own entry file, at its root or
  *  in the folder a guide's globs name. */
 export class CodexEntryFile extends ProviderComponent {
-  readonly kind = "entry-file";
+  static readonly kind = "entry-file" as const;
+  readonly kind = CodexEntryFile.kind;
 
   /** The folder it is for, from the repository's root; the root's is `""`. */
-  get folder(): string {
+  get folderPath(): string {
     return this.id;
   }
 }

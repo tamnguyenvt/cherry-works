@@ -52,7 +52,7 @@ export class FileSessionAnalysisRepository implements ForLoadingSessionAnalysis 
       listedLogFiles
         .filter(
           ({ path, modifiedAt }) =>
-            path.endsWith(`/${SessionsFolder.logFile}`) &&
+            path.endsWith(`/${SessionsFolder.logFileName}`) &&
             modifiedAt.getTime() >= writtenFromMs &&
             modifiedAt.getTime() <= writtenUntilMs,
         )
@@ -74,7 +74,7 @@ const REPO_NAME_LIMIT = 200;
  *  folder per session id under it. */
 class SessionsFolder {
   /** What each session's folder keeps its stops in, one line each (EVAL-FR-009). */
-  static readonly logFile = "session-analysis.jsonl";
+  static readonly logFileName = "session-analysis.jsonl";
 
   private constructor(readonly url: FolderURL) {}
 

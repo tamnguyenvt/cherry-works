@@ -182,7 +182,7 @@ export function useSettings() {
 
 /** The charter built (FR-120): what was written and deleted, or the faults
  *  that refused it with nothing written. */
-export function useBuild() {
+export function useBuildCharter() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
     // Sent as JSON though it carries none, as a delete is (plan §12.4).
@@ -218,12 +218,12 @@ export function useAddVendor() {
 export function useRemoveVendor() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (vendorName: string) => {
       // Sent as JSON though it carries none, as a delete is (plan §12.4). The
       // client fills the path as it is given it, and an owner's `/` would end
       // the name there (FR-050).
       const httpResponse = await client.vendors[":name"].$delete(
-        { param: { name: encodeURIComponent(name) } },
+        { param: { name: encodeURIComponent(vendorName) } },
         { headers: { "Content-Type": "application/json" } },
       );
       return httpResponse.status === 422 ? httpResponse.json() : null;
@@ -266,8 +266,8 @@ export function useAddTestSuite() {
 export function useWriteTestSuite() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
-    mutationFn: async ({ name, text }: { name: string; text: string }) =>
-      (await client["test-suites"][":name"].$put({ param: { name }, json: { text } })).json(),
+    mutationFn: async ({ name: testSuiteName, text }: { name: string; text: string }) =>
+      (await client["test-suites"][":name"].$put({ param: { name: testSuiteName }, json: { text } })).json(),
     // A refused text wrote nothing, so the outcome still says how the cases
     // on disk come out.
     onSuccess: async (testSuiteNameDTO) => {
@@ -280,10 +280,10 @@ export function useWriteTestSuite() {
 export function useRemoveTestSuite() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (testSuiteName: string) => {
       // Sent as JSON though it carries none, as a delete is (plan §12.4).
       const httpResponse = await client["test-suites"][":name"].$delete(
-        { param: { name } },
+        { param: { name: testSuiteName } },
         { headers: { "Content-Type": "application/json" } },
       );
       return httpResponse.status === 422 ? httpResponse.json() : null;

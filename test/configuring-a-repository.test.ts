@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
-import { AgentProvider } from "../src/module/shared/domain/value-objects/agent-provider.value-object.js";
+import { AgentProvider } from "../src/module/shared/domain/models/agent/agent-provider.value-object.js";
+import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { workspaceAppOf } from "./use-cases-of.js";
 
@@ -65,4 +66,23 @@ test("a session analysis folder that is no absolute path or path under ~/ is ref
   );
 
   assert.match(settingsFault.message, /"sessionAnalysisFolder"/);
+});
+
+test("setup refuses no agent, an agent the engine does not compile for and a ceiling not above 0, each by its own fault, and writes nothing (FR-033, EVAL-FR-006)", async () => {
+  for (const [agentNames, mainContextCeiling, faultName] of [
+    [[], undefined, "NoAgentFault"],
+    [["nope"], undefined, "UnknownAgentFault"],
+    [["claude"], 0, "InvalidMainContextCeilingFault"],
+  ] as const) {
+    const fileReaders = new InMemoryFileReaders({});
+    const setUpAnswer = await workspaceAppOf(fileReaders, new InMemoryFileOutput(fileReaders)).setUpWorkspace(
+      agentNames,
+      "0.0.0",
+      mainContextCeiling,
+    );
+
+    assert.equal(setUpAnswer.type, "Fault", faultName);
+    assert.equal((setUpAnswer as FaultDTOs.Fault).data.name, faultName);
+    assert.deepEqual(await fileReaders.readFilesRecursively(repo), [], faultName);
+  }
 });

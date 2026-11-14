@@ -1,3 +1,4 @@
+import type { AgentProvider } from "#module/shared/module.js";
 import { ProviderComponent } from "./provider-component.js";
 
 /**
@@ -10,7 +11,7 @@ import { ProviderComponent } from "./provider-component.js";
  */
 export abstract class SettingBasedComponent<Settings extends object> extends ProviderComponent {
   constructor(
-    agentName: string,
+    agentProvider: AgentProvider,
     /** The part it plays, which is its id there: one such file to an agent. */
     partId: string,
     /** The fields this engine speaks for in that file. */
@@ -18,6 +19,6 @@ export abstract class SettingBasedComponent<Settings extends object> extends Pro
   ) {
     // Written into what is there rather than in place of it, by the projection:
     // every other field is the repository's (FR-018).
-    super(agentName, "charter", partId, `${JSON.stringify(settings, undefined, 2)}\n`);
+    super(agentProvider, "charter", partId, `${JSON.stringify(settings, undefined, 2)}\n`);
   }
 }

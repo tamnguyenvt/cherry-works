@@ -21,34 +21,36 @@ export interface InMemoryMcpServer {
  *  them. The second implementation that earns `ForCallingMcpServers` its
  *  place. */
 export class InMemoryMcpServers implements ForCallingMcpServers {
-  readonly servers = new Map<string, InMemoryMcpServer>();
-  readonly connected: { readonly address: string; readonly accessToken: string | undefined }[] = [];
+  readonly mcpServerByAddress = new Map<string, InMemoryMcpServer>();
+  readonly serverConnections: { readonly address: string; readonly accessToken: string | undefined }[] = [];
   readonly calls: {
     readonly address: string;
     readonly toolName: string;
     readonly toolArguments: unknown;
     readonly accessToken: string | undefined;
   }[] = [];
-  readonly closed: string[] = [];
+  readonly closedServerAddresses: string[] = [];
 
   async connectServer({ address }: McpServerAddress, accessToken: string | undefined): Promise<McpServerConnection> {
-    const server = this.servers.get(address);
-    if (server === undefined)
+    const mcpServer = this.mcpServerByAddress.get(address);
+    if (mcpServer === undefined)
       throw new UnreachableMcpOriginFault(`${address} could not be reached.`, "Check the mcp origin is up.", {
         internal: false,
       });
-    this.connected.push({ address, accessToken });
+    this.serverConnections.push({ address, accessToken });
     return {
-      tools: server.tools,
+      tools: mcpServer.tools,
       callTool: async (toolName, toolArguments, callToken) => {
         this.calls.push({ address, toolName, toolArguments, accessToken: callToken });
-        if (server.acceptsToken !== undefined && !server.acceptsToken(callToken))
+        if (mcpServer.acceptsToken !== undefined && !mcpServer.acceptsToken(callToken))
           throw new UnauthorizedMcpFault(`${address} refused the credential.`, "Sign in again.", { internal: false });
         return (
-          server.answerCall?.(toolName, toolArguments) ?? { content: [{ type: "text", text: `${toolName} answered` }] }
+          mcpServer.answerCall?.(toolName, toolArguments) ?? {
+            content: [{ type: "text", text: `${toolName} answered` }],
+          }
         );
       },
-      closeConnection: async () => void this.closed.push(address),
+      closeConnection: async () => void this.closedServerAddresses.push(address),
     };
   }
 }

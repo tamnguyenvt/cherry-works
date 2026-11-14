@@ -22,17 +22,17 @@ export function AddVendorSource({
 }) {
   const [source, setSource] = useState("");
   const [version, setVersion] = useState("");
-  const [refusal, setRefusal] = useState<FaultDTOs.Fault | null>(null);
+  const [refusalFault, setRefusalFault] = useState<FaultDTOs.Fault | null>(null);
   const kindsQuery = useKinds();
-  const addVendor = useAddVendor();
+  const addVendorMutation = useAddVendor();
 
   const addSource = async () => {
     const trimmedVersion = version.trim();
-    const refusedDTO = await addVendor.mutateAsync({
+    const refusedDTO = await addVendorMutation.mutateAsync({
       source: source.trim(),
       ...(trimmedVersion === "" ? {} : { version: trimmedVersion }),
     });
-    if (refusedDTO !== null) return setRefusal(refusedDTO);
+    if (refusedDTO !== null) return setRefusalFault(refusedDTO);
     onDone(
       "Vendor source added",
       `${source.trim()}${trimmedVersion === "" ? "" : ` @ ${trimmedVersion}`} · run Build to compile what it adds`,
@@ -88,20 +88,20 @@ export function AddVendorSource({
           </div>
         ))}
       </div>
-      {refusal !== null && (
+      {refusalFault !== null && (
         <Alert variant="destructive" className="rounded-xl border-[#f6d9d9] bg-[#fef6f6]">
           <AlertTitle className="text-[12.5px] font-bold text-foreground">
             Refused, and nothing was installed
           </AlertTitle>
           <AlertDescription>
             <p className="whitespace-pre-line">
-              {refusal.data.message} <span className="text-muted-foreground">{refusal.data.fix}</span>
+              {refusalFault.data.message} <span className="text-muted-foreground">{refusalFault.data.fix}</span>
             </p>
           </AlertDescription>
         </Alert>
       )}
       <div className={DIALOG_FOOTER_CLASS_NAME}>
-        <Button disabled={addVendor.isPending || source.trim() === ""} onClick={() => void addSource()}>
+        <Button disabled={addVendorMutation.isPending || source.trim() === ""} onClick={() => void addSource()}>
           Add source
         </Button>
         <Button variant="outline" onClick={onClose}>

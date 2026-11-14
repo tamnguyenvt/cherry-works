@@ -134,8 +134,8 @@ Story: [CORE Story 45](../specs/spec-core.md#core-story-45---find-each-rule-of-t
 
 A value object is a value an entity or an aggregate holds as a property
 (`McpCredential.method`, an `McpAuthMethod`), named
-`<subject>.value-object.ts`, beside the models that hold it or in its
-module's `domain/value-objects/`; a closed set of names is one, one instance
+`<subject>.value-object.ts`, beside the models that hold it, in the
+folder of its concept under `domain/models/`; a closed set of names is one, one instance
 per name (`PrimitiveLayer.REPO`, `McpAuthMethod.OAUTH`). A value no model
 holds is no value object: the folders and files each store of `cw`'s
 keeps are that module's layout, one model made once in its `domain/constants.ts`

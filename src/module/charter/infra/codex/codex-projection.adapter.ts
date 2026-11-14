@@ -17,21 +17,21 @@ import { CodexRules } from "./codex-rules.js";
 
 /** The file Codex reads before anything else, at the repository's root or
  *  in a folder of it. */
-const CODEX_ENTRY_FILE = "AGENTS.md";
+const CODEX_ENTRY_FILE_NAME = "AGENTS.md";
 
 /** Where each of Codex's files lands, by its kind there and its id. */
 const CODEX_PLACE_BY_KIND: Readonly<Record<string, (id: string) => string>> = {
-  "entry-file": (folderPath) => (folderPath === "" ? CODEX_ENTRY_FILE : `${folderPath}/${CODEX_ENTRY_FILE}`),
+  "entry-file": (folderPath) => (folderPath === "" ? CODEX_ENTRY_FILE_NAME : `${folderPath}/${CODEX_ENTRY_FILE_NAME}`),
   config: () => ".codex/config.toml",
   rules: () => CodexRules.path,
-  agent: (name) => `.codex/agents/${name}.toml`,
-  skill: (name) => `.agents/skills/${name}/SKILL.md`,
-  "skill-policy": (name) => `.agents/skills/${name}/agents/openai.yaml`,
+  agent: (componentId) => `.codex/agents/${componentId}.toml`,
+  skill: (componentId) => `.agents/skills/${componentId}/SKILL.md`,
+  "skill-policy": (componentId) => `.agents/skills/${componentId}/agents/openai.yaml`,
 };
 
 /** Folders no nested entry file is looked for in: the repository's own
  *  machinery and every agent's. */
-const UNSEARCHED_FOLDERS = [".git", ".cw", ".claude", ".codex", ".agents", "node_modules"];
+const UNSEARCHED_FOLDER_NAMES = [".git", ".cw", ".claude", ".codex", ".agents", "node_modules"];
 
 /** The configuration's tables whose every entry the charter gives is the
  *  charter's whole: the hook groups under each signal its sensors name
@@ -99,18 +99,18 @@ export class CodexProjection extends AgentProjection {
    *  text around it the build's (FR-020). Only folders are walked, not every
    *  file of the repository read. */
   protected override async planOtherCleanup(checkoutFolder: string): Promise<readonly WritePlan[]> {
-    const entryCleanupPlan: WritePlan[] = [];
+    const entryCleanupWritePlans: WritePlan[] = [];
     let entryFolderPaths = await this.fileReader.listFolders(checkoutFolder);
     while (entryFolderPaths.length > 0) {
       const nextEntryFolderPaths: string[] = [];
       for (const entryFolderPath of entryFolderPaths) {
         const folderName = entryFolderPath.split("/").at(-1) ?? "";
-        if (UNSEARCHED_FOLDERS.includes(folderName)) continue;
-        const filePath = `${entryFolderPath}/${CODEX_ENTRY_FILE}`;
+        if (UNSEARCHED_FOLDER_NAMES.includes(folderName)) continue;
+        const filePath = `${entryFolderPath}/${CODEX_ENTRY_FILE_NAME}`;
         const contents = await this.fileReader.readIfThere(filePath);
         if (contents !== undefined && new StampedDocumentSpec().isSatisfiedBy(contents)) {
           const userText = contents.replace(SECTION_PATTERN, "");
-          entryCleanupPlan.push(
+          entryCleanupWritePlans.push(
             new WritePlan(
               resolveCheckoutPath(checkoutFolder, filePath),
               filePath,
@@ -123,7 +123,7 @@ export class CodexProjection extends AgentProjection {
       }
       entryFolderPaths = nextEntryFolderPaths;
     }
-    return entryCleanupPlan;
+    return entryCleanupWritePlans;
   }
 
   listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[] {

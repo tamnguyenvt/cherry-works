@@ -1,4 +1,4 @@
-import { z } from "#module/shared/module.js";
+import { type AgentProvider, z } from "#module/shared/module.js";
 
 /**
  * What a repository configured itself with — which agents it chose, the
@@ -24,10 +24,20 @@ export class WorkspaceSettings {
   });
 
   constructor(
-    readonly agents: readonly string[],
+    readonly agentProviders: readonly AgentProvider[],
     readonly mainContextCeiling?: number,
     readonly sessionAnalysisFolder?: string,
   ) {}
+
+  /** Written as the settings file holds them, each agent by its name
+   *  (FR-033). */
+  toJSON(): { agents: readonly string[]; mainContextCeiling?: number; sessionAnalysisFolder?: string } {
+    return {
+      agents: this.agentProviders.map(({ name }) => name),
+      ...(this.mainContextCeiling === undefined ? {} : { mainContextCeiling: this.mainContextCeiling }),
+      ...(this.sessionAnalysisFolder === undefined ? {} : { sessionAnalysisFolder: this.sessionAnalysisFolder }),
+    };
+  }
 
   /** The ceiling the health check holds a main context to. */
   get mainContextCeilingOrDefault(): number {

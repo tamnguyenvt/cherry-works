@@ -24,12 +24,12 @@ export class McpServeCommand implements Command {
     for (const servingProblem of servedToolsDTO.data.problems) process.stderr.write(`${servingProblem}\n`);
 
     const transport = new StdioServerTransport();
-    const { serverClosed } = await startMcpServer(charterBuildingApp, charterRuntimeApp, transport, version);
+    const { serverClosePromise } = await startMcpServer(charterBuildingApp, charterRuntimeApp, transport, version);
     const closeTransport = () => void transport.close();
     process.stdin.once("end", closeTransport);
     process.once("SIGTERM", closeTransport);
     process.once("SIGINT", closeTransport);
-    await serverClosed;
+    await serverClosePromise;
 
     return { exitCode: EXIT_OK };
   }

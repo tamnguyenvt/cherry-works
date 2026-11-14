@@ -24,7 +24,7 @@ const bodyMarkdown = new Marked({
 });
 
 /** One of Source and Preview, drawn as a segment of the switch between them. */
-const SEGMENT =
+const SEGMENT_CLASS_NAME =
   "h-auto flex-none cursor-pointer rounded-md px-[11px] py-[5px] text-[11.5px] font-semibold text-zinc-500 data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.08)]";
 
 /**
@@ -45,10 +45,10 @@ export function PrimitiveBody({ body, onChange }: { body: string; onChange?: (bo
         <span className="text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">Body</span>
         <span className="font-mono text-[10.5px] text-zinc-400">markdown</span>
         <TabsList className="ml-auto h-auto gap-0.5 rounded-lg bg-[#f0f0f2] p-[3px]">
-          <TabsTrigger value="source" className={SEGMENT}>
+          <TabsTrigger value="source" className={SEGMENT_CLASS_NAME}>
             Source
           </TabsTrigger>
-          <TabsTrigger value="preview" className={SEGMENT}>
+          <TabsTrigger value="preview" className={SEGMENT_CLASS_NAME}>
             Preview
           </TabsTrigger>
         </TabsList>
@@ -85,8 +85,8 @@ function BodySource({ body, onChange }: { body: string; onChange: ((body: string
         keymap.of([...defaultKeymap, ...historyKeymap]),
         EditorView.lineWrapping,
         EditorView.editable.of(onChange !== undefined),
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) onChange?.(update.state.doc.toString());
+        EditorView.updateListener.of((viewUpdate) => {
+          if (viewUpdate.docChanged) onChange?.(viewUpdate.state.doc.toString());
         }),
       ],
     });

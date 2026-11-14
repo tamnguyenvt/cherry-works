@@ -120,7 +120,7 @@ const running = async (
 
 test("listSignInStatuses() answers one row per address taking a sign-in, its ids whatever their path, and asks nothing (FR-150, CORE Story 18 scenario 2)", async () => {
   const { charterAuthoringApp, credentialsRepository } = mcpOriginsOver();
-  await credentialsRepository.secrets.set(
+  await credentialsRepository.secretByAddress.set(
     LINEAR,
     JSON.stringify({ address: LINEAR, method: "token", accessToken: "t" }),
   );
@@ -153,7 +153,7 @@ test("an mcp the charter holds is signed in to before any build has listed it (F
     [["github/billing"]],
   );
   await charterAuthoringApp.signInWithToken(GITHUB, "gh-token");
-  assert.deepEqual(JSON.parse(credentialsRepository.secrets.get(GITHUB) ?? ""), {
+  assert.deepEqual(JSON.parse(credentialsRepository.secretByAddress.get(GITHUB) ?? ""), {
     address: GITHUB,
     method: "token",
     accessToken: "gh-token",
@@ -164,7 +164,7 @@ test("a token is kept under its address; one for no mcp origin, a way the addres
   const { charterAuthoringApp, credentialsRepository } = mcpOriginsOver();
 
   await charterAuthoringApp.signInWithToken(LINEAR, "lin-token");
-  assert.deepEqual(JSON.parse(credentialsRepository.secrets.get(LINEAR) ?? ""), {
+  assert.deepEqual(JSON.parse(credentialsRepository.secretByAddress.get(LINEAR) ?? ""), {
     address: LINEAR,
     method: "token",
     accessToken: "lin-token",
@@ -176,7 +176,7 @@ test("a token is kept under its address; one for no mcp origin, a way the addres
   );
   assert.match(faultTextOf(await charterAuthoringApp.signInWithOAuth(LINEAR, () => undefined)), /allows token/);
   assert.match(faultTextOf(await charterAuthoringApp.signInWithToken(GITHUB, "  ")), /No token/);
-  assert.deepEqual([...credentialsRepository.secrets.keys()], [LINEAR]);
+  assert.deepEqual([...credentialsRepository.secretByAddress.keys()], [LINEAR]);
 });
 
 test("an OAuth sign-in keeps what the mcp origin issued, with its registration (FR-148)", async () => {
@@ -192,7 +192,7 @@ test("an OAuth sign-in keeps what the mcp origin issued, with its registration (
   await charterAuthoringApp.signInWithOAuth(GITHUB, (authorizationUrl) => shown.push(authorizationUrl));
 
   assert.equal(shown.length, 1);
-  assert.deepEqual(JSON.parse(credentialsRepository.secrets.get(GITHUB) ?? ""), {
+  assert.deepEqual(JSON.parse(credentialsRepository.secretByAddress.get(GITHUB) ?? ""), {
     address: GITHUB,
     method: "oauth",
     ...oauthAuthorizer.oauthGrant,
@@ -210,7 +210,7 @@ test("cw mcp auth at a terminal asks about each address not signed in, then asks
     answers: ["token", "gh-secret", "lin-secret"],
   });
   assert.equal(firstRun.code, EXIT_OK, firstRun.problems);
-  assert.deepEqual([...credentialsRepository.secrets.keys()].sort(), [LINEAR, GITHUB].sort());
+  assert.deepEqual([...credentialsRepository.secretByAddress.keys()].sort(), [LINEAR, GITHUB].sort());
   // Each address in turn, with every id declaring it.
   assert.match(
     firstRun.problems,
@@ -218,7 +218,9 @@ test("cw mcp auth at a terminal asks about each address not signed in, then asks
   );
   assert.doesNotMatch(firstRun.problems, /npx -y some-server/);
   assert.deepEqual(
-    [GITHUB, LINEAR].map((address) => JSON.parse(credentialsRepository.secrets.get(address) ?? "{}").accessToken),
+    [GITHUB, LINEAR].map(
+      (address) => JSON.parse(credentialsRepository.secretByAddress.get(address) ?? "{}").accessToken,
+    ),
     ["gh-secret", "lin-secret"],
   );
   // The token typed reaches no file under the repository.
@@ -300,7 +302,9 @@ test("cw mcp auth at a terminal offers each way an address allows to sign in, an
   assert.match(shownText, /Token\?/);
   for (const token of ["gh-secret", "lin-secret"]) assert.doesNotMatch(shownText, new RegExp(token));
   assert.deepEqual(
-    [GITHUB, LINEAR].map((address) => JSON.parse(credentialsRepository.secrets.get(address) ?? "{}").accessToken),
+    [GITHUB, LINEAR].map(
+      (address) => JSON.parse(credentialsRepository.secretByAddress.get(address) ?? "{}").accessToken,
+    ),
     ["gh-secret", "lin-secret"],
   );
 });
@@ -313,7 +317,7 @@ test("cw mcp auth signs in by OAuth where chosen, printing the address to open",
   assert.equal(run.code, EXIT_OK, run.problems);
   assert.deepEqual(oauthAuthorizer.authorizedEndpoints, [GITHUB]);
   assert.match(run.problems, new RegExp(`${GITHUB}/authorize`));
-  assert.equal(JSON.parse(credentialsRepository.secrets.get(GITHUB) ?? "").method, "oauth");
+  assert.equal(JSON.parse(credentialsRepository.secretByAddress.get(GITHUB) ?? "").method, "oauth");
 });
 
 test("cw mcp auth without a terminal asks nothing, names each address not signed in, and fails (CORE Story 18 scenario 4)", async () => {
@@ -325,12 +329,12 @@ test("cw mcp auth without a terminal asks nothing, names each address not signed
   assert.match(run.problems, new RegExp(GITHUB));
   assert.match(run.problems, new RegExp(LINEAR));
   assert.match(run.problems, /at a terminal/);
-  assert.equal(credentialsRepository.secrets.size, 0);
+  assert.equal(credentialsRepository.secretByAddress.size, 0);
 });
 
 test("cw mcp auth --status lists each address, its ids and whether signed in, and changes nothing (CORE Story 18 scenario 6)", async () => {
   const { cli, credentialsRepository } = mcpOriginsOver();
-  await credentialsRepository.secrets.set(
+  await credentialsRepository.secretByAddress.set(
     LINEAR,
     JSON.stringify({ address: LINEAR, method: "token", accessToken: "lin-secret" }),
   );
@@ -345,12 +349,12 @@ test("cw mcp auth --status lists each address, its ids and whether signed in, an
     ),
   );
   assert.doesNotMatch(run.results, /lin-secret/);
-  assert.equal(credentialsRepository.secrets.size, 1);
+  assert.equal(credentialsRepository.secretByAddress.size, 1);
 });
 
 test("cw mcp auth <id> signs in again at that id's address alone, whatever was kept (CORE Story 18 scenario 7)", async () => {
   const { cli, credentialsRepository } = mcpOriginsOver();
-  await credentialsRepository.secrets.set(
+  await credentialsRepository.secretByAddress.set(
     GITHUB,
     JSON.stringify({ address: GITHUB, method: "token", accessToken: "old" }),
   );
@@ -358,8 +362,8 @@ test("cw mcp auth <id> signs in again at that id's address alone, whatever was k
   const run = await running(cli, ["mcp", "auth", "github/web"], { atTerminal: true, answers: ["token", "new"] });
 
   assert.equal(run.code, EXIT_OK, run.problems);
-  assert.equal(JSON.parse(credentialsRepository.secrets.get(GITHUB) ?? "").accessToken, "new");
-  assert.equal(credentialsRepository.secrets.has(LINEAR), false);
+  assert.equal(JSON.parse(credentialsRepository.secretByAddress.get(GITHUB) ?? "").accessToken, "new");
+  assert.equal(credentialsRepository.secretByAddress.has(LINEAR), false);
 
   const unknown = await running(cli, ["mcp", "auth", "nowhere"], { atTerminal: true });
   assert.equal(unknown.code, EXIT_FAILURE);
@@ -386,5 +390,5 @@ test("an mcp origin at plain http on another machine is signed in to by no way, 
     faultTextOf(await charterAuthoringApp.signInWithOAuth(CLEARTEXT, () => undefined)),
     /No mcp in the charter/,
   );
-  assert.equal(credentialsRepository.secrets.size, 0);
+  assert.equal(credentialsRepository.secretByAddress.size, 0);
 });

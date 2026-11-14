@@ -1,61 +1,18 @@
-import { OldVendorLayoutFault } from "../charter.fault.js";
-import { Primitives } from "../primitive/primitive.js";
+import type { RawVendorRoot } from "./raw-vendor-root.js";
 import { VendorRoot } from "./vendor-root.js";
 
-/** How deep a vendor's name goes: `<owner>/<repository>/<name>`. */
-const VENDOR_NAME_DEPTH = 3;
-
-/** Makes what this repository installed from others out of the files kept
- *  under its vendor folder. */
+/** Makes what this repository installed from others out of the vendors its
+ *  store keeps. */
 export class VendorRootFactory {
   /**
-   * Each vendor at `<owner>/<repository>/<name>/<primitives folder>/` under
-   * the vendor folder, named by those three folders (FR-050, CORE-FR-196).
-   * The store keeping them hands each file's path from its vendor folder, the
-   * folder a vendor keeps its primitives in, and `uriOf`: where a folder under
-   * the vendor folder is kept, in its keeper's words, said back and never read.
-   *
-   * A file kept anywhere else is a vendor installed the way an earlier
-   * version laid one, refused naming the folder to take away before it is
-   * installed again: nothing of it is read as a vendor.
+   * Each vendor by the name its store keeps it under, whichever store keeps
+   * it, and `uriOf` where it is kept, in its keeper's words, said back and
+   * never read (FR-050, FR-053).
    */
-  static create(
-    vendorFilePaths: readonly string[],
-    primitivesFolderName: string,
-    uriOf: (vendorFolderPath: string) => string,
-  ): VendorRoot {
-    // A file kept right in the vendor folder, its `.gitkeep`, is no vendor's.
-    const nestedVendorFilePaths = vendorFilePaths.filter((filePath) => filePath.includes("/"));
-
-    const oldFolderNames = [
-      ...new Set(
-        nestedVendorFilePaths
-          .filter(
-            (filePath) =>
-              filePath.split("/")[VENDOR_NAME_DEPTH] !== primitivesFolderName ||
-              filePath.split("/").length <= VENDOR_NAME_DEPTH + 1,
-          )
-          // A kind's folder right under the first is a vendor named by that
-          // one folder alone; otherwise the owner and the repository name it.
-          .map((filePath) =>
-            filePath
-              .split("/")
-              .slice(0, Primitives.isKind(filePath.split("/")[1]) ? 1 : 2)
-              .join("/"),
-          ),
-      ),
-    ].sort();
-    if (oldFolderNames.length > 0)
-      throw new OldVendorLayoutFault(
-        `${oldFolderNames.map(uriOf).join(", ")} ${oldFolderNames.length === 1 ? "is" : "are"} laid out the way an earlier version installed a vendor, not as <owner>/<repository>/<name>/${primitivesFolderName}/.`,
-        `Delete ${oldFolderNames.length === 1 ? "it" : "them"}, then install each source again with "cw vendor add".`,
-        { internal: false },
-      );
-
-    const vendorNames = [
-      ...new Set(nestedVendorFilePaths.map((filePath) => filePath.split("/").slice(0, VENDOR_NAME_DEPTH).join("/"))),
-    ].sort();
-    return new VendorRoot(vendorNames.map((vendorName) => ({ name: vendorName, uri: uriOf(vendorName) })));
+  static create(rawVendorRoot: RawVendorRoot, uriOf: (vendorName: string) => string): VendorRoot {
+    return new VendorRoot(
+      [...rawVendorRoot.vendorNames].sort().map((vendorName) => ({ name: vendorName, uri: uriOf(vendorName) })),
+    );
   }
 
   private constructor() {}

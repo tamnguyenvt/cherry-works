@@ -44,7 +44,9 @@ test("a built charter runs the engine's own counter when the agent stops (EVAL-F
       command: 'node ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs"',
     },
   ]);
-  assert.ok(fileOutput.executables.has(inRepo(".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs")));
+  assert.ok(
+    fileOutput.executableFileHrefs.has(inRepo(".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs")),
+  );
 });
 
 /** One line of a Claude Code transcript: an assistant message and its usage. */

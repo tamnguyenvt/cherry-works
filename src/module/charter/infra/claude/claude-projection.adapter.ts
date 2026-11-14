@@ -12,16 +12,17 @@ import { ClaudeMainContextFactory } from "./claude-main-context.factory.js";
 
 /** The file claude reads before anything else, at the repository's root or
  *  in a folder of it. */
-const CLAUDE_ENTRY_FILE = "CLAUDE.md";
+const CLAUDE_ENTRY_FILE_NAME = "CLAUDE.md";
 
 /** Where each of claude's files lands, by its kind there and its id. */
 const CLAUDE_PLACE_BY_KIND: Readonly<Record<string, (id: string) => string>> = {
-  "entry-file": (folderPath) => (folderPath === "" ? CLAUDE_ENTRY_FILE : `${folderPath}/${CLAUDE_ENTRY_FILE}`),
+  "entry-file": (folderPath) =>
+    folderPath === "" ? CLAUDE_ENTRY_FILE_NAME : `${folderPath}/${CLAUDE_ENTRY_FILE_NAME}`,
   settings: () => ".claude/settings.json",
   "mcp-config": () => ".mcp.json",
-  rule: (name) => `.claude/rules/${name}.md`,
-  agent: (name) => `.claude/agents/${name}.md`,
-  skill: (name) => `.claude/skills/${name}/SKILL.md`,
+  rule: (componentId) => `.claude/rules/${componentId}.md`,
+  agent: (componentId) => `.claude/agents/${componentId}.md`,
+  skill: (componentId) => `.claude/skills/${componentId}/SKILL.md`,
 };
 
 /**

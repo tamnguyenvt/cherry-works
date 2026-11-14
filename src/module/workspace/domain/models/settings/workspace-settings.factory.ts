@@ -1,15 +1,24 @@
-import { InvalidSettingsFault } from "../workspace.fault.js";
+import { AgentProvider } from "#module/shared/module.js";
+import {
+  InvalidMainContextCeilingFault,
+  InvalidSettingsFault,
+  NoAgentFault,
+  UnknownAgentFault,
+} from "../workspace.fault.js";
 import type { RawWorkspaceSettings } from "./raw-workspace-settings.js";
 import { WorkspaceSettings } from "./workspace-settings.js";
 
 /** Makes a repository's settings out of how it keeps them. */
 export class WorkspaceSettingsFactory {
   /**
-   * The settings kept say, every agent among `supportedAgents`. None kept is
+   * The settings kept say, every agent among `supportedAgentNames`. None kept is
    * a repository never set up, which chose no agent (FR-019). Text that
    * does not read is refused, saying what to correct (FR-037).
    */
-  static create(rawSettings: RawWorkspaceSettings | undefined, supportedAgents: readonly string[]): WorkspaceSettings {
+  static create(
+    rawSettings: RawWorkspaceSettings | undefined,
+    supportedAgentNames: readonly string[],
+  ): WorkspaceSettings {
     if (rawSettings === undefined) return new WorkspaceSettings([]);
 
     let settingsJson: unknown;
@@ -25,16 +34,56 @@ export class WorkspaceSettingsFactory {
     const settingsParseResult = WorkspaceSettings.schema.safeParse(settingsJson);
     if (
       !settingsParseResult.success ||
-      !settingsParseResult.data.agents.every((agentName) => supportedAgents.includes(agentName))
+      !settingsParseResult.data.agents.every((agentName) => supportedAgentNames.includes(agentName))
     )
-      throw WorkspaceSettingsFactory.#findSettingsFault(settingsJson, supportedAgents);
+      throw WorkspaceSettingsFactory.#findSettingsFault(settingsJson, supportedAgentNames);
     const { agents, mainContextCeiling, sessionAnalysisFolder } = settingsParseResult.data;
-    return new WorkspaceSettings(agents, mainContextCeiling, sessionAnalysisFolder);
+    return new WorkspaceSettings(
+      agents.map((agentName) => new AgentProvider(agentName)),
+      mainContextCeiling,
+      sessionAnalysisFolder,
+    );
+  }
+
+  /**
+   * The settings a repository chooses at setup: at least one agent, for a
+   * charter is authored to instruct one (FR-033), each among
+   * `supportedAgentNames`, and a ceiling, where one is given, that is a whole
+   * number above 0. Each is refused, saying what to give instead.
+   */
+  static createChosen(
+    agentNames: readonly string[],
+    supportedAgentNames: readonly string[],
+    mainContextCeiling?: number,
+  ): WorkspaceSettings {
+    if (agentNames.length === 0)
+      throw new NoAgentFault(
+        `Setup was given no agent to choose, and a repository chooses at least one.`,
+        `Choose at least one of: ${supportedAgentNames.join(", ")}.`,
+        { internal: false },
+      );
+    const unknownAgentName = agentNames.find((agentName) => !supportedAgentNames.includes(agentName));
+    if (unknownAgentName !== undefined)
+      throw new UnknownAgentFault(
+        `This engine compiles for no agent called "${unknownAgentName}".`,
+        `Name any of: ${supportedAgentNames.join(", ")}.`,
+        { internal: false },
+      );
+    if (!WorkspaceSettings.schema.shape.mainContextCeiling.safeParse(mainContextCeiling).success)
+      throw new InvalidMainContextCeilingFault(
+        `A context ceiling is the tokens past which the health check warns, and ${mainContextCeiling} is no whole number above 0.`,
+        "Give one, as in --mainContextCeiling 20000.",
+        { internal: false },
+      );
+    return new WorkspaceSettings(
+      agentNames.map((agentName) => new AgentProvider(agentName)),
+      mainContextCeiling,
+    );
   }
 
   /** What is wrong with settings that do not read, the first field of them
    *  that does not, and the next move. */
-  static #findSettingsFault(settingsJson: unknown, supportedAgents: readonly string[]): InvalidSettingsFault {
+  static #findSettingsFault(settingsJson: unknown, supportedAgentNames: readonly string[]): InvalidSettingsFault {
     if (typeof settingsJson !== "object" || settingsJson === null || Array.isArray(settingsJson))
       return new InvalidSettingsFault(
         `These are this repository's own settings and this holds something other than a set of fields.`,
@@ -55,15 +104,13 @@ export class WorkspaceSettingsFactory {
         { internal: false },
       );
 
-    const isSupported = (agentName: unknown): boolean =>
-      typeof agentName === "string" && supportedAgents.includes(agentName);
-    if (!agents.every(isSupported))
+    if (!agents.every((agentName) => WorkspaceSettingsFactory.#isSupportedAgentName(agentName, supportedAgentNames)))
       return new InvalidSettingsFault(
         `This chooses ${agents
-          .filter((agentName) => !isSupported(agentName))
+          .filter((agentName) => !WorkspaceSettingsFactory.#isSupportedAgentName(agentName, supportedAgentNames))
           .map((agentName) => `"${String(agentName)}"`)
           .join(", ")}, and this engine compiles for no such agent.`,
-        `Name any of ${supportedAgents.join(", ")}, or drop what is left.`,
+        `Name any of ${supportedAgentNames.join(", ")}, or drop what is left.`,
         { internal: false },
       );
 
@@ -86,6 +133,11 @@ export class WorkspaceSettingsFactory {
       `Write it as one, as in { "agents": ["claude"], "mainContextCeiling": 20000 }, or drop it for 20000.`,
       { internal: false },
     );
+  }
+
+  /** Whether this is the name of an agent among `supportedAgentNames`. */
+  static #isSupportedAgentName(agentName: unknown, supportedAgentNames: readonly string[]): boolean {
+    return typeof agentName === "string" && supportedAgentNames.includes(agentName);
   }
 
   private constructor() {}

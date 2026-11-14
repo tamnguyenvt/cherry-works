@@ -12,7 +12,7 @@ import {
   type Outcome,
   type WorkspaceSettings,
 } from "./commands/command.interface.js";
-import { printFault, showPathsInApps } from "./commands/helper.js";
+import { listCommandWords, printFault, showPathsInApps } from "./commands/helper.js";
 import { COMMANDS } from "./commands/index.js";
 
 /**
@@ -66,13 +66,13 @@ export class Commander {
     // under it as a group of their own. What a command takes is not part of
     // that name: `explain <id>` is one word and an argument, and is
     // declared whole.
-    const commandsByHead = new Map<string, AnyCommand[]>();
+    const commandsByHeadWord = new Map<string, AnyCommand[]>();
     for (const command of this.#commands) {
       const headWord = listCommandWords(command.name)[0] as string;
-      commandsByHead.set(headWord, [...(commandsByHead.get(headWord) ?? []), command]);
+      commandsByHeadWord.set(headWord, [...(commandsByHeadWord.get(headWord) ?? []), command]);
     }
 
-    for (const [headWord, commands] of commandsByHead) {
+    for (const [headWord, commands] of commandsByHeadWord) {
       const [onlyCommand] = commands;
       cliParser =
         commands.length === 1 && onlyCommand !== undefined && listCommandWords(onlyCommand.name).length === 1
@@ -82,12 +82,12 @@ export class Commander {
               // What the group is for is what its commands are: saying it any
               // other way would be a second description to keep in step.
               describe: commands.map((groupedCommand) => listCommandWords(groupedCommand.name)[1]).join(", "),
-              builder: (child: Argv) =>
+              builder: (childParser: Argv) =>
                 commands
                   .reduce(
                     (parser, command) =>
                       this.#registerCommand(parser, command, command.name.slice(headWord.length + 1), collectOutcome),
-                    child,
+                    childParser,
                   )
                   .demandCommand(1, ""),
               handler: () => undefined,
@@ -170,10 +170,4 @@ export class Commander {
       },
     });
   }
-}
-
-/** The words one command is typed by, without the arguments it takes: the name
- *  says where the command sits, and `<id>` is not a place. */
-function listCommandWords(name: string): readonly string[] {
-  return name.split(" ").filter((word) => !word.startsWith("<") && !word.startsWith("["));
 }
