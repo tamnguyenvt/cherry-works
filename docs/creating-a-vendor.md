@@ -11,12 +11,23 @@ authors' and is never installed.
 
 ## 1. Create the source repository
 
-Create a repository such as `your-org/charter-baseline`, clone it, then
-initialize the charter it publishes in its own folder under `charters/`:
+Create a repository such as `your-org/charter-baseline` and clone it. In the
+empty clone, run `cw vendor init` at a terminal: it asks the repository's name
+and what its charters give, runs `cw init` (which asks your agent), and writes
+a README with your answers, a `CHANGELOG.md`, a `.gitignore` leaving out what
+`cw build` writes, an empty `charters/`, and, in the root's own charter, the
+`/vendor-release` skill with the script it runs. Nothing is committed. The
+folder must be empty, or a git repository with no commit yet.
 
 ```bash
 git clone git@github.com:your-org/charter-baseline.git
 cd charter-baseline
+cw vendor init
+```
+
+Then initialize the charter it publishes in its own folder under `charters/`:
+
+```bash
 mkdir -p charters/baseline
 cd charters/baseline
 cw init
@@ -114,7 +125,11 @@ Create `charters/baseline/.cw/charter/test/baseline.json`:
 ```
 
 Check the charter from its folder, then publish a version from the
-repository's root:
+repository's root. With `cw vendor init`'s repository, ask your agent
+`/vendor-release` there instead: it checks the default branch of `origin`,
+builds each charter, lists how to install each one and its skills in the
+README, proposes the version and the changelog entry, and once you confirm,
+commits, pushes and tags. By hand:
 
 ```bash
 cd charters/baseline

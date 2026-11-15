@@ -21,6 +21,7 @@ import { SuiteEditCommand } from "./suite-edit.command.js";
 import { SuiteRemoveCommand } from "./suite-remove.command.js";
 import { TestCommand } from "./test.command.js";
 import { VendorAddCommand } from "./vendor-add.command.js";
+import { VendorInitCommand } from "./vendor-init.command.js";
 import { VendorInjectCommand } from "./vendor-inject.command.js";
 import { VendorListCommand } from "./vendor-list.command.js";
 import { VendorRemoveCommand } from "./vendor-remove.command.js";
@@ -46,6 +47,7 @@ export const COMMANDS: readonly AnyCommand[] = [
   new SuiteAddCommand(),
   new SuiteEditCommand(),
   new SuiteRemoveCommand(),
+  new VendorInitCommand(),
   new VendorAddCommand(),
   new VendorInjectCommand(),
   new VendorRemoveCommand(),

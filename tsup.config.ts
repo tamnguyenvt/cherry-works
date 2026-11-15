@@ -7,16 +7,19 @@ import packageJson from "./package.json" with { type: "json" };
 
 const page = "src/presentation/portal/page";
 
-/** A `.mjs` under the engine's own layer is an asset it puts down, taken as its
- *  text (scripts/module-loader.mjs does the same under tsx). Only there: a
- *  dependency's `.mjs` is code. */
+/** A `.mjs` under the engine's own layer, and a file of `cw vendor init`'s
+ *  template, is an asset put down, taken as its text (scripts/module-loader.mjs
+ *  does the same under tsx). Only there: a dependency's `.mjs` is code. */
 const builtinAssetText: Plugin = {
   name: "builtin-asset-text",
   setup(build) {
-    build.onLoad({ filter: /\/src\/module\/charter\/domain\/builtin\/.+\.mjs$/ }, async ({ path }) => ({
-      contents: await readFile(path, "utf8"),
-      loader: "text",
-    }));
+    build.onLoad(
+      { filter: /\/src\/(module\/charter\/domain\/builtin\/.+\.mjs|presentation\/cli\/templates\/.+\.(mjs|md|txt))$/ },
+      async ({ path }) => ({
+        contents: await readFile(path, "utf8"),
+        loader: "text",
+      }),
+    );
   },
 };
 

@@ -15,6 +15,10 @@ import {
 import { listCommandWords, printFault, showPathsInApps } from "./commands/helper.js";
 import { COMMANDS } from "./commands/index.js";
 
+/** The commands that write the settings, so are run where none are read yet
+ *  (FR-037). */
+const SETUP_COMMAND_NAMES: readonly string[] = ["init", "vendor init"];
+
 /**
  * DRIVER ADAPTER: the command line.
  *
@@ -156,7 +160,7 @@ export class Commander {
         const charterLayoutDTO = await engineApp.charterAuthoringApp.readCharterLayout();
         if (charterLayoutDTO.type === "Fault")
           return collectOutcome({ exitCode: EXIT_FAILURE, problemText: printFault(charterLayoutDTO) });
-        if (workspaceSettingsDTO.type === "Fault" && command.name !== "init")
+        if (workspaceSettingsDTO.type === "Fault" && !SETUP_COMMAND_NAMES.includes(command.name))
           return collectOutcome({
             exitCode: EXIT_FAILURE,
             problemText: `${settingsPath.settingsFilePath}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`,

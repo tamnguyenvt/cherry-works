@@ -362,6 +362,9 @@ test("every file of src is named <kebab-subject>.<role>, but a model, a value ob
     .filter(
       (sourcePath) =>
         !sourcePath.startsWith("presentation/portal/page/") &&
+        // A command's template is copied out under the names it lands as:
+        // files a command writes, not modules of src.
+        !sourcePath.startsWith("presentation/cli/templates/") &&
         !/\.probe\./.test(sourcePath) &&
         /\.(ts|mjs|d\.mts|md)$/.test(sourcePath),
     )
@@ -422,6 +425,9 @@ test("every file of src takes the role its folder gives it (CORE Story 42 scenar
     .filter(
       (sourcePath) =>
         !sourcePath.startsWith("presentation/portal/page/") &&
+        // A command's template is copied out under the names it lands as:
+        // files a command writes, not modules of src.
+        !sourcePath.startsWith("presentation/cli/templates/") &&
         !/\.probe\./.test(sourcePath) &&
         /\.(ts|mjs|d\.mts|md)$/.test(sourcePath),
     )

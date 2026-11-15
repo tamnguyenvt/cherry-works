@@ -236,10 +236,12 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: "node_modules" },
-    // A script of the engine's own layer is an asset it puts down, imported as
-    // its text and run only on the developer's machine: not a module of the
-    // hexagon, so not held to its rules.
-    exclude: { path: "^src/module/charter/domain/builtin/.+\\.(mjs|d\\.mts)$" },
+    // A script of the engine's own layer, and a file of `cw vendor init`'s
+    // template, is an asset put down, imported as its text and never run here:
+    // not a module of the hexagon, so not held to its rules.
+    exclude: {
+      path: "^src/(module/charter/domain/builtin/.+\\.(mjs|d\\.mts)|presentation/cli/templates/.+\\.(mjs|md|txt|d\\.ts))$",
+    },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
     enhancedResolveOptions: { exportsFields: ["exports"], conditionNames: ["import", "require", "node"] },

@@ -80,6 +80,7 @@ The main host differences:
 | `cw test` | Run every case in `.cw/charter/test/` against the charter |
 | `cw eval` | Put every case in `.cw/charter/eval/` to the real agent under promptfoo |
 | `cw suite add \| edit \| remove` | Manage test files |
+| `cw vendor init` | Set a charter vendor repository up in an empty folder, to publish charters from |
 | `cw vendor add <source> [--ref] [--charter] [--skill] \| remove \| list` | Install, update, remove or list vendor sources: a charter, charters picked from a source of many, or skills from a repository listed on [skills.sh](https://skills.sh) |
 | `cw vendor inject <source> [--ref] [--charter] [--skill]` | Copy published primitives into your own editable charter |
 | `cw portal [--port]` | Open the charter in a browser on this machine |

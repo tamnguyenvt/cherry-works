@@ -14,7 +14,8 @@
       "!contract",
       "!**/*.md",
       "!**/*.html",
-      "!src/module/charter/domain/builtin/scripts"
+      "!src/module/charter/domain/builtin/scripts",
+      "!src/presentation/cli/templates/**/*.mjs"
     ]
   },
   "formatter": {
