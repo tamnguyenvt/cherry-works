@@ -4105,8 +4105,8 @@ declare class VendorSourceOrigin {
     constructor(sourceUri: string, name: string);
 }
 
-/** One charter a source holds: its own, named by nothing, or one of many it
- *  keeps apart, named by its folder (CORE-FR-195); whether a charter is there
+/** One charter a source keeps under `charters/`, named by its folder
+ *  (CORE-FR-195); whether a charter is there
  *  at all, whether it installed vendors of its own (FR-170), and its
  *  primitives as the source keeps them. `uri` is where in the source it sits, and `vendorsUri` where its
  *  own vendors would, in the words of what read it: said back and never
@@ -4141,20 +4141,19 @@ declare class SourceSkill {
     constructor(convertedSkill: SkillPrimitive, leftOutHeaders: readonly string[], assets: readonly AssetFile[], uri: string, sourceFolder: string);
 }
 
-/** What one commit of a source holds, read: its own charter, the charters it
- *  keeps apart, the skills it publishes, each converted, and why each skill
+/** What one commit of a source holds, read: the charters it keeps under
+ *  `charters/`, the skills it publishes, each converted, and why each skill
  *  that does not convert does not (CORE-FR-192, CORE-FR-193). `commit` is
  *  what was fetched, for what fetched it alone to read again. */
 declare class VendorSource {
     readonly origin: VendorSourceOrigin;
     readonly commit: string;
-    readonly ownCharter: SourceCharter | undefined;
     readonly charters: readonly SourceCharter[];
     readonly skills: readonly SourceSkill[];
     /** Held rather than raised: a skill that does not convert refuses taking
      *  skills, and nothing else (CORE-FR-192). */
     readonly skillFaults: readonly DomainFault[];
-    constructor(origin: VendorSourceOrigin, commit: string, ownCharter: SourceCharter | undefined, charters: readonly SourceCharter[], skills: readonly SourceSkill[], 
+    constructor(origin: VendorSourceOrigin, commit: string, charters: readonly SourceCharter[], skills: readonly SourceSkill[], 
     /** Held rather than raised: a skill that does not convert refuses taking
      *  skills, and nothing else (CORE-FR-192). */
     skillFaults: readonly DomainFault[]);
@@ -4175,16 +4174,15 @@ declare class RawSourceSkill {
 }
 
 /** What one commit of a source holds, as what fetched it read it, before the
- *  engine reads its skills: its own charter, the charters it keeps apart, and
- *  the skills it publishes (CORE-FR-193). `commit` is what was fetched, for
+ *  engine reads its skills: the charters it keeps under `charters/`, and the
+ *  skills it publishes under `skills/` (CORE-FR-193). `commit` is what was fetched, for
  *  what fetched it alone to read again. */
 declare class RawVendorSource {
     readonly origin: VendorSourceOrigin;
     readonly commit: string;
-    readonly ownCharter: SourceCharter | undefined;
     readonly charters: readonly SourceCharter[];
     readonly rawSourceSkills: readonly RawSourceSkill[];
-    constructor(origin: VendorSourceOrigin, commit: string, ownCharter: SourceCharter | undefined, charters: readonly SourceCharter[], rawSourceSkills: readonly RawSourceSkill[]);
+    constructor(origin: VendorSourceOrigin, commit: string, charters: readonly SourceCharter[], rawSourceSkills: readonly RawSourceSkill[]);
 }
 
 /**
