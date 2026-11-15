@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.2.0 — 2026-11-15
+
+- `cw vendor init` sets a charter vendor repository up in an empty folder: it asks the repository's name and what its charters give at the terminal, runs `cw init`, and writes a README with your answers, a `CHANGELOG.md`, a `.gitignore` leaving out what `cw build` writes, an empty `charters/`, and the `/vendor-release` skill with the script it runs. Nothing is committed.
+- `/vendor-release`, in a repository `cw vendor init` set up, releases its charters from the default branch of `origin`: it builds each charter, lists how to install each one and its skills in the README, proposes the version and the changelog entry, and once you confirm, commits, pushes and tags. Where `origin` names no default branch yet, it asks which branch to release from.
+- **Breaking:** `cw vendor add` and `cw vendor inject` read a source's charters under `charters/<name>/` and its skills under `skills/`, and nothing else: a charter at the source's root is never installed, and a source holding neither is refused as no vendor. Move a charter published at a source's root to `charters/<name>/`.
+- With neither `--charter` nor `--skill`, `cw vendor add` installs every charter and every skill a source holds.
+- A charter set up by `cw init` is no longer refused when installed for the `.gitkeep` in its vendor folder.
+- **Breaking:** `VendorSource` and `RawVendorSource` no longer hold `ownCharter`, and their constructors no longer take it.
+
 ## 1.1.0 — 2026-11-14
 
 - **Breaking:** a charter store of your own hands the engine the vendors it keeps by name: `ForManagingCharter.loadVendorRoot()` answers a `RawVendorRoot`, and the engine makes the installed vendors from it. The port no longer lends `VendorRootFactory`, and `VendorRoot` is no longer exported. `FileCharterRepository` refuses a vendor laid out the old way itself, with the same message as before.

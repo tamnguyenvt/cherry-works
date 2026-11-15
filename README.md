@@ -74,6 +74,8 @@ cw build
 A vendor copy is read-only and updated from its source. To copy the content
 into your own editable charter instead, use `cw vendor inject`.
 
+To publish charters of your own, run `cw vendor init` in an empty folder.
+
 → [Create and publish a vendor source](docs/creating-a-vendor.md)
 
 ### Recommended charter vendors
