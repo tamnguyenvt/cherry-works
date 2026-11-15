@@ -73,7 +73,7 @@ test("a source added from the dialog is installed through the engine, and the di
       ]);
       assert.deepEqual(
         sourceFetcher.checkedOutFolders.map(({ intoSubFolder }) => intoSubFolder),
-        [".cw/charter/vendor/team/charter/root/primitive"],
+        [".cw/charter/vendor/team/charter/published/primitive"],
       );
       await page.getByRole("dialog").waitFor({ state: "detached" });
     },
@@ -93,7 +93,7 @@ test("a source holding no charter folder is refused, and the refusal stays in th
       await page.getByRole("button", { name: "Add source" }).click();
       await page.getByText("Refused, and nothing was installed").waitFor();
 
-      assert.match(await page.getByRole("dialog").innerText(), /no "\.cw\/charter"[\s\S]*Check that the source holds/);
+      assert.match(await page.getByRole("dialog").innerText(), /is no vendor[\s\S]*Check that the source holds/);
       assert.deepEqual(sourceFetcher.checkedOutFolders, []);
     },
     sourceFetcher,

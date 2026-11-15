@@ -178,7 +178,7 @@ test("a source holding charters under charters/ alone, given neither flag, insta
   ]);
 });
 
-test("a source of every shape gives its one charter with neither flag, skills alone with --skill, and both with both (CORE-FR-193, CORE Story 33 scenario 4)", async () => {
+test("a source of every shape gives every charter and every skill with neither flag, skills alone with --skill, and both with both, its root charter never read (CORE-FR-193, CORE Story 33 scenario 4)", async () => {
   const everyShape = {
     ".cw/charter/primitive/guide/own/index.md": guide("own"),
     ...acmeCharters(),
@@ -186,14 +186,16 @@ test("a source of every shape gives its one charter with neither flag, skills al
   };
 
   const withNeither = withChartersPublished(everyShape);
-  const ownCharter = await running(
+  const everyOutcome = await running(
     ["vendor", "add", "acme/charters"],
     withNeither.fileReaders,
     withNeither.sourceFetcher,
   );
-  assert.equal(ownCharter.code, EXIT_OK, ownCharter.commandOutput);
+  assert.equal(everyOutcome.code, EXIT_OK, everyOutcome.commandOutput);
   assert.deepEqual(checkedOutFolders(withNeither.sourceFetcher), [
-    [".cw/charter/primitive", ".cw/charter/vendor/acme/charters/root/primitive"],
+    ["charters/baseline/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/baseline/primitive"],
+    ["charters/sdd/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/sdd/primitive"],
+    ["skills/grill-me", ".cw/charter/vendor/acme/charters/root/primitive/skill/grill-me"],
   ]);
 
   const withSkill = withChartersPublished(everyShape);
@@ -229,6 +231,37 @@ test("a source of every shape gives its one charter with neither flag, skills al
     ).data.folders,
     ["file:///repo/.cw/charter/vendor/acme/charters/root", "file:///repo/.cw/charter/vendor/acme/charters/sdd"],
   );
+});
+
+test("a source holding a charter at its root alone is no vendor, and nothing of it is installed (CORE-FR-193, CORE-FR-042)", async () => {
+  const { fileReaders, sourceFetcher } = withChartersPublished({
+    ".cw/charter/primitive/guide/own/index.md": guide("own"),
+    "README.md": "# Own\n",
+  });
+
+  const { code, commandOutput } = await running(["vendor", "add", "acme/charters"], fileReaders, sourceFetcher);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(commandOutput, /acme\/charters is no vendor/);
+  assert.deepEqual(sourceFetcher.checkedOutFolders, []);
+});
+
+test("a charter set up by cw init, its vendors' folder holding its .gitkeep alone, is installed (FR-170)", async () => {
+  const { fileReaders, sourceFetcher } = withChartersPublished({
+    ...acmeCharters(),
+    "charters/baseline/.cw/charter/vendor/.gitkeep": "",
+  });
+
+  const { code, commandOutput } = await running(
+    ["vendor", "add", "acme/charters", "--charter", "baseline"],
+    fileReaders,
+    sourceFetcher,
+  );
+
+  assert.equal(code, EXIT_OK, commandOutput);
+  assert.deepEqual(checkedOutFolders(sourceFetcher), [
+    ["charters/baseline/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/baseline/primitive"],
+  ]);
 });
 
 test("a --charter the source does not hold installs nothing, naming the charters it holds (CORE-FR-197, CORE Story 33 scenario 5)", async () => {
@@ -322,90 +355,59 @@ test("a charter picked that installed vendors of its own is refused, since vendo
   assert.deepEqual(sourceFetcher.checkedOutFolders, []);
 });
 
-test("the source's own charter and the charters picked from it are installed side by side, each a vendor of its own (CORE-FR-196)", async () => {
-  const intoOwnCharter = withChartersPublished(acmeCharters(), {
-    [pickedAt("root", "guide/own/index.md")]: guide("own"),
+test("the charters picked are installed beside the skills already installed into root, each a vendor of its own (CORE-FR-196)", async () => {
+  const intoRoot = withChartersPublished(acmeCharters(), {
+    [pickedAt("root", "skill/grill-me/index.md")]:
+      "---\nkind: skill\nid: grill-me\ndescription: About grill-me.\n---\n",
   });
   const pickOutcome = await running(
     ["vendor", "add", "acme/charters", "--charter", "baseline"],
-    intoOwnCharter.fileReaders,
-    intoOwnCharter.sourceFetcher,
+    intoRoot.fileReaders,
+    intoRoot.sourceFetcher,
   );
   assert.equal(pickOutcome.code, EXIT_OK, pickOutcome.commandOutput);
-  assert.deepEqual(checkedOutFolders(intoOwnCharter.sourceFetcher), [
+  assert.deepEqual(checkedOutFolders(intoRoot.sourceFetcher), [
     ["charters/baseline/.cw/charter/primitive", ".cw/charter/vendor/acme/charters/baseline/primitive"],
   ]);
   assert.deepEqual(
     answerOf(
       await authoringCharterOf(
-        intoOwnCharter.fileReaders,
-        new InMemoryFileOutput(intoOwnCharter.fileReaders),
+        intoRoot.fileReaders,
+        new InMemoryFileOutput(intoRoot.fileReaders),
         new InMemoryReporter(),
-        { sourceFetcher: intoOwnCharter.sourceFetcher },
+        { sourceFetcher: intoRoot.sourceFetcher },
       ).listVendors(),
     ).data.folders,
     ["file:///repo/.cw/charter/vendor/acme/charters/baseline", "file:///repo/.cw/charter/vendor/acme/charters/root"],
   );
-
-  const intoPicked = withChartersPublished(
-    { ".cw/charter/primitive/guide/own/index.md": guide("own") },
-    { [pickedAt("baseline", "guide/small-diffs/index.md")]: guide("small-diffs") },
-  );
-  const ownOutcome = await running(
-    ["vendor", "add", "acme/charters"],
-    intoPicked.fileReaders,
-    intoPicked.sourceFetcher,
-  );
-  assert.equal(ownOutcome.code, EXIT_OK, ownOutcome.commandOutput);
-  assert.deepEqual(checkedOutFolders(intoPicked.sourceFetcher), [
-    [".cw/charter/primitive", ".cw/charter/vendor/acme/charters/root/primitive"],
-  ]);
-  assert.equal(
-    await intoPicked.fileReaders.readFile(new URL(pickedAt("baseline", "guide/small-diffs/index.md"))),
-    guide("small-diffs"),
-    "baseline left as it was",
-  );
 });
 
-test("installing into root again writes the latest over what it held, a charter or skills alike", async () => {
-  const everyShape = {
-    ".cw/charter/primitive/guide/own/index.md": guide("own"),
-    ...acmeCharters(),
-    "skills/grill-me/SKILL.md": skillMd("grill-me"),
-  };
+test("installing skills into root again writes the latest over what it held", async () => {
   const rootFilePathsOf = async (fileReaders: InMemoryFileReaders) =>
     (await fileReaders.readFilesRecursively(new URL(".cw/charter/vendor/acme/charters/root/", repoPath)))
       .map(({ path }) => path)
       .sort();
 
-  const intoOwnCharter = withChartersPublished(everyShape, { [pickedAt("root", "guide/own/index.md")]: guide("own") });
-  const skillOutcome = await running(
-    ["vendor", "add", "acme/charters", "--skill", "grill-me"],
-    intoOwnCharter.fileReaders,
-    intoOwnCharter.sourceFetcher,
+  const intoRoot = withChartersPublished(
+    { "skills/grill-me/SKILL.md": skillMd("grill-me") },
+    {
+      [pickedAt("root", "guide/own/index.md")]: guide("own"),
+      [pickedAt("root", "skill/grill-me/index.md")]: "---\nkind: skill\nid: grill-me\ndescription: Old.\n---\n",
+    },
   );
-  assert.equal(skillOutcome.code, EXIT_OK);
-  assert.deepEqual(await rootFilePathsOf(intoOwnCharter.fileReaders), [
+  const skillOutcome = await running(["vendor", "add", "acme/charters"], intoRoot.fileReaders, intoRoot.sourceFetcher);
+  assert.equal(skillOutcome.code, EXIT_OK, skillOutcome.commandOutput);
+  assert.deepEqual(await rootFilePathsOf(intoRoot.fileReaders), [
     ".cw/charter/vendor/acme/charters/root/primitive/guide/own/index.md",
     ".cw/charter/vendor/acme/charters/root/primitive/skill/grill-me/index.md",
   ]);
-
-  const intoSkills = withChartersPublished(everyShape, {
-    [pickedAt("root", "skill/grill-me/index.md")]:
-      "---\nkind: skill\nid: grill-me\ndescription: About grill-me.\n---\n",
-  });
-  const ownOutcome = await running(
-    ["vendor", "add", "acme/charters"],
-    intoSkills.fileReaders,
-    intoSkills.sourceFetcher,
+  assert.match(
+    await intoRoot.fileReaders.readFile(new URL(pickedAt("root", "skill/grill-me/index.md"))),
+    /About grill-me\./,
   );
-  assert.equal(ownOutcome.code, EXIT_OK);
-  assert.deepEqual(await rootFilePathsOf(intoSkills.fileReaders), [
-    ".cw/charter/vendor/acme/charters/root/primitive/guide/own/index.md",
-  ]);
 });
 
-test("a charter under charters/ named root is refused when picked, since root is the source's own charter's folder (CORE-FR-196)", async () => {
+test("a charter under charters/ named root is refused when picked, since root is the folder the source's skills are installed in (CORE-FR-196)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished({
     ...acmeCharters(),
     "charters/root/.cw/charter/primitive/guide/x/index.md": guide("x"),

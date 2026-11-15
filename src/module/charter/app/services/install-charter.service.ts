@@ -8,15 +8,15 @@ export class InstallCharterService {
    * What one source holds at the commit fetched, filtered to what is
    * installed of it, every refusal raised before anything is.
    *
-   * What the source is, is read off what it holds, with no flag naming it
-   * (CORE-FR-193). With neither `selectedCharterNames` nor `selectedSkillIds`, the first shape it
-   * holds is taken, in this order: its one charter, where `cw init` put it;
-   * else every charter it keeps apart (CORE-FR-195); else every skill it
-   * publishes, each converted (CORE-FR-185, CORE-FR-186). `selectedCharterNames`
-   * reads the charters kept apart alone and `selectedSkillIds` the skills alone,
-   * whatever else the source holds, and both may be given; a flag for a shape
-   * it does not hold is refused, saying which shapes it holds. A source
-   * holding none is refused (FR-042).
+   * A source is a vendor when it holds charters under `charters/` or skills
+   * under `skills/`; what it keeps at its root, a charter of its own among it,
+   * is its authors' and never read (CORE-FR-193). With neither
+   * `selectedCharterNames` nor `selectedSkillIds`, every charter and every
+   * skill it holds is taken, each skill converted (CORE-FR-185,
+   * CORE-FR-186). `selectedCharterNames` takes the charters named alone and
+   * `selectedSkillIds` the skills named alone, and both may be given; a flag
+   * for a shape it does not hold is refused, saying which shapes it holds. A
+   * source holding neither is no vendor, and refused (FR-042).
    *
    * Vendoring is one level deep: a charter that installed vendors of its own is refused,
    * since it may lean on what they hold and that is not installed with it
@@ -34,20 +34,17 @@ export class InstallCharterService {
   ): VendorSource {
     const {
       origin: { sourceUri },
-      ownCharter,
     } = vendorSource;
 
     const heldCharterNames = vendorSource.charters.map(({ name }) => name);
-    const hasOwnCharter = ownCharter !== undefined;
     const heldShapes = [
-      ...(hasOwnCharter ? [`a charter in "${vendorSourcePath.ownCharterFolderPath}"`] : []),
       ...(heldCharterNames.length > 0 ? [`charters under "${vendorSourcePath.chartersFolderPath}/"`] : []),
       ...(vendorSource.hasSkills ? [`skills under "${vendorSourcePath.skillsFolderPath}/"`] : []),
     ];
     if (heldShapes.length === 0)
       throw new UnexpectedSourceShapeFault(
-        `${sourceUri} has no "${vendorSourcePath.ownCharterFolderPath}" and no ${vendorSourcePath.skillFileName} under "${vendorSourcePath.skillsFolderPath}/", nor any charter under "${vendorSourcePath.chartersFolderPath}/".`,
-        `Check that the source holds "${vendorSourcePath.ownCharterFolderPath}", charters under "${vendorSourcePath.chartersFolderPath}/" each in a folder holding its "${vendorSourcePath.ownCharterFolderPath}", or skills under "${vendorSourcePath.skillsFolderPath}/" each in a folder holding its ${vendorSourcePath.skillFileName}, at the version asked for.`,
+        `${sourceUri} is no vendor: it holds no charter under "${vendorSourcePath.chartersFolderPath}/" and no ${vendorSourcePath.skillFileName} under "${vendorSourcePath.skillsFolderPath}/".`,
+        `Check that the source holds charters under "${vendorSourcePath.chartersFolderPath}/" each in a folder holding its "${vendorSourcePath.ownCharterFolderPath}", or skills under "${vendorSourcePath.skillsFolderPath}/" each in a folder holding its ${vendorSourcePath.skillFileName}, at the version asked for.`,
         { internal: false },
       );
     if (selectedCharterNames.length > 0 && heldCharterNames.length === 0)
@@ -63,14 +60,9 @@ export class InstallCharterService {
         { internal: false },
       );
 
-    const isTakingOwnCharter = hasOwnCharter && selectedCharterNames.length === 0 && selectedSkillIds.length === 0;
-    const pickedCharterNames =
-      selectedCharterNames.length > 0
-        ? selectedCharterNames
-        : !hasOwnCharter && selectedSkillIds.length === 0
-          ? heldCharterNames
-          : [];
-    const isTakingSkills = selectedSkillIds.length > 0 || (!hasOwnCharter && heldCharterNames.length === 0);
+    const isPickingNothing = selectedCharterNames.length === 0 && selectedSkillIds.length === 0;
+    const pickedCharterNames = isPickingNothing ? heldCharterNames : selectedCharterNames;
+    const isTakingSkills = selectedSkillIds.length > 0 || (isPickingNothing && vendorSource.hasSkills);
 
     // A charter that installed vendors of its own is refused (FR-170).
     const assertOneLevelDeep = (sourceCharter: SourceCharter) => {
@@ -81,11 +73,6 @@ export class InstallCharterService {
           { internal: false },
         );
     };
-
-    if (isTakingOwnCharter) {
-      assertOneLevelDeep(ownCharter);
-      return new VendorSource(vendorSource.origin, vendorSource.commit, ownCharter, [], [], []);
-    }
 
     const unheldCharterNames = pickedCharterNames.filter((charterName) => !heldCharterNames.includes(charterName));
     if (unheldCharterNames.length > 0)
@@ -104,7 +91,7 @@ export class InstallCharterService {
         );
       if (sourceCharter.name === vendorSourcePath.ownCharterName)
         throw new ReservedCharterNameFault(
-          `"${sourceCharter.uri}" is named "${vendorSourcePath.ownCharterName}", and its vendor folder would be the one the source's own charter is installed in.`,
+          `"${sourceCharter.uri}" is named "${vendorSourcePath.ownCharterName}", and its vendor folder would be the one the source's skills are installed in.`,
           `Rename "${sourceCharter.uri}" in the source, then pick it again.`,
           { internal: false },
         );
@@ -116,8 +103,7 @@ export class InstallCharterService {
         );
       assertOneLevelDeep(sourceCharter);
     }
-    if (!isTakingSkills)
-      return new VendorSource(vendorSource.origin, vendorSource.commit, undefined, pickedCharters, [], []);
+    if (!isTakingSkills) return new VendorSource(vendorSource.origin, vendorSource.commit, pickedCharters, [], []);
 
     const [skillFault] = vendorSource.skillFaults;
     if (skillFault !== undefined) throw skillFault;
@@ -145,7 +131,7 @@ export class InstallCharterService {
       .sort((leftSkill, rightSkill) =>
         leftSkill.convertedSkill.headers.id.localeCompare(rightSkill.convertedSkill.headers.id),
       );
-    return new VendorSource(vendorSource.origin, vendorSource.commit, undefined, pickedCharters, pickedSkills, []);
+    return new VendorSource(vendorSource.origin, vendorSource.commit, pickedCharters, pickedSkills, []);
   }
 }
 

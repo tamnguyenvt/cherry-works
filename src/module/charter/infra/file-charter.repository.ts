@@ -257,18 +257,16 @@ export class FileCharterRepository implements ForManagingCharter {
     const fetchedCommit = await this.#sourceFetcher.fetchCommit(sourceUri, version);
     try {
       const sourcePaths = await this.#sourceFetcher.listFilesAt(fetchedCommit);
-      // A source laid out the old way, its own charter or one kept apart, is
-      // refused before anything of it is read (CORE-FR-226).
+      // A charter under charters/ laid out the old way is refused before
+      // anything of it is read (CORE-FR-226). What the source keeps at its
+      // root is its authors' own, and never read (CORE-FR-193).
       const oldSourcePaths = [
-        ...findOldLayoutPaths(sourcePaths),
-        ...[
-          ...new Set(
-            sourcePaths
-              .filter((sourcePath) => sourcePath.startsWith(`${vendorSourcePath.chartersFolderPath}/`))
-              .map((sourcePath) => sourcePath.split("/").slice(0, 2).join("/")),
-          ),
-        ].flatMap((charterFolderPath) => findOldLayoutPaths(sourcePaths, `${charterFolderPath}/`)),
-      ];
+        ...new Set(
+          sourcePaths
+            .filter((sourcePath) => sourcePath.startsWith(`${vendorSourcePath.chartersFolderPath}/`))
+            .map((sourcePath) => sourcePath.split("/").slice(0, 2).join("/")),
+        ),
+      ].flatMap((charterFolderPath) => findOldLayoutPaths(sourcePaths, `${charterFolderPath}/`));
       if (oldSourcePaths.length > 0) throw createOldLayoutFault(sourceUri, oldSourcePaths);
       const readFilesUnder = (folderPrefix: string) =>
         Promise.all(
@@ -276,14 +274,20 @@ export class FileCharterRepository implements ForManagingCharter {
             .filter((sourcePath) => sourcePath.startsWith(folderPrefix))
             .map(async (path) => ({ path, contents: await this.#sourceFetcher.readBytesAt(fetchedCommit, path) })),
         );
-      /** One charter of the source, under this folder of it: "" for its own. */
+      /** One charter of the source, under this folder of it. */
       const loadSourceCharter = async (charterName: string, charterFolderPath: string): Promise<SourceCharter> => {
-        const sourcePrefix = charterFolderPath === "" ? "" : `${charterFolderPath}/`;
+        const sourcePrefix = `${charterFolderPath}/`;
         const charterPrefix = `${sourcePrefix}${charterPath.primitivesFolderPath}/`;
         return new SourceCharter(
           charterName,
           sourcePaths.some((sourcePath) => sourcePath.startsWith(charterPrefix)),
-          sourcePaths.some((sourcePath) => sourcePath.startsWith(`${sourcePrefix}${charterPath.vendorsFolderPath}/`)),
+          // A file kept right in the vendors' folder, its `.gitkeep`, is no
+          // vendor's, as `findVendorNames` reads it.
+          sourcePaths.some(
+            (sourcePath) =>
+              sourcePath.startsWith(`${sourcePrefix}${charterPath.vendorsFolderPath}/`) &&
+              sourcePath.slice(`${sourcePrefix}${charterPath.vendorsFolderPath}/`.length).includes("/"),
+          ),
           // Only a primitive kept in its folder is one a source publishes.
           readRawPrimitives(
             await readFilesUnder(charterPrefix),
@@ -296,9 +300,6 @@ export class FileCharterRepository implements ForManagingCharter {
           `${sourcePrefix}${charterPath.primitivesFolderPath}`,
         );
       };
-      const ownCharter = sourcePaths.some((sourcePath) => sourcePath.startsWith(`${charterPath.primitivesFolderPath}/`))
-        ? await loadSourceCharter("", "")
-        : undefined;
       const charterNames = [
         ...new Set(
           sourcePaths
@@ -328,7 +329,7 @@ export class FileCharterRepository implements ForManagingCharter {
           );
         }),
       );
-      return new RawVendorSource(vendorSourceOrigin, fetchedCommit, ownCharter, sourceCharters, rawSourceSkills);
+      return new RawVendorSource(vendorSourceOrigin, fetchedCommit, sourceCharters, rawSourceSkills);
     } catch (raisedValue) {
       await this.#sourceFetcher.removeFetchedCommit(fetchedCommit);
       throw raisedValue;
@@ -361,18 +362,13 @@ export class FileCharterRepository implements ForManagingCharter {
 
   async storeVendor(vendorSource: VendorSource): Promise<void> {
     // Where each part of a vendor lands, in order: each charter's primitives
-    // copied whole, the source's own under its own charter's name and each
-    // kept apart under its own; each skill's folder copied under the own
-    // charter's, its index.md written as the skill it converts to and its
+    // copied whole under its own name; each skill's folder copied under
+    // `root`, its index.md written as the skill it converts to and its
     // `SKILL.md` taken away once it is down (CORE-FR-186).
     const findPrimitivesFolder = (charterName: string) =>
       `${charterPath.vendorsFolderPath}/${vendorSource.origin.name}/${charterName}/${charterPath.primitivesFolderName}`;
     const writeOrCopyPlans: (WritePlan | CopyPlan)[] = [];
     const cleanupPlans: WritePlan[] = [];
-    if (vendorSource.ownCharter !== undefined)
-      writeOrCopyPlans.push(
-        new CopyPlan(vendorSource.ownCharter.sourceFolder, findPrimitivesFolder(vendorSourcePath.ownCharterName)),
-      );
     for (const { name, sourceFolder } of vendorSource.charters)
       writeOrCopyPlans.push(new CopyPlan(sourceFolder, findPrimitivesFolder(name)));
     for (const { convertedSkill, sourceFolder } of vendorSource.skills) {

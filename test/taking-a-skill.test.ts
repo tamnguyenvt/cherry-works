@@ -218,7 +218,7 @@ test("taking one skill leaves the others in its folder as they were, and taking 
   assert.equal((await takenPrimitive(fileReaders, "grill-me")).headers.id, "grill-me");
 });
 
-test("installing into root again writes the latest over what it held, a charter or skills alike (CORE Story 32 scenario 7)", async () => {
+test("installing skills into root again writes the latest over what it held (CORE Story 32 scenario 7)", async () => {
   const charterHeld = withSkillsPublished(mattpocockSkills(), { [takenAt("guide/no-any/index.md")]: "x" });
 
   const skillsOverCharter = await running(
@@ -229,20 +229,6 @@ test("installing into root again writes the latest over what it held, a charter 
 
   assert.equal(skillsOverCharter.code, EXIT_OK);
   assert.match(await charterHeld.fileReaders.readFile(new URL(takenAt("skill/grill-me/index.md"))), /id: grill-me/);
-
-  const skillsHeld = withSkillsPublished(
-    { ".cw/charter/primitive/guide/no-any/index.md": "x" },
-    { [takenAt("skill/grill-me/index.md")]: "x" },
-  );
-
-  const charterOverSkills = await running(
-    ["vendor", "add", "mattpocock/skills"],
-    skillsHeld.fileReaders,
-    skillsHeld.sourceFetcher,
-  );
-
-  assert.equal(charterOverSkills.code, EXIT_OK);
-  await assert.rejects(() => skillsHeld.fileReaders.readFile(new URL(takenAt("skill/grill-me/index.md"))));
 });
 
 test("skills taken into root holding a source's own charter are written beside its primitives, which are kept as they were (CORE Story 32 scenario 7, CORE-FR-191)", async () => {
@@ -313,7 +299,7 @@ test("a source that cannot be reached is refused in git's words, and work in han
   assert.equal(await fileReaders.readFile(new URL("file:///repo/work.txt")), "In hand.\n");
 });
 
-test("a charter source given --skill takes only the skills named, and given none is installed whole, as before, its skill folders not taken (CORE-FR-193, CORE Story 32 scenarios 10, 11)", async () => {
+test("a source holding a charter at its root takes only the skills named given --skill, and every skill given none, its root charter never read (CORE-FR-193, CORE Story 32 scenarios 10, 11)", async () => {
   const charterSource = {
     ".cw/charter/primitive/guide/no-any/index.md": "x",
     "skills/grill-me/SKILL.md": skillMd(["name: grill-me", "description: Grill."]),
@@ -343,16 +329,9 @@ test("a charter source given --skill takes only the skills named, and given none
   assert.equal(installOutcome.code, EXIT_OK, installOutcome.commandOutput);
   assert.deepEqual(
     withoutSkill.sourceFetcher.checkedOutFolders.map(({ fromFolder, intoSubFolder }) => [fromFolder, intoSubFolder]),
-    [[".cw/charter/primitive", ".cw/charter/vendor/mattpocock/skills/root/primitive"]],
+    [["skills/grill-me", ".cw/charter/vendor/mattpocock/skills/root/primitive/skill/grill-me"]],
   );
-  assert.equal(
-    await withoutSkill.fileReaders
-      .readFile(new URL(".cw/charter/vendor/mattpocock/skills/root/README.md", repoPath))
-      .catch(() => undefined),
-    undefined,
-    "no README is copied",
-  );
-  await assert.rejects(() => withoutSkill.fileReaders.readFile(new URL(takenAt("skill/grill-me/index.md"))));
+  await assert.rejects(() => withoutSkill.fileReaders.readFile(new URL(takenAt("guide/no-any/index.md"))));
 });
 
 test("a skill is looked for under skills/ alone: copies kept for agents and SKILL.md files elsewhere are no skills, and clash with none (CORE-FR-185)", async () => {
@@ -413,7 +392,7 @@ test("a source holding no charter folder and no SKILL.md is refused, installing 
   const { code, commandOutput } = await running(["vendor", "add", "mattpocock/skills"], fileReaders, sourceFetcher);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(commandOutput, /no "\.cw\/charter" and no SKILL\.md/);
+  assert.match(commandOutput, /is no vendor: it holds no charter under "charters\/" and no SKILL\.md/);
   assert.deepEqual(sourceFetcher.checkedOutFolders, []);
 });
 

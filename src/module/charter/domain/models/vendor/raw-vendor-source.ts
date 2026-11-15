@@ -16,14 +16,13 @@ export class RawSourceSkill {
 }
 
 /** What one commit of a source holds, as what fetched it read it, before the
- *  engine reads its skills: its own charter, the charters it keeps apart, and
- *  the skills it publishes (CORE-FR-193). `commit` is what was fetched, for
+ *  engine reads its skills: the charters it keeps under `charters/`, and the
+ *  skills it publishes under `skills/` (CORE-FR-193). `commit` is what was fetched, for
  *  what fetched it alone to read again. */
 export class RawVendorSource {
   constructor(
     readonly origin: VendorSourceOrigin,
     readonly commit: string,
-    readonly ownCharter: SourceCharter | undefined,
     readonly charters: readonly SourceCharter[],
     readonly rawSourceSkills: readonly RawSourceSkill[],
   ) {}

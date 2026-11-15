@@ -74,21 +74,21 @@ test("a source's charter folder is installed under the folder its owner and its 
   assert.deepEqual(sourceFetcher.checkedOutFolders, [
     {
       commit: "git@github.com:team/charter.git",
-      fromFolder: ".cw/charter/primitive",
-      intoSubFolder: ".cw/charter/vendor/team/charter/root/primitive",
+      fromFolder: "charters/published/.cw/charter/primitive",
+      intoSubFolder: ".cw/charter/vendor/team/charter/published/primitive",
     },
   ]);
-  assert.match(commandOutput, /\.cw\/charter\/vendor\/team\/charter\/root/);
+  assert.match(commandOutput, /\.cw\/charter\/vendor\/team\/charter\/published/);
   assert.match(commandOutput, /cw build/, "what is installed is compiled by the one command that writes");
 });
 
 test("the source is passed on as it was typed, whatever transport it names, into the folder of its owner and its repository (FR-050)", async () => {
   for (const [source, intoSubFolder] of [
-    ["https://github.com/team/charter.git", ".cw/charter/vendor/team/charter/root/primitive"],
-    ["git@github.com:team/charter.git", ".cw/charter/vendor/team/charter/root/primitive"],
-    ["ssh://git@git.example.com:2222/team/charter", ".cw/charter/vendor/team/charter/root/primitive"],
-    ["https://gitlab.com/group/team/charter", ".cw/charter/vendor/team/charter/root/primitive"],
-    ["/srv/charters/charter", ".cw/charter/vendor/charters/charter/root/primitive"],
+    ["https://github.com/team/charter.git", ".cw/charter/vendor/team/charter/published/primitive"],
+    ["git@github.com:team/charter.git", ".cw/charter/vendor/team/charter/published/primitive"],
+    ["ssh://git@git.example.com:2222/team/charter", ".cw/charter/vendor/team/charter/published/primitive"],
+    ["https://gitlab.com/group/team/charter", ".cw/charter/vendor/team/charter/published/primitive"],
+    ["/srv/charters/charter", ".cw/charter/vendor/charters/charter/published/primitive"],
   ] as const) {
     const { sourceFetcher } = await running(["vendor", "add", source]);
     assert.equal(sourceFetcher.fetchedSources[0]?.source, source);
@@ -103,7 +103,7 @@ test("two repositories of one name under two owners land side by side (FR-050, S
 
   assert.deepEqual(
     sourceFetcher.checkedOutFolders.map(({ intoSubFolder }) => intoSubFolder),
-    [".cw/charter/vendor/acme/skills/root/primitive", ".cw/charter/vendor/other/skills/root/primitive"],
+    [".cw/charter/vendor/acme/skills/published/primitive", ".cw/charter/vendor/other/skills/published/primitive"],
   );
 });
 
@@ -142,7 +142,7 @@ test("a source holding neither a charter folder nor a skill at the version asked
   assert.equal(code, EXIT_FAILURE);
   assert.deepEqual(sourceFetcher.checkedOutFolders, []);
   assert.deepEqual(await vendoredFiles(fileReaders), []);
-  assert.match(commandOutput, /no "\.cw\/charter" and no SKILL\.md under "skills\/"/);
+  assert.match(commandOutput, /is no vendor: it holds no charter under "charters\/" and no SKILL\.md under "skills\/"/);
   assert.match(commandOutput, /at the version asked for/);
 });
 
@@ -154,7 +154,7 @@ test("a source that installs vendors of its own is refused: vendoring is one lev
 
   assert.equal(code, EXIT_FAILURE);
   assert.deepEqual(sourceFetcher.checkedOutFolders, []);
-  assert.match(commandOutput, /holds "\.cw\/charter\/vendor"/);
+  assert.match(commandOutput, /holds "charters\/published\/\.cw\/charter\/vendor"/);
 });
 
 test("a machine with no git is told so, and nothing is installed (CORE Story 37 scenario 4)", async () => {
@@ -188,7 +188,10 @@ test("a repository with work in hand installs all the same, and that work is as 
   );
 
   assert.equal(code, EXIT_OK);
-  assert.equal(sourceFetcher.checkedOutFolders[0]?.intoSubFolder, ".cw/charter/vendor/team/charter/root/primitive");
+  assert.equal(
+    sourceFetcher.checkedOutFolders[0]?.intoSubFolder,
+    ".cw/charter/vendor/team/charter/published/primitive",
+  );
   assert.equal(await fileReaders.readFile(new URL(`file://${repo}/work.txt`)), "In hand.\n");
 });
 
@@ -264,10 +267,13 @@ test("a vendor laid out the old way, removed and installed again, lands in its o
   const vendoredPaths = await vendoredFiles(fileReaders);
   assert.ok(vendoredPaths.length > 0);
   for (const vendoredPath of vendoredPaths)
-    assert.ok(vendoredPath.startsWith(`file://${repo}/.cw/charter/vendor/team/charter/root/primitive/`), vendoredPath);
+    assert.ok(
+      vendoredPath.startsWith(`file://${repo}/.cw/charter/vendor/team/charter/published/primitive/`),
+      vendoredPath,
+    );
   const listingRun = await running(["vendor", "list"], sourceFetcher, fileReaders);
   assert.equal(listingRun.code, EXIT_OK, listingRun.commandOutput);
-  assert.match(listingRun.commandOutput, /team\/charter\/root/);
+  assert.match(listingRun.commandOutput, /team\/charter\/published/);
 });
 
 test("a source an earlier version named by its repository alone is refused, saying to install it again, and nothing is taken away (FR-180)", async () => {

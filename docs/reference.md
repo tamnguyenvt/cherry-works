@@ -308,13 +308,15 @@ To publish rules or skills for other repositories to install, follow
 cw vendor add git@github.com:your-org/charter-baseline.git --ref v1.2.0
 ```
 
-A vendor source is a git repository set up with `cw init`: author its charter
-there, test it, and push. Only its `.cw/charter/primitive/` folder is installed, under
-`.cw/charter/vendor/<owner>/<repository>/`, pinned to the ref you chose, with the source's
-`README.md` beside it, and left unstaged for you to read and commit, whatever
-else you have in hand. A repository
-without that folder is refused, and so is one that has vendors of its own:
-vendoring is one level deep. Vendored primitives are read-only. To differ from
+A vendor source is a git repository publishing charters under `charters/<name>/`,
+each set up there with `cw init`, skills under `skills/`, or both: author them,
+test them, and push. Only each charter's `.cw/charter/primitive/` folder is
+installed, under `.cw/charter/vendor/<owner>/<repository>/<name>/`, pinned to the
+ref you chose, with the `README.md` of its folder beside it, and left unstaged
+for you to read and commit, whatever else you have in hand. What the source
+keeps at its root, a `.cw/` of its own among it, is its authors' and never read.
+A repository holding neither `charters/` nor `skills/` is refused as no vendor,
+and so is a charter that has vendors of its own: vendoring is one level deep. Vendored primitives are read-only. To differ from
 one, write your own primitive under a new id.
 
 Run `cw vendor add` again with a new `--ref` to update a source, and
@@ -358,17 +360,15 @@ repository keeps for its own agent under `.claude/skills/`, is not a skill to
 install, nor is one below another skill's folder, which comes along as one of
 its files. A `SKILL.md` without a
 `name` or a `description`, with a name that is not an id, or with a name another
-one shares, stops the install. A source holding a `.cw/charter/primitive/` folder of its
-own is a charter: with no flag, that charter is installed whole, and `--skill`
-takes only the skills named from its `skills/`. A skill named by
+one shares, stops the install. A skill named by
 another skill in prose, as `grill-me` names `grilling`, is not installed with
 it: add it with a second `--skill`. Run `cw vendor add` again to update the
 skills you name; the others in the folder stay as they were.
 
 ### Charters from a source of many
 
-One repository can gather several charters under `charters/`, a folder each
-holding its own `.cw/charter/primitive/`, as in `charters/baseline/.cw/charter/primitive/`. Pick the
+A source gathers its charters under `charters/`, a folder each holding its own
+`.cw/charter/primitive/`, as in `charters/baseline/.cw/charter/primitive/`. Pick the
 ones you want with `--charter`, as you pick skills with `--skill`:
 
 ```bash
@@ -380,9 +380,8 @@ Each charter picked lands in a vendor folder of its own,
 and is brought up to date or removed on its own:
 `cw vendor remove acme/charters/baseline` leaves `sdd` as it was. A name the
 source does not hold stops the install and names the charters it does. With
-neither `--charter` nor `--skill`, the source's shape decides what is taken: its
-one charter, else every charter under `charters/`, else every skill under
-`skills/`. Both flags can be given together.
+neither `--charter` nor `--skill`, every charter under `charters/` and every
+skill under `skills/` is taken. Both flags can be given together.
 
 ## MCP origins outside the repository
 

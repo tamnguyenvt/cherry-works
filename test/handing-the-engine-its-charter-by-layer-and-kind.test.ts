@@ -12,7 +12,7 @@ import type { ForManagingLocalOutput } from "../src/module/charter/app/port/out/
 import type { ForStoringCredentials } from "../src/module/charter/app/port/out/storing-credentials.port.js";
 import { buildCharterService } from "../src/module/charter/app/services/build-charter.service.js";
 import { loadCharterService } from "../src/module/charter/app/services/load-charter.service.js";
-import { outputPath, vendorSourcePath } from "../src/module/charter/domain/constants.js";
+import { outputPath } from "../src/module/charter/domain/constants.js";
 import { CharterOutput } from "../src/module/charter/domain/models/charter-output/charter-output.js";
 import { ProjectionPlan, WritePlan } from "../src/module/charter/domain/models/charter-output/projection-plan.js";
 import { RawEvalSuite } from "../src/module/charter/domain/models/eval/raw-eval-suite.js";
@@ -871,16 +871,17 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
   const rawVendorSource = new RawVendorSource(
     new VendorSourceOrigin("team/source", "team/source"),
     "team/source",
-    new SourceCharter(
-      "",
-      true,
-      false,
-      [new RawPrimitive(PrimitiveLayer.REPO, "guide", "published", publishedText, [], "db://source:guide/published")],
-      "",
-      ".cw/charter/vendor",
-      ".cw/charter/primitive",
-    ),
-    [],
+    [
+      new SourceCharter(
+        "published",
+        true,
+        false,
+        [new RawPrimitive(PrimitiveLayer.REPO, "guide", "published", publishedText, [], "db://source:guide/published")],
+        "charters/published",
+        "charters/published/.cw/charter/vendor",
+        "charters/published/.cw/charter/primitive",
+      ),
+    ],
     [],
   );
   const installedVendorUris: string[] = [];
@@ -891,10 +892,7 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
     },
     async storeVendor(vendorSource) {
       // Each charter of the source is a vendor of its own, under the origin's name.
-      for (const charterName of [
-        ...(vendorSource.ownCharter === undefined ? [] : [vendorSourcePath.ownCharterName]),
-        ...vendorSource.charters.map(({ name }) => name),
-      ])
+      for (const { name: charterName } of vendorSource.charters)
         installedVendorUris.push(`db://vendor:${vendorSource.origin.name}/${charterName}`);
     },
   });
@@ -909,7 +907,7 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
     primitivesOf(await keptVendoringApp.addVendor("team/source")),
     primitivesOf(await filesVendoringApp.addVendor("team/source")),
   );
-  assert.deepEqual(installedVendorUris, ["db://vendor:team/source/root"]);
+  assert.deepEqual(installedVendorUris, ["db://vendor:team/source/published"]);
   // Injected into a charter that installed nothing, as the store with no path holds none.
   const injectedFileReaders = new InMemoryFileReaders({
     "file:///repo/.cw/charter/primitive/guide/kept-guide/index.md": keptGuideText,
@@ -972,8 +970,9 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
 
 test("a markdown file a source keeps on its own is no primitive of its charter, so it is neither listed nor injected (CORE-FR-196)", async () => {
   const sourceFiles = {
-    ".cw/charter/primitive/guide/published/index.md": "---\nkind: guide\nid: published\ndescription: Published.\n---\n",
-    ".cw/charter/primitive/guide/README.md": "# Our guides\n",
+    "charters/published/.cw/charter/primitive/guide/published/index.md":
+      "---\nkind: guide\nid: published\ndescription: Published.\n---\n",
+    "charters/published/.cw/charter/primitive/guide/README.md": "# Our guides\n",
   };
   const vendoringAppOver = (fileReaders: InMemoryFileReaders) => {
     const sourceFetcher = new InMemorySources(fileReaders);

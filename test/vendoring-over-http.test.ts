@@ -84,13 +84,13 @@ test("a source posted is installed as cw vendor add installs it, and the portal 
   assert.deepEqual(sourceFetcher.checkedOutFolders, [
     {
       commit: "git@github.com:team/charter.git@v1.2.0",
-      fromFolder: ".cw/charter/primitive",
-      intoSubFolder: ".cw/charter/vendor/team/charter/root/primitive",
+      fromFolder: "charters/published/.cw/charter/primitive",
+      intoSubFolder: ".cw/charter/vendor/team/charter/published/primitive",
     },
   ]);
   assert.deepEqual(await (await portalRoutes.request("/vendors")).json(), {
     type: "VendorFolders",
-    data: { folders: [".cw/charter/vendor/team/charter/root"] },
+    data: { folders: [".cw/charter/vendor/team/charter/published"] },
   });
   const primitivesListing = (await (await portalRoutes.request("/charter/root/primitives")).json()) as {
     data: { primitives: { data: { id: string; layerName: string; file: string } }[] };
@@ -99,7 +99,7 @@ test("a source posted is installed as cw vendor add installs it, and the portal 
     primitivesListing.data.primitives
       .filter(({ data: primitive }) => primitive.layerName === "vendor")
       .map(({ data: { id, file } }) => [id, file]),
-    [["published", ".cw/charter/vendor/team/charter/root/primitive/guide/published/index.md"]],
+    [["published", ".cw/charter/vendor/team/charter/published/primitive/guide/published/index.md"]],
   );
 });
 
@@ -140,7 +140,7 @@ test("a source holding no charter folder is refused, saying how to make it one",
 
   assert.equal(answer.status, 422);
   const faultDTO = FaultDTOs.Fault.parse(await answer.json());
-  assert.match(faultDTO.data.message, /no "\.cw\/charter"/);
+  assert.match(faultDTO.data.message, /is no vendor/);
   assert.deepEqual(sourceFetcher.checkedOutFolders, []);
 });
 

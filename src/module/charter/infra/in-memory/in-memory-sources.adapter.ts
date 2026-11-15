@@ -31,8 +31,8 @@ export class InMemorySources implements ForFetchingCharterSources {
 
   /** Every source a test publishes, by the address it is fetched at: the files
    *  it holds, by their paths in it. A source a test publishes nothing for holds
-   *  a charter, as every source did before skills were taken, unless the test
-   *  says it holds no charter folder either. */
+   *  one charter, `charters/published/`, unless the test says it holds no
+   *  charter folder either. */
   readonly sourceFilesBySource: Record<string, Record<string, string | Uint8Array>> = {};
 
   /** Every source a test says cannot be reached: what `fetchCommit` raises
@@ -48,13 +48,13 @@ export class InMemorySources implements ForFetchingCharterSources {
   #listSourceFiles(commit: string): Record<string, string | Uint8Array> {
     const sourceAddress = commit.split("@")[0] ?? commit;
     const publishedCharter = {
-      ".cw/charter/primitive/guide/published/index.md":
+      "charters/published/.cw/charter/primitive/guide/published/index.md":
         "---\nkind: guide\nid: published\ndescription: Published.\n---\n",
       "README.md": "# Published\n",
     };
     if (this.sourcesWithoutSubFolder.includes(sourceAddress)) return { "README.md": "# Notes\n" };
     if (this.sourcesHoldingRefusedFolder.includes(sourceAddress))
-      return { ...publishedCharter, ".cw/charter/vendor/other/guide/x/index.md": "x" };
+      return { ...publishedCharter, "charters/published/.cw/charter/vendor/other/guide/x/index.md": "x" };
     return this.sourceFilesBySource[sourceAddress] ?? publishedCharter;
   }
 

@@ -70,8 +70,8 @@ export class VendorSourceFactory {
         skillFaults.push(raisedValue);
       }
     }
-    const { origin, commit, ownCharter, charters } = rawVendorSource;
-    return new VendorSource(origin, commit, ownCharter, charters, sourceSkills, skillFaults);
+    const { origin, commit, charters } = rawVendorSource;
+    return new VendorSource(origin, commit, charters, sourceSkills, skillFaults);
   }
 
   private constructor() {}

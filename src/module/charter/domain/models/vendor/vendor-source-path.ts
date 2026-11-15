@@ -12,12 +12,13 @@ export class VendorSourcePath {
    *  `charters/<name>/.cw/charter/` (CORE-FR-195). */
   readonly chartersFolderPath = "charters";
 
-  /** The folder a source, or each charter under `charters/<name>/`, keeps its
-   *  own charter in, as a repository set up by `cw` keeps one. */
+  /** The folder each charter under `charters/<name>/` keeps its charter in,
+   *  as a repository set up by `cw` keeps one. The one at the source's root
+   *  is its authors' own, and never read (CORE-FR-193). */
   readonly ownCharterFolderPath = ".cw/charter";
 
-  /** The name a source's own charter, and the skills taken from it, are
-   *  installed under beside the charters picked from it. */
+  /** The name the skills taken from a source are installed under, beside the
+   *  charters picked from it. */
   readonly ownCharterName = "root";
 
   /** The folder a skills repository keeps the skills it publishes in, the one

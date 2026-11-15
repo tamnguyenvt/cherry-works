@@ -5,17 +5,20 @@ for other repositories to install with `cw vendor add`. You author the source;
 each consuming repository installs a copy under `.cw/charter/vendor/` and builds it
 for its own coding agent.
 
-This guide starts with a source holding one charter, then shows the layout
-for several charters.
+A source publishes charters under `charters/<name>/`, skills under `skills/`,
+or both. What it keeps at its root, a `.cw/` of its own among it, is its
+authors' and is never installed.
 
 ## 1. Create the source repository
 
-Create a repository such as `your-org/charter-baseline`, clone it, then initialize
-its charter:
+Create a repository such as `your-org/charter-baseline`, clone it, then
+initialize the charter it publishes in its own folder under `charters/`:
 
 ```bash
 git clone git@github.com:your-org/charter-baseline.git
 cd charter-baseline
+mkdir -p charters/baseline
+cd charters/baseline
 cw init
 cw kinds guide
 cw add guide baseline-explain-failures --header description="Explain failures and the next action." --header globs="src/**/*.ts"
@@ -23,11 +26,11 @@ cw edit baseline-explain-failures
 ```
 
 Replace `your-org` with your organization. `cw init` asks which agent to build
-for in the source repository. Consumers choose their own agents; they install
+for in the charter's folder. Consumers choose their own agents; they install
 the authored charter, not the source repository's generated agent files.
 
 Write the first rule in
-`.cw/charter/primitive/guide/baseline-explain-failures/index.md`:
+`charters/baseline/.cw/charter/primitive/guide/baseline-explain-failures/index.md`:
 
 ```markdown
 ---
@@ -47,19 +50,27 @@ Your published source has this shape:
 ```text
 charter-baseline/
 ├── README.md
-└── .cw/
-    ├── charter/
-    │   └── guide/
-    │       └── baseline-explain-failures/
-    │           └── index.md
-    └── test/
-        └── baseline.json
+└── charters/
+    └── baseline/
+        ├── README.md
+        └── .cw/
+            └── charter/
+                ├── primitive/
+                │   └── guide/
+                │       └── baseline-explain-failures/
+                │           └── index.md
+                └── test/
+                    └── baseline.json
 ```
 
 Add skills, playbooks, templates or other primitives under their respective
 kind folders. Run `cw kinds <kind>` to see the fields each kind accepts.
 Supporting files belong beside their primitive's `index.md` and are installed
 with it.
+
+The repository's root may hold a charter of its own, set up with `cw init`
+there, for the agent of whoever authors the source: a release skill, say. It
+is never installed, whatever consumers pass.
 
 ## 2. Make the source usable in another repository
 
@@ -77,17 +88,18 @@ that environment:
   bare ids in headers such as `rationale` and `mixins`.
 - Keep assets inside each primitive's folder. Files elsewhere in the source
   repository are not shipped as primitive assets.
-- Publish no nested vendor dependencies. A source holding files under
+- Publish no nested vendor dependencies. A charter holding files under
   `.cw/charter/vendor/` is refused: vendoring is one level deep.
 
-For a single-charter source, `cw vendor add` installs `.cw/charter/primitive/` and the
-root `README.md`. It does not install the source's `.cw/settings.json`, tests,
-evaluations or generated agent files. The README should explain what the
-charter provides, prerequisites, installation and upgrade instructions.
+`cw vendor add` installs each charter's `.cw/charter/primitive/` and the
+`README.md` of its folder. It does not install the charter's
+`.cw/settings.json`, tests, evaluations or generated agent files. The README
+should explain what the charter provides, prerequisites, installation and
+upgrade instructions.
 
 ## 3. Test and publish a version
 
-Create `.cw/charter/test/baseline.json`:
+Create `charters/baseline/.cw/charter/test/baseline.json`:
 
 ```json
 {
@@ -101,12 +113,15 @@ Create `.cw/charter/test/baseline.json`:
 }
 ```
 
-Check the source and publish a version:
+Check the charter from its folder, then publish a version from the
+repository's root:
 
 ```bash
+cd charters/baseline
 cw test
 cw build
 cw doctor
+cd ../..
 git add .
 git commit -m "Publish the baseline charter"
 git tag v1.0.0
@@ -134,7 +149,7 @@ cw doctor
 The installed rule is now at:
 
 ```text
-.cw/charter/vendor/your-org/charter-baseline/guide/baseline-explain-failures/index.md
+.cw/charter/vendor/your-org/charter-baseline/baseline/primitive/guide/baseline-explain-failures/index.md
 ```
 
 Installation leaves files unstaged and does not build. Review and commit the
@@ -178,10 +193,10 @@ leaves files unstaged and does not build. Vendor commands no longer manage that
 copy. An id already held by the consumer refuses the injection before writing;
 use this in place of installing the same primitives as a vendor.
 
-## Optional: publish several charters in one repository
+## Publish several charters in one repository
 
-Use `charters/<name>/.cw/charter/primitive/` when consumers should choose independent
-packages:
+Add a folder under `charters/` for each charter consumers should be able to
+choose on its own:
 
 ```text
 charters/
@@ -193,14 +208,16 @@ charters/
     └── .cw/charter/primitive/skill/reviews-review-a-change/index.md
 ```
 
-Initialize and test each charter from its own folder, for example
-`charters/baseline/`. Keep ids unique across charters consumers will install
-together. A charter folder name must not be a primitive kind such as `guide`
-or `skill`. Each charter must hold its own `.cw/charter/primitive/` and no vendored files.
+Initialize and test each charter from its own folder. Keep ids unique across
+charters consumers will install together. A charter folder name must not be a
+primitive kind such as `guide` or `skill`, nor `root`, the folder a source's
+skills are installed in. Each charter must hold its own
+`.cw/charter/primitive/` and no vendored files.
 
-Consumers select one or more charters:
+Consumers take every charter, or pick some:
 
 ```bash
+cw vendor add your-org/charters --ref v1.0.0
 cw vendor add your-org/charters --charter baseline --charter reviews --ref v1.0.0
 ```
 
@@ -208,18 +225,17 @@ Each lands under `.cw/charter/vendor/your-org/charters/<name>/`, with that chart
 README when present. It can be removed by that full installed name, such as
 `cw vendor remove your-org/charters/reviews`.
 
-## How the source layout is selected
+## What is installed
 
-With neither `--charter` nor `--skill`, the first layout present wins:
+A source is a vendor when it holds `charters/`, `skills/` or both; one holding
+neither is refused as no vendor. Its root `.cw/` is never read.
 
-1. A root `.cw/charter/primitive/`: install that one charter.
-2. Otherwise, `charters/`: install every charter it holds.
-3. Otherwise, `skills/`: install every skill it holds, for compatibility with
-   existing `npx skills` repositories.
+- With neither `--charter` nor `--skill`, every charter under `charters/` and
+  every skill under `skills/` is installed.
+- `--charter` takes only the charters named, and `--skill` only the skills
+  named. Repeat either flag to select several entries, or combine both flags
+  to take charters and skills together.
 
-`--charter` selects from `charters/` only; `--skill` selects from `skills/`
-only, even when the source has a root charter. Repeat either flag to select
-several entries, or combine both flags to take charters and skills together.
 A requested entry or layout that does not exist refuses the install.
 
 See the [command reference](reference.md#commands) for the rest of the CLI.

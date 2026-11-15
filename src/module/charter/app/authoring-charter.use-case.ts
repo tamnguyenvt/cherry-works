@@ -539,10 +539,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         // Each kept as the source keeps it, a skill as the skill it converts to,
         // in this repository's own layer, under the kind and id it declares.
         const injectedPrimitives = [
-          ...[
-            ...(filteredSource.ownCharter === undefined ? [] : [filteredSource.ownCharter]),
-            ...filteredSource.charters,
-          ].flatMap(({ rawPrimitives }) =>
+          ...filteredSource.charters.flatMap(({ rawPrimitives }) =>
             rawPrimitives.map((rawPrimitive) => {
               const primitive = PrimitiveFactory.create(rawPrimitive);
               return new RawPrimitive(
@@ -1156,9 +1153,6 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       ),
     });
     return CharterDTOs.VendorAddOutcome.of([
-      ...(filteredSource.ownCharter === undefined
-        ? []
-        : [composeVendorAddOutcome(rootName, filteredSource.ownCharter)]),
       ...filteredSource.charters.map((sourceCharter) => composeVendorAddOutcome(sourceCharter.name, sourceCharter)),
       ...(filteredSource.skills.length === 0
         ? []

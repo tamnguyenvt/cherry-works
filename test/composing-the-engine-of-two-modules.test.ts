@@ -894,7 +894,9 @@ test("every command refuses a repository laid out the old way, naming the author
 
 test("a vendor source laid out the old way is refused, naming the source and the authoring skill, and nothing is installed (CORE Story 52 scenario 9)", async () => {
   const adapters = adaptersInMemory(filesInThreeParts);
-  adapters.sourceFetcher.sourceFilesBySource["team/old"] = { ".cw/charter/guide/published/index.md": publishedText };
+  adapters.sourceFetcher.sourceFilesBySource["team/old"] = {
+    "charters/published/.cw/charter/guide/published/index.md": publishedText,
+  };
   const { charterAuthoringApp } = composeEngine(claudeSettings, pluginsInMemory(adapters));
 
   const vendorAddAnswer = await charterAuthoringApp.addVendor("team/old");
@@ -910,14 +912,14 @@ test("a vendor source laid out the old way is refused, naming the source and the
 test("updating a vendor whose source has gone over to the old layout is refused, naming the source and the authoring skill, and the vendor installed is left as it was (CORE Story 52 scenario 9)", async () => {
   const adapters = adaptersInMemory(filesInThreeParts);
   adapters.sourceFetcher.sourceFilesBySource["team/kept"] = {
-    ".cw/charter/primitive/guide/published/index.md": publishedText,
+    "charters/published/.cw/charter/primitive/guide/published/index.md": publishedText,
   };
   const { charterAuthoringApp } = composeEngine(claudeSettings, pluginsInMemory(adapters));
   answerOf(await charterAuthoringApp.addVendor("team/kept"));
   const installedVendorFiles = await adapters.fileReader.readBytesRecursively(".cw/charter/vendor");
   assert.ok(installedVendorFiles.length > 0);
   adapters.sourceFetcher.sourceFilesBySource["team/kept"] = {
-    ".cw/charter/guide/published/index.md": publishedText.replace("Published.", "Published again."),
+    "charters/published/.cw/charter/guide/published/index.md": publishedText.replace("Published.", "Published again."),
   };
 
   const vendorUpdateAnswer = await charterAuthoringApp.addVendor("team/kept");

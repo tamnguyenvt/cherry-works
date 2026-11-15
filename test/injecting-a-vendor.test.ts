@@ -43,28 +43,26 @@ test("inject converts a skill with assets into the own charter despite dirty wor
 });
 
 test("inject takes single and gathered charters with assets and explicit or default selection (scenario 2) (CORE Story 34 scenario 2)", async () => {
-  for (const sourceFolder of [".cw/charter/primitive", "charters/baseline/.cw/charter/primitive"]) {
-    for (const charterNames of sourceFolder.startsWith("charters/") ? [[], ["baseline"]] : [[]]) {
-      const { charterAuthoringApp, fileReader } = createVendoringFixture({
-        [`${sourceFolder}/guide/published/index.md`]: guideMarkdown,
-        [`${sourceFolder}/guide/published/example.md`]: "Asset",
-      });
-      await charterAuthoringApp.injectVendor("team/source", undefined, [], charterNames);
-      assert.equal(
-        await fileReader.readIfThere(new URL(".cw/charter/primitive/guide/published/index.md", repoPath)),
-        guideMarkdown,
-      );
-      assert.equal(
-        await fileReader.readIfThere(new URL(".cw/charter/primitive/guide/published/example.md", repoPath)),
-        "Asset",
-      );
-    }
+  for (const charterNames of [[], ["baseline"]]) {
+    const { charterAuthoringApp, fileReader } = createVendoringFixture({
+      "charters/baseline/.cw/charter/primitive/guide/published/index.md": guideMarkdown,
+      "charters/baseline/.cw/charter/primitive/guide/published/example.md": "Asset",
+    });
+    await charterAuthoringApp.injectVendor("team/source", undefined, [], charterNames);
+    assert.equal(
+      await fileReader.readIfThere(new URL(".cw/charter/primitive/guide/published/index.md", repoPath)),
+      guideMarkdown,
+    );
+    assert.equal(
+      await fileReader.readIfThere(new URL(".cw/charter/primitive/guide/published/example.md", repoPath)),
+      "Asset",
+    );
   }
 });
 
 test("injected primitives are edited and deleted as own primitives, nothing refused as vendored, and no vendor command lists, updates or removes them (CORE Story 34 scenarios 3, 4, CORE-FR-200, CORE Story 55 scenario 8)", async () => {
   const { charterAuthoringApp, fileReader, sourceFetcher } = createVendoringFixture({
-    ".cw/charter/primitive/guide/published/index.md": guideMarkdown,
+    "charters/baseline/.cw/charter/primitive/guide/published/index.md": guideMarkdown,
   });
   await charterAuthoringApp.injectVendor("team/source");
   const primitiveUrl = new URL(".cw/charter/primitive/guide/published/index.md", repoPath);
@@ -76,7 +74,7 @@ test("injected primitives are edited and deleted as own primitives, nothing refu
     false,
   );
   assert.deepEqual(answerOf(await charterAuthoringApp.listVendors()).data.folders, []);
-  for (const vendorName of ["team/source/root", "team/source"])
+  for (const vendorName of ["team/source/baseline", "team/source"])
     assert.match(faultTextOf(await charterAuthoringApp.removeVendor(vendorName)), /No vendor folder is named/);
   assert.equal(await fileReader.readIfThere(primitiveUrl), guideMarkdown);
   assert.deepEqual(sourceFetcher.fetchedSources, [{ source: "team/source" }], "nothing brings it up to date");
@@ -108,7 +106,10 @@ test("inject refuses own, vendor, builtin and repeated id collisions before writ
     const primitiveId = existingPath === "builtin" ? "cw-author" : "published";
     const { charterAuthoringApp, fileReader } = createVendoringFixture(
       {
-        ".cw/charter/primitive/guide/published/index.md": guideMarkdown.replace("id: published", `id: ${primitiveId}`),
+        "charters/baseline/.cw/charter/primitive/guide/published/index.md": guideMarkdown.replace(
+          "id: published",
+          `id: ${primitiveId}`,
+        ),
         "skills/grill/SKILL.md": skillMarkdown,
       },
       existingPath.startsWith(".cw/") ? { [new URL(existingPath, repoPath).href]: guideMarkdown } : {},
@@ -125,7 +126,7 @@ test("inject refuses own, vendor, builtin and repeated id collisions before writ
           ? ".cw/charter/primitive/guide/published/index.md"
           : existingPath;
     assert.ok(message.includes(heldFilePath), message);
-    assert.ok(message.includes(" and .cw/charter/primitive/guide/published/index.md "), message);
+    assert.ok(message.includes(" and charters/baseline/.cw/charter/primitive/guide/published/index.md "), message);
     assert.ok(message.includes(`claim id "${primitiveId}"`), message);
     assert.deepEqual(await fileReader.readFilesRecursively(repoPath), beforeFiles);
   }
@@ -138,12 +139,13 @@ test("source and selection failures write nothing, and say why as vendor add say
     const [injectOutcomeText, addOutcomeText] = await Promise.all(
       (["injectVendor", "addVendor"] as const).map(async (vendorMethodName) => {
         const { charterAuthoringApp, fileReader, sourceFetcher } = createVendoringFixture({
-          ".cw/charter/primitive/guide/published/index.md": guideMarkdown,
+          "charters/baseline/.cw/charter/primitive/guide/published/index.md": guideMarkdown,
         });
         if (failureKind === "unreachable") sourceFetcher.unreachableSources.push("team/source");
         if (failureKind === "nested")
-          sourceFetcher.sourceFilesBySource["team/source"]![".cw/charter/vendor/other/guide/x/index.md"] =
-            guideMarkdown;
+          sourceFetcher.sourceFilesBySource["team/source"]![
+            "charters/baseline/.cw/charter/vendor/other/guide/x/index.md"
+          ] = guideMarkdown;
         const refusalText = faultTextOf(
           await charterAuthoringApp[vendorMethodName](
             "team/source",

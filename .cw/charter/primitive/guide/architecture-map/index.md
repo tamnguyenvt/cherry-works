@@ -259,7 +259,7 @@ In each module:
   - `vendor/` — `VendorSource` (with its `SourceCharter` and `SourceSkill`),
     `RawVendorSource`, `VendorSourceOrigin`, `VendorRoot`, their factories;
     `VendorSourcePath`, a source's layout — its charters and skills folders,
-    a skill's file, the own charter's name — made once as `vendorSourcePath`
+    a skill's file, the name skills are installed under — made once as `vendorSourcePath`
     in the domain's `constants.ts`, and lent to the adapters through
     `managing-charter.port.ts` alone: a source is no store of `cw`'s, so the
     package does not export it.

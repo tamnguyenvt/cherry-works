@@ -33,14 +33,18 @@ async function temporary(t: { after(fn: () => unknown): void }, name: string): P
   return at;
 }
 
-/** A repository to install from: one guide under its charter folder, a README
- *  beside it, one commit, one tag. A path on disk is a source git fetches like
- *  any other, so the adapter is exercised whole without a network. */
+/** The folder of the one charter `published` keeps, under `charters/`. */
+const PUBLISHED_CHARTER_FOLDER = "charters/base/.cw/charter/primitive";
+
+/** A repository to install from: one guide under the charter it keeps under
+ *  `charters/`, a README beside it, one commit, one tag. A path on disk is a
+ *  source git fetches like any other, so the adapter is exercised whole
+ *  without a network. */
 async function published(t: { after(fn: () => unknown): void }, body = "Reject any."): Promise<string> {
   const source = join(await temporary(t, "source"), "charter");
-  await mkdir(join(source, ".cw", "charter", "primitive", "guide", "no-any"), { recursive: true });
+  await mkdir(join(source, PUBLISHED_CHARTER_FOLDER, "guide", "no-any"), { recursive: true });
   await writeFile(
-    join(source, ".cw", "charter", "primitive", "guide", "no-any", "index.md"),
+    join(source, PUBLISHED_CHARTER_FOLDER, "guide", "no-any", "index.md"),
     `---\nkind: guide\n---\n\n${body}\n`,
   );
   await writeFile(join(source, "README.md"), "Not part of the charter.\n");
@@ -71,7 +75,7 @@ async function repository(t: { after(fn: () => unknown): void }): Promise<string
 async function installed(source: string, repo: string, version?: string): Promise<void> {
   const repoUrl = pathToFileURL(`${repo}/`);
   const fetchedCommit = await new GitSources(repoUrl).fetchCommit(source, version);
-  await new GitSources(repoUrl).checkOutFolder(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter");
+  await new GitSources(repoUrl).checkOutFolder(fetchedCommit, PUBLISHED_CHARTER_FOLDER, ".cw/charter/vendor/charter");
   await gitSources.removeFetchedCommit(fetchedCommit);
 }
 
@@ -123,7 +127,7 @@ test("installing a source already there brings it up to date (CORE Story 2 scena
   await installed(source, repo);
 
   await writeFile(
-    join(source, ".cw", "charter", "primitive", "guide", "no-any", "index.md"),
+    join(source, PUBLISHED_CHARTER_FOLDER, "guide", "no-any", "index.md"),
     "---\nkind: guide\n---\n\nReject it everywhere.\n",
   );
   await run("git", ["add", "."], { cwd: source });
@@ -208,7 +212,7 @@ test("a source is reached under the repository's own git config (CORE Story 37 s
 
   const fetchedCommit = await new GitSources(repoUrl).fetchCommit("cw-team:charter");
   t.after(() => gitSources.removeFetchedCommit(fetchedCommit));
-  await new GitSources(repoUrl).checkOutFolder(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter");
+  await new GitSources(repoUrl).checkOutFolder(fetchedCommit, PUBLISHED_CHARTER_FOLDER, ".cw/charter/vendor/charter");
 
   assert.match(await vendored(repo), /Reject any\./);
   const { stdout } = await run("git", ["status", "--porcelain"], { cwd: repo });
@@ -388,7 +392,7 @@ test("a folder that cannot be written keeps what it held, with a fault saying so
   await chmod(join(folder, ".cw", "charter", "vendor"), 0o555);
 
   await assert.rejects(
-    new GitSources(folderUrl).checkOutFolder(fetchedCommit, ".cw/charter/primitive", ".cw/charter/vendor/charter"),
+    new GitSources(folderUrl).checkOutFolder(fetchedCommit, PUBLISHED_CHARTER_FOLDER, ".cw/charter/vendor/charter"),
     (raised: unknown) => {
       assert.ok(raised instanceof AdapterFault);
       assert.equal(raised.internal, false);
@@ -463,7 +467,7 @@ test("a link a source holds carries no write out of its vendor folder (CORE-FR-0
 test("a link a source holds for its README carries no write out of its vendor folder (CORE-FR-044)", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
   await writeFile(join(folder, "CLAUDE.md"), "Mine.\n");
-  await symlink("../../../../CLAUDE.md", join(source, ".cw", "charter", "README.md"));
+  await symlink("../../../../CLAUDE.md", join(source, "charters", "base", ".cw", "charter", "README.md"));
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "two");
 

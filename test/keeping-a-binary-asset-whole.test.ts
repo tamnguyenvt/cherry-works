@@ -193,7 +193,9 @@ test("an index.md a source holds lands as its bytes when it is injected unconver
   ]);
   const fileReader = new InMemoryFileReaders();
   const sourceFetcher = new InMemorySources(fileReader);
-  sourceFetcher.sourceFilesBySource["team/source"] = { ".cw/charter/primitive/guide/published/index.md": guideBytes };
+  sourceFetcher.sourceFilesBySource["team/source"] = {
+    "charters/published/.cw/charter/primitive/guide/published/index.md": guideBytes,
+  };
   const charterAuthoringApp = authoringCharterOf(
     fileReader,
     new InMemoryFileOutput(fileReader),
