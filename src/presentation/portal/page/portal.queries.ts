@@ -36,6 +36,9 @@ export function usePrimitives(searchText?: string) {
   });
 }
 
+/** What the engine answered `usePrimitives`, or nothing yet. */
+export type PrimitivesAnswer = ReturnType<typeof usePrimitives>["data"];
+
 /** What the engine says of one primitive (FR-029, FR-116).
  *
  *  An id is sent encoded wherever it is part of a path, here and in the

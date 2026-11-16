@@ -79,3 +79,27 @@
 .cm-scroller {
   font-family: var(--font-mono);
 }
+
+/* The list `[[` opens in the body: each primitive by its id, its kind and
+   its description, as the search in the header lists them. */
+.cm-tooltip.cm-tooltip-autocomplete {
+  @apply rounded-lg border bg-popover p-1 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.3)];
+}
+.cm-tooltip.cm-tooltip-autocomplete > ul {
+  @apply max-h-60 max-w-[480px] font-mono;
+}
+.cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  @apply flex items-baseline gap-2 rounded-md px-2 py-1 text-xs;
+}
+.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+  @apply bg-zinc-100 text-foreground;
+}
+.cm-completionDetail {
+  @apply text-[9.5px] font-bold text-zinc-500 uppercase not-italic;
+}
+.cm-mentionDescription {
+  @apply min-w-0 truncate font-sans text-[11px] text-zinc-400;
+}
+.cm-completionLabel:only-child {
+  @apply text-zinc-400;
+}

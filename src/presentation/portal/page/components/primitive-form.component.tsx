@@ -248,7 +248,7 @@ function PrimitiveEditor({
         ))}
       </datalist>
 
-      <PrimitiveBody body={body} onChange={setBody} />
+      <PrimitiveBody body={body} onChange={setBody} primitivesAnswer={primitivesAnswer} />
 
       {faults.length > 0 && <Refusals faults={faults} />}
 

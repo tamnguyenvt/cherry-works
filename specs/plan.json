@@ -807,7 +807,11 @@
     {
       "id": "CORE Story 70",
       "title": "Mention another primitive by typing `[[` in the portal",
-      "dependsOn": []
+      "dependsOn": [],
+      "evidence": {
+        "summary": "typecheck, lint:deps, lint, build and 1059/1059 tests pass, 8 in test/mentioning-in-the-portal.test.ts; specs check passes; the portal driven by hand lists 55 entries on [[ as cw list does, narrows, writes [[sdd-voice]], and closes on Escape and on the nothing line",
+        "date": "2026-11-16"
+      }
     },
     {
       "id": "CORE Story 67",

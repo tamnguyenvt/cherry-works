@@ -1305,7 +1305,7 @@ The commands that run what was built sit under one word: `cw run mcp` serves the
 
 ### CORE Story 70 - Mention another primitive by typing `[[` in the portal (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 An author writing a primitive's body in the portal types `[[`, and a list opens of every primitive the charter holds, of every layer and kind, each shown by its id, its kind and its description. As they type on, the list narrows to the primitives whose id or description holds what they typed, and says so when none does. They choose one by keyboard or pointer, and the portal writes `[[<id>]]` in place of what they typed, spelled as the charter holds it. Escape closes the list and leaves their text as typed. The headers' fields open no list.
 
