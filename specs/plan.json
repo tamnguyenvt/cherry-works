@@ -794,6 +794,41 @@
         "summary": "typecheck, lint:deps, lint, build, 1034 tests pass, contract/ unchanged; the 43 agreed no-single-word-naming findings of the charter domain reassessed by its declared names, none left; cw test, doctor and the session tokens counter run by hand answer as before; specs check passes",
         "date": "2026-11-14"
       }
+    },
+    {
+      "id": "CORE Story 69",
+      "title": "Find authoring and running apart among `cw`'s commands",
+      "dependsOn": []
+    },
+    {
+      "id": "CORE Story 70",
+      "title": "Mention another primitive by typing `[[` in the portal",
+      "dependsOn": []
+    },
+    {
+      "id": "CORE Story 67",
+      "title": "Read every answer of `cw` laid out, in colour at a terminal",
+      "dependsOn": [
+        "CORE Story 69"
+      ]
+    },
+    {
+      "id": "CORE Story 68",
+      "title": "Read any answer of `cw` as data with `--json`",
+      "dependsOn": [
+        "CORE Story 67"
+      ]
+    },
+    {
+      "id": "CORE Story 71",
+      "title": "Quality cross-check of CORE Story 57, CORE Story 67, CORE Story 68, CORE Story 69, CORE Story 70",
+      "dependsOn": [
+        "CORE Story 57",
+        "CORE Story 67",
+        "CORE Story 68",
+        "CORE Story 69",
+        "CORE Story 70"
+      ]
     }
   ]
 }
