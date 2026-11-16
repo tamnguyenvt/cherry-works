@@ -1,13 +1,12 @@
 import {
   type Command,
   type Context,
-  EXIT_FAILURE,
   EXIT_OK,
   type OptionSpec,
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, layAnswerRows, printFault } from "./helper.js";
+import { formatHeading, layAnswerRows, reportFault } from "./helper.js";
 
 /** What `cw kinds` takes: which kind to be told about, or nothing.
  *
@@ -45,8 +44,7 @@ export class KindsCommand implements Command<typeof OPTIONS> {
   async runCommand({ charterAuthoringApp }: Context, { kind }: Options<typeof OPTIONS>): Promise<Outcome> {
     if (kind === undefined) {
       const primitiveKindsDTO = await charterAuthoringApp.listKinds();
-      if (primitiveKindsDTO.type === "Fault")
-        return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveKindsDTO) };
+      if (primitiveKindsDTO.type === "Fault") return reportFault(primitiveKindsDTO);
       const primitiveKinds = primitiveKindsDTO.data;
       return {
         exitCode: EXIT_OK,
@@ -58,6 +56,7 @@ export class KindsCommand implements Command<typeof OPTIONS> {
           ),
           "",
         ].join("\n"),
+        answerDTO: primitiveKindsDTO,
       };
     }
 
@@ -65,8 +64,7 @@ export class KindsCommand implements Command<typeof OPTIONS> {
     // everywhere else, naming every kind there is, so what an author reads is
     // the same sentence whichever command they asked with.
     const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements(kind);
-    if (primitiveRequirementsDTO.type === "Fault")
-      return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveRequirementsDTO) };
+    if (primitiveRequirementsDTO.type === "Fault") return reportFault(primitiveRequirementsDTO);
     const primitiveRequirements = primitiveRequirementsDTO.data;
 
     // Only what the kind requires: a header it takes without requiring is one
@@ -91,6 +89,7 @@ export class KindsCommand implements Command<typeof OPTIONS> {
         primitiveRequirements.sample,
         "",
       ].join("\n"),
+      answerDTO: primitiveRequirementsDTO,
     };
   }
 }

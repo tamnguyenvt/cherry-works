@@ -99,7 +99,9 @@ composition root's `composition.ts` and `main.ts` keep their bare names; a value
     `readBytesIfThere`, `findFileAddress`), `FileOutput` (`ForWritingFiles`:
     `writeFile`, `deleteFile`, `deleteFolder`, `deleteEmptyFolder`),
     `McpClients` (`ForCallingMcpServers`: `connectServer`), `ConsoleReporter`
-    (`ForReportingProgress`: `reportProgress`, `reportProblem`), `SystemClock`
+    (`ForReportingProgress`: `reportProgress`, `reportProblem`),
+    `StderrReporter` (the same port, both on standard error where `--json`
+    holds standard output to the answer, CORE-FR-241), `SystemClock`
     (`ForTellingTime`: `tellTime`), and `helper.ts`: a path
     read as an address, a checkout's path, a file's contents read as text or
     as bytes (`decodeContents`, `encodeContents`), and what an mcp server

@@ -829,7 +829,11 @@
       "title": "Read any answer of `cw` as data with `--json`",
       "dependsOn": [
         "CORE Story 67"
-      ]
+      ],
+      "evidence": {
+        "summary": "typecheck, lint:deps, lint, build, 1075/1075 tests, specs check; every command but cw run answers one JSON document with --json through dist/cw.js, on success and failure; cw run refuses it",
+        "date": "2026-11-16"
+      }
     },
     {
       "id": "CORE Story 71",

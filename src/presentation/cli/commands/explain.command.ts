@@ -8,7 +8,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, formatMention, formatStatusLine, layAnswerRows, printFault, printProblem } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, layAnswerRows, printProblem, reportFault } from "./helper.js";
 
 /** What `cw explain` takes: the id to trace, typed where it is written
  *  rather than offered as a flag beside itself. */
@@ -52,8 +52,7 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
 
   async runCommand({ charterAuthoringApp }: Context, { id }: Options<typeof OPTIONS>): Promise<Outcome> {
     const explanationOutcomeDTO = await charterAuthoringApp.explainPrimitive(id ?? "");
-    if (explanationOutcomeDTO.type === "Fault")
-      return { exitCode: EXIT_FAILURE, problemText: printFault(explanationOutcomeDTO) };
+    if (explanationOutcomeDTO.type === "Fault") return reportFault(explanationOutcomeDTO);
 
     if (explanationOutcomeDTO.type === "FaultsByFile") {
       const faultyFileCount = Object.keys(explanationOutcomeDTO.data.files).length;
@@ -63,6 +62,7 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
           `Nothing was explained: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`,
           'Run "cw doctor" to see what is wrong with them.',
         ),
+        answerDTO: explanationOutcomeDTO,
       };
     }
 
@@ -118,6 +118,7 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
         ]),
         "",
       ].join("\n"),
+      answerDTO: explanationOutcomeDTO,
     };
   }
 }

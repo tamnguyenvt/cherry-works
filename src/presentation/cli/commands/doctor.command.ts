@@ -1,5 +1,5 @@
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
-import { formatHeading, formatStatusLine, layAnswerRows, printFault, printFaultsByFile } from "./helper.js";
+import { formatHeading, formatStatusLine, layAnswerRows, printFaultsByFile, reportFault } from "./helper.js";
 
 /**
  * `cw doctor`: the three questions about this repository, asked in one command
@@ -37,7 +37,7 @@ export class DoctorCommand implements Command {
 
   async runCommand({ version, charterBuildingApp }: Context, _options: Options): Promise<Outcome> {
     const doctorOutcomeDTO = await charterBuildingApp.diagnoseCharter();
-    if (doctorOutcomeDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(doctorOutcomeDTO) };
+    if (doctorOutcomeDTO.type === "Fault") return reportFault(doctorOutcomeDTO);
     const {
       agents,
       errorCount,
@@ -108,6 +108,7 @@ export class DoctorCommand implements Command {
           : formatStatusLine("fault", `${problemCount} thing${problemCount === 1 ? "" : "s"} to fix.`),
         "",
       ].join("\n"),
+      answerDTO: doctorOutcomeDTO,
     };
   }
 }

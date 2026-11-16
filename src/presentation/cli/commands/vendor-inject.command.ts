@@ -1,13 +1,12 @@
 import {
   type Command,
   type Context,
-  EXIT_FAILURE,
   EXIT_OK,
   type OptionSpec,
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatMention, formatStatusLine, printFault } from "./helper.js";
+import { formatMention, formatStatusLine, reportFault } from "./helper.js";
 
 const OPTIONS = {
   source: {
@@ -43,8 +42,7 @@ export class VendorInjectCommand implements Command<typeof OPTIONS> {
     { source, ref, charter: charterNames, skill: skillNames }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     const vendorAddOutcomeDTO = await charterAuthoringApp.injectVendor(source ?? "", ref, skillNames, charterNames);
-    if (vendorAddOutcomeDTO.type === "Fault")
-      return { exitCode: EXIT_FAILURE, problemText: printFault(vendorAddOutcomeDTO) };
+    if (vendorAddOutcomeDTO.type === "Fault") return reportFault(vendorAddOutcomeDTO);
     const vendorInstalls = vendorAddOutcomeDTO.data;
     return {
       exitCode: EXIT_OK,
@@ -60,6 +58,7 @@ export class VendorInjectCommand implements Command<typeof OPTIONS> {
         'Run "cw build" to compile what it adds to this charter.',
         "",
       ].join("\n"),
+      answerDTO: vendorAddOutcomeDTO,
     };
   }
 }

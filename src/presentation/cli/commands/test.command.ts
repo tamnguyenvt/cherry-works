@@ -1,6 +1,6 @@
 import { charterPath } from "#module/charter/module.js";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
-import { formatStatusLine, layAnswerRows, printFault, printFaultsByFile, printProblem } from "./helper.js";
+import { formatStatusLine, layAnswerRows, printFaultsByFile, printProblem, reportFault } from "./helper.js";
 
 /**
  * `cw test`: put every situation this repository wrote down to its charter, and
@@ -23,7 +23,7 @@ export class TestCommand implements Command {
 
   async runCommand({ charterAuthoringApp }: Context, _options: Options): Promise<Outcome> {
     const testRunReportDTO = await charterAuthoringApp.testCharter();
-    if (testRunReportDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(testRunReportDTO) };
+    if (testRunReportDTO.type === "Fault") return reportFault(testRunReportDTO);
 
     // Either the charter does not hold or the tests do not read; either way
     // nothing was resolved, and what has to change is named under its own path
@@ -32,6 +32,7 @@ export class TestCommand implements Command {
       return {
         exitCode: EXIT_FAILURE,
         problemText: `${printProblem("Nothing was resolved.")}\n${printFaultsByFile(testRunReportDTO)}`,
+        answerDTO: testRunReportDTO,
       };
 
     const testCaseReports = testRunReportDTO.data.testCaseReports;
@@ -40,6 +41,7 @@ export class TestCommand implements Command {
       return {
         exitCode: EXIT_OK,
         resultText: `No tests: ${charterPath.testFolderPath}/ holds no case.\nWrite one as ${charterPath.testFolderPath}/<name>.json to pin a situation down.\n`,
+        answerDTO: testRunReportDTO,
       };
     }
 
@@ -67,6 +69,7 @@ export class TestCommand implements Command {
             ),
         "",
       ].join("\n"),
+      answerDTO: testRunReportDTO,
     };
   }
 }

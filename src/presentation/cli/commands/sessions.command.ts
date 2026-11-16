@@ -1,13 +1,12 @@
 import {
   type Command,
   type Context,
-  EXIT_FAILURE,
   EXIT_OK,
   type OptionSpec,
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, formatMention, layAnswerRows, printFault } from "./helper.js";
+import { formatHeading, formatMention, layAnswerRows, reportFault } from "./helper.js";
 
 const OPTIONS = {
   since: {
@@ -19,11 +18,6 @@ const OPTIONS = {
     type: "string",
     describe: "Count the sessions whose last stop is on or before this day, YYYY-MM-DD; today unless --since says",
   },
-  json: {
-    type: "boolean",
-    describe: "Print the summary as JSON, each session's tokens by kind included",
-    default: false,
-  },
 } as const satisfies OptionSpec;
 
 /**
@@ -33,23 +27,18 @@ const OPTIONS = {
  *
  * One line per day, its sessions under it, each with its model, its id and
  * the time of its last stop on this machine's clock; then the total. With none
- * kept, it says so, where it looked, and how one starts. With `--json`, the
- * summary as it was answered, each session's tokens by kind included
- * (EVAL-FR-008).
+ * kept, it says so, where it looked, and how one starts. With `--json`, which
+ * every command takes, the summary as it was answered, each session's tokens
+ * by kind included (EVAL-FR-008, CORE-FR-241).
  */
 export class SessionsCommand implements Command<typeof OPTIONS> {
   readonly name = "sessions";
   readonly summary = "Sum up the tokens of the sessions kept on this machine, by day and by session";
   readonly options = OPTIONS;
 
-  async runCommand(
-    { charterRuntimeApp }: Context,
-    { since, until, json: isJson }: Options<typeof OPTIONS>,
-  ): Promise<Outcome> {
+  async runCommand({ charterRuntimeApp }: Context, { since, until }: Options<typeof OPTIONS>): Promise<Outcome> {
     const sessionReviewOutcomeDTO = await charterRuntimeApp.summarizeSessions(since, until);
-    if (sessionReviewOutcomeDTO.type === "Fault")
-      return { exitCode: EXIT_FAILURE, problemText: printFault(sessionReviewOutcomeDTO) };
-    if (isJson) return { exitCode: EXIT_OK, resultText: `${JSON.stringify(sessionReviewOutcomeDTO, null, 2)}\n` };
+    if (sessionReviewOutcomeDTO.type === "Fault") return reportFault(sessionReviewOutcomeDTO);
 
     const {
       data: {
@@ -69,6 +58,7 @@ export class SessionsCommand implements Command<typeof OPTIONS> {
       return {
         exitCode: EXIT_OK,
         resultText: `No session has been kept for this repository from ${sinceDay} until ${untilDay}, in ${formatMention(sessionsFolder)}.\nOne is kept each time the agent stops, once "cw build" has built the charter for claude.\n`,
+        answerDTO: sessionReviewOutcomeDTO,
       };
 
     const formatTokenCount = (tokenCount: number) => tokenCount.toLocaleString("en-US");
@@ -102,6 +92,7 @@ export class SessionsCommand implements Command<typeof OPTIONS> {
         `${formatTokenCount(totalTokens)} tokens in all, ${sessionCount} session${sessionCount === 1 ? "" : "s"}, from ${sinceDay} until ${untilDay}.`,
         "",
       ].join("\n"),
+      answerDTO: sessionReviewOutcomeDTO,
     };
   }
 }

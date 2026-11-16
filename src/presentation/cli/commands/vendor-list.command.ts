@@ -1,5 +1,5 @@
-import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from "./command.interface.js";
-import { formatHeading, formatMention, printFault } from "./helper.js";
+import { type Command, type Context, EXIT_OK, type Outcome } from "./command.interface.js";
+import { formatHeading, formatMention, reportFault } from "./helper.js";
 
 /**
  * `cw vendor list`: every folder a charter was installed as, one per line
@@ -15,12 +15,13 @@ export class VendorListCommand implements Command {
 
   async runCommand({ charterAuthoringApp }: Context): Promise<Outcome> {
     const vendorFoldersDTO = await charterAuthoringApp.listVendors();
-    if (vendorFoldersDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(vendorFoldersDTO) };
+    if (vendorFoldersDTO.type === "Fault") return reportFault(vendorFoldersDTO);
     const { folders: vendorFolderPaths } = vendorFoldersDTO.data;
     if (vendorFolderPaths.length === 0)
       return {
         exitCode: EXIT_OK,
         resultText: 'No vendor source is installed. Run "cw vendor add <source>" to install one.\n',
+        answerDTO: vendorFoldersDTO,
       };
     return {
       exitCode: EXIT_OK,
@@ -29,6 +30,7 @@ export class VendorListCommand implements Command {
         ...vendorFolderPaths.map((folderPath) => `  ${formatMention(folderPath)}`),
         "",
       ].join("\n"),
+      answerDTO: vendorFoldersDTO,
     };
   }
 }

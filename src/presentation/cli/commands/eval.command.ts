@@ -14,9 +14,9 @@ import {
   formatMention,
   formatStatusLine,
   layAnswerRows,
-  printFault,
   printFaultsByFile,
   printProblem,
+  reportFault,
 } from "./helper.js";
 
 const OPTIONS = {
@@ -39,13 +39,13 @@ export class EvalCommand implements Command<typeof OPTIONS> {
   readonly options = OPTIONS;
 
   async runCommand(
-    { charterRuntimeApp, workspaceSettings }: Context,
+    { charterRuntimeApp, workspaceSettings, isAtTerminal }: Context,
     { agent: namedAgentName }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     let evaluationAgentName = namedAgentName;
     if (evaluationAgentName === undefined) {
       const chosenAgentNames = [...new Set(workspaceSettings.agents)];
-      if (chosenAgentNames.length > 1 && process.stdin.isTTY) {
+      if (chosenAgentNames.length > 1 && isAtTerminal) {
         const promptAnswer = await prompts({
           type: "select",
           name: "agent",
@@ -58,11 +58,12 @@ export class EvalCommand implements Command<typeof OPTIONS> {
       }
     }
     const evalRunReportDTO = await charterRuntimeApp.evaluateCharter(evaluationAgentName);
-    if (evalRunReportDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(evalRunReportDTO) };
+    if (evalRunReportDTO.type === "Fault") return reportFault(evalRunReportDTO);
     if (evalRunReportDTO.type === "FaultsByFile")
       return {
         exitCode: EXIT_FAILURE,
         problemText: `${printProblem("No case was run.")}\n${printFaultsByFile(evalRunReportDTO)}`,
+        answerDTO: evalRunReportDTO,
       };
 
     const { evalCaseReports, totalTokens } = evalRunReportDTO.data;
@@ -70,6 +71,7 @@ export class EvalCommand implements Command<typeof OPTIONS> {
       return {
         exitCode: EXIT_OK,
         resultText: `No evaluation: ${charterPath.evalFolderPath}/ holds no case.\nWrite one as ${charterPath.evalFolderPath}/<name>.json, and run "cw eval" again.\n`,
+        answerDTO: evalRunReportDTO,
       };
 
     const failedCount = evalCaseReports.filter(({ data: { passed: hasPassed } }) => !hasPassed).length;
@@ -101,6 +103,7 @@ export class EvalCommand implements Command<typeof OPTIONS> {
         ),
         "",
       ].join("\n"),
+      answerDTO: evalRunReportDTO,
     };
   }
 }

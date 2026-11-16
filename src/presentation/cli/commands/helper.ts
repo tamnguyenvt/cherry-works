@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { stripVTControlCharacters } from "node:util";
-import type { FaultDTOs } from "#module/shared/module.js";
-import type { EngineApps } from "./command.interface.js";
+import { FaultDTOs } from "#module/shared/module.js";
+import { type AnyCommand, type EngineApps, EXIT_FAILURE, type Outcome } from "./command.interface.js";
 
 /**
  * One repeatable `k=v` flag, read into the record it was typed as: every
@@ -12,8 +12,8 @@ import type { EngineApps } from "./command.interface.js";
  * so a value holding an `=` is typed as it reads. A flag with no `=`, or one
  * with nothing before it, names nothing to put a value under, and is refused
  * here quoting the flag as it was typed — nothing behind this is handed a
- * record it could not read. What comes back then is what to report, in place of
- * the record.
+ * record it could not read. What comes back is the record, or the fault to
+ * report in its place.
  *
  * Every value typed under one name is kept, in the order it was typed: whether
  * that name holds a list or holds one value is the caller's to say, and a
@@ -27,7 +27,7 @@ import type { EngineApps } from "./command.interface.js";
 export function parseKVParams(
   typedParams: readonly string[],
   paramName: string,
-): Record<string, readonly string[]> | string {
+): { readonly valuesByParamKey: Record<string, readonly string[]> } | { readonly faultDTO: FaultDTOs.Fault } {
   // Nothing inherited: a name every object already has — `__proto__` above all
   // — is a name like any other here, and reaches whoever asked for these to be
   // refused as one they do not take, rather than being swallowed by the object
@@ -36,14 +36,17 @@ export function parseKVParams(
   for (const typedParam of typedParams) {
     const separatorIndex = typedParam.indexOf("=");
     if (separatorIndex <= 0)
-      return printProblem(
-        `"--${paramName} ${typedParam}" names nothing to put a value under.`,
-        `Type each one as --${paramName} name=value, once per name.`,
-      );
+      return {
+        faultDTO: refuseCommand(
+          "UnnamedParamFault",
+          `"--${paramName} ${typedParam}" names nothing to put a value under.`,
+          `Type each one as --${paramName} name=value, once per name.`,
+        ),
+      };
     const paramKey = typedParam.slice(0, separatorIndex);
     valuesByParamKey[paramKey] = [...(valuesByParamKey[paramKey] ?? []), typedParam.slice(separatorIndex + 1)];
   }
-  return valuesByParamKey;
+  return { valuesByParamKey };
 }
 
 /** What a status asks of the developer: nothing, a step to take, or a fault to
@@ -172,6 +175,20 @@ export function printFault({ data: { message, fix } }: FaultDTOs.Fault): string 
   return printProblem(message, fix);
 }
 
+/** A fault the command line found itself, as a use case answers one, named
+ *  for what is wrong so a script tells one from another: what it reads under
+ *  `--json`, and what `printFault` writes in the words `printProblem` wrote it
+ *  in (CORE-FR-242). */
+export function refuseCommand(faultName: `${string}Fault`, message: string, fix: string): FaultDTOs.Fault {
+  return FaultDTOs.Fault.of({ name: faultName, message, fix, severity: "error" });
+}
+
+/** A command ending on one fault: written out for the terminal, and answered
+ *  as it is under `--json` (CORE-FR-242). */
+export function reportFault(faultDTO: FaultDTOs.Fault): Outcome {
+  return { exitCode: EXIT_FAILURE, problemText: printFault(faultDTO), answerDTO: faultDTO };
+}
+
 /** A fault a command found itself, written out as `printFault` writes one a
  *  use case answered with: what is wrong, marked, and the next move under it. */
 export function printProblem(message: string, fix?: string, standing: Standing = "fault"): string {
@@ -192,25 +209,39 @@ export function printRunFault({ data: { message, fix } }: FaultDTOs.Fault): stri
  * The editor is `$VISUAL`, else `$EDITOR`, run the way git runs it — through
  * the shell, so a value such as `code --wait` carries its own arguments — with
  * the terminal handed over until it exits. Neither set is refused rather than
- * guessed at. What comes back is nothing, or what to report where the editor
- * exited with a failure or there is none.
+ * guessed at. Answering as data, what the editor prints goes to standard
+ * error, so standard output holds the answer alone (CORE-FR-241). What comes
+ * back is nothing, or what to report where the editor exited with a failure
+ * or there is none.
  */
-export async function editInEditor(cwd: string, filePath: string): Promise<string | undefined> {
+export async function editInEditor(cwd: string, filePath: string, isJsonAnswer: boolean): Promise<Outcome | undefined> {
   const editorCommand = process.env.VISUAL || process.env.EDITOR;
   if (!editorCommand)
-    return printProblem(
-      "Neither $VISUAL nor $EDITOR is set, so there is no editor to open it in.",
-      'Set one, as in "export EDITOR=vim".',
+    return reportFault(
+      refuseCommand(
+        "NoEditorFault",
+        "Neither $VISUAL nor $EDITOR is set, so there is no editor to open it in.",
+        'Set one, as in "export EDITOR=vim".',
+      ),
     );
 
   // The file is handed over as "$1" rather than written into the command, so
   // a path with a space in it is one argument.
   const exitCode = await new Promise<number | null>((resolve, reject) =>
-    spawn("sh", ["-c", `${editorCommand} "$1"`, editorCommand, `${cwd}/${filePath}`], { stdio: "inherit" })
+    spawn("sh", ["-c", `${editorCommand} "$1"`, editorCommand, `${cwd}/${filePath}`], {
+      stdio: ["inherit", isJsonAnswer ? process.stderr : "inherit", "inherit"],
+    })
       .once("error", reject)
       .once("exit", resolve),
   );
-  return exitCode === 0 ? undefined : printProblem(`${editorCommand} exited with ${exitCode} on ${filePath}.`);
+  if (exitCode === 0) return undefined;
+  // Said in the words it always was; the next move is the data's alone.
+  const failureMessage = `${editorCommand} exited with ${exitCode} on ${filePath}.`;
+  return {
+    exitCode: EXIT_FAILURE,
+    problemText: printProblem(failureMessage),
+    answerDTO: refuseCommand("FailedEditorFault", failureMessage, "Open it again once the editor exits cleanly."),
+  };
 }
 
 /**
@@ -296,6 +327,18 @@ export function showPathsInApps<Apps extends EngineApps>(engineApps: Apps, cwd: 
     charterBuildingApp: wrapAppToShowPaths(engineApps.charterBuildingApp, cwd),
     charterRuntimeApp: wrapAppToShowPaths(engineApps.charterRuntimeApp, cwd),
   };
+}
+
+/** The word every command running what was built is typed under; the help
+ *  lists those in a section of their own, every other command authoring the
+ *  charter (CORE-FR-243). */
+export const RUNNING_HEAD_WORD = "run";
+
+/** Whether a command's answer is laid out for a reader, and so taken as data
+ *  with `--json`: every command but those running what was built
+ *  (CORE-FR-240). */
+export function isLaidOutCommand(command: AnyCommand): boolean {
+  return listCommandWords(command.name)[0] !== RUNNING_HEAD_WORD;
 }
 
 /** The words one command is typed by, without the arguments it takes: the name

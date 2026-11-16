@@ -148,11 +148,14 @@ const PORTAL_REQUESTS: readonly { method: string; path: string; body?: unknown }
  *  `PORTAL_REQUESTS` to the portal it serves there. The run's folder, which
  *  differs on every run, is written as `<work>`, each date as `<date>`, and
  *  the package's version as `<version>`, which every release moves on;
- *  `extraEnv` is added to what every command runs with. */
+ *  `extraEnv` is added to what every command runs with, and `answerArgs` to
+ *  what every command but `--help`, `--version` and the `cw run` commands is
+ *  typed with. */
 export async function answersOfEveryCommand(
   cwFilePath: string,
   port: number,
   extraEnv: NodeJS.ProcessEnv = {},
+  answerArgs: readonly string[] = [],
 ): Promise<AnswersOfEveryCommand> {
   const workFolderPath = await mkdtemp(join(tmpdir(), "cw-every-command-"));
   const workFolderName = basename(workFolderPath);
@@ -241,9 +244,16 @@ export async function answersOfEveryCommand(
           assert.equal(gitRun.status, 0, gitRun.stderr);
         }
       }
-      const cwArgs = commandArgs.map((commandArg) =>
-        commandArg === "<vendor>" ? vendorFolderPath : commandArg === "<listed vendor>" ? listedVendorName : commandArg,
-      );
+      const cwArgs = [
+        ...commandArgs.map((commandArg) =>
+          commandArg === "<vendor>"
+            ? vendorFolderPath
+            : commandArg === "<listed vendor>"
+              ? listedVendorName
+              : commandArg,
+        ),
+        ...(commandArgs[0]?.startsWith("-") || commandArgs[0] === "run" ? [] : answerArgs),
+      ];
       const commandRun = spawnSync(process.execPath, [cwFilePath, ...cwArgs], {
         cwd: repoFolderPath,
         env: isEvaluating
@@ -253,8 +263,13 @@ export async function answersOfEveryCommand(
         encoding: "utf8",
       });
       if (commandArgs.join(" ") === "vendor list") {
-        // The folder is the last line the list says, under its heading.
-        listedVendorName = (commandRun.stdout.trim().split("\n").at(-1) ?? "")
+        // The folder is the last line the list says, under its heading, or
+        // the last its answer as data holds.
+        listedVendorName = (
+          commandRun.stdout.startsWith("{")
+            ? (JSON.parse(commandRun.stdout).data.folders.at(-1) ?? "")
+            : (commandRun.stdout.trim().split("\n").at(-1) ?? "")
+        )
           .trim()
           .replace(/^\.cw\/(charter\/)?vendor\//, "");
       }

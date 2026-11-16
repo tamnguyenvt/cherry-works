@@ -98,4 +98,5 @@ export {
 } from "./infra/helper.js";
 export type { InMemoryFileReaders } from "./infra/in-memory/in-memory-file-readers.adapter.js";
 export { McpClients } from "./infra/mcp-clients.adapter.js";
+export { StderrReporter } from "./infra/stderr-reporter.adapter.js";
 export { SystemClock } from "./infra/system-clock.adapter.js";

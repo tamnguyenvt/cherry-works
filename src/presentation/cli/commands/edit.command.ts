@@ -2,13 +2,12 @@ import { BUILTIN_LAYER_NAME } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
-  EXIT_FAILURE,
   EXIT_OK,
   type OptionSpec,
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { editInEditor, formatHeading, formatMention, formatStatusLine, printFault, printProblem } from "./helper.js";
+import { editInEditor, formatHeading, formatMention, formatStatusLine, refuseCommand, reportFault } from "./helper.js";
 
 /** What `cw edit` takes: the id whose file is opened. */
 const OPTIONS = {
@@ -34,21 +33,24 @@ export class EditCommand implements Command<typeof OPTIONS> {
   readonly summary = "Open the file of one primitive in your editor";
   readonly options = OPTIONS;
 
-  async runCommand({ cwd, charterAuthoringApp }: Context, { id }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async runCommand(
+    { cwd, charterAuthoringApp, isJsonAnswer }: Context,
+    { id }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
     const primitiveDTO = await charterAuthoringApp.openPrimitive(id ?? "");
-    if (primitiveDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveDTO) };
+    if (primitiveDTO.type === "Fault") return reportFault(primitiveDTO);
     const primitive = primitiveDTO.data;
     if (primitive.layerName === BUILTIN_LAYER_NAME)
-      return {
-        exitCode: EXIT_FAILURE,
-        problemText: printProblem(
+      return reportFault(
+        refuseCommand(
+          "BuiltinPrimitiveFault",
           `${primitive.id} is built into cw, and there is no file of it in this repository to edit.`,
           `To differ from it, run "cw add" for a primitive of your own under an id of its own.`,
         ),
-      };
+      );
 
-    const editorProblem = await editInEditor(cwd, primitive.file);
-    if (editorProblem !== undefined) return { exitCode: EXIT_FAILURE, problemText: editorProblem };
+    const editorOutcome = await editInEditor(cwd, primitive.file, isJsonAnswer);
+    if (editorOutcome !== undefined) return editorOutcome;
 
     return {
       exitCode: EXIT_OK,
@@ -57,6 +59,7 @@ export class EditCommand implements Command<typeof OPTIONS> {
         'Run "cw doctor" to see that the charter still holds, then "cw build".',
         "",
       ].join("\n"),
+      answerDTO: primitiveDTO,
     };
   }
 }

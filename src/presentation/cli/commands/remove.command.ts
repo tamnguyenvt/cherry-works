@@ -3,13 +3,12 @@ import { REPO_LAYER_NAME } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
-  EXIT_FAILURE,
   EXIT_OK,
   type OptionSpec,
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, formatMention, formatStatusLine, printFault, printProblem } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, refuseCommand, reportFault } from "./helper.js";
 
 /** What `cw remove` takes: the id whose file goes, and whether the
  *  question before it is already answered. */
@@ -44,25 +43,24 @@ export class RemoveCommand implements Command<typeof OPTIONS> {
   readonly options = OPTIONS;
 
   async runCommand(
-    { charterAuthoringApp }: Context,
+    { charterAuthoringApp, isAtTerminal }: Context,
     { id, yes: isAnsweredYes }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     const openedPrimitiveDTO = await charterAuthoringApp.openPrimitive(id ?? "");
-    if (openedPrimitiveDTO.type === "Fault")
-      return { exitCode: EXIT_FAILURE, problemText: printFault(openedPrimitiveDTO) };
+    if (openedPrimitiveDTO.type === "Fault") return reportFault(openedPrimitiveDTO);
     const primitive = openedPrimitiveDTO.data;
 
     // Only what this repository authored is asked about: anything else is
     // refused by `removePrimitive` itself, and a question before a refusal asks nothing.
     if (!isAnsweredYes && primitive.layerName === REPO_LAYER_NAME) {
-      if (!process.stdin.isTTY)
-        return {
-          exitCode: EXIT_FAILURE,
-          problemText: printProblem(
+      if (!isAtTerminal)
+        return reportFault(
+          refuseCommand(
+            "NoTerminalFault",
             `Removing ${primitive.file} is asked first, and nobody is at the terminal to answer.`,
             `Run "cw remove ${primitive.id} --yes" to remove it without asking.`,
           ),
-        };
+        );
       const { isConfirmed } = await prompts({
         type: "confirm",
         name: "isConfirmed",
@@ -73,7 +71,7 @@ export class RemoveCommand implements Command<typeof OPTIONS> {
     }
 
     const primitiveDTO = await charterAuthoringApp.removePrimitive(primitive.id);
-    if (primitiveDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveDTO) };
+    if (primitiveDTO.type === "Fault") return reportFault(primitiveDTO);
     return {
       exitCode: EXIT_OK,
       resultText: [
@@ -81,6 +79,7 @@ export class RemoveCommand implements Command<typeof OPTIONS> {
         'Run "cw doctor" to see what still names it, then "cw build".',
         "",
       ].join("\n"),
+      answerDTO: primitiveDTO,
     };
   }
 }

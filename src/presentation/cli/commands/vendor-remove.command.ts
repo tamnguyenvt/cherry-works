@@ -1,13 +1,12 @@
 import {
   type Command,
   type Context,
-  EXIT_FAILURE,
   EXIT_OK,
   type OptionSpec,
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, formatMention, formatStatusLine, printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, reportFault } from "./helper.js";
 
 const OPTIONS = {
   name: {
@@ -33,7 +32,7 @@ export class VendorRemoveCommand implements Command<typeof OPTIONS> {
 
   async runCommand({ charterAuthoringApp }: Context, { name: vendorName }: Options<typeof OPTIONS>): Promise<Outcome> {
     const vendorFolderDTO = await charterAuthoringApp.removeVendor(vendorName ?? "");
-    if (vendorFolderDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(vendorFolderDTO) };
+    if (vendorFolderDTO.type === "Fault") return reportFault(vendorFolderDTO);
     const { folder: folderPath } = vendorFolderDTO.data;
 
     return {
@@ -43,6 +42,7 @@ export class VendorRemoveCommand implements Command<typeof OPTIONS> {
         'Run "cw build" to compile this charter without it.',
         "",
       ].join("\n"),
+      answerDTO: vendorFolderDTO,
     };
   }
 }

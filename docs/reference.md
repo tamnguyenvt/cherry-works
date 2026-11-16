@@ -80,7 +80,7 @@ The main host differences:
 | `cw explain <id>` | Show which file declares an id, what it pulls in and which tests name it |
 | `cw doctor` | Check the agents, the charter and the compiled output |
 | `cw context [--agent=<agent>]` | Say how many tokens the charter puts into the agent's context when a session opens |
-| `cw sessions [--since] [--until] [--json]` | Sum up the tokens of the sessions kept on this machine, by day and by session |
+| `cw sessions [--since] [--until]` | Sum up the tokens of the sessions kept on this machine, by day and by session |
 | `cw test` | Run every case in `.cw/charter/test/` against the charter |
 | `cw eval` | Put every case in `.cw/charter/eval/` to the real agent under promptfoo |
 | `cw suite add \| edit \| remove` | Manage test files |
@@ -88,6 +88,11 @@ The main host differences:
 | `cw vendor add <source> [--ref] [--charter] [--skill] \| remove \| list` | Install, update, remove or list vendor sources: a charter, charters picked from a source of many, or skills from a repository listed on [skills.sh](https://skills.sh) |
 | `cw vendor inject <source> [--ref] [--charter] [--skill]` | Copy published primitives into your own editable charter |
 | `cw mcp auth [id] [--status]` | Sign in, as yourself, to every mcp origin the charter reaches, or to one again |
+
+Every command above takes `--json`: its standard output is then one JSON
+document, the answer the engine made, faults included, with no colour and no
+layout; it exits as it does without the flag, and asks nothing, as with no
+terminal to ask at.
 
 ### Running it
 

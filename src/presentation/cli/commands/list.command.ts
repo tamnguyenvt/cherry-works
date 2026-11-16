@@ -7,7 +7,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, formatMention, layAnswerRows, printFault, printProblem } from "./helper.js";
+import { formatHeading, formatMention, layAnswerRows, printProblem, reportFault } from "./helper.js";
 
 /** What `cw list` takes: which kind to narrow to, and how much of each
  *  primitive to say. Both are how the listing is read, never what is in it —
@@ -45,7 +45,7 @@ export class ListCommand implements Command<typeof OPTIONS> {
 
   async runCommand({ charterAuthoringApp }: Context, { kind, min: isMin }: Options<typeof OPTIONS>): Promise<Outcome> {
     const catalogueDTO = await charterAuthoringApp.listCatalogue(kind);
-    if (catalogueDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(catalogueDTO) };
+    if (catalogueDTO.type === "Fault") return reportFault(catalogueDTO);
 
     if (catalogueDTO.type === "FaultsByFile") {
       const faultyFileCount = Object.keys(catalogueDTO.data.files).length;
@@ -55,6 +55,7 @@ export class ListCommand implements Command<typeof OPTIONS> {
           `Nothing was listed: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`,
           'Run "cw doctor" to see what is wrong with them.',
         ),
+        answerDTO: catalogueDTO,
       };
     }
 
@@ -63,6 +64,7 @@ export class ListCommand implements Command<typeof OPTIONS> {
       return {
         exitCode: EXIT_OK,
         resultText: kind === undefined ? "This charter holds nothing yet.\n" : `This charter holds no ${kind}.\n`,
+        answerDTO: catalogueDTO,
       };
 
     return {
@@ -89,6 +91,7 @@ export class ListCommand implements Command<typeof OPTIONS> {
         ),
         "",
       ].join("\n"),
+      answerDTO: catalogueDTO,
     };
   }
 }

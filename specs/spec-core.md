@@ -1265,7 +1265,7 @@ A developer runs any `cw` command and reads its answer the same way every time: 
 
 ### CORE Story 68 - Read any answer of `cw` as data with `--json` (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 A script, or CI, runs a `cw` command with `--json` and reads its standard output as one JSON document: the answer the engine makes for the caller, as it is, with no colour, no layout and no words around it. A command that fails prints its faults the same way and exits as it does without the flag. Given `--json`, no command asks anything. The three `cw run` commands, whose output no developer reads, refuse it.
 

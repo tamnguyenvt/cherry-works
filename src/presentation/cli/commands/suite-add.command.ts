@@ -1,6 +1,6 @@
 import { charterPath } from "#module/charter/module.js";
-import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from "./command.interface.js";
-import { formatHeading, formatMention, formatStatusLine, printFault } from "./helper.js";
+import { type Command, type Context, EXIT_OK, type Outcome } from "./command.interface.js";
+import { formatHeading, formatMention, formatStatusLine, reportFault } from "./helper.js";
 
 /**
  * `cw suite add`: a new test file under `.cw/charter/test/`, named so no other test file
@@ -12,7 +12,7 @@ export class SuiteAddCommand implements Command {
 
   async runCommand({ charterAuthoringApp }: Context): Promise<Outcome> {
     const testSuiteNameDTO = await charterAuthoringApp.addTestSuite();
-    if (testSuiteNameDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(testSuiteNameDTO) };
+    if (testSuiteNameDTO.type === "Fault") return reportFault(testSuiteNameDTO);
     const { name: testSuiteName } = testSuiteNameDTO.data;
     return {
       exitCode: EXIT_OK,
@@ -23,6 +23,7 @@ export class SuiteAddCommand implements Command {
         `Run "cw suite edit ${testSuiteName}" to write its cases, then "cw test".`,
         "",
       ].join("\n"),
+      answerDTO: testSuiteNameDTO,
     };
   }
 }

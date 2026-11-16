@@ -9,7 +9,7 @@ import vendorReleaseSkillMd from "../templates/vendor-init-command/vendor-releas
 import vendorReleaseActionMjs from "../templates/vendor-init-command/vendor-release-action.mjs";
 import vendorReleaseActionScriptMd from "../templates/vendor-init-command/vendor-release-action.script.md";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from "./command.interface.js";
-import { formatHeading, formatStatusLine, printProblem } from "./helper.js";
+import { formatHeading, formatStatusLine, printProblem, refuseCommand, reportFault } from "./helper.js";
 
 /** Every file `cw vendor init` writes, by its path from the folder's root, as
  *  its template holds it: README.md's `{{name}}` and `{{description}}` are
@@ -45,7 +45,7 @@ export class VendorInitCommand implements Command {
   readonly name = "vendor init";
   readonly summary = "Set a charter vendor repository up in an empty folder, to publish charters from";
 
-  async runCommand({ cwd }: Context): Promise<Outcome> {
+  async runCommand({ cwd, isAtTerminal }: Context): Promise<Outcome> {
     // Git, run here and never through a shell: `isMissing` where it is not
     // installed.
     const runGit = (gitArgs: readonly string[]) => {
@@ -56,31 +56,33 @@ export class VendorInitCommand implements Command {
     const folderEntryNames = readdirSync(cwd);
     const heldEntryNames = folderEntryNames.filter((entryName) => entryName !== ".git").sort();
     if (heldEntryNames.length > 0)
-      return {
-        exitCode: EXIT_FAILURE,
-        problemText: printProblem(
+      return reportFault(
+        refuseCommand(
+          "OccupiedFolderFault",
           `This folder holds ${heldEntryNames.join(", ")}, and a charter repository is set up in an empty one.`,
           `Run "cw vendor init" in an empty folder.`,
         ),
-      };
+      );
     const hasGit = folderEntryNames.includes(".git");
     if (hasGit && runGit(["rev-list", "-n", "1", "--all"]).stdout.trim() !== "")
-      return {
-        exitCode: EXIT_FAILURE,
-        problemText: printProblem(
+      return reportFault(
+        refuseCommand(
+          "CommittedFolderFault",
           "This folder is a git repository with a commit, and a charter repository is set up in one with none.",
           'Run "cw vendor init" in an empty folder.',
         ),
-      };
+      );
 
-    if (process.stdin.isTTY !== true)
-      return {
-        exitCode: EXIT_FAILURE,
-        problemText: printProblem(
+    // Past this, nothing runs with `--json`: nobody is at the terminal to
+    // answer, so what follows answers in words alone (CORE-FR-242).
+    if (!isAtTerminal)
+      return reportFault(
+        refuseCommand(
+          "NoTerminalFault",
           "Nobody is at the terminal to answer what a charter repository is set up with.",
           'Run "cw vendor init" at a terminal.',
         ),
-      };
+      );
 
     // The README's answers, before anything is written: a stop here leaves
     // the folder as it was.

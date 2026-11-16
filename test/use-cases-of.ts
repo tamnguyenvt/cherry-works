@@ -388,6 +388,13 @@ export function commandContextOf(
     ...commandLine,
     workspaceApp: workspaceAppOf(emptyFileReaders, unwritableFiles),
     ...showPathsInApps(engineApp, cwd),
+    composeApplications: () => commandLine.composeApplications(false),
     workspaceSettings: { agents: [] },
+    // Whoever is at the terminal when the command asks, as the command line
+    // reads it with no `--json`.
+    get isAtTerminal() {
+      return process.stdin.isTTY === true;
+    },
+    isJsonAnswer: false,
   };
 }

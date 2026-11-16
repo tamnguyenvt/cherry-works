@@ -57,8 +57,8 @@ const setUp = async (
         ? commandLine
         : {
             ...commandLine,
-            composeApplications: async () => ({
-              ...(await commandLine.composeApplications()),
+            composeApplications: async (isJsonAnswer) => ({
+              ...(await commandLine.composeApplications(isJsonAnswer)),
               workspaceApp: new ManagingWorkspace(
                 new FileWorkspaceSettingsRepository(held, new InMemoryFileOutput(held)),
                 agentProviderNames,

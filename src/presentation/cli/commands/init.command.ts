@@ -13,9 +13,10 @@ import {
   formatHeading,
   formatStatusLine,
   layAnswerRows,
-  printFault,
   printFaultsByFile,
   printProblem,
+  refuseCommand,
+  reportFault,
 } from "./helper.js";
 
 const OPTIONS = {
@@ -57,7 +58,7 @@ export class InitCommand implements Command<typeof OPTIONS> {
   readonly options = OPTIONS;
 
   async runCommand(
-    { workspaceApp, composeApplications, version }: Context,
+    { workspaceApp, composeApplications, version, isAtTerminal }: Context,
     { agent: namedAgentName, mainContextCeiling }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     // Which agents this repository chooses, answered by the first of
@@ -86,6 +87,7 @@ export class InitCommand implements Command<typeof OPTIONS> {
             type: "FaultsByFile",
             data: { files: { [settingsPath.settingsFilePath]: [keptSettingsDTO] } },
           }),
+          answerDTO: keptSettingsDTO,
         };
       const agentsInSettings = keptSettingsDTO.data.agents;
 
@@ -94,15 +96,15 @@ export class InitCommand implements Command<typeof OPTIONS> {
       // finishes rather than waits on an answer that is never coming (FR-035,
       // SC-012). A repository that has chosen none yet has no such default,
       // however many agents this engine compiles for (CORE-FR-055, CORE-FR-056).
-      if (!process.stdin.isTTY) {
+      if (!isAtTerminal) {
         if (agentsInSettings.length === 0)
-          return {
-            exitCode: EXIT_FAILURE,
-            problemText: printProblem(
+          return reportFault(
+            refuseCommand(
+              "NoTerminalFault",
               `Nobody is at the terminal to choose an agent, and this repository has none chosen yet.`,
               `Run "cw init --agent <name>", naming one of: ${workspaceApp.agentProviderNames.join(", ")}.`,
             ),
-          };
+          );
         chosenAgentNames = agentsInSettings;
       } else {
         const { chosen: pickedAgentNames } = await prompts({
@@ -123,23 +125,21 @@ export class InitCommand implements Command<typeof OPTIONS> {
           min: 1,
         });
         if (pickedAgentNames === undefined)
-          return {
-            exitCode: EXIT_FAILURE,
-            problemText: printProblem("Setup was stopped before it had its answers.", 'Run "cw init" again.'),
-          };
+          return reportFault(
+            refuseCommand("StoppedPromptFault", "Setup was stopped before it had its answers.", 'Run "cw init" again.'),
+          );
         chosenAgentNames = pickedAgentNames as readonly string[];
       }
     }
     // No agent, one this engine does not compile for, and a ceiling that is
     // no whole number are the workspace module's to refuse (FR-033).
     const workspaceSettingsDTO = await workspaceApp.setUpWorkspace(chosenAgentNames, version, mainContextCeiling);
-    if (workspaceSettingsDTO.type === "Fault")
-      return { exitCode: EXIT_FAILURE, problemText: printFault(workspaceSettingsDTO) };
+    if (workspaceSettingsDTO.type === "Fault") return reportFault(workspaceSettingsDTO);
     const { charterAuthoringApp, charterBuildingApp } = (await composeApplications()).engineApp;
     const charterLayoutDTO = await charterAuthoringApp.setUpCharter();
-    if (charterLayoutDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(charterLayoutDTO) };
+    if (charterLayoutDTO.type === "Fault") return reportFault(charterLayoutDTO);
     const planSummaryDTO = await charterBuildingApp.buildCharter();
-    if (planSummaryDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(planSummaryDTO) };
+    if (planSummaryDTO.type === "Fault") return reportFault(planSummaryDTO);
     const setUpLines = [
       formatHeading(formatStatusLine("good", "Set up this repository under a charter.")),
       ...layAnswerRows([["Agents chosen:", `${chosenAgentNames.join(", ")}.`]], ""),
@@ -153,6 +153,7 @@ export class InitCommand implements Command<typeof OPTIONS> {
         exitCode: EXIT_FAILURE,
         resultText: [...setUpLines, ""].join("\n"),
         problemText: `${printProblem(`Nothing was built: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`)}\n${printFaultsByFile(planSummaryDTO)}`,
+        answerDTO: planSummaryDTO,
       };
     }
 
@@ -170,6 +171,7 @@ export class InitCommand implements Command<typeof OPTIONS> {
         'Author your first rule under .cw/charter/primitive/guide/, or ask your agent to write one, then run "cw build".',
         "",
       ].join("\n"),
+      answerDTO: planSummaryDTO,
     };
   }
 }

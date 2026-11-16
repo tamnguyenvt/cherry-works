@@ -2,13 +2,12 @@ import { charterPath } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
-  EXIT_FAILURE,
   EXIT_OK,
   type OptionSpec,
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, formatMention, formatStatusLine, printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, reportFault } from "./helper.js";
 
 const OPTIONS = {
   name: {
@@ -33,10 +32,11 @@ export class SuiteRemoveCommand implements Command<typeof OPTIONS> {
     { name: testSuiteName }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     const testSuiteNameDTO = await charterAuthoringApp.removeTestSuite(testSuiteName ?? "");
-    if (testSuiteNameDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(testSuiteNameDTO) };
+    if (testSuiteNameDTO.type === "Fault") return reportFault(testSuiteNameDTO);
     return {
       exitCode: EXIT_OK,
       resultText: `${formatHeading(formatStatusLine("good", `Removed ${formatMention(`${charterPath.testFolderPath}/${testSuiteNameDTO.data.name}`)}.`))}\n`,
+      answerDTO: testSuiteNameDTO,
     };
   }
 }

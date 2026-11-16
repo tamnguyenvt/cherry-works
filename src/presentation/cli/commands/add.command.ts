@@ -8,7 +8,15 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, formatMention, formatStatusLine, parseKVParams, printFault, printProblem } from "./helper.js";
+import {
+  formatHeading,
+  formatMention,
+  formatStatusLine,
+  parseKVParams,
+  printFault,
+  refuseCommand,
+  reportFault,
+} from "./helper.js";
 
 /** What `cw add` takes: which kind of primitive, what it is to be named, and
  *  what the kind requires under it.
@@ -51,10 +59,12 @@ export class AddCommand implements Command<typeof OPTIONS> {
   readonly summary = "Write a new primitive of one kind, holding what that kind requires";
   readonly options = OPTIONS;
 
-  async runCommand({ charterAuthoringApp }: Context, { kind, id, header }: Options<typeof OPTIONS>): Promise<Outcome> {
+  async runCommand(
+    { charterAuthoringApp, isAtTerminal }: Context,
+    { kind, id, header }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
     const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements(kind ?? "");
-    if (primitiveRequirementsDTO.type === "Fault")
-      return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveRequirementsDTO) };
+    if (primitiveRequirementsDTO.type === "Fault") return reportFault(primitiveRequirementsDTO);
     const primitiveHeaders = primitiveRequirementsDTO.data.headers.map((primitiveHeader) => primitiveHeader.data);
     const listFieldNames = new Set(
       primitiveHeaders
@@ -76,19 +86,21 @@ export class AddCommand implements Command<typeof OPTIONS> {
     // Only the required ones are asked at a terminal: a header a kind takes
     // without requiring is one an author leaves out, and a prompt for it would
     // be a question with no wrong answer.
-    const typedHeaders = header.length > 0 ? parseKVParams(header, "header") : undefined;
-    if (typeof typedHeaders === "string") return { exitCode: EXIT_FAILURE, problemText: typedHeaders };
+    const headerParamsAnswer = header.length > 0 ? parseKVParams(header, "header") : undefined;
+    if (headerParamsAnswer !== undefined && "faultDTO" in headerParamsAnswer)
+      return reportFault(headerParamsAnswer.faultDTO);
+    const typedHeaders = headerParamsAnswer?.valuesByParamKey;
     const repeatedFieldName = Object.entries(typedHeaders ?? {}).find(
       ([field, values]) => !listFieldNames.has(field) && values.length > 1,
     )?.[0];
     if (repeatedFieldName !== undefined)
-      return {
-        exitCode: EXIT_FAILURE,
-        problemText: printProblem(
+      return reportFault(
+        refuseCommand(
+          "RepeatedHeaderFault",
           `"${repeatedFieldName}" holds one line, and was typed ${typedHeaders?.[repeatedFieldName]?.length} times.`,
           `Type "--header ${repeatedFieldName}=..." once.`,
         ),
-      };
+      );
     let headerAnswers: Record<string, string | readonly string[]>;
     if (typedHeaders !== undefined)
       headerAnswers = Object.fromEntries(
@@ -110,14 +122,14 @@ export class AddCommand implements Command<typeof OPTIONS> {
       // author to find that out later (FR-035 is setup's, and this asks for
       // what nothing can default).
       const requiredHeaders = primitiveHeaders.filter((primitiveHeader) => primitiveHeader.required);
-      if (!process.stdin.isTTY)
-        return {
-          exitCode: EXIT_FAILURE,
-          problemText: printProblem(
+      if (!isAtTerminal)
+        return reportFault(
+          refuseCommand(
+            "NoTerminalFault",
             `A ${kind ?? ""} requires ${requiredHeaders.map((requiredHeader) => `"${requiredHeader.field}"`).join(", ")}, and nobody is at the terminal to answer.`,
             'Run "cw add" where you can answer, or author the file under the charter yourself.',
           ),
-        };
+        );
       const promptAnswers = await prompts(
         requiredHeaders.map(({ field, shape }) =>
           shape === "line"
@@ -133,22 +145,23 @@ export class AddCommand implements Command<typeof OPTIONS> {
         ),
       );
       if (requiredHeaders.some((requiredHeader) => promptAnswers[requiredHeader.field] === undefined))
-        return {
-          exitCode: EXIT_FAILURE,
-          problemText: printProblem(
+        return reportFault(
+          refuseCommand(
+            "StoppedPromptFault",
             "This was stopped before it had its answers, so nothing was written.",
             'Run "cw add" again.',
           ),
-        };
+        );
       headerAnswers = promptAnswers;
     }
     const primitiveDTO = await charterAuthoringApp.addPrimitive(kind ?? "", id ?? "", headerAnswers);
 
-    if (primitiveDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(primitiveDTO) };
+    if (primitiveDTO.type === "Fault") return reportFault(primitiveDTO);
     if (primitiveDTO.type === "Faults")
       return {
         exitCode: EXIT_FAILURE,
         problemText: primitiveDTO.data.faults.map(printFault).join(""),
+        answerDTO: primitiveDTO,
       };
 
     return {
@@ -165,6 +178,7 @@ export class AddCommand implements Command<typeof OPTIONS> {
         'Write what it has to say in the body, then run "cw build".',
         "",
       ].join("\n"),
+      answerDTO: primitiveDTO,
     };
   }
 }

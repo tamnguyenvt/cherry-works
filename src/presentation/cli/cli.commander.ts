@@ -1,5 +1,6 @@
 import { stripVTControlCharacters } from "node:util";
 import yargs, { type Argv } from "yargs";
+import { Parser } from "yargs/helpers";
 import { settingsPath } from "#module/workspace/module.js";
 import {
   type AnyCommand,
@@ -13,7 +14,16 @@ import {
   type Outcome,
   type WorkspaceSettings,
 } from "./commands/command.interface.js";
-import { listCommandWords, printFault, printFaultsByFile, printRunFault, showPathsInApps } from "./commands/helper.js";
+import {
+  isLaidOutCommand,
+  listCommandWords,
+  printFault,
+  printFaultsByFile,
+  printRunFault,
+  RUNNING_HEAD_WORD,
+  refuseCommand,
+  showPathsInApps,
+} from "./commands/helper.js";
 import { COMMANDS } from "./commands/index.js";
 
 /** The commands that write the settings, so are run where none are read yet
@@ -23,17 +33,16 @@ const SETUP_COMMAND_NAMES: readonly string[] = ["init", "vendor init"];
 /** What the help of `cw` itself opens with. */
 const TOP_USAGE = "Usage: $0 <command> [options]";
 
-/** The word every command running what was built is typed under; the help
- *  lists those in a section of their own, every other command authoring the
- *  charter (CORE-FR-243). */
-const RUNNING_HEAD_WORD = "run";
-
 /** The two sections `cw --help` lists the commands in (CORE-FR-243). */
 const AUTHORING_HEADING = "Authoring the charter:";
 const RUNNING_HEADING = "Running it:";
 
 /** How wide the help is laid out, the sections as yargs lays out the rest. */
 const HELP_WIDTH = 80;
+
+/** The flag every command but the three `cw run` commands takes, to answer
+ *  as data (CORE-FR-241). */
+const JSON_OPTION_NAME = "json";
 
 /** One name a command is typed by: its own, listed by the help, or the one it
  *  was typed by before, run alike and listed by none (CORE-FR-244). */
@@ -72,8 +81,19 @@ export class Commander {
     // An answer is written in colour only to a terminal, with NO_COLOR not
     // set; anywhere else it is the same layout, every colour taken off. A
     // `cw run` command's is written as it said it (CORE-FR-238, CORE-FR-240).
-    const collectOutcome = (outcome: Outcome, isLaidOut: boolean) => {
+    // With `--json`, standard output holds the answer the engine made, as it
+    // is, and nothing else, faults included (CORE-FR-241, CORE-FR-242).
+    const collectOutcome = (outcome: Outcome, isLaidOut: boolean, isJsonAnswer: boolean) => {
       exitCode = outcome.exitCode;
+      if (isJsonAnswer) {
+        // A command that ended on no answer of the engine's is refused as
+        // data rather than leaving standard output no document at all.
+        if (outcome.answerDTO === undefined) exitCode = EXIT_FAILURE;
+        process.stdout.write(
+          `${JSON.stringify(outcome.answerDTO ?? refuseCommand("NoAnswerFault", "This command answered nothing to print as data.", 'Run it again without "--json".'), null, 2)}\n`,
+        );
+        return;
+      }
       const writeAnswer = (stream: NodeJS.WriteStream, answerText: string) =>
         stream.write(
           !isLaidOut || (stream.isTTY === true && process.env.NO_COLOR === undefined)
@@ -84,7 +104,7 @@ export class Commander {
       if (outcome.problemText) writeAnswer(process.stderr, outcome.problemText);
     };
 
-    let cliParser = yargs()
+    let cliParser: Argv = yargs()
       .scriptName("cw")
       .usage(TOP_USAGE)
       .demandCommand(1, "")
@@ -95,6 +115,9 @@ export class Commander {
       .alias("h", "help")
       .version(this.#commandLine.version)
       .wrap(HELP_WIDTH)
+      // Read as a flag wherever it is typed, before the command's name too;
+      // each command taking it lists it in its own help (CORE-FR-241).
+      .option(JSON_OPTION_NAME, { type: "boolean", hidden: true })
       .exitProcess(false);
 
     // A command whose name is two words — `vendor add <source>` — is a
@@ -203,8 +226,43 @@ export class Commander {
       .map((sectionText) => `${sectionText}\n\n`)
       .join("");
 
+    // A refusal of the parser, typed with `--json` to a command taking it, is
+    // answered as data too (CORE-FR-242); a `cw run` command, by any name it
+    // is typed by, takes no `--json` and is refused in words (CORE-FR-240).
+    // Read as yargs reads the flag: `--json`, `--json true`, `--json=1`.
+    const typedArguments = Parser([...argv], { boolean: [JSON_OPTION_NAME] });
+    const typedWords = typedArguments._.map(String);
+    const isJsonTyped =
+      typedArguments[JSON_OPTION_NAME] === true &&
+      typedWords[0] !== RUNNING_HEAD_WORD &&
+      !this.#commands.some(
+        (command) =>
+          !isLaidOutCommand(command) &&
+          [command.name, command.deprecatedName].some(
+            (typedName) =>
+              typedName !== undefined &&
+              listCommandWords(typedName).every((commandWord, wordIndex) => typedWords[wordIndex] === commandWord),
+          ),
+      );
+
     await cliParser.parseAsync([...argv], {}, (error, _parsed, output) => {
       isFailed = error !== null && error !== undefined;
+      if (isFailed && isJsonTyped) {
+        // What yargs refused of what was typed, in its words: a command
+        // that throws as it runs rejects the parse, and never reaches here.
+        process.stdout.write(
+          `${JSON.stringify(
+            refuseCommand(
+              "UnreadArgumentsFault",
+              error?.message || output,
+              'Run "cw --help" to see what each command takes.',
+            ),
+            null,
+            2,
+          )}\n`,
+        );
+        return;
+      }
       const shownText = output.startsWith(TOP_USAGE.replace("$0", "cw"))
         ? output.replace(/^Commands:\n[\s\S]*?\n\n(?=Options:)/m, commandSectionsText)
         : output;
@@ -221,11 +279,21 @@ export class Commander {
     cliParser: Argv,
     { command, isListed }: TypedCommand,
     typedCommandName: string,
-    collectOutcome: (outcome: Outcome, isLaidOut: boolean) => void,
+    collectOutcome: (outcome: Outcome, isLaidOut: boolean, isJsonAnswer: boolean) => void,
   ): Argv {
     // The commands running what was built print as they always did, with no
-    // layout and no colour (CORE-FR-240).
-    const isLaidOut = listCommandWords(command.name)[0] !== RUNNING_HEAD_WORD;
+    // layout and no colour, and take no `--json` (CORE-FR-240).
+    const isLaidOut = isLaidOutCommand(command);
+    const commandOptions: OptionSpec = isLaidOut
+      ? {
+          ...command.options,
+          [JSON_OPTION_NAME]: {
+            type: "boolean",
+            describe: "Print the answer as one JSON document, and ask nothing",
+            default: false,
+          },
+        }
+      : (command.options ?? {});
     return cliParser.command({
       command: typedCommandName,
       describe: isListed ? command.summary : false,
@@ -234,7 +302,7 @@ export class Commander {
       // asks for — `vendor add <source>` — is a positional, typed where it is
       // written rather than offered as a flag beside itself.
       builder: (childParser: Argv) =>
-        Object.entries<OptionSpec[string]>(command.options ?? {}).reduce((parser, [optionName, option]) => {
+        Object.entries<OptionSpec[string]>(commandOptions).reduce((parser, [optionName, option]) => {
           const argumentDeclaration = {
             type: option.type,
             describe: option.describe,
@@ -250,6 +318,14 @@ export class Commander {
             : parser.option(optionName, argumentDeclaration);
         }, childParser),
       handler: async (options) => {
+        // A `cw run` command is refused `--json`, naming it, before anything
+        // runs (CORE-FR-240).
+        if (!isLaidOut && options[JSON_OPTION_NAME] !== undefined)
+          return collectOutcome(
+            { exitCode: EXIT_USAGE, problemText: `Unknown argument: ${JSON_OPTION_NAME}\n` },
+            isLaidOut,
+            false,
+          );
         // What the command runs with: the repository's settings, read by the
         // workspace module, and the engine composed for them, every address it
         // answers said as the path from where the command line runs
@@ -258,8 +334,9 @@ export class Commander {
         // laid out the old way refuses every one, naming the skill that moves
         // it (CORE-FR-226).
         const commandLine = this.#commandLine;
+        const isJsonAnswer = options[JSON_OPTION_NAME] === true;
         const composeApplications = async () => {
-          const { workspaceApp, engineApp } = await commandLine.composeApplications();
+          const { workspaceApp, engineApp } = await commandLine.composeApplications(isJsonAnswer);
           return { workspaceApp, engineApp: showPathsInApps(engineApp, commandLine.cwd) };
         };
         const { workspaceApp, engineApp } = await composeApplications();
@@ -274,8 +351,10 @@ export class Commander {
             {
               exitCode: EXIT_FAILURE,
               problemText: isLaidOut ? printFault(charterLayoutDTO) : printRunFault(charterLayoutDTO),
+              answerDTO: charterLayoutDTO,
             },
             isLaidOut,
+            isJsonAnswer,
           );
         if (workspaceSettingsDTO.type === "Fault" && !SETUP_COMMAND_NAMES.includes(command.name))
           return collectOutcome(
@@ -287,15 +366,27 @@ export class Commander {
                     data: { files: { [settingsPath.settingsFilePath]: [workspaceSettingsDTO] } },
                   })
                 : `${settingsPath.settingsFilePath}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`,
+              answerDTO: workspaceSettingsDTO,
             },
             isLaidOut,
+            isJsonAnswer,
           );
-        const context: Context = { ...commandLine, composeApplications, workspaceApp, ...engineApp, workspaceSettings };
+        // Someone at the terminal is asked; with `--json` nobody is, as a
+        // run with no terminal (CORE-FR-242).
+        const context: Context = {
+          ...commandLine,
+          composeApplications,
+          workspaceApp,
+          ...engineApp,
+          workspaceSettings,
+          isAtTerminal: process.stdin.isTTY === true && !isJsonAnswer,
+          isJsonAnswer,
+        };
         // The one cast in the adapter, and the reason it is here: yargs
         // parses into a bag of names, and what the command declared is what
         // says how to read it. A refusal is an outcome like any other: every
         // use case answers its faults as DTOs, so nothing is caught here.
-        collectOutcome(await command.runCommand(context, options as Options<OptionSpec>), isLaidOut);
+        collectOutcome(await command.runCommand(context, options as Options<OptionSpec>), isLaidOut, isJsonAnswer);
       },
     });
   }

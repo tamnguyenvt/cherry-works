@@ -10,7 +10,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, formatMention, formatStatusLine, printFault, printProblem } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, refuseCommand, reportFault } from "./helper.js";
 
 /** What `cw mcp auth` takes: one id to sign in again for, or whether to
  *  say where the developer is signed in and do nothing else (FR-150). */
@@ -45,12 +45,11 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
   readonly options = OPTIONS;
 
   async runCommand(
-    { charterAuthoringApp }: Context,
+    { charterAuthoringApp, isAtTerminal }: Context,
     { id, status: isStatusOnly }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     const signInStatusesDTO = await charterAuthoringApp.listSignInStatuses();
-    if (signInStatusesDTO.type === "Fault")
-      return { exitCode: EXIT_FAILURE, problemText: printFault(signInStatusesDTO) };
+    if (signInStatusesDTO.type === "Fault") return reportFault(signInStatusesDTO);
     const signInStatuses = signInStatusesDTO.data.signInStatuses.map((signInStatusDTO) => signInStatusDTO.data);
 
     if (isStatusOnly)
@@ -69,6 +68,7 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
                   ].join("\n"),
                 )
                 .join(""),
+        answerDTO: signInStatusesDTO,
       };
 
     let unsignedStatuses: readonly CharterDTOs.SignInStatus["data"][];
@@ -76,13 +76,13 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
     else {
       const signInStatus = signInStatuses.find((signInStatus) => signInStatus.ids.includes(id));
       if (signInStatus === undefined)
-        return {
-          exitCode: EXIT_FAILURE,
-          problemText: printProblem(
+        return reportFault(
+          refuseCommand(
+            "UnknownMcpFault",
             `No mcp in the charter that takes a sign-in is ${id}.`,
             `Run "cw mcp auth --status" to see every mcp that does.`,
           ),
-        };
+        );
       unsignedStatuses = [signInStatus];
     }
 
@@ -93,9 +93,10 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
           signInStatuses.length === 0
             ? "No mcp in the charter takes a sign-in.\n"
             : `You are signed in at every address: ${signInStatuses.length}.\n`,
+        answerDTO: signInStatusesDTO,
       };
 
-    if (!process.stdin.isTTY)
+    if (!isAtTerminal)
       return {
         exitCode: EXIT_FAILURE,
         problemText: [
@@ -104,6 +105,11 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
           '  Run "cw mcp auth" at a terminal to sign in; nothing is asked without one.',
           "",
         ].join("\n"),
+        answerDTO: refuseCommand(
+          "NoTerminalFault",
+          `Not signed in at: ${unsignedStatuses.map(({ address }) => address).join(", ")}.`,
+          'Run "cw mcp auth" at a terminal to sign in; nothing is asked without one.',
+        ),
       };
 
     for (const { address, ids, auth } of unsignedStatuses) {
@@ -127,10 +133,10 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
         );
       else if (method === "token") {
         const { token } = await prompts({ type: "invisible", name: "token", message: "Token?" });
-        if (token === undefined) return { exitCode: EXIT_FAILURE, problemText: printInterruptProblem(address) };
+        if (token === undefined) return reportFault(refuseInterruptedSignIn(address));
         signInStatusDTO = await charterAuthoringApp.signInWithToken(address, token);
-      } else return { exitCode: EXIT_FAILURE, problemText: printInterruptProblem(address) };
-      if (signInStatusDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(signInStatusDTO) };
+      } else return reportFault(refuseInterruptedSignIn(address));
+      if (signInStatusDTO.type === "Fault") return reportFault(signInStatusDTO);
     }
 
     return {
@@ -140,10 +146,10 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
   }
 }
 
-/** A prompt left unanswered, written out for the terminal: what was signed in
- *  before it is kept. */
-function printInterruptProblem(address: string): string {
-  return printProblem(
+/** A prompt left unanswered: what was signed in before it is kept. */
+function refuseInterruptedSignIn(address: string): FaultDTOs.Fault {
+  return refuseCommand(
+    "StoppedPromptFault",
     `This was stopped before signing in at ${address}; what was signed in before it is kept.`,
     'Run "cw mcp auth" again.',
   );

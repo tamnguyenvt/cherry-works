@@ -1,13 +1,12 @@
 import {
   type Command,
   type Context,
-  EXIT_FAILURE,
   EXIT_OK,
   type OptionSpec,
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, formatMention, formatStatusLine, layAnswerRows, printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, layAnswerRows, reportFault } from "./helper.js";
 
 const OPTIONS = {
   log: {
@@ -15,29 +14,26 @@ const OPTIONS = {
     describe:
       "Read one case.json path printed by cw eval; otherwise show the latest twenty case logs for this repository",
   },
-  json: { type: "boolean", describe: "Print the saved diagnostics as JSON", default: false },
 } as const satisfies OptionSpec;
 
-/** `cw eval-analyze`: read retained promptfoo evidence without spending tokens. */
+/** `cw eval-analyze`: read retained promptfoo evidence without spending tokens;
+ *  with `--json`, which every command takes, the saved diagnostics as they
+ *  were answered (CORE-FR-241). */
 export class EvalAnalyzeCommand implements Command<typeof OPTIONS> {
   readonly name = "eval-analyze";
   readonly summary = "Read evaluation results, tool evidence and agent session paths without running an agent";
   readonly options = OPTIONS;
 
-  async runCommand(
-    { charterRuntimeApp }: Context,
-    { log: logFilePath, json: isJson }: Options<typeof OPTIONS>,
-  ): Promise<Outcome> {
+  async runCommand({ charterRuntimeApp }: Context, { log: logFilePath }: Options<typeof OPTIONS>): Promise<Outcome> {
     const evalLogAnalysisDTO = await charterRuntimeApp.analyzeEvalLog(logFilePath);
-    if (evalLogAnalysisDTO.type === "Fault")
-      return { exitCode: EXIT_FAILURE, problemText: printFault(evalLogAnalysisDTO) };
-    if (isJson) return { exitCode: EXIT_OK, resultText: `${JSON.stringify(evalLogAnalysisDTO, null, 2)}\n` };
+    if (evalLogAnalysisDTO.type === "Fault") return reportFault(evalLogAnalysisDTO);
     const { logs: savedLogs } = evalLogAnalysisDTO.data;
     if (savedLogs.length === 0)
       return {
         exitCode: EXIT_OK,
         resultText:
           "No saved evaluation log for this repository. Run cw eval first; older runs without retained logs cannot be reconstructed.\n",
+        answerDTO: evalLogAnalysisDTO,
       };
     return {
       exitCode: EXIT_OK,
@@ -85,6 +81,7 @@ export class EvalAnalyzeCommand implements Command<typeof OPTIONS> {
           "",
         ])
         .join("\n"),
+      answerDTO: evalLogAnalysisDTO,
     };
   }
 }

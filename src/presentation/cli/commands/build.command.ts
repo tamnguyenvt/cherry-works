@@ -12,9 +12,9 @@ import {
   formatMention,
   formatStatusLine,
   layAnswerRows,
-  printFault,
   printFaultsByFile,
   printProblem,
+  reportFault,
 } from "./helper.js";
 
 /** What `cw build` takes: whether the build lands, or is only said. One flag
@@ -54,13 +54,14 @@ export class BuildCommand implements Command<typeof OPTIONS> {
     // none of them would leave a fully built repository saying nothing.
     if (isPreview) {
       const planSummaryDTO = await charterBuildingApp.previewCharterBuild();
-      if (planSummaryDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(planSummaryDTO) };
+      if (planSummaryDTO.type === "Fault") return reportFault(planSummaryDTO);
 
       if (planSummaryDTO.type === "FaultsByFile") {
         const faultyFileCount = Object.keys(planSummaryDTO.data.files).length;
         return {
           exitCode: EXIT_FAILURE,
           problemText: `${printProblem(`Nothing was previewed: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`)}\n${printFaultsByFile(planSummaryDTO)}`,
+          answerDTO: planSummaryDTO,
         };
       }
 
@@ -90,17 +91,19 @@ export class BuildCommand implements Command<typeof OPTIONS> {
           `${changeRows.length} file${changeRows.length === 1 ? "" : "s"}: ${addedPaths.length} create, ${editedPaths.length} update, ${deletedPaths.length} delete, ${unchangedPaths.length} unchanged.`,
           "",
         ].join("\n"),
+        answerDTO: planSummaryDTO,
       };
     }
 
     const planSummaryDTO = await charterBuildingApp.buildCharter();
-    if (planSummaryDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(planSummaryDTO) };
+    if (planSummaryDTO.type === "Fault") return reportFault(planSummaryDTO);
 
     if (planSummaryDTO.type === "FaultsByFile") {
       const faultyFileCount = Object.keys(planSummaryDTO.data.files).length;
       return {
         exitCode: EXIT_FAILURE,
         problemText: `${printProblem(`Nothing was built: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`)}\n${printFaultsByFile(planSummaryDTO)}`,
+        answerDTO: planSummaryDTO,
       };
     }
 
@@ -126,6 +129,7 @@ export class BuildCommand implements Command<typeof OPTIONS> {
         ),
         "",
       ].join("\n"),
+      answerDTO: planSummaryDTO,
     };
   }
 }

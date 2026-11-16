@@ -13,8 +13,8 @@ import {
   formatMention,
   formatStatusLine,
   layAnswerRows,
-  printFault,
   printProblem,
+  reportFault,
 } from "./helper.js";
 
 const OPTIONS = {
@@ -51,8 +51,7 @@ export class ContextCommand implements Command<typeof OPTIONS> {
       namedAgentName === undefined
         ? await charterBuildingApp.predictMainContext()
         : await charterRuntimeApp.countMainContext(namedAgentName);
-    if (mainContextAnswer.type === "Fault")
-      return { exitCode: EXIT_FAILURE, problemText: printFault(mainContextAnswer) };
+    if (mainContextAnswer.type === "Fault") return reportFault(mainContextAnswer);
     if (mainContextAnswer.type === "FaultsByFile") {
       const faultyFileCount = Object.keys(mainContextAnswer.data.files).length;
       return {
@@ -61,6 +60,7 @@ export class ContextCommand implements Command<typeof OPTIONS> {
           `Nothing was counted: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`,
           'Run "cw doctor" to see what is wrong with them.',
         ),
+        answerDTO: mainContextAnswer,
       };
     }
 
@@ -123,6 +123,7 @@ export class ContextCommand implements Command<typeof OPTIONS> {
               ),
             }
           : {}),
+        answerDTO: mainContextAnswer,
       };
     }
 
@@ -131,6 +132,7 @@ export class ContextCommand implements Command<typeof OPTIONS> {
       return {
         exitCode: EXIT_OK,
         resultText: 'No agent is chosen, so no agent loads anything of the charter. Run "cw init" to choose one.\n',
+        answerDTO: mainContextAnswer,
       };
 
     // The tokens and the kind in one column, the primitive and its globs in
@@ -166,6 +168,7 @@ export class ContextCommand implements Command<typeof OPTIONS> {
           "",
         ])
         .join("\n"),
+      answerDTO: mainContextAnswer,
     };
   }
 }

@@ -1031,8 +1031,8 @@ test("the workspace module keeps which agents a repository chose in .cw/settings
   const commandLine = commandLineOver(adapters);
   const recordingCommandLine: CommandLine = {
     ...commandLine,
-    composeApplications: async () => {
-      const applications = await commandLine.composeApplications();
+    composeApplications: async (isJsonAnswer) => {
+      const applications = await commandLine.composeApplications(isJsonAnswer);
       const workspaceSettingsDTO = await applications.workspaceApp.readWorkspaceSettings();
       composedAgentNames.push(workspaceSettingsDTO.type === "Fault" ? [] : workspaceSettingsDTO.data.agents);
       return applications;

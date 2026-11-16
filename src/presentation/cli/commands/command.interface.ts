@@ -40,18 +40,31 @@ export interface CommandLine {
   readonly version: string;
   /** The workspace module and the engine, composed for the settings the
    *  repository holds now: before each command, and again by setup once it
-   *  writes them. */
-  readonly composeApplications: () => Promise<Applications>;
+   *  writes them. Answering as data, what the engine reports as it goes is
+   *  kept off standard output, which holds the answer alone (CORE-FR-241). */
+  readonly composeApplications: (isJsonAnswer: boolean) => Promise<Applications>;
 }
 
 /** What every command is run with: where it runs, what the repository
  *  configured itself with, and the applications composed for it. Held by the
  *  command line and handed over at execution, so a command is a declaration
  *  and nothing it has to be constructed with. */
-export interface Context extends CommandLine, EngineApps, Pick<Applications, "workspaceApp"> {
+export interface Context
+  extends Omit<CommandLine, "composeApplications">,
+    EngineApps,
+    Pick<Applications, "workspaceApp"> {
+  /** The applications composed again, as the command line composed them
+   *  before the command ran. */
+  readonly composeApplications: () => Promise<Applications>;
   /** What the repository configured itself with, as the command line read it
    *  before the command ran. */
   readonly workspaceSettings: WorkspaceSettings;
+  /** Whether someone is at the terminal to be asked: never with `--json`,
+   *  which answers as a run with no terminal does (CORE-FR-242). */
+  readonly isAtTerminal: boolean;
+  /** Whether the answer is read as data, with `--json`: standard output holds
+   *  it alone (CORE-FR-241). */
+  readonly isJsonAnswer: boolean;
 }
 
 /** What a command did: the exit status, and what the user reads.
@@ -65,6 +78,10 @@ export interface Outcome {
   readonly resultText?: string;
   /** What went wrong, and the next move after it (SC-003). */
   readonly problemText?: string;
+  /** The answer the engine made for the caller, as it is, faults included:
+   *  what `--json` prints in place of both texts. Every command but the three
+   *  `cw run` commands answers one (CORE-FR-241, CORE-FR-242). */
+  readonly answerDTO?: Readonly<Record<"type" | "data", unknown>>;
 }
 
 /** The three things an argument can be worth. */

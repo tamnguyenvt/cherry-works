@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
 import packageJson from "./package.json" with { type: "json" };
 import { composeApplications } from "./src/module/composition.js";
+import { StderrReporter } from "./src/module/shared/module.js";
 import { Commander } from "./src/presentation/cli/cli.commander.js";
 
 /**
@@ -23,7 +24,10 @@ const homeFolder = pathToFileURL(`${homedir()}/`);
 const cwCommander = new Commander({
   cwd: process.cwd(),
   version: packageJson.version,
-  composeApplications: () => composeApplications(repoFolder, homeFolder),
+  // An answer read as data holds standard output alone: what the engine
+  // reports as it goes is written to standard error (CORE-FR-241).
+  composeApplications: (isJsonAnswer) =>
+    composeApplications(repoFolder, homeFolder, isJsonAnswer ? { progressReporter: new StderrReporter() } : {}),
 });
 
 process.exitCode = await cwCommander.runCommandLine(process.argv.slice(2));
