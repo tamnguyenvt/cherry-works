@@ -21,7 +21,7 @@ const OPTIONS = {
 } as const satisfies OptionSpec;
 
 /**
- * `cw sensor run <signal> --agent <agent>`: the one hook an agent is given for
+ * `cw run sensor <signal> --agent <agent>`: the one hook an agent is given for
  * a signal, running the sensors of it that run for that agent, as the last
  * build wrote them; with no agent named, only those kept for no agent
  * (CORE-FR-175 – CORE-FR-179, CORE-FR-234).
@@ -31,8 +31,9 @@ const OPTIONS = {
  * the exit code passed through, the answer on standard output, the error
  * output on standard error.
  */
-export class SensorRunCommand implements Command<typeof OPTIONS> {
-  readonly name = "sensor run <signal>";
+export class RunSensorCommand implements Command<typeof OPTIONS> {
+  readonly name = "run sensor <signal>";
+  readonly deprecatedName = "sensor run <signal>";
   readonly summary = "Run every sensor of a signal, as the agent's one hook for it";
   readonly options = OPTIONS;
 

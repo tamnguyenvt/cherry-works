@@ -58,7 +58,7 @@ This folder holds the charter that governs the coding agents working in this rep
 ## Author it
 
 - Ask your agent to run the \`/cw-author\` skill: it asks what a primitive needs and writes it.
-- Or run \`cw portal\` and author it in the browser.
+- Or run \`cw run portal\` and author it in the browser.
 
 Then run \`cw build\` to lay the charter out for every agent.
 `,

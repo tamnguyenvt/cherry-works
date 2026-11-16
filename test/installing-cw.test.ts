@@ -69,13 +69,17 @@ test("installed globally, cw is on the path and its help lists every command (CO
   const helpRun = spawnSync("cw", ["--help"], { env: { ...process.env, PATH: installedPath() }, encoding: "utf8" });
 
   assert.equal(helpRun.status, 0, helpRun.stderr);
-  // A group lists its subcommands on its own line: `cw vendor  add, inject, …`.
+  // A group lists its subcommands on its own line: `cw vendor  add, inject, …`;
+  // the running section lists each `cw run` command on a line of its own.
   const helpLines = helpRun.stdout.split("\n");
   for (const command of COMMANDS) {
     const [groupName, ...nameWords] = command.name.split(" ").filter((nameWord) => !/^[<[]/.test(nameWord));
-    const commandLine = helpLines.find((helpLine) => helpLine.startsWith(`  cw ${groupName} `));
-    assert.ok(commandLine !== undefined, `cw ${groupName} is not listed`);
-    for (const nameWord of nameWords) assert.match(commandLine, new RegExp(`\\b${nameWord}\\b`), command.name);
+    const commandLine = helpLines.find(
+      (helpLine) =>
+        helpLine.startsWith(`  cw ${groupName} `) &&
+        nameWords.every((nameWord) => new RegExp(`\\b${nameWord}\\b`).test(helpLine)),
+    );
+    assert.ok(commandLine !== undefined, `cw ${command.name} is not listed`);
   }
 });
 

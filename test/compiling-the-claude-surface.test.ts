@@ -53,7 +53,7 @@ const builtinSkill = ".claude/skills/cw-author/SKILL.md";
  *  Stop hook running the engine's session counter (EVAL-FR-008). Every charter
  *  holds it, so every projection has that file. */
 const builtinSettings = ".claude/settings.json";
-const sessionCounterStopHook = { hooks: [{ type: "command", command: "cw sensor run Stop --agent claude" }] };
+const sessionCounterStopHook = { hooks: [{ type: "command", command: "cw run sensor Stop --agent claude" }] };
 
 /** What the engine's session primitives compile to under the workspace. */
 const sessionCounterPaths = [
@@ -292,7 +292,7 @@ test("a sensor compiles to a hook this host runs: the event, and the command (FR
   assert.deepEqual(Object.keys(files), [".claude/settings.json", builtinSkill]);
   assert.deepEqual(JSON.parse(files[".claude/settings.json"] ?? ""), {
     hooks: {
-      PostToolUse: [{ hooks: [{ type: "command", command: "cw sensor run PostToolUse --agent claude" }] }],
+      PostToolUse: [{ hooks: [{ type: "command", command: "cw run sensor PostToolUse --agent claude" }] }],
       Stop: [sessionCounterStopHook],
     },
   });

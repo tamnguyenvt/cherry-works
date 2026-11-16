@@ -81,7 +81,7 @@ export class McpPrimitive extends BasePrimitive {
    *  where the kind's contract is: the neutral surface lists one
    *  line per kind and none of them is written down twice (FR-002). */
   static readonly activatesWhen =
-    "a primitive's body names it as `[[<id>]]` — an mcp origin outside the repository, reached through `cw mcp serve`";
+    "a primitive's body names it as `[[<id>]]` — an mcp origin outside the repository, reached through `cw run mcp`";
 
   /** An mcp reached at an endpoint, as an author writes one: what a refused
    *  header is fixed with. */

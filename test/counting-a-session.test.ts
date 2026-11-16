@@ -34,7 +34,7 @@ test("a built charter runs the engine's own counter when the agent stops (EVAL-F
   const stopCommands = (claudeSettings.hooks?.Stop ?? []).flatMap((entry: { hooks: { command: string }[] }) =>
     entry.hooks.map((hook) => hook.command),
   );
-  assert.deepEqual(stopCommands, ["cw sensor run Stop --agent claude"]);
+  assert.deepEqual(stopCommands, ["cw run sensor Stop --agent claude"]);
   const sensorsJson = JSON.parse((await fileReaders.readIfThere(new URL(".cw/out/sensors.json", repo))) ?? "{}");
   assert.deepEqual(sensorsJson.sensors, [
     {

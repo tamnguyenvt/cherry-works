@@ -29,7 +29,7 @@ export class ClaudeMainContextFactory {
    * description of each skill and subagent, all it reads of them before one is
    * called for. A rule naming `paths` is loaded when a file they match is
    * touched, so it carries the guide's globs. Settings and the MCP configuration
-   * put nothing there. Of each tool `cw mcp serve` lists for an mcp, its name
+   * put nothing there. Of each tool `cw run mcp` lists for an mcp, its name
    * alone, under the mcp: the agent's tool search, which the build turns on,
    * sends a schema only once the agent searches for it (EVAL-FR-029).
    */

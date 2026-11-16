@@ -18,7 +18,7 @@ const OPTIONS = {
 } as const satisfies OptionSpec;
 
 /**
- * `cw portal`: serve this repository's charter to a browser on this machine
+ * `cw run portal`: serve this repository's charter to a browser on this machine
  * (CORE-FR-104 – CORE-FR-106).
  *
  * A repository never set up is refused before anything is served, saying what
@@ -32,8 +32,9 @@ const OPTIONS = {
  * package's `#portal/*` import, so it is the same folder whether this runs from
  * `dist/` or from source under `tsx` (plan §8).
  */
-export class PortalCommand implements Command<typeof OPTIONS> {
-  readonly name = "portal";
+export class RunPortalCommand implements Command<typeof OPTIONS> {
+  readonly name = "run portal";
+  readonly deprecatedName = "portal";
   readonly summary = "Serve this repository's charter to a browser on this machine";
   readonly options = OPTIONS;
 

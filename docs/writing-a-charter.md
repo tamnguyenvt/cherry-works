@@ -68,7 +68,7 @@ its kind before writing the body:
 | A delegated role | `agent` | Spawned by its id |
 | Reasoning behind a rule | `corpus` | Read when a primitive cites it as its rationale |
 | Instructions or headers shared by several primitives | `mixin` | Included by the primitives that name it |
-| An external MCP server | `mcp` | Reached through `cw mcp serve` when referenced |
+| An external MCP server | `mcp` | Reached through `cw run mcp` when referenced |
 | Executable files shipped with the charter | `script` | Referenced by another primitive or run by a sensor |
 | A document to fill in or copy | `template` | Read when another primitive references it |
 

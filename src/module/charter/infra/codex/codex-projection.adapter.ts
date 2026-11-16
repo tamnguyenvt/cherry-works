@@ -10,7 +10,7 @@ import {
   WritePlan,
 } from "../../app/port/out/managing-local-agent-output.port.js";
 import { AgentProjection } from "../agent-projection.base.js";
-import { mergeEntryFileText } from "../helper.js";
+import { mergeEntryFileText, rewriteDeprecatedSensorHooks } from "../helper.js";
 import { CodexComponentFactory } from "./codex-component.factory.js";
 import { CodexMainContextFactory } from "./codex-main-context.factory.js";
 import { CodexRules } from "./codex-rules.js";
@@ -86,7 +86,9 @@ export class CodexProjection extends AgentProjection {
   ): string {
     switch (component.kind) {
       case "config":
-        return TomlLib.mergeTomlText(currentText, laidText, place, CHARTER_WHOLE_TABLE_PATHS);
+        return rewriteDeprecatedSensorHooks(
+          TomlLib.mergeTomlText(currentText, laidText, place, CHARTER_WHOLE_TABLE_PATHS),
+        );
       case "entry-file":
         return mergeEntryFileText(currentText, laidText);
       default:

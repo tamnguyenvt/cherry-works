@@ -11,10 +11,10 @@ import { InitCommand } from "./init.command.js";
 import { KindsCommand } from "./kinds.command.js";
 import { ListCommand } from "./list.command.js";
 import { McpAuthCommand } from "./mcp-auth.command.js";
-import { McpServeCommand } from "./mcp-serve.command.js";
-import { PortalCommand } from "./portal.command.js";
 import { RemoveCommand } from "./remove.command.js";
-import { SensorRunCommand } from "./sensor-run.command.js";
+import { RunMcpCommand } from "./run-mcp.command.js";
+import { RunPortalCommand } from "./run-portal.command.js";
+import { RunSensorCommand } from "./run-sensor.command.js";
 import { SessionsCommand } from "./sessions.command.js";
 import { SuiteAddCommand } from "./suite-add.command.js";
 import { SuiteEditCommand } from "./suite-edit.command.js";
@@ -52,8 +52,8 @@ export const COMMANDS: readonly AnyCommand[] = [
   new VendorInjectCommand(),
   new VendorRemoveCommand(),
   new VendorListCommand(),
-  new PortalCommand(),
   new McpAuthCommand(),
-  new McpServeCommand(),
-  new SensorRunCommand(),
+  new RunMcpCommand(),
+  new RunSensorCommand(),
+  new RunPortalCommand(),
 ];

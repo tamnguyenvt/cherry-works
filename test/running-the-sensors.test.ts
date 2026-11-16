@@ -89,8 +89,8 @@ test("a host is given one command per signal its sensors name, and none of the s
   await build();
 
   assert.deepEqual((await claudeSettings()).hooks, {
-    PreToolUse: [hookEntry("cw sensor run PreToolUse --agent claude")],
-    Stop: [hookEntry("cw sensor run Stop --agent claude")],
+    PreToolUse: [hookEntry("cw run sensor PreToolUse --agent claude")],
+    Stop: [hookEntry("cw run sensor Stop --agent claude")],
   });
   const settingsText = (await held.readIfThere(new URL(".claude/settings.json", repo))) ?? "";
   for (const sensorCommand of ["echo a", "echo b", "./bin/guard", SESSION_COUNTER_COMMAND])
@@ -139,7 +139,7 @@ test("the hooks under a signal the charter's sensors name are the charter's whol
 
   await build();
 
-  assert.deepEqual((await claudeSettings()).hooks, { Stop: [hookEntry("cw sensor run Stop --agent claude")] });
+  assert.deepEqual((await claudeSettings()).hooks, { Stop: [hookEntry("cw run sensor Stop --agent claude")] });
 });
 
 test("a signal whose last sensor is removed keeps the command the last build wrote, which runs nothing (CORE-FR-175, CORE-FR-176, CORE Story 29 scenario 3)", async () => {
@@ -153,8 +153,8 @@ test("a signal whose last sensor is removed keeps the command the last build wro
   const sensorRunOutcome = answerOf(await runSensors("PreToolUse", "{}", "claude"));
 
   assert.deepEqual((await claudeSettings()).hooks, {
-    PreToolUse: [hookEntry("cw sensor run PreToolUse --agent claude")],
-    Stop: [hookEntry("cw sensor run Stop --agent claude")],
+    PreToolUse: [hookEntry("cw run sensor PreToolUse --agent claude")],
+    Stop: [hookEntry("cw run sensor Stop --agent claude")],
   });
   assert.deepEqual(sensorRunOutcome.data, { exitCode: 0, answer: "", problem: "" });
   assert.deepEqual(shell.runs, []);
@@ -418,7 +418,7 @@ test("Codex runs a signal once through the shared runner, passes its payload and
   assert.ok(shell.runs.every((run) => run.stdin === payload));
 });
 
-test("cw sensor run, started by the host, runs a built signal's sensors in the shell and answers once (CORE-FR-176, CORE-FR-177, CORE-FR-178)", async (t) => {
+test("cw run sensor, started by the host, runs a built signal's sensors in the shell and answers once (CORE-FR-176, CORE-FR-177, CORE-FR-178, CORE Story 69 scenario 2)", async (t) => {
   const repoFolder = await mkdtemp(join(tmpdir(), "cw-sensor-"));
   t.after(() => rm(repoFolder, { recursive: true, force: true }));
   await mkdir(join(repoFolder, ".cw", "out"), { recursive: true });
@@ -437,7 +437,7 @@ test("cw sensor run, started by the host, runs a built signal's sensors in the s
     }),
   );
   const runSignal = () =>
-    spawnSync(process.execPath, ["--import", TSX, "--import", MODULE_LOADER, MAIN, "sensor", "run", "Stop"], {
+    spawnSync(process.execPath, ["--import", TSX, "--import", MODULE_LOADER, MAIN, "run", "sensor", "Stop"], {
       cwd: repoFolder,
       encoding: "utf8",
       input: '{"hook_event_name":"Stop"}',
@@ -457,7 +457,7 @@ test("cw sensor run, started by the host, runs a built signal's sensors in the s
   );
 });
 
-test("cw sensor run with no agent named runs only the sensors kept for no agent, and with one named, those kept for it too (CORE Story 29 scenario 10, CORE-FR-233, CORE-FR-234)", async (t) => {
+test("cw run sensor with no agent named runs only the sensors kept for no agent, and with one named, those kept for it too (CORE Story 29 scenario 10, CORE-FR-233, CORE-FR-234)", async (t) => {
   const repoFolder = await mkdtemp(join(tmpdir(), "cw-sensor-"));
   t.after(() => rm(repoFolder, { recursive: true, force: true }));
   await mkdir(join(repoFolder, ".cw", "out"), { recursive: true });
@@ -474,7 +474,7 @@ test("cw sensor run with no agent named runs only the sensors kept for no agent,
   const runSignal = (...agentArgs: string[]) =>
     spawnSync(
       process.execPath,
-      ["--import", TSX, "--import", MODULE_LOADER, MAIN, "sensor", "run", "Stop", ...agentArgs],
+      ["--import", TSX, "--import", MODULE_LOADER, MAIN, "run", "sensor", "Stop", ...agentArgs],
       {
         cwd: repoFolder,
         encoding: "utf8",

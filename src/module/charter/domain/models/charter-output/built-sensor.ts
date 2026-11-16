@@ -18,13 +18,13 @@ export class BuiltSensor {
 }
 
 /** Every sensor the last build compiled, in order of id: what
- *  `cw sensor run <signal> --agent <agent>` reads, since it reads no charter
+ *  `cw run sensor <signal> --agent <agent>` reads, since it reads no charter
  *  (FR-179). */
 export class BuiltSensors extends CharterOutputItem {
   /** The one command an agent is given for a signal its charter's sensors fire
    *  on, naming that agent: `cw` runs every one of them kept for it (FR-175). */
   getRunCommand(signal: string, agentProvider: AgentProvider): string {
-    return `cw sensor run ${signal} --agent ${agentProvider.name}`;
+    return `cw run sensor ${signal} --agent ${agentProvider.name}`;
   }
 
   constructor(readonly sensors: readonly BuiltSensor[]) {

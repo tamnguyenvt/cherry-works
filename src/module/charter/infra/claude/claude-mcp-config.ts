@@ -11,7 +11,7 @@ export interface ClaudeMcpServer {
  * mcp origin the charter declares (FR-146).
  *
  * One for the whole charter, whatever it holds: the agent is given
- * `cw mcp serve` and nothing per mcp origin, so the agent's configuration says the
+ * `cw run mcp` and nothing per mcp origin, so the agent's configuration says the
  * same however many mcp origins there are — none included — and shows the agent only
  * the tools the charter declares (plan §19).
  */

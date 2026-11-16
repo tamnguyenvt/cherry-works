@@ -48,7 +48,7 @@ export class McpOrigin {
   }
 }
 
-/** Every mcp origin the charter's mcps reach, each once: what `cw mcp serve` and
+/** Every mcp origin the charter's mcps reach, each once: what `cw run mcp` and
  *  `cw mcp auth` read, since neither reads a charter (FR-145). Ordered by
  *  address, then path (SC-007). */
 export class McpOrigins extends CharterOutputItem {

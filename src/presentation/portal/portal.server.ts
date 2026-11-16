@@ -66,7 +66,7 @@ export async function startPortal(
         })
         .use("/", async (requestContext, nextMiddleware) => {
           if (requestContext.req.query("t") !== token)
-            return requestContext.text('Open the address "cw portal" printed: this one has no token.', 401);
+            return requestContext.text('Open the address "cw run portal" printed: this one has no token.', 401);
           await nextMiddleware();
         })
         .use("/api/*", bearerAuth({ token }))

@@ -798,7 +798,11 @@
     {
       "id": "CORE Story 69",
       "title": "Find authoring and running apart among `cw`'s commands",
-      "dependsOn": []
+      "dependsOn": [],
+      "evidence": {
+        "summary": "typecheck, lint, lint:deps and 1051/1051 tests pass; by hand, dist/cw.js --help lists two sections, cw run sensor and cw sensor run answer alike, cw run mcp answers initialize, cw run portal and cw portal serve, a build for claude and codex writes only the new names, cw doctor up to date; sdd-specs check passes",
+        "date": "2026-11-16"
+      }
     },
     {
       "id": "CORE Story 70",

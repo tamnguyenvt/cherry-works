@@ -4,7 +4,7 @@ import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from 
 import { printFault } from "./helper.js";
 
 /**
- * `cw mcp serve`: the one MCP server the agent starts, speaking over
+ * `cw run mcp`: the one MCP server the agent starts, speaking over
  * standard input and output, serving the mcp origins the last build listed (FR-152
  * – FR-154).
  *
@@ -14,8 +14,9 @@ import { printFault } from "./helper.js";
  * standard input open; every mcp origin reached, a local command's process among
  * them, is let go once it has answered.
  */
-export class McpServeCommand implements Command {
-  readonly name = "mcp serve";
+export class RunMcpCommand implements Command {
+  readonly name = "run mcp";
+  readonly deprecatedName = "mcp serve";
   readonly summary = "Serve every mcp origin the charter reaches to your agent, over stdio";
 
   async runCommand({ charterBuildingApp, charterRuntimeApp, version }: Context): Promise<Outcome> {

@@ -11,7 +11,7 @@ import type { ForBuildingCharter } from "#module/charter/module.js";
 import type { ForRunningCharter } from "#module/runtime/module.js";
 
 /**
- * DRIVER ADAPTER: the one MCP server an agent is given, `cw mcp serve`
+ * DRIVER ADAPTER: the one MCP server an agent is given, `cw run mcp`
  * (FR-152).
  *
  * Answers `tools/list` through `ForBuildingCharter` and `tools/call` through

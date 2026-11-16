@@ -86,9 +86,9 @@ const COMMAND_ARGS: readonly (readonly string[])[] = [
   ["vendor", "remove", "<listed vendor>"],
   ["vendor", "inject", "<vendor>"],
   ["list"],
-  ["sensor", "run", "Stop"],
+  ["run", "sensor", "Stop"],
   ["mcp", "auth"],
-  ["mcp", "serve"],
+  ["run", "mcp"],
   ["remove", "plain-words", "--yes"],
   ["build"],
   ["doctor"],
@@ -263,7 +263,7 @@ export async function answersOfEveryCommand(
       };
     });
 
-    portalProcess = spawn(process.execPath, [cwFilePath, "portal", "--port", String(port)], {
+    portalProcess = spawn(process.execPath, [cwFilePath, "run", "portal", "--port", String(port)], {
       cwd: repoFolderPath,
       env: commandEnv,
       stdio: ["ignore", "pipe", "ignore"],

@@ -286,6 +286,17 @@ export function mergeSettingsText(currentText: string | undefined, charterText: 
 }
 
 /**
+ * An agent's settings with every hook a build wrote under the old name of
+ * `cw run sensor` moved to it (CORE-FR-244): a signal that has lost its last
+ * sensor keeps the command the last build wrote (CORE-FR-175), so a hook a
+ * build before the rename wrote would otherwise name the old one for good
+ * (CORE-SC-076).
+ */
+export function rewriteDeprecatedSensorHooks(settingsText: string): string {
+  return settingsText.replaceAll("cw sensor run ", "cw run sensor ");
+}
+
+/**
  * An agent's entry file, the repository's, with the charter's section written
  * in place between its first line and its last, or put at the end (FR-051).
  * A section says where it starts and ends itself, so nothing here knows what

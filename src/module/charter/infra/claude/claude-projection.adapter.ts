@@ -6,7 +6,7 @@ import {
   UnbuiltCheckoutAdapterFault,
 } from "../../app/port/out/managing-local-agent-output.port.js";
 import { AgentProjection } from "../agent-projection.base.js";
-import { mergeEntryFileText, mergeSettingsText } from "../helper.js";
+import { mergeEntryFileText, mergeSettingsText, rewriteDeprecatedSensorHooks } from "../helper.js";
 import { ClaudeComponentFactory } from "./claude-component.factory.js";
 import { ClaudeMainContextFactory } from "./claude-main-context.factory.js";
 
@@ -77,6 +77,7 @@ export class ClaudeProjection extends AgentProjection {
   ): string {
     switch (component.kind) {
       case "settings":
+        return rewriteDeprecatedSensorHooks(mergeSettingsText(currentText, laidText));
       case "mcp-config":
         return mergeSettingsText(currentText, laidText);
       case "entry-file":

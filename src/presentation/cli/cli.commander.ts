@@ -19,6 +19,29 @@ import { COMMANDS } from "./commands/index.js";
  *  (FR-037). */
 const SETUP_COMMAND_NAMES: readonly string[] = ["init", "vendor init"];
 
+/** What the help of `cw` itself opens with. */
+const TOP_USAGE = "Usage: $0 <command> [options]";
+
+/** The word every command running what was built is typed under; the help
+ *  lists those in a section of their own, every other command authoring the
+ *  charter (CORE-FR-243). */
+const RUNNING_HEAD_WORD = "run";
+
+/** The two sections `cw --help` lists the commands in (CORE-FR-243). */
+const AUTHORING_HEADING = "Authoring the charter:";
+const RUNNING_HEADING = "Running it:";
+
+/** How wide the help is laid out, the sections as yargs lays out the rest. */
+const HELP_WIDTH = 80;
+
+/** One name a command is typed by: its own, listed by the help, or the one it
+ *  was typed by before, run alike and listed by none (CORE-FR-244). */
+interface TypedCommand {
+  readonly typedName: string;
+  readonly command: AnyCommand;
+  readonly isListed: boolean;
+}
+
 /**
  * DRIVER ADAPTER: the command line.
  *
@@ -53,7 +76,7 @@ export class Commander {
 
     let cliParser = yargs()
       .scriptName("cw")
-      .usage("Usage: $0 <command> [options]")
+      .usage(TOP_USAGE)
       .demandCommand(1, "")
       .strict()
       // Turns a typo into a suggestion rather than a wall of usage.
@@ -61,7 +84,7 @@ export class Commander {
       .help("help")
       .alias("h", "help")
       .version(this.#commandLine.version)
-      .wrap(80)
+      .wrap(HELP_WIDTH)
       .exitProcess(false);
 
     // A command whose name is two words — `vendor add <source>` — is a
@@ -70,27 +93,43 @@ export class Commander {
     // under it as a group of their own. What a command takes is not part of
     // that name: `explain <id>` is one word and an argument, and is
     // declared whole.
-    const commandsByHeadWord = new Map<string, AnyCommand[]>();
-    for (const command of this.#commands) {
-      const headWord = listCommandWords(command.name)[0] as string;
-      commandsByHeadWord.set(headWord, [...(commandsByHeadWord.get(headWord) ?? []), command]);
+    const typedCommandsByHeadWord = new Map<string, TypedCommand[]>();
+    for (const typedCommand of this.#commands.flatMap((command): TypedCommand[] => [
+      { typedName: command.name, command, isListed: true },
+      ...(command.deprecatedName === undefined
+        ? []
+        : [{ typedName: command.deprecatedName, command, isListed: false }]),
+    ])) {
+      const headWord = listCommandWords(typedCommand.typedName)[0] as string;
+      typedCommandsByHeadWord.set(headWord, [...(typedCommandsByHeadWord.get(headWord) ?? []), typedCommand]);
     }
 
-    for (const [headWord, commands] of commandsByHeadWord) {
-      const [onlyCommand] = commands;
+    for (const [headWord, typedCommands] of typedCommandsByHeadWord) {
+      const [onlyTypedCommand] = typedCommands;
+      const listedNameWords = typedCommands
+        .filter((typedCommand) => typedCommand.isListed)
+        .map((typedCommand) => listCommandWords(typedCommand.typedName)[1]);
       cliParser =
-        commands.length === 1 && onlyCommand !== undefined && listCommandWords(onlyCommand.name).length === 1
-          ? this.#registerCommand(cliParser, onlyCommand, onlyCommand.name, collectOutcome)
+        typedCommands.length === 1 &&
+        onlyTypedCommand !== undefined &&
+        listCommandWords(onlyTypedCommand.typedName).length === 1
+          ? this.#registerCommand(cliParser, onlyTypedCommand, onlyTypedCommand.typedName, collectOutcome)
           : cliParser.command({
               command: headWord,
               // What the group is for is what its commands are: saying it any
-              // other way would be a second description to keep in step.
-              describe: commands.map((groupedCommand) => listCommandWords(groupedCommand.name)[1]).join(", "),
+              // other way would be a second description to keep in step. A
+              // group holding only names typed before is listed by no help.
+              describe: listedNameWords.length === 0 ? false : listedNameWords.join(", "),
               builder: (childParser: Argv) =>
-                commands
+                typedCommands
                   .reduce(
-                    (parser, command) =>
-                      this.#registerCommand(parser, command, command.name.slice(headWord.length + 1), collectOutcome),
+                    (parser, typedCommand) =>
+                      this.#registerCommand(
+                        parser,
+                        typedCommand,
+                        typedCommand.typedName.slice(headWord.length + 1),
+                        collectOutcome,
+                      ),
                     childParser,
                   )
                   .demandCommand(1, ""),
@@ -98,26 +137,85 @@ export class Commander {
             });
     }
 
+    // yargs lists commands under one heading; the help of `cw` itself lists
+    // them in two sections: authoring the charter, each group on one line as
+    // yargs lists it, and running it, each `cw run` command on a line of its
+    // own; laid out in two columns as yargs lays out the rest (CORE-FR-243).
+    // Each command's own help is left as yargs wrote it.
+    const helpRowsBySection = new Map<string, [string, string][]>([
+      [AUTHORING_HEADING, []],
+      [RUNNING_HEADING, []],
+    ]);
+    for (const [headWord, typedCommands] of typedCommandsByHeadWord) {
+      const listedCommands = typedCommands
+        .filter((typedCommand) => typedCommand.isListed)
+        .map((typedCommand) => typedCommand.command);
+      const [onlyCommand] = listedCommands;
+      if (headWord === RUNNING_HEAD_WORD)
+        helpRowsBySection
+          .get(RUNNING_HEADING)
+          ?.push(...listedCommands.map((command): [string, string] => [`cw ${command.name}`, command.summary]));
+      else if (
+        listedCommands.length === 1 &&
+        onlyCommand !== undefined &&
+        listCommandWords(onlyCommand.name).length === 1
+      )
+        helpRowsBySection.get(AUTHORING_HEADING)?.push([`cw ${onlyCommand.name}`, onlyCommand.summary]);
+      else if (listedCommands.length > 0)
+        helpRowsBySection
+          .get(AUTHORING_HEADING)
+          ?.push([`cw ${headWord}`, listedCommands.map((command) => listCommandWords(command.name)[1]).join(", ")]);
+    }
+    const usageWidth =
+      Math.max(...[...helpRowsBySection.values()].flat().map(([commandUsage]) => commandUsage.length)) + 2;
+    const summaryWidth = HELP_WIDTH - 2 - usageWidth;
+    const commandSectionsText = [...helpRowsBySection]
+      .map(([sectionHeading, helpRows]) =>
+        [
+          sectionHeading,
+          ...helpRows.map(([commandUsage, summary]) => {
+            // Each summary wrapped by words into its column, as yargs wraps.
+            const wrappedSummaryLines = summary.split(" ").reduce<string[]>((summaryLines, word) => {
+              const lastLine = summaryLines.at(-1);
+              if (lastLine !== undefined && lastLine.length + 1 + word.length <= summaryWidth)
+                summaryLines[summaryLines.length - 1] = `${lastLine} ${word}`;
+              else summaryLines.push(word);
+              return summaryLines;
+            }, []);
+            return wrappedSummaryLines
+              .map((summaryLine, lineIndex) =>
+                `  ${(lineIndex === 0 ? commandUsage : "").padEnd(usageWidth)}${summaryLine}`.trimEnd(),
+              )
+              .join("\n");
+          }),
+        ].join("\n"),
+      )
+      .map((sectionText) => `${sectionText}\n\n`)
+      .join("");
+
     await cliParser.parseAsync([...argv], {}, (error, _parsed, output) => {
       isFailed = error !== null && error !== undefined;
-      if (output) (isFailed ? process.stderr : process.stdout).write(`${output}\n`);
+      const shownText = output.startsWith(TOP_USAGE.replace("$0", "cw"))
+        ? output.replace(/^Commands:\n[\s\S]*?\n\n(?=Options:)/m, commandSectionsText)
+        : output;
+      if (shownText) (isFailed ? process.stderr : process.stdout).write(`${shownText}\n`);
     });
 
     return isFailed ? EXIT_USAGE : exitCode;
   }
 
-  /** One command, said to yargs under the name it is typed by — the whole of it
-   *  for a command that stands alone, what follows the group for one inside
-   *  it. */
+  /** One name a command is typed by, said to yargs — the whole of it for a
+   *  command that stands alone, what follows the group for one inside it; a
+   *  name typed before runs alike and is listed by no help (CORE-FR-244). */
   #registerCommand(
     cliParser: Argv,
-    command: AnyCommand,
+    { command, isListed }: TypedCommand,
     typedCommandName: string,
     collectOutcome: (outcome: Outcome) => void,
   ): Argv {
     return cliParser.command({
       command: typedCommandName,
-      describe: command.summary,
+      describe: isListed ? command.summary : false,
       // The one place the parser hears what a command takes, so a command
       // declares it and names no parser. An argument the command's own name
       // asks for — `vendor add <source>` — is a positional, typed where it is

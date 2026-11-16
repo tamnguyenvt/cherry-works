@@ -14,7 +14,7 @@ with its mixins and assets.
 |---|---|---|
 | `guide`, no `globs` | `.claude/rules/<name>.md`, importing the compiled guide | Body embedded in root `AGENTS.md` |
 | `guide`, with `globs` | `.claude/rules/<name>.md` with `paths` | Body embedded in directory `AGENTS.md` files; `src/**/*.ts` → `src/AGENTS.md`, with the file condition retained |
-| `sensor` | `.claude/settings.json` hook → `cw sensor run <signal> --agent claude` | `.codex/config.toml` hook → `cw sensor run <signal> --agent codex` |
+| `sensor` | `.claude/settings.json` hook → `cw run sensor <signal> --agent claude` | `.codex/config.toml` hook → `cw run sensor <signal> --agent codex` |
 | `skill` | `.claude/skills/<name>/SKILL.md`; invoke with `/<name>` | `.agents/skills/<name>/SKILL.md`; invoke with `$<name>` or choose through `/skills` |
 | `playbook` | `.claude/skills/<name>/SKILL.md`, sequencing other skills | `.agents/skills/<name>/SKILL.md`, sequencing other skills |
 | `agent` | `.claude/agents/<name>.md`, with `tools` and optional Claude model | `.codex/agents/<name>.toml`, with feature restrictions and optional Codex model; remaining tools inherit the parent scope |
@@ -22,7 +22,7 @@ with its mixins and assets.
 | `posture`, command permissions | `permissions.allow` / `permissions.deny` in `.claude/settings.json` | Literal `Bash(...:*)` prefixes → `.codex/rules/cw.rules`, with `allow` / `forbidden`; applies outside the sandbox |
 | `corpus` | Shared compiled document, read when cited | Shared compiled document, read when cited |
 | `mixin` | Body included in the primitives that use it | Body included in the primitives that use it |
-| `mcp` | `.mcp.json` starts `cw mcp serve` | `.codex/config.toml` starts `cw mcp serve` |
+| `mcp` | `.mcp.json` starts `cw run mcp` | `.codex/config.toml` starts `cw run mcp` |
 | `script` | Compiled assets under `.cw/out/script/<id>/`, run by references or sensors | Same shared assets |
 | `template` | Compiled document under `.cw/out/template/<id>/`, read when referenced | Same shared document |
 
@@ -64,6 +64,10 @@ The main host differences:
 
 ## Commands
 
+`cw --help` lists them in two sections: authoring the charter, and running it.
+
+### Authoring the charter
+
 | Command | What it does |
 |---|---|
 | `cw init [--agent]` | Set the repository up under a charter, and build it |
@@ -83,9 +87,19 @@ The main host differences:
 | `cw vendor init` | Set a charter vendor repository up in an empty folder, to publish charters from |
 | `cw vendor add <source> [--ref] [--charter] [--skill] \| remove \| list` | Install, update, remove or list vendor sources: a charter, charters picked from a source of many, or skills from a repository listed on [skills.sh](https://skills.sh) |
 | `cw vendor inject <source> [--ref] [--charter] [--skill]` | Copy published primitives into your own editable charter |
-| `cw portal [--port]` | Open the charter in a browser on this machine |
 | `cw mcp auth [id] [--status]` | Sign in, as yourself, to every mcp origin the charter reaches, or to one again |
-| `cw mcp serve` | Serve every mcp origin the charter reaches to your agent, over stdio |
+
+### Running it
+
+| Command | What it does |
+|---|---|
+| `cw run mcp` | Serve every mcp origin the charter reaches to your agent, over stdio |
+| `cw run sensor <signal> [--agent]` | Run every sensor of a signal, as the agent's one hook for it |
+| `cw run portal [--port]` | Open the charter in a browser on this machine |
+
+`cw mcp serve`, `cw sensor run` and `cw portal` are deprecated: each still runs
+as its new name does until the next major release. Run `cw build` once you
+upgrade, and every agent's files name only the new ones.
 
 `cw doctor` exits with a failure status when the charter has an error, or when
 the compiled output no longer matches the charter. That makes it a gate you can run in CI.
@@ -98,8 +112,8 @@ If you would rather not remember commands and field names, run the portal from
 inside a governed repository:
 
 ```bash
-cw portal               # serves on port 9927, or the next free port
-cw portal --port 8080
+cw run portal               # serves on port 9927, or the next free port
+cw run portal --port 8080
 ```
 
 It prints an address such as `http://127.0.0.1:9927/?t=…`. Open that address in
@@ -411,7 +425,7 @@ at an mcp origin by naming it in its body as `[[mfbs/billing]]`.
 
 ```bash
 cw mcp auth         # sign in to every mcp origin the charter declares that you are not signed in to yet
-cw build            # asks each mcp origin for its tools; adds one entry, cw mcp serve, to your agent's .mcp.json
+cw build            # asks each mcp origin for its tools; adds one entry, cw run mcp, to your agent's .mcp.json
 cw mcp auth --status
 ```
 
@@ -421,15 +435,15 @@ as themselves, by browser where the mcp origin offers OAuth or with a token
 typed at a hidden prompt. GitHub's MCP server does not let `cw` register for
 OAuth, so sign in there with a personal access token. Credentials are kept in the operating
 system's credential store, never in the repository, and renewed without asking
-where the mcp origin allows it. `cw mcp serve` is the one MCP server your agent is
+where the mcp origin allows it. `cw run mcp` is the one MCP server your agent is
 given: it serves the tools each mcp origin declares and forwards every call under
 your own credential. An mcp origin that is down or not signed in to loses only its own
 tools.
 
 The build asks each mcp origin for its tools once and keeps them beside the
 charter, and turns your agent's own tool search on: a session opens with each
-tool's name and no schema, and the agent looks up the one it needs. `cw mcp
-serve` lists the kept tools without reaching any mcp origin, and reaches one
+tool's name and no schema, and the agent looks up the one it needs. `cw run
+mcp` lists the kept tools without reaching any mcp origin, and reaches one
 only for a call. A tool an `mcp` declares that its mcp origin does not list
 stops the build.
 

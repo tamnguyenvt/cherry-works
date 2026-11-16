@@ -95,7 +95,7 @@ test("setting up writes the workspace's README, naming Cherry Works, the cw that
   assert.match(readmeText, /https:\/\/github\.com\/tamnguyenvt\/cherry-works/);
   assert.match(readmeText, /set up with `cw` 0\.0\.0/);
   assert.match(readmeText, /`\/cw-author`/);
-  assert.match(readmeText, /`cw portal`/);
+  assert.match(readmeText, /`cw run portal`/);
 
   const { held: keptFiles } = await setUp({ "file:///repo/.cw/README.md": "# Ours\n" }, ["init", "--agent", "claude"]);
   assert.equal(await held(keptFiles, ".cw/README.md"), "# Ours\n");

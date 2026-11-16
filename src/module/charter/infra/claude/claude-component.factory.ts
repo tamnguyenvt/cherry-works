@@ -43,7 +43,7 @@ export class ClaudeComponentFactory {
    * Three kinds project nothing of their own. A `corpus` is cited rather than
    * loaded, a `mixin` has no life of its own — its body is written into each primitive
    * that pulls it in, which `writeMarkdown` does when `CompiledPrimitiveFactory.create` hands it the mixins — and an `mcp` is reached through
-   * `cw mcp serve` rather than read: the one entry of the agent's MCP
+   * `cw run mcp` rather than read: the one entry of the agent's MCP
    * configuration that starts it, written whether the charter holds an mcp origin yet or
    * not, since the server reads which mcp origins there are when it starts (FR-146).
    */
@@ -110,7 +110,7 @@ export class ClaudeComponentFactory {
       // repository's too, so the entry is written into it, and never taken
       // away (FR-146).
       new ClaudeMcpConfig(claudeAgentProvider, ClaudeMcpConfig.kind, {
-        mcpServers: { [ClaudeMcpConfig.cwMcpName]: { command: "cw", args: ["mcp", "serve"] } },
+        mcpServers: { [ClaudeMcpConfig.cwMcpName]: { command: "cw", args: ["run", "mcp"] } },
       }),
       ...documentPrimitives.flatMap(
         (documentPrimitive) =>
@@ -129,7 +129,7 @@ export class ClaudeComponentFactory {
    *
    * One fragment for the whole charter, because the agent keeps one such file: every
    * posture's permissions are the permissions, each thing once, and every event a
-   * sensor fires on is one hook, `cw sensor run <event> --agent claude`, which runs
+   * sensor fires on is one hook, `cw run sensor <event> --agent claude`, which runs
    * that event's sensors kept for Claude as the last build wrote them (FR-175). A charter reaching a mcp origin
    * turns the agent's own tool search on (EVAL-FR-016).
    *

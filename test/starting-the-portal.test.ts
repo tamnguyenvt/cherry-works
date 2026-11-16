@@ -24,7 +24,7 @@ import {
 
 const repoPath = new URL("file:///repo/");
 
-/** `cw portal` as a user meets it, over a repository held in memory: the real
+/** `cw run portal` as a user meets it, over a repository held in memory: the real
  *  command and the real service behind it, with both streams held so what the
  *  user reads can be read back. Only ever run where it is refused, since a
  *  portal that starts stays open. */
@@ -56,7 +56,7 @@ const portal = async (files: Readonly<Record<string, string>>) => {
         charterRuntimeApp: charterRuntimeApps,
       }),
       COMMANDS,
-    ).runCommandLine(["portal"]);
+    ).runCommandLine(["run", "portal"]);
     return { code, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -89,7 +89,7 @@ test("a folder with no version control never set up is refused, naming cw init a
   assert.doesNotMatch(problems, /git/);
 });
 
-test("cw portal, in a folder with no version control that cw init set up, serves the charter (CORE Story 35 scenario 2, CORE-FR-107, CORE Story 55 scenario 8, CORE Story 5 scenario 1)", async (t) => {
+test("cw run portal, in a folder with no version control that cw init set up, serves the charter (CORE Story 69 scenario 2, CORE Story 35 scenario 2, CORE-FR-107, CORE Story 55 scenario 8, CORE Story 5 scenario 1)", async (t) => {
   const plainFolderPath = await mkdtemp(join(tmpdir(), "cw-portal-anywhere-"));
   t.after(() => rm(plainFolderPath, { recursive: true, force: true }));
   // `pnpm test` builds this tree first: dist/ is what its source builds to.
@@ -103,7 +103,7 @@ test("cw portal, in a folder with no version control that cw init set up, serves
   });
   assert.equal(initRun.status, 0, initRun.stderr);
 
-  const portalProcess = spawn(process.execPath, [cwFilePath, "portal", "--port", "47431"], {
+  const portalProcess = spawn(process.execPath, [cwFilePath, "run", "portal", "--port", "47431"], {
     cwd: plainFolderPath,
     env: commandEnv,
     stdio: ["ignore", "pipe", "pipe"],

@@ -3462,7 +3462,7 @@ declare class McpPrimitive extends BasePrimitive {
     /** When a reader of this charter is to open this kind at all, said
      *  where the kind's contract is: the neutral surface lists one
      *  line per kind and none of them is written down twice (FR-002). */
-    static readonly activatesWhen = "a primitive's body names it as `[[<id>]]` \u2014 an mcp origin outside the repository, reached through `cw mcp serve`";
+    static readonly activatesWhen = "a primitive's body names it as `[[<id>]]` \u2014 an mcp origin outside the repository, reached through `cw run mcp`";
     /** An mcp reached at an endpoint, as an author writes one: what a refused
      *  header is fixed with. */
     static readonly sample: McpHeaders;
@@ -4968,7 +4968,7 @@ declare class BuiltSensor {
 }
 
 /** Every sensor the last build compiled, in order of id: what
- *  `cw sensor run <signal> --agent <agent>` reads, since it reads no charter
+ *  `cw run sensor <signal> --agent <agent>` reads, since it reads no charter
  *  (FR-179). */
 declare class BuiltSensors extends CharterOutputItem {
     readonly sensors: readonly BuiltSensor[];
@@ -5165,7 +5165,7 @@ declare class McpOrigin {
     constructor(mcpOrigin: McpOrigin);
 }
 
-/** Every mcp origin the charter's mcps reach, each once: what `cw mcp serve` and
+/** Every mcp origin the charter's mcps reach, each once: what `cw run mcp` and
  *  `cw mcp auth` read, since neither reads a charter (FR-145). Ordered by
  *  address, then path (SC-007). */
 declare class McpOrigins extends CharterOutputItem {

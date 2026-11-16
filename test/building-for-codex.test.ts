@@ -185,7 +185,7 @@ test("Codex merges its MCP fields into an existing cw table without replacing us
   assert.equal((await charterRuntimeApps.buildCharter()).type, "ProjectionPlanSummary");
   const config = await held.readFile(inRepo(".codex/config.toml"));
   assert.match(config, /command = "cw"/);
-  assert.match(config, /args = \[\s*"mcp",\s*"serve"\s*\]/);
+  assert.match(config, /args = \[\s*"run",\s*"mcp"\s*\]/);
   assert.match(config, /startup_timeout_sec = 30/);
   assert.match(config, /KEEP = "yes"/);
 });
@@ -291,7 +291,7 @@ test("Codex installs native sensors with compiled script paths, writes the hooks
   assert.equal((builtConfigText.match(/\[\[hooks.Stop\]\]/g) ?? []).length, 1);
   assert.ok(
     builtConfigText.includes(
-      JSON.stringify('cd -- "$(git rev-parse --show-toplevel)" && cw sensor run Stop --agent codex'),
+      JSON.stringify('cd -- "$(git rev-parse --show-toplevel)" && cw run sensor Stop --agent codex'),
     ),
   );
   assert.doesNotMatch(builtConfigText, /cw-session-tokens-counter/);
@@ -310,7 +310,7 @@ test("Codex installs native sensors with compiled script paths, writes the hooks
   assert.equal((cleanedConfigText.match(/\[\[hooks.Stop\]\]/g) ?? []).length, 1);
   assert.ok(
     cleanedConfigText.includes(
-      JSON.stringify('cd -- "$(git rev-parse --show-toplevel)" && cw sensor run Stop --agent codex'),
+      JSON.stringify('cd -- "$(git rev-parse --show-toplevel)" && cw run sensor Stop --agent codex'),
     ),
   );
 });
@@ -413,10 +413,10 @@ test("shared lifecycle events compile to the signal runner for both Claude and C
       ),
     });
     assert.equal((await charterRuntimeApps.buildCharter()).type, "ProjectionPlanSummary");
-    assert.ok((await held.readFile(inRepo(".codex/config.toml"))).includes(`cw sensor run ${signal} --agent codex`));
+    assert.ok((await held.readFile(inRepo(".codex/config.toml"))).includes(`cw run sensor ${signal} --agent codex`));
     const claudeSettings = JSON.parse(await held.readFile(inRepo(".claude/settings.json")));
     assert.deepEqual(claudeSettings.hooks[signal], [
-      { hooks: [{ type: "command", command: `cw sensor run ${signal} --agent claude` }] },
+      { hooks: [{ type: "command", command: `cw run sensor ${signal} --agent claude` }] },
     ]);
   }
 });

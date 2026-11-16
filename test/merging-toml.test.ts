@@ -58,7 +58,7 @@ test("TOML merging preserves quoted dotted keys, inline tables, multiline string
   assert.equal((await app.buildCharter()).type, "ProjectionPlanSummary");
   const parsed = TomlLib.parseTomlTable(await held.readFile(inRepo(".codex/config.toml")));
   const expected = TomlLib.parseTomlTable(
-    `${source}\nproject_doc_max_bytes = 1048576\n[mcp_servers.cw]\ncommand = "cw"\nargs = ["mcp", "serve"]\n`,
+    `${source}\nproject_doc_max_bytes = 1048576\n[mcp_servers.cw]\ncommand = "cw"\nargs = ["run", "mcp"]\n`,
   );
   assert.deepEqual(parsed, expected);
   assert.equal(typeof parsed["max_id"], "bigint");

@@ -251,7 +251,7 @@ const SignInStatusesSchema = dto(
   }),
 );
 
-/** One tool `cw mcp serve` shows the agent: named `<prefix>__<tool>` after the
+/** One tool `cw run mcp` shows the agent: named `<prefix>__<tool>` after the
  *  id declaring it, its description led by that id and its path,
  *  its input schema the mcp origin's own (FR-153). */
 const ServedToolSchema = dto(

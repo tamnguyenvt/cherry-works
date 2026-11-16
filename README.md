@@ -87,7 +87,7 @@ To publish charters of your own, run `cw vendor init` in an empty folder.
 ## Work from the terminal or browser
 
 ```bash
-cw portal                  # browse and edit the charter locally
+cw run portal              # browse and edit the charter locally
 cw test                    # test activation and permission rules, without an agent
 cw context                 # estimate the charter's context size
 cw eval --agent codex       # evaluate with the real agent; spends tokens

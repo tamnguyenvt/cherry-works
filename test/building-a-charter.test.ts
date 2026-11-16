@@ -46,7 +46,7 @@ const sessionCounterPaths = [
 ];
 /** The Stop hook the engine's own sensor puts in Claude's settings: the one
  *  command for that signal, whatever sensors it runs (CORE-FR-175). */
-const sessionCounterStopHook = { hooks: [{ type: "command", command: "cw sensor run Stop --agent claude" }] };
+const sessionCounterStopHook = { hooks: [{ type: "command", command: "cw run sensor Stop --agent claude" }] };
 
 /** What a repository answered at setup, kept in its own settings: which agents
  *  it chose (FR-033). Every repository a build test authors
@@ -267,7 +267,7 @@ test("every posture lands in the one settings file its host reads, merged (FR-01
     // `posture/sandboxed/index.md`.
     permissions: { allow: ["Read(**)"], deny: ["WebFetch", "Bash(rm:*)"] },
     hooks: {
-      PostToolUse: [{ hooks: [{ type: "command", command: "cw sensor run PostToolUse --agent claude" }] }],
+      PostToolUse: [{ hooks: [{ type: "command", command: "cw run sensor PostToolUse --agent claude" }] }],
       Stop: [sessionCounterStopHook],
     },
   });
@@ -678,7 +678,7 @@ test("a charter with an mcp gives the host one cw entry, beside the repository's
   assert.deepEqual(JSON.parse(await contentsOf(held, ".mcp.json")), {
     mcpServers: {
       mine: { command: "my-server", args: ["--stdio"] },
-      cw: { command: "cw", args: ["mcp", "serve"] },
+      cw: { command: "cw", args: ["run", "mcp"] },
     },
   });
 });
@@ -689,7 +689,7 @@ test("the cw entry is written before the charter holds any mcp, so an mcp origin
   filesOf(await build());
 
   assert.deepEqual(JSON.parse(await contentsOf(held, ".mcp.json")), {
-    mcpServers: { cw: { command: "cw", args: ["mcp", "serve"] } },
+    mcpServers: { cw: { command: "cw", args: ["run", "mcp"] } },
   });
 });
 

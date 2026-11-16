@@ -246,7 +246,7 @@ export class CodexComponentFactory {
       );
     entryLines.push(
       "### Codex support",
-      `Skills and playbooks are invoked as \`$<name>\` or selected through \`/skills\`. Directory guides are embedded in nested AGENTS.md files, discovered along the root-to-cwd chain; when working from the root, follow the glob instructions above. Supported hooks call \`cw sensor run <signal> --agent codex\`; review and trust hooks with \`/hooks\`. Filesystem permissions use profile \`cw\` where generated; command prefixes use \`${CodexRules.path}\` outside the sandbox. Unsupported permissions remain guidance. Subagent feature flags disable unsupported capability groups, while remaining tools and MCP servers inherit the parent scope. Session token logging and \`cw eval\` currently require Claude Code.`,
+      `Skills and playbooks are invoked as \`$<name>\` or selected through \`/skills\`. Directory guides are embedded in nested AGENTS.md files, discovered along the root-to-cwd chain; when working from the root, follow the glob instructions above. Supported hooks call \`cw run sensor <signal> --agent codex\`; review and trust hooks with \`/hooks\`. Filesystem permissions use profile \`cw\` where generated; command prefixes use \`${CodexRules.path}\` outside the sandbox. Unsupported permissions remain guidance. Subagent feature flags disable unsupported capability groups, while remaining tools and MCP servers inherit the parent scope. Session token logging and \`cw eval\` currently require Claude Code.`,
     );
     return [
       CodexComponentFactory.#createEntryFile(entryLines.join("\n\n")),
@@ -332,7 +332,7 @@ export class CodexComponentFactory {
       ...(hasPermissions ? ['default_permissions = "cw"', ""] : []),
       "[mcp_servers.cw]",
       'command = "cw"',
-      'args = ["mcp", "serve"]',
+      'args = ["run", "mcp"]',
       ...(hasPermissions
         ? [
             "",

@@ -1285,7 +1285,7 @@ A script, or CI, runs a `cw` command with `--json` and reads its standard output
 
 ### CORE Story 69 - Find authoring and running apart among `cw`'s commands (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 The commands that run what was built sit under one word: `cw run mcp` serves the mcp origins to the agent, `cw run sensor <signal>` fires a signal's sensors, and `cw run portal` serves the portal. `cw --help` lists the commands in two sections: authoring the charter, holding every other command, and running it, holding the three. `cw mcp serve`, `cw sensor run` and `cw portal` are deprecated: each still runs as its new name does until the next major release, and the help no longer lists it. A build writes only the new names into every agent's files, so a repository built before is moved off the old names by building again.
 
@@ -1335,7 +1335,7 @@ The values of the charter's rules, the layout and data of `cw`'s answers, its co
 
 **Acceptance Scenarios**:
 
-1. **Given** [CORE Story 57](#core-story-57---read-every-value-of-the-charters-rules-by-what-it-holds-priority-p2), [CORE Story 67](#core-story-67---read-every-answer-of-cw-laid-out-in-colour-at-a-terminal-priority-p2), [CORE Story 68](#core-story-68---read-any-answer-of-cw-as-data-with---json-priority-p2), [CORE Story 69](#core-story-69---find-authoring-and-running-apart-among-cws-commands-priority-p2) and [CORE Story 70](#core-story-70---mention-another-primitive-by-typing--in-the-portal-priority-p2) `Done`, **When** /sdd-quality runs, **Then** it checks the code and every spec against the checklist of `quality.md`, and each violation it reports becomes a story.
+1. **Given** [CORE Story 57](#core-story-57---read-every-value-of-the-charters-rules-by-what-it-holds-priority-p2), [CORE Story 67](#core-story-67---read-every-answer-of-cw-laid-out-in-colour-at-a-terminal-priority-p2), [CORE Story 68](#core-story-68---read-any-answer-of-cw-as-data-with---json-priority-p2), [CORE Story 69](#core-story-69---find-authoring-and-running-apart-among-cws-commands-priority-p2) and [CORE Story 70](#core-story-70---mention-another-primitive-by-typing--in-the-portal-priority-p2) `Done`, **When** /sdd-quality runs, **Then** it checks the code and every spec against the checklist of `quality.md`, and each violation it reports becomes a story ([CORE-SC-026](#core-sc-026)).
 
 ---
 

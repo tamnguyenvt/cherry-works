@@ -123,6 +123,9 @@ export type Options<Spec extends OptionSpec = NoOptions> = {
  *  writing port cannot write, whoever calls it. */
 export interface Command<Spec extends OptionSpec = NoOptions> {
   readonly name: string;
+  /** The name it was typed by before, run as `name` is until the next major
+   *  release and listed by no help (CORE-FR-244). */
+  readonly deprecatedName?: string;
   readonly summary: string;
   /** The arguments this command takes. `Options` is read off this, so declaring
    *  one is what makes it readable in `run` — under its own name, at its own

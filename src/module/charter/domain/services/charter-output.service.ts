@@ -46,7 +46,7 @@ export class CharterOutputService {
     agentProviders: readonly AgentProvider[],
     toolsByOriginKey: ReadonlyMap<string, readonly McpToolDefinition[]> = new Map(),
   ): CharterOutput {
-    // What `cw mcp serve` serves each mcp origin's tools under, `<prefix>__<tool>`:
+    // What `cw run mcp` serves each mcp origin's tools under, `<prefix>__<tool>`:
     // short whatever the id's length, and the same on every build whatever other
     // mcps come and go (FR-145). Written into `mcp-origins.json` beside each
     // mcp origin, so the server, which reads no charter, serves under these.
@@ -68,7 +68,7 @@ export class CharterOutputService {
         )
         .map((primitive) => [primitive, CompiledPrimitiveFactory.create(charterRoot, primitive)] as const),
     );
-    // What `cw sensor run` runs, each sensor's command as built: written once,
+    // What `cw run sensor` runs, each sensor's command as built: written once,
     // read by every agent given one command per signal (FR-175, FR-179).
     const builtSensors = BuiltSensorsFactory.create(charterRoot, compiledPrimitiveByPrimitive);
     const allCatalogue = CatalogueFactory.create(charterRoot, (primitive) =>

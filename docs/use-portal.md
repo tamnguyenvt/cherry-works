@@ -9,7 +9,7 @@ are saved to the same files the CLI uses.
 From the repository you want to manage:
 
 ```bash
-cw portal
+cw run portal
 ```
 
 If the repository has no charter yet, run `cw init` first.
@@ -20,7 +20,7 @@ The default port is 9927; if it is busy, the server tries the next free port.
 To choose a starting port:
 
 ```bash
-cw portal --port 8080
+cw run portal --port 8080
 ```
 
 The portal serves only on your machine at `127.0.0.1`. The token in the
