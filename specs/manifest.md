@@ -19,7 +19,7 @@ How work on a story is carried out and finished in this repository. Read by
 ## Talking
 
 - **Conversation**: short — a gate says only what it asks; what changed is never listed, the user reads the code and asks.
-- **Review**: auto — each `nit` is fixed wherever its fix reaches and written to the handoff note with its fix, the change verified and reviewed again, for three rounds of fixing at most, each `nit` left after the third written there unfixed; a `q` is handled as in quick — a `q` whose answer changes no FR, scenario or out of scope and touches only the changed files is settled and written to the handoff note; every other `q` is asked.
+- **Review**: auto, until no nit — each `nit` is fixed wherever its fix reaches and written to the handoff note with its fix, the change verified and reviewed again, round after round, with no cap on the rounds, until a review leaves no `nit`; a `q` is handled as in quick — a `q` whose answer changes no FR, scenario or out of scope and touches only the changed files is settled and written to the handoff note; every other `q` is asked.
 
 ## Committing
 
