@@ -9,7 +9,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, printFault, printProblem } from "./helper.js";
 
 /** What `cw remove` takes: the id whose file goes, and whether the
  *  question before it is already answered. */
@@ -58,7 +58,10 @@ export class RemoveCommand implements Command<typeof OPTIONS> {
       if (!process.stdin.isTTY)
         return {
           exitCode: EXIT_FAILURE,
-          problemText: `Removing ${primitive.file} is asked first, and nobody is at the terminal to answer.\n  Run "cw remove ${primitive.id} --yes" to remove it without asking.\n`,
+          problemText: printProblem(
+            `Removing ${primitive.file} is asked first, and nobody is at the terminal to answer.`,
+            `Run "cw remove ${primitive.id} --yes" to remove it without asking.`,
+          ),
         };
       const { isConfirmed } = await prompts({
         type: "confirm",
@@ -74,7 +77,7 @@ export class RemoveCommand implements Command<typeof OPTIONS> {
     return {
       exitCode: EXIT_OK,
       resultText: [
-        `Removed ${primitiveDTO.data.file}.`,
+        formatHeading(formatStatusLine("good", `Removed ${formatMention(primitiveDTO.data.file)}.`)),
         'Run "cw doctor" to see what still names it, then "cw build".',
         "",
       ].join("\n"),

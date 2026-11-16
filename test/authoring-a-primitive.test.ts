@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { stripVTControlCharacters } from "node:util";
 import prompts from "prompts";
 import type { AuthoringCharter } from "../src/module/charter/app/authoring-charter.use-case.js";
 import { CharterDTOs } from "../src/module/charter/app/port/in/charter.dto.js";
@@ -335,7 +336,10 @@ test("cw remove asks first, naming the file, and removes it only on a yes (FR-07
     id: "no-any",
     yes: false,
   });
-  assert.match(confirmedRemoveOutcome.resultText ?? "", /Removed \.cw\/charter\/primitive\/guide\/no-any\/index\.md\./);
+  assert.match(
+    stripVTControlCharacters(confirmedRemoveOutcome.resultText ?? ""),
+    /^✔ Removed \.cw\/charter\/primitive\/guide\/no-any\/index\.md\./,
+  );
   assert.equal(await fileAt(".cw/charter/primitive/guide/no-any/index.md"), undefined);
 });
 

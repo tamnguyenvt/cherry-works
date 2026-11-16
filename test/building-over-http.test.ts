@@ -112,7 +112,7 @@ test("the preview lists every target cw build --preview prints, and writes nothi
   const listed = text.split("\n").flatMap(
     (line) =>
       line
-        .match(/^ {2}(\S+) +(\S+)$/)
+        .match(/^ {2}[✔⚠] (\S+) +(\S+)$/)
         ?.slice(1, 3)
         .join(" ") ?? [],
   );
@@ -132,8 +132,10 @@ test("cw build --preview writes nothing, lists every target with a count, and fa
 
   assert.equal(code, EXIT_FAILURE);
   assert.deepEqual(await fileReaders.readFilesRecursively(repoPath), filesBefore, "nothing is written");
-  const listedTargets = text.split("\n").filter((line) => /^ {2}(create|update|delete|unchanged) +\S+$/.test(line));
-  assert.ok(listedTargets.some((line) => /^ {2}create +\.cw\/out\/catalogue\.json$/.test(line)));
+  const listedTargets = text
+    .split("\n")
+    .filter((line) => /^ {2}[✔⚠] (create|update|delete|unchanged) +\S+$/.test(line));
+  assert.ok(listedTargets.some((line) => /^ {2}⚠ create +\.cw\/out\/catalogue\.json$/.test(line)));
   assert.match(
     text,
     new RegExp(
@@ -150,10 +152,12 @@ test("cw build --preview over a repository already fully built has every target 
   const { code, text } = await printed(cli, ["build", "--preview"]);
 
   assert.equal(code, EXIT_OK);
-  const listedTargets = text.split("\n").filter((line) => /^ {2}(create|update|delete|unchanged) +\S+$/.test(line));
+  const listedTargets = text
+    .split("\n")
+    .filter((line) => /^ {2}[✔⚠] (create|update|delete|unchanged) +\S+$/.test(line));
   assert.ok(listedTargets.length > 0);
   assert.ok(
-    listedTargets.every((line) => line.startsWith("  unchanged ")),
+    listedTargets.every((line) => line.startsWith("  ✔ unchanged ")),
     text,
   );
   assert.match(
@@ -212,8 +216,15 @@ test("the health check is what doctor answers, and names the faults cw doctor pr
   assert.ok(pendingCount !== null && pendingCount > 0);
 
   const { text } = await printed(cli, ["doctor"]);
+  // A message wider than the terminal goes on beneath its own column: read
+  // each fault as the one line it is.
+  const unwrappedText = text.replace(/\n {5,}/g, " ");
   for (const [file, faults] of Object.entries(faultsByFile.data.files)) {
     assert.ok(text.includes(file));
-    for (const { data: fault } of faults) assert.ok(text.includes(`${fault.severity}: ${fault.message}`));
+    for (const { data: fault } of faults)
+      assert.ok(
+        unwrappedText.includes(`${fault.severity === "error" ? "✘" : "⚠"} ${fault.severity}:  ${fault.message}`),
+        text,
+      );
   }
 });

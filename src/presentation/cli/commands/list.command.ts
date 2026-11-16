@@ -7,7 +7,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, formatMention, layAnswerRows, printFault, printProblem } from "./helper.js";
 
 /** What `cw list` takes: which kind to narrow to, and how much of each
  *  primitive to say. Both are how the listing is read, never what is in it —
@@ -51,7 +51,10 @@ export class ListCommand implements Command<typeof OPTIONS> {
       const faultyFileCount = Object.keys(catalogueDTO.data.files).length;
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `Nothing was listed: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+        problemText: printProblem(
+          `Nothing was listed: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`,
+          'Run "cw doctor" to see what is wrong with them.',
+        ),
       };
     }
 
@@ -67,15 +70,25 @@ export class ListCommand implements Command<typeof OPTIONS> {
       // A primitive as an agent surveys it is what it is called and what it is
       // for (FR-012); in full, also where its body is and the files it applies
       // to (FR-011). Globs nobody wrote are not said, the way the listing does
-      // not record them.
-      resultText: `${entries
-        .map(({ data: { id, description, file: filePath, globs } }) =>
-          [
-            `${id}  ${description}`,
-            ...(isMin ? [] : [`  ${filePath}`, ...(globs === undefined ? [] : [`  globs: ${globs.join(", ")}`])]),
-          ].join("\n"),
-        )
-        .join("\n")}\n`,
+      // not record them. Every id in one column, what follows it in another.
+      resultText: [
+        formatHeading("Primitives"),
+        ...layAnswerRows(
+          entries.map(({ data: { id, description, file: filePath, globs } }) => [
+            formatMention(id),
+            [
+              description,
+              ...(isMin
+                ? []
+                : [formatMention(filePath), ...(globs === undefined ? [] : [`globs: ${globs.join(", ")}`])]),
+            ],
+          ]),
+          "  ",
+          // What an agent surveys by is one primitive to a line (FR-012).
+          !isMin,
+        ),
+        "",
+      ].join("\n"),
     };
   }
 }

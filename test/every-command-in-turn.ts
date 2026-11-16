@@ -253,7 +253,10 @@ export async function answersOfEveryCommand(
         encoding: "utf8",
       });
       if (commandArgs.join(" ") === "vendor list") {
-        listedVendorName = commandRun.stdout.trim().replace(/^\.cw\/(charter\/)?vendor\//, "");
+        // The folder is the last line the list says, under its heading.
+        listedVendorName = (commandRun.stdout.trim().split("\n").at(-1) ?? "")
+          .trim()
+          .replace(/^\.cw\/(charter\/)?vendor\//, "");
       }
       return {
         args: commandArgs.join(" "),

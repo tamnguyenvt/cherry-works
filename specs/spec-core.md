@@ -1244,7 +1244,7 @@ A contributor reads any file of the charter's domain — its models, value objec
 
 ### CORE Story 67 - Read every answer of `cw` laid out, in colour at a terminal (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 A developer runs any `cw` command and reads its answer the same way every time: a heading over each part of it, each label and its value in one aligned column, each status marked good, to do or fault, ids and paths set apart from the words around them, and every fault and warning under the file that has to change. At a terminal each status has a colour of its own; written to a file or to another command, or with `NO_COLOR` set, the answer is laid out the same, with no colour. What each command says is what it said before; only how it is laid out changes.
 

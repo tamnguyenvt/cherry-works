@@ -8,7 +8,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, layAnswerRows, printFault, printProblem } from "./helper.js";
 
 /** What `cw explain` takes: the id to trace, typed where it is written
  *  rather than offered as a flag beside itself. */
@@ -59,7 +59,10 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
       const faultyFileCount = Object.keys(explanationOutcomeDTO.data.files).length;
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `Nothing was explained: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+        problemText: printProblem(
+          `Nothing was explained: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`,
+          'Run "cw doctor" to see what is wrong with them.',
+        ),
       };
     }
 
@@ -79,26 +82,40 @@ export class ExplainCommand implements Command<typeof OPTIONS> {
     return {
       exitCode: EXIT_OK,
       resultText: [
-        `${primitive.data.id}  ${primitive.data.description}`,
-        `  ${primitive.data.file}`,
+        formatHeading(`${formatMention(primitive.data.id)}  ${primitive.data.description}`),
+        `  ${formatMention(primitive.data.file)}`,
         `  ${SAID_BY_LAYER[primitive.data.layerName]}`,
-        `  comes up when ${activatesWhen}`,
-        ...declaredHeaders.map(
-          ([headerName, headerValue]) =>
-            `  declares ${headerName}: ${typeof headerValue === "string" ? headerValue : headerValue.join(", ")}`,
-        ),
-        ...useMixins.map(({ data: mixinEntry }) => `  uses mixin ${mixinEntry.id}`),
-        ...(rationale !== undefined
-          ? [`  rationale ${rationale.data.id}`]
-          : rationaleId !== undefined
-            ? [`  rationale ${String(rationaleId)} (does not resolve)`]
-            : []),
-        ...usedByPrimitives.map(({ data: pullerPrimitive }) => `  mixin of ${pullerPrimitive.id}`),
-        ...citers.map(({ data: citerEntry }) => `  rationale of ${citerEntry.id}`),
-        ...mentioners.map(({ data: mentionerEntry }) => `  mentioned in ${mentionerEntry.id}`),
-        ...Object.entries(testCasesByFile.data).flatMap(([filePath, situations]) =>
-          situations.map((situation) => `  pinned down by ${filePath}: ${situation}`),
-        ),
+        // Each tie of this primitive to the charter in one column, what it is
+        // tied to in another.
+        ...layAnswerRows([
+          ["comes up when", activatesWhen],
+          ...declaredHeaders.map(
+            ([headerName, headerValue]) =>
+              [
+                "declares",
+                `${headerName}: ${typeof headerValue === "string" ? headerValue : headerValue.join(", ")}`,
+              ] as const,
+          ),
+          ...useMixins.map(({ data: mixinEntry }) => ["uses mixin", formatMention(mixinEntry.id)] as const),
+          ...(rationale !== undefined
+            ? [["rationale", formatMention(rationale.data.id)] as const]
+            : rationaleId !== undefined
+              ? [
+                  [
+                    "rationale",
+                    formatStatusLine("todo", `${formatMention(String(rationaleId))} (does not resolve)`),
+                  ] as const,
+                ]
+              : []),
+          ...usedByPrimitives.map(
+            ({ data: pullerPrimitive }) => ["mixin of", formatMention(pullerPrimitive.id)] as const,
+          ),
+          ...citers.map(({ data: citerEntry }) => ["rationale of", formatMention(citerEntry.id)] as const),
+          ...mentioners.map(({ data: mentionerEntry }) => ["mentioned in", formatMention(mentionerEntry.id)] as const),
+          ...Object.entries(testCasesByFile.data).flatMap(([filePath, situations]) =>
+            situations.map((situation) => ["pinned down by", `${formatMention(filePath)}: ${situation}`] as const),
+          ),
+        ]),
         "",
       ].join("\n"),
     };

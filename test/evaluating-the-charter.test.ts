@@ -590,11 +590,11 @@ test("the run says where each case's result and the agent's session record are k
   const evaluateCount = promptfoo.evaluatedTests.length;
   const analysisOutput = await printed(cli, ["eval-analyze", "--log", "/logs/case.json"]);
   assert.equal(analysisOutput.code, EXIT_OK);
-  assert.match(analysisOutput.outputText, /FAIL codex/);
+  assert.match(analysisOutput.outputText, /^✘ FAIL codex/);
   assert.match(analysisOutput.outputText, /Missing required skill/);
   assert.match(analysisOutput.outputText, /cat instructions.md/);
   assert.match(analysisOutput.outputText, /I read the instructions/);
-  assert.match(analysisOutput.outputText, /Session log: \/sessions\/session-one.jsonl/);
+  assert.match(analysisOutput.outputText, /^Session log: {2,}\/sessions\/session-one.jsonl$/m);
   const jsonOutput = await printed(cli, ["eval-analyze", "--json"]);
   assert.equal(JSON.parse(jsonOutput.outputText).data.logs[0].sessionId, "session-one");
   assert.equal(JSON.parse(jsonOutput.outputText).data.logs[0].agent, "codex");

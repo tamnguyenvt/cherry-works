@@ -108,7 +108,7 @@ test("a charter picked from a source of many lands in a vendor folder of its own
   );
   assert.match(
     commandOutput,
-    /Installed acme\/charters under \.cw\/charter\/vendor\/acme\/charters\/baseline\.\n {2}guide small-diffs\n/,
+    /^✔ Installed acme\/charters under \.cw\/charter\/vendor\/acme\/charters\/baseline\.\n {2}guide {2,}small-diffs\n/m,
   );
 });
 

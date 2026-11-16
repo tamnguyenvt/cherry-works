@@ -165,11 +165,11 @@ test("a charter with an error is counted, and read where every fault is (FR-040,
   // Counted above, and written out below: the file that has to change, and what
   // is wrong with it (FR-009, SC-003).
   assert.match(printedOutput.everything, /\.cw\/charter\/primitive\/guide\/no-any\/index\.md/);
-  assert.match(printedOutput.everything, /error: This pulls in the mixin "nowhere"/);
+  assert.match(printedOutput.everything, /^ {2}✘ error: {2}This pulls in the mixin "nowhere"/m);
   // A charter that does not hold previews nothing, so what is built cannot be
   // answered.
   assert.match(printedOutput.everything, /Built: {4}Fix the charter's errors, then run "cw build"\./);
-  assert.match(printedOutput.everything, /2 things to fix\./);
+  assert.match(printedOutput.everything, /^✘ 2 things to fix\./m);
 });
 
 test("what validating finds reaches a driver as its DTO: counted, and every fault named from the repository (FR-009, FR-040)", async () => {

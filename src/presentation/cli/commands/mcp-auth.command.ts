@@ -10,7 +10,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, printFault, printProblem } from "./helper.js";
 
 /** What `cw mcp auth` takes: one id to sign in again for, or whether to
  *  say where the developer is signed in and do nothing else (FR-150). */
@@ -62,9 +62,9 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
             : signInStatuses
                 .map(({ address, ids, signedIn: isSignedIn, method }) =>
                   [
-                    address,
-                    `  ${ids.join(", ")}`,
-                    `  ${isSignedIn ? `signed in by ${method}` : "not signed in"}`,
+                    formatHeading(formatMention(address)),
+                    `  ${ids.map(formatMention).join(", ")}`,
+                    `  ${isSignedIn ? formatStatusLine("good", `signed in by ${method}`) : formatStatusLine("todo", "not signed in")}`,
                     "",
                   ].join("\n"),
                 )
@@ -78,7 +78,10 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
       if (signInStatus === undefined)
         return {
           exitCode: EXIT_FAILURE,
-          problemText: `No mcp in the charter that takes a sign-in is ${id}.\n  Run "cw mcp auth --status" to see every mcp that does.\n`,
+          problemText: printProblem(
+            `No mcp in the charter that takes a sign-in is ${id}.`,
+            `Run "cw mcp auth --status" to see every mcp that does.`,
+          ),
         };
       unsignedStatuses = [signInStatus];
     }
@@ -96,8 +99,8 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
       return {
         exitCode: EXIT_FAILURE,
         problemText: [
-          "Not signed in at:",
-          ...unsignedStatuses.map(({ address }) => `  ${address}`),
+          formatStatusLine("fault", "Not signed in at:"),
+          ...unsignedStatuses.map(({ address }) => `  ${formatMention(address)}`),
           '  Run "cw mcp auth" at a terminal to sign in; nothing is asked without one.',
           "",
         ].join("\n"),
@@ -132,7 +135,7 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
 
     return {
       exitCode: EXIT_OK,
-      resultText: `Signed in at ${unsignedStatuses.map(({ address }) => address).join(", ")}.\n`,
+      resultText: `${formatStatusLine("good", `Signed in at ${unsignedStatuses.map(({ address }) => formatMention(address)).join(", ")}.`)}\n`,
     };
   }
 }
@@ -140,5 +143,8 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
 /** A prompt left unanswered, written out for the terminal: what was signed in
  *  before it is kept. */
 function printInterruptProblem(address: string): string {
-  return `This was stopped before signing in at ${address}; what was signed in before it is kept.\n  Run "cw mcp auth" again.\n`;
+  return printProblem(
+    `This was stopped before signing in at ${address}; what was signed in before it is kept.`,
+    'Run "cw mcp auth" again.',
+  );
 }

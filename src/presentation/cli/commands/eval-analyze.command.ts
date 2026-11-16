@@ -7,7 +7,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, layAnswerRows, printFault } from "./helper.js";
 
 const OPTIONS = {
   log: {
@@ -43,18 +43,36 @@ export class EvalAnalyzeCommand implements Command<typeof OPTIONS> {
       exitCode: EXIT_OK,
       resultText: savedLogs
         .flatMap((savedLog) => [
-          `${savedLog.success ? "PASS" : "FAIL"} ${savedLog.agent} | ${savedLog.createdAt} | ${savedLog.totalTokens.toLocaleString("en-US")} tokens`,
-          `Prompt: ${savedLog.prompt}`,
-          ...savedLog.unmetReasons.map((reason) => `Reason: ${reason}`),
-          ...(savedLog.error === undefined ? [] : [`Provider error: ${savedLog.error}`]),
-          `Log: ${savedLog.logPath}`,
-          `Promptfoo output: ${savedLog.outputPath}`,
-          `stdout: ${savedLog.stdoutPath}`,
-          `stderr: ${savedLog.stderrPath}`,
-          `Agent session: ${savedLog.sessionId ?? "not returned by provider"}`,
-          `Session log: ${savedLog.sessionPath ?? "not found locally"}`,
-          `Answer:\n${savedLog.answer || "(no answer)"}`,
-          `Tool evidence (${savedLog.toolCalls.length}):`,
+          formatHeading(
+            formatStatusLine(
+              savedLog.success ? "good" : "fault",
+              `${savedLog.success ? "PASS" : "FAIL"} ${savedLog.agent} | ${savedLog.createdAt} | ${savedLog.totalTokens.toLocaleString("en-US")} tokens`,
+            ),
+          ),
+          // Each fact of the run in one column, what it holds in another.
+          ...layAnswerRows(
+            [
+              ["Prompt:", savedLog.prompt],
+              ...savedLog.unmetReasons.map((reason) => ["Reason:", reason] as const),
+              ...(savedLog.error === undefined ? [] : [["Provider error:", savedLog.error] as const]),
+              ["Log:", formatMention(savedLog.logPath)],
+              ["Promptfoo output:", formatMention(savedLog.outputPath)],
+              ["stdout:", formatMention(savedLog.stdoutPath)],
+              ["stderr:", formatMention(savedLog.stderrPath)],
+              [
+                "Agent session:",
+                savedLog.sessionId === undefined ? "not returned by provider" : formatMention(savedLog.sessionId),
+              ],
+              [
+                "Session log:",
+                savedLog.sessionPath === undefined ? "not found locally" : formatMention(savedLog.sessionPath),
+              ],
+            ],
+            "",
+          ),
+          formatHeading("Answer:"),
+          savedLog.answer || "(no answer)",
+          formatHeading(`Tool evidence (${savedLog.toolCalls.length}):`),
           ...savedLog.toolCalls.map((toolCall, toolIndex) => {
             let toolText = toolCall;
             try {

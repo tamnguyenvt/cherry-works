@@ -1,6 +1,6 @@
 import { charterPath } from "#module/charter/module.js";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, printFault } from "./helper.js";
 
 /**
  * `cw suite add`: a new test file under `.cw/charter/test/`, named so no other test file
@@ -17,7 +17,9 @@ export class SuiteAddCommand implements Command {
     return {
       exitCode: EXIT_OK,
       resultText: [
-        `Wrote ${charterPath.testFolderPath}/${testSuiteName}.`,
+        formatHeading(
+          formatStatusLine("good", `Wrote ${formatMention(`${charterPath.testFolderPath}/${testSuiteName}`)}.`),
+        ),
         `Run "cw suite edit ${testSuiteName}" to write its cases, then "cw test".`,
         "",
       ].join("\n"),

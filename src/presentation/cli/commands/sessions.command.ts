@@ -7,7 +7,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, formatMention, layAnswerRows, printFault } from "./helper.js";
 
 const OPTIONS = {
   since: {
@@ -68,7 +68,7 @@ export class SessionsCommand implements Command<typeof OPTIONS> {
     if (sessionCount === 0)
       return {
         exitCode: EXIT_OK,
-        resultText: `No session has been kept for this repository from ${sinceDay} until ${untilDay}, in ${sessionsFolder}.\nOne is kept each time the agent stops, once "cw build" has built the charter for claude.\n`,
+        resultText: `No session has been kept for this repository from ${sinceDay} until ${untilDay}, in ${formatMention(sessionsFolder)}.\nOne is kept each time the agent stops, once "cw build" has built the charter for claude.\n`,
       };
 
     const formatTokenCount = (tokenCount: number) => tokenCount.toLocaleString("en-US");
@@ -82,12 +82,21 @@ export class SessionsCommand implements Command<typeof OPTIONS> {
               data: { sessions: daySessions, sessionCount: daySessionCount, totalTokens: dayTokenCount },
             },
           ]) => [
-            `${day}  ${formatTokenCount(dayTokenCount)} tokens, ${daySessionCount} session${daySessionCount === 1 ? "" : "s"}`,
-            ...daySessions.map(({ sessionId, lastStopAt, model, totalTokens: sessionTokenCount }) => {
-              const stopDate = new Date(lastStopAt);
-              const stopTime = `${String(stopDate.getHours()).padStart(2, "0")}:${String(stopDate.getMinutes()).padStart(2, "0")}`;
-              return `  ${formatTokenCount(sessionTokenCount).padStart(11)}  ${model}  ${sessionId}  last stop ${stopTime}`;
-            }),
+            formatHeading(
+              `${day}  ${formatTokenCount(dayTokenCount)} tokens, ${daySessionCount} session${daySessionCount === 1 ? "" : "s"}`,
+            ),
+            // The tokens and the model in one column, the session and when it
+            // last stopped in another.
+            ...layAnswerRows(
+              daySessions.map(({ sessionId, lastStopAt, model, totalTokens: sessionTokenCount }) => {
+                const stopDate = new Date(lastStopAt);
+                const stopTime = `${String(stopDate.getHours()).padStart(2, "0")}:${String(stopDate.getMinutes()).padStart(2, "0")}`;
+                return [
+                  `${formatTokenCount(sessionTokenCount).padStart(11)}  ${model}`,
+                  `${formatMention(sessionId)}  last stop ${stopTime}`,
+                ] as const;
+              }),
+            ),
           ],
         ),
         `${formatTokenCount(totalTokens)} tokens in all, ${sessionCount} session${sessionCount === 1 ? "" : "s"}, from ${sinceDay} until ${untilDay}.`,

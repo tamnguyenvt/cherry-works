@@ -178,7 +178,7 @@ test("cw vendor list prints each folder on a line of its own", async () => {
   assert.equal(code, EXIT_OK);
   assert.equal(
     said,
-    ".cw/charter/vendor/acme/charters/baseline\n.cw/charter/vendor/team/rules/root\n.cw/charter/vendor/team/skills/root\n",
+    "Vendors\n  .cw/charter/vendor/acme/charters/baseline\n  .cw/charter/vendor/team/rules/root\n  .cw/charter/vendor/team/skills/root\n",
   );
 });
 

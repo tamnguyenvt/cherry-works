@@ -7,7 +7,15 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import {
+  type AnswerRow,
+  formatHeading,
+  formatMention,
+  formatStatusLine,
+  layAnswerRows,
+  printFault,
+  printProblem,
+} from "./helper.js";
 
 const OPTIONS = {
   agent: {
@@ -49,7 +57,10 @@ export class ContextCommand implements Command<typeof OPTIONS> {
       const faultyFileCount = Object.keys(mainContextAnswer.data.files).length;
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `Nothing was counted: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\nRun "cw doctor" to see what is wrong with them.\n`,
+        problemText: printProblem(
+          `Nothing was counted: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`,
+          'Run "cw doctor" to see what is wrong with them.',
+        ),
       };
     }
 
@@ -68,33 +79,48 @@ export class ContextCommand implements Command<typeof OPTIONS> {
         differenceRatio === undefined
           ? "n/a"
           : `${differenceRatio > 0 ? "+" : ""}${(differenceRatio * 100).toFixed(1)}%`;
-      const loadCountLineOf = ({
+      // The counts and the kind in one column, the primitive and its globs in
+      // another; every kind as wide as the widest, so the primitives of both
+      // parts start in one column.
+      const countKindWidth = Math.max(0, ...[...sessionLoads, ...fileLoads].map(({ data: { kind } }) => kind.length));
+      const loadCountRowOf = ({
         data: { tokens, estimatedTokens, differenceRatio, kind, id, globs },
-      }: (typeof sessionLoads)[number]) =>
-        [
-          `  ${estimatedTokens.toLocaleString("en-US").padStart(9)}  ${tokens.toLocaleString("en-US").padStart(9)}  ${formatDifferenceRatio(differenceRatio).padStart(10)}  ${kind.padEnd(8)} ${id}`,
-          ...(globs === undefined ? [] : [`  ${globs.join(", ")}`]),
-        ].join("");
+      }: (typeof sessionLoads)[number]): AnswerRow => [
+        `${estimatedTokens.toLocaleString("en-US").padStart(9)}  ${tokens.toLocaleString("en-US").padStart(9)}  ${formatDifferenceRatio(differenceRatio).padStart(10)}  ${kind.padEnd(countKindWidth)}`,
+        `${formatMention(id)}${globs === undefined ? "" : `  ${globs.join(", ")}`}`,
+      ];
       const accuracyLimitText = `${Math.round(accuracyLimit * 100)}% EVAL-SC-002 allows`;
       return {
         exitCode: EXIT_OK,
         resultText: [
-          `${agent} opens a session with, estimated and counted exactly by ${agent}:`,
-          `  ${"estimated".padStart(9)}  ${"exact".padStart(9)}  ${"difference".padStart(10)}  primitive`,
-          ...sessionLoads.map(loadCountLineOf),
-          `  ${estimatedTotalTokens.toLocaleString("en-US").padStart(9)}  ${totalTokens.toLocaleString("en-US").padStart(9)}  ${formatDifferenceRatio(totalDifferenceRatio).padStart(10)}  in all`,
-          ...(isPastAccuracyLimit ? [] : [`Within the ${accuracyLimitText}.`]),
+          formatHeading(`${agent} opens a session with, estimated and counted exactly by ${agent}:`),
+          ...layAnswerRows([
+            [`${"estimated".padStart(9)}  ${"exact".padStart(9)}  ${"difference".padStart(10)}`, "primitive"],
+            ...sessionLoads.map(loadCountRowOf),
+            [
+              `${estimatedTotalTokens.toLocaleString("en-US").padStart(9)}  ${totalTokens.toLocaleString("en-US").padStart(9)}  ${formatDifferenceRatio(totalDifferenceRatio).padStart(10)}`,
+              "in all",
+            ],
+          ]),
+          ...(isPastAccuracyLimit ? [] : [formatStatusLine("good", `Within the ${accuracyLimitText}.`)]),
           ...(fileLoads.length === 0
             ? []
-            : ["", "Loaded when a file it names is touched, not in the total:", ...fileLoads.map(loadCountLineOf)]),
+            : [
+                "",
+                formatHeading("Loaded when a file it names is touched, not in the total:"),
+                ...layAnswerRows(fileLoads.map(loadCountRowOf)),
+              ]),
           "",
         ].join("\n"),
         ...(isPastAccuracyLimit
           ? {
-              problemText:
+              problemText: printProblem(
                 totalDifferenceRatio === undefined
-                  ? `The exact count is none and the estimate is not, past the ${accuracyLimitText}.\n`
-                  : `The estimate is ${Math.abs(totalDifferenceRatio * 100).toFixed(1)}% from the exact count, past the ${accuracyLimitText}.\n`,
+                  ? `The exact count is none and the estimate is not, past the ${accuracyLimitText}.`
+                  : `The estimate is ${Math.abs(totalDifferenceRatio * 100).toFixed(1)}% from the exact count, past the ${accuracyLimitText}.`,
+                undefined,
+                "todo",
+              ),
             }
           : {}),
       };
@@ -107,24 +133,36 @@ export class ContextCommand implements Command<typeof OPTIONS> {
         resultText: 'No agent is chosen, so no agent loads anything of the charter. Run "cw init" to choose one.\n',
       };
 
-    const loadLineOf = ({
+    // The tokens and the kind in one column, the primitive and its globs in
+    // another; every kind as wide as the widest, so the primitives of both
+    // parts start in one column.
+    const kindWidth = Math.max(
+      0,
+      ...contexts.flatMap(({ data: { sessionLoads, fileLoads } }) =>
+        [...sessionLoads, ...fileLoads].map(({ data: { kind } }) => kind.length),
+      ),
+    );
+    const loadRowOf = ({
       data: { tokens, kind, id, globs },
-    }: (typeof contexts)[number]["data"]["sessionLoads"][number]) =>
-      [
-        `  ${tokens.toLocaleString("en-US").padStart(7)}  ${kind.padEnd(8)} ${id}`,
-        ...(globs === undefined ? [] : [`  ${globs.join(", ")}`]),
-      ].join("");
+    }: (typeof contexts)[number]["data"]["sessionLoads"][number]): AnswerRow => [
+      `${tokens.toLocaleString("en-US").padStart(7)}  ${kind.padEnd(kindWidth)}`,
+      `${formatMention(id)}${globs === undefined ? "" : `  ${globs.join(", ")}`}`,
+    ];
 
     return {
       exitCode: EXIT_OK,
       resultText: contexts
         .flatMap(({ data: { agent, sessionLoads, fileLoads, totalTokens } }) => [
-          `${agent} opens a session with:`,
-          ...sessionLoads.map(loadLineOf),
+          formatHeading(`${agent} opens a session with:`),
+          ...layAnswerRows(sessionLoads.map(loadRowOf)),
           `  ${totalTokens.toLocaleString("en-US")} tokens in all, estimated.`,
           ...(fileLoads.length === 0
             ? []
-            : ["", "Loaded when a file it names is touched, not in the total:", ...fileLoads.map(loadLineOf)]),
+            : [
+                "",
+                formatHeading("Loaded when a file it names is touched, not in the total:"),
+                ...layAnswerRows(fileLoads.map(loadRowOf)),
+              ]),
           "",
         ])
         .join("\n"),

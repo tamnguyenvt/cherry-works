@@ -818,7 +818,11 @@
       "title": "Read every answer of `cw` laid out, in colour at a terminal",
       "dependsOn": [
         "CORE Story 69"
-      ]
+      ],
+      "evidence": {
+        "summary": "typecheck, lint:deps, lint, build, 1065/1065 tests, specs check; cw doctor coloured at a pseudo-terminal, 0 colour codes to a file and with NO_COLOR",
+        "date": "2026-11-16"
+      }
     },
     {
       "id": "CORE Story 68",

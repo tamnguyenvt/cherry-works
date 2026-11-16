@@ -133,7 +133,11 @@ test("a touched file that matches none of the guide's globs fails, naming the gl
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(outputText, /FAIL {2}touching src\/one\.ts activates docs-tone/);
-  assert.match(outputText, /This file matches none of the globs "docs-tone" speaks about: docs\/\*\*\/\*\.md\./);
+  // The unmet message wraps beneath its own column: read as the one line it is.
+  assert.match(
+    outputText.replace(/\n {5,}/g, " "),
+    /This file matches none of the globs "docs-tone" speaks about: docs\/\*\*\/\*\.md\./,
+  );
   assert.match(outputText, /1 of 1 case failed\./);
 });
 
@@ -219,7 +223,10 @@ test("an id of the wrong kind fails saying whose rule the case asked for (CORE S
   const { code, outputText } = await run();
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(outputText, /Coming up when a file is touched is a guide's rule, and "tests" is a sensor\./);
+  assert.match(
+    outputText.replace(/\n {5,}/g, " "),
+    /Coming up when a file is touched is a guide's rule, and "tests" is a sensor\./,
+  );
 });
 
 test("a case naming an id the charter holds nothing of fails rather than passing about nothing", async () => {
@@ -265,7 +272,7 @@ test("a test file that will not read is refused, naming it, and nothing is resol
 
   assert.equal(code, EXIT_FAILURE);
   assert.equal(outputText, "");
-  assert.match(problem, /\.cw\/charter\/test\/broken\.json\n {2}error: This file is not JSON/);
+  assert.match(problem, /\.cw\/charter\/test\/broken\.json\n {2}✘ error: {2}This file is not JSON/);
 });
 
 test("a repository that wrote no test is told so and passes (CORE Story 3 scenario 9)", async () => {

@@ -82,6 +82,16 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
   return writing(() => cli.runCommandLine(argv));
 };
 
+/** Each row of an answer under its heading, read as the one line it is —
+ *  its value no longer wrapped beneath its own column — and its label and
+ *  value two spaces apart, the way a pipeline reads it. */
+const rowsOf = (answerText: string) =>
+  answerText
+    .replace(/\n {5,}/g, " ")
+    .split("\n")
+    .filter((line) => /^ {2}\S/.test(line))
+    .map((line) => line.trim().replace(/ {2,}/, "  "));
+
 /** The lines the engine's own session primitives are listed by, in every
  *  repository: the counter's script, then the sensor that runs it
  *  (EVAL-FR-008). */
@@ -100,15 +110,20 @@ test("every primitive is listed, ordered by id, with what it is for", async () =
   const { code, results } = await run(charter);
 
   assert.equal(code, EXIT_OK);
+  assert.match(results, /^Primitives\n/);
+  const openingLines = [
+    `cw-author  ${new CwAuthorSkill().headers.description}`,
+    ...sessionCounterLines,
+    "no-any  What no-any is for.",
+    "type-safety  What type-safety is for.",
+    "writing-tests  What writing-tests is for.",
+  ];
+  // What follows the description on its row is the files beneath it.
   assert.deepEqual(
-    results.split("\n").filter((line) => !line.startsWith(" ") && line !== ""),
-    [
-      `cw-author  ${new CwAuthorSkill().headers.description}`,
-      ...sessionCounterLines,
-      "no-any  What no-any is for.",
-      "type-safety  What type-safety is for.",
-      "writing-tests  What writing-tests is for.",
-    ],
+    rowsOf(results).map((row, rowIndex) =>
+      row.startsWith(`${openingLines[rowIndex]} `) ? openingLines[rowIndex] : row,
+    ),
+    openingLines,
   );
 });
 
@@ -116,16 +131,12 @@ test("the full listing opens each primitive on its id and description, with the 
   const { code, results } = await run(charter);
 
   assert.equal(code, EXIT_OK);
-  assert.ok(
-    results.includes(
-      ["no-any  What no-any is for.", "  .cw/charter/primitive/guide/no-any/index.md", "  globs: src/**/*.ts", ""].join(
-        "\n",
-      ),
-    ),
+  assert.match(
     results,
+    /^ {2}no-any {2,}What no-any is for\.\n( {4,})\.cw\/charter\/primitive\/guide\/no-any\/index\.md\n\1globs: src\/\*\*\/\*\.ts\n/m,
   );
-  assert.match(results, /^ {2}\.cw\/charter\/primitive\/guide\/no-any\/index\.md$/m);
-  assert.match(results, /^ {2}globs: src\/\*\*\/\*\.ts$/m);
+  assert.match(results, /^ {4,}\.cw\/charter\/primitive\/guide\/no-any\/index\.md$/m);
+  assert.match(results, /^ {4,}globs: src\/\*\*\/\*\.ts$/m);
   // Every other header is read from the file the line above names.
   assert.doesNotMatch(results, /tags:/);
 });
@@ -138,8 +149,8 @@ test("a listing is read off the charter, so every layer is named where it was au
     ),
   });
 
-  assert.match(results, /^ {2}\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/no-console\/index\.md$/m);
-  assert.match(results, /^ {2}\(built into cw\)\/skill\/cw-author\/index\.md$/m);
+  assert.match(results, /^ {4,}\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/no-console\/index\.md$/m);
+  assert.match(results, /^ {4,}\(built into cw\)\/skill\/cw-author\/index\.md$/m);
   assert.doesNotMatch(results, /\.cw\/out\//);
 });
 
@@ -147,17 +158,14 @@ test("--min says what an agent surveys by, and nothing else (CORE Story 3 scenar
   const { code, results } = await run(charter, ["list", "--min"]);
 
   assert.equal(code, EXIT_OK);
-  assert.deepEqual(
-    results,
-    [
-      `cw-author  ${new CwAuthorSkill().headers.description}`,
-      ...sessionCounterLines,
-      "no-any  What no-any is for.",
-      "type-safety  What type-safety is for.",
-      "writing-tests  What writing-tests is for.",
-      "",
-    ].join("\n"),
-  );
+  assert.match(results, /^Primitives\n {2}\S/);
+  assert.deepEqual(rowsOf(results), [
+    `cw-author  ${new CwAuthorSkill().headers.description}`,
+    ...sessionCounterLines,
+    "no-any  What no-any is for.",
+    "type-safety  What type-safety is for.",
+    "writing-tests  What writing-tests is for.",
+  ]);
 });
 
 test("no listing carries a body", async () => {
@@ -170,7 +178,7 @@ test("--kind narrows the listing to that kind (CORE Story 3 scenario 10, FR-028,
   const { code, results } = await run(charter, ["list", "--kind", "guide", "--min"]);
 
   assert.equal(code, EXIT_OK);
-  assert.deepEqual(results, "no-any  What no-any is for.\n");
+  assert.deepEqual(results, "Primitives\n  no-any  What no-any is for.\n");
 });
 
 test("a kind the charter holds nothing of lists nothing, and says so", async () => {
@@ -205,22 +213,18 @@ test("a repository that authored nothing is listed what the engine brings (FR-01
   const { code, results } = await run({}, ["list", "--min"]);
 
   assert.equal(code, EXIT_OK);
-  assert.equal(
-    results,
-    [`cw-author  ${new CwAuthorSkill().headers.description}`, ...sessionCounterLines, ""].join("\n"),
-  );
+  assert.match(results, /^Primitives\n {2}\S/);
+  assert.deepEqual(rowsOf(results), [`cw-author  ${new CwAuthorSkill().headers.description}`, ...sessionCounterLines]);
 });
 
 test("cw kinds says every kind and when each comes up, in a repository that authored none of them (CORE Story 11 scenario 2)", async () => {
   const { code, results } = await run({}, ["kinds"]);
 
   assert.equal(code, EXIT_OK);
+  assert.match(results, /^Kinds\n/);
   assert.deepEqual(
-    results
-      .trim()
-      .split("\n")
-      .map((line) => line.split("  ")[0]),
+    rowsOf(results).map((row) => row.split("  ")[0]),
     [...Primitives.kinds],
   );
-  assert.match(results, new RegExp(`guide {2}${GuidePrimitive.activatesWhen.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  assert.ok(rowsOf(results).includes(`guide  ${GuidePrimitive.activatesWhen}`));
 });

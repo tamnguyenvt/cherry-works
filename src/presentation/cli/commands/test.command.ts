@@ -1,6 +1,6 @@
 import { charterPath } from "#module/charter/module.js";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
-import { printFault, printFaultsByFile } from "./helper.js";
+import { formatStatusLine, layAnswerRows, printFault, printFaultsByFile, printProblem } from "./helper.js";
 
 /**
  * `cw test`: put every situation this repository wrote down to its charter, and
@@ -29,7 +29,10 @@ export class TestCommand implements Command {
     // nothing was resolved, and what has to change is named under its own path
     // (SC-003).
     if (testRunReportDTO.type === "FaultsByFile")
-      return { exitCode: EXIT_FAILURE, problemText: `Nothing was resolved.\n\n${printFaultsByFile(testRunReportDTO)}` };
+      return {
+        exitCode: EXIT_FAILURE,
+        problemText: `${printProblem("Nothing was resolved.")}\n${printFaultsByFile(testRunReportDTO)}`,
+      };
 
     const testCaseReports = testRunReportDTO.data.testCaseReports;
 
@@ -49,19 +52,19 @@ export class TestCommand implements Command {
         // expected, and under a failing one why it did not (FR-048). A case is
         // named by what it puts rather than by a title its author also had to
         // write, so a failing line already says what broke.
-        ...testCaseReports.flatMap((testCaseReport) => [
-          `  ${testCaseReport.data.passed ? "pass" : "FAIL"}  ${testCaseReport.data.situation}`,
-          ...(testCaseReport.data.unmet === undefined
-            ? []
-            : [
-                `          ${testCaseReport.data.unmet.data.message}`,
-                `          ${testCaseReport.data.unmet.data.fix}`,
-              ]),
-        ]),
+        ...layAnswerRows(
+          testCaseReports.map(({ data: { passed: hasPassed, situation, unmet: unmetFault } }) => [
+            hasPassed ? formatStatusLine("good", "pass") : formatStatusLine("fault", "FAIL"),
+            [situation, ...(unmetFault === undefined ? [] : [unmetFault.data.message, unmetFault.data.fix])],
+          ]),
+        ),
         "",
         failedTestCaseReports.length === 0
-          ? `${testCaseReports.length} case${testCaseReports.length === 1 ? "" : "s"} passed.`
-          : `${failedTestCaseReports.length} of ${testCaseReports.length} case${testCaseReports.length === 1 ? "" : "s"} failed.`,
+          ? formatStatusLine("good", `${testCaseReports.length} case${testCaseReports.length === 1 ? "" : "s"} passed.`)
+          : formatStatusLine(
+              "fault",
+              `${failedTestCaseReports.length} of ${testCaseReports.length} case${testCaseReports.length === 1 ? "" : "s"} failed.`,
+            ),
         "",
       ].join("\n"),
     };

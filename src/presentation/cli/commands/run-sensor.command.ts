@@ -7,7 +7,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { printRunFault } from "./helper.js";
 
 const OPTIONS = {
   agent: {
@@ -51,7 +51,7 @@ export class RunSensorCommand implements Command<typeof OPTIONS> {
     // With no agent named, only the sensors kept for no agent run (CORE-FR-234).
     const sensorRunOutcomeDTO = await charterRuntimeApp.runSensors(signal ?? "", eventText, namedAgentName);
     if (sensorRunOutcomeDTO.type === "Fault")
-      return { exitCode: EXIT_FAILURE, problemText: printFault(sensorRunOutcomeDTO) };
+      return { exitCode: EXIT_FAILURE, problemText: printRunFault(sensorRunOutcomeDTO) };
     const { data: sensorRunOutcome } = sensorRunOutcomeDTO;
     return {
       exitCode: sensorRunOutcome.exitCode,

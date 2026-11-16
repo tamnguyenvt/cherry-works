@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { stripVTControlCharacters } from "node:util";
 import type { FaultDTOs } from "#module/shared/module.js";
 import type { EngineApps } from "./command.interface.js";
 
@@ -35,16 +36,108 @@ export function parseKVParams(
   for (const typedParam of typedParams) {
     const separatorIndex = typedParam.indexOf("=");
     if (separatorIndex <= 0)
-      return `"--${paramName} ${typedParam}" names nothing to put a value under.\n  Type each one as --${paramName} name=value, once per name.\n`;
+      return printProblem(
+        `"--${paramName} ${typedParam}" names nothing to put a value under.`,
+        `Type each one as --${paramName} name=value, once per name.`,
+      );
     const paramKey = typedParam.slice(0, separatorIndex);
     valuesByParamKey[paramKey] = [...(valuesByParamKey[paramKey] ?? []), typedParam.slice(separatorIndex + 1)];
   }
   return valuesByParamKey;
 }
 
+/** What a status asks of the developer: nothing, a step to take, or a fault to
+ *  fix (CORE-FR-238). */
+export type Standing = "good" | "todo" | "fault";
+
+/** Each status by its mark, told apart with no colour at all (CORE-FR-238). */
+const MARK_BY_STANDING = { good: "✔", todo: "⚠", fault: "✘" } as const;
+
+/** The terminal's colour of each status, and of what an answer sets apart:
+ *  a heading, and an id or a path among the words around it. */
+const SGR_CODE_BY_STANDING = { good: "32", todo: "33", fault: "31" } as const;
+const HEADING_SGR_CODE = "1";
+const MENTION_SGR_CODE = "36";
+
+/** How wide an answer is laid out where no terminal says how wide: a file or
+ *  another command reads the same lines on every run. */
+const ANSWER_WIDTH = 80;
+
+/** One label and its value, laid out in two aligned columns; a value of
+ *  several lines is each of them, under its own column. */
+export type AnswerRow = readonly [label: string, value: string | readonly string[]];
+
+/** Text in one style, kept through any styled text inside it: a mark in a
+ *  heading ends its own colour, and the heading goes on bold after it. */
+const formatColouredText = (text: string, sgrCode: string) =>
+  `\x1b[${sgrCode}m${text.replaceAll("\x1b[0m", `\x1b[0m\x1b[${sgrCode}m`)}\x1b[0m`;
+
+/** One line of an answer that is a status: its mark, in its colour, then
+ *  what it says. Where the answer goes with no colour, the command line takes
+ *  the colour off and the mark is what is left. */
+export function formatStatusLine(standing: Standing, lineText: string): string {
+  return `${formatColouredText(MARK_BY_STANDING[standing], SGR_CODE_BY_STANDING[standing])} ${lineText}`;
+}
+
+/** A heading over one part of an answer (CORE-FR-237). */
+export function formatHeading(headingText: string): string {
+  return formatColouredText(headingText, HEADING_SGR_CODE);
+}
+
+/** An id or a path, set apart from the words around it (CORE-FR-237). */
+export function formatMention(idOrPath: string): string {
+  return formatColouredText(idOrPath, MENTION_SGR_CODE);
+}
+
+/**
+ * Rows of an answer, each label and its value in one aligned column (CORE-FR-237):
+ * the labels as wide as the widest of them, every value starting where the
+ * others do, and one too long for the terminal wrapped beneath its own
+ * column, at a space, so no id or path is broken. Off a terminal it is laid
+ * out at a width of its own, the same on every run, and so where either
+ * stream is not one. Rows read one to a line,
+ * as what an agent surveys by, are not wrapped at all.
+ */
+export function layAnswerRows(answerRows: readonly AnswerRow[], indentText = "  ", isWrapped = true): string[] {
+  const countVisibleCharacters = (text: string) => stripVTControlCharacters(text).length;
+  const labelWidth = Math.max(0, ...answerRows.map(([label]) => countVisibleCharacters(label)));
+  const valueIndentText = " ".repeat(indentText.length + labelWidth + 2);
+  // An answer goes to either stream, so it is as wide as the terminal only
+  // where both are one.
+  const answerWidth =
+    process.stdout.isTTY && process.stderr.isTTY && process.stdout.columns ? process.stdout.columns : ANSWER_WIDTH;
+  const valueWidth = isWrapped ? Math.max(20, answerWidth - valueIndentText.length) : Number.POSITIVE_INFINITY;
+  return answerRows.flatMap(([label, rowValue]) => {
+    const valueLines = (typeof rowValue === "string" ? [rowValue] : rowValue)
+      .flatMap((valueText) => valueText.split("\n"))
+      .flatMap((valueLine) => {
+        const wrappedLines: string[] = [];
+        for (const valueWord of valueLine.split(" ")) {
+          const lastLine = wrappedLines.at(-1);
+          // A word wider than the column, such as a long path, stays on the
+          // line it follows: a line of its own would be as wide.
+          if (
+            lastLine !== undefined &&
+            (countVisibleCharacters(`${lastLine} ${valueWord}`) <= valueWidth ||
+              countVisibleCharacters(valueWord) > valueWidth)
+          )
+            wrappedLines[wrappedLines.length - 1] = `${lastLine} ${valueWord}`;
+          else wrappedLines.push(valueWord);
+        }
+        return wrappedLines;
+      });
+    const labelText = `${indentText}${label}${" ".repeat(labelWidth - countVisibleCharacters(label))}`;
+    return valueLines.length === 0
+      ? [labelText.trimEnd()]
+      : valueLines.map((valueLine, lineIndex) =>
+          lineIndex === 0 ? `${labelText}  ${valueLine}` : `${valueIndentText}${valueLine}`,
+        );
+  });
+}
+
 /**
  * Everything wrong with one workspace, written out for the terminal: each file,
- * and every fault under it (SC-003).
+ * and every fault and warning under it, marked (SC-003, CORE-FR-237).
  *
  * Ordered by file so two runs over one charter read the same way. What it reads
  * is what a command was answered with, each file already named from the
@@ -57,11 +150,15 @@ export function printFaultsByFile({ data: { files: faultsByFilePath } }: FaultDT
       // One fault: what is wrong, and under it the next move.
       .map((filePath) =>
         [
-          filePath,
-          ...(faultsByFilePath[filePath] ?? []).flatMap(({ data: { severity, message, fix } }) => [
-            `  ${severity}: ${message}`,
-            ...(fix ? [`         ${fix}`] : []),
-          ]),
+          formatMention(filePath),
+          // Every fault of one file in one column, the faults and warnings
+          // together.
+          ...layAnswerRows(
+            (faultsByFilePath[filePath] ?? []).map(({ data: { severity, message, fix } }) => [
+              formatStatusLine(severity === "error" ? "fault" : "todo", `${severity}:`),
+              fix ? [message, fix] : message,
+            ]),
+          ),
           "",
         ].join("\n"),
       )
@@ -70,8 +167,20 @@ export function printFaultsByFile({ data: { files: faultsByFilePath } }: FaultDT
 }
 
 /** One fault a use case answered with, written out for the terminal: what is
- *  wrong, and under it the next move. */
+ *  wrong, marked, and under it the next move. */
 export function printFault({ data: { message, fix } }: FaultDTOs.Fault): string {
+  return printProblem(message, fix);
+}
+
+/** A fault a command found itself, written out as `printFault` writes one a
+ *  use case answered with: what is wrong, marked, and the next move under it. */
+export function printProblem(message: string, fix?: string, standing: Standing = "fault"): string {
+  return `${formatStatusLine(standing, message)}\n${fix === undefined ? "" : `  ${fix}\n`}`;
+}
+
+/** One fault of a `cw run` command, written as it always was: with no mark
+ *  and no colour (CORE-FR-240). */
+export function printRunFault({ data: { message, fix } }: FaultDTOs.Fault): string {
   return `${message}\n  ${fix}\n`;
 }
 
@@ -89,7 +198,10 @@ export function printFault({ data: { message, fix } }: FaultDTOs.Fault): string 
 export async function editInEditor(cwd: string, filePath: string): Promise<string | undefined> {
   const editorCommand = process.env.VISUAL || process.env.EDITOR;
   if (!editorCommand)
-    return 'Neither $VISUAL nor $EDITOR is set, so there is no editor to open it in.\n  Set one, as in "export EDITOR=vim".\n';
+    return printProblem(
+      "Neither $VISUAL nor $EDITOR is set, so there is no editor to open it in.",
+      'Set one, as in "export EDITOR=vim".',
+    );
 
   // The file is handed over as "$1" rather than written into the command, so
   // a path with a space in it is one argument.
@@ -98,7 +210,7 @@ export async function editInEditor(cwd: string, filePath: string): Promise<strin
       .once("error", reject)
       .once("exit", resolve),
   );
-  return exitCode === 0 ? undefined : `${editorCommand} exited with ${exitCode} on ${filePath}.\n`;
+  return exitCode === 0 ? undefined : printProblem(`${editorCommand} exited with ${exitCode} on ${filePath}.`);
 }
 
 /**

@@ -413,7 +413,12 @@ test("the health check warns once the total passes the repository's ceiling, nam
 
   // A warning, as every other: said, and no question the more unwell for it.
   assert.equal(await problemCountOf(portalRoutes), await problemCountOf(underCeilingRoutes));
-  assert.match(text, /⚠ Context: {2}claude opens a session with about [\d,]+ tokens, past the ceiling of 100\./);
+  // A value wider than the terminal goes on beneath its own column: the row
+  // is read as the one line it is.
+  assert.match(
+    text.replace(/\n {5,}/g, " "),
+    /⚠ Context: {2}claude opens a session with about [\d,]+ tokens, past the ceiling of 100\./,
+  );
 });
 
 test("the health check is quiet under the 20,000 a repository setting none is held to (EVAL-FR-006, EVAL Story 1 scenario 5)", async () => {
@@ -425,7 +430,7 @@ test("the health check is quiet under the 20,000 a repository setting none is he
   );
 
   assert.match(
-    text,
+    text.replace(/\n {5,}/g, " "),
     /✔ Context: {2}good \(claude opens a session with about [\d,]+ tokens, within the ceiling of 20,000\)\./,
   );
   assert.equal(doctorOutcome.data.mainContextCeiling, 20_000);

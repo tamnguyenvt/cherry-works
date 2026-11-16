@@ -8,7 +8,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { editInEditor, printFault } from "./helper.js";
+import { editInEditor, formatHeading, formatMention, formatStatusLine, printFault, printProblem } from "./helper.js";
 
 const OPTIONS = {
   name: {
@@ -39,7 +39,10 @@ export class SuiteEditCommand implements Command<typeof OPTIONS> {
     if (!testSuitesDTO.data.testSuites.some((testSuite) => testSuite.data.name === testSuiteName))
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `${charterPath.testFolderPath}/ holds no test file called "${testSuiteName ?? ""}".\n  Run "cw suite add" to write a new one.\n`,
+        problemText: printProblem(
+          `${charterPath.testFolderPath}/ holds no test file called "${testSuiteName ?? ""}".`,
+          `Run "cw suite add" to write a new one.`,
+        ),
       };
 
     const filePath = `${charterPath.testFolderPath}/${testSuiteName}`;
@@ -48,7 +51,11 @@ export class SuiteEditCommand implements Command<typeof OPTIONS> {
 
     return {
       exitCode: EXIT_OK,
-      resultText: [`Closed ${filePath}.`, 'Run "cw test" to see how its cases come out.', ""].join("\n"),
+      resultText: [
+        formatHeading(formatStatusLine("good", `Closed ${formatMention(filePath)}.`)),
+        'Run "cw test" to see how its cases come out.',
+        "",
+      ].join("\n"),
     };
   }
 }

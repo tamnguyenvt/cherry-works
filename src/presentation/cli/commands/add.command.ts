@@ -8,7 +8,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { parseKVParams, printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, parseKVParams, printFault, printProblem } from "./helper.js";
 
 /** What `cw add` takes: which kind of primitive, what it is to be named, and
  *  what the kind requires under it.
@@ -84,7 +84,10 @@ export class AddCommand implements Command<typeof OPTIONS> {
     if (repeatedFieldName !== undefined)
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `"${repeatedFieldName}" holds one line, and was typed ${typedHeaders?.[repeatedFieldName]?.length} times.\n  Type "--header ${repeatedFieldName}=..." once.\n`,
+        problemText: printProblem(
+          `"${repeatedFieldName}" holds one line, and was typed ${typedHeaders?.[repeatedFieldName]?.length} times.`,
+          `Type "--header ${repeatedFieldName}=..." once.`,
+        ),
       };
     let headerAnswers: Record<string, string | readonly string[]>;
     if (typedHeaders !== undefined)
@@ -110,7 +113,10 @@ export class AddCommand implements Command<typeof OPTIONS> {
       if (!process.stdin.isTTY)
         return {
           exitCode: EXIT_FAILURE,
-          problemText: `A ${kind ?? ""} requires ${requiredHeaders.map((requiredHeader) => `"${requiredHeader.field}"`).join(", ")}, and nobody is at the terminal to answer.\n  Run "cw add" where you can answer, or author the file under the charter yourself.\n`,
+          problemText: printProblem(
+            `A ${kind ?? ""} requires ${requiredHeaders.map((requiredHeader) => `"${requiredHeader.field}"`).join(", ")}, and nobody is at the terminal to answer.`,
+            'Run "cw add" where you can answer, or author the file under the charter yourself.',
+          ),
         };
       const promptAnswers = await prompts(
         requiredHeaders.map(({ field, shape }) =>
@@ -129,7 +135,10 @@ export class AddCommand implements Command<typeof OPTIONS> {
       if (requiredHeaders.some((requiredHeader) => promptAnswers[requiredHeader.field] === undefined))
         return {
           exitCode: EXIT_FAILURE,
-          problemText: 'This was stopped before it had its answers, so nothing was written.\n  Run "cw add" again.\n',
+          problemText: printProblem(
+            "This was stopped before it had its answers, so nothing was written.",
+            'Run "cw add" again.',
+          ),
         };
       headerAnswers = promptAnswers;
     }
@@ -139,17 +148,19 @@ export class AddCommand implements Command<typeof OPTIONS> {
     if (primitiveDTO.type === "Faults")
       return {
         exitCode: EXIT_FAILURE,
-        problemText: primitiveDTO.data.faults.map(({ data: { message, fix } }) => `${message}\n  ${fix}\n`).join(""),
+        problemText: primitiveDTO.data.faults.map(printFault).join(""),
       };
 
     return {
       exitCode: EXIT_OK,
       resultText: [
-        `Wrote ${primitiveDTO.data.file}.`,
+        formatHeading(formatStatusLine("good", `Wrote ${formatMention(primitiveDTO.data.file)}.`)),
         // A script's author is sent to the file that runs, which was written
         // empty beside it (FR-167).
         ...(typeof primitiveDTO.data.headers.executionPath === "string"
-          ? [`Wrote ${primitiveDTO.data.headers.executionPath} beside it, the file it runs: write the script there.`]
+          ? [
+              `Wrote ${formatMention(primitiveDTO.data.headers.executionPath)} beside it, the file it runs: write the script there.`,
+            ]
           : []),
         'Write what it has to say in the body, then run "cw build".',
         "",

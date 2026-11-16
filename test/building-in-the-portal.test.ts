@@ -158,7 +158,12 @@ test("Doctor gives what cw doctor gives for the same repository: its main-contex
       await page.getByLabel("Health").waitFor();
 
       const healthText = await page.getByLabel("Health").innerText();
-      const doctorContextLines = doctorText.split("\n").filter((line) => line.includes("Context:"));
+      // A value wider than the terminal goes on beneath its own column: each
+      // row is read as the one line it is.
+      const doctorContextLines = doctorText
+        .replace(/\n {5,}/g, " ")
+        .split("\n")
+        .filter((line) => line.includes("Context:"));
       assert.equal(doctorContextLines.length, 2, doctorText);
       for (const doctorContextLine of doctorContextLines) {
         const [, agentTokensText] = /\((\w+ opens a session with about [\d,]+ tokens)/.exec(doctorContextLine) ?? [];
@@ -178,11 +183,21 @@ test("Doctor gives what cw doctor gives for the same repository: its main-contex
             ),
           ),
         );
+      // A fault's message, then its fix, each a value line beneath its marked
+      // label, either one wrapped beneath its own column: joined with a space,
+      // its lines are the message and the fix as the page shows them.
       const doctorFaultTexts = [
-        ...doctorText.matchAll(/^(\S.*)\n((?: {2}(?:error|warn): .*\n(?: {4}.*\n)*)+)/gm),
+        ...doctorText.matchAll(/^(\S.*)\n((?: {2}[✘⚠] (?:error|warn): {2}.*\n(?: {5,}\S.*\n)*)+)/gm),
       ].flatMap(([, filePath, faultLines]) =>
-        [...(faultLines ?? "").matchAll(/^ {2}(error|warn): (.*)\n {9}(.*)/gm)].map(
-          ([, severity, message, fix]) => `${filePath} ${severity}${message} ${fix}`,
+        [...(faultLines ?? "").matchAll(/^ {2}[✘⚠] (error|warn): {2}(.*)\n((?: {5,}\S.*\n)*)/gm)].map(
+          ([, severity, firstValueLine, nextValueLines]) =>
+            `${filePath} ${severity}${[
+              firstValueLine,
+              ...(nextValueLines ?? "")
+                .split("\n")
+                .filter(Boolean)
+                .map((valueLine) => valueLine.trim()),
+            ].join(" ")}`,
         ),
       );
       assert.ok(doctorFaultTexts.length >= 2, doctorText);

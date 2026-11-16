@@ -7,7 +7,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, layAnswerRows, printFault } from "./helper.js";
 
 /** What `cw kinds` takes: which kind to be told about, or nothing.
  *
@@ -50,9 +50,14 @@ export class KindsCommand implements Command<typeof OPTIONS> {
       const primitiveKinds = primitiveKindsDTO.data;
       return {
         exitCode: EXIT_OK,
-        resultText: `${Object.entries(primitiveKinds)
-          .map(([kindName, activatesWhen]) => `${kindName}  ${activatesWhen}`)
-          .join("\n")}\n`,
+        // Each kind in one column, when one of it comes up in another.
+        resultText: [
+          formatHeading("Kinds"),
+          ...layAnswerRows(
+            Object.entries(primitiveKinds).map(([kindName, activatesWhen]) => [kindName, activatesWhen]),
+          ),
+          "",
+        ].join("\n"),
       };
     }
 
@@ -68,20 +73,21 @@ export class KindsCommand implements Command<typeof OPTIONS> {
     // an author leaves out, and naming it here would be asking for what a file
     // is never refused for. The same set `cw add` asks at a terminal.
     const requiredHeaders = primitiveRequirements.headers.filter((primitiveHeader) => primitiveHeader.data.required);
-    const widestFieldLength = Math.max(...requiredHeaders.map((primitiveHeader) => primitiveHeader.data.field.length));
 
     return {
       exitCode: EXIT_OK,
       resultText: [
-        `A ${kind} requires:`,
+        formatHeading(`A ${kind} requires:`),
         // A header read from a closed set is one of those values or refused, so
         // the values are part of what it requires (FR-118).
-        ...requiredHeaders.map(
-          ({ data: { field, shape, allowedValues } }) =>
-            `  ${field.padEnd(widestFieldLength)}  ${shape}${allowedValues === undefined ? "" : `, one of ${allowedValues.join(", ")}`}`,
+        ...layAnswerRows(
+          requiredHeaders.map(({ data: { field, shape, allowedValues } }) => [
+            field,
+            `${shape}${allowedValues === undefined ? "" : `, one of ${allowedValues.join(", ")}`}`,
+          ]),
         ),
         "",
-        `Write one the way this ${kind} is written:`,
+        formatHeading(`Write one the way this ${kind} is written:`),
         primitiveRequirements.sample,
         "",
       ].join("\n"),

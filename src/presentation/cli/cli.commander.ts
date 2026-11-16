@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "node:util";
 import yargs, { type Argv } from "yargs";
 import { settingsPath } from "#module/workspace/module.js";
 import {
@@ -12,7 +13,7 @@ import {
   type Outcome,
   type WorkspaceSettings,
 } from "./commands/command.interface.js";
-import { listCommandWords, printFault, showPathsInApps } from "./commands/helper.js";
+import { listCommandWords, printFault, printFaultsByFile, printRunFault, showPathsInApps } from "./commands/helper.js";
 import { COMMANDS } from "./commands/index.js";
 
 /** The commands that write the settings, so are run where none are read yet
@@ -68,10 +69,19 @@ export class Commander {
     let exitCode = EXIT_OK;
     let isFailed = false;
 
-    const collectOutcome = (outcome: Outcome) => {
+    // An answer is written in colour only to a terminal, with NO_COLOR not
+    // set; anywhere else it is the same layout, every colour taken off. A
+    // `cw run` command's is written as it said it (CORE-FR-238, CORE-FR-240).
+    const collectOutcome = (outcome: Outcome, isLaidOut: boolean) => {
       exitCode = outcome.exitCode;
-      if (outcome.resultText) process.stdout.write(outcome.resultText);
-      if (outcome.problemText) process.stderr.write(outcome.problemText);
+      const writeAnswer = (stream: NodeJS.WriteStream, answerText: string) =>
+        stream.write(
+          !isLaidOut || (stream.isTTY === true && process.env.NO_COLOR === undefined)
+            ? answerText
+            : stripVTControlCharacters(answerText),
+        );
+      if (outcome.resultText) writeAnswer(process.stdout, outcome.resultText);
+      if (outcome.problemText) writeAnswer(process.stderr, outcome.problemText);
     };
 
     let cliParser = yargs()
@@ -211,8 +221,11 @@ export class Commander {
     cliParser: Argv,
     { command, isListed }: TypedCommand,
     typedCommandName: string,
-    collectOutcome: (outcome: Outcome) => void,
+    collectOutcome: (outcome: Outcome, isLaidOut: boolean) => void,
   ): Argv {
+    // The commands running what was built print as they always did, with no
+    // layout and no colour (CORE-FR-240).
+    const isLaidOut = listCommandWords(command.name)[0] !== RUNNING_HEAD_WORD;
     return cliParser.command({
       command: typedCommandName,
       describe: isListed ? command.summary : false,
@@ -257,18 +270,32 @@ export class Commander {
         // its settings say, since moving it is what comes before anything else.
         const charterLayoutDTO = await engineApp.charterAuthoringApp.readCharterLayout();
         if (charterLayoutDTO.type === "Fault")
-          return collectOutcome({ exitCode: EXIT_FAILURE, problemText: printFault(charterLayoutDTO) });
+          return collectOutcome(
+            {
+              exitCode: EXIT_FAILURE,
+              problemText: isLaidOut ? printFault(charterLayoutDTO) : printRunFault(charterLayoutDTO),
+            },
+            isLaidOut,
+          );
         if (workspaceSettingsDTO.type === "Fault" && !SETUP_COMMAND_NAMES.includes(command.name))
-          return collectOutcome({
-            exitCode: EXIT_FAILURE,
-            problemText: `${settingsPath.settingsFilePath}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`,
-          });
+          return collectOutcome(
+            {
+              exitCode: EXIT_FAILURE,
+              problemText: isLaidOut
+                ? printFaultsByFile({
+                    type: "FaultsByFile",
+                    data: { files: { [settingsPath.settingsFilePath]: [workspaceSettingsDTO] } },
+                  })
+                : `${settingsPath.settingsFilePath}\n  error: ${workspaceSettingsDTO.data.message}\n    ${workspaceSettingsDTO.data.fix}\n`,
+            },
+            isLaidOut,
+          );
         const context: Context = { ...commandLine, composeApplications, workspaceApp, ...engineApp, workspaceSettings };
         // The one cast in the adapter, and the reason it is here: yargs
         // parses into a bag of names, and what the command declared is what
         // says how to read it. A refusal is an outcome like any other: every
         // use case answers its faults as DTOs, so nothing is caught here.
-        collectOutcome(await command.runCommand(context, options as Options<OptionSpec>));
+        collectOutcome(await command.runCommand(context, options as Options<OptionSpec>), isLaidOut);
       },
     });
   }

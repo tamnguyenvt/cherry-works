@@ -7,7 +7,15 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault, printFaultsByFile } from "./helper.js";
+import {
+  formatHeading,
+  formatMention,
+  formatStatusLine,
+  layAnswerRows,
+  printFault,
+  printFaultsByFile,
+  printProblem,
+} from "./helper.js";
 
 /** What `cw build` takes: whether the build lands, or is only said. One flag
  *  rather than a command of its own, because what is asked for is the same
@@ -52,7 +60,7 @@ export class BuildCommand implements Command<typeof OPTIONS> {
         const faultyFileCount = Object.keys(planSummaryDTO.data.files).length;
         return {
           exitCode: EXIT_FAILURE,
-          problemText: `Nothing was previewed: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
+          problemText: `${printProblem(`Nothing was previewed: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`)}\n${printFaultsByFile(planSummaryDTO)}`,
         };
       }
 
@@ -62,21 +70,24 @@ export class BuildCommand implements Command<typeof OPTIONS> {
         deleted: deletedPaths,
         unchanged: unchangedPaths,
       } = planSummaryDTO.data;
-      const changes = [
-        ...addedPaths.map((path) => ["create", path] as const),
-        ...editedPaths.map((path) => ["update", path] as const),
-        ...deletedPaths.map((path) => ["delete", path] as const),
-        ...unchangedPaths.map((path) => ["unchanged", path] as const),
+      // A file a build would change is a step to take; one it would leave
+      // as it is, nothing.
+      const changeRows = [
+        ...addedPaths.map((path) => [formatStatusLine("todo", "create"), formatMention(path)] as const),
+        ...editedPaths.map((path) => [formatStatusLine("todo", "update"), formatMention(path)] as const),
+        ...deletedPaths.map((path) => [formatStatusLine("todo", "delete"), formatMention(path)] as const),
+        ...unchangedPaths.map((path) => [formatStatusLine("good", "unchanged"), formatMention(path)] as const),
       ];
 
       // A preview fails while anything would change, so a pipeline can gate on a
       // charter built and committed (FR-034).
       return {
-        exitCode: changes.length === unchangedPaths.length ? EXIT_OK : EXIT_FAILURE,
+        exitCode: changeRows.length === unchangedPaths.length ? EXIT_OK : EXIT_FAILURE,
         resultText: [
-          ...(planSummaryDTO.data.warnings ?? []).map((warning) => `Warning: ${warning}`),
-          ...changes.map(([change, path]) => `  ${change.padEnd("unchanged".length)}  ${path}`),
-          `${changes.length} file${changes.length === 1 ? "" : "s"}: ${addedPaths.length} create, ${editedPaths.length} update, ${deletedPaths.length} delete, ${unchangedPaths.length} unchanged.`,
+          ...(planSummaryDTO.data.warnings ?? []).map((warning) => formatStatusLine("todo", `Warning: ${warning}`)),
+          ...layAnswerRows(changeRows),
+          // The count closes the list, as a total does, rather than heading it.
+          `${changeRows.length} file${changeRows.length === 1 ? "" : "s"}: ${addedPaths.length} create, ${editedPaths.length} update, ${deletedPaths.length} delete, ${unchangedPaths.length} unchanged.`,
           "",
         ].join("\n"),
       };
@@ -89,7 +100,7 @@ export class BuildCommand implements Command<typeof OPTIONS> {
       const faultyFileCount = Object.keys(planSummaryDTO.data.files).length;
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `Nothing was built: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
+        problemText: `${printProblem(`Nothing was built: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`)}\n${printFaultsByFile(planSummaryDTO)}`,
       };
     }
 
@@ -101,9 +112,14 @@ export class BuildCommand implements Command<typeof OPTIONS> {
     return {
       exitCode: EXIT_OK,
       resultText: [
-        ...(planSummaryDTO.data.warnings ?? []).map((warning) => `Warning: ${warning}`),
-        `Built ${writtenFileCount} file${writtenFileCount === 1 ? "" : "s"}: ${addedPaths.length} added, ${editedPaths.length} changed.`,
-        ...deletedPaths.map((path) => `  deleted ${path}, whose primitive is gone`),
+        ...(planSummaryDTO.data.warnings ?? []).map((warning) => formatStatusLine("todo", `Warning: ${warning}`)),
+        formatHeading(
+          formatStatusLine(
+            "good",
+            `Built ${writtenFileCount} file${writtenFileCount === 1 ? "" : "s"}: ${addedPaths.length} added, ${editedPaths.length} changed.`,
+          ),
+        ),
+        ...layAnswerRows(deletedPaths.map((path) => ["deleted", `${formatMention(path)}, whose primitive is gone`])),
         ...mainContexts.map(
           ({ data: { agent, totalTokens } }) =>
             `${agent} opens a session with about ${totalTokens.toLocaleString("en-US")} tokens of the charter, estimated. Run "cw context" for each primitive's share.`,

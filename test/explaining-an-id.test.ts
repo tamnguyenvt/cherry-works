@@ -32,6 +32,10 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
     "",
   ].join("\n");
 
+/** An answer with every value read as the one line it is: a value wider
+ *  than the terminal goes on beneath its own column. */
+const unwrapped = (answerText: string) => answerText.replace(/\n {5,}/g, " ");
+
 /** Everything one run wrote, kept apart the way a pipeline reads it. */
 const writing = async (work: () => Promise<number>) => {
   const results: string[] = [];
@@ -92,9 +96,10 @@ test("an id is traced in one command to the file that declares it (CORE Story 1 
       "no-any  What no-any is for.",
       "  .cw/charter/primitive/guide/no-any/index.md",
       "  authored in this repository",
-      "  comes up when a touched file matches one of its `globs`, or every turn where globs are not specified",
-      "  declares tags: types",
-      "  declares globs: src/**/*.ts",
+      "  comes up when  a touched file matches one of its `globs`, or every turn where",
+      "                 globs are not specified",
+      "  declares       tags: types",
+      "  declares       globs: src/**/*.ts",
       "",
     ].join("\n"),
   );
@@ -112,9 +117,9 @@ test("an explanation says when the primitive comes up, in the words its kind say
     ["explain", "no-secrets"],
   );
 
-  const activatesWhen = /^sensor {2}(.+)$/m.exec(kinds.results)?.[1];
+  const activatesWhen = /^ {2}sensor {2,}(.+)$/m.exec(unwrapped(kinds.results))?.[1];
   assert.ok(activatesWhen);
-  assert.ok(sensor.results.split("\n").includes(`  comes up when ${activatesWhen}`));
+  assert.ok(unwrapped(sensor.results).split("\n").includes(`  comes up when  ${activatesWhen}`));
 });
 
 test("an explanation says what the primitive itself declared, so a sensor names the signal and the command it runs", async () => {
@@ -128,8 +133,8 @@ test("an explanation says what the primitive itself declared, so a sensor names 
     ["explain", "no-secrets"],
   );
 
-  assert.match(results, /^ {2}declares signal: PreToolUse$/m);
-  assert.match(results, /^ {2}declares run: pnpm test$/m);
+  assert.match(results, /^ {2}declares {2,}signal: PreToolUse$/m);
+  assert.match(results, /^ {2}declares {2,}run: pnpm test$/m);
   assert.doesNotMatch(results, /declares (id|description):/);
 });
 
@@ -170,8 +175,9 @@ test("what the engine brings is explained and listed like any other, under the l
 
   const listed = await run(charter, ["list", "--kind", "skill"]);
   assert.equal(listed.code, EXIT_OK);
-  assert.match(listed.results, /^cw-author {2}\S/m);
-  assert.match(listed.results, /^ {2}\(built into cw\)\/skill\/cw-author\/index\.md$/m);
+  assert.match(listed.results, /^Primitives\n/);
+  assert.match(listed.results, /^ {2}cw-author {2,}\S/m);
+  assert.match(listed.results, /^ {4,}\(built into cw\)\/skill\/cw-author\/index\.md$/m);
 });
 
 test("what is explained carries no body", async () => {
@@ -193,16 +199,16 @@ test("an explanation says which mixins a primitive uses and which corpus it cite
   const { code, results } = await run(related, ["explain", "no-any"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^ {2}uses mixin typed$/m);
-  assert.match(results, /^ {2}rationale why-types$/m);
+  assert.match(results, /^ {2}uses mixin {2,}typed$/m);
+  assert.match(results, /^ {2}rationale {2,}why-types$/m);
 });
 
 test("an explanation says what uses a mixin and what cites a corpus", async () => {
   const mixin = await run(related, ["explain", "typed"]);
-  assert.match(mixin.results, /^ {2}mixin of no-any$/m);
+  assert.match(mixin.results, /^ {2}mixin of {2,}no-any$/m);
 
   const corpus = await run(related, ["explain", "why-types"]);
-  assert.match(corpus.results, /^ {2}rationale of no-any$/m);
+  assert.match(corpus.results, /^ {2}rationale of {2,}no-any$/m);
 });
 
 /** One authored file with a body of its own, which is where a name is read. */
@@ -249,14 +255,14 @@ test("an explanation says which primitives name a script or a template in their 
   const script = await run(naming, ["explain", "check"]);
   assert.equal(script.code, EXIT_OK);
   assert.deepEqual(
-    script.results.split("\n").filter((line) => line.startsWith("  mentioned in ")),
-    ["  mentioned in release", "  mentioned in releasing"],
+    script.results.split("\n").flatMap((line) => /^ {2}mentioned in {2,}(\S.*)$/.exec(line)?.slice(1) ?? []),
+    ["release", "releasing"],
   );
 
   const template = await run(naming, ["explain", "note"]);
   assert.deepEqual(
-    template.results.split("\n").filter((line) => line.startsWith("  mentioned in ")),
-    ["  mentioned in check"],
+    template.results.split("\n").flatMap((line) => /^ {2}mentioned in {2,}(\S.*)$/.exec(line)?.slice(1) ?? []),
+    ["check"],
   );
 });
 
@@ -264,8 +270,8 @@ test("an explanation says which primitives name an mcp origin, in a body or amon
   const { results } = await run(naming, ["explain", "linear"]);
 
   assert.deepEqual(
-    results.split("\n").filter((line) => line.startsWith("  mentioned in ")),
-    ["  mentioned in triager", "  mentioned in triage"],
+    results.split("\n").flatMap((line) => /^ {2}mentioned in {2,}(\S.*)$/.exec(line)?.slice(1) ?? []),
+    ["triager", "triage"],
   );
 });
 
@@ -284,8 +290,8 @@ test("a script only a sensor runs is mentioned in that sensor, and is not warned
 
   const explained = await run(onlySensor, ["explain", "check"]);
   assert.deepEqual(
-    explained.results.split("\n").filter((line) => line.startsWith("  mentioned in ")),
-    ["  mentioned in check-on-stop"],
+    explained.results.split("\n").flatMap((line) => /^ {2}mentioned in {2,}(\S.*)$/.exec(line)?.slice(1) ?? []),
+    ["check-on-stop"],
   );
 
   const checked = await run(onlySensor, ["doctor"]);
@@ -305,7 +311,7 @@ test("a rationale citing a corpus the charter does not hold is named, and marked
   );
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^ {2}rationale gone \(does not resolve\)$/m);
+  assert.match(results, /^ {2}rationale {2,}⚠ gone \(does not resolve\)$/m);
 });
 
 /** One test file, written the way an author writes it, in the folder tests are
@@ -335,8 +341,8 @@ test("an explanation says which situations this repository wrote down about the 
 
   assert.equal(code, EXIT_OK);
   assert.match(
-    results,
-    /^ {2}pinned down by \.cw\/charter\/test\/activation\.json: touching src\/one\.ts activates no-any$/m,
+    unwrapped(results),
+    /^ {2}pinned down by {2,}\.cw\/charter\/test\/activation\.json: touching src\/one\.ts activates no-any$/m,
   );
   assert.doesNotMatch(results, /\.env/);
 });
@@ -345,8 +351,8 @@ test("a sensor is pinned down by the case that fires its signal", async () => {
   const { results } = await run(pinnedDown, ["explain", "no-secrets"]);
 
   assert.match(
-    results,
-    /^ {2}pinned down by \.cw\/charter\/test\/activation\.json: firing event PreToolUse runs no-secrets$/m,
+    unwrapped(results),
+    /^ {2}pinned down by {2,}\.cw\/charter\/test\/activation\.json: firing event PreToolUse runs no-secrets$/m,
   );
 });
 
@@ -367,7 +373,7 @@ test("a test file that will not read leaves the explanation standing", async () 
   );
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^ {2}pinned down by \.cw\/charter\/test\/activation\.json: /m);
+  assert.match(results, /^ {2}pinned down by {2,}\.cw\/charter\/test\/activation\.json: /m);
   assert.doesNotMatch(results, /broken\.json/);
 });
 

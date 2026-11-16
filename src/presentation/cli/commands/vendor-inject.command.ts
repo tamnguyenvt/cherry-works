@@ -7,7 +7,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatMention, formatStatusLine, printFault } from "./helper.js";
 
 const OPTIONS = {
   source: {
@@ -50,9 +50,11 @@ export class VendorInjectCommand implements Command<typeof OPTIONS> {
       exitCode: EXIT_OK,
       resultText: [
         ...vendorInstalls.flatMap(({ primitives }) =>
-          primitives.map(
-            ({ data: { kind, id, leftOutHeaders } }) =>
-              `Injected ${kind} ${id}${leftOutHeaders.length === 0 ? "" : `, leaving out ${leftOutHeaders.join(", ")}: the charter has no field for them`}.`,
+          primitives.map(({ data: { kind, id, leftOutHeaders } }) =>
+            formatStatusLine(
+              "good",
+              `Injected ${kind} ${formatMention(id)}${leftOutHeaders.length === 0 ? "" : `, leaving out ${leftOutHeaders.join(", ")}: the charter has no field for them`}.`,
+            ),
           ),
         ),
         'Run "cw build" to compile what it adds to this charter.',

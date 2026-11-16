@@ -1,5 +1,5 @@
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, formatMention, printFault } from "./helper.js";
 
 /**
  * `cw vendor list`: every folder a charter was installed as, one per line
@@ -22,6 +22,13 @@ export class VendorListCommand implements Command {
         exitCode: EXIT_OK,
         resultText: 'No vendor source is installed. Run "cw vendor add <source>" to install one.\n',
       };
-    return { exitCode: EXIT_OK, resultText: `${vendorFolderPaths.join("\n")}\n` };
+    return {
+      exitCode: EXIT_OK,
+      resultText: [
+        formatHeading("Vendors"),
+        ...vendorFolderPaths.map((folderPath) => `  ${formatMention(folderPath)}`),
+        "",
+      ].join("\n"),
+    };
   }
 }

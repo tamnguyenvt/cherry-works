@@ -344,9 +344,15 @@ test("cw mcp auth --status lists each address, its ids and whether signed in, an
   assert.equal(run.code, EXIT_OK);
   assert.equal(
     run.results,
-    [GITHUB, "  github/billing, github/web", "  not signed in", LINEAR, "  linear", "  signed in by token", ""].join(
-      "\n",
-    ),
+    [
+      GITHUB,
+      "  github/billing, github/web",
+      "  ⚠ not signed in",
+      LINEAR,
+      "  linear",
+      "  ✔ signed in by token",
+      "",
+    ].join("\n"),
   );
   assert.doesNotMatch(run.results, /lin-secret/);
   assert.equal(credentialsRepository.secretByAddress.size, 1);

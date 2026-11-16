@@ -127,7 +127,12 @@ test("a header read from a closed set carries its values, and no other header do
       );
 
   const { results } = await asking(["kinds", "sensor"]);
-  assert.match(results, new RegExp(`signal\\s+line, one of ${SensorPrimitive.signals.join(", ")}\n`));
+  // A value wider than the terminal is wrapped under its own column: read
+  // as the one line it is.
+  assert.match(
+    results.replace(/\n {5,}/g, " "),
+    new RegExp(`signal\\s+line, one of ${SensorPrimitive.signals.join(", ")}\n`),
+  );
 });
 
 test("the sample it shows is a primitive of that kind, as an author writes one (FR-001, CORE Story 11 scenario 1)", async () => {
@@ -143,7 +148,7 @@ test("an agent is shown holding an mcp origin under its tools, in the charter's 
   const { results: kindLines } = await asking(["kinds"]);
   const { results: agentKind } = await asking(["kinds", "agent"]);
 
-  assert.match(kindLines, /agent .*`\[\[<id>\]\]`.*`\[\[<id>\]\]:<tool>`/);
+  assert.match(kindLines.replace(/\n {5,}/g, " "), /agent .*`\[\[<id>\]\]`.*`\[\[<id>\]\]:<tool>`/);
   assert.match(sampleShownIn(agentKind), /tools: .*"\[\[mfbs\/billing\]\]:search_code"/);
 });
 
@@ -201,11 +206,12 @@ test("cw kinds with no kind answers as it does today: one line per kind (FR-002,
   const { code, results } = await asking(["kinds"]);
 
   assert.equal(code, EXIT_OK);
+  const [heading, ...kindRows] = results.trimEnd().split("\n");
+  assert.equal(heading, "Kinds");
+  // One row per kind, its label in the first column; a row's wrapped value
+  // goes on beneath its own column.
   assert.deepEqual(
-    results
-      .trim()
-      .split("\n")
-      .map((line) => line.split("  ")[0]),
+    kindRows.filter((line) => /^ {2}\S/.test(line)).map((line) => line.trim().split("  ")[0]),
     [...Primitives.kinds],
   );
 });

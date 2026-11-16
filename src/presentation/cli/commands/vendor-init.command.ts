@@ -9,6 +9,7 @@ import vendorReleaseSkillMd from "../templates/vendor-init-command/vendor-releas
 import vendorReleaseActionMjs from "../templates/vendor-init-command/vendor-release-action.mjs";
 import vendorReleaseActionScriptMd from "../templates/vendor-init-command/vendor-release-action.script.md";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from "./command.interface.js";
+import { formatHeading, formatStatusLine, printProblem } from "./helper.js";
 
 /** Every file `cw vendor init` writes, by its path from the folder's root, as
  *  its template holds it: README.md's `{{name}}` and `{{description}}` are
@@ -25,7 +26,7 @@ const TEMPLATE_TEXT_BY_PATH: Readonly<Record<string, string>> = {
 
 /** What a stop after `cw init` ran ends on: the folder holds what was
  *  written, so a second run would be refused as not empty. */
-const HALF_SET_UP_LINE = 'The folder is left half set up: empty it, then run "cw vendor init" again.\n';
+const HALF_SET_UP_LINE = 'The folder is left half set up: empty it, then run "cw vendor init" again.';
 
 /**
  * `cw vendor init`: set a charter repository up in an empty folder, every
@@ -57,21 +58,28 @@ export class VendorInitCommand implements Command {
     if (heldEntryNames.length > 0)
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `This folder holds ${heldEntryNames.join(", ")}, and a charter repository is set up in an empty one.\n  Run "cw vendor init" in an empty folder.\n`,
+        problemText: printProblem(
+          `This folder holds ${heldEntryNames.join(", ")}, and a charter repository is set up in an empty one.`,
+          `Run "cw vendor init" in an empty folder.`,
+        ),
       };
     const hasGit = folderEntryNames.includes(".git");
     if (hasGit && runGit(["rev-list", "-n", "1", "--all"]).stdout.trim() !== "")
       return {
         exitCode: EXIT_FAILURE,
-        problemText:
-          'This folder is a git repository with a commit, and a charter repository is set up in one with none.\n  Run "cw vendor init" in an empty folder.\n',
+        problemText: printProblem(
+          "This folder is a git repository with a commit, and a charter repository is set up in one with none.",
+          'Run "cw vendor init" in an empty folder.',
+        ),
       };
 
     if (process.stdin.isTTY !== true)
       return {
         exitCode: EXIT_FAILURE,
-        problemText:
-          'Nobody is at the terminal to answer what a charter repository is set up with.\n  Run "cw vendor init" at a terminal.\n',
+        problemText: printProblem(
+          "Nobody is at the terminal to answer what a charter repository is set up with.",
+          'Run "cw vendor init" at a terminal.',
+        ),
       };
 
     // The README's answers, before anything is written: a stop here leaves
@@ -91,7 +99,7 @@ export class VendorInitCommand implements Command {
     if (typeof repositoryName !== "string" || typeof repositoryDescription !== "string")
       return {
         exitCode: EXIT_FAILURE,
-        problemText: 'Setup was stopped before it had its answers.\n  Run "cw vendor init" again.\n',
+        problemText: printProblem("Setup was stopped before it had its answers.", 'Run "cw vendor init" again.'),
       };
     for (const [answerLabel, answerText] of [
       ["name", repositoryName.trim()],
@@ -100,7 +108,10 @@ export class VendorInitCommand implements Command {
       if (answerText === "" || answerText.includes("\n"))
         return {
           exitCode: EXIT_FAILURE,
-          problemText: `The repository's ${answerLabel} is ${answerText === "" ? "empty" : "more than one line"}, and the README is filled with one line of it.\n  Run "cw vendor init" again, giving its ${answerLabel} as one line.\n`,
+          problemText: printProblem(
+            `The repository's ${answerLabel} is ${answerText === "" ? "empty" : "more than one line"}, and the README is filled with one line of it.`,
+            `Run "cw vendor init" again, giving its ${answerLabel} as one line.`,
+          ),
         };
 
     // cw itself, run here as the developer would run it, so `cw init` asks
@@ -108,16 +119,19 @@ export class VendorInitCommand implements Command {
     const runCw = (cwArgs: readonly string[]) =>
       spawnSync(process.execPath, [...process.execArgv, process.argv[1] ?? "", ...cwArgs], { cwd, stdio: "inherit" })
         .status ?? 1;
-    if (runCw(["init"]) !== 0) return { exitCode: EXIT_FAILURE, problemText: HALF_SET_UP_LINE };
+    if (runCw(["init"]) !== 0) return { exitCode: EXIT_FAILURE, problemText: printProblem(HALF_SET_UP_LINE) };
 
     if (!hasGit) {
       const initRun = runGit(["init", "--quiet"]);
       if (initRun.isMissing)
-        return { exitCode: EXIT_FAILURE, problemText: `git is not installed here: install it.\n${HALF_SET_UP_LINE}` };
+        return {
+          exitCode: EXIT_FAILURE,
+          problemText: printProblem("git is not installed here: install it.", HALF_SET_UP_LINE),
+        };
       if (initRun.status !== 0 || runGit(["symbolic-ref", "HEAD", "refs/heads/main"]).status !== 0)
         return {
           exitCode: EXIT_FAILURE,
-          problemText: `git could not make this folder a repository.\n${HALF_SET_UP_LINE}`,
+          problemText: printProblem("git could not make this folder a repository.", HALF_SET_UP_LINE),
         };
     }
 
@@ -131,12 +145,14 @@ export class VendorInitCommand implements Command {
           .replaceAll("{{description}}", repositoryDescription.trim()),
       );
     }
-    if (runCw(["build"]) !== 0) return { exitCode: EXIT_FAILURE, problemText: HALF_SET_UP_LINE };
+    if (runCw(["build"]) !== 0) return { exitCode: EXIT_FAILURE, problemText: printProblem(HALF_SET_UP_LINE) };
 
     return {
       exitCode: EXIT_OK,
       resultText: [
-        `Set up ${repositoryName.trim()} as a charter repository, with nothing committed.`,
+        formatHeading(
+          formatStatusLine("good", `Set up ${repositoryName.trim()} as a charter repository, with nothing committed.`),
+        ),
         'Set each charter up under charters/<name>/ with "cw init" there, commit, push, then ask your agent "/vendor-release" at the root.',
         "",
       ].join("\n"),

@@ -15,13 +15,13 @@
     {
       "args": "init --agent claude",
       "status": 0,
-      "stdout": "Set up this repository under a charter.\nAgents chosen: claude.\nBuilt 13 files: 13 added, 0 changed.\nAuthor your first rule under .cw/charter/primitive/guide/, or ask your agent to write one, then run \"cw build\".\n",
+      "stdout": "✔ Set up this repository under a charter.\nAgents chosen:  claude.\n✔ Built 13 files: 13 added, 0 changed.\nAuthor your first rule under .cw/charter/primitive/guide/, or ask your agent to write one, then run \"cw build\".\n",
       "stderr": ""
     },
     {
       "args": "kinds",
       "status": 0,
-      "stdout": "guide  a touched file matches one of its `globs`, or every turn where globs are not specified\nsensor  the `signal` it names is raised, and the harness runs what it says to `run`\nskill  one of its `triggers` matches what is being asked\nplaybook  one of its `triggers` matches; the body is a sequence of skills\nagent  it is spawned by id, holding the `tools` it lists and nothing else — an mcp origin as `[[<id>]]`, or one of its tools as `[[<id>]]:<tool>`\nposture  always, wherever the agent can be told what to `allow` and what to `deny`\ncorpus  a primitive's `rationale` cites it — the reasoning, read when someone asks why\nmixin  never on its own: its body is lent to the primitives that pull it in\nmcp  a primitive's body names it as `[[<id>]]` — an mcp origin outside the repository, reached through `cw run mcp`\nscript  a primitive names it as `[[<id>]]`, or a sensor runs it — its assets, copied to `$CW_OUT/script/<id>/`, of which its `executionPath` names the one to run\ntemplate  a primitive names it as `[[<id>]]` — a file the agent fills or copies, written as its body\n",
+      "stdout": "Kinds\n  guide     a touched file matches one of its `globs`, or every turn where globs\n            are not specified\n  sensor    the `signal` it names is raised, and the harness runs what it says\n            to `run`\n  skill     one of its `triggers` matches what is being asked\n  playbook  one of its `triggers` matches; the body is a sequence of skills\n  agent     it is spawned by id, holding the `tools` it lists and nothing else —\n            an mcp origin as `[[<id>]]`, or one of its tools as\n            `[[<id>]]:<tool>`\n  posture   always, wherever the agent can be told what to `allow` and what to\n            `deny`\n  corpus    a primitive's `rationale` cites it — the reasoning, read when\n            someone asks why\n  mixin     never on its own: its body is lent to the primitives that pull it in\n  mcp       a primitive's body names it as `[[<id>]]` — an mcp origin outside\n            the repository, reached through `cw run mcp`\n  script    a primitive names it as `[[<id>]]`, or a sensor runs it — its\n            assets, copied to `$CW_OUT/script/<id>/`, of which its\n            `executionPath` names the one to run\n  template  a primitive names it as `[[<id>]]` — a file the agent fills or\n            copies, written as its body\n",
       "stderr": ""
     },
     {
@@ -33,73 +33,73 @@
     {
       "args": "add guide plain-words --header description=Write in plain words. --header globs=src/**/*.ts",
       "status": 0,
-      "stdout": "Wrote .cw/charter/primitive/guide/plain-words/index.md.\nWrite what it has to say in the body, then run \"cw build\".\n",
+      "stdout": "✔ Wrote .cw/charter/primitive/guide/plain-words/index.md.\nWrite what it has to say in the body, then run \"cw build\".\n",
       "stderr": ""
     },
     {
       "args": "add skill ask-first --header description=Ask before guessing. --header triggers=ask first",
       "status": 0,
-      "stdout": "Wrote .cw/charter/primitive/skill/ask-first/index.md.\nWrite what it has to say in the body, then run \"cw build\".\n",
+      "stdout": "✔ Wrote .cw/charter/primitive/skill/ask-first/index.md.\nWrite what it has to say in the body, then run \"cw build\".\n",
       "stderr": ""
     },
     {
       "args": "list",
       "status": 0,
-      "stdout": "ask-first  Ask before guessing.\n  .cw/charter/primitive/skill/ask-first/index.md\ncw-author  Author a new primitive of this repository's charter, asking cw what its kind requires.\n  (built into cw)/skill/cw-author/index.md\ncw-session-tokens-counter  Count the session's tokens when the agent stops, keep them on this machine, and say so at every mark.\n  (built into cw)/script/cw-session-tokens-counter/index.md\ncw-session-tokens-counter-on-stop  Count the session's tokens each time the agent stops.\n  (built into cw)/sensor/cw-session-tokens-counter-on-stop/index.md\nplain-words  Write in plain words.\n  .cw/charter/primitive/guide/plain-words/index.md\n  globs: src/**/*.ts\n",
+      "stdout": "Primitives\n  ask-first                          Ask before guessing.\n                                     .cw/charter/primitive/skill/ask-first/index.md\n  cw-author                          Author a new primitive of this repository's\n                                     charter, asking cw what its kind requires.\n                                     (built into cw)/skill/cw-author/index.md\n  cw-session-tokens-counter          Count the session's tokens when the agent\n                                     stops, keep them on this machine, and say\n                                     so at every mark.\n                                     (built into cw)/script/cw-session-tokens-counter/index.md\n  cw-session-tokens-counter-on-stop  Count the session's tokens each time the\n                                     agent stops.\n                                     (built into cw)/sensor/cw-session-tokens-counter-on-stop/index.md\n  plain-words                        Write in plain words.\n                                     .cw/charter/primitive/guide/plain-words/index.md\n                                     globs: src/**/*.ts\n",
       "stderr": ""
     },
     {
       "args": "explain plain-words",
       "status": 0,
-      "stdout": "plain-words  Write in plain words.\n  .cw/charter/primitive/guide/plain-words/index.md\n  authored in this repository\n  comes up when a touched file matches one of its `globs`, or every turn where globs are not specified\n  declares globs: src/**/*.ts\n",
+      "stdout": "plain-words  Write in plain words.\n  .cw/charter/primitive/guide/plain-words/index.md\n  authored in this repository\n  comes up when  a touched file matches one of its `globs`, or every turn where\n                 globs are not specified\n  declares       globs: src/**/*.ts\n",
       "stderr": ""
     },
     {
       "args": "edit plain-words",
       "status": 0,
-      "stdout": "Closed .cw/charter/primitive/guide/plain-words/index.md.\nRun \"cw doctor\" to see that the charter still holds, then \"cw build\".\n",
+      "stdout": "✔ Closed .cw/charter/primitive/guide/plain-words/index.md.\nRun \"cw doctor\" to see that the charter still holds, then \"cw build\".\n",
       "stderr": ""
     },
     {
       "args": "suite add",
       "status": 0,
-      "stdout": "Wrote .cw/charter/test/untitled-1.json.\nRun \"cw suite edit untitled-1.json\" to write its cases, then \"cw test\".\n",
+      "stdout": "✔ Wrote .cw/charter/test/untitled-1.json.\nRun \"cw suite edit untitled-1.json\" to write its cases, then \"cw test\".\n",
       "stderr": ""
     },
     {
       "args": "suite edit untitled-1.json",
       "status": 0,
-      "stdout": "Closed .cw/charter/test/untitled-1.json.\nRun \"cw test\" to see how its cases come out.\n",
+      "stdout": "✔ Closed .cw/charter/test/untitled-1.json.\nRun \"cw test\" to see how its cases come out.\n",
       "stderr": ""
     },
     {
       "args": "test",
       "status": 1,
-      "stdout": "  FAIL  touching src/one.ts activates no-any\n          This charter holds no primitive called \"no-any\".\n          Author it, or correct the name. \"cw list --min\" says every id this charter does hold.\n\n1 of 1 case failed.\n",
+      "stdout": "  ✘ FAIL  touching src/one.ts activates no-any\n          This charter holds no primitive called \"no-any\".\n          Author it, or correct the name. \"cw list --min\" says every id this\n          charter does hold.\n\n✘ 1 of 1 case failed.\n",
       "stderr": ""
     },
     {
       "args": "suite remove untitled-1.json",
       "status": 0,
-      "stdout": "Removed .cw/charter/test/untitled-1.json.\n",
+      "stdout": "✔ Removed .cw/charter/test/untitled-1.json.\n",
       "stderr": ""
     },
     {
       "args": "build",
       "status": 0,
-      "stdout": "Built 5 files: 4 added, 1 changed.\nclaude opens a session with about 1,104 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
+      "stdout": "✔ Built 5 files: 4 added, 1 changed.\nclaude opens a session with about 1,104 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
       "stderr": ""
     },
     {
       "args": "doctor",
       "status": 0,
-      "stdout": "cw <version>\n✔ Agents:   claude.\n⚠ Charter:  good, with 1 warning.\n✔ Built:    up to date.\n✔ Context:  good (claude opens a session with about 1,104 tokens, within the ceiling of 20,000).\n\n.cw/charter/primitive/guide/plain-words/index.md\n  warn: No test case names \"plain-words\", so nothing notices when it stops coming up where it should.\n         Add a case to a test file of the charter: { \"do\": { \"touchFile\": \"<a file it speaks about>\" }, \"expect\": { \"activate\": \"plain-words\" } }.\n\nNothing to fix.\n",
+      "stdout": "cw <version>\n✔ Agents:   claude.\n⚠ Charter:  good, with 1 warning.\n✔ Built:    up to date.\n✔ Context:  good (claude opens a session with about 1,104 tokens, within the\n            ceiling of 20,000).\n\nTo fix, by file\n.cw/charter/primitive/guide/plain-words/index.md\n  ⚠ warn:  No test case names \"plain-words\", so nothing notices when it stops\n           coming up where it should.\n           Add a case to a test file of the charter: { \"do\": { \"touchFile\": \"<a\n           file it speaks about>\" }, \"expect\": { \"activate\": \"plain-words\" } }.\n\n✔ Nothing to fix.\n",
       "stderr": ""
     },
     {
       "args": "eval",
       "status": 0,
-      "stdout": "Agent: claude\n  pass    1,200 tokens  ask first, then plan\n          Log: <work>/repo/.cw/log/eval/runs/run-<random>/case.json\n\n1 case passed, 1,200 tokens in all.\n",
+      "stdout": "Agent: claude\n  ✔ pass    1,200 tokens  ask first, then plan\n          Log: <work>/repo/.cw/log/eval/runs/run-<random>/case.json\n\n✔ 1 case passed, 1,200 tokens in all.\n",
       "stderr": ""
     },
     {
@@ -117,43 +117,43 @@
     {
       "args": "eval-analyze",
       "status": 0,
-      "stdout": "PASS claude | <date>T<time>Z | 1,200 tokens\nPrompt: ask first, then plan\nLog: <work>/repo/.cw/log/eval/runs/run-<random>/case.json\nPromptfoo output: <work>/repo/.cw/log/eval/runs/run-<random>/output.json\nstdout: <work>/repo/.cw/log/eval/runs/run-<random>/stdout.log\nstderr: <work>/repo/.cw/log/eval/runs/run-<random>/stderr.log\nAgent session: not returned by provider\nSession log: not found locally\nAnswer:\nAsked first.\nTool evidence (0):\n",
+      "stdout": "✔ PASS claude | <date>T<time>Z | 1,200 tokens\nPrompt:            ask first, then plan\nLog:               <work>/repo/.cw/log/eval/runs/run-<random>/case.json\nPromptfoo output:  <work>/repo/.cw/log/eval/runs/run-<random>/output.json\nstdout:            <work>/repo/.cw/log/eval/runs/run-<random>/stdout.log\nstderr:            <work>/repo/.cw/log/eval/runs/run-<random>/stderr.log\nAgent session:     not returned by provider\nSession log:       not found locally\nAnswer:\nAsked first.\nTool evidence (0):\n",
       "stderr": ""
     },
     {
       "args": "vendor add <vendor>",
       "status": 0,
-      "stdout": "Installed <work>/vendor under .cw/charter/vendor/<work>/vendor/root.\n  skill grill-me\nRun \"cw build\" to compile what it adds to this charter.\n",
+      "stdout": "✔ Installed <work>/vendor under .cw/charter/vendor/<work>/vendor/root.\n  skill  grill-me\nRun \"cw build\" to compile what it adds to this charter.\n",
       "stderr": ""
     },
     {
       "args": "vendor list",
       "status": 0,
-      "stdout": ".cw/charter/vendor/<work>/vendor/root\n",
+      "stdout": "Vendors\n  .cw/charter/vendor/<work>/vendor/root\n",
       "stderr": ""
     },
     {
       "args": "build",
       "status": 0,
-      "stdout": "Built 3 files: 2 added, 1 changed.\nclaude opens a session with about 1,128 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
+      "stdout": "✔ Built 3 files: 2 added, 1 changed.\nclaude opens a session with about 1,128 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
       "stderr": ""
     },
     {
       "args": "vendor remove <listed vendor>",
       "status": 0,
-      "stdout": "Removed .cw/charter/vendor/<work>/vendor/root.\nRun \"cw build\" to compile this charter without it.\n",
+      "stdout": "✔ Removed .cw/charter/vendor/<work>/vendor/root.\nRun \"cw build\" to compile this charter without it.\n",
       "stderr": ""
     },
     {
       "args": "vendor inject <vendor>",
       "status": 0,
-      "stdout": "Injected skill grill-me.\nRun \"cw build\" to compile what it adds to this charter.\n",
+      "stdout": "✔ Injected skill grill-me.\nRun \"cw build\" to compile what it adds to this charter.\n",
       "stderr": ""
     },
     {
       "args": "list",
       "status": 0,
-      "stdout": "ask-first  Ask before guessing.\n  .cw/charter/primitive/skill/ask-first/index.md\ncw-author  Author a new primitive of this repository's charter, asking cw what its kind requires.\n  (built into cw)/skill/cw-author/index.md\ncw-session-tokens-counter  Count the session's tokens when the agent stops, keep them on this machine, and say so at every mark.\n  (built into cw)/script/cw-session-tokens-counter/index.md\ncw-session-tokens-counter-on-stop  Count the session's tokens each time the agent stops.\n  (built into cw)/sensor/cw-session-tokens-counter-on-stop/index.md\ngrill-me  Ask questions until the plan holds.\n  .cw/charter/primitive/skill/grill-me/index.md\nplain-words  Write in plain words.\n  .cw/charter/primitive/guide/plain-words/index.md\n  globs: src/**/*.ts\n",
+      "stdout": "Primitives\n  ask-first                          Ask before guessing.\n                                     .cw/charter/primitive/skill/ask-first/index.md\n  cw-author                          Author a new primitive of this repository's\n                                     charter, asking cw what its kind requires.\n                                     (built into cw)/skill/cw-author/index.md\n  cw-session-tokens-counter          Count the session's tokens when the agent\n                                     stops, keep them on this machine, and say\n                                     so at every mark.\n                                     (built into cw)/script/cw-session-tokens-counter/index.md\n  cw-session-tokens-counter-on-stop  Count the session's tokens each time the\n                                     agent stops.\n                                     (built into cw)/sensor/cw-session-tokens-counter-on-stop/index.md\n  grill-me                           Ask questions until the plan holds.\n                                     .cw/charter/primitive/skill/grill-me/index.md\n  plain-words                        Write in plain words.\n                                     .cw/charter/primitive/guide/plain-words/index.md\n                                     globs: src/**/*.ts\n",
       "stderr": ""
     },
     {
@@ -177,19 +177,19 @@
     {
       "args": "remove plain-words --yes",
       "status": 0,
-      "stdout": "Removed .cw/charter/primitive/guide/plain-words/index.md.\nRun \"cw doctor\" to see what still names it, then \"cw build\".\n",
+      "stdout": "✔ Removed .cw/charter/primitive/guide/plain-words/index.md.\nRun \"cw doctor\" to see what still names it, then \"cw build\".\n",
       "stderr": ""
     },
     {
       "args": "build",
       "status": 0,
-      "stdout": "Built 1 file: 0 added, 1 changed.\n  deleted .cw/out/guide/plain-words/index.md, whose primitive is gone\n  deleted .claude/rules/plain-words.md, whose primitive is gone\nclaude opens a session with about 1,128 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
+      "stdout": "✔ Built 1 file: 0 added, 1 changed.\n  deleted  .cw/out/guide/plain-words/index.md, whose primitive is gone\n  deleted  .claude/rules/plain-words.md, whose primitive is gone\nclaude opens a session with about 1,128 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
       "stderr": ""
     },
     {
       "args": "doctor",
       "status": 0,
-      "stdout": "cw <version>\n✔ Agents:   claude.\n✔ Charter:  good.\n✔ Built:    up to date.\n✔ Context:  good (claude opens a session with about 1,128 tokens, within the ceiling of 20,000).\nNothing to fix.\n",
+      "stdout": "cw <version>\n✔ Agents:   claude.\n✔ Charter:  good.\n✔ Built:    up to date.\n✔ Context:  good (claude opens a session with about 1,128 tokens, within the\n            ceiling of 20,000).\n✔ Nothing to fix.\n",
       "stderr": ""
     }
   ],

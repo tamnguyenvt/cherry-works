@@ -148,7 +148,7 @@ test("with nobody to ask, every other prompt takes its flag (CORE Story 56 scena
     agents: ["codex"],
     mainContextCeiling: 30000,
   });
-  assert.match(results, /Agents chosen: codex\./);
+  assert.match(results, /^Agents chosen: {2}codex\.$/m);
 });
 
 test("setup given an agent this engine does not compile for is refused, and keeps nothing (FR-033)", async () => {
@@ -383,6 +383,6 @@ test("setting up again at a terminal offers what the repository chose before as 
   assert.equal(code, 0);
   assert.match(results, /Which agents does this repository choose\?/, "the agent was asked at the terminal");
   assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["codex"] });
-  assert.match(results, /Agents chosen: codex\./);
+  assert.match(results, /^Agents chosen: {2}codex\.$/m);
   assert.equal(await held(files, authoredGuidePath), authoredGuideText);
 });

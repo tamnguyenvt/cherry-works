@@ -7,7 +7,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, layAnswerRows, printFault } from "./helper.js";
 
 const OPTIONS = {
   source: {
@@ -75,10 +75,17 @@ export class VendorAddCommand implements Command<typeof OPTIONS> {
       exitCode: EXIT_OK,
       resultText: [
         ...vendorInstalls.flatMap(({ folder: folderPath, primitives }) => [
-          `Installed ${source} under ${folderPath}${ref === undefined ? "" : `, pinned to ${ref}`}.`,
-          ...primitives.map(
-            ({ data: { kind, id, leftOutHeaders } }) =>
-              `  ${kind} ${id}${leftOutHeaders.length === 0 ? "" : `, leaving out ${leftOutHeaders.join(", ")}: the charter has no field for them`}`,
+          formatHeading(
+            formatStatusLine(
+              "good",
+              `Installed ${formatMention(source ?? "")} under ${formatMention(folderPath)}${ref === undefined ? "" : `, pinned to ${ref}`}.`,
+            ),
+          ),
+          ...layAnswerRows(
+            primitives.map(({ data: { kind, id, leftOutHeaders } }) => [
+              kind,
+              `${formatMention(id)}${leftOutHeaders.length === 0 ? "" : `, leaving out ${leftOutHeaders.join(", ")}: the charter has no field for them`}`,
+            ]),
           ),
         ]),
         'Run "cw build" to compile what it adds to this charter.',

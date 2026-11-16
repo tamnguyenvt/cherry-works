@@ -9,7 +9,14 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault, printFaultsByFile } from "./helper.js";
+import {
+  formatHeading,
+  formatStatusLine,
+  layAnswerRows,
+  printFault,
+  printFaultsByFile,
+  printProblem,
+} from "./helper.js";
 
 const OPTIONS = {
   agent: {
@@ -75,7 +82,10 @@ export class InitCommand implements Command<typeof OPTIONS> {
       if (keptSettingsDTO.type === "Fault")
         return {
           exitCode: EXIT_FAILURE,
-          problemText: `${settingsPath.settingsFilePath}\n  error: ${keptSettingsDTO.data.message}\n    ${keptSettingsDTO.data.fix}\n`,
+          problemText: printFaultsByFile({
+            type: "FaultsByFile",
+            data: { files: { [settingsPath.settingsFilePath]: [keptSettingsDTO] } },
+          }),
         };
       const agentsInSettings = keptSettingsDTO.data.agents;
 
@@ -88,7 +98,10 @@ export class InitCommand implements Command<typeof OPTIONS> {
         if (agentsInSettings.length === 0)
           return {
             exitCode: EXIT_FAILURE,
-            problemText: `Nobody is at the terminal to choose an agent, and this repository has none chosen yet.\n  Run "cw init --agent <name>", naming one of: ${workspaceApp.agentProviderNames.join(", ")}.\n`,
+            problemText: printProblem(
+              `Nobody is at the terminal to choose an agent, and this repository has none chosen yet.`,
+              `Run "cw init --agent <name>", naming one of: ${workspaceApp.agentProviderNames.join(", ")}.`,
+            ),
           };
         chosenAgentNames = agentsInSettings;
       } else {
@@ -112,7 +125,7 @@ export class InitCommand implements Command<typeof OPTIONS> {
         if (pickedAgentNames === undefined)
           return {
             exitCode: EXIT_FAILURE,
-            problemText: 'Setup was stopped before it had its answers.\n  Run "cw init" again.\n',
+            problemText: printProblem("Setup was stopped before it had its answers.", 'Run "cw init" again.'),
           };
         chosenAgentNames = pickedAgentNames as readonly string[];
       }
@@ -127,7 +140,10 @@ export class InitCommand implements Command<typeof OPTIONS> {
     if (charterLayoutDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(charterLayoutDTO) };
     const planSummaryDTO = await charterBuildingApp.buildCharter();
     if (planSummaryDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(planSummaryDTO) };
-    const setUpLines = ["Set up this repository under a charter.", `Agents chosen: ${chosenAgentNames.join(", ")}.`];
+    const setUpLines = [
+      formatHeading(formatStatusLine("good", "Set up this repository under a charter.")),
+      ...layAnswerRows([["Agents chosen:", `${chosenAgentNames.join(", ")}.`]], ""),
+    ];
 
     // Set up either way; a charter already here that does not hold is not
     // built, and is said in the build's own words (FR-057).
@@ -136,7 +152,7 @@ export class InitCommand implements Command<typeof OPTIONS> {
       return {
         exitCode: EXIT_FAILURE,
         resultText: [...setUpLines, ""].join("\n"),
-        problemText: `Nothing was built: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.\n\n${printFaultsByFile(planSummaryDTO)}`,
+        problemText: `${printProblem(`Nothing was built: ${faultyFileCount} file${faultyFileCount === 1 ? " has" : "s have"} errors.`)}\n${printFaultsByFile(planSummaryDTO)}`,
       };
     }
 
@@ -146,8 +162,11 @@ export class InitCommand implements Command<typeof OPTIONS> {
       exitCode: EXIT_OK,
       resultText: [
         ...setUpLines,
-        ...(planSummaryDTO.data.warnings ?? []).map((warning) => `Warning: ${warning}`),
-        `Built ${writtenFileCount} file${writtenFileCount === 1 ? "" : "s"}: ${addedPaths.length} added, ${editedPaths.length} changed.`,
+        ...(planSummaryDTO.data.warnings ?? []).map((warning) => formatStatusLine("todo", `Warning: ${warning}`)),
+        formatStatusLine(
+          "good",
+          `Built ${writtenFileCount} file${writtenFileCount === 1 ? "" : "s"}: ${addedPaths.length} added, ${editedPaths.length} changed.`,
+        ),
         'Author your first rule under .cw/charter/primitive/guide/, or ask your agent to write one, then run "cw build".',
         "",
       ].join("\n"),

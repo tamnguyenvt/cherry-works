@@ -9,7 +9,15 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault, printFaultsByFile } from "./helper.js";
+import {
+  formatHeading,
+  formatMention,
+  formatStatusLine,
+  layAnswerRows,
+  printFault,
+  printFaultsByFile,
+  printProblem,
+} from "./helper.js";
 
 const OPTIONS = {
   agent: { type: "string", describe: "Evaluate with an agent the repository chose: claude or codex" },
@@ -45,14 +53,17 @@ export class EvalCommand implements Command<typeof OPTIONS> {
           choices: chosenAgentNames.map((agentName) => ({ title: agentName, value: agentName })),
         });
         if (promptAnswer.agent === undefined)
-          return { exitCode: EXIT_FAILURE, problemText: "Evaluation cancelled. No case was run.\n" };
+          return { exitCode: EXIT_FAILURE, problemText: printProblem("Evaluation cancelled. No case was run.") };
         evaluationAgentName = promptAnswer.agent;
       }
     }
     const evalRunReportDTO = await charterRuntimeApp.evaluateCharter(evaluationAgentName);
     if (evalRunReportDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(evalRunReportDTO) };
     if (evalRunReportDTO.type === "FaultsByFile")
-      return { exitCode: EXIT_FAILURE, problemText: `No case was run.\n\n${printFaultsByFile(evalRunReportDTO)}` };
+      return {
+        exitCode: EXIT_FAILURE,
+        problemText: `${printProblem("No case was run.")}\n${printFaultsByFile(evalRunReportDTO)}`,
+      };
 
     const { evalCaseReports, totalTokens } = evalRunReportDTO.data;
     if (evalCaseReports.length === 0)
@@ -66,20 +77,28 @@ export class EvalCommand implements Command<typeof OPTIONS> {
     return {
       exitCode: failedCount === 0 ? EXIT_OK : EXIT_FAILURE,
       resultText: [
-        `Agent: ${evalRunReportDTO.data.agent}`,
-        ...evalCaseReports.flatMap(
-          ({
-            data: { passed: hasPassed, tokens: tokenCount, prompt, unmetReasons, logPath, sessionId, sessionPath },
-          }) => [
-            `  ${hasPassed ? "pass" : "FAIL"}  ${`${tokenCount.toLocaleString("en-US")} tokens`.padStart(14)}  ${prompt.split("\n")[0]}`,
-            ...unmetReasons.map((unmetReason) => `          ${unmetReason}`),
-            ...(logPath === undefined ? [] : [`          Log: ${logPath}`]),
-            ...(sessionId === undefined ? [] : [`          Agent session: ${sessionId}`]),
-            ...(sessionPath === undefined ? [] : [`          Session log: ${sessionPath}`]),
-          ],
+        formatHeading(`Agent: ${evalRunReportDTO.data.agent}`),
+        ...layAnswerRows(
+          evalCaseReports.map(
+            ({
+              data: { passed: hasPassed, tokens: tokenCount, prompt, unmetReasons, logPath, sessionId, sessionPath },
+            }) => [
+              hasPassed ? formatStatusLine("good", "pass") : formatStatusLine("fault", "FAIL"),
+              [
+                `${`${tokenCount.toLocaleString("en-US")} tokens`.padStart(14)}  ${prompt.split("\n")[0]}`,
+                ...unmetReasons,
+                ...(logPath === undefined ? [] : [`Log: ${formatMention(logPath)}`]),
+                ...(sessionId === undefined ? [] : [`Agent session: ${formatMention(sessionId)}`]),
+                ...(sessionPath === undefined ? [] : [`Session log: ${formatMention(sessionPath)}`]),
+              ],
+            ],
+          ),
         ),
         "",
-        `${failedCount === 0 ? `${evalCaseReports.length} ${casesWord} passed` : `${failedCount} of ${evalCaseReports.length} ${casesWord} failed`}, ${totalTokens.toLocaleString("en-US")} tokens in all.`,
+        formatStatusLine(
+          failedCount === 0 ? "good" : "fault",
+          `${failedCount === 0 ? `${evalCaseReports.length} ${casesWord} passed` : `${failedCount} of ${evalCaseReports.length} ${casesWord} failed`}, ${totalTokens.toLocaleString("en-US")} tokens in all.`,
+        ),
         "",
       ].join("\n"),
     };

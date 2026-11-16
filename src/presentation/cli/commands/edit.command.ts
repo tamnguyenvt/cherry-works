@@ -8,7 +8,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { editInEditor, printFault } from "./helper.js";
+import { editInEditor, formatHeading, formatMention, formatStatusLine, printFault, printProblem } from "./helper.js";
 
 /** What `cw edit` takes: the id whose file is opened. */
 const OPTIONS = {
@@ -41,7 +41,10 @@ export class EditCommand implements Command<typeof OPTIONS> {
     if (primitive.layerName === BUILTIN_LAYER_NAME)
       return {
         exitCode: EXIT_FAILURE,
-        problemText: `${primitive.id} is built into cw, and there is no file of it in this repository to edit.\n  To differ from it, run "cw add" for a primitive of your own under an id of its own.\n`,
+        problemText: printProblem(
+          `${primitive.id} is built into cw, and there is no file of it in this repository to edit.`,
+          `To differ from it, run "cw add" for a primitive of your own under an id of its own.`,
+        ),
       };
 
     const editorProblem = await editInEditor(cwd, primitive.file);
@@ -50,7 +53,7 @@ export class EditCommand implements Command<typeof OPTIONS> {
     return {
       exitCode: EXIT_OK,
       resultText: [
-        `Closed ${primitive.file}.`,
+        formatHeading(formatStatusLine("good", `Closed ${formatMention(primitive.file)}.`)),
         'Run "cw doctor" to see that the charter still holds, then "cw build".',
         "",
       ].join("\n"),

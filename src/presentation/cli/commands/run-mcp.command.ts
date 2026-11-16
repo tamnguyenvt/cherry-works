@@ -1,7 +1,7 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { startMcpServer } from "../../mcp/mcp.server.js";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { printRunFault } from "./helper.js";
 
 /**
  * `cw run mcp`: the one MCP server the agent starts, speaking over
@@ -21,7 +21,7 @@ export class RunMcpCommand implements Command {
 
   async runCommand({ charterBuildingApp, charterRuntimeApp, version }: Context): Promise<Outcome> {
     const servedToolsDTO = await charterBuildingApp.listServedTools();
-    if (servedToolsDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(servedToolsDTO) };
+    if (servedToolsDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printRunFault(servedToolsDTO) };
     for (const servingProblem of servedToolsDTO.data.problems) process.stderr.write(`${servingProblem}\n`);
 
     const transport = new StdioServerTransport();

@@ -396,7 +396,7 @@ test("adding a script says the file it runs was written too, so its author knows
 
   assert.equal(code, 0);
   assert.deepEqual(results.split("\n").slice(0, 2), [
-    "Wrote .cw/charter/primitive/script/release/check/index.md.",
+    "✔ Wrote .cw/charter/primitive/script/release/check/index.md.",
     "Wrote ./run.sh beside it, the file it runs: write the script there.",
   ]);
 });

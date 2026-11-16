@@ -7,7 +7,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, printFault } from "./helper.js";
 
 const OPTIONS = {
   name: {
@@ -38,7 +38,11 @@ export class VendorRemoveCommand implements Command<typeof OPTIONS> {
 
     return {
       exitCode: EXIT_OK,
-      resultText: [`Removed ${folderPath}.`, 'Run "cw build" to compile this charter without it.', ""].join("\n"),
+      resultText: [
+        formatHeading(formatStatusLine("good", `Removed ${formatMention(folderPath)}.`)),
+        'Run "cw build" to compile this charter without it.',
+        "",
+      ].join("\n"),
     };
   }
 }

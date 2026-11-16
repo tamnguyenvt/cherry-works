@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { stripVTControlCharacters } from "node:util";
 import { TestSuiteFactory } from "../src/module/charter/domain/models/test/test-suite.factory.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
@@ -225,8 +226,8 @@ test("cw suite add writes a new test file and says how to edit it (FR-091)", asy
 
   assert.equal(outcome.exitCode, EXIT_OK);
   assert.match(
-    outcome.resultText ?? "",
-    /Wrote \.cw\/charter\/test\/untitled-1\.json\.\nRun "cw suite edit untitled-1\.json"/,
+    stripVTControlCharacters(outcome.resultText ?? ""),
+    /^✔ Wrote \.cw\/charter\/test\/untitled-1\.json\.\nRun "cw suite edit untitled-1\.json"/,
   );
   assert.ok(await fileAt(".cw/charter/test/untitled-1.json"));
 });
@@ -237,7 +238,7 @@ test("cw suite remove deletes the test file named (FR-092)", async () => {
 
   const outcome = await new SuiteRemoveCommand().runCommand(contextOver(repoInMemory), { name: "shapes.json" });
 
-  assert.equal(outcome.resultText, "Removed .cw/charter/test/shapes.json.\n");
+  assert.equal(stripVTControlCharacters(outcome.resultText ?? ""), "✔ Removed .cw/charter/test/shapes.json.\n");
   assert.equal(await fileAt(".cw/charter/test/shapes.json"), undefined);
 });
 

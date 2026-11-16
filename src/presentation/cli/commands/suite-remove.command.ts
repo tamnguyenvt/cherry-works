@@ -8,7 +8,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { printFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, printFault } from "./helper.js";
 
 const OPTIONS = {
   name: {
@@ -34,6 +34,9 @@ export class SuiteRemoveCommand implements Command<typeof OPTIONS> {
   ): Promise<Outcome> {
     const testSuiteNameDTO = await charterAuthoringApp.removeTestSuite(testSuiteName ?? "");
     if (testSuiteNameDTO.type === "Fault") return { exitCode: EXIT_FAILURE, problemText: printFault(testSuiteNameDTO) };
-    return { exitCode: EXIT_OK, resultText: `Removed ${charterPath.testFolderPath}/${testSuiteNameDTO.data.name}.\n` };
+    return {
+      exitCode: EXIT_OK,
+      resultText: `${formatHeading(formatStatusLine("good", `Removed ${formatMention(`${charterPath.testFolderPath}/${testSuiteNameDTO.data.name}`)}.`))}\n`,
+    };
   }
 }
