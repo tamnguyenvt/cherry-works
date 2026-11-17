@@ -41,12 +41,26 @@ const bodySourceOf = async (page: Page) => {
   return source;
 };
 
+/** The list the editor opened, while it takes a choice: a list still asking
+ *  again for the key typed last is shown, and refuses one. */
+const ENABLED_LIST_SELECTOR = ".cm-tooltip-autocomplete:not(.cm-tooltip-autocomplete-disabled)";
+
+/** How long the editor takes no choice by key once its list opens, as a key
+ *  pressed while it pops up is meant for the text: CodeMirror's
+ *  `interactionDelay`, left at its default by the editor's `autocompletion`
+ *  in `src/presentation/portal/page/components/primitive-body.component.tsx`. */
+const INTERACTION_DELAY_MS = 75;
+
 /** The list the editor opened, once it holds only the entry named
  *  `onlyId`: what was typed last is listed, not a step on the way to it. */
 const narrowingTo = async (page: Page, onlyId: string) => {
-  const mentionOptions = page.locator(".cm-tooltip-autocomplete").getByRole("option");
+  // The editor may read the key typed last at the next frame, and the list
+  // answers what it has read.
+  await page.evaluate("new Promise((resolve) => requestAnimationFrame(resolve))");
+  const mentionOptions = page.locator(ENABLED_LIST_SELECTOR).getByRole("option");
   await mentionOptions.getByText(onlyId, { exact: true }).waitFor();
   await mentionOptions.nth(1).waitFor({ state: "detached" });
+  await page.waitForTimeout(INTERACTION_DELAY_MS);
 };
 
 /** The list the editor opened: each entry as its id, its kind and its
@@ -106,9 +120,13 @@ test("typing on narrows the list to what holds the text in its id or description
     );
 
     await page.keyboard.type("-nowhere-at-all");
+    // Pressed once the editor has read the key typed last, its list asks no
+    // more, and it takes a choice by key, as `narrowingTo` waits for an id.
+    await page.evaluate("new Promise((resolve) => requestAnimationFrame(resolve))");
     await assert.doesNotReject(
-      page.locator(".cm-tooltip-autocomplete").getByText("Nothing in the charter matches.").waitFor(),
+      page.locator(ENABLED_LIST_SELECTOR).getByText("Nothing in the charter matches.").waitFor(),
     );
+    await page.waitForTimeout(INTERACTION_DELAY_MS);
 
     // Choosing that line closes the list, as Escape does.
     await page.keyboard.press("Enter");
@@ -139,6 +157,21 @@ test("a primitive chosen by keyboard or by pointer is written as [[<id>]], and b
       builtGuideMarkdown,
       /Read \[lint-clean\]\([^)]*lint-clean\/index\.md\) and \[check\]\([^)]*check\/index\.md\)/,
     );
+  });
+});
+
+test("Enter once the list is narrowed chooses the mention, even typed while the list still shows what an earlier key narrowed it to (CORE Story 70 scenario 3, FR-246)", async () => {
+  await inTheBrowser(charter, async (page) => {
+    const source = await bodySourceOf(page);
+    // `[[lint-` already narrows the list to lint-clean, so the key after it
+    // leaves the list showing just that while it asks again.
+    await page.keyboard.type(" Read [[lint-");
+    await narrowingTo(page, "lint-clean");
+    await page.keyboard.type("c");
+    await narrowingTo(page, "lint-clean");
+    await page.keyboard.press("Enter");
+
+    assert.match(await source.innerText(), /Read \[\[lint-clean\]\]$/);
   });
 });
 
