@@ -75,6 +75,14 @@ export type AnswerRow = readonly [label: string, value: string | readonly string
 const formatColouredText = (text: string, sgrCode: string) =>
   `\x1b[${sgrCode}m${text.replaceAll("\x1b[0m", `\x1b[0m\x1b[${sgrCode}m`)}\x1b[0m`;
 
+/** Text laid out by a command, written to one stream: in colour only where
+ *  that stream is a terminal and `NO_COLOR` is not set (CORE-FR-238). */
+export function writeLaidOutText(stream: NodeJS.WriteStream, laidOutText: string): void {
+  stream.write(
+    stream.isTTY === true && process.env.NO_COLOR === undefined ? laidOutText : stripVTControlCharacters(laidOutText),
+  );
+}
+
 /** One line of an answer that is a status: its mark, in its colour, then
  *  what it says. Where the answer goes with no colour, the command line takes
  *  the colour off and the mark is what is left. */
@@ -98,18 +106,22 @@ export function formatMention(idOrPath: string): string {
  * others do, and one too long for the terminal wrapped beneath its own
  * column, at a space, so no id or path is broken. Off a terminal it is laid
  * out at a width of its own, the same on every run, and so where either
- * stream is not one. Rows read one to a line,
- * as what an agent surveys by, are not wrapped at all.
+ * stream is not one. Rows read one to a line, as what an agent surveys by,
+ * are laid out at an endless width, and the help at the width of its own.
  */
-export function layAnswerRows(answerRows: readonly AnswerRow[], indentText = "  ", isWrapped = true): string[] {
+export function layAnswerRows(
+  answerRows: readonly AnswerRow[],
+  indentText = "  ",
+  // An answer goes to either stream, so it is as wide as the terminal only
+  // where both are one.
+  answerWidth = process.stdout.isTTY && process.stderr.isTTY && process.stdout.columns
+    ? process.stdout.columns
+    : ANSWER_WIDTH,
+): string[] {
   const countVisibleCharacters = (text: string) => stripVTControlCharacters(text).length;
   const labelWidth = Math.max(0, ...answerRows.map(([label]) => countVisibleCharacters(label)));
   const valueIndentText = " ".repeat(indentText.length + labelWidth + 2);
-  // An answer goes to either stream, so it is as wide as the terminal only
-  // where both are one.
-  const answerWidth =
-    process.stdout.isTTY && process.stderr.isTTY && process.stdout.columns ? process.stdout.columns : ANSWER_WIDTH;
-  const valueWidth = isWrapped ? Math.max(20, answerWidth - valueIndentText.length) : Number.POSITIVE_INFINITY;
+  const valueWidth = Math.max(20, answerWidth - valueIndentText.length);
   return answerRows.flatMap(([label, rowValue]) => {
     const valueLines = (typeof rowValue === "string" ? [rowValue] : rowValue)
       .flatMap((valueText) => valueText.split("\n"))

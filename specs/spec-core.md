@@ -54,7 +54,7 @@ A single charter covering design, planning and implementation at once has to be 
 
 ### Session 2026-10-22
 
-- Q: What does `cw sensor run <signal>` do with a signal the charter does not know? → A: Nothing of its own: an agent is given the command only by a build, which refuses an unknown signal, and it reads the last compiled output, which a failed build leaves as it was ([CORE-FR-176](#core-fr-176)).
+- Q: What does `cw sensor run <signal>` (now `cw run sensor`) do with a signal the charter does not know? → A: Nothing of its own: an agent is given the command only by a build, which refuses an unknown signal, and it reads the last compiled output, which a failed build leaves as it was ([CORE-FR-176](#core-fr-176)).
 
 ### Session 2026-10-26
 
@@ -81,7 +81,7 @@ A single charter covering design, planning and implementation at once has to be 
 
 - Q: Does `cw list` print each primitive on one line, as [CORE-FR-028](#core-fr-028) said, or its file and the files it applies to on lines of their own beneath it? → A: On lines of their own beneath it, as it does: a description and a path on one line read badly; [CORE-FR-028](#core-fr-028) and [CORE Story 3](#core-story-3---trust-the-charter-and-prove-it-in-ci-priority-p3) scenario 10 are rewritten to it.
 - Q: Does the package export the workspace's folders as loose constants beside the values? → A: No: the layout of the store `cw` keeps is one value, as the output's layout is, and nothing is exported beside the values ([SDK-FR-020](spec-sdk.md#sdk-fr-020), [CORE-FR-215](#core-fr-215)).
-- Q: Which sensors does `cw sensor run` run when no agent is named? → A: Only those kept for no agent; no agent is taken by default, Claude included ([CORE-FR-234](#core-fr-234)).
+- Q: Which sensors does `cw sensor run` (now `cw run sensor`) run when no agent is named? → A: Only those kept for no agent; no agent is taken by default, Claude included ([CORE-FR-234](#core-fr-234)).
 
 ### Session 2026-11-14
 
@@ -99,7 +99,7 @@ A single charter covering design, planning and implementation at once has to be 
 
 ## User Scenarios & Testing *(mandatory)*
 
-Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, Stories 10 to 12 agent authoring, Stories 13 to 15 distribution, [CORE Story 16](#core-story-16---open-every-primitive-as-it-was-compiled-priority-p1) the charter compiled for an agent to open, Stories 17 to 20 knowledge reached through MCP, Stories 21 to 25 the files an agent runs and fills, and how a primitive, its assets and the names in it are kept, [CORE Story 26](#core-story-26---invoke-a-skill-by-its-id-alone-priority-p2) the names an agent is given, [CORE Story 27](#core-story-27---name-every-primitive-by-its-id-alone-priority-p1) the name a primitive is known by, Stories 28 to 38 skills, sensors, vendor sources and assets, Stories 39 to 43 quality cross-checks and their repairs, Stories 44 to 52 the engine as stores, projections and two parts an integrator composes, Stories 53 and 56 repairs of Story 43's pass, Story 55 the cross-check of those repairs, and Stories 57 to 66 the engine's source brought to the charter's coding rules, with Story 62 the cross-check of the first five. A story's priority ranks it among the stories of its own part of the product.
+Stories 1 to 4 are the charter and its engine, Stories 5 to 9 the portal, Stories 10 to 12 agent authoring, Stories 13 to 15 distribution, [CORE Story 16](#core-story-16---open-every-primitive-as-it-was-compiled-priority-p1) the charter compiled for an agent to open, Stories 17 to 20 knowledge reached through MCP, Stories 21 to 25 the files an agent runs and fills, and how a primitive, its assets and the names in it are kept, [CORE Story 26](#core-story-26---invoke-a-skill-by-its-id-alone-priority-p2) the names an agent is given, [CORE Story 27](#core-story-27---name-every-primitive-by-its-id-alone-priority-p1) the name a primitive is known by, Stories 28 to 38 skills, sensors, vendor sources and assets, Stories 39 to 43 quality cross-checks and their repairs, Stories 44 to 52 the engine as stores, projections and two parts an integrator composes, Stories 53 and 56 repairs of Story 43's pass, Story 55 the cross-check of those repairs, [CORE Story 57](#core-story-57---read-every-value-of-the-charters-rules-by-what-it-holds-priority-p2) the charter's rules brought to the naming rule, Stories 67 to 70 `cw`'s answers laid out and as data, its commands split into authoring and running, and the portal's mentions, and [CORE Story 71](#core-story-71---quality-cross-check-of-core-story-57-core-story-67-core-story-68-core-story-69-core-story-70-priority-p3) the cross-check of those five. A story's priority ranks it among the stories of its own part of the product.
 
 ### CORE Story 1 - Author a charter and put the agent under it (Priority: P1)
 
@@ -1296,7 +1296,7 @@ The commands that run what was built sit under one word: `cw run mcp` serves the
 **Acceptance Scenarios**:
 
 1. **Given** `cw --help`, **When** it is read, **Then** it lists the commands in two sections, authoring the charter and running it; the second holds `cw run mcp`, `cw run sensor` and `cw run portal` alone, the first every other command, and neither lists `cw mcp serve`, `cw sensor run` or `cw portal` ([CORE-FR-243](#core-fr-243), [CORE-SC-076](#core-sc-076)).
-2. **Given** `cw run mcp`, `cw run sensor <signal>` and `cw run portal`, **When** each runs, **Then** it does what [CORE-FR-152](#core-fr-152), [CORE-FR-176](#core-fr-176) and the portal's requirements say of it ([CORE-FR-243](#core-fr-243)).
+2. **Given** `cw run mcp`, `cw run sensor <signal>` and `cw run portal`, **When** each runs, **Then** it does what [CORE-FR-152](#core-fr-152), [CORE-FR-176](#core-fr-176) and [CORE-FR-105](#core-fr-105) to [CORE-FR-107](#core-fr-107) say of it ([CORE-FR-243](#core-fr-243)).
 3. **Given** `cw mcp serve`, `cw sensor run <signal>` or `cw portal`, **When** it runs, **Then** it answers with the same output and exit status as its new name, given the same flags ([CORE-FR-244](#core-fr-244)).
 4. **Given** a charter declaring sensors, **When** it is built for every agent, **Then** every agent's hooks and MCP configuration name only `cw run sensor` and `cw run mcp` ([CORE-FR-244](#core-fr-244), [CORE-FR-146](#core-fr-146), [CORE-FR-175](#core-fr-175), [CORE-SC-076](#core-sc-076)).
 5. **Given** a repository built by the release before, **When** `cw` is upgraded and the health check runs, **Then** it reports the compiled output out of date; **When** it is built again, **Then** no agent's file names an old command ([CORE-FR-244](#core-fr-244), [CORE-FR-080](#core-fr-080), [CORE-SC-076](#core-sc-076)).
@@ -1325,9 +1325,9 @@ An author writing a primitive's body in the portal types `[[`, and a list opens 
 
 ### CORE Story 71 - Quality cross-check of CORE Story 57, CORE Story 67, CORE Story 68, CORE Story 69, CORE Story 70 (Priority: P3)
 
-**Status**: Todo
+**Status**: Done
 
-The values of the charter's rules, the layout and data of `cw`'s answers, its commands split into authoring and running, and the portal's mentions are checked together before later work builds on them.
+The values of the charter's rules, the layout and data of `cw`'s answers, its commands split into authoring and running, and the portal's mentions are checked together before later work builds on them, and what the check finds is repaired here, before the pass is run again.
 
 **Why this priority**: It verifies the five stories against the whole product, not only against their own scenarios.
 
@@ -1335,7 +1335,7 @@ The values of the charter's rules, the layout and data of `cw`'s answers, its co
 
 **Acceptance Scenarios**:
 
-1. **Given** [CORE Story 57](#core-story-57---read-every-value-of-the-charters-rules-by-what-it-holds-priority-p2), [CORE Story 67](#core-story-67---read-every-answer-of-cw-laid-out-in-colour-at-a-terminal-priority-p2), [CORE Story 68](#core-story-68---read-any-answer-of-cw-as-data-with---json-priority-p2), [CORE Story 69](#core-story-69---find-authoring-and-running-apart-among-cws-commands-priority-p2) and [CORE Story 70](#core-story-70---mention-another-primitive-by-typing--in-the-portal-priority-p2) `Done`, **When** /sdd-quality runs, **Then** it checks the code and every spec against the checklist of `quality.md`, and each violation it reports becomes a story ([CORE-SC-026](#core-sc-026)).
+1. **Given** [CORE Story 57](#core-story-57---read-every-value-of-the-charters-rules-by-what-it-holds-priority-p2), [CORE Story 67](#core-story-67---read-every-answer-of-cw-laid-out-in-colour-at-a-terminal-priority-p2), [CORE Story 68](#core-story-68---read-any-answer-of-cw-as-data-with---json-priority-p2), [CORE Story 69](#core-story-69---find-authoring-and-running-apart-among-cws-commands-priority-p2) and [CORE Story 70](#core-story-70---mention-another-primitive-by-typing--in-the-portal-priority-p2) `Done`, **When** /sdd-quality runs, **Then** it checks the code and every spec against the checklist of `quality.md`, each reported violation is repaired within this story, not as a story of its own, and the pass is run again ([CORE-SC-026](#core-sc-026)).
 
 ---
 
@@ -1426,7 +1426,7 @@ The values of the charter's rules, the layout and data of `cw`'s answers, its co
 - The charter holds an error — `cw kinds` still answers, because what a kind requires is not read off the charter; `cw add` refuses as it always does ([CORE-FR-062](#core-fr-062), [CORE-FR-063](#core-fr-063)).
 - One sensor of a signal runs long or never ends — the others still run to their end and answer; the agent's one time limit for that signal's command ends it, as it ended that sensor's own hook before ([CORE-FR-176](#core-fr-176)).
 - Two sensors of a signal both exit 2 — the command exits 2 with the error output of both, in order of id ([CORE-FR-177](#core-fr-177)).
-- An agent's settings hold the hooks an earlier build wrote one per sensor — the next build writes each signal's hooks over whole, so only `cw run sensor <signal> --agent <agent>` is left under it; one for a signal no sensor names any more stays ([CORE-FR-175](#core-fr-175), [CORE-FR-039](#core-fr-039)).
+- An agent's settings hold the hooks an earlier build wrote one per sensor — the next build writes each signal's hooks over whole, so only `cw run sensor <signal> --agent <agent>` is left under it; one for a signal no sensor names any more stays, any `cw sensor run` in it written as `cw run sensor` ([CORE-FR-175](#core-fr-175), [CORE-FR-039](#core-fr-039), [CORE-FR-244](#core-fr-244)).
 - One sensor answers in the agent's structured form and another in plain text — the two are combined the way the agent combines such answers from two hooks ([CORE-FR-178](#core-fr-178)).
 
 - A skill taken whose id is already held by another layer or another source — it is installed, and the charter is refused as for any collision, naming both files, until one goes ([CORE-FR-015](#core-fr-015)).
@@ -1437,10 +1437,10 @@ The values of the charter's rules, the layout and data of `cw`'s answers, its co
 - A skills repository keeping copies of its skills for its own agents, under `.claude/skills/` or `.agents/skills/` — only those under `skills/` are skills to take, so the copies neither clash with them nor are installed ([CORE-FR-185](#core-fr-185)).
 
 - A value too long for the terminal's width — it wraps beneath its own column, never beneath its label ([CORE-FR-237](#core-fr-237)).
-- A command that reports its progress as it goes, as an evaluation does, run with `--json` — it prints nothing until the one document at its end ([CORE-FR-241](#core-fr-241)).
+- A command that reports its progress as it goes, as an evaluation does, run with `--json` — its standard output holds nothing until the one document at its end, and its progress goes to its standard error ([CORE-FR-241](#core-fr-241)).
 - An agent whose hooks a build of the release before wrote, after `cw` is upgraded and before the repository is built again — each hook runs `cw sensor run`, which answers as `cw run sensor` does ([CORE-FR-244](#core-fr-244)).
 - `[[` typed inside a code block of the body — the list opens as anywhere in the body; Escape leaves the text as typed ([CORE-FR-245](#core-fr-245), [CORE-FR-246](#core-fr-246)).
-- A charter the engine will not read, with an error in it — the portal shows its faults rather than the editor, so no list opens ([CORE-FR-115](#core-fr-115)).
+- A charter the engine will not read, with an error in it — the portal shows its faults rather than the editor, so no list opens ([CORE-FR-115](#core-fr-115), [CORE-FR-245](#core-fr-245)).
 
 ## Requirements *(mandatory)*
 
@@ -1514,7 +1514,7 @@ The values of the charter's rules, the layout and data of `cw`'s answers, its co
 - <a id="core-fr-172"></a>**CORE-FR-172**: A primitive MUST be named by its id alone, wherever it is named. Where a field holds nothing but names — `rationale`, `mixins`, a test case's expectation, a command's argument — the name MUST be the bare id. Where it sits among other text — a body, a sensor's `run`, an agent's `tools` — it MUST be written `[[<id>]]`, and only a name so written is a reference. Which kind a name refers to MUST be read off the primitive it names; where a field takes one kind, an id of another MUST be read as one nothing of that kind answers to.
 - <a id="core-fr-173"></a>**CORE-FR-173**: A `skill` and a `playbook` MAY declare `disable-user-invocation`, `true` or `false`; one that does not is `false`. Any other value MUST be an error under its file, and nothing is built.
 - <a id="core-fr-174"></a>**CORE-FR-174**: A build for an agent MUST keep every skill and playbook declaring `disable-user-invocation: true` out of the commands that agent offers its user, and MUST still give it to the agent as know-how it opens when its description matches what is asked. Every other skill and playbook MUST be offered as a command, as before. Changing the header changes what the agent is given at the next build.
-- <a id="core-fr-175"></a>**CORE-FR-175**: A build for an agent MUST give that agent, for each signal at least one sensor names, exactly one command, `cw run sensor <signal> --agent <agent>` naming that agent ([CORE-FR-234](#core-fr-234)), and write none for a signal no sensor names; one an earlier build wrote for such a signal is left as it is. A sensor's own command MUST NOT be written into the agent's settings.
+- <a id="core-fr-175"></a>**CORE-FR-175**: A build for an agent MUST give that agent, for each signal at least one sensor names, exactly one command, `cw run sensor <signal> --agent <agent>` naming that agent ([CORE-FR-234](#core-fr-234)), and write none for a signal no sensor names; one an earlier build wrote for such a signal is left as it is, but for an old name of the command, which is written as its new one ([CORE-FR-244](#core-fr-244)). A sensor's own command MUST NOT be written into the agent's settings.
 - <a id="core-fr-176"></a>**CORE-FR-176**: `cw run sensor <signal>` MUST run the command of every sensor of that signal that [CORE-FR-234](#core-fr-234) says runs, all at once, each given the standard input the command was given; one that fails or runs long MUST NOT stop the others. Given a signal no sensor names, it MUST run nothing, write nothing, and exit 0.
 - <a id="core-fr-177"></a>**CORE-FR-177**: `cw run sensor <signal>` MUST exit 2 when any of its sensors exited 2, writing the error output of each that did, in order of id; otherwise with the first other non-zero status in order of id; otherwise 0.
 - <a id="core-fr-178"></a>**CORE-FR-178**: What the sensors of one signal answer on their standard output MUST reach the agent as one answer, combined the way that agent combines the answers of several hooks on one event, read in order of id. One sensor's answer MUST NOT make another's unreadable.
@@ -1761,14 +1761,14 @@ The values of the charter's rules, the layout and data of `cw`'s answers, its co
 - <a id="core-fr-233"></a>**CORE-FR-233**: Running a signal's sensors MUST be told the agent they run for, or that none is named; the engine MUST NOT assume one, and runs for none named as [CORE-FR-234](#core-fr-234) says.
 - <a id="core-fr-234"></a>**CORE-FR-234**: `cw run sensor <signal>` with an agent named with `--agent` MUST run the sensors of that signal kept for no agent and those kept for that agent; with no agent named, it MUST run only those kept for no agent, and MUST NOT take any agent by default.
 - <a id="core-fr-237"></a>**CORE-FR-237**: Every command but `cw run mcp`, `cw run sensor` and `cw run portal` MUST lay its answer out the same way: a heading over each part of it, each label and its value in one aligned column, a value too long for the terminal's width wrapping beneath its own column, every status with its mark, ids and paths set apart from the words around them, and every fault and warning under the file that has to change.
-- <a id="core-fr-238"></a>**CORE-FR-238**: An answer MUST be in colour only where it is printed to a terminal and `NO_COLOR` is not set, and there a good, a to-do and a fault status MUST each have a colour of its own; every status MUST be told apart by its mark with no colour; anywhere else the answer MUST be laid out the same, with no colour code.
+- <a id="core-fr-238"></a>**CORE-FR-238**: An answer MUST be in colour only where it is printed to a terminal and `NO_COLOR` is not set, and there a good, a to-do and a fault status MUST each have a colour of its own; every status MUST be told apart by its mark with no colour; anywhere else the answer MUST be laid out the same, with no colour code, and where either of its standard output and standard error is not a terminal, at a width of 80 columns rather than the terminal's.
 - <a id="core-fr-239"></a>**CORE-FR-239**: Laying an answer out MUST NOT change what a command says: the same facts, faults and warnings, and the same exit status, nothing added and nothing left out.
 - <a id="core-fr-240"></a>**CORE-FR-240**: `cw run mcp`, `cw run sensor` and `cw run portal` MUST print as before, with no layout and no colour, and MUST refuse `--json`, naming the flag and running nothing.
 - <a id="core-fr-241"></a>**CORE-FR-241**: Every other command MUST take `--json`, and with it MUST print to its standard output exactly one JSON document — the answer the engine makes for the caller ([CORE-FR-223](#core-fr-223)), as it is — with no colour, no layout and nothing else.
 - <a id="core-fr-242"></a>**CORE-FR-242**: A command that fails with `--json` MUST print its faults as that document and exit with the status it exits with without the flag; with `--json` a command MUST ask nothing, and MUST answer as it does with no terminal to ask at.
 - <a id="core-fr-243"></a>**CORE-FR-243**: The commands running what was built MUST be `cw run mcp`, `cw run sensor <signal>` and `cw run portal`; `cw --help` MUST list the commands in two sections, authoring the charter, holding every other command, and running it, holding those three alone.
 - <a id="core-fr-244"></a>**CORE-FR-244**: `cw mcp serve`, `cw sensor run` and `cw portal` MUST each run as its new name does, given the same flags, with the same output and exit status, until the next major release, and the help MUST NOT list them; a build MUST write only the new names into every agent's files.
-- <a id="core-fr-245"></a>**CORE-FR-245**: In the portal, typing `[[` in a primitive's body MUST open a list of every primitive the charter holds, of every layer and kind, each shown by its id, its kind and its description, narrowed as the author types on to those whose id or description holds what was typed after `[[`, and saying so when none does; typing it anywhere but the body MUST open no list.
+- <a id="core-fr-245"></a>**CORE-FR-245**: In the portal, typing `[[` in a primitive's body MUST open a list of every primitive the charter holds, of every layer and kind, each shown by its id, its kind and its description, narrowed as the author types on to those whose id or description holds what was typed after `[[`, and saying so when none does; typing it anywhere but the body, or while the engine will not read the charter, MUST open no list.
 - <a id="core-fr-246"></a>**CORE-FR-246**: Choosing a primitive from that list, by keyboard or by pointer, MUST write `[[<id>]]` in place of `[[` and what was typed after it; Escape MUST close the list and leave the text as typed.
 
 ### Key Entities

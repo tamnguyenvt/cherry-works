@@ -2,7 +2,7 @@
 
 **Created**: 2026-10-04
 
-**Updated**: 2026-11-14
+**Updated**: 2026-11-16
 
 **Input**: User description: "Phase 008, after Uber's efficient software factory: predict how many tokens the charter loads into the agent's main context; give the tokens a session used when it stops; let `cw mcp serve` search its tools…; evaluate the charter against a real model…"
 
@@ -35,7 +35,7 @@ A charter is paid for in tokens every turn an agent works under it, and is worth
 
 ### Session 2026-10-05
 
-- Q: Does `cw mcp serve` search its tools itself? → A: No: the agent's own tool search does, which the build turns on, and the server keeps nothing between calls; an agent without a tool search of its own is sent every schema ([EVAL-FR-016](#eval-fr-016)).
+- Q: Does `cw mcp serve` (now `cw run mcp`) search its tools itself? → A: No: the agent's own tool search does, which the build turns on, and the server keeps nothing between calls; an agent without a tool search of its own is sent every schema ([EVAL-FR-016](#eval-fr-016)).
 - Q: Why does a case run in a worktree of the last commit? → A: So it never runs in the working tree someone may be writing in; what it evaluates is the charter and its cases as they stand, committed or not, built into that worktree ([EVAL-FR-021](#eval-fr-021)).
 
 ### Session 2026-11-13

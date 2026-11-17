@@ -70,7 +70,7 @@ export class EvalCommand implements Command<typeof OPTIONS> {
     if (evalCaseReports.length === 0)
       return {
         exitCode: EXIT_OK,
-        resultText: `No evaluation: ${charterPath.evalFolderPath}/ holds no case.\nWrite one as ${charterPath.evalFolderPath}/<name>.json, and run "cw eval" again.\n`,
+        resultText: `No evaluation: ${formatMention(`${charterPath.evalFolderPath}/`)} holds no case.\nWrite one as ${formatMention(`${charterPath.evalFolderPath}/<name>.json`)}, and run "cw eval" again.\n`,
         answerDTO: evalRunReportDTO,
       };
 

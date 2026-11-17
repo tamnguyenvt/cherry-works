@@ -237,6 +237,33 @@ test("cw mcp auth at a terminal asks about each address not signed in, then asks
   assert.deepEqual(await held.readFilesRecursively(repoPath), filesBefore);
 });
 
+test("cw mcp auth at a terminal sets each address, its ids and the address to open apart while it asks, in colour only where NO_COLOR is not set (CORE Story 67 scenario 1)", async () => {
+  const keptStderrIsTTY = process.stderr.isTTY;
+  const keptNoColour = process.env.NO_COLOR;
+  process.stderr.isTTY = true;
+  try {
+    delete process.env.NO_COLOR;
+    const colouredRun = await running(mcpOriginsOver().cli, ["mcp", "auth"], {
+      atTerminal: true,
+      answers: ["oauth", "lin-secret"],
+    });
+    assert.ok(colouredRun.problems.includes(`\x1b[36m${GITHUB}\x1b[0m`), colouredRun.problems);
+    assert.ok(colouredRun.problems.includes(`  \x1b[36m${GITHUB}/authorize`), colouredRun.problems);
+    assert.ok(colouredRun.problems.includes("  \x1b[36mgithub/billing\x1b[0m, \x1b[36mgithub/web\x1b[0m\n"));
+
+    process.env.NO_COLOR = "1";
+    const plainRun = await running(mcpOriginsOver().cli, ["mcp", "auth"], {
+      atTerminal: true,
+      answers: ["token", "gh-secret", "lin-secret"],
+    });
+    assert.ok(!plainRun.problems.includes("\x1b["), plainRun.problems);
+  } finally {
+    process.stderr.isTTY = keptStderrIsTTY;
+    if (keptNoColour === undefined) delete process.env.NO_COLOR;
+    else process.env.NO_COLOR = keptNoColour;
+  }
+});
+
 test("cw mcp auth at a terminal offers each way an address allows to sign in, and reads the token typed without showing it (CORE Story 18 scenario 1, CORE Story 18 scenario 5, CORE Story 55 scenario 8)", {
   timeout: 30_000,
 }, async (t) => {
@@ -307,6 +334,22 @@ test("cw mcp auth at a terminal offers each way an address allows to sign in, an
     ),
     ["gh-secret", "lin-secret"],
   );
+});
+
+test("cw mcp auth stopped at a prompt fails, keeping what was signed in before it, and no file changes", async () => {
+  const { cli, credentialsRepository, held } = mcpOriginsOver();
+  const filesBefore = await held.readFilesRecursively(repoPath);
+
+  // The way to sign in at GitHub chosen, then its token prompt stopped.
+  const run = await running(cli, ["mcp", "auth"], { atTerminal: true, answers: ["token", new Error("stopped")] });
+
+  assert.equal(run.code, EXIT_FAILURE);
+  assert.match(
+    run.problems,
+    new RegExp(`This was stopped before signing in at ${GITHUB}; what was signed in before it is kept\\.`),
+  );
+  assert.equal(credentialsRepository.secretByAddress.size, 0);
+  assert.deepEqual(await held.readFilesRecursively(repoPath), filesBefore);
 });
 
 test("cw mcp auth signs in by OAuth where chosen, printing the address to open", async () => {

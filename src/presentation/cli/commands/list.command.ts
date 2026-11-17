@@ -87,7 +87,7 @@ export class ListCommand implements Command<typeof OPTIONS> {
           ]),
           "  ",
           // What an agent surveys by is one primitive to a line (FR-012).
-          !isMin,
+          isMin ? Number.POSITIVE_INFINITY : undefined,
         ),
         "",
       ].join("\n"),

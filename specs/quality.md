@@ -33,30 +33,28 @@ failing.
 <!-- Add the checks this project needs, under either heading or one of your
 own: one line each, something a pass can find passing or failing — "Every
 endpoint checks the caller's role", "No query is built by string
-concatenation". The quality pass writes its report under `## Last pass` below
-this comment; leave that section to it. -->
+concatenation". The quality pass writes its report in the last-pass section
+below this comment; leave that section to it. -->
 
 ## Last pass
 
-**Date**: 2026-11-14
+**Date**: 2026-11-16
 
-**Cross-check story**: on request, on fix/quality-after-handoff-leftovers (the working tree over 9b0d4b8), the eighth pass since the one that graded C
+**Cross-check story**: [CORE Story 71](spec-core.md#core-story-71---quality-cross-check-of-core-story-57-core-story-67-core-story-68-core-story-69-core-story-70-priority-p3), on task/core-71-quality-cross-check (the working tree over 619fd82), the third pass
 
 **Product grade**: **A** — every item passes.
 
 ### Scope and evidence
 
-Read `spec.md`, the three specs, `plan.json`, `manifest.md`, `docs/` and the guides; checked the code and tests of every `Done` story against every item, hardest on what this branch changed. Two reviewers each pass, each claude-opus-5-5: the stories against the code, and the guides with the specs against each other. Passes 1 to 7 graded C, C, B, B, B, B and C; what each found was repaired on this branch before the next, among it one fault older than the branch: Codex kept the repository's own hooks under a signal the charter's sensors name, against [CORE-FR-039](spec-core.md#core-fr-039).
+Read `spec.md`, the three specs, `plan.json`, `manifest.md`, `docs/` and the guides; checked the code and tests of every `Done` story against every item, hardest on [CORE Story 57](spec-core.md#core-story-57---read-every-value-of-the-charters-rules-by-what-it-holds-priority-p2) (3bf0f945) and Stories 67 to 70 (`55cd8ef..619fd82`). Each pass had two reviewers, each claude-opus-5-5: the stories against the code, and the guides with the specs against each other. Pass 1 graded D, pass 2 C; what each found was repaired in this story before the next, as the assumption on cross-checks from [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) on says.
 
 | Check | First run | Second run |
 |---|---|---|
 | `pnpm typecheck` | passed | — |
-| `pnpm lint:deps` | no violation (334 modules, 1105 dependencies) | — |
-| `pnpm test` (dependency rules, Biome, builds, tests) | 1034 passed; 0 failed; 0 skipped | 1034 passed; 0 failed; 0 skipped |
-| `node --test .cw/out/script/sdd-specs/specs.test.mjs .cw/out/script/sdd-clean/clean.test.mjs`, commit signing off for the run | 82 passed; 0 failed | 82 passed; 0 failed |
+| `pnpm lint:deps` | no violation (339 modules, 1122 dependencies) | no violation |
+| `pnpm test` (dependency rules, Biome, builds, tests) | 1079 passed; 0 failed; 0 skipped | 1079 passed; 0 failed; 0 skipped |
+| `node --test .cw/out/script/sdd-specs/specs.test.mjs .cw/out/script/sdd-clean/clean.test.mjs`, commit signing off for the run | 83 passed; 0 failed | 83 passed; 0 failed |
 | `node .cw/out/script/sdd-specs/specs.mjs check` | passed | — |
-
-The vendor script tests failed 17 of 82 with commit signing on, `1Password: failed to fill whole buffer`: they commit in scratch repositories, and the machine's signing agent was locked; with signing off for the run they pass.
 
 ### Results for each checklist item
 
@@ -70,9 +68,15 @@ The vendor script tests failed 17 of 82 with commit signing on, `1Password: fail
 | Consistent | **pass** | |
 | Complete | **pass** | |
 | No conflict | **pass** | |
-| Roadmap | **pass** | `check` passes; 69 stories, all `Done`, every one with evidence |
+| Roadmap | **pass** | `check` passes; 70 stories `Done`, [CORE Story 71](spec-core.md#core-story-71---quality-cross-check-of-core-story-57-core-story-67-core-story-68-core-story-69-core-story-70-priority-p3) `In Progress` |
 | Format | **pass** | |
 
 ### Violations and proposed repairs
 
-None. Of note, not a violation: `contract/composition.d.ts` renames `EngineAdapters.mcpServers` to `mcpServerCaller` and `EngineSettings.enabledAgents` to `agents`, so the next release after 0.9.0 is a major one ([SDK-FR-015](spec-sdk.md#sdk-fr-015)).
+None left. Repaired in this story:
+
+- Pass 1, [CORE-FR-237](spec-core.md#core-fr-237): `cw init`, `cw test`, `cw eval` and `cw vendor init` printed a path in plain words; each is set apart now, each held by a test. Pass 2 found the same of the address and ids `cw mcp auth` prints while it asks, and review of that the address it asks to open; they are set apart now, written as an answer is, in colour only at a terminal with no `NO_COLOR` ([CORE-FR-238](spec-core.md#core-fr-238)).
+- Pass 1, specs: [CORE Story 71](spec-core.md#core-story-71---quality-cross-check-of-core-story-57-core-story-67-core-story-68-core-story-69-core-story-70-priority-p3) scenario 1 against the assumption on cross-checks; [CORE-FR-175](spec-core.md#core-fr-175) and its edge case against [CORE-FR-244](spec-core.md#core-fr-244); the lead of User Scenarios naming stories that do not exist. Each is written to agree.
+- Pass 1, warnings: the help wraps by `layAnswerRows`; the architecture-map guide names `rewriteDeprecatedSensorHooks`; `cw mcp auth`'s stopped-prompt fault is built in the command; two edge cases read one way and are answered by the FR they cite; [CORE Story 69](spec-core.md#core-story-69---find-authoring-and-running-apart-among-cws-commands-priority-p2) scenario 2 cites the portal's FR; the clarifications name the commands' new names; [CORE-FR-238](spec-core.md#core-fr-238) says answers off a terminal wrap at 80 columns.
+
+Of note, not a violation: `McpPrimitive.activatesWhen` in `contract/charter.d.ts` now names `cw run mcp`; no name of the contract changes, the text an integrator reads does, for the next release's notes. Globs and the header values `cw explain` declares are printed as written: they are neither ids nor paths.

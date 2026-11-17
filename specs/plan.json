@@ -844,7 +844,11 @@
         "CORE Story 68",
         "CORE Story 69",
         "CORE Story 70"
-      ]
+      ],
+      "evidence": {
+        "summary": "typecheck passed; pnpm test twice 1079 passed, 0 failed, 0 skipped; specs check passed; quality pass 3 graded A",
+        "date": "2026-11-17"
+      }
     }
   ]
 }

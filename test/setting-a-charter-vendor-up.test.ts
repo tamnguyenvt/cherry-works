@@ -162,6 +162,17 @@ test("an empty folder answered at a terminal is set up as a charter repository f
   });
 });
 
+test("at a terminal with colour, the folder each charter is set up under is set apart (CORE Story 67 scenario 1)", {
+  skip: !hasPython && "python3 makes the terminal",
+}, async () => {
+  await inWorkFolder(async (repositoryFolderPath, { NO_COLOR: _noColour, ...colouredEnv }) => {
+    const vendorInitRun = runVendorInitAtTerminal(repositoryFolderPath, colouredEnv);
+
+    assert.equal(vendorInitRun.status, 0, vendorInitRun.stdout);
+    assert.ok(vendorInitRun.stdout.includes("under \x1b[36mcharters/<name>/\x1b[0m with"), vendorInitRun.stdout);
+  });
+});
+
 test("with nobody at the terminal, it stops before asking anything, writing nothing", async () => {
   await inWorkFolder(async (repositoryFolderPath, commandEnv) => {
     const vendorInitRun = runCw(["vendor", "init"], repositoryFolderPath, commandEnv);

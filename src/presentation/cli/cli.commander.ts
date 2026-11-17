@@ -1,4 +1,3 @@
-import { stripVTControlCharacters } from "node:util";
 import yargs, { type Argv } from "yargs";
 import { Parser } from "yargs/helpers";
 import { settingsPath } from "#module/workspace/module.js";
@@ -16,6 +15,7 @@ import {
 } from "./commands/command.interface.js";
 import {
   isLaidOutCommand,
+  layAnswerRows,
   listCommandWords,
   printFault,
   printFaultsByFile,
@@ -23,6 +23,7 @@ import {
   RUNNING_HEAD_WORD,
   refuseCommand,
   showPathsInApps,
+  writeLaidOutText,
 } from "./commands/helper.js";
 import { COMMANDS } from "./commands/index.js";
 
@@ -95,11 +96,7 @@ export class Commander {
         return;
       }
       const writeAnswer = (stream: NodeJS.WriteStream, answerText: string) =>
-        stream.write(
-          !isLaidOut || (stream.isTTY === true && process.env.NO_COLOR === undefined)
-            ? answerText
-            : stripVTControlCharacters(answerText),
-        );
+        isLaidOut ? writeLaidOutText(stream, answerText) : stream.write(answerText);
       if (outcome.resultText) writeAnswer(process.stdout, outcome.resultText);
       if (outcome.problemText) writeAnswer(process.stderr, outcome.problemText);
     };
@@ -199,28 +196,18 @@ export class Commander {
           .get(AUTHORING_HEADING)
           ?.push([`cw ${headWord}`, listedCommands.map((command) => listCommandWords(command.name)[1]).join(", ")]);
     }
-    const usageWidth =
-      Math.max(...[...helpRowsBySection.values()].flat().map(([commandUsage]) => commandUsage.length)) + 2;
-    const summaryWidth = HELP_WIDTH - 2 - usageWidth;
+    // Every section's summaries start in one column, each wrapped by words
+    // into it, as yargs wraps.
+    const usageWidth = Math.max(...[...helpRowsBySection.values()].flat().map(([commandUsage]) => commandUsage.length));
     const commandSectionsText = [...helpRowsBySection]
       .map(([sectionHeading, helpRows]) =>
         [
           sectionHeading,
-          ...helpRows.map(([commandUsage, summary]) => {
-            // Each summary wrapped by words into its column, as yargs wraps.
-            const wrappedSummaryLines = summary.split(" ").reduce<string[]>((summaryLines, word) => {
-              const lastLine = summaryLines.at(-1);
-              if (lastLine !== undefined && lastLine.length + 1 + word.length <= summaryWidth)
-                summaryLines[summaryLines.length - 1] = `${lastLine} ${word}`;
-              else summaryLines.push(word);
-              return summaryLines;
-            }, []);
-            return wrappedSummaryLines
-              .map((summaryLine, lineIndex) =>
-                `  ${(lineIndex === 0 ? commandUsage : "").padEnd(usageWidth)}${summaryLine}`.trimEnd(),
-              )
-              .join("\n");
-          }),
+          ...layAnswerRows(
+            helpRows.map(([commandUsage, summary]): [string, string] => [commandUsage.padEnd(usageWidth), summary]),
+            "  ",
+            HELP_WIDTH,
+          ),
         ].join("\n"),
       )
       .map((sectionText) => `${sectionText}\n\n`)

@@ -119,9 +119,10 @@ composition root's `composition.ts` and `main.ts` keep their bare names; a value
   that port alone. The charter's `infra/helper.ts` holds a text with its
   paths under `$CW_OUT` written from where it lands (`resolveLaidText`), and a
   agent's settings and entry file written into (`mergeSettingsText`,
-  `mergeEntryFileText`). Each agent's command line, `ClaudeCli` and
-  `CodexCli`, built on `agent-cli.base.ts` (`AgentCli`), sits in
-  `runtime/infra/<agent>/`.
+  `mergeEntryFileText`), with every hook a build wrote under the old name of
+  `cw run sensor` moved to it (`rewriteDeprecatedSensorHooks`). Each agent's
+  command line, `ClaudeCli` and `CodexCli`, built on `agent-cli.base.ts`
+  (`AgentCli`), sits in `runtime/infra/<agent>/`.
 - `module/composition.ts` — `composeApplications`, handed a
   `Partial<EngineAdapters>`, every adapter the engine reaches the outside through, each
   typed by its port and each the engine's own or written anew: under

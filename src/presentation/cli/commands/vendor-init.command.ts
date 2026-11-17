@@ -9,7 +9,7 @@ import vendorReleaseSkillMd from "../templates/vendor-init-command/vendor-releas
 import vendorReleaseActionMjs from "../templates/vendor-init-command/vendor-release-action.mjs";
 import vendorReleaseActionScriptMd from "../templates/vendor-init-command/vendor-release-action.script.md";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from "./command.interface.js";
-import { formatHeading, formatStatusLine, printProblem, refuseCommand, reportFault } from "./helper.js";
+import { formatHeading, formatMention, formatStatusLine, printProblem, refuseCommand, reportFault } from "./helper.js";
 
 /** Every file `cw vendor init` writes, by its path from the folder's root, as
  *  its template holds it: README.md's `{{name}}` and `{{description}}` are
@@ -155,7 +155,7 @@ export class VendorInitCommand implements Command {
         formatHeading(
           formatStatusLine("good", `Set up ${repositoryName.trim()} as a charter repository, with nothing committed.`),
         ),
-        'Set each charter up under charters/<name>/ with "cw init" there, commit, push, then ask your agent "/vendor-release" at the root.',
+        `Set each charter up under ${formatMention("charters/<name>/")} with "cw init" there, commit, push, then ask your agent "/vendor-release" at the root.`,
         "",
       ].join("\n"),
     };

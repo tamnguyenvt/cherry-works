@@ -162,6 +162,22 @@ test("an answer has a heading over each part, each label and its value in one al
   assert.ok(colouredListText.includes(`${MENTION_CODE}.cw/charter/primitive/guide/no-any/index.md${RESET_CODE}`));
 });
 
+test("a path an answer names in its words, not in a row, is set apart as well (CORE Story 67 scenario 1)", async () => {
+  const atTerminal = { isTerminal: true, isNoColourSet: false };
+
+  const { resultText: initText } = await commandLine({}).run(["init", "--agent", "claude"], atTerminal);
+  assert.ok(initText.includes(`under ${MENTION_CODE}.cw/charter/primitive/guide/${RESET_CODE}`), initText);
+
+  const { run } = commandLine(settingsOf("claude"));
+  await run(["build"]);
+  const { resultText: testText } = await run(["test"], atTerminal);
+  assert.ok(testText.includes(`No tests: ${MENTION_CODE}.cw/charter/test/${RESET_CODE} holds no case.`), testText);
+  assert.ok(testText.includes(`Write one as ${MENTION_CODE}.cw/charter/test/<name>.json${RESET_CODE}`), testText);
+  const { resultText: evalText } = await run(["eval"], atTerminal);
+  assert.ok(evalText.includes(`No evaluation: ${MENTION_CODE}.cw/charter/eval/${RESET_CODE} holds no case.`), evalText);
+  assert.ok(evalText.includes(`Write one as ${MENTION_CODE}.cw/charter/eval/<name>.json${RESET_CODE}`), evalText);
+});
+
 test("faults and warnings in two files are each printed under the file that has to change (CORE Story 67 scenario 2)", async () => {
   const faultyFilePaths = [
     ".cw/charter/primitive/guide/broken/index.md",

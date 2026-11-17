@@ -10,7 +10,14 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, formatMention, formatStatusLine, refuseCommand, reportFault } from "./helper.js";
+import {
+  formatHeading,
+  formatMention,
+  formatStatusLine,
+  refuseCommand,
+  reportFault,
+  writeLaidOutText,
+} from "./helper.js";
 
 /** What `cw mcp auth` takes: one id to sign in again for, or whether to
  *  say where the developer is signed in and do nothing else (FR-150). */
@@ -113,7 +120,10 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
       };
 
     for (const { address, ids, auth } of unsignedStatuses) {
-      process.stderr.write(`${address}\n  ${ids.join(", ")}\n`);
+      writeLaidOutText(
+        process.stderr,
+        `${formatHeading(formatMention(address))}\n  ${ids.map(formatMention).join(", ")}\n`,
+      );
       const { method } =
         auth.length > 1
           ? await prompts({
@@ -126,16 +136,27 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
               })),
             })
           : { method: auth[0] };
-      let signInStatusDTO: CharterDTOs.SignInStatus | FaultDTOs.Fault;
+      let signInStatusDTO: CharterDTOs.SignInStatus | FaultDTOs.Fault | undefined;
       if (method === "oauth")
         signInStatusDTO = await charterAuthoringApp.signInWithOAuth(address, (authorizationUrl) =>
-          process.stderr.write(`  Open this address to sign in, then come back here:\n  ${authorizationUrl}\n`),
+          writeLaidOutText(
+            process.stderr,
+            `  Open this address to sign in, then come back here:\n  ${formatMention(authorizationUrl)}\n`,
+          ),
         );
       else if (method === "token") {
         const { token } = await prompts({ type: "invisible", name: "token", message: "Token?" });
-        if (token === undefined) return reportFault(refuseInterruptedSignIn(address));
-        signInStatusDTO = await charterAuthoringApp.signInWithToken(address, token);
-      } else return reportFault(refuseInterruptedSignIn(address));
+        if (token !== undefined) signInStatusDTO = await charterAuthoringApp.signInWithToken(address, token);
+      }
+      // A prompt left unanswered: what was signed in before it is kept.
+      if (signInStatusDTO === undefined)
+        return reportFault(
+          refuseCommand(
+            "StoppedPromptFault",
+            `This was stopped before signing in at ${address}; what was signed in before it is kept.`,
+            'Run "cw mcp auth" again.',
+          ),
+        );
       if (signInStatusDTO.type === "Fault") return reportFault(signInStatusDTO);
     }
 
@@ -144,13 +165,4 @@ export class McpAuthCommand implements Command<typeof OPTIONS> {
       resultText: `${formatStatusLine("good", `Signed in at ${unsignedStatuses.map(({ address }) => formatMention(address)).join(", ")}.`)}\n`,
     };
   }
-}
-
-/** A prompt left unanswered: what was signed in before it is kept. */
-function refuseInterruptedSignIn(address: string): FaultDTOs.Fault {
-  return refuseCommand(
-    "StoppedPromptFault",
-    `This was stopped before signing in at ${address}; what was signed in before it is kept.`,
-    'Run "cw mcp auth" again.',
-  );
 }

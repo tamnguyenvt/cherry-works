@@ -1,6 +1,13 @@
 import { charterPath } from "#module/charter/module.js";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
-import { formatStatusLine, layAnswerRows, printFaultsByFile, printProblem, reportFault } from "./helper.js";
+import {
+  formatMention,
+  formatStatusLine,
+  layAnswerRows,
+  printFaultsByFile,
+  printProblem,
+  reportFault,
+} from "./helper.js";
 
 /**
  * `cw test`: put every situation this repository wrote down to its charter, and
@@ -40,7 +47,7 @@ export class TestCommand implements Command {
     if (testCaseReports.length === 0) {
       return {
         exitCode: EXIT_OK,
-        resultText: `No tests: ${charterPath.testFolderPath}/ holds no case.\nWrite one as ${charterPath.testFolderPath}/<name>.json to pin a situation down.\n`,
+        resultText: `No tests: ${formatMention(`${charterPath.testFolderPath}/`)} holds no case.\nWrite one as ${formatMention(`${charterPath.testFolderPath}/<name>.json`)} to pin a situation down.\n`,
         answerDTO: testRunReportDTO,
       };
     }
