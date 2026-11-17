@@ -1326,6 +1326,7 @@ An author writing a primitive's body in the portal types `[[`, and a list opens 
 3. **Given** the list open, **When** the author chooses a primitive by keyboard or by pointer, **Then** `[[<id>]]` is written in place of `[[` and what was typed after it, and saved and built, it names that primitive as any mention written by hand does ([CORE-FR-246](#core-fr-246), [CORE-SC-077](#core-sc-077)).
 4. **Given** the list open, **When** the author presses Escape, **Then** it closes and the text is left as typed ([CORE-FR-246](#core-fr-246)).
 5. **Given** a header field of the form, **When** the author types `[[` in it, **Then** no list opens ([CORE-FR-245](#core-fr-245)).
+6. **Given** a primitive's body the author can edit, and a vendor's body, read only, **When** each is opened, **Then** the editable one says beneath it to type `[[` to mention another primitive, and the read-only one does not ([CORE-FR-245](#core-fr-245)).
 
 ---
 
@@ -1792,7 +1793,7 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - <a id="core-fr-242"></a>**CORE-FR-242**: A command that fails with `--json` MUST print its faults as that document and exit with the status it exits with without the flag; with `--json` a command MUST ask nothing, and MUST answer as it does with no terminal to ask at.
 - <a id="core-fr-243"></a>**CORE-FR-243**: The commands running what was built MUST be `cw run mcp`, `cw run sensor <signal>` and `cw run portal`; `cw --help` MUST list the commands in two sections, authoring the charter, holding every other command, and running it, holding those three alone.
 - <a id="core-fr-244"></a>**CORE-FR-244**: `cw mcp serve`, `cw sensor run` and `cw portal` MUST each run as its new name does, given the same flags, with the same output and exit status, until the next major release, and the help MUST NOT list them; a build MUST write only the new names into every agent's files.
-- <a id="core-fr-245"></a>**CORE-FR-245**: In the portal, typing `[[` in a primitive's body MUST open a list of every primitive the charter holds, of every layer and kind, each shown by its id, its kind and its description, narrowed as the author types on to those whose id or description holds what was typed after `[[`, and saying so when none does; typing it anywhere but the body, or while the engine will not read the charter, MUST open no list.
+- <a id="core-fr-245"></a>**CORE-FR-245**: In the portal, typing `[[` in a primitive's body MUST open a list of every primitive the charter holds, of every layer and kind, each shown by its id, its kind and its description, narrowed as the author types on to those whose id or description holds what was typed after `[[`, and saying so when none does; typing it anywhere but the body, or while the engine will not read the charter, MUST open no list; a body the author can edit MUST say beneath it that typing `[[` mentions another primitive, and a body read only MUST NOT.
 - <a id="core-fr-246"></a>**CORE-FR-246**: Choosing a primitive from that list, by keyboard or by pointer, MUST write `[[<id>]]` in place of `[[` and what was typed after it; Escape MUST close the list and leave the text as typed.
 
 ### Key Entities

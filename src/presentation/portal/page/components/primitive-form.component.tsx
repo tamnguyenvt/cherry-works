@@ -249,6 +249,8 @@ function PrimitiveEditor({
       </datalist>
 
       <PrimitiveBody body={body} onChange={setBody} primitivesAnswer={primitivesAnswer} />
+      {/* How a body points at another primitive, said where it is written (FR-245). */}
+      <p className="text-[11.5px] text-zinc-400">Type [[ to mention another primitive.</p>
 
       {faults.length > 0 && <Refusals faults={faults} />}
 

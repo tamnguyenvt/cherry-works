@@ -229,6 +229,22 @@ test("typing [[ in a header field opens no list (CORE Story 70 scenario 5, FR-24
   });
 });
 
+test("a body the author can edit says beneath it to type [[ to mention another primitive, and a vendor's read-only body does not (CORE Story 70 scenario 6, FR-245)", async () => {
+  await inTheBrowser(charter, async (page) => {
+    const mentionHint = page.getByRole("dialog").getByText("Type [[ to mention another primitive.", { exact: true });
+    await page.getByRole("button", { name: "no-any", exact: true }).click();
+    await assert.doesNotReject(mentionHint.waitFor());
+    await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
+    await page.getByRole("dialog").waitFor({ state: "detached" });
+
+    await page.getByRole("tab", { name: "Vendor" }).click();
+    await page.getByRole("button", { name: "lint-clean", exact: true }).click();
+    // Opened once it says how to differ from a vendored primitive.
+    await page.getByRole("dialog").getByRole("alert").waitFor();
+    assert.equal(await mentionHint.count(), 0);
+  });
+});
+
 test("where the engine stops reading the charter while the body is open, [[ opens no list (CORE Story 70 edge case, FR-245)", async () => {
   await inTheBrowser(charter, async (page, files) => {
     await page.getByRole("button", { name: "no-any", exact: true }).waitFor();
