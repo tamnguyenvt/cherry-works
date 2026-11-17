@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.3.0 — 2026-11-17
+
+- `cw run mcp`, `cw run sensor <signal>` and `cw run portal` replace `cw mcp serve`, `cw sensor run` and `cw portal`, which still work until the next major; run `cw build` so your agent's files use the new names.
+- `cw --help` lists the commands that author the charter apart from those that run it.
+- Every `cw` answer is laid out the same way, in colour at a terminal and without it in a file or with `NO_COLOR` set.
+- Every `cw` command except `cw run` takes `--json` and prints one JSON document, even on failure.
+- `cw list` groups primitives by kind.
+- In the portal, typing `[[` in a body lists every primitive and writes `[[<id>]]` for the one you choose.
+
 ## 1.2.0 — 2026-11-15
 
 - `cw vendor init` sets a charter vendor repository up in an empty folder: it asks the repository's name and what its charters give at the terminal, runs `cw init`, and writes a README with your answers, a `CHANGELOG.md`, a `.gitignore` leaving out what `cw build` writes, an empty `charters/`, and the `/vendor-release` skill with the script it runs. Nothing is committed.
