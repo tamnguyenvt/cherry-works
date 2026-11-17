@@ -1,6 +1,6 @@
 # Cherry Works
 
-Current version: **1.2.0**
+Current version: **1.3.0**
 
 **Your team's way of working, written once for coding agents.**
 
