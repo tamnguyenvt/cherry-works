@@ -100,6 +100,18 @@ export function formatMention(idOrPath: string): string {
   return formatColouredText(idOrPath, MENTION_SGR_CODE);
 }
 
+/** The headings of the kinds whose plural English makes otherwise than with
+ *  an `s`: `Corpora`, `MCPs`. */
+const IRREGULAR_HEADING_BY_KIND: Readonly<Record<string, string>> = { corpus: "Corpora", mcp: "MCPs" };
+
+/** The heading over one kind's primitives in a listing: the kind in the
+ *  plural, capitalised (CORE-FR-028). */
+export function formatKindHeading(kindName: string): string {
+  return formatHeading(
+    IRREGULAR_HEADING_BY_KIND[kindName] ?? `${kindName.charAt(0).toUpperCase()}${kindName.slice(1)}s`,
+  );
+}
+
 /**
  * Rows of an answer, each label and its value in one aligned column (CORE-FR-237):
  * the labels as wide as the widest of them, every value starting where the

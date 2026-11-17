@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { stripVTControlCharacters } from "node:util";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
@@ -12,6 +13,7 @@ import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-mem
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { Commander } from "../src/presentation/cli/cli.commander.js";
 import { EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
+import { formatKindHeading } from "../src/presentation/cli/commands/helper.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
 import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
@@ -92,42 +94,75 @@ const rowsOf = (answerText: string) =>
     .filter((line) => /^ {2}\S/.test(line))
     .map((line) => line.trim().replace(/ {2,}/, "  "));
 
+/** Each heading of an answer, and the rows under it read as `rowsOf` reads
+ *  them. */
+const sectionsOf = (answerText: string) =>
+  answerText
+    .split(/\n(?=\S)/)
+    .map((sectionText) => sectionText.trim())
+    .filter((sectionText) => sectionText !== "")
+    .map((sectionText) => [sectionText.split("\n")[0], rowsOf(sectionText)] as const);
+
 /** The lines the engine's own session primitives are listed by, in every
  *  repository: the counter's script, then the sensor that runs it
  *  (EVAL-FR-008). */
 const sessionCounterLines = [
   `cw-session-tokens-counter  ${new CwSessionTokensCounterScript().headers.description}`,
   `cw-session-tokens-counter-on-stop  ${new CwSessionTokensSensor().headers.description}`,
-];
+] as const;
 
 const charter = {
   [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["tags: [types]"]),
   [new URL("skill/writing-tests/index.md", root).href]: primitive("skill", "writing-tests"),
   [new URL("corpus/type-safety/index.md", root).href]: primitive("corpus", "type-safety"),
+  [new URL("mcp/local/index.md", root).href]: [
+    "---",
+    "kind: mcp",
+    "id: local",
+    "description: What local is for.",
+    "command: node",
+    "tools: [echo]",
+    "---",
+    "",
+    "SECRET BODY TEXT",
+    "",
+  ].join("\n"),
 };
 
-test("every primitive is listed, ordered by id, with what it is for", async () => {
+/** The charter above and what the engine brings, under the heading of each
+ *  kind it holds, in the order of the kinds, by id within each. */
+const groupedOpeningLines: readonly (readonly [string, readonly string[]])[] = [
+  ["Guides", ["no-any  What no-any is for."]],
+  ["Sensors", [sessionCounterLines[1]]],
+  ["Skills", [`cw-author  ${new CwAuthorSkill().headers.description}`, "writing-tests  What writing-tests is for."]],
+  ["Corpora", ["type-safety  What type-safety is for."]],
+  ["MCPs", ["local  What local is for."]],
+  ["Scripts", [sessionCounterLines[0]]],
+];
+
+test("every primitive is listed under a heading of its kind, the kinds in their order, and by id within each, with what it is for (CORE Story 72 scenario 1, FR-028)", async () => {
   const { code, results } = await run(charter);
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^Primitives\n/);
-  const openingLines = [
-    `cw-author  ${new CwAuthorSkill().headers.description}`,
-    ...sessionCounterLines,
-    "no-any  What no-any is for.",
-    "type-safety  What type-safety is for.",
-    "writing-tests  What writing-tests is for.",
-  ];
   // What follows the description on its row is the files beneath it.
   assert.deepEqual(
-    rowsOf(results).map((row, rowIndex) =>
-      row.startsWith(`${openingLines[rowIndex]} `) ? openingLines[rowIndex] : row,
-    ),
-    openingLines,
+    sectionsOf(results).map(([heading, rows]) => {
+      const openingLines = groupedOpeningLines.find(([groupHeading]) => groupHeading === heading)?.[1] ?? [];
+      return [
+        heading,
+        rows.map((row, rowIndex) => {
+          const openingLine = openingLines[rowIndex] ?? "";
+          return row.startsWith(`${openingLine} `) ? openingLine : row;
+        }),
+      ];
+    }),
+    groupedOpeningLines,
   );
+  // A kind the charter holds none of has no heading.
+  assert.doesNotMatch(results, /^(Playbooks|Agents|Postures|Mixins|Templates)$/m);
 });
 
-test("the full listing opens each primitive on its id and description, with the file it was authored in and the files it applies to each on a line of its own beneath (CORE Story 3 scenario 10, FR-028, FR-140, CORE Story 55 scenario 12, CORE Story 27 scenario 5)", async () => {
+test("the full listing opens each primitive on its id and description, with the file it was authored in and the files it applies to each on a line of its own beneath (CORE Story 3 scenario 10, CORE Story 72 scenario 1, FR-028, FR-140, CORE Story 55 scenario 12, CORE Story 27 scenario 5)", async () => {
   const { code, results } = await run(charter);
 
   assert.equal(code, EXIT_OK);
@@ -154,18 +189,31 @@ test("a listing is read off the charter, so every layer is named where it was au
   assert.doesNotMatch(results, /\.cw\/out\//);
 });
 
-test("--min says what an agent surveys by, and nothing else (CORE Story 3 scenario 10, FR-028, CORE Story 55 scenario 12)", async () => {
+test("each kind is headed by its plural, written down here, so a new kind fails until its heading is chosen (CORE Story 72 scenario 1, FR-028)", () => {
+  assert.deepEqual(
+    Primitives.kinds.map((kindName) => stripVTControlCharacters(formatKindHeading(kindName))),
+    [
+      "Guides",
+      "Sensors",
+      "Skills",
+      "Playbooks",
+      "Agents",
+      "Postures",
+      "Corpora",
+      "Mixins",
+      "MCPs",
+      "Scripts",
+      "Templates",
+    ],
+  );
+});
+
+test("--min says what an agent surveys by, and nothing else, under the same headings (CORE Story 3 scenario 10, CORE Story 72 scenario 2, FR-028, CORE Story 55 scenario 12)", async () => {
   const { code, results } = await run(charter, ["list", "--min"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^Primitives\n {2}\S/);
-  assert.deepEqual(rowsOf(results), [
-    `cw-author  ${new CwAuthorSkill().headers.description}`,
-    ...sessionCounterLines,
-    "no-any  What no-any is for.",
-    "type-safety  What type-safety is for.",
-    "writing-tests  What writing-tests is for.",
-  ]);
+  assert.match(results, /^Guides\n {2}\S/);
+  assert.deepEqual(sectionsOf(results), groupedOpeningLines);
 });
 
 test("no listing carries a body", async () => {
@@ -174,11 +222,17 @@ test("no listing carries a body", async () => {
   for (const { results } of both) assert.ok(!results.includes("SECRET BODY TEXT"));
 });
 
-test("--kind narrows the listing to that kind (CORE Story 3 scenario 10, FR-028, CORE Story 55 scenario 12)", async () => {
+test("--kind narrows the listing to that kind, under its heading alone (CORE Story 3 scenario 10, CORE Story 72 scenario 3, FR-028, CORE Story 55 scenario 12)", async () => {
   const { code, results } = await run(charter, ["list", "--kind", "guide", "--min"]);
 
   assert.equal(code, EXIT_OK);
-  assert.deepEqual(results, "Primitives\n  no-any  What no-any is for.\n");
+  assert.deepEqual(results, "Guides\n  no-any  What no-any is for.\n");
+
+  const { results: skillResults } = await run(charter, ["list", "--kind", "skill"]);
+  assert.deepEqual(
+    sectionsOf(skillResults).map(([heading, rows]) => [heading, rows.map((row) => row.split("  ")[0])]),
+    [["Skills", ["cw-author", "writing-tests"]]],
+  );
 });
 
 test("a kind the charter holds nothing of lists nothing, and says so", async () => {
@@ -213,8 +267,11 @@ test("a repository that authored nothing is listed what the engine brings (FR-01
   const { code, results } = await run({}, ["list", "--min"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^Primitives\n {2}\S/);
-  assert.deepEqual(rowsOf(results), [`cw-author  ${new CwAuthorSkill().headers.description}`, ...sessionCounterLines]);
+  assert.deepEqual(sectionsOf(results), [
+    ["Sensors", [sessionCounterLines[1]]],
+    ["Skills", [`cw-author  ${new CwAuthorSkill().headers.description}`]],
+    ["Scripts", [sessionCounterLines[0]]],
+  ]);
 });
 
 test("cw kinds says every kind and when each comes up, in a repository that authored none of them (CORE Story 11 scenario 2)", async () => {

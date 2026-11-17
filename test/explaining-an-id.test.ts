@@ -175,7 +175,7 @@ test("what the engine brings is explained and listed like any other, under the l
 
   const listed = await run(charter, ["list", "--kind", "skill"]);
   assert.equal(listed.code, EXIT_OK);
-  assert.match(listed.results, /^Primitives\n/);
+  assert.match(listed.results, /^Skills\n/);
   assert.match(listed.results, /^ {2}cw-author {2,}\S/m);
   assert.match(listed.results, /^ {4,}\(built into cw\)\/skill\/cw-author\/index\.md$/m);
 });

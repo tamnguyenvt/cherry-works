@@ -849,6 +849,17 @@
         "summary": "typecheck passed; pnpm test twice 1079 passed, 0 failed, 0 skipped; specs check passed; quality pass 3 graded A",
         "date": "2026-11-17"
       }
+    },
+    {
+      "id": "CORE Story 72",
+      "title": "Read the charter grouped by kind in `cw list`",
+      "dependsOn": [
+        "CORE Story 67"
+      ],
+      "evidence": {
+        "summary": "typecheck passed; pnpm test twice 1079 passed, 0 failed, 0 skipped; specs check passed",
+        "date": "2026-11-17"
+      }
     }
   ]
 }

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { stripVTControlCharacters } from "node:util";
+import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
@@ -9,7 +10,7 @@ import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memo
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { Commander } from "../src/presentation/cli/cli.commander.js";
-import { printFaultsByFile } from "../src/presentation/cli/commands/helper.js";
+import { formatKindHeading, printFaultsByFile } from "../src/presentation/cli/commands/helper.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
 import type { AnswersOfEveryCommand } from "./every-command-in-turn.js";
 import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
@@ -145,7 +146,7 @@ test("an answer has a heading over each part, each label and its value in one al
 
   const { resultText: listText } = await run(["list"]);
   const listLines = listText.split("\n").filter((line) => line !== "");
-  assert.equal(listLines[0], "Primitives");
+  assert.equal(listLines[0], "Guides");
   const idLines = listLines.filter((line) => /^ {2}\S/.test(line));
   assert.ok(idLines.length >= 2);
   assert.equal(new Set(valueColumnOf(idLines, /^ {2}\S+\s+/)).size, 1);
@@ -157,7 +158,7 @@ test("an answer has a heading over each part, each label and its value in one al
   const { resultText: colouredDoctorText } = await run(["doctor"], atTerminal);
   assert.ok(colouredDoctorText.startsWith(`${BOLD_CODE}cw 1.2.3`));
   const { resultText: colouredListText } = await run(["list"], atTerminal);
-  assert.ok(colouredListText.startsWith(`${BOLD_CODE}Primitives`));
+  assert.ok(colouredListText.startsWith(`${BOLD_CODE}Guides`));
   assert.ok(colouredListText.includes(`${MENTION_CODE}no-any${RESET_CODE}`));
   assert.ok(colouredListText.includes(`${MENTION_CODE}.cw/charter/primitive/guide/no-any/index.md${RESET_CODE}`));
 });
@@ -287,7 +288,12 @@ test("an answer written to a file, or with NO_COLOR set, is laid out as at a ter
 
 /** The headings the layout adds over a part of an answer that had none: every
  *  other line of an answer says what it said before this story. */
-const LAYOUT_HEADINGS: readonly string[] = ["Primitives", "Kinds", "Vendors", "To fix, by file"];
+const LAYOUT_HEADINGS: readonly string[] = ["Kinds", "Vendors", "To fix, by file"];
+
+/** `cw list`'s heading per kind, in place of "Primitives" (CORE Story 72). */
+const KIND_HEADINGS: readonly string[] = Primitives.kinds.map((kindName) =>
+  stripVTControlCharacters(formatKindHeading(kindName)),
+);
 
 /** What one answer says, word by word, its marks left out: a mark is how a
  *  status is shown, not a word of it. */
@@ -312,6 +318,20 @@ test("every command but the three cw run commands says what it said before this 
     assert.equal(answerNow.status, answerBefore.status, `cw ${answerNow.args}`);
     // The help is yargs' own and laid out by CORE Story 69.
     if (answerNow.args.includes("--help")) return;
+    // `cw list` groups its primitives by kind since CORE Story 72, so it says
+    // the same words, the headings aside, in another order.
+    if (answerNow.args.split(" ")[0] === "list") {
+      for (const streamName of ["stdout", "stderr"] as const)
+        assert.deepEqual(
+          wordLinesOf(answerNow[streamName])
+            .filter((lineWords) => !KIND_HEADINGS.includes(lineWords.join(" ")))
+            .flat()
+            .sort(),
+          wordLinesOf(answerBefore[streamName]).flat().sort(),
+          `cw ${answerNow.args} ${streamName}`,
+        );
+      return;
+    }
     for (const streamName of ["stdout", "stderr"] as const) {
       const wordsBefore: readonly string[] = wordLinesOf(answerBefore[streamName]).flat();
       let matchedWordCount = 0;

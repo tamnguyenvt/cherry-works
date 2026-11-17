@@ -7,7 +7,7 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { formatHeading, formatMention, layAnswerRows, printProblem, reportFault } from "./helper.js";
+import { formatKindHeading, formatMention, layAnswerRows, printProblem, reportFault } from "./helper.js";
 
 /** What `cw list` takes: which kind to narrow to, and how much of each
  *  primitive to say. Both are how the listing is read, never what is in it —
@@ -24,14 +24,17 @@ const OPTIONS = {
 /**
  * `cw list`: say what the charter holds (FR-011, FR-012).
  *
- * It reaches for `listCatalogue` and nothing else, and listing reads and says: nothing
- * this command runs can write a file (FR-041). What it adds is presentation —
- * one primitive to a line, ordered by id as the listing already is, with
+ * It reaches for `listCatalogue`, and `listKinds` for the order of the kinds,
+ * and listing reads and says: nothing this command runs can write a file
+ * (FR-041). What it adds is presentation — the primitives under a heading per
+ * kind, ordered by id within it as the listing already is, with
  * `--min` saying what an agent surveys by and the default adding where the body
  * is and the files it applies to. The kind is passed on as it was
  * typed: which words are kinds is the charter's business and not this command's,
  * and a word that is none comes back from the use case as a fault the command
- * line reports the way it reports any other.
+ * line reports the way it reports any other. Each kind's heading is
+ * `formatKindHeading`'s: its plural is how the command line says the kind, and
+ * a test holds it to every kind the charter names.
  *
  * A charter with an error lists nothing, and what is wrong is not repeated
  * here: `cw doctor` is the command that says it under each file, and sending
@@ -67,30 +70,47 @@ export class ListCommand implements Command<typeof OPTIONS> {
         answerDTO: catalogueDTO,
       };
 
+    // The kinds in the order the charter names them, each under a heading of
+    // its own, the entries by id within it as the catalogue orders them
+    // (CORE-FR-028).
+    const primitiveKindsDTO = await charterAuthoringApp.listKinds();
+    if (primitiveKindsDTO.type === "Fault") return reportFault(primitiveKindsDTO);
+    const idWidth = Math.max(...entries.map(({ data: { id } }) => id.length));
+
     return {
       exitCode: EXIT_OK,
       // A primitive as an agent surveys it is what it is called and what it is
       // for (FR-012); in full, also where its body is and the files it applies
       // to (FR-011). Globs nobody wrote are not said, the way the listing does
-      // not record them. Every id in one column, what follows it in another.
-      resultText: [
-        formatHeading("Primitives"),
-        ...layAnswerRows(
-          entries.map(({ data: { id, description, file: filePath, globs } }) => [
-            formatMention(id),
-            [
-              description,
-              ...(isMin
-                ? []
-                : [formatMention(filePath), ...(globs === undefined ? [] : [`globs: ${globs.join(", ")}`])]),
-            ],
-          ]),
-          "  ",
-          // What an agent surveys by is one primitive to a line (FR-012).
-          isMin ? Number.POSITIVE_INFINITY : undefined,
-        ),
-        "",
-      ].join("\n"),
+      // not record them. Every id in one column across the kinds, what follows
+      // it in another.
+      resultText: Object.keys(primitiveKindsDTO.data)
+        .map(
+          (kindName) =>
+            [kindName, entries.filter(({ data: { kind: entryKindName } }) => entryKindName === kindName)] as const,
+        )
+        .filter(([, kindEntries]) => kindEntries.length > 0)
+        .map(([kindName, kindEntries]) =>
+          [
+            formatKindHeading(kindName),
+            ...layAnswerRows(
+              kindEntries.map(({ data: { id, description, file: filePath, globs } }) => [
+                `${formatMention(id)}${" ".repeat(idWidth - id.length)}`,
+                [
+                  description,
+                  ...(isMin
+                    ? []
+                    : [formatMention(filePath), ...(globs === undefined ? [] : [`globs: ${globs.join(", ")}`])]),
+                ],
+              ]),
+              "  ",
+              // What an agent surveys by is one primitive to a line (FR-012).
+              isMin ? Number.POSITIVE_INFINITY : undefined,
+            ),
+            "",
+          ].join("\n"),
+        )
+        .join("\n"),
       answerDTO: catalogueDTO,
     };
   }
