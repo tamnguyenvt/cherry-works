@@ -9,8 +9,9 @@ import { dto, groupByType, StringsSchema, z } from "#module/shared/app/port/in/i
 
 /** What a repository configured itself with: whether it was ever set up, which
  *  agents it chose, the ceiling a main context is held to — 20,000
- *  where it set none — and where its sessions are kept on this machine, where
- *  it named a folder of its own. */
+ *  where it set none — where its sessions are kept on this machine, where
+ *  it named a folder of its own, and that `cw vendor init` set it up, where
+ *  it did. */
 const WorkspaceSettingsSchema = dto(
   "WorkspaceSettings",
   z.object({
@@ -18,6 +19,7 @@ const WorkspaceSettingsSchema = dto(
     agents: StringsSchema,
     mainContextCeiling: z.number(),
     sessionAnalysisFolder: z.string().optional(),
+    isVendor: z.boolean().optional(),
   }),
 );
 

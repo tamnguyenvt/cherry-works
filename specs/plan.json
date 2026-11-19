@@ -865,7 +865,11 @@
       "dependsOn": [
         "VENDOR Story 1",
         "VENDOR Story 3"
-      ]
+      ],
+      "evidence": {
+        "summary": "pnpm test 1114/1114 (lint:deps, biome, build), typecheck and specs check clean; by hand: a vendor build lays /vendor-release, cw init keeps the mark, a guide naming it refused, the vendor docs' commands run, and /vendor-release walked by an agent to its gate with nothing committed, pushed or tagged",
+        "date": "2026-11-19"
+      }
     },
     {
       "id": "VENDOR Story 3",

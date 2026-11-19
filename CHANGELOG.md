@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `/vendor-release` comes with cw to a repository `cw vendor init` set up, and releases the charters it authored under `.cw/charter/`.
+- **Breaking:** a repository an earlier `cw vendor init` set up no longer builds with its own `vendor-release` and `vendor-release-action`: delete them and add `"vendor": true` to `.cw/settings.json`.
+
 ## 1.3.0 — 2026-11-17
 
 - `cw run mcp`, `cw run sensor <signal>` and `cw run portal` replace `cw mcp serve`, `cw sensor run` and `cw portal`, which still work until the next major; run `cw build` so your agent's files use the new names.

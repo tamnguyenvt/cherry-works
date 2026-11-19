@@ -14,6 +14,9 @@ export class UnknownAgentFault extends DomainFault {}
 /** A main-context ceiling that is no whole number above 0 (EVAL-FR-006). */
 export class InvalidMainContextCeilingFault extends DomainFault {}
 
+/** A repository never set up, asked to be marked a vendor's (VENDOR-FR-027). */
+export class UnsetWorkspaceFault extends DomainFault {}
+
 /**
  * One thing wrong with what a repository configured itself with: settings that
  * are not JSON, that hold something other than a set of fields, or that write a

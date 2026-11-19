@@ -88,13 +88,13 @@ it, use its **Remove** button, then build again. Removal leaves the folder gone
 in the working tree for you to commit, whatever else you have in hand.
 
 The form provides source and version fields. Use the CLI when you need
-`--charter` or `--skill` selection flags, or `cw vendor inject` to create your
+`--charter` or `--as`, or `cw vendor inject` to create your
 own editable copy. See [vendor sources](reference.md#vendor-sources) and
 [Creating a vendor source](creating-a-vendor.md).
 
 ## Run charter tests
 
-Open **Test** to see the files under `.cw/charter/test/` and their cases. Create a test
+Open **Test** to see the files under each charter's `.cw/charter/<charter>/test/` and their cases. Create a test
 file or open an existing file to edit its JSON, then click **Save**.
 
 Click **Run all tests**. The portal shows how many cases passed and the

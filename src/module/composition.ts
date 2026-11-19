@@ -116,6 +116,7 @@ export interface EngineAdapters {
 export interface EngineSettings {
   readonly agents: readonly string[];
   readonly mainContextCeiling?: number | undefined;
+  readonly isVendor?: boolean | undefined;
 }
 
 /** The engine's two modules' applications, as the drivers reach them
@@ -145,6 +146,7 @@ export function composeEngine(
     engineAdapters.oauthAuthorizer,
     clock,
     progressReporter,
+    engineSettings.isVendor === undefined ? {} : { isVendor: engineSettings.isVendor },
   );
   const charterBuildingApp: ForBuildingCharter = new BuildingCharter(
     buildCharterService,
@@ -159,6 +161,7 @@ export function composeEngine(
       ...(engineSettings.mainContextCeiling === undefined
         ? {}
         : { mainContextCeiling: engineSettings.mainContextCeiling }),
+      ...(engineSettings.isVendor === undefined ? {} : { isVendor: engineSettings.isVendor }),
     },
     progressReporter,
     charterAuthoringApp,
@@ -264,6 +267,7 @@ export async function composeApplications(
         : {
             agents: workspaceSettingsDTO.data.agents,
             mainContextCeiling: workspaceSettingsDTO.data.mainContextCeiling,
+            isVendor: workspaceSettingsDTO.data.isVendor,
           };
     // The sessions are read off the home's, wherever under it the
     // repository's settings keep them, which cw's own store is set up with,

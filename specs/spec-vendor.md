@@ -2,9 +2,9 @@
 
 **Created**: 2026-11-17
 
-**Updated**: 2026-11-18
+**Updated**: 2026-11-19
 
-**Input**: User description: "Working in a vendor repository is awkward: Claude only works right when the right charter's subfolder is opened, yet a release is made from the root. `cw build` should build every charter under `charters/` into the `.cw/out` of the repository's root, so the author opens only the root, and `/sdd-init` there works across the repository." Then: "Move `cw vendor init` here: this spec is for vendor development." Then: "`cw test` and `cw eval` must be run at the root; let a flag test one charter alone." Then: "Telling vendor from non-vendor is too complex. Keep primitive groups, each with a name of its own and none by default. No vendor folder: `cw vendor add` copies a group straight into the primitive folder as `cw vendor inject` does, but adds a `cw-vendor.json` naming the group, the source and the version installed, which makes it read-only. No owner or repository when installed: it is a group like any other. Whoever writes primitives, a user or a vendor's author, writes one format." Then: "When adding or injecting, install every other group a group includes." Then: "I do not like the name group: call it a charter, a set of primitives — charter `sdd`, inside the charter root."
+**Input**: User description: "Working in a vendor repository is awkward: Claude only works right when the right charter's subfolder is opened, yet a release is made from the root. `cw build` should build every charter under `charters/` into the `.cw/out` of the repository's root, so the author opens only the root, and `/sdd-init` there works across the repository." Then: "Move `cw vendor init` here: this spec is for vendor development." Then: "`cw test` and `cw eval` must be run at the root; let a flag test one charter alone." Then: "Telling vendor from non-vendor is too complex. Keep primitive groups, each with a name of its own and none by default. No vendor folder: `cw vendor add` copies a group straight into the primitive folder as `cw vendor inject` does, but adds a `cw-vendor.json` naming the group, the source and the version installed, which makes it read-only. No owner or repository when installed: it is a group like any other. Whoever writes primitives, a user or a vendor's author, writes one format." Then: "When adding or injecting, install every other group a group includes." Then: "I do not like the name group: call it a charter, a set of primitives — charter `sdd`, inside the charter root." Then: "Refusing a primitive that holds or names a reserved id is enough."
 
 ## Overview
 
@@ -30,17 +30,22 @@ A repository's charter root is made of charters. Every primitive belongs to one,
 - Q: How do `cw suite add`, `cw suite edit` and `cw suite remove` name a test file's charter? → A: With `--charter=<name>` beside the file's name; with no `--charter`, they take the one charter the repository authored, and are refused naming the charters held where it authored none or more than one.
 - Q: What of `test/` and `eval/` kept right under `.cw/charter/`? → A: The old layout, refused naming the move into `<charter>/test/` and `<charter>/eval/`.
 
+### Session 2026-11-19
+
+- Q: How does `/vendor-release` know each charter builds with the charters it includes alone? → A: No primitive of any repository may hold or name the id of what `cw` builds into a repository `cw vendor init` set up alone, so a build at the root proves it ([VENDOR-FR-028](#vendor-fr-028)).
+- Q: What marks a repository `cw vendor init` set up? → A: A mark in its settings that `cw vendor init` writes.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### VENDOR Story 1 - Set a charter repository up in an empty folder (Priority: P2)
 
 **Status**: Done
 
-A team that wants to publish charters starts from an empty clone. Before this, they laid the repository out by hand and copied its release steps from another one. They run `cw vendor init` at a terminal: it asks the repository's name, the folder's by default, and what its charters give a team, runs `cw init` there as it always does, makes the folder a git repository where it is not one, and writes a README holding their answers, a changelog, a `.gitignore` leaving out what a build writes, and the `/vendor-release` skill with the script it runs. It builds, commits nothing, and says how to add each charter.
+A team that wants to publish charters starts from an empty clone. Before this, they laid the repository out by hand and copied its release steps from another one. They run `cw vendor init` at a terminal: it asks the repository's name, the folder's by default, and what its charters give a team, runs `cw init` there as it always does, makes the folder a git repository where it is not one, and writes a README holding their answers, a changelog and a `.gitignore` leaving out what a build writes, and marks the repository so its build lays the `/vendor-release` skill with the script it runs, from `cw` itself. It builds, commits nothing, and says how to add each charter.
 
 **Why this priority**: Every repository publishing charters starts the same way; one fixed command keeps each one laid out and released alike.
 
-**Independent Test**: In an empty folder at a terminal, run `cw vendor init`, answer both questions, and confirm the folder is a git repository on `main` holding the README with the answers, the changelog, the `.gitignore` and `/vendor-release`, built, with no commit. Run it again in the same folder and confirm it is refused and the folder is left as it was.
+**Independent Test**: In an empty folder at a terminal, run `cw vendor init`, answer both questions, and confirm the folder is a git repository on `main` holding the README with the answers, the changelog and the `.gitignore`, built with `/vendor-release`, with no commit. Run it again in the same folder and confirm it is refused and the folder is left as it was.
 
 **Acceptance Scenarios**:
 
@@ -55,7 +60,7 @@ A team that wants to publish charters starts from an empty clone. Before this, t
 
 ### VENDOR Story 2 - Release the charters with `/vendor-release` (Priority: P2)
 
-**Status**: Todo
+**Status**: Done
 
 An author asks their agent `/vendor-release` at the repository's root. It checks they stand on the default branch of `origin`, level with it and with a clean working tree, and that every charter the repository authors builds as it will build where it is installed: with the charters it includes and nothing else. It rewrites the README's install section from those charters, proposes the version and the changelog entry from the commits since the last tag, and, once the author confirms, commits, pushes and tags `v<version>`. What can be refused is refused before anything is written; nothing reaches `origin` before the author confirms. The command exists already; this story holds it to its scenarios, read off the charters.
 
@@ -72,6 +77,7 @@ An author asks their agent `/vendor-release` at the repository's root. It checks
 5. **Given** an `origin` naming no default branch, **When** a release is asked for, **Then** the author is asked which branch releases are made from, and a branch other than `origin`'s default is refused ([VENDOR-FR-005](#vendor-fr-005)).
 6. **Given** a push or a tag that fails, **When** the release runs, **Then** it stops at that step saying which steps ran and the command that finishes the rest, and never force-pushes, moves or deletes a tag ([VENDOR-FR-008](#vendor-fr-008)).
 7. **Given** a repository `cw vendor init` set up, **When** it is built, **Then** `/vendor-release` and its script are in its output, from `cw` itself; **Given** any other repository, **Then** they are not ([VENDOR-FR-027](#vendor-fr-027)).
+8. **Given** a primitive whose id is `vendor-release` or `vendor-release-action`, or that names either, **When** the charter root is read, in a repository `cw vendor init` set up or any other, **Then** it is refused naming its file ([VENDOR-FR-028](#vendor-fr-028)).
 
 ---
 
@@ -150,7 +156,7 @@ Once [CORE Story 72](spec-core.md#core-story-72---read-the-charter-grouped-by-ki
 
 **Setting a charter repository up**
 
-- <a id="vendor-fr-001"></a>**VENDOR-FR-001**: `cw vendor init` MUST set a charter repository up in the folder it runs in: a README holding the repository's name and description, a changelog, a `.gitignore` leaving out what a build writes, and `/vendor-release` with the script it runs.
+- <a id="vendor-fr-001"></a>**VENDOR-FR-001**: `cw vendor init` MUST set a charter repository up in the folder it runs in: a README holding the repository's name and description, a changelog, a `.gitignore` leaving out what a build writes, and the mark in its settings that has its build lay `/vendor-release` with the script it runs ([VENDOR-FR-027](#vendor-fr-027)).
 - <a id="vendor-fr-002"></a>**VENDOR-FR-002**: It MUST run `cw init` in that folder, asking the agents as `cw init` always does, make the folder a git repository on `main` where it holds no `.git`, then build, and MUST commit nothing; stopped once `cw init` ran, it MUST say the folder is left half set up, and to empty it and run again.
 - <a id="vendor-fr-003"></a>**VENDOR-FR-003**: It MUST refuse a folder holding anything but a `.git`, or a git repository with a commit, leaving it as it was; a git repository with no commit MUST be set up on the branch it is on.
 - <a id="vendor-fr-004"></a>**VENDOR-FR-004**: It MUST ask every answer at the terminal, the name defaulting to the folder's, refuse any flag, writing nothing, stop before asking where nobody is at the terminal, and refuse an empty answer or one on more than one line, writing nothing.
@@ -162,6 +168,7 @@ Once [CORE Story 72](spec-core.md#core-story-72---read-the-charter-grouped-by-ki
 - <a id="vendor-fr-007"></a>**VENDOR-FR-007**: It MUST propose `0.1.0` where no release was tagged, else a version and a changelog entry from the commits since the last tag, and stop where the changelog's top heading does not name that tag.
 - <a id="vendor-fr-008"></a>**VENDOR-FR-008**: Only once the author confirms MUST it commit, push and tag `v<version>` on `origin`; it MUST stop at the first step that fails, saying which steps ran and how to finish the rest, and MUST never force-push, move or delete a tag.
 - <a id="vendor-fr-027"></a>**VENDOR-FR-027**: `/vendor-release` and its script MUST be primitives of `cw`'s own, built into the output of a repository `cw vendor init` set up, marked so in its settings, and of no other repository.
+- <a id="vendor-fr-028"></a>**VENDOR-FR-028**: A primitive of any repository MUST NOT hold the id of a primitive `cw` builds into a repository `cw vendor init` set up alone, nor name one through its body, its mixins, its rationale, an agent's tools or a sensor's run; each MUST be refused naming its file. So a charter that builds at the root of the repository releasing it builds with the charters it includes alone ([VENDOR-FR-005](#vendor-fr-005)).
 
 **Charters**
 

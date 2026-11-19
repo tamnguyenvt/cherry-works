@@ -1,4 +1,5 @@
 import { type DomainFault, FaultsByFile, GlobsLib } from "#module/shared/module.js";
+import { BuiltinPrimitives } from "../../builtin/index.js";
 import { PrimitiveHelper } from "../../helper.js";
 import { InconsistentCharterFault, InvalidPrimitiveFault } from "../charter.fault.js";
 import { AgentBasedPrimitive } from "../primitive/agent-based-primitive.js";
@@ -219,7 +220,9 @@ export class CharterRoot {
       const { id: primitiveId } = primitive.headers;
       const declaringUri = uriById.get(primitiveId);
       if (declaringUri === undefined) uriById.set(primitiveId, primitiveUri);
-      else
+      // One holding what cw brings a vendor's repository is told to delete it
+      // below, never to rename it (VENDOR-FR-028).
+      else if (!BuiltinPrimitives.reservedVendorIds.includes(primitiveId))
         addFault(
           primitiveUri,
           new InconsistentCharterFault(
@@ -249,6 +252,9 @@ export class CharterRoot {
         // An id of another kind is no mixin, and is said as one nothing
         // answers to.
         const mixinPrimitive = primitiveById.get(mixinId);
+        // One cw brings a vendor's repository alone is refused below, never to
+        // be authored (VENDOR-FR-028).
+        if (BuiltinPrimitives.reservedVendorIds.includes(mixinId)) continue;
         if (mixinPrimitive?.kind !== "mixin") {
           addFault(
             primitiveUri,
@@ -276,7 +282,11 @@ export class CharterRoot {
       // on: the rule still holds, and the reasoning behind it is what went
       // missing (FR-005).
       const rationaleId = primitive.headers.rationale;
-      if (rationaleId !== undefined && primitiveById.get(rationaleId)?.kind !== "corpus")
+      if (
+        rationaleId !== undefined &&
+        !BuiltinPrimitives.reservedVendorIds.includes(rationaleId) &&
+        primitiveById.get(rationaleId)?.kind !== "corpus"
+      )
         addFault(
           primitiveUri,
           new InconsistentCharterFault(
@@ -290,7 +300,7 @@ export class CharterRoot {
       // is not there may guess at one, or invent it, and act on the guess
       // (FR-143, FR-162).
       for (const referencedId of new Set(this.findMentionedIds(primitive)))
-        if (!primitiveById.has(referencedId))
+        if (!primitiveById.has(referencedId) && !BuiltinPrimitives.reservedVendorIds.includes(referencedId))
           addFault(
             primitiveUri,
             new InconsistentCharterFault(
@@ -299,6 +309,29 @@ export class CharterRoot {
               { internal: false },
             ),
           );
+
+      // What cw brings to a repository `cw vendor init` set up alone is held
+      // and named by none, in that repository or any other: so a charter that
+      // builds where it is released builds wherever it is installed
+      // (VENDOR-FR-028).
+      if (primitive.layer !== PrimitiveLayer.BUILTIN) {
+        const namedIds = this.namedIdsOf(primitive);
+        for (const reservedVendorId of BuiltinPrimitives.reservedVendorIds.filter(
+          (reservedVendorId) => reservedVendorId === primitiveId || namedIds.includes(reservedVendorId),
+        ))
+          addFault(
+            primitiveUri,
+            new InconsistentCharterFault(
+              `This ${reservedVendorId === primitiveId ? "is" : "names"} "${reservedVendorId}", which cw brings to a repository "cw vendor init" set up alone, and no primitive holds or names.`,
+              // One a release of cw before it wrote into the repository is
+              // deleted: cw brings it where the settings say so.
+              reservedVendorId === primitiveId
+                ? `Delete it where "cw vendor init" set this repository up, and add "vendor": true to this repository's own settings: cw brings "${reservedVendorId}" there. Otherwise give this one an id of its own.`
+                : `Drop "${reservedVendorId}" from it: a charter naming it would not build where it is installed.`,
+              { internal: false },
+            ),
+          );
+      }
 
       // What a script runs is one of its own assets, and nothing anywhere
       // else: a build copies those and no other (FR-165).

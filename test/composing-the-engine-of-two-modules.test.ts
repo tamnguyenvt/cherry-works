@@ -312,7 +312,7 @@ test("the engine's modules are charter, with its applications authoring and proj
     Object.getOwnPropertyNames(Object.getPrototypeOf(workspaceApp))
       .filter((operationName) => operationName !== "constructor")
       .sort(),
-    ["readWorkspaceSettings", "setUpWorkspace"],
+    ["readWorkspaceSettings", "setUpWorkspace", "setVendorMark"],
   );
 });
 

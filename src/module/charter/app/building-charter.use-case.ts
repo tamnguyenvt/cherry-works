@@ -75,6 +75,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   readonly #tokenCounter: ForCountingTokens;
   readonly #agentProviders: readonly AgentProvider[];
   readonly #mainContextCeiling: number;
+  readonly #isVendor: boolean;
   readonly #mcpReaching: McpReaching | undefined;
 
   constructor(
@@ -130,6 +131,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     this.#tokenCounter = tokenCounter;
     this.#agentProviders = projectionSettings.agentNames.map((agentName) => this.#findAgentProvider(agentName));
     this.#mainContextCeiling = projectionSettings.mainContextCeiling ?? MainContext.defaultCeiling;
+    this.#isVendor = projectionSettings.isVendor ?? false;
     this.#mcpReaching =
       mcpServerCaller === undefined || charterAuthoringApp === undefined
         ? undefined
@@ -168,7 +170,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   async diagnoseCharter(): Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("BuildingCharter.diagnoseCharter", async () => {
       const [charterRoot, testRoot] = await Promise.all([
-        this.#loadCharterService.loadCharterRoot(this.#charterRepository),
+        this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor),
         this.#charterRepository.loadTestSuites().then(TestRootFactory.create),
       ]);
       const charterFaultsByFile = this.#collectCharterFaults(charterRoot);
@@ -406,7 +408,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
       // the checkout by the output and each agent's projection made over it:
       // no path of it crosses a driven port after this (EVAL-FR-021).
       const checkoutLocalOutput = this.#localRepo.createCheckoutOutput(checkoutFolder);
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
       const charterErrorFaultsByFile = this.#collectCharterFaults(charterRoot).filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
       const checkoutProjectionPlan = await this.#buildCharterService.planBuild(
@@ -459,7 +461,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
           charterName,
         );
       const [charterRoot, heldEvalRoot] = await Promise.all([
-        this.#loadCharterService.loadCharterRoot(this.#charterRepository),
+        this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor),
         this.#charterRepository.loadEvalSuites().then(EvalRootFactory.create),
       ]);
       // Every charter's cases, or the named charter's alone (VENDOR-FR-025).
@@ -495,7 +497,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
    *  something is, the errors, under the file that has to change (FR-005,
    *  FR-009). */
   async #loadHoldingCharter(): Promise<CharterRoot | FaultsByFile> {
-    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
     const charterErrorFaultsByFile = this.#collectCharterFaults(charterRoot).filterErrors();
     return charterErrorFaultsByFile.isEmpty ? charterRoot : charterErrorFaultsByFile;
   }

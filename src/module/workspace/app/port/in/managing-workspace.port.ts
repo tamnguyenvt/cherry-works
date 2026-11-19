@@ -23,7 +23,8 @@ export interface ForManagingWorkspace {
 
   /**
    * The repository set up for these agents (FR-032 – FR-038): its settings
-   * kept, the ceiling kept where one was set now or before and written only
+   * kept, the mark of `cw vendor init` kept where it was set (VENDOR-FR-027),
+   * the ceiling kept where one was set now or before and written only
    * where it is not the 20,000 none means, and version control told to ignore
    * the log, once, every other line of its ignore file kept (CORE-FR-225), and a
    * README written where it has none, naming the `cw` that set it up.
@@ -35,4 +36,11 @@ export interface ForManagingWorkspace {
     cwVersion: string,
     mainContextCeiling?: number,
   ): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
+
+  /** The repository marked as set up by `cw vendor init`, to release charters
+   *  from: what its build lays `/vendor-release` for (VENDOR-FR-027). Its
+   *  agents and its ceiling are kept, as setting it up keeps them. A repository
+   *  never set up, and settings that do not read, are refused, nothing kept
+   *  (FR-037). */
+  setVendorMark(): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
 }

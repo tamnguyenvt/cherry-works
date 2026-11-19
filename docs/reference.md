@@ -81,12 +81,12 @@ The main host differences:
 | `cw doctor` | Check the agents, the charter and the compiled output |
 | `cw context [--agent=<agent>]` | Say how many tokens the charter puts into the agent's context when a session opens |
 | `cw sessions [--since] [--until]` | Sum up the tokens of the sessions kept on this machine, by day and by session |
-| `cw test` | Run every case in `.cw/charter/test/` against the charter |
-| `cw eval` | Put every case in `.cw/charter/eval/` to the real agent under promptfoo |
+| `cw test [--charter]` | Run every case in each charter's `.cw/charter/<charter>/test/`, or one charter's, against the charter |
+| `cw eval [--charter]` | Put every case in each charter's `.cw/charter/<charter>/eval/`, or one charter's, to the real agent under promptfoo |
 | `cw suite add \| edit \| remove` | Manage test files |
 | `cw vendor init` | Set a charter vendor repository up in an empty folder, to publish charters from |
-| `cw vendor add <source> [--ref] [--charter] [--skill] \| remove \| list` | Install, update, remove or list vendor sources: a charter, charters picked from a source of many, or skills from a repository listed on [skills.sh](https://skills.sh) |
-| `cw vendor inject <source> [--ref] [--charter] [--skill]` | Copy published primitives into your own editable charter |
+| `cw vendor add <source> [--ref] [--charter] [--as] \| remove \| list` | Install, update, remove or list the charters a source authored, each with the charters it includes |
+| `cw vendor inject <source> [--ref] [--charter] [--as]` | Copy a source's charters into charters of your own, to edit |
 | `cw mcp auth [id] [--status]` | Sign in, as yourself, to every mcp origin the charter reaches, or to one again |
 
 Every command above takes `--json`: its standard output is then one JSON
@@ -136,10 +136,10 @@ your browser. The page has four tabs:
   | Editing a primitive | Explaining it |
   |---|---|
   | ![The form for guide:no-any, with its globs, rationale, mixins and markdown body](images/portal-edit.png) | ![The explanation of guide:no-any: when it comes up, what it pulls in and the test that names it](images/portal-explain.png) |
-- **Vendor** lists the vendor sources you installed and their primitives, which
+- **Vendor** lists the charters you installed and their primitives, which
   are read-only. You can add a source by its git address and a version, or
   remove one.
-- **Test** lists the test files in `.cw/charter/test/`. You can create, edit and delete
+- **Test** lists the test files in each charter's `.cw/charter/<charter>/test/`. You can create, edit and delete
   them, and run every case to see which pass and why a failing one failed.
 
   ![The Test tab after a run: 4 of 5 cases pass, and the failing case says why](images/portal-tests.png)
@@ -161,7 +161,7 @@ with Ctrl+C.
 
 ## Testing a charter
 
-A test file in `.cw/charter/test/` describes situations and what must come up in each
+A test file in a charter's `.cw/charter/<charter>/test/` describes situations and what must come up in each
 one:
 
 ```json
@@ -181,7 +181,7 @@ longer hold. It runs no agent and costs nothing, so it fits in CI.
 ## Evaluating against the real agent
 
 `cw test` proves what the charter says; `cw eval` proves what the agent does
-with it. A file in `.cw/charter/eval/` holds prompts and what is expected of each:
+with it. A file in a charter's `.cw/charter/<charter>/eval/` holds prompts and what is expected of each:
 
 ```json
 {
@@ -328,80 +328,44 @@ To publish rules or skills for other repositories to install, follow
 cw vendor add git@github.com:your-org/charter-baseline.git --ref v1.2.0
 ```
 
-A vendor source is a git repository publishing charters under `charters/<name>/`,
-each set up there with `cw init`, skills under `skills/`, or both: author them,
-test them, and push. Only each charter's `.cw/charter/primitive/` folder is
-installed, under `.cw/charter/vendor/<owner>/<repository>/<name>/`, pinned to the
-ref you chose, with the `README.md` of its folder beside it, and left unstaged
-for you to read and commit, whatever else you have in hand. What the source
-keeps at its root, a `.cw/` of its own among it, is its authors' and never read.
-A repository holding neither `charters/` nor `skills/` is refused as no vendor,
-and so is a charter that has vendors of its own: vendoring is one level deep. Vendored primitives are read-only. To differ from
-one, write your own primitive under a new id.
-
-Run `cw vendor add` again with a new `--ref` to update a source, and
-`cw vendor remove <owner>/<repository>` to take it away, the folder as
-`cw vendor list` shows it. Removing leaves the folder gone in the working tree
-for you to commit, whatever else you have in hand. Adding needs git on the
-machine to reach a source, and neither needs the folder to be a repository. Run
-`cw build` after either. A source installed
-before 0.8.0 sits in `.cw/charter/vendor/<repository>/` and keeps working; remove it and
-add it again to move it.
-
-### Skills from `npx skills` repositories
-
-`cw vendor add` also installs skills from a repository made for
-[`npx skills`](https://github.com/vercel-labs/skills), one that holds no
-charter but a `skills/` folder with a folder and its `SKILL.md` for each skill,
-`skills/<name>/` or grouped up to three folders deep, as in
-`skills/<group>/<name>/`:
+A vendor source is a git repository publishing the charters it authored, each
+under `.cw/charter/<charter>/`: author them, test them, and push. Each charter
+installed is copied whole — its primitives, its test cases and its eval cases —
+into your own `.cw/charter/<charter>/`, beside a `cw-vendor.json` naming the
+charter, the source and the version installed: the ref you chose, or the
+commit fetched where you chose none. It is left unstaged for you to read and
+commit, whatever else you have in hand. What a build of the source writes is
+never installed. An installed charter is read-only; to differ from one, write
+your own primitive under a new id.
 
 ```bash
-cw vendor add https://github.com/mattpocock/skills --skill grill-me --skill grilling
-cw vendor add https://github.com/mattpocock/skills   # every skill it holds
+cw vendor add git@github.com:acme/charters.git                       # every charter it authored
+cw vendor add git@github.com:acme/charters.git --charter=baseline --charter=sdd
+cw vendor add git@github.com:acme/charters.git --charter=sdd --as=acme-sdd
 ```
 
-`--skill` names a skill by the `name` its `SKILL.md` declares, and can be
-given more than once; with none, every skill is installed. Each lands in
-`.cw/charter/vendor/<owner>/<repository>/skill/<name>/` as a skill of your charter,
-read-only like any vendored primitive, with every file beside its `SKILL.md`,
-and left unstaged for you to read and commit:
+`--charter` names a charter the source authored, and can be given more than
+once; with none, every charter it authored is installed. A charter the source
+names that does not exist stops the install and names the charters it does
+author. Every other charter of the source that a charter installed names an id
+of — in its body, its mixins, its rationale, an agent's tools or a sensor's
+run — is installed with it. A charter the source itself installed comes only
+where one installed includes it, copied as it stands; no other source is
+reached. `--as` holds the one charter named under another name.
 
-| `SKILL.md` | Becomes |
-| --- | --- |
-| `name` | the skill's id, and its one trigger |
-| `description` | its description |
-| `disable-model-invocation: true` | `disable-model-invocation: true` |
-| `user-invocable: false` | `disable-user-invocation: true` |
-| any other header (`license`, `allowed-tools`, `argument-hint`…) | left out; `cw vendor add` names each one it left out |
+Run `cw vendor add` again to bring an installed charter up to date: a name
+held by a charter installed from the same source is replaced whole; one held
+by a charter you authored, or installed from another source, is refused,
+suggesting `--as`. `cw vendor list` names each installed charter with its
+source and version, and `cw vendor remove <charter>` takes one away, leaving
+it gone in the working tree for you to commit. Adding needs git on the
+machine to reach a source, and neither needs the folder to be a repository.
+Run `cw build` after either.
 
-Only `skills/` is looked in: a `SKILL.md` elsewhere, such as the copies a
-repository keeps for its own agent under `.claude/skills/`, is not a skill to
-install, nor is one below another skill's folder, which comes along as one of
-its files. A `SKILL.md` without a
-`name` or a `description`, with a name that is not an id, or with a name another
-one shares, stops the install. A skill named by
-another skill in prose, as `grill-me` names `grilling`, is not installed with
-it: add it with a second `--skill`. Run `cw vendor add` again to update the
-skills you name; the others in the folder stay as they were.
-
-### Charters from a source of many
-
-A source gathers its charters under `charters/`, a folder each holding its own
-`.cw/charter/primitive/`, as in `charters/baseline/.cw/charter/primitive/`. Pick the
-ones you want with `--charter`, as you pick skills with `--skill`:
-
-```bash
-cw vendor add git@github.com:acme/charters.git --charter baseline --charter sdd
-```
-
-Each charter picked lands in a vendor folder of its own,
-`.cw/charter/vendor/<owner>/<repository>/<charter>/`, such as `acme/charters/baseline`,
-and is brought up to date or removed on its own:
-`cw vendor remove acme/charters/baseline` leaves `sdd` as it was. A name the
-source does not hold stops the install and names the charters it does. With
-neither `--charter` nor `--skill`, every charter under `charters/` and every
-skill under `skills/` is taken. Both flags can be given together.
+`cw vendor inject` copies the charters named, and those they include, as
+`cw vendor add` does, but writes no `cw-vendor.json`: from then on they are
+your own, to edit and delete. A charter name or an id you already hold is
+refused, naming both, and nothing is written.
 
 ## MCP origins outside the repository
 

@@ -10,8 +10,3 @@ declare module "*.txt" {
   const templateText: string;
   export default templateText;
 }
-
-declare module "*/vendor-init-command/vendor-release-action.mjs" {
-  const templateText: string;
-  export default templateText;
-}

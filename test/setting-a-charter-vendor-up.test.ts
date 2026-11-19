@@ -145,8 +145,13 @@ test("an empty folder answered at a terminal is set up as a charter repository f
       [],
     );
     assert.ok(!filePaths.some((filePath) => filePath.startsWith("charters/")));
-    // cw init chose the agent, and the build after the copy ran.
+    // cw init chose the agent, the settings mark the repository a vendor's,
+    // and the build after the copy ran, laying /vendor-release from cw itself
+    // (VENDOR Story 2 scenario 7).
+    assert.equal(JSON.parse(await readFile(join(repositoryFolderPath, ".cw/settings.json"), "utf8")).vendor, true);
     assert.ok(filePaths.includes(".cw/out/catalogue.json"));
+    assert.ok(filePaths.includes(".cw/out/skill/vendor-release/index.md"));
+    assert.ok(filePaths.includes(".cw/out/script/vendor-release-action/vendor-release-action.mjs"));
 
     const readmeText = await readFile(join(repositoryFolderPath, "README.md"), "utf8");
     assert.match(readmeText, /^# acme-charters\n\nRules for TypeScript services\.\n/);
@@ -235,70 +240,5 @@ test("a git repository with no commit yet is set up on the branch it is on", {
     assert.equal(vendorInitRun.status, 0, vendorInitRun.stdout);
     assert.equal(runGit(["symbolic-ref", "HEAD"], repositoryFolderPath, commandEnv), "refs/heads/trunk");
     assert.ok((await readdir(repositoryFolderPath)).includes("README.md"));
-  });
-});
-
-test("a repository it set up releases its charters with the script it copied, and another repository installs them", {
-  skip: !hasPython && "python3 makes the terminal",
-  todo: "VENDOR Story 2 rewrites /vendor-release to release charters",
-}, async () => {
-  await inWorkFolder(async (repositoryFolderPath, commandEnv, workFolderPath) => {
-    assert.equal(runVendorInitAtTerminal(repositoryFolderPath, commandEnv).status, 0);
-    const charterFolderPath = join(repositoryFolderPath, "charters", "demo");
-    await mkdir(charterFolderPath, { recursive: true });
-    assert.equal(runCw(["init", "--agent", "claude"], charterFolderPath, commandEnv).status, 0);
-    await mkdir(join(charterFolderPath, ".cw/charter/primitive/skill/greet"), { recursive: true });
-    await writeFile(
-      join(charterFolderPath, ".cw/charter/primitive/skill/greet/index.md"),
-      '---\nkind: skill\nid: greet\ndescription: Say hello.\ntriggers: ["say hello"]\n---\n\nHi.\n',
-    );
-    runGit(["add", "."], repositoryFolderPath, commandEnv);
-    runGit(["commit", "--quiet", "-m", "A charter"], repositoryFolderPath, commandEnv);
-    const originFolderPath = join(workFolderPath, "acme", "acme-charters.git");
-    runGit(["init", "--quiet", "--bare", "-b", "main", originFolderPath], workFolderPath, commandEnv);
-    runGit(["remote", "add", "origin", originFolderPath], repositoryFolderPath, commandEnv);
-    runGit(["push", "--quiet", "origin", "main"], repositoryFolderPath, commandEnv);
-
-    const releaseAction = (actionArgs: readonly string[]) =>
-      spawnSync(
-        process.execPath,
-        [".cw/out/script/vendor-release-action/vendor-release-action.mjs", ...actionArgs],
-        // The script runs `cw build` in each charter: the cw just built.
-        {
-          cwd: repositoryFolderPath,
-          env: { ...commandEnv, PATH: `${join(workFolderPath, "bin")}:${commandEnv.PATH}` },
-          encoding: "utf8",
-        },
-      );
-    await mkdir(join(workFolderPath, "bin"));
-    await writeFile(join(workFolderPath, "bin", "cw"), `#!/bin/sh\nexec "${process.execPath}" "${cwFilePath}" "$@"\n`, {
-      mode: 0o755,
-    });
-    const checkRun = releaseAction(["check"]);
-    assert.equal(checkRun.status, 0, checkRun.stderr);
-    const readmeRun = releaseAction(["readme"]);
-    assert.equal(readmeRun.status, 0, readmeRun.stderr);
-    const readmeText = await readFile(join(repositoryFolderPath, "README.md"), "utf8");
-    assert.match(readmeText, /cw vendor add acme\/acme-charters\n/);
-    assert.match(readmeText, /cw vendor add acme\/acme-charters --charter demo/);
-    assert.match(readmeText, /\| `\/greet` \| Say hello\. \|/);
-    assert.doesNotMatch(readmeText, /\| `\/cw-author` \|/);
-    await writeFile(join(workFolderPath, "entry.md"), "- First.\n");
-    const publishRun = releaseAction(["publish", "0.1.0", join(workFolderPath, "entry.md"), "--date", "2026-11-15"]);
-    assert.equal(publishRun.status, 0, publishRun.stderr);
-    assert.equal(runGit(["tag", "--list"], originFolderPath, commandEnv), "v0.1.0");
-
-    const consumerFolderPath = join(workFolderPath, "consumer");
-    await mkdir(consumerFolderPath);
-    runGit(["init", "--quiet"], consumerFolderPath, commandEnv);
-    assert.equal(runCw(["init", "--agent", "claude"], consumerFolderPath, commandEnv).status, 0);
-    const vendorAddRun = runCw(["vendor", "add", originFolderPath], consumerFolderPath, commandEnv);
-    assert.equal(vendorAddRun.status, 0, vendorAddRun.stderr);
-    assert.deepEqual(
-      (await listFilePaths(join(consumerFolderPath, ".cw/charter/vendor"))).filter((filePath) =>
-        filePath.endsWith("index.md"),
-      ),
-      ["acme/acme-charters/demo/primitive/skill/greet/index.md"],
-    );
   });
 });

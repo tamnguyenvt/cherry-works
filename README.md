@@ -35,13 +35,13 @@ Inside the repository you want to govern:
 
 ```bash
 cw init                    # choose your agent and initialize the charter
-cw add guide no-any --header description="No any in TypeScript." --header globs="src/**/*.ts"
+cw add guide no-any --charter=team --header description="No any in TypeScript." --header globs="src/**/*.ts"
 cw edit no-any             # write the rule in your editor
 cw build                   # generate the agent's files
 cw doctor                  # check the result
 ```
 
-Your rule lives at `.cw/charter/primitive/guide/no-any/index.md`. Edit that source and
+Your rule lives at `.cw/charter/team/primitive/guide/no-any/index.md`, in the charter `team`. Edit that source and
 rebuild when it changes. Review and commit `.cw/` together with the generated
 agent files.
 

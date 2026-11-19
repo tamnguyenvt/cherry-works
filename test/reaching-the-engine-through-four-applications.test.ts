@@ -83,7 +83,7 @@ const operationNamesByPortName = {
     "analyzeEvalLog",
     "summarizeSessions",
   ],
-  ForManagingWorkspace: ["readWorkspaceSettings", "setUpWorkspace"],
+  ForManagingWorkspace: ["readWorkspaceSettings", "setUpWorkspace", "setVendorMark"],
 } as const;
 const portFileUrlByPortName = {
   ForAuthoringCharter: new URL("charter/app/port/in/authoring-charter.port.ts", hexagonFolderUrl),
@@ -269,6 +269,7 @@ test("every operation of the engine, called over a charter, answers the caller p
     ForManagingWorkspace: {
       readWorkspaceSettings: () => workspaceApp.readWorkspaceSettings(),
       setUpWorkspace: () => workspaceApp.setUpWorkspace(["claude"], "0.0.0"),
+      setVendorMark: () => workspaceApp.setVendorMark(),
     },
     ForAuthoringCharter: {
       setUpCharter: () => charterAuthoringApp.setUpCharter(),

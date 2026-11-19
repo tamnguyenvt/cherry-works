@@ -19,7 +19,7 @@ Each charter lives in `.cw/charter/<charter>/`, written with
 ## Releasing
 
 Ask your agent `/vendor-release` on the default branch of `origin`, at the
-repository's root. It checks that branch, builds each charter, lists how to
+repository's root. It checks that branch, builds the charters, lists how to
 install each one and its skills in the section above, proposes the version
 and the changelog entry, and once you confirm, commits, pushes and tags
 `v<version>`.

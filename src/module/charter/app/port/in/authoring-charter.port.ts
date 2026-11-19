@@ -30,6 +30,15 @@ export interface McpOriginAddress {
   readonly mcpId: string;
 }
 
+/** What a repository configured itself with that its charter is read by,
+ *  handed by whoever composes it, which keeps it (CORE-FR-231). */
+export interface AuthoringSettings {
+  /** Whether `cw vendor init` set the repository up, so its charter holds
+   *  `/vendor-release` and its script, as its build lays them
+   *  (VENDOR-FR-027). */
+  readonly isVendor?: boolean;
+}
+
 /**
  * DRIVER PORT — charter authoring: its primitives, the vendors it
  * installs, the test and eval cases written beside it, testing it, and the mcp

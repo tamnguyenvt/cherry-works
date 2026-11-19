@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // The steps of /vendor-release a script takes, run from the root of a charter
-// repository `cw vendor init` set up, one publishing its charters from
-// charters/<name>/:
+// repository `cw vendor init` set up, one publishing the charters it authored
+// under .cw/charter/<name>/:
 //
-//   node vendor-release-action.mjs check [--branch <name>]       the release branch ready, each charter under charters/ built
+//   node vendor-release-action.mjs check [--branch <name>]       the release branch ready, every charter built at the root
 //   node vendor-release-action.mjs readme                        README.md's install and charters section composed from what each charter holds
 //   node vendor-release-action.mjs draft                         the last release, the versions after it, what landed since
 //   node vendor-release-action.mjs publish <version> <entry-file> [--date yyyy-mm-dd] [--branch <name>]
@@ -17,11 +17,16 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const CHANGELOG_FILE = "CHANGELOG.md";
+// A branch name holding no space and no character a shell reads as more than
+// a word.
+const BRANCH_PATTERN = /^[^\s;&|$`'"\\<>(){}*?!~#]+$/;
 const CHANGELOG_HEADING = "# Changelog";
-const CHARTERS_FOLDER = "charters";
+const CHARTER_FOLDER = ".cw/charter";
+const CATALOGUE_FILE = ".cw/out/catalogue.json";
 const README_FILE = "README.md";
 const README_START_MARKER = "<!-- vendor-release-action: charters -->";
 const README_END_MARKER = "<!-- /vendor-release-action: charters -->";
+const VENDOR_RECORD_FILE = "cw-vendor.json";
 const VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/;
 
 /** One run of a command, never through a shell. */
@@ -83,15 +88,18 @@ function readChangelog() {
   return readFileSync(CHANGELOG_FILE, "utf8");
 }
 
-/** Each folder under charters/ holding a charter, by name. */
+/** Each charter the repository authored, by name: a folder under
+ *  .cw/charter/ that git holds, with no cw-vendor.json, which one installed
+ *  holds. What git does not hold is in no commit an install takes. */
 function listCharterNames() {
-  return existsSync(CHARTERS_FOLDER)
-    ? readdirSync(CHARTERS_FOLDER, { withFileTypes: true })
-        .filter((folderEntry) => folderEntry.isDirectory())
-        .map((folderEntry) => folderEntry.name)
-        .filter((charterName) => existsSync(join(CHARTERS_FOLDER, charterName, ".cw", "charter")))
-        .sort()
-    : [];
+  const trackedPaths = runGit(["ls-files", "--", CHARTER_FOLDER])
+    .stdout.split("\n")
+    // A file inside a charter's folder, never one beside them, as `.gitkeep`.
+    .filter((trackedPath) => trackedPath.startsWith(`${CHARTER_FOLDER}/`) && trackedPath.split("/").length > 3);
+  const charterNames = new Set(trackedPaths.map((trackedPath) => trackedPath.split("/")[2]));
+  return [...charterNames]
+    .filter((charterName) => !trackedPaths.includes(`${CHARTER_FOLDER}/${charterName}/${VENDOR_RECORD_FILE}`))
+    .sort();
 }
 
 /** The branch a release is made from: origin's default branch, the one its
@@ -107,19 +115,25 @@ function findReleaseBranch(confirmedBranch) {
       stopRelease(
         `origin's default branch is "${defaultBranch}", not "${confirmedBranch}": a release is made from ${defaultBranch} alone.`,
       );
-    return defaultBranch;
-  }
-  if (confirmedBranch === undefined || confirmedBranch === "")
+  } else if (confirmedBranch === undefined || confirmedBranch === "")
     stopRelease(
       `Unsure which branch to release from: origin names no default branch yet. The branch stood on is "${runGit(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.trim()}".`,
       "Ask the user which branch releases are made from, then run this again with --branch <name>.",
     );
-  return confirmedBranch;
+  const releaseBranch = defaultBranch ?? confirmedBranch;
+  // The lines printed to finish a release name it as it is: a name a shell
+  // would read as more than a branch never reaches them.
+  if (!BRANCH_PATTERN.test(releaseBranch))
+    stopRelease(`"${releaseBranch}" is no branch a release is made from: name one with no space and none of ; & | $ \` ' " \\ < > ( ) { } * ? ! ~ #.`);
+  return releaseBranch;
 }
 
 function checkRelease(confirmedBranch) {
-  const releaseBranch = findReleaseBranch(confirmedBranch);
   const branchName = runGit(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.trim();
+  // No origin is said as it is, before any branch is asked of the user.
+  if (runGit(["remote", "get-url", "origin"]).status !== 0)
+    stopRelease(`${branchName} has no origin to push to: add one with "git remote add origin <address>".`);
+  const releaseBranch = findReleaseBranch(confirmedBranch);
   if (branchName !== releaseBranch)
     stopRelease(`On branch "${branchName}", not "${releaseBranch}": a release is made from ${releaseBranch} alone, origin's default branch.`);
   const changedPaths = runGit(["status", "--porcelain"]).stdout.split("\n").filter((line) => line.trim() !== "");
@@ -128,8 +142,26 @@ function checkRelease(confirmedBranch) {
       "The working tree is not clean: commit or put away what is changed first.",
       ...changedPaths.slice(0, 10).map((line) => `  ${line}`),
     );
-  if (runGit(["remote", "get-url", "origin"]).status !== 0)
-    stopRelease(`${releaseBranch} has no origin to push to: add one with "git remote add origin <address>".`);
+  // A file the repository keeps off git builds here and is in no commit an
+  // install takes. What this machine alone ignores, a desktop's leftovers, is
+  // none of the repository's.
+  const excludeFilePath = runGit(["rev-parse", "--git-path", "info/exclude"]).stdout.trim();
+  const ignoredPaths = runGit([
+    "ls-files",
+    "--others",
+    "--ignored",
+    "--exclude-per-directory=.gitignore",
+    ...(existsSync(excludeFilePath) ? [`--exclude-from=${excludeFilePath}`] : []),
+    "--",
+    CHARTER_FOLDER,
+  ])
+    .stdout.split("\n")
+    .filter((line) => line.trim() !== "");
+  if (ignoredPaths.length > 0)
+    stopRelease(
+      `git ignores these files under ${CHARTER_FOLDER}/, and no install would hold them: commit them, or take them away.`,
+      ...ignoredPaths.slice(0, 10).map((ignoredPath) => `  ${ignoredPath}`),
+    );
   const remoteBranchRun = runGit(["ls-remote", "--heads", "origin", releaseBranch]);
   if (remoteBranchRun.status !== 0) stopRelease(`origin could not be reached: ${decisiveLineOf(remoteBranchRun)}`);
   if (remoteBranchRun.stdout.trim() !== "") {
@@ -150,25 +182,34 @@ function checkRelease(confirmedBranch) {
       stopRelease(`${releaseBranch} is ${behindCount} commit(s) behind origin/${releaseBranch}: pull first.`);
   }
   const charterNames = listCharterNames();
-  if (charterNames.length === 0) stopRelease(`There is no charter under ${CHARTERS_FOLDER}/ to release.`);
-  // Each charter in its own folder, never the root, whose charter is the
-  // authors' own.
-  for (const charterName of charterNames) {
-    const buildRun = runCommand("cw", ["build"], join(CHARTERS_FOLDER, charterName));
-    if (buildRun.isMissing) stopRelease("cw is not installed here: install it, then ask /vendor-release again.");
-    if (buildRun.status !== 0)
-      stopRelease(`${CHARTERS_FOLDER}/${charterName} does not build: ${decisiveLineOf(buildRun)}`);
+  if (charterNames.length === 0) stopRelease(`There is no charter under ${CHARTER_FOLDER}/ to release.`);
+  // Built at the root: no primitive may hold or name what cw builds into this
+  // repository alone, so a charter building here builds with the charters it
+  // includes alone, wherever it is installed.
+  const buildRun = runCommand("cw", ["build"], process.cwd());
+  if (buildRun.isMissing) stopRelease("cw is not installed here: install it, then ask /vendor-release again.");
+  if (buildRun.status !== 0) {
+    const buildOutputLines = `${buildRun.stdout}\n${buildRun.stderr}`.split("\n").filter((line) => line.trim() !== "");
+    const brokenCharterNames = charterNames.filter((charterName) =>
+      buildOutputLines.some((line) => line.includes(`${CHARTER_FOLDER}/${charterName}/`)),
+    );
+    stopRelease(
+      brokenCharterNames.length === 0
+        ? "The charters do not build:"
+        : `${brokenCharterNames.map((charterName) => `"${charterName}"`).join(", ")} ${brokenCharterNames.length === 1 ? "does not build with the charters it includes" : "do not build with the charters they include"} alone:`,
+      ...buildOutputLines.map((line) => `  ${line}`),
+    );
   }
   process.stdout.write(
-    `Ready: ${releaseBranch} is clean and not behind origin/${releaseBranch}; built ${charterNames.map((charterName) => `${CHARTERS_FOLDER}/${charterName}`).join(", ")}.\n`,
+    `Ready: ${releaseBranch} is clean and not behind origin/${releaseBranch}; built ${charterNames.join(", ")}.\n`,
   );
 }
 
 /** Rewrites the section of README.md between its markers: how to install
  *  every charter, then per charter, how to install it alone and the skills it
  *  holds, cw's own skills left out. The source is read off origin. A skill is
- *  the charter's when its source is under the charter's `.cw/charter/`,
- *  authored there or vendored; cw's own are built into `.cw/out/` alone. */
+ *  the charter's when it is kept under the charter's primitive/skill/; its
+ *  description is the one the build at check put in the catalogue. */
 function composeReadme() {
   if (!existsSync(README_FILE)) stopRelease(`There is no ${README_FILE} at the repository's root.`);
   const readmeText = readFileSync(README_FILE, "utf8");
@@ -181,18 +222,17 @@ function composeReadme() {
   const originUrl = runGit(["remote", "get-url", "origin"]).stdout.trim();
   const sourceName =
     /[:/]([^/:]+\/[^/]+?)(?:\.git)?\/?$/.exec(originUrl)?.[1] ?? "<owner>/<repository>";
+  if (!existsSync(CATALOGUE_FILE)) stopRelease(`The charters are not built: run "vendor-release-action.mjs check" first.`);
+  const catalogueEntries = JSON.parse(readFileSync(CATALOGUE_FILE, "utf8"));
   const charterNames = listCharterNames();
   const charterSections = charterNames.map((charterName) => {
-    const charterFolderPath = join(CHARTERS_FOLDER, charterName, ".cw");
-    const cataloguePath = join(charterFolderPath, "out", "catalogue.json");
-    if (!existsSync(cataloguePath))
-      stopRelease(`${CHARTERS_FOLDER}/${charterName} is not built: run "vendor-release-action.mjs check" first.`);
+    const skillFolderPath = join(CHARTER_FOLDER, charterName, "primitive", "skill");
     const sourceSkillIds = new Set(
-      readdirSync(join(charterFolderPath, "charter"), { recursive: true })
-        .map((sourcePath) => /(?:^|[\\/])skill[\\/]([^\\/]+)[\\/]index\.md$/.exec(String(sourcePath))?.[1])
-        .filter((skillId) => skillId !== undefined),
+      existsSync(skillFolderPath)
+        ? readdirSync(skillFolderPath).filter((skillId) => existsSync(join(skillFolderPath, skillId, "index.md")))
+        : [],
     );
-    const charterSkills = JSON.parse(readFileSync(cataloguePath, "utf8"))
+    const charterSkills = catalogueEntries
       .filter((catalogueEntry) => catalogueEntry.kind === "skill" && sourceSkillIds.has(catalogueEntry.id))
       .sort((leftSkill, rightSkill) => leftSkill.id.localeCompare(rightSkill.id));
     const skillLines =
@@ -207,7 +247,7 @@ function composeReadme() {
       `### ${charterName}`,
       "",
       "```bash",
-      `cw vendor add ${sourceName} --charter ${charterName}`,
+      `cw vendor add ${sourceName} --charter=${charterName}`,
       "cw build",
       "```",
       "",
@@ -222,7 +262,7 @@ function composeReadme() {
     "cw build",
     "```",
     "",
-    "Or pick the charters you want with `--charter <name>`, once for each.",
+    "Or pick the charters you want with `--charter=<name>`, once for each.",
     "",
     "## Charters",
     "",
@@ -231,7 +271,7 @@ function composeReadme() {
   const composedText = `${readmeText.slice(0, startIndex + README_START_MARKER.length)}\n${sectionText}\n${readmeText.slice(endIndex)}`;
   if (composedText !== readmeText) writeFileSync(README_FILE, composedText);
   process.stdout.write(
-    `${README_FILE} ${composedText === readmeText ? "already lists" : "now lists"} ${charterNames.length === 0 ? "no charter" : charterNames.map((charterName) => `${CHARTERS_FOLDER}/${charterName}`).join(", ")}.\n`,
+    `${README_FILE} ${composedText === readmeText ? "already lists" : "now lists"} ${charterNames.length === 0 ? "no charter" : charterNames.join(", ")}.\n`,
   );
 }
 
@@ -263,12 +303,12 @@ function draftRelease() {
       `Patch: ${majorPart}.${minorPart}.${patchPart + 1}`,
       `Minor, where what landed breaks a repository already installing a charter: ${majorPart}.${minorPart + 1}.0`,
     );
-    const changedPaths = runGit(["diff", "--name-status", `v${lastVersion}..HEAD`, "--", CHARTERS_FOLDER])
+    const changedPaths = runGit(["diff", "--name-status", `v${lastVersion}..HEAD`, "--", CHARTER_FOLDER])
       .stdout.split("\n")
       .filter((line) => /^(D|R)/.test(line));
     if (changedPaths.length > 0)
       draftLines.push(
-        "Removed or renamed under charters/:",
+        `Removed or renamed under ${CHARTER_FOLDER}/:`,
         ...changedPaths.map((line) => `  ${line.replace(/\t/g, " ")}`),
       );
   }
@@ -294,21 +334,16 @@ function publishRelease(versionText, entryFilePath, dateText, confirmedBranch) {
   if (!changelogText.startsWith(`${CHANGELOG_HEADING}\n`))
     stopRelease(`${CHANGELOG_FILE} does not open with "${CHANGELOG_HEADING}".`);
 
-  // The release commits the entry, what the builds of check changed and the
-  // README readme composed, and nothing else changed since.
+  // The release commits the entry and the README readme composed, and
+  // nothing else changed since: what a build writes is never committed.
   const strayPaths = runGit(["status", "--porcelain"])
     .stdout.split("\n")
     .filter((line) => line.trim() !== "")
     .map((line) => line.slice(3))
-    .filter(
-      (changedPath) =>
-        changedPath !== CHANGELOG_FILE &&
-        changedPath !== README_FILE &&
-        !changedPath.startsWith(`${CHARTERS_FOLDER}/`),
-    );
+    .filter((changedPath) => changedPath !== CHANGELOG_FILE && changedPath !== README_FILE);
   if (strayPaths.length > 0)
     stopRelease(
-      `Changed since check, outside ${CHARTERS_FOLDER}/, ${README_FILE} and ${CHANGELOG_FILE}: commit or put them away first.`,
+      `Changed since check, outside ${README_FILE} and ${CHANGELOG_FILE}: commit or put them away first.`,
       ...strayPaths.slice(0, 10).map((strayPath) => `  ${strayPath}`),
     );
   const entryText = readFileSync(entryFilePath, "utf8").trim();
@@ -328,9 +363,9 @@ function publishRelease(versionText, entryFilePath, dateText, confirmedBranch) {
     },
     {
       name: "commit",
-      finishCommand: `git add -A -- ${CHANGELOG_FILE} ${README_FILE} ${CHARTERS_FOLDER}/ && git commit -m "${releaseMessage}"`,
+      finishCommand: `git add -- ${CHANGELOG_FILE} ${README_FILE} && git commit -m "${releaseMessage}"`,
       runStep: () => {
-        const addRun = runGit(["add", "-A", "--", CHANGELOG_FILE, README_FILE, `${CHARTERS_FOLDER}/`]);
+        const addRun = runGit(["add", "--", CHANGELOG_FILE, README_FILE]);
         return addRun.status === 0 ? runGit(["commit", "--quiet", "-m", releaseMessage]) : addRun;
       },
     },

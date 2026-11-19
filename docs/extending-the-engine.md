@@ -82,10 +82,11 @@ if (settingsAnswer.type === "Fault") throw new Error(settingsAnswer.data.message
 const { engineApp } = await composeApplications(repoFolder, homeFolder);
 await engineApp.charterAuthoringApp.setUpCharter();
 
-// Add a guide, as `cw add guide no-any --header description=…` does.
+// Add a guide, as `cw add guide no-any --charter=team --header description=…` does.
 const addAnswer = await engineApp.charterAuthoringApp.addPrimitive(
   "guide",
   "no-any",
+  "team",
   { description: "Never type a value as any.", globs: ["src/**/*.ts"] },
   "Use unknown and narrow it.\n",
 );

@@ -68,6 +68,24 @@ test("a session analysis folder that is no absolute path or path under ~/ is ref
   assert.match(settingsFault.message, /"sessionAnalysisFolder"/);
 });
 
+test("a vendor mark that is no yes or no is refused, naming the field (VENDOR-FR-027)", async () => {
+  const settingsFault = await refusing(`${JSON.stringify({ agents: ["claude"], vendor: "yes" })}\n`);
+
+  assert.match(settingsFault.message, /"vendor"/);
+  assert.match(settingsFault.fix ?? "", /"vendor": true/);
+});
+
+test("a repository never set up is not marked a vendor's, and nothing is written (VENDOR-FR-027)", async () => {
+  const fileReaders = new InMemoryFileReaders({});
+
+  const markedSettingsDTO = await workspaceAppOf(fileReaders, new InMemoryFileOutput(fileReaders)).setVendorMark();
+
+  assert.equal(markedSettingsDTO.type, "Fault");
+  assert.equal((markedSettingsDTO as FaultDTOs.Fault).data.name, "UnsetWorkspaceFault");
+  assert.match((markedSettingsDTO as FaultDTOs.Fault).data.fix ?? "", /cw init/);
+  assert.equal(await fileReaders.readIfThere(new URL(file)), undefined);
+});
+
 test("setup refuses no agent, an agent the engine does not compile for and a ceiling not above 0, each by its own fault, and writes nothing (FR-033, EVAL-FR-006)", async () => {
   for (const [agentNames, mainContextCeiling, faultName] of [
     [[], undefined, "NoAgentFault"],

@@ -12,7 +12,7 @@ Inside the repository or folder you want to govern:
 ```bash
 cw init
 cw kinds guide
-cw add guide explain-failures --header description="Explain failures and the next action." --header globs="src/**/*.ts"
+cw add guide explain-failures --charter=team --header description="Explain failures and the next action." --header globs="src/**/*.ts"
 cw edit explain-failures
 ```
 
@@ -21,7 +21,8 @@ the repository is already initialized, start with `cw kinds guide`.
 `cw add` writes the primitive; it does not build it. `cw edit` opens the source
 in `$VISUAL` or `$EDITOR`.
 
-The guide lives at `.cw/charter/primitive/guide/explain-failures/index.md`. Give it a body
+Every primitive belongs to a charter you name, made where none of that name is
+held yet. The guide lives at `.cw/charter/team/primitive/guide/explain-failures/index.md`. Give it a body
 that says exactly what the agent should do:
 
 ```markdown
@@ -103,11 +104,11 @@ Create a skill for a request that needs several steps:
 
 ```bash
 cw kinds skill
-cw add skill review-a-change --header description="Review a change for correctness and security." --header triggers="review this change" --header triggers="review implementation"
+cw add skill review-a-change --charter=team --header description="Review a change for correctness and security." --header triggers="review this change" --header triggers="review implementation"
 cw edit review-a-change
 ```
 
-For example, `.cw/charter/primitive/skill/review-a-change/index.md` can hold:
+For example, `.cw/charter/team/primitive/skill/review-a-change/index.md` can hold:
 
 ```markdown
 ---
@@ -152,32 +153,27 @@ that do not exist.
 Use `cw explain <id>` to see where a primitive comes from, what it pulls in,
 and which tests name it.
 
-## Start from a published charter or skill
+## Start from a published charter
 
-To copy a published skill into your own editable charter:
-
-```bash
-cw vendor inject mattpocock/skills --skill=grill-me
-```
-
-To copy a charter selected from a source's `charters/` folder:
+To copy a charter a source authored into a charter of your own:
 
 ```bash
 cw vendor inject acme/charters --charter=baseline --ref=v1.2.0
 ```
 
-The source and ref must exist. Injection uses the same source selection as
-`cw vendor add`, but writes primitives and their assets into `.cw/charter/`.
-They are yours to edit and delete, with no vendor provenance recorded.
-Injection leaves the files unstaged and does not build. An id collision
-refuses the whole injection before anything is written.
+The source and ref must exist. Injection selects charters as `cw vendor add`
+does, the charters the one named includes coming with it, but writes them
+whole into `.cw/charter/<charter>/` with no `cw-vendor.json`: they are yours
+to edit and delete. Injection leaves the files unstaged and does not build. A
+charter name or an id you already hold refuses the whole injection before
+anything is written.
 
 Use `cw vendor add` instead when you want a read-only vendor copy that you
 update from its source. See [vendor sources](reference.md#vendor-sources).
 
 ## Test the scope, then inspect the output
 
-Add a file such as `.cw/charter/test/authoring.json` to pin down when your guide is
+Add a file such as `.cw/charter/team/test/authoring.json` to pin down when your guide is
 selected:
 
 ```json

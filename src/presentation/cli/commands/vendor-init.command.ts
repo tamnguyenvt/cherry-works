@@ -30,14 +30,16 @@ const HALF_SET_UP_LINE = 'The folder is left half set up: empty it, then run "cw
  * taken from a flag. The README's name, the folder's by default, and its
  * description are asked first. Then `cw init` runs here, asking the agent as
  * it always does; the folder is made a git repository on
- * `main` where it has no `.git`; the template is copied in — README,
- * changelog and `.gitignore` — and `cw build` runs. Nothing is committed.
+ * `main` where it has no `.git`; its settings are marked a vendor's, so its
+ * build lays `/vendor-release` from cw itself; the template is copied in —
+ * README, changelog and `.gitignore` — and `cw build` runs. Nothing is
+ * committed.
  */
 export class VendorInitCommand implements Command {
   readonly name = "vendor init";
   readonly summary = "Set a charter vendor repository up in an empty folder, to publish charters from";
 
-  async runCommand({ cwd, isAtTerminal }: Context): Promise<Outcome> {
+  async runCommand({ cwd, isAtTerminal, workspaceApp }: Context): Promise<Outcome> {
     // Git, run here and never through a shell: `isMissing` where it is not
     // installed.
     const runGit = (gitArgs: readonly string[]) => {
@@ -114,6 +116,14 @@ export class VendorInitCommand implements Command {
       spawnSync(process.execPath, [...process.execArgv, process.argv[1] ?? "", ...cwArgs], { cwd, stdio: "inherit" })
         .status ?? 1;
     if (runCw(["init"]) !== 0) return { exitCode: EXIT_FAILURE, problemText: printProblem(HALF_SET_UP_LINE) };
+    // Marked a vendor's, so its build lays /vendor-release from cw itself
+    // (VENDOR-FR-027).
+    const markedSettingsDTO = await workspaceApp.setVendorMark();
+    if (markedSettingsDTO.type === "Fault")
+      return {
+        exitCode: EXIT_FAILURE,
+        problemText: printProblem(markedSettingsDTO.data.message, `${markedSettingsDTO.data.fix} ${HALF_SET_UP_LINE}`),
+      };
 
     if (!hasGit) {
       const initRun = runGit(["init", "--quiet"]);

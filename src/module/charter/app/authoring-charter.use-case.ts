@@ -7,6 +7,7 @@ import {
   type ForTellingTime,
   UnsoundModelFault,
 } from "../../shared/module.js";
+import { BuiltinPrimitives } from "../domain/builtin/index.js";
 import { RepoLayerPrimitiveSpec } from "../domain/models/charter/repo-layer-primitive.specification.js";
 import { ValidCharterNameSpec } from "../domain/models/charter/valid-charter-name.specification.js";
 import {
@@ -51,7 +52,12 @@ import { TestSuite } from "../domain/models/test/test-suite.js";
 import { type CharterInstall, CharterInstallRequest } from "../domain/models/vendor/charter-install.js";
 import { VendorSourceOriginFactory } from "../domain/models/vendor/vendor-source-origin.factory.js";
 import { TestSuiteService } from "../domain/services/test-suite.service.js";
-import type { ForAuthoringCharter, McpOriginAddress, UnparsedHeaders } from "./port/in/authoring-charter.port.js";
+import type {
+  AuthoringSettings,
+  ForAuthoringCharter,
+  McpOriginAddress,
+  UnparsedHeaders,
+} from "./port/in/authoring-charter.port.js";
 import { CharterDTOs } from "./port/in/charter.dto.js";
 import type { ForAuthorizingOAuthClients } from "./port/out/authorizing-oauth-clients.port.js";
 import type { ForManagingCharter } from "./port/out/managing-charter.port.js";
@@ -81,6 +87,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   readonly #credentialsRepository: ForStoringCredentials;
   readonly #oauthAuthorizer: ForAuthorizingOAuthClients;
   readonly #clock: ForTellingTime;
+  readonly #isVendor: boolean;
 
   constructor(
     /** How the repository's charter is read off its layers. */
@@ -101,8 +108,12 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     /** Where an internal fault is logged for whoever runs the system, before
      *  the caller is answered in the system's own words (SDK-FR-017). */
     progressReporter: ForReportingProgress,
+    /** Whether the repository is a vendor's, as whoever composes this keeps
+     *  it (CORE-FR-231). */
+    authoringSettings: AuthoringSettings = {},
   ) {
     super(progressReporter);
+    this.#isVendor = authoringSettings.isVendor ?? false;
     this.#loadCharterService = loadCharterService;
     this.#installCharterService = installCharterService;
     this.#charterRepository = charterRepository;
@@ -142,7 +153,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
 
       // A warning is said and lets the run through; what refuses it is only the
       // errors among the faults (FR-005, FR-009).
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
       const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
@@ -179,7 +190,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         (await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository)).findCharterOrFault(
           charterName,
         );
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
       const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
@@ -227,7 +238,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       // Held to the shape an id is written in before anything is read: text
       // that is not one names nothing to look for (FR-014).
       const primitiveId = Primitives.idOf(id);
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
       const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
@@ -401,7 +412,15 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         return this.faultsDTOOf(new Faults(findingFaults));
       }
 
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      // What cw brings to a vendor's repository alone is held by no primitive,
+      // in that repository or any other (VENDOR-FR-028).
+      if (BuiltinPrimitives.reservedVendorIds.includes(id))
+        throw new ClaimedIdFault(
+          `"${id}" is what cw brings to a repository "cw vendor init" set up alone, and no primitive holds it.`,
+          "Run this again with an id of your own.",
+          { internal: false },
+        );
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
       const claimingPrimitive = charterRoot.primitiveById.get(id);
       if (claimingPrimitive !== undefined)
         throw new ClaimedIdFault(
@@ -863,7 +882,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         (await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository)).findCharterOrFault(
           charterName,
         );
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
       // A warning is said and lets the run through; what refuses it is only the
       // errors among the faults (FR-005).
       const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
@@ -980,7 +999,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  raises it: there is no file it is wrong with. */
   async #findPrimitiveById(id: string): Promise<Primitive> {
     const primitiveId = Primitives.idOf(id);
-    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
     const primitive = charterRoot.primitiveById.get(primitiveId);
     if (primitive === undefined)
       throw new UnknownIdFault(`This charter holds no "${id}".`, 'Run "cw list --min" to see every id it does hold.', {
@@ -1121,7 +1140,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    * would never be listed for the sign-in that lets it build.
    */
   async #loadSignInAddresses(): Promise<readonly Pick<McpOrigin, "address" | "endpoint" | "ids" | "auth">[]> {
-    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
     const signInAddressByAddress = new Map<
       string,
       { endpoint?: string; ids: Set<string>; auth: Set<McpAuthMethodName> }
@@ -1234,7 +1253,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     try {
       const [charterMetadataList, charterRoot] = await Promise.all([
         this.#loadCharterService.loadCharterMetadataList(this.#charterRepository),
-        this.#loadCharterService.loadCharterRoot(this.#charterRepository),
+        this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor),
       ]);
       const charterInstalls = this.#installCharterService.planCharterInstalls(
         vendorSource,

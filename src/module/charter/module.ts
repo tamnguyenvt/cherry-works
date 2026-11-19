@@ -7,6 +7,7 @@
 export { AuthoringCharter } from "./app/authoring-charter.use-case.js";
 export { BuildingCharter } from "./app/building-charter.use-case.js";
 export {
+  type AuthoringSettings,
   BUILTIN_LAYER_NAME,
   type ForAuthoringCharter,
   type LayerName,
