@@ -8,13 +8,7 @@ import { fileURLToPath } from "node:url";
 
 // `pnpm test` builds this tree first: dist/ is what its source builds to.
 const cwFilePath = fileURLToPath(new URL("../dist/cw.js", import.meta.url));
-const gitignoreTemplatePath = fileURLToPath(
-  new URL("../src/presentation/cli/templates/vendor-init-command/gitignore.txt", import.meta.url),
-);
-const readmeTemplatePath = fileURLToPath(
-  new URL("../src/presentation/cli/templates/vendor-init-command/README.md", import.meta.url),
-);
-const releaseScriptPath = ".cw/out/script/vendor-release-action/vendor-release-action.mjs";
+const releaseScriptPath = ".cw/out/script/charter-release-action/charter-release-action.mjs";
 
 interface ReleaseFolder {
   readonly repositoryFolderPath: string;
@@ -23,17 +17,19 @@ interface ReleaseFolder {
   readonly commandEnv: NodeJS.ProcessEnv;
 }
 
-/** A charter repository as `cw vendor init` leaves it once committed and
- *  pushed: its settings marking it a vendor's, README, changelog and
- *  `.gitignore` from the template, the charters `charterTextByPath` holds, and
- *  an `origin` its `main` is pushed to; built, so the release script is laid.
+/** A repository set up with `cw init`, once committed and pushed: a README
+ *  holding the install section's markers, a changelog and a `.gitignore`
+ *  leaving out what `cw build` writes, where `hasReadmeAndChangelog` says so;
+ *  the charters `charterTextByPath` holds, and an `origin` its `main` is
+ *  pushed to; built, so the release script is laid.
  *  git and cw run there as a developer would, under a home and a git
  *  configuration of the run's own, `cw` on the PATH being the one just built. */
 async function inReleaseFolder(
   charterTextByPath: Readonly<Record<string, string>>,
   runTest: (releaseFolder: ReleaseFolder) => Promise<void>,
+  hasReadmeAndChangelog = true,
 ) {
-  const workFolderPath = await mkdtemp(join(tmpdir(), "cw-vendor-release-"));
+  const workFolderPath = await mkdtemp(join(tmpdir(), "cw-charter-release-"));
   try {
     const repositoryFolderPath = join(workFolderPath, "acme-charters");
     const originFolderPath = join(workFolderPath, "acme", "acme-charters.git");
@@ -57,19 +53,17 @@ async function inReleaseFolder(
     };
     runGit(["init", "--quiet", "-b", "main"], repositoryFolderPath, commandEnv);
     assert.equal(runCw(["init", "--agent", "claude"], repositoryFolderPath, commandEnv).status, 0);
-    const settingsFilePath = join(repositoryFolderPath, ".cw/settings.json");
     await writeFile(
-      settingsFilePath,
-      `${JSON.stringify({ ...JSON.parse(await readFile(settingsFilePath, "utf8")), vendor: true }, null, 2)}\n`,
+      join(repositoryFolderPath, ".gitignore"),
+      "**/.cw/out/\n.claude/\n.agents/\n.codex/\n.mcp.json\nCLAUDE.md\nAGENTS.md\n",
     );
-    await writeFile(join(repositoryFolderPath, ".gitignore"), await readFile(gitignoreTemplatePath, "utf8"));
-    await writeFile(
-      join(repositoryFolderPath, "README.md"),
-      (await readFile(readmeTemplatePath, "utf8"))
-        .replaceAll("{{name}}", "acme-charters")
-        .replaceAll("{{description}}", "Rules for TypeScript services."),
-    );
-    await writeFile(join(repositoryFolderPath, "CHANGELOG.md"), "# Changelog\n");
+    if (hasReadmeAndChangelog) {
+      await writeFile(
+        join(repositoryFolderPath, "README.md"),
+        "# acme-charters\n\nRules for TypeScript services.\n\n<!-- charter-release-action: charters -->\n<!-- /charter-release-action: charters -->\n\n## Releasing\n\nAsk your agent `/charter-release`.\n",
+      );
+      await writeFile(join(repositoryFolderPath, "CHANGELOG.md"), "# Changelog\n");
+    }
     for (const [charterFilePath, charterText] of Object.entries(charterTextByPath)) {
       await mkdir(join(repositoryFolderPath, charterFilePath, ".."), { recursive: true });
       await writeFile(join(repositoryFolderPath, charterFilePath), charterText);
@@ -102,7 +96,7 @@ function runGit(gitArgs: readonly string[], folderPath: string, commandEnv: Node
 }
 
 /** One step of the release script, run at the repository's root as
- *  /vendor-release runs it. */
+ *  /charter-release runs it. */
 function runReleaseAction(actionArgs: readonly string[], { repositoryFolderPath, commandEnv }: ReleaseFolder) {
   return spawnSync(process.execPath, [releaseScriptPath, ...actionArgs], {
     cwd: repositoryFolderPath,
@@ -126,7 +120,7 @@ const CHARTER_TEXT_BY_PATH = {
     "---\nkind: guide\nid: be-kind\ndescription: Be kind in every answer.\n---\n\nBe kind.\n",
   ".cw/charter/grill/primitive/skill/grill-me/index.md":
     '---\nkind: skill\nid: grill-me\ndescription: Ask hard questions.\ntriggers: ["grill me"]\n---\n\nAsk.\n',
-  ".cw/charter/grill/cw-vendor.json": `${JSON.stringify({ charter: "grill", source: "mattpocock/skills", version: "v1.0.0" })}\n`,
+  ".cw/charter/grill/cw-package.json": `${JSON.stringify({ charter: "grill", source: "mattpocock/skills", version: "v1.0.0" })}\n`,
 };
 
 test("released from the default branch of origin, the install section and the entry are committed, pushed and tagged, and another repository installs a charter with the line the README gives (VENDOR Story 2 scenario 1)", async () => {
@@ -147,17 +141,17 @@ test("released from the default branch of origin, the install section and the en
     const readmeRun = runReleaseAction(["readme"], releaseFolder);
     assert.equal(readmeRun.status, 0, readmeRun.stderr);
     const readmeText = await readFile(join(repositoryFolderPath, "README.md"), "utf8");
-    assert.match(readmeText, /cw vendor add acme\/acme-charters\n/);
-    assert.match(readmeText, /### baseline\n\n```bash\ncw vendor add acme\/acme-charters --charter=baseline\n/);
-    assert.match(readmeText, /### sdd\n\n```bash\ncw vendor add acme\/acme-charters --charter=sdd\n/);
+    assert.match(readmeText, /cw charter pull acme\/acme-charters\n/);
+    assert.match(readmeText, /### baseline\n\n```bash\ncw charter pull acme\/acme-charters --charter=baseline\n/);
+    assert.match(readmeText, /### sdd\n\n```bash\ncw charter pull acme\/acme-charters --charter=sdd\n/);
     assert.match(readmeText, /\| `\/greet` \| Say hello\. \|/);
     // Only what the repository authored, never cw's own skills.
     const installSectionText = readmeText.slice(
-      readmeText.indexOf("<!-- vendor-release-action: charters -->"),
-      readmeText.indexOf("<!-- /vendor-release-action: charters -->"),
+      readmeText.indexOf("<!-- charter-release-action: charters -->"),
+      readmeText.indexOf("<!-- /charter-release-action: charters -->"),
     );
     assert.doesNotMatch(installSectionText, /grill/);
-    assert.doesNotMatch(installSectionText, /`\/cw-author`|`\/vendor-release`/);
+    assert.doesNotMatch(installSectionText, /`\/cw-author`|`\/charter-release`/);
     // The rest of the README is the authors' own.
     assert.match(readmeText, /^# acme-charters\n\nRules for TypeScript services\.\n/);
     assert.match(readmeText, /## Releasing\n/);
@@ -185,14 +179,14 @@ test("released from the default branch of origin, the install section and the en
     assert.equal(runCw(["init", "--agent", "claude"], consumerFolderPath, commandEnv).status, 0);
     // The line the README gives, its source the origin on disk that
     // acme/acme-charters stands for here.
-    const readmeInstallArgs = /^cw vendor add acme\/acme-charters (--charter=sdd)$/m.exec(readmeText)?.slice(1) ?? [];
+    const readmeInstallArgs = /^cw charter pull acme\/acme-charters (--charter=sdd)$/m.exec(readmeText)?.slice(1) ?? [];
     assert.deepEqual(readmeInstallArgs, ["--charter=sdd"]);
-    const vendorAddRun = runCw(
-      ["vendor", "add", originFolderPath, ...readmeInstallArgs],
+    const charterPullRun = runCw(
+      ["charter", "pull", originFolderPath, ...readmeInstallArgs],
       consumerFolderPath,
       commandEnv,
     );
-    assert.equal(vendorAddRun.status, 0, vendorAddRun.stderr);
+    assert.equal(charterPullRun.status, 0, charterPullRun.stderr);
     assert.deepEqual(
       (await readdir(join(consumerFolderPath, ".cw/charter"))).filter((entryName) => entryName !== ".gitkeep").sort(),
       ["baseline", "sdd"],
@@ -252,7 +246,7 @@ test("a charter that does not build with the charters it includes alone is refus
     await mkdir(notesFolderPath, { recursive: true });
     await writeFile(
       join(notesFolderPath, "index.md"),
-      '---\nkind: skill\nid: notes\ndescription: Write the notes.\ntriggers: ["write notes"]\n---\n\nThen run [[vendor-release]].\n',
+      '---\nkind: skill\nid: notes\ndescription: Write the notes.\ntriggers: ["write notes"]\n---\n\nThen run [[charter-release]].\n',
     );
     runGit(["add", "."], repositoryFolderPath, commandEnv);
     runGit(["commit", "--quiet", "-m", "Release notes"], repositoryFolderPath, commandEnv);
@@ -263,7 +257,7 @@ test("a charter that does not build with the charters it includes alone is refus
     assert.equal(checkRun.status, 1);
     assert.match(checkRun.stderr, /"release-notes" does not build with the charters it includes alone/);
     assert.match(checkRun.stderr, /\.cw\/charter\/release-notes\/primitive\/skill\/notes\/index\.md/);
-    assert.match(checkRun.stderr, /names "vendor-release"/);
+    assert.match(checkRun.stderr, /names "charter-release"/);
     assert.equal(statusOf(releaseFolder), "");
   });
 });
@@ -430,12 +424,12 @@ test("a tag push that fails stops the release at that step, saying which steps r
   });
 });
 
-test("a repository marked a vendor's builds /vendor-release and its script from cw itself, and any other repository builds neither (VENDOR Story 2 scenario 7)", async () => {
+test("any repository builds /charter-release and its script from cw itself, into no charter of its own (VENDOR Story 8 scenario 1, VENDOR Story 2 scenario 7, VENDOR-FR-027)", async () => {
   await inReleaseFolder(CHARTER_TEXT_BY_PATH, async ({ repositoryFolderPath, commandEnv }) => {
     for (const outputPath of [
-      ".cw/out/skill/vendor-release/index.md",
+      ".cw/out/skill/charter-release/index.md",
       releaseScriptPath,
-      ".claude/skills/vendor-release/SKILL.md",
+      ".claude/skills/charter-release/SKILL.md",
     ])
       assert.ok((await readFile(join(repositoryFolderPath, outputPath), "utf8")) !== "", outputPath);
     // Never written into a charter (VENDOR-FR-013).
@@ -446,57 +440,69 @@ test("a repository marked a vendor's builds /vendor-release and its script from 
     // Read as the charter holds them, as the build lays them.
     const listRun = runCw(["list"], repositoryFolderPath, commandEnv);
     assert.equal(listRun.status, 0, listRun.stderr);
-    assert.match(listRun.stdout, /vendor-release(?!-)/);
-    assert.match(listRun.stdout, /vendor-release-action/);
-
-    const settingsFilePath = join(repositoryFolderPath, ".cw/settings.json");
-    const { vendor: _vendor, ...otherSettings } = JSON.parse(await readFile(settingsFilePath, "utf8"));
-    await writeFile(settingsFilePath, `${JSON.stringify(otherSettings, null, 2)}\n`);
-    const buildRun = runCw(["build"], repositoryFolderPath, commandEnv);
-    assert.equal(buildRun.status, 0, buildRun.stdout);
-    for (const outputPath of [
-      ".cw/out/skill/vendor-release/index.md",
-      releaseScriptPath,
-      ".claude/skills/vendor-release/SKILL.md",
-    ])
-      await assert.rejects(readFile(join(repositoryFolderPath, outputPath)), outputPath);
-
-    // `cw init` run again keeps the mark.
-    await writeFile(settingsFilePath, `${JSON.stringify({ ...otherSettings, vendor: true }, null, 2)}\n`);
-    assert.equal(runCw(["init", "--agent", "claude"], repositoryFolderPath, commandEnv).status, 0);
-    assert.equal(JSON.parse(await readFile(settingsFilePath, "utf8")).vendor, true);
+    assert.match(listRun.stdout, /charter-release(?!-)/);
+    assert.match(listRun.stdout, /charter-release-action/);
+    // Nothing in the settings marks it.
+    assert.deepEqual(Object.keys(JSON.parse(await readFile(join(repositoryFolderPath, ".cw/settings.json"), "utf8"))), [
+      "agents",
+    ]);
   });
 });
 
-test("cw add refuses the id of what cw builds into a vendor's repository alone, writing nothing, in a vendor's repository or any other (VENDOR Story 2 scenario 8)", async () => {
-  await inReleaseFolder({}, async ({ repositoryFolderPath, commandEnv }) => {
-    const settingsFilePath = join(repositoryFolderPath, ".cw/settings.json");
-    const vendorSettingsText = await readFile(settingsFilePath, "utf8");
-    const { vendor: _vendor, ...otherSettings } = JSON.parse(vendorSettingsText);
+test("released with no README and no changelog, both are written and committed with the release, the README holding the install section alone (VENDOR Story 8 scenario 2, VENDOR-FR-006, VENDOR-FR-007)", async () => {
+  await inReleaseFolder(
+    CHARTER_TEXT_BY_PATH,
+    async (releaseFolder) => {
+      const { repositoryFolderPath, originFolderPath, workFolderPath, commandEnv } = releaseFolder;
+      assert.equal(runReleaseAction(["check"], releaseFolder).status, 0);
+      const readmeRun = runReleaseAction(["readme"], releaseFolder);
+      assert.equal(readmeRun.status, 0, readmeRun.stderr);
+      const readmeText = await readFile(join(repositoryFolderPath, "README.md"), "utf8");
+      assert.ok(readmeText.startsWith("<!-- charter-release-action: charters -->\n## Install\n"), readmeText);
+      assert.ok(readmeText.endsWith("<!-- /charter-release-action: charters -->\n"), readmeText);
+      assert.match(readmeText, /^cw charter pull acme\/acme-charters --charter=sdd$/m);
+      const draftRun = runReleaseAction(["draft"], releaseFolder);
+      assert.equal(draftRun.status, 0, draftRun.stderr);
+      assert.match(draftRun.stdout, /Version: 0\.1\.0/);
+      await writeFile(join(workFolderPath, "entry.md"), "- First.\n");
 
-    for (const settingsText of [vendorSettingsText, `${JSON.stringify(otherSettings, null, 2)}\n`]) {
-      await writeFile(settingsFilePath, settingsText);
-      const addRun = runCw(
-        [
-          "add",
-          "skill",
-          "vendor-release",
-          "--charter=team",
-          "--header",
-          "description=Mine.",
-          "--header",
-          "triggers=mine",
-        ],
-        repositoryFolderPath,
-        commandEnv,
+      const publishRun = runReleaseAction(
+        ["publish", "0.1.0", join(workFolderPath, "entry.md"), "--date", "2026-11-19"],
+        releaseFolder,
       );
-      assert.equal(addRun.status, 1, settingsText);
-      assert.match(
-        addRun.stderr.replace(/\s+/g, " "),
-        /"vendor-release" is what cw brings to a repository "cw vendor init" set up alone/,
+
+      assert.equal(publishRun.status, 0, publishRun.stderr);
+      assert.equal(runGit(["tag", "--list"], originFolderPath, commandEnv), "v0.1.0");
+      assert.equal(
+        runGit(["show", "main:CHANGELOG.md"], originFolderPath, commandEnv),
+        "# Changelog\n\n## 0.1.0 — 2026-11-19\n\n- First.",
       );
-      await assert.rejects(readdir(join(repositoryFolderPath, ".cw/charter/team/primitive/skill/vendor-release")));
-    }
+      assert.equal(runGit(["show", "main:README.md"], originFolderPath, commandEnv), readmeText.trim());
+      assert.equal(statusOf(releaseFolder), "");
+    },
+    false,
+  );
+});
+
+test("cw add refuses the id of /charter-release, writing nothing (VENDOR Story 2 scenario 8, VENDOR-FR-028)", async () => {
+  await inReleaseFolder({}, async ({ repositoryFolderPath, commandEnv }) => {
+    const addRun = runCw(
+      [
+        "add",
+        "skill",
+        "charter-release",
+        "--charter=team",
+        "--header",
+        "description=Mine.",
+        "--header",
+        "triggers=mine",
+      ],
+      repositoryFolderPath,
+      commandEnv,
+    );
+    assert.equal(addRun.status, 1);
+    assert.match(addRun.stderr.replace(/\s+/g, " "), /"charter-release" is what cw brings to every repository/);
+    await assert.rejects(readdir(join(repositoryFolderPath, ".cw/charter/team/primitive/skill/charter-release")));
   });
 });
 
@@ -504,65 +510,78 @@ for (const [caseName, primitiveKind, primitiveText] of [
   [
     "holding the id",
     "skill",
-    '---\nkind: skill\nid: vendor-release\ndescription: Release mine.\ntriggers: ["release mine"]\n---\n\nMine.\n',
+    '---\nkind: skill\nid: charter-release\ndescription: Release mine.\ntriggers: ["release mine"]\n---\n\nMine.\n',
   ],
   [
     "naming it in its body",
     "skill",
-    '---\nkind: skill\nid: notes\ndescription: Write the notes.\ntriggers: ["write notes"]\n---\n\nThen run [[vendor-release-action]].\n',
+    '---\nkind: skill\nid: notes\ndescription: Write the notes.\ntriggers: ["write notes"]\n---\n\nThen run [[charter-release-action]].\n',
   ],
   [
     "naming it as its rationale",
     "skill",
-    '---\nkind: skill\nid: notes\ndescription: Write the notes.\ntriggers: ["write notes"]\nrationale: vendor-release\n---\n\nWrite them.\n',
+    '---\nkind: skill\nid: notes\ndescription: Write the notes.\ntriggers: ["write notes"]\nrationale: charter-release\n---\n\nWrite them.\n',
   ],
   [
     "naming it among its mixins",
     "skill",
-    '---\nkind: skill\nid: notes\ndescription: Write the notes.\ntriggers: ["write notes"]\nmixins: ["vendor-release"]\n---\n\nWrite them.\n',
+    '---\nkind: skill\nid: notes\ndescription: Write the notes.\ntriggers: ["write notes"]\nmixins: ["charter-release"]\n---\n\nWrite them.\n',
   ],
   [
     "naming it in a sensor's run",
     "sensor",
-    '---\nkind: sensor\nid: release-on-stop\ndescription: Release when the agent stops.\nsignal: Stop\nrun: node "[[vendor-release-action]]" check\n---\n\nRelease.\n',
+    '---\nkind: sensor\nid: release-on-stop\ndescription: Release when the agent stops.\nsignal: Stop\nrun: node "[[charter-release-action]]" check\n---\n\nRelease.\n',
   ],
   [
     "naming it among an agent's tools",
     "agent",
-    '---\nkind: agent\nid: releaser\ndescription: Release the charters.\ntools: ["Read", "[[vendor-release]]"]\n---\n\nRelease.\n',
+    '---\nkind: agent\nid: releaser\ndescription: Release the charters.\ntools: ["Read", "[[charter-release]]"]\n---\n\nRelease.\n',
   ],
 ] as const)
-  test(`a primitive ${caseName} of what cw builds into a vendor's repository alone is refused naming its file, in a vendor's repository or any other (VENDOR Story 2 scenario 8)`, async () => {
+  test(`a primitive ${caseName} of /charter-release or its script is refused naming its file (VENDOR Story 2 scenario 8, VENDOR-FR-028)`, async () => {
     await inReleaseFolder({}, async ({ repositoryFolderPath, commandEnv }) => {
       const primitiveId = /^id: (\S+)$/m.exec(primitiveText)?.[1] ?? "";
       const primitiveFilePath = `.cw/charter/team/primitive/${primitiveKind}/${primitiveId}/index.md`;
       await mkdir(join(repositoryFolderPath, primitiveFilePath, ".."), { recursive: true });
       await writeFile(join(repositoryFolderPath, primitiveFilePath), primitiveText);
-      const settingsFilePath = join(repositoryFolderPath, ".cw/settings.json");
-      const vendorSettingsText = await readFile(settingsFilePath, "utf8");
-      const { vendor: _vendor, ...otherSettings } = JSON.parse(vendorSettingsText);
 
-      for (const settingsText of [vendorSettingsText, `${JSON.stringify(otherSettings, null, 2)}\n`]) {
-        await writeFile(settingsFilePath, settingsText);
-        const buildRun = runCw(["build"], repositoryFolderPath, commandEnv);
-        const buildProblemText = buildRun.stderr.replace(/\s+/g, " ");
-        assert.equal(buildRun.status, 1, settingsText);
-        assert.ok(buildRun.stderr.includes(primitiveFilePath), buildRun.stderr);
-        assert.match(
-          buildProblemText,
-          /"vendor-release(-action)?", which cw brings to a repository "cw vendor init" set up alone/,
-        );
-        // One an earlier `cw vendor init` wrote is deleted, the settings
-        // marking the repository a vendor's, and never said to be renamed.
-        if (caseName === "holding the id") {
-          assert.match(
-            buildProblemText,
-            /Delete it where "cw vendor init" set this repository up, and add "vendor": true to this repository's own settings/,
-          );
-          assert.doesNotMatch(buildProblemText, /is already declared by/);
-        }
-        // Never told to author what no primitive may hold.
-        assert.doesNotMatch(buildProblemText, /holds no (primitive|mixin|corpus) of that id/);
+      const buildRun = runCw(["build"], repositoryFolderPath, commandEnv);
+
+      const buildProblemText = buildRun.stderr.replace(/\s+/g, " ");
+      assert.equal(buildRun.status, 1);
+      assert.ok(buildRun.stderr.includes(primitiveFilePath), buildRun.stderr);
+      assert.match(buildProblemText, /"charter-release(-action)?", which cw brings to every repository/);
+      if (caseName === "holding the id") {
+        assert.match(buildProblemText, /Give this one an id of its own, or delete it/);
+        assert.doesNotMatch(buildProblemText, /is already declared by/);
       }
+      // Never told to author what no primitive may hold.
+      assert.doesNotMatch(buildProblemText, /holds no (primitive|mixin|corpus) of that id/);
     });
   });
+
+test("a README /vendor-release wrote is refused naming the markers to rename, and nothing is written (VENDOR-FR-006)", async () => {
+  await inReleaseFolder(
+    CHARTER_TEXT_BY_PATH,
+    async (releaseFolder) => {
+      const { repositoryFolderPath, commandEnv } = releaseFolder;
+      const oldReadmeText =
+        "# acme-charters\n\n<!-- vendor-release-action: charters -->\n## Install\n<!-- /vendor-release-action: charters -->\n";
+      await writeFile(join(repositoryFolderPath, "README.md"), oldReadmeText);
+      runGit(["add", "README.md"], repositoryFolderPath, commandEnv);
+      runGit(["commit", "--quiet", "-m", "The README of 1.2.0"], repositoryFolderPath, commandEnv);
+      runGit(["push", "--quiet", "origin", "main"], repositoryFolderPath, commandEnv);
+      assert.equal(runReleaseAction(["check"], releaseFolder).status, 0);
+
+      const readmeRun = runReleaseAction(["readme"], releaseFolder);
+
+      assert.equal(readmeRun.status, 1);
+      assert.match(
+        readmeRun.stderr,
+        /rename them "<!-- charter-release-action: charters -->" … "<!-- \/charter-release-action: charters -->"/,
+      );
+      assert.equal(await readFile(join(repositoryFolderPath, "README.md"), "utf8"), oldReadmeText);
+    },
+    false,
+  );
+});

@@ -29,7 +29,7 @@ import { COMMANDS } from "./commands/index.js";
 
 /** The commands that write the settings, so are run where none are read yet
  *  (FR-037). */
-const SETUP_COMMAND_NAMES: readonly string[] = ["init", "vendor init"];
+const SETUP_COMMAND_NAMES: readonly string[] = ["init"];
 
 /** What the help of `cw` itself opens with. */
 const TOP_USAGE = "Usage: $0 <command> [options]";
@@ -117,12 +117,13 @@ export class Commander {
       .option(JSON_OPTION_NAME, { type: "boolean", hidden: true })
       .exitProcess(false);
 
-    // A command whose name is two words — `vendor add <source>` — is a
+    // A command whose name is two words — `charter pull <source>` — is a
     // subcommand, and yargs only knows one word: what follows it is read as
     // positional arguments. So the ones sharing a first word are registered
-    // under it as a group of their own. What a command takes is not part of
-    // that name: `explain <id>` is one word and an argument, and is
-    // declared whole.
+    // under it as a group of their own, and the one named by that word alone
+    // — `charter` — is what the group runs with no subcommand typed. What a
+    // command takes is not part of that name: `explain <id>` is one word and
+    // an argument, and is declared whole.
     const typedCommandsByHeadWord = new Map<string, TypedCommand[]>();
     for (const typedCommand of this.#commands.flatMap((command): TypedCommand[] => [
       { typedName: command.name, command, isListed: true },
@@ -138,7 +139,10 @@ export class Commander {
       const [onlyTypedCommand] = typedCommands;
       const listedNameWords = typedCommands
         .filter((typedCommand) => typedCommand.isListed)
-        .map((typedCommand) => listCommandWords(typedCommand.typedName)[1]);
+        .flatMap((typedCommand) => listCommandWords(typedCommand.typedName).slice(1, 2));
+      const isGroupRunnable = typedCommands.some(
+        (typedCommand) => listCommandWords(typedCommand.typedName).length === 1,
+      );
       cliParser =
         typedCommands.length === 1 &&
         onlyTypedCommand !== undefined &&
@@ -157,12 +161,14 @@ export class Commander {
                       this.#registerCommand(
                         parser,
                         typedCommand,
-                        typedCommand.typedName.slice(headWord.length + 1),
+                        listCommandWords(typedCommand.typedName).length === 1
+                          ? "$0"
+                          : typedCommand.typedName.slice(headWord.length + 1),
                         collectOutcome,
                       ),
                     childParser,
                   )
-                  .demandCommand(1, ""),
+                  .demandCommand(isGroupRunnable ? 0 : 1, ""),
               handler: () => undefined,
             });
     }
@@ -194,7 +200,10 @@ export class Commander {
       else if (listedCommands.length > 0)
         helpRowsBySection
           .get(AUTHORING_HEADING)
-          ?.push([`cw ${headWord}`, listedCommands.map((command) => listCommandWords(command.name)[1]).join(", ")]);
+          ?.push([
+            `cw ${headWord}`,
+            listedCommands.flatMap((command) => listCommandWords(command.name).slice(1, 2)).join(", "),
+          ]);
     }
     // Every section's summaries start in one column, each wrapped by words
     // into it, as yargs wraps.
@@ -286,7 +295,7 @@ export class Commander {
       describe: isListed ? command.summary : false,
       // The one place the parser hears what a command takes, so a command
       // declares it and names no parser. An argument the command's own name
-      // asks for — `vendor add <source>` — is a positional, typed where it is
+      // asks for — `charter pull <source>` — is a positional, typed where it is
       // written rather than offered as a flag beside itself.
       builder: (childParser: Argv) =>
         Object.entries<OptionSpec[string]>(commandOptions).reduce((parser, [optionName, option]) => {

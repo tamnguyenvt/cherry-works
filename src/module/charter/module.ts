@@ -7,14 +7,13 @@
 export { AuthoringCharter } from "./app/authoring-charter.use-case.js";
 export { BuildingCharter } from "./app/building-charter.use-case.js";
 export {
-  type AuthoringSettings,
   BUILTIN_LAYER_NAME,
   type ForAuthoringCharter,
   type LayerName,
   type McpOriginAddress,
+  PACKAGE_LAYER_NAME,
   REPO_LAYER_NAME,
   type UnparsedHeaders,
-  VENDOR_LAYER_NAME,
 } from "./app/port/in/authoring-charter.port.js";
 export type { AgentProviderName, ForBuildingCharter, ProjectionSettings } from "./app/port/in/building-charter.port.js";
 export { CharterDTOs } from "./app/port/in/charter.dto.js";
@@ -67,8 +66,12 @@ export type { ForStoringCredentials } from "./app/port/out/storing-credentials.p
 export { BuildCharterService, buildCharterService } from "./app/services/build-charter.service.js";
 export { LoadCharterService, loadCharterService } from "./app/services/load-charter.service.js";
 export { LoadMcpOriginsService, loadMcpOriginsService } from "./app/services/load-mcp-origins.service.js";
+export { InstalledCharterRecord } from "./domain/models/charter/installed-charter-record.value-object.js";
 export { InvalidPrimitiveFault } from "./domain/models/charter.fault.js";
 export { CopyPlan } from "./domain/models/charter-output/projection-plan.js";
+export { CharterInstall } from "./domain/models/charter-source/charter-install.js";
+export { CharterSource } from "./domain/models/charter-source/charter-source.js";
+export { CharterSourceOrigin } from "./domain/models/charter-source/charter-source-origin.value-object.js";
 export { RawEvalSuite } from "./domain/models/eval/raw-eval-suite.js";
 export { McpAuthMethod, type McpAuthMethodName } from "./domain/models/mcp/mcp-auth-method.value-object.js";
 export { McpClientRegistration } from "./domain/models/mcp/mcp-client-registration.js";
@@ -78,8 +81,6 @@ export { PrimitiveLayer } from "./domain/models/primitive/primitive-layer.value-
 export { RawPrimitive } from "./domain/models/primitive/raw-primitive.js";
 export { RawTestSuite } from "./domain/models/test/raw-test-suite.js";
 export { TestSuite } from "./domain/models/test/test-suite.js";
-export { SourceCharter, VendorSource } from "./domain/models/vendor/vendor-source.js";
-export { VendorSourceOrigin } from "./domain/models/vendor/vendor-source-origin.value-object.js";
 export { AgentProjection } from "./infra/agent-projection.base.js";
 export { ClaudeProjection } from "./infra/claude/claude-projection.adapter.js";
 export { CodexProjection } from "./infra/codex/codex-projection.adapter.js";

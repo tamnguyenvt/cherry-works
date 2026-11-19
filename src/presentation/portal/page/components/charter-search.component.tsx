@@ -104,7 +104,7 @@ export function CharterSearch({ onPick }: { onPick: (primitive: CharterDTOs.Prim
 /** The colours a layer is tagged in, as the mockup tags them. */
 const COLOR_CLASS_NAME_BY_LAYER: Record<CharterDTOs.Primitive["data"]["layerName"], string> = {
   repo: "bg-[#eff6ff] text-[#1d4ed8]",
-  vendor: "bg-[#f6f2ff] text-[#7c3aed]",
+  package: "bg-[#f6f2ff] text-[#7c3aed]",
   builtin: "bg-zinc-100 text-zinc-700",
 };
 

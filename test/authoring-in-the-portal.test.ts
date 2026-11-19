@@ -268,15 +268,15 @@ test("a save over a file changed on disk is refused naming it, and the other cha
   );
 });
 
-test("a vendored primitive opens read-only, saying how to differ from it (CORE Story 6 scenario 7)", async () => {
+test("an installed primitive opens read-only, saying how to differ from it (CORE Story 6 scenario 7)", async () => {
   await inTheBrowser(
     {
-      [at(".cw/charter/rules/cw-vendor.json")]:
+      [at(".cw/charter/rules/cw-package.json")]:
         `${JSON.stringify({ charter: "rules", source: "team/rules", version: "v1" })}\n`,
       [at(".cw/charter/rules/primitive/guide/theirs/index.md")]: guide("theirs"),
     },
     async (page) => {
-      await page.getByRole("tab", { name: "Vendor" }).click();
+      await page.getByRole("tab", { name: "Installed" }).click();
       await opening(page, "theirs");
       const note = page.getByRole("dialog").getByRole("alert");
       await note.waitFor();
@@ -325,7 +325,7 @@ test("New asks the charter among those the repository authored, or a new one, an
   await inTheBrowser(
     {
       [at(".cw/charter/team/primitive/guide/kept/index.md")]: guide("kept"),
-      [at(".cw/charter/grill/cw-vendor.json")]:
+      [at(".cw/charter/grill/cw-package.json")]:
         `${JSON.stringify({ charter: "grill", source: "mattpocock/skills", version: "v1" })}\n`,
       [at(".cw/charter/grill/primitive/guide/grilled/index.md")]: guide("grilled"),
     },

@@ -16,7 +16,7 @@ export class McpToolDefinition {
  * Where an mcp origin is, how a developer signs in to it, and the tools it listed
  * when the build reached it: which of them each mcp there lets the agent use is
  * its own, and the catalogue already lists every mcp. Keyed by where it is rather than by what it is called, because the
- * repository and a vendor may call one mcp origin by two names.
+ * repository and an installed charter may call one mcp origin by two names.
  */
 export class McpOrigin {
   /** Every mcp at this address and path, sorted. */

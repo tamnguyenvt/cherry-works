@@ -19,15 +19,15 @@ test("the header reads as the mockup draws it: the brand, the search, Build and 
 
 test("the four tabs are shown, the repository charter first, and the one clicked is the one on", async () => {
   await inTheBrowser({}, async (page) => {
-    assert.deepEqual(await page.getByRole("tab").allInnerTexts(), ["Repo Charter", "Vendor", "Test", "Context"]);
+    assert.deepEqual(await page.getByRole("tab").allInnerTexts(), ["Repo Charter", "Installed", "Test", "Context"]);
     assert.equal(await page.getByRole("tab", { selected: true }).innerText(), "Repo Charter");
 
-    await page.getByRole("tab", { name: "Vendor" }).click();
+    await page.getByRole("tab", { name: "Installed" }).click();
 
-    assert.equal(await page.getByRole("tab", { selected: true }).innerText(), "Vendor");
+    assert.equal(await page.getByRole("tab", { selected: true }).innerText(), "Installed");
     assert.equal(
       await page.getByRole("tabpanel").getAttribute("aria-labelledby"),
-      await page.getByRole("tab", { name: "Vendor" }).getAttribute("id"),
+      await page.getByRole("tab", { name: "Installed" }).getAttribute("id"),
     );
   });
 });

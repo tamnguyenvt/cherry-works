@@ -75,7 +75,7 @@ function portNotGiven<Port extends object>(portName: string): Port {
  *  hands its repositories none. */
 const unwritableFiles = portNotGiven<ForWritingFiles>("files");
 
-/** The charter of a repository kept as files, its vendors', its test cases
+/** The charter of a repository kept as files, its installed charters', its test cases
  *  and its eval cases among them, its sources fetched through `sourceFetcher`
  *  where a test gives one. */
 export function charterRepositoryOf(

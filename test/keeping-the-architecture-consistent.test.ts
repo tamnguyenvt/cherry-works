@@ -478,7 +478,7 @@ test("each renamed use case answers through its driver port as it did (CORE Stor
   );
 
   assert.equal((await charterAuthoringApp.listKinds()).type, "PrimitiveKinds");
-  assert.equal((await charterAuthoringApp.listVendors()).type, "CharterMetadataList");
+  assert.equal((await charterAuthoringApp.listCharters(true)).type, "CharterMetadataList");
   assert.equal((await charterAuthoringApp.listTestSuites()).type, "TestSuites");
   assert.equal((await charterRuntimeApps.previewCharterBuild()).type, "ProjectionPlanSummary");
 });

@@ -104,11 +104,8 @@ test("the token of the run is asked for on the page's address and on every call 
     assert.notEqual(address.searchParams.get("t"), otherPortal.address.searchParams.get("t"));
     assert.equal((await send(address, "/")).statusCode, 401);
     assert.equal((await send(address, `/${otherPortal.address.search}`)).statusCode, 401);
-    assert.equal((await send(address, "/api/charter/root/primitives")).statusCode, 401);
-    assert.equal(
-      (await send(address, "/api/charter/root/primitives", { headers: bearer(otherPortal.address) })).statusCode,
-      401,
-    );
+    assert.equal((await send(address, "/api/primitives")).statusCode, 401);
+    assert.equal((await send(address, "/api/primitives", { headers: bearer(otherPortal.address) })).statusCode, 401);
   } finally {
     server.close();
     otherPortal.server.close();
@@ -129,7 +126,7 @@ test("a Host other than this machine's address and port is refused (CORE Story 5
 
 test("every verb but GET is sent as JSON, and no CORS header answers another origin", async () => {
   const { address, server } = startedPortalOf(await startPortal(await builtPage(), ...portalApps(), PORT));
-  const path = "/api/charter/root/primitives";
+  const path = "/api/charters/team/primitives";
   try {
     const json = { ...bearer(address), "content-type": "application/json; charset=utf-8" };
     // Past the guard, and refused by the route for carrying no body.

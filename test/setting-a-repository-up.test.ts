@@ -271,7 +271,7 @@ test("a build writes no ignore file: the workspace's is written once, at setup (
   assert.equal(await held(files, ".cw/.gitignore"), undefined);
 });
 
-test("the repository's own ignore file is left alone: what a vendor installed is committed too", async () => {
+test("the repository's own ignore file is left alone: what an installed charter installed is committed too", async () => {
   const { held: files } = await setUp({ [new URL(".gitignore", repoPath).href]: "node_modules/\n" }, [
     "init",
     "--agent",

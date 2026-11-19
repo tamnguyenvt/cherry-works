@@ -55,7 +55,7 @@ It answers `workspaceApp` and `engineApp`:
 | Application | Port | What it does |
 |---|---|---|
 | `workspaceApp` | `ForManagingWorkspace` | reads and writes `.cw/settings.json`: which agents a repository chose |
-| `engineApp.charterAuthoringApp` | `ForAuthoringCharter` | primitives, vendors, test and eval files, the tests, signing in to mcp origins |
+| `engineApp.charterAuthoringApp` | `ForAuthoringCharter` | primitives, charters, test and eval files, the tests, signing in to mcp origins |
 | `engineApp.charterBuildingApp` | `ForBuildingCharter` | the build, its preview, the health check, the context, the sensors |
 | `engineApp.charterRuntimeApp` | `ForRunningCharter` | runs evaluations, executes sensors for the agent you name, and serves the mcp gateway |
 
@@ -142,7 +142,7 @@ Every adapter you may hand, as a `Partial<EngineAdapters>`:
 | `localOutput` | `ForManagingLocalOutput` | `LocalRepoManipulator`: lays a build's output into `.cw/out/`, through the file adapters |
 | `fileReader` | `ForReadingFiles` | the repository's files on disk |
 | `fileWriter` | `ForWritingFiles` | the repository's files on disk |
-| `sourceFetcher` | `ForFetchingCharterSources` | git, to fetch a vendor's source |
+| `sourceFetcher` | `ForFetchingCharterSources` | git, to fetch a charter source |
 | `worktreeKeeper` | `ForKeepingWorktrees` | git worktrees, one per evaluated case |
 | `shell` | `ForRunningShellCommands` | the shell, in the repository |
 | `promptfooRunner` | `ForRunningPromptfoo` | promptfoo, installed under the home's `.cherry-works` |
@@ -185,11 +185,11 @@ const { engineApp } = await composeApplications(repoFolder, homeFolder, {
 });
 ```
 
-`charterRepository` keeps the charter's primitives, vendors, test and eval
+`charterRepository` keeps the charter's primitives, installed charters, test and eval
 cases. `cw`'s own keeps them as files, through the file adapters; hand your own
 `ForManagingCharter` to keep them in a database instead, or extend
 `FileCharterRepository`. The models its methods take and answer, such as
-`RawPrimitive` and `RawVendorRoot`, are exported with it. A store is never asked
+`RawPrimitive` and `RawTestSuite`, are exported with it. A store is never asked
 for a version or a checkout: an evaluation reads the charter and its cases as
 the store holds them now, committed or not, and lays the build into each
 case's worktree of the repository through `createCheckoutOutput` and

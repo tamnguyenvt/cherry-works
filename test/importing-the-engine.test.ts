@@ -109,7 +109,7 @@ const oauthAuthorizer: ForAuthorizingOAuthClients = { async authorizeInBrowser(e
 const credentialByAddress = new Map<string, McpCredential>([['https://mcp.example/mcp', new McpCredential({ address: 'https://mcp.example/mcp', method: McpAuthMethod.TOKEN, accessToken: 'token' })]]);
 const credentialsRepository: ForStoringCredentials = { async readCredential(address) { return credentialByAddress.get(address); }, async writeCredential(mcpCredential) { credentialByAddress.set(mcpCredential.address, mcpCredential); } };
 const sourceFetcher: ForFetchingCharterSources = {
-  async fetchCommit() { throw new AdapterFault('No source is reached here.', 'Vendor with cw.', { internal: false }); },
+  async fetchCommit() { throw new AdapterFault('No source is reached here.', 'Pull with cw.', { internal: false }); },
   async listFilesAt() { return []; }, async readFileAt() { return ''; }, async readBytesAt() { return new Uint8Array(); },
   async checkOutFolder() {}, async removeFetchedCommit() {}, async findCommitId() { return ''; }
 };
@@ -858,7 +858,7 @@ const LOOSE_EXPORTED_NAMES = [
   "ModelHelper",
   "ContentHelper",
   "mergeTomlText",
-  "VendorRootFactory",
+  "InstalledCharterRootFactory",
 ];
 
 /** Every name of these declarations that the ones named first reach: what
@@ -1014,9 +1014,9 @@ test("the installed package exports the layout of cw's store and of the output e
   for (const looseName of LOOSE_EXPORTED_NAMES) assert.ok(!installedNames.includes(looseName), looseName);
   for (const layoutName of ["CharterPath", "charterPath", "OutputPath", "outputPath"])
     assert.ok(installedNames.includes(layoutName), layoutName);
-  // A source vendors are installed from is no store of cw's: its layout is
+  // A source installed charters are installed from is no store of cw's: its layout is
   // the adapters' to read through their port, never lent beside the store's.
-  for (const sourceLayoutName of ["VendorSourcePath", "vendorSourcePath"])
+  for (const sourceLayoutName of ["CharterSourcePath", "charterSourcePath"])
     assert.ok(!installedNames.includes(sourceLayoutName), sourceLayoutName);
   // Each value a module's constants file declares is one model made once.
   for (const moduleName of ["shared", "charter", "runtime", "workspace"]) {
@@ -1036,7 +1036,7 @@ assert.ok(outputPath instanceof OutputPath);
 assert.equal(charterPath.charterFolderPath, '.cw/charter');
 assert.equal(charterPath.primitivesFolderName, 'primitive');
 assert.equal(charterPath.primitivesFolderName, 'primitive');
-assert.equal(charterPath.vendorRecordFileName, 'cw-vendor.json');
+assert.equal(charterPath.installedCharterRecordFileName, 'cw-package.json');
 assert.equal(charterPath.testFolderName, 'test');
 assert.equal(charterPath.evalFolderName, 'eval');
 assert.equal('vendorsFolderPath' in charterPath, false);

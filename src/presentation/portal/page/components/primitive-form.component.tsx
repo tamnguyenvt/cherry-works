@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
  * One primitive, new or opened, in the shape its kind takes (FR-117, FR-118).
  *
  * An opened one is asked for first, and the form is drawn from what came back:
- * this repository's own in the form, a vendored or builtin one read-only, since
+ * this repository's own in the form, an installed or builtin one read-only, since
  * this repository did not author it and differing from it is authoring one of
  * its own (FR-077).
  */
@@ -97,7 +97,7 @@ function PrimitiveEditor({
   const [kind, setKind] = useState(primitive?.kind ?? newKind);
   const [id, setId] = useState(primitive === undefined ? "" : String(primitive.headers.id));
   const [answers, setAnswers] = useState<
-    InferRequestType<(typeof client.charter)[":charterName"]["primitives"]["$post"]>["json"]["headers"]
+    InferRequestType<(typeof client.charters)[":charterName"]["primitives"]["$post"]>["json"]["headers"]
   >(() =>
     Object.fromEntries(
       Object.entries(primitive?.headers ?? {})
@@ -302,7 +302,7 @@ function PrimitiveEditor({
   );
 }
 
-/** A vendored or builtin primitive, shown and not offered for change: what it
+/** An installed or builtin primitive, shown and not offered for change: what it
  *  declares, where it came from, its body, and how to differ from it (Story 6
  *  scenario 7). */
 function ReadOnlyPrimitive({ openedPrimitive }: { openedPrimitive: CharterDTOs.Primitive }) {
@@ -311,8 +311,8 @@ function ReadOnlyPrimitive({ openedPrimitive }: { openedPrimitive: CharterDTOs.P
     <div className="space-y-3.5">
       <Alert className="rounded-xl border-[#7c3aed33] bg-[#f6f2ff]">
         <AlertTitle className="text-[12.5px] font-bold">
-          {layerName === "vendor"
-            ? "Installed from a vendor, and read-only here."
+          {layerName === "package"
+            ? "Installed from a charter source, and read-only here."
             : "Built into cw, and read-only here."}
         </AlertTitle>
         <AlertDescription className="text-[11.5px] text-zinc-600">

@@ -22,7 +22,7 @@ const repoPath = new URL("file:///repo/");
 
 const guide = (id: string) =>
   ["---", "kind: guide", `id: ${id}`, `description: About ${id}.`, "---", "", "Body.", ""].join("\n");
-const vendorRecordTextOf = (charterName: string, source: string) =>
+const installedCharterRecordTextOf = (charterName: string, source: string) =>
   `${JSON.stringify({ charter: charterName, source, version: "HEAD" })}\n`;
 
 /** What a source here publishes: one charter, `published`, holding one guide. */
@@ -70,14 +70,17 @@ const sending = (method: string, json: unknown) => ({
   body: JSON.stringify(json),
 });
 
-test("the vendors are sent as the installed charters listVendors() answers (FR-122, CORE Story 8 scenario 7, VENDOR Story 3 scenario 21)", async () => {
+test("the installed charters are sent as the installed charters listCharters(true) answers (FR-122, CORE Story 8 scenario 7, VENDOR Story 3 scenario 21)", async () => {
   const { portalRoutes, charterAuthoringApp } = portal({
-    [new URL(".cw/charter/charter/cw-vendor.json", repoPath).href]: vendorRecordTextOf("charter", "acme/charter"),
+    [new URL(".cw/charter/charter/cw-package.json", repoPath).href]: installedCharterRecordTextOf(
+      "charter",
+      "acme/charter",
+    ),
     [new URL(".cw/charter/charter/primitive/guide/one/index.md", repoPath).href]: guide("one"),
     [new URL(".cw/charter/team/primitive/guide/ours/index.md", repoPath).href]: guide("ours"),
   });
 
-  const answer = await portalRoutes.request("/vendors");
+  const answer = await portalRoutes.request("/charters?layer=package");
 
   assert.equal(answer.status, 200);
   assert.deepEqual(await answer.json(), {
@@ -98,16 +101,16 @@ test("the vendors are sent as the installed charters listVendors() answers (FR-1
     },
   });
   assert.deepEqual(
-    answerOf(await charterAuthoringApp.listVendors()).data.charters.map(({ data: { folder } }) => folder),
+    answerOf(await charterAuthoringApp.listCharters(true)).data.charters.map(({ data: { folder } }) => folder),
     ["file:///repo/.cw/charter/charter"],
   );
 });
 
-test("a source posted is installed as cw vendor add installs it, and the portal then lists its charter and the primitives it brought (CORE Story 8 scenario 2, FR-123, FR-109, CORE Story 55 scenario 8, VENDOR Story 3 scenario 14)", async () => {
+test("a source posted is installed as cw charter pull installs it, and the portal then lists its charter and the primitives it brought (CORE Story 8 scenario 2, FR-123, FR-109, CORE Story 55 scenario 8, VENDOR Story 3 scenario 14)", async () => {
   const { portalRoutes, sourceFetcher } = portal();
 
   const answer = await portalRoutes.request(
-    "/vendors",
+    "/charters",
     sending("POST", { source: "git@github.com:team/charter.git", version: "v1.2.0" }),
   );
 
@@ -120,19 +123,19 @@ test("a source posted is installed as cw vendor add installs it, and the portal 
       intoSubFolder: ".cw/charter/published/primitive/guide/published",
     },
   ]);
-  const chartersListing = (await (await portalRoutes.request("/vendors")).json()) as {
+  const chartersListing = (await (await portalRoutes.request("/charters?layer=package")).json()) as {
     data: { charters: { data: { name: string; folder: string; source?: string; version?: string } }[] };
   };
   assert.deepEqual(
     chartersListing.data.charters.map(({ data: { name, folder, source, version } }) => [name, folder, source, version]),
     [["published", ".cw/charter/published", "git@github.com:team/charter.git", "v1.2.0"]],
   );
-  const primitivesListing = (await (await portalRoutes.request("/charter/root/primitives")).json()) as {
+  const primitivesListing = (await (await portalRoutes.request("/primitives")).json()) as {
     data: { primitives: { data: { id: string; layerName: string; file: string } }[] };
   };
   assert.deepEqual(
     primitivesListing.data.primitives
-      .filter(({ data: primitive }) => primitive.layerName === "vendor")
+      .filter(({ data: primitive }) => primitive.layerName === "package")
       .map(({ data: { id, file } }) => [id, file]),
     [["published", ".cw/charter/published/primitive/guide/published/index.md"]],
   );
@@ -141,12 +144,12 @@ test("a source posted is installed as cw vendor add installs it, and the portal 
 test("a source posted with no version is installed at its default", async () => {
   const { portalRoutes, sourceFetcher } = portal();
 
-  await portalRoutes.request("/vendors", sending("POST", { source: "/srv/charters/charter" }));
+  await portalRoutes.request("/charters", sending("POST", { source: "/srv/charters/charter" }));
 
   assert.equal(sourceFetcher.fetchedSources[0]?.version, undefined);
 });
 
-test("a source of many charters posted with none picked has every charter it authored installed, asking nothing (CORE-FR-193, VENDOR Story 3 scenario 15)", async () => {
+test("a source of many charters posted with none picked has every charter it holds installed, asking nothing (CORE-FR-193, VENDOR Story 3 scenario 15)", async () => {
   const sourceFetcher = new InMemorySources();
   sourceFetcher.sourceFilesBySource["team/charters"] = {
     ".cw/charter/one/primitive/guide/one/index.md": guide("one"),
@@ -154,7 +157,7 @@ test("a source of many charters posted with none picked has every charter it aut
   };
   const { portalRoutes } = portal({}, sourceFetcher);
 
-  const answer = await portalRoutes.request("/vendors", sending("POST", { source: "team/charters" }));
+  const answer = await portalRoutes.request("/charters", sending("POST", { source: "team/charters" }));
 
   assert.equal(answer.status, 204);
   assert.deepEqual(
@@ -168,17 +171,17 @@ test("a source holding no charter is refused, saying how to make it one", async 
   sourceFetcher.sourcesWithoutSubFolder.push("team/notes");
   const { portalRoutes } = portal({}, sourceFetcher);
 
-  const answer = await portalRoutes.request("/vendors", sending("POST", { source: "team/notes" }));
+  const answer = await portalRoutes.request("/charters", sending("POST", { source: "team/notes" }));
 
   assert.equal(answer.status, 422);
   const faultDTO = FaultDTOs.Fault.parse(await answer.json());
-  assert.match(faultDTO.data.message, /is no vendor/);
+  assert.match(faultDTO.data.message, /is no charter source/);
   assert.deepEqual(installedFoldersOf(sourceFetcher), []);
 });
 
 /** One charter installed under this name, and work of the repository's beside it. */
-const filesHoldingVendor = (charterName: string) => ({
-  [new URL(`.cw/charter/${charterName}/cw-vendor.json`, repoPath).href]: vendorRecordTextOf(
+const filesHoldingInstalledCharter = (charterName: string) => ({
+  [new URL(`.cw/charter/${charterName}/cw-package.json`, repoPath).href]: installedCharterRecordTextOf(
     charterName,
     "team/charter",
   ),
@@ -186,61 +189,77 @@ const filesHoldingVendor = (charterName: string) => ({
   [new URL("work.txt", repoPath).href]: "In hand.\n",
 });
 
-const installedVendors = async (charterAuthoringApp: ForAuthoringCharter) =>
-  answerOf(await charterAuthoringApp.listVendors()).data.charters.map(({ data: { folder } }) => folder);
+const installedCharterFolders = async (charterAuthoringApp: ForAuthoringCharter) =>
+  answerOf(await charterAuthoringApp.listCharters(true)).data.charters.map(({ data: { folder } }) => folder);
 
-test("a vendor an earlier version laid out in one folder is refused when deleted as the old layout, saying to install it again (CORE Story 8 scenario 5, FR-180, VENDOR Story 3 scenario 4)", async () => {
+test("an installed charter an earlier version laid out in one folder is refused when deleted as the old layout, saying to install it again (CORE Story 8 scenario 5, FR-180, VENDOR Story 3 scenario 4)", async () => {
   const { portalRoutes } = portal({
     [new URL(".cw/charter/vendor/charter/guide/one/index.md", repoPath).href]: guide("one"),
   });
 
-  const answer = await portalRoutes.request("/vendors/charter", sending("DELETE", {}));
+  const answer = await portalRoutes.request("/charters/charter", sending("DELETE", {}));
 
   assert.equal(answer.status, 422);
   const faultDTO = FaultDTOs.Fault.parse(await answer.json());
   assert.match(faultDTO.data.message, /is laid out the old way: \.cw\/charter\/vendor\/ sits/);
   assert.match(
     faultDTO.data.fix,
-    /delete each vendor under \.cw\/charter\/vendor\/ and install it again with "cw vendor add"/,
+    /delete each installed charter under \.cw\/charter\/vendor\/ and install it again with "cw charter pull"/,
   );
 });
 
 test("an installed charter is taken away by its name (CORE Story 8 scenario 5, FR-050, VENDOR Story 3 scenario 21)", async () => {
-  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingVendor("charter"));
+  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingInstalledCharter("charter"));
 
-  const answer = await portalRoutes.request("/vendors/charter", sending("DELETE", {}));
+  const answer = await portalRoutes.request("/charters/charter", sending("DELETE", {}));
 
   assert.equal(answer.status, 204);
-  assert.deepEqual(await installedVendors(charterAuthoringApp), []);
+  assert.deepEqual(await installedCharterFolders(charterAuthoringApp), []);
 });
 
-test("a name no installed charter answers to is refused in the engine's words (CORE-FR-204)", async () => {
-  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingVendor("charter"));
+test("a charter this repository authored is refused, and nothing is taken away: the portal removes installed charters alone (CORE-FR-123)", async () => {
+  const { portalRoutes, charterAuthoringApp } = portal({
+    ...filesHoldingInstalledCharter("charter"),
+    [new URL(".cw/charter/team/primitive/guide/mine/index.md", repoPath).href]: guide("mine"),
+  });
 
-  const answer = await portalRoutes.request("/vendors/absent", sending("DELETE", {}));
+  const answer = await portalRoutes.request("/charters/team", sending("DELETE", {}));
 
   assert.equal(answer.status, 422);
-  assert.match(FaultDTOs.Fault.parse(await answer.json()).data.message, /No charter is named/);
-  assert.deepEqual(await installedVendors(charterAuthoringApp), ["file:///repo/.cw/charter/charter"]);
+  assert.match(FaultDTOs.Fault.parse(await answer.json()).data.message, /team is a charter this repository authored/);
+  assert.deepEqual(
+    answerOf(await charterAuthoringApp.listCharters(false)).data.charters.map(({ data: { name } }) => name),
+    ["charter", "team"],
+  );
+});
+
+test("a name no charter answers to is refused in the engine's words (CORE-FR-204)", async () => {
+  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingInstalledCharter("charter"));
+
+  const answer = await portalRoutes.request("/charters/absent", sending("DELETE", {}));
+
+  assert.equal(answer.status, 422);
+  assert.match(FaultDTOs.Fault.parse(await answer.json()).data.message, /holds no charter/);
+  assert.deepEqual(await installedCharterFolders(charterAuthoringApp), ["file:///repo/.cw/charter/charter"]);
 });
 
 test("a name that climbs out of the charters' folder is refused, and nothing is taken away (FR-044)", async () => {
-  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingVendor("charter"));
+  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingInstalledCharter("charter"));
 
-  const answer = await portalRoutes.request("/vendors/..%2F..%2Fsrc", sending("DELETE", {}));
+  const answer = await portalRoutes.request("/charters/..%2F..%2Fsrc", sending("DELETE", {}));
 
   assert.equal(answer.status, 422);
-  assert.deepEqual(await installedVendors(charterAuthoringApp), ["file:///repo/.cw/charter/charter"]);
+  assert.deepEqual(await installedCharterFolders(charterAuthoringApp), ["file:///repo/.cw/charter/charter"]);
 });
 
 test("a name that is no folder is refused in the engine's words, and nothing is taken away (FR-044)", async () => {
-  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingVendor("charter"));
+  const { portalRoutes, charterAuthoringApp } = portal(filesHoldingInstalledCharter("charter"));
 
-  const answer = await portalRoutes.request("/vendors/team%2F..", sending("DELETE", {}));
+  const answer = await portalRoutes.request("/charters/team%2F..", sending("DELETE", {}));
 
   assert.equal(answer.status, 422);
-  assert.match(FaultDTOs.Fault.parse(await answer.json()).data.message, /No charter is named/);
-  assert.deepEqual(await installedVendors(charterAuthoringApp), ["file:///repo/.cw/charter/charter"]);
+  assert.match(FaultDTOs.Fault.parse(await answer.json()).data.message, /holds no charter/);
+  assert.deepEqual(await installedCharterFolders(charterAuthoringApp), ["file:///repo/.cw/charter/charter"]);
 });
 
 test("the portal serves the repository it was started in alone, and offers no way to point it at another (CORE Story 56 scenario 5)", async () => {
@@ -249,10 +268,7 @@ test("the portal serves the repository it was started in alone, and offers no wa
     "file:///other/.cw/charter/team/primitive/guide/theirs/index.md": guide("theirs"),
   });
 
-  for (const pointingRequest of [
-    "/charter/root/primitives?repo=file:///other/",
-    "/charter/root/primitives?cwd=/other",
-  ]) {
+  for (const pointingRequest of ["/primitives?repo=file:///other/", "/primitives?cwd=/other"]) {
     const primitivesResponse = await portalRoutes.request(pointingRequest, {
       headers: { "X-Repository": "file:///other/" },
     });
@@ -275,7 +291,7 @@ test("the portal serves the repository it was started in alone, and offers no wa
   );
 });
 
-test("with no network, everything the portal offers works but adding or updating a vendor source (CORE Story 56 scenario 5)", async () => {
+test("with no network, everything the portal offers works but adding or updating a charter source (CORE Story 56 scenario 5)", async () => {
   /** A machine with no network: every source it would reach is unreachable. */
   class OfflineSources extends InMemorySources {
     override async fetchCommit(source: string, version?: string): Promise<string> {
@@ -287,27 +303,30 @@ test("with no network, everything the portal offers works but adding or updating
     {
       [new URL(".cw/settings.json", repoPath).href]: JSON.stringify({ agents: ["claude"] }),
       [new URL(".cw/charter/team/primitive/guide/ours/index.md", repoPath).href]: guide("ours"),
-      [new URL(".cw/charter/charter/cw-vendor.json", repoPath).href]: vendorRecordTextOf("charter", "acme/charter"),
+      [new URL(".cw/charter/charter/cw-package.json", repoPath).href]: installedCharterRecordTextOf(
+        "charter",
+        "acme/charter",
+      ),
       [new URL(".cw/charter/charter/primitive/guide/one/index.md", repoPath).href]: guide("one"),
     },
     new OfflineSources(),
   );
 
   for (const [routePath, requestInit] of [
-    ["/charter/root/primitives", undefined],
-    ["/charter/root/primitives/ours", undefined],
-    ["/charter/root/primitives/ours/explanation", undefined],
-    ["/charter/root/faults", undefined],
+    ["/primitives", undefined],
+    ["/primitives/ours", undefined],
+    ["/primitives/ours/explanation", undefined],
+    ["/faults", undefined],
     ["/definitions/kinds", undefined],
     ["/definitions/kinds/guide/requirements", undefined],
-    ["/charter/root/build", undefined],
-    ["/charter/root/health", undefined],
-    ["/charter/root/context", undefined],
+    ["/build", undefined],
+    ["/doctor", undefined],
+    ["/contexts", undefined],
     ["/settings", undefined],
     ["/test-suites", undefined],
-    ["/vendors", undefined],
+    ["/charters?layer=package", undefined],
     [
-      "/charter/team/primitives",
+      "/charters/team/primitives",
       sending("POST", {
         kind: "guide",
         id: "added",
@@ -315,8 +334,8 @@ test("with no network, everything the portal offers works but adding or updating
         body: "Body.",
       }),
     ],
-    ["/charter/root/build", sending("POST", {})],
-    ["/vendors/charter", sending("DELETE", {})],
+    ["/build", sending("POST", {})],
+    ["/charters/charter", sending("DELETE", {})],
   ] as const) {
     const routeResponse = await portalRoutes.request(routePath, requestInit);
     assert.ok(
@@ -325,12 +344,12 @@ test("with no network, everything the portal offers works but adding or updating
     );
   }
   // Added at its default, then updated to a version: both need the source.
-  for (const vendorRequest of [
+  for (const installedCharterRequest of [
     { source: "git@github.com:team/charter.git" },
     { source: "git@github.com:team/charter.git", version: "v2.0.0" },
   ]) {
-    const vendorResponse = await portalRoutes.request("/vendors", sending("POST", vendorRequest));
-    assert.equal(vendorResponse.status, 422, JSON.stringify(vendorRequest));
-    assert.match(await vendorResponse.text(), /could not be fetched/);
+    const installedCharterResponse = await portalRoutes.request("/charters", sending("POST", installedCharterRequest));
+    assert.equal(installedCharterResponse.status, 422, JSON.stringify(installedCharterRequest));
+    assert.match(await installedCharterResponse.text(), /could not be fetched/);
   }
 });

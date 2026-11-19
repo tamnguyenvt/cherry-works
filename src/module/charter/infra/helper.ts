@@ -23,14 +23,14 @@ import {
  *  its charters, as their paths from the repository (CORE-FR-226,
  *  VENDOR-FR-011). */
 const OLD_LAYOUT_FOLDER_PATHS = [
-  ...[charterPath.testFolderName, charterPath.evalFolderName, charterPath.oldVendorsFolderName].map(
+  ...[charterPath.testFolderName, charterPath.evalFolderName, charterPath.oldInstalledChartersFolderName].map(
     (folderName) => `${charterPath.workspaceFolderPath}/${folderName}`,
   ),
   ...[
     charterPath.primitivesFolderName,
     charterPath.testFolderName,
     charterPath.evalFolderName,
-    charterPath.oldVendorsFolderName,
+    charterPath.oldInstalledChartersFolderName,
   ].map((folderName) => `${charterPath.charterFolderPath}/${folderName}`),
 ];
 
@@ -40,10 +40,10 @@ export function createOldLayoutFault(layoutOwner: string, oldPaths: readonly str
   return new OldLayoutFault(
     `${layoutOwner} is laid out the old way: ${oldPaths.join(", ")} ${oldPaths.length === 1 ? "sits" : "sit"} where the charter root now keeps every primitive, test case and eval case in a named charter, ${charterPath.charterFolderPath}/<charter>/.`,
     `Have your agent follow the cw-author skill to move it into a named charter: each kind's folder into ${charterPath.charterFolderPath}/<charter>/${charterPath.primitivesFolderName}/, the test cases into <charter>/${charterPath.testFolderName}/ and the eval cases into <charter>/${charterPath.evalFolderName}/${oldPaths
-      .filter((oldPath) => oldPath.endsWith(`/${charterPath.oldVendorsFolderName}/`))
+      .filter((oldPath) => oldPath.endsWith(`/${charterPath.oldInstalledChartersFolderName}/`))
       .map(
-        (oldVendorsFolderPath) =>
-          `; delete each vendor under ${oldVendorsFolderPath} and install it again with "cw vendor add"`,
+        (oldInstalledChartersFolderPath) =>
+          `; delete each installed charter under ${oldInstalledChartersFolderPath} and install it again with "cw charter pull"`,
       )
       .join("")}.`,
     { internal: false },

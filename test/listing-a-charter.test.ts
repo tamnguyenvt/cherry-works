@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { stripVTControlCharacters } from "node:util";
+import { CharterReleaseActionScript } from "../src/module/charter/domain/builtin/charter-release-action-script.js";
+import { CharterReleaseSkill } from "../src/module/charter/domain/builtin/charter-release-skill.js";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
@@ -111,6 +113,13 @@ const sessionCounterLines = [
   `cw-session-tokens-counter-on-stop  ${new CwSessionTokensSensor().headers.description}`,
 ] as const;
 
+/** The lines `/charter-release` and its script are listed by, in every
+ *  repository: the skill, then the script it runs (VENDOR-FR-027). */
+const charterReleaseLines = [
+  `charter-release  ${new CharterReleaseSkill().headers.description}`,
+  `charter-release-action  ${new CharterReleaseActionScript().headers.description}`,
+] as const;
+
 const charter = {
   [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["tags: [types]"]),
   [new URL("skill/writing-tests/index.md", root).href]: primitive("skill", "writing-tests"),
@@ -134,10 +143,17 @@ const charter = {
 const groupedOpeningLines: readonly (readonly [string, readonly string[]])[] = [
   ["Guides", ["no-any  What no-any is for."]],
   ["Sensors", [sessionCounterLines[1]]],
-  ["Skills", [`cw-author  ${new CwAuthorSkill().headers.description}`, "writing-tests  What writing-tests is for."]],
+  [
+    "Skills",
+    [
+      charterReleaseLines[0],
+      `cw-author  ${new CwAuthorSkill().headers.description}`,
+      "writing-tests  What writing-tests is for.",
+    ],
+  ],
   ["Corpora", ["type-safety  What type-safety is for."]],
   ["MCPs", ["local  What local is for."]],
-  ["Scripts", [sessionCounterLines[0]]],
+  ["Scripts", [charterReleaseLines[1], sessionCounterLines[0]]],
 ];
 
 test("every primitive is listed under a heading of its kind, the kinds in their order, and by id within each, with what it is for (CORE Story 72 scenario 1, FR-028)", async () => {
@@ -179,7 +195,7 @@ test("the full listing opens each primitive on its id and description, with the 
 test("a listing is read off the charter, so every layer is named where it was authored, not where it compiled (FR-140, CORE Story 16 scenario 6)", async () => {
   const { results } = await run({
     "file:///repo/.cw/charter/rules/primitive/guide/no-console/index.md": primitive("guide", "no-console"),
-    "file:///repo/.cw/charter/rules/cw-vendor.json": JSON.stringify({
+    "file:///repo/.cw/charter/rules/cw-package.json": JSON.stringify({
       charter: "rules",
       source: "team/rules",
       version: "HEAD",
@@ -233,7 +249,7 @@ test("--kind narrows the listing to that kind, under its heading alone (CORE Sto
   const { results: skillResults } = await run(charter, ["list", "--kind", "skill"]);
   assert.deepEqual(
     sectionsOf(skillResults).map(([heading, rows]) => [heading, rows.map((row) => row.split("  ")[0])]),
-    [["Skills", ["cw-author", "writing-tests"]]],
+    [["Skills", ["charter-release", "cw-author", "writing-tests"]]],
   );
 });
 
@@ -271,8 +287,8 @@ test("a repository that authored nothing is listed what the engine brings (FR-01
   assert.equal(code, EXIT_OK);
   assert.deepEqual(sectionsOf(results), [
     ["Sensors", [sessionCounterLines[1]]],
-    ["Skills", [`cw-author  ${new CwAuthorSkill().headers.description}`]],
-    ["Scripts", [sessionCounterLines[0]]],
+    ["Skills", [charterReleaseLines[0], `cw-author  ${new CwAuthorSkill().headers.description}`]],
+    ["Scripts", [charterReleaseLines[1], sessionCounterLines[0]]],
   ]);
 });
 

@@ -36,7 +36,7 @@ export class CopyPlan {
   ) {}
 }
 
-/** One reading of a charter, or of a vendor's source, said as what it would
+/** One reading of a charter, or of an installed charter's source, said as what it would
  *  do to disk: a build writes each file, an install copies a folder too. */
 export class ProjectionPlan<Plan extends WritePlan | CopyPlan = WritePlan> {
   constructor(

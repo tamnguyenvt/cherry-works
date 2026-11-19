@@ -16,6 +16,7 @@ import { outputPath } from "../src/module/charter/domain/constants.js";
 import { RawCharterMetadata } from "../src/module/charter/domain/models/charter/raw-charter-metadata.js";
 import { CharterOutput } from "../src/module/charter/domain/models/charter-output/charter-output.js";
 import { ProjectionPlan, WritePlan } from "../src/module/charter/domain/models/charter-output/projection-plan.js";
+import { CharterSource } from "../src/module/charter/domain/models/charter-source/charter-source.js";
 import { RawEvalSuite } from "../src/module/charter/domain/models/eval/raw-eval-suite.js";
 import type { McpCredential } from "../src/module/charter/domain/models/mcp/mcp-credential.js";
 import { McpPrimitive } from "../src/module/charter/domain/models/primitive/mcp-primitive.js";
@@ -23,8 +24,6 @@ import { PrimitiveFactory } from "../src/module/charter/domain/models/primitive/
 import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
 import { RawPrimitive } from "../src/module/charter/domain/models/primitive/raw-primitive.js";
 import { RawTestSuite } from "../src/module/charter/domain/models/test/raw-test-suite.js";
-import { SourceCharter, VendorSource } from "../src/module/charter/domain/models/vendor/vendor-source.js";
-import { VendorSourceOrigin } from "../src/module/charter/domain/models/vendor/vendor-source-origin.value-object.js";
 import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-projection.adapter.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
 import { findItemPlace, OUT_FOLDER } from "../src/module/charter/infra/helper.js";
@@ -139,7 +138,7 @@ function charterKeptWithNoPath(): {
             charterName,
             undefined,
             `db://charter:${charterName}`,
-            `db://charter:${charterName}:vendor`,
+            `db://charter:${charterName}:package`,
           ),
       );
     },
@@ -178,14 +177,15 @@ function charterKeptWithNoPath(): {
     async removePrimitive(primitive) {
       rawPrimitiveByKey.delete(`${primitive.kind}/${primitive.headers.id}`);
     },
-    async fetchVendorSource() {
+    async fetchCharterSources() {
       throw new Error("Nothing is fetched here.");
     },
-    async removeFetchedSource() {},
+    async removeFetchedSources() {},
     async storeCharters() {},
     findCharterFolderUri(charterName) {
       return `db://charter:${charterName}`;
     },
+    async addCharter() {},
     async removeCharter() {},
     async loadTestSuites() {
       return [new RawTestSuite("kept.json", "team", testSuiteText, "db://test:kept.json")];
@@ -548,7 +548,7 @@ test("every other use case answers through stores of a tool's own that keep no p
 
   // Installed charters, by name.
   const installedCharterNames = new Set(["charter"]);
-  const vendoringApp = charterAuthoringAppOver({
+  const installingApp = charterAuthoringAppOver({
     ...charterRepository,
     async loadCharterMetadata() {
       return [
@@ -559,7 +559,7 @@ test("every other use case answers through stores of a tool's own that keep no p
               charterName,
               JSON.stringify({ charter: charterName, source: "team/charter", version: "HEAD" }),
               `db://charter:${charterName}`,
-              `db://charter:${charterName}:vendor`,
+              `db://charter:${charterName}:package`,
             ),
         ),
       ];
@@ -569,10 +569,15 @@ test("every other use case answers through stores of a tool's own that keep no p
     },
   });
   assert.deepEqual(
-    answerOf(await vendoringApp.listVendors()).data.charters.map(({ data: charter }) => charter.folder),
+    answerOf(await installingApp.listCharters(true)).data.charters.map(({ data: charter }) => charter.folder),
     ["db://charter:charter"],
   );
-  assert.deepEqual(answerOf(await vendoringApp.removeVendor("charter")).data.folder, "db://charter:charter");
+  assert.deepEqual(
+    answerOf(await installingApp.removeCharters("charter", false, false)).data.charters.map(
+      ({ data: charter }) => charter.folder,
+    ),
+    ["db://charter:charter"],
+  );
 
   // Credentials, by address, and the charter's mcp origins.
   const credentialByAddress = new Map<string, McpCredential>();
@@ -806,7 +811,7 @@ test("an output or a projection extended with a constructor of its own, and no o
   );
 });
 
-test("vendors, evaluations, sensors and every other answer of the charter's use cases are the same through stores that keep no path (CORE Story 47 scenario 2, CORE-SC-062)", async () => {
+test("installed charters, evaluations, sensors and every other answer of the charter's use cases are the same through stores that keep no path (CORE Story 47 scenario 2, CORE-SC-062)", async () => {
   /** Answers said the same way whichever store answered: each place a store
    *  kept something said by its kind and id or name. */
   const answerTextOf = (answer: unknown) =>
@@ -887,44 +892,38 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
 
   // A source fetched and read with no path, beside the same source fetched as files.
   const publishedText = "---\nkind: guide\nid: published\ndescription: Published.\n---\n";
-  const vendorSource = new VendorSource(
-    new VendorSourceOrigin("team/source"),
+  const charterSource = new CharterSource(
     "team/source",
     "0123456789abcdef0123456789abcdef01234567",
+    "published",
     [
-      new SourceCharter(
+      new RawPrimitive(
+        PrimitiveLayer.authoredLayerOf("published"),
+        "guide",
         "published",
-        false,
-        [
-          new RawPrimitive(
-            PrimitiveLayer.authoredLayerOf("published"),
-            "guide",
-            "published",
-            publishedText,
-            [],
-            "db://source:guide/published",
-          ),
-        ],
-        ".cw/charter/published",
-        ["guide/published"],
+        publishedText,
+        [],
+        "db://source:guide/published",
       ),
     ],
+    ".cw/charter/published",
+    ["guide/published"],
   );
   const installedCharterUris: string[] = [];
-  const keptVendoringApp = charterAuthoringAppOver({
+  const keptInstallingApp = charterAuthoringAppOver({
     ...charterRepository,
-    async fetchVendorSource() {
-      return vendorSource;
+    async fetchCharterSources() {
+      return [charterSource];
     },
-    async storeCharters(_commit, charterInstalls) {
+    async storeCharters(charterInstalls) {
       // A charter installed is kept under its name; one injected is the
       // repository's own, each primitive of the source's charter kept in it.
-      for (const { charterName, sourceCharter, vendorRecord } of charterInstalls) {
-        if (vendorRecord !== undefined) {
+      for (const { charterName, charterSource: installedCharterSource, installedCharterRecord } of charterInstalls) {
+        if (installedCharterRecord !== undefined) {
           installedCharterUris.push(charterRepository.findCharterFolderUri(charterName));
           continue;
         }
-        for (const { kind, id, text, assets } of sourceCharter.rawPrimitives)
+        for (const { kind, id, text, assets } of installedCharterSource.rawPrimitives)
           rawPrimitiveByKey.set(
             `${kind}/${id}`,
             new RawPrimitive(
@@ -946,31 +945,31 @@ test("vendors, evaluations, sensors and every other answer of the charter's use 
     };
     return sourceFetcher;
   };
-  const filesVendoringApp = authoringCharterOf(fileReaders, fileOutput, new InMemoryReporter(), {
+  const filesInstallingApp = authoringCharterOf(fileReaders, fileOutput, new InMemoryReporter(), {
     sourceFetcher: publishingSources(fileReaders),
   });
-  const primitivesOf = (vendorAddAnswer: unknown) =>
-    answerOf(vendorAddAnswer as FaultDTOs.Fault | CharterDTOs.VendorAddOutcome).data.map(
+  const primitivesOf = (charterPullAnswer: unknown) =>
+    answerOf(charterPullAnswer as FaultDTOs.Fault | CharterDTOs.CharterPullOutcome).data.map(
       ({ primitives }) => primitives,
     );
   assert.deepEqual(
-    primitivesOf(await keptVendoringApp.addVendor("team/source")),
-    primitivesOf(await filesVendoringApp.addVendor("team/source")),
+    primitivesOf(await keptInstallingApp.pullCharters("team/source", false)),
+    primitivesOf(await filesInstallingApp.pullCharters("team/source", false)),
   );
   assert.deepEqual(installedCharterUris, ["db://charter:published"]);
   // Injected into a charter that installed nothing, as the store with no path holds none.
   const injectedFileReaders = new InMemoryFileReaders({
     "file:///repo/.cw/charter/team/primitive/guide/kept-guide/index.md": keptGuideText,
   });
-  const injectingVendoringApp = authoringCharterOf(
+  const injectingInstallingApp = authoringCharterOf(
     injectedFileReaders,
     new InMemoryFileOutput(injectedFileReaders),
     new InMemoryReporter(),
     { sourceFetcher: publishingSources(injectedFileReaders) },
   );
   assert.deepEqual(
-    primitivesOf(await keptVendoringApp.injectVendor("team/source")),
-    primitivesOf(await injectingVendoringApp.injectVendor("team/source")),
+    primitivesOf(await keptInstallingApp.pullCharters("team/source", true)),
+    primitivesOf(await injectingInstallingApp.pullCharters("team/source", true)),
   );
   assert.equal(rawPrimitiveByKey.get("guide/published")?.text, publishedText);
 
@@ -1024,7 +1023,7 @@ test("a markdown file a source keeps on its own is no primitive of its charter, 
       "---\nkind: guide\nid: published\ndescription: Published.\n---\n",
     ".cw/charter/published/primitive/guide/README.md": "# Our guides\n",
   };
-  const vendoringAppOver = (fileReaders: InMemoryFileReaders) => {
+  const installingAppOver = (fileReaders: InMemoryFileReaders) => {
     const sourceFetcher = new InMemorySources(fileReaders);
     sourceFetcher.sourceFilesBySource["team/source"] = sourceFiles;
     return authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), {
@@ -1032,12 +1031,12 @@ test("a markdown file a source keeps on its own is no primitive of its charter, 
     });
   };
   const addedPrimitiveIds = answerOf(
-    await vendoringAppOver(new InMemoryFileReaders({})).addVendor("team/source"),
+    await installingAppOver(new InMemoryFileReaders({})).pullCharters("team/source", false),
   ).data.flatMap(({ primitives }) => primitives.map(({ data: primitive }) => primitive.id));
   assert.deepEqual(addedPrimitiveIds, ["published"]);
 
   const injectedFileReaders = new InMemoryFileReaders({});
-  answerOf(await vendoringAppOver(injectedFileReaders).injectVendor("team/source"));
+  answerOf(await installingAppOver(injectedFileReaders).pullCharters("team/source", true));
   assert.deepEqual(
     (await injectedFileReaders.readFilesRecursively(".cw/charter")).map(({ path }) => path),
     [".cw/charter/published/primitive/guide/published/index.md"],

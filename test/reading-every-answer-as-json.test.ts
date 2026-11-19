@@ -151,7 +151,7 @@ test("any command but the three cw run commands, run with --json, prints exactly
     [["build", "--preview"], () => charterBuildingApp.previewCharterBuild()],
     [["context"], () => charterBuildingApp.predictMainContext()],
     [["test"], () => charterAuthoringApp.testCharter()],
-    [["vendor", "list"], () => charterAuthoringApp.listVendors()],
+    [["charter"], () => charterAuthoringApp.listCharters()],
   ] as const) {
     const { code, resultText, problemText } = await run([...argv, "--json"]);
     assert.equal(code, (await run(argv)).code, `cw ${argv.join(" ")}`);
@@ -246,7 +246,6 @@ test("a command that fails with --json prints its faults as one JSON document, a
   // (CORE-SC-075).
   const { run: runUnreadable } = commandLine({ [inRepo(".cw/settings.json")]: "{" });
   for (const command of COMMANDS.filter((command) => isLaidOutCommand(command) && command.name !== "init")) {
-    if (command.name === "vendor init") continue;
     const typedArgs = command.name
       .split(" ")
       .filter((nameWord) => !nameWord.startsWith("["))
@@ -263,7 +262,7 @@ test("a command that fails with --json prints its faults as one JSON document, a
     ["kinds", "nope"],
     ["sessions", "--since", "nope"],
     ["eval-analyze", "--log", "/nope.json"],
-    ["vendor", "remove", "nope"],
+    ["charter", "remove", "--charter=nope"],
     ["suite", "remove", "nope.json"],
     ["suite", "edit", "nope.json"],
     ["edit", "nope"],
@@ -291,15 +290,11 @@ test("a command that fails with --json prints its faults as one JSON document, a
   assert.match(wordedUsageAnswer.problemText, /Not enough non-option arguments/);
 });
 
-test("a command that asks at a terminal, run with --json at one, asks nothing and answers as with no terminal to ask at (CORE Story 68 scenario 4)", async (t) => {
-  // `cw vendor init` sets an empty folder on disk up.
-  const emptyFolderPath = await mkdtemp(join(tmpdir(), "cw-json-"));
-  t.after(() => rm(emptyFolderPath, { recursive: true, force: true }));
+test("a command that asks at a terminal, run with --json at one, asks nothing and answers as with no terminal to ask at (CORE Story 68 scenario 4)", async () => {
   for (const [files, argv, cwd] of [
     [{}, ["init"], repo],
     [builtCharterFiles, ["remove", "no-any"], repo],
     [builtCharterFiles, ["add", "guide", "short-lines"], repo],
-    [{}, ["vendor", "init"], emptyFolderPath],
   ] as const) {
     // Nothing is typed at the terminal: a question asked would wait forever.
     const answerAtTerminal = await commandLine(files, cwd).run([...argv, "--json"], true);

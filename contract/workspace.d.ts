@@ -9,7 +9,6 @@ declare const WorkspaceDTOs: {
             agents: z.ZodReadonly<z.ZodArray<z.ZodString>>;
             mainContextCeiling: z.ZodNumber;
             sessionAnalysisFolder: z.ZodOptional<z.ZodString>;
-            isVendor: z.ZodOptional<z.ZodBoolean>;
         }, z.core.$strip>;
     }, z.core.$strip> & {
         of: (dataValue: {
@@ -17,7 +16,6 @@ declare const WorkspaceDTOs: {
             agents: readonly string[];
             mainContextCeiling: number;
             sessionAnalysisFolder?: string | undefined;
-            isVendor?: boolean | undefined;
         }) => {
             type: "WorkspaceSettings";
             data: {
@@ -25,7 +23,6 @@ declare const WorkspaceDTOs: {
                 agents: readonly string[];
                 mainContextCeiling: number;
                 sessionAnalysisFolder?: string | undefined;
-                isVendor?: boolean | undefined;
             };
         };
     };
@@ -56,8 +53,7 @@ interface ForManagingWorkspace {
     readWorkspaceSettings(): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
     /**
      * The repository set up for these agents (FR-032 – FR-038): its settings
-     * kept, the mark of `cw vendor init` kept where it was set (VENDOR-FR-027),
-     * the ceiling kept where one was set now or before and written only
+     * kept, the ceiling kept where one was set now or before and written only
      * where it is not the 20,000 none means, and version control told to ignore
      * the log, once, every other line of its ignore file kept (CORE-FR-225), and a
      * README written where it has none, naming the `cw` that set it up.
@@ -65,12 +61,6 @@ interface ForManagingWorkspace {
      * is no whole number above 0 are refused, nothing kept (FR-033).
      */
     setUpWorkspace(agents: readonly string[], cwVersion: string, mainContextCeiling?: number): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
-    /** The repository marked as set up by `cw vendor init`, to release charters
-     *  from: what its build lays `/vendor-release` for (VENDOR-FR-027). Its
-     *  agents and its ceiling are kept, as setting it up keeps them. A repository
-     *  never set up, and settings that do not read, are refused, nothing kept
-     *  (FR-037). */
-    setVendorMark(): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
 }
 
 /** A repository's settings as they are kept, raw, before the engine reads
@@ -83,17 +73,14 @@ declare class RawWorkspaceSettings {
 /**
  * What a repository configured itself with — which agents it chose, the
  * ceiling of a main context, where its sessions are kept on
- * this machine, whether `cw vendor init` set it up (FR-033, EVAL-FR-006,
- * EVAL-FR-012, VENDOR-FR-027). Kept by the workspace
+ * this machine (FR-033, EVAL-FR-006, EVAL-FR-012), and no mark of a
+ * repository releasing charters (VENDOR-FR-032). Kept by the workspace
  * module alone, and handed to the applications that run by it (CORE-FR-231).
  */
 declare class WorkspaceSettings {
     readonly agentProviders: readonly AgentProvider[];
     readonly mainContextCeiling?: number | undefined;
     readonly sessionAnalysisFolder?: string | undefined;
-    /** Whether `cw vendor init` set the repository up, to release charters
-     *  from (VENDOR-FR-027). */
-    readonly isVendor: boolean;
     /** The tokens of main context past which the health check warns where the
      *  repository set none (EVAL-FR-006). */
     static readonly defaultMainContextCeiling = 20000;
@@ -104,19 +91,14 @@ declare class WorkspaceSettings {
         mainContextCeiling: z.ZodOptional<z.ZodNumber>;
         sessionContextMark: z.ZodOptional<z.ZodNumber>;
         sessionAnalysisFolder: z.ZodOptional<z.ZodString>;
-        vendor: z.ZodOptional<z.ZodBoolean>;
     }, z.core.$strip>;
-    constructor(agentProviders: readonly AgentProvider[], mainContextCeiling?: number | undefined, sessionAnalysisFolder?: string | undefined, 
-    /** Whether `cw vendor init` set the repository up, to release charters
-     *  from (VENDOR-FR-027). */
-    isVendor?: boolean);
+    constructor(agentProviders: readonly AgentProvider[], mainContextCeiling?: number | undefined, sessionAnalysisFolder?: string | undefined);
     /** Written as the settings file holds them, each agent by its name
      *  (FR-033). */
     toJSON(): {
         agents: readonly string[];
         mainContextCeiling?: number;
         sessionAnalysisFolder?: string;
-        vendor?: true;
     };
     /** The ceiling the health check holds a main context to. */
     get mainContextCeilingOrDefault(): number;
@@ -146,7 +128,7 @@ declare class FileWorkspaceSettingsRepository implements ForStoringWorkspaceSett
     #private;
     constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles);
     loadSettings(): Promise<RawWorkspaceSettings | undefined>;
-    saveSettings({ agentProviders, mainContextCeiling, isVendor }: WorkspaceSettings): Promise<void>;
+    saveSettings({ agentProviders, mainContextCeiling }: WorkspaceSettings): Promise<void>;
     keepLogIgnored(): Promise<void>;
     keepReadme(cwVersion: string): Promise<void>;
 }

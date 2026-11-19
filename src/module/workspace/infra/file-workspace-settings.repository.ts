@@ -25,12 +25,12 @@ export class FileWorkspaceSettingsRepository implements ForStoringWorkspaceSetti
     return settingsText === undefined ? undefined : new RawWorkspaceSettings(settingsText);
   }
 
-  async saveSettings({ agentProviders, mainContextCeiling, isVendor }: WorkspaceSettings): Promise<void> {
+  async saveSettings({ agentProviders, mainContextCeiling }: WorkspaceSettings): Promise<void> {
     const keptCeiling =
       mainContextCeiling === WorkspaceSettings.defaultMainContextCeiling ? undefined : mainContextCeiling;
     await this.#fileWriter.writeFile(
       settingsPath.settingsFilePath,
-      `${JSON.stringify({ agents: agentProviders.map(({ name }) => name), ...(keptCeiling === undefined ? {} : { mainContextCeiling: keptCeiling }), ...(isVendor ? { vendor: true } : {}) }, null, 2)}\n`,
+      `${JSON.stringify({ agents: agentProviders.map(({ name }) => name), ...(keptCeiling === undefined ? {} : { mainContextCeiling: keptCeiling }) }, null, 2)}\n`,
     );
   }
 
@@ -51,7 +51,7 @@ export class FileWorkspaceSettingsRepository implements ForStoringWorkspaceSetti
 
 This folder holds the charter that governs the coding agents working in this repository, kept by [Cherry Works](${CHERRY_WORKS_URL}). It was set up with \`cw\` ${cwVersion}.
 
-- \`charter/\` — the charter: \`primitive/\` for what this repository authors, one folder per kind; \`test/\` and \`eval/\` for its tests and eval cases; \`vendor/\` for charters and skills installed with \`cw vendor add\`, read-only.
+- \`charter/\` — the charter root: one folder per charter, each holding \`primitive/\`, one folder per kind, and \`test/\` and \`eval/\` for its tests and eval cases; one holding a \`cw-package.json\` was pulled with \`cw charter pull\`, and is read-only.
 - \`out/\` — what \`cw build\` compiles the charter to; never edit it.
 - \`settings.json\` — what this repository was set up with.
 

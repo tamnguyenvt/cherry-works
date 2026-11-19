@@ -8,7 +8,7 @@ import { inTheBrowser } from "./in-the-browser.js";
 import { authoringCharterOf } from "./use-cases-of.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/team/primitive/").href;
-const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/charter/acme/primitive/").href;
+const installedAt = (path: string) => new URL(path, "file:///repo/.cw/charter/acme/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = [], description = `About ${id}.`) =>
   [
@@ -23,12 +23,12 @@ const primitive = (kind: string, id: string, headers: readonly string[] = [], de
     "",
   ].join("\n");
 
-/** A primitive of the repository and one of a vendor, and one whose
+/** A primitive of the repository and one of an installed charter, and one whose
  *  description says what its id does not. */
 const charter = {
   [at("sensor/check/index.md")]: primitive("sensor", "check", ["signal: PostToolUse", "run: pnpm lint"]),
-  ["file:///repo/.cw/charter/acme/cw-vendor.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
-  [vendoredAt("guide/lint-clean/index.md")]: primitive("guide", "lint-clean", ['globs: ["src/**/*.ts"]']),
+  ["file:///repo/.cw/charter/acme/cw-package.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
+  [installedAt("guide/lint-clean/index.md")]: primitive("guide", "lint-clean", ['globs: ["src/**/*.ts"]']),
   [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Write unknown, never any."),
 };
 
@@ -78,7 +78,7 @@ const mentionOptionsOf = (page: Page) =>
       ]),
     );
 
-test("typing [[ in the body lists every primitive the charter holds, vendored and builtin included, each by its id, kind and description (CORE Story 70 scenario 1, FR-245)", async () => {
+test("typing [[ in the body lists every primitive the charter holds, installed and builtin included, each by its id, kind and description (CORE Story 70 scenario 1, FR-245)", async () => {
   const files = new InMemoryFileReaders(charter);
   const primitivesAnswer = await authoringCharterOf(
     files,
@@ -230,7 +230,7 @@ test("typing [[ in a header field opens no list (CORE Story 70 scenario 5, FR-24
   });
 });
 
-test("a body the author can edit says beneath it to type [[ to mention another primitive, and a vendor's read-only body does not (CORE Story 70 scenario 6, FR-245)", async () => {
+test("a body the author can edit says beneath it to type [[ to mention another primitive, and an installed charter's read-only body does not (CORE Story 70 scenario 6, FR-245)", async () => {
   await inTheBrowser(charter, async (page) => {
     const mentionHint = page.getByRole("dialog").getByText("Type [[ to mention another primitive.", { exact: true });
     await page.getByRole("button", { name: "no-any", exact: true }).click();
@@ -238,9 +238,9 @@ test("a body the author can edit says beneath it to type [[ to mention another p
     await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
     await page.getByRole("dialog").waitFor({ state: "detached" });
 
-    await page.getByRole("tab", { name: "Vendor" }).click();
+    await page.getByRole("tab", { name: "Installed" }).click();
     await page.getByRole("button", { name: "lint-clean", exact: true }).click();
-    // Opened once it says how to differ from a vendored primitive.
+    // Opened once it says how to differ from an installed primitive.
     await page.getByRole("dialog").getByRole("alert").waitFor();
     assert.equal(await mentionHint.count(), 0);
   });
@@ -255,7 +255,7 @@ test("where the engine stops reading the charter while the body is open, [[ open
     );
     // Opening the primitive asks the engine for the charter again, which it
     // now refuses.
-    const primitivesResponse = page.waitForResponse((response) => response.url().includes("/charter/root/primitives"));
+    const primitivesResponse = page.waitForResponse((response) => response.url().includes("/primitives"));
     const source = await bodySourceOf(page);
     await primitivesResponse;
     await page.keyboard.type(" [[");

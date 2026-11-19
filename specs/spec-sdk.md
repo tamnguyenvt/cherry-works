@@ -235,7 +235,7 @@ A maintainer reads the evidence of each `Done` story and knows it proves the sce
 - A reader that answers a folder's files at an address not under that folder — those files are in no primitive; the contract says so, and the engine does not guess ([SDK-FR-008](#sdk-fr-008)).
 - A write that fails halfway through a build — the build says what failed and what was written stays: a build is not atomic, on any adapter ([SDK-FR-004](#sdk-fr-004), [SDK-FR-008](#sdk-fr-008)).
 - An adapter that drops an empty file — a kind folder set up empty is not there to read; the charter still reads, since a missing kind folder is an empty one ([SDK-FR-008](#sdk-fr-008)).
-- An integrator that hands no fetching adapter — `cw`'s own is composed in, and only vendoring reaches it; authoring never asks for it ([SDK-FR-003](#sdk-fr-003)).
+- An integrator that hands no fetching adapter — `cw`'s own is composed in, and only installing charters reaches it; authoring never asks for it ([SDK-FR-003](#sdk-fr-003)).
 - An integrator composed at a home that is not `file:` that never evaluates — composing succeeds; only an evaluation asks for a real folder ([SDK-FR-011](#sdk-fr-011), [EVAL-FR-021](spec-eval.md#eval-fr-021)).
 - An integrator extending one of `cw`'s own adapters rather than writing it anew — it hands the extended one, and the engine composes it as any other it is handed ([SDK-FR-020](#sdk-fr-020)).
 - Evaluating over in-memory adapters — not offered: a case runs the real agent in a real folder ([EVAL-FR-021](spec-eval.md#eval-fr-021)).

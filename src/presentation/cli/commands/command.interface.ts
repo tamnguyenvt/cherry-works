@@ -5,7 +5,7 @@ import type { ForManagingWorkspace, WorkspaceDTOs } from "#module/workspace/modu
 /** The applications the engine is reached through (CORE-FR-222): the
  *  charter's two, authoring and projecting it, and runtime's. */
 export interface EngineApps {
-  /** Its primitives, vendors, test and eval files, the tests, and signing in
+  /** Its primitives, installed charters, test and eval files, the tests, and signing in
    *  to its mcp origins. */
   readonly charterAuthoringApp: ForAuthoringCharter;
   /** The build, its preview, the health check, the estimated context, and

@@ -3,8 +3,8 @@ import { type AgentProvider, z } from "#module/shared/module.js";
 /**
  * What a repository configured itself with — which agents it chose, the
  * ceiling of a main context, where its sessions are kept on
- * this machine, whether `cw vendor init` set it up (FR-033, EVAL-FR-006,
- * EVAL-FR-012, VENDOR-FR-027). Kept by the workspace
+ * this machine (FR-033, EVAL-FR-006, EVAL-FR-012), and no mark of a
+ * repository releasing charters (VENDOR-FR-032). Kept by the workspace
  * module alone, and handed to the applications that run by it (CORE-FR-231).
  */
 export class WorkspaceSettings {
@@ -22,16 +22,12 @@ export class WorkspaceSettings {
       .string()
       .regex(/^(\/|~\/)/)
       .optional(),
-    vendor: z.boolean().optional(),
   });
 
   constructor(
     readonly agentProviders: readonly AgentProvider[],
     readonly mainContextCeiling?: number,
     readonly sessionAnalysisFolder?: string,
-    /** Whether `cw vendor init` set the repository up, to release charters
-     *  from (VENDOR-FR-027). */
-    readonly isVendor = false,
   ) {}
 
   /** Written as the settings file holds them, each agent by its name
@@ -40,13 +36,11 @@ export class WorkspaceSettings {
     agents: readonly string[];
     mainContextCeiling?: number;
     sessionAnalysisFolder?: string;
-    vendor?: true;
   } {
     return {
       agents: this.agentProviders.map(({ name }) => name),
       ...(this.mainContextCeiling === undefined ? {} : { mainContextCeiling: this.mainContextCeiling }),
       ...(this.sessionAnalysisFolder === undefined ? {} : { sessionAnalysisFolder: this.sessionAnalysisFolder }),
-      ...(this.isVendor ? { vendor: true as const } : {}),
     };
   }
 

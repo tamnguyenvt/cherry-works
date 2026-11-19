@@ -143,7 +143,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
 
   /** Whether a word someone searched for is anywhere a reader would look for
    *  it: the id, the kind, what it is for, when its kind comes up, its
-   *  folder and file under its kind, its layer and the vendor it came from,
+   *  folder and file under its kind, its layer and the installed charter it came from,
    *  or any header it declared — ignoring case, since whoever typed it
    *  did not know how it was written (FR-114). */
   hasWord(word: string): boolean {

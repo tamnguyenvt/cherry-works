@@ -21,9 +21,6 @@ export interface ProjectionSettings {
   /** The tokens past which the health check warns of the main context a
    *  session opens with (EVAL-FR-006); none is 20,000. */
   readonly mainContextCeiling?: number;
-  /** Whether `cw vendor init` set the repository up: its build lays
-   *  `/vendor-release` and its script, from cw itself (VENDOR-FR-027). */
-  readonly isVendor?: boolean;
 }
 
 /**

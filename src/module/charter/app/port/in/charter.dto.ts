@@ -48,7 +48,7 @@ const PrimitiveSchema = dto(
     kind: z.string(),
     description: z.string(),
     file: z.string(),
-    layerName: z.enum(["repo", "vendor", "builtin"]),
+    layerName: z.enum(["repo", "package", "builtin"]),
     headers: z.record(z.string(), z.union([z.string(), StringsSchema])),
     body: z.string(),
     hash: z.string(),
@@ -239,14 +239,6 @@ const CharterMetadataListSchema = dto(
   }),
 );
 
-/** One folder a vendor source was installed as, or taken away from (FR-023). */
-const VendorFolderSchema = dto(
-  "VendorFolder",
-  z.object({
-    folder: z.string(),
-  }),
-);
-
 /** One address a developer signs in to, and whether they have (FR-150): every
  *  mcp at it whatever its path, the ways any of them allows, and how the
  *  developer signed in there. Never the credential itself (SC-036). */
@@ -292,10 +284,10 @@ const ServedToolsSchema = dto(
   }),
 );
 
-/** One primitive installed from a vendor source: its kind, id and
+/** One primitive pulled from a charter source: its kind, id and
  *  description (VENDOR-FR-017). */
-const VendorPrimitiveSchema = dto(
-  "VendorPrimitive",
+const PulledPrimitiveSchema = dto(
+  "PulledPrimitive",
   z.object({
     kind: z.string(),
     id: z.string(),
@@ -480,15 +472,15 @@ const ExplanationOutcomeSchema = dto(
   }),
 );
 
-/** What installing one vendor source came to (CORE-FR-196, VENDOR-FR-017):
- *  each charter it filled, with the primitives installed there. */
-const VendorAddOutcomeSchema = dto(
-  "VendorAddOutcome",
+/** What pulling from one charter source came to (CORE-FR-196, VENDOR-FR-017):
+ *  each charter it filled, with the primitives pulled there. */
+const CharterPullOutcomeSchema = dto(
+  "CharterPullOutcome",
   z
     .array(
       z.object({
         folder: z.string(),
-        primitives: z.array(VendorPrimitiveSchema).readonly(),
+        primitives: z.array(PulledPrimitiveSchema).readonly(),
       }),
     )
     .readonly(),
@@ -503,6 +495,7 @@ export const CharterDTOs = groupByType(
   CharterLayoutSchema,
   CharterMetadataSchema,
   CharterMetadataListSchema,
+  CharterPullOutcomeSchema,
   DeclaredToolSchema,
   DeclaredToolsSchema,
   DoctorOutcomeSchema,
@@ -522,6 +515,7 @@ export const CharterDTOs = groupByType(
   PrimitiveRequirementsSchema,
   PrimitivesSchema,
   ProjectionPlanSummarySchema,
+  PulledPrimitiveSchema,
   SensorCommandsSchema,
   ServedToolSchema,
   ServedToolsSchema,
@@ -534,9 +528,6 @@ export const CharterDTOs = groupByType(
   TestSuiteSchema,
   TestSuiteNameSchema,
   TestSuitesSchema,
-  VendorAddOutcomeSchema,
-  VendorFolderSchema,
-  VendorPrimitiveSchema,
 );
 
 /** Every DTO's type, under its name: what its schema infers. */
@@ -547,6 +538,7 @@ export namespace CharterDTOs {
   export type CharterLayout = z.infer<typeof CharterDTOs.CharterLayout>;
   export type CharterMetadata = z.infer<typeof CharterDTOs.CharterMetadata>;
   export type CharterMetadataList = z.infer<typeof CharterDTOs.CharterMetadataList>;
+  export type CharterPullOutcome = z.infer<typeof CharterDTOs.CharterPullOutcome>;
   export type DeclaredTool = z.infer<typeof CharterDTOs.DeclaredTool>;
   export type DeclaredTools = z.infer<typeof CharterDTOs.DeclaredTools>;
   export type DoctorOutcome = z.infer<typeof CharterDTOs.DoctorOutcome>;
@@ -566,6 +558,7 @@ export namespace CharterDTOs {
   export type PrimitiveRequirements = z.infer<typeof CharterDTOs.PrimitiveRequirements>;
   export type Primitives = z.infer<typeof CharterDTOs.Primitives>;
   export type ProjectionPlanSummary = z.infer<typeof CharterDTOs.ProjectionPlanSummary>;
+  export type PulledPrimitive = z.infer<typeof CharterDTOs.PulledPrimitive>;
   export type SensorCommands = z.infer<typeof CharterDTOs.SensorCommands>;
   export type ServedTool = z.infer<typeof CharterDTOs.ServedTool>;
   export type ServedTools = z.infer<typeof CharterDTOs.ServedTools>;
@@ -578,7 +571,4 @@ export namespace CharterDTOs {
   export type TestSuite = z.infer<typeof CharterDTOs.TestSuite>;
   export type TestSuiteName = z.infer<typeof CharterDTOs.TestSuiteName>;
   export type TestSuites = z.infer<typeof CharterDTOs.TestSuites>;
-  export type VendorAddOutcome = z.infer<typeof CharterDTOs.VendorAddOutcome>;
-  export type VendorFolder = z.infer<typeof CharterDTOs.VendorFolder>;
-  export type VendorPrimitive = z.infer<typeof CharterDTOs.VendorPrimitive>;
 }

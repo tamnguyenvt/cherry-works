@@ -13,7 +13,7 @@ import { CharterRoot } from "./charter-root.js";
 const LAYER_ORDER: readonly LayerName[] = [
   PrimitiveLayer.BUILTIN.name,
   PrimitiveLayer.REPO.name,
-  PrimitiveLayer.vendorName,
+  PrimitiveLayer.packageName,
 ];
 
 /** Makes a repository's charter out of the primitives kept of it, and what

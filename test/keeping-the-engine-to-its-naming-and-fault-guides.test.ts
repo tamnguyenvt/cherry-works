@@ -111,7 +111,7 @@ test("every fault lives in the file of the part it is raised in, beside its base
 
 /** The verbs an operation, a method or a function may begin with. */
 const operationVerbs = new Set(
-  "add analyze answer append apply ask assert authorize build call check clean cleanup close collect compile compose connect copy count covers create decide decode delete describe diagnose edit encode ensure estimate evaluate execute explain fetch filter find forget format get grade group handle has inject install is keep lay list load make match merge move open parse pick plan predict preview print project read refuse register remove render renew report resolve rewrite run save search select serve set shorten show sign start stop store summarize supports take tell test throw use validate wait wrap write".split(
+  "add analyze answer append apply ask assert authorize build call check clean cleanup close collect compile compose connect copy count covers create decide decode delete describe diagnose edit encode ensure estimate evaluate execute explain fetch filter find forget format get grade group handle has inject install is keep lay list load make match merge move open parse pick plan predict preview print project pull read refuse register remove render renew report resolve rewrite run save search select serve set shorten show sign start stop store summarize supports take tell test throw update use validate wait wrap write".split(
     " ",
   ),
 );
@@ -552,7 +552,7 @@ const compilerSettingNames = new Set(["checkJs", "detectJSDocImports"]);
 const roleWords = new Set(["For", "Loading", "Repository", "Service", "Factory"]);
 
 /** The guides this repository authored that say what the engine's parts are
- *  named and where they live; the vendored ones name no part of it. */
+ *  named and where they live; the installed ones name no part of it. */
 const architectureGuideIds = [
   "architecture-map",
   "hexagonal-architecture",
@@ -570,8 +570,8 @@ test("the naming and architecture guides name no type or operation the code does
     return [...guideText.matchAll(/`([^`\n]+)`/g)].flatMap((codeSpanMatch) =>
       // A code span is a name where it is one identifier, called or not:
       // a type (`ForManagingCharter`), an operation (`loadCharter()`), a
-      // private method (`#injectVendor`), a member (`CharterRootFactory.create`);
-      // an operation written bare (`storeVendor`), a type of one word
+      // private method (`#injectInstalledCharter`), a member (`CharterRootFactory.create`);
+      // an operation written bare (`storeInstalledCharter`), a type of one word
       // (`Shell`, `OAuth`); a role word alone (`Service`), a compiler
       // setting (`checkJs`) or a file (`jsconfig.json`) is none.
       /^#?[A-Za-z]\w*(\.\w+)*(\(\))?$/.test(codeSpanMatch[1]!) &&
@@ -631,7 +631,7 @@ const valueObjectNames = new Set([
   "SessionAnalysisLine",
   "SessionSpan",
   "StampedDocument",
-  "VendorSourceOrigin",
+  "CharterSourceOrigin",
 ]);
 
 test("every value object of the domain lives in a .value-object.ts file, every file under value-objects/ among them (CORE Story 53 scenario 2)", () => {

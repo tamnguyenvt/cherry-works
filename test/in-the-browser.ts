@@ -28,7 +28,7 @@ const PORT = 47420;
  *  view read the charter again can change what is on disk between two showings
  *  of it.
  *
- *  Version control is held in memory too, and a test about vendoring hands
+ *  Version control is held in memory too, and a test about installing hands
  *  over its own to say what each install commit records and to read what the
  *  page asked it to install or remove. */
 export async function inTheBrowser(

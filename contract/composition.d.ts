@@ -3,7 +3,7 @@
  * Every adapter the engine reaches the outside through, each the engine's own
  * or one a tool writes: each agent's projection and command line, under the
  * agent it is for, the store that keeps the charter, the source fetcher that
- * store reaches vendors through, the sessions, the settings, the local output,
+ * store reaches installed charters through, the sessions, the settings, the local output,
  * and the rest (CORE-FR-230, SDK-FR-020).
  */
 interface EngineAdapters {
@@ -15,10 +15,10 @@ interface EngineAdapters {
             readonly agentCli: ForCheckingAgentCli;
         };
     };
-    /** The charter — its primitives, its vendors, its test and eval cases —
+    /** The charter — its primitives, its installed charters, its test and eval cases —
      *  kept by one store (CORE-FR-228). */
     readonly charterRepository: ForManagingCharter;
-    /** Where a vendor's source is fetched from, by the charter's store kept as
+    /** Where an installed charter's source is fetched from, by the charter's store kept as
      *  files (CORE-FR-205). */
     readonly sourceFetcher: ForFetchingCharterSources;
     /** Where a repository's sessions are read from (EVAL-FR-009). */

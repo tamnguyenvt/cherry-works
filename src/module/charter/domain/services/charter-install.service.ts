@@ -1,8 +1,8 @@
 import type { CharterMetadataList } from "../models/charter/charter-metadata-list.js";
 import { CharterRootFactory } from "../models/charter/charter-root.factory.js";
 import type { CharterRoot } from "../models/charter/charter-root.js";
+import { InstalledCharterRecord } from "../models/charter/installed-charter-record.value-object.js";
 import { ValidCharterNameSpec } from "../models/charter/valid-charter-name.specification.js";
-import { VendorRecord } from "../models/charter/vendor-record.value-object.js";
 import {
   AmbiguousAsNameFault,
   ClaimedIdFault,
@@ -10,61 +10,63 @@ import {
   ReservedCharterNameFault,
   UnexpectedSourceShapeFault,
 } from "../models/charter.fault.js";
-import { CharterInstall, type CharterInstallRequest } from "../models/vendor/charter-install.js";
-import type { VendorSource } from "../models/vendor/vendor-source.js";
+import { CharterInstall, type CharterInstallRequest } from "../models/charter-source/charter-install.js";
+import type { CharterSource } from "../models/charter-source/charter-source.js";
 
-/** Plans what installing or injecting a source puts in the charter root. */
+/** Plans what pulling or forking a source puts in the charter root. */
 export class CharterInstallService {
   /**
-   * Every charter one source's install or injection puts in the repository,
+   * Every charter one source's pull or fork puts in the repository,
    * every refusal raised before anything is written.
    *
-   * A source is a vendor when it authors charters; a source authoring none is
-   * refused (CORE-FR-042). With none named, every charter it authored is taken; a
-   * charter named that it did not author is refused naming those it did
-   * (VENDOR-FR-017). Every other charter of the source a charter taken names
-   * an id of is taken with it, and so on, each once; one the source installed
-   * itself is copied as it stands, its `cw-vendor.json` with it, and is never
-   * taken unless one taken includes it (VENDOR-FR-018, VENDOR-FR-019). `--as`
-   * names one charter alone (VENDOR-FR-020).
+   * A source is a charter source when it holds charters; a source holding none
+   * is refused (CORE-FR-042). With none named, every charter it holds is
+   * taken, authored or installed there alike; a charter named that it does not
+   * hold is refused naming those it does (VENDOR-FR-017, VENDOR-FR-019). Every
+   * other charter of the source a charter taken names an id of is taken with
+   * it, and so on, each once (VENDOR-FR-018). Each is copied as it stands, its
+   * `cw-package.json` written here, never the source's own (VENDOR-FR-019).
+   * `--as` names one charter alone (VENDOR-FR-020).
    *
    * Installed, a charter whose name a charter installed from the same source
    * holds replaces it whole; one held otherwise is refused, suggesting `--as`
-   * (VENDOR-FR-020). Injected, any name held is refused, and no
-   * `cw-vendor.json` is kept (VENDOR-FR-022). Either way an id the charter
+   * (VENDOR-FR-020). Forked, any name held is refused, and no
+   * `cw-package.json` is kept (VENDOR-FR-022). Either way an id the charter
    * root would then hold twice is refused naming both files (VENDOR-FR-009).
    */
   static planCharterInstalls(
-    vendorSource: VendorSource,
+    charterSources: readonly CharterSource[],
     charterInstallRequest: CharterInstallRequest,
     charterMetadataList: CharterMetadataList,
     charterRoot: CharterRoot,
+    /** The charters other plans of the same update replace, whose ids are
+     *  claimed again by those plans alone (VENDOR-FR-030). */
+    otherReplacedCharterNames: readonly string[] = [],
   ): readonly CharterInstall[] {
     const {
-      origin: { sourceUri },
-    } = vendorSource;
-    const { selectedCharterNames, asName, version, isInjected } = charterInstallRequest;
+      charterSourceOrigin: { sourceUri },
+      selectedCharterNames,
+      asName,
+      version,
+      isForked,
+    } = charterInstallRequest;
 
-    const authoredCharterNames = vendorSource.charters
-      .filter((sourceCharter) => !sourceCharter.isInstalled)
-      .map(({ name }) => name);
-    if (authoredCharterNames.length === 0)
+    const sourceCharterNames = charterSources.map(({ name }) => name);
+    if (sourceCharterNames.length === 0)
       throw new UnexpectedSourceShapeFault(
-        `${sourceUri} is no vendor: it authors no charter.`,
-        "Check that the source authors its charters as cw lays them out, at the version asked for.",
+        `${sourceUri} is no charter source: it holds no charter.`,
+        "Check that the source keeps its charters as cw lays them out, at the version asked for.",
         { internal: false },
       );
-    const unauthoredCharterNames = selectedCharterNames.filter(
-      (charterName) => !authoredCharterNames.includes(charterName),
-    );
-    if (unauthoredCharterNames.length > 0)
+    const unheldCharterNames = selectedCharterNames.filter((charterName) => !sourceCharterNames.includes(charterName));
+    if (unheldCharterNames.length > 0)
       throw new UnexpectedSourceShapeFault(
-        `${sourceUri} authors no charter ${unauthoredCharterNames.join(", ")}.`,
-        `Name one it authors: ${authoredCharterNames.join(", ")}.`,
+        `${sourceUri} holds no charter ${unheldCharterNames.join(", ")}.`,
+        `Name one it holds: ${sourceCharterNames.join(", ")}.`,
         { internal: false },
       );
 
-    const pickedCharterNames = selectedCharterNames.length === 0 ? authoredCharterNames : selectedCharterNames;
+    const pickedCharterNames = selectedCharterNames.length === 0 ? sourceCharterNames : selectedCharterNames;
     if (asName !== undefined && pickedCharterNames.length !== 1)
       throw new AmbiguousAsNameFault(
         "--as names one charter, and this would install more than one.",
@@ -74,11 +76,11 @@ export class CharterInstallService {
 
     // Every charter a charter taken names an id of, and so on (VENDOR-FR-018).
     const sourceCharterRoot = CharterRootFactory.create(
-      vendorSource.charters.flatMap(({ rawPrimitives }) => rawPrimitives),
+      charterSources.flatMap(({ rawPrimitives }) => rawPrimitives),
       "",
     );
     const charterNameById = new Map(
-      vendorSource.charters.flatMap(({ name, rawPrimitives }) => rawPrimitives.map(({ id }) => [id, name] as const)),
+      charterSources.flatMap(({ name, rawPrimitives }) => rawPrimitives.map(({ id }) => [id, name] as const)),
     );
     const takenCharterNames = new Set<string>();
     const pendingCharterNames = [...pickedCharterNames];
@@ -97,18 +99,19 @@ export class CharterInstallService {
         }
     }
 
-    // Where no version was asked for, the commit fetched (VENDOR-FR-017).
-    const installedVersion = version ?? vendorSource.commitId;
-    const charterInstalls = vendorSource.charters
+    const charterInstalls = charterSources
       .filter(({ name }) => takenCharterNames.has(name))
       .map(
-        (sourceCharter) =>
+        (charterSource) =>
           new CharterInstall(
-            asName !== undefined && pickedCharterNames.includes(sourceCharter.name) ? asName : sourceCharter.name,
-            sourceCharter,
+            asName !== undefined && pickedCharterNames.includes(charterSource.name) ? asName : charterSource.name,
+            charterSource,
             // Written on this machine, naming the source asked, whoever installed
-            // it in the source (VENDOR-FR-019).
-            isInjected ? undefined : new VendorRecord(sourceCharter.name, sourceUri, installedVersion),
+            // it in the source; where no version was asked for, the commit
+            // fetched (VENDOR-FR-017, VENDOR-FR-019).
+            isForked
+              ? undefined
+              : new InstalledCharterRecord(charterSource.name, sourceUri, version ?? charterSource.commitId),
           ),
       );
     // Each charter lands under a name of its own: two would write over each
@@ -128,7 +131,7 @@ export class CharterInstallService {
     // only where it was installed from the same source (VENDOR-FR-020,
     // VENDOR-FR-022).
     const replacedCharterNames: string[] = [];
-    for (const { charterName, vendorRecord } of charterInstalls) {
+    for (const { charterName, installedCharterRecord } of charterInstalls) {
       if (!new ValidCharterNameSpec().isSatisfiedBy(charterName))
         throw new ReservedCharterNameFault(
           `"${charterName}" cannot name a charter: a charter is named as an id is, and never as a kind is, as a folder an older layout kept, nor as root.`,
@@ -138,15 +141,15 @@ export class CharterInstallService {
       const heldCharter = charterMetadataList.findCharter(charterName);
       if (heldCharter === undefined) continue;
       const isFromTheSameSource =
-        !isInjected &&
-        heldCharter.vendorRecord !== undefined &&
-        vendorRecord !== undefined &&
-        heldCharter.vendorRecord.source === vendorRecord.source;
+        !isForked &&
+        heldCharter.installedCharterRecord !== undefined &&
+        installedCharterRecord !== undefined &&
+        heldCharter.installedCharterRecord.source === installedCharterRecord.source;
       if (!isFromTheSameSource)
         throw new HeldCharterNameFault(
-          heldCharter.vendorRecord === undefined
+          heldCharter.installedCharterRecord === undefined
             ? `${charterName} is a charter this repository authored, at ${heldCharter.uri}.`
-            : `${charterName} is held by a charter installed from ${heldCharter.vendorRecord.source}, at ${heldCharter.uri}.`,
+            : `${charterName} is held by a charter installed from ${heldCharter.installedCharterRecord.source}, at ${heldCharter.uri}.`,
           `Install it under another name with --as=<name>.`,
           { internal: false },
         );
@@ -157,10 +160,15 @@ export class CharterInstallService {
     // is gone (VENDOR-FR-009, VENDOR-FR-022).
     const uriById = new Map(
       charterRoot.primitives
-        .filter(({ layer }) => layer.charterName === undefined || !replacedCharterNames.includes(layer.charterName))
+        .filter(
+          ({ layer }) =>
+            layer.charterName === undefined ||
+            (!replacedCharterNames.includes(layer.charterName) &&
+              !otherReplacedCharterNames.includes(layer.charterName)),
+        )
         .map((primitive) => [primitive.headers.id, primitive.uri] as const),
     );
-    const installedRawPrimitives = vendorSource.charters
+    const installedRawPrimitives = charterSources
       .filter(({ name }) => takenCharterNames.has(name))
       .flatMap(({ rawPrimitives }) => rawPrimitives);
     for (const { id, uri } of installedRawPrimitives) {
@@ -174,6 +182,28 @@ export class CharterInstallService {
       uriById.set(id, uri);
     }
     return charterInstalls;
+  }
+
+  /**
+   * The installs several sources were planned into, each against the charter
+   * as it is held, refused where two charters they fill would claim one id:
+   * planned one by one, none of them sees what another brings (VENDOR-FR-020,
+   * VENDOR-FR-030). A charter filled twice, as two charters update including
+   * it, claims its ids once.
+   */
+  static assertDistinctIds(charterInstallLists: readonly (readonly CharterInstall[])[]): void {
+    const claimById = new Map<string, { charterName: string; uri: string }>();
+    for (const { charterName, charterSource } of charterInstallLists.flat())
+      for (const { id, uri } of charterSource.rawPrimitives) {
+        const heldClaim = claimById.get(id);
+        if (heldClaim !== undefined && heldClaim.charterName !== charterName)
+          throw new ClaimedIdFault(
+            `${heldClaim.uri} and ${uri} claim id "${id}", and one id names one primitive in the whole charter.`,
+            "Update these charters one at a time, once one of their sources gives the id up.",
+            { internal: false },
+          );
+        claimById.set(id, { charterName, uri });
+      }
   }
 
   private constructor() {}

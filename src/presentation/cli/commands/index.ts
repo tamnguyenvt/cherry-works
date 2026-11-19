@@ -1,5 +1,10 @@
 import { AddCommand } from "./add.command.js";
 import { BuildCommand } from "./build.command.js";
+import { CharterCommand } from "./charter.command.js";
+import { CharterCreateCommand } from "./charter-create.command.js";
+import { CharterPullCommand } from "./charter-pull.command.js";
+import { CharterRemoveCommand } from "./charter-remove.command.js";
+import { CharterUpdateCommand } from "./charter-update.command.js";
 import type { AnyCommand } from "./command.interface.js";
 import { ContextCommand } from "./context.command.js";
 import { DoctorCommand } from "./doctor.command.js";
@@ -20,11 +25,6 @@ import { SuiteAddCommand } from "./suite-add.command.js";
 import { SuiteEditCommand } from "./suite-edit.command.js";
 import { SuiteRemoveCommand } from "./suite-remove.command.js";
 import { TestCommand } from "./test.command.js";
-import { VendorAddCommand } from "./vendor-add.command.js";
-import { VendorInitCommand } from "./vendor-init.command.js";
-import { VendorInjectCommand } from "./vendor-inject.command.js";
-import { VendorListCommand } from "./vendor-list.command.js";
-import { VendorRemoveCommand } from "./vendor-remove.command.js";
 
 /** The command surface: what the command line offers, declared and nothing
  *  more. Each command is added here as it is built, and is given what it needs
@@ -47,11 +47,11 @@ export const COMMANDS: readonly AnyCommand[] = [
   new SuiteAddCommand(),
   new SuiteEditCommand(),
   new SuiteRemoveCommand(),
-  new VendorInitCommand(),
-  new VendorAddCommand(),
-  new VendorInjectCommand(),
-  new VendorRemoveCommand(),
-  new VendorListCommand(),
+  new CharterCommand(),
+  new CharterCreateCommand(),
+  new CharterPullCommand(),
+  new CharterUpdateCommand(),
+  new CharterRemoveCommand(),
   new McpAuthCommand(),
   new RunMcpCommand(),
   new RunSensorCommand(),

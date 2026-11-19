@@ -34,7 +34,7 @@ const repoFileUrlOf = (path: string) => new URL(path, repoFolder).href;
 const settingsText = `${JSON.stringify({ agents: ["claude"] })}\n`;
 const skillTextOf = (id: string) =>
   `---\nkind: skill\nid: ${id}\ndescription: Do ${id}.\ntriggers: ["${id}"]\n---\nDo ${id}.\n`;
-const vendorRecordText = `${JSON.stringify({ charter: "grill", source: "mattpocock/skills", version: "v1.0.0" })}\n`;
+const installedCharterRecordText = `${JSON.stringify({ charter: "grill", source: "mattpocock/skills", version: "v1.0.0" })}\n`;
 
 /** A repository holding charters `sdd` and `baseline`, each authored with a
  *  skill, and `grill`, installed with one. */
@@ -43,7 +43,7 @@ const filesInThreeCharters = {
   [repoFileUrlOf(".cw/charter/sdd/primitive/skill/sdd-plan/index.md")]: skillTextOf("sdd-plan"),
   [repoFileUrlOf(".cw/charter/baseline/primitive/skill/baseline-check/index.md")]: skillTextOf("baseline-check"),
   [repoFileUrlOf(".cw/charter/grill/primitive/skill/grill-me/index.md")]: skillTextOf("grill-me"),
-  [repoFileUrlOf(".cw/charter/grill/cw-vendor.json")]: vendorRecordText,
+  [repoFileUrlOf(".cw/charter/grill/cw-package.json")]: installedCharterRecordText,
 };
 
 /** Every adapter that would reach past memory, held in memory, over `files`. */
@@ -128,13 +128,13 @@ test("a build at the root holds every charter's primitives, and every agent chos
   }
 });
 
-test("a charter holding a cw-vendor.json is read as installed, and editing or removing its primitives is refused (VENDOR Story 3 scenario 2)", async () => {
+test("a charter holding a cw-package.json is read as installed, and editing or removing its primitives is refused (VENDOR Story 3 scenario 2)", async () => {
   const adapters = adaptersInMemory(filesInThreeCharters);
   const { charterAuthoringApp } = engineOver(adapters);
 
   const grillPrimitive = answerOf(await charterAuthoringApp.openPrimitive("grill-me")).data;
   const sddPrimitive = answerOf(await charterAuthoringApp.openPrimitive("sdd-plan")).data;
-  assert.equal(grillPrimitive.layerName, "vendor");
+  assert.equal(grillPrimitive.layerName, "package");
   assert.equal(sddPrimitive.layerName, "repo");
 
   assert.match(
@@ -153,15 +153,15 @@ test("a charter holding a cw-vendor.json is read as installed, and editing or re
   );
 });
 
-test("a cw-vendor.json that does not read is refused, naming the file (VENDOR Story 3 scenario 2)", async () => {
+test("a cw-package.json that does not read is refused, naming the file (VENDOR Story 3 scenario 2)", async () => {
   const adapters = adaptersInMemory({
     ...filesInThreeCharters,
-    [repoFileUrlOf(".cw/charter/grill/cw-vendor.json")]: "{ not json",
+    [repoFileUrlOf(".cw/charter/grill/cw-package.json")]: "{ not json",
   });
 
   const buildAnswer = await engineOver(adapters).charterBuildingApp.buildCharter();
 
-  assert.match(faultTextOf(buildAnswer), /charter\/grill\/cw-vendor\.json/);
+  assert.match(faultTextOf(buildAnswer), /charter\/grill\/cw-package\.json/);
 });
 
 test("one id held in two charters is refused naming both files (VENDOR Story 3 scenario 3)", async () => {
@@ -176,7 +176,7 @@ test("one id held in two charters is refused naming both files (VENDOR Story 3 s
   assert.match(diagnosis, /charter\/baseline\/primitive\/skill\/sdd-plan\/index\.md/);
 });
 
-test("a primitive right under its kind's folder, test or eval cases right under the charter, or a vendor under vendor/, refuse every command, naming the move into a named charter (VENDOR Story 3 scenarios 4 and 7)", async () => {
+test("a primitive right under its kind's folder, test or eval cases right under the charter, or an installed charter under vendor/, refuse every command, naming the move into a named charter (VENDOR Story 3 scenarios 4 and 7)", async () => {
   for (const oldLayoutPath of [
     ".cw/charter/primitive/guide/kept-guide/index.md",
     ".cw/charter/test/kept.json",
@@ -190,19 +190,22 @@ test("a primitive right under its kind's folder, test or eval cases right under 
       assert.equal(code, EXIT_FAILURE, `${oldLayoutPath}: ${argv.join(" ")}`);
       assert.match(problem, /laid out the old way/, `${oldLayoutPath}: ${argv.join(" ")}`);
       assert.match(problem, /named charter/, `${oldLayoutPath}: ${argv.join(" ")}`);
-      // The fix names the folder of vendors this repository holds, never another.
-      const oldVendorsFolderPath = /^(\.cw\/(?:charter\/)?vendor)\//.exec(oldLayoutPath)?.[1];
-      if (oldVendorsFolderPath !== undefined)
-        assert.ok(problem.includes(`delete each vendor under ${oldVendorsFolderPath}/ `), problem);
+      // The fix names the folder of installed charters this repository holds, never another.
+      const oldInstalledChartersFolderPath = /^(\.cw\/(?:charter\/)?vendor)\//.exec(oldLayoutPath)?.[1];
+      if (oldInstalledChartersFolderPath !== undefined)
+        assert.ok(problem.includes(`delete each installed charter under ${oldInstalledChartersFolderPath}/ `), problem);
     }
     assert.equal(await adapters.fileReader.readIfThere(".cw/charter/sdd/primitive/guide/no-any/index.md"), undefined);
   }
 });
 
-test("following /cw-author moves a repository laid out the old way into the charter the developer names, has each vendor installed again, and the repository builds (VENDOR Story 3 scenario 5)", async () => {
+test("following /cw-author moves a repository laid out the old way into the charter the developer names, has each installed charter installed again, and the repository builds (VENDOR Story 3 scenario 5)", async () => {
   const skillBody = new CwAuthorSkill().body;
   assert.match(skillBody, /ask\s+the developer which charter/);
-  assert.match(skillBody, /vendor[\s\S]*never moved[\s\S]*delete the folder[\s\S]*installed again with the latest cw/);
+  assert.match(
+    skillBody,
+    /installed charter[\s\S]*never moved[\s\S]*delete the folder[\s\S]*installed again with the latest cw/,
+  );
   // The developer answers `team`.
   const movedPathPairs = [...skillBody.matchAll(/^- `([^`]+)` → `([^`]+)`/gm)].flatMap(([, oldPath, newPath]) =>
     oldPath!.includes("<kind>")
@@ -305,7 +308,7 @@ test("cw test --charter=sdd runs only sdd's cases (VENDOR Story 3 scenario 25)",
 test("cw test and cw eval with --charter naming an installed charter run its cases alone (VENDOR-FR-024, VENDOR-FR-025)", async () => {
   const filesWithBaselineInstalled = {
     ...filesInTwoTestedCharters,
-    [repoFileUrlOf(".cw/charter/baseline/cw-vendor.json")]:
+    [repoFileUrlOf(".cw/charter/baseline/cw-package.json")]:
       `${JSON.stringify({ charter: "baseline", source: "acme/charters", version: "v1" })}\n`,
   };
   const adapters = adaptersInMemory(filesWithBaselineInstalled);

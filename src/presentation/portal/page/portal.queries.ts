@@ -30,9 +30,7 @@ export function usePrimitives(searchText?: string) {
   return useQuery({
     queryKey: ["primitives", searchText ?? ""],
     queryFn: async () =>
-      (
-        await client.charter.root.primitives.$get({ query: searchText === undefined ? {} : { matching: searchText } })
-      ).json(),
+      (await client.primitives.$get({ query: searchText === undefined ? {} : { matching: searchText } })).json(),
   });
 }
 
@@ -48,7 +46,7 @@ export function useExplanation(id: string) {
   return useQuery({
     queryKey: ["explanation", id],
     queryFn: async () =>
-      (await client.charter.root.primitives[":id"].explanation.$get({ param: { id: encodeURIComponent(id) } })).json(),
+      (await client.primitives[":id"].explanation.$get({ param: { id: encodeURIComponent(id) } })).json(),
   });
 }
 
@@ -67,7 +65,7 @@ export function usePrimitive(id: string | undefined) {
     gcTime: 0,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const httpResponse = await client.charter.root.primitives[":id"].$get({
+      const httpResponse = await client.primitives[":id"].$get({
         param: { id: encodeURIComponent(id ?? "") },
       });
       return { answer: await httpResponse.json(), entityTag: httpResponse.headers.get("ETag") ?? "" };
@@ -103,8 +101,8 @@ function useMarkWrittenStale() {
 export function useAddPrimitive() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
-    mutationFn: async (request: InferRequestType<(typeof client.charter)[":charterName"]["primitives"]["$post"]>) =>
-      (await client.charter[":charterName"].primitives.$post(request)).json(),
+    mutationFn: async (request: InferRequestType<(typeof client.charters)[":charterName"]["primitives"]["$post"]>) =>
+      (await client.charters[":charterName"].primitives.$post(request)).json(),
     onSuccess: markWrittenStale,
   });
 }
@@ -115,9 +113,9 @@ export function useAddPrimitive() {
 export function useRewritePrimitive() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
-    mutationFn: async (request: InferRequestType<(typeof client.charter.root.primitives)[":id"]["$put"]>) =>
+    mutationFn: async (request: InferRequestType<(typeof client.primitives)[":id"]["$put"]>) =>
       (
-        await client.charter.root.primitives[":id"].$put({
+        await client.primitives[":id"].$put({
           ...request,
           param: { id: encodeURIComponent(request.param.id) },
         })
@@ -134,7 +132,7 @@ export function useRemovePrimitive() {
     mutationFn: async (id: string) => {
       // Sent as JSON though it carries none: every verb but GET is, so a page
       // of another origin cannot make it without a preflight (plan §12.4).
-      const httpResponse = await client.charter.root.primitives[":id"].$delete(
+      const httpResponse = await client.primitives[":id"].$delete(
         { param: { id: encodeURIComponent(id) } },
         { headers: { "Content-Type": "application/json" } },
       );
@@ -151,7 +149,7 @@ export function useBuildPreview() {
   return useQuery({
     queryKey: ["build"],
     gcTime: 0,
-    queryFn: async () => (await client.charter.root.build.$get()).json(),
+    queryFn: async () => (await client.build.$get()).json(),
   });
 }
 
@@ -160,7 +158,7 @@ export function useHealth() {
   return useQuery({
     queryKey: ["health"],
     gcTime: 0,
-    queryFn: async () => (await client.charter.root.health.$get()).json(),
+    queryFn: async () => (await client.doctor.$get()).json(),
   });
 }
 
@@ -170,7 +168,7 @@ export function useMainContexts() {
   return useQuery({
     queryKey: ["mainContexts"],
     gcTime: 0,
-    queryFn: async () => (await client.charter.root.context.$get()).json(),
+    queryFn: async () => (await client.contexts.$get()).json(),
   });
 }
 
@@ -189,8 +187,7 @@ export function useBuildCharter() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
     // Sent as JSON though it carries none, as a delete is (plan §12.4).
-    mutationFn: async () =>
-      (await client.charter.root.build.$post({}, { headers: { "Content-Type": "application/json" } })).json(),
+    mutationFn: async () => (await client.build.$post({}, { headers: { "Content-Type": "application/json" } })).json(),
     onSuccess: markWrittenStale,
   });
 }
@@ -199,42 +196,42 @@ export function useBuildCharter() {
 export function useCharters() {
   return useQuery({
     queryKey: ["charters"],
-    queryFn: async () => (await client.charter.root.charters.$get()).json(),
+    queryFn: async () => (await client.charters.$get({ query: {} })).json(),
   });
 }
 
 /** Every charter installed, with its source and version (VENDOR-FR-021). */
 export function useInstalledCharters() {
   return useQuery({
-    queryKey: ["vendors"],
-    queryFn: async () => (await client.vendors.$get()).json(),
+    queryKey: ["charters", "package"],
+    queryFn: async () => (await client.charters.$get({ query: { layer: "package" } })).json(),
   });
 }
 
-/** A source installed through the engine's vendoring (FR-123): nothing, or the
+/** A source pulled as `cw charter pull` pulls it (FR-123): nothing, or the
  *  fault that refused it with nothing installed. */
-export function useAddVendor() {
+export function usePullCharters() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
-    mutationFn: async (request: InferRequestType<typeof client.vendors.$post>["json"]) => {
-      const httpResponse = await client.vendors.$post({ json: request });
+    mutationFn: async (request: InferRequestType<typeof client.charters.$post>["json"]) => {
+      const httpResponse = await client.charters.$post({ json: request });
       return httpResponse.status === 422 ? httpResponse.json() : null;
     },
     onSuccess: markWrittenStale,
   });
 }
 
-/** An installed source taken away by its folder name (FR-123): nothing, or the
- *  fault that refused it with nothing removed. */
-export function useRemoveVendor() {
+/** A charter taken away by its name, as `cw charter remove` takes it
+ *  (FR-123): nothing, or the fault that refused it with nothing removed. */
+export function useRemoveCharter() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
-    mutationFn: async (vendorName: string) => {
+    mutationFn: async (charterName: string) => {
       // Sent as JSON though it carries none, as a delete is (plan §12.4). The
       // client fills the path as it is given it, and an owner's `/` would end
       // the name there (FR-050).
-      const httpResponse = await client.vendors[":name"].$delete(
-        { param: { name: encodeURIComponent(vendorName) } },
+      const httpResponse = await client.charters[":charterName"].$delete(
+        { param: { charterName: encodeURIComponent(charterName) } },
         { headers: { "Content-Type": "application/json" } },
       );
       return httpResponse.status === 422 ? httpResponse.json() : null;
@@ -257,7 +254,7 @@ export function useTestOutcome() {
   return useQuery({
     queryKey: ["testOutcome"],
     enabled: false,
-    queryFn: async () => (await client["test-suites"].outcome.$get()).json(),
+    queryFn: async () => (await client["test-suites"].run.$get()).json(),
   });
 }
 
@@ -287,7 +284,7 @@ export function useWriteTestSuite() {
       text: string;
     }) =>
       (
-        await client["test-suites"][":charterName"][":name"].$put({
+        await client.charters[":charterName"]["test-suites"][":name"].$put({
           param: { charterName, name: testSuiteName },
           json: { text },
         })
@@ -306,7 +303,7 @@ export function useRemoveTestSuite() {
   return useMutation({
     mutationFn: async ({ charterName, name: testSuiteName }: { charterName: string; name: string }) => {
       // Sent as JSON though it carries none, as a delete is (plan §12.4).
-      const httpResponse = await client["test-suites"][":charterName"][":name"].$delete(
+      const httpResponse = await client.charters[":charterName"]["test-suites"][":name"].$delete(
         { param: { charterName, name: testSuiteName } },
         { headers: { "Content-Type": "application/json" } },
       );

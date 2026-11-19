@@ -29,7 +29,7 @@ export class CharterMdFactory {
             .map((kindActivation) => `- **${kindActivation.kind}** — ${kindActivation.activatesWhen}.`)
             .join("\n"),
           "## One id, one primitive",
-          `An id names one primitive in the whole charter, whatever its kind: it is all a primitive is named by — bare in a header, a test or a command, and as \`[[<id>]]\` in a body, a sensor's \`run\` or an agent's \`tools\` — whether this repository authored it, installed it from a vendor, or the engine brought it. Nothing overrides anything — two files claiming one id is an error the charter refuses to build with.`,
+          `An id names one primitive in the whole charter, whatever its kind: it is all a primitive is named by — bare in a header, a test or a command, and as \`[[<id>]]\` in a body, a sensor's \`run\` or an agent's \`tools\` — whether this repository authored it, installed it from a charter source, or the engine brought it. Nothing overrides anything — two files claiming one id is an error the charter refuses to build with.`,
         ].join("\n\n")}\n`,
       ),
     );

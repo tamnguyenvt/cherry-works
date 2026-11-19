@@ -3,7 +3,7 @@
  *  where it came from (VENDOR-FR-010); and what the running engine brings
  *  itself, supplied on every read and kept nowhere in the repository, so
  *  nothing can refresh, edit or remove it (FR-015, FR-016). */
-const LAYER_NAMES = ["repo", "vendor", "builtin"] as const;
+const LAYER_NAMES = ["repo", "package", "builtin"] as const;
 
 /** Whose layer a primitive came from, and there are only the three. It says
  *  where a primitive was written, never what it is called: one charter has one
@@ -29,9 +29,10 @@ export class PrimitiveLayer<Name extends LayerName = LayerName> {
     readonly charterName?: string,
   ) {}
 
-  /** The name every layer the repository installed goes by. */
-  static get vendorName(): "vendor" {
-    return "vendor";
+  /** The name every layer the repository installed goes by, as its
+   *  `cw-package.json` makes it one (VENDOR-FR-010). */
+  static get packageName(): "package" {
+    return "package";
   }
 
   /** The layer of a charter this repository authored: where a primitive is
@@ -42,7 +43,7 @@ export class PrimitiveLayer<Name extends LayerName = LayerName> {
 
   /** The layer of a charter this repository installed, read-only
    *  (VENDOR-FR-010). */
-  static installedLayerOf(charterName: string): PrimitiveLayer<"vendor"> {
-    return new PrimitiveLayer("vendor" as const, charterName);
+  static installedLayerOf(charterName: string): PrimitiveLayer<"package"> {
+    return new PrimitiveLayer("package" as const, charterName);
   }
 }

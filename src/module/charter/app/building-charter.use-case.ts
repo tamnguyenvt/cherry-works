@@ -75,7 +75,6 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   readonly #tokenCounter: ForCountingTokens;
   readonly #agentProviders: readonly AgentProvider[];
   readonly #mainContextCeiling: number;
-  readonly #isVendor: boolean;
   readonly #mcpReaching: McpReaching | undefined;
 
   constructor(
@@ -131,7 +130,6 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     this.#tokenCounter = tokenCounter;
     this.#agentProviders = projectionSettings.agentNames.map((agentName) => this.#findAgentProvider(agentName));
     this.#mainContextCeiling = projectionSettings.mainContextCeiling ?? MainContext.defaultCeiling;
-    this.#isVendor = projectionSettings.isVendor ?? false;
     this.#mcpReaching =
       mcpServerCaller === undefined || charterAuthoringApp === undefined
         ? undefined
@@ -162,15 +160,15 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
    * `cw test` is what refuses it (FR-014). Where it does not hold, nothing is
    * previewed (FR-005, FR-009).
    *
-   * The warnings under the vendors are left out before anything is counted,
-   * so the summary line and the faults below it say one thing: a vendor is
+   * The warnings under the installed charters are left out before anything is counted,
+   * so the summary line and the faults below it say one thing: an installed charter is
    * tested and checked in its own repository. Its errors stay, since they stop
    * the build here.
    */
   async diagnoseCharter(): Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("BuildingCharter.diagnoseCharter", async () => {
       const [charterRoot, testRoot] = await Promise.all([
-        this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor),
+        this.#loadCharterService.loadCharterRoot(this.#charterRepository),
         this.#charterRepository.loadTestSuites().then(TestRootFactory.create),
       ]);
       const charterFaultsByFile = this.#collectCharterFaults(charterRoot);
@@ -186,7 +184,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
               ([filePath, faults]) =>
                 [
                   filePath,
-                  primitiveLayerByUri[filePath]?.name === PrimitiveLayer.vendorName
+                  primitiveLayerByUri[filePath]?.name === PrimitiveLayer.packageName
                     ? faults.filter((fault) => fault.severity !== "warn")
                     : faults,
                 ] as const,
@@ -408,7 +406,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
       // the checkout by the output and each agent's projection made over it:
       // no path of it crosses a driven port after this (EVAL-FR-021).
       const checkoutLocalOutput = this.#localRepo.createCheckoutOutput(checkoutFolder);
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
       const charterErrorFaultsByFile = this.#collectCharterFaults(charterRoot).filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
       const checkoutProjectionPlan = await this.#buildCharterService.planBuild(
@@ -461,7 +459,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
           charterName,
         );
       const [charterRoot, heldEvalRoot] = await Promise.all([
-        this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor),
+        this.#loadCharterService.loadCharterRoot(this.#charterRepository),
         this.#charterRepository.loadEvalSuites().then(EvalRootFactory.create),
       ]);
       // Every charter's cases, or the named charter's alone (VENDOR-FR-025).
@@ -497,7 +495,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
    *  something is, the errors, under the file that has to change (FR-005,
    *  FR-009). */
   async #loadHoldingCharter(): Promise<CharterRoot | FaultsByFile> {
-    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
+    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
     const charterErrorFaultsByFile = this.#collectCharterFaults(charterRoot).filterErrors();
     return charterErrorFaultsByFile.isEmpty ? charterRoot : charterErrorFaultsByFile;
   }

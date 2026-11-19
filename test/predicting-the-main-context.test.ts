@@ -133,7 +133,7 @@ test("the prediction lists what a session opens with, the largest first, with it
   assert.deepEqual(
     sessionLoads.map(({ id }) => id).sort(),
     // The skills the engine brings are loaded as one authored here is.
-    ["CHARTER.md", "CLAUDE.md", "cw-author", "plain-words", "refactoring", "reviewer"],
+    ["CHARTER.md", "CLAUDE.md", "charter-release", "cw-author", "plain-words", "refactoring", "reviewer"],
   );
   assert.deepEqual(
     sessionLoads.map(({ tokens }) => tokens),
@@ -170,7 +170,7 @@ test("the estimate is the tokenizer's count scaled to the agent's own (EVAL-FR-0
 test("a guide naming files is listed apart, as loaded when one is touched, and is not in the total (EVAL-FR-003, EVAL Story 1 scenario 2)", async () => {
   const { portalRoutes } = surfaces(holding());
 
-  const answer = await portalRoutes.request("/charter/root/context");
+  const answer = await portalRoutes.request("/contexts");
 
   assert.equal(answer.status, 200);
   const [mainContext] = CharterDTOs.MainContexts.parse(await answer.json()).data.contexts;
@@ -202,7 +202,7 @@ test("each mcp is counted by the names of the tools the server lists for it, and
     ),
   });
 
-  const answer = await portalRoutes.request("/charter/root/context");
+  const answer = await portalRoutes.request("/contexts");
 
   const [mainContext] = CharterDTOs.MainContexts.parse(await answer.json()).data.contexts;
   const linearLoad = mainContext?.data.sessionLoads.find(({ data: { id } }) => id === "linear");
@@ -375,7 +375,7 @@ test("counted exactly for an agent the repository did not choose is refused, say
 
 test("a build says the predicted total in one line (EVAL-FR-005, EVAL Story 1 scenario 4)", async () => {
   const { cli, portalRoutes } = surfaces(holding());
-  const predicted = CharterDTOs.MainContexts.parse(await (await portalRoutes.request("/charter/root/context")).json());
+  const predicted = CharterDTOs.MainContexts.parse(await (await portalRoutes.request("/contexts")).json());
 
   const { code, text } = await printed(cli, ["build"]);
 
@@ -409,7 +409,7 @@ test("the health check warns once the total passes the repository's ceiling, nam
 
   const { text } = await printed(cli, ["doctor"]);
   const problemCountOf = async (routes: typeof portalRoutes) =>
-    CharterDTOs.DoctorOutcome.parse(await (await routes.request("/charter/root/health")).json()).data.problemCount;
+    CharterDTOs.DoctorOutcome.parse(await (await routes.request("/doctor")).json()).data.problemCount;
 
   // A warning, as every other: said, and no question the more unwell for it.
   assert.equal(await problemCountOf(portalRoutes), await problemCountOf(underCeilingRoutes));
@@ -425,9 +425,7 @@ test("the health check is quiet under the 20,000 a repository setting none is he
   const { cli, portalRoutes } = surfaces(holding());
 
   const { text } = await printed(cli, ["doctor"]);
-  const doctorOutcome = CharterDTOs.DoctorOutcome.parse(
-    await (await portalRoutes.request("/charter/root/health")).json(),
-  );
+  const doctorOutcome = CharterDTOs.DoctorOutcome.parse(await (await portalRoutes.request("/doctor")).json());
 
   assert.match(
     text.replace(/\n {5,}/g, " "),
@@ -441,9 +439,8 @@ test("the portal is given the same list and total the command prints, and the wh
   const { cli, portalRoutes } = surfaces(holding({ agents: ["claude"], mainContextCeiling: 30_000 }));
 
   const { text } = await printed(cli, ["context"]);
-  const [mainContext] = CharterDTOs.MainContexts.parse(
-    await (await portalRoutes.request("/charter/root/context")).json(),
-  ).data.contexts;
+  const [mainContext] = CharterDTOs.MainContexts.parse(await (await portalRoutes.request("/contexts")).json()).data
+    .contexts;
   const settings = WorkspaceDTOs.WorkspaceSettings.parse(await (await portalRoutes.request("/settings")).json());
 
   assert.deepEqual(

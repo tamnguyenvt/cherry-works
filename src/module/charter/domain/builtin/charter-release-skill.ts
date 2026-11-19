@@ -1,15 +1,15 @@
 import { PrimitiveLayer } from "../models/primitive/primitive-layer.value-object.js";
 import { type SkillHeaders, SkillPrimitive } from "../models/primitive/skill-primitive.js";
 
-/** How a charter repository releases the charters it authored, brought by the
- *  engine to a repository `cw vendor init` set up alone (VENDOR-FR-005 –
- *  VENDOR-FR-008, VENDOR-FR-027). Only the user asks for it. */
-export class VendorReleaseSkill extends SkillPrimitive {
-  static readonly id = "vendor-release";
+/** How a repository releases the charters it authored, brought by the engine
+ *  to every repository (VENDOR-FR-005 – VENDOR-FR-008, VENDOR-FR-027). Only
+ *  the user asks for it. */
+export class CharterReleaseSkill extends SkillPrimitive {
+  static readonly id = "charter-release";
 
   constructor() {
     const skillHeaders: SkillHeaders = {
-      id: VendorReleaseSkill.id,
+      id: CharterReleaseSkill.id,
       description:
         "For publishing a new version of the charters this repository authored, so other repositories can install or update them, with nothing pushed before you confirm.",
       triggers: ["release", "release a version", "cut a release"],
@@ -17,24 +17,24 @@ export class VendorReleaseSkill extends SkillPrimitive {
     };
     super(
       skillHeaders,
-      `This skill is cw's own. It comes with the engine to a repository \`cw vendor init\`
-set up, is not authored in this repository, and cannot be changed here.
+      `This skill is cw's own. It comes with the engine to every repository, is
+not authored in this repository, and cannot be changed here.
 
-Release the charters this repository authored the way [[vendor-release-action]]
-says. Each step below runs its \`vendor-release-action.mjs\`, the file laid
+Release the charters this repository authored the way [[charter-release-action]]
+says. Each step below runs its \`charter-release-action.mjs\`, the file laid
 beside it, with \`node\` by that file's path. Nothing is committed, pushed or
 tagged before the user confirms at the gate.
 
-1. **Check** — run \`vendor-release-action.mjs check\`. Where it stops, quote what it
+1. **Check** — run \`charter-release-action.mjs check\`. Where it stops, quote what it
    says and stop: a branch other than \`origin\`'s default branch, a working
    tree that is not clean, no \`origin\`, the branch behind or diverged from
    \`origin\`, or a charter that does not build with the charters it includes
    alone, named with why. Where it says it is unsure which branch to release
    from, ask the user which branch releases are made from, offering the branch
    it names as the default, and run
-   \`vendor-release-action.mjs check --branch <name>\` with their answer; pass
+   \`charter-release-action.mjs check --branch <name>\` with their answer; pass
    that same \`--branch\` to publish.
-2. **Draft** — run \`vendor-release-action.mjs draft\`, which writes nothing. Where it
+2. **Draft** — run \`charter-release-action.mjs draft\`, which writes nothing. Where it
    says there is nothing to release, say so and stop; where the last tag and
    the changelog's top heading differ, quote both and stop.
    - **Version**: \`0.1.0\` where there is no tag. Otherwise the patch bump,
@@ -48,8 +48,9 @@ tagged before the user confirms at the gate.
      user can now do, or what changed for them. Leave out what changes only
      this repository's tooling.
 3. **README** — only once nothing above stopped, run
-   \`vendor-release-action.mjs readme\`. Where it stops, quote what it says and
-   stop. It rewrites only the install and charters section of \`README.md\`; the
+   \`charter-release-action.mjs readme\`. Where it stops, quote what it says and
+   stop. It rewrites only the install and charters section of \`README.md\`,
+   writing \`README.md\` holding that section alone where there is none; the
    rest is the authors' and is never touched.
 4. **Gate** — show the version with its reason, the date, the entry as it
    will read under \`## <version> — <date>\`, and whether the README's charters
@@ -58,7 +59,7 @@ tagged before the user confirms at the gate.
    they confirm.
 5. **Release** — once they confirm, write the entry to a temporary file
    outside the repository, and run
-   \`vendor-release-action.mjs publish <version> <entry-file> --date <date>\`,
+   \`charter-release-action.mjs publish <version> <entry-file> --date <date>\`,
    with the \`--branch\` the user confirmed at Check, if any. Where it
    stops, quote its lines as they are — the step that failed, the steps that
    ran, the command that finishes the rest — and do nothing more: never

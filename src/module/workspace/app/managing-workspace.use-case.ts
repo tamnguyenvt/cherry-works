@@ -1,7 +1,6 @@
 import { ApplicationService, DomainFault, type FaultDTOs, type ForReportingProgress } from "../../shared/module.js";
 import { WorkspaceSettingsFactory } from "../domain/models/settings/workspace-settings.factory.js";
 import { WorkspaceSettings } from "../domain/models/settings/workspace-settings.js";
-import { UnsetWorkspaceFault } from "../domain/models/workspace.fault.js";
 import type { ForManagingWorkspace } from "./port/in/managing-workspace.port.js";
 import { WorkspaceDTOs } from "./port/in/workspace.dto.js";
 import type { ForStoringWorkspaceSettings } from "./port/out/storing-workspace-settings.port.js";
@@ -47,9 +46,9 @@ export class ManagingWorkspace extends ApplicationService implements ForManaging
         mainContextCeiling,
       );
 
-      // The ceiling is kept where one was set, now or before, and so is the
-      // mark of `cw vendor init`; settings that do not read keep neither, since
-      // they are written again (EVAL-FR-006, FR-037, VENDOR-FR-027).
+      // The ceiling is kept where one was set, now or before; settings that
+      // do not read keep none, since they are written again (EVAL-FR-006,
+      // FR-037).
       let keptWorkspaceSettings: WorkspaceSettings | undefined;
       try {
         keptWorkspaceSettings = WorkspaceSettingsFactory.create(
@@ -62,8 +61,6 @@ export class ManagingWorkspace extends ApplicationService implements ForManaging
       const workspaceSettings = new WorkspaceSettings(
         chosenWorkspaceSettings.agentProviders,
         chosenWorkspaceSettings.mainContextCeiling ?? keptWorkspaceSettings?.mainContextCeiling,
-        undefined,
-        keptWorkspaceSettings?.isVendor,
       );
       await this.#workspaceSettingsRepository.saveSettings(workspaceSettings);
       await this.#workspaceSettingsRepository.keepLogIgnored();
@@ -72,29 +69,10 @@ export class ManagingWorkspace extends ApplicationService implements ForManaging
     });
   }
 
-  async setVendorMark(): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("ManagingWorkspace.setVendorMark", async () => {
-      const rawSettings = await this.#workspaceSettingsRepository.loadSettings();
-      if (rawSettings === undefined)
-        throw new UnsetWorkspaceFault(
-          'This repository was never set up, and only one set up is marked as set up by "cw vendor init".',
-          'Run "cw init" first, choosing your agent.',
-          { internal: false },
-        );
-      const { agentProviders, mainContextCeiling, sessionAnalysisFolder } = WorkspaceSettingsFactory.create(
-        rawSettings,
-        this.agentProviderNames,
-      );
-      const workspaceSettings = new WorkspaceSettings(agentProviders, mainContextCeiling, sessionAnalysisFolder, true);
-      await this.#workspaceSettingsRepository.saveSettings(workspaceSettings);
-      return this.#workspaceSettingsDTOOf(workspaceSettings, true);
-    });
-  }
-
   /** The settings as a driver reads them, the ceiling as the health check
    *  holds a main context to it. */
   #workspaceSettingsDTOOf(
-    { agentProviders, mainContextCeilingOrDefault, sessionAnalysisFolder, isVendor }: WorkspaceSettings,
+    { agentProviders, mainContextCeilingOrDefault, sessionAnalysisFolder }: WorkspaceSettings,
     isSetUp: boolean,
   ): WorkspaceDTOs.WorkspaceSettings {
     return WorkspaceDTOs.WorkspaceSettings.of({
@@ -102,7 +80,6 @@ export class ManagingWorkspace extends ApplicationService implements ForManaging
       agents: agentProviders.map(({ name }) => name),
       mainContextCeiling: mainContextCeilingOrDefault,
       ...(sessionAnalysisFolder === undefined ? {} : { sessionAnalysisFolder }),
-      ...(isVendor ? { isVendor } : {}),
     });
   }
 }

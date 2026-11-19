@@ -21,7 +21,7 @@ export class McpOriginsFactory {
    * Every mcp origin the charter's mcps reach, each once, whichever layer declared it
    * (FR-145).
    *
-   * One per address and `path`: the repository and a vendor may call one mcp origin
+   * One per address and `path`: the repository and an installed charter may call one mcp origin
    * by two names, and it is one mcp origin under both. What is held is where it is and
    * how it is signed in to — every way any mcp there allows — the name
    * each id is served under, and nothing an mcp's own file already says but the

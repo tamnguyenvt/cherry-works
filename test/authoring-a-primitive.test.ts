@@ -32,9 +32,9 @@ const guide = (id: string, headers: readonly string[] = []) =>
   primitive("guide", id, ['globs: ["src/**/*.ts"]', ...headers]);
 
 /** The record that makes `rules` a charter installed from `team/rules`, so the
- *  primitives under it are the vendor layer's, read-only (VENDOR-FR-010). */
-const rulesVendorRecord = {
-  [at(".cw/charter/rules/cw-vendor.json")]:
+ *  primitives under it are the installed charter layer's, read-only (VENDOR-FR-010). */
+const rulesInstalledCharterRecord = {
+  [at(".cw/charter/rules/cw-package.json")]:
     `${JSON.stringify({ charter: "rules", source: "team/rules", version: "HEAD" })}\n`,
 };
 
@@ -104,7 +104,7 @@ test("a disable-user-invocation answered as a line is written as the yes or no i
 
 test("an id another layer already holds is refused naming its file, and nothing is written (FR-014, CORE Story 10 scenario 5)", async () => {
   const { charterAuthoringApp, fileAt } = authoring({
-    ...rulesVendorRecord,
+    ...rulesInstalledCharterRecord,
     [at(".cw/charter/rules/primitive/guide/no-any/index.md")]: guide("no-any"),
   });
 
@@ -144,15 +144,15 @@ test("a primitive opens with its headers, body, file, layer and revision, whatev
   assert.equal(openedPrimitive.headers.rationale, "why");
 });
 
-test("a vendored and a builtin primitive open too, each under its own layer", async () => {
+test("an installed and a builtin primitive open too, each under its own layer", async () => {
   const { charterAuthoringApp } = authoring({
-    ...rulesVendorRecord,
+    ...rulesInstalledCharterRecord,
     [at(".cw/charter/rules/primitive/guide/no-any/index.md")]: guide("no-any"),
   });
 
-  const vendorPrimitiveDTO = answerOf(await charterAuthoringApp.openPrimitive("no-any")).data;
-  assert.equal(vendorPrimitiveDTO.layerName, "vendor");
-  assert.equal(vendorPrimitiveDTO.file, "file:///repo/.cw/charter/rules/primitive/guide/no-any/index.md");
+  const installedCharterPrimitiveDTO = answerOf(await charterAuthoringApp.openPrimitive("no-any")).data;
+  assert.equal(installedCharterPrimitiveDTO.layerName, "package");
+  assert.equal(installedCharterPrimitiveDTO.file, "file:///repo/.cw/charter/rules/primitive/guide/no-any/index.md");
 
   const builtin = answerOf(await charterAuthoringApp.openPrimitive("cw-author")).data;
   assert.equal(builtin.layerName, "builtin");
@@ -280,11 +280,11 @@ test("answers the kind refuses are refused on a rewrite in the words add refuses
   assert.equal(await fileAt(".cw/charter/team/primitive/sensor/on-stop/index.md"), sensor);
 });
 
-test("a vendored or builtin primitive is neither rewritten nor removed, naming where it came from (FR-077)", async () => {
-  const vendorGuideText = guide("no-any");
+test("an installed or builtin primitive is neither rewritten nor removed, naming where it came from (FR-077)", async () => {
+  const installedCharterGuideText = guide("no-any");
   const { charterAuthoringApp, fileAt } = authoring({
-    ...rulesVendorRecord,
-    [at(".cw/charter/rules/primitive/guide/no-any/index.md")]: vendorGuideText,
+    ...rulesInstalledCharterRecord,
+    [at(".cw/charter/rules/primitive/guide/no-any/index.md")]: installedCharterGuideText,
   });
   const { hash: revision } = answerOf(await charterAuthoringApp.openPrimitive("no-any")).data;
 
@@ -299,7 +299,7 @@ test("a vendored or builtin primitive is neither rewritten nor removed, naming w
     /\.cw\/charter\/rules\/primitive\/guide\/no-any\/index\.md is read-only/,
   );
   assert.match(faultTextOf(await charterAuthoringApp.removePrimitive("cw-author")), /built into cw/);
-  assert.equal(await fileAt(".cw/charter/rules/primitive/guide/no-any/index.md"), vendorGuideText);
+  assert.equal(await fileAt(".cw/charter/rules/primitive/guide/no-any/index.md"), installedCharterGuideText);
 });
 
 test("a removed primitive's file is gone and nothing else is, and what named it is dangling at the next check (FR-076)", async () => {
@@ -395,9 +395,9 @@ test("text not shaped as an id is refused before the engine is asked (FR-172)", 
   );
 });
 
-test("cw remove refuses a vendored primitive before asking anything (FR-077)", async () => {
+test("cw remove refuses an installed primitive before asking anything (FR-077)", async () => {
   const { charterAuthoringApp } = authoring({
-    ...rulesVendorRecord,
+    ...rulesInstalledCharterRecord,
     [at(".cw/charter/rules/primitive/guide/theirs/index.md")]: guide("theirs"),
   });
 

@@ -32,10 +32,7 @@ export class UnknownSignInAddressFault extends ApplicationFault {}
  *  (FR-148). */
 export class UnsupportedSignInMethodFault extends ApplicationFault {}
 
-/** A vendor folder asked for by a name no installed vendor is under (FR-030). */
-export class UnknownVendorFault extends ApplicationFault {}
-
-/** A vendor source that authors no charter, or not the one named
+/** A charter source that holds no charter, or not the one named
  *  (CORE-FR-042, VENDOR-FR-017). */
 export class UnexpectedSourceShapeFault extends DomainFault {}
 
@@ -128,7 +125,7 @@ export class UnmetExpectationFault extends DomainFault {}
  *  naming what the charter does not hold (EVAL-FR-026). */
 export class InvalidEvalSuiteFault extends DomainFault {}
 
-/** A vendor source whose address names no repository folder, or one that
+/** A charter source whose address names no repository folder, or one that
  *  is no folder (FR-044, FR-049). */
 export class InvalidSourceAddressFault extends DomainFault {}
 
@@ -147,13 +144,21 @@ export class MissingCharterOutputItemFault extends DomainFault {}
  *  engine's own fault (CORE-FR-220). */
 export class UnplaceableCharterOutputItemFault extends DomainFault {}
 
-/** A charter's `cw-vendor.json` that does not read as the charter, the source
+/** A charter's `cw-package.json` that does not read as the charter, the source
  *  and the version it was installed from (VENDOR-FR-010). */
-export class InvalidVendorRecordFault extends DomainFault {}
+export class InvalidInstalledCharterRecordFault extends DomainFault {}
 
 /** No charter named where one has to be: none, where the repository
  *  authored none or more than one (VENDOR-FR-014, VENDOR-FR-015). */
 export class UnnamedCharterFault extends ApplicationFault {}
+
+/** A charter the repository authored, asked to be pulled again: it came from
+ *  no source (VENDOR-FR-030). */
+export class UninstalledCharterFault extends DomainFault {}
+
+/** An update stopped after some charters were written, naming them
+ *  (VENDOR-FR-030). */
+export class UnfinishedCharterUpdateFault extends ApplicationFault {}
 
 /** A charter installed, asked to be written into: read-only here
  *  (VENDOR-FR-010, VENDOR-FR-014). */
@@ -162,6 +167,10 @@ export class ReadOnlyCharterFault extends ApplicationFault {}
 /** `--as` given where more than one charter would be installed, so it names
  *  none of them (VENDOR-FR-020, VENDOR-FR-022). */
 export class AmbiguousAsNameFault extends DomainFault {}
+
+/** Charters to act on asked for by neither a name nor every charter, or by
+ *  both (VENDOR-FR-030, VENDOR-FR-031). */
+export class UnchosenChartersFault extends DomainFault {}
 
 /** A charter asked for by a name the charter root holds none under
  *  (VENDOR-FR-026). */

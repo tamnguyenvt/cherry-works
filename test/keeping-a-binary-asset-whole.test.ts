@@ -97,8 +97,8 @@ test("a built binary asset is identical to its source, byte for byte (CORE Story
 
 test("a binary file a source holds lands identical, installed or injected (CORE Story 38 scenario 2, CORE-FR-207)", async (t) => {
   const sourceFolder = await publishedSourceFolderOf(t);
-  for (const vendoringMethodName of ["addVendor", "injectVendor"] as const) {
-    const repo = await temporaryFolderOf(t, `repo-${vendoringMethodName}`);
+  for (const isForked of [false, true]) {
+    const repo = await temporaryFolderOf(t, `repo-${isForked ? "forked" : "installed"}`);
     const charterAuthoringApp = authoringCharterOf(
       new FileReaders(pathToFileURL(`${repo}/`)),
       new FileOutput(pathToFileURL(`${repo}/`)),
@@ -106,10 +106,14 @@ test("a binary file a source holds lands identical, installed or injected (CORE 
       { sourceFetcher: new GitSources(pathToFileURL(`${repo}/`)) },
     );
 
-    answerOf(await charterAuthoringApp[vendoringMethodName](sourceFolder, "v1.0.0", ["drawing"]));
+    answerOf(await charterAuthoringApp.pullCharters(sourceFolder, isForked, "v1.0.0", ["drawing"]));
 
     const landedFile = join(repo, ".cw", "charter", "drawing", "primitive", "skill", "diagrams", "diagram.png");
-    assert.deepEqual(new Uint8Array(await readFile(landedFile)), pngBytes, `${vendoringMethodName} damaged the file`);
+    assert.deepEqual(
+      new Uint8Array(await readFile(landedFile)),
+      pngBytes,
+      `${isForked ? "forking" : "installing"} damaged the file`,
+    );
   }
 });
 
@@ -200,7 +204,7 @@ test("an index.md a source holds lands as its bytes when it is injected unconver
     { sourceFetcher },
   );
 
-  await charterAuthoringApp.injectVendor("team/source");
+  await charterAuthoringApp.pullCharters("team/source", true);
 
   assert.deepEqual(
     await fileReader.readBytesIfThere(new URL("file:///repo/.cw/charter/published/primitive/guide/published/index.md")),
@@ -223,7 +227,7 @@ test("a file a source names with a `..` to land outside its primitive's folder i
   );
 
   assert.match(
-    faultTextOf(await charterAuthoringApp.injectVendor("team/source", undefined, ["drawing"])),
+    faultTextOf(await charterAuthoringApp.pullCharters("team/source", true, undefined, ["drawing"])),
     /would land outside the folder it is copied into/,
   );
 

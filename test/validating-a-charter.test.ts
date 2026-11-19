@@ -25,14 +25,16 @@ type Authored = Primitive;
 
 /** One authored primitive as the charter holds it: named as it was authored,
  *  whichever layer the file arrived in. */
-const layered = (vendor: string | undefined, file: string, primitive: Primitive): Authored =>
+const layered = (installedCharterName: string | undefined, file: string, primitive: Primitive): Authored =>
   Primitives.classes
     .find((primitiveClass) => primitiveClass.kind === primitive.kind)!
     .of(
       primitive.headers,
       primitive.body,
       [],
-      vendor === undefined ? PrimitiveLayer.authoredLayerOf("team") : PrimitiveLayer.installedLayerOf(vendor),
+      installedCharterName === undefined
+        ? PrimitiveLayer.authoredLayerOf("team")
+        : PrimitiveLayer.installedLayerOf(installedCharterName),
       file,
     );
 
@@ -42,11 +44,11 @@ const guide = (
   id: string,
   file = `guide/${id}/index.md`,
   headers: Record<string, unknown> = {},
-  vendor?: string,
+  installedCharterName?: string,
   body = "Body.",
 ): Authored =>
   layered(
-    vendor,
+    installedCharterName,
     at(file),
     GuidePrimitive.of(
       {
@@ -60,16 +62,24 @@ const guide = (
     ),
   );
 
-const mixin = (id: string, vendor?: string): Authored =>
-  layered(vendor, at(`mixin/${id}/index.md`), MixinPrimitive.of({ id, description: `The ${id} mixin.` }, "Body."));
-
-const corpus = (id: string, vendor?: string): Authored =>
-  layered(vendor, at(`corpus/${id}/index.md`), CorpusPrimitive.of({ id, description: `Why ${id}.` }, "Body."));
-
-const mcp = (id: string, vendor?: string, headers: Record<string, unknown> = {}): Authored =>
+const mixin = (id: string, installedCharterName?: string): Authored =>
   layered(
-    vendor,
-    at(vendor === undefined ? `mcp/${id}/index.md` : `../${vendor}/mcp/${id}/index.md`),
+    installedCharterName,
+    at(`mixin/${id}/index.md`),
+    MixinPrimitive.of({ id, description: `The ${id} mixin.` }, "Body."),
+  );
+
+const corpus = (id: string, installedCharterName?: string): Authored =>
+  layered(
+    installedCharterName,
+    at(`corpus/${id}/index.md`),
+    CorpusPrimitive.of({ id, description: `Why ${id}.` }, "Body."),
+  );
+
+const mcp = (id: string, installedCharterName?: string, headers: Record<string, unknown> = {}): Authored =>
+  layered(
+    installedCharterName,
+    at(installedCharterName === undefined ? `mcp/${id}/index.md` : `../${installedCharterName}/mcp/${id}/index.md`),
     McpPrimitive.of(
       {
         id,
@@ -171,7 +181,7 @@ test("every problem in a run is reported, not only the first", () => {
   assert.equal(Object.keys(faultsByFiles).length, 2);
 });
 
-test("a vendored layer is asked the same questions the repository's own is", () => {
+test("an installed layer is asked the same questions the repository's own is", () => {
   const copiedPrimitive = guide("no-any", "../rules/guide/copied/index.md", {}, "rules");
   const faultsByFiles = faultsByFilesOf(
     guide("no-any", "../rules/guide/no-any/index.md", {}, "rules"),
@@ -181,7 +191,7 @@ test("a vendored layer is asked the same questions the repository's own is", () 
   assert.deepEqual(Object.keys(faultsByFiles), [copiedPrimitive.uri]);
 });
 
-test("a vendor claiming an id this repository authored is a collision, naming both files (CORE Story 2 scenario 2)", () => {
+test("an installed charter claiming an id this repository authored is a collision, naming both files (CORE Story 2 scenario 2)", () => {
   const copiedPrimitive = guide("no-any", "../rules/guide/no-any/index.md", {}, "rules");
   const faultsByFiles = faultsByFilesOf(guide("no-any"), copiedPrimitive);
 
@@ -200,7 +210,7 @@ test("two files claiming one id collide, wherever they were authored", () => {
   assert.match(messages(faultsByFiles), /"no-any"/);
 });
 
-test("a host names a vendored mixin the way it names one of its own", () => {
+test("a host names an installed mixin the way it names one of its own", () => {
   const faultsByFiles = faultsByFilesOf(
     guide("no-any", "guide/no-any/index.md", { mixins: ["ts-defaults"] }),
     mixin("ts-defaults", "rules"),
@@ -269,7 +279,7 @@ test("a body naming [[<id>]] of any kind the charter holds is nothing to report 
   );
 });
 
-test("a primitive cites a vendored corpus the way it cites one of its own", () => {
+test("a primitive cites an installed corpus the way it cites one of its own", () => {
   assert.deepEqual(
     faultsByFilesOf(
       corpus("type-safety", "rules"),
@@ -301,7 +311,7 @@ test("a mixin no primitive pulls in is said under its own file, and does not fai
   assert.match(messages(faultsByFiles), /No primitive pulls in the mixin "ts-defaults"/);
 });
 
-test("a vendored corpus and mixin nobody uses are said too, so the vendor can be taken out (FR-014)", () => {
+test("an installed corpus and mixin nobody uses are said too, so the installed charter can be taken out (FR-014)", () => {
   const faultsByFiles = faultsByFilesOf(corpus("type-safety", "rules"), mixin("ts-defaults", "rules"));
 
   assert.deepEqual(Object.keys(faultsByFiles).sort(), [
@@ -310,7 +320,7 @@ test("a vendored corpus and mixin nobody uses are said too, so the vendor can be
   ]);
 });
 
-test("a corpus cited only by a vendored primitive is cited", () => {
+test("a corpus cited only by an installed primitive is cited", () => {
   assert.deepEqual(
     faultsByFilesOf(
       corpus("type-safety"),
@@ -394,7 +404,7 @@ test("an agent holding an mcp no layer holds, a tool that mcp does not declare, 
   assert.match(messages(faultsByFiles), /"\[\[linear\]\]:list_issues:again"/);
 });
 
-test("a repository mcp and a vendor mcp at one endpoint and path are one mcp origin, under both, signed in to either way (FR-145)", () => {
+test("a repository mcp and an installed charter mcp at one endpoint and path are one mcp origin, under both, signed in to either way (FR-145)", () => {
   const charter = charterRootOf(
     namedMcps(
       mcp("billing", undefined, { path: "acme/billing", auth: ["oauth"], tools: ["search_code"] }),

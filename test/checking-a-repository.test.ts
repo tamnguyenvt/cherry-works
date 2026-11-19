@@ -31,9 +31,9 @@ const pinningDown = (id: string) => ({
 });
 
 /** The record that makes `.cw/charter/rules/primitive/` a charter installed
- *  from a vendor's source (VENDOR Story 3 scenario 2). */
+ *  from an installed charter's source (VENDOR Story 3 scenario 2). */
 const installedFromTeamRules = {
-  [inRepo(".cw/charter/rules/cw-vendor.json")]: `${JSON.stringify({
+  [inRepo(".cw/charter/rules/cw-package.json")]: `${JSON.stringify({
     charter: "rules",
     source: "team/rules",
     version: "HEAD",
@@ -145,7 +145,7 @@ test("a repository that has never been built is out of date, and fails (FR-040)"
   const { code, printedOutput } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(printedOutput.everything, /⚠ Built: {4}15 files out of date\. Run "cw build"\./);
+  assert.match(printedOutput.everything, /⚠ Built: {4}19 files out of date\. Run "cw build"\./);
 });
 
 test("staleness is the preview run, not a record kept of the last build (FR-040, CORE Story 3 scenario 5)", async () => {
@@ -300,7 +300,7 @@ test("a guide naming no files is a rule like any other, so a test case is asked 
   );
 });
 
-test("a vendor's warnings are left out, since it is tested in its own repository, and the repository's own are kept (FR-014)", async () => {
+test("an installed charter's warnings are left out, since it is tested in its own repository, and the repository's own are kept (FR-014)", async () => {
   const { run } = commandLine({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: guide("no-any"),
@@ -315,7 +315,7 @@ test("a vendor's warnings are left out, since it is tested in its own repository
   assert.doesNotMatch(printedOutput.everything, /\.cw\/charter\/primitive\/rules/);
 });
 
-test("a vendor's error is still said, since it stops the build (FR-014)", async () => {
+test("an installed charter's error is still said, since it stops the build (FR-014)", async () => {
   const { run } = commandLine({
     ...compilingFor("claude"),
     ...installedFromTeamRules,

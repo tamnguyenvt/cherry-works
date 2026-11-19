@@ -16,7 +16,7 @@ export class InMemorySources implements ForFetchingCharterSources {
   constructor(private readonly fileReaders?: InMemoryFileReaders) {}
 
   /** Every source it was asked to fetch, and the version asked for: what a test
-   *  about vendoring looks at, since nothing was fetched. */
+   *  about installing looks at, since nothing was fetched. */
   readonly fetchedSources: { source: string; version?: string }[] = [];
 
   /** Every folder of a fetched commit it was asked to put in place, in the

@@ -24,26 +24,27 @@ A catalogue entry, in `catalogue.json`, holds the primitive's kind, its id, its 
 
 ## Git fetches sources and runs worktrees, nothing more
 
-Story: [CORE Story 35](../specs/spec-core.md#core-story-35---set-a-repository-up-anywhere-with-or-without-git-priority-p2), [CORE Story 37](../specs/spec-core.md#core-story-37---install-and-remove-a-vendor-source-in-any-folder-priority-p3)
+Story: [CORE Story 35](../specs/spec-core.md#core-story-35---set-a-repository-up-anywhere-with-or-without-git-priority-p2), [CORE Story 37](../specs/spec-core.md#core-story-37---pull-and-remove-a-charter-in-any-folder-priority-p3)
 
 No use case asks for version control unless it cannot work without it:
-installing and injecting a vendor source fetch it, on a port named for
+pulling and forking a charter fetch its source, on a port named for
 fetching sources, and an evaluation runs each case in a worktree of the last
-commit. Setup and the portal ask nothing of git, and removing a vendor
+commit. Setup and the portal ask nothing of git, and removing a charter
 neither commits nor looks at work in hand. A repository without git has no
 review, history or undo of its charter; the tool or the developer takes them
 on.
 
-## Nothing tells an edited vendor
+## Nothing tells an edited installed charter
 
-Story: [CORE Story 37](../specs/spec-core.md#core-story-37---install-and-remove-a-vendor-source-in-any-folder-priority-p3)
+Story: [CORE Story 37](../specs/spec-core.md#core-story-37---pull-and-remove-a-charter-in-any-folder-priority-p3)
 
-The engine never checks whether a vendored file was edited, by git or by a
-record of its own: `cw doctor` has no line for vendors, `cw vendor add` and
-`cw vendor remove` compare nothing, and nothing but its `cw-vendor.json` is
-kept beside a vendor. `cw edit` and `cw remove` refuse a vendor's primitive;
-an edit made by hand is caught in the diff that brought it, and installing
-the vendor again replaces it.
+The engine never checks whether an installed charter's file was edited, by
+git or by a record of its own: `cw doctor` has no line for installed charters,
+`cw charter pull`, `cw charter update` and `cw charter remove` compare nothing,
+and nothing but its `cw-package.json` is kept beside an installed charter.
+`cw edit` and `cw remove` refuse an installed charter's primitive; an edit made
+by hand is caught in the diff that brought it, and pulling the charter again
+replaces it.
 
 ## Each thing in the specs has one term
 

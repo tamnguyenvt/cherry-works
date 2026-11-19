@@ -4,7 +4,7 @@ import { inTheBrowser } from "./in-the-browser.js";
 import { rowsOf } from "./listing-in-the-browser.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/team/primitive/").href;
-const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/charter/acme/primitive/").href;
+const installedAt = (path: string) => new URL(path, "file:///repo/.cw/charter/acme/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   [
@@ -22,8 +22,8 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 /** A primitive of each layer that mentions "lint", and one that does not. */
 const charter = {
   [at("sensor/check/index.md")]: primitive("sensor", "check", ["signal: PostToolUse", "run: pnpm lint"]),
-  ["file:///repo/.cw/charter/acme/cw-vendor.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
-  [vendoredAt("guide/lint-clean/index.md")]: primitive("guide", "lint-clean"),
+  ["file:///repo/.cw/charter/acme/cw-package.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
+  [installedAt("guide/lint-clean/index.md")]: primitive("guide", "lint-clean"),
   [at("guide/no-any/index.md")]: primitive("guide", "no-any"),
 };
 
@@ -64,20 +64,20 @@ test("choosing a result opens it where it is listed: its layer's tab, its kind (
 
     await dialog.getByRole("button", { name: "Close" }).click();
     await dialog.waitFor({ state: "detached" });
-    assert.equal(await page.getByRole("tab", { selected: true }).innerText(), "Vendor");
+    assert.equal(await page.getByRole("tab", { selected: true }).innerText(), "Installed");
     assert.equal(await page.getByRole("radio", { checked: true }).getAttribute("aria-label"), "guide");
   });
 });
 
 test("Escape clears the search and leaves the tab as it was (CORE Story 5 scenario 7)", async () => {
   await inTheBrowser(charter, async (page) => {
-    await page.getByRole("tab", { name: "Vendor" }).click();
+    await page.getByRole("tab", { name: "Installed" }).click();
     await page.getByPlaceholder("Search everything").fill("lint");
     await page.getByRole("option").first().waitFor();
     await page.keyboard.press("Escape");
 
     assert.equal(await page.getByPlaceholder("Search everything").inputValue(), "");
     assert.equal(await page.getByRole("option").count(), 0);
-    assert.equal(await page.getByRole("tab", { selected: true }).innerText(), "Vendor");
+    assert.equal(await page.getByRole("tab", { selected: true }).innerText(), "Installed");
   });
 });

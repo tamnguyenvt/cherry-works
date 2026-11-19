@@ -152,7 +152,7 @@ test("what is wrong with the charter as a whole fails the run too (CORE Story 2 
   const { code, printedOutput } = await run({
     [new URL("guide/no-any/index.md", root).href]: guide("no-any"),
     [new URL("file:///repo/.cw/charter/acme/primitive/guide/no-any/index.md").href]: guide("no-any"),
-    [new URL("file:///repo/.cw/charter/acme/cw-vendor.json").href]: JSON.stringify({
+    [new URL("file:///repo/.cw/charter/acme/cw-package.json").href]: JSON.stringify({
       charter: "acme",
       source: "acme/charter",
       version: "HEAD",

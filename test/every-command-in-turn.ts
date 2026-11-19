@@ -59,8 +59,8 @@ writeFileSync(outputPath, JSON.stringify({ results: { results: [{
 `;
 
 /** Each command in the order a developer meets them, each over the repository
- *  the ones before it left; `<vendor>` is the git source of one charter, and
- *  `<listed vendor>` the name of the charter `cw vendor list` named last. */
+ *  the ones before it left; `<charter source>` is the git source of one charter, and
+ *  `<listed charter>` the name of the last installed charter `cw charter` named. */
 const COMMAND_ARGS: readonly (readonly string[])[] = [
   ["--help"],
   ["--version"],
@@ -100,11 +100,11 @@ const COMMAND_ARGS: readonly (readonly string[])[] = [
   ["context"],
   ["sessions"],
   ["eval-analyze"],
-  ["vendor", "add", "<vendor>"],
-  ["vendor", "list"],
+  ["charter", "pull", "<charter source>"],
+  ["charter"],
   ["build"],
-  ["vendor", "remove", "<listed vendor>"],
-  ["vendor", "inject", "<vendor>"],
+  ["charter", "remove", "--charter", "<listed charter>"],
+  ["charter", "pull", "<charter source>", "--fork"],
   ["list"],
   ["run", "sensor", "Stop"],
   ["mcp", "auth"],
@@ -121,14 +121,14 @@ const PORTAL_REQUESTS: readonly { method: string; path: string; body?: unknown }
   { method: "GET", path: "/styles.css" },
   { method: "GET", path: "/logo.png" },
   { method: "GET", path: "/api/settings" },
-  { method: "GET", path: "/api/charter/root/faults" },
-  { method: "GET", path: "/api/charter/root/primitives" },
-  { method: "GET", path: "/api/charter/root/charters" },
+  { method: "GET", path: "/api/faults" },
+  { method: "GET", path: "/api/primitives" },
+  { method: "GET", path: "/api/charters" },
   { method: "GET", path: "/api/definitions/kinds" },
   { method: "GET", path: "/api/definitions/kinds/guide/requirements" },
   {
     method: "POST",
-    path: "/api/charter/team/primitives",
+    path: "/api/charters/team/primitives",
     body: {
       kind: "guide",
       id: "short-lines",
@@ -136,32 +136,32 @@ const PORTAL_REQUESTS: readonly { method: string; path: string; body?: unknown }
       body: "Keep lines short.\n",
     },
   },
-  { method: "GET", path: "/api/charter/root/primitives/short-lines" },
-  { method: "GET", path: "/api/charter/root/primitives/short-lines/explanation" },
+  { method: "GET", path: "/api/primitives/short-lines" },
+  { method: "GET", path: "/api/primitives/short-lines/explanation" },
   {
     method: "PUT",
-    path: "/api/charter/root/primitives/short-lines",
+    path: "/api/primitives/short-lines",
     body: {
       headers: { description: "Keep lines under a hundred characters.", globs: ["src/**/*.ts"] },
       body: "Keep lines short.\n",
     },
   },
-  { method: "GET", path: "/api/charter/root/build" },
-  { method: "POST", path: "/api/charter/root/build", body: {} },
-  { method: "GET", path: "/api/charter/root/health" },
-  { method: "GET", path: "/api/charter/root/context" },
+  { method: "GET", path: "/api/build" },
+  { method: "POST", path: "/api/build", body: {} },
+  { method: "GET", path: "/api/doctor" },
+  { method: "GET", path: "/api/contexts" },
   { method: "GET", path: "/api/test-suites" },
   { method: "POST", path: "/api/test-suites", body: {} },
   {
     method: "PUT",
-    path: "/api/test-suites/team/untitled-1.json",
+    path: "/api/charters/team/test-suites/untitled-1.json",
     body: { text: '{"cases":[{"do":{"touchFile":"src/one.ts"},"expect":{"activate":"short-lines"}}]}\n' },
   },
-  { method: "GET", path: "/api/test-suites/outcome" },
-  { method: "DELETE", path: "/api/test-suites/team/untitled-1.json", body: {} },
-  { method: "GET", path: "/api/vendors" },
-  { method: "DELETE", path: "/api/charter/root/primitives/short-lines", body: {} },
-  { method: "GET", path: "/api/charter/root/primitives" },
+  { method: "GET", path: "/api/test-suites/run" },
+  { method: "DELETE", path: "/api/charters/team/test-suites/untitled-1.json", body: {} },
+  { method: "GET", path: "/api/charters?layer=package" },
+  { method: "DELETE", path: "/api/primitives/short-lines", body: {} },
+  { method: "GET", path: "/api/primitives" },
 ];
 
 /** Runs every command of `COMMAND_ARGS` with the `cw` at `cwFilePath`, in a
@@ -181,7 +181,7 @@ export async function answersOfEveryCommand(
   const workFolderPath = await mkdtemp(join(tmpdir(), "cw-every-command-"));
   const workFolderName = basename(workFolderPath);
   const repoFolderPath = join(workFolderPath, "repo");
-  const vendorFolderPath = join(workFolderPath, "vendor");
+  const installedCharterFolderPath = join(workFolderPath, "vendor");
   const homeFolderPath = join(workFolderPath, "home");
   // The run's folder, as given and with its links resolved, both as a path and
   // as an agent writes a path into a folder's name, each `/` a `-`; then any
@@ -215,8 +215,11 @@ export async function answersOfEveryCommand(
   await mkdir(repoFolderPath);
   await mkdir(homeFolderPath);
   await writeFile(join(workFolderPath, "gitconfig"), "");
-  await mkdir(join(vendorFolderPath, ".cw/charter/grill/primitive/skill/grill-me"), { recursive: true });
-  await writeFile(join(vendorFolderPath, ".cw/charter/grill/primitive/skill/grill-me/index.md"), VENDOR_SKILL_TEXT);
+  await mkdir(join(installedCharterFolderPath, ".cw/charter/grill/primitive/skill/grill-me"), { recursive: true });
+  await writeFile(
+    join(installedCharterFolderPath, ".cw/charter/grill/primitive/skill/grill-me/index.md"),
+    VENDOR_SKILL_TEXT,
+  );
   let portalProcess: ChildProcess | undefined;
   try {
     for (const gitArgs of [
@@ -224,7 +227,7 @@ export async function answersOfEveryCommand(
       ["add", "."],
       ["commit", "--quiet", "-m", "One skill"],
     ]) {
-      const gitRun = spawnSync("git", gitArgs, { cwd: vendorFolderPath, env: commandEnv, encoding: "utf8" });
+      const gitRun = spawnSync("git", gitArgs, { cwd: installedCharterFolderPath, env: commandEnv, encoding: "utf8" });
       assert.equal(gitRun.status, 0, gitRun.stderr);
     }
     const repoGitRun = spawnSync("git", ["init", "--quiet"], {
@@ -233,7 +236,7 @@ export async function answersOfEveryCommand(
       encoding: "utf8",
     });
     assert.equal(repoGitRun.status, 0, repoGitRun.stderr);
-    let listedVendorName = "";
+    let listedInstalledCharterName = "";
     // The agent `cw eval` runs (CORE Story 46 scenario 4, CORE Story 55
     // scenario 10): a `claude` of the run's own on the PATH, and promptfoo
     // where cw installs it under the home, each answering as the real one.
@@ -267,10 +270,10 @@ export async function answersOfEveryCommand(
       }
       const cwArgs = [
         ...commandArgs.map((commandArg) =>
-          commandArg === "<vendor>"
-            ? vendorFolderPath
-            : commandArg === "<listed vendor>"
-              ? listedVendorName
+          commandArg === "<charter source>"
+            ? installedCharterFolderPath
+            : commandArg === "<listed charter>"
+              ? listedInstalledCharterName
               : commandArg,
         ),
         ...(commandArgs[0]?.startsWith("-") || commandArgs[0] === "run" ? [] : answerArgs),
@@ -283,15 +286,19 @@ export async function answersOfEveryCommand(
         input: "",
         encoding: "utf8",
       });
-      if (commandArgs.join(" ") === "vendor list") {
-        // The charter is the first word of the last row the list says, under
-        // its heading, each row opening two spaces in, or the last its answer
-        // as data holds.
-        listedVendorName = commandRun.stdout.startsWith("{")
-          ? (JSON.parse(commandRun.stdout).data.charters.at(-1)?.data.name ?? "")
+      if (commandArgs.join(" ") === "charter") {
+        // The charter is the first word of the last row the list says
+        // installed, under its heading, each row opening two spaces in, or the
+        // last installed one its answer as data holds.
+        listedInstalledCharterName = commandRun.stdout.startsWith("{")
+          ? (JSON.parse(commandRun.stdout)
+              .data.charters.filter(
+                ({ data: charterMetadata }: { data: { isInstalled: boolean } }) => charterMetadata.isInstalled,
+              )
+              .at(-1)?.data.name ?? "")
           : (commandRun.stdout
               .split("\n")
-              .filter((listLine) => /^ {2}\S/.test(listLine))
+              .filter((listLine) => /^ {2}\S+ +installed /.test(listLine))
               .at(-1)
               ?.trim()
               .split(/\s+/)[0] ?? "");

@@ -1,12 +1,11 @@
 #!/usr/bin/env node
-// The steps of /vendor-release a script takes, run from the root of a charter
-// repository `cw vendor init` set up, one publishing the charters it authored
-// under .cw/charter/<name>/:
+// The steps of /charter-release a script takes, run from the root of any
+// repository publishing the charters it authored under .cw/charter/<name>/:
 //
-//   node vendor-release-action.mjs check [--branch <name>]       the release branch ready, every charter built at the root
-//   node vendor-release-action.mjs readme                        README.md's install and charters section composed from what each charter holds
-//   node vendor-release-action.mjs draft                         the last release, the versions after it, what landed since
-//   node vendor-release-action.mjs publish <version> <entry-file> [--date yyyy-mm-dd] [--branch <name>]
+//   node charter-release-action.mjs check [--branch <name>]       the release branch ready, every charter built at the root
+//   node charter-release-action.mjs readme                        README.md's install and charters section composed from what each charter holds
+//   node charter-release-action.mjs draft                         the last release, the versions after it, what landed since
+//   node charter-release-action.mjs publish <version> <entry-file> [--date yyyy-mm-dd] [--branch <name>]
 //                                                         the entry written, committed, the release branch pushed, the tag made and pushed
 //
 // Which version, and what the entry says, are the agent's to judge and the
@@ -24,9 +23,9 @@ const CHANGELOG_HEADING = "# Changelog";
 const CHARTER_FOLDER = ".cw/charter";
 const CATALOGUE_FILE = ".cw/out/catalogue.json";
 const README_FILE = "README.md";
-const README_START_MARKER = "<!-- vendor-release-action: charters -->";
-const README_END_MARKER = "<!-- /vendor-release-action: charters -->";
-const VENDOR_RECORD_FILE = "cw-vendor.json";
+const README_START_MARKER = "<!-- charter-release-action: charters -->";
+const README_END_MARKER = "<!-- /charter-release-action: charters -->";
+const INSTALLED_CHARTER_RECORD_FILE = "cw-package.json";
 const VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/;
 
 /** One run of a command, never through a shell. */
@@ -53,7 +52,7 @@ function stopRelease(...lines) {
 
 function runGit(args) {
   const gitRun = runCommand("git", args, process.cwd());
-  if (gitRun.isMissing) stopRelease("git is not installed here: install it, then ask /vendor-release again.");
+  if (gitRun.isMissing) stopRelease("git is not installed here: install it, then ask /charter-release again.");
   return gitRun;
 }
 
@@ -83,13 +82,14 @@ function findLastVersion() {
   return tagVersions.at(-1);
 }
 
+/** The changelog's text; one holding no release where there is none yet,
+ *  which publish writes (VENDOR-FR-007). */
 function readChangelog() {
-  if (!existsSync(CHANGELOG_FILE)) stopRelease(`There is no ${CHANGELOG_FILE} at the repository's root.`);
-  return readFileSync(CHANGELOG_FILE, "utf8");
+  return existsSync(CHANGELOG_FILE) ? readFileSync(CHANGELOG_FILE, "utf8") : `${CHANGELOG_HEADING}\n`;
 }
 
 /** Each charter the repository authored, by name: a folder under
- *  .cw/charter/ that git holds, with no cw-vendor.json, which one installed
+ *  .cw/charter/ that git holds, with no cw-package.json, which one installed
  *  holds. What git does not hold is in no commit an install takes. */
 function listCharterNames() {
   const trackedPaths = runGit(["ls-files", "--", CHARTER_FOLDER])
@@ -98,7 +98,7 @@ function listCharterNames() {
     .filter((trackedPath) => trackedPath.startsWith(`${CHARTER_FOLDER}/`) && trackedPath.split("/").length > 3);
   const charterNames = new Set(trackedPaths.map((trackedPath) => trackedPath.split("/")[2]));
   return [...charterNames]
-    .filter((charterName) => !trackedPaths.includes(`${CHARTER_FOLDER}/${charterName}/${VENDOR_RECORD_FILE}`))
+    .filter((charterName) => !trackedPaths.includes(`${CHARTER_FOLDER}/${charterName}/${INSTALLED_CHARTER_RECORD_FILE}`))
     .sort();
 }
 
@@ -183,11 +183,11 @@ function checkRelease(confirmedBranch) {
   }
   const charterNames = listCharterNames();
   if (charterNames.length === 0) stopRelease(`There is no charter under ${CHARTER_FOLDER}/ to release.`);
-  // Built at the root: no primitive may hold or name what cw builds into this
-  // repository alone, so a charter building here builds with the charters it
-  // includes alone, wherever it is installed.
+  // Built at the root: no primitive may hold or name what cw builds into every
+  // repository to release charters, so a charter building here builds with the
+  // charters it includes alone, wherever it is installed.
   const buildRun = runCommand("cw", ["build"], process.cwd());
-  if (buildRun.isMissing) stopRelease("cw is not installed here: install it, then ask /vendor-release again.");
+  if (buildRun.isMissing) stopRelease("cw is not installed here: install it, then ask /charter-release again.");
   if (buildRun.status !== 0) {
     const buildOutputLines = `${buildRun.stdout}\n${buildRun.stderr}`.split("\n").filter((line) => line.trim() !== "");
     const brokenCharterNames = charterNames.filter((charterName) =>
@@ -209,12 +209,21 @@ function checkRelease(confirmedBranch) {
  *  every charter, then per charter, how to install it alone and the skills it
  *  holds, cw's own skills left out. The source is read off origin. A skill is
  *  the charter's when it is kept under the charter's primitive/skill/; its
- *  description is the one the build at check put in the catalogue. */
+ *  description is the one the build at check put in the catalogue. Where
+ *  there is no README.md, it is written holding that section alone
+ *  (VENDOR-FR-006). */
 function composeReadme() {
-  if (!existsSync(README_FILE)) stopRelease(`There is no ${README_FILE} at the repository's root.`);
-  const readmeText = readFileSync(README_FILE, "utf8");
+  const readmeText = existsSync(README_FILE)
+    ? readFileSync(README_FILE, "utf8")
+    : `${README_START_MARKER}\n${README_END_MARKER}\n`;
   const startIndex = readmeText.indexOf(README_START_MARKER);
   const endIndex = readmeText.indexOf(README_END_MARKER);
+  // A README /vendor-release wrote, before 1.4.0, holds the section under
+  // the markers of its day.
+  if (startIndex === -1 && readmeText.includes("<!-- vendor-release-action: charters -->"))
+    stopRelease(
+      `${README_FILE} holds its section under "<!-- vendor-release-action: charters -->" … "<!-- /vendor-release-action: charters -->": rename them "${README_START_MARKER}" … "${README_END_MARKER}", then ask /charter-release again.`,
+    );
   if (startIndex === -1 || endIndex < startIndex)
     stopRelease(
       `${README_FILE} holds no "${README_START_MARKER}" … "${README_END_MARKER}" section: put both lines where the install and the charters are listed.`,
@@ -222,7 +231,7 @@ function composeReadme() {
   const originUrl = runGit(["remote", "get-url", "origin"]).stdout.trim();
   const sourceName =
     /[:/]([^/:]+\/[^/]+?)(?:\.git)?\/?$/.exec(originUrl)?.[1] ?? "<owner>/<repository>";
-  if (!existsSync(CATALOGUE_FILE)) stopRelease(`The charters are not built: run "vendor-release-action.mjs check" first.`);
+  if (!existsSync(CATALOGUE_FILE)) stopRelease(`The charters are not built: run "charter-release-action.mjs check" first.`);
   const catalogueEntries = JSON.parse(readFileSync(CATALOGUE_FILE, "utf8"));
   const charterNames = listCharterNames();
   const charterSections = charterNames.map((charterName) => {
@@ -247,7 +256,7 @@ function composeReadme() {
       `### ${charterName}`,
       "",
       "```bash",
-      `cw vendor add ${sourceName} --charter=${charterName}`,
+      `cw charter pull ${sourceName} --charter=${charterName}`,
       "cw build",
       "```",
       "",
@@ -258,7 +267,7 @@ function composeReadme() {
     "## Install",
     "",
     "```bash",
-    `cw vendor add ${sourceName}`,
+    `cw charter pull ${sourceName}`,
     "cw build",
     "```",
     "",
@@ -269,7 +278,7 @@ function composeReadme() {
     ...(charterSections.length === 0 ? ["None yet."] : [charterSections.join("\n\n")]),
   ].join("\n");
   const composedText = `${readmeText.slice(0, startIndex + README_START_MARKER.length)}\n${sectionText}\n${readmeText.slice(endIndex)}`;
-  if (composedText !== readmeText) writeFileSync(README_FILE, composedText);
+  if (composedText !== readmeText || !existsSync(README_FILE)) writeFileSync(README_FILE, composedText);
   process.stdout.write(
     `${README_FILE} ${composedText === readmeText ? "already lists" : "now lists"} ${charterNames.length === 0 ? "no charter" : charterNames.join(", ")}.\n`,
   );
@@ -422,5 +431,5 @@ else if (actionName === "publish")
   publishRelease(positionalArgs[0], positionalArgs[1], flagValueByName.date ?? todayDate(), flagValueByName.branch);
 else
   stopRelease(
-    "Run it as: vendor-release-action.mjs check [--branch <name>] | readme | draft | publish <version> <entry-file> [--date yyyy-mm-dd] [--branch <name>]",
+    "Run it as: charter-release-action.mjs check [--branch <name>] | readme | draft | publish <version> <entry-file> [--date yyyy-mm-dd] [--branch <name>]",
   );

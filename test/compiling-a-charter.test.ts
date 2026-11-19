@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { CharterReleaseActionScript } from "../src/module/charter/domain/builtin/charter-release-action-script.js";
+import { CharterReleaseSkill } from "../src/module/charter/domain/builtin/charter-release-skill.js";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
@@ -69,6 +71,30 @@ const sessionCounterPaths = [
   ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md",
 ];
 
+/** `/charter-release` and its script, which every repository is brought and
+ *  catalogues before the engine's other primitives (VENDOR-FR-027). */
+const charterReleaseEntries = [
+  {
+    id: "charter-release",
+    kind: "skill",
+    description: new CharterReleaseSkill().headers.description,
+    file: ".cw/out/skill/charter-release/index.md",
+  },
+  {
+    id: "charter-release-action",
+    kind: "script",
+    description: new CharterReleaseActionScript().headers.description,
+    file: ".cw/out/script/charter-release-action/index.md",
+  },
+];
+
+/** What `/charter-release` and its script compile to under the workspace. */
+const charterReleasePaths = [
+  ".cw/out/skill/charter-release/index.md",
+  ".cw/out/script/charter-release-action/index.md",
+  ".cw/out/script/charter-release-action/charter-release-action.mjs",
+];
+
 const oneGuide = { [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any") };
 
 /** What one charter compiles to, put down: the paths it wrote, and what each of
@@ -100,6 +126,7 @@ test("compiling produces the listing, the charter file, and what the chosen agen
     ".cw/out/CHARTER.md",
     // Every primitive as it compiled, in the catalogue's order, since the
     // catalogue is what names each file (FR-139, FR-140).
+    ...charterReleasePaths,
     ".cw/out/skill/cw-author/index.md",
     ...sessionCounterPaths,
     ".cw/out/guide/no-any/index.md",
@@ -111,6 +138,7 @@ test("compiling produces the listing, the charter file, and what the chosen agen
     // The one server that reaches every mcp origin the charter declares.
     ".mcp.json",
     // The skills the engine brings, which every charter holds and reads first.
+    ".claude/skills/charter-release/SKILL.md",
     ".claude/skills/cw-author/SKILL.md",
     // The one guide as the chosen agent's own kinds have it.
     ".claude/rules/no-any.md",
@@ -130,7 +158,7 @@ test("no listing and no projection can be produced without the others (SC-004)",
   // list, and no argument that narrows it to a single file. The second argument
   // says which agents the repository chose, never which file is wanted.
   assert.equal(CharterOutputService.compileCharterRoot.length, 2);
-  assert.equal((await built(oneGuide)).writtenPaths.length, 15);
+  assert.equal((await built(oneGuide)).writtenPaths.length, 19);
 });
 
 test("a repository that chose no agent still compiles the whole neutral half (FR-019)", async () => {
@@ -141,6 +169,7 @@ test("a repository that chose no agent still compiles the whole neutral half (FR
     ".cw/out/mcp-origins.json",
     ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",
+    ...charterReleasePaths,
     ".cw/out/skill/cw-author/index.md",
     ...sessionCounterPaths,
     ".cw/out/guide/no-any/index.md",
@@ -152,6 +181,7 @@ test("the full catalogue is written as the catalogue says it, one entry per line
 
   const contents = files[".cw/out/catalogue.json"] ?? "";
   assert.deepEqual(JSON.parse(contents), [
+    ...charterReleaseEntries,
     { ...builtinEntry, file: ".cw/out/skill/cw-author/index.md" },
     ...sessionCounterEntries.filter((entry) => entry.kind !== "sensor"),
     {
@@ -268,7 +298,7 @@ test("a charter with a broken file still compiles what the readable files hold",
   assert.equal(Object.keys(charter.allFaultsByFiles.faultsByFilePath).length, 1);
   assert.deepEqual(
     JSON.parse(files[".cw/out/catalogue.json"] ?? "").map((catalogueEntry: { id: string }) => catalogueEntry.id),
-    ["cw-author", "cw-session-tokens-counter", "no-any"],
+    ["charter-release", "charter-release-action", "cw-author", "cw-session-tokens-counter", "no-any"],
   );
 });
 
@@ -406,6 +436,6 @@ test("where the charter document explains ids, it names the layer the engine bri
   assert.match(idSectionText, /^## One id, one primitive\n/);
   assert.match(
     idSectionText,
-    /whether this repository authored it, installed it from a vendor, or the engine brought it/,
+    /whether this repository authored it, installed it from a charter source, or the engine brought it/,
   );
 });

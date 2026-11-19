@@ -2,8 +2,8 @@ import { z } from "#module/shared/module.js";
 import { EvalCase } from "./eval-case.value-object.js";
 
 /** What an evaluation file may hold: what it is about, and its cases. JSON, as
- *  a test file is: nothing reads it but `cw eval`. Not a primitive, and a
- *  vendor's are not installed with it (EVAL-FR-020). */
+ *  a test file is: nothing reads it but `cw eval`. Not a primitive
+ *  (EVAL-FR-020). */
 const EvalSuiteSchema = z.strictObject({
   description: z.string().min(1).optional(),
   cases: z.array(EvalCase.schema.transform((writtenCase) => new EvalCase(writtenCase))).min(1),

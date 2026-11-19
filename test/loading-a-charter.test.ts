@@ -50,7 +50,7 @@ const writeInstalledCharter = (
   source = "team/rules",
 ) => {
   files.writeFile(
-    new URL(`${charterName}/cw-vendor.json`, charterMetadataList),
+    new URL(`${charterName}/cw-package.json`, charterMetadataList),
     `${JSON.stringify({ charter: charterName, source, version: "HEAD" })}\n`,
   );
   for (const [path, text] of Object.entries(primitiveTextByPath))
@@ -81,7 +81,7 @@ test("the charter is read once, and its charters listed once more, however many 
 
   // One read of every charter, authored or installed, whichever sources or
   // owners of sources they are (FR-050), and one listing of the charters, each
-  // asked for its cw-vendor.json: the engine reads which is which off the
+  // asked for its cw-package.json: the engine reads which is which off the
   // files it is handed. The settings the repository configured itself with
   // are read from their own file, not from the charter (FR-037).
   assert.deepEqual(files.calls, [
@@ -89,8 +89,8 @@ test("the charter is read once, and its charters listed once more, however many 
     ...layoutCheckCalls,
     `bytes under ${charterMetadataList.href}`,
     `folders under ${charterMetadataList.href}`,
-    `read ${charterMetadataList.href}team/cw-vendor.json`,
-    `read ${charterMetadataList.href}rules/cw-vendor.json`,
+    `read ${charterMetadataList.href}team/cw-package.json`,
+    `read ${charterMetadataList.href}rules/cw-package.json`,
   ]);
 });
 
@@ -119,7 +119,7 @@ test("a load reads what is there now, not what was there before", async () => {
   assert.equal(charter.primitives.find((primitive) => primitive.headers.id === "no-any")?.body, "A rewritten body.");
 });
 
-test("what a vendor published is read as a layer of its own", async () => {
+test("what an installed charter published is read as a layer of its own", async () => {
   const files = charterHolding();
   writeInstalledCharter(files, "rules", { "guide/no-any/index.md": primitive("guide", "no-any") });
 
@@ -128,21 +128,21 @@ test("what a vendor published is read as a layer of its own", async () => {
   assert.deepEqual(ids(PrimitiveLayer.REPO.name, charter), ["no-any", "type-safety"]);
   assert.deepEqual([...new Set(charter.primitives.map((primitive) => primitive.layer.name))].sort(), [
     PrimitiveLayer.BUILTIN.name,
+    PrimitiveLayer.packageName,
     PrimitiveLayer.REPO.name,
-    PrimitiveLayer.vendorName,
   ]);
-  assert.deepEqual(ids(PrimitiveLayer.vendorName, charter), ["no-any"]);
+  assert.deepEqual(ids(PrimitiveLayer.packageName, charter), ["no-any"]);
 });
 
-test("each vendor is its own layer, and a repository with none has none", async () => {
+test("each installed charter is its own layer, and a repository with none has none", async () => {
   const files = charterHolding();
   writeInstalledCharter(files, "rules", { "guide/no-any/index.md": primitive("guide", "no-any") });
   writeInstalledCharter(files, "skills", { "skill/naming/index.md": primitive("skill", "naming") }, "design/skills");
 
   assert.deepEqual([...new Set((await load(files)).primitives.map((primitive) => primitive.layer.name))].sort(), [
     PrimitiveLayer.BUILTIN.name,
+    PrimitiveLayer.packageName,
     PrimitiveLayer.REPO.name,
-    PrimitiveLayer.vendorName,
   ]);
   assert.deepEqual(
     [...new Set((await load(charterHolding())).primitives.map((primitive) => primitive.layer.name))],
@@ -156,6 +156,8 @@ test("what the engine brings is no folder: it adds no read, and is read without 
   const charter = await load(files);
 
   assert.deepEqual(ids(PrimitiveLayer.BUILTIN.name, charter), [
+    "charter-release",
+    "charter-release-action",
     "cw-author",
     "cw-session-tokens-counter",
     "cw-session-tokens-counter-on-stop",
@@ -167,7 +169,7 @@ test("what the engine brings is no folder: it adds no read, and is read without 
     ...layoutCheckCalls,
     `bytes under ${charterMetadataList.href}`,
     `folders under ${charterMetadataList.href}`,
-    `read ${charterMetadataList.href}team/cw-vendor.json`,
+    `read ${charterMetadataList.href}team/cw-package.json`,
   ]);
 });
 
@@ -207,7 +209,7 @@ test("what the engine brings is read as a layer of its own, first (FR-015, FR-01
     [
       ["cw-author", PrimitiveLayer.BUILTIN.name, "(built into cw)/skill/cw-author/index.md"],
       ["type-safety", PrimitiveLayer.REPO.name, ".cw/charter/team/primitive/corpus/type-safety/index.md"],
-      ["no-any", PrimitiveLayer.vendorName, ".cw/charter/rules/primitive/guide/no-any/index.md"],
+      ["no-any", PrimitiveLayer.packageName, ".cw/charter/rules/primitive/guide/no-any/index.md"],
     ],
   );
 });
@@ -306,7 +308,7 @@ test("a root is a folder, and one written as a file is refused", () => {
   assert.throws(() => FolderAddress.parseFolderUrl("file:///repo/.cw/charter"), /names a file/);
 });
 
-test("a broken file in a vendored layer is named like any other, and costs that layer nothing else", async () => {
+test("a broken file in an installed layer is named like any other, and costs that layer nothing else", async () => {
   const files = charterHolding();
   writeInstalledCharter(files, "rules", {
     "guide/broken/index.md": "Just prose.\n",
@@ -318,7 +320,7 @@ test("a broken file in a vendored layer is named like any other, and costs that 
   assert.deepEqual(Object.keys(charter.faultsByFiles.faultsByFilePath), [
     "file:///repo/.cw/charter/rules/primitive/guide/broken/index.md",
   ]);
-  assert.deepEqual(ids(PrimitiveLayer.vendorName, charter), ["no-any"]);
+  assert.deepEqual(ids(PrimitiveLayer.packageName, charter), ["no-any"]);
 });
 
 test("what only shows when files are read together is kept apart from what one file got wrong", async () => {
@@ -332,7 +334,7 @@ test("what only shows when files are read together is kept apart from what one f
     "file:///repo/.cw/charter/team/primitive/guide/broken/index.md",
   ]);
   // The second of the two to be read: the repository's layer is read before a
-  // vendor's. The corpus nobody cites is only a warning, and not what is asked
+  // installed charter's. The corpus nobody cites is only a warning, and not what is asked
   // here.
   assert.deepEqual(Object.keys(charter.compositeFaultsByFiles.filterErrors().faultsByFilePath), [
     "file:///repo/.cw/charter/acme/primitive/guide/no-any/index.md",

@@ -41,7 +41,7 @@ export class TestSuiteService {
     for (const primitive of charterRoot.primitives) {
       const { uri: primitiveUri } = primitive;
       const { id } = primitive.headers;
-      // The engine's own are tested where the engine is, as a vendor's are in its
+      // The engine's own are tested where the engine is, as an installed charter's are in its
       // own repository.
       if (
         (primitive.kind !== "guide" && primitive.kind !== "sensor") ||

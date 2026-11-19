@@ -12,18 +12,20 @@ import { SensorPrimitive } from "../primitive/sensor-primitive.js";
 
 /**
  * One charter, read: what the engine brings, what this repository authored,
- * what it installed under `vendor/`, and what any of them got wrong.
+ * what it installed as charters holding a `cw-package.json`, and what any of
+ * them got wrong.
  *
  * Every question about the charter as a whole is asked of it here — what a
  * primitive is named by, which mixin a name means, what is wrong once the files
- * are read together — so nothing outside joins a vendor's name onto anything by
+ * are read together — so nothing outside joins an installed charter's name onto anything by
  * hand.
  */
 export class CharterRoot {
   constructor(
     /** Every primitive this charter holds, whichever layer authored it: what
-     *  the engine brings, what this repository wrote and what it installed
-     *  under `vendor/`, each under the file it was authored in and the layer
+     *  the engine brings, what this repository wrote and what it installed as
+     *  charters holding a `cw-package.json`, each under the file it was
+     *  authored in and the layer
      *  its layer gives it. What a primitive says is its own; where it was
      *  written is what a fault is filed under (SC-003) and what the catalogue
      *  records (FR-011). */
@@ -220,14 +222,14 @@ export class CharterRoot {
       const { id: primitiveId } = primitive.headers;
       const declaringUri = uriById.get(primitiveId);
       if (declaringUri === undefined) uriById.set(primitiveId, primitiveUri);
-      // One holding what cw brings a vendor's repository is told to delete it
-      // below, never to rename it (VENDOR-FR-028).
-      else if (!BuiltinPrimitives.reservedVendorIds.includes(primitiveId))
+      // One holding `/charter-release` or its script is told why below
+      // (VENDOR-FR-028).
+      else if (!BuiltinPrimitives.reservedIds.includes(primitiveId))
         addFault(
           primitiveUri,
           new InconsistentCharterFault(
             `"${primitiveId}" is already declared by ${declaringUri}. One id names one primitive in a charter, whatever its kind and whichever layer it was authored in.`,
-            `Give this one an id of its own, or delete it if the other says the same thing. A vendor claiming an id you authored is one to raise with whoever publishes it. An id (built into cw) claims is the engine's own and nobody can change it, so the one to rename is yours.`,
+            `Give this one an id of its own, or delete it if the other says the same thing. An installed charter claiming an id you authored is one to raise with whoever publishes it. An id (built into cw) claims is the engine's own and nobody can change it, so the one to rename is yours.`,
             { internal: false },
           ),
         );
@@ -252,9 +254,9 @@ export class CharterRoot {
         // An id of another kind is no mixin, and is said as one nothing
         // answers to.
         const mixinPrimitive = primitiveById.get(mixinId);
-        // One cw brings a vendor's repository alone is refused below, never to
-        // be authored (VENDOR-FR-028).
-        if (BuiltinPrimitives.reservedVendorIds.includes(mixinId)) continue;
+        // `/charter-release` and its script are refused below, never to be
+        // authored (VENDOR-FR-028).
+        if (BuiltinPrimitives.reservedIds.includes(mixinId)) continue;
         if (mixinPrimitive?.kind !== "mixin") {
           addFault(
             primitiveUri,
@@ -284,7 +286,7 @@ export class CharterRoot {
       const rationaleId = primitive.headers.rationale;
       if (
         rationaleId !== undefined &&
-        !BuiltinPrimitives.reservedVendorIds.includes(rationaleId) &&
+        !BuiltinPrimitives.reservedIds.includes(rationaleId) &&
         primitiveById.get(rationaleId)?.kind !== "corpus"
       )
         addFault(
@@ -300,7 +302,7 @@ export class CharterRoot {
       // is not there may guess at one, or invent it, and act on the guess
       // (FR-143, FR-162).
       for (const referencedId of new Set(this.findMentionedIds(primitive)))
-        if (!primitiveById.has(referencedId) && !BuiltinPrimitives.reservedVendorIds.includes(referencedId))
+        if (!primitiveById.has(referencedId) && !BuiltinPrimitives.reservedIds.includes(referencedId))
           addFault(
             primitiveUri,
             new InconsistentCharterFault(
@@ -310,24 +312,21 @@ export class CharterRoot {
             ),
           );
 
-      // What cw brings to a repository `cw vendor init` set up alone is held
-      // and named by none, in that repository or any other: so a charter that
-      // builds where it is released builds wherever it is installed
-      // (VENDOR-FR-028).
+      // `/charter-release` and its script are held and named by none, in
+      // this repository or any other: so a charter that builds where it is
+      // released builds wherever it is installed (VENDOR-FR-028).
       if (primitive.layer !== PrimitiveLayer.BUILTIN) {
         const namedIds = this.namedIdsOf(primitive);
-        for (const reservedVendorId of BuiltinPrimitives.reservedVendorIds.filter(
-          (reservedVendorId) => reservedVendorId === primitiveId || namedIds.includes(reservedVendorId),
+        for (const reservedId of BuiltinPrimitives.reservedIds.filter(
+          (reservedId) => reservedId === primitiveId || namedIds.includes(reservedId),
         ))
           addFault(
             primitiveUri,
             new InconsistentCharterFault(
-              `This ${reservedVendorId === primitiveId ? "is" : "names"} "${reservedVendorId}", which cw brings to a repository "cw vendor init" set up alone, and no primitive holds or names.`,
-              // One a release of cw before it wrote into the repository is
-              // deleted: cw brings it where the settings say so.
-              reservedVendorId === primitiveId
-                ? `Delete it where "cw vendor init" set this repository up, and add "vendor": true to this repository's own settings: cw brings "${reservedVendorId}" there. Otherwise give this one an id of its own.`
-                : `Drop "${reservedVendorId}" from it: a charter naming it would not build where it is installed.`,
+              `This ${reservedId === primitiveId ? "is" : "names"} "${reservedId}", which cw brings to every repository, and no primitive holds or names.`,
+              reservedId === primitiveId
+                ? `Give this one an id of its own, or delete it: cw brings "${reservedId}" itself.`
+                : `Drop "${reservedId}" from it: a charter naming it would not build where it is installed.`,
               { internal: false },
             ),
           );
@@ -382,7 +381,7 @@ export class CharterRoot {
         }
 
       // Reasoning nobody cites and text nobody lends are dead weight in every
-      // layer, a vendor's included: its author is told, and can remove what
+      // layer, an installed charter's included: its author is told, and can remove what
       // brought them (FR-014).
       if (primitive.kind === "corpus" && this.citersOf(primitive).length === 0)
         addFault(

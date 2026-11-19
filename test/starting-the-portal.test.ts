@@ -128,7 +128,7 @@ test("cw run portal, in a folder with no version control that cw init set up, se
   );
   const portalToken = portalAddress.searchParams.get("t") ?? "";
 
-  const primitivesResponse = await fetch(new URL("/api/charter/root/primitives", portalAddress.origin), {
+  const primitivesResponse = await fetch(new URL("/api/primitives", portalAddress.origin), {
     headers: { authorization: `Bearer ${portalToken}` },
   });
 

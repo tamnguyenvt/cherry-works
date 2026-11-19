@@ -4,6 +4,7 @@ import type { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
 import { AgentProvider } from "../src/module/shared/domain/models/agent/agent-provider.value-object.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
+import { answerOf } from "./answer-of.js";
 import { workspaceAppOf } from "./use-cases-of.js";
 
 const repo = new URL("file:///repo/");
@@ -68,22 +69,14 @@ test("a session analysis folder that is no absolute path or path under ~/ is ref
   assert.match(settingsFault.message, /"sessionAnalysisFolder"/);
 });
 
-test("a vendor mark that is no yes or no is refused, naming the field (VENDOR-FR-027)", async () => {
-  const settingsFault = await refusing(`${JSON.stringify({ agents: ["claude"], vendor: "yes" })}\n`);
+test("settings hold no mark of a repository releasing charters: setup writes none, and one left from before is read past (VENDOR Story 8 scenario 3, VENDOR-FR-032)", async () => {
+  const fileReaders = new InMemoryFileReaders({ [file]: `${JSON.stringify({ agents: ["claude"], vendor: true })}\n` });
+  const workspaceApp = workspaceAppOf(fileReaders, new InMemoryFileOutput(fileReaders));
 
-  assert.match(settingsFault.message, /"vendor"/);
-  assert.match(settingsFault.fix ?? "", /"vendor": true/);
-});
-
-test("a repository never set up is not marked a vendor's, and nothing is written (VENDOR-FR-027)", async () => {
-  const fileReaders = new InMemoryFileReaders({});
-
-  const markedSettingsDTO = await workspaceAppOf(fileReaders, new InMemoryFileOutput(fileReaders)).setVendorMark();
-
-  assert.equal(markedSettingsDTO.type, "Fault");
-  assert.equal((markedSettingsDTO as FaultDTOs.Fault).data.name, "UnsetWorkspaceFault");
-  assert.match((markedSettingsDTO as FaultDTOs.Fault).data.fix ?? "", /cw init/);
-  assert.equal(await fileReaders.readIfThere(new URL(file)), undefined);
+  const settingsDTO = answerOf(await workspaceApp.readWorkspaceSettings());
+  assert.deepEqual(Object.keys(settingsDTO.data).sort(), ["agents", "isSetUp", "mainContextCeiling"]);
+  answerOf(await workspaceApp.setUpWorkspace(["claude"], "0.0.0"));
+  assert.deepEqual(JSON.parse(await fileReaders.readFile(new URL(file))), { agents: ["claude"] });
 });
 
 test("setup refuses no agent, an agent the engine does not compile for and a ceiling not above 0, each by its own fault, and writes nothing (FR-033, EVAL-FR-006)", async () => {

@@ -33,7 +33,7 @@ const OPTIONS = {
  * `cw doctor` to report, and nothing is compiled. Whoever is at the terminal is
  * asked first, naming the file, since what goes is what somebody authored;
  * `--yes` is that answer given ahead, and with nobody to ask and no `--yes`
- * nothing is removed. A vendored or builtin primitive, and an id the
+ * nothing is removed. An installed or builtin primitive, and an id the
  * charter holds nothing of, are refused by the engine before anything is asked
  * (FR-077).
  */

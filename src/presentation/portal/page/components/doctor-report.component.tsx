@@ -7,7 +7,7 @@ import { Button } from "./ui/button.js";
 
 /**
  * The health check, as `cw doctor` gives it (FR-121): the four answers —
- * agents, charter, vendors, compiled output — and what each agent's main
+ * agents, charter, installed charters, compiled output — and what each agent's main
  * context comes to against the ceiling (EVAL-FR-006), in the words it prints
  * them in,
  * then every fault under its file, errors before warnings. Nothing is counted

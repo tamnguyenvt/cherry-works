@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { CharterReleaseActionScript } from "../src/module/charter/domain/builtin/charter-release-action-script.js";
+import { CharterReleaseSkill } from "../src/module/charter/domain/builtin/charter-release-skill.js";
 import { CwAuthorSkill } from "../src/module/charter/domain/builtin/cw-author-skill.js";
 import { CwSessionTokensCounterScript } from "../src/module/charter/domain/builtin/cw-session-tokens-counter-script.js";
 import { CwSessionTokensSensor } from "../src/module/charter/domain/builtin/cw-session-tokens-sensor.js";
@@ -61,6 +63,23 @@ const sessionCounterEntries = [
   },
 ];
 
+/** `/charter-release` and its script, which every charter holds and catalogues
+ *  before the engine's other primitives (VENDOR-FR-027). */
+const charterReleaseEntries = [
+  {
+    id: "charter-release",
+    kind: "skill",
+    description: new CharterReleaseSkill().headers.description,
+    file: "$CW_OUT/skill/charter-release/index.md",
+  },
+  {
+    id: "charter-release-action",
+    kind: "script",
+    description: new CharterReleaseActionScript().headers.description,
+    file: "$CW_OUT/script/charter-release-action/index.md",
+  },
+];
+
 const load = (files: InMemoryFileReaders) => loadCharterRoot(files);
 
 /** The listing this charter compiles to. Read off what compiling produces, since
@@ -89,6 +108,7 @@ test("the catalogue records what a primitive is called, what it is for, the file
   assert.deepEqual(
     JSON.parse(JSON.stringify(catalogue.entries)),
     [
+      ...charterReleaseEntries,
       { ...builtinEntry, file: "$CW_OUT/skill/cw-author/index.md" },
       ...sessionCounterEntries.filter((catalogueEntry) => catalogueEntry.id !== CwSessionTokensSensor.id),
       {
@@ -143,13 +163,13 @@ test("the output keeps shared entries in catalogue and restricted entries only i
   assert.ok(!JSON.parse(sharedCatalogue.text).some((catalogueEntry: { id: string }) => catalogueEntry.id === sensorId));
 });
 
-test("a vendored primitive is catalogued at its compiled file, as every layer's is (FR-140)", async () => {
-  const vendored = new URL("guide/no-any/index.md", installedCharterMetadataList);
-  const vendorRecord = new URL("cw-vendor.json", installedCharterMetadataList);
+test("an installed primitive is catalogued at its compiled file, as every layer's is (FR-140)", async () => {
+  const installed = new URL("guide/no-any/index.md", installedCharterMetadataList);
+  const installedCharterRecord = new URL("cw-package.json", installedCharterMetadataList);
   const catalogue = await catalogueOf(
     new InMemoryFileReaders({
-      [vendored.href]: primitive("guide", "no-any"),
-      [vendorRecord.href]: JSON.stringify({ charter: "rules", source: "team/rules", version: "HEAD" }),
+      [installed.href]: primitive("guide", "no-any"),
+      [installedCharterRecord.href]: JSON.stringify({ charter: "rules", source: "team/rules", version: "HEAD" }),
     }),
   );
 
@@ -168,7 +188,15 @@ test("the same charter catalogues in the same order however its files were read"
 
   const ids = (await catalogueOf(files)).entries.map((catalogueEntry) => catalogueEntry.id);
 
-  assert.deepEqual(ids, ["cw-author", "cw-session-tokens-counter", "no-any", "type-safety", "writing-tests"]);
+  assert.deepEqual(ids, [
+    "charter-release",
+    "charter-release-action",
+    "cw-author",
+    "cw-session-tokens-counter",
+    "no-any",
+    "type-safety",
+    "writing-tests",
+  ]);
 });
 
 test("the catalogue carries no body", async () => {

@@ -343,7 +343,7 @@ test("a list of mcp origins whose origin has no ids or no address does not read,
   });
 });
 
-test("the repository and a vendor declaring one address under two ids are listed once, under both, and every tool either declares is served there (CORE Story 17 scenario 5, FR-145, CORE Story 55 scenario 8)", async () => {
+test("the repository and an installed charter declaring one address under two ids are listed once, under both, and every tool either declares is served there (CORE Story 17 scenario 5, FR-145, CORE Story 55 scenario 8)", async () => {
   const mcpText = (id: string, tools: string) =>
     `---\nkind: mcp\nid: ${id}\ndescription: Billing's code.\nendpoint: ${GITHUB}\nauth: [token]\ntools: [${tools}]\n---\n\nRead it.\n`;
   const held = new InMemoryFileReaders({
@@ -352,7 +352,7 @@ test("the repository and a vendor declaring one address under two ids are listed
       '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nRead [[billing]] and [[acme/code]].\n',
     "file:///repo/.cw/charter/team/primitive/mcp/billing/index.md": mcpText("billing", "search_code"),
     "file:///repo/.cw/charter/acme/primitive/mcp/acme/code/index.md": mcpText("acme/code", "get_file_contents"),
-    "file:///repo/.cw/charter/acme/cw-vendor.json": JSON.stringify({
+    "file:///repo/.cw/charter/acme/cw-package.json": JSON.stringify({
       charter: "acme",
       source: "acme/tools",
       version: "HEAD",

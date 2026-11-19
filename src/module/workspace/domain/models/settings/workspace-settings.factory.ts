@@ -37,12 +37,11 @@ export class WorkspaceSettingsFactory {
       !settingsParseResult.data.agents.every((agentName) => supportedAgentNames.includes(agentName))
     )
       throw WorkspaceSettingsFactory.#findSettingsFault(settingsJson, supportedAgentNames);
-    const { agents, mainContextCeiling, sessionAnalysisFolder, vendor: isVendor } = settingsParseResult.data;
+    const { agents, mainContextCeiling, sessionAnalysisFolder } = settingsParseResult.data;
     return new WorkspaceSettings(
       agents.map((agentName) => new AgentProvider(agentName)),
       mainContextCeiling,
       sessionAnalysisFolder,
-      isVendor ?? false,
     );
   }
 
@@ -92,12 +91,11 @@ export class WorkspaceSettingsFactory {
         { internal: false },
       );
 
-    const { agents, mainContextCeiling, sessionContextMark, sessionAnalysisFolder, vendor } = settingsJson as {
+    const { agents, mainContextCeiling, sessionContextMark, sessionAnalysisFolder } = settingsJson as {
       agents?: unknown;
       mainContextCeiling?: unknown;
       sessionContextMark?: unknown;
       sessionAnalysisFolder?: unknown;
-      vendor?: unknown;
     };
     if (!Array.isArray(agents))
       return new InvalidSettingsFault(
@@ -120,13 +118,6 @@ export class WorkspaceSettingsFactory {
       return new InvalidSettingsFault(
         `"sessionAnalysisFolder" is where each session's tokens are kept on this machine, and ${JSON.stringify(sessionAnalysisFolder)} is no absolute path or path under "~/".`,
         `Write it as one, as in { "agents": ["claude"], "sessionAnalysisFolder": "~/.cherry-works/sessions" }, or drop it for a folder of this repository's own under ~/.cherry-works.`,
-        { internal: false },
-      );
-
-    if (!WorkspaceSettings.schema.shape.vendor.safeParse(vendor).success)
-      return new InvalidSettingsFault(
-        `"vendor" says \`cw vendor init\` set this repository up, and ${JSON.stringify(vendor)} is no yes or no.`,
-        `Write it as true, as in { "agents": ["claude"], "vendor": true }, or drop it where this repository releases no charter.`,
         { internal: false },
       );
 

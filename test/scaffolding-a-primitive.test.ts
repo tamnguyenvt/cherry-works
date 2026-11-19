@@ -417,7 +417,7 @@ test("adding a script says the file it runs was written too, so its author knows
 const filesInTwoCharters = {
   "file:///repo/.cw/charter/team/primitive/guide/kept/index.md":
     '---\nkind: guide\nid: kept\ndescription: Kept.\nglobs: ["src/**"]\n---\nKept.\n',
-  "file:///repo/.cw/charter/grill/cw-vendor.json": `${JSON.stringify({ charter: "grill", source: "mattpocock/skills", version: "v1" })}\n`,
+  "file:///repo/.cw/charter/grill/cw-package.json": `${JSON.stringify({ charter: "grill", source: "mattpocock/skills", version: "v1" })}\n`,
   "file:///repo/.cw/charter/grill/primitive/skill/grill-me/index.md":
     '---\nkind: skill\nid: grill-me\ndescription: Grill me.\ntriggers: ["grill me"]\n---\nGrill.\n',
 };

@@ -92,6 +92,9 @@ test("a repository that has never been built would have every file created (FR-0
     ".cw/out/mcp-origins.json": "create",
     ".cw/out/sensors.json": "create",
     ".cw/out/CHARTER.md": "create",
+    ".cw/out/skill/charter-release/index.md": "create",
+    ".cw/out/script/charter-release-action/index.md": "create",
+    ".cw/out/script/charter-release-action/charter-release-action.mjs": "create",
     ".cw/out/skill/cw-author/index.md": "create",
     ".cw/out/guide/no-any/index.md": "create",
     ".cw/out/script/cw-session-tokens-counter/index.md": "create",
@@ -101,6 +104,7 @@ test("a repository that has never been built would have every file created (FR-0
     ".claude/settings.json": "create",
     ".mcp.json": "create",
     ".claude/rules/no-any.md": "create",
+    ".claude/skills/charter-release/SKILL.md": "create",
     ".claude/skills/cw-author/SKILL.md": "create",
   });
   // The whole of what a preview promises: it said all that, and wrote none of it.
@@ -142,6 +146,9 @@ test("a rule edited since the last build would be updated, and its listings with
     // The compiled document holds the body, so it changes with it; what the
     // engine brings does not.
     ".cw/out/guide/no-any/index.md": "update",
+    ".cw/out/skill/charter-release/index.md": "unchanged",
+    ".cw/out/script/charter-release-action/index.md": "unchanged",
+    ".cw/out/script/charter-release-action/charter-release-action.mjs": "unchanged",
     ".cw/out/skill/cw-author/index.md": "unchanged",
     ".cw/out/script/cw-session-tokens-counter/index.md": "unchanged",
     ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs": "unchanged",
@@ -155,6 +162,7 @@ test("a rule edited since the last build would be updated, and its listings with
     // The rule points to the compiled document, so it says the same whatever
     // the body holds.
     ".claude/rules/no-any.md": "unchanged",
+    ".claude/skills/charter-release/SKILL.md": "unchanged",
     ".claude/skills/cw-author/SKILL.md": "unchanged",
   });
 });

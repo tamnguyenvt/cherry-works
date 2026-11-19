@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs.js";
 /**
  * The markdown a body renders as in Preview. Raw HTML in it is shown as the
  * text it is rather than put into the page, and a link to a script goes
- * nowhere: a vendor's body is text someone else wrote, and this page holds a
+ * nowhere: an installed charter's body is text someone else wrote, and this page holds a
  * token that writes into the repository (plan §17.2.9). What the file holds is
  * untouched — an agent reads it as written.
  */
@@ -46,7 +46,7 @@ const SEGMENT_CLASS_NAME =
  *
  * The source is CodeMirror with markdown highlighting, bundled so it works
  * offline (FR-111), and opens first where the body can be written. Without
- * `onChange` the body is read-only, as a vendored primitive's is, and opens on
+ * `onChange` the body is read-only, as an installed primitive's is, and opens on
  * Preview.
  *
  * Typing `[[` in a body that can be written lists the primitives of

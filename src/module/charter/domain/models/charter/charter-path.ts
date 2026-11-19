@@ -29,15 +29,15 @@ export class CharterPath {
 
   /** The file that makes a charter installed, read-only: where it came from
    *  (VENDOR-FR-010). */
-  readonly vendorRecordFileName = "cw-vendor.json";
+  readonly installedCharterRecordFileName = "cw-package.json";
 
   /** The folder of a charter holding its test cases, one file of cases each
    *  (VENDOR-FR-009). */
   readonly testFolderName = "test";
 
-  /** The folder an older layout kept vendors in, right under the workspace
+  /** The folder an older layout kept installed charters in, right under the workspace
    *  or the charter root: refused where it is still held (VENDOR-FR-011). */
-  readonly oldVendorsFolderName = "vendor";
+  readonly oldInstalledChartersFolderName = "vendor";
 
   /** The folder of a charter holding its eval cases, one file of cases each
    *  (VENDOR-FR-009). */

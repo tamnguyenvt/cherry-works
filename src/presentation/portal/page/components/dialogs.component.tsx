@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext, useState } from "react";
 import { toast } from "sonner";
-import { AddVendorSource } from "./add-vendor-source.component.js";
+import { AddCharterSource } from "./add-charter-source.component.js";
 import { type BuildAnswer, BuildOutcome, BuildPreview } from "./charter-build.component.js";
 import { DoctorReport } from "./doctor-report.component.js";
 import { PrimitiveExplanation } from "./primitive-explanation.component.js";
@@ -81,14 +81,14 @@ const DIALOGS = {
     holdsDraft: false,
     renderContent: ({ buildAnswer }: { buildAnswer: BuildAnswer }) => <BuildOutcome buildAnswer={buildAnswer} />,
   },
-  /** A vendor source to install, above the directories reserved under its charter folder
+  /** A charter source to pull, above the directories reserved under its charter folder
    *  (FR-123). */
-  addVendor: {
-    title: () => "Add vendor source",
+  addCharterSource: {
+    title: () => "Add charter source",
     context: () => "",
     holdsDraft: true,
     renderContent: (_params: Record<string, never>, { closeDialog }: DialogHelpers) => (
-      <AddVendorSource onDone={showWrittenToast(closeDialog)} onClose={closeDialog} />
+      <AddCharterSource onDone={showWrittenToast(closeDialog)} onClose={closeDialog} />
     ),
   },
   /** One test file's text, to save or delete (FR-090, FR-092). */

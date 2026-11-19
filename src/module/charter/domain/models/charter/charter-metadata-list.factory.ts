@@ -1,12 +1,12 @@
-import { InvalidVendorRecordFault } from "../charter.fault.js";
+import { InvalidInstalledCharterRecordFault } from "../charter.fault.js";
 import { CharterMetadata, CharterMetadataList } from "./charter-metadata-list.js";
+import { InstalledCharterRecordFactory } from "./installed-charter-record.factory.js";
 import type { RawCharterMetadata } from "./raw-charter-metadata.js";
-import { VendorRecordFactory } from "./vendor-record.factory.js";
 
 /** Makes the charters of a charter root out of what its store keeps of them. */
 export class CharterMetadataListFactory {
   /**
-   * Each charter by its name, installed where it holds a `cw-vendor.json`
+   * Each charter by its name, installed where it holds a `cw-package.json`
    * naming the charter, the source and the version as strings; the first that does
    * not read so is refused, naming its file (VENDOR-FR-010).
    */
@@ -14,16 +14,16 @@ export class CharterMetadataListFactory {
     const charterMetadatas = [...rawCharters]
       .sort((leftCharter, rightCharter) => leftCharter.name.localeCompare(rightCharter.name))
       .map((rawCharter) => {
-        if (rawCharter.vendorRecordText === undefined)
+        if (rawCharter.installedCharterRecordText === undefined)
           return new CharterMetadata(rawCharter.name, undefined, rawCharter.uri);
-        const vendorRecord = VendorRecordFactory.create(rawCharter.vendorRecordText);
-        if (vendorRecord === undefined)
-          throw new InvalidVendorRecordFault(
-            `${rawCharter.vendorRecordUri} does not read as the charter, the source and the version it was installed from.`,
-            `Delete ${rawCharter.uri} and run "cw vendor add" again, or delete ${rawCharter.vendorRecordUri} to make the charter your own.`,
+        const installedCharterRecord = InstalledCharterRecordFactory.create(rawCharter.installedCharterRecordText);
+        if (installedCharterRecord === undefined)
+          throw new InvalidInstalledCharterRecordFault(
+            `${rawCharter.installedCharterRecordUri} does not read as the charter, the source and the version it was installed from.`,
+            `Delete ${rawCharter.uri} and run "cw charter pull" again, or delete ${rawCharter.installedCharterRecordUri} to make the charter your own.`,
             { internal: false },
           );
-        return new CharterMetadata(rawCharter.name, vendorRecord, rawCharter.uri);
+        return new CharterMetadata(rawCharter.name, installedCharterRecord, rawCharter.uri);
       });
     return new CharterMetadataList(charterMetadatas);
   }

@@ -8,29 +8,35 @@ import {
   UnsoundModelFault,
 } from "../../shared/module.js";
 import { BuiltinPrimitives } from "../domain/builtin/index.js";
+import type { CharterMetadata } from "../domain/models/charter/charter-metadata-list.js";
+import type { InstalledCharterRecord } from "../domain/models/charter/installed-charter-record.value-object.js";
 import { RepoLayerPrimitiveSpec } from "../domain/models/charter/repo-layer-primitive.specification.js";
 import { ValidCharterNameSpec } from "../domain/models/charter/valid-charter-name.specification.js";
 import {
   ClaimedIdFault,
   EmptyTokenFault,
   ExpiredSignInFault,
+  HeldCharterNameFault,
   InsecureEndpointFault,
   NotSignedInFault,
   PrimitiveChangedFault,
   ReadOnlyCharterFault,
   ReadOnlyPrimitiveFault,
   ReservedCharterNameFault,
+  UnfinishedCharterUpdateFault,
   UnknownEvalSuiteFault,
   UnknownIdFault,
   UnknownKindFault,
   UnknownSignInAddressFault,
   UnknownTestSuiteFault,
-  UnknownVendorFault,
   UnnamedCharterFault,
   UnsupportedSignInMethodFault,
 } from "../domain/models/charter.fault.js";
 import { CatalogueFactory } from "../domain/models/charter-output/catalogue.factory.js";
 import type { McpOrigin } from "../domain/models/charter-output/mcp-origin.js";
+import { type CharterInstall, CharterInstallRequest } from "../domain/models/charter-source/charter-install.js";
+import type { CharterSource } from "../domain/models/charter-source/charter-source.js";
+import { CharterSourceOriginFactory } from "../domain/models/charter-source/charter-source-origin.factory.js";
 import { EvalRootFactory } from "../domain/models/eval/eval-root.factory.js";
 import type { EvalRoot } from "../domain/models/eval/eval-root.js";
 import { EvalSuiteFactory } from "../domain/models/eval/eval-suite.factory.js";
@@ -49,16 +55,9 @@ import { TestRootFactory } from "../domain/models/test/test-root.factory.js";
 import type { TestRoot } from "../domain/models/test/test-root.js";
 import { TestSuiteFactory } from "../domain/models/test/test-suite.factory.js";
 import { TestSuite } from "../domain/models/test/test-suite.js";
-import { type CharterInstall, CharterInstallRequest } from "../domain/models/vendor/charter-install.js";
-import { VendorSourceOriginFactory } from "../domain/models/vendor/vendor-source-origin.factory.js";
 import { CharterInstallService } from "../domain/services/charter-install.service.js";
 import { TestSuiteService } from "../domain/services/test-suite.service.js";
-import type {
-  AuthoringSettings,
-  ForAuthoringCharter,
-  McpOriginAddress,
-  UnparsedHeaders,
-} from "./port/in/authoring-charter.port.js";
+import type { ForAuthoringCharter, McpOriginAddress, UnparsedHeaders } from "./port/in/authoring-charter.port.js";
 import { CharterDTOs } from "./port/in/charter.dto.js";
 import type { ForAuthorizingOAuthClients } from "./port/out/authorizing-oauth-clients.port.js";
 import type { ForManagingCharter } from "./port/out/managing-charter.port.js";
@@ -66,12 +65,12 @@ import type { ForStoringCredentials } from "./port/out/storing-credentials.port.
 import type { LoadCharterService } from "./services/load-charter.service.js";
 
 /**
- * APPLICATION SERVICE — authoring the charter: its primitives, the vendors it
+ * APPLICATION SERVICE — authoring the charter: its primitives, the installed charters it
  * installs, the test files beside it, and the developer's sign-in to the mcp
  * origins it reaches (CORE-FR-222).
  *
  * What it reads and writes is what the repository keeps — the charter, the
- * vendors, the test suites — and the credentials kept on this machine; never
+ * installed charters, the test suites — and the credentials kept on this machine; never
  * what the repository configured itself with, and never the repository's
  * history. Nothing is compiled here: the build is projecting the charter's.
  *
@@ -86,14 +85,13 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   readonly #credentialsRepository: ForStoringCredentials;
   readonly #oauthAuthorizer: ForAuthorizingOAuthClients;
   readonly #clock: ForTellingTime;
-  readonly #isVendor: boolean;
 
   constructor(
     /** How the repository's charter is read off its layers. */
     loadCharterService: LoadCharterService,
-    /** How a vendor's source is chosen of, planned and put down. */
+    /** How an installed charter's source is chosen of, planned and put down. */
     /** Where the charter is kept, all of it (CORE-FR-228): its primitives
-     *  read and the repository's own written, a source read and the vendors
+     *  read and the repository's own written, a source read and the installed charters
      *  installed kept and taken away, and its test and eval cases read and
      *  written. */
     charterRepository: ForManagingCharter,
@@ -106,12 +104,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     /** Where an internal fault is logged for whoever runs the system, before
      *  the caller is answered in the system's own words (SDK-FR-017). */
     progressReporter: ForReportingProgress,
-    /** Whether the repository is a vendor's, as whoever composes this keeps
-     *  it (CORE-FR-231). */
-    authoringSettings: AuthoringSettings = {},
   ) {
     super(progressReporter);
-    this.#isVendor = authoringSettings.isVendor ?? false;
     this.#loadCharterService = loadCharterService;
     this.#charterRepository = charterRepository;
     this.#credentialsRepository = credentialsRepository;
@@ -150,7 +144,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
 
       // A warning is said and lets the run through; what refuses it is only the
       // errors among the faults (FR-005, FR-009).
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
       const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
@@ -187,7 +181,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         (await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository)).findCharterOrFault(
           charterName,
         );
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
       const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
@@ -235,7 +229,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       // Held to the shape an id is written in before anything is read: text
       // that is not one names nothing to look for (FR-014).
       const primitiveId = Primitives.idOf(id);
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
       const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
@@ -409,15 +403,15 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         return this.faultsDTOOf(new Faults(findingFaults));
       }
 
-      // What cw brings to a vendor's repository alone is held by no primitive,
-      // in that repository or any other (VENDOR-FR-028).
-      if (BuiltinPrimitives.reservedVendorIds.includes(id))
+      // `/charter-release` and its script are held by no primitive, in this
+      // repository or any other (VENDOR-FR-028).
+      if (BuiltinPrimitives.reservedIds.includes(id))
         throw new ClaimedIdFault(
-          `"${id}" is what cw brings to a repository "cw vendor init" set up alone, and no primitive holds it.`,
+          `"${id}" is what cw brings to every repository to release its charters, and no primitive holds it.`,
           "Run this again with an id of your own.",
           { internal: false },
         );
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
       const claimingPrimitive = charterRoot.primitiveById.get(id);
       if (claimingPrimitive !== undefined)
         throw new ClaimedIdFault(
@@ -430,19 +424,12 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     });
   }
 
-  async listCharters(): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault> {
+  async listCharters(isInstalledOnly = false): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.listCharters", async () => {
-      return CharterDTOs.CharterMetadataList.of({
-        charters: (await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository)).charters.map(
-          ({ name, uri, isInstalled, vendorRecord }) =>
-            CharterDTOs.CharterMetadata.of({
-              name,
-              folder: uri,
-              isInstalled,
-              ...(vendorRecord === undefined ? {} : { source: vendorRecord.source, version: vendorRecord.version }),
-            }),
-        ),
-      });
+      const charterMetadataList = await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository);
+      return this.#charterMetadataListDTOOf(
+        isInstalledOnly ? charterMetadataList.installedCharters : charterMetadataList.charters,
+      );
     });
   }
 
@@ -464,7 +451,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   async openEditablePrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.openEditablePrimitive", async () => {
       const primitive = await this.#findPrimitiveById(id);
-      if (primitive.layer.name === PrimitiveLayer.vendorName)
+      if (primitive.layer.name === PrimitiveLayer.packageName)
         throw new ReadOnlyPrimitiveFault(
           `${id} was installed, and ${primitive.uri} is read-only here.`,
           `To differ from it, run "cw add" for a primitive of your own under an id of its own.`,
@@ -563,87 +550,157 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   }
 
   /**
-   * Install the charters one source authored, as `ForAuthoringCharter`
+   * Install the charters one source holds, as `ForAuthoringCharter`
    * says, pinned to this version where one is named, left unstaged and
    * uncommitted for the user to read, whatever else is in hand (FR-042,
    * VENDOR-FR-017 to VENDOR-FR-021). The source is fetched
    * once, and what is installed is read off that one commit; nothing is
    * installed where anything it would install is refused.
    */
-  async addVendor(
+  async pullCharters(
     sourceUri: string,
+    isForked: boolean,
     version?: string,
     selectedCharterNames: readonly string[] = [],
     asName?: string,
-  ): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.addVendor", async () => {
+  ): Promise<CharterDTOs.CharterPullOutcome | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.pullCharters", async () => {
       return this.#installCharters(
         new CharterInstallRequest(
-          VendorSourceOriginFactory.create(sourceUri),
+          CharterSourceOriginFactory.create(sourceUri),
           selectedCharterNames,
           asName,
           version,
-          false,
+          isForked,
         ),
       );
     });
   }
 
-  /** The charters `addVendor` takes, written as the repository's own, with
-   *  no `cw-vendor.json` (VENDOR-FR-022). */
-  async injectVendor(
-    sourceUri: string,
-    version?: string,
-    selectedCharterNames: readonly string[] = [],
-    asName?: string,
-  ): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.injectVendor", async () => {
-      return this.#installCharters(
-        new CharterInstallRequest(
-          VendorSourceOriginFactory.create(sourceUri),
-          selectedCharterNames,
-          asName,
-          version,
-          true,
-        ),
-      );
-    });
-  }
-
-  /** Take away one charter the repository installed, whole, leaving that in the
-   *  working tree to commit, and answer where it was kept (VENDOR-FR-021). A
-   *  name no installed charter answers to is refused, changing nothing. */
-  async removeVendor(charterName: string): Promise<CharterDTOs.VendorFolder | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.removeVendor", async () => {
-      const charterMetadataList = await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository);
-      const installedCharter = charterMetadataList.installedCharters.find(({ name }) => name === charterName);
-      if (installedCharter === undefined)
-        throw new UnknownVendorFault(
-          charterMetadataList.findCharter(charterName) === undefined
-            ? `No charter is named "${charterName}".`
-            : `${charterName} is a charter this repository authored, not one it installed.`,
-          'Name a charter "cw vendor list" names among the charters installed.',
+  async addCharter(charterName: string): Promise<CharterDTOs.CharterMetadata | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.addCharter", async () => {
+      if (!new ValidCharterNameSpec().isSatisfiedBy(charterName))
+        throw new ReservedCharterNameFault(
+          `"${charterName}" cannot name a charter: a charter is named as an id is, and never as a kind is, as a folder an older layout kept, nor as root.`,
+          "Name the charter as an id is named.",
           { internal: false },
         );
-      await this.#charterRepository.removeCharter(installedCharter.name);
-      return CharterDTOs.VendorFolder.of({ folder: installedCharter.uri });
+      const charterMetadataList = await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository);
+      const heldCharter = charterMetadataList.findCharter(charterName);
+      if (heldCharter !== undefined)
+        throw new HeldCharterNameFault(
+          `A charter is already held under "${charterName}": ${heldCharter.uri}.`,
+          "Name the new charter otherwise.",
+          { internal: false },
+        );
+      await this.#charterRepository.addCharter(charterName);
+      return CharterDTOs.CharterMetadata.of({
+        name: charterName,
+        folder: this.#charterRepository.findCharterFolderUri(charterName),
+        isInstalled: false,
+      });
     });
   }
 
-  async listVendors(): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault> {
-    return this.answerWithFaultDTO("AuthoringCharter.listVendors", async () => {
-      return CharterDTOs.CharterMetadataList.of({
-        charters: (
-          await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository)
-        ).installedCharters.map(({ name, uri, vendorRecord }) =>
-          CharterDTOs.CharterMetadata.of({
-            name,
-            folder: uri,
-            isInstalled: true,
-            ...(vendorRecord === undefined ? {} : { source: vendorRecord.source, version: vendorRecord.version }),
-          }),
-        ),
-      });
+  async updateCharters(charterName: string, isAll: boolean): Promise<CharterDTOs.CharterPullOutcome | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.updateCharters", async () => {
+      const charterMetadataList = await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository);
+      const updatedCharters = charterMetadataList.findTargetChartersOrFault(
+        charterName,
+        isAll,
+        true,
+        'Run "cw charter update --charter=<name>" for one installed charter, or "cw charter update --all" for every one.',
+      );
+      const installedCharterRecords = updatedCharters.flatMap(({ name, installedCharterRecord }) =>
+        installedCharterRecord === undefined ? [] : [{ charterName: name, installedCharterRecord }],
+      );
+      // Every source fetched once, before anything is written, so one that
+      // cannot be reached changes no charter (VENDOR-FR-030).
+      const charterSourcesBySourceUri = new Map<string, readonly CharterSource[]>();
+      try {
+        const fetchedCharterRecords: {
+          charterName: string;
+          installedCharterRecord: InstalledCharterRecord;
+          charterSources: readonly CharterSource[];
+        }[] = [];
+        for (const { charterName: heldCharterName, installedCharterRecord } of installedCharterRecords) {
+          const charterSources =
+            charterSourcesBySourceUri.get(installedCharterRecord.source) ??
+            (await this.#charterRepository.fetchCharterSources(
+              CharterSourceOriginFactory.create(installedCharterRecord.source),
+            ));
+          charterSourcesBySourceUri.set(installedCharterRecord.source, charterSources);
+          fetchedCharterRecords.push({ charterName: heldCharterName, installedCharterRecord, charterSources });
+        }
+        const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
+        // Pulled again as installed, never forked (VENDOR-FR-030).
+        const isForked = false;
+        const charterInstallLists = fetchedCharterRecords.map(
+          ({ charterName: heldCharterName, installedCharterRecord, charterSources }) =>
+            CharterInstallService.planCharterInstalls(
+              charterSources,
+              new CharterInstallRequest(
+                CharterSourceOriginFactory.create(installedCharterRecord.source),
+                [installedCharterRecord.charterName],
+                heldCharterName === installedCharterRecord.charterName ? undefined : heldCharterName,
+                undefined,
+                isForked,
+              ),
+              charterMetadataList,
+              charterRoot,
+              installedCharterRecords.map(({ charterName: updatedCharterName }) => updatedCharterName),
+            ),
+        );
+        CharterInstallService.assertDistinctIds(charterInstallLists);
+        // Written one source after another: one that fails after another was
+        // written says which charters were (VENDOR-FR-030).
+        const writtenCharterNames: string[] = [];
+        for (const charterInstalls of charterInstallLists) {
+          try {
+            await this.#charterRepository.storeCharters(charterInstalls);
+          } catch (raisedValue) {
+            // Only the person's own fault is said with what was written; the
+            // system's is answered as any internal fault is (SDK-FR-017).
+            const updatedCharterNames = new Set(writtenCharterNames);
+            if (updatedCharterNames.size === 0 || !(raisedValue instanceof DomainFault) || raisedValue.internal)
+              throw raisedValue;
+            throw new UnfinishedCharterUpdateFault(
+              `${raisedValue.message} ${[...updatedCharterNames].join(", ")} ${updatedCharterNames.size === 1 ? "was" : "were"} updated before it stopped.`,
+              raisedValue.fix,
+              { internal: false, cause: raisedValue },
+            );
+          }
+          writtenCharterNames.push(...charterInstalls.map((charterInstall) => charterInstall.charterName));
+        }
+        // A charter several plans fill, as one two charters include, said once,
+        // as it was written last.
+        return this.#charterPullOutcomeDTOOf([
+          ...new Map(
+            charterInstallLists.flat().map((charterInstall) => [charterInstall.charterName, charterInstall] as const),
+          ).values(),
+        ]);
+      } finally {
+        for (const charterSources of charterSourcesBySourceUri.values())
+          await this.#charterRepository.removeFetchedSources(charterSources);
+      }
+    });
+  }
+
+  async removeCharters(
+    charterName: string,
+    isAll: boolean,
+    isInstalledOnly: boolean,
+  ): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault> {
+    return this.answerWithFaultDTO("AuthoringCharter.removeCharters", async () => {
+      const charterMetadataList = await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository);
+      const removedCharters = charterMetadataList.findTargetChartersOrFault(
+        charterName,
+        isAll,
+        isInstalledOnly,
+        'Run "cw charter remove --charter=<name>" for one charter, or "cw charter remove --all" for every one.',
+      );
+      for (const { name } of removedCharters) await this.#charterRepository.removeCharter(name);
+      return this.#charterMetadataListDTOOf(removedCharters);
     });
   }
 
@@ -879,7 +936,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         (await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository)).findCharterOrFault(
           charterName,
         );
-      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
+      const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
       // A warning is said and lets the run through; what refuses it is only the
       // errors among the faults (FR-005).
       const charterErrorFaultsByFile = charterRoot.allFaultsByFiles.filterErrors();
@@ -914,9 +971,8 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
 
   async setUpCharter(): Promise<CharterDTOs.CharterLayout | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.setUpCharter", async () => {
-      // A folder per kind, and one each for the tests, the eval cases and the
-      // vendors, which a filesystem only keeps once there is a file in it
-      // (FR-001, CORE-FR-224).
+      // The charter root, holding no charter, which a filesystem only keeps
+      // once there is a file in it (FR-001, VENDOR-FR-013).
       await this.#charterRepository.createCharter();
       return CharterDTOs.CharterLayout.of({ charterUri: this.#charterRepository.findCharterUri() });
     });
@@ -996,7 +1052,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    *  raises it: there is no file it is wrong with. */
   async #findPrimitiveById(id: string): Promise<Primitive> {
     const primitiveId = Primitives.idOf(id);
-    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
+    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
     const primitive = charterRoot.primitiveById.get(primitiveId);
     if (primitive === undefined)
       throw new UnknownIdFault(`This charter holds no "${id}".`, 'Run "cw list --min" to see every id it does hold.', {
@@ -1137,7 +1193,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    * would never be listed for the sign-in that lets it build.
    */
   async #loadSignInAddresses(): Promise<readonly Pick<McpOrigin, "address" | "endpoint" | "ids" | "auth">[]> {
-    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor);
+    const charterRoot = await this.#loadCharterService.loadCharterRoot(this.#charterRepository);
     const signInAddressByAddress = new Map<
       string,
       { endpoint?: string; ids: Set<string>; auth: Set<McpAuthMethodName> }
@@ -1242,40 +1298,57 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   /** One source fetched, every charter it gives planned and every refusal
    *  raised before anything is written, then stored; and what each charter
    *  filled holds (VENDOR-FR-017 to VENDOR-FR-022). */
-  async #installCharters(charterInstallRequest: CharterInstallRequest): Promise<CharterDTOs.VendorAddOutcome> {
-    const vendorSource = await this.#charterRepository.fetchVendorSource(
-      charterInstallRequest.vendorSourceOrigin,
+  async #installCharters(charterInstallRequest: CharterInstallRequest): Promise<CharterDTOs.CharterPullOutcome> {
+    const charterSources = await this.#charterRepository.fetchCharterSources(
+      charterInstallRequest.charterSourceOrigin,
       charterInstallRequest.version,
     );
     try {
       const [charterMetadataList, charterRoot] = await Promise.all([
         this.#loadCharterService.loadCharterMetadataList(this.#charterRepository),
-        this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor),
+        this.#loadCharterService.loadCharterRoot(this.#charterRepository),
       ]);
       const charterInstalls = CharterInstallService.planCharterInstalls(
-        vendorSource,
+        charterSources,
         charterInstallRequest,
         charterMetadataList,
         charterRoot,
       );
-      await this.#charterRepository.storeCharters(vendorSource, charterInstalls);
-      return this.#vendorAddOutcomeDTOOf(charterInstalls);
+      await this.#charterRepository.storeCharters(charterInstalls);
+      return this.#charterPullOutcomeDTOOf(charterInstalls);
     } finally {
-      await this.#charterRepository.removeFetchedSource(vendorSource);
+      await this.#charterRepository.removeFetchedSources(charterSources);
     }
+  }
+
+  /** These charters as they are held: each by its name and folder, an
+   *  installed one with its source and version (VENDOR-FR-021). */
+  #charterMetadataListDTOOf(charterMetadatas: readonly CharterMetadata[]): CharterDTOs.CharterMetadataList {
+    return CharterDTOs.CharterMetadataList.of({
+      charters: charterMetadatas.map(({ name, uri, isInstalled, installedCharterRecord }) =>
+        CharterDTOs.CharterMetadata.of({
+          name,
+          folder: uri,
+          isInstalled,
+          ...(installedCharterRecord === undefined
+            ? {}
+            : { source: installedCharterRecord.source, version: installedCharterRecord.version }),
+        }),
+      ),
+    });
   }
 
   /** What installing one source came to: each charter it filled, and the
    *  primitives installed there (VENDOR-FR-017). */
-  #vendorAddOutcomeDTOOf(charterInstalls: readonly CharterInstall[]): CharterDTOs.VendorAddOutcome {
-    return CharterDTOs.VendorAddOutcome.of(
-      charterInstalls.map(({ charterName, sourceCharter }) => ({
+  #charterPullOutcomeDTOOf(charterInstalls: readonly CharterInstall[]): CharterDTOs.CharterPullOutcome {
+    return CharterDTOs.CharterPullOutcome.of(
+      charterInstalls.map(({ charterName, charterSource }) => ({
         folder: this.#charterRepository.findCharterFolderUri(charterName),
-        primitives: sourceCharter.rawPrimitives.map((rawPrimitive) =>
-          CharterDTOs.VendorPrimitive.of({
+        primitives: charterSource.rawPrimitives.map((rawPrimitive) =>
+          CharterDTOs.PulledPrimitive.of({
             kind: rawPrimitive.kind,
             id: rawPrimitive.id,
-            description: sourceCharter.descriptionOf(rawPrimitive),
+            description: charterSource.descriptionOf(rawPrimitive),
           }),
         ),
       })),

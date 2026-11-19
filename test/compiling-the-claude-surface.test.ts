@@ -45,9 +45,9 @@ const putDown = async (files: Readonly<Record<string, string>>, agents: readonly
 const projected = async (files: Readonly<Record<string, string>>) =>
   Object.fromEntries(Object.entries(await putDown(files)).filter(([path]) => path.startsWith(".claude/")));
 
-/** Where the skill the engine brings lands on this host: every charter holds
- *  it, so every projection has it (FR-021). */
-const builtinSkill = ".claude/skills/cw-author/SKILL.md";
+/** Where the skills the engine brings land on this host: every charter holds
+ *  them, so every projection has them (FR-021, VENDOR-FR-027). */
+const builtinSkills = [".claude/skills/charter-release/SKILL.md", ".claude/skills/cw-author/SKILL.md"];
 
 /** Where the sensor the engine brings lands on this host: its settings, as a
  *  Stop hook running the engine's session counter (EVAL-FR-008). Every charter
@@ -92,7 +92,7 @@ test("each charter kind this host has a kind for lands where that host reads it 
     ".claude/agents/ship.md",
     ".claude/rules/no-any.md",
     ".claude/settings.json",
-    builtinSkill,
+    ...builtinSkills,
     ".claude/skills/refactoring/SKILL.md",
     ".claude/skills/release/SKILL.md",
   ]);
@@ -132,7 +132,7 @@ test("a guide and a skill of the same id stay two files, each named by its id al
   assert.deepEqual(Object.keys(files).sort(), [
     ".claude/rules/review.md",
     builtinSettings,
-    builtinSkill,
+    ...builtinSkills,
     ".claude/skills/review/SKILL.md",
   ]);
 });
@@ -157,7 +157,7 @@ test("the kinds this host has no kind for project nothing: they are read from th
     [at("mixin/house-style/index.md")]: primitive("mixin", "house-style", "Write plainly."),
   });
 
-  assert.deepEqual(Object.keys(files), [builtinSettings, builtinSkill]);
+  assert.deepEqual(Object.keys(files), [builtinSettings, ...builtinSkills]);
 });
 
 test("a host's document points to the compiled one, which alone carries the body (FR-018, FR-139)", async () => {
@@ -289,7 +289,7 @@ test("a sensor compiles to a hook this host runs: the event, and the command (FR
     ]),
   });
 
-  assert.deepEqual(Object.keys(files), [".claude/settings.json", builtinSkill]);
+  assert.deepEqual(Object.keys(files), [".claude/settings.json", ...builtinSkills]);
   assert.deepEqual(JSON.parse(files[".claude/settings.json"] ?? ""), {
     hooks: {
       PostToolUse: [{ hooks: [{ type: "command", command: "cw run sensor PostToolUse --agent claude" }] }],
@@ -398,7 +398,7 @@ test("every posture lands in the one file this host reads its settings from", as
 
   // Two postures, one file: what both of them ask for, read together, each thing
   // once — and in the order their files sort in (SC-007).
-  assert.deepEqual(Object.keys(files), [".claude/settings.json", builtinSkill]);
+  assert.deepEqual(Object.keys(files), [".claude/settings.json", ...builtinSkills]);
   assert.deepEqual(JSON.parse(files[".claude/settings.json"] ?? "").permissions, {
     allow: ["Read(**)"],
     deny: ["WebFetch", "Bash(rm:*)"],
@@ -429,6 +429,9 @@ test("nothing is compiled for an agent the repository did not choose", async () 
     ".cw/out/mcp-origins.json",
     ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",
+    ".cw/out/skill/charter-release/index.md",
+    ".cw/out/script/charter-release-action/index.md",
+    ".cw/out/script/charter-release-action/charter-release-action.mjs",
     ".cw/out/skill/cw-author/index.md",
     ...sessionCounterPaths,
     ".cw/out/agent/ship/index.md",

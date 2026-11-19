@@ -33,7 +33,7 @@ import { formatHeading, formatStatusLine, layAnswerRows, printFaultsByFile, repo
  */
 export class DoctorCommand implements Command {
   readonly name = "doctor";
-  readonly summary = "Check this repository: agents, charter, vendors, and what is built";
+  readonly summary = "Check this repository: agents, charter, installed charters, and what is built";
 
   async runCommand({ version, charterBuildingApp }: Context, _options: Options): Promise<Outcome> {
     const doctorOutcomeDTO = await charterBuildingApp.diagnoseCharter();

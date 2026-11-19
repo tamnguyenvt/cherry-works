@@ -18,7 +18,7 @@ them into the files **Claude Code** and **Codex** read.
   settings from the same source.
 - **Check what you ship.** Validate the charter, test which rules apply, and
   evaluate whether a real agent follows them.
-- **Share your team's practices.** Publish a vendor charter and install a
+- **Share your team's practices.** Publish a charter and install a
   versioned copy in other repositories.
 
 ## Get started
@@ -60,25 +60,27 @@ instructions, plus any supporting files.
 | Reuse instructions, documents and reasoning | `mixin`, `template`, `corpus` |
 
 Run `cw kinds` to explore them, or `cw kinds guide` for one kind's fields.
-Each id is unique across your charter, installed vendors and built-ins.
+Each id is unique across your charters, installed charters and built-ins.
 
 ## Reuse a team's charter
 
 Install a published charter, then build it for your agent:
 
 ```bash
-cw vendor add your-org/charter-baseline --ref v1.0.0
+cw charter pull your-org/charter-baseline --ref v1.0.0
 cw build
 ```
 
-A vendor copy is read-only and updated from its source. To copy the content
-into your own editable charter instead, use `cw vendor inject`.
+An installed charter is read-only, and `cw charter update` brings it up to
+date from its source. To copy the content into your own editable charter
+instead, use `cw charter pull --fork`.
 
-To publish charters of your own, run `cw vendor init` in an empty folder.
+To publish charters of your own, make one with `cw charter create <name>` and
+ask your agent `/charter-release`.
 
-→ [Create and publish a vendor source](docs/creating-a-vendor.md)
+→ [Create and publish a charter source](docs/creating-a-charter-source.md)
 
-### Recommended charter vendors
+### Recommended charters
 
 | Charter | What it gives your agent | Install |
 | --- | --- | --- |
@@ -99,13 +101,13 @@ cw eval --agent codex       # evaluate with the real agent; spends tokens
 
 - [Writing a charter](docs/writing-a-charter.md) — rules, workflows, references
   and tests.
-- [Creating a vendor source](docs/creating-a-vendor.md) — publish, install and
-  update a shared charter.
+- [Creating a charter source](docs/creating-a-charter-source.md) — publish,
+  install and update a shared charter.
 - [Using the portal](docs/use-portal.md) — edit, test and build in your browser.
 - [Extending the engine](docs/extending-the-engine.md) — call the engine from
   your own tool, and hand it adapters of your own.
 - [Reference](docs/reference.md) — commands, host mappings, evaluations,
-  context costs, vendor sources, MCP configuration, and
+  context costs, charter sources, MCP configuration, and
   [the engine as a library](docs/reference.md#the-engine-as-a-library) to
   `import` from `cherry-works`.
 - [Development](docs/reference.md#development) — build from source, run checks

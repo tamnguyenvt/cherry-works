@@ -8,7 +8,7 @@ import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory
 import { authoringCharterOf } from "./use-cases-of.js";
 
 const root = new URL("file:///repo/.cw/charter/team/primitive/");
-const vendored = new URL("file:///repo/.cw/charter/acme/primitive/");
+const installed = new URL("file:///repo/.cw/charter/acme/primitive/");
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   [
@@ -28,8 +28,8 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 const charter = {
   [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
   [new URL("sensor/lint/index.md", root).href]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
-  ["file:///repo/.cw/charter/acme/cw-vendor.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
-  [new URL("guide/small-diffs/index.md", vendored).href]: primitive("guide", "small-diffs"),
+  ["file:///repo/.cw/charter/acme/cw-package.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
+  [new URL("guide/small-diffs/index.md", installed).href]: primitive("guide", "small-diffs"),
 };
 
 const fullListOf = async (files: Readonly<Record<string, string>>, matching?: string) => {
@@ -49,12 +49,14 @@ test("every primitive of every layer is listed by id, each under the layer it ar
   assert.deepEqual(
     answer.data.primitives.map(({ data: { id, layerName } }) => [id, layerName]),
     [
+      ["charter-release", "builtin"],
+      ["charter-release-action", "builtin"],
       ["cw-author", "builtin"],
       ["cw-session-tokens-counter", "builtin"],
       ["cw-session-tokens-counter-on-stop", "builtin"],
       ["lint", "repo"],
       ["no-any", "repo"],
-      ["small-diffs", "vendor"],
+      ["small-diffs", "package"],
     ],
   );
 });
@@ -71,7 +73,7 @@ test("each primitive carries every header it declared, the ones the catalogue do
 test("a word keeps only the primitives mentioning it, in a header value as much as in a description (FR-114, CORE Story 5 scenario 3, CORE Story 55 scenario 11)", async () => {
   assert.deepEqual(idsIn(await fullListOf(charter, "posttooluse")), ["lint"]);
   assert.deepEqual(idsIn(await fullListOf(charter, "About small")), ["small-diffs"]);
-  assert.deepEqual(idsIn(await fullListOf(charter, "vendor")), ["small-diffs"]);
+  assert.deepEqual(idsIn(await fullListOf(charter, "package")), ["small-diffs"]);
 });
 
 test("a word is found in the line saying when a primitive's kind comes up (CORE Story 5 scenario 3, CORE Story 55 scenario 11)", async () => {

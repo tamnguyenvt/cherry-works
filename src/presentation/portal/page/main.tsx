@@ -4,17 +4,17 @@ import { createRoot } from "react-dom/client";
 import { CharterListing } from "./components/charter-listing.component.js";
 import { CharterSearch } from "./components/charter-search.component.js";
 import { DialogProvider, useDialog } from "./components/dialogs.component.js";
+import { InstalledCharters } from "./components/installed-charters.component.js";
 import { MainContextListing } from "./components/main-context-listing.component.js";
 import { TestSuites } from "./components/test-suites.component.js";
 import { Button } from "./components/ui/button.js";
 import { Toaster } from "./components/ui/sonner.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs.js";
-import { VendorSources } from "./components/vendor-sources.component.js";
 
 /** The tabs of plan §12.5, in the order the mockup draws them. */
 const TABS = [
   ["repo", "Repo Charter"],
-  ["vendor", "Vendor"],
+  ["package", "Installed"],
   ["test", "Test"],
   ["context", "Context"],
 ] as const;
@@ -51,7 +51,7 @@ function Portal() {
         <div className="ml-auto flex w-full max-w-[460px]">
           <CharterSearch
             onPick={({ data: { id, kind, layerName } }) => {
-              setShownTabValue(layerName === "vendor" ? "vendor" : "repo");
+              setShownTabValue(layerName === "package" ? "package" : "repo");
               setShownKind(kind);
               openDialog("primitive", { id });
             }}
@@ -87,17 +87,17 @@ function Portal() {
           {/* A tab's view is mounted when the tab is shown and gone when
               another is, so each asks for the charter again when it comes back
               (FR-110). The repository's tab holds what the engine brings beside
-              what was authored here; the vendor's is read-only (FR-112), beside
+              what was authored here; an installed charter's is read-only (FR-112), beside
               the sources it was installed from (FR-122). */}
           <TabsContent value="repo" className={SHEET_CLASS_NAME}>
             <CharterListing layerNames={["repo", "builtin"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
           <TabsContent
-            value="vendor"
+            value="package"
             className={`${SHEET_CLASS_NAME} grid items-start gap-4 md:has-[>section]:grid-cols-[210px_minmax(0,1fr)]`}
           >
-            <VendorSources />
-            <CharterListing layerNames={["vendor"]} kind={shownKind} onKindChange={setShownKind} />
+            <InstalledCharters />
+            <CharterListing layerNames={["package"]} kind={shownKind} onKindChange={setShownKind} />
           </TabsContent>
           <TabsContent value="test" className={SHEET_CLASS_NAME}>
             <TestSuites />

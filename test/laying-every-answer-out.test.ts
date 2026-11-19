@@ -301,7 +301,7 @@ test("an answer written to a file, or with NO_COLOR set, is laid out as at a ter
 
 /** The headings the layout adds over a part of an answer that had none: every
  *  other line of an answer says what it said before this story. */
-const LAYOUT_HEADINGS: readonly string[] = ["Kinds", "Installed charters", "To fix, by file"];
+const LAYOUT_HEADINGS: readonly string[] = ["Kinds", "Charters", "To fix, by file"];
 
 /** `cw list`'s heading per kind, in place of "Primitives" (CORE Story 72). */
 const KIND_HEADINGS: readonly string[] = Primitives.kinds.map((kindName) =>

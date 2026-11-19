@@ -69,7 +69,7 @@ test("installed globally, cw is on the path and its help lists every command (CO
   const helpRun = spawnSync("cw", ["--help"], { env: { ...process.env, PATH: installedPath() }, encoding: "utf8" });
 
   assert.equal(helpRun.status, 0, helpRun.stderr);
-  // A group lists its subcommands on its own line: `cw vendor  add, inject, …`;
+  // A group lists its subcommands on its own line: `cw charter  create, pull, …`;
   // the running section lists each `cw run` command on a line of its own.
   const helpLines = helpRun.stdout.split("\n");
   for (const command of COMMANDS) {

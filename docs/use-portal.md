@@ -1,7 +1,7 @@
 # Using the portal
 
 The portal lets you manage a repository's charter in your browser: write
-primitives, inspect vendors, run charter tests and preview a build. Changes
+primitives, inspect installed charters, run charter tests and preview a build. Changes
 are saved to the same files the CLI uses.
 
 ## Open the portal
@@ -34,12 +34,12 @@ Press **Ctrl+C** in the terminal to stop the server.
 | Tab | Use it to |
 |---|---|
 | **Repo Charter** | Create and edit your repository's primitives |
-| **Vendor** | Install charters from sources and inspect their read-only primitives |
+| **Installed** | Install charters from sources and inspect their read-only primitives |
 | **Test** | Edit test files and run their cases |
 | **Context** | See how much charter context each agent the repository chose loads |
 
 The header also has search, **Build** and **Doctor**. Search finds primitives
-across the repository, vendor and built-in layers.
+across the repository, installed and built-in layers.
 
 ## Write or edit a primitive
 
@@ -71,11 +71,11 @@ before changing a rule that other instructions depend on.
 
 ![Explaining a primitive and its references](images/portal-explain.png)
 
-Vendor and built-in primitives can be inspected but are read-only.
+Installed and built-in primitives can be inspected but are read-only.
 
-## Manage vendor sources
+## Manage installed charters
 
-Open **Vendor**, then click **Add vendor source**:
+Open **Installed**, then click **Add charter source**:
 
 1. Enter the source's git address, such as
    `git@github.com:your-org/charter-baseline.git`.
@@ -89,9 +89,10 @@ an installed charter, use its **Remove** button, then build again. Removal leave
 in the working tree for you to commit, whatever else you have in hand.
 
 The form provides source and version fields. Use the CLI when you need
-`--charter` or `--as`, or `cw vendor inject` to create your
-own editable copy. See [vendor sources](reference.md#vendor-sources) and
-[Creating a vendor source](creating-a-vendor.md).
+`--charter` or `--as`, `cw charter update` to pull the newest version, or
+`cw charter pull --fork` to create your own editable copy. See
+[charter sources](reference.md#charter-sources) and
+[Creating a charter source](creating-a-charter-source.md).
 
 ## Run charter tests
 

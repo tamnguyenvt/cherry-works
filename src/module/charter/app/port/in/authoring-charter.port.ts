@@ -14,7 +14,7 @@ export type { LayerName } from "../../../domain/models/primitive/primitive-layer
 /** The names of the three layers a primitive may come from. */
 export const BUILTIN_LAYER_NAME = PrimitiveLayer.BUILTIN.name;
 export const REPO_LAYER_NAME = PrimitiveLayer.REPO.name;
-export const VENDOR_LAYER_NAME = PrimitiveLayer.vendorName;
+export const PACKAGE_LAYER_NAME = PrimitiveLayer.packageName;
 
 /** What one primitive's author answered, under the header each answer fills
  *  in: a line, or the entries of a list — not yet read by the kind's schema,
@@ -30,24 +30,15 @@ export interface McpOriginAddress {
   readonly mcpId: string;
 }
 
-/** What a repository configured itself with that its charter is read by,
- *  handed by whoever composes it, which keeps it (CORE-FR-231). */
-export interface AuthoringSettings {
-  /** Whether `cw vendor init` set the repository up, so its charter holds
-   *  `/vendor-release` and its script, as its build lays them
-   *  (VENDOR-FR-027). */
-  readonly isVendor?: boolean;
-}
-
 /**
- * DRIVER PORT — charter authoring: its primitives, the vendors it
+ * DRIVER PORT — charter authoring: its primitives, the installed charters it
  * installs, the test and eval cases written beside it, testing it, and the mcp
  * origins it reaches, signed in to (CORE-FR-222). Runtime asks it, through
  * this port alone, for a token to an mcp origin (CORE-FR-229).
  *
  * What is authored is what a repository keeps, so nothing here reads what the
  * repository configured itself with, and nothing needs it to be under version
- * control: a vendor's source is fetched, and nothing of the repository's own
+ * control: an installed charter's source is fetched, and nothing of the repository's own
  * history is asked. Its settings are the build's.
  *
  * Every answer is a DTO, told apart from the others it may be by its `type`: a
@@ -192,9 +183,11 @@ export interface ForAuthoringCharter {
 
   /**
    * Every charter the charter root holds, authored or installed, with where an
-   * installed one came from (VENDOR-FR-009, VENDOR-FR-021). Reads and says.
+   * installed one came from, or the installed ones alone with
+   * `isInstalledOnly`, sorted by name (VENDOR-FR-009, VENDOR-FR-021). Reads
+   * and says.
    */
-  listCharters(): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
+  listCharters(isInstalledOnly?: boolean): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
 
   /**
    * One primitive as the charter read it — its headers, its body, the file
@@ -219,7 +212,7 @@ export interface ForAuthoringCharter {
    * One repository primitive's headers and body written over, its kind, id and
    * file kept (FR-075).
    *
-   * Refused, as a fault, with nothing written for a vendored or builtin primitive, naming
+   * Refused, as a fault, with nothing written for an installed or builtin primitive, naming
    * where it came from (FR-077), and for a primitive that, read again, no
    * longer has the hash it was opened at, `openedHash`, naming the file
    * (FR-078). Answers the kind will not take come back as the faults `addPrimitive`
@@ -236,15 +229,15 @@ export interface ForAuthoringCharter {
   /**
    * One repository primitive's file taken away, and nothing else (FR-076):
    * what still names it is reported dangling by the next validation. Refused, as a fault, for
-   * a vendored or builtin primitive, as a rewrite is (FR-077). What comes back
+   * an installed or builtin primitive, as a rewrite is (FR-077). What comes back
    * is the primitive that was removed. Nothing is compiled or committed
    * (FR-079).
    */
   removePrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
 
   /**
-   * Install the charters one source authored, pinned to this version where
-   * one is named (FR-023, FR-027).
+   * Pull the charters one source holds, pinned to this version where
+   * one is named (FR-023, FR-027, VENDOR-FR-017).
    *
    * The source is passed on as it was written: which transport it names and
    * whether the credentials for it are there is version control's business, and
@@ -257,50 +250,59 @@ export interface ForAuthoringCharter {
    * (CORE-FR-205). What it installs is left unstaged for the user to read and
    * commit, whatever else is in hand.
    *
-   * What is taken is every charter the source authored where
-   * `selectedCharterNames` names none, else the charters named; every charter
-   * of the source a charter taken
-   * names an id of comes with it, each copied whole, its test and eval cases
-   * included, beside a `cw-vendor.json` naming the charter in the source, the
-   * source and the version, or its own where the source installed it
-   * (VENDOR-FR-017 to VENDOR-FR-019). `asName` installs the one charter named under it; a name already held by a
+   * What is taken is every charter the source holds, authored or installed
+   * there alike, where `selectedCharterNames` names none, else the charters
+   * named; every charter of the source a charter taken names an id of comes
+   * with it, each copied whole, its test and eval cases included, beside a
+   * `cw-package.json` written here naming the charter in the source, the
+   * source and the version, never the source's own (VENDOR-FR-017 to
+   * VENDOR-FR-019). `asName` installs the one charter named under it; a name already held by a
    * charter installed from the same source is replaced whole, and one held
    * otherwise is refused (VENDOR-FR-020).
    *
-   * What it answers is each charter it filled, and the primitives installed
+   * With `isForked`, the same charters are copied in with no
+   * `cw-package.json`, the repository's own from then on; a charter name or an
+   * id already held is refused naming both, with nothing written
+   * (VENDOR-FR-022).
+   *
+   * What it answers is each charter it filled, and the primitives pulled
    * there.
    */
-  addVendor(
+  pullCharters(
     sourceUri: string,
+    isForked: boolean,
     version?: string,
     selectedCharterNames?: readonly string[],
     asName?: string,
-  ): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
+  ): Promise<CharterDTOs.CharterPullOutcome | FaultDTOs.Fault>;
 
-  /** The charters `addVendor` would install, copied in with no
-   *  `cw-vendor.json`, the repository's own from then on; a charter name or an
-   *  id already held is refused naming both, with nothing written
-   *  (VENDOR-FR-022). */
-  injectVendor(
-    sourceUri: string,
-    version?: string,
-    selectedCharterNames?: readonly string[],
-    asName?: string,
-  ): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
+  /** An empty charter of this name made, the repository's own; a name a
+   *  charter already holds, or one no charter may take, is refused, nothing
+   *  written (VENDOR-FR-029). */
+  addCharter(charterName: string): Promise<CharterDTOs.CharterMetadata | FaultDTOs.Fault>;
 
   /**
-   * Take one installed charter away whole, named as it is held, and answer its
-   * folder (VENDOR-FR-021). Left gone in the working tree for the user to
-   * commit. A name no charter installed answers to — one the repository
-   * authored among them — is refused, changing nothing.
+   * The installed charter of this name, or every installed charter with
+   * `isAll`, none named as `""`, pulled again from the source its `cw-package.json` names, at
+   * the newest version, as `pullCharters` naming no version pulls it
+   * (VENDOR-FR-030). Every source is fetched before anything is written: one
+   * that cannot be reached is refused naming it, and no charter changes. An
+   * authored charter named is refused, and so is a name with `isAll`, or
+   * neither (VENDOR-FR-030).
    */
-  removeVendor(charterName: string): Promise<CharterDTOs.VendorFolder | FaultDTOs.Fault>;
+  updateCharters(charterName: string, isAll: boolean): Promise<CharterDTOs.CharterPullOutcome | FaultDTOs.Fault>;
 
-  /**
-   * Every charter this repository installed, with the source and the version
-   * its `cw-vendor.json` names, sorted by name (VENDOR-FR-021).
-   */
-  listVendors(): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
+  /** The charter of this name, or every charter held with `isAll`, none
+   *  named as `""`, authored or installed, or installed alone with
+   *  `isInstalledOnly`, taken away whole, asking nothing; a name no charter
+   *  is held under, an authored one with `isInstalledOnly`, a name with
+   *  `isAll`, or neither, is refused, changing nothing (VENDOR-FR-031,
+   *  CORE-FR-123). */
+  removeCharters(
+    charterName: string,
+    isAll: boolean,
+    isInstalledOnly: boolean,
+  ): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
 
   /**
    * Every test file under `.cw/charter/test/`, run or not: its name, its text, and its

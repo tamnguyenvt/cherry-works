@@ -12,10 +12,10 @@ import { chipsOf, columnOf, rowsOf, shownKindOf } from "./listing-in-the-browser
 import { buildingCharterOf } from "./use-cases-of.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/team/primitive/").href;
-const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/charter/acme/primitive/").href;
+const installedAt = (path: string) => new URL(path, "file:///repo/.cw/charter/acme/primitive/").href;
 /** What makes `acme` a charter this repository installed (VENDOR-FR-010). */
-const vendorRecordFile = {
-  ["file:///repo/.cw/charter/acme/cw-vendor.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
+const installedCharterRecordFile = {
+  ["file:///repo/.cw/charter/acme/cw-package.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
 };
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
@@ -53,7 +53,7 @@ test("every kind the charter knows has a chip, carrying how many primitives of i
     // with what the repository authored.
     assert.deepEqual(
       await chipsOf(page),
-      Primitives.kinds.map((kind, index) => [kind, ["1", "1", "1", "0", "0", "0", "1", "1", "0", "1", "0"][index]]),
+      Primitives.kinds.map((kind, index) => [kind, ["1", "1", "2", "0", "0", "0", "1", "1", "0", "2", "0"][index]]),
     );
   });
 });
@@ -111,7 +111,7 @@ test("the charter is read again when the tab is shown again, so a file written m
     await rowsOf(page).waitFor();
 
     files.writeFile(new URL(at("guide/no-casts/index.md")), primitive("guide", "no-casts", ['globs: ["src/**/*.ts"]']));
-    await page.getByRole("tab", { name: "Vendor" }).click();
+    await page.getByRole("tab", { name: "Installed" }).click();
     await page.getByRole("tab", { name: "Repo Charter" }).click();
     await rowsOf(page).nth(1).waitFor();
 
@@ -134,12 +134,12 @@ test("a charter the engine will not read shows every fault under its file in pla
 });
 
 test("a charter with two files claiming one id shows, in place of a listing, every fault cw doctor gives, under the same files, and nothing else (CORE Story 5 scenario 5, FR-115, CORE Story 55 scenario 8)", async () => {
-  // One id in the repository and in a vendor: a collision, filed where it
+  // One id in the repository and in an installed charter: a collision, filed where it
   // has to change.
   const collidingCharter = {
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
-    ...vendorRecordFile,
-    [vendoredAt("guide/no-any/index.md")]: primitive("guide", "no-any"),
+    ...installedCharterRecordFile,
+    [installedAt("guide/no-any/index.md")]: primitive("guide", "no-any"),
   };
   await inTheBrowser(collidingCharter, async (page, files) => {
     await page.getByRole("alert").waitFor();
@@ -180,10 +180,10 @@ test("a charter with two files claiming one id shows, in place of a listing, eve
   });
 });
 
-test("the repository's tab lists what was authored here and what the engine brings, and nothing vendored (FR-112)", async () => {
-  const vendored = vendoredAt("guide/small-diffs/index.md");
+test("the repository's tab lists what was authored here and what the engine brings, and nothing installed (FR-112)", async () => {
+  const installed = installedAt("guide/small-diffs/index.md");
   await inTheBrowser(
-    { ...charter, ...vendorRecordFile, [vendored]: primitive("guide", "small-diffs") },
+    { ...charter, ...installedCharterRecordFile, [installed]: primitive("guide", "small-diffs") },
     async (page) => {
       await rowsOf(page).waitFor();
 
@@ -191,6 +191,7 @@ test("the repository's tab lists what was authored here and what the engine brin
       await page.getByRole("radio", { name: "skill" }).click();
       await page.getByRole("table", { name: "skill primitives" }).waitFor();
       assert.deepEqual(await columnOf(page, 2).locator("div:nth-child(2)").allInnerTexts(), [
+        "(built into cw)/skill/charter-release/index.md",
         "(built into cw)/skill/cw-author/index.md",
       ]);
     },

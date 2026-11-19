@@ -77,7 +77,7 @@
     },
     {
       "id": "CORE Story 8",
-      "title": "Install, see and remove vendor sources",
+      "title": "Install, see and remove charters from a charter source",
       "dependsOn": [
         "CORE Story 5",
         "CORE Story 2"
@@ -357,7 +357,7 @@
     },
     {
       "id": "CORE Story 34",
-      "title": "Inject a charter into the repository as its own",
+      "title": "Fork a charter into the repository as its own",
       "dependsOn": [
         "CORE Story 33"
       ],
@@ -445,7 +445,7 @@
     },
     {
       "id": "CORE Story 37",
-      "title": "Install and remove a vendor source in any folder",
+      "title": "Pull and remove a charter in any folder",
       "dependsOn": [
         "CORE Story 8"
       ],
@@ -870,7 +870,7 @@
     },
     {
       "id": "VENDOR Story 2",
-      "title": "Release the charters with `/vendor-release`",
+      "title": "Release the charters with `/charter-release`",
       "dependsOn": [
         "VENDOR Story 1",
         "VENDOR Story 3"
@@ -891,6 +891,40 @@
       ],
       "evidence": {
         "summary": "Thirteen quality passes, each finding repaired; graded A with the user's bypasses; pnpm test twice 1120/1120, typecheck, lint:deps, specs check and the script's 70 tests clean",
+        "date": "2026-11-19"
+      }
+    },
+    {
+      "id": "VENDOR Story 6",
+      "title": "Pull a charter from its source with `cw charter pull`",
+      "dependsOn": [
+        "VENDOR Story 3"
+      ],
+      "evidence": {
+        "summary": "pnpm test 1129/1129 (lint:deps, biome, build), typecheck and specs check clean; by hand in a git repository: cw charter pull of every charter a source holds, --charter naming one the source installed, --charter=nope refused naming what it holds, --fork, and cw vendor refused",
+        "date": "2026-11-19"
+      }
+    },
+    {
+      "id": "VENDOR Story 7",
+      "title": "See, create, update and remove charters with `cw charter`",
+      "dependsOn": [
+        "VENDOR Story 6"
+      ],
+      "evidence": {
+        "summary": "pnpm test 1129/1129, typecheck and specs check clean; by hand: cw charter list, create, update --all and remove, and the portal's /charters routes, DELETE of an authored charter refused with 422",
+        "date": "2026-11-19"
+      }
+    },
+    {
+      "id": "VENDOR Story 8",
+      "title": "Release charters from any repository with `/charter-release`",
+      "dependsOn": [
+        "VENDOR Story 2",
+        "VENDOR Story 6"
+      ],
+      "evidence": {
+        "summary": "pnpm test 1129/1129, typecheck and specs check clean; a build lays /charter-release from the built-in charter, its release action script tested, the docs' commands run",
         "date": "2026-11-19"
       }
     }

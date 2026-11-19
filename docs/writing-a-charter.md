@@ -84,7 +84,7 @@ Its path follows `.cw/charter/<charter>/primitive/<kind>/<id>/index.md`.
 - Choose an id that describes one rule or workflow, such as `explain-failures`.
   Use lowercase letters, digits and inner hyphens; `/` can group segments, as
   in `review/security`. The whole id is at most 40 characters.
-- An id is unique across every kind and layer, including vendors and built-ins.
+- An id is unique across every kind and layer, including installed charters and built-ins.
   A second primitive with the same id is a collision, not an override.
 - Write a description that tells the agent when the primitive is relevant.
 - For a guide about a subset of files, set `globs`. Leave them out only when
@@ -155,21 +155,22 @@ and which tests name it.
 
 ## Start from a published charter
 
-To copy a charter a source authored into a charter of your own:
+To copy a charter a source holds into a charter of your own:
 
 ```bash
-cw vendor inject acme/charters --charter=baseline --ref=v1.2.0
+cw charter pull acme/charters --fork --charter=baseline --ref=v1.2.0
 ```
 
-The source and ref must exist. Injection selects charters as `cw vendor add`
+The source and ref must exist. Forking selects charters as `cw charter pull`
 does, the charters the one named includes coming with it, but writes them
-whole into `.cw/charter/<charter>/` with no `cw-vendor.json`: they are yours
-to edit and delete. Injection leaves the files unstaged and does not build. A
-charter name or an id you already hold refuses the whole injection before
+whole into `.cw/charter/<charter>/` with no `cw-package.json`: they are yours
+to edit and delete. Forking leaves the files unstaged and does not build. A
+charter name or an id you already hold refuses the whole fork before
 anything is written.
 
-Use `cw vendor add` instead when you want a read-only installed charter, brought
-up to date by adding its source again. See [vendor sources](reference.md#vendor-sources).
+Use `cw charter pull` without `--fork` instead when you want a read-only
+installed charter, brought up to date with `cw charter update`. See
+[charter sources](reference.md#charter-sources).
 
 ## Test the scope, then inspect the output
 

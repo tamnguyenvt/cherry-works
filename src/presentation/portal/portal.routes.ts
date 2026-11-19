@@ -1,6 +1,11 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
-import { CharterDTOs, type ForAuthoringCharter, type ForBuildingCharter } from "#module/charter/module.js";
+import {
+  CharterDTOs,
+  type ForAuthoringCharter,
+  type ForBuildingCharter,
+  PACKAGE_LAYER_NAME,
+} from "#module/charter/module.js";
 import { FaultDTOs, INTERNAL_FAULT_DTO, z } from "#module/shared/module.js";
 import { WorkspaceDTOs } from "#module/workspace/module.js";
 
@@ -68,7 +73,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "get",
-        path: "/charter/root/faults",
+        path: "/faults",
         responses: {
           200: describeJsonContent(FaultDTOs.FaultsByFile, "Everything wrong with the charter, under each file"),
           422: describeJsonContent(FaultDTOs.Fault, "What stopped the charter being read"),
@@ -84,7 +89,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "get",
-        path: "/charter/root/primitives",
+        path: "/primitives",
         request: { query: z.object({ matching: z.string().optional() }) },
         responses: {
           200: describeJsonContent(
@@ -110,7 +115,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "get",
-        path: "/charter/{charterName}/primitives",
+        path: "/charters/{charterName}/primitives",
         request: {
           params: z.object({ charterName: z.string() }),
           query: z.object({ matching: z.string().optional() }),
@@ -139,7 +144,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "get",
-        path: "/charter/root/primitives/{id}/explanation",
+        path: "/primitives/{id}/explanation",
         request: { params: z.object({ id: z.string() }) },
         responses: {
           200: describeJsonContent(CharterDTOs.ExplanationOutcome, "What the engine says of one primitive"),
@@ -160,17 +165,22 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "get",
-        path: "/charter/root/charters",
+        path: "/charters",
+        request: {
+          query: z.object({ layer: z.literal(PACKAGE_LAYER_NAME).optional() }),
+        },
         responses: {
           200: describeJsonContent(
             CharterDTOs.CharterMetadataList,
-            "Every charter of the charter root, authored or installed",
+            "Every charter of the charter root, authored or installed; with `layer=package`, the installed ones alone, with their source and version",
           ),
           422: describeJsonContent(FaultDTOs.Fault, "The charters do not read"),
         },
       }),
       async (requestContext) => {
-        const chartersDTO = await charterAuthoringApp.listCharters();
+        const chartersDTO = await charterAuthoringApp.listCharters(
+          requestContext.req.valid("query").layer === PACKAGE_LAYER_NAME,
+        );
         return chartersDTO.type === "CharterMetadataList"
           ? requestContext.json(chartersDTO, 200)
           : requestContext.json(chartersDTO, 422);
@@ -179,7 +189,57 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "post",
-        path: "/charter/{charterName}/primitives",
+        path: "/charters",
+        request: {
+          body: describeJsonContent(
+            z.object({ source: z.string(), version: z.string().optional() }),
+            "A source as git fetches it, and the version to pin it to where one is named",
+          ),
+        },
+        responses: {
+          204: {
+            description: "The source is pulled — every charter it holds, with what each includes — left unstaged",
+          },
+          422: describeJsonContent(
+            FaultDTOs.Fault,
+            "No git on the machine, a source authoring no charter, a name already held, or what git refused",
+          ),
+        },
+      }),
+      async (requestContext) => {
+        const { source, version } = requestContext.req.valid("json");
+        const charterPullOutcomeDTO = await charterAuthoringApp.pullCharters(source, false, version);
+        if (charterPullOutcomeDTO.type === "Fault") return requestContext.json(charterPullOutcomeDTO, 422);
+        return requestContext.body(null, 204);
+      },
+    )
+    .openapi(
+      createRoute({
+        method: "delete",
+        path: "/charters/{charterName}",
+        request: { params: z.object({ charterName: z.string() }) },
+        responses: {
+          204: { description: "The charter is gone, left uncommitted in the working tree" },
+          422: describeJsonContent(
+            FaultDTOs.Fault,
+            "A name no charter is held under, a charter this repository authored, or one that cannot be taken away",
+          ),
+        },
+      }),
+      async (requestContext) => {
+        const chartersDTO = await charterAuthoringApp.removeCharters(
+          requestContext.req.valid("param").charterName,
+          false,
+          true,
+        );
+        if (chartersDTO.type === "Fault") return requestContext.json(chartersDTO, 422);
+        return requestContext.body(null, 204);
+      },
+    )
+    .openapi(
+      createRoute({
+        method: "post",
+        path: "/charters/{charterName}/primitives",
         request: {
           params: z.object({ charterName: z.string() }),
           body: describeJsonContent(
@@ -209,14 +269,14 @@ export function buildPortalRoutes(
         const primitiveDTO = await charterAuthoringApp.addPrimitive(kind, id, charterName, headers, body);
         if (primitiveDTO.type !== "Primitive") return requestContext.json(primitiveDTO, 422);
         return requestContext.json(primitiveDTO, 201, {
-          Location: `/api/charter/root/primitives/${encodeURIComponent(primitiveDTO.data.id)}`,
+          Location: `/api/primitives/${encodeURIComponent(primitiveDTO.data.id)}`,
         });
       },
     )
     .openapi(
       createRoute({
         method: "get",
-        path: "/charter/root/primitives/{id}",
+        path: "/primitives/{id}",
         request: { params: z.object({ id: z.string() }) },
         responses: {
           200: {
@@ -237,7 +297,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "put",
-        path: "/charter/root/primitives/{id}",
+        path: "/primitives/{id}",
         request: {
           params: z.object({ id: z.string() }),
           headers: z.object({ "if-match": z.string().optional() }),
@@ -276,7 +336,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "delete",
-        path: "/charter/root/primitives/{id}",
+        path: "/primitives/{id}",
         request: { params: z.object({ id: z.string() }) },
         responses: {
           204: { description: "The file is gone" },
@@ -328,7 +388,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "get",
-        path: "/charter/root/build",
+        path: "/build",
         responses: {
           200: describeJsonContent(
             CharterDTOs.ProjectionPlanSummary,
@@ -347,7 +407,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "post",
-        path: "/charter/root/build",
+        path: "/build",
         responses: {
           200: describeJsonContent(CharterDTOs.ProjectionPlanSummary, "What the build wrote and deleted"),
           422: describeJsonContent(
@@ -366,7 +426,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "get",
-        path: "/charter/root/health",
+        path: "/doctor",
         responses: {
           200: describeJsonContent(CharterDTOs.DoctorOutcome, "The four answers cw doctor gives, and every fault"),
           422: describeJsonContent(FaultDTOs.Fault, "What stopped the questions being asked"),
@@ -382,7 +442,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "get",
-        path: "/charter/root/context",
+        path: "/contexts",
         responses: {
           200: describeJsonContent(
             CharterDTOs.MainContexts,
@@ -460,14 +520,14 @@ export function buildPortalRoutes(
         );
         if (testSuiteNameDTO.type === "Fault") return requestContext.json(testSuiteNameDTO, 422);
         return requestContext.json(testSuiteNameDTO, 201, {
-          Location: `/api/test-suites/${testSuiteNameDTO.data.charterName}/${testSuiteNameDTO.data.name}`,
+          Location: `/api/charters/${testSuiteNameDTO.data.charterName}/test-suites/${testSuiteNameDTO.data.name}`,
         });
       },
     )
     .openapi(
       createRoute({
         method: "put",
-        path: "/test-suites/{charterName}/{name}",
+        path: "/charters/{charterName}/test-suites/{name}",
         request: {
           params: z.object({ charterName: z.string(), name: z.string() }),
           body: describeJsonContent(
@@ -497,7 +557,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "delete",
-        path: "/test-suites/{charterName}/{name}",
+        path: "/charters/{charterName}/test-suites/{name}",
         request: { params: z.object({ charterName: z.string(), name: z.string() }) },
         responses: {
           204: { description: "The test file is gone" },
@@ -514,7 +574,7 @@ export function buildPortalRoutes(
     .openapi(
       createRoute({
         method: "get",
-        path: "/test-suites/outcome",
+        path: "/test-suites/run",
         responses: {
           200: describeJsonContent(CharterDTOs.TestRunReport, "How every case came out"),
           422: describeJsonContent(
@@ -528,71 +588,6 @@ export function buildPortalRoutes(
         return testRunReportDTO.type === "TestRunReport"
           ? requestContext.json(testRunReportDTO, 200)
           : requestContext.json(testRunReportDTO, 422);
-      },
-    )
-    .openapi(
-      createRoute({
-        method: "get",
-        path: "/vendors",
-        responses: {
-          200: describeJsonContent(
-            CharterDTOs.CharterMetadataList,
-            "Every charter installed, with its source and version",
-          ),
-          422: describeJsonContent(FaultDTOs.Fault, "What stopped the installed charters being listed"),
-        },
-      }),
-      async (requestContext) => {
-        const chartersDTO = await charterAuthoringApp.listVendors();
-        return chartersDTO.type === "CharterMetadataList"
-          ? requestContext.json(chartersDTO, 200)
-          : requestContext.json(chartersDTO, 422);
-      },
-    )
-    .openapi(
-      createRoute({
-        method: "post",
-        path: "/vendors",
-        request: {
-          body: describeJsonContent(
-            z.object({ source: z.string(), version: z.string().optional() }),
-            "A source as git fetches it, and the version to pin it to where one is named",
-          ),
-        },
-        responses: {
-          204: {
-            description: "The source is installed — every charter it authored, with what each includes — left unstaged",
-          },
-          422: describeJsonContent(
-            FaultDTOs.Fault,
-            "No git on the machine, a source authoring no charter, a name already held, or what git refused",
-          ),
-        },
-      }),
-      async (requestContext) => {
-        const { source, version } = requestContext.req.valid("json");
-        const vendorAddOutcomeDTO = await charterAuthoringApp.addVendor(source, version);
-        if (vendorAddOutcomeDTO.type === "Fault") return requestContext.json(vendorAddOutcomeDTO, 422);
-        return requestContext.body(null, 204);
-      },
-    )
-    .openapi(
-      createRoute({
-        method: "delete",
-        path: "/vendors/{name}",
-        request: { params: z.object({ name: z.string() }) },
-        responses: {
-          204: { description: "The charter is gone, left uncommitted in the working tree" },
-          422: describeJsonContent(
-            FaultDTOs.Fault,
-            "A name no installed charter answers to, or a charter that cannot be taken away",
-          ),
-        },
-      }),
-      async (requestContext) => {
-        const vendorFolderDTO = await charterAuthoringApp.removeVendor(requestContext.req.valid("param").name);
-        if (vendorFolderDTO.type === "Fault") return requestContext.json(vendorFolderDTO, 422);
-        return requestContext.body(null, 204);
       },
     );
 }

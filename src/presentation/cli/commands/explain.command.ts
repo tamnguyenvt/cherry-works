@@ -1,4 +1,4 @@
-import { BUILTIN_LAYER_NAME, type LayerName, REPO_LAYER_NAME, VENDOR_LAYER_NAME } from "#module/charter/module.js";
+import { BUILTIN_LAYER_NAME, type LayerName, PACKAGE_LAYER_NAME, REPO_LAYER_NAME } from "#module/charter/module.js";
 import {
   type Command,
   type Context,
@@ -20,11 +20,11 @@ const OPTIONS = {
 } as const satisfies OptionSpec;
 
 /** Which layer a file arrived in, said rather than spelled: the three are what
- *  a charter is made of, and the path above already names the vendor it was
+ *  a charter is made of, and the path above already names the charter it was
  *  installed as (FR-023, FR-017). */
 const SAID_BY_LAYER: Readonly<Record<LayerName, string>> = {
   [REPO_LAYER_NAME]: "authored in this repository",
-  [VENDOR_LAYER_NAME]: "installed from a vendor",
+  [PACKAGE_LAYER_NAME]: "installed from a charter source",
   [BUILTIN_LAYER_NAME]: "built into cw, and not authored in this repository",
 };
 

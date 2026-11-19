@@ -84,9 +84,11 @@ The main host differences:
 | `cw test [--charter]` | Run every case in each charter's `.cw/charter/<charter>/test/`, or one charter's, against the charter |
 | `cw eval [--charter]` | Put every case in each charter's `.cw/charter/<charter>/eval/`, or one charter's, to the real agent under promptfoo |
 | `cw suite add \| edit \| remove [--charter]` | Manage test files, in the charter named or the one this repository authored |
-| `cw vendor init` | Set a charter vendor repository up in an empty folder, to publish charters from |
-| `cw vendor add <source> [--ref] [--charter] [--as] \| remove \| list` | Install or bring up to date, remove or list the charters a source authored, each with the charters it includes |
-| `cw vendor inject <source> [--ref] [--charter] [--as]` | Copy a source's charters into charters of your own, to edit |
+| `cw charter` | List every charter this repository holds, authored or installed, an installed one with its source and version |
+| `cw charter create <name>` | Make an empty charter of your own |
+| `cw charter pull <source> [--ref] [--charter] [--as] [--fork]` | Install, or bring up to date, the charters a source holds, each with the charters it includes; with `--fork`, copy them in as your own, to edit |
+| `cw charter update --charter=<name> \| --all` | Pull installed charters again from their source, at the newest version |
+| `cw charter remove --charter=<name> \| --all` | Delete a charter, authored or installed, or every one |
 | `cw mcp auth [id] [--status]` | Sign in, as yourself, to every mcp origin the charter reaches, or to one again |
 
 Every command above takes `--json`: its standard output is then one JSON
@@ -136,9 +138,9 @@ your browser. The page has four tabs:
   | Editing a primitive | Explaining it |
   |---|---|
   | ![The form for guide:no-any, with its globs, rationale, mixins and markdown body](images/portal-edit.png) | ![The explanation of guide:no-any: when it comes up, what it pulls in and the test that names it](images/portal-explain.png) |
-- **Vendor** lists the charters you installed and their primitives, which
-  are read-only. You can add a source by its git address and a version, or
-  remove an installed charter.
+- **Installed** lists the charters you installed and their primitives, which
+  are read-only. You can add a charter source by its git address and a
+  version, or remove an installed charter.
 - **Test** lists the test files in each charter's `.cw/charter/<charter>/test/`. You can create, edit and delete
   them, and run every case to see which pass and why a failing one failed.
 
@@ -319,19 +321,19 @@ Both limits are set in `.cw/settings.json`; leave one out to keep its default:
 Each is a whole number above 0. Run `cw build` after changing either, then
 `cw doctor` to check.
 
-## Vendor sources
+## Charter sources
 
 To publish rules or skills for other repositories to install, follow
-[Creating a vendor source](creating-a-vendor.md).
+[Creating a charter source](creating-a-charter-source.md).
 
 ```bash
-cw vendor add git@github.com:your-org/charter-baseline.git --ref v1.2.0
+cw charter pull git@github.com:your-org/charter-baseline.git --ref v1.2.0
 ```
 
-A vendor source is a git repository publishing the charters it authored, each
+A charter source is a git repository publishing the charters it holds, each
 under `.cw/charter/<charter>/`: author them, test them, and push. Each charter
 installed is copied whole — its primitives, its test cases and its eval cases —
-into your own `.cw/charter/<charter>/`, beside a `cw-vendor.json` naming the
+into your own `.cw/charter/<charter>/`, beside a `cw-package.json` naming the
 charter, the source and the version installed: the ref you chose, or the
 commit fetched where you chose none. It is left unstaged for you to read and
 commit, whatever else you have in hand. What a build of the source writes is
@@ -339,31 +341,35 @@ never installed. An installed charter is read-only; to differ from one, write
 your own primitive under a new id.
 
 ```bash
-cw vendor add git@github.com:acme/charters.git                       # every charter it authored
-cw vendor add git@github.com:acme/charters.git --charter=baseline --charter=sdd
-cw vendor add git@github.com:acme/charters.git --charter=sdd --as=acme-sdd
+cw charter pull git@github.com:acme/charters.git                       # every charter it holds
+cw charter pull git@github.com:acme/charters.git --charter=baseline --charter=sdd
+cw charter pull git@github.com:acme/charters.git --charter=sdd --as=acme-sdd
 ```
 
-`--charter` names a charter the source authored, and can be given more than
-once; with none, every charter it authored is installed. A charter the source
-names that does not exist stops the install and names the charters it does
-author. Every other charter of the source that a charter installed names an id
-of — in its body, its mixins, its rationale, an agent's tools or a sensor's
-run — is installed with it. A charter the source itself installed comes only
-where one installed includes it, copied as it stands; no other source is
-reached. `--as` holds the one charter named under another name.
+`--charter` names a charter the source holds, and can be given more than
+once; with none, every charter it holds is installed. A charter named that the
+source does not hold stops the install and names the charters it does hold.
+Every other charter of the source that a charter installed names an id of — in
+its body, its mixins, its rationale, an agent's tools or a sensor's run — is
+installed with it. A charter the source itself installed is taken as one it
+authored, copied as it stands, its `cw-package.json` written here naming the
+source you pulled; no other source is reached. `--as` holds the one charter named under another name.
 
-Run `cw vendor add` again to bring an installed charter up to date: a name
-held by a charter installed from the same source is replaced whole; one held
-by a charter you authored, or installed from another source, is refused,
-suggesting `--as`. `cw vendor list` names each installed charter with its
-source and version, and `cw vendor remove <charter>` takes one away, leaving
-it gone in the working tree for you to commit. Adding needs git on the
-machine to reach a source, and neither needs the folder to be a repository.
-Run `cw build` after either.
+Run `cw charter pull` again to bring an installed charter to the version you
+name: a name held by a charter installed from the same source is replaced
+whole; one held by a charter you authored, or installed from another source,
+is refused, suggesting `--as`. `cw charter update --charter=<name>`, or
+`--all`, pulls installed charters again from the source each
+`cw-package.json` names, at the newest version; every source is fetched
+before anything is written, so one that cannot be reached changes nothing.
+`cw charter` names each charter, an installed one with its source and
+version, and `cw charter remove --charter=<name>`, or `--all`, takes charters
+away, authored or installed, leaving them gone in the working tree for you to
+commit. Pulling needs git on the machine to reach a source, and none of these
+needs the folder to be a repository. Run `cw build` after each.
 
-`cw vendor inject` copies the charters named, and those they include, as
-`cw vendor add` does, but writes no `cw-vendor.json`: from then on they are
+`cw charter pull --fork` copies the charters named, and those they include, as
+`cw charter pull` does, but writes no `cw-package.json`: from then on they are
 your own, to edit and delete. A charter name or an id you already hold is
 refused, naming both, and nothing is written.
 
@@ -440,7 +446,7 @@ import type { EngineAdapters, ForReadingFiles, ForWritingFiles, ForReportingProg
 `composeApplications(repoFolder, homeFolder, adapters?)` composes the
 workspace and the engine as `cw` does. It answers `workspaceApp`, which keeps
 a repository's settings, and `engineApp`, whose applications are authoring
-the charter (`charterAuthoringApp`: its primitives, vendors, test files, and
+the charter (`charterAuthoringApp`: its primitives, installed charters, test files, and
 signing in to its mcp origins), building it for each agent provider
 (`charterBuildingApp`: the build, the health check, the context, the sensors
 and serving the mcp origins) and running it (`charterRuntimeApp`: the tests,

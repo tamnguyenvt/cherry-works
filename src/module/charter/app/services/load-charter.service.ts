@@ -13,20 +13,19 @@ export class LoadCharterService {
    * and what the engine brings. Each primitive comes by its layer, kind and
    * id; where it is kept is the repository's to know (FR-023, CORE-FR-213),
    * and so is where an author edits it (SDK-FR-020). A charter whose
-   * `cw-vendor.json` does not read refuses the whole charter, naming the file
-   * (VENDOR-FR-010). What the engine brings to a repository `cw vendor init`
-   * set up alone comes where `isVendor` says it is one (VENDOR-FR-027).
+   * `cw-package.json` does not read refuses the whole charter, naming the file
+   * (VENDOR-FR-010). What the engine brings comes to every repository,
+   * `/charter-release` and its script among it (VENDOR-FR-027).
    */
   async loadCharterRoot(
     charterRepository: Pick<ForManagingCharter, "loadCharter" | "loadCharterMetadata" | "describeCharterPlace">,
-    isVendor = false,
   ): Promise<CharterRoot> {
     const [rawPrimitives] = await Promise.all([
       charterRepository.loadCharter(),
       this.loadCharterMetadataList(charterRepository),
     ]);
     return CharterRootFactory.create(
-      [...new BuiltinPrimitives(isVendor).primitives, ...rawPrimitives],
+      [...new BuiltinPrimitives().primitives, ...rawPrimitives],
       charterRepository.describeCharterPlace(),
     );
   }

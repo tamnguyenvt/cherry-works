@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
-import { CharterInstall } from "../src/module/charter/domain/models/vendor/charter-install.js";
-import { SourceCharter, VendorSource } from "../src/module/charter/domain/models/vendor/vendor-source.js";
-import { VendorSourceOrigin } from "../src/module/charter/domain/models/vendor/vendor-source-origin.value-object.js";
+import { CharterInstall } from "../src/module/charter/domain/models/charter-source/charter-install.js";
+import { CharterSource } from "../src/module/charter/domain/models/charter-source/charter-source.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { AdapterFault } from "../src/module/shared/domain/models/adapter.fault.js";
@@ -83,16 +82,20 @@ test("a path starting at / or stepping out with .. reaches nothing outside the r
   }
   const charterRepository = new FileCharterRepository(fileReaders, fileOutput, new InMemorySources(fileReaders));
   await assert.rejects(
-    charterRepository.storeCharters(
-      new VendorSource(new VendorSourceOrigin("team/source"), "commit", "0123456789abcdef0123456789abcdef01234567", []),
-      [
-        new CharterInstall(
-          "../../../..",
-          new SourceCharter("published", false, [], ".cw/charter/published", []),
-          undefined,
+    charterRepository.storeCharters([
+      new CharterInstall(
+        "../../../..",
+        new CharterSource(
+          "commit",
+          "0123456789abcdef0123456789abcdef01234567",
+          "published",
+          [],
+          ".cw/charter/published",
+          [],
         ),
-      ],
-    ),
+        undefined,
+      ),
+    ]),
     /would land outside/,
   );
   assert.equal(await fileReaders.readFile(new URL("file:///outside.md")), "Not the repository's.");

@@ -44,6 +44,13 @@ const sessionCounterPaths = [
   ".cw/out/script/cw-session-tokens-counter/sessionTokensCounter.mjs",
   ".cw/out/sensor/cw-session-tokens-counter-on-stop/index.md",
 ];
+/** What `/charter-release` and its script put under the workspace on every
+ *  build, before the engine's other primitives (VENDOR-FR-027). */
+const charterReleasePaths = [
+  ".cw/out/skill/charter-release/index.md",
+  ".cw/out/script/charter-release-action/index.md",
+  ".cw/out/script/charter-release-action/charter-release-action.mjs",
+];
 /** The Stop hook the engine's own sensor puts in Claude's settings: the one
  *  command for that signal, whatever sensors it runs (CORE-FR-175). */
 const sessionCounterStopHook = { hooks: [{ type: "command", command: "cw run sensor Stop --agent claude" }] };
@@ -107,12 +114,14 @@ test("a build puts down everything one reading of the charter produces (FR-021, 
     ".cw/out/mcp-origins.json",
     ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",
+    ...charterReleasePaths,
     ".cw/out/skill/cw-author/index.md",
     ...sessionCounterPaths,
     ".cw/out/guide/no-any/index.md",
     "CLAUDE.md",
     ".claude/settings.json",
     ".mcp.json",
+    ".claude/skills/charter-release/SKILL.md",
     ".claude/skills/cw-author/SKILL.md",
     ".claude/rules/no-any.md",
   ]);
@@ -979,6 +988,7 @@ test("a charter naming no agent still gets the surface every reader shares (FR-0
     ".cw/out/mcp-origins.json",
     ".cw/out/sensors.json",
     ".cw/out/CHARTER.md",
+    ...charterReleasePaths,
     ".cw/out/skill/cw-author/index.md",
     ...sessionCounterPaths,
     ".cw/out/guide/no-any/index.md",

@@ -68,7 +68,7 @@ async function repository(t: { after(fn: () => unknown): void }): Promise<string
   return repo;
 }
 
-/** One source installed into one repository the way vendoring does it: the
+/** One source installed into one repository the way installing does it: the
  *  source fetched at this version, and its charter folder checked out at
  *  `.cw/charter/base`. Which folders those are is the hexagon's to decide; the
  *  adapter is told. */
@@ -79,8 +79,8 @@ async function installed(source: string, repo: string, version?: string): Promis
   await gitSources.removeFetchedCommit(fetchedCommit);
 }
 
-/** What the vendored guide says in this repository, read off disk. */
-const vendored = (repo: string) =>
+/** What the installed guide says in this repository, read off disk. */
+const installedGuideTextOf = (repo: string) =>
   readFile(join(repo, ".cw", "charter", "base", "primitive", "guide", "no-any", "index.md"), "utf8");
 
 test("a source's charter folder checked out at its commit lands where it is told, left unstaged and uncommitted (CORE Story 2 scenario 1)", async (t) => {
@@ -89,7 +89,7 @@ test("a source's charter folder checked out at its commit lands where it is told
 
   await installed(source, repo);
 
-  assert.match(await vendored(repo), /Reject any\./);
+  assert.match(await installedGuideTextOf(repo), /Reject any\./);
   await assert.rejects(readFile(join(repo, ".cw", "charter", "base", "README.md")), "only the folder asked for lands");
   const { stdout: headAfter } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
   assert.equal(headAfter, headBefore, "nothing is committed");
@@ -105,7 +105,7 @@ test("installing with work in hand leaves that work as it was, staged or not", a
 
   await installed(source, repo);
 
-  assert.match(await vendored(repo), /Reject any\./);
+  assert.match(await installedGuideTextOf(repo), /Reject any\./);
   const { stdout: stagedFiles } = await run("git", ["diff", "--cached", "--name-only"], { cwd: repo });
   assert.equal(stagedFiles.trim(), "staged.md");
   assert.equal(await readFile(join(repo, "README.md"), "utf8"), "two\n");
@@ -116,7 +116,7 @@ test("a version names what is fetched", async (t) => {
 
   await installed(source, repo, "v1.0.0");
 
-  assert.match(await vendored(repo), /Reject any\./);
+  assert.match(await installedGuideTextOf(repo), /Reject any\./);
 });
 
 test("installing a source already there brings it up to date (CORE Story 2 scenario 3)", async (t) => {
@@ -132,14 +132,14 @@ test("installing a source already there brings it up to date (CORE Story 2 scena
 
   await installed(source, repo);
 
-  assert.match(await vendored(repo), /Reject it everywhere\./);
+  assert.match(await installedGuideTextOf(repo), /Reject it everywhere\./);
 });
 
 test("installing again what is already committed there leaves nothing in hand", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   await installed(source, repo);
   await run("git", ["add", "."], { cwd: repo });
-  await commit(repo, "vendored");
+  await commit(repo, "installed");
 
   await installed(source, repo);
 
@@ -156,7 +156,7 @@ test("a version the source has not got is refused in git's own words, fetching n
 
   assert.ok(fetchFault instanceof AdapterFault, String(fetchFault));
   assert.match(fetchFault.fix, /tag or branch/);
-  await assert.rejects(vendored(repo));
+  await assert.rejects(installedGuideTextOf(repo));
 });
 
 test("a source refused with a user and password in its address names it without them, git's words whole in the cause (SDK-FR-018)", async (t) => {
@@ -187,7 +187,7 @@ test("a source lands in a folder with no version control, and no .git is left th
 
   await installed(source, folder);
 
-  assert.match(await vendored(folder), /Reject any\./);
+  assert.match(await installedGuideTextOf(folder), /Reject any\./);
   await assert.rejects(readFile(join(folder, ".git", "HEAD")), "the folder stays no repository");
 });
 
@@ -211,7 +211,7 @@ test("a source is reached under the repository's own git config (CORE Story 37 s
   t.after(() => gitSources.removeFetchedCommit(fetchedCommit));
   await new GitSources(repoUrl).checkOutFolder(fetchedCommit, PUBLISHED_CHARTER_FOLDER, ".cw/charter/base");
 
-  assert.match(await vendored(repo), /Reject any\./);
+  assert.match(await installedGuideTextOf(repo), /Reject any\./);
   const { stdout } = await run("git", ["status", "--porcelain"], { cwd: repo });
   assert.equal(stdout.trim(), "?? .cw/");
 });
@@ -281,7 +281,7 @@ test("a machine with no git is told git is what reaches a source (CORE-FR-205)",
   assert.match(fetchFault.fix, /needs git: install it/);
 });
 
-/** Vendoring as `cw` runs it on a disk, into this folder. */
+/** Installing as `cw` runs it on a disk, into this folder. */
 const charterAuthoringIn = (folder: string) =>
   authoringCharterOf(
     new FileReaders(pathToFileURL(`${folder}/`)),
@@ -295,10 +295,12 @@ test("in a folder with no version control, a source is installed, then removed w
   await writeFile(join(folder, "work.txt"), "In hand.\n");
   const charterAuthoringApp = charterAuthoringIn(folder);
 
-  const [{ folder: installedUri } = { folder: "" }] = answerOf(await charterAuthoringApp.addVendor(source)).data;
+  const [{ folder: installedUri } = { folder: "" }] = answerOf(
+    await charterAuthoringApp.pullCharters(source, false),
+  ).data;
   const installedFolder = relative(folder, fileURLToPath(installedUri));
-  const vendorName = basename(installedFolder);
-  await charterAuthoringApp.removeVendor(vendorName);
+  const installedCharterName = basename(installedFolder);
+  await charterAuthoringApp.removeCharters(installedCharterName, false, false);
 
   await assert.rejects(stat(join(folder, installedFolder)), "its folder is gone");
   assert.equal(await readFile(join(folder, "work.txt"), "utf8"), "In hand.\n");
@@ -307,16 +309,18 @@ test("in a folder with no version control, a source is installed, then removed w
 test("in a repository with work in hand, removing commits nothing and leaves that work as it was (CORE Story 37 scenario 2, CORE Story 2 scenario 3)", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   const charterAuthoringApp = charterAuthoringIn(repo);
-  const [{ folder: installedUri } = { folder: "" }] = answerOf(await charterAuthoringApp.addVendor(source)).data;
+  const [{ folder: installedUri } = { folder: "" }] = answerOf(
+    await charterAuthoringApp.pullCharters(source, false),
+  ).data;
   const installedFolder = relative(repo, fileURLToPath(installedUri));
   await run("git", ["add", "."], { cwd: repo });
-  await commit(repo, "vendored");
+  await commit(repo, "installed");
   await writeFile(join(repo, "README.md"), "two\n");
   await writeFile(join(repo, "staged.md"), "staged\n");
   await run("git", ["add", "staged.md"], { cwd: repo });
   const { stdout: headBefore } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
 
-  await charterAuthoringApp.removeVendor(basename(installedFolder));
+  await charterAuthoringApp.removeCharters(basename(installedFolder), false, false);
 
   const { stdout: headAfter } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
   assert.equal(headAfter, headBefore, "nothing is committed");
@@ -329,12 +333,14 @@ test("in a repository with work in hand, removing commits nothing and leaves tha
 test("an installed charter's folder goes whole, whatever it held, and never what is above it (CORE-FR-204, VENDOR Story 3 scenario 21)", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
   const charterAuthoringApp = charterAuthoringIn(folder);
-  const [{ folder: installedUri } = { folder: "" }] = answerOf(await charterAuthoringApp.addVendor(source)).data;
+  const [{ folder: installedUri } = { folder: "" }] = answerOf(
+    await charterAuthoringApp.pullCharters(source, false),
+  ).data;
   const installedFolder = relative(folder, fileURLToPath(installedUri));
   await symlink("nowhere", join(folder, installedFolder, "dangling"));
   await mkdir(join(folder, installedFolder, "empty"));
 
-  await charterAuthoringApp.removeVendor(basename(installedFolder));
+  await charterAuthoringApp.removeCharters(basename(installedFolder), false, false);
 
   await assert.rejects(stat(join(folder, installedFolder)), "the charter's folder goes");
   assert.ok((await stat(join(folder, ".cw", "charter"))).isDirectory(), "what is above it stays");
@@ -344,12 +350,14 @@ test("an installed charter's folder goes whole, whatever it held, and never what
 test("a link beside the installed charter stays (CORE-FR-204)", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
   const charterAuthoringApp = charterAuthoringIn(folder);
-  const [{ folder: installedUri } = { folder: "" }] = answerOf(await charterAuthoringApp.addVendor(source)).data;
+  const [{ folder: installedUri } = { folder: "" }] = answerOf(
+    await charterAuthoringApp.pullCharters(source, false),
+  ).data;
   const installedFolder = relative(folder, fileURLToPath(installedUri));
   const chartersFolder = join(folder, installedFolder, "..");
   await symlink("nowhere", join(chartersFolder, "link"));
 
-  await charterAuthoringApp.removeVendor(basename(installedFolder));
+  await charterAuthoringApp.removeCharters(basename(installedFolder), false, false);
 
   assert.equal(await readlink(join(chartersFolder, "link")), "nowhere");
 });
@@ -357,13 +365,15 @@ test("a link beside the installed charter stays (CORE-FR-204)", async (t) => {
 test("another charter beside the one removed stays (VENDOR Story 3 scenario 21)", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
   const charterAuthoringApp = charterAuthoringIn(folder);
-  const [{ folder: installedUri } = { folder: "" }] = answerOf(await charterAuthoringApp.addVendor(source)).data;
+  const [{ folder: installedUri } = { folder: "" }] = answerOf(
+    await charterAuthoringApp.pullCharters(source, false),
+  ).data;
   const installedFolder = relative(folder, fileURLToPath(installedUri));
   const chartersFolder = join(folder, installedFolder, "..");
   await mkdir(join(chartersFolder, "other", "guide"), { recursive: true });
   await writeFile(join(chartersFolder, "other", "README.md"), "Other.\n");
 
-  await charterAuthoringApp.removeVendor(basename(installedFolder));
+  await charterAuthoringApp.removeCharters(basename(installedFolder), false, false);
 
   assert.equal(await readFile(join(chartersFolder, "other", "README.md"), "utf8"), "Other.\n");
 });
@@ -454,26 +464,26 @@ async function publishedCharters(t: { after(fn: () => unknown): void }): Promise
 /** The folder of the guide `grilling` in the source `publishedCharters` makes. */
 const GRILLING_FOLDER = ".cw/charter/grilling/primitive/guide/grilling";
 
-test("a link a source holds carries no write out of its vendor folder (CORE-FR-044)", async (t) => {
+test("a link a source holds carries no write out of its installed charter folder (CORE-FR-044)", async (t) => {
   const [source, folder] = [await publishedCharters(t), await temporary(t, "plain")];
   await writeFile(join(folder, "CLAUDE.md"), "Mine.\n");
   await symlink("../../../../../../CLAUDE.md", join(source, GRILLING_FOLDER, "notes.md"));
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "two");
 
-  await charterAuthoringIn(folder).addVendor(source, undefined, ["grilling"]);
+  await charterAuthoringIn(folder).pullCharters(source, false, undefined, ["grilling"]);
 
   assert.equal(await readFile(join(folder, "CLAUDE.md"), "utf8"), "Mine.\n");
 });
 
-test("a link a source holds for its README carries no write out of its vendor folder (CORE-FR-044)", async (t) => {
+test("a link a source holds for its README carries no write out of its installed charter folder (CORE-FR-044)", async (t) => {
   const [source, folder] = [await published(t), await temporary(t, "plain")];
   await writeFile(join(folder, "CLAUDE.md"), "Mine.\n");
   await symlink("../../../../CLAUDE.md", join(source, PUBLISHED_CHARTER_FOLDER, "README.md"));
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "two");
 
-  await charterAuthoringIn(folder).addVendor(source);
+  await charterAuthoringIn(folder).pullCharters(source, false);
 
   assert.equal(await readFile(join(folder, "CLAUDE.md"), "utf8"), "Mine.\n");
 });
@@ -485,15 +495,18 @@ test("a link a source left on the way to a folder carries no later install throu
   await writeFile(charterFile, "Mine.\n");
   // The charter installed from this source, as an install left it, with a
   // link where its guides go.
-  const vendorFolder = join(folder, ".cw", "charter", "grilling");
-  await mkdir(join(vendorFolder, "primitive"), { recursive: true });
+  const installedCharterFolder = join(folder, ".cw", "charter", "grilling");
+  await mkdir(join(installedCharterFolder, "primitive"), { recursive: true });
   await writeFile(
-    join(vendorFolder, "cw-vendor.json"),
+    join(installedCharterFolder, "cw-package.json"),
     `${JSON.stringify({ charter: "grilling", source, version: "HEAD" })}\n`,
   );
-  await symlink("../../../..", join(vendorFolder, "primitive", "guide"));
+  await symlink("../../../..", join(installedCharterFolder, "primitive", "guide"));
 
-  assert.match(faultTextOf(await charterAuthoringIn(folder).addVendor(source, undefined, ["grilling"])), /is a link/);
+  assert.match(
+    faultTextOf(await charterAuthoringIn(folder).pullCharters(source, false, undefined, ["grilling"])),
+    /is a link/,
+  );
 
   assert.equal(await readFile(charterFile, "utf8"), "Mine.\n");
 });
@@ -507,7 +520,7 @@ test("a file a source names to climb out of a primitive's folder lands inside it
   await run("git", ["add", "."], { cwd: source });
   await commit(source, "two");
 
-  answerOf(await charterAuthoringIn(folder).injectVendor(source, undefined, ["grilling"]));
+  answerOf(await charterAuthoringIn(folder).pullCharters(source, true, undefined, ["grilling"]));
 
   assert.equal(await readFile(join(folder, "CLAUDE.md"), "utf8"), "Mine.\n");
   assert.equal(
@@ -516,15 +529,15 @@ test("a file a source names to climb out of a primitive's folder lands inside it
   );
 });
 
-test("a version the source has not got is refused when injected as vendor add refuses it, and nothing is written (CORE Story 34 scenario 6, CORE-FR-198, CORE Story 55 scenario 8)", async (t) => {
+test("a version the source has not got is refused when injected as installed charter add refuses it, and nothing is written (CORE Story 34 scenario 6, CORE-FR-198, CORE Story 55 scenario 8)", async (t) => {
   const [source, injectFolder, addFolder] = [
     await published(t),
     await temporary(t, "inject"),
     await temporary(t, "add"),
   ];
 
-  const injectRefusalText = faultTextOf(await charterAuthoringIn(injectFolder).injectVendor(source, "v9.9.9"));
-  const addRefusalText = faultTextOf(await charterAuthoringIn(addFolder).addVendor(source, "v9.9.9"));
+  const injectRefusalText = faultTextOf(await charterAuthoringIn(injectFolder).pullCharters(source, true, "v9.9.9"));
+  const addRefusalText = faultTextOf(await charterAuthoringIn(addFolder).pullCharters(source, false, "v9.9.9"));
 
   assert.match(injectRefusalText, /tag or branch/);
   assert.equal(injectRefusalText, addRefusalText.replaceAll(addFolder, injectFolder));
@@ -535,11 +548,11 @@ test("in a folder with no version control, a charter is injected as in a reposit
   const [source, folder] = [await publishedCharters(t), await temporary(t, "plain")];
   const charterAuthoringApp = charterAuthoringIn(folder);
 
-  answerOf(await charterAuthoringApp.injectVendor(source, undefined, ["grilling"]));
-  answerOf(await charterAuthoringApp.addVendor(source, undefined, ["grill"], "installed-grill"));
+  answerOf(await charterAuthoringApp.pullCharters(source, true, undefined, ["grilling"]));
+  answerOf(await charterAuthoringApp.pullCharters(source, false, undefined, ["grill"], "installed-grill"));
 
   assert.match(await readFile(join(folder, GRILLING_FOLDER, "index.md"), "utf8"), /Grill\./);
-  assert.equal(answerOf(await charterAuthoringApp.listVendors()).data.charters.length, 1);
+  assert.equal(answerOf(await charterAuthoringApp.listCharters(true)).data.charters.length, 1);
 });
 
 test("a source fetched once is read at its commit: every file it holds, and what one holds (VENDOR-FR-017)", async (t) => {

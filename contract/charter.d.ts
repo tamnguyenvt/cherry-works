@@ -129,7 +129,7 @@ declare const CharterDTOs: {
             file: z.ZodString;
             layerName: z.ZodEnum<{
                 repo: "repo";
-                vendor: "vendor";
+                package: "package";
                 builtin: "builtin";
             }>;
             headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
@@ -142,7 +142,7 @@ declare const CharterDTOs: {
             kind: string;
             description: string;
             file: string;
-            layerName: "repo" | "vendor" | "builtin";
+            layerName: "repo" | "package" | "builtin";
             headers: Record<string, string | readonly string[]>;
             body: string;
             hash: string;
@@ -153,7 +153,7 @@ declare const CharterDTOs: {
                 kind: string;
                 description: string;
                 file: string;
-                layerName: "repo" | "vendor" | "builtin";
+                layerName: "repo" | "package" | "builtin";
                 headers: Record<string, string | readonly string[]>;
                 body: string;
                 hash: string;
@@ -172,7 +172,7 @@ declare const CharterDTOs: {
                     file: z.ZodString;
                     layerName: z.ZodEnum<{
                         repo: "repo";
-                        vendor: "vendor";
+                        package: "package";
                         builtin: "builtin";
                     }>;
                     headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
@@ -185,7 +185,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -196,7 +196,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -213,7 +213,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -229,7 +229,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -1285,21 +1285,6 @@ declare const CharterDTOs: {
             };
         };
     };
-    VendorFolder: z.ZodObject<{
-        type: z.ZodLiteral<"VendorFolder">;
-        data: z.ZodObject<{
-            folder: z.ZodString;
-        }, z.core.$strip>;
-    }, z.core.$strip> & {
-        of: (dataValue: {
-            folder: string;
-        }) => {
-            type: "VendorFolder";
-            data: {
-                folder: string;
-            };
-        };
-    };
     SignInStatus: z.ZodObject<{
         type: z.ZodLiteral<"SignInStatus">;
         data: z.ZodObject<{
@@ -1471,8 +1456,8 @@ declare const CharterDTOs: {
             };
         };
     };
-    VendorPrimitive: z.ZodObject<{
-        type: z.ZodLiteral<"VendorPrimitive">;
+    PulledPrimitive: z.ZodObject<{
+        type: z.ZodLiteral<"PulledPrimitive">;
         data: z.ZodObject<{
             kind: z.ZodString;
             id: z.ZodString;
@@ -1484,7 +1469,7 @@ declare const CharterDTOs: {
             id: string;
             description: string;
         }) => {
-            type: "VendorPrimitive";
+            type: "PulledPrimitive";
             data: {
                 kind: string;
                 id: string;
@@ -2219,7 +2204,7 @@ declare const CharterDTOs: {
                     file: z.ZodString;
                     layerName: z.ZodEnum<{
                         repo: "repo";
-                        vendor: "vendor";
+                        package: "package";
                         builtin: "builtin";
                     }>;
                     headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
@@ -2232,7 +2217,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2243,7 +2228,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2260,7 +2245,7 @@ declare const CharterDTOs: {
                     file: z.ZodString;
                     layerName: z.ZodEnum<{
                         repo: "repo";
-                        vendor: "vendor";
+                        package: "package";
                         builtin: "builtin";
                     }>;
                     headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
@@ -2273,7 +2258,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2284,7 +2269,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2300,7 +2285,7 @@ declare const CharterDTOs: {
                     file: z.ZodString;
                     layerName: z.ZodEnum<{
                         repo: "repo";
-                        vendor: "vendor";
+                        package: "package";
                         builtin: "builtin";
                     }>;
                     headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
@@ -2313,7 +2298,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2324,7 +2309,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2340,7 +2325,7 @@ declare const CharterDTOs: {
                     file: z.ZodString;
                     layerName: z.ZodEnum<{
                         repo: "repo";
-                        vendor: "vendor";
+                        package: "package";
                         builtin: "builtin";
                     }>;
                     headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
@@ -2353,7 +2338,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2364,7 +2349,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2380,7 +2365,7 @@ declare const CharterDTOs: {
                     file: z.ZodString;
                     layerName: z.ZodEnum<{
                         repo: "repo";
-                        vendor: "vendor";
+                        package: "package";
                         builtin: "builtin";
                     }>;
                     headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
@@ -2393,7 +2378,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2404,7 +2389,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2420,7 +2405,7 @@ declare const CharterDTOs: {
                     file: z.ZodString;
                     layerName: z.ZodEnum<{
                         repo: "repo";
-                        vendor: "vendor";
+                        package: "package";
                         builtin: "builtin";
                     }>;
                     headers: z.ZodRecord<z.ZodString, z.ZodUnion<readonly [z.ZodString, z.ZodReadonly<z.ZodArray<z.ZodString>>]>>;
@@ -2433,7 +2418,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2444,7 +2429,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2470,7 +2455,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2484,7 +2469,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2497,7 +2482,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2510,7 +2495,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2523,7 +2508,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2540,7 +2525,7 @@ declare const CharterDTOs: {
                     kind: string;
                     description: string;
                     file: string;
-                    layerName: "repo" | "vendor" | "builtin";
+                    layerName: "repo" | "package" | "builtin";
                     headers: Record<string, string | readonly string[]>;
                     body: string;
                     hash: string;
@@ -2556,7 +2541,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2570,7 +2555,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2583,7 +2568,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2596,7 +2581,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2609,7 +2594,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2626,7 +2611,7 @@ declare const CharterDTOs: {
                         kind: string;
                         description: string;
                         file: string;
-                        layerName: "repo" | "vendor" | "builtin";
+                        layerName: "repo" | "package" | "builtin";
                         headers: Record<string, string | readonly string[]>;
                         body: string;
                         hash: string;
@@ -2635,12 +2620,12 @@ declare const CharterDTOs: {
             };
         };
     };
-    VendorAddOutcome: z.ZodObject<{
-        type: z.ZodLiteral<"VendorAddOutcome">;
+    CharterPullOutcome: z.ZodObject<{
+        type: z.ZodLiteral<"CharterPullOutcome">;
         data: z.ZodReadonly<z.ZodArray<z.ZodObject<{
             folder: z.ZodString;
             primitives: z.ZodReadonly<z.ZodArray<z.ZodObject<{
-                type: z.ZodLiteral<"VendorPrimitive">;
+                type: z.ZodLiteral<"PulledPrimitive">;
                 data: z.ZodObject<{
                     kind: z.ZodString;
                     id: z.ZodString;
@@ -2652,7 +2637,7 @@ declare const CharterDTOs: {
                     id: string;
                     description: string;
                 }) => {
-                    type: "VendorPrimitive";
+                    type: "PulledPrimitive";
                     data: {
                         kind: string;
                         id: string;
@@ -2665,7 +2650,7 @@ declare const CharterDTOs: {
         of: (dataValue: readonly {
             folder: string;
             primitives: readonly {
-                type: "VendorPrimitive";
+                type: "PulledPrimitive";
                 data: {
                     kind: string;
                     id: string;
@@ -2673,11 +2658,11 @@ declare const CharterDTOs: {
                 };
             }[];
         }[]) => {
-            type: "VendorAddOutcome";
+            type: "CharterPullOutcome";
             data: readonly {
                 folder: string;
                 primitives: readonly {
-                    type: "VendorPrimitive";
+                    type: "PulledPrimitive";
                     data: {
                         kind: string;
                         id: string;
@@ -2697,6 +2682,7 @@ declare namespace CharterDTOs {
     type CharterLayout = z.infer<typeof CharterDTOs.CharterLayout>;
     type CharterMetadata = z.infer<typeof CharterDTOs.CharterMetadata>;
     type CharterMetadataList = z.infer<typeof CharterDTOs.CharterMetadataList>;
+    type CharterPullOutcome = z.infer<typeof CharterDTOs.CharterPullOutcome>;
     type DeclaredTool = z.infer<typeof CharterDTOs.DeclaredTool>;
     type DeclaredTools = z.infer<typeof CharterDTOs.DeclaredTools>;
     type DoctorOutcome = z.infer<typeof CharterDTOs.DoctorOutcome>;
@@ -2716,6 +2702,7 @@ declare namespace CharterDTOs {
     type PrimitiveRequirements = z.infer<typeof CharterDTOs.PrimitiveRequirements>;
     type Primitives = z.infer<typeof CharterDTOs.Primitives>;
     type ProjectionPlanSummary = z.infer<typeof CharterDTOs.ProjectionPlanSummary>;
+    type PulledPrimitive = z.infer<typeof CharterDTOs.PulledPrimitive>;
     type SensorCommands = z.infer<typeof CharterDTOs.SensorCommands>;
     type ServedTool = z.infer<typeof CharterDTOs.ServedTool>;
     type ServedTools = z.infer<typeof CharterDTOs.ServedTools>;
@@ -2728,9 +2715,6 @@ declare namespace CharterDTOs {
     type TestSuite = z.infer<typeof CharterDTOs.TestSuite>;
     type TestSuiteName = z.infer<typeof CharterDTOs.TestSuiteName>;
     type TestSuites = z.infer<typeof CharterDTOs.TestSuites>;
-    type VendorAddOutcome = z.infer<typeof CharterDTOs.VendorAddOutcome>;
-    type VendorFolder = z.infer<typeof CharterDTOs.VendorFolder>;
-    type VendorPrimitive = z.infer<typeof CharterDTOs.VendorPrimitive>;
 }
 
 /** The names a layer goes by: what this repository authored itself, in a
@@ -2738,7 +2722,7 @@ declare namespace CharterDTOs {
  *  where it came from (VENDOR-FR-010); and what the running engine brings
  *  itself, supplied on every read and kept nowhere in the repository, so
  *  nothing can refresh, edit or remove it (FR-015, FR-016). */
-declare const LAYER_NAMES: readonly ["repo", "vendor", "builtin"];
+declare const LAYER_NAMES: readonly ["repo", "package", "builtin"];
 
 /** Whose layer a primitive came from, and there are only the three. It says
  *  where a primitive was written, never what it is called: one charter has one
@@ -2760,14 +2744,15 @@ declare class PrimitiveLayer<Name extends LayerName = LayerName> {
      *  FR-018). */
     static readonly BUILTIN: PrimitiveLayer<"builtin">;
     private constructor();
-    /** The name every layer the repository installed goes by. */
-    static get vendorName(): "vendor";
+    /** The name every layer the repository installed goes by, as its
+     *  `cw-package.json` makes it one (VENDOR-FR-010). */
+    static get packageName(): "package";
     /** The layer of a charter this repository authored: where a primitive is
      *  written when it is authored here (FR-039, VENDOR-FR-010). */
     static authoredLayerOf(charterName: string): PrimitiveLayer<"repo">;
     /** The layer of a charter this repository installed, read-only
      *  (VENDOR-FR-010). */
-    static installedLayerOf(charterName: string): PrimitiveLayer<"vendor">;
+    static installedLayerOf(charterName: string): PrimitiveLayer<"package">;
 }
 
 /** What one primitive's author answered, under the header each answer fills
@@ -2785,14 +2770,14 @@ interface McpOriginAddress {
 }
 
 /**
- * DRIVER PORT — charter authoring: its primitives, the vendors it
+ * DRIVER PORT — charter authoring: its primitives, the installed charters it
  * installs, the test and eval cases written beside it, testing it, and the mcp
  * origins it reaches, signed in to (CORE-FR-222). Runtime asks it, through
  * this port alone, for a token to an mcp origin (CORE-FR-229).
  *
  * What is authored is what a repository keeps, so nothing here reads what the
  * repository configured itself with, and nothing needs it to be under version
- * control: a vendor's source is fetched, and nothing of the repository's own
+ * control: an installed charter's source is fetched, and nothing of the repository's own
  * history is asked. Its settings are the build's.
  *
  * Every answer is a DTO, told apart from the others it may be by its `type`: a
@@ -2922,9 +2907,11 @@ interface ForAuthoringCharter {
     addPrimitive(kind: string, id: string, charterName: string, headers: UnparsedHeaders, body?: string): Promise<CharterDTOs.Primitive | FaultDTOs.Faults | FaultDTOs.Fault>;
     /**
      * Every charter the charter root holds, authored or installed, with where an
-     * installed one came from (VENDOR-FR-009, VENDOR-FR-021). Reads and says.
+     * installed one came from, or the installed ones alone with
+     * `isInstalledOnly`, sorted by name (VENDOR-FR-009, VENDOR-FR-021). Reads
+     * and says.
      */
-    listCharters(): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
+    listCharters(isInstalledOnly?: boolean): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
     /**
      * One primitive as the charter read it — its headers, its body, the file
      * and the layer — and the hash of it written out, what a save is made over
@@ -2946,7 +2933,7 @@ interface ForAuthoringCharter {
      * One repository primitive's headers and body written over, its kind, id and
      * file kept (FR-075).
      *
-     * Refused, as a fault, with nothing written for a vendored or builtin primitive, naming
+     * Refused, as a fault, with nothing written for an installed or builtin primitive, naming
      * where it came from (FR-077), and for a primitive that, read again, no
      * longer has the hash it was opened at, `openedHash`, naming the file
      * (FR-078). Answers the kind will not take come back as the faults `addPrimitive`
@@ -2957,14 +2944,14 @@ interface ForAuthoringCharter {
     /**
      * One repository primitive's file taken away, and nothing else (FR-076):
      * what still names it is reported dangling by the next validation. Refused, as a fault, for
-     * a vendored or builtin primitive, as a rewrite is (FR-077). What comes back
+     * an installed or builtin primitive, as a rewrite is (FR-077). What comes back
      * is the primitive that was removed. Nothing is compiled or committed
      * (FR-079).
      */
     removePrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
     /**
-     * Install the charters one source authored, pinned to this version where
-     * one is named (FR-023, FR-027).
+     * Pull the charters one source holds, pinned to this version where
+     * one is named (FR-023, FR-027, VENDOR-FR-017).
      *
      * The source is passed on as it was written: which transport it names and
      * whether the credentials for it are there is version control's business, and
@@ -2977,37 +2964,46 @@ interface ForAuthoringCharter {
      * (CORE-FR-205). What it installs is left unstaged for the user to read and
      * commit, whatever else is in hand.
      *
-     * What is taken is every charter the source authored where
-     * `selectedCharterNames` names none, else the charters named; every charter
-     * of the source a charter taken
-     * names an id of comes with it, each copied whole, its test and eval cases
-     * included, beside a `cw-vendor.json` naming the charter in the source, the
-     * source and the version, or its own where the source installed it
-     * (VENDOR-FR-017 to VENDOR-FR-019). `asName` installs the one charter named under it; a name already held by a
+     * What is taken is every charter the source holds, authored or installed
+     * there alike, where `selectedCharterNames` names none, else the charters
+     * named; every charter of the source a charter taken names an id of comes
+     * with it, each copied whole, its test and eval cases included, beside a
+     * `cw-package.json` written here naming the charter in the source, the
+     * source and the version, never the source's own (VENDOR-FR-017 to
+     * VENDOR-FR-019). `asName` installs the one charter named under it; a name already held by a
      * charter installed from the same source is replaced whole, and one held
      * otherwise is refused (VENDOR-FR-020).
      *
-     * What it answers is each charter it filled, and the primitives installed
+     * With `isForked`, the same charters are copied in with no
+     * `cw-package.json`, the repository's own from then on; a charter name or an
+     * id already held is refused naming both, with nothing written
+     * (VENDOR-FR-022).
+     *
+     * What it answers is each charter it filled, and the primitives pulled
      * there.
      */
-    addVendor(sourceUri: string, version?: string, selectedCharterNames?: readonly string[], asName?: string): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
-    /** The charters `addVendor` would install, copied in with no
-     *  `cw-vendor.json`, the repository's own from then on; a charter name or an
-     *  id already held is refused naming both, with nothing written
-     *  (VENDOR-FR-022). */
-    injectVendor(sourceUri: string, version?: string, selectedCharterNames?: readonly string[], asName?: string): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
+    pullCharters(sourceUri: string, isForked: boolean, version?: string, selectedCharterNames?: readonly string[], asName?: string): Promise<CharterDTOs.CharterPullOutcome | FaultDTOs.Fault>;
+    /** An empty charter of this name made, the repository's own; a name a
+     *  charter already holds, or one no charter may take, is refused, nothing
+     *  written (VENDOR-FR-029). */
+    addCharter(charterName: string): Promise<CharterDTOs.CharterMetadata | FaultDTOs.Fault>;
     /**
-     * Take one installed charter away whole, named as it is held, and answer its
-     * folder (VENDOR-FR-021). Left gone in the working tree for the user to
-     * commit. A name no charter installed answers to — one the repository
-     * authored among them — is refused, changing nothing.
+     * The installed charter of this name, or every installed charter with
+     * `isAll`, none named as `""`, pulled again from the source its `cw-package.json` names, at
+     * the newest version, as `pullCharters` naming no version pulls it
+     * (VENDOR-FR-030). Every source is fetched before anything is written: one
+     * that cannot be reached is refused naming it, and no charter changes. An
+     * authored charter named is refused, and so is a name with `isAll`, or
+     * neither (VENDOR-FR-030).
      */
-    removeVendor(charterName: string): Promise<CharterDTOs.VendorFolder | FaultDTOs.Fault>;
-    /**
-     * Every charter this repository installed, with the source and the version
-     * its `cw-vendor.json` names, sorted by name (VENDOR-FR-021).
-     */
-    listVendors(): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
+    updateCharters(charterName: string, isAll: boolean): Promise<CharterDTOs.CharterPullOutcome | FaultDTOs.Fault>;
+    /** The charter of this name, or every charter held with `isAll`, none
+     *  named as `""`, authored or installed, or installed alone with
+     *  `isInstalledOnly`, taken away whole, asking nothing; a name no charter
+     *  is held under, an authored one with `isInstalledOnly`, a name with
+     *  `isAll`, or neither, is refused, changing nothing (VENDOR-FR-031,
+     *  CORE-FR-123). */
+    removeCharters(charterName: string, isAll: boolean, isInstalledOnly: boolean): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
     /**
      * Every test file under `.cw/charter/test/`, run or not: its name, its text, and its
      * description and cases — or, for a file that does not read, why (FR-124).
@@ -3179,15 +3175,140 @@ interface ForAuthorizingOAuthClients {
 }
 
 /** One charter of primitives as its store keeps it, before the engine reads
- *  it: its name, the text of its `cw-vendor.json` where it holds one, and
+ *  it: its name, the text of its `cw-package.json` where it holds one, and
  *  where it and that file are kept, said back and never read
  *  (VENDOR-FR-009, VENDOR-FR-010). */
 declare class RawCharterMetadata {
     readonly name: string;
-    readonly vendorRecordText: string | undefined;
+    readonly installedCharterRecordText: string | undefined;
     readonly uri: string;
-    readonly vendorRecordUri: string;
-    constructor(name: string, vendorRecordText: string | undefined, uri: string, vendorRecordUri: string);
+    readonly installedCharterRecordUri: string;
+    constructor(name: string, installedCharterRecordText: string | undefined, uri: string, installedCharterRecordUri: string);
+}
+
+/** What a `cw-package.json` holds: the charter, the source and the version,
+ *  each a string (VENDOR-FR-010). Whatever else it holds is left unread. */
+declare const InstalledCharterRecordSchema: z.ZodObject<{
+    charter: z.ZodString;
+    source: z.ZodString;
+    version: z.ZodString;
+}, z.core.$strip>;
+
+/** Where an installed charter came from, as its `cw-package.json` says: the
+ *  charter's name in its source, the source as it was typed, and the version
+ *  installed (VENDOR-FR-010, VENDOR-FR-017). */
+declare class InstalledCharterRecord {
+    readonly charterName: string;
+    readonly source: string;
+    readonly version: string;
+    static get schema(): typeof InstalledCharterRecordSchema;
+    constructor(charterName: string, source: string, version: string);
+    /** What a `cw-package.json` holds of it. */
+    toJSON(): z.infer<typeof InstalledCharterRecordSchema>;
+}
+
+/** One file of a primitive's folder beside its `index.md`: the path it has in
+ *  that folder, and the bytes it holds, never decoded, so it is copied whole
+ *  whatever it holds (FR-168, CORE-FR-207). */
+declare class AssetFile {
+    readonly assetPath: string;
+    readonly contents: Uint8Array;
+    constructor(assetPath: string, contents: Uint8Array);
+}
+
+/** One primitive as it is handed in, raw — kept, or answered by an author —
+ *  before the engine reads it: its layer, the kind and id it is kept under, its index.md as text or as
+ *  the bytes kept, every file kept with it (FR-168), and where it is kept, in
+ *  that keeper's own scheme. The engine reads the text and checks it against
+ *  the kind and id; it never reads the uri, which it only says back
+ *  (CORE-FR-213). */
+declare class RawPrimitive {
+    readonly layer: PrimitiveLayer;
+    readonly kind: string;
+    readonly id: string;
+    /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
+     *  the headers and body an author answered, where no file is written yet
+     *  (FR-011). */
+    readonly contents: string | Uint8Array | {
+        readonly headers: Readonly<Record<string, unknown>>;
+        readonly body: string;
+    };
+    readonly assets: readonly AssetFile[];
+    readonly uri: string;
+    /** Whether it is kept as a primitive is, apart with its assets: a
+     *  markdown file kept on its own is how an earlier version kept one
+     *  (FR-141). */
+    readonly isKeptApart: boolean;
+    /** Where its keeper would keep a primitive of this kind and id, as the
+     *  uri of its folder, for a fault to say where to move it (FR-141); the
+     *  engine says it back and never reads it. */
+    readonly folderUriOf?: ((kind: string, id: string) => string) | undefined;
+    constructor(layer: PrimitiveLayer, kind: string, id: string, 
+    /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
+     *  the headers and body an author answered, where no file is written yet
+     *  (FR-011). */
+    contents: string | Uint8Array | {
+        readonly headers: Readonly<Record<string, unknown>>;
+        readonly body: string;
+    }, assets: readonly AssetFile[], uri: string, 
+    /** Whether it is kept as a primitive is, apart with its assets: a
+     *  markdown file kept on its own is how an earlier version kept one
+     *  (FR-141). */
+    isKeptApart?: boolean, 
+    /** Where its keeper would keep a primitive of this kind and id, as the
+     *  uri of its folder, for a fault to say where to move it (FR-141); the
+     *  engine says it back and never reads it. */
+    folderUriOf?: ((kind: string, id: string) => string) | undefined);
+    /** Its index.md as text, a leading BOM kept as a file read as text keeps it
+     *  (CORE-FR-207). */
+    get text(): string;
+}
+
+/** One charter a source keeps, `.cw/charter/<charter>/`, named by its folder,
+ *  authored there or installed there alike, as one commit of it was fetched
+ *  and read (VENDOR-FR-017, VENDOR-FR-019): its primitives as the source keeps
+ *  them, what tells which other charters it includes (VENDOR-FR-018).
+ *  `commit` is what was fetched, for what fetched it alone to read again;
+ *  `commitId` is its id in version control. `sourceFolder` is where it sits
+ *  in the source, for what copies it. */
+declare class CharterSource {
+    readonly commit: string;
+    readonly commitId: string;
+    readonly name: string;
+    readonly rawPrimitives: readonly RawPrimitive[];
+    readonly sourceFolder: string;
+    /** The folders of it that are copied, by their paths in it: each
+     *  primitive's, and those of its test cases and eval cases. */
+    readonly keptFolderPaths: readonly string[];
+    constructor(commit: string, commitId: string, name: string, rawPrimitives: readonly RawPrimitive[], sourceFolder: string, 
+    /** The folders of it that are copied, by their paths in it: each
+     *  primitive's, and those of its test cases and eval cases. */
+    keptFolderPaths: readonly string[]);
+    /** The description one of its primitives declares, empty where it
+     *  declares none. Shown, never refused: the charter is installed whole, as
+     *  its source holds it (VENDOR-FR-017). */
+    descriptionOf(rawPrimitive: RawPrimitive): string;
+}
+
+/** Where a charter this repository installs rather than authors comes from:
+ *  the source as it was typed, handed to version control as it is (FR-049,
+ *  FR-050). */
+declare class CharterSourceOrigin {
+    readonly sourceUri: string;
+    constructor(sourceUri: string);
+}
+
+/** One charter a source's pull or fork puts in the repository, every
+ *  refusal settled: the name it is held under here; the source's charter
+ *  copied into it; and what its `cw-package.json` says once it is down, written
+ *  on this machine, or none for a charter the repository now owns
+ *  (VENDOR-FR-017 to VENDOR-FR-022). What the name held before is replaced
+ *  whole. */
+declare class CharterInstall {
+    readonly charterName: string;
+    readonly charterSource: CharterSource;
+    readonly installedCharterRecord: InstalledCharterRecord | undefined;
+    constructor(charterName: string, charterSource: CharterSource, installedCharterRecord: InstalledCharterRecord | undefined);
 }
 
 /**
@@ -3216,8 +3337,8 @@ declare class EvalCase {
 }
 
 /** What an evaluation file may hold: what it is about, and its cases. JSON, as
- *  a test file is: nothing reads it but `cw eval`. Not a primitive, and a
- *  vendor's are not installed with it (EVAL-FR-020). */
+ *  a test file is: nothing reads it but `cw eval`. Not a primitive
+ *  (EVAL-FR-020). */
 declare const EvalSuiteSchema: z.ZodObject<{
     description: z.ZodOptional<z.ZodString>;
     cases: z.ZodArray<z.ZodPipe<z.ZodObject<{
@@ -3267,15 +3388,6 @@ declare class RawEvalSuite {
     constructor(name: string, 
     /** The charter it is kept in (VENDOR-FR-009). */
     charterName: string, text: string, uri: string);
-}
-
-/** One file of a primitive's folder beside its `index.md`: the path it has in
- *  that folder, and the bytes it holds, never decoded, so it is copied whole
- *  whatever it holds (FR-168, CORE-FR-207). */
-declare class AssetFile {
-    readonly assetPath: string;
-    readonly contents: Uint8Array;
-    constructor(assetPath: string, contents: Uint8Array);
 }
 
 /** The delimiter a primitive's headers are written between. One constant for
@@ -3366,7 +3478,7 @@ declare abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeade
     get uri(): string;
     /** Whether a word someone searched for is anywhere a reader would look for
      *  it: the id, the kind, what it is for, when its kind comes up, its
-     *  folder and file under its kind, its layer and the vendor it came from,
+     *  folder and file under its kind, its layer and the installed charter it came from,
      *  or any header it declared — ignoring case, since whoever typed it
      *  did not know how it was written (FR-114). */
     hasWord(word: string): boolean;
@@ -4002,54 +4114,6 @@ declare class Primitives {
     private constructor();
 }
 
-/** One primitive as it is handed in, raw — kept, or answered by an author —
- *  before the engine reads it: its layer, the kind and id it is kept under, its index.md as text or as
- *  the bytes kept, every file kept with it (FR-168), and where it is kept, in
- *  that keeper's own scheme. The engine reads the text and checks it against
- *  the kind and id; it never reads the uri, which it only says back
- *  (CORE-FR-213). */
-declare class RawPrimitive {
-    readonly layer: PrimitiveLayer;
-    readonly kind: string;
-    readonly id: string;
-    /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
-     *  the headers and body an author answered, where no file is written yet
-     *  (FR-011). */
-    readonly contents: string | Uint8Array | {
-        readonly headers: Readonly<Record<string, unknown>>;
-        readonly body: string;
-    };
-    readonly assets: readonly AssetFile[];
-    readonly uri: string;
-    /** Whether it is kept as a primitive is, apart with its assets: a
-     *  markdown file kept on its own is how an earlier version kept one
-     *  (FR-141). */
-    readonly isKeptApart: boolean;
-    /** Where its keeper would keep a primitive of this kind and id, as the
-     *  uri of its folder, for a fault to say where to move it (FR-141); the
-     *  engine says it back and never reads it. */
-    readonly folderUriOf?: ((kind: string, id: string) => string) | undefined;
-    constructor(layer: PrimitiveLayer, kind: string, id: string, 
-    /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
-     *  the headers and body an author answered, where no file is written yet
-     *  (FR-011). */
-    contents: string | Uint8Array | {
-        readonly headers: Readonly<Record<string, unknown>>;
-        readonly body: string;
-    }, assets: readonly AssetFile[], uri: string, 
-    /** Whether it is kept as a primitive is, apart with its assets: a
-     *  markdown file kept on its own is how an earlier version kept one
-     *  (FR-141). */
-    isKeptApart?: boolean, 
-    /** Where its keeper would keep a primitive of this kind and id, as the
-     *  uri of its folder, for a fault to say where to move it (FR-141); the
-     *  engine says it back and never reads it. */
-    folderUriOf?: ((kind: string, id: string) => string) | undefined);
-    /** Its index.md as text, a leading BOM kept as a file read as text keeps it
-     *  (CORE-FR-207). */
-    get text(): string;
-}
-
 /** One suite of self-regression tests as what keeps them keeps it, before the
  *  engine reads it: the name it is asked for by (`untitled-1.json`, FR-124),
  *  what it holds, and where it is kept, said back and never read
@@ -4227,87 +4291,6 @@ declare const SAMPLE: string;
  *  looks the format up (FR-091). */
 declare const DEFAULT_TEST_SUITE_BODY: string;
 
-/** What a `cw-vendor.json` holds: the charter, the source and the version,
- *  each a string (VENDOR-FR-010). Whatever else it holds is left unread. */
-declare const VendorRecordSchema: z.ZodObject<{
-    charter: z.ZodString;
-    source: z.ZodString;
-    version: z.ZodString;
-}, z.core.$strip>;
-
-/** Where an installed charter came from, as its `cw-vendor.json` says: the
- *  charter's name in its source, the source as it was typed, and the version
- *  installed (VENDOR-FR-010, VENDOR-FR-017). */
-declare class VendorRecord {
-    readonly charterName: string;
-    readonly source: string;
-    readonly version: string;
-    static get schema(): typeof VendorRecordSchema;
-    constructor(charterName: string, source: string, version: string);
-    /** What a `cw-vendor.json` holds of it. */
-    toJSON(): z.infer<typeof VendorRecordSchema>;
-}
-
-/** Where a charter this repository installs rather than authors comes from:
- *  the source as it was typed, handed to version control as it is (FR-049,
- *  FR-050). */
-declare class VendorSourceOrigin {
-    readonly sourceUri: string;
-    constructor(sourceUri: string);
-}
-
-/** One charter a source keeps, `.cw/charter/<charter>/`, named by its
- *  folder (VENDOR-FR-017): whether the source installed it itself, holding a
- *  `cw-vendor.json`, and its primitives as the source keeps them, what
- *  tells which other charters it includes (VENDOR-FR-018, VENDOR-FR-019).
- *  `sourceFolder` is where it sits in the source, for what copies it. */
-declare class SourceCharter {
-    readonly name: string;
-    /** Whether the source installed it from elsewhere, rather than authored
-     *  it (VENDOR-FR-019). */
-    readonly isInstalled: boolean;
-    readonly rawPrimitives: readonly RawPrimitive[];
-    readonly sourceFolder: string;
-    /** The folders of it that are copied, by their paths in it: each
-     *  primitive's, and those of its test cases and eval cases. */
-    readonly keptFolderPaths: readonly string[];
-    constructor(name: string, 
-    /** Whether the source installed it from elsewhere, rather than authored
-     *  it (VENDOR-FR-019). */
-    isInstalled: boolean, rawPrimitives: readonly RawPrimitive[], sourceFolder: string, 
-    /** The folders of it that are copied, by their paths in it: each
-     *  primitive's, and those of its test cases and eval cases. */
-    keptFolderPaths: readonly string[]);
-    /** The description one of its primitives declares, empty where it
-     *  declares none. Shown, never refused: the charter is installed whole, as
-     *  its source holds it (VENDOR-FR-017). */
-    descriptionOf(rawPrimitive: RawPrimitive): string;
-}
-
-/** What one commit of a source holds, as what fetched it read it: the
- *  charters it keeps (VENDOR-FR-017). `commit` is what was fetched, for what
- *  fetched it alone to read again; `commitId` is its id in version control. */
-declare class VendorSource {
-    readonly origin: VendorSourceOrigin;
-    readonly commit: string;
-    readonly commitId: string;
-    readonly charters: readonly SourceCharter[];
-    constructor(origin: VendorSourceOrigin, commit: string, commitId: string, charters: readonly SourceCharter[]);
-}
-
-/** One charter a source's install or injection puts in the repository, every
- *  refusal settled: the name it is held under here; the source's charter
- *  copied into it; and what its `cw-vendor.json` says once it is down, written
- *  on this machine, or none for a charter the repository now owns
- *  (VENDOR-FR-017 to VENDOR-FR-022). What the name held before is replaced
- *  whole. */
-declare class CharterInstall {
-    readonly charterName: string;
-    readonly sourceCharter: SourceCharter;
-    readonly vendorRecord: VendorRecord | undefined;
-    constructor(charterName: string, sourceCharter: SourceCharter, vendorRecord: VendorRecord | undefined);
-}
-
 /**
  * Where `cw`'s own store keeps a repository's charter, each folder by its path
  * from the repository's root, and nothing of where the repository is
@@ -4335,13 +4318,13 @@ declare class CharterPath {
     readonly primitivesFolderName = "primitive";
     /** The file that makes a charter installed, read-only: where it came from
      *  (VENDOR-FR-010). */
-    readonly vendorRecordFileName = "cw-vendor.json";
+    readonly installedCharterRecordFileName = "cw-package.json";
     /** The folder of a charter holding its test cases, one file of cases each
      *  (VENDOR-FR-009). */
     readonly testFolderName = "test";
-    /** The folder an older layout kept vendors in, right under the workspace
+    /** The folder an older layout kept installed charters in, right under the workspace
      *  or the charter root: refused where it is still held (VENDOR-FR-011). */
-    readonly oldVendorsFolderName = "vendor";
+    readonly oldInstalledChartersFolderName = "vendor";
     /** The folder of a charter holding its eval cases, one file of cases each
      *  (VENDOR-FR-009). */
     readonly evalFolderName = "eval";
@@ -4471,7 +4454,7 @@ declare class CopyPlan {
     destinationPath: string);
 }
 
-/** One reading of a charter, or of a vendor's source, said as what it would
+/** One reading of a charter, or of an installed charter's source, said as what it would
  *  do to disk: a build writes each file, an install copies a folder too. */
 declare class ProjectionPlan<Plan extends WritePlan | CopyPlan = WritePlan> {
     readonly warnings: readonly string[];
@@ -4538,13 +4521,13 @@ interface ForFetchingCharterSources {
 }
 
 /** Keeps a repository's charter, wherever it keeps it, and knows how: its
- *  primitives, the vendors it installed, its test cases and its eval cases,
+ *  primitives, the charters it installed, its test cases and its eval cases,
  *  through this one port (CORE-FR-228), and reads back what the last build
  *  laid of it, each item known by its path inside the output, never by
- *  where the output lands (CORE-FR-221). Where a primitive, an asset of one, a
- *  vendor's or a suite sits is its own to know, never the engine's, which knows
- *  a primitive by its layer, kind and id and a suite by its name
- *  (CORE-FR-213). */
+ *  where the output lands (CORE-FR-221). Where a primitive, an asset of one,
+ *  an installed charter or a suite sits is its own to know, never the
+ *  engine's, which knows a primitive by its layer, kind and id and a suite
+ *  by its name (CORE-FR-213). */
 interface ForManagingCharter {
     /** Every primitive kept of the repository's charter, each with its assets,
      *  in the layer of the charter it is kept in: authored, or installed where the
@@ -4579,22 +4562,27 @@ interface ForManagingCharter {
      *  and nothing else (FR-076, FR-167). */
     removePrimitive(primitive: Primitive): Promise<void>;
     /** One commit of this source, at this version where one is named, fetched
-     *  and read: the charters it keeps (VENDOR-FR-017). Whoever asked says
-     *  `removeFetchedSource` once done. A source that cannot be reached raises
-     *  an `AdapterFault` saying so. */
-    fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<VendorSource>;
-    /** The temporary folder a source was fetched into, removed with all it holds. */
-    removeFetchedSource(vendorSource: VendorSource): Promise<void>;
+     *  and read: each charter it keeps (VENDOR-FR-017). Whoever asked says
+     *  `removeFetchedSources` once done; where it keeps none, what was fetched
+     *  is already removed. A source that cannot be reached raises an
+     *  `AdapterFault` saying so. */
+    fetchCharterSources(charterSourceOrigin: CharterSourceOrigin, version?: string): Promise<readonly CharterSource[]>;
+    /** The temporary folders these charters were fetched into, removed with all
+     *  they hold. */
+    removeFetchedSources(charterSources: readonly CharterSource[]): Promise<void>;
     /** Each charter of a source fetched put in the repository as planned: what
      *  its name held taken away whole, the folders of the source's charter
-     *  copied in as the source holds them, and its `cw-vendor.json` written, or
+     *  copied in as the source holds them, and its `cw-package.json` written, or
      *  taken away where it keeps none (VENDOR-FR-017 to VENDOR-FR-022). Nothing
      *  is staged and nothing committed. */
-    storeCharters(vendorSource: VendorSource, charterInstalls: readonly CharterInstall[]): Promise<void>;
+    storeCharters(charterInstalls: readonly CharterInstall[]): Promise<void>;
     /** Where a charter of this name is kept, in this keeper's words: said back,
      *  never read. */
     findCharterFolderUri(charterName: string): string;
-    /** The charter of this name taken away whole (VENDOR-FR-021). */
+    /** An empty charter of this name kept, the repository's own
+     *  (VENDOR-FR-029). */
+    addCharter(charterName: string): Promise<void>;
+    /** The charter of this name taken away whole (VENDOR-FR-021, VENDOR-FR-031). */
     removeCharter(charterName: string): Promise<void>;
     /** Every test suite kept, by its name in its charter and that charter, with
      *  what it holds (VENDOR-FR-009). */
@@ -4686,17 +4674,19 @@ interface ForStoringCredentials {
 
 /**
  * One charter, read: what the engine brings, what this repository authored,
- * what it installed under `vendor/`, and what any of them got wrong.
+ * what it installed as charters holding a `cw-package.json`, and what any of
+ * them got wrong.
  *
  * Every question about the charter as a whole is asked of it here — what a
  * primitive is named by, which mixin a name means, what is wrong once the files
- * are read together — so nothing outside joins a vendor's name onto anything by
+ * are read together — so nothing outside joins an installed charter's name onto anything by
  * hand.
  */
 declare class CharterRoot {
     /** Every primitive this charter holds, whichever layer authored it: what
-     *  the engine brings, what this repository wrote and what it installed
-     *  under `vendor/`, each under the file it was authored in and the layer
+     *  the engine brings, what this repository wrote and what it installed as
+     *  charters holding a `cw-package.json`, each under the file it was
+     *  authored in and the layer
      *  its layer gives it. What a primitive says is its own; where it was
      *  written is what a fault is filed under (SC-003) and what the catalogue
      *  records (FR-011). */
@@ -4715,8 +4705,9 @@ declare class CharterRoot {
     readonly charterPlace: string;
     constructor(
     /** Every primitive this charter holds, whichever layer authored it: what
-     *  the engine brings, what this repository wrote and what it installed
-     *  under `vendor/`, each under the file it was authored in and the layer
+     *  the engine brings, what this repository wrote and what it installed as
+     *  charters holding a `cw-package.json`, each under the file it was
+     *  authored in and the layer
      *  its layer gives it. What a primitive says is its own; where it was
      *  written is what a fault is filed under (SC-003) and what the catalogue
      *  records (FR-011). */
@@ -5260,7 +5251,7 @@ declare class McpToolDefinition {
  * Where an mcp origin is, how a developer signs in to it, and the tools it listed
  * when the build reached it: which of them each mcp there lets the agent use is
  * its own, and the catalogue already lists every mcp. Keyed by where it is rather than by what it is called, because the
- * repository and a vendor may call one mcp origin by two names.
+ * repository and an installed charter may call one mcp origin by two names.
  */
 declare class McpOrigin {
     /** Every mcp at this address and path, sorted. */
@@ -5452,11 +5443,11 @@ declare class CodexProjection extends AgentProjection {
  * charter, `<charter>/`, holding its primitives, `primitive/<kind>/<id>/`, each index.md
  * and its assets; its test cases under `test/` and its eval cases under
  * `eval/`, a JSON file each; and, where it was installed, its
- * `cw-vendor.json` (VENDOR-FR-010). A source is read as cw lays one out: its
+ * `cw-package.json` (VENDOR-FR-010). A source is read as cw lays one out: its
  * charters as a repository keeps its own (VENDOR-FR-017).
  *
  * A repository laid out the old way — its kinds right under `.cw/charter/` or
- * `.cw/charter/primitive/`, its tests, eval cases and vendors right under
+ * `.cw/charter/primitive/`, its tests, eval cases and installed charters right under
  * `.cw/` or `.cw/charter/` — is refused by every operation, and so is a source
  * laid out that way, naming the skill that moves it (CORE-FR-226,
  * VENDOR-FR-011).
@@ -5473,10 +5464,11 @@ declare class FileCharterRepository implements ForManagingCharter {
     findCharterUri(): string;
     rewritePrimitive(primitive: Primitive): Promise<void>;
     removePrimitive(primitive: Primitive): Promise<void>;
-    fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<VendorSource>;
-    removeFetchedSource(vendorSource: VendorSource): Promise<void>;
-    storeCharters(vendorSource: VendorSource, charterInstalls: readonly CharterInstall[]): Promise<void>;
+    fetchCharterSources(charterSourceOrigin: CharterSourceOrigin, version?: string): Promise<readonly CharterSource[]>;
+    removeFetchedSources(charterSources: readonly CharterSource[]): Promise<void>;
+    storeCharters(charterInstalls: readonly CharterInstall[]): Promise<void>;
     findCharterFolderUri(charterName: string): string;
+    addCharter(charterName: string): Promise<void>;
     removeCharter(charterName: string): Promise<void>;
     loadTestSuites(): Promise<readonly RawTestSuite[]>;
     writeTestSuite(charterName: string, name: string, testSuite: TestSuite): Promise<void>;

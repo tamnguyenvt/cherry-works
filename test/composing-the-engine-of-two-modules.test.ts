@@ -213,7 +213,7 @@ async function operationAnswersOf(
     listSignInStatuses: () => charterAuthoringApp.listSignInStatuses(),
     buildCharter: () => charterBuildingApp.buildCharter(),
     predictMainContext: () => charterBuildingApp.predictMainContext(),
-    addVendor: () => charterAuthoringApp.addVendor("team/kept"),
+    pullCharters: () => charterAuthoringApp.pullCharters("team/kept", false),
     runSensors: () => charterRuntimeApp.runSensors("Stop", "", "claude"),
     // Called by the name the build served it under, so the call reaches the
     // mcp origin and the credential kept for it.
@@ -260,14 +260,14 @@ test("the engine's modules are charter, with its applications authoring and proj
   const authoringOperationNames = Object.keys(engineApp.charterAuthoringApp);
   const buildingOperationNames = Object.keys(engineApp.charterBuildingApp);
   const runningOperationNames = Object.keys(engineApp.charterRuntimeApp);
-  // Keeping and testing: its primitives, vendors, test and eval cases, signing
+  // Keeping and testing: its primitives, installed charters, test and eval cases, signing
   // in to its mcp origins, and testing it.
   for (const operationName of [
     "addPrimitive",
     "rewritePrimitive",
     "removePrimitive",
-    "addVendor",
-    "removeVendor",
+    "pullCharters",
+    "removeCharters",
     "listTestSuites",
     "writeTestSuite",
     "listEvalSuites",
@@ -312,7 +312,7 @@ test("the engine's modules are charter, with its applications authoring and proj
     Object.getOwnPropertyNames(Object.getPrototypeOf(workspaceApp))
       .filter((operationName) => operationName !== "constructor")
       .sort(),
-    ["readWorkspaceSettings", "setUpWorkspace", "setVendorMark"],
+    ["readWorkspaceSettings", "setUpWorkspace"],
   );
 });
 
@@ -448,7 +448,7 @@ const OWN_ADAPTER_CLASS_NAMES_BY_KEY = {
 } as const satisfies Record<keyof EngineAdapters, readonly string[]>;
 
 /** The stores the engine sets up over the file adapters it is handed, or
- *  fetches vendors through: left out along with what they are set up over, so
+ *  fetches installed charters through: left out along with what they are set up over, so
  *  that `cw`'s own of those is the one composed (SDK-FR-020). */
 const ADAPTER_KEYS_SET_UP_OVER = {
   sourceFetcher: ["charterRepository"],
@@ -595,7 +595,7 @@ const ADAPTER_KEYS_BY_OPERATION_NAME: Readonly<Record<string, readonly string[]>
     "mcpServerCaller",
   ],
   predictMainContext: ["agentProvider", "charterRepository", "fileReader", "tokenCounter"],
-  addVendor: ["charterRepository", "fileReader", "fileWriter", "sourceFetcher"],
+  pullCharters: ["charterRepository", "fileReader", "fileWriter", "sourceFetcher"],
   runSensors: ["charterRepository", "fileReader", "shell"],
   callTool: ["charterRepository", "credentialsRepository", "fileReader", "mcpServerCaller"],
   evaluateCharter: [
@@ -847,8 +847,10 @@ test("every command and the portal are handed the applications of the modules an
   );
   const portalRoutesText = readFileSync(new URL("src/presentation/portal/portal.routes.ts", repositoryUrl), "utf8");
   assert.deepEqual(
-    [...portalRoutesText.matchAll(/^import (?:type )?\{ ([^}]+) \} from "#module\/[\w-]+\/module\.js";$/gm)]
-      .flatMap((importMatch) => importMatch[1]!.split(", ").map((importedName) => importedName.replace(/^type /, "")))
+    [...portalRoutesText.matchAll(/^import (?:type )?\{([^}]+)\} from "#module\/[\w-]+\/module\.js";$/gm)]
+      .flatMap((importMatch) =>
+        importMatch[1]!.split(",").map((importedName) => importedName.trim().replace(/^type /, "")),
+      )
       .filter((importedName) => importedName.startsWith("For"))
       .sort(),
     ["ForAuthoringCharter", "ForBuildingCharter"],
@@ -894,7 +896,7 @@ test("every command refuses a repository laid out the old way, naming the author
   assert.match(JSON.stringify(await charterBuildingApp.buildCharter()), /laid out the old way/);
 });
 
-test("a vendor source laid out the old way is refused, naming the source and the authoring skill, and nothing is installed (CORE Story 52 scenario 9)", async () => {
+test("a charter source laid out the old way is refused, naming the source and the authoring skill, and nothing is installed (CORE Story 52 scenario 9)", async () => {
   const adapters = adaptersInMemory(filesInThreeParts);
   adapters.sourceFetcher.sourceFilesBySource["team/old"] = {
     ".cw/charter/guide/published/index.md": publishedText,
@@ -902,37 +904,37 @@ test("a vendor source laid out the old way is refused, naming the source and the
   const { charterAuthoringApp } = composeEngine(claudeSettings, pluginsInMemory(adapters));
   const charterFilesBefore = await adapters.fileReader.readBytesRecursively(".cw/charter");
 
-  const vendorAddAnswer = await charterAuthoringApp.addVendor("team/old");
+  const installedCharterAddAnswer = await charterAuthoringApp.pullCharters("team/old", false);
 
-  assert.equal(vendorAddAnswer.type, "Fault");
-  const { message, fix } = (vendorAddAnswer as FaultDTOs.Fault).data;
+  assert.equal(installedCharterAddAnswer.type, "Fault");
+  const { message, fix } = (installedCharterAddAnswer as FaultDTOs.Fault).data;
   assert.match(message, /team\/old/);
   assert.match(message, /laid out the old way/);
   assert.match(fix ?? "", /cw-author/);
   assert.deepEqual(await adapters.fileReader.readBytesRecursively(".cw/charter"), charterFilesBefore);
 });
 
-test("updating a vendor whose source has gone over to the old layout is refused, naming the source and the authoring skill, and the vendor installed is left as it was (CORE Story 52 scenario 9)", async () => {
+test("updating an installed charter whose source has gone over to the old layout is refused, naming the source and the authoring skill, and the installed charter installed is left as it was (CORE Story 52 scenario 9)", async () => {
   const adapters = adaptersInMemory(filesInThreeParts);
   adapters.sourceFetcher.sourceFilesBySource["team/kept"] = {
     ".cw/charter/published/primitive/guide/published/index.md": publishedText,
   };
   const { charterAuthoringApp } = composeEngine(claudeSettings, pluginsInMemory(adapters));
-  answerOf(await charterAuthoringApp.addVendor("team/kept"));
-  const installedVendorFiles = await adapters.fileReader.readBytesRecursively(".cw/charter/published");
-  assert.ok(installedVendorFiles.length > 0);
+  answerOf(await charterAuthoringApp.pullCharters("team/kept", false));
+  const installedCharterFiles = await adapters.fileReader.readBytesRecursively(".cw/charter/published");
+  assert.ok(installedCharterFiles.length > 0);
   adapters.sourceFetcher.sourceFilesBySource["team/kept"] = {
     ".cw/charter/guide/published/index.md": publishedText.replace("Published.", "Published again."),
   };
 
-  const vendorUpdateAnswer = await charterAuthoringApp.addVendor("team/kept");
+  const installedCharterUpdateAnswer = await charterAuthoringApp.pullCharters("team/kept", false);
 
-  assert.equal(vendorUpdateAnswer.type, "Fault");
-  const { message, fix } = (vendorUpdateAnswer as FaultDTOs.Fault).data;
+  assert.equal(installedCharterUpdateAnswer.type, "Fault");
+  const { message, fix } = (installedCharterUpdateAnswer as FaultDTOs.Fault).data;
   assert.match(message, /team\/kept/);
   assert.match(message, /laid out the old way/);
   assert.match(fix ?? "", /cw-author/);
-  assert.deepEqual(await adapters.fileReader.readBytesRecursively(".cw/charter/published"), installedVendorFiles);
+  assert.deepEqual(await adapters.fileReader.readBytesRecursively(".cw/charter/published"), installedCharterFiles);
 });
 
 test("following the authoring skill moves a repository laid out the old way, and the build is the same byte for byte (CORE Story 52 scenario 10)", async () => {

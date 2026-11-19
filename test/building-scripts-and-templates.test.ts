@@ -308,9 +308,9 @@ test("a script or a template no primitive names is a warning, and the build stil
   assert.ok(!warnedFiles.some((file) => file.endsWith("template/used/index.md")));
 });
 
-test("a vendor's assets, and its templates, are built into the repository's output folder like ones it authored (CORE Story 21 scenario 9, FR-159, CORE Story 55 scenario 8, CORE Story 24 scenario 6)", async () => {
+test("an installed charter's assets, and its templates, are built into the repository's output folder like ones it authored (CORE Story 21 scenario 9, FR-159, CORE Story 55 scenario 8, CORE Story 24 scenario 6)", async () => {
   const { held, build } = building({
-    [inRepo(".cw/charter/rules/cw-vendor.json")]:
+    [inRepo(".cw/charter/rules/cw-package.json")]:
       `${JSON.stringify({ charter: "rules", source: "team/rules", version: "HEAD" })}\n`,
     [inRepo(".cw/charter/rules/primitive/script/check/index.md")]: primitive(
       "script",

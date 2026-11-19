@@ -14,7 +14,7 @@
   {
     "args": "init --agent claude",
     "status": 0,
-    "stdout": "Set up this repository under a charter.\nAgents chosen: claude.\nBuilt 13 files: 13 added, 0 changed.\nAuthor your first rule with \"cw add guide <id> --charter=<charter>\", or ask your agent to write one, then run \"cw build\".\n",
+    "stdout": "Set up this repository under a charter.\nAgents chosen: claude.\nBuilt 17 files: 17 added, 0 changed.\nAuthor your first rule with \"cw add guide <id> --charter=<charter>\", or ask your agent to write one, then run \"cw build\".\n",
     "stderr": ""
   },
   {
@@ -44,7 +44,7 @@
   {
     "args": "list",
     "status": 0,
-    "stdout": "ask-first  Ask before guessing.\n  .cw/charter/team/primitive/skill/ask-first/index.md\ncw-author  Author a new primitive of this repository's charter, asking cw what its kind requires.\n  (built into cw)/skill/cw-author/index.md\ncw-session-tokens-counter  Count the session's tokens when the agent stops, keep them on this machine, and say so at every mark.\n  (built into cw)/script/cw-session-tokens-counter/index.md\ncw-session-tokens-counter-on-stop  Count the session's tokens each time the agent stops.\n  (built into cw)/sensor/cw-session-tokens-counter-on-stop/index.md\nplain-words  Write in plain words.\n  .cw/charter/team/primitive/guide/plain-words/index.md\n  globs: src/**/*.ts\n",
+    "stdout": "  plain-words                        Write in plain words.\n                                     .cw/charter/team/primitive/guide/plain-words/index.md\n                                     globs: src/**/*.ts\n\n  cw-session-tokens-counter-on-stop  Count the session's tokens each time the\n                                     agent stops.\n                                     (built into cw)/sensor/cw-session-tokens-counter-on-stop/index.md\n\n  ask-first                          Ask before guessing.\n                                     .cw/charter/team/primitive/skill/ask-first/index.md\n  charter-release                    For publishing a new version of the\n                                     charters this repository authored, so other\n                                     repositories can install or update them,\n                                     with nothing pushed before you confirm.\n                                     (built into\n                                     cw)/skill/charter-release/index.md\n  cw-author                          Author a new primitive of this repository's\n                                     charter, asking cw what its kind requires.\n                                     (built into cw)/skill/cw-author/index.md\n\n  charter-release-action             For releasing the charters this repository\n                                     authored the same way every time — the\n                                     steps of /charter-release that must not\n                                     depend on the agent's judgement.\n                                     (built into\n                                     cw)/script/charter-release-action/index.md\n  cw-session-tokens-counter          Count the session's tokens when the agent\n                                     stops, keep them on this machine, and say\n                                     so at every mark.\n                                     (built into cw)/script/cw-session-tokens-counter/index.md\n",
     "stderr": ""
   },
   {
@@ -86,13 +86,13 @@
   {
     "args": "build",
     "status": 0,
-    "stdout": "Built 5 files: 4 added, 1 changed.\nclaude opens a session with about 1,104 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
+    "stdout": "Built 5 files: 4 added, 1 changed.\nclaude opens a session with about 1,171 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
     "stderr": ""
   },
   {
     "args": "doctor",
     "status": 0,
-    "stdout": "cw <version>\n✔ Agents:   claude.\n⚠ Charter:  good, with 1 warning.\n✔ Built:    up to date.\n✔ Context:  good (claude opens a session with about 1,104 tokens, within the ceiling of 20,000).\n\n.cw/charter/team/primitive/guide/plain-words/index.md\n  warn: No test case names \"plain-words\", so nothing notices when it stops coming up where it should.\n         Add a case to a test file of the charter: { \"do\": { \"touchFile\": \"<a file it speaks about>\" }, \"expect\": { \"activate\": \"plain-words\" } }.\n\nNothing to fix.\n",
+    "stdout": "cw <version>\n✔ Agents:   claude.\n⚠ Charter:  good, with 1 warning.\n✔ Built:    up to date.\n✔ Context:  good (claude opens a session with about 1,171 tokens, within the ceiling of 20,000).\n\n.cw/charter/team/primitive/guide/plain-words/index.md\n  warn: No test case names \"plain-words\", so nothing notices when it stops coming up where it should.\n         Add a case to a test file of the charter: { \"do\": { \"touchFile\": \"<a file it speaks about>\" }, \"expect\": { \"activate\": \"plain-words\" } }.\n\nNothing to fix.\n",
     "stderr": ""
   },
   {
@@ -104,7 +104,7 @@
   {
     "args": "context",
     "status": 0,
-    "stdout": "claude opens a session with:\n      861  charter  CHARTER.md\n      164  charter  CLAUDE.md\n       60  skill    cw-author\n       19  skill    ask-first\n  1,104 tokens in all, estimated.\n\nLoaded when a file it names is touched, not in the total:\n      126  guide    plain-words  src/**/*.ts\n",
+    "stdout": "claude opens a session with:\n      862  charter  CHARTER.md\n      164  charter  CLAUDE.md\n       66  skill    charter-release\n       60  skill    cw-author\n       19  skill    ask-first\n  1,171 tokens in all, estimated.\n\nLoaded when a file it names is touched, not in the total:\n      126  guide    plain-words  src/**/*.ts\n",
     "stderr": ""
   },
   {
@@ -120,39 +120,39 @@
     "stderr": ""
   },
   {
-    "args": "vendor add <vendor>",
+    "args": "charter pull <charter source>",
     "status": 0,
     "stdout": "Installed <work>/vendor under .cw/charter/grill.\n  skill grill-me\nRun \"cw build\" to compile what it adds to this charter.\n",
     "stderr": ""
   },
   {
-    "args": "vendor list",
+    "args": "charter",
     "status": 0,
-    "stdout": "grill  <work>/vendor a62731031ba7e6d22d04f9b0e1ce1bf72c820620\n",
+    "stdout": "grill  installed  <work>/vendor a62731031ba7e6d22d04f9b0e1ce1bf72c820620\n  team  authored\n",
     "stderr": ""
   },
   {
     "args": "build",
     "status": 0,
-    "stdout": "Built 3 files: 2 added, 1 changed.\nclaude opens a session with about 1,128 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
+    "stdout": "Built 3 files: 2 added, 1 changed.\nclaude opens a session with about 1,195 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
     "stderr": ""
   },
   {
-    "args": "vendor remove <listed vendor>",
+    "args": "charter remove --charter <listed charter>",
     "status": 0,
     "stdout": "Removed .cw/charter/grill.\nRun \"cw build\" to compile this charter without it.\n",
     "stderr": ""
   },
   {
-    "args": "vendor inject <vendor>",
+    "args": "charter pull <charter source> --fork",
     "status": 0,
-    "stdout": "Injected skill grill-me.\nRun \"cw build\" to compile what it adds to this charter.\n",
+    "stdout": "Forked <work>/vendor under .cw/charter/grill.\n  skill grill-me\nRun \"cw build\" to compile what it adds to this charter.\n",
     "stderr": ""
   },
   {
     "args": "list",
     "status": 0,
-    "stdout": "ask-first  Ask before guessing.\n  .cw/charter/team/primitive/skill/ask-first/index.md\ncw-author  Author a new primitive of this repository's charter, asking cw what its kind requires.\n  (built into cw)/skill/cw-author/index.md\ncw-session-tokens-counter  Count the session's tokens when the agent stops, keep them on this machine, and say so at every mark.\n  (built into cw)/script/cw-session-tokens-counter/index.md\ncw-session-tokens-counter-on-stop  Count the session's tokens each time the agent stops.\n  (built into cw)/sensor/cw-session-tokens-counter-on-stop/index.md\ngrill-me  Ask questions until the plan holds.\n  .cw/charter/grill/primitive/skill/grill-me/index.md\nplain-words  Write in plain words.\n  .cw/charter/team/primitive/guide/plain-words/index.md\n  globs: src/**/*.ts\n",
+    "stdout": "  plain-words                        Write in plain words.\n                                     .cw/charter/team/primitive/guide/plain-words/index.md\n                                     globs: src/**/*.ts\n\n  cw-session-tokens-counter-on-stop  Count the session's tokens each time the\n                                     agent stops.\n                                     (built into cw)/sensor/cw-session-tokens-counter-on-stop/index.md\n\n  ask-first                          Ask before guessing.\n                                     .cw/charter/team/primitive/skill/ask-first/index.md\n  charter-release                    For publishing a new version of the\n                                     charters this repository authored, so other\n                                     repositories can install or update them,\n                                     with nothing pushed before you confirm.\n                                     (built into\n                                     cw)/skill/charter-release/index.md\n  cw-author                          Author a new primitive of this repository's\n                                     charter, asking cw what its kind requires.\n                                     (built into cw)/skill/cw-author/index.md\n  grill-me                           Ask questions until the plan holds.\n                                     .cw/charter/grill/primitive/skill/grill-me/index.md\n\n  charter-release-action             For releasing the charters this repository\n                                     authored the same way every time — the\n                                     steps of /charter-release that must not\n                                     depend on the agent's judgement.\n                                     (built into\n                                     cw)/script/charter-release-action/index.md\n  cw-session-tokens-counter          Count the session's tokens when the agent\n                                     stops, keep them on this machine, and say\n                                     so at every mark.\n                                     (built into cw)/script/cw-session-tokens-counter/index.md\n",
     "stderr": ""
   },
   {
@@ -182,13 +182,13 @@
   {
     "args": "build",
     "status": 0,
-    "stdout": "Built 1 file: 0 added, 1 changed.\n  deleted .cw/out/guide/plain-words/index.md, whose primitive is gone\n  deleted .claude/rules/plain-words.md, whose primitive is gone\nclaude opens a session with about 1,128 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
+    "stdout": "Built 1 file: 0 added, 1 changed.\n  deleted .cw/out/guide/plain-words/index.md, whose primitive is gone\n  deleted .claude/rules/plain-words.md, whose primitive is gone\nclaude opens a session with about 1,195 tokens of the charter, estimated. Run \"cw context\" for each primitive's share.\n",
     "stderr": ""
   },
   {
     "args": "doctor",
     "status": 0,
-    "stdout": "cw <version>\n✔ Agents:   claude.\n✔ Charter:  good.\n✔ Built:    up to date.\n✔ Context:  good (claude opens a session with about 1,128 tokens, within the ceiling of 20,000).\nNothing to fix.\n",
+    "stdout": "cw <version>\n✔ Agents:   claude.\n✔ Charter:  good.\n✔ Built:    up to date.\n✔ Context:  good (claude opens a session with about 1,195 tokens, within the ceiling of 20,000).\nNothing to fix.\n",
     "stderr": ""
   }
 ]

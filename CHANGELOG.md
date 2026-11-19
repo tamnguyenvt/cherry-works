@@ -2,8 +2,21 @@
 
 ## Unreleased
 
-- `/vendor-release` comes with cw to a repository `cw vendor init` set up, and releases the charters it authored under `.cw/charter/`.
-- **Breaking:** a repository an earlier `cw vendor init` set up no longer builds with its own `vendor-release` and `vendor-release-action`: delete them and add `"vendor": true` to `.cw/settings.json`.
+- `cw charter` lists every charter a repository holds, authored or installed.
+- `cw charter create <name>` makes an empty charter of your own.
+- `cw charter update --charter=<name>` or `--all` pulls installed charters again at their newest version.
+- `cw charter remove --charter=<name>` or `--all` deletes charters, authored or installed.
+- `cw charter pull` installs every charter a source holds, including ones the source installed itself, and `--charter` can name one of those.
+- `/charter-release` comes with cw to every repository, and writes the README and `CHANGELOG.md` on the first release where there are none.
+- **Breaking:** `cw vendor` is gone: use `cw charter pull <source>` for `cw vendor add`, `cw charter pull <source> --fork` for `cw vendor inject`, `cw charter` for `cw vendor list` and `cw charter remove --charter=<name>` for `cw vendor remove`.
+- **Breaking:** `cw vendor init` is gone: set a repository up with `cw init` and `cw charter create <name>`.
+- **Breaking:** a repository `cw vendor init` set up holds its own `vendor-release` and `vendor-release-action`: delete them, as `/charter-release` comes with cw and replaces them.
+- **Breaking:** `/vendor-release` is now `/charter-release`: in a README it wrote, rename `vendor-release-action` to `charter-release-action` in both marker lines.
+- **Breaking:** `--json` answers and the library name an installed charter's layer `package`, not `vendor`, and export `PACKAGE_LAYER_NAME` in place of `VENDOR_LAYER_NAME`: update code that reads either.
+- **Breaking:** the library's `ForAuthoringCharter` replaces `addVendor` and `injectVendor` with `pullCharters`, `listVendors` with `listCharters(true)` and `removeVendor` with `removeCharters`, and its answers `VendorAddOutcome` and `VendorPrimitive` are `CharterPullOutcome` and `PulledPrimitive`: update code that calls them.
+- **Breaking:** the library exports `CharterSource` and `CharterSourceOrigin` in place of `VendorSource`, `SourceCharter` and `VendorSourceOrigin`: update code that imports them.
+- **Breaking:** the library's `AuthoringCharter` takes no settings, and `ForManagingWorkspace` has no `setVendorMark`: drop them from your code.
+- **Breaking:** a charter store of your own answering `ForManagingCharter` must add `addCharter(charterName)`, answer `fetchCharterSources` with one `CharterSource` per charter, removing what it fetched itself where the source holds none, take them back in `removeFetchedSources`, and store `CharterInstall`s, each carrying its `CharterSource`, in `storeCharters(charterInstalls)`: update it to build.
 
 ## 1.3.0 — 2026-11-17
 

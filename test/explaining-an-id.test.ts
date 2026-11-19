@@ -14,10 +14,10 @@ import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-case
 const repo = "/repo";
 
 const root = new URL("file:///repo/.cw/charter/team/primitive/");
-const vendored = new URL("file:///repo/.cw/charter/acme/primitive/");
+const installed = new URL("file:///repo/.cw/charter/acme/primitive/");
 /** What makes `acme` a charter this repository installed (VENDOR-FR-010). */
-const vendorRecordFile = {
-  ["file:///repo/.cw/charter/acme/cw-vendor.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
+const installedCharterRecordFile = {
+  ["file:///repo/.cw/charter/acme/cw-package.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
 };
 
 /** One authored file, holding what the kind it declares requires. */
@@ -87,8 +87,8 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
 
 const charter = {
   [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["tags: [types]"]),
-  ...vendorRecordFile,
-  [new URL("guide/small-diffs/index.md", vendored).href]: primitive("guide", "small-diffs"),
+  ...installedCharterRecordFile,
+  [new URL("guide/small-diffs/index.md", installed).href]: primitive("guide", "small-diffs"),
 };
 
 test("an id is traced in one command to the file that declares it (CORE Story 1 scenario 8, CORE Story 3 scenario 1, CORE Story 27 scenario 5)", async () => {
@@ -162,12 +162,12 @@ test("what explaining finds reaches a driver as its DTO, saying when the primiti
   assert.equal(explanationOutcomeDTO.data.primitive.data.headers.rationale, "gone");
 });
 
-test("a vendored id is named the same way, and says which layer it came from (CORE Story 3 scenario 1)", async () => {
+test("an installed id is named the same way, and says which layer it came from (CORE Story 3 scenario 1)", async () => {
   const { code, results } = await run(charter, ["explain", "small-diffs"]);
 
   assert.equal(code, EXIT_OK);
   assert.match(results, /^ {2}\.cw\/charter\/acme\/primitive\/guide\/small-diffs\/index\.md$/m);
-  assert.match(results, /installed from a vendor/);
+  assert.match(results, /installed from a charter source/);
 });
 
 test("what the engine brings is explained and listed like any other, under the layer it came from, saying which layer that is (CORE Story 12 scenario 4, FR-019, FR-020, CORE Story 55 scenario 8, CORE Story 3 scenario 1)", async () => {
@@ -197,8 +197,8 @@ const related = {
     "rationale: why-types",
   ]),
   [new URL("mixin/typed/index.md", root).href]: primitive("mixin", "typed"),
-  ...vendorRecordFile,
-  [new URL("corpus/why-types/index.md", vendored).href]: primitive("corpus", "why-types"),
+  ...installedCharterRecordFile,
+  [new URL("corpus/why-types/index.md", installed).href]: primitive("corpus", "why-types"),
 };
 
 test("an explanation says which mixins a primitive uses and which corpus it cites", async () => {
@@ -236,8 +236,8 @@ const naming = {
     ['triggers: ["release"]'],
     "Run [[check]], then [[check]] again.",
   ),
-  ...vendorRecordFile,
-  [new URL("guide/releasing/index.md", vendored).href]: saying("guide", "releasing", [], "Run [[check]]."),
+  ...installedCharterRecordFile,
+  [new URL("guide/releasing/index.md", installed).href]: saying("guide", "releasing", [], "Run [[check]]."),
   [new URL("mcp/linear/index.md", root).href]: saying(
     "mcp",
     "linear",
@@ -415,8 +415,8 @@ test("a collision is the answer doctor gives, naming both files that claim the i
   const { results } = await run(
     {
       [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any"),
-      ...vendorRecordFile,
-      [new URL("guide/no-any/index.md", vendored).href]: primitive("guide", "no-any"),
+      ...installedCharterRecordFile,
+      [new URL("guide/no-any/index.md", installed).href]: primitive("guide", "no-any"),
     },
     ["doctor"],
   );

@@ -101,7 +101,7 @@ const buildRequest = { method: "POST", headers: { "Content-Type": "application/j
 test("the preview lists every target cw build --preview prints, and writes nothing (FR-120, SC-014, CORE Story 7 scenario 1)", async () => {
   const { portalRoutes, fileReaders, cli } = surfaces(holding());
 
-  const answer = await portalRoutes.request("/charter/root/build");
+  const answer = await portalRoutes.request("/build");
 
   assert.equal(answer.status, 200);
   const { added, edited, deleted, unchanged } = CharterDTOs.ProjectionPlanSummary.parse(await answer.json()).data;
@@ -172,16 +172,14 @@ test("cw build --preview over a repository already fully built has every target 
 test("building writes, says what it wrote, and the health check then says the output is up to date (FR-120, FR-121)", async () => {
   const { portalRoutes, fileReaders } = surfaces(holding());
 
-  const answer = await portalRoutes.request("/charter/root/build", buildRequest);
+  const answer = await portalRoutes.request("/build", buildRequest);
 
   assert.equal(answer.status, 200);
   const { added } = CharterDTOs.ProjectionPlanSummary.parse(await answer.json()).data;
   assert.ok(added.includes(".cw/out/catalogue.json"));
   assert.notEqual(await fileReaders.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
 
-  const health = CharterDTOs.DoctorOutcome.parse(
-    await (await portalRoutes.request("/charter/root/health")).json(),
-  ).data;
+  const health = CharterDTOs.DoctorOutcome.parse(await (await portalRoutes.request("/doctor")).json()).data;
   assert.equal(health.pendingCount, 0);
   assert.equal(health.problemCount, 0);
 });
@@ -191,7 +189,7 @@ test("a charter with an error builds nothing, and its faults are sent under thei
     holding({ [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }),
   );
 
-  const answer = await portalRoutes.request("/charter/root/build", buildRequest);
+  const answer = await portalRoutes.request("/build", buildRequest);
 
   assert.equal(answer.status, 422);
   assert.deepEqual(Object.keys(FaultDTOs.FaultsByFile.parse(await answer.json()).data.files), [
@@ -208,7 +206,7 @@ test("the health check is what doctor answers, and names the faults cw doctor pr
     }),
   );
 
-  const answer = await portalRoutes.request("/charter/root/health");
+  const answer = await portalRoutes.request("/doctor");
 
   assert.equal(answer.status, 200);
   const { warnCount, pendingCount, faultsByFile } = CharterDTOs.DoctorOutcome.parse(await answer.json()).data;

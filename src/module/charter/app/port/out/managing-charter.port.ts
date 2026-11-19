@@ -1,13 +1,13 @@
 import type { RawCharterMetadata } from "../../../domain/models/charter/raw-charter-metadata.js";
+import type { CharterInstall } from "../../../domain/models/charter-source/charter-install.js";
+import type { CharterSource } from "../../../domain/models/charter-source/charter-source.js";
+import type { CharterSourceOrigin } from "../../../domain/models/charter-source/charter-source-origin.value-object.js";
 import type { EvalSuite } from "../../../domain/models/eval/eval-suite.js";
 import type { RawEvalSuite } from "../../../domain/models/eval/raw-eval-suite.js";
 import type { Primitive } from "../../../domain/models/primitive/primitive.js";
 import type { RawPrimitive } from "../../../domain/models/primitive/raw-primitive.js";
 import type { RawTestSuite } from "../../../domain/models/test/raw-test-suite.js";
 import type { TestSuite } from "../../../domain/models/test/test-suite.js";
-import type { CharterInstall } from "../../../domain/models/vendor/charter-install.js";
-import type { VendorSource } from "../../../domain/models/vendor/vendor-source.js";
-import type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.value-object.js";
 
 export {
   AdapterFault,
@@ -22,10 +22,13 @@ export {
 } from "../../../../shared/module.js";
 export { charterPath, outputPath } from "../../../domain/constants.js";
 export { CharterPath } from "../../../domain/models/charter/charter-path.js";
+export { InstalledCharterRecord } from "../../../domain/models/charter/installed-charter-record.value-object.js";
 export { RawCharterMetadata } from "../../../domain/models/charter/raw-charter-metadata.js";
-export { VendorRecord } from "../../../domain/models/charter/vendor-record.value-object.js";
 export { CharterOutputItem } from "../../../domain/models/charter-output/charter-output-item.js";
 export { CopyPlan, ProjectionPlan, WritePlan } from "../../../domain/models/charter-output/projection-plan.js";
+export { CharterInstall } from "../../../domain/models/charter-source/charter-install.js";
+export { CharterSource } from "../../../domain/models/charter-source/charter-source.js";
+export type { CharterSourceOrigin } from "../../../domain/models/charter-source/charter-source-origin.value-object.js";
 export type { EvalSuite } from "../../../domain/models/eval/eval-suite.js";
 export { RawEvalSuite } from "../../../domain/models/eval/raw-eval-suite.js";
 export { AssetFile } from "../../../domain/models/primitive/asset-file.js";
@@ -39,19 +42,16 @@ export { RawPrimitive } from "../../../domain/models/primitive/raw-primitive.js"
 export { SkillPrimitive } from "../../../domain/models/primitive/skill-primitive.js";
 export { RawTestSuite } from "../../../domain/models/test/raw-test-suite.js";
 export type { TestSuite } from "../../../domain/models/test/test-suite.js";
-export { CharterInstall } from "../../../domain/models/vendor/charter-install.js";
-export { SourceCharter, VendorSource } from "../../../domain/models/vendor/vendor-source.js";
-export type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.value-object.js";
 export type { ForFetchingCharterSources } from "./fetching-charter-sources.port.js";
 
 /** Keeps a repository's charter, wherever it keeps it, and knows how: its
- *  primitives, the vendors it installed, its test cases and its eval cases,
+ *  primitives, the charters it installed, its test cases and its eval cases,
  *  through this one port (CORE-FR-228), and reads back what the last build
  *  laid of it, each item known by its path inside the output, never by
- *  where the output lands (CORE-FR-221). Where a primitive, an asset of one, a
- *  vendor's or a suite sits is its own to know, never the engine's, which knows
- *  a primitive by its layer, kind and id and a suite by its name
- *  (CORE-FR-213). */
+ *  where the output lands (CORE-FR-221). Where a primitive, an asset of one,
+ *  an installed charter or a suite sits is its own to know, never the
+ *  engine's, which knows a primitive by its layer, kind and id and a suite
+ *  by its name (CORE-FR-213). */
 export interface ForManagingCharter {
   /** Every primitive kept of the repository's charter, each with its assets,
    *  in the layer of the charter it is kept in: authored, or installed where the
@@ -95,26 +95,32 @@ export interface ForManagingCharter {
   removePrimitive(primitive: Primitive): Promise<void>;
 
   /** One commit of this source, at this version where one is named, fetched
-   *  and read: the charters it keeps (VENDOR-FR-017). Whoever asked says
-   *  `removeFetchedSource` once done. A source that cannot be reached raises
-   *  an `AdapterFault` saying so. */
-  fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<VendorSource>;
+   *  and read: each charter it keeps (VENDOR-FR-017). Whoever asked says
+   *  `removeFetchedSources` once done; where it keeps none, what was fetched
+   *  is already removed. A source that cannot be reached raises an
+   *  `AdapterFault` saying so. */
+  fetchCharterSources(charterSourceOrigin: CharterSourceOrigin, version?: string): Promise<readonly CharterSource[]>;
 
-  /** The temporary folder a source was fetched into, removed with all it holds. */
-  removeFetchedSource(vendorSource: VendorSource): Promise<void>;
+  /** The temporary folders these charters were fetched into, removed with all
+   *  they hold. */
+  removeFetchedSources(charterSources: readonly CharterSource[]): Promise<void>;
 
   /** Each charter of a source fetched put in the repository as planned: what
    *  its name held taken away whole, the folders of the source's charter
-   *  copied in as the source holds them, and its `cw-vendor.json` written, or
+   *  copied in as the source holds them, and its `cw-package.json` written, or
    *  taken away where it keeps none (VENDOR-FR-017 to VENDOR-FR-022). Nothing
    *  is staged and nothing committed. */
-  storeCharters(vendorSource: VendorSource, charterInstalls: readonly CharterInstall[]): Promise<void>;
+  storeCharters(charterInstalls: readonly CharterInstall[]): Promise<void>;
 
   /** Where a charter of this name is kept, in this keeper's words: said back,
    *  never read. */
   findCharterFolderUri(charterName: string): string;
 
-  /** The charter of this name taken away whole (VENDOR-FR-021). */
+  /** An empty charter of this name kept, the repository's own
+   *  (VENDOR-FR-029). */
+  addCharter(charterName: string): Promise<void>;
+
+  /** The charter of this name taken away whole (VENDOR-FR-021, VENDOR-FR-031). */
   removeCharter(charterName: string): Promise<void>;
 
   /** Every test suite kept, by its name in its charter and that charter, with

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FaultDTOs } from "#module/shared/module.js";
-import { useAddVendor } from "../portal.queries.js";
+import { usePullCharters } from "../portal.queries.js";
 import { DIALOG_FOOTER_CLASS_NAME } from "./dialog-footer.constants.js";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert.js";
 import { Button } from "./ui/button.js";
@@ -12,7 +12,7 @@ import { Label } from "./ui/label.js";
  * (FR-123). A refusal, a name a charter may not take among them, stays here in
  * the engine's words, and nothing closes.
  */
-export function AddVendorSource({
+export function AddCharterSource({
   onDone,
   onClose,
 }: {
@@ -22,17 +22,17 @@ export function AddVendorSource({
   const [source, setSource] = useState("");
   const [version, setVersion] = useState("");
   const [refusalFault, setRefusalFault] = useState<FaultDTOs.Fault | null>(null);
-  const addVendorMutation = useAddVendor();
+  const pullChartersMutation = usePullCharters();
 
   const addSource = async () => {
     const trimmedVersion = version.trim();
-    const refusedDTO = await addVendorMutation.mutateAsync({
+    const refusedDTO = await pullChartersMutation.mutateAsync({
       source: source.trim(),
       ...(trimmedVersion === "" ? {} : { version: trimmedVersion }),
     });
     if (refusedDTO !== null) return setRefusalFault(refusedDTO);
     onDone(
-      "Vendor source added",
+      "Charter source pulled",
       `${source.trim()}${trimmedVersion === "" ? "" : ` @ ${trimmedVersion}`} · run Build to compile what it adds`,
     );
   };
@@ -40,19 +40,19 @@ export function AddVendorSource({
   return (
     <div className="space-y-3.5">
       <p className="text-[13px] leading-[1.65] text-zinc-700">
-        A vendor source is a repository governed by cw: every charter it authored, under .cw/charter/&lt;charter&gt;/,
-        is installed, each with the charters it includes.
+        A charter source is a repository governed by cw: every charter it holds, under .cw/charter/&lt;charter&gt;/, is
+        installed, each with the charters it includes.
       </p>
       <div className="divide-y divide-zinc-100 overflow-hidden rounded-[11px] border border-[#f0f0f0]">
         <div className="flex items-center gap-3 px-[13px] py-2.5">
           <Label
-            htmlFor="vendor-source"
+            htmlFor="charter-source"
             className="w-[118px] shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase"
           >
             source
           </Label>
           <Input
-            id="vendor-source"
+            id="charter-source"
             value={source}
             spellCheck={false}
             onChange={(event) => setSource(event.target.value)}
@@ -60,13 +60,13 @@ export function AddVendorSource({
         </div>
         <div className="flex items-center gap-3 px-[13px] py-2.5">
           <Label
-            htmlFor="vendor-version"
+            htmlFor="charter-version"
             className="w-[118px] shrink-0 text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase"
           >
             version
           </Label>
           <Input
-            id="vendor-version"
+            id="charter-version"
             value={version}
             spellCheck={false}
             onChange={(event) => setVersion(event.target.value)}
@@ -89,7 +89,7 @@ export function AddVendorSource({
         </Alert>
       )}
       <div className={DIALOG_FOOTER_CLASS_NAME}>
-        <Button disabled={addVendorMutation.isPending || source.trim() === ""} onClick={() => void addSource()}>
+        <Button disabled={pullChartersMutation.isPending || source.trim() === ""} onClick={() => void addSource()}>
           Add source
         </Button>
         <Button variant="outline" onClick={onClose}>

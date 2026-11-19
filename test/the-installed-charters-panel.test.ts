@@ -6,9 +6,9 @@ import { inTheBrowser } from "./in-the-browser.js";
 import { installedFoldersOf } from "./use-cases-of.js";
 
 const at = (path: string) => new URL(path, "file:///repo/.cw/charter/team/primitive/").href;
-const vendoredAt = (charterName: string, path: string) =>
+const installedAt = (charterName: string, path: string) =>
   new URL(path, `file:///repo/.cw/charter/${charterName}/`).href;
-const vendorRecordTextOf = (charterName: string, source: string) =>
+const installedCharterRecordTextOf = (charterName: string, source: string) =>
   `${JSON.stringify({ charter: charterName, source, version: "HEAD" })}\n`;
 
 const primitive = (kind: string, id: string) =>
@@ -17,14 +17,14 @@ const primitive = (kind: string, id: string) =>
 /** A repository authoring one guide, and two installed charters: `charter`
  *  from `acme/charter`, bringing two guides and a corpus, and `baseline` from
  *  `acme/charters`, bringing one guide. */
-const withTwoVendors = () => ({
+const withTwoInstalledCharters = () => ({
   [at("guide/no-any/index.md")]: primitive("guide", "no-any"),
-  [vendoredAt("charter", "cw-vendor.json")]: vendorRecordTextOf("charter", "acme/charter"),
-  [vendoredAt("charter", "primitive/guide/small-diffs/index.md")]: primitive("guide", "small-diffs"),
-  [vendoredAt("charter", "primitive/guide/one-question/index.md")]: primitive("guide", "one-question"),
-  [vendoredAt("charter", "primitive/corpus/why/index.md")]: primitive("corpus", "why"),
-  [vendoredAt("baseline", "cw-vendor.json")]: vendorRecordTextOf("baseline", "acme/charters"),
-  [vendoredAt("baseline", "primitive/guide/old/index.md")]: primitive("guide", "old"),
+  [installedAt("charter", "cw-package.json")]: installedCharterRecordTextOf("charter", "acme/charter"),
+  [installedAt("charter", "primitive/guide/small-diffs/index.md")]: primitive("guide", "small-diffs"),
+  [installedAt("charter", "primitive/guide/one-question/index.md")]: primitive("guide", "one-question"),
+  [installedAt("charter", "primitive/corpus/why/index.md")]: primitive("corpus", "why"),
+  [installedAt("baseline", "cw-package.json")]: installedCharterRecordTextOf("baseline", "acme/charters"),
+  [installedAt("baseline", "primitive/guide/old/index.md")]: primitive("guide", "old"),
 });
 
 /** What a source here publishes: one charter, `published`, holding one guide. */
@@ -32,12 +32,12 @@ const publishedCharterFiles = {
   ".cw/charter/published/primitive/guide/published/index.md": primitive("guide", "published"),
 };
 
-test("with no charter installed, the vendor tab says so, and adding one asks the source and its version alone, listing no name (CORE Story 8 scenario 1)", async () => {
+test("with no charter installed, the installed charter tab says so, and adding one asks the source and its version alone, listing no name (CORE Story 8 scenario 1)", async () => {
   await inTheBrowser({ [at("guide/no-any/index.md")]: primitive("guide", "no-any") }, async (page) => {
-    await page.getByRole("tab", { name: "Vendor" }).click();
-    await page.getByText("No vendor source installed").waitFor();
+    await page.getByRole("tab", { name: "Installed" }).click();
+    await page.getByText("No charter installed").waitFor();
 
-    await page.getByRole("button", { name: "Add vendor source" }).click();
+    await page.getByRole("button", { name: "Add charter source" }).click();
     await page.getByLabel("source", { exact: true }).waitFor();
     await page.getByLabel("version").waitFor();
     assert.equal(await page.getByRole("dialog").getByRole("textbox").count(), 2);
@@ -46,8 +46,8 @@ test("with no charter installed, the vendor tab says so, and adding one asks the
 });
 
 test("each charter installed shows its folder, its source and version, and its primitives by kind (CORE Story 8 scenario 4, CORE Story 8 scenario 7, VENDOR Story 3 scenario 21)", async () => {
-  await inTheBrowser(withTwoVendors(), async (page) => {
-    await page.getByRole("tab", { name: "Vendor" }).click();
+  await inTheBrowser(withTwoInstalledCharters(), async (page) => {
+    await page.getByRole("tab", { name: "Installed" }).click();
     const acme = page.getByLabel(".cw/charter/charter", { exact: true });
     await acme.waitFor();
 
@@ -71,12 +71,12 @@ test("a source added from the dialog is installed through the engine, and the di
   await inTheBrowser(
     {},
     async (page) => {
-      await page.getByRole("tab", { name: "Vendor" }).click();
-      await page.getByRole("button", { name: "Add vendor source" }).click();
+      await page.getByRole("tab", { name: "Installed" }).click();
+      await page.getByRole("button", { name: "Add charter source" }).click();
       await page.getByLabel("source", { exact: true }).fill("git@github.com:team/charter.git");
       await page.getByLabel("version", { exact: true }).fill("v1.2.0");
       await page.getByRole("button", { name: "Add source" }).click();
-      await page.getByText("Vendor source added").waitFor();
+      await page.getByText("Charter source pulled").waitFor();
 
       assert.deepEqual(sourceFetcher.fetchedSources, [
         { source: "git@github.com:team/charter.git", version: "v1.2.0" },
@@ -97,15 +97,15 @@ test("a source holding no charter is refused, and the refusal stays in the dialo
   await inTheBrowser(
     {},
     async (page) => {
-      await page.getByRole("tab", { name: "Vendor" }).click();
-      await page.getByRole("button", { name: "Add vendor source" }).click();
+      await page.getByRole("tab", { name: "Installed" }).click();
+      await page.getByRole("button", { name: "Add charter source" }).click();
       await page.getByLabel("source", { exact: true }).fill("team/charter");
       await page.getByRole("button", { name: "Add source" }).click();
       await page.getByText("Refused, and nothing was installed").waitFor();
 
       assert.match(
         await page.getByRole("dialog").innerText(),
-        /is no vendor[\s\S]*Check that the source authors its charters/,
+        /is no charter source[\s\S]*Check that the source keeps its charters/,
       );
       assert.deepEqual(installedFoldersOf(sourceFetcher), []);
     },
@@ -114,7 +114,7 @@ test("a source holding no charter is refused, and the refusal stays in the dialo
 });
 
 /** Every file among the repository's charters, with what it holds. */
-const vendoredFilesOf = async (files: InMemoryFileReaders) =>
+const installedFilesOf = async (files: InMemoryFileReaders) =>
   Object.fromEntries(
     (await files.readFilesRecursively(new URL("file:///repo/.cw/charter/"))).map(({ fileUrl, contents }) => [
       fileUrl.href,
@@ -126,11 +126,11 @@ test("a source that cannot be reached installs nothing, touches nothing installe
   const sourceFetcher = new InMemorySources();
   sourceFetcher.unreachableSources.push("team/charter");
   await inTheBrowser(
-    withTwoVendors(),
+    withTwoInstalledCharters(),
     async (page, files) => {
-      const vendoredBefore = await vendoredFilesOf(files);
-      await page.getByRole("tab", { name: "Vendor" }).click();
-      await page.getByLabel("Vendor sources").getByRole("button", { name: "Add source" }).click();
+      const installedBefore = await installedFilesOf(files);
+      await page.getByRole("tab", { name: "Installed" }).click();
+      await page.getByLabel("Installed charters").getByRole("button", { name: "Add source" }).click();
       await page.getByLabel("source", { exact: true }).fill("team/charter");
       await page.getByRole("dialog").getByRole("button", { name: "Add source" }).click();
       await page.getByText("Refused, and nothing was installed").waitFor();
@@ -139,7 +139,7 @@ test("a source that cannot be reached installs nothing, touches nothing installe
       assert.match(dialogText, /team\/charter could not be fetched\./);
       assert.match(dialogText, /Check the address, and that you can reach it from here\./);
       assert.deepEqual(installedFoldersOf(sourceFetcher), []);
-      assert.deepEqual(await vendoredFilesOf(files), vendoredBefore);
+      assert.deepEqual(await installedFilesOf(files), installedBefore);
     },
     sourceFetcher,
   );
@@ -151,11 +151,11 @@ test("a source whose charter would land on a name a charter may not take install
     ".cw/charter/primitive/guide/one-rule/index.md": primitive("guide", "one-rule"),
   };
   await inTheBrowser(
-    withTwoVendors(),
+    withTwoInstalledCharters(),
     async (page, files) => {
-      const vendoredBefore = await vendoredFilesOf(files);
-      await page.getByRole("tab", { name: "Vendor" }).click();
-      await page.getByLabel("Vendor sources").getByRole("button", { name: "Add source" }).click();
+      const installedBefore = await installedFilesOf(files);
+      await page.getByRole("tab", { name: "Installed" }).click();
+      await page.getByLabel("Installed charters").getByRole("button", { name: "Add source" }).click();
       await page.getByLabel("source", { exact: true }).fill("team/charters");
       await page.getByRole("dialog").getByRole("button", { name: "Add source" }).click();
       await page.getByText("Refused, and nothing was installed").waitFor();
@@ -163,7 +163,7 @@ test("a source whose charter would land on a name a charter may not take install
       const dialogText = await page.getByRole("dialog").innerText();
       assert.match(dialogText, /team\/charters is laid out the old way: \.cw\/charter\/primitive\/ sits/);
       assert.deepEqual(installedFoldersOf(sourceFetcher), []);
-      assert.deepEqual(await vendoredFilesOf(files), vendoredBefore);
+      assert.deepEqual(await installedFilesOf(files), installedBefore);
     },
     sourceFetcher,
   );
@@ -173,12 +173,12 @@ test("Remove takes an installed charter away by its name (CORE Story 8 scenario 
   const sourceFetcher = new InMemorySources();
   await inTheBrowser(
     {
-      ...withTwoVendors(),
-      [vendoredAt("rules", "cw-vendor.json")]: vendorRecordTextOf("rules", "team/rules"),
-      [vendoredAt("rules", "primitive/guide/one-rule/index.md")]: primitive("guide", "one-rule"),
+      ...withTwoInstalledCharters(),
+      [installedAt("rules", "cw-package.json")]: installedCharterRecordTextOf("rules", "team/rules"),
+      [installedAt("rules", "primitive/guide/one-rule/index.md")]: primitive("guide", "one-rule"),
     },
     async (page) => {
-      await page.getByRole("tab", { name: "Vendor" }).click();
+      await page.getByRole("tab", { name: "Installed" }).click();
       await page.getByLabel(".cw/charter/rules", { exact: true }).getByRole("button", { name: "Remove" }).click();
       await page.getByText("Charter removed").waitFor();
 
@@ -191,9 +191,9 @@ test("Remove takes an installed charter away by its name (CORE Story 8 scenario 
 test("Remove takes an installed charter away through the engine (CORE Story 8 scenario 5)", async () => {
   const sourceFetcher = new InMemorySources();
   await inTheBrowser(
-    withTwoVendors(),
+    withTwoInstalledCharters(),
     async (page) => {
-      await page.getByRole("tab", { name: "Vendor" }).click();
+      await page.getByRole("tab", { name: "Installed" }).click();
       await page.getByLabel(".cw/charter/charter", { exact: true }).getByRole("button", { name: "Remove" }).click();
       await page.getByText("Charter removed").waitFor();
 

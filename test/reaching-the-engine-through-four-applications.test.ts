@@ -42,10 +42,10 @@ const operationNamesByPortName = {
     "openPrimitive",
     "rewritePrimitive",
     "removePrimitive",
-    "addVendor",
-    "injectVendor",
-    "removeVendor",
-    "listVendors",
+    "pullCharters",
+    "addCharter",
+    "updateCharters",
+    "removeCharters",
     "listTestSuites",
     "addTestSuite",
     "openTestSuite",
@@ -83,7 +83,7 @@ const operationNamesByPortName = {
     "analyzeEvalLog",
     "summarizeSessions",
   ],
-  ForManagingWorkspace: ["readWorkspaceSettings", "setUpWorkspace", "setVendorMark"],
+  ForManagingWorkspace: ["readWorkspaceSettings", "setUpWorkspace"],
 } as const;
 const portFileUrlByPortName = {
   ForAuthoringCharter: new URL("charter/app/port/in/authoring-charter.port.ts", hexagonFolderUrl),
@@ -173,6 +173,7 @@ const operationVerbs = new Set([
   "open",
   "predict",
   "preview",
+  "pull",
   "read",
   "remove",
   "rewrite",
@@ -181,6 +182,7 @@ const operationVerbs = new Set([
   "sign",
   "summarize",
   "test",
+  "update",
   "write",
 ]);
 
@@ -269,7 +271,6 @@ test("every operation of the engine, called over a charter, answers the caller p
     ForManagingWorkspace: {
       readWorkspaceSettings: () => workspaceApp.readWorkspaceSettings(),
       setUpWorkspace: () => workspaceApp.setUpWorkspace(["claude"], "0.0.0"),
-      setVendorMark: () => workspaceApp.setVendorMark(),
     },
     ForAuthoringCharter: {
       setUpCharter: () => charterAuthoringApp.setUpCharter(),
@@ -298,10 +299,10 @@ test("every operation of the engine, called over a charter, answers the caller p
           "not-the-opened-hash",
         ),
       removePrimitive: () => charterAuthoringApp.removePrimitive("added-guide"),
-      addVendor: () => charterAuthoringApp.addVendor("memory:/no-such-source/"),
-      injectVendor: () => charterAuthoringApp.injectVendor("memory:/no-such-source/"),
-      removeVendor: () => charterAuthoringApp.removeVendor("no-such-charter"),
-      listVendors: () => charterAuthoringApp.listVendors(),
+      pullCharters: () => charterAuthoringApp.pullCharters("memory:/no-such-source/", false),
+      addCharter: () => charterAuthoringApp.addCharter("made"),
+      updateCharters: () => charterAuthoringApp.updateCharters("no-such-charter", false),
+      removeCharters: () => charterAuthoringApp.removeCharters("no-such-charter", false, false),
       listTestSuites: () => charterAuthoringApp.listTestSuites(),
       addTestSuite: () => charterAuthoringApp.addTestSuite(),
       openTestSuite: () => charterAuthoringApp.openTestSuite("team", "kept"),
@@ -409,7 +410,9 @@ test("a driver port answers shapes made for the driver, and takes none of the do
         /^import (?:type )?\{ (.+) \} from "(?:\.\.\/)+(?:(?:shared|charter|runtime|workspace)\/)?domain\/models\/.+";$/gm,
       ),
     ])
-    .flatMap((importMatch) => importMatch[1]!.split(", ").map((importedName) => importedName.replace(/^type /, "")))
+    .flatMap((importMatch) =>
+      importMatch[1]!.split(",").map((importedName) => importedName.trim().replace(/^type /, "")),
+    )
     .filter((modelName) => modelName !== "DomainFault");
   assert.deepEqual(
     [...new Set(drivenModelNames)].filter((modelName) => !exportedNames.has(modelName)),
@@ -428,9 +431,11 @@ test("every command and the portal are handed the modules' applications and noth
   assert.deepEqual(contextAppTypeNames.sort(), Object.keys(operationNamesByPortName).sort());
   const portalRoutesText = readFileSync(new URL("src/presentation/portal/portal.routes.ts", repositoryUrl), "utf8");
   const portalPortNames = [
-    ...portalRoutesText.matchAll(/^import (?:type )?\{ ([^}]+) \} from "#module\/[\w-]+\/module\.js";$/gm),
+    ...portalRoutesText.matchAll(/^import (?:type )?\{([^}]+)\} from "#module\/[\w-]+\/module\.js";$/gm),
   ]
-    .flatMap((importMatch) => importMatch[1]!.split(", ").map((importedName) => importedName.replace(/^type /, "")))
+    .flatMap((importMatch) =>
+      importMatch[1]!.split(",").map((importedName) => importedName.trim().replace(/^type /, "")),
+    )
     .filter((importedName) => importedName.startsWith("For"));
   assert.deepEqual(portalPortNames.sort(), ["ForAuthoringCharter", "ForBuildingCharter"]);
 });
