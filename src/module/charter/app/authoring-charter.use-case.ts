@@ -51,6 +51,7 @@ import { TestSuiteFactory } from "../domain/models/test/test-suite.factory.js";
 import { TestSuite } from "../domain/models/test/test-suite.js";
 import { type CharterInstall, CharterInstallRequest } from "../domain/models/vendor/charter-install.js";
 import { VendorSourceOriginFactory } from "../domain/models/vendor/vendor-source-origin.factory.js";
+import { CharterInstallService } from "../domain/services/charter-install.service.js";
 import { TestSuiteService } from "../domain/services/test-suite.service.js";
 import type {
   AuthoringSettings,
@@ -62,7 +63,6 @@ import { CharterDTOs } from "./port/in/charter.dto.js";
 import type { ForAuthorizingOAuthClients } from "./port/out/authorizing-oauth-clients.port.js";
 import type { ForManagingCharter } from "./port/out/managing-charter.port.js";
 import type { ForStoringCredentials } from "./port/out/storing-credentials.port.js";
-import type { InstallCharterService } from "./services/install-charter.service.js";
 import type { LoadCharterService } from "./services/load-charter.service.js";
 
 /**
@@ -82,7 +82,6 @@ import type { LoadCharterService } from "./services/load-charter.service.js";
 
 export class AuthoringCharter extends ApplicationService implements ForAuthoringCharter {
   readonly #loadCharterService: LoadCharterService;
-  readonly #installCharterService: InstallCharterService;
   readonly #charterRepository: ForManagingCharter;
   readonly #credentialsRepository: ForStoringCredentials;
   readonly #oauthAuthorizer: ForAuthorizingOAuthClients;
@@ -93,7 +92,6 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     /** How the repository's charter is read off its layers. */
     loadCharterService: LoadCharterService,
     /** How a vendor's source is chosen of, planned and put down. */
-    installCharterService: InstallCharterService,
     /** Where the charter is kept, all of it (CORE-FR-228): its primitives
      *  read and the repository's own written, a source read and the vendors
      *  installed kept and taken away, and its test and eval cases read and
@@ -115,7 +113,6 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
     super(progressReporter);
     this.#isVendor = authoringSettings.isVendor ?? false;
     this.#loadCharterService = loadCharterService;
-    this.#installCharterService = installCharterService;
     this.#charterRepository = charterRepository;
     this.#credentialsRepository = credentialsRepository;
     this.#oauthAuthorizer = oauthAuthorizer;
@@ -1255,7 +1252,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         this.#loadCharterService.loadCharterMetadataList(this.#charterRepository),
         this.#loadCharterService.loadCharterRoot(this.#charterRepository, this.#isVendor),
       ]);
-      const charterInstalls = this.#installCharterService.planCharterInstalls(
+      const charterInstalls = CharterInstallService.planCharterInstalls(
         vendorSource,
         charterInstallRequest,
         charterMetadataList,

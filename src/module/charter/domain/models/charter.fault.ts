@@ -16,8 +16,8 @@ export class UnknownKindFault extends ApplicationFault {}
 /** An id the charter holds nothing of (FR-014). */
 export class UnknownIdFault extends ApplicationFault {}
 
-/** An id another file already claims, in any layer (FR-014). */
-export class ClaimedIdFault extends ApplicationFault {}
+/** An id another file already claims, in any layer (CORE-FR-015). */
+export class ClaimedIdFault extends DomainFault {}
 
 /** A primitive this repository did not author, asked to change (FR-077). */
 export class ReadOnlyPrimitiveFault extends ApplicationFault {}
@@ -35,18 +35,17 @@ export class UnsupportedSignInMethodFault extends ApplicationFault {}
 /** A vendor folder asked for by a name no installed vendor is under (FR-030). */
 export class UnknownVendorFault extends ApplicationFault {}
 
-/** A vendor source whose shape gives nothing to take as asked: no charter, no
- *  `charters/` or `skills/` holding what was named, or names that collide
- *  (CORE-FR-193). */
-export class UnexpectedSourceShapeFault extends ApplicationFault {}
+/** A vendor source that authors no charter, or not the one named
+ *  (CORE-FR-042, VENDOR-FR-017). */
+export class UnexpectedSourceShapeFault extends DomainFault {}
 
 /** A name no charter may have: one no id could be, a kind's, a folder an
- *  older layout kept, or `root` (VENDOR-FR-011, VENDOR-FR-014). */
-export class ReservedCharterNameFault extends ApplicationFault {}
+ *  older layout kept, or `root` (VENDOR-FR-011, VENDOR-FR-014, VENDOR-FR-020). */
+export class ReservedCharterNameFault extends DomainFault {}
 
 /** A charter's name another charter of the charter root already holds, or two
  *  charters installed at once would (VENDOR-FR-020, VENDOR-FR-022). */
-export class HeldCharterNameFault extends ApplicationFault {}
+export class HeldCharterNameFault extends DomainFault {}
 
 /** A test file asked for by a name no test file is under (FR-090, FR-092). */
 export class UnknownTestSuiteFault extends ApplicationFault {}
@@ -129,8 +128,8 @@ export class UnmetExpectationFault extends DomainFault {}
  *  naming what the charter does not hold (EVAL-FR-026). */
 export class InvalidEvalSuiteFault extends DomainFault {}
 
-/** A vendor source whose address names no owner and repository, so no
- *  folder to land in (FR-044). */
+/** A vendor source whose address names no repository folder, or one that
+ *  is no folder (FR-044, FR-049). */
 export class InvalidSourceAddressFault extends DomainFault {}
 
 /** A primitive no test case names, so nothing notices when it stops coming
@@ -161,8 +160,8 @@ export class UnnamedCharterFault extends ApplicationFault {}
 export class ReadOnlyCharterFault extends ApplicationFault {}
 
 /** `--as` given where more than one charter would be installed, so it names
- *  none of them (VENDOR-FR-020). */
-export class AmbiguousAsNameFault extends ApplicationFault {}
+ *  none of them (VENDOR-FR-020, VENDOR-FR-022). */
+export class AmbiguousAsNameFault extends DomainFault {}
 
 /** A charter asked for by a name the charter root holds none under
  *  (VENDOR-FR-026). */

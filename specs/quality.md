@@ -36,24 +36,36 @@ endpoint checks the caller's role", "No query is built by string
 concatenation". The quality pass writes its report in the last-pass section
 below this comment; leave that section to it. -->
 
+## Bypassed
+
+What the user chose on purpose: a pass checks it against this list and counts
+none of it as a warning or a violation.
+
+- `cw vendor init` checks its folder, runs git and writes its template in
+  `src/presentation/cli/commands/vendor-init.command.ts`: it is CLI-only work,
+  neither the charter's nor runtime's (2026-11-19).
+- [VENDOR Story 1](spec-vendor.md#vendor-story-1---set-a-charter-repository-up-in-an-empty-folder-priority-p2) scenario 6: an answer on more than one line cannot be typed
+  at a terminal, so no test holds that case; the blank name and the empty
+  description are held (2026-11-19).
+
 ## Last pass
 
-**Date**: 2026-11-16
+**Date**: 2026-11-19
 
-**Cross-check story**: [CORE Story 71](spec-core.md#core-story-71---quality-cross-check-of-core-story-57-core-story-67-core-story-68-core-story-69-core-story-70-priority-p3), on task/core-71-quality-cross-check (the working tree over 619fd82), the third pass
+**Cross-check story**: [VENDOR Story 5](spec-vendor.md#vendor-story-5---quality-cross-check-of-core-story-72-vendor-story-1-vendor-story-2-vendor-story-3-priority-p3), on task/vendor-5-quality-cross-check (the working tree over 2e36cb0), the thirteenth pass
 
-**Product grade**: **A** — every item passes.
+**Product grade**: **A** — every item passes; the two choices `## Bypassed` lists are not counted.
 
 ### Scope and evidence
 
-Read `spec.md`, the three specs, `plan.json`, `manifest.md`, `docs/` and the guides; checked the code and tests of every `Done` story against every item, hardest on [CORE Story 57](spec-core.md#core-story-57---read-every-value-of-the-charters-rules-by-what-it-holds-priority-p2) (3bf0f945) and Stories 67 to 70 (`55cd8ef..619fd82`). Each pass had two reviewers, each claude-opus-5-5: the stories against the code, and the guides with the specs against each other. Pass 1 graded D, pass 2 C; what each found was repaired in this story before the next, as the assumption on cross-checks from [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) on says.
+Read `spec.md`, the four specs, `plan.json`, `manifest.md`, `docs/`, `README.md` and the guides; checked the code and tests of [CORE Story 72](spec-core.md#core-story-72---read-the-charter-grouped-by-kind-in-cw-list-priority-p2) and VENDOR Stories 1, 2 and 3 (`4b677d5`, `421f9fc`, `16bb4a4`, `2e36cb0`) against every item. Thirteen passes, each by sdd-review-agent (claude-opus-5-5), the first two with one reviewer for the code and one for the specs; what each found was repaired in this story before the next, as the assumption on cross-checks from [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) on says.
 
 | Check | First run | Second run |
 |---|---|---|
 | `pnpm typecheck` | passed | — |
-| `pnpm lint:deps` | no violation (339 modules, 1122 dependencies) | no violation |
-| `pnpm test` (dependency rules, Biome, builds, tests) | 1079 passed; 0 failed; 0 skipped | 1079 passed; 0 failed; 0 skipped |
-| `node --test .cw/out/script/sdd-specs/specs.test.mjs .cw/out/script/sdd-clean/clean.test.mjs`, commit signing off for the run | 83 passed; 0 failed | 83 passed; 0 failed |
+| `pnpm lint:deps` | no violation (342 modules, 1129 dependencies) | — |
+| `pnpm test` (dependency rules, Biome, builds, tests) | 1120 passed; 0 failed; 0 skipped | 1120 passed; 0 failed; 0 skipped |
+| `node --test .cw/out/script/sdd-specs/specs.test.mjs` | 70 passed; 0 failed | — |
 | `node .cw/out/script/sdd-specs/specs.mjs check` | passed | — |
 
 ### Results for each checklist item
@@ -68,15 +80,21 @@ Read `spec.md`, the three specs, `plan.json`, `manifest.md`, `docs/` and the gui
 | Consistent | **pass** | |
 | Complete | **pass** | |
 | No conflict | **pass** | |
-| Roadmap | **pass** | `check` passes; 70 stories `Done`, [CORE Story 71](spec-core.md#core-story-71---quality-cross-check-of-core-story-57-core-story-67-core-story-68-core-story-69-core-story-70-priority-p3) `In Progress` |
+| Roadmap | **pass** | `check` passes; [VENDOR Story 5](spec-vendor.md#vendor-story-5---quality-cross-check-of-core-story-72-vendor-story-1-vendor-story-2-vendor-story-3-priority-p3) `In Progress` |
 | Format | **pass** | |
 
 ### Violations and proposed repairs
 
-None left. Repaired in this story:
+None left. Repaired in this story, by pass:
 
-- Pass 1, [CORE-FR-237](spec-core.md#core-fr-237): `cw init`, `cw test`, `cw eval` and `cw vendor init` printed a path in plain words; each is set apart now, each held by a test. Pass 2 found the same of the address and ids `cw mcp auth` prints while it asks, and review of that the address it asks to open; they are set apart now, written as an answer is, in colour only at a terminal with no `NO_COLOR` ([CORE-FR-238](spec-core.md#core-fr-238)).
-- Pass 1, specs: [CORE Story 71](spec-core.md#core-story-71---quality-cross-check-of-core-story-57-core-story-67-core-story-68-core-story-69-core-story-70-priority-p3) scenario 1 against the assumption on cross-checks; [CORE-FR-175](spec-core.md#core-fr-175) and its edge case against [CORE-FR-244](spec-core.md#core-fr-244); the lead of User Scenarios naming stories that do not exist. Each is written to agree.
-- Pass 1, warnings: the help wraps by `layAnswerRows`; the architecture-map guide names `rewriteDeprecatedSensorHooks`; `cw mcp auth`'s stopped-prompt fault is built in the command; two edge cases read one way and are answered by the FR they cite; [CORE Story 69](spec-core.md#core-story-69---find-authoring-and-running-apart-among-cws-commands-priority-p2) scenario 2 cites the portal's FR; the clarifications name the commands' new names; [CORE-FR-238](spec-core.md#core-fr-238) says answers off a terminal wrap at 80 columns.
+- Pass 1: the contract test raced a probe file another test puts in `src/` (`scripts/bundle-contract.ts` skips `.probe.` files); scenarios no test held got tests ([VENDOR Story 1](spec-vendor.md#vendor-story-1---set-a-charter-repository-up-in-an-empty-folder-priority-p2) scenario 6's blank name, Story 2 scenario 6's tag push, Story 3 scenario 1 for both agents, 29, 30); `InstallCharterService` moved to the domain as `CharterInstallService`; CORE, EVAL and VENDOR specs, `spec.md`, `plan.json`'s order and the docs brought to the charter root (`.cw/charter/<charter>/`, `cw-vendor.json`, `--as`). `cw vendor inject --as` written into [VENDOR-FR-022](spec-vendor.md#vendor-fr-022) (the user).
+- Pass 2: the rest of the specs, docs and README brought to the charter root; [VENDOR Story 1](spec-vendor.md#vendor-story-1---set-a-charter-repository-up-in-an-empty-folder-priority-p2) no longer names `/vendor-release`; `cw init` makes no charter ([CORE-FR-057](spec-core.md#core-fr-057)).
+- Pass 3: a source address needs its repository folder alone ([CORE-FR-049](spec-core.md#core-fr-049), the user); [CORE-FR-043](spec-core.md#core-fr-043) cited; [CORE-FR-180](spec-core.md#core-fr-180); old-layout paths; terminal tests no longer skipped without `python3`.
+- Pass 4: the old-layout fault names the vendor folder held, `.cw/vendor/` tested; the portal's vendor dialog lists no name (the user).
+- Passes 5 to 13: the specs say one thing in one term — "the address git fetches, as typed" for a source; "installed charter" for a charter installed from a vendor source (the user), "vendor" kept for the commands, the vendor layer, the vendor source, `cw-vendor.json`, the old folders and the engine's "no vendor"; "installing a charter or bringing an installed charter up to date" for what needs the network; [CORE-FR-227](spec-core.md#core-fr-227) and [CORE-SC-065](spec-core.md#core-sc-065) except the installed charters deleted; the edge case of a source under `charters/` answered by [CORE-FR-042](spec-core.md#core-fr-042); [VENDOR-FR-020](spec-vendor.md#vendor-fr-020) names the names a charter may not take, tested; the faults the domain raises extend `DomainFault`.
 
-Of note, not a violation: `McpPrimitive.activatesWhen` in `contract/charter.d.ts` now names `cw run mcp`; no name of the contract changes, the text an integrator reads does, for the next release's notes. Globs and the header values `cw explain` declares are printed as written: they are neither ids nor paths.
+Beside the story, at the user's request: the portal page names `logo.png` as its icon.
+
+Bypassed, as `## Bypassed` above lists, not counted: `cw vendor init` working in the presentation, and [VENDOR Story 1](spec-vendor.md#vendor-story-1---set-a-charter-repository-up-in-an-empty-folder-priority-p2) scenario 6's answer on more than one line, which has no test.
+
+Of note, not a violation: a `.cw/charter/root/` folder made by hand is not refused; the portal's vendor view keeps its heading "Vendor sources" and its empty state "No vendor source installed" (the user asked the portal be left as it is). The contract of the package is as at `2e36cb0`.

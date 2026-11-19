@@ -10,7 +10,6 @@ import type { ForManagingLocalAgentOutput } from "../src/module/charter/app/port
 import type { ForManagingLocalOutput } from "../src/module/charter/app/port/out/managing-local-output.port.js";
 import type { ForStoringCredentials } from "../src/module/charter/app/port/out/storing-credentials.port.js";
 import { buildCharterService } from "../src/module/charter/app/services/build-charter.service.js";
-import { installCharterService } from "../src/module/charter/app/services/install-charter.service.js";
 import { loadCharterService } from "../src/module/charter/app/services/load-charter.service.js";
 import { loadMcpOriginsService } from "../src/module/charter/app/services/load-mcp-origins.service.js";
 import { charterPath } from "../src/module/charter/domain/constants.js";
@@ -132,7 +131,6 @@ export function authoringCharterOf(
 ): AuthoringCharter {
   return new AuthoringCharter(
     loadCharterService,
-    installCharterService,
     charterRepository,
     credentialsRepository,
     oauthAuthorizer,

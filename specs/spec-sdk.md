@@ -31,7 +31,7 @@ It serves an integrator, not the developer using `cw`. What is published is a co
 ### Session 2026-11-02
 
 - Q: Why are the libraries the engine's rules use depended on, not bundled? → A: They were, while the engine had a package of its own; since 2026-11-10 it is a library of `cherry-works`, which bundles every library, and ships the types of the one the values crossing the ports are made from, so an integrator installs nothing else ([SDK-FR-006](#sdk-fr-006)).
-- Q: Which use cases need git? → A: Evaluating, and reaching a source. Authoring, validating, building, testing, setting up and the health check need none, since nothing tells an edited vendor ([SDK-FR-003](#sdk-fr-003)).
+- Q: Which use cases need git? → A: Evaluating, and reaching a source. Authoring, validating, building, testing, setting up and the health check need none, since nothing tells an edited installed charter ([SDK-FR-003](#sdk-fr-003)).
 - Q: Why must a completed write be read back? → A: Setup writes and then builds from what it wrote. No use case relies on two writes landing together, so the adapter owes nothing more ([SDK-FR-008](#sdk-fr-008)).
 
 ### Session 2026-11-11

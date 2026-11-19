@@ -39,7 +39,13 @@ const OLD_LAYOUT_FOLDER_PATHS = [
 export function createOldLayoutFault(layoutOwner: string, oldPaths: readonly string[]): AdapterFault {
   return new OldLayoutFault(
     `${layoutOwner} is laid out the old way: ${oldPaths.join(", ")} ${oldPaths.length === 1 ? "sits" : "sit"} where the charter root now keeps every primitive, test case and eval case in a named charter, ${charterPath.charterFolderPath}/<charter>/.`,
-    `Have your agent follow the cw-author skill to move it into a named charter: each kind's folder into ${charterPath.charterFolderPath}/<charter>/${charterPath.primitivesFolderName}/, the test cases into <charter>/${charterPath.testFolderName}/ and the eval cases into <charter>/${charterPath.evalFolderName}/; delete each vendor under ${charterPath.charterFolderPath}/${charterPath.oldVendorsFolderName}/ and install it again with "cw vendor add".`,
+    `Have your agent follow the cw-author skill to move it into a named charter: each kind's folder into ${charterPath.charterFolderPath}/<charter>/${charterPath.primitivesFolderName}/, the test cases into <charter>/${charterPath.testFolderName}/ and the eval cases into <charter>/${charterPath.evalFolderName}/${oldPaths
+      .filter((oldPath) => oldPath.endsWith(`/${charterPath.oldVendorsFolderName}/`))
+      .map(
+        (oldVendorsFolderPath) =>
+          `; delete each vendor under ${oldVendorsFolderPath} and install it again with "cw vendor add"`,
+      )
+      .join("")}.`,
     { internal: false },
   );
 }

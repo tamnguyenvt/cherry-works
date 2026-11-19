@@ -74,7 +74,7 @@ The main host differences:
 | `cw build [--preview]` | Compile the charter, or show what a build would write |
 | `cw list [--kind] [--min]` | List what the charter holds |
 | `cw kinds [kind]` | List the kinds, or the fields one of them requires |
-| `cw add <kind> <id> [--header k=v …]` | Write a new primitive |
+| `cw add <kind> <id> [--charter] [--header k=v …]` | Write a new primitive |
 | `cw edit <id>` | Open a primitive's file in your editor |
 | `cw remove <id> [--yes]` | Delete a primitive this repository authored |
 | `cw explain <id>` | Show which file declares an id, what it pulls in and which tests name it |
@@ -83,9 +83,9 @@ The main host differences:
 | `cw sessions [--since] [--until]` | Sum up the tokens of the sessions kept on this machine, by day and by session |
 | `cw test [--charter]` | Run every case in each charter's `.cw/charter/<charter>/test/`, or one charter's, against the charter |
 | `cw eval [--charter]` | Put every case in each charter's `.cw/charter/<charter>/eval/`, or one charter's, to the real agent under promptfoo |
-| `cw suite add \| edit \| remove` | Manage test files |
+| `cw suite add \| edit \| remove [--charter]` | Manage test files, in the charter named or the one this repository authored |
 | `cw vendor init` | Set a charter vendor repository up in an empty folder, to publish charters from |
-| `cw vendor add <source> [--ref] [--charter] [--as] \| remove \| list` | Install, update, remove or list the charters a source authored, each with the charters it includes |
+| `cw vendor add <source> [--ref] [--charter] [--as] \| remove \| list` | Install or bring up to date, remove or list the charters a source authored, each with the charters it includes |
 | `cw vendor inject <source> [--ref] [--charter] [--as]` | Copy a source's charters into charters of your own, to edit |
 | `cw mcp auth [id] [--status]` | Sign in, as yourself, to every mcp origin the charter reaches, or to one again |
 
@@ -138,7 +138,7 @@ your browser. The page has four tabs:
   | ![The form for guide:no-any, with its globs, rationale, mixins and markdown body](images/portal-edit.png) | ![The explanation of guide:no-any: when it comes up, what it pulls in and the test that names it](images/portal-explain.png) |
 - **Vendor** lists the charters you installed and their primitives, which
   are read-only. You can add a source by its git address and a version, or
-  remove one.
+  remove an installed charter.
 - **Test** lists the test files in each charter's `.cw/charter/<charter>/test/`. You can create, edit and delete
   them, and run every case to see which pass and why a failing one failed.
 

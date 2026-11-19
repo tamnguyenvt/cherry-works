@@ -139,6 +139,17 @@ test("--as installs the charter under that name, its cw-vendor.json naming the c
   });
 });
 
+test("--as a name a charter may not take installs nothing, saying it cannot name a charter (VENDOR-FR-020)", async () => {
+  for (const asName of ["root", "guide", "Not An Id"]) {
+    const { fileReader, charterAuthoringApp } = repositoryWith();
+
+    const refusalText = faultTextOf(await charterAuthoringApp.addVendor(SOURCE, undefined, ["lone"], asName));
+
+    assert.match(refusalText, /cannot name a charter/, asName);
+    assert.deepEqual(await charterNamesOf(fileReader), [], asName);
+  }
+});
+
 test("a name held by a charter installed from the same source is replaced whole; one authored, or installed from another source, is refused suggesting --as (VENDOR Story 3 scenario 19)", async () => {
   const { fileReader, charterAuthoringApp } = repositoryWith({
     ".cw/charter/lone/cw-vendor.json": vendorRecordTextOf("lone", SOURCE, "v0"),

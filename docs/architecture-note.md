@@ -40,9 +40,10 @@ Story: [CORE Story 37](../specs/spec-core.md#core-story-37---install-and-remove-
 
 The engine never checks whether a vendored file was edited, by git or by a
 record of its own: `cw doctor` has no line for vendors, `cw vendor add` and
-`cw vendor remove` compare nothing, and nothing is kept beside a vendor. A
-vendor is read-only by convention; the diff that brought an edit is where
-it is caught, and installing the vendor again replaces it.
+`cw vendor remove` compare nothing, and nothing but its `cw-vendor.json` is
+kept beside a vendor. `cw edit` and `cw remove` refuse a vendor's primitive;
+an edit made by hand is caught in the diff that brought it, and installing
+the vendor again replaces it.
 
 ## Each thing in the specs has one term
 
@@ -65,7 +66,8 @@ Every spec names each thing by one term, and no term names two things:
 | What a use case writes for whoever runs the system | diagnostics | logs |
 | The engine's two parts | authoring and running | the charter's part |
 | One primitive's file | a primitive's file | charter file |
-| The whole | the charter | charter root |
+| The whole | the charter root, or the charter where no one charter is named | — |
+| One named set of primitives, in `.cw/charter/<charter>/` | a charter | group |
 | The per-agent adapter laying the compiled output | projection | — |
 | What a build compiles | the compiled output, a compiled file | projection, projected file, output folder, build's output |
 | What compiles a charter and applies it | the engine | harness |

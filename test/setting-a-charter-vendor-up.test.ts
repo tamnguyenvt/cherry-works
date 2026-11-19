@@ -91,20 +91,20 @@ sys.stdout.write(shown.decode(errors="replace"))
 sys.exit(os.waitstatus_to_exitcode(os.waitpid(pid, 0)[1]))
 `;
 
-const hasPython = spawnSync("python3", ["--version"]).status === 0;
-
-/** `cw vendor init` answered at a terminal: the name as it is offered, the
- *  description typed, and claude, the first agent, ticked at cw init's
- *  question, which an empty description never reaches. */
+/** `cw vendor init` answered at a terminal: the name as it is offered, or
+ *  as typed, the description typed, and claude, the first agent, ticked at
+ *  cw init's question, which an answer refused never reaches. */
 function runVendorInitAtTerminal(
   folderPath: string,
   commandEnv: NodeJS.ProcessEnv,
   repositoryDescription = "Rules for TypeScript services.",
+  repositoryName = "",
 ) {
+  const isRefused = repositoryDescription.trim() === "" || /^\s+$/.test(repositoryName);
   const answerSteps = [
-    ["repository called", "\r"],
+    ["repository called", `${repositoryName}\r`],
     ["install them", `${repositoryDescription}\r`],
-    ...(repositoryDescription === "" ? [] : [["Which agents", " \r"]]),
+    ...(isRefused ? [] : [["Which agents", " \r"]]),
   ];
   return spawnSync(
     "python3",
@@ -122,9 +122,7 @@ async function listFilePaths(folderPath: string): Promise<readonly string[]> {
     .sort();
 }
 
-test("an empty folder answered at a terminal is set up as a charter repository from the template, on main, with nothing committed", {
-  skip: !hasPython && "python3 makes the terminal",
-}, async () => {
+test("an empty folder answered at a terminal is set up as a charter repository from the template, on main, with nothing committed", async () => {
   await inWorkFolder(async (repositoryFolderPath, commandEnv) => {
     const vendorInitRun = runVendorInitAtTerminal(repositoryFolderPath, commandEnv);
 
@@ -167,9 +165,7 @@ test("an empty folder answered at a terminal is set up as a charter repository f
   });
 });
 
-test("at a terminal with colour, the folder each charter is written under is set apart (CORE Story 67 scenario 1)", {
-  skip: !hasPython && "python3 makes the terminal",
-}, async () => {
+test("at a terminal with colour, the folder each charter is written under is set apart (CORE Story 67 scenario 1)", async () => {
   await inWorkFolder(async (repositoryFolderPath, { NO_COLOR: _noColour, ...colouredEnv }) => {
     const vendorInitRun = runVendorInitAtTerminal(repositoryFolderPath, colouredEnv);
 
@@ -197,14 +193,22 @@ test("it takes no flag: every answer is asked", async () => {
   });
 });
 
-test("a description left empty is refused, writing nothing", {
-  skip: !hasPython && "python3 makes the terminal",
-}, async () => {
+test("a description left empty is refused, writing nothing", async () => {
   await inWorkFolder(async (repositoryFolderPath, commandEnv) => {
     const vendorInitRun = runVendorInitAtTerminal(repositoryFolderPath, commandEnv, "");
 
     assert.equal(vendorInitRun.status, 1);
     assert.match(vendorInitRun.stdout, /description is empty/);
+    assert.deepEqual(await readdir(repositoryFolderPath), []);
+  });
+});
+
+test("a name left blank is refused, writing nothing", async () => {
+  await inWorkFolder(async (repositoryFolderPath, commandEnv) => {
+    const vendorInitRun = runVendorInitAtTerminal(repositoryFolderPath, commandEnv, "Rules.", "   ");
+
+    assert.equal(vendorInitRun.status, 1);
+    assert.match(vendorInitRun.stdout, /name is empty/);
     assert.deepEqual(await readdir(repositoryFolderPath), []);
   });
 });
@@ -228,9 +232,7 @@ test("a folder holding anything, or a git repository with a commit, is refused, 
   });
 });
 
-test("a git repository with no commit yet is set up on the branch it is on", {
-  skip: !hasPython && "python3 makes the terminal",
-}, async () => {
+test("a git repository with no commit yet is set up on the branch it is on", async () => {
   await inWorkFolder(async (repositoryFolderPath, commandEnv) => {
     runGit(["init", "--quiet"], repositoryFolderPath, commandEnv);
     runGit(["symbolic-ref", "HEAD", "refs/heads/trunk"], repositoryFolderPath, commandEnv);

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import http from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -176,4 +176,13 @@ test("no port left to listen on is said as what to report, never thrown (CORE St
 test("a page never built refuses to start, naming pnpm build", async () => {
   const unbuilt = pathToFileURL(`${await mkdtemp(join(tmpdir(), "cw-portal-"))}/`);
   assert.match(String(await startPortal(unbuilt, ...portalApps(), PORT)), /pnpm build/);
+});
+
+test("the built page names the cherry logo laid beside it as its icon", async () => {
+  // `pnpm test` builds first, so the page read is this working tree's.
+  const builtPortalUrl = new URL("../dist/portal/", import.meta.url);
+  const pageText = await readFile(new URL("index.html", builtPortalUrl), "utf8");
+
+  assert.match(pageText, /<link rel="icon" type="image\/png" href="\.\/logo\.png">/);
+  await access(new URL("logo.png", builtPortalUrl));
 });

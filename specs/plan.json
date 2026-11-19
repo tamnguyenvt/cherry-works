@@ -322,7 +322,7 @@
     },
     {
       "id": "CORE Story 30",
-      "title": "Name every vendor folder by its owner and its repository",
+      "title": "Install each charter under a name of its own",
       "dependsOn": [
         "CORE Story 2"
       ],
@@ -860,6 +860,15 @@
       }
     },
     {
+      "id": "VENDOR Story 3",
+      "title": "Keep, author, install and test charters in the charter root",
+      "dependsOn": [],
+      "evidence": {
+        "summary": "Full suite 1097 tests, 1096 pass, 0 fail, 1 todo (VENDOR Story 2's); tsc (server and portal page), biome, lint, lint:deps and specs check clean; by hand in a fresh repository: cw add --charter, cw vendor add from a local git source, cw vendor list, cw build, cw test --charter, and the portal's charter routes",
+        "date": "2026-11-19"
+      }
+    },
+    {
       "id": "VENDOR Story 2",
       "title": "Release the charters with `/vendor-release`",
       "dependsOn": [
@@ -872,15 +881,6 @@
       }
     },
     {
-      "id": "VENDOR Story 3",
-      "title": "Keep, author, install and test charters in the charter root",
-      "dependsOn": [],
-      "evidence": {
-        "summary": "Full suite 1097 tests, 1096 pass, 0 fail, 1 todo (VENDOR Story 2's); tsc (server and portal page), biome, lint, lint:deps and specs check clean; by hand in a fresh repository: cw add --charter, cw vendor add from a local git source, cw vendor list, cw build, cw test --charter, and the portal's charter routes",
-        "date": "2026-11-19"
-      }
-    },
-    {
       "id": "VENDOR Story 5",
       "title": "Quality cross-check of CORE Story 72, VENDOR Story 1, VENDOR Story 2, VENDOR Story 3",
       "dependsOn": [
@@ -888,7 +888,11 @@
         "VENDOR Story 1",
         "VENDOR Story 2",
         "VENDOR Story 3"
-      ]
+      ],
+      "evidence": {
+        "summary": "Thirteen quality passes, each finding repaired; graded A with the user's bypasses; pnpm test twice 1120/1120, typecheck, lint:deps, specs check and the script's 70 tests clean",
+        "date": "2026-11-19"
+      }
     }
   ]
 }

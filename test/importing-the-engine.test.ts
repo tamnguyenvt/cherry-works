@@ -989,7 +989,7 @@ test("the installed package exports exactly what its contract names: the composi
     "BuildCharterService",
     "buildCharterService",
     "loadCharterService",
-    "installCharterService",
+    "CharterInstallService",
     "loadMcpOriginsService",
     "CharterOutputService",
     "TestSuiteService",

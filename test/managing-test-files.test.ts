@@ -157,6 +157,39 @@ test("addTestSuite() writes untitled-1.json, then untitled-2.json, each one case
   assert.equal(await fileAt(".cw/charter/team/test/untitled-1.json"), untitledSuiteText);
 });
 
+test("with no charter named, a test file goes into the one charter the repository authored, and is refused naming the charters held where it authored none or more than one, nothing written (VENDOR Story 3 scenario 30, VENDOR-FR-009)", async () => {
+  const { charterAuthoringApp: oneCharterApp, fileAt: oneCharterFileAt } = authoring(withTeamCharter);
+  answerOf(await oneCharterApp.addTestSuite());
+  assert.ok(await oneCharterFileAt(".cw/charter/team/test/untitled-1.json"));
+
+  const { charterAuthoringApp: twoChartersApp, fileAt: twoChartersFileAt } = authoring({
+    ...withTeamCharter,
+    [at(".cw/charter/review/primitive/guide/no-mocks/index.md")]: guide("no-mocks", ["src/**/*.ts"]),
+  });
+  const twoChartersFault = faultOf(await twoChartersApp.addTestSuite());
+  assert.equal(twoChartersFault.name, "UnnamedCharterFault");
+  assert.match(twoChartersFault.message, /authored more than one/);
+  assert.match(twoChartersFault.fix ?? "", /review, team|team, review/);
+  assert.equal(await twoChartersFileAt(".cw/charter/team/test/untitled-1.json"), undefined);
+  assert.equal(await twoChartersFileAt(".cw/charter/review/test/untitled-1.json"), undefined);
+
+  const noCharterFault = faultOf(await authoring(settings).charterAuthoringApp.addTestSuite());
+  assert.match(noCharterFault.message, /authored none/);
+
+  // Opening and removing name the charter the same way, as cw suite edit and
+  // cw suite remove do.
+  answerOf(await oneCharterApp.openTestSuite("", "untitled-1.json"));
+  answerOf(await oneCharterApp.removeTestSuite("", "untitled-1.json"));
+  assert.equal(await oneCharterFileAt(".cw/charter/team/test/untitled-1.json"), undefined);
+  for (const twoChartersFault of [
+    faultOf(await twoChartersApp.openTestSuite("", "untitled-1.json")),
+    faultOf(await twoChartersApp.removeTestSuite("", "untitled-1.json")),
+  ]) {
+    assert.equal(twoChartersFault.name, "UnnamedCharterFault");
+    assert.match(twoChartersFault.message, /authored more than one/);
+  }
+});
+
 test("addTestSuite() takes the first free number", async () => {
   const { charterAuthoringApp } = authoring({
     ...settings,

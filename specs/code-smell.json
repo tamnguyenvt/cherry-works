@@ -352,12 +352,6 @@
         }
       ]
     },
-    "src/module/charter/app/services/install-charter.service.ts": {
-      "hash": "4872bbebf6bd1628912708f246faea02c3bc0c1b99fb98ac32b8cbf95d84bd42",
-      "assessed": "2026-11-14",
-      "good": true,
-      "findings": []
-    },
     "src/module/charter/app/services/load-charter.service.ts": {
       "hash": "4293a066939605ecd5cac3ef51050c3e12cf84dc4be5a52232fb336f70f72148",
       "assessed": "2026-11-14",

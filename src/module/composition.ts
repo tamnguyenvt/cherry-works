@@ -15,7 +15,6 @@ import {
   type ForManagingLocalOutput,
   type ForStoringCredentials,
   GitSources,
-  installCharterService,
   KeychainCredentialsRepository,
   LocalRepoManipulator,
   loadCharterService,
@@ -140,7 +139,6 @@ export function composeEngine(
 
   const charterAuthoringApp: ForAuthoringCharter = new AuthoringCharter(
     loadCharterService,
-    installCharterService,
     charterRepository,
     engineAdapters.credentialsRepository,
     engineAdapters.oauthAuthorizer,

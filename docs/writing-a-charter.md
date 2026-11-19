@@ -16,7 +16,7 @@ cw add guide explain-failures --charter=team --header description="Explain failu
 cw edit explain-failures
 ```
 
-`cw init` asks which agents the repository chooses and builds the initial charter. If
+`cw init` asks which agents the repository chooses, sets the repository up and builds. If
 the repository is already initialized, start with `cw kinds guide`.
 `cw add` writes the primitive; it does not build it. `cw edit` opens the source
 in `$VISUAL` or `$EDITOR`.
@@ -79,7 +79,7 @@ that contract rather than borrowing headers from a host's native skill format.
 ## Name and scope each primitive
 
 Every primitive declares `kind`, `id` and `description` in YAML front matter.
-Its path follows `.cw/charter/<kind>/<id>/index.md`.
+Its path follows `.cw/charter/<charter>/primitive/<kind>/<id>/index.md`.
 
 - Choose an id that describes one rule or workflow, such as `explain-failures`.
   Use lowercase letters, digits and inner hyphens; `/` can group segments, as
@@ -168,8 +168,8 @@ to edit and delete. Injection leaves the files unstaged and does not build. A
 charter name or an id you already hold refuses the whole injection before
 anything is written.
 
-Use `cw vendor add` instead when you want a read-only vendor copy that you
-update from its source. See [vendor sources](reference.md#vendor-sources).
+Use `cw vendor add` instead when you want a read-only installed charter, brought
+up to date by adding its source again. See [vendor sources](reference.md#vendor-sources).
 
 ## Test the scope, then inspect the output
 

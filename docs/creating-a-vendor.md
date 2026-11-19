@@ -175,8 +175,9 @@ Before publishing, you can also test a committed source from disk:
 cw vendor add /absolute/path/your-org/charter-baseline --charter=baseline
 ```
 
-Run that in a separate consumer repository. The local path must identify both
-an owner folder and a repository folder. The source is fetched through Git,
+Run that in a separate consumer repository. The local path names the
+repository folder; each charter lands under its own name, and its
+`cw-vendor.json` records the path as typed. The source is fetched through Git,
 so uncommitted source changes are not installed.
 
 ## 5. Publish updates

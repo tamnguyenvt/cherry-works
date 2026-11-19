@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { access, readFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -747,4 +748,27 @@ test("a contract the release split from the build compares equal to that build, 
       assert.equal(releaseRun.status, 0, releaseRun.stderr);
     },
   );
+});
+
+test("a probe file taken away while the contract is split from the build fails no split", async () => {
+  const rootPath = await mkdtemp(join(tmpdir(), "cw-contract-root-"));
+  try {
+    await mkdir(join(rootPath, "src/module/workspace"), { recursive: true });
+    await writeFile(
+      join(rootPath, "src/module/workspace/managing-workspace.ts"),
+      "interface ForManagingWorkspace {}\n",
+    );
+    // A probe listed but already gone, as a test beside it puts one in src
+    // and takes it away.
+    await symlink(join(rootPath, "gone"), join(rootPath, "src/module/workspace/probe-gone.probe.ts"));
+    const contractTextByFileName = await splitContract(
+      rootPath,
+      LONG_SIGNATURE_CONTRACT,
+      new Map(),
+      (contractFileName) => `// ${contractFileName}`,
+    );
+    assert.match(contractTextByFileName.get("workspace.d.ts") ?? "", /interface ForManagingWorkspace/);
+  } finally {
+    await rm(rootPath, { recursive: true, force: true });
+  }
 });

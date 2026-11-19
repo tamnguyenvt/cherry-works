@@ -8,7 +8,6 @@ import {
   CharterOutputItem,
   type ForManagingLocalOutput,
 } from "../src/module/charter/app/port/out/managing-local-output.port.js";
-import { installCharterService } from "../src/module/charter/app/services/install-charter.service.js";
 import { loadCharterService } from "../src/module/charter/app/services/load-charter.service.js";
 import { outputPath } from "../src/module/charter/domain/constants.js";
 import { Catalogue } from "../src/module/charter/domain/models/charter-output/catalogue.js";
@@ -62,7 +61,6 @@ const authoringCharterOver = (heldFileReaders: InMemoryFileReaders) => {
   const fileWriter = new InMemoryFileOutput(heldFileReaders);
   return new AuthoringCharter(
     loadCharterService,
-    installCharterService,
     charterRepositoryOf(heldFileReaders, fileWriter, new InMemorySources()),
     new InMemoryCredentialsRepository(),
     new InMemoryOAuthAuthorizer(),

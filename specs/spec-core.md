@@ -2,7 +2,7 @@
 
 **Created**: 2026-08-30
 
-**Updated**: 2026-11-18
+**Updated**: 2026-11-19
 
 **Input**: User descriptions: "Build the Cherry Works charter and its charter engine — a shared policy repository holding the charter, and an engine with a `cw` CLI that resolves and applies it." Then: "The charter portal: a graphical interface over one repository's charter, driving the charter engine." Then: "Implement a cherry skill so a coding agent authors charter primitives, without typing them by hand." Then: "Phase 003: publish to npm…" Then: "The catalogue must not send an agent into the charter: build every primitive into the compiled output and point there." Then: "Phase 005: let every primitive point at the knowledge that lives outside the repository … reached through MCP, each developer signed in as themselves, and served to the agent through one `cw` server." Then: "Phase 006: … Add two kinds, `template` and `script` …; every `template:<id>` and `script:<id>` is written as the path to that file." Then: "Phase 007: drop the `{kind}-` prefix …, so a skill is invoked as `/<id>`." Then: "Drop the identity altogether: an id is unique, so it is what a primitive is known by." Then: "A skill or a playbook that is only a step of another should not be offered as a command the user types…" Then: "Let the hooks go through … `cw sensor run <signal>` …" Then: "`cw vendor add mattpocock/skills --skill=grill-me`: a source holding a charter is installed as a charter; otherwise its `SKILL.md` are … converted into skills of the charter." Then: "`cw vendor inject` … writes what it takes straight into the repository's own charter. A source may gather many charters under `charters/` …" Then: "Git is only how a vendor source is fetched … carry binary assets whole, so the engine can be published for tools with no git and no disk." Then: "Delete the directory too if it is empty." Then: "Use the repository's own git config." Then: "Accept the quality-pass repair stories…" Then: "Make it modular…" Then: "Drop the modules…" Then: "Everything in the domain is a class…" Then: "Nothing inside the engine knows the repository's path…" Then: "… `.cw/` holds the charter (primitives, tests, eval cases, vendors), the output and the log. … A repository laid out the old way is refused, and the authoring skill moves it." Then: "Gather everything of the charter into one charter repository…" Then: "Split the engine into two modules … each adapter replaceable where the engine is composed, the engine never." Then: "The two modules are charter and runtime…" Then: "Hand the engine its adapters, one for every way out — each agent's projection and command line, the charter's store and the rest — the engine's own by default, any of it written anew." Then: "Export only what a tool needs of the engine: compose it handing only the adapters it replaces; keep the charter's store and the agents' projections and command lines out of the package's contract for now." Then: "Keep [SDK-FR-020](spec-sdk.md#sdk-fr-020): export `cw`'s own adapters for a tool to extend." Then: "Keep each compiled entry's path inside the output: the catalogue is written from it." Then: "When no agent is chosen, stop and ask." Then: "Repair what the quality pass of [CORE Story 55](#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) found: prove every Done scenario a test misses, make each test say what its scenario says, keep the engine to its naming guides, and say each thing in one term, as behaviour." Then: "Repair what the next quality pass found: `cw context` estimates with no agent named, `cw context --agent=<agent>` counts exactly beside the estimate, and `--exact` is dropped; the architecture map names every operation the engine asks of what is outside it; every value naming an agent is named for it; the place an author edits the charter is always the one its store says, and no agent's files are told cw's own layout." Then: "Fix what the old hand-over notes left: names the guides refuse, code nothing uses, tests and guards that could not fail, and docs behind the code." Then: "`cw sensor run` has no default agent: with none named, it runs only the sensors kept for no agent." Then: "Bring the engine's source to the charter's coding rules, as the code smell assessment of 2026-11-14 found it, the product behaving as before; leave the tests and the scripts as they are, and make every installed vendor in the engine, whichever store keeps it, though the package's contract changes." Then: "Gather every code smell fix into one branch: too many stories; a task that is not a feature is a fix named for what it fixes, never a numbered story." Then: "Make `cw` print in colour and with more structure; let `--json` print the answer made for the caller as plain data, with no colour; name the commands that run what was built `cw run mcp`, `cw run sensor` and `cw run portal`, the old names deprecated and moved off by a build, and list the help in two sections, authoring and running; in the portal, make mentioning another primitive with `[[` easy; change no contract." Then: "`cw list` groups the primitives by kind."
 
@@ -12,8 +12,8 @@ Cherry Works exists to make a coding agent's output reliable enough to ship. Rel
 
 The **charter** is everything a team authors to specify how the agent must behave. The **engine** is what compiles and applies it. The product has three surfaces over one engine.
 
-- **The charter and its engine, on the command line.** A repository authors its charter as small folders, each with its `index.md`, installs other teams' charters as vendor sources, and runs `cw` to validate it, list it, explain it, compile it into what its agent reads, test it and check its health. Nothing can be done elsewhere that cannot be done there.
-- **The portal.** Started from the command line inside a governed repository, a page shows everything the charter holds — what each primitive says, when it comes up, which file it lives in and which layer it came from — and lets a developer author, install vendors, run the tests, build and ask the health check without remembering a command or a field name. It drives the same engine and adds no behaviour of its own.
+- **The charter and its engine, on the command line.** A repository authors its charter as small folders, each with its `index.md`, installs other teams' charters from vendor sources, and runs `cw` to validate it, list it, explain it, compile it into what its agent reads, test it and check its health. Nothing can be done elsewhere that cannot be done there.
+- **The portal.** Started from the command line inside a governed repository, a page shows everything the charter holds — what each primitive says, when it comes up, which file it lives in and which layer it came from — and lets a developer author, install charters, run the tests, build and ask the health check without remembering a command or a field name. It drives the same engine and adds no behaviour of its own.
 - **Agent authoring.** The coding agent is the third author, and the one that never sits at a terminal. A kind says what it requires to whoever asks (`cw kinds <kind>`), a primitive can be written with no terminal to answer at (`cw add <kind> <id> --header k=v`), and a skill, `cw-author`, arrives in a layer of the charter `cw` itself owns. The skill copies no rule out of the engine: it says to ask `cw kinds`, so a skill compiled by an older `cw` never hands the agent a stale header table ([CORE-FR-004](#core-fr-004), [CORE-FR-064](#core-fr-064)). What a guide should say stays the repository's business.
 
 - **Knowledge outside the repository.** A corpus holds the reasoning the repository wrote down; the rest sits in other repositories, in Notion, in Slack, each reached through an MCP server. An `mcp` primitive declares one such mcp origin once, under an id of its own, with the tools the agent may use there, and any primitive names it in its body as `[[<id>]]` ([CORE-FR-143](#core-fr-143)). `cw mcp auth` signs each developer in to each mcp origin as themselves, and `cw run mcp` is the one MCP server the agent is given, forwarding each call with that developer's own credential. No credential is shared: every call reaches the mcp origin under the name of the person whose agent made it, and taking someone's access away there is the whole of taking it away.
@@ -50,7 +50,7 @@ A single charter covering design, planning and implementation at once has to be 
 
 - Q: The kind kept a guide and a skill of one id apart; what keeps them apart now? → A: Nothing keeps them as two primitives. An id names one primitive whatever its kind, so a guide and a skill of one id are the same collision a skill and a playbook are ([CORE-FR-015](#core-fr-015)).
 - Q: Is a charter written as `corpus:x` or `script:x` told so? → A: Not as such: nothing reads that way. `rationale: corpus:x` is a rationale no corpus answers to, which `cw doctor` reports; `script:x` in a body is text, the author's to find.
-- Q: Are a vendor's guides warned about as untested, and its test cases run here? → A: No: a vendor is tested and checked in its own repository. Here the health check says only its errors, and only the repository's own tests run ([CORE-FR-014](#core-fr-014), [CORE-FR-042](#core-fr-042)).
+- Q: Are an installed charter's guides warned about as untested, and its test cases run here? → A: No: an installed charter is tested and checked in the repository it came from. Here the health check says only its errors; its test cases, installed with it, run beside the repository's own ([CORE-FR-014](#core-fr-014), [VENDOR-FR-024](spec-vendor.md#vendor-fr-024)).
 
 ### Session 2026-10-22
 
@@ -58,12 +58,12 @@ A single charter covering design, planning and implementation at once has to be 
 
 ### Session 2026-10-26
 
-- Q: Is a source installed under a folder an earlier version named moved for the repository? → A: No: it is removed and installed again ([CORE-FR-050](#core-fr-050)).
+- Q: Is a charter that an earlier version installed, in a folder of its own, moved for the repository? → A: No: it is removed and installed again ([CORE-FR-050](#core-fr-050)).
 - Q: What is an agent given that has no header keeping it from opening a skill? → A: Nothing is decided for it yet: every agent built for has one, and the story adding an agent without one decides.
 
 ### Session 2026-10-28
 
-- Q: Why is each charter of a source of many laid out as a single-charter source holds one? → A: So its author can build and test each there as any charter ([CORE-FR-195](#core-fr-195)).
+- Q: Why is each charter of a source laid out in `.cw/charter/<charter>/`, as any repository keeps its own? → A: So its author can build and test each there as any charter ([CORE-FR-195](#core-fr-195)).
 
 ### Session 2026-11-11
 
@@ -83,9 +83,9 @@ A single charter covering design, planning and implementation at once has to be 
 
 ### Session 2026-11-14
 
-- Q: Is the charter store's handing of vendors it made itself repaired now, though it narrows the package's contract, or left to a later major release? → A: Repaired now: no store makes a model of the engine's; the next release is at least a minor one in the code smell fix, where the engine makes the installed vendors out of the files a store keeps.
+- Q: Is the charter store's handing of installed charters it made itself repaired now, though it narrows the package's contract, or left to a later major release? → A: Repaired now: no store makes a model of the engine's; the next release is at least a minor one in the code smell fix, where the engine makes the installed charters out of the files a store keeps.
 - Q: Does the story narrowing the charter store's contract belong to the SDK spec, which keeps the contract? → A: No, to Core, beside the store it changes (the code smell fix).
-- Q: Are the code smell fixes split into a story per part, with a quality cross-check after them? → A: No: they are not a feature, so no numbered story; every fix left after [CORE Story 57](#core-story-57---read-every-value-of-the-charters-rules-by-what-it-holds-priority-p2), the settings' rules and the vendors made in the engine included, is one fix, named for what it fixes, on one branch, with no cross-check of its own.
+- Q: Are the code smell fixes split into a story per part, with a quality cross-check after them? → A: No: they are not a feature, so no numbered story; every fix left after [CORE Story 57](#core-story-57---read-every-value-of-the-charters-rules-by-what-it-holds-priority-p2), the settings' rules and the installed charters made in the engine included, is one fix, named for what it fixes, on one branch, with no cross-check of its own.
 
 ### Session 2026-11-16
 
@@ -117,7 +117,7 @@ A developer has a repository and a coding agent, and wants the agent to work und
 
 **Acceptance Scenarios**:
 
-1. **Given** a git repository with no charter, **When** the developer runs setup, **Then** the charter, with a directory per kind, and the agents the repository chose are written, the charter is built so the agent can already author with the skill the engine brings, and all of it is left in the working tree for the developer to read over and commit ([CORE-FR-057](#core-fr-057)).
+1. **Given** a git repository with no charter, **When** the developer runs setup, **Then** the charter root, holding no charter yet, and the agents the repository chose are written, it is built so the agent can already author with the skill the engine brings, and all of it is left in the working tree for the developer to read over and commit ([CORE-FR-057](#core-fr-057)).
 2. **Given** a charter containing a rule, **When** the developer runs the build, **Then** the indexes and every compiled file are regenerated from one pass over the charter, and a compiled file whose source primitive was deleted is removed ([CORE-FR-033](#core-fr-033), [CORE-FR-032](#core-fr-032), [CORE-FR-030](#core-fr-030)).
 3. **Given** a primitive missing a field its kind requires, **When** the developer runs the health check, **Then** the file and the missing field are named and the command exits with a failure status ([CORE-FR-004](#core-fr-004), [CORE-FR-010](#core-fr-010), [CORE-FR-013](#core-fr-013), [CORE-FR-011](#core-fr-011)).
 4. **Given** a primitive whose file sits in a kind's directory without declaring its kind, **When** the charter is read, **Then** it is refused under that file, saying it declares no kind ([CORE-FR-003](#core-fr-003)).
@@ -145,9 +145,9 @@ A team keeps its baselines — security rules, review roles, permissions — in 
 
 **Acceptance Scenarios**:
 
-1. **Given** an initialized repository, **When** the developer adds a vendor source by its short git form, **Then** its content is installed under the vendor directory at a pinned version, left for the developer to commit ([CORE-FR-041](#core-fr-041), [CORE-FR-046](#core-fr-046), [CORE-FR-042](#core-fr-042), [CORE-FR-048](#core-fr-048)).
+1. **Given** an initialized repository, **When** the developer adds a vendor source by the address git fetches, as typed ([CORE-FR-049](#core-fr-049)), **Then** each charter it authored is installed in `.cw/charter/<charter>/` beside its `cw-vendor.json`, at a pinned version, left for the developer to commit ([CORE-FR-041](#core-fr-041), [CORE-FR-046](#core-fr-046), [CORE-FR-042](#core-fr-042), [CORE-FR-048](#core-fr-048)).
 2. **Given** a repository with both a local rule and a vendored rule of the same id, **When** the charter is read, **Then** both files are named and the charter is refused until one of them is renamed ([CORE-FR-015](#core-fr-015), [CORE-FR-016](#core-fr-016)).
-3. **Given** a repository with a vendor source installed, **When** the developer brings it up to date or removes it, **Then** the vendored content is updated or deleted to match, each left for the developer to commit ([CORE-FR-047](#core-fr-047), [CORE-FR-204](#core-fr-204)).
+3. **Given** a repository with a charter installed from a source, **When** the developer brings it up to date or removes it, **Then** the vendored content is updated or deleted to match, each left for the developer to commit ([CORE-FR-047](#core-fr-047), [CORE-FR-204](#core-fr-204)).
 4. **Given** a source authoring no charter at the version asked for, **When** the developer adds it, **Then** it is refused as no vendor, and nothing is installed ([CORE-FR-042](#core-fr-042)).
 5. **Given** a source that installed charters of its own at the version asked for, **When** the developer adds it, **Then** each it installed is taken only where a charter taken includes it, copied as it stands, and no other source is reached ([CORE-FR-170](#core-fr-170)).
 
@@ -200,11 +200,11 @@ Nine kinds each demand their own fields, and nobody remembers which. A developer
 
 **Status**: Done
 
-A developer opens the portal in a governed repository and sees the charter laid out by layer and by kind: the repository's own primitives, then what each vendor source installed. Each row says the primitive's id, its description, the file it lives in, and what makes it come up. They search for a word and see every primitive that mentions it. They pick one and ask the portal to explain it: what it is, when it activates, what it pulls in, what cites it, and which test cases pin it down.
+A developer opens the portal in a governed repository and sees the charter laid out by layer and by kind: the repository's own primitives, then what was installed from each vendor source. Each row says the primitive's id, its description, the file it lives in, and what makes it come up. They search for a word and see every primitive that mentions it. They pick one and ask the portal to explain it: what it is, when it activates, what it pulls in, what cites it, and which test cases pin it down.
 
 **Why this priority**: Reading is the whole point of an interface over a charter nobody can hold in their head, and everything else in the portal is built on this view. It delivers value on its own: a team can adopt the portal only to understand its charter and keep authoring by hand.
 
-**Independent Test**: Run the portal in a repository whose charter holds primitives of several kinds and one vendor source; confirm every primitive appears under its layer and kind with the right fields, that a search returns exactly the matching primitives, that the explanation of a guide names its globs, its mixins, its rationale and the cases that cite it, and that a charter holding an error shows its faults instead of a listing.
+**Independent Test**: Run the portal in a repository whose charter holds primitives of several kinds and one installed charter; confirm every primitive appears under its layer and kind with the right fields, that a search returns exactly the matching primitives, that the explanation of a guide names its globs, its mixins, its rationale and the cases that cite it, and that a charter holding an error shows its faults instead of a listing.
 
 **Acceptance Scenarios**:
 
@@ -238,7 +238,7 @@ A developer picks a kind and asks for a new one. The portal asks exactly the hea
 4. **Given** an existing repository primitive, **When** the developer opens it, **Then** its kind and id are shown but cannot be changed, and the form says a rename is a new primitive and a deletion ([CORE-FR-075](#core-fr-075)).
 5. **Given** an existing repository primitive, **When** the developer changes its headers or body and saves, **Then** its file is rewritten with the new content ([CORE-FR-075](#core-fr-075)).
 6. **Given** an existing repository primitive, **When** the developer deletes it, **Then** its file is removed, and primitives or test cases still naming it are reported by the next validation as dangling rather than being changed ([CORE-FR-076](#core-fr-076), [CORE-FR-007](#core-fr-007)).
-7. **Given** a vendored primitive, **When** the developer opens it, **Then** it is shown read-only with its file under the vendor folder, and the portal says that to differ from it they author a primitive under an id of their own ([CORE-FR-077](#core-fr-077), [CORE-FR-016](#core-fr-016)).
+7. **Given** a vendored primitive, **When** the developer opens it, **Then** it is shown read-only with its file in the installed charter it belongs to, and the portal says that to differ from it they author a primitive under an id of their own ([CORE-FR-077](#core-fr-077), [CORE-FR-016](#core-fr-016)).
 8. **Given** any save or delete, **When** it completes, **Then** nothing is compiled and nothing is committed: the change sits in the working tree, and the health check reports the compiled output behind until the next build ([CORE-FR-079](#core-fr-079)).
 9. **Given** a primitive file changed on disk after the developer opened it, **When** they save, **Then** the save is refused and the file is named, rather than their edit overwriting the other change ([CORE-FR-078](#core-fr-078)).
 10. **Given** a header drawn from a closed set, such as a sensor's signal, **When** the form asks for it, **Then** it is chosen from that set rather than typed ([CORE-FR-118](#core-fr-118)).
@@ -270,21 +270,21 @@ Before committing, the developer wants to know what a build would change and whe
 
 **Status**: Done
 
-The developer opens the vendor view and sees each source the repository installed: the folder it landed in, and how many primitives of each kind it brought. They add a baseline by its short git form and a version, and its primitives appear read-only. They remove one they no longer want.
+The developer opens the vendor view and sees each charter the repository installed: its folder, its source and version, and how many primitives of each kind it brought. They add a baseline by the address git fetches and a version, and its primitives appear read-only. They remove one they no longer want.
 
 **Why this priority**: Vendoring is done rarely — once per repository per baseline, then an occasional bump — and it is already one command. The portal makes it visible more than it makes it easier.
 
-**Independent Test**: Add a vendor source from the portal and confirm it is installed as `cw vendor add` would install it; confirm its primitives are listed read-only; remove it and confirm its folder is gone.
+**Independent Test**: Add a vendor source from the portal and confirm it is installed as `cw vendor add` would install it; confirm its primitives are listed read-only; remove the charter installed and confirm its folder is gone.
 
 **Acceptance Scenarios**:
 
-1. **Given** a repository with no vendor source, **When** the developer opens the vendor view, **Then** it says none is installed and offers to add one, and adding one lists the directory names reserved under a source's charter folder ([CORE-FR-123](#core-fr-123)).
-2. **Given** a source in short git form and an optional version, **When** the developer adds it, **Then** it is installed the way `cw vendor add` installs it, and the portal lists the folder and the primitives it brought ([CORE-FR-123](#core-fr-123), [CORE-FR-109](#core-fr-109)).
+1. **Given** a repository with no charter installed, **When** the developer opens the vendor view, **Then** it says none is installed and offers to add one, asking the source and its version alone ([CORE-FR-123](#core-fr-123)).
+2. **Given** a source by the address git fetches, as typed ([CORE-FR-049](#core-fr-049)) and an optional version, **When** the developer adds it, **Then** it is installed the way `cw vendor add` installs it, and the portal lists the folder and the primitives it brought ([CORE-FR-123](#core-fr-123), [CORE-FR-109](#core-fr-109)).
 3. **Given** a source that cannot be reached, **When** the developer adds it, **Then** nothing is installed and the portal shows why, in the engine's words ([CORE-FR-123](#core-fr-123), [CORE-FR-049](#core-fr-049)).
-4. **Given** installed sources, **When** the vendor view is shown, **Then** each is listed with its folder and its primitives counted by kind ([CORE-FR-122](#core-fr-122), [CORE-FR-045](#core-fr-045)).
-5. **Given** an installed source, **When** the developer removes it, **Then** its folder is taken away as `cw vendor remove` takes it, and its primitives leave the listing ([CORE-FR-123](#core-fr-123), [CORE-FR-204](#core-fr-204)).
-6. **Given** a source whose folder would land on a reserved directory name, or a source that cannot be reached, **When** the developer adds it, **Then** nothing already installed is touched and the reason is shown ([CORE-FR-123](#core-fr-123)).
-7. **Given** a folder under the vendor directory that git put there by hand rather than through the engine, **When** the vendor view is shown, **Then** it is listed as any other source is: the folder is all the view names of a source ([CORE-FR-053](#core-fr-053), [CORE-FR-122](#core-fr-122), [CORE-FR-043](#core-fr-043)).
+4. **Given** installed charters, **When** the vendor view is shown, **Then** each is listed with its folder, its source and version, and its primitives counted by kind ([CORE-FR-122](#core-fr-122), [CORE-FR-045](#core-fr-045)).
+5. **Given** an installed charter, **When** the developer removes it, **Then** its folder is taken away as `cw vendor remove` takes it, and its primitives leave the listing ([CORE-FR-123](#core-fr-123), [CORE-FR-204](#core-fr-204)).
+6. **Given** a source whose charter would land on a name a charter may not take, **When** the developer adds it, **Then** nothing already installed is touched and the reason is shown ([CORE-FR-123](#core-fr-123), [VENDOR-FR-011](spec-vendor.md#vendor-fr-011)).
+7. **Given** a charter put under `.cw/charter/` by hand rather than through the engine, with no `cw-vendor.json`, **When** the vendor view is shown, **Then** it is not listed among the installed charters: it is the repository's own ([CORE-FR-053](#core-fr-053), [CORE-FR-122](#core-fr-122), [VENDOR-FR-010](spec-vendor.md#vendor-fr-010)).
 
 ---
 
@@ -392,7 +392,7 @@ A developer reads about Cherry Works and wants to try it on their own repository
 2. **Given** the installed `cw`, **When** it is run in any repository, **Then** every command behaves as it does from a source build, the portal's page included, and nothing of this repository's source is needed ([CORE-FR-127](#core-fr-127)).
 3. **Given** a developer who does not want a global install, **When** they run `cw` once through their package manager's run-without-installing command, **Then** that run works and nothing is left installed ([CORE-FR-127](#core-fr-127)).
 4. **Given** a runtime older than the one supported, **When** the developer runs `cw`, **Then** they are told which version it needs and nothing is done ([CORE-FR-128](#core-fr-128)).
-5. **Given** the installed `cw` and no network, **When** any command is run but adding or updating a vendor source and what reaches an mcp origin or runs an agent — building a charter that declares an `mcp`, signing in, a tool call, an evaluation — **Then** it works, as it does from a source build ([CORE-FR-209](#core-fr-209)).
+5. **Given** the installed `cw` and no network, **When** any command is run but installing a charter or bringing an installed charter up to date and what reaches an mcp origin or runs an agent — building a charter that declares an `mcp`, signing in, a tool call, an evaluation — **Then** it works, as it does from a source build ([CORE-FR-209](#core-fr-209)).
 6. **Given** the install, **When** what it put on the machine is looked at, **Then** it holds only what `cw` runs on: nothing that exists only to build, bundle or test it ([CORE-FR-129](#core-fr-129)).
 
 ---
@@ -444,7 +444,7 @@ An agent surveying the charter finds a primitive in the catalogue and opens the 
 
 **Why this priority**: The catalogue is the agent's way into every body the charter holds, and today it sends the agent to partial text and, for one layer, to nothing.
 
-**Independent Test**: In a repository with one guide pulling in one mixin, one vendored primitive and the builtin skill, build; confirm `.cw/out/<kind>/<id>/index.md` exists for each, holds the mixin's body before the guide's, and is what `catalogue.json` names; confirm `cw list` still names `.cw/charter/team/primitive/…`, `.cw/charter/vendor/…` and `(built into cw)/…`; delete the guide and build; confirm its compiled document is gone.
+**Independent Test**: In a repository with one guide pulling in one mixin, one vendored primitive and the builtin skill, build; confirm `.cw/out/<kind>/<id>/index.md` exists for each, holds the mixin's body before the guide's, and is what `catalogue.json` names; confirm `cw list` still names `.cw/charter/team/primitive/…`, `.cw/charter/<installed charter>/primitive/…` and `(built into cw)/…`; delete the guide and build; confirm its compiled document is gone.
 
 **Acceptance Scenarios**:
 
@@ -474,7 +474,7 @@ A team's rule about rounding tax on an invoice has reasons that live outside the
 2. **Given** that primitive, **When** a guide's body says "take the requirements from [[mfbs/billing]]" and the charter is built, **Then** the guide's compiled document, and its rule for the agent, link that mcp origin by its id to its compiled document, the rule sends the agent to that document, and a subagent listing it is given its tools under the name they are served under ([CORE-FR-147](#core-fr-147), [CORE-FR-145](#core-fr-145)).
 3. **Given** a primitive whose body names an `mcp` id no layer holds, **When** the charter is checked, built or tested, **Then** it is an error under that primitive's file naming the id, and nothing is built ([CORE-FR-162](#core-fr-162)).
 4. **Given** an `mcp` primitive no primitive names, **When** the health check runs, **Then** it warns under that primitive's file, and the build still runs ([CORE-FR-144](#core-fr-144)).
-5. **Given** the repository and a vendor each declaring the same address under a different id, **When** the charter is built, **Then** the list of mcp origins holds that address once, under both ids, and every tool either declares is served there ([CORE-FR-145](#core-fr-145)).
+5. **Given** the repository and an installed charter each declaring the same address under a different id, **When** the charter is built, **Then** the list of mcp origins holds that address once, under both ids, and every tool either declares is served there ([CORE-FR-145](#core-fr-145)).
 6. **Given** a charter, with or without an `mcp` primitive, **When** it is built for Claude Code, **Then** the repository's MCP configuration holds one entry that starts `cw run mcp`, and nothing of the repository's own entries is changed ([CORE-FR-146](#core-fr-146)).
 7. **Given** an mcp origin whose address changes, **When** only its `mcp` primitive is edited and the charter built, **Then** every primitive naming it reaches the new address, with no other file changed ([CORE-FR-143](#core-fr-143), [CORE-SC-038](#core-sc-038)).
 
@@ -566,7 +566,7 @@ A team's release skill tells the agent to check the changelog before tagging. Th
 6. **Given** a template whose body changes, **When** the charter is built, **Then** its compiled document holds the new body ([CORE-FR-159](#core-fr-159)).
 7. **Given** a built charter, **When** `catalogue.json` is read, **Then** each template's `file` is its compiled document; **When** it is listed from the command line or the portal, **Then** it is shown with the file it was authored in ([CORE-FR-164](#core-fr-164), [CORE-FR-140](#core-fr-140)).
 8. **Given** a script or a template no primitive names, **When** the health check runs, **Then** it warns under that primitive's file, and the build still runs ([CORE-FR-163](#core-fr-163)).
-9. **Given** a vendor source holding a template, **When** the repository builds, **Then** the template is built into the compiled output like one the repository authored ([CORE-FR-159](#core-fr-159)).
+9. **Given** a charter installed from a source holding a template, **When** the repository builds, **Then** the template is built into the compiled output like one the repository authored ([CORE-FR-159](#core-fr-159)).
 10. **Given** a body naming `[[<id>]]` that no layer holds, **When** the charter is checked, built or tested, **Then** it is an error under the file whose body names it, naming the id, and nothing is built ([CORE-FR-162](#core-fr-162)).
 
 ---
@@ -629,7 +629,7 @@ The changelog check is a shell file. Kept as the body of a markdown file, no edi
 3. **Given** a built script, **When** its copy is looked at, **Then** the file its `executionPath` names is executable and no other asset is ([CORE-FR-160](#core-fr-160)).
 4. **Given** a script whose `executionPath` is missing, is not written as `./<path>`, leaves its folder, holds what a shell would read, or names no asset of it, **When** the charter is checked, **Then** it is an error under the script's `index.md`, and nothing is built ([CORE-FR-165](#core-fr-165)).
 5. **Given** a built script, **When** one of its assets is edited, added or deleted and no build runs, **Then** the copy is as the last build left it, the preview lists what the build would write and delete, and the health check says the output is out of date ([CORE-FR-166](#core-fr-166)).
-6. **Given** a vendor source holding a script, **When** the repository builds, **Then** its assets are copied into the compiled output like one the repository authored ([CORE-FR-168](#core-fr-168)).
+6. **Given** a charter installed from a source holding a script, **When** the repository builds, **Then** its assets are copied into the compiled output like one the repository authored ([CORE-FR-168](#core-fr-168)).
 
 ---
 
@@ -658,9 +658,9 @@ The charter holds ids: `[[check-changelog]]` in a sensor's `run`, `[[linear]]` a
 
 **Status**: Done
 
-A charter names its skills for whoever invokes them: a vendor publishing a spec-driven workflow calls its skills `sdd-plan` and `sdd-implement` so its users type `/sdd-plan`. Before this, the agent was given every skill and rule with the kind in front, so the user typed `/skill-sdd-plan` and `/playbook-sdd-implement`, and had to know which kind each one was authored as. After this, every file an agent is given is named by the id alone, and the user types what the author named.
+A charter names its skills for whoever invokes them: an author publishing a spec-driven workflow calls its skills `sdd-plan` and `sdd-implement` so its users type `/sdd-plan`. Before this, the agent was given every skill and rule with the kind in front, so the user typed `/skill-sdd-plan` and `/playbook-sdd-implement`, and had to know which kind each one was authored as. After this, every file an agent is given is named by the id alone, and the user types what the author named.
 
-**Why this priority**: The name is the interface a user meets first. A prefix the author never wrote makes every vendor's skills awkward to call, and makes a skill turned into a playbook change its name.
+**Why this priority**: The name is the interface a user meets first. A prefix the author never wrote makes every installed charter's skills awkward to call, and makes a skill turned into a playbook change its name.
 
 **Independent Test**: Author a skill `sdd-plan`, a playbook `sdd-implement`, a guide `no-any` and an agent `ship`, build for Claude, and confirm the files are `.claude/skills/sdd-plan/SKILL.md`, `.claude/skills/sdd-implement/SKILL.md`, `.claude/rules/no-any.md` and `.claude/agents/ship.md`, and that the files the last build wrote under their old names are gone.
 
@@ -737,22 +737,22 @@ Before this, every sensor was written into the agent's settings as its own hook,
 
 ---
 
-### CORE Story 30 - Name every vendor folder by its owner and its repository (Priority: P2)
+### CORE Story 30 - Install each charter under a name of its own (Priority: P2)
 
 **Status**: Done
 
-Before this, a vendor source landed in a folder named by the end of its address alone, so `mattpocock/skills` and `anthropics/skills` would both land in `skills`, and the second would write over the first. After this, every source lands in a folder named by its owner and its repository, `mattpocock/skills`, whichever kind of source it is. A source installed under the old name stays where it is and works as before; the developer moves it by removing it and installing it again.
+Before this, a charter installed from a source landed in a folder named by the end of the source's address alone, so `mattpocock/skills` and `anthropics/skills` would both land in `skills`, and the second would write over the first. After this, every charter installed lands in `.cw/charter/<charter>/`, under its name in the source or the one `--as` gives, its `cw-vendor.json` naming the source. A charter an earlier version installed in the old layout is refused, naming the folder; the developer moves it by removing it and installing it again.
 
-**Why this priority**: Skills repositories share their names far more than charters do; without the owner in the folder, two of them cannot be installed side by side.
+**Why this priority**: Two sources may author charters of one name; without a name of its own for each, two of them cannot be installed side by side.
 
-**Independent Test**: Install two sources whose repositories share a name under two owners, and confirm each lands in its own `<owner>/<repository>` folder and both are listed. Then put a source in a folder named by the end of its address alone, and confirm it is listed and builds as before.
+**Independent Test**: Install two sources each authoring a charter `skills`, the second with `--as=other-skills`, and confirm each lands in its own `.cw/charter/<charter>/`, its `cw-vendor.json` naming its source, and both are listed. Then put a charter an earlier version installed in a folder laid out another way, and confirm it is refused naming that folder.
 
 **Acceptance Scenarios**:
 
-1. **Given** a source `acme/baseline`, **When** the developer installs it, **Then** it lands in `acme/baseline` under the vendor directory ([CORE-FR-050](#core-fr-050), [CORE-SC-051](#core-sc-051)).
-2. **Given** `acme/skills` installed, **When** the developer installs `other/skills`, **Then** both are installed, each in its own folder, and neither is touched by the other ([CORE-FR-050](#core-fr-050), [CORE-SC-051](#core-sc-051)).
-3. **Given** a source installed by an earlier version in a folder laid out another way than `<owner>/<repository>/<name>/primitive/`, **When** the charter is listed or built, **Then** it is refused naming that folder, with the fix to delete it and install the source again ([CORE-FR-180](#core-fr-180)).
-4. **Given** such a folder, **When** the developer removes it and installs its source again, **Then** the source lands in its `<owner>/<repository>` folder and the old folder is gone ([CORE-FR-050](#core-fr-050)).
+1. **Given** a source `acme/baseline` authoring `baseline`, **When** the developer installs it, **Then** its charter `baseline` lands in `.cw/charter/baseline/`, its `cw-vendor.json` naming `acme/baseline` ([CORE-FR-050](#core-fr-050), [CORE-SC-051](#core-sc-051)).
+2. **Given** the charter `skills` installed from `acme/skills`, **When** the developer installs `other/skills`, authoring a charter of the same name, with `--as=other-skills`, **Then** both charters are installed, each in its own folder, and neither is touched by the other, whatever their names say ([CORE-FR-050](#core-fr-050), [CORE-FR-043](#core-fr-043), [CORE-SC-051](#core-sc-051)).
+3. **Given** a charter an earlier version installed in a folder laid out another way than `.cw/charter/<charter>/primitive/`, **When** the charter is listed or built, **Then** it is refused naming that folder, with the fix to delete it and install the source again ([CORE-FR-180](#core-fr-180)).
+4. **Given** such a folder, **When** the developer deletes it and installs its source again, **Then** its charter lands in `.cw/charter/<charter>/` and the old folder is gone ([CORE-FR-050](#core-fr-050)).
 
 ---
 
@@ -762,7 +762,7 @@ Before this, a vendor source landed in a folder named by the end of its address 
 
 Some skills are for the user to start and for nobody else: an interview that sharpens a plan is useless when the agent opens it on its own halfway through a task. Before this, the charter could keep a skill out of the user's commands ([CORE Story 28](#core-story-28---keep-a-step-skill-out-of-the-users-commands-priority-p2)) but not out of the agent's reach. After this, an author writes `disable-model-invocation: true` in a skill's or a playbook's headers; the agent still offers it as a command the user types, and the agent no longer opens it because its description matches what is asked.
 
-**Why this priority**: Skills written for `npx skills add` carry this header, and a skill taken into the charter without it would behave otherwise than its author wrote it.
+**Why this priority**: Skills written for other agents' tools carry this header, and a skill authored with it would behave otherwise than its author wrote it if the build dropped it.
 
 **Independent Test**: Author a skill `grill` with `disable-model-invocation: true` and a skill `explain` with no such header. Build for Claude, and confirm both are offered as commands, `grill` carries the agent's own header saying not to open it by itself, and `explain` does not. Then set `disable-model-invocation: maybe` and confirm the charter is refused under that file.
 
@@ -789,10 +789,10 @@ A team keeping several charters — a baseline, a spec-driven workflow, an archi
 
 1. **Given** a source authoring charters `baseline` and `sdd`, **When** the developer runs `cw vendor add` with `--charter=baseline`, **Then** `.cw/charter/baseline/` holds that charter beside its `cw-vendor.json`, left unstaged, `sdd` is not installed, and nothing is built ([CORE-FR-052](#core-fr-052), [CORE-FR-195](#core-fr-195), [CORE-FR-196](#core-fr-196), [CORE-SC-052](#core-sc-052)).
 2. **Given** `baseline` and `sdd` both installed from that source, **When** the developer brings `baseline` up to date or removes it, **Then** `sdd` is left as it was ([CORE-FR-196](#core-fr-196)).
-3. **Given** a source authoring charters and nothing else, **When** the command runs with no `--charter`, **Then** every charter it holds is installed, with nothing asked ([CORE-FR-193](#core-fr-193)).
+3. **Given** a source authoring charters and nothing else, **When** the command runs with no `--charter`, **Then** every charter it authored is installed, with nothing asked ([CORE-FR-193](#core-fr-193)).
 4. **Given** a source authoring charters and keeping other files beside them — a README, a file kept on its own in a kind's folder — **When** the command runs with no flag, **Then** every charter it authored is installed, each primitive with its files, and nothing else of the source ([CORE-FR-193](#core-fr-193), [CORE-FR-196](#core-fr-196)).
-5. **Given** `--charter` naming a charter the source does not hold, among others it does, **When** the command runs, **Then** nothing is installed and the charters it holds are named ([CORE-FR-197](#core-fr-197)).
-6. **Given** a source authoring no charter, **When** the command runs with `--charter`, **Then** nothing is installed and the shapes the source holds are named ([CORE-FR-193](#core-fr-193)).
+5. **Given** `--charter` naming a charter the source does not hold, among others it does, **When** the command runs, **Then** nothing is installed and the charters it authors are named ([CORE-FR-197](#core-fr-197)).
+6. **Given** a source authoring no charter, **When** the command runs with `--charter`, **Then** it is refused as no vendor, saying it authors no charter, and nothing is installed ([CORE-FR-193](#core-fr-193)).
 7. **Given** a charter the source itself installed, **When** that charter is picked, **Then** it is refused naming the charters the source authors, and nothing is installed ([CORE-FR-197](#core-fr-197)).
 
 ---
@@ -801,7 +801,7 @@ A team keeping several charters — a baseline, a spec-driven workflow, an archi
 
 **Status**: Done
 
-A vendored primitive is read-only: to differ from it, a developer authors one of their own under another id, by hand. Often what they want is to start from someone else's charter and make it theirs. After this, they run `cw vendor inject acme/charters --charter=baseline`: it reads the source exactly as `cw vendor add` does, with the same flags, and writes each primitive it takes straight into the repository's own charter, as if it had been authored there. No vendor folder is made, nothing records where it came from, and from then on it is the repository's to edit, test and delete like any primitive it authored.
+A vendored primitive is read-only: to differ from it, a developer authors one of their own under another id, by hand. Often what they want is to start from someone else's charter and make it theirs. After this, they run `cw vendor inject acme/charters --charter=baseline`: it reads the source exactly as `cw vendor add` does, with the same flags, and writes each charter it takes into `.cw/charter/<charter>/` as a charter of the repository's own, as if it had been authored there. No `cw-vendor.json` is written, nothing records where it came from, and from then on it is the repository's to edit, test and delete like any primitive it authored.
 
 **Why this priority**: Starting from what someone already wrote is the common case of authoring; copying a vendored folder and renaming every id by hand is where it goes wrong.
 
@@ -810,11 +810,11 @@ A vendored primitive is read-only: to differ from it, a developer authors one of
 **Acceptance Scenarios**:
 
 1. **Given** a source authoring a charter `baseline`, **When** the developer runs `cw vendor inject` with that source and `--charter=baseline`, **Then** the repository holds `baseline` whole as a charter of its own, with no `cw-vendor.json`, left unstaged, and nothing is built ([CORE-FR-198](#core-fr-198), [CORE-FR-199](#core-fr-199), [CORE-SC-053](#core-sc-053)).
-2. **Given** a source authoring charters, **When** the developer injects it, with or without `--charter`, **Then** every primitive of each charter taken is written into the repository's own charter, with its files beside it, as authored there ([CORE-FR-193](#core-fr-193), [CORE-FR-198](#core-fr-198)).
+2. **Given** a source authoring charters, **When** the developer injects it, with or without `--charter`, **Then** every primitive of each charter taken is written into `.cw/charter/<charter>/` as a charter of the repository's own, with its files beside it, as authored there ([CORE-FR-193](#core-fr-193), [CORE-FR-198](#core-fr-198)).
 3. **Given** an injected primitive, **When** the developer edits or deletes it, **Then** it is changed or deleted as any primitive the repository authored, with nothing refused as vendored ([CORE-FR-200](#core-fr-200)).
 4. **Given** an injected primitive, **When** the vendor commands are run, **Then** none of them lists, brings up to date or removes it, and nothing names the source it came from ([CORE-FR-200](#core-fr-200)).
-5. **Given** a primitive to inject whose id the charter already holds — the repository's own, a vendor's, the engine's, or one injected before — **When** the command runs, **Then** it is refused naming both files, and nothing is written ([CORE-FR-194](#core-fr-194)).
-6. **Given** a source that cannot be reached, a version that does not exist, a source holding vendors of its own, or a flag naming what the source does not hold, **When** the command runs, **Then** nothing is written, and the reason is given as `cw vendor add` gives it ([CORE-FR-198](#core-fr-198)).
+5. **Given** a primitive to inject whose id the charter already holds — the repository's own, an installed charter's, the engine's, or one injected before — **When** the command runs, **Then** it is refused naming both files, and nothing is written ([CORE-FR-194](#core-fr-194)).
+6. **Given** a source that cannot be reached, a version that does not exist, or a flag naming what the source does not hold, **When** the command runs, **Then** nothing is written, and the reason is given as `cw vendor add` gives it ([CORE-FR-198](#core-fr-198)).
 7. **Given** other uncommitted work, **When** the command runs, **Then** what it takes is written all the same ([CORE-FR-199](#core-fr-199)).
 
 ---
@@ -842,19 +842,19 @@ A developer tries a charter in a plain folder, and an integrator keeps one where
 
 **Status**: Done
 
-Removing a vendor used to make a commit and to refuse while anything was in hand, and installing one refused a folder with no repository, though both could do without. After this, the three ways a source moves — installing, injecting and removing — work the same: each leaves its result in the working tree for the developer to read and commit, whatever else is in hand, in a repository or out of one. Git on the machine is what reaches a source, and nothing else.
+Removing an installed charter used to make a commit and to refuse while anything was in hand, and installing one refused a folder with no repository, though both could do without. After this, the three ways a charter moves — installing, injecting and removing — work the same: each leaves its result in the working tree for the developer to read and commit, whatever else is in hand, in a repository or out of one. Git on the machine is what reaches a source, and nothing else.
 
 **Why this priority**: It makes fetching the one thing git is asked for on the charter's side, and removing consistent with installing.
 
-**Independent Test**: In a folder with no version control, install a source, then remove it, and confirm its folder is gone. In a repository with work in hand, do the same, and confirm no commit was made and the work in hand is untouched.
+**Independent Test**: In a folder with no version control, install a source, then remove the charter installed from it, and confirm its folder is gone. In a repository with work in hand, do the same, and confirm no commit was made and the work in hand is untouched.
 
 **Acceptance Scenarios**:
 
-1. **Given** a folder with no version control, **When** a source is installed or injected, **Then** it lands as in a repository ([CORE-FR-205](#core-fr-205)).
-2. **Given** an installed source and work in hand, **When** it is removed, **Then** its folder is gone, nothing is committed, and the work in hand is as it was ([CORE-FR-204](#core-fr-204)).
-3. **Given** a name no vendor folder answers to, **When** it is removed, **Then** it is refused and nothing changes ([CORE-FR-204](#core-fr-204)).
+1. **Given** a folder with no version control, **When** a source is installed or injected, **Then** its charters land as in a repository ([CORE-FR-205](#core-fr-205)).
+2. **Given** an installed charter and work in hand, **When** it is removed, **Then** its folder is gone, nothing is committed, and the work in hand is as it was ([CORE-FR-204](#core-fr-204)).
+3. **Given** a name no installed charter answers to, **When** it is removed, **Then** it is refused and nothing changes ([CORE-FR-204](#core-fr-204)).
 4. **Given** a machine with no git, **When** a source is installed, **Then** nothing is installed and it says git is what reaches a source ([CORE-FR-205](#core-fr-205)).
-5. **Given** a source holding a link, or a file named to climb out of its folder, **When** it is installed or injected, **Then** nothing is written outside where it lands ([CORE-FR-044](#core-fr-044), [CORE-FR-198](#core-fr-198)).
+5. **Given** a source holding a link, or a file named to climb out of its folder, **When** it is installed or injected, **Then** nothing is written outside the folder of each charter it lands ([CORE-FR-044](#core-fr-044), [CORE-FR-198](#core-fr-198)).
 6. **Given** a repository whose own version control settings say how a source is reached, **When** that source is installed, **Then** it is reached under them ([CORE-FR-205](#core-fr-205)).
 
 ---
@@ -867,7 +867,7 @@ A skill keeps a diagram beside its `index.md`. Today the engine reads every asse
 
 **Why this priority**: It is silent damage to a user's file, and it changes what the file ports carry, which must land before those ports are published.
 
-**Independent Test**: Author a skill with a PNG asset, build it, and confirm the compiled copy is identical to the file, byte for byte. Vendor a source holding one, then inject it, and confirm the same of each.
+**Independent Test**: Author a skill with a PNG asset, build it, and confirm the compiled copy is identical to the file, byte for byte. Install a charter from a source holding one, then inject it, and confirm the same of each.
 
 **Acceptance Scenarios**:
 
@@ -970,7 +970,7 @@ The first five repairs are checked together before later work builds on them.
 
 **Status**: Done
 
-An integrator keeps a repository's state — the charter, its settings, its vendors, its test and eval cases, the sensors a build listed, the sessions, the credentials — in a store of their own, laid out as they choose. The engine reads what the store hands it and hands back what it writes. A developer at the command line or the portal sees nothing change.
+An integrator keeps a repository's state — the charter, its settings, its installed charters, its test and eval cases, the sensors a build listed, the sessions, the credentials — in a store of their own, laid out as they choose. The engine reads what the store hands it and hands back what it writes. A developer at the command line or the portal sees nothing change.
 
 **Why this priority**: If how a repository is stored were bound to the engine's own rules, every other way of storing it would have to copy them.
 
@@ -1024,16 +1024,16 @@ An integrator sets the engine up without naming a repository or a home. They han
 
 **Status**: Done
 
-An integrator keeps a charter — its primitives, test suites, eval suites and vendors — wherever and however they choose, and hands each to the engine already read, known by its layer and its kind, never by where it sits. The engine validates what it is handed and builds, tests and evaluates it the same whichever store it came from. A developer at the command line or the portal sees no change; the published package says where each thing is kept as the address its store gives.
+An integrator keeps a charter — its primitives, test suites, eval suites and installed charters — wherever and however they choose, and hands each to the engine already read, known by its layer and its kind, never by where it sits. The engine validates what it is handed and builds, tests and evaluates it the same whichever store it came from. A developer at the command line or the portal sees no change; the published package says where each thing is kept as the address its store gives.
 
-**Why this priority**: An engine that reads a layer, a kind, a vendor or a suite's name off where a file sits makes every way of keeping a charter lay it out as the engine expects.
+**Why this priority**: An engine that reads a layer, a kind, an installed charter or a suite's name off where a file sits makes every way of keeping a charter lay it out as the engine expects.
 
-**Independent Test**: Hand the engine a charter, its suites and its vendors from a store of the test's own that keeps them with no path at all, and exercise every use case; then run every `cw` command over the files there are and confirm each answers as before.
+**Independent Test**: Hand the engine a charter, its suites and its installed charters from a store of the test's own that keeps them with no path at all, and exercise every use case; then run every `cw` command over the files there are and confirm each answers as before.
 
 **Acceptance Scenarios**:
 
-1. **Given** a store of an integrator's own, **When** it hands the engine a charter, **Then** each primitive, suite and vendor arrives known by its layer and kind, and the engine reads no layer, kind, vendor or suite name off a path ([CORE-FR-213](#core-fr-213), [CORE-SC-059](#core-sc-059), [CORE-SC-062](#core-sc-062)).
-2. **Given** a store that keeps primitives, suites and vendors with no path, **When** a use case validates, builds and tests that charter, **Then** it answers as it does for the same charter kept as files ([CORE-FR-213](#core-fr-213), [CORE-SC-062](#core-sc-062)).
+1. **Given** a store of an integrator's own, **When** it hands the engine a charter, **Then** each primitive, suite and installed charter arrives known by its layer and kind, and the engine reads no layer, kind, installed charter or suite name off a path ([CORE-FR-213](#core-fr-213), [CORE-SC-059](#core-sc-059), [CORE-SC-062](#core-sc-062)).
+2. **Given** a store that keeps primitives, suites and installed charters with no path, **When** a use case validates, builds and tests that charter, **Then** it answers as it does for the same charter kept as files ([CORE-FR-213](#core-fr-213), [CORE-SC-062](#core-sc-062)).
 3. **Given** any step of the engine, **When** it hands on what it found, **Then** it speaks of the charter in the same terms as every other step ([CORE-FR-219](#core-fr-219)).
 4. **Given** the change, **When** the command line, the portal and the published package are exercised, **Then** the command line and the portal answer as before, and the package says where each thing is kept as its store's address ([CORE-FR-214](#core-fr-214)).
 
@@ -1081,7 +1081,7 @@ An integrator calling the engine, as the command line and the portal do, gets an
 
 **Status**: Done
 
-Whoever composes the engine hands it the engine's adapters, one for every way it reaches the outside — what each agent reads of a charter and that agent's own command line, the one store that keeps the charter, every other store and runner — each the engine's own or written anew; each one handed replaces the default, and the engine itself is the same for every integrator, and holds none of them: the package composes the engine's own in for every one an integrator does not hand, and lets an integrator hand only the ones [SDK-FR-020](spec-sdk.md#sdk-fr-020) names. Keeping, testing and building a charter is one part of the engine; running what was built — its sensors, its mcp calls, its evaluations and the agents' sessions — is another, which asks the first for what it needs and is never asked. A repository's settings, which agents it chose among them, are kept apart from both. A developer opens the workspace and finds three parts: the charter — its primitives, tests, eval cases and vendors under one folder; the compiled output; and the log of what `cw` records, an evaluation's working copy among it. A repository, or a vendor source, laid out the old way is refused by every command, which points to the authoring skill; following it, the agent moves the repository to the new layout, and the build is what it was.
+Whoever composes the engine hands it the engine's adapters, one for every way it reaches the outside — what each agent reads of a charter and that agent's own command line, the one store that keeps the charter, every other store and runner — each the engine's own or written anew; each one handed replaces the default, and the engine itself is the same for every integrator, and holds none of them: the package composes the engine's own in for every one an integrator does not hand, and lets an integrator hand only the ones [SDK-FR-020](spec-sdk.md#sdk-fr-020) names. Keeping, testing and building a charter is one part of the engine; running what was built — its sensors, its mcp calls, its evaluations and the agents' sessions — is another, which asks the first for what it needs and is never asked. A repository's settings, which agents it chose among them, are kept apart from both. A developer opens the workspace and finds three parts: the charter — its primitives, tests, eval cases and installed charters under one folder; the compiled output; and the log of what `cw` records, an evaluation's working copy among it. A repository, or a vendor source, laid out the old way is refused by every command, which points to the authoring skill; following it, the agent moves the repository to the new layout, and the build is what it was.
 
 **Why this priority**: An integrator keeping a charter elsewhere, or running it another way, must not have to ship the engine's own way of keeping and running it; and a workspace should say which part is authored, which is built and which is recorded.
 
@@ -1095,9 +1095,9 @@ Whoever composes the engine hands it the engine's adapters, one for every way it
 4. **Given** an engine composed with an adapter of an integrator's own for an agent, **When** a use case builds and evaluates a charter for that agent, **Then** it answers as it does with the adapter shipped ([CORE-FR-213](#core-fr-213), [CORE-FR-230](#core-fr-230)).
 5. **Given** the eval cases, **When** a developer lists them, adds one, rewrites one or removes one, **Then** they are kept by the one store that keeps the charter, as the test cases are ([CORE-FR-228](#core-fr-228)).
 6. **Given** the engine composed of its two parts and the adapters it is handed, **When** every `cw` command and the portal are exercised, **Then** each answers as before, but for where the workspace keeps things and the paths in the compiled output, each written from where its file lands ([CORE-FR-214](#core-fr-214), [CORE-FR-221](#core-fr-221), [CORE-SC-066](#core-sc-066)).
-7. **Given** a repository with no charter, **When** the developer sets it up, **Then** its workspace holds the charter, with its primitives, tests, eval cases and vendors under it, the compiled output and the log, and its settings are kept apart, in `.cw/settings.json` ([CORE-FR-224](#core-fr-224)).
+7. **Given** a repository with no charter, **When** the developer sets it up, **Then** its workspace holds the charter, with its primitives, tests, eval cases and installed charters under it, the compiled output and the log, and its settings are kept apart, in `.cw/settings.json` ([CORE-FR-224](#core-fr-224)).
 8. **Given** a repository laid out the old way, **When** any command runs, the health check included, **Then** it refuses, saying the layout is the old one and naming the authoring skill ([CORE-FR-226](#core-fr-226), [CORE-SC-065](#core-sc-065)).
-9. **Given** a vendor source laid out the old way, **When** it is added or updated, **Then** it is refused, naming the source and the authoring skill, and nothing is installed ([CORE-FR-226](#core-fr-226)).
+9. **Given** a vendor source laid out the old way, **When** a charter is installed from it or brought up to date, **Then** it is refused, naming the source and the authoring skill, and nothing is installed ([CORE-FR-226](#core-fr-226)).
 10. **Given** a repository laid out the old way, **When** the agent follows the authoring skill, **Then** every file is moved to the new layout with its contents kept, and the build is the same, byte for byte, as before the move ([CORE-FR-227](#core-fr-227), [CORE-SC-065](#core-sc-065)).
 11. **Given** an evaluation run, **When** a case runs, **Then** its working copy and what the run leaves are under the log, which version control ignores ([CORE-FR-225](#core-fr-225), [EVAL-FR-021](spec-eval.md#eval-fr-021)).
 12. **Given** a repository's settings, **When** a command runs, **Then** they are read from `.cw/settings.json` on their own, which agents the repository chose is handed on to the rest of the engine, and neither authoring nor running reads or writes them ([CORE-FR-231](#core-fr-231)).
@@ -1141,11 +1141,11 @@ The repairs of the engine's contract, code and evidence are checked together bef
 
 1. **Given** [SDK Story 8](spec-sdk.md#sdk-story-8---compose-the-engine-anywhere-from-cws-own-adapters-and-ones-own-priority-p1), [CORE Story 53](#core-story-53---keep-the-whole-engine-to-its-naming-and-fault-guides-priority-p2), [SDK Story 10](spec-sdk.md#sdk-story-10---trust-the-evidence-of-every-rewritten-done-story-priority-p2), [CORE Story 56](#core-story-56---prove-by-running-what-no-test-runs-yet-priority-p3) and [EVAL Story 9](spec-eval.md#eval-story-9---measure-the-tokenizer-accuracy-again-after-the-workspace-moved-priority-p3) are Done, **When** the quality pass runs, **Then** it checks the code and every spec against the quality checklist, each reported violation is repaired within this story, not as a story of its own, and the pass is run again ([CORE-SC-026](#core-sc-026)).
 2. **Given** an entry file holding the charter's section twice, **When** the charter is built, **Then** the file holds it once ([CORE-FR-035](#core-fr-035), [CORE-SC-070](#core-sc-070)).
-3. **Given** a vendor installed beside the builtin layer, **When** vendors are listed and one is removed, **Then** the builtin layer is neither listed as a vendor nor touched ([CORE-FR-023](#core-fr-023), [CORE-SC-070](#core-sc-070)).
+3. **Given** a charter installed beside the builtin layer, **When** the installed charters are listed and one is removed, **Then** the builtin layer is neither listed as an installed charter nor touched ([CORE-FR-023](#core-fr-023), [CORE-SC-070](#core-sc-070)).
 4. **Given** `cw` installed, and pinned as a repository's development dependency, **When** it is upgraded, and run in that repository, **Then** the newer one answers, and in the repository the pinned one answers ([CORE-FR-210](#core-fr-210), [CORE-SC-021](#core-sc-021)).
 5. **Given** an mcp origin's address changed, **When** the charter is built, **Then** every primitive pointing at it follows, with no other primitive changed ([CORE-FR-143](#core-fr-143), [CORE-SC-038](#core-sc-038)).
 6. **Given** a template's body changed, **When** the charter is built, **Then** the catalogue and every primitive referring to it are unchanged ([CORE-FR-164](#core-fr-164), [CORE-FR-161](#core-fr-161)).
-7. **Given** a vendor laid out the old way, removed, **When** it is installed again, **Then** it is laid out the new way ([CORE-FR-050](#core-fr-050)).
+7. **Given** a charter installed the old way, removed, **When** it is installed again, **Then** it is laid out the new way ([CORE-FR-050](#core-fr-050)).
 8. **Given** every other scenario of a `Done` story a test holds in part, **When** its test runs, **Then** it asserts every outcome the scenario's Then names, an exit status included ([CORE-SC-070](#core-sc-070)).
 9. **Given** a repository that has chosen no agent, **When** setup asks which agent at a terminal, **Then** every agent is offered and none is ticked ([CORE-FR-055](#core-fr-055)).
 10. **Given** a repository at a `file:` address, **When** every `cw` command runs, an evaluation over an agent of a test's own included, **Then** each reads, writes and says what it did before ([CORE-SC-061](#core-sc-061), [SDK-FR-012](spec-sdk.md#sdk-fr-012)).
@@ -1194,7 +1194,7 @@ A maintainer finds every requirement of the charter's engine proved by a scenari
 2. **Given** `cw init` run with nobody to ask, **When** each prompt is reached, **Then** it takes its default or its flag, and where no agent is chosen, it stops naming the flag that answers it ([CORE-FR-056](#core-fr-056)).
 3. **Given** an unknown command or flag, **When** `cw` is run with it, **Then** it is refused, and a near miss is answered with the command it most likely meant ([CORE-FR-095](#core-fr-095)).
 4. **Given** the authoring skill, **When** it is read, **Then** its triggers bring it up for writing a rule, a standard, a skill or any other primitive, and its body says a refusal from `cw add` or `cw build` is answered and sends a refused build to `cw doctor` ([CORE-FR-100](#core-fr-100), [CORE-FR-102](#core-fr-102)).
-5. **Given** the portal started in a repository, **When** it is used offline, **Then** it serves that repository alone, offers no way to point it at another, and everything but adding or updating a vendor source works ([CORE-FR-105](#core-fr-105), [CORE-FR-111](#core-fr-111)).
+5. **Given** the portal started in a repository, **When** it is used offline, **Then** it serves that repository alone, offers no way to point it at another, and everything but installing a charter or bringing an installed charter up to date works ([CORE-FR-105](#core-fr-105), [CORE-FR-111](#core-fr-111)).
 6. **Given** the README, **When** it is read, **Then** it gives the install from the registry as the way to get `cw`, and building from source as the contributor's way ([CORE-FR-138](#core-fr-138), [CORE-SC-057](#core-sc-057)).
 7. **Given** a repository at a `file:` address, **When** every `cw` command runs, **Then** each reads, writes and says what it did before, as a run of each command shows ([SDK-FR-012](spec-sdk.md#sdk-fr-012), [CORE-SC-061](#core-sc-061), [CORE-SC-068](#core-sc-068)).
 8. **Given** anything a caller is answered, **When** a use case is called through each driver port, **Then** the answer is made for the caller, and none of it is the engine's own account of the charter ([CORE-FR-223](#core-fr-223), [CORE-SC-068](#core-sc-068)).
@@ -1298,7 +1298,7 @@ An author writing a primitive's body in the portal types `[[`, and a list opens 
 3. **Given** the list open, **When** the author chooses a primitive by keyboard or by pointer, **Then** `[[<id>]]` is written in place of `[[` and what was typed after it, and saved and built, it names that primitive as any mention written by hand does ([CORE-FR-246](#core-fr-246), [CORE-SC-077](#core-sc-077)).
 4. **Given** the list open, **When** the author presses Escape, **Then** it closes and the text is left as typed ([CORE-FR-246](#core-fr-246)).
 5. **Given** a header field of the form, **When** the author types `[[` in it, **Then** no list opens ([CORE-FR-245](#core-fr-245)).
-6. **Given** a primitive's body the author can edit, and a vendor's body, read only, **When** each is opened, **Then** the editable one says beneath it to type `[[` to mention another primitive, and the read-only one does not ([CORE-FR-245](#core-fr-245)).
+6. **Given** a primitive's body the author can edit, and an installed charter's body, read only, **When** each is opened, **Then** the editable one says beneath it to type `[[` to mention another primitive, and the read-only one does not ([CORE-FR-245](#core-fr-245)).
 
 ---
 
@@ -1349,9 +1349,9 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - A primitive cites reasoning that does not exist — validation reports a dangling reference ([CORE-FR-211](#core-fr-211)).
 - The vendor source is unreachable, or the pinned version does not exist — the command fails without touching what is already installed ([CORE-FR-049](#core-fr-049)).
 - The vendor source authors no charter at the version asked for — it is refused as no vendor, and nothing is installed ([CORE-FR-042](#core-fr-042), [CORE-FR-193](#core-fr-193)).
-- A source still laid out the old way, under `charters/` or with primitives right under their kind — it is refused, naming the move into named charters ([VENDOR-FR-011](spec-vendor.md#vendor-fr-011)).
-- A skill being injected names another skill in its body that is not injected with it — it is written as it was published; the name stays prose ([CORE-FR-198](#core-fr-198)).
-- The vendor source installed vendors of its own — it is refused, saying to install those here directly, and nothing is installed ([CORE-FR-170](#core-fr-170)).
+- A source still laid out the old way with primitives right under their kind — it is refused, naming the move into named charters ([CORE-FR-226](#core-fr-226)); one holding its charters under `charters/` authors none in `.cw/charter/`, and is refused as no vendor ([CORE-FR-042](#core-fr-042)).
+- A charter being injected names an id no charter of the source holds — refused by the source's own build, as any name nothing holds ([CORE-FR-162](#core-fr-162)).
+- The vendor source installed charters of its own — each is taken only where a charter installed includes it, copied as it stands, and no other source is reached ([CORE-FR-170](#core-fr-170)).
 - A compiled file was hand-edited — the next build overwrites it, and the preview build reports it as an update ([CORE-FR-032](#core-fr-032), [CORE-FR-034](#core-fr-034)).
 - A compiled file exists whose source primitive was deleted — the build deletes it ([CORE-FR-032](#core-fr-032)).
 - The agent's entry file already carries the section — the build writes that section again and leaves the rest of the file, whoever wrote it, untouched ([CORE-FR-035](#core-fr-035)).
@@ -1372,7 +1372,7 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - The developer switches branch while the portal is open — the portal shows the newly checked-out charter on the next view, like any other change on disk ([CORE-FR-110](#core-fr-110)).
 - A primitive's body is empty — it is saved as empty; whether that is acceptable is the kind's business, reported by validation ([CORE-FR-075](#core-fr-075), [CORE-FR-010](#core-fr-010)).
 - A deleted primitive is still named by a mixin list, a rationale or a test case — validation reports the dangling reference; the portal does not rewrite the primitives or tests that name it ([CORE-FR-007](#core-fr-007), [CORE-FR-087](#core-fr-087)).
-- No network is available — everything but adding or updating a vendor source works, the body editor included ([CORE-FR-111](#core-fr-111)).
+- No network is available — everything but installing a charter or bringing an installed charter up to date works, the body editor included ([CORE-FR-111](#core-fr-111)).
 - The repository has no test files — the test view says what a test is for and offers to create one; the health check warns about every guide and sensor that no case pins down ([CORE-FR-089](#core-fr-089), [CORE-FR-014](#core-fr-014)).
 
 **Distribution**
@@ -1388,7 +1388,7 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - An mcp origin the build cannot reach, or an mcp origin that is not signed in to, or a command that is not installed, each stops the build, naming the mcp's file, and writes nothing ([EVAL-FR-031](spec-eval.md#eval-fr-031)).
 - The same command declared with different arguments — two addresses, each signed in to on its own ([CORE-FR-142](#core-fr-142), [CORE-FR-148](#core-fr-148)).
 - One id claimed by two `mcp` primitives at two addresses — the usual collision, naming both files ([CORE-FR-015](#core-fr-015)).
-- A vendor opens a tool on an mcp origin the repository also declares — the tool is shown: tools are the union of what every id at an mcp origin declares ([CORE-FR-145](#core-fr-145)). Each id's own file says which tools it declared.
+- An installed charter opens a tool on an mcp origin the repository also declares — the tool is shown: tools are the union of what every id at an mcp origin declares ([CORE-FR-145](#core-fr-145)). Each id's own file says which tools it declared.
 - An id longer than 40 characters — refused under its file, so a tool's name, once prefixed with its `mcp`'s id and by the agent, stays within what the agent accepts ([CORE-FR-157](#core-fr-157)).
 - A credential expires while the server runs — it is renewed where the mcp origin allows; where it cannot be, the call answers to sign in again ([CORE-FR-151](#core-fr-151)).
 - The developer runs `cw mcp auth` by asking their agent to — the agent has no terminal to be asked at, so nothing is asked and no token passes through the conversation ([CORE-FR-150](#core-fr-150)).
@@ -1426,7 +1426,7 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - An agent's settings hold the hooks an earlier build wrote one per sensor — the next build writes each signal's hooks over whole, so only `cw run sensor <signal> --agent <agent>` is left under it; one for a signal no sensor names any more stays, any `cw sensor run` in it written as `cw run sensor` ([CORE-FR-175](#core-fr-175), [CORE-FR-039](#core-fr-039), [CORE-FR-244](#core-fr-244)).
 - One sensor answers in the agent's structured form and another in plain text — the two are combined the way the agent combines such answers from two hooks ([CORE-FR-178](#core-fr-178)).
 
-- A skill taken whose id is already held by another layer or another source — it is installed, and the charter is refused as for any collision, naming both files, until one goes ([CORE-FR-015](#core-fr-015)).
+**Answers and mentions**
 
 - A value too long for the terminal's width — it wraps beneath its own column, never beneath its label ([CORE-FR-237](#core-fr-237)).
 - A command that reports its progress as it goes, as an evaluation does, run with `--json` — its standard output holds nothing until the one document at its end, and its progress goes to its standard error ([CORE-FR-241](#core-fr-241)).
@@ -1456,13 +1456,13 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - <a id="core-fr-011"></a>**CORE-FR-011**: Validation MUST write nothing and MUST signal failure through its exit status so an automated pipeline can gate on it.
 - <a id="core-fr-012"></a>**CORE-FR-012**: Every fault the system reports MUST say, beside what is wrong, the next move that fixes it, wherever there is one.
 - <a id="core-fr-013"></a>**CORE-FR-013**: Validation MUST NOT be a command of its own. What is wrong with the charter MUST be reported, in full, by the health check ([CORE-FR-080](#core-fr-080)), so that no two commands read one charter and answer differently.
-- <a id="core-fr-014"></a>**CORE-FR-014**: Validation MUST raise a warning for each corpus no primitive cites, each mixin no primitive lends from, each mcp no primitive names ([CORE-FR-144](#core-fr-144)), each script and template no primitive names ([CORE-FR-163](#core-fr-163)), and each guide and sensor that no test case names. A posture is not warned about: a case asking whether a file is allowed names no posture, and a posture's `deny` may name commands no case can touch. The health check MUST leave out every warning raised under an installed vendor's files, count none of them, and still say each of their errors: a vendor is tested and checked in its own repository. None of them MUST stop a build or a listing ([CORE-FR-010](#core-fr-010)). The command line and the portal both show them, because both read validation.
+- <a id="core-fr-014"></a>**CORE-FR-014**: Validation MUST raise a warning for each corpus no primitive cites, each mixin no primitive lends from, each mcp no primitive names ([CORE-FR-144](#core-fr-144)), each script and template no primitive names ([CORE-FR-163](#core-fr-163)), and each guide and sensor that no test case names. A posture is not warned about: a case asking whether a file is allowed names no posture, and a posture's `deny` may name commands no case can touch. The health check MUST leave out every warning raised under an installed charter's files, count none of them, and still say each of their errors: an installed charter is tested and checked in the repository it came from. None of them MUST stop a build or a listing ([CORE-FR-010](#core-fr-010)). The command line and the portal both show them, because both read validation.
 - <a id="core-fr-211"></a>**CORE-FR-211**: Validation MUST warn, under the citing file, of a `rationale` that names no corpus any layer holds; the warning MUST NOT fail the charter.
 
 **Id and layers**
 
-- <a id="core-fr-015"></a>**CORE-FR-015**: An id MUST name one primitive in the whole charter, whatever its kind and whichever layer authored it — the repository, a vendor source, or the engine itself. Two files claiming one id, in any two layers or in one, MUST be reported as a collision naming both, never resolved by precedence.
-- <a id="core-fr-016"></a>**CORE-FR-016**: A repository MUST therefore take what it vendors, and what the engine brings, as it stands: to differ from such a primitive it authors one under its own id, rather than shadowing it.
+- <a id="core-fr-015"></a>**CORE-FR-015**: An id MUST name one primitive in the whole charter, whatever its kind and whichever layer authored it — the repository, a charter it installed, or the engine itself. Two files claiming one id, in any two layers or in one, MUST be reported as a collision naming both, never resolved by precedence.
+- <a id="core-fr-016"></a>**CORE-FR-016**: A repository MUST therefore take what it installs, and what the engine brings, as it stands: to differ from such a primitive it authors one under its own id, rather than shadowing it.
 - <a id="core-fr-017"></a>**CORE-FR-017**: The charter MUST have a third layer, beside what the repository authored and what it installed, holding what the running engine itself brings.
 - <a id="core-fr-018"></a>**CORE-FR-018**: This layer MUST be supplied by the engine on every read of the charter, and MUST NOT be written into the repository: no command may add, refresh or remove a file for it.
 - <a id="core-fr-019"></a>**CORE-FR-019**: This layer MUST be read as part of the charter everywhere a charter is read: listed, searched, explained, compiled, counted, validated, and shown by the portal, each time saying which layer it came from.
@@ -1499,8 +1499,8 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 
 **Vendor sources**
 
-- <a id="core-fr-041"></a>**CORE-FR-041**: The system MUST install vendored charter content from a git source identified by a short form carrying optional host name, owner, repository and version, pinned to that version.
-- <a id="core-fr-042"></a>**CORE-FR-042**: Installing a source MUST install the charters it authored, each whole, and nothing else of it, so a source is authored and tested as any governed repository is and pushed as it stands ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017)). A source authoring no charter at the version asked for MUST be refused as no vendor, installing nothing.
+- <a id="core-fr-041"></a>**CORE-FR-041**: The system MUST install vendored charter content from a git source identified by the address git fetches, as typed ([CORE-FR-049](#core-fr-049)) and an optional version, pinned to that version.
+- <a id="core-fr-042"></a>**CORE-FR-042**: Installing a source MUST install the charters it authored, each whole, and nothing else of it but what [CORE-FR-170](#core-fr-170) takes, so a source is authored and tested as any governed repository is and pushed as it stands ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017)). A source authoring no charter at the version asked for MUST be refused as no vendor, installing nothing.
 - <a id="core-fr-170"></a>**CORE-FR-170**: Vendoring MUST be one level deep: a charter a source itself installed MUST be taken only where a charter installed includes it, copied as it stands, and no source but the one asked MUST be reached ([VENDOR-FR-019](spec-vendor.md#vendor-fr-019)).
 - <a id="core-fr-171"></a>**CORE-FR-171**: Every name an agent is given for a primitive — a skill's folder, a rule's file, a subagent's name — MUST be its id, `/` written as `-`, without its kind, so a skill `sdd-plan` is invoked as `/sdd-plan`. A file a build wrote under the name an earlier version gave MUST be deleted by the next build.
 - <a id="core-fr-172"></a>**CORE-FR-172**: A primitive MUST be named by its id alone, wherever it is named. Where a field holds nothing but names — `rationale`, `mixins`, a test case's expectation, a command's argument — the name MUST be the bare id. Where it sits among other text — a body, a sensor's `run`, an agent's `tools` — it MUST be written `[[<id>]]`, and only a name so written is a reference. Which kind a name refers to MUST be read off the primitive it names; where a field takes one kind, an id of another MUST be read as one nothing of that kind answers to.
@@ -1511,23 +1511,23 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - <a id="core-fr-177"></a>**CORE-FR-177**: `cw run sensor <signal>` MUST exit 2 when any of its sensors exited 2, writing the error output of each that did, in order of id; otherwise with the first other non-zero status in order of id; otherwise 0.
 - <a id="core-fr-178"></a>**CORE-FR-178**: What the sensors of one signal answer on their standard output MUST reach the agent as one answer, combined the way that agent combines the answers of several hooks on one event, read in order of id. One sensor's answer MUST NOT make another's unreadable.
 - <a id="core-fr-179"></a>**CORE-FR-179**: `cw run sensor` MUST read the sensors and their commands from the last compiled output, never from the charter: a sensor changed in the charter MUST NOT run as changed before the next build, and a build that fails MUST leave what it runs as it was.
-- <a id="core-fr-043"></a>**CORE-FR-043**: The system MUST attach no meaning to a vendored directory's name. Any grouping such a name implies belongs to the people using it, not to the system.
-- <a id="core-fr-044"></a>**CORE-FR-044**: The system MUST install vendored content only as charters under the charter's primitives, each holding a `cw-vendor.json`, never over a charter this repository authored ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017), [VENDOR-FR-020](spec-vendor.md#vendor-fr-020)).
+- <a id="core-fr-043"></a>**CORE-FR-043**: The system MUST attach no meaning to an installed charter's name. Any grouping such a name implies belongs to the people using it, not to the system.
+- <a id="core-fr-044"></a>**CORE-FR-044**: The system MUST install vendored content only as charters under `.cw/charter/<charter>/`, each holding a `cw-vendor.json`, never over a charter this repository authored; a link, or a file named to leave its charter's folder, MUST write nothing outside `.cw/charter/<charter>/` ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017), [VENDOR-FR-020](spec-vendor.md#vendor-fr-020)).
 - <a id="core-fr-045"></a>**CORE-FR-045**: The system MUST allow more than one vendor source per repository.
-- <a id="core-fr-046"></a>**CORE-FR-046**: Vendored content MUST be kept in the repository it is installed into, so a checkout that holds it carries the whole charter it is governed by with nothing left to fetch. The system MUST NOT exclude that content from version control, and MUST NOT keep a record beside it.
-- <a id="core-fr-047"></a>**CORE-FR-047**: The system MUST support bringing an installed source up to date and removing it. Bringing one up to date MUST be the same thing as installing it, so there is one command rather than two.
+- <a id="core-fr-046"></a>**CORE-FR-046**: Vendored content MUST be kept in the repository it is installed into, so a checkout that holds it carries the whole charter it is governed by with nothing left to fetch. The system MUST NOT exclude that content from version control, and MUST keep no record beside it but its `cw-vendor.json` ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017)).
+- <a id="core-fr-047"></a>**CORE-FR-047**: The system MUST support bringing an installed charter up to date and removing it. Bringing one up to date MUST be the same thing as installing it, so there is one command rather than two.
 - <a id="core-fr-048"></a>**CORE-FR-048**: Installing vendored content MUST NOT depend on any central service beyond the git source itself.
-- <a id="core-fr-049"></a>**CORE-FR-049**: Installing MUST accept a source address as it was typed, so that every transport git supports works. A source that cannot be reached, or a version that is not there, MUST be refused in git's own words, installing nothing.
+- <a id="core-fr-049"></a>**CORE-FR-049**: Installing MUST accept a source address as it was typed, so that every transport git supports works; an address whose path names no repository folder MUST be refused, installing nothing. A source that cannot be reached, or a version that is not there, MUST be refused in git's own words, installing nothing.
 - <a id="core-fr-050"></a>**CORE-FR-050**: An installed charter MUST land in `.cw/charter/<charter>/`, under its name in the source or the one `--as` gives, its `cw-vendor.json` naming the charter in the source, the source as typed and the version ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017), [VENDOR-FR-020](spec-vendor.md#vendor-fr-020)).
-- <a id="core-fr-052"></a>**CORE-FR-052**: Installing a vendor source MUST compile nothing: the build is the one command that writes what an agent reads.
-- <a id="core-fr-053"></a>**CORE-FR-053**: The engine MUST be able to list every installed vendor folder. It MUST NOT record where a folder came from or at which version. Bringing a source up to date is installing it again with its source, as it was first typed.
+- <a id="core-fr-052"></a>**CORE-FR-052**: Installing a charter from a vendor source MUST compile nothing: the build is the one command that writes what an agent reads.
+- <a id="core-fr-053"></a>**CORE-FR-053**: The engine MUST be able to list every installed charter. Where it came from and at which version MUST be recorded in its `cw-vendor.json` alone ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017)). Bringing an installed charter up to date is installing its source again, as it was first typed.
 
 **Setup**
 
 - <a id="core-fr-054"></a>**CORE-FR-054**: Setup MUST NOT depend on version control: it MUST work the same in a folder with none as in a git repository.
 - <a id="core-fr-055"></a>**CORE-FR-055**: Setup MUST ask which agents the repository chooses, offering the agents this engine compiles for and defaulting to the ones the repository already chose, and MUST refuse to finish until at least one is chosen: a charter is authored to instruct an agent. A repository that has chosen none yet MUST be asked, with no agent offered already ticked, however many agents the engine compiles for. It MUST NOT detect what is installed on the machine: choosing an agent compiles everything that agent reads, and the build creates the directory it reads from whether it was there or not.
 - <a id="core-fr-056"></a>**CORE-FR-056**: Every setup prompt MUST have a default acceptable without typing and an equivalent that can be supplied non-interactively, so the whole run is scriptable. The one exception is the agent in a repository that has chosen none yet: it has no default, so a run with nobody to ask MUST stop and name the flag that answers it.
-- <a id="core-fr-057"></a>**CORE-FR-057**: Setup MUST create the charter's primitives folder with a directory per kind and record the agents the repository chose, and then build the charter, as `cw build` does, so the skill the engine brings ([CORE-FR-096](#core-fr-096)) is in the agent's hands before anything is authored. A charter that does not hold is not built, and setup MUST say so as the build does, keeping what it configured. It MUST NOT commit the result: what it wrote is left in the working tree for whoever ran it to read over and commit themselves.
+- <a id="core-fr-057"></a>**CORE-FR-057**: Setup MUST create the charter root, holding no charter ([VENDOR-FR-013](spec-vendor.md#vendor-fr-013)), and record the agents the repository chose, and then build it, as `cw build` does, so the skill the engine brings ([CORE-FR-096](#core-fr-096)) is in the agent's hands before anything is authored. A charter that does not hold is not built, and setup MUST say so as the build does, keeping what it configured. It MUST NOT commit the result: what it wrote is left in the working tree for whoever ran it to read over and commit themselves.
 - <a id="core-fr-058"></a>**CORE-FR-058**: Re-running setup in an initialized repository MUST reconfigure it — offering current answers as defaults — and MUST NOT discard authored content.
 
 **Asking a kind what it requires**
@@ -1556,7 +1556,7 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 
 - <a id="core-fr-075"></a>**CORE-FR-075**: The engine MUST be able to rewrite an existing repository primitive's headers and body, keeping its kind and id, and MUST refuse it with the same faults creating one gives for answers the kind refuses. The portal MUST show an existing primitive's kind and id without letting them be changed.
 - <a id="core-fr-076"></a>**CORE-FR-076**: The engine MUST be able to delete an existing repository primitive's `index.md` and its assets ([CORE-FR-167](#core-fr-167)), and nothing else.
-- <a id="core-fr-077"></a>**CORE-FR-077**: The engine MUST refuse to rewrite or delete a vendored primitive, naming the vendor folder it belongs to.
+- <a id="core-fr-077"></a>**CORE-FR-077**: The engine MUST refuse to rewrite or delete a vendored primitive, naming the installed charter it belongs to.
 - <a id="core-fr-078"></a>**CORE-FR-078**: Rewriting a primitive MUST be refused, with the file named, when the file changed on disk after the author opened it.
 - <a id="core-fr-079"></a>**CORE-FR-079**: Neither creating, rewriting nor deleting a primitive MUST compile or commit anything: what it writes is left in the working tree, and a build is the command that compiles ([CORE-FR-032](#core-fr-032)).
 
@@ -1608,13 +1608,13 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - <a id="core-fr-108"></a>**CORE-FR-108**: The portal MUST reach the engine only the way the command line does, and MUST hold no rule about the charter of its own: every validation, listing, explanation, build, preview, test result and health answer it shows MUST be what the engine returned.
 - <a id="core-fr-109"></a>**CORE-FR-109**: Everything the portal shows or does MUST also be available from the command line. Each capability the portal needs from the engine MUST be added to the engine and given a command-line equivalent in the same change, so the two surfaces cannot drift apart.
 - <a id="core-fr-110"></a>**CORE-FR-110**: The portal MUST read the charter afresh whenever it shows a view, and MUST NOT keep a copy of the charter between views, so a change made on disk by anyone is what the next view shows.
-- <a id="core-fr-111"></a>**CORE-FR-111**: The portal MUST work without a network connection for everything except adding or updating a vendor source.
+- <a id="core-fr-111"></a>**CORE-FR-111**: The portal MUST work without a network connection for everything except installing a charter or bringing an installed charter up to date.
 
 **The portal: reading the charter**
 
 - <a id="core-fr-112"></a>**CORE-FR-112**: The portal MUST show the repository layer and the vendor layer separately, and within each MUST let the developer narrow to one kind, showing beside every kind how many primitives of it the layer holds.
 - <a id="core-fr-113"></a>**CORE-FR-113**: Every listed primitive MUST show its id, description, file path, and the headers its kind is activated by, as described in [CORE Story 5](#core-story-5---see-what-the-charter-holds-and-why-each-rule-comes-up-priority-p1), scenario 2; and each listing MUST say, once per kind rather than once per primitive, when that kind comes up, read off that kind's own contract. Which kinds there are, and when each comes up, MUST be answered by the engine rather than known by whichever surface is listing.
-- <a id="core-fr-114"></a>**CORE-FR-114**: The portal MUST search every primitive in every layer by id, kind, description, its folder and file under its kind, its layer, the vendor it came from and header value, never by where the machine keeps it, and MUST show only the primitives that match.
+- <a id="core-fr-114"></a>**CORE-FR-114**: The portal MUST search every primitive in every layer by id, kind, description, its folder and file under its kind, its layer, the installed charter it belongs to and header value, never by where the machine keeps it, and MUST show only the primitives that match.
 - <a id="core-fr-115"></a>**CORE-FR-115**: When the charter holds an error, the portal MUST say the engine will not read the charter and show every fault under the file that has to change, in the words the engine gives it, instead of a listing.
 - <a id="core-fr-116"></a>**CORE-FR-116**: The portal MUST offer the explanation ([CORE-FR-029](#core-fr-029)) from every listed primitive, and each id in it MUST open that primitive's own explanation.
 
@@ -1631,14 +1631,14 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 
 **The portal: vendor sources**
 
-- <a id="core-fr-122"></a>**CORE-FR-122**: The portal MUST list every installed vendor source with the folder it landed in and its primitives counted by kind.
-- <a id="core-fr-123"></a>**CORE-FR-123**: The portal MUST offer adding a source by its short git form and an optional version, and removing an installed one by its folder, through the engine's vendoring, and MUST show the engine's refusal whenever one is refused.
+- <a id="core-fr-122"></a>**CORE-FR-122**: The portal MUST list every installed charter with its folder, `.cw/charter/<charter>/`, its source and version, and its primitives counted by kind.
+- <a id="core-fr-123"></a>**CORE-FR-123**: The portal MUST offer adding a source by the address git fetches, as typed ([CORE-FR-049](#core-fr-049)) and an optional version, and removing an installed charter by its name, through the engine's vendoring, and MUST show the engine's refusal whenever one is refused.
 
 **Distribution**
 
 - <a id="core-fr-126"></a>**CORE-FR-126**: The engine MUST be published to the public npm registry as one package named `cherry-works`, whose install puts one command, `cw`, on the path.
 - <a id="core-fr-127"></a>**CORE-FR-127**: The installed package MUST run every command, the portal and its page included, with no build step, no source checkout, and no compiler, native toolchain or browser download on the user's machine.
-- <a id="core-fr-209"></a>**CORE-FR-209**: The installed `cw` MUST run every command with no network, as it does from a source build, except adding or updating a vendor source and what reaches an mcp origin or runs an agent: building a charter that declares an `mcp`, signing in, a tool call, an evaluation.
+- <a id="core-fr-209"></a>**CORE-FR-209**: The installed `cw` MUST run every command with no network, as it does from a source build, except installing a charter or bringing an installed charter up to date and what reaches an mcp origin or runs an agent: building a charter that declares an `mcp`, signing in, a tool call, an evaluation.
 - <a id="core-fr-128"></a>**CORE-FR-128**: The package MUST declare the oldest runtime version it supports, and `cw` run on an older one MUST name the version it needs and exit with a failure status before doing anything else.
 - <a id="core-fr-129"></a>**CORE-FR-129**: Installing the package MUST install only what `cw` and the library it exports ([SDK-FR-001](spec-sdk.md#sdk-fr-001)) need at run time. What exists only to build, bundle or test it — including everything the portal's page was built from — MUST NOT be installed.
 - <a id="core-fr-130"></a>**CORE-FR-130**: The package MUST hold only what a user needs: the runnable program, the portal's page, the library an integrator imports, the README and the license. The specs, the tests, the sources, the repository's own charter and anything else of the development repository MUST NOT be in it.
@@ -1696,14 +1696,14 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - <a id="core-fr-124"></a>**CORE-FR-124**: The portal MUST list every test file with its name, description and case count, and each case's situation and expectation.
 - <a id="core-fr-125"></a>**CORE-FR-125**: The portal MUST run every test through the engine and show each case's outcome, the count passing out of the total, and for a failing case what came up instead.
 
-**Skills repositories**
+**Installing and injecting charters**
 
-- <a id="core-fr-180"></a>**CORE-FR-180**: A vendor folder laid out any other way than [CORE-FR-050](#core-fr-050) says, as an earlier version installed one, MUST be refused naming it, with the fix to delete it and install its source again; nothing of it is read as a vendor.
+- <a id="core-fr-180"></a>**CORE-FR-180**: A charter an earlier version installed, under `.cw/vendor/` or `.cw/charter/vendor/`, MUST be refused as the old layout ([VENDOR-FR-011](spec-vendor.md#vendor-fr-011), [CORE-FR-226](#core-fr-226)), naming it, with the fix to delete it and install its source again; nothing of it is read as an installed charter.
 - <a id="core-fr-181"></a>**CORE-FR-181**: A `skill` and a `playbook` MAY declare `disable-model-invocation`, `true` or `false`; one that does not is `false`. Any other value MUST be an error under its file, and nothing is built.
 - <a id="core-fr-182"></a>**CORE-FR-182**: A build for an agent MUST give every skill and playbook declaring `disable-model-invocation: true` to that agent as a command the user types, under that agent's own header, which keeps it from opening the skill by itself.
 - <a id="core-fr-183"></a>**CORE-FR-183**: A skill or a playbook declaring both `disable-model-invocation: true` and `disable-user-invocation: true` MUST be an error under its file, and nothing is built.
-- <a id="core-fr-193"></a>**CORE-FR-193**: `cw vendor add` and `cw vendor inject` MUST take every charter a source authored where no `--charter` is given, and the charters named alone where it is; a source authoring none MUST be refused as no vendor, taking nothing, and a `--charter` it does not author MUST be refused saying what it holds ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017)).
-- <a id="core-fr-194"></a>**CORE-FR-194**: Injecting MUST be refused whole, naming both files and writing nothing, when a primitive it would write claims an id the charter already holds — the repository's own, a vendor's or the engine's ([CORE-FR-015](#core-fr-015)). A primitive injected before is the repository's own, so injecting it again MUST be refused the same way.
+- <a id="core-fr-193"></a>**CORE-FR-193**: `cw vendor add` and `cw vendor inject` MUST take every charter a source authored where no `--charter` is given, and the charters named alone where it is; a source authoring none MUST be refused as no vendor, taking nothing, and a `--charter` it does not author MUST be refused as [CORE-FR-197](#core-fr-197) says ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017)).
+- <a id="core-fr-194"></a>**CORE-FR-194**: Injecting MUST be refused whole, naming both files and writing nothing, when a primitive it would write claims an id the charter already holds — the repository's own, an installed charter's or the engine's ([CORE-FR-015](#core-fr-015)). A primitive injected before is the repository's own, so injecting it again MUST be refused the same way.
 - <a id="core-fr-195"></a>**CORE-FR-195**: A source MAY author many charters, each picked by its name with `--charter=<name>`, typed once per charter ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017)).
 - <a id="core-fr-196"></a>**CORE-FR-196**: `cw vendor add` MUST install each charter picked in a charter of its own, brought up to date and removed on its own ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017), [VENDOR-FR-021](spec-vendor.md#vendor-fr-021)).
 - <a id="core-fr-197"></a>**CORE-FR-197**: A `--charter` naming a charter the source does not author MUST install nothing, naming the charters it authors ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017)).
@@ -1713,7 +1713,7 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 
 **Standing without git**
 
-- <a id="core-fr-204"></a>**CORE-FR-204**: Removing a vendor source MUST delete its folder, and each folder above it that leaves empty up to and including the vendor directory, and nothing else, leaving that in the working tree uncommitted, whatever other work is in hand. A name no vendor folder answers to MUST be refused, changing nothing.
+- <a id="core-fr-204"></a>**CORE-FR-204**: Removing an installed charter MUST delete `.cw/charter/<charter>/` whole, and nothing else, leaving that in the working tree uncommitted, whatever other work is in hand. A name no installed charter answers to MUST be refused, changing nothing.
 - <a id="core-fr-205"></a>**CORE-FR-205**: Installing and injecting a source MUST NOT need the folder installed into to be a repository. A machine without git MUST be told so, and nothing is installed. Where the folder is in a repository, a source MUST be reached under that repository's own version control settings.
 - <a id="core-fr-206"></a>**CORE-FR-206**: Evaluating MUST still run on worktrees ([EVAL-FR-021](spec-eval.md#eval-fr-021)), and is the one use case needing a git repository; outside one, a run with a case to evaluate MUST be refused in git's words, and a run with no case answers that there is none, as in a repository. What it asks of version control MUST be apart from what fetching a source asks, so neither use case holds the other's questions.
 
@@ -1721,7 +1721,7 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 
 - <a id="core-fr-207"></a>**CORE-FR-207**: Every file under a primitive's folder MUST reach where it is built, installed or injected identical to its source, byte for byte, whatever it holds; and the preview MUST compare it as such.
 - <a id="core-fr-208"></a>**CORE-FR-208**: The ports a file is read and written through MUST carry bytes as well as text, so no adapter need decode a file the engine only copies.
-- <a id="core-fr-213"></a>**CORE-FR-213**: A store of an integrator's own MUST be able to keep a repository's state in any place and any layout, handing the engine each primitive, test suite, eval suite and vendor already read and known by its layer and kind, and being handed back what the engine writes; the engine MUST NOT read a layer, a kind, a vendor or a suite's name off where a file sits.
+- <a id="core-fr-213"></a>**CORE-FR-213**: A store of an integrator's own MUST be able to keep a repository's state in any place and any layout, handing the engine each primitive, test suite, eval suite and installed charter already read and known by its layer and kind, and being handed back what the engine writes; the engine MUST NOT read a layer, a kind, an installed charter or a suite's name off where a file sits.
 - <a id="core-fr-214"></a>**CORE-FR-214**: How a repository's state is kept MUST NOT change what the command line or the portal answer; the published package MUST say where something is kept as the address its store gives, and that change MUST be released as at least a minor one ([SDK-FR-015](spec-sdk.md#sdk-fr-015)).
 - <a id="core-fr-215"></a>**CORE-FR-215**: Every value the engine works with MUST be written one way, holding its data and the rules that belong to it, with nothing exported beside the values — the layout of the store `cw` keeps and the layout of the output each one value — so that a contributor finds each rule beside the value it is about.
 - <a id="core-fr-216"></a>**CORE-FR-216**: How the engine's values are written MUST NOT change what the command line, the portal or the published package answer; a name the published package exports MUST change only as [SDK-FR-015](spec-sdk.md#sdk-fr-015) versions it.
@@ -1730,13 +1730,13 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - <a id="core-fr-219"></a>**CORE-FR-219**: Every step of the engine MUST speak of a charter in the same terms, so that whatever one step finds reaches the next, and an integrator's store or projection, as the engine holds it, never as a second shape made for one step.
 - <a id="core-fr-220"></a>**CORE-FR-220**: A build MUST compile a charter into one output that names no place it lands: each item of the output — the listing, CHARTER.md, a compiled primitive, the mcp origins, the sensors — known by its path inside the output and found by what it is, with its text and its assets; a link from one entry to another MUST be written from the output's root, for the projection to write from where its file lands ([CORE-FR-221](#core-fr-221)); an entry for one agent alone MUST name that agent in its path.
 - <a id="core-fr-221"></a>**CORE-FR-221**: Where each entry of a build lands — in the compiled output and in each agent's own folders — which files an agent reads, and the links in them MUST be decided by that agent's projection, which an integrator MAY replace, so that adding an agent changes nothing else; every path a build writes MUST read from where its file lands — a document's from its own folder, any other file's from the repository's root — and no placeholder MUST be left on disk; laid by `cw`'s own projections, each agent's folders MUST be what a build wrote before, byte for byte.
-- <a id="core-fr-222"></a>**CORE-FR-222**: The engine MUST hold two parts of work apart: keeping, testing and building a charter — authoring its primitives, vendors, test cases and eval cases, signing in to its mcp origins, testing it, and building it onto each agent the repository chose, with its preview, its health check, the estimated main context and the tools its mcp origins serve; and running what was built — its sensors, the calls forwarded to its mcp origins, its evaluations, the exact count of the main context, and the agents' sessions and the log. What running needs of the charter — its mcp origins, the sensors of a signal, a build into a working copy — MUST be asked of the first part.
+- <a id="core-fr-222"></a>**CORE-FR-222**: The engine MUST hold two parts of work apart: keeping, testing and building a charter — authoring its primitives, installed charters, test cases and eval cases, signing in to its mcp origins, testing it, and building it onto each agent the repository chose, with its preview, its health check, the estimated main context and the tools its mcp origins serve; and running what was built — its sensors, the calls forwarded to its mcp origins, its evaluations, the exact count of the main context, and the agents' sessions and the log. What running needs of the charter — its mcp origins, the sensors of a signal, a build into a working copy — MUST be asked of the first part.
 - <a id="core-fr-223"></a>**CORE-FR-223**: What the engine answers a caller — the command line, the portal or an integrator's code — MUST be made for that caller, never the engine's own account of the charter; what the engine hands an adapter an integrator may replace ([SDK-FR-020](spec-sdk.md#sdk-fr-020)) MUST be part of the published contract, and changing it MUST be a major release.
 - <a id="core-fr-224"></a>**CORE-FR-224**: In the store `cw` keeps, a repository's workspace MUST hold three parts: the charter root, its primitives in named charters, each charter with its test cases and eval cases, in `.cw/charter/` ([VENDOR-FR-009](spec-vendor.md#vendor-fr-009)); the compiled output, in `.cw/out/`; and what `cw` records while it works, in `.cw/log/`.
 - <a id="core-fr-225"></a>**CORE-FR-225**: The log MUST hold what `cw` writes beside the compiled output — each evaluation's working copy and what an evaluation run leaves — and version control MUST ignore it.
-- <a id="core-fr-226"></a>**CORE-FR-226**: Over the store `cw` keeps, every command, the health check included, MUST refuse a repository laid out the old way, and adding or updating a vendor source laid out the old way MUST be refused, installing nothing; each refusal MUST say the layout is the old one and name the authoring skill.
-- <a id="core-fr-227"></a>**CORE-FR-227**: The authoring skill MUST lead the agent to move a repository laid out the old way to the new layout, keeping every file's contents, after which the build MUST be what it was before the move.
-- <a id="core-fr-228"></a>**CORE-FR-228**: The charter's primitives, vendors, test cases and eval cases MUST be kept by one store; the log and the agents' sessions by stores of running's own; every store and every runner MUST be apart from the engine's two parts, which MUST hold none; the package MUST compose the engine's own stores and runners in for every one an integrator does not hand, and MUST export them for an integrator to extend ([CORE-FR-230](#core-fr-230), [SDK-FR-020](spec-sdk.md#sdk-fr-020)).
+- <a id="core-fr-226"></a>**CORE-FR-226**: Over the store `cw` keeps, every command, the health check included, MUST refuse a repository laid out the old way, and installing a charter or bringing an installed charter up to date from a source laid out the old way MUST be refused, installing nothing; each refusal MUST say the layout is the old one and name the authoring skill.
+- <a id="core-fr-227"></a>**CORE-FR-227**: The authoring skill MUST lead the agent to move a repository laid out the old way to the new layout, keeping every file's contents, after which the build MUST be what it was before the move, but for the installed charters deleted, until each is installed again ([VENDOR-FR-012](spec-vendor.md#vendor-fr-012)).
+- <a id="core-fr-228"></a>**CORE-FR-228**: The charter's primitives, installed charters, test cases and eval cases MUST be kept by one store; the log and the agents' sessions by stores of running's own; every store and every runner MUST be apart from the engine's two parts, which MUST hold none; the package MUST compose the engine's own stores and runners in for every one an integrator does not hand, and MUST export them for an integrator to extend ([CORE-FR-230](#core-fr-230), [SDK-FR-020](spec-sdk.md#sdk-fr-020)).
 - <a id="core-fr-229"></a>**CORE-FR-229**: Running MUST reach authoring only through what that part offers its callers, in answers made for that, never authoring's own account of the charter; authoring MUST ask nothing of running.
 - <a id="core-fr-230"></a>**CORE-FR-230**: Where the engine is composed, every adapter — each agent's projection and command line, the store that keeps the charter, every other store and runner — MUST be handed as one set, the engine's adapters, each the engine's own or written anew, and an adapter not handed MUST be the engine's own; the engine itself MUST NOT be replaced. Through the package, an integrator MAY hand any of them ([SDK-FR-020](spec-sdk.md#sdk-fr-020)).
 - <a id="core-fr-231"></a>**CORE-FR-231**: Which agents a repository chose, and its other settings, MUST be kept apart — by the settings store `cw` keeps, in `.cw/settings.json` — and read, and a repository set up, apart from authoring and from running, which MUST neither read nor write them; whoever composes the engine MUST hand them on.
@@ -1761,13 +1761,14 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - **Kind requirement**: What a kind says it requires — a header, and the shape that header takes. Declared once, where the kind's contract is, and answerable to whoever asks.
 - **Header answer**: One name and one value, given at a prompt by a person or as a flag by an agent. The same answer either way.
 - **Mixin**: A primitive whose purpose is to be pulled into others, written once and reused.
-- **Charter**: The charter of a repository: its primitives, by kind, of every layer; and kept beside them under its folder, its tests, its eval cases and its vendors, none of which is a primitive of it ([CORE-FR-224](#core-fr-224)). What is measured or compiled of the charter is its primitives alone.
+- **Charter root**: Everything that governs a repository: the primitives of every charter it authored or installed, by kind, and of the builtin layer; and kept beside them in each charter's folder, its tests and its eval cases, none of which is a primitive of it ([CORE-FR-224](#core-fr-224)). What is measured or compiled of the charter root is its primitives alone.
 - **Agent**: The coding agent a charter is built for, such as Claude Code or Codex: what reads the compiled output, offers the user commands, runs the hooks and calls the tools. Each agent has its projection, the adapter that lays the compiled output where that agent reads it. A primitive of the `agent` kind is an agent primitive, and the agent's subagent once built.
 - **Log**: What `cw` writes beside the compiled output, in `.cw/log/`, which version control ignores: each evaluation's working copy and what its run leaves ([CORE-FR-225](#core-fr-225)). The sessions are never part of it.
-- **Layer**: Where a primitive came from — this repository, one vendor source it installed, or the running engine itself.
+- **Layer**: Where a primitive came from — a charter this repository authored, one it installed, or the running engine itself.
 - **Builtin layer**: The part of the charter the running engine itself brings. It is supplied on every read rather than kept anywhere in the repository, and is read, checked and compiled exactly as the other two layers are. Installed from nothing, removable by nothing, and never out of date.
 - **`cw-author`**: The primitive the builtin layer brings: what a coding agent reads when it is about to author a primitive here.
-- **Vendor source**: Charter content installed whole from a pinned git source.
+- **Vendor source**: A git source a repository installs charters from, each whole, at a pinned version.
+- **Installed charter**: A charter a repository installed from a vendor source, holding its `cw-vendor.json`; read-only, of the vendor layer ([VENDOR-FR-010](spec-vendor.md#vendor-fr-010)). A source authoring no charter is "no vendor", in the engine's own words.
 - **Catalogue**: The one listing of every primitive: its kind, id, description, the files it applies to, and the file it is opened at.
 - **Compiled output**: The instruction surfaces generated from the charter for the agent to read.
 - **Engine**: What compiles a charter and applies it, the one the command line, the portal and the package are surfaces of.
@@ -1790,7 +1791,7 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - **Built file**: What a build writes for each asset of a primitive: a copy beside its compiled document, in the compiled output, where everything that names it points.
 - **Flow**: One branch holding one charter. A convention of the product and of a later application; carries no meaning inside the engine, the command line or the portal.
 - **Source of many charters**: A source authoring charters, each named by its author and picked on its own.
-- **Injected primitive**: A primitive taken from a source into the repository's own charter; from then on the repository's, with nothing recording where it came from.
+- **Injected primitive**: A primitive of a charter taken from a source into `.cw/charter/<charter>/` as a charter of the repository's own; from then on the repository's, with nothing recording where it came from.
 
 ## Success Criteria *(mandatory)*
 
@@ -1811,7 +1812,7 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - <a id="core-sc-014"></a>**CORE-SC-014**: For every repository state, the portal's health report and `cw doctor` name the same faults, and the portal's build preview and `cw build --preview` list the same targets.
 - <a id="core-sc-015"></a>**CORE-SC-015**: 100% of what the portal can do can also be done from the command line.
 - <a id="core-sc-016"></a>**CORE-SC-016**: No save from the portal overwrites a change made on disk after the file was opened.
-- <a id="core-sc-017"></a>**CORE-SC-017**: With the network disconnected, every portal capability but vendor installation works, the body editor included.
+- <a id="core-sc-017"></a>**CORE-SC-017**: With the network disconnected, every portal capability but installing a charter works, the body editor included.
 - <a id="core-sc-018"></a>**CORE-SC-018**: Any primitive can be traced from the portal, in one step, to its file, its layer, what makes it come up and every test case that pins it down.
 - <a id="core-sc-019"></a>**CORE-SC-019**: A coding agent with no terminal attached authors a valid primitive of any kind, on the first attempt, having read nothing but what the engine answered it.
 - <a id="core-sc-020"></a>**CORE-SC-020**: The shipped skill's body names zero header names and zero kinds' requirements, and stays correct when a kind's requirements change without it being edited.
@@ -1844,27 +1845,27 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - <a id="core-sc-047"></a>**CORE-SC-047**: A developer reads, in an agent's settings file, 1 command for each signal the charter's sensors name, and 0 sensor commands written out there.
 - <a id="core-sc-048"></a>**CORE-SC-048**: In 100% of the cases where a charter's sensors were built one hook each, the agent blocks, shows and adds to its context the same when they are built one command per signal.
 - <a id="core-sc-050"></a>**CORE-SC-050**: Of the skills and playbooks marked `disable-model-invocation: true`, the agent opens 0 by itself, and the user is offered 100% as commands.
-- <a id="core-sc-051"></a>**CORE-SC-051**: 100% of the sources whose repositories share a name under different owners install side by side.
+- <a id="core-sc-051"></a>**CORE-SC-051**: 100% of the charters of one name from two sources install side by side, the second under the name `--as` gives.
 - <a id="core-sc-052"></a>**CORE-SC-052**: A developer installs 1 of the charters a source gathers with 1 command, and 0 of the others arrive.
-- <a id="core-sc-053"></a>**CORE-SC-053**: A developer starts a primitive of their own from someone else's skill or charter with 1 command and 0 files copied or ids renamed by hand.
-- <a id="core-sc-054"></a>**CORE-SC-054**: In a folder with no version control, a developer sets up, authors, builds, installs a vendor and removes it with 100% of the commands they use in a git repository, and 0 others.
+- <a id="core-sc-053"></a>**CORE-SC-053**: A developer starts a primitive of their own from someone else's charter with 1 command and 0 files copied or ids renamed by hand.
+- <a id="core-sc-054"></a>**CORE-SC-054**: In a folder with no version control, a developer sets up, authors, builds, installs a charter and removes it with 100% of the commands they use in a git repository, and 0 others.
 - <a id="core-sc-056"></a>**CORE-SC-056**: 0 bytes of a binary asset differ between a primitive's folder and any copy the engine makes of it.
 - <a id="core-sc-057"></a>**CORE-SC-057**: Every acceptance scenario and edge case in the spec set cites at least one requirement that answers it, and 100% of functional requirements are cited by a story proving their behaviour.
 - <a id="core-sc-058"></a>**CORE-SC-058**: The architecture review finds 0 conflicts between applicable architecture guides and 0 violations in the components changed to align them, with 100% of existing use-case behaviour tests passing.
-- <a id="core-sc-059"></a>**CORE-SC-059**: Through a store of an integrator's own, 0 layers, kinds, vendors or suite names are read off where a file sits, with 100% of existing behaviour tests passing.
+- <a id="core-sc-059"></a>**CORE-SC-059**: Through a store of an integrator's own, 0 layers, kinds, installed charters or suite names are read off where a file sits, with 100% of existing behaviour tests passing.
 - <a id="core-sc-060"></a>**CORE-SC-060**: The architecture review finds 100% of the rules about a value of the engine written with that value, and 0 functions or constants exported beside the values, with 100% of existing behaviour tests passing and the published package's exports changed only as [SDK-FR-015](spec-sdk.md#sdk-fr-015) versions them.
 - <a id="core-sc-061"></a>**CORE-SC-061**: The architecture review finds 0 repository or home addresses in what the engine is set up with or asks its stores, with 100% of existing behaviour tests passing and every `cw` command answering at a `file:` address as before.
 - <a id="core-sc-062"></a>**CORE-SC-062**: Through a store of a test's own that keeps no path, 100% of the use cases answer as they do over the files, and 100% of existing behaviour tests pass.
 - <a id="core-sc-063"></a>**CORE-SC-063**: A build laid onto a repository leaves every agent's folders the same, byte for byte, as before, and the compiled output the same but for its paths, written from where each file lands, in 100% of the existing build tests.
 - <a id="core-sc-064"></a>**CORE-SC-064**: 100% of the command-line and portal behaviour tests pass with the engine's work held in its two parts, and 0 of what a caller is answered is the engine's own account of the charter.
-- <a id="core-sc-065"></a>**CORE-SC-065**: In a repository laid out the old way, 100% of commands refuse naming the authoring skill; after the agent follows it, the build is the same, byte for byte, as before the move.
-- <a id="core-sc-066"></a>**CORE-SC-066**: The architecture review finds 0 stores or runners in the engine's two parts, 1 store keeping the charter's primitives, vendors, test cases and eval cases, 0 of authoring's own account reaching running, and 0 parts but the settings' own reading the settings, with 100% of the command-line and portal behaviour tests passing as before.
+- <a id="core-sc-065"></a>**CORE-SC-065**: In a repository laid out the old way, 100% of commands refuse naming the authoring skill; after the agent follows it, the build is the same, byte for byte, as before the move, but for the installed charters deleted until each is installed again.
+- <a id="core-sc-066"></a>**CORE-SC-066**: The architecture review finds 0 stores or runners in the engine's two parts, 1 store keeping the charter's primitives, installed charters, test cases and eval cases, 0 of authoring's own account reaching running, and 0 parts but the settings' own reading the settings, with 100% of the command-line and portal behaviour tests passing as before.
 - <a id="core-sc-067"></a>**CORE-SC-067**: The architecture review of the whole engine, the portal page included, finds 0 breaches of the naming and fault guides, and the guides name 0 types or operations the code does not hold.
 - <a id="core-sc-068"></a>**CORE-SC-068**: 0 scenarios of `Done` stories whose behaviour can be run are proven only by matching the source's text.
 - <a id="core-sc-069"></a>**CORE-SC-069**: Across every spec, 0 terms name two things and 0 things carry two terms.
 - <a id="core-sc-070"></a>**CORE-SC-070**: 0 scenarios of `Done` stories are held by no test and by no run their evidence names, and 0 tests assert the opposite of the scenario they are labelled with.
 - <a id="core-sc-071"></a>**CORE-SC-071**: Assessed again against the charter's coding rules, the engine's source holds 0 of the findings the code smell assessment of 2026-11-14 recorded for it and the developer agreed to repair.
-- <a id="core-sc-072"></a>**CORE-SC-072**: Bringing the engine's source to its coding rules renames or narrows 0 names of the package's contract, but the charter store's port no longer lending what makes a vendor.
+- <a id="core-sc-072"></a>**CORE-SC-072**: Bringing the engine's source to its coding rules renames or narrows 0 names of the package's contract, but the charter store's port no longer lending what makes an installed charter.
 - <a id="core-sc-073"></a>**CORE-SC-073**: 100% of the commands but the three `cw run` commands answer in the one layout, and say the same things with the same exit status as before in 100% of the existing command-line tests.
 - <a id="core-sc-074"></a>**CORE-SC-074**: Every answer printed anywhere but a terminal, or with `NO_COLOR` set, holds 0 colour codes.
 - <a id="core-sc-075"></a>**CORE-SC-075**: For 100% of the commands taking `--json`, the standard output, on success and on failure, parses as one JSON document with no error.
@@ -1922,9 +1923,8 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - **`cw` is found where the agent runs its hooks**, as it is where the agent starts `cw run mcp`.
 - **What runs is a copy.** A script's files are copied into the compiled output by a build, and every command names the copy. An edit in progress in the charter is therefore never what a sensor fires, and what runs is what the last preview showed.
 - **In the store `cw` keeps, a primitive is a folder.** What a primitive says lives in its `index.md`, and what it needs beside it — a checklist, a sample, the files a script runs — lives beside it, reached as `./<file>` from the charter and from the output alike. Stopping at the first `index.md` going down keeps one reading of any folder.
-- **A skill is taken as it is published.** Its body is not rewritten: a name it gives another skill in prose stays prose, not a reference, and the build does not check that the other skill is there.
 - Git available on the machine, to reach a vendor source; and a git repository with a commit, to evaluate the charter. A git repository is recommended everywhere else, for reviewing what changes and for undoing it, and required nowhere else.
-- A network path to the vendor source's git server when installing or updating vendored content. Everything else works offline, but what reaches an mcp origin or runs an agent ([CORE-FR-209](#core-fr-209)).
+- A network path to the vendor source's git server when installing a charter or bringing an installed charter up to date. Everything else works offline, but what reaches an mcp origin or runs an agent ([CORE-FR-209](#core-fr-209)).
 - An installed coding agent for the compiled output to be consumed. Authoring, validation, cataloguing and the agent-neutral compilation all work without one.
 - A web browser on the developer's machine, for the portal.
 - The public npm registry, reachable when `cw` is installed or upgraded, and a maintainer account holding publish rights for the package name, for a release.
@@ -1945,14 +1945,14 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - A later application beyond the portal that runs or shows agent sessions, a terminal or a work-item board, and anything such an application stores for itself.
 - Flows in any form: any representation of them inside the system, a view per flow, a flow per branch, colours or grouping by flow. A flow is a branch holding a charter; the system never learns the mapping.
 - Any account system, sign-in, licensing or payment of `cw`'s own. There is no login to `cw` and no cost; users bring their own agent subscription, and sign in to other services with their own accounts ([CORE-FR-148](#core-fr-148)).
-- Installing one directory of a charter source rather than the whole of it; a source of many charters is taken charter by charter.
+- Installing one directory of a vendor source's charter rather than the whole of it; a source of many charters is taken charter by charter.
 - Taking skills from a skills repository, as `npx skills` publishes them: dropped by [VENDOR Story 3](spec-vendor.md#vendor-story-3---keep-author-install-and-test-charters-in-the-charter-root-priority-p1).
 - Running agent sessions, managing worktrees, or executing the work loop, outside evaluation ([EVAL-FR-021](spec-eval.md#eval-fr-021), [CORE-FR-206](#core-fr-206)). The product declares and compiles the standards; the agent applies them.
 - More than one repository in one portal, and reaching the portal from another machine.
 - Setting a repository up from the portal. `cw init` does that.
 - Renaming a primitive, or changing its kind, in place. Renaming a test file.
 - A standing build status outside the health check.
-- Committing, branching or any other version-control operation beyond what reaching a source and evaluating ask.
+- Committing, branching or any other version-control operation beyond what reaching a source, evaluating, `cw vendor init` and `/vendor-release` ask ([VENDOR-FR-002](spec-vendor.md#vendor-fr-002), [VENDOR-FR-008](spec-vendor.md#vendor-fr-008)).
 - Changing or deleting a primitive that already exists, from the agent or from a header flag.
 - Writing a primitive's body for its author: what a rule should say stays the author's.
 - Any second builtin source, or a name for one. There is one owner of that layer.
@@ -1980,7 +1980,7 @@ A developer runs `cw list` and reads the charter's primitives under a heading pe
 - A template whose body is not text. A binary file kept as an asset of a primitive, a script's files included, is copied whole.
 - Copying a script or a template into an agent's own skill folder. There is one built copy, in the compiled output, and every name of it points there.
 - Keeping any kind but a skill or a playbook from the agent. A skill or a playbook is kept from the agent with `disable-model-invocation: true`; `disable-user-invocation` only decides whether the user is offered it as a command.
-- Marking a vendor's skills as steps from this repository: a vendor marks its own.
+- Marking an installed charter's skills as steps from this repository: its author marks its own.
 - Highlighting a template's body in the portal by its language, and editing the files of a script's folder in the portal: they are written in an editor.
 - A time limit of a sensor's own: the sensors of a signal run within the one the agent gives that signal's command.
 - Firing a sensor on anything narrower than its signal, such as one tool: a sensor still names only its signal.

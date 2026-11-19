@@ -52,8 +52,8 @@ refused against.
 
 When cw refuses a command because the repository is laid out the old way, ask
 the developer which charter the repository's own primitives go in: a name
-written as an id is, and never a kind's, \`primitive\`, \`test\`, \`eval\` or
-\`vendor\`. Then, before anything else, move every
+written as an id is, and never a kind's, \`primitive\`, \`test\`, \`eval\`,
+\`vendor\` or \`root\`. Then, before anything else, move every
 file below, keeping its contents as they are, \`<charter>\` being the name
 answered. First, a \`.cw/eval/.worktrees/\` an evaluation left is not moved:
 delete it, then run \`git worktree prune\`. Then move:

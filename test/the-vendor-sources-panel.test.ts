@@ -32,16 +32,16 @@ const publishedCharterFiles = {
   ".cw/charter/published/primitive/guide/published/index.md": primitive("guide", "published"),
 };
 
-test("with no vendor installed, the vendor tab says so, and adding one lists the reserved directories (CORE Story 8 scenario 1)", async () => {
+test("with no charter installed, the vendor tab says so, and adding one asks the source and its version alone, listing no name (CORE Story 8 scenario 1)", async () => {
   await inTheBrowser({ [at("guide/no-any/index.md")]: primitive("guide", "no-any") }, async (page) => {
     await page.getByRole("tab", { name: "Vendor" }).click();
     await page.getByText("No vendor source installed").waitFor();
 
     await page.getByRole("button", { name: "Add vendor source" }).click();
-    const reserved = page.getByLabel("Reserved directories");
-    await reserved.getByText("guide/").waitFor();
-    for (const kind of ["sensor", "skill", "playbook", "agent", "posture", "corpus", "mixin"])
-      assert.equal(await reserved.getByText(`${kind}/`, { exact: true }).count(), 1, kind);
+    await page.getByLabel("source", { exact: true }).waitFor();
+    await page.getByLabel("version").waitFor();
+    assert.equal(await page.getByRole("dialog").getByRole("textbox").count(), 2);
+    assert.equal(await page.getByText(/Names a charter may not take|Directories in each of its charters/).count(), 0);
   });
 });
 
@@ -122,7 +122,7 @@ const vendoredFilesOf = async (files: InMemoryFileReaders) =>
     ]),
   );
 
-test("a source that cannot be reached installs nothing, touches nothing installed, and the dialog shows why in the engine's words (CORE Story 8 scenarios 3, 6, CORE-FR-123, CORE-FR-049, CORE Story 55 scenario 11)", async () => {
+test("a source that cannot be reached installs nothing, touches nothing installed, and the dialog shows why in the engine's words (CORE Story 8 scenario 3, CORE-FR-123, CORE-FR-049, CORE Story 55 scenario 11)", async () => {
   const sourceFetcher = new InMemorySources();
   sourceFetcher.unreachableSources.push("team/charter");
   await inTheBrowser(
@@ -145,7 +145,7 @@ test("a source that cannot be reached installs nothing, touches nothing installe
   );
 });
 
-test("a source whose charter would land on a name reserved for a kind installs nothing, touches nothing installed, and the dialog shows why (CORE Story 8 scenario 6, CORE-FR-123, CORE-FR-044, CORE Story 55 scenario 11, VENDOR Story 3 scenario 7)", async () => {
+test("a source whose charter would land on a name a charter may not take installs nothing, touches nothing installed, and the dialog shows why (CORE Story 8 scenario 6, CORE-FR-123, CORE-FR-226, CORE Story 55 scenario 11, VENDOR Story 3 scenario 7)", async () => {
   const sourceFetcher = new InMemorySources();
   sourceFetcher.sourceFilesBySource["team/charters"] = {
     ".cw/charter/primitive/guide/one-rule/index.md": primitive("guide", "one-rule"),
@@ -169,7 +169,7 @@ test("a source whose charter would land on a name reserved for a kind installs n
   );
 });
 
-test("Remove takes an installed charter away by its name (CORE Story 8 scenario 5, FR-050, VENDOR Story 3 scenario 21)", async () => {
+test("Remove takes an installed charter away by its name (CORE Story 8 scenario 5, CORE-FR-204, VENDOR Story 3 scenario 21)", async () => {
   const sourceFetcher = new InMemorySources();
   await inTheBrowser(
     {
@@ -188,7 +188,7 @@ test("Remove takes an installed charter away by its name (CORE Story 8 scenario 
   );
 });
 
-test("Remove takes the source away through the engine (CORE Story 8 scenario 5)", async () => {
+test("Remove takes an installed charter away through the engine (CORE Story 8 scenario 5)", async () => {
   const sourceFetcher = new InMemorySources();
   await inTheBrowser(
     withTwoVendors(),

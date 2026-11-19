@@ -1,25 +1,26 @@
-import type { CharterMetadataList } from "../../domain/models/charter/charter-metadata-list.js";
-import { CharterRootFactory } from "../../domain/models/charter/charter-root.factory.js";
-import type { CharterRoot } from "../../domain/models/charter/charter-root.js";
-import { ValidCharterNameSpec } from "../../domain/models/charter/valid-charter-name.specification.js";
-import { VendorRecord } from "../../domain/models/charter/vendor-record.value-object.js";
+import type { CharterMetadataList } from "../models/charter/charter-metadata-list.js";
+import { CharterRootFactory } from "../models/charter/charter-root.factory.js";
+import type { CharterRoot } from "../models/charter/charter-root.js";
+import { ValidCharterNameSpec } from "../models/charter/valid-charter-name.specification.js";
+import { VendorRecord } from "../models/charter/vendor-record.value-object.js";
 import {
   AmbiguousAsNameFault,
   ClaimedIdFault,
   HeldCharterNameFault,
   ReservedCharterNameFault,
   UnexpectedSourceShapeFault,
-} from "../../domain/models/charter.fault.js";
-import { CharterInstall, type CharterInstallRequest } from "../../domain/models/vendor/charter-install.js";
-import type { VendorSource } from "../../domain/models/vendor/vendor-source.js";
+} from "../models/charter.fault.js";
+import { CharterInstall, type CharterInstallRequest } from "../models/vendor/charter-install.js";
+import type { VendorSource } from "../models/vendor/vendor-source.js";
 
-export class InstallCharterService {
+/** Plans what installing or injecting a source puts in the charter root. */
+export class CharterInstallService {
   /**
    * Every charter one source's install or injection puts in the repository,
    * every refusal raised before anything is written.
    *
    * A source is a vendor when it authors charters; a source authoring none is
-   * refused (FR-042). With none named, every charter it authored is taken; a
+   * refused (CORE-FR-042). With none named, every charter it authored is taken; a
    * charter named that it did not author is refused naming those it did
    * (VENDOR-FR-017). Every other charter of the source a charter taken names
    * an id of is taken with it, and so on, each once; one the source installed
@@ -33,7 +34,7 @@ export class InstallCharterService {
    * `cw-vendor.json` is kept (VENDOR-FR-022). Either way an id the charter
    * root would then hold twice is refused naming both files (VENDOR-FR-009).
    */
-  planCharterInstalls(
+  static planCharterInstalls(
     vendorSource: VendorSource,
     charterInstallRequest: CharterInstallRequest,
     charterMetadataList: CharterMetadataList,
@@ -174,7 +175,6 @@ export class InstallCharterService {
     }
     return charterInstalls;
   }
-}
 
-/** The one InstallCharterService the composition root hands every use case that asks for it. */
-export const installCharterService = new InstallCharterService();
+  private constructor() {}
+}

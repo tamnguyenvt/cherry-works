@@ -154,13 +154,20 @@ test("two sources publishing one charter name land side by side once the second 
   );
 });
 
-test("a source whose address names no owner is refused, and nothing is installed (FR-050)", async () => {
-  for (const source of ["charter", "https://example.com/charter.git"]) {
+test("a source whose address names its repository alone is installed, its charter landing under its own name; one naming no repository folder is refused, and nothing is installed (FR-044, FR-049, FR-050)", async () => {
+  const { code: lonePathCode, sourceFetcher: lonePathFetcher } = await running(
+    ["vendor", "add", "charter"],
+    sourcesPublishing(["charter"]),
+  );
+  assert.equal(lonePathCode, EXIT_OK);
+  assert.equal(lonePathFetcher.fetchedSources[0]?.source, "charter");
+
+  for (const source of ["https://example.com/", "team/.."]) {
     const { code, commandOutput, sourceFetcher } = await running(["vendor", "add", source]);
 
     assert.equal(code, EXIT_FAILURE, source);
     assert.deepEqual(installedFoldersOf(sourceFetcher), [], source);
-    assert.match(commandOutput, /Invalid path/, source);
+    assert.match(commandOutput, /names no repository folder/, source);
   }
 });
 
@@ -368,14 +375,6 @@ test("a name that is no folder is refused, and nothing is taken away (FR-044)", 
     assert.equal((await vendoredFiles(fileReaders)).length, 3, name);
     assert.match(commandOutput, /No charter is named/, name);
   }
-});
-
-test("a source whose address ends in no folder is refused, and nothing is installed (FR-044)", async () => {
-  const { code, commandOutput, sourceFetcher } = await running(["vendor", "add", "https://example.com/team/.."]);
-
-  assert.equal(code, EXIT_FAILURE);
-  assert.deepEqual(installedFoldersOf(sourceFetcher), []);
-  assert.match(commandOutput, /Invalid path/);
 });
 
 test("vendor inject exposes the same source, version and charter flags as add (CORE-FR-198)", async () => {

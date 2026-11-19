@@ -211,3 +211,31 @@ test("incoming id collisions, and a charter whose folder the repository already 
     assert.deepEqual(await fileReader.readFilesRecursively(repoPath), beforeFiles);
   }
 });
+
+test("--as injects the one charter under that name, the repository's own, and is refused for more than one, nothing written (VENDOR Story 3 scenario 29, VENDOR-FR-022)", async () => {
+  const sourceFiles = {
+    ".cw/charter/lone/primitive/guide/published/index.md": guideMarkdown,
+    ".cw/charter/other/primitive/guide/other-published/index.md": guideMarkdown.replace(
+      "id: published",
+      "id: other-published",
+    ),
+  };
+  const { charterAuthoringApp, fileReader } = createVendoringFixture(sourceFiles);
+
+  answerOf(await charterAuthoringApp.injectVendor("team/source", undefined, ["lone"], "solo"));
+
+  assert.equal(
+    await fileReader.readIfThere(new URL(".cw/charter/solo/primitive/guide/published/index.md", repoPath)),
+    guideMarkdown,
+  );
+  assert.equal(await fileReader.readIfThere(new URL(".cw/charter/solo/cw-vendor.json", repoPath)), undefined);
+  assert.equal(
+    await fileReader.readIfThere(new URL(".cw/charter/lone/primitive/guide/published/index.md", repoPath)),
+    undefined,
+  );
+
+  const manyFixture = createVendoringFixture(sourceFiles);
+  const manyFault = faultOf(await manyFixture.charterAuthoringApp.injectVendor("team/source", undefined, [], "solo"));
+  assert.equal(manyFault.name, "AmbiguousAsNameFault");
+  assert.deepEqual(await manyFixture.fileReader.readFilesRecursively(new URL(".cw/charter/", repoPath)), []);
+});

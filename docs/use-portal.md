@@ -12,7 +12,7 @@ From the repository you want to manage:
 cw run portal
 ```
 
-If the repository has no charter yet, run `cw init` first.
+If the repository is not set up yet, run `cw init` first.
 
 Open the full address printed in the terminal, including `?t=…`, for example
 `http://127.0.0.1:9927/?t=…`. Keep the terminal running while you use the portal.
@@ -34,7 +34,7 @@ Press **Ctrl+C** in the terminal to stop the server.
 | Tab | Use it to |
 |---|---|
 | **Repo Charter** | Create and edit your repository's primitives |
-| **Vendor** | Install sources and inspect their read-only primitives |
+| **Vendor** | Install charters from sources and inspect their read-only primitives |
 | **Test** | Edit test files and run their cases |
 | **Context** | See how much charter context each agent the repository chose loads |
 
@@ -45,7 +45,8 @@ across the repository, vendor and built-in layers.
 
 1. Open **Repo Charter** and select a kind, such as `guide` or `skill`.
 2. Click **New guide**, **New skill**, or the corresponding button for that kind.
-3. Enter an id, description and the fields the form asks for. For a guide,
+3. Choose its charter, among those the repository authored or a new one.
+   Enter an id, description and the fields the form asks for. For a guide,
    use `globs` to limit it to relevant files. For a skill, supply its triggers.
 4. Write the instructions in the Markdown body and click **Create primitive**.
 5. Open the primitive again to edit its fields or body, then click **Save**.
@@ -83,8 +84,8 @@ Open **Vendor**, then click **Add vendor source**:
 3. Click **Add source** and inspect the installed primitives.
 4. Run **Build** to compile what was added.
 
-To update a source, add the same address with the version you want. To remove
-it, use its **Remove** button, then build again. Removal leaves the folder gone
+To bring an installed charter up to date, add its source again with the version you want. To remove
+an installed charter, use its **Remove** button, then build again. Removal leaves the folder gone
 in the working tree for you to commit, whatever else you have in hand.
 
 The form provides source and version fields. Use the CLI when you need
@@ -95,7 +96,7 @@ own editable copy. See [vendor sources](reference.md#vendor-sources) and
 ## Run charter tests
 
 Open **Test** to see the files under each charter's `.cw/charter/<charter>/test/` and their cases. Create a test
-file or open an existing file to edit its JSON, then click **Save**.
+file, choosing its charter, or open an existing file to edit its JSON, then click **Save**.
 
 Click **Run all tests**. The portal shows how many cases passed and the
 outcome of each case. A failing case explains what happened instead of the

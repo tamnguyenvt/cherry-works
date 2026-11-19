@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FaultDTOs } from "#module/shared/module.js";
-import { useAddVendor, useKinds } from "../portal.queries.js";
+import { useAddVendor } from "../portal.queries.js";
 import { DIALOG_FOOTER_CLASS_NAME } from "./dialog-footer.constants.js";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert.js";
 import { Button } from "./ui/button.js";
@@ -9,9 +9,8 @@ import { Label } from "./ui/label.js";
 
 /**
  * A source to install, by the address git fetches and an optional version
- * (FR-123), above the directory names reserved in each charter of a source:
- * the kind folders, as the engine names every kind (VENDOR-FR-017). A refusal stays here in the
- * engine's words, and nothing closes.
+ * (FR-123). A refusal, a name a charter may not take among them, stays here in
+ * the engine's words, and nothing closes.
  */
 export function AddVendorSource({
   onDone,
@@ -23,7 +22,6 @@ export function AddVendorSource({
   const [source, setSource] = useState("");
   const [version, setVersion] = useState("");
   const [refusalFault, setRefusalFault] = useState<FaultDTOs.Fault | null>(null);
-  const kindsQuery = useKinds();
   const addVendorMutation = useAddVendor();
 
   const addSource = async () => {
@@ -77,17 +75,6 @@ export function AddVendorSource({
             a tag, branch or commit; left empty, the source's default
           </span>
         </div>
-      </div>
-      <div className="rounded-[11px] border bg-zinc-50 px-3.5 py-3" aria-label="Reserved directories">
-        <div className="mb-1 text-[11px] font-bold tracking-[0.07em] text-zinc-400 uppercase">
-          Directories in each of its charters
-        </div>
-        {Object.entries(kindsQuery.data?.data ?? {}).map(([kind, activatesWhen]) => (
-          <div key={kind} className="flex items-baseline gap-[9px] border-t border-zinc-100 py-[7px]">
-            <span className="min-w-[150px] font-mono text-[11.5px]">{kind}/</span>
-            <span className="text-[11.5px] text-zinc-500">{activatesWhen}</span>
-          </div>
-        ))}
       </div>
       {refusalFault !== null && (
         <Alert variant="destructive" className="rounded-xl border-[#f6d9d9] bg-[#fef6f6]">

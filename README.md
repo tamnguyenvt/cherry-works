@@ -34,7 +34,7 @@ Using a local checkout? [Build and link it globally with pnpm](docs/reference.md
 Inside the repository you want to govern:
 
 ```bash
-cw init                    # choose your agent and initialize the charter
+cw init                    # choose your agent and set the repository up
 cw add guide no-any --charter=team --header description="No any in TypeScript." --header globs="src/**/*.ts"
 cw edit no-any             # write the rule in your editor
 cw build                   # generate the agent's files

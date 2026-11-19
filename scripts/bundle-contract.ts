@@ -76,7 +76,9 @@ async function createModuleFileNameFinder(rootPath: string): Promise<(declaredNa
     },
   );
   const sourceTextByPath = new Map<string, string>();
-  for (const sourcePath of sourcePaths.filter((filePath) => /\.tsx?$/.test(filePath)))
+  // The probes a test puts in src and takes away (`.probe.`) declare no
+  // module's name.
+  for (const sourcePath of sourcePaths.filter((filePath) => /\.tsx?$/.test(filePath) && !/\.probe\./.test(filePath)))
     sourceTextByPath.set(sourcePath, await readFile(join(sourceFolderPath, sourcePath), "utf8"));
   return (declaredName) => {
     const declarationPattern = new RegExp(`(class|interface|type|function|const|enum|namespace) ${declaredName}\\b`);

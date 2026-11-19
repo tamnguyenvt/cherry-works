@@ -2,7 +2,7 @@
 
 **Created**: 2026-10-04
 
-**Updated**: 2026-11-16
+**Updated**: 2026-11-19
 
 **Input**: User description: "Phase 008, after Uber's efficient software factory: predict how many tokens the charter loads into the agent's main context; give the tokens a session used when it stops; let `cw mcp serve` search its tools…; evaluate the charter against a real model…"
 
@@ -30,7 +30,7 @@ A charter is paid for in tokens every turn an agent works under it, and is worth
 
 ### Session 2026-10-04
 
-- Q: Why are a vendor's evaluation cases not installed with it? → A: A vendor evaluates itself, in its own repository ([EVAL-FR-020](#eval-fr-020)).
+- Q: Are an installed charter's evaluation cases installed with it? → A: Yes: each charter installed brings its eval cases under `<charter>/eval/`, and they run beside the repository's own ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017), [VENDOR-FR-025](spec-vendor.md#vendor-fr-025)).
 - Q: Why is an exact count made through the agent's own command line, not a model provider key? → A: The command line needs no key of its own ([EVAL-FR-004](#eval-fr-004)).
 
 ### Session 2026-10-05
@@ -254,7 +254,7 @@ An author reads evidence of the tokenizer's accuracy made after the workspace wa
 
 **Evaluating the charter**
 
-- <a id="eval-fr-020"></a>**EVAL-FR-020**: The engine MUST run the evaluation cases a repository writes under promptfoo, running none itself and judging none itself but whether the agent read a file ([EVAL-FR-039](#eval-fr-039)), in a folder of their own beside its tests, one file of cases each, by a command apart from the self-regression tests ([CORE-FR-084](spec-core.md#core-fr-084)). Evaluation cases are not primitives, and a vendor's are not installed with it.
+- <a id="eval-fr-020"></a>**EVAL-FR-020**: The engine MUST run the evaluation cases a repository writes under promptfoo, running none itself and judging none itself but whether the agent read a file ([EVAL-FR-039](#eval-fr-039)), under each charter's `<charter>/eval/`, one file of cases each, by a command apart from the self-regression tests ([CORE-FR-084](spec-core.md#core-fr-084)). Evaluation cases are not primitives; a charter installed brings its own ([VENDOR-FR-017](spec-vendor.md#vendor-fr-017)).
 - <a id="eval-fr-021"></a>**EVAL-FR-021**: Each case MUST put its prompt to the real agent, run headless, once, in a worktree of the repository's last commit, kept under the log, `.cw/log/`, which version control ignores, with the charter and its cases as the store holds them now, committed or not, built into it; the worktree MUST be removed once the case has run, and any a run stopped halfway left MUST be removed when the next run starts; the files of the repository's own working tree MUST be left as they were.
 - <a id="eval-fr-022"></a>**EVAL-FR-022**: A case expecting a skill MUST pass when the agent invoked it and fail otherwise, saying which skills it invoked, none among them.
 - <a id="eval-fr-023"></a>**EVAL-FR-023**: A case expecting a guide followed MUST be judged by promptfoo's model grader against that guide, on the developer's own sign-in or key, passing or failing with the grader's reason.

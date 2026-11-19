@@ -114,14 +114,17 @@ async function problemPrintedBy(adapters: ReturnType<typeof adaptersInMemory>, a
 const engineOver = (adapters: ReturnType<typeof adaptersInMemory>) =>
   composeEngine({ agents: ["claude"] }, pluginsInMemory(adapters));
 
-test("a build at the root holds every charter's primitives, and the agent is offered each charter's skills (VENDOR Story 3 scenario 1)", async () => {
+test("a build at the root holds every charter's primitives, and every agent chosen is offered each charter's skills (VENDOR Story 3 scenario 1)", async () => {
   const adapters = adaptersInMemory(filesInThreeCharters);
 
-  answerOf(await engineOver(adapters).charterBuildingApp.buildCharter());
+  answerOf(
+    await composeEngine({ agents: ["claude", "codex"] }, pluginsInMemory(adapters)).charterBuildingApp.buildCharter(),
+  );
 
   for (const skillId of ["sdd-plan", "baseline-check", "grill-me"]) {
     assert.ok(await adapters.fileReader.readIfThere(`.cw/out/skill/${skillId}/index.md`), `no compiled ${skillId}`);
-    assert.ok(await adapters.fileReader.readIfThere(`.claude/skills/${skillId}/SKILL.md`), `no agent file ${skillId}`);
+    assert.ok(await adapters.fileReader.readIfThere(`.claude/skills/${skillId}/SKILL.md`), `no claude file ${skillId}`);
+    assert.ok(await adapters.fileReader.readIfThere(`.agents/skills/${skillId}/SKILL.md`), `no codex file ${skillId}`);
   }
 });
 
@@ -179,6 +182,7 @@ test("a primitive right under its kind's folder, test or eval cases right under 
     ".cw/charter/test/kept.json",
     ".cw/charter/eval/kept.json",
     ".cw/charter/vendor/team/rules/root/primitive/guide/kept-guide/index.md",
+    ".cw/vendor/team/rules/root/primitive/guide/kept-guide/index.md",
   ]) {
     const adapters = adaptersInMemory({ ...filesInThreeCharters, [repoFileUrlOf(oldLayoutPath)]: "kept\n" });
     for (const argv of [["build"], ["list"], ["add", "guide", "no-any", "--charter=sdd"]]) {
@@ -186,6 +190,10 @@ test("a primitive right under its kind's folder, test or eval cases right under 
       assert.equal(code, EXIT_FAILURE, `${oldLayoutPath}: ${argv.join(" ")}`);
       assert.match(problem, /laid out the old way/, `${oldLayoutPath}: ${argv.join(" ")}`);
       assert.match(problem, /named charter/, `${oldLayoutPath}: ${argv.join(" ")}`);
+      // The fix names the folder of vendors this repository holds, never another.
+      const oldVendorsFolderPath = /^(\.cw\/(?:charter\/)?vendor)\//.exec(oldLayoutPath)?.[1];
+      if (oldVendorsFolderPath !== undefined)
+        assert.ok(problem.includes(`delete each vendor under ${oldVendorsFolderPath}/ `), problem);
     }
     assert.equal(await adapters.fileReader.readIfThere(".cw/charter/sdd/primitive/guide/no-any/index.md"), undefined);
   }

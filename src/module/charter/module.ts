@@ -65,7 +65,6 @@ export {
 } from "./app/port/out/managing-local-output.port.js";
 export type { ForStoringCredentials } from "./app/port/out/storing-credentials.port.js";
 export { BuildCharterService, buildCharterService } from "./app/services/build-charter.service.js";
-export { InstallCharterService, installCharterService } from "./app/services/install-charter.service.js";
 export { LoadCharterService, loadCharterService } from "./app/services/load-charter.service.js";
 export { LoadMcpOriginsService, loadMcpOriginsService } from "./app/services/load-mcp-origins.service.js";
 export { InvalidPrimitiveFault } from "./domain/models/charter.fault.js";

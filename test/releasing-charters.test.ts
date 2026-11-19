@@ -404,6 +404,32 @@ test("a push that fails stops the release at that step, saying which steps ran a
   });
 });
 
+test("a tag push that fails stops the release at that step, saying which steps ran and the command that finishes the rest (VENDOR Story 2 scenario 6)", async () => {
+  await inReleaseFolder(CHARTER_TEXT_BY_PATH, async (releaseFolder) => {
+    const { originFolderPath, workFolderPath, commandEnv } = releaseFolder;
+    assert.equal(runReleaseAction(["check"], releaseFolder).status, 0);
+    assert.equal(runReleaseAction(["readme"], releaseFolder).status, 0);
+    // origin takes the branch and refuses every tag.
+    await writeFile(
+      join(originFolderPath, "hooks", "pre-receive"),
+      "#!/bin/sh\nwhile read old new ref; do case $ref in refs/tags/*) echo 'tags are closed' >&2; exit 1;; esac; done\n",
+      { mode: 0o755 },
+    );
+    await writeFile(join(workFolderPath, "entry.md"), "- First.\n");
+
+    const publishRun = runReleaseAction(
+      ["publish", "0.1.0", join(workFolderPath, "entry.md"), "--date", "2026-11-19"],
+      releaseFolder,
+    );
+
+    assert.equal(publishRun.status, 1);
+    assert.match(publishRun.stderr, /Stopped at "push v0\.1\.0"/);
+    assert.match(publishRun.stderr, /Ran: write the entry into CHANGELOG\.md, commit, push main, tag v0\.1\.0\./);
+    assert.match(publishRun.stderr, /To finish: git push origin v0\.1\.0$/m);
+    assert.equal(runGit(["tag", "--list"], originFolderPath, commandEnv), "");
+  });
+});
+
 test("a repository marked a vendor's builds /vendor-release and its script from cw itself, and any other repository builds neither (VENDOR Story 2 scenario 7)", async () => {
   await inReleaseFolder(CHARTER_TEXT_BY_PATH, async ({ repositoryFolderPath, commandEnv }) => {
     for (const outputPath of [
