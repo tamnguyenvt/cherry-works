@@ -32,9 +32,11 @@ refused against.
 2. Run \`cw kinds <kind>\`. It names every header that kind requires, the shape
    each takes — one line, or a list — the values one drawn from a closed set
    may hold, and a sample written in full.
-3. Run \`cw add <kind> <id> --header <name>=<value>\`, one \`--header\` for each
-   header step 2 named, and for any other the sample shows this primitive
-   needs. A header that takes a list is given once per entry, in order; one that
+3. Run \`cw add <kind> <id> --charter=<charter> --header <name>=<value>\`, one
+   \`--header\` for each header step 2 named, and for any other the sample
+   shows this primitive needs. \`<charter>\` is one the repository authored,
+   which \`cw add\` names when it is refused for want of one, or a new one the
+   developer names. A header that takes a list is given once per entry, in order; one that
    takes a line is given once. Everything after the first \`=\` is the value. If
    cw refuses, it says why and shows the kind's sample: answer again with that
    in hand. Nothing is written until the headers hold.
@@ -48,20 +50,31 @@ refused against.
 
 ## Moving a charter laid out the old way
 
-When cw refuses a command because the repository is laid out the old way, move
-every file below, keeping its contents as they are, before anything else.
-First, a \`.cw/eval/.worktrees/\` an evaluation left is not moved: delete it,
-then run \`git worktree prune\`. Then move:
+When cw refuses a command because the repository is laid out the old way, ask
+the developer which charter the repository's own primitives go in: a name
+written as an id is, and never a kind's, \`primitive\`, \`test\`, \`eval\` or
+\`vendor\`. Then, before anything else, move every
+file below, keeping its contents as they are, \`<charter>\` being the name
+answered. First, a \`.cw/eval/.worktrees/\` an evaluation left is not moved:
+delete it, then run \`git worktree prune\`. Then move:
 
-- \`.cw/charter/<kind>/\` → \`.cw/charter/primitive/<kind>/\`, for each kind's folder right under \`.cw/charter/\`
-- \`.cw/test/\` → \`.cw/charter/test/\`
-- \`.cw/eval/\` → \`.cw/charter/eval/\`
-- \`.cw/vendor/\` → \`.cw/charter/vendor/\`
+- \`.cw/charter/<kind>/\` → \`.cw/charter/<charter>/primitive/<kind>/\`, for each kind's folder right under \`.cw/charter/\`
+- \`.cw/charter/primitive/<kind>/\` → \`.cw/charter/<charter>/primitive/<kind>/\`, for each kind's folder right under \`.cw/charter/primitive/\`
+- \`.cw/test/\` → \`.cw/charter/<charter>/test/\`
+- \`.cw/charter/test/\` → \`.cw/charter/<charter>/test/\`
+- \`.cw/eval/\` → \`.cw/charter/<charter>/eval/\`
+- \`.cw/charter/eval/\` → \`.cw/charter/<charter>/eval/\`
+
+A vendor under \`.cw/vendor/\` or \`.cw/charter/vendor/\` is never moved: name
+each to the developer, and ask them to delete the folder; never delete it
+yourself. Once the repository builds, each
+is installed again with the latest cw, \`cw vendor add <source>\`, from a
+source laid out as that cw reads one.
 
 \`.cw/settings.json\` and what a build put out stay where they are. In
 \`.cw/.gitignore\`, the line \`eval/.worktrees/\`
 becomes \`log/\`. Then run \`cw build\`: it builds what it built before the
-move.`,
+move, but for the vendors deleted.`,
       [],
       PrimitiveLayer.BUILTIN,
     );

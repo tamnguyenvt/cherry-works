@@ -1,11 +1,11 @@
+import type { RawCharterMetadata } from "../../../domain/models/charter/raw-charter-metadata.js";
 import type { EvalSuite } from "../../../domain/models/eval/eval-suite.js";
 import type { RawEvalSuite } from "../../../domain/models/eval/raw-eval-suite.js";
 import type { Primitive } from "../../../domain/models/primitive/primitive.js";
 import type { RawPrimitive } from "../../../domain/models/primitive/raw-primitive.js";
 import type { RawTestSuite } from "../../../domain/models/test/raw-test-suite.js";
 import type { TestSuite } from "../../../domain/models/test/test-suite.js";
-import type { RawVendorRoot } from "../../../domain/models/vendor/raw-vendor-root.js";
-import type { RawVendorSource } from "../../../domain/models/vendor/raw-vendor-source.js";
+import type { CharterInstall } from "../../../domain/models/vendor/charter-install.js";
 import type { VendorSource } from "../../../domain/models/vendor/vendor-source.js";
 import type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.value-object.js";
 
@@ -16,12 +16,14 @@ export {
   type ForWritingFiles,
   OccupiedPrimitiveFileFault,
   OldLayoutFault,
-  OldVendorLayoutFault,
+  OrphanPrimitiveFault,
   OverlappingPrimitiveFoldersFault,
   type ReadFile,
 } from "../../../../shared/module.js";
-export { charterPath, outputPath, vendorSourcePath } from "../../../domain/constants.js";
+export { charterPath, outputPath } from "../../../domain/constants.js";
 export { CharterPath } from "../../../domain/models/charter/charter-path.js";
+export { RawCharterMetadata } from "../../../domain/models/charter/raw-charter-metadata.js";
+export { VendorRecord } from "../../../domain/models/charter/vendor-record.value-object.js";
 export { CharterOutputItem } from "../../../domain/models/charter-output/charter-output-item.js";
 export { CopyPlan, ProjectionPlan, WritePlan } from "../../../domain/models/charter-output/projection-plan.js";
 export type { EvalSuite } from "../../../domain/models/eval/eval-suite.js";
@@ -37,11 +39,9 @@ export { RawPrimitive } from "../../../domain/models/primitive/raw-primitive.js"
 export { SkillPrimitive } from "../../../domain/models/primitive/skill-primitive.js";
 export { RawTestSuite } from "../../../domain/models/test/raw-test-suite.js";
 export type { TestSuite } from "../../../domain/models/test/test-suite.js";
-export { RawVendorRoot } from "../../../domain/models/vendor/raw-vendor-root.js";
-export { RawSourceSkill, RawVendorSource } from "../../../domain/models/vendor/raw-vendor-source.js";
-export { SourceCharter, SourceSkill, VendorSource } from "../../../domain/models/vendor/vendor-source.js";
+export { CharterInstall } from "../../../domain/models/vendor/charter-install.js";
+export { SourceCharter, VendorSource } from "../../../domain/models/vendor/vendor-source.js";
 export type { VendorSourceOrigin } from "../../../domain/models/vendor/vendor-source-origin.value-object.js";
-export { VendorSourcePath } from "../../../domain/models/vendor/vendor-source-path.js";
 export type { ForFetchingCharterSources } from "./fetching-charter-sources.port.js";
 
 /** Keeps a repository's charter, wherever it keeps it, and knows how: its
@@ -53,12 +53,17 @@ export type { ForFetchingCharterSources } from "./fetching-charter-sources.port.
  *  a primitive by its layer, kind and id and a suite by its name
  *  (CORE-FR-213). */
 export interface ForManagingCharter {
-  /** Every primitive kept of the repository's charter, its own layer and each
-   *  vendor's, each with its assets. */
+  /** Every primitive kept of the repository's charter, each with its assets,
+   *  in the layer of the charter it is kept in: authored, or installed where the
+   *  charter holds where it came from (VENDOR-FR-009, VENDOR-FR-010). */
   loadCharter(): Promise<readonly RawPrimitive[]>;
 
-  /** A place laid out for each kind of primitive, where none was: what a
-   *  repository is set up with (FR-057). */
+  /** Every charter kept, each with what it holds of where it came from where it
+   *  was installed (VENDOR-FR-009, VENDOR-FR-010). */
+  loadCharterMetadata(): Promise<readonly RawCharterMetadata[]>;
+
+  /** A place laid out for the charter root's charters, holding none: what a
+   *  repository is set up with (FR-057, VENDOR-FR-013). */
   createCharter(): Promise<void>;
 
   /** One new primitive of the repository's own layer kept, with its assets
@@ -68,14 +73,6 @@ export interface ForManagingCharter {
    *  the charter (FR-167, CORE-FR-044). Handed the primitive as authored, which
    *  is kept nowhere yet. */
   addPrimitive(primitive: Primitive): Promise<string>;
-
-  /** New primitives of the repository's own layer kept together, each one's
-   *  uri in order; refused, with nothing written, as one added is, and where
-   *  any file is already in one's folder (CORE-FR-194). Handed each as it is
-   *  kept, not as a `Primitive` the way `addPrimitive` is: what is injected is
-   *  a vendor's source copied byte for byte, and a primitive written again
-   *  from the model would not be those bytes. */
-  injectPrimitives(rawPrimitives: readonly RawPrimitive[]): Promise<readonly string[]>;
 
   /** Refused where the repository is laid out in a way this store no longer
    *  keeps, naming what moves it (CORE-FR-226). */
@@ -98,56 +95,49 @@ export interface ForManagingCharter {
   removePrimitive(primitive: Primitive): Promise<void>;
 
   /** One commit of this source, at this version where one is named, fetched
-   *  and read: its own charter, the charters it keeps apart, and its skills.
-   *  Whoever asked says `removeFetchedSource` once done. A source that cannot be
-   *  reached raises an `AdapterFault` saying so (CORE-FR-190). */
-  fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<RawVendorSource>;
+   *  and read: the charters it keeps (VENDOR-FR-017). Whoever asked says
+   *  `removeFetchedSource` once done. A source that cannot be reached raises
+   *  an `AdapterFault` saying so. */
+  fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<VendorSource>;
 
   /** The temporary folder a source was fetched into, removed with all it holds. */
-  removeFetchedSource(rawVendorSource: RawVendorSource): Promise<void>;
+  removeFetchedSource(vendorSource: VendorSource): Promise<void>;
 
-  /** The name of every vendor kept, `<owner>/<repository>/<name>`; a vendor
-   *  laid out the way an earlier version installed one is refused by the
-   *  store, naming the folder to delete (FR-053, FR-180). */
-  loadVendorRoot(): Promise<RawVendorRoot>;
+  /** Each charter of a source fetched put in the repository as planned: what
+   *  its name held taken away whole, the folders of the source's charter
+   *  copied in as the source holds them, and its `cw-vendor.json` written, or
+   *  taken away where it keeps none (VENDOR-FR-017 to VENDOR-FR-022). Nothing
+   *  is staged and nothing committed. */
+  storeCharters(vendorSource: VendorSource, charterInstalls: readonly CharterInstall[]): Promise<void>;
 
-  /** One vendor of a source fetched and filtered kept under the name its
-   *  origin gives it: each charter's primitives copied whole, as the source
-   *  holds them, the source's own under `vendorSourcePath.ownCharterName` and each
-   *  kept apart under its own name; each skill's folder copied under the own
-   *  charter's and kept as the skill it converts to. Each replaces what stood
-   *  there before it; what else the vendor's folder holds is left as it was
-   *  (CORE-FR-042, CORE-FR-186 to CORE-FR-189, CORE-FR-196). */
-  storeVendor(vendorSource: VendorSource): Promise<void>;
+  /** Where a charter of this name is kept, in this keeper's words: said back,
+   *  never read. */
+  findCharterFolderUri(charterName: string): string;
 
-  /** Where a vendor installed under this name is kept, in this keeper's
-   *  words: said back, never read. */
-  findVendorUri(vendorName: string): string;
+  /** The charter of this name taken away whole (VENDOR-FR-021). */
+  removeCharter(charterName: string): Promise<void>;
 
-  /** The vendor installed under this name taken away, with each folder above
-   *  it that leaves empty (FR-047, CORE-FR-204). */
-  removeVendor(vendorName: string): Promise<void>;
-
-  /** Every test suite kept, by its name, with what it holds. */
+  /** Every test suite kept, by its name in its charter and that charter, with
+   *  what it holds (VENDOR-FR-009). */
   loadTestSuites(): Promise<readonly RawTestSuite[]>;
 
-  /** One test suite kept under this name, as its author wrote it, over
+  /** One test suite kept under this name in this charter, as its author wrote it, over
    *  whatever it held. */
-  writeTestSuite(name: string, testSuite: TestSuite): Promise<void>;
+  writeTestSuite(charterName: string, name: string, testSuite: TestSuite): Promise<void>;
 
-  /** The test suite kept under this name taken away. */
-  removeTestSuite(name: string): Promise<void>;
+  /** The test suite kept under this name in this charter taken away. */
+  removeTestSuite(charterName: string, name: string): Promise<void>;
 
-  /** Every file of evaluation cases kept, by the name it is reported under,
-   *  with what it holds. */
+  /** Every file of evaluation cases kept, by its name in its charter and that
+   *  charter, with what it holds (VENDOR-FR-009). */
   loadEvalSuites(): Promise<readonly RawEvalSuite[]>;
 
-  /** One file of evaluation cases kept under this name, as its author wrote
+  /** One file of evaluation cases kept under this name in this charter, as its author wrote
    *  it, over whatever it held. */
-  writeEvalSuite(name: string, evalSuite: EvalSuite): Promise<void>;
+  writeEvalSuite(charterName: string, name: string, evalSuite: EvalSuite): Promise<void>;
 
-  /** The file of evaluation cases kept under this name taken away. */
-  removeEvalSuite(name: string): Promise<void>;
+  /** The file of evaluation cases kept under this name in this charter taken away. */
+  removeEvalSuite(charterName: string, name: string): Promise<void>;
 
   /** The text a build laid for the item at this path inside its output, as
    *  it was laid; nothing where none was. */

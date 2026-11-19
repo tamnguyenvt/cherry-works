@@ -70,7 +70,7 @@ test("TOML merging preserves quoted dotted keys, inline tables, multiline string
 });
 
 test("TOML merges in memory without state, writes the hooks of a signal a sensor names over whole and does not duplicate them (CORE-FR-039)", async () => {
-  const sensorFile = inRepo(".cw/charter/primitive/sensor/check/index.md");
+  const sensorFile = inRepo(".cw/charter/team/primitive/sensor/check/index.md");
   const { held, app } = building(
     'model = "mine"\n[[hooks.Stop]]\n[[hooks.Stop.hooks]]\ntype = "command"\ncommand = "echo user"\n',
     {

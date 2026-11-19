@@ -26,7 +26,7 @@ import { type AnswersOfEveryCommand, answersOfEveryCommand } from "./every-comma
 import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
-const root = new URL("file:///repo/.cw/charter/primitive/");
+const root = new URL("file:///repo/.cw/charter/team/primitive/");
 const at = (path: string) => new URL(path, root).href;
 const inRepo = (path: string) => new URL(path, "file:///repo/").href;
 
@@ -382,7 +382,7 @@ test("cw edit with --json opens the editor and holds standard output to the answ
       encoding: "utf8",
     });
   assert.equal(runCw(["init", "--agent", "claude"]).status, 0);
-  assert.equal(runCw(["add", "guide", "no-any", "--header", "description=No any."]).status, 0);
+  assert.equal(runCw(["add", "guide", "no-any", "--charter=team", "--header", "description=No any."]).status, 0);
 
   const editRun = runCw(["edit", "no-any", "--json"]);
   assert.equal(editRun.status, 0, editRun.stderr);
@@ -426,6 +426,7 @@ test("cw eval with --json reports installing promptfoo on standard error, standa
       "add",
       "skill",
       "ask-first",
+      "--charter=team",
       "--header",
       "description=Ask before guessing.",
       "--header",
@@ -433,9 +434,9 @@ test("cw eval with --json reports installing promptfoo on standard error, standa
     ]).status,
     0,
   );
-  await mkdir(join(folderPath, ".cw/charter/eval"), { recursive: true });
+  await mkdir(join(folderPath, ".cw/charter/team/eval"), { recursive: true });
   await writeFile(
-    join(folderPath, ".cw/charter/eval/asking.json"),
+    join(folderPath, ".cw/charter/team/eval/asking.json"),
     '{"cases":[{"prompt":"ask first, then plan","expect":{"invoke":"ask-first"}}]}\n',
   );
   assert.equal(runIn("git", ["add", "."]).status, 0);

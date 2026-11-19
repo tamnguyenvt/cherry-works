@@ -13,8 +13,12 @@ import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-case
 
 const repo = "/repo";
 
-const root = new URL("file:///repo/.cw/charter/primitive/");
-const vendored = new URL("file:///repo/.cw/charter/vendor/acme/charter/root/primitive/");
+const root = new URL("file:///repo/.cw/charter/team/primitive/");
+const vendored = new URL("file:///repo/.cw/charter/acme/primitive/");
+/** What makes `acme` a charter this repository installed (VENDOR-FR-010). */
+const vendorRecordFile = {
+  ["file:///repo/.cw/charter/acme/cw-vendor.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
+};
 
 /** One authored file, holding what the kind it declares requires. */
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
@@ -83,6 +87,7 @@ const run = async (files: Readonly<Record<string, string>>, argv: readonly strin
 
 const charter = {
   [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ["tags: [types]"]),
+  ...vendorRecordFile,
   [new URL("guide/small-diffs/index.md", vendored).href]: primitive("guide", "small-diffs"),
 };
 
@@ -94,7 +99,7 @@ test("an id is traced in one command to the file that declares it (CORE Story 1 
     results,
     [
       "no-any  What no-any is for.",
-      "  .cw/charter/primitive/guide/no-any/index.md",
+      "  .cw/charter/team/primitive/guide/no-any/index.md",
       "  authored in this repository",
       "  comes up when  a touched file matches one of its `globs`, or every turn where",
       "                 globs are not specified",
@@ -161,7 +166,7 @@ test("a vendored id is named the same way, and says which layer it came from (CO
   const { code, results } = await run(charter, ["explain", "small-diffs"]);
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^ {2}\.cw\/charter\/vendor\/acme\/charter\/root\/primitive\/guide\/small-diffs\/index\.md$/m);
+  assert.match(results, /^ {2}\.cw\/charter\/acme\/primitive\/guide\/small-diffs\/index\.md$/m);
   assert.match(results, /installed from a vendor/);
 });
 
@@ -192,6 +197,7 @@ const related = {
     "rationale: why-types",
   ]),
   [new URL("mixin/typed/index.md", root).href]: primitive("mixin", "typed"),
+  ...vendorRecordFile,
   [new URL("corpus/why-types/index.md", vendored).href]: primitive("corpus", "why-types"),
 };
 
@@ -230,6 +236,7 @@ const naming = {
     ['triggers: ["release"]'],
     "Run [[check]], then [[check]] again.",
   ),
+  ...vendorRecordFile,
   [new URL("guide/releasing/index.md", vendored).href]: saying("guide", "releasing", [], "Run [[check]]."),
   [new URL("mcp/linear/index.md", root).href]: saying(
     "mcp",
@@ -317,7 +324,7 @@ test("a rationale citing a corpus the charter does not hold is named, and marked
 /** One test file, written the way an author writes it, in the folder tests are
  *  read from. */
 const suiteFilesOf = (authoredSuite: unknown, suiteName = "activation") => ({
-  [new URL(`.cw/charter/test/${suiteName}.json`, "file:///repo/").href]:
+  [new URL(`.cw/charter/team/test/${suiteName}.json`, "file:///repo/").href]:
     `${JSON.stringify(authoredSuite, undefined, 2)}\n`,
 });
 
@@ -342,7 +349,7 @@ test("an explanation says which situations this repository wrote down about the 
   assert.equal(code, EXIT_OK);
   assert.match(
     unwrapped(results),
-    /^ {2}pinned down by {2,}\.cw\/charter\/test\/activation\.json: touching src\/one\.ts activates no-any$/m,
+    /^ {2}pinned down by {2,}\.cw\/charter\/team\/test\/activation\.json: touching src\/one\.ts activates no-any$/m,
   );
   assert.doesNotMatch(results, /\.env/);
 });
@@ -352,7 +359,7 @@ test("a sensor is pinned down by the case that fires its signal", async () => {
 
   assert.match(
     unwrapped(results),
-    /^ {2}pinned down by {2,}\.cw\/charter\/test\/activation\.json: firing event PreToolUse runs no-secrets$/m,
+    /^ {2}pinned down by {2,}\.cw\/charter\/team\/test\/activation\.json: firing event PreToolUse runs no-secrets$/m,
   );
 });
 
@@ -368,12 +375,15 @@ test("a primitive no case names is explained with no situation under it", async 
 
 test("a test file that will not read leaves the explanation standing", async () => {
   const { code, results } = await run(
-    { ...pinnedDown, [new URL(".cw/charter/test/broken.json", "file:///repo/").href]: "not json at all" },
+    {
+      ...pinnedDown,
+      [new URL(".cw/charter/team/test/broken.json", "file:///repo/").href]: "not json at all",
+    },
     ["explain", "no-any"],
   );
 
   assert.equal(code, EXIT_OK);
-  assert.match(results, /^ {2}pinned down by {2,}\.cw\/charter\/test\/activation\.json: /m);
+  assert.match(results, /^ {2}pinned down by {2,}\.cw\/charter\/team\/test\/activation\.json: /m);
   assert.doesNotMatch(results, /broken\.json/);
 });
 
@@ -405,11 +415,12 @@ test("a collision is the answer doctor gives, naming both files that claim the i
   const { results } = await run(
     {
       [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any"),
+      ...vendorRecordFile,
       [new URL("guide/no-any/index.md", vendored).href]: primitive("guide", "no-any"),
     },
     ["doctor"],
   );
 
-  assert.match(results, /\.cw\/charter\/primitive\/guide\/no-any\/index\.md/);
-  assert.match(results, /\.cw\/charter\/vendor\/acme\/charter\/root\/primitive\/guide\/no-any\/index\.md/);
+  assert.match(results, /\.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md/);
+  assert.match(results, /\.cw\/charter\/acme\/primitive\/guide\/no-any\/index\.md/);
 });

@@ -34,9 +34,11 @@ export interface AnswersOfEveryCommand {
   repoFiles: Record<string, string>;
 }
 
-/** A git source on disk holding one skill, committed at a fixed time by a
- *  fixed author, so its commit is the same on every run. */
-const VENDOR_SKILL_TEXT = "---\nname: grill-me\ndescription: Ask questions until the plan holds.\n---\n\nAsk.\n";
+/** A git source on disk authoring one charter, `grill`, holding one skill,
+ *  committed at a fixed time by a fixed author, so its commit is the same on
+ *  every run. */
+const VENDOR_SKILL_TEXT =
+  '---\nkind: skill\nid: grill-me\ndescription: Ask questions until the plan holds.\ntriggers: ["grill me"]\n---\n\nAsk.\n';
 
 /** The case `cw eval` puts to the agent, written and committed just before it
  *  runs, as a developer commits a case before evaluating it. */
@@ -57,16 +59,34 @@ writeFileSync(outputPath, JSON.stringify({ results: { results: [{
 `;
 
 /** Each command in the order a developer meets them, each over the repository
- *  the ones before it left; `<vendor>` is the git source of one skill, and
- *  `<listed vendor>` the name `cw vendor list` last gave its folder. */
+ *  the ones before it left; `<vendor>` is the git source of one charter, and
+ *  `<listed vendor>` the name of the charter `cw vendor list` named last. */
 const COMMAND_ARGS: readonly (readonly string[])[] = [
   ["--help"],
   ["--version"],
   ["init", "--agent", "claude"],
   ["kinds"],
   ["kinds", "guide"],
-  ["add", "guide", "plain-words", "--header", "description=Write in plain words.", "--header", "globs=src/**/*.ts"],
-  ["add", "skill", "ask-first", "--header", "description=Ask before guessing.", "--header", "triggers=ask first"],
+  [
+    "add",
+    "guide",
+    "plain-words",
+    "--charter=team",
+    "--header",
+    "description=Write in plain words.",
+    "--header",
+    "globs=src/**/*.ts",
+  ],
+  [
+    "add",
+    "skill",
+    "ask-first",
+    "--charter=team",
+    "--header",
+    "description=Ask before guessing.",
+    "--header",
+    "triggers=ask first",
+  ],
   ["list"],
   ["explain", "plain-words"],
   ["edit", "plain-words"],
@@ -103,11 +123,12 @@ const PORTAL_REQUESTS: readonly { method: string; path: string; body?: unknown }
   { method: "GET", path: "/api/settings" },
   { method: "GET", path: "/api/charter/root/faults" },
   { method: "GET", path: "/api/charter/root/primitives" },
+  { method: "GET", path: "/api/charter/root/charters" },
   { method: "GET", path: "/api/definitions/kinds" },
   { method: "GET", path: "/api/definitions/kinds/guide/requirements" },
   {
     method: "POST",
-    path: "/api/charter/root/primitives",
+    path: "/api/charter/team/primitives",
     body: {
       kind: "guide",
       id: "short-lines",
@@ -133,11 +154,11 @@ const PORTAL_REQUESTS: readonly { method: string; path: string; body?: unknown }
   { method: "POST", path: "/api/test-suites", body: {} },
   {
     method: "PUT",
-    path: "/api/test-suites/untitled-1.json",
+    path: "/api/test-suites/team/untitled-1.json",
     body: { text: '{"cases":[{"do":{"touchFile":"src/one.ts"},"expect":{"activate":"short-lines"}}]}\n' },
   },
   { method: "GET", path: "/api/test-suites/outcome" },
-  { method: "DELETE", path: "/api/test-suites/untitled-1.json", body: {} },
+  { method: "DELETE", path: "/api/test-suites/team/untitled-1.json", body: {} },
   { method: "GET", path: "/api/vendors" },
   { method: "DELETE", path: "/api/charter/root/primitives/short-lines", body: {} },
   { method: "GET", path: "/api/charter/root/primitives" },
@@ -194,8 +215,8 @@ export async function answersOfEveryCommand(
   await mkdir(repoFolderPath);
   await mkdir(homeFolderPath);
   await writeFile(join(workFolderPath, "gitconfig"), "");
-  await mkdir(join(vendorFolderPath, "skills/grill"), { recursive: true });
-  await writeFile(join(vendorFolderPath, "skills/grill/SKILL.md"), VENDOR_SKILL_TEXT);
+  await mkdir(join(vendorFolderPath, ".cw/charter/grill/primitive/skill/grill-me"), { recursive: true });
+  await writeFile(join(vendorFolderPath, ".cw/charter/grill/primitive/skill/grill-me/index.md"), VENDOR_SKILL_TEXT);
   let portalProcess: ChildProcess | undefined;
   try {
     for (const gitArgs of [
@@ -234,8 +255,8 @@ export async function answersOfEveryCommand(
     const commandAnswers = COMMAND_ARGS.map((commandArgs) => {
       const isEvaluating = commandArgs[0] === "eval";
       if (isEvaluating) {
-        mkdirSync(join(repoFolderPath, ".cw/charter/eval"), { recursive: true });
-        writeFileSync(join(repoFolderPath, ".cw/charter/eval/asking.json"), EVAL_CASE_TEXT);
+        mkdirSync(join(repoFolderPath, ".cw/charter/team/eval"), { recursive: true });
+        writeFileSync(join(repoFolderPath, ".cw/charter/team/eval/asking.json"), EVAL_CASE_TEXT);
         for (const gitArgs of [
           ["add", "."],
           ["commit", "--quiet", "-m", "The charter and its case"],
@@ -263,15 +284,17 @@ export async function answersOfEveryCommand(
         encoding: "utf8",
       });
       if (commandArgs.join(" ") === "vendor list") {
-        // The folder is the last line the list says, under its heading, or
-        // the last its answer as data holds.
-        listedVendorName = (
-          commandRun.stdout.startsWith("{")
-            ? (JSON.parse(commandRun.stdout).data.folders.at(-1) ?? "")
-            : (commandRun.stdout.trim().split("\n").at(-1) ?? "")
-        )
-          .trim()
-          .replace(/^\.cw\/(charter\/)?vendor\//, "");
+        // The charter is the first word of the last row the list says, under
+        // its heading, each row opening two spaces in, or the last its answer
+        // as data holds.
+        listedVendorName = commandRun.stdout.startsWith("{")
+          ? (JSON.parse(commandRun.stdout).data.charters.at(-1)?.data.name ?? "")
+          : (commandRun.stdout
+              .split("\n")
+              .filter((listLine) => /^ {2}\S/.test(listLine))
+              .at(-1)
+              ?.trim()
+              .split(/\s+/)[0] ?? "");
       }
       return {
         args: commandArgs.join(" "),

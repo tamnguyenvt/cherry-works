@@ -21,8 +21,8 @@ const primitive = (kind: string, id: string, headers: readonly string[]) =>
  *  when a file it names is touched. */
 const holding = {
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"], mainContextCeiling: 30 })}\n`,
-  [at(".cw/charter/primitive/guide/plain-words/index.md")]: primitive("guide", "plain-words", []),
-  [at(".cw/charter/primitive/guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
+  [at(".cw/charter/team/primitive/guide/plain-words/index.md")]: primitive("guide", "plain-words", []),
+  [at(".cw/charter/team/primitive/guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
 };
 
 test("the Context tab shows what a session opens with, the total against the ceiling, and the guides loaded on a touch apart (EVAL-FR-007, EVAL Story 1 scenario 6)", async () => {
@@ -49,7 +49,7 @@ test("the Context tab of a repository that chose no agent says so, and how to ch
   await inTheBrowser(
     {
       [at(".cw/settings.json")]: `${JSON.stringify({ agents: [] })}\n`,
-      [at(".cw/charter/primitive/guide/plain-words/index.md")]: primitive("guide", "plain-words", []),
+      [at(".cw/charter/team/primitive/guide/plain-words/index.md")]: primitive("guide", "plain-words", []),
     },
     async (page) => {
       await page.getByRole("tab", { name: "Context" }).click();

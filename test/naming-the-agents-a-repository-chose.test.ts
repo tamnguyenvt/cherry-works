@@ -37,7 +37,7 @@ const lineTextsByPath = new Map(
   [
     ...textPathsUnder("src/", [".ts", ".tsx", ".md"]).filter((filePath) => !filePath.endsWith("/AGENTS.md")),
     ...textPathsUnder("docs/", [".md"]),
-    ...textPathsUnder(".cw/charter/primitive/guide/", [".md"]),
+    ...textPathsUnder(".cw/charter/", [".md"]).filter((filePath) => filePath.includes("/guide/")),
   ].map((filePath) => [filePath, readFileSync(new URL(filePath, repositoryUrl), "utf8").split("\n")]),
 );
 

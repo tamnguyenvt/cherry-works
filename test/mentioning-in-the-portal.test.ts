@@ -7,8 +7,8 @@ import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory
 import { inTheBrowser } from "./in-the-browser.js";
 import { authoringCharterOf } from "./use-cases-of.js";
 
-const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
-const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/").href;
+const at = (path: string) => new URL(path, "file:///repo/.cw/charter/team/primitive/").href;
+const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/charter/acme/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = [], description = `About ${id}.`) =>
   [
@@ -27,6 +27,7 @@ const primitive = (kind: string, id: string, headers: readonly string[] = [], de
  *  description says what its id does not. */
 const charter = {
   [at("sensor/check/index.md")]: primitive("sensor", "check", ["signal: PostToolUse", "run: pnpm lint"]),
+  ["file:///repo/.cw/charter/acme/cw-vendor.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
   [vendoredAt("guide/lint-clean/index.md")]: primitive("guide", "lint-clean", ['globs: ["src/**/*.ts"]']),
   [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]'], "Write unknown, never any."),
 };

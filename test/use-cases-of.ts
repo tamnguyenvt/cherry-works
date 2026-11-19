@@ -23,6 +23,7 @@ import { ClaudeProjection } from "../src/module/charter/infra/claude/claude-proj
 import { CodexProjection } from "../src/module/charter/infra/codex/codex-projection.adapter.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
 import { InMemoryCredentialsRepository } from "../src/module/charter/infra/in-memory/in-memory-credentials.repository.js";
+import type { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { LocalRepoManipulator } from "../src/module/charter/infra/local-repo-manipulator.adapter.js";
 import type { ForRunningCharter } from "../src/module/runtime/app/port/in/running-charter.port.js";
 import type { ForKeepingWorktrees } from "../src/module/runtime/app/port/out/keeping-worktrees.port.js";
@@ -398,3 +399,10 @@ export function commandContextOf(
     isJsonAnswer: false,
   };
 }
+
+/** Every folder of a source put in the repository's charter root, leaving out
+ *  those checked out aside first, before any charter is replaced. */
+export const installedFoldersOf = (sourceFetcher: InMemorySources) =>
+  sourceFetcher.checkedOutFolders.filter(
+    ({ intoSubFolder }) => !intoSubFolder.startsWith(`${charterPath.installingFolderPath}/`),
+  );

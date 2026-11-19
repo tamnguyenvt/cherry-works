@@ -325,6 +325,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
 
   async evaluateCharter(
     namedAgentProviderName?: string,
+    charterName?: string,
   ): Promise<RuntimeDTOs.EvalRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("RunningCharter.evaluateCharter", async () => {
       const agentProviderName = EvaluationAgentService.selectEvaluationAgent(
@@ -333,9 +334,21 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
         namedAgentProviderName,
       );
 
-      // A repository that wrote no case is told so, and nothing is written or
-      // added: no version control is needed to say so.
-      if (this.answeredDTOOf(await this.#charterAuthoringApp.listEvalSuites()).data.evalSuites.length === 0)
+      // A charter named that the charter does not hold is refused before
+      // anything runs (VENDOR-FR-026).
+      if (charterName !== undefined) {
+        const charterEvalCasesAnswer = await this.#charterBuildingApp.listEvalCases(charterName);
+        if (charterEvalCasesAnswer.type !== "EvalCases") return charterEvalCasesAnswer;
+      }
+
+      // A repository that wrote no case, in the charter named where one is, is
+      // told so, and nothing is written or added: no version control is needed
+      // to say so.
+      if (
+        this.answeredDTOOf(await this.#charterAuthoringApp.listEvalSuites()).data.evalSuites.filter(
+          (evalSuiteDTO) => charterName === undefined || evalSuiteDTO.data.charterName === charterName,
+        ).length === 0
+      )
         return this.#evalRunReportDTOOf(new EvalRunReport([], new AgentProvider(agentProviderName)));
 
       // What a run stopped halfway left is swept (EVAL-FR-021).
@@ -344,7 +357,7 @@ export class RunningCharter extends ApplicationService implements ForRunningChar
 
       // What is evaluated is the charter and its cases as the store holds them
       // now, committed or not: each case's worktree is built from the same.
-      const evalCasesAnswer = await this.#charterBuildingApp.listEvalCases();
+      const evalCasesAnswer = await this.#charterBuildingApp.listEvalCases(charterName);
       // Everything that would stop a case is said before the first one spends
       // anything (EVAL-FR-026).
       if (evalCasesAnswer.type === "FaultsByFile") return evalCasesAnswer;

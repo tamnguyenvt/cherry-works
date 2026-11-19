@@ -10,7 +10,7 @@ import { loadCharterRoot } from "./use-cases-of.js";
 
 const CLAUDE = new AgentProvider("claude");
 const repo = new URL("file:///repo/");
-const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
+const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/team/primitive/");
 
 const primitive = (kind: string, id: string, body: string, headers: readonly string[] = []) =>
   [

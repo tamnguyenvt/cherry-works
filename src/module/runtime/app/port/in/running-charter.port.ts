@@ -62,10 +62,14 @@ export interface ForRunningCharter {
    * and the working tree is left as it was (EVAL-FR-021). A charter with an
    * error, an evaluation file that does not read, and a case naming what the
    * charter does not hold are given back as faults, with no case run
-   * (EVAL-FR-026).
+   * (EVAL-FR-026). Every charter's cases, or the named charter's alone, each at
+   * the repository's root; a charter named that the charter does not hold is
+   * refused naming those it does, and nothing runs (VENDOR-FR-025,
+   * VENDOR-FR-026).
    */
   evaluateCharter(
     namedAgentProviderName?: string,
+    charterName?: string,
   ): Promise<RuntimeDTOs.EvalRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /** What promptfoo logged of an evaluation, the last one where no log is

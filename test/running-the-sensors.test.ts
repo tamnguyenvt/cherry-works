@@ -20,7 +20,7 @@ const TSX = import.meta.resolve("tsx");
 const MODULE_LOADER = import.meta.resolve("../scripts/module-loader.mjs");
 
 const repo = new URL("file:///repo/");
-const root = new URL(".cw/charter/primitive/", repo);
+const root = new URL(".cw/charter/team/primitive/", repo);
 const at = (path: string) => new URL(path, root).href;
 const inRepo = (path: string) => new URL(path, repo).href;
 

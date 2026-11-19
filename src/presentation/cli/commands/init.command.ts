@@ -11,7 +11,6 @@ import {
 } from "./command.interface.js";
 import {
   formatHeading,
-  formatMention,
   formatStatusLine,
   layAnswerRows,
   printFaultsByFile,
@@ -169,7 +168,7 @@ export class InitCommand implements Command<typeof OPTIONS> {
           "good",
           `Built ${writtenFileCount} file${writtenFileCount === 1 ? "" : "s"}: ${addedPaths.length} added, ${editedPaths.length} changed.`,
         ),
-        `Author your first rule under ${formatMention(".cw/charter/primitive/guide/")}, or ask your agent to write one, then run "cw build".`,
+        `Author your first rule with "cw add guide <id> --charter=<charter>", or ask your agent to write one, then run "cw build".`,
         "",
       ].join("\n"),
       answerDTO: planSummaryDTO,

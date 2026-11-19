@@ -13,7 +13,7 @@ import { COMMANDS } from "../src/presentation/cli/commands/index.js";
 import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
-const root = new URL("file:///repo/.cw/charter/primitive/");
+const root = new URL("file:///repo/.cw/charter/team/primitive/");
 const at = (path: string) => new URL(path, root).href;
 const inRepo = (path: string) => new URL(path, "file:///repo/").href;
 
@@ -25,10 +25,20 @@ const guide = (id: string, body?: string) => primitive("guide", id, ['globs: ["s
 /** A test file naming one guide, so no warning says nothing pins it down
  *  (FR-014). */
 const pinningDown = (id: string) => ({
-  [inRepo(`.cw/charter/test/${id.replace("/", "-")}.json`)]: JSON.stringify({
+  [inRepo(`.cw/charter/team/test/${id.replace("/", "-")}.json`)]: JSON.stringify({
     cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: id } }],
   }),
 });
+
+/** The record that makes `.cw/charter/rules/primitive/` a charter installed
+ *  from a vendor's source (VENDOR Story 3 scenario 2). */
+const installedFromTeamRules = {
+  [inRepo(".cw/charter/rules/cw-vendor.json")]: `${JSON.stringify({
+    charter: "rules",
+    source: "team/rules",
+    version: "HEAD",
+  })}\n`,
+};
 
 const compilingFor = (...agents: readonly string[]) => ({
   [inRepo(".cw/settings.json")]: `${JSON.stringify({ agents }, undefined, 2)}\n`,
@@ -164,7 +174,7 @@ test("a charter with an error is counted, and read where every fault is (FR-040,
   assert.match(printedOutput.everything, /✘ Charter: {2}1 error\./);
   // Counted above, and written out below: the file that has to change, and what
   // is wrong with it (FR-009, SC-003).
-  assert.match(printedOutput.everything, /\.cw\/charter\/primitive\/guide\/no-any\/index\.md/);
+  assert.match(printedOutput.everything, /\.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md/);
   assert.match(printedOutput.everything, /^ {2}✘ error: {2}This pulls in the mixin "nowhere"/m);
   // A charter that does not hold previews nothing, so what is built cannot be
   // answered.
@@ -197,10 +207,12 @@ test("what validating finds reaches a driver as its DTO: counted, and every faul
   // One error, no warning, and nothing previewed: a charter that does not hold
   // has no build to count what it would still change.
   assert.deepEqual([errorCount, warnCount, pendingCount], [1, 0, null]);
-  assert.deepEqual(Object.keys(faultsByFile.data.files), ["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]);
+  assert.deepEqual(Object.keys(faultsByFile.data.files), [
+    "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md",
+  ]);
   assert.ok(
-    faultsByFile.data.files["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]?.some(({ data: { message } }) =>
-      /This pulls in the mixin "nowhere"/.test(message),
+    faultsByFile.data.files["file:///repo/.cw/charter/team/primitive/guide/no-any/index.md"]?.some(
+      ({ data: { message } }) => /This pulls in the mixin "nowhere"/.test(message),
     ),
   );
 });
@@ -250,15 +262,15 @@ test("a guide and a sensor no test case names are each a warning under their own
 
   assert.deepEqual([errorCount, warnCount], [0, 2]);
   assert.deepEqual(Object.keys(faultsByFile.data.files).sort(), [
-    "file:///repo/.cw/charter/primitive/guide/no-any/index.md",
-    "file:///repo/.cw/charter/primitive/sensor/lint/index.md",
+    "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md",
+    "file:///repo/.cw/charter/team/primitive/sensor/lint/index.md",
   ]);
   assert.match(
-    messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/guide/no-any/index.md").join(),
+    messagesUnder(faultsByFile, "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md").join(),
     /warn: No test case names "no-any"/,
   );
   assert.match(
-    messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/sensor/lint/index.md").join(),
+    messagesUnder(faultsByFile, "file:///repo/.cw/charter/team/primitive/sensor/lint/index.md").join(),
     /warn: No test case names "lint"/,
   );
 });
@@ -268,7 +280,7 @@ test("a guide and a sensor a test case names raise no warning (FR-014)", async (
     [at("guide/no-any/index.md")]: guide("no-any"),
     [at("sensor/lint/index.md")]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
     ...pinningDown("no-any"),
-    [inRepo(".cw/charter/test/lint.json")]: JSON.stringify({
+    [inRepo(".cw/charter/team/test/lint.json")]: JSON.stringify({
       cases: [{ when: "PostToolUse", expect: { run: "lint" } }],
     }),
   });
@@ -283,7 +295,7 @@ test("a guide naming no files is a rule like any other, so a test case is asked 
 
   assert.equal(warnCount, 1);
   assert.match(
-    messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/guide/plain-words/index.md").join("\n"),
+    messagesUnder(faultsByFile, "file:///repo/.cw/charter/team/primitive/guide/plain-words/index.md").join("\n"),
     /No test case names "plain-words"/,
   );
 });
@@ -292,33 +304,32 @@ test("a vendor's warnings are left out, since it is tested in its own repository
   const { run } = commandLine({
     ...compilingFor("claude"),
     [at("guide/no-any/index.md")]: guide("no-any"),
-    [inRepo(".cw/charter/vendor/team/rules/root/primitive/guide/no-class/index.md")]: guide("no-class"),
+    ...installedFromTeamRules,
+    [inRepo(".cw/charter/rules/primitive/guide/no-class/index.md")]: guide("no-class"),
   });
 
   const { printedOutput } = await run(["doctor"]);
 
   assert.match(printedOutput.everything, /⚠ Charter: {2}good, with 1 warning\./);
-  assert.match(printedOutput.everything, /\.cw\/charter\/primitive\/guide\/no-any\/index\.md/);
-  assert.doesNotMatch(printedOutput.everything, /\.cw\/charter\/vendor\/team/);
+  assert.match(printedOutput.everything, /\.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md/);
+  assert.doesNotMatch(printedOutput.everything, /\.cw\/charter\/primitive\/rules/);
 });
 
 test("a vendor's error is still said, since it stops the build (FR-014)", async () => {
   const { run } = commandLine({
     ...compilingFor("claude"),
-    [inRepo(".cw/charter/vendor/team/rules/root/primitive/guide/no-class/index.md")]: primitive("guide", "no-class", [
+    ...installedFromTeamRules,
+    [inRepo(".cw/charter/rules/primitive/guide/no-class/index.md")]: primitive("guide", "no-class", [
       'globs: ["src/**/*.ts"]',
       "rationale: absent",
     ]),
-    [inRepo(".cw/charter/vendor/team/rules/root/primitive/guide/broken/index.md")]: "---\nkind: guide\n---\n",
+    [inRepo(".cw/charter/rules/primitive/guide/broken/index.md")]: "---\nkind: guide\n---\n",
   });
 
   const { code, printedOutput } = await run(["doctor"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(
-    printedOutput.everything,
-    /\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/broken\/index\.md/,
-  );
+  assert.match(printedOutput.everything, /\.cw\/charter\/rules\/primitive\/guide\/broken\/index\.md/);
   assert.doesNotMatch(printedOutput.everything, /No test case names "no-class"/);
 });
 
@@ -328,7 +339,9 @@ test("a guide warned about twice keeps both warnings under its file", async () =
   });
 
   assert.equal(warnCount, 2);
-  const messages = messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/guide/no-any/index.md").join("\n");
+  const messages = messagesUnder(faultsByFile, "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md").join(
+    "\n",
+  );
   assert.match(messages, /absent/);
   assert.match(messages, /No test case names "no-any"/);
 });
@@ -336,10 +349,12 @@ test("a guide warned about twice keeps both warnings under its file", async () =
 test("a test file that does not read raises no warning of its own; cw test names it", async () => {
   const { faultsByFile } = await doctorOf({
     [at("guide/no-any/index.md")]: guide("no-any"),
-    [inRepo(".cw/charter/test/broken.json")]: "not json",
+    [inRepo(".cw/charter/team/test/broken.json")]: "not json",
   });
 
-  assert.deepEqual(Object.keys(faultsByFile.data.files), ["file:///repo/.cw/charter/primitive/guide/no-any/index.md"]);
+  assert.deepEqual(Object.keys(faultsByFile.data.files), [
+    "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md",
+  ]);
 });
 
 test("warnings alone let the build through, and doctor passes once it is built (FR-014, CORE Story 7 scenario 5)", async () => {
@@ -371,7 +386,7 @@ test("an mcp no primitive names is a warning in doctor, and stops nothing (FR-14
 
   assert.deepEqual([errorCount, warnCount], [0, 1]);
   assert.match(
-    messagesUnder(faultsByFile, "file:///repo/.cw/charter/primitive/mcp/mfbs/billing/index.md").join(),
+    messagesUnder(faultsByFile, "file:///repo/.cw/charter/team/primitive/mcp/mfbs/billing/index.md").join(),
     /warn: No primitive names "mfbs\/billing" in its body/,
   );
   // The build still runs over it, and builds the mcp's document.
@@ -399,12 +414,12 @@ test("a primitive kept as <kind>/<id>.md, or in a folder its kind and id do not 
   assert.match(doctorRun.printedOutput.everything, /guide\/kept-guide\.md/);
   assert.match(
     doctorRun.printedOutput.everything,
-    /Move it to "[^"]*\.cw\/charter\/primitive\/guide\/kept-guide\/index\.md"/,
+    /Move it to "[^"]*\.cw\/charter\/team\/primitive\/guide\/kept-guide\/index\.md"/,
   );
   assert.match(doctorRun.printedOutput.everything, /guide\/elsewhere\/index\.md/);
   assert.match(
     doctorRun.printedOutput.everything,
-    /Move its folder to "[^"]*\.cw\/charter\/primitive\/guide\/house-style\/"/,
+    /Move its folder to "[^"]*\.cw\/charter\/team\/primitive\/guide\/house-style\/"/,
   );
   assert.equal(buildRun.code, EXIT_FAILURE);
   assert.match(buildRun.printedOutput.everything, /Move it to "[^"]*guide\/kept-guide\/index\.md"/);

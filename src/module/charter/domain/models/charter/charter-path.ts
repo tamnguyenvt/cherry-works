@@ -13,35 +13,33 @@ export class CharterPath {
    *  three that drift. */
   readonly workspaceFolderPath = ".cw";
 
-  /** The charter itself, the only part of the workspace a person authors: its
-   *  primitives, its tests, its eval cases and its vendors, each in a folder of
-   *  its own under it (CORE-FR-224). */
+  /** The charter root, the only part of the workspace a person authors: one
+   *  folder per charter, `.cw/charter/<charter>/`, each holding its
+   *  primitives, test cases and eval cases (CORE-FR-224, VENDOR-FR-009). */
   readonly charterFolderPath = `${this.workspaceFolderPath}/charter`;
 
-  /** The folder a charter keeps its primitives in, one folder per kind under
-   *  it: the repository's own under the charter, and each vendor's under its
-   *  own folder, laid out as the repository's (CORE-FR-196, CORE-FR-224). */
+  /** Where the charters of a source are checked out before any charter the
+   *  charter root holds is replaced, so a source refused while copied
+   *  replaces nothing; taken away once the install is over (VENDOR-FR-017). */
+  readonly installingFolderPath = `${this.workspaceFolderPath}/installing`;
+
+  /** The folder of a charter holding its primitives, a folder per kind:
+   *  `.cw/charter/<charter>/primitive/<kind>/<id>/` (VENDOR-FR-009). */
   readonly primitivesFolderName = "primitive";
 
-  /** The repository's own primitives, a folder per kind, under the charter
-   *  (CORE-FR-224). */
-  readonly primitivesFolderPath = `${this.charterFolderPath}/${this.primitivesFolderName}`;
+  /** The file that makes a charter installed, read-only: where it came from
+   *  (VENDOR-FR-010). */
+  readonly vendorRecordFileName = "cw-vendor.json";
 
-  /** The situations this repository pins its charter down with, one file of
-   *  cases each (FR-047), under the charter (CORE-FR-224). Apart from the
-   *  primitives: a test is not a primitive, nothing compiles it and no agent is
-   *  instructed by it, so it is read only when tests run. */
-  readonly testFolderPath = `${this.charterFolderPath}/test`;
+  /** The folder of a charter holding its test cases, one file of cases each
+   *  (VENDOR-FR-009). */
+  readonly testFolderName = "test";
 
-  /** The cases this repository evaluates its charter by against the real
-   *  agent, one file of cases each (EVAL-FR-020), under the charter
-   *  (CORE-FR-224). Beside the tests rather than inside them: a test is
-   *  resolved offline, and an evaluation spends a key. */
-  readonly evalFolderPath = `${this.charterFolderPath}/eval`;
+  /** The folder an older layout kept vendors in, right under the workspace
+   *  or the charter root: refused where it is still held (VENDOR-FR-011). */
+  readonly oldVendorsFolderName = "vendor";
 
-  /** What this repository installed from someone else, one folder per vendor,
-   *  `<owner>/<repository>` (FR-023, FR-024, FR-050), under the charter
-   *  (CORE-FR-224). Apart from the primitives: what a vendor published is
-   *  read-only, and what this repository authored is not. */
-  readonly vendorsFolderPath = `${this.charterFolderPath}/vendor`;
+  /** The folder of a charter holding its eval cases, one file of cases each
+   *  (VENDOR-FR-009). */
+  readonly evalFolderName = "eval";
 }

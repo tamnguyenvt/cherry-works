@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { GuidePrimitive } from "../src/module/charter/domain/models/primitive/guide-primitive.js";
 import { inTheBrowser } from "./in-the-browser.js";
 
-const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
+const at = (path: string) => new URL(path, "file:///repo/.cw/charter/team/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   [
@@ -27,7 +27,7 @@ const charter = {
   ]),
   [at("corpus/why/index.md")]: primitive("corpus", "why"),
   [at("mixin/voice/index.md")]: primitive("mixin", "voice"),
-  "file:///repo/.cw/charter/test/activation.json": `${JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] })}\n`,
+  "file:///repo/.cw/charter/team/test/activation.json": `${JSON.stringify({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] })}\n`,
 };
 
 /** The text of each part of the dialog, under its title. */
@@ -52,8 +52,11 @@ test("a row's Explain opens what the engine says of it: its kind and description
     assert.equal(sections["When it comes up"], GuidePrimitive.activatesWhen);
     assert.match(sections["What it pulls in"], /voice/);
     assert.match(sections["What it pulls in"], /why/);
-    assert.match(sections["Tested by"], /\.cw\/charter\/test\/activation\.jsontouching src\/one\.ts activates no-any/);
-    assert.match(sections["File"], /\.cw\/charter\/primitive\/guide\/no-any\/index\.md in the repo layer/);
+    assert.match(
+      sections["Tested by"],
+      /\.cw\/charter\/team\/test\/activation\.jsontouching src\/one\.ts activates no-any/,
+    );
+    assert.match(sections["File"], /\.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md in the repo layer/);
 
     // The mixin it pulls in says what lends from it.
     await page.getByRole("dialog").getByRole("button", { name: "voice" }).click();

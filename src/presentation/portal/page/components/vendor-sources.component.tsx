@@ -1,40 +1,43 @@
 import { toast } from "sonner";
-import { usePrimitives, useRemoveVendor, useVendorFolders } from "../portal.queries.js";
+import { useInstalledCharters, usePrimitives, useRemoveVendor } from "../portal.queries.js";
 import { useDialog } from "./dialogs.component.js";
 import { FaultAlert } from "./fault-alert.component.js";
 import { Button } from "./ui/button.js";
 
 /**
- * The vendor sources this repository installed (FR-122): each folder one was
- * installed as, and its primitives counted by kind, off the vendor layer of
- * the listing under that folder (data-model §10.2). Where none is installed,
- * it says so and offers to add one.
+ * The charters this repository installed (FR-122, VENDOR-FR-021): each by its
+ * name, with the source and the version it came from, and its primitives
+ * counted by kind, off the vendor layer of the listing under its folder
+ * (data-model §10.2). Where none is installed, it says so and offers to add
+ * one.
  *
  * Remove is the engine's vendoring too, and a refusal is said in its words.
  */
 export function VendorSources() {
   const { openDialog } = useDialog();
-  const vendorFoldersQuery = useVendorFolders();
+  const installedChartersQuery = useInstalledCharters();
   const primitivesQuery = usePrimitives();
   const removeVendorMutation = useRemoveVendor();
 
-  if (vendorFoldersQuery.data === undefined) return null;
-  if (vendorFoldersQuery.data.type === "Fault") return <FaultAlert fault={vendorFoldersQuery.data} />;
-  const { folders: vendorFolderPaths } = vendorFoldersQuery.data.data;
+  if (installedChartersQuery.data === undefined) return null;
+  if (installedChartersQuery.data.type === "Fault") return <FaultAlert fault={installedChartersQuery.data} />;
+  const installedCharters = installedChartersQuery.data.data.charters.map(
+    ({ data: installedCharter }) => installedCharter,
+  );
   const vendoredPrimitives =
     primitivesQuery.data?.type === "Primitives"
       ? primitivesQuery.data.data.primitives.filter(({ data: primitive }) => primitive.layerName === "vendor")
       : [];
 
-  const removeInstall = async (vendorFolderPath: string) => {
-    const refusedDTO = await removeVendorMutation.mutateAsync(vendorFolderPath.slice(".cw/charter/vendor/".length));
+  const removeInstall = async (charterName: string, charterFolderPath: string) => {
+    const refusedDTO = await removeVendorMutation.mutateAsync(charterName);
     if (refusedDTO !== null) return void toast.error(refusedDTO.data.message, { description: refusedDTO.data.fix });
-    toast("Vendor source removed", {
-      description: `${vendorFolderPath} · run Build to compile the charter without it`,
+    toast("Charter removed", {
+      description: `${charterFolderPath} · run Build to compile the charter without it`,
     });
   };
 
-  if (vendorFolderPaths.length === 0)
+  if (installedCharters.length === 0)
     return (
       <div
         className="flex items-center gap-[9px] rounded-xl border border-dashed px-[15px] py-3.5"
@@ -55,9 +58,9 @@ export function VendorSources() {
       <h2 className="px-3.5 py-[11px] text-[10.5px] font-bold tracking-[0.06em] text-zinc-400 uppercase">
         Vendor sources
       </h2>
-      {vendorFolderPaths.map((vendorFolderPath) => {
+      {installedCharters.map(({ name: charterName, folder: charterFolderPath, source, version }) => {
         const primitivesOfFolder = vendoredPrimitives.filter(({ data: primitive }) =>
-          primitive.file.startsWith(`${vendorFolderPath}/`),
+          primitive.file.startsWith(`${charterFolderPath}/`),
         );
         const kindCountEntries = [...new Set(primitivesOfFolder.map(({ data: primitive }) => primitive.kind))]
           .sort()
@@ -67,14 +70,14 @@ export function VendorSources() {
           );
         return (
           <div
-            key={vendorFolderPath}
+            key={charterName}
             className="flex flex-col gap-2.5 bg-[#f6f2ff] px-3.5 py-3"
-            aria-label={vendorFolderPath}
+            aria-label={charterFolderPath}
           >
             <div className="min-w-0 space-y-0.5">
-              <div className="text-[12.5px] font-semibold">{vendorFolderPath.slice(".cw/charter/vendor/".length)}</div>
+              <div className="text-[12.5px] font-semibold">{charterName}</div>
               <div className="text-[11px] text-zinc-500">
-                <span className="font-mono">{vendorFolderPath}/</span> · read-only
+                <span className="font-mono">{charterFolderPath}/</span> · {source} {version} · read-only
               </div>
             </div>
             <dl
@@ -93,7 +96,7 @@ export function VendorSources() {
               variant="outline"
               className="self-start"
               disabled={removeVendorMutation.isPending}
-              onClick={() => void removeInstall(vendorFolderPath)}
+              onClick={() => void removeInstall(charterName, charterFolderPath)}
             >
               Remove
             </Button>

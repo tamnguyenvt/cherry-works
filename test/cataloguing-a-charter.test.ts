@@ -10,8 +10,8 @@ import { AgentProvider } from "../src/module/shared/domain/models/agent/agent-pr
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 
-const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
-const vendorRoot = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/vendor/");
+const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/team/primitive/");
+const installedCharterMetadataList = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/rules/primitive/");
 
 /** One authored file, holding what any of the kinds these tests use asks
  *  for. The body is what a real guide's body is like: the bulk of the file, and
@@ -144,8 +144,14 @@ test("the output keeps shared entries in catalogue and restricted entries only i
 });
 
 test("a vendored primitive is catalogued at its compiled file, as every layer's is (FR-140)", async () => {
-  const vendored = new URL("team/rules/root/primitive/guide/no-any/index.md", vendorRoot);
-  const catalogue = await catalogueOf(new InMemoryFileReaders({ [vendored.href]: primitive("guide", "no-any") }));
+  const vendored = new URL("guide/no-any/index.md", installedCharterMetadataList);
+  const vendorRecord = new URL("cw-vendor.json", installedCharterMetadataList);
+  const catalogue = await catalogueOf(
+    new InMemoryFileReaders({
+      [vendored.href]: primitive("guide", "no-any"),
+      [vendorRecord.href]: JSON.stringify({ charter: "rules", source: "team/rules", version: "HEAD" }),
+    }),
+  );
 
   const noAnyCatalogueEntry = catalogue.entries.find((catalogueEntry) => catalogueEntry.kind === "guide");
 

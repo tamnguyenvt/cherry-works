@@ -11,19 +11,16 @@ import { formatHeading, formatMention, formatStatusLine, reportFault } from "./h
 const OPTIONS = {
   name: {
     type: "string",
-    describe: "The folder this charter was installed as, as it reads under .cw/charter/vendor/",
+    describe: 'The charter installed, by the name "cw vendor list" gives it',
   },
 } as const satisfies OptionSpec;
 
 /**
- * `cw vendor remove`: take an installed charter away (FR-030).
- *
- * Named by the folder rather than by the address it came from: the folder is
- * what a reader of this repository sees, and what the charter is read out of.
+ * `cw vendor remove`: take an installed charter away whole (VENDOR-FR-021).
  *
  * What leaves is left gone in the working tree for the developer to read and
- * commit, as what is installed is left there. A name no vendor folder answers
- * to is refused (CORE-FR-204).
+ * commit, as what is installed is left there. A name no installed charter
+ * answers to, one the repository authored among them, is refused.
  */
 export class VendorRemoveCommand implements Command<typeof OPTIONS> {
   readonly name = "vendor remove <name>";

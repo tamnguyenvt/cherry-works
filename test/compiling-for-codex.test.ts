@@ -18,7 +18,7 @@ test("compilation supplies scoped instruction components without reading provide
   const guideText = "Follow this scoped guide.\n".repeat(2000);
   const fileReaders = new InMemoryFileReaders({
     [inRepo("AGENTS.md").href]: rootText,
-    [inRepo(".cw/charter/primitive/guide/types/index.md").href]:
+    [inRepo(".cw/charter/team/primitive/guide/types/index.md").href]:
       `---\nkind: guide\nid: types\ndescription: TypeScript guidance.\nglobs: ["src/**/*.ts"]\n---\n\n${guideText}`,
   });
   const charter = await loadCharterRoot(fileReaders);

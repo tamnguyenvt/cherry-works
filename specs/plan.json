@@ -343,8 +343,8 @@
       }
     },
     {
-      "id": "CORE Story 32",
-      "title": "Take a skill from a skills repository into the vendor layer",
+      "id": "CORE Story 33",
+      "title": "Pick charters from a source that gathers many",
       "dependsOn": [
         "CORE Story 30",
         "CORE Story 31",
@@ -356,19 +356,8 @@
       }
     },
     {
-      "id": "CORE Story 33",
-      "title": "Pick charters from a source that gathers many",
-      "dependsOn": [
-        "CORE Story 32"
-      ],
-      "evidence": {
-        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
-        "date": "2026-11-14"
-      }
-    },
-    {
       "id": "CORE Story 34",
-      "title": "Inject a charter or a skill into the repository's own charter",
+      "title": "Inject a charter into the repository as its own",
       "dependsOn": [
         "CORE Story 33"
       ],
@@ -860,6 +849,42 @@
         "summary": "typecheck passed; pnpm test twice 1079 passed, 0 failed, 0 skipped; specs check passed",
         "date": "2026-11-17"
       }
+    },
+    {
+      "id": "VENDOR Story 1",
+      "title": "Set a charter repository up in an empty folder",
+      "dependsOn": [],
+      "evidence": {
+        "summary": "written from the code landed in 421f9fc: test/setting-a-charter-vendor-up.test.ts covers set-up on main with nothing committed, a branch of a repository with no commit, an occupied or committed folder refused, no terminal, a flag refused, an empty description; pnpm test 1081 pass, 0 fail on develop at 5bcad97",
+        "date": "2026-11-18"
+      }
+    },
+    {
+      "id": "VENDOR Story 2",
+      "title": "Release the charters with `/vendor-release`",
+      "dependsOn": [
+        "VENDOR Story 1",
+        "VENDOR Story 3"
+      ]
+    },
+    {
+      "id": "VENDOR Story 3",
+      "title": "Keep, author, install and test charters in the charter root",
+      "dependsOn": [],
+      "evidence": {
+        "summary": "Full suite 1097 tests, 1096 pass, 0 fail, 1 todo (VENDOR Story 2's); tsc (server and portal page), biome, lint, lint:deps and specs check clean; by hand in a fresh repository: cw add --charter, cw vendor add from a local git source, cw vendor list, cw build, cw test --charter, and the portal's charter routes",
+        "date": "2026-11-19"
+      }
+    },
+    {
+      "id": "VENDOR Story 5",
+      "title": "Quality cross-check of CORE Story 72, VENDOR Story 1, VENDOR Story 2, VENDOR Story 3",
+      "dependsOn": [
+        "CORE Story 72",
+        "VENDOR Story 1",
+        "VENDOR Story 2",
+        "VENDOR Story 3"
+      ]
     }
   ]
 }

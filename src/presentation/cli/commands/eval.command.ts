@@ -21,10 +21,13 @@ import {
 
 const OPTIONS = {
   agent: { type: "string", describe: "Evaluate with an agent the repository chose: claude or codex" },
+  charter: { type: "string", describe: "Evaluate one charter's cases alone" },
 } as const satisfies OptionSpec;
 
 /**
- * `cw eval`: put every case in `.cw/charter/eval/` to the real agent under promptfoo,
+ * `cw eval`: put every case in each charter's `eval/`, or with `--charter` that
+ * charter's alone, to the real agent under promptfoo, each at the repository's
+ * root (VENDOR-FR-025),
  * and say how each came out and the tokens it used (EVAL-FR-020 –
  * EVAL-FR-026, EVAL-FR-032).
  *
@@ -35,12 +38,13 @@ const OPTIONS = {
  */
 export class EvalCommand implements Command<typeof OPTIONS> {
   readonly name = "eval";
-  readonly summary = `Put every case in ${charterPath.evalFolderPath}/ to the real agent under promptfoo`;
+  readonly summary =
+    `Put every case under ${charterPath.charterFolderPath}/<charter>/${charterPath.evalFolderName}/ to the real agent under promptfoo`;
   readonly options = OPTIONS;
 
   async runCommand(
     { charterRuntimeApp, workspaceSettings, isAtTerminal }: Context,
-    { agent: namedAgentName }: Options<typeof OPTIONS>,
+    { agent: namedAgentName, charter: charterName }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
     let evaluationAgentName = namedAgentName;
     if (evaluationAgentName === undefined) {
@@ -57,7 +61,7 @@ export class EvalCommand implements Command<typeof OPTIONS> {
         evaluationAgentName = promptAnswer.agent;
       }
     }
-    const evalRunReportDTO = await charterRuntimeApp.evaluateCharter(evaluationAgentName);
+    const evalRunReportDTO = await charterRuntimeApp.evaluateCharter(evaluationAgentName, charterName);
     if (evalRunReportDTO.type === "Fault") return reportFault(evalRunReportDTO);
     if (evalRunReportDTO.type === "FaultsByFile")
       return {
@@ -70,7 +74,7 @@ export class EvalCommand implements Command<typeof OPTIONS> {
     if (evalCaseReports.length === 0)
       return {
         exitCode: EXIT_OK,
-        resultText: `No evaluation: ${formatMention(`${charterPath.evalFolderPath}/`)} holds no case.\nWrite one as ${formatMention(`${charterPath.evalFolderPath}/<name>.json`)}, and run "cw eval" again.\n`,
+        resultText: `No evaluation: no charter holds a case under ${formatMention(`${charterPath.charterFolderPath}/<charter>/${charterPath.evalFolderName}/`)}.\nWrite one as ${formatMention(`${charterPath.charterFolderPath}/<charter>/${charterPath.evalFolderName}/<name>.json`)}, and run "cw eval" again.\n`,
         answerDTO: evalRunReportDTO,
       };
 

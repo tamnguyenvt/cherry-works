@@ -48,10 +48,10 @@ const agentTextByPath = async (folderPath: string): Promise<Map<string, string>>
 /** A repository chosen for every agent, with a sensor on `Stop`, built. */
 const aBuiltRepository = async (t: { after: (cleanUp: () => Promise<void>) => void }) => {
   const folderPath = await aFolder(t);
-  await mkdir(join(folderPath, ".cw/charter/primitive/sensor/say"), { recursive: true });
+  await mkdir(join(folderPath, ".cw/charter/team/primitive/sensor/say"), { recursive: true });
   await writeFile(join(folderPath, ".cw/settings.json"), JSON.stringify({ agents: ["claude", "codex"] }));
   await writeFile(
-    join(folderPath, ".cw/charter/primitive/sensor/say/index.md"),
+    join(folderPath, ".cw/charter/team/primitive/sensor/say/index.md"),
     "---\nkind: sensor\nid: say\ndescription: Says a.\nsignal: Stop\nrun: echo a\n---\n\nSays a.\n",
   );
   const buildRun = runCw(["build"], folderPath);

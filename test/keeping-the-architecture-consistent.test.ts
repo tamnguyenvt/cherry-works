@@ -34,7 +34,13 @@ const domainFileUrls = fileUrlsUnder("domain/", true).filter(
 );
 const factoryFileUrls = domainFileUrls.filter((fileUrl) => fileUrl.pathname.endsWith(".factory.ts"));
 const domainServiceFileUrls = domainFileUrls.filter((fileUrl) => fileUrl.pathname.endsWith(".service.ts"));
-const guideFolderUrl = new URL(".cw/charter/primitive/guide/", repositoryUrl);
+/** Where this repository's charter keeps its primitives, each in the charter
+ *  it was authored in (VENDOR-FR-009). */
+const primitivesFolderUrl = new URL(".cw/charter/", repositoryUrl);
+/** Whether that charter is on this machine: `.cw/` is kept out of git, so a
+ *  clone holds none, and the tests reading its guides are skipped there. */
+const isCharterHere = existsSync(primitivesFolderUrl);
+const primitiveFilePaths = isCharterHere ? readdirSync(primitivesFolderUrl, { recursive: true, encoding: "utf8" }) : [];
 const architectureGuideIds = ["architecture-map", "hexagonal-architecture", "hexagonal-naming"];
 
 /** The verbs a service or one of its functions may start with. */
@@ -83,9 +89,15 @@ const serviceNames = serviceFileUrls.map(
   (fileUrl) => readFileSync(fileUrl, "utf8").match(/^export class (\w+Service) \{/m)?.[1] ?? fileNameOf(fileUrl),
 );
 const guideTextById = new Map(
-  architectureGuideIds.map((guideId) => [
+  (isCharterHere ? architectureGuideIds : []).map((guideId) => [
     guideId,
-    readFileSync(new URL(`${guideId}/index.md`, guideFolderUrl), "utf8"),
+    readFileSync(
+      new URL(
+        primitiveFilePaths.find((filePath) => filePath.endsWith(`guide/${guideId}/index.md`))!,
+        primitivesFolderUrl,
+      ),
+      "utf8",
+    ),
   ]),
 );
 
@@ -263,7 +275,9 @@ test("no service, of the hexagon or of the domain, exports a bare verb (CORE Sto
   assert.deepEqual(bareVerbExports, []);
 });
 
-test("the architecture guides name the use cases, repositories and services the code holds, and no other (CORE Story 42 scenario 1)", () => {
+test("the architecture guides name the use cases, repositories and services the code holds, and no other (CORE Story 42 scenario 1)", {
+  skip: !isCharterHere && "this repository's charter is kept on this machine alone, out of git",
+}, () => {
   const architectureMapText = guideTextById.get("architecture-map")!;
   for (const componentName of [...useCaseNames, ...repositoryNames, ...serviceNames]) {
     assert.ok(architectureMapText.includes(`\`${componentName}\``), `architecture-map does not name ${componentName}`);
@@ -290,7 +304,9 @@ test("the architecture guides name the use cases, repositories and services the 
   }
 });
 
-test("the architecture map names every operation of every driven port beside its port, the workspace's included (CORE Story 42 scenario 1)", () => {
+test("the architecture map names every operation of every driven port beside its port, the workspace's included (CORE Story 42 scenario 1)", {
+  skip: !isCharterHere && "this repository's charter is kept on this machine alone, out of git",
+}, () => {
   // One item of the map's lists, with the lines it wraps onto: a port and its
   // operations are named in one.
   const architectureMapItems = guideTextById.get("architecture-map")!.split(/\n(?=\s*- )/);
@@ -462,7 +478,7 @@ test("each renamed use case answers through its driver port as it did (CORE Stor
   );
 
   assert.equal((await charterAuthoringApp.listKinds()).type, "PrimitiveKinds");
-  assert.equal((await charterAuthoringApp.listVendors()).type, "VendorFolders");
+  assert.equal((await charterAuthoringApp.listVendors()).type, "CharterMetadataList");
   assert.equal((await charterAuthoringApp.listTestSuites()).type, "TestSuites");
   assert.equal((await charterRuntimeApps.previewCharterBuild()).type, "ProjectionPlanSummary");
 });

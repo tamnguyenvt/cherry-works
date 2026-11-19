@@ -11,7 +11,12 @@ import { inTheBrowser } from "./in-the-browser.js";
 import { chipsOf, columnOf, rowsOf, shownKindOf } from "./listing-in-the-browser.js";
 import { buildingCharterOf } from "./use-cases-of.js";
 
-const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
+const at = (path: string) => new URL(path, "file:///repo/.cw/charter/team/primitive/").href;
+const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/charter/acme/primitive/").href;
+/** What makes `acme` a charter this repository installed (VENDOR-FR-010). */
+const vendorRecordFile = {
+  ["file:///repo/.cw/charter/acme/cw-vendor.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
+};
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   [
@@ -68,7 +73,7 @@ test("a guide is listed with what it is for, the file it is in, the globs it mat
     assert.equal(await row.locator("td").nth(1).locator("div").nth(0).innerText(), "About no-any.");
     assert.equal(
       await row.locator("td").nth(1).locator("div").nth(1).innerText(),
-      ".cw/charter/primitive/guide/no-any/index.md",
+      ".cw/charter/team/primitive/guide/no-any/index.md",
     );
     assert.equal(await row.getByRole("cell", { name: "Matching globs" }).innerText(), "src/**/*.ts");
     assert.equal(await row.getByRole("cell", { name: "Rationale" }).innerText(), "why");
@@ -121,7 +126,7 @@ test("a charter the engine will not read shows every fault under its file in pla
     assert.match(await page.getByRole("alert").innerText(), /The engine will not read this charter/);
     const refusedFiles = page.getByRole("table", { name: "Refused files" });
     assert.deepEqual(await refusedFiles.locator("tr td:first-child").allInnerTexts(), [
-      ".cw/charter/primitive/guide/broken/index.md",
+      ".cw/charter/team/primitive/guide/broken/index.md",
     ]);
     assert.ok((await refusedFiles.locator("tr td:nth-child(2) p").count()) > 0);
     assert.equal(await page.getByRole("radio").count(), 0);
@@ -133,10 +138,8 @@ test("a charter with two files claiming one id shows, in place of a listing, eve
   // has to change.
   const collidingCharter = {
     [at("guide/no-any/index.md")]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
-    [new URL("guide/no-any/index.md", "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/").href]: primitive(
-      "guide",
-      "no-any",
-    ),
+    ...vendorRecordFile,
+    [vendoredAt("guide/no-any/index.md")]: primitive("guide", "no-any"),
   };
   await inTheBrowser(collidingCharter, async (page, files) => {
     await page.getByRole("alert").waitFor();
@@ -167,10 +170,7 @@ test("a charter with two files claiming one id shows, in place of a listing, eve
     );
     assert.deepEqual(Object.keys(shownFaultsByFilePath).sort(), Object.keys(doctorFaultsByFilePath).sort());
     assert.ok(Object.keys(doctorFaultsByFilePath).length > 0, "the collision is a fault cw doctor gives");
-    assert.match(
-      JSON.stringify(shownFaultsByFilePath),
-      /\.cw\/charter\/vendor\/acme\/charter\/root\/primitive\/guide\/no-any\/index\.md/,
-    );
+    assert.match(JSON.stringify(shownFaultsByFilePath), /\.cw\/charter\/acme\/primitive\/guide\/no-any\/index\.md/);
     for (const [filePath, doctorFaults] of Object.entries(doctorFaultsByFilePath))
       assert.deepEqual(
         [...(shownFaultsByFilePath[filePath] ?? [])].sort(),
@@ -181,16 +181,18 @@ test("a charter with two files claiming one id shows, in place of a listing, eve
 });
 
 test("the repository's tab lists what was authored here and what the engine brings, and nothing vendored (FR-112)", async () => {
-  const vendored = new URL("guide/small-diffs/index.md", "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/")
-    .href;
-  await inTheBrowser({ ...charter, [vendored]: primitive("guide", "small-diffs") }, async (page) => {
-    await rowsOf(page).waitFor();
+  const vendored = vendoredAt("guide/small-diffs/index.md");
+  await inTheBrowser(
+    { ...charter, ...vendorRecordFile, [vendored]: primitive("guide", "small-diffs") },
+    async (page) => {
+      await rowsOf(page).waitFor();
 
-    assert.deepEqual(await columnOf(page, 1).allInnerTexts(), ["no-any"]);
-    await page.getByRole("radio", { name: "skill" }).click();
-    await page.getByRole("table", { name: "skill primitives" }).waitFor();
-    assert.deepEqual(await columnOf(page, 2).locator("div:nth-child(2)").allInnerTexts(), [
-      "(built into cw)/skill/cw-author/index.md",
-    ]);
-  });
+      assert.deepEqual(await columnOf(page, 1).allInnerTexts(), ["no-any"]);
+      await page.getByRole("radio", { name: "skill" }).click();
+      await page.getByRole("table", { name: "skill primitives" }).waitFor();
+      assert.deepEqual(await columnOf(page, 2).locator("div:nth-child(2)").allInnerTexts(), [
+        "(built into cw)/skill/cw-author/index.md",
+      ]);
+    },
+  );
 });

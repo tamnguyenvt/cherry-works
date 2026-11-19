@@ -31,9 +31,14 @@ export interface ForFetchingCharterSources {
    *
    * A source that cannot be reached, a version that is not there, and a machine
    * that cannot fetch at all each raise an `AdapterFault` saying so
-   * (CORE-FR-190, CORE-FR-205).
+   * (CORE-FR-205).
    */
   fetchCommit(source: string, version?: string): Promise<string>;
+
+  /** The id version control gives this fetched commit, its hash: what a
+   *  charter installed with no version asked for records as its version
+   *  (VENDOR-FR-017). */
+  findCommitId(commit: string): Promise<string>;
 
   /** Every file this fetched commit holds, by its path in it, at any depth, in
    *  no promised order. */
@@ -51,8 +56,7 @@ export interface ForFetchingCharterSources {
    * at this folder of this repository, replacing whatever that folder held and
    * nothing beside it. The empty path is the commit's root. Nothing is staged
    * and nothing is committed: what lands is left in the working tree for the
-   * user to read, whatever else is in hand (FR-023, FR-042, CORE-FR-187,
-   * CORE-FR-190).
+   * user to read, whatever else is in hand (FR-023, FR-042).
    */
   checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
 

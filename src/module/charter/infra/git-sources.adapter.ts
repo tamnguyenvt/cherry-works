@@ -134,6 +134,25 @@ export class GitSources implements ForFetchingCharterSources {
     }
   }
 
+  /** `git rev-parse FETCH_HEAD`. */
+  async findCommitId(commit: string): Promise<string> {
+    const storeFolderPath = commit;
+    try {
+      return (
+        await runGit("git", ["rev-parse", "--verify", `${FETCHED_REF}^{commit}`], {
+          cwd: storeFolderPath,
+          env: { ...process.env, GIT_DIR: storeFolderPath },
+        })
+      ).stdout.trim();
+    } catch (raisedValue) {
+      throw new UnreadableFetchedSourceFault(
+        "The fetched source names no commit.",
+        "Fetch the source again, and check it can be read.",
+        { internal: false, cause: raisedValue },
+      );
+    }
+  }
+
   /** `git ls-tree -r`, the paths split on the NUL `-z` ends each with, so a
    *  path holding a newline or a quote is read as it is. */
   async listFilesAt(commit: string): Promise<readonly string[]> {

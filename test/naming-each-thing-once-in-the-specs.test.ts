@@ -24,7 +24,7 @@ const termsSetAside = [
   { offTerm: /\bagent providers?\b/i, oneTerm: "agent" },
   { offTerm: /\bplugins?\b/i, oneTerm: "the engine's adapters, or one adapter" },
   { offTerm: /\bthe charter's part\b/i, oneTerm: "authoring" },
-  { offTerm: /\bcharter (files?|roots?)\b/i, oneTerm: "a primitive's file; the charter" },
+  { offTerm: /\bcharter files?\b/i, oneTerm: "a primitive's file" },
   { offTerm: /\btool authors?\b/i, oneTerm: "integrator" },
   { offTerm: /\bsessions? logs?\b|\blogs? of (the )?sessions\b/i, oneTerm: "the sessions" },
   { offTerm: /\b(other )?tools? (build|depend)s? on\b|\bwrites a tool\b/i, oneTerm: "integrator" },

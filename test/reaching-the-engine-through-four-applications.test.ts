@@ -37,6 +37,8 @@ const operationNamesByPortName = {
     "listKinds",
     "listPrimitiveRequirements",
     "addPrimitive",
+    "listCharters",
+    "openEditablePrimitive",
     "openPrimitive",
     "rewritePrimitive",
     "removePrimitive",
@@ -46,6 +48,7 @@ const operationNamesByPortName = {
     "listVendors",
     "listTestSuites",
     "addTestSuite",
+    "openTestSuite",
     "writeTestSuite",
     "removeTestSuite",
     "listEvalSuites",
@@ -208,10 +211,10 @@ const evalSuiteText = `${JSON.stringify({ cases: [{ prompt: "keep it", expect: {
 async function applicationsInMemory() {
   const fileReader = new InMemoryFileReaders({
     [repoFileUrlOf(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
-    [repoFileUrlOf(".cw/charter/primitive/guide/kept-guide/index.md")]: keptGuideText,
-    [repoFileUrlOf(".cw/charter/primitive/skill/kept-skill/index.md")]: keptSkillText,
-    [repoFileUrlOf(".cw/charter/test/kept.json")]: testSuiteText,
-    [repoFileUrlOf(".cw/charter/eval/skills.json")]: evalSuiteText,
+    [repoFileUrlOf(".cw/charter/team/primitive/guide/kept-guide/index.md")]: keptGuideText,
+    [repoFileUrlOf(".cw/charter/team/primitive/skill/kept-skill/index.md")]: keptSkillText,
+    [repoFileUrlOf(".cw/charter/team/test/kept.json")]: testSuiteText,
+    [repoFileUrlOf(".cw/charter/team/eval/skills.json")]: evalSuiteText,
   });
   const fileWriter = new InMemoryFileOutput(fileReader);
   const sourceFetcher = new InMemorySources(fileReader);
@@ -279,9 +282,12 @@ test("every operation of the engine, called over a charter, answers the caller p
         charterAuthoringApp.addPrimitive(
           "guide",
           "added-guide",
+          "team",
           { description: "Added.", globs: ["src/**/*.ts"] },
           "Body.",
         ),
+      listCharters: () => charterAuthoringApp.listCharters(),
+      openEditablePrimitive: () => charterAuthoringApp.openEditablePrimitive("added-guide"),
       openPrimitive: () => charterAuthoringApp.openPrimitive("added-guide"),
       rewritePrimitive: () =>
         charterAuthoringApp.rewritePrimitive(
@@ -293,16 +299,17 @@ test("every operation of the engine, called over a charter, answers the caller p
       removePrimitive: () => charterAuthoringApp.removePrimitive("added-guide"),
       addVendor: () => charterAuthoringApp.addVendor("memory:/no-such-source/"),
       injectVendor: () => charterAuthoringApp.injectVendor("memory:/no-such-source/"),
-      removeVendor: () => charterAuthoringApp.removeVendor("no-such-vendor"),
+      removeVendor: () => charterAuthoringApp.removeVendor("no-such-charter"),
       listVendors: () => charterAuthoringApp.listVendors(),
       listTestSuites: () => charterAuthoringApp.listTestSuites(),
       addTestSuite: () => charterAuthoringApp.addTestSuite(),
-      writeTestSuite: () => charterAuthoringApp.writeTestSuite("kept", testSuiteText),
-      removeTestSuite: () => charterAuthoringApp.removeTestSuite("no-such-suite"),
+      openTestSuite: () => charterAuthoringApp.openTestSuite("team", "kept"),
+      writeTestSuite: () => charterAuthoringApp.writeTestSuite("team", "kept", testSuiteText),
+      removeTestSuite: () => charterAuthoringApp.removeTestSuite("team", "no-such-suite"),
       listEvalSuites: () => charterAuthoringApp.listEvalSuites(),
       addEvalSuite: () => charterAuthoringApp.addEvalSuite(),
-      writeEvalSuite: () => charterAuthoringApp.writeEvalSuite("skills", evalSuiteText),
-      removeEvalSuite: () => charterAuthoringApp.removeEvalSuite("no-such-suite"),
+      writeEvalSuite: () => charterAuthoringApp.writeEvalSuite("team", "skills", evalSuiteText),
+      removeEvalSuite: () => charterAuthoringApp.removeEvalSuite("team", "no-such-suite"),
       listSignInStatuses: () => charterAuthoringApp.listSignInStatuses(),
       signInWithToken: () => charterAuthoringApp.signInWithToken(mcpOriginAddress.address, "a-token"),
       signInWithOAuth: () => charterAuthoringApp.signInWithOAuth(mcpOriginAddress.address, () => {}),

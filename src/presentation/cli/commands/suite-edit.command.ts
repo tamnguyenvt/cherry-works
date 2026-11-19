@@ -7,12 +7,16 @@ import {
   type Options,
   type Outcome,
 } from "./command.interface.js";
-import { editInEditor, formatHeading, formatMention, formatStatusLine, refuseCommand, reportFault } from "./helper.js";
+import { editInEditor, formatHeading, formatMention, formatStatusLine, reportFault } from "./helper.js";
 
 const OPTIONS = {
   name: {
     type: "string",
-    describe: `The test file's name under ${charterPath.testFolderPath}/: "untitled-1.json"`,
+    describe: `The test file's name under ${charterPath.charterFolderPath}/<charter>/${charterPath.testFolderName}/: "untitled-1.json"`,
+  },
+  charter: {
+    type: "string",
+    describe: "The charter the test file is kept in; the one charter the repository authored where none is named",
   },
 } as const satisfies OptionSpec;
 
@@ -22,7 +26,8 @@ const OPTIONS = {
  *
  * It writes nothing: whoever saves in the editor wrote the file, and `cw test`
  * is what says whether it still reads. A name the engine lists no test file
- * under is refused before any editor is opened.
+ * under in the charter, or a charter it cannot take, is refused before any editor
+ * is opened (VENDOR-FR-009).
  */
 export class SuiteEditCommand implements Command<typeof OPTIONS> {
   readonly name = "suite edit <name>";
@@ -31,24 +36,12 @@ export class SuiteEditCommand implements Command<typeof OPTIONS> {
 
   async runCommand(
     { cwd, charterAuthoringApp, isJsonAnswer }: Context,
-    { name: testSuiteName }: Options<typeof OPTIONS>,
+    { name: testSuiteName, charter: charterName }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    const testSuitesDTO = await charterAuthoringApp.listTestSuites();
-    if (testSuitesDTO.type === "Fault") return reportFault(testSuitesDTO);
-    // The one test file opened is what is answered of the list the use case
-    // answered, each entry of it a DTO of its own: what was opened, as the
-    // spec gate chose (CORE-FR-241).
-    const testSuiteDTO = testSuitesDTO.data.testSuites.find((testSuite) => testSuite.data.name === testSuiteName);
-    if (testSuiteDTO === undefined)
-      return reportFault(
-        refuseCommand(
-          "UnknownTestSuiteFault",
-          `${charterPath.testFolderPath}/ holds no test file called "${testSuiteName ?? ""}".`,
-          `Run "cw suite add" to write a new one.`,
-        ),
-      );
+    const testSuiteDTO = await charterAuthoringApp.openTestSuite(charterName ?? "", testSuiteName ?? "");
+    if (testSuiteDTO.type === "Fault") return reportFault(testSuiteDTO);
 
-    const filePath = `${charterPath.testFolderPath}/${testSuiteName}`;
+    const filePath = `${charterPath.charterFolderPath}/${testSuiteDTO.data.charterName}/${charterPath.testFolderName}/${testSuiteDTO.data.name}`;
     const editorOutcome = await editInEditor(cwd, filePath, isJsonAnswer);
     if (editorOutcome !== undefined) return editorOutcome;
 

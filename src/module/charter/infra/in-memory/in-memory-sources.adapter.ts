@@ -6,6 +6,9 @@ import {
   UnreadableFetchedSourceFault,
 } from "../../app/port/out/fetching-charter-sources.port.js";
 
+/** The id every commit held in memory is given. */
+export const IN_MEMORY_COMMIT_ID = "0123456789abcdef0123456789abcdef01234567";
+
 /** Sources held in memory: a test publishes what each holds, and nothing shells
  *  out. The second implementation that earns `ForFetchingCharterSources` its place
  *  (plan §2.4). */
@@ -20,19 +23,15 @@ export class InMemorySources implements ForFetchingCharterSources {
    *  order it was asked. */
   readonly checkedOutFolders: { commit: string; fromFolder: string; intoSubFolder: string }[] = [];
 
-  /** Every source a test says holds neither a charter folder nor a skill. */
+  /** Every source a test says holds neither a charter nor a skill. */
   readonly sourcesWithoutSubFolder: string[] = [];
-
-  /** Every source a test says holds a charter with vendors of its own. */
-  readonly sourcesHoldingRefusedFolder: string[] = [];
 
   /** Every commit let go of, in the order it was asked. */
   readonly forgottenCommits: string[] = [];
 
   /** Every source a test publishes, by the address it is fetched at: the files
    *  it holds, by their paths in it. A source a test publishes nothing for holds
-   *  one charter, `charters/published/`, unless the test says it holds no
-   *  charter folder either. */
+   *  one charter, `published`, unless the test says it holds no charter either. */
   readonly sourceFilesBySource: Record<string, Record<string, string | Uint8Array>> = {};
 
   /** Every source a test says cannot be reached: what `fetchCommit` raises
@@ -48,13 +47,11 @@ export class InMemorySources implements ForFetchingCharterSources {
   #listSourceFiles(commit: string): Record<string, string | Uint8Array> {
     const sourceAddress = commit.split("@")[0] ?? commit;
     const publishedCharter = {
-      "charters/published/.cw/charter/primitive/guide/published/index.md":
+      ".cw/charter/published/primitive/guide/published/index.md":
         "---\nkind: guide\nid: published\ndescription: Published.\n---\n",
       "README.md": "# Published\n",
     };
     if (this.sourcesWithoutSubFolder.includes(sourceAddress)) return { "README.md": "# Notes\n" };
-    if (this.sourcesHoldingRefusedFolder.includes(sourceAddress))
-      return { ...publishedCharter, "charters/published/.cw/charter/vendor/other/guide/x/index.md": "x" };
     return this.sourceFilesBySource[sourceAddress] ?? publishedCharter;
   }
 
@@ -71,6 +68,11 @@ export class InMemorySources implements ForFetchingCharterSources {
       );
     this.fetchedSources.push({ source, ...(version === undefined ? {} : { version }) });
     return version === undefined ? source : `${source}@${version}`;
+  }
+
+  /** The same id for every commit: nothing is fetched to give it one. */
+  async findCommitId(_commit: string): Promise<string> {
+    return IN_MEMORY_COMMIT_ID;
   }
 
   async listFilesAt(commit: string): Promise<readonly string[]> {

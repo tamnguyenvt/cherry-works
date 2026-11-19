@@ -147,6 +147,7 @@ const TestSuiteSchema = dto(
   "TestSuite",
   z.object({
     name: z.string(),
+    charterName: z.string(),
     text: z.string().optional(),
     description: z.string().optional(),
     cases: z.array(TestCaseSchema).readonly(),
@@ -168,6 +169,7 @@ const TestSuiteNameSchema = dto(
   "TestSuiteName",
   z.object({
     name: z.string(),
+    charterName: z.string(),
   }),
 );
 
@@ -190,6 +192,7 @@ const EvalSuiteSchema = dto(
   "EvalSuite",
   z.object({
     name: z.string(),
+    charterName: z.string(),
     text: z.string().optional(),
     description: z.string().optional(),
     cases: z.array(EvalCaseSchema).readonly(),
@@ -210,6 +213,29 @@ const EvalSuiteNameSchema = dto(
   "EvalSuiteName",
   z.object({
     name: z.string(),
+    charterName: z.string(),
+  }),
+);
+
+/** One charter of the charter root: its name, where it is kept, and where it came
+ *  from where it was installed (VENDOR-FR-009, VENDOR-FR-010). */
+const CharterMetadataSchema = dto(
+  "CharterMetadata",
+  z.object({
+    name: z.string(),
+    folder: z.string(),
+    isInstalled: z.boolean(),
+    source: z.string().optional(),
+    version: z.string().optional(),
+  }),
+);
+
+/** Every charter of the charter root, in the order their names sort in
+ *  (VENDOR-FR-009). */
+const CharterMetadataListSchema = dto(
+  "CharterMetadataList",
+  z.object({
+    charters: z.array(CharterMetadataSchema).readonly(),
   }),
 );
 
@@ -218,14 +244,6 @@ const VendorFolderSchema = dto(
   "VendorFolder",
   z.object({
     folder: z.string(),
-  }),
-);
-
-/** Every folder a vendor source was installed as (FR-122). */
-const VendorFoldersSchema = dto(
-  "VendorFolders",
-  z.object({
-    folders: StringsSchema,
   }),
 );
 
@@ -275,15 +293,13 @@ const ServedToolsSchema = dto(
 );
 
 /** One primitive installed from a vendor source: its kind, id and
- *  description, and, for a skill converted from a `SKILL.md`, the headers the
- *  charter has no field for (CORE-FR-184, CORE-FR-186). */
+ *  description (VENDOR-FR-017). */
 const VendorPrimitiveSchema = dto(
   "VendorPrimitive",
   z.object({
     kind: z.string(),
     id: z.string(),
     description: z.string(),
-    leftOutHeaders: StringsSchema,
   }),
 );
 
@@ -464,9 +480,8 @@ const ExplanationOutcomeSchema = dto(
   }),
 );
 
-/** What installing one vendor source came to (CORE-FR-184, CORE-FR-196):
- *  each vendor folder it filled — its one charter's, each charter picked, the
- *  skills chosen — with the primitives installed there. */
+/** What installing one vendor source came to (CORE-FR-196, VENDOR-FR-017):
+ *  each charter it filled, with the primitives installed there. */
 const VendorAddOutcomeSchema = dto(
   "VendorAddOutcome",
   z
@@ -486,6 +501,8 @@ export const CharterDTOs = groupByType(
   CatalogueSchema,
   CatalogueEntrySchema,
   CharterLayoutSchema,
+  CharterMetadataSchema,
+  CharterMetadataListSchema,
   DeclaredToolSchema,
   DeclaredToolsSchema,
   DoctorOutcomeSchema,
@@ -519,7 +536,6 @@ export const CharterDTOs = groupByType(
   TestSuitesSchema,
   VendorAddOutcomeSchema,
   VendorFolderSchema,
-  VendorFoldersSchema,
   VendorPrimitiveSchema,
 );
 
@@ -529,6 +545,8 @@ export namespace CharterDTOs {
   export type Catalogue = z.infer<typeof CharterDTOs.Catalogue>;
   export type CatalogueEntry = z.infer<typeof CharterDTOs.CatalogueEntry>;
   export type CharterLayout = z.infer<typeof CharterDTOs.CharterLayout>;
+  export type CharterMetadata = z.infer<typeof CharterDTOs.CharterMetadata>;
+  export type CharterMetadataList = z.infer<typeof CharterDTOs.CharterMetadataList>;
   export type DeclaredTool = z.infer<typeof CharterDTOs.DeclaredTool>;
   export type DeclaredTools = z.infer<typeof CharterDTOs.DeclaredTools>;
   export type DoctorOutcome = z.infer<typeof CharterDTOs.DoctorOutcome>;
@@ -562,6 +580,5 @@ export namespace CharterDTOs {
   export type TestSuites = z.infer<typeof CharterDTOs.TestSuites>;
   export type VendorAddOutcome = z.infer<typeof CharterDTOs.VendorAddOutcome>;
   export type VendorFolder = z.infer<typeof CharterDTOs.VendorFolder>;
-  export type VendorFolders = z.infer<typeof CharterDTOs.VendorFolders>;
   export type VendorPrimitive = z.infer<typeof CharterDTOs.VendorPrimitive>;
 }

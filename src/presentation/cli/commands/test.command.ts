@@ -1,5 +1,13 @@
 import { charterPath } from "#module/charter/module.js";
-import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Options, type Outcome } from "./command.interface.js";
+import {
+  type Command,
+  type Context,
+  EXIT_FAILURE,
+  EXIT_OK,
+  type OptionSpec,
+  type Options,
+  type Outcome,
+} from "./command.interface.js";
 import {
   formatMention,
   formatStatusLine,
@@ -8,6 +16,10 @@ import {
   printProblem,
   reportFault,
 } from "./helper.js";
+
+const OPTIONS = {
+  charter: { type: "string", describe: "Run one charter's cases alone" },
+} as const satisfies OptionSpec;
 
 /**
  * `cw test`: put every situation this repository wrote down to its charter, and
@@ -23,13 +35,21 @@ import {
  *
  * A repository that wrote no tests is told so and passes: writing none is not a
  * failure, and being told is how an author finds out the file is not there.
+ *
+ * Every charter's cases run, or with `--charter` that charter's alone, installed or
+ * authored (VENDOR-FR-024).
  */
-export class TestCommand implements Command {
+export class TestCommand implements Command<typeof OPTIONS> {
   readonly name = "test";
-  readonly summary = `Resolve every situation in ${charterPath.testFolderPath}/ against the charter`;
+  readonly summary =
+    `Resolve every situation under ${charterPath.charterFolderPath}/<charter>/${charterPath.testFolderName}/ against the charter`;
+  readonly options = OPTIONS;
 
-  async runCommand({ charterAuthoringApp }: Context, _options: Options): Promise<Outcome> {
-    const testRunReportDTO = await charterAuthoringApp.testCharter();
+  async runCommand(
+    { charterAuthoringApp }: Context,
+    { charter: charterName }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
+    const testRunReportDTO = await charterAuthoringApp.testCharter(charterName);
     if (testRunReportDTO.type === "Fault") return reportFault(testRunReportDTO);
 
     // Either the charter does not hold or the tests do not read; either way
@@ -47,7 +67,7 @@ export class TestCommand implements Command {
     if (testCaseReports.length === 0) {
       return {
         exitCode: EXIT_OK,
-        resultText: `No tests: ${formatMention(`${charterPath.testFolderPath}/`)} holds no case.\nWrite one as ${formatMention(`${charterPath.testFolderPath}/<name>.json`)} to pin a situation down.\n`,
+        resultText: `No tests: no charter holds a case under ${formatMention(`${charterPath.charterFolderPath}/<charter>/${charterPath.testFolderName}/`)}.\nWrite one as ${formatMention(`${charterPath.charterFolderPath}/<charter>/${charterPath.testFolderName}/<name>.json`)} to pin a situation down.\n`,
         answerDTO: testRunReportDTO,
       };
     }

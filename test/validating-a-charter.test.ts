@@ -16,7 +16,7 @@ import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.
 import type { FaultsByFile } from "../src/module/shared/domain/models/fault/faults-by-file.js";
 import { charterRootOf } from "./use-cases-of.js";
 
-const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
+const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/team/primitive/");
 
 /** One primitive that has already been read, under the file it was read from:
  *  what validate is given, and what a file that came through reading clean
@@ -32,7 +32,7 @@ const layered = (vendor: string | undefined, file: string, primitive: Primitive)
       primitive.headers,
       primitive.body,
       [],
-      vendor === undefined ? PrimitiveLayer.REPO : PrimitiveLayer.vendorLayerOf(vendor),
+      vendor === undefined ? PrimitiveLayer.authoredLayerOf("team") : PrimitiveLayer.installedLayerOf(vendor),
       file,
     );
 
@@ -69,7 +69,7 @@ const corpus = (id: string, vendor?: string): Authored =>
 const mcp = (id: string, vendor?: string, headers: Record<string, unknown> = {}): Authored =>
   layered(
     vendor,
-    at(vendor === undefined ? `mcp/${id}/index.md` : `../vendor/${vendor}/mcp/${id}/index.md`),
+    at(vendor === undefined ? `mcp/${id}/index.md` : `../${vendor}/mcp/${id}/index.md`),
     McpPrimitive.of(
       {
         id,
@@ -119,8 +119,8 @@ test("a charter whose files each hold their own contract has nothing left to ans
 });
 
 test("one id declared in two layers is a collision naming both files", () => {
-  const faultsByFiles = faultsByFilesOf(guide("no-any"), guide("no-any", "../vendor/acme/guide/no-any/index.md"));
-  assert.deepEqual(Object.keys(faultsByFiles), [at("../vendor/acme/guide/no-any/index.md")]);
+  const faultsByFiles = faultsByFilesOf(guide("no-any"), guide("no-any", "../acme/guide/no-any/index.md"));
+  assert.deepEqual(Object.keys(faultsByFiles), [at("../acme/guide/no-any/index.md")]);
   assert.match(messages(faultsByFiles), /"no-any"/);
   assert.match(messages(faultsByFiles), /guide\/no-any\/index\.md/);
 });
@@ -172,9 +172,9 @@ test("every problem in a run is reported, not only the first", () => {
 });
 
 test("a vendored layer is asked the same questions the repository's own is", () => {
-  const copiedPrimitive = guide("no-any", "vendor/team/guide/copied/index.md", {}, "team");
+  const copiedPrimitive = guide("no-any", "../rules/guide/copied/index.md", {}, "rules");
   const faultsByFiles = faultsByFilesOf(
-    guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team"),
+    guide("no-any", "../rules/guide/no-any/index.md", {}, "rules"),
     copiedPrimitive,
   );
 
@@ -182,7 +182,7 @@ test("a vendored layer is asked the same questions the repository's own is", () 
 });
 
 test("a vendor claiming an id this repository authored is a collision, naming both files (CORE Story 2 scenario 2)", () => {
-  const copiedPrimitive = guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team");
+  const copiedPrimitive = guide("no-any", "../rules/guide/no-any/index.md", {}, "rules");
   const faultsByFiles = faultsByFilesOf(guide("no-any"), copiedPrimitive);
 
   assert.deepEqual(Object.keys(faultsByFiles), [copiedPrimitive.uri]);
@@ -190,9 +190,9 @@ test("a vendor claiming an id this repository authored is a collision, naming bo
 });
 
 test("two files claiming one id collide, wherever they were authored", () => {
-  const copiedPrimitive = guide("no-any", "vendor/team/guide/copied/index.md", {}, "team");
+  const copiedPrimitive = guide("no-any", "../rules/guide/copied/index.md", {}, "rules");
   const faultsByFiles = faultsByFilesOf(
-    guide("no-any", "vendor/team/guide/no-any/index.md", {}, "team"),
+    guide("no-any", "../rules/guide/no-any/index.md", {}, "rules"),
     copiedPrimitive,
   );
 
@@ -203,7 +203,7 @@ test("two files claiming one id collide, wherever they were authored", () => {
 test("a host names a vendored mixin the way it names one of its own", () => {
   const faultsByFiles = faultsByFilesOf(
     guide("no-any", "guide/no-any/index.md", { mixins: ["ts-defaults"] }),
-    mixin("ts-defaults", "team"),
+    mixin("ts-defaults", "rules"),
   );
 
   assert.deepEqual(faultsByFiles, {});
@@ -272,7 +272,7 @@ test("a body naming [[<id>]] of any kind the charter holds is nothing to report 
 test("a primitive cites a vendored corpus the way it cites one of its own", () => {
   assert.deepEqual(
     faultsByFilesOf(
-      corpus("type-safety", "team"),
+      corpus("type-safety", "rules"),
       guide("no-any", "guide/no-any/index.md", { rationale: "type-safety" }),
     ),
     {},
@@ -302,7 +302,7 @@ test("a mixin no primitive pulls in is said under its own file, and does not fai
 });
 
 test("a vendored corpus and mixin nobody uses are said too, so the vendor can be taken out (FR-014)", () => {
-  const faultsByFiles = faultsByFilesOf(corpus("type-safety", "team"), mixin("ts-defaults", "team"));
+  const faultsByFiles = faultsByFilesOf(corpus("type-safety", "rules"), mixin("ts-defaults", "rules"));
 
   assert.deepEqual(Object.keys(faultsByFiles).sort(), [
     at("corpus/type-safety/index.md"),
@@ -314,7 +314,7 @@ test("a corpus cited only by a vendored primitive is cited", () => {
   assert.deepEqual(
     faultsByFilesOf(
       corpus("type-safety"),
-      guide("no-any", "guide/no-any/index.md", { rationale: "type-safety" }, "team"),
+      guide("no-any", "guide/no-any/index.md", { rationale: "type-safety" }, "rules"),
     ),
     {},
   );
@@ -328,7 +328,7 @@ test("an mcp a body names is nothing to report, whichever layer authored it (FR-
     undefined,
     "Take the requirements from [[mfbs/billing]].",
   );
-  assert.deepEqual(faultsByFilesOf(namingGuide, mcp("mfbs/billing", "team")), {});
+  assert.deepEqual(faultsByFilesOf(namingGuide, mcp("mfbs/billing", "rules")), {});
 });
 
 test("a body naming an mcp no layer holds is an error under its file, once however often it names it (FR-143, CORE Story 17 scenario 3, CORE Story 21 scenario 10)", () => {

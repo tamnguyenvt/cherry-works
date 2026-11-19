@@ -6,7 +6,6 @@ import { join, relative } from "node:path";
 import { PassThrough } from "node:stream";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { Primitives } from "../src/module/charter/domain/models/primitive/primitive.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
@@ -79,12 +78,14 @@ const setUp = async (
  *  written. */
 const held = (files: InMemoryFileReaders, path: string) => files.readIfThere(new URL(path, repoPath));
 
-test("setting up writes a directory per kind, so a charter has somewhere to be authored (FR-037, CORE Story 1 scenario 1)", async () => {
+test("setting up writes the folder the charter root's charters are kept in, holding no charter, so a charter has somewhere to be authored (FR-037, CORE Story 1 scenario 1, VENDOR Story 3 scenario 6)", async () => {
   const { code, held: files } = await setUp({}, ["init", "--agent", "claude"]);
 
   assert.equal(code, 0);
-  for (const kind of Primitives.kinds)
-    assert.notEqual(await held(files, `.cw/charter/primitive/${kind}/.gitkeep`), undefined);
+  assert.deepEqual(
+    (await files.readFilesRecursively(".cw/charter")).map(({ path }) => path),
+    [".cw/charter/.gitkeep"],
+  );
 });
 
 test("setting up writes the workspace's README, naming Cherry Works, the cw that set it up and how to author it, and keeps one already there", async () => {
@@ -183,7 +184,7 @@ test("setting up again builds what is already authored (FR-057, FR-058)", async 
     results,
   } = await setUp(
     {
-      [new URL(".cw/charter/primitive/guide/no-any/index.md", repoPath).href]:
+      [new URL(".cw/charter/team/primitive/guide/no-any/index.md", repoPath).href]:
         '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nBody.\n',
     },
     ["init", "--agent", "claude"],
@@ -201,7 +202,7 @@ test("setting up over a charter that does not hold keeps what it configured, bui
     problems,
   } = await setUp(
     {
-      [new URL(".cw/charter/primitive/guide/broken/index.md", repoPath).href]:
+      [new URL(".cw/charter/team/primitive/guide/broken/index.md", repoPath).href]:
         "---\nkind: guide\nid: broken\n---\n\nNo description.\n",
     },
     ["init", "--agent", "claude"],
@@ -211,7 +212,7 @@ test("setting up over a charter that does not hold keeps what it configured, bui
   assert.deepEqual(JSON.parse((await held(files, ".cw/settings.json")) ?? ""), { agents: ["claude"] });
   assert.equal(await held(files, ".cw/out/CHARTER.md"), undefined);
   assert.match(problems, /Nothing was built/);
-  assert.match(problems, /\.cw\/charter\/primitive\/guide\/broken\/index\.md/);
+  assert.match(problems, /\.cw\/charter\/team\/primitive\/guide\/broken\/index\.md/);
 });
 
 test("setting up authors nothing for what the engine brings: it is supplied on every read (FR-016, FR-020, CORE Story 12 scenario 7)", async () => {
@@ -226,7 +227,7 @@ test("setting up authors nothing for what the engine brings: it is supplied on e
 });
 
 test("setting up again discards nothing authored (FR-038)", async () => {
-  const authored = new URL(".cw/charter/primitive/guide/no-any/index.md", repoPath).href;
+  const authored = new URL(".cw/charter/team/primitive/guide/no-any/index.md", repoPath).href;
   const { code, held: files } = await setUp(
     { [authored]: '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nBody.\n' },
     ["init", "--agent", "claude"],
@@ -367,7 +368,7 @@ test("setting up again at a terminal offers what the repository chose before as 
     if (processStdinDescriptor !== undefined) Object.defineProperty(process, "stdin", processStdinDescriptor);
   });
   terminalInput.write("\r");
-  const authoredGuidePath = ".cw/charter/primitive/guide/no-any/index.md";
+  const authoredGuidePath = ".cw/charter/team/primitive/guide/no-any/index.md";
   const authoredGuideText =
     '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nBody.\n';
 

@@ -37,8 +37,8 @@ const guide = (id: string, headers: readonly string[] = []) =>
 /** A repository that chose claude, one guide, and the case naming it. */
 const holding = (extra: Readonly<Record<string, string>> = {}) => ({
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
-  [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
-  [at(".cw/charter/test/no-any.json")]: JSON.stringify({
+  [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any"),
+  [at(".cw/charter/team/test/no-any.json")]: JSON.stringify({
     cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }],
   }),
   ...extra,
@@ -188,14 +188,14 @@ test("building writes, says what it wrote, and the health check then says the ou
 
 test("a charter with an error builds nothing, and its faults are sent under their files (FR-120)", async () => {
   const { portalRoutes, fileReaders } = surfaces(
-    holding({ [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }),
+    holding({ [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }),
   );
 
   const answer = await portalRoutes.request("/charter/root/build", buildRequest);
 
   assert.equal(answer.status, 422);
   assert.deepEqual(Object.keys(FaultDTOs.FaultsByFile.parse(await answer.json()).data.files), [
-    ".cw/charter/primitive/guide/no-any/index.md",
+    ".cw/charter/team/primitive/guide/no-any/index.md",
   ]);
   assert.equal(await fileReaders.readIfThere(new URL(".cw/out/catalogue.json", repoPath)), undefined);
 });
@@ -203,8 +203,8 @@ test("a charter with an error builds nothing, and its faults are sent under thei
 test("the health check is what doctor answers, and names the faults cw doctor prints (FR-121, SC-014)", async () => {
   const { portalRoutes, cli } = surfaces(
     holding({
-      [at(".cw/charter/primitive/corpus/why/index.md")]: primitive("corpus", "why"),
-      [at(".cw/charter/primitive/mixin/ts/index.md")]: primitive("mixin", "ts"),
+      [at(".cw/charter/team/primitive/corpus/why/index.md")]: primitive("corpus", "why"),
+      [at(".cw/charter/team/primitive/mixin/ts/index.md")]: primitive("mixin", "ts"),
     }),
   );
 

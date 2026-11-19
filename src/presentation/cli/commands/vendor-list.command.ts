@@ -1,36 +1,37 @@
 import { type Command, type Context, EXIT_OK, type Outcome } from "./command.interface.js";
-import { formatHeading, formatMention, reportFault } from "./helper.js";
+import { formatHeading, formatMention, layAnswerRows, reportFault } from "./helper.js";
 
 /**
- * `cw vendor list`: every folder a charter was installed as, one per line
- * (FR-053, FR-122).
- *
- * The folder is what there is to say. Where it came from is what its
- * installer typed, and nothing keeps that: `cw vendor add` is run with the
- * source again to bring one up to date.
+ * `cw vendor list`: every charter this repository installed, with the source
+ * and the version its `cw-vendor.json` names (VENDOR-FR-021).
  */
 export class VendorListCommand implements Command {
   readonly name = "vendor list";
-  readonly summary = "List the folders this repository installed charters as";
+  readonly summary = "List the charters this repository installed, with their source and version";
 
   async runCommand({ charterAuthoringApp }: Context): Promise<Outcome> {
-    const vendorFoldersDTO = await charterAuthoringApp.listVendors();
-    if (vendorFoldersDTO.type === "Fault") return reportFault(vendorFoldersDTO);
-    const { folders: vendorFolderPaths } = vendorFoldersDTO.data;
-    if (vendorFolderPaths.length === 0)
+    const chartersDTO = await charterAuthoringApp.listVendors();
+    if (chartersDTO.type === "Fault") return reportFault(chartersDTO);
+    const installedCharters = chartersDTO.data.charters.map(({ data: installedCharter }) => installedCharter);
+    if (installedCharters.length === 0)
       return {
         exitCode: EXIT_OK,
-        resultText: 'No vendor source is installed. Run "cw vendor add <source>" to install one.\n',
-        answerDTO: vendorFoldersDTO,
+        resultText: 'No charter is installed. Run "cw vendor add <source>" to install one.\n',
+        answerDTO: chartersDTO,
       };
     return {
       exitCode: EXIT_OK,
       resultText: [
-        formatHeading("Vendors"),
-        ...vendorFolderPaths.map((folderPath) => `  ${formatMention(folderPath)}`),
+        formatHeading("Installed charters"),
+        ...layAnswerRows(
+          installedCharters.map(({ name, source, version }) => [
+            formatMention(name),
+            `${source ?? ""} ${version ?? ""}`.trim(),
+          ]),
+        ),
         "",
       ].join("\n"),
-      answerDTO: vendorFoldersDTO,
+      answerDTO: chartersDTO,
     };
   }
 }

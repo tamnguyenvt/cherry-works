@@ -10,12 +10,11 @@ No charter is released yet.
 
 ## Authoring
 
-Each charter lives in `charters/<name>/`, set up there with `cw init`,
-authored with `/cw-author` and built there with `cw build`. The `.cw/` at the
-root is this repository's own charter, for its authors, and is never
-installed: it holds `/vendor-release`. What `cw build` writes, `.cw/out/` and
-each agent's files, is never committed: after cloning, run `cw init` at the
-root, choosing your agent, and `cw build` in each charter you author.
+Each charter lives in `.cw/charter/<charter>/`, written with
+`cw add <kind> <id> --charter=<charter>` or `/cw-author`, its test cases under
+`<charter>/test/` and its eval cases under `<charter>/eval/`. What `cw build` writes,
+`.cw/out/` and each agent's files, is never committed: after cloning, run
+`cw init` at the root, choosing your agent, then `cw build`.
 
 ## Releasing
 

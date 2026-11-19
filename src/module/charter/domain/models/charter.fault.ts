@@ -25,10 +25,6 @@ export class ReadOnlyPrimitiveFault extends ApplicationFault {}
 /** A sign-in given no token (FR-148). */
 export class EmptyTokenFault extends ApplicationFault {}
 
-/** A vendor whose primitives have no folder to land in: the store refused
- *  where they would go (FR-167). */
-export class UnplaceableVendorFault extends ApplicationFault {}
-
 /** A sign-in at an address no mcp in the charter is at (FR-148, FR-149). */
 export class UnknownSignInAddressFault extends ApplicationFault {}
 
@@ -44,9 +40,13 @@ export class UnknownVendorFault extends ApplicationFault {}
  *  (CORE-FR-193). */
 export class UnexpectedSourceShapeFault extends ApplicationFault {}
 
-/** A charter of a source named as a kind is, or as the source's own charter,
- *  whose vendor folder would be another's (CORE-FR-195). */
+/** A name no charter may have: one no id could be, a kind's, a folder an
+ *  older layout kept, or `root` (VENDOR-FR-011, VENDOR-FR-014). */
 export class ReservedCharterNameFault extends ApplicationFault {}
+
+/** A charter's name another charter of the charter root already holds, or two
+ *  charters installed at once would (VENDOR-FR-020, VENDOR-FR-022). */
+export class HeldCharterNameFault extends ApplicationFault {}
 
 /** A test file asked for by a name no test file is under (FR-090, FR-092). */
 export class UnknownTestSuiteFault extends ApplicationFault {}
@@ -137,10 +137,6 @@ export class InvalidSourceAddressFault extends DomainFault {}
  *  up where it should (FR-048). */
 export class UntestedPrimitiveFault extends DomainFault {}
 
-/** A `SKILL.md` of a vendor source that does not read as a skill: no
- *  frontmatter, or headers a skill will not take (CORE-FR-184). */
-export class InvalidSourceSkillFault extends DomainFault {}
-
 /** A primitive an author answered, asked for an index.md it has not got. */
 export class MissingIndexTextFault extends DomainFault {}
 
@@ -151,3 +147,23 @@ export class MissingCharterOutputItemFault extends DomainFault {}
 /** An item of the compiled output, of a class the output's layout places nowhere: the
  *  engine's own fault (CORE-FR-220). */
 export class UnplaceableCharterOutputItemFault extends DomainFault {}
+
+/** A charter's `cw-vendor.json` that does not read as the charter, the source
+ *  and the version it was installed from (VENDOR-FR-010). */
+export class InvalidVendorRecordFault extends DomainFault {}
+
+/** No charter named where one has to be: none, where the repository
+ *  authored none or more than one (VENDOR-FR-014, VENDOR-FR-015). */
+export class UnnamedCharterFault extends ApplicationFault {}
+
+/** A charter installed, asked to be written into: read-only here
+ *  (VENDOR-FR-010, VENDOR-FR-014). */
+export class ReadOnlyCharterFault extends ApplicationFault {}
+
+/** `--as` given where more than one charter would be installed, so it names
+ *  none of them (VENDOR-FR-020). */
+export class AmbiguousAsNameFault extends ApplicationFault {}
+
+/** A charter asked for by a name the charter root holds none under
+ *  (VENDOR-FR-026). */
+export class UnknownCharterFault extends DomainFault {}

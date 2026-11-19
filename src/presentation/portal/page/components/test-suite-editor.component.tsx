@@ -11,10 +11,12 @@ import { Button } from "./ui/button.js";
  * of one that reads, and nothing is written (Story 9 scenarios 3, 4, 7).
  */
 export function TestSuiteEditor({
+  charterName,
   testSuiteName,
   onDone,
   onClose,
 }: {
+  charterName: string;
   testSuiteName: string;
   onDone: (doneText: string, detailText: string) => void;
   onClose: () => void;
@@ -22,7 +24,9 @@ export function TestSuiteEditor({
   const testSuitesQuery = useTestSuites();
   const testSuite =
     testSuitesQuery.data?.type === "TestSuites"
-      ? testSuitesQuery.data.data.testSuites.find(({ data: listedSuite }) => listedSuite.name === testSuiteName)
+      ? testSuitesQuery.data.data.testSuites.find(
+          ({ data: listedSuite }) => listedSuite.charterName === charterName && listedSuite.name === testSuiteName,
+        )
       : undefined;
   // The text is read once, when the file is first in the listing: a listing
   // asked again while it is being edited does not write over what was typed. A
@@ -30,7 +34,8 @@ export function TestSuiteEditor({
   if (testSuite === undefined) return null;
   return (
     <TestSuiteText
-      key={testSuiteName}
+      key={`${charterName}/${testSuiteName}`}
+      charterName={charterName}
       testSuiteName={testSuiteName}
       initialText={testSuite.data.text ?? ""}
       onDone={onDone}
@@ -40,11 +45,13 @@ export function TestSuiteEditor({
 }
 
 function TestSuiteText({
+  charterName,
   testSuiteName,
   initialText,
   onDone,
   onClose,
 }: {
+  charterName: string;
   testSuiteName: string;
   initialText: string;
   onDone: (doneText: string, detailText: string) => void;
@@ -56,15 +63,15 @@ function TestSuiteText({
   const removeTestSuiteMutation = useRemoveTestSuite();
 
   const saveText = async () => {
-    const testSuiteNameDTO = await writeTestSuiteMutation.mutateAsync({ name: testSuiteName, text });
+    const testSuiteNameDTO = await writeTestSuiteMutation.mutateAsync({ charterName, name: testSuiteName, text });
     if (testSuiteNameDTO.type === "Fault") return setRefusalFault(testSuiteNameDTO);
-    onDone("Saved", `.cw/charter/test/${testSuiteName} rewritten · run the cases again`);
+    onDone("Saved", `.cw/charter/${charterName}/test/${testSuiteName} rewritten · run the cases again`);
   };
 
   const deleteFile = async () => {
-    const refusedDTO = await removeTestSuiteMutation.mutateAsync(testSuiteName);
+    const refusedDTO = await removeTestSuiteMutation.mutateAsync({ charterName, name: testSuiteName });
     if (refusedDTO !== null) return setRefusalFault(refusedDTO);
-    onDone("Test file deleted", `.cw/charter/test/${testSuiteName} removed`);
+    onDone("Test file deleted", `.cw/charter/${charterName}/test/${testSuiteName} removed`);
   };
 
   return (

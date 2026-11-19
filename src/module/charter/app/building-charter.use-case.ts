@@ -62,6 +62,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
   readonly #charterRepository: Pick<
     ForManagingCharter,
     | "loadCharter"
+    | "loadCharterMetadata"
     | "describeCharterPlace"
     | "loadTestSuites"
     | "loadEvalSuites"
@@ -88,6 +89,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     charterRepository: Pick<
       ForManagingCharter,
       | "loadCharter"
+      | "loadCharterMetadata"
       | "describeCharterPlace"
       | "loadTestSuites"
       | "loadEvalSuites"
@@ -449,12 +451,19 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
     });
   }
 
-  async listEvalCases(): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+  async listEvalCases(charterName?: string): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("BuildingCharter.listEvalCases", async () => {
-      const [charterRoot, evalRoot] = await Promise.all([
+      // A charter named is one held, else nothing runs (VENDOR-FR-026).
+      if (charterName !== undefined)
+        (await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository)).findCharterOrFault(
+          charterName,
+        );
+      const [charterRoot, heldEvalRoot] = await Promise.all([
         this.#loadCharterService.loadCharterRoot(this.#charterRepository),
         this.#charterRepository.loadEvalSuites().then(EvalRootFactory.create),
       ]);
+      // Every charter's cases, or the named charter's alone (VENDOR-FR-025).
+      const evalRoot = charterName === undefined ? heldEvalRoot : heldEvalRoot.filterByCharter(charterName);
       // Everything that would stop a case is said before the first one spends
       // anything (EVAL-FR-026).
       for (const faultsByFile of [
@@ -471,7 +480,7 @@ export class BuildingCharter extends ApplicationService implements ForBuildingCh
                 ? undefined
                 : charterRoot.primitiveById.get(evalCase.expect.follow)?.body;
             return {
-              suiteName: evalRoot.suiteNameByFile[path] ?? path,
+              suiteName: evalRoot.reportedNameOf(path),
               prompt: evalCase.prompt,
               expect: { ...evalCase.expect },
               ...(guideBody === undefined ? {} : { guideBody }),

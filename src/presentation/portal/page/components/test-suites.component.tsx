@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import type { CharterDTOs } from "#module/charter/module.js";
-import { useAddTestSuite, usePrimitives, useTestOutcome, useTestSuites } from "../portal.queries.js";
+import { useAddTestSuite, useCharters, usePrimitives, useTestOutcome, useTestSuites } from "../portal.queries.js";
 import { useDialog } from "./dialogs.component.js";
 import { FaultAlert } from "./fault-alert.component.js";
 import { FaultsByFileTable } from "./faults-by-file-table.component.js";
 import { Badge } from "./ui/badge.js";
 import { Button } from "./ui/button.js";
+import { Input } from "./ui/input.js";
 
 /**
  * The test view (FR-124, FR-125): every test file with its description and
@@ -25,7 +26,9 @@ export function TestSuites() {
   const testOutcomeQuery = useTestOutcome();
   const primitivesQuery = usePrimitives();
   const addTestSuiteMutation = useAddTestSuite();
+  const chartersQuery = useCharters();
   const [openedTestSuiteName, setOpenedTestSuiteName] = useState<string | null>(null);
+  const [charterName, setCharterName] = useState<string | undefined>(undefined);
 
   if (testSuitesQuery.data === undefined) return null;
   if (testSuitesQuery.data.type === "Fault") return <FaultAlert fault={testSuitesQuery.data} />;
@@ -37,6 +40,15 @@ export function TestSuites() {
   );
   const testRunReport = testOutcomeQuery.data?.type === "TestRunReport" ? testOutcomeQuery.data : undefined;
   const caseCount = testSuites.reduce((count, { data: listedSuite }) => count + listedSuite.cases.length, 0);
+  // A new file is written into a charter the repository authored, the first
+  // offered until another is typed (VENDOR-FR-009, VENDOR-FR-016).
+  const authoredCharterNames =
+    chartersQuery.data?.type === "CharterMetadataList"
+      ? chartersQuery.data.data.charters
+          .filter(({ data: charter }) => !charter.isInstalled)
+          .map(({ data: charter }) => charter.name)
+      : [];
+  const shownCharterName = charterName ?? authoredCharterNames[0] ?? "";
   const failedCount =
     testRunReport?.data.testCaseReports.filter(({ data: testCaseReport }) => !testCaseReport.passed).length ?? 0;
 
@@ -50,13 +62,15 @@ export function TestSuites() {
   };
 
   const addSuite = async () => {
-    const testSuiteNameDTO = await addTestSuiteMutation.mutateAsync();
+    const testSuiteNameDTO = await addTestSuiteMutation.mutateAsync(shownCharterName.trim());
     if (testSuiteNameDTO.type === "Fault")
       return void toast.error(testSuiteNameDTO.data.message, { description: testSuiteNameDTO.data.fix });
-    const { name: testSuiteName } = testSuiteNameDTO.data;
-    setOpenedTestSuiteName(testSuiteName);
-    openDialog("testSuite", { name: testSuiteName });
-    toast("Test file created", { description: `.cw/charter/test/${testSuiteName} · edit the cases, then run them` });
+    const { charterName, name: testSuiteName } = testSuiteNameDTO.data;
+    setOpenedTestSuiteName(`${charterName}/${testSuiteName}`);
+    openDialog("testSuite", { charterName, name: testSuiteName });
+    toast("Test file created", {
+      description: `.cw/charter/${charterName}/test/${testSuiteName} · edit the cases, then run them`,
+    });
   };
 
   return (
@@ -80,6 +94,21 @@ export function TestSuites() {
           A case names the file a change touches or the event it raises, then says what must come up. It runs nothing
           and asks no agent.
         </span>
+        <Input
+          aria-label="Charter of a new test file"
+          className="w-[160px]"
+          value={shownCharterName}
+          placeholder="team"
+          spellCheck={false}
+          autoComplete="off"
+          list="test-suite-charter-names"
+          onChange={(event) => setCharterName(event.currentTarget.value)}
+        />
+        <datalist id="test-suite-charter-names">
+          {authoredCharterNames.map((authoredCharterName) => (
+            <option key={authoredCharterName} value={authoredCharterName} />
+          ))}
+        </datalist>
         <Button variant="outline" disabled={addTestSuiteMutation.isPending} onClick={() => void addSuite()}>
           New test file
         </Button>
@@ -94,30 +123,33 @@ export function TestSuites() {
 
       {testSuites.length === 0 && (
         <div className="rounded-xl border border-dashed px-[15px] py-3.5 text-[11.5px] leading-[1.6] text-zinc-500">
-          No test file yet. Test files live in .cw/charter/test/.
+          No test file yet. Test files live in .cw/charter/&lt;charter&gt;/test/.
         </div>
       )}
 
       {testSuites.map(({ data: testSuite }) => {
+        // A file is known by its charter and its name in it, as the run reports
+        // it (VENDOR-FR-009).
+        const testSuitePath = `${testSuite.charterName}/${testSuite.name}`;
         const testCaseReports =
           testRunReport?.data.testCaseReports.filter(
-            ({ data: testCaseReport }) => testCaseReport.suiteName === testSuite.name,
+            ({ data: testCaseReport }) => testCaseReport.suiteName === testSuitePath,
           ) ?? [];
         const suiteFailedCount = testCaseReports.filter(({ data: testCaseReport }) => !testCaseReport.passed).length;
         return (
           <section
-            key={testSuite.name}
+            key={testSuitePath}
             className="overflow-hidden rounded-[14px] border bg-background"
-            aria-label={testSuite.name}
+            aria-label={testSuitePath}
           >
             <div className="flex items-baseline gap-2.5 px-[15px] py-3">
               <button
                 type="button"
                 className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-2.5 text-left"
-                aria-expanded={openedTestSuiteName === testSuite.name}
-                onClick={() => setOpenedTestSuiteName(openedTestSuiteName === testSuite.name ? null : testSuite.name)}
+                aria-expanded={openedTestSuiteName === testSuitePath}
+                onClick={() => setOpenedTestSuiteName(openedTestSuiteName === testSuitePath ? null : testSuitePath)}
               >
-                <span className="font-mono text-[11.5px] font-bold">{testSuite.name}</span>
+                <span className="font-mono text-[11.5px] font-bold">{testSuitePath}</span>
                 <span className="min-w-0 flex-1 text-[11.5px] text-zinc-500">{testSuite.description}</span>
                 <span
                   className={`font-mono text-[10.5px] ${suiteFailedCount > 0 ? "text-destructive" : "text-zinc-400"}`}
@@ -129,7 +161,7 @@ export function TestSuites() {
               <Button
                 variant="ghost"
                 className="h-auto p-0 text-[11.5px] text-zinc-400 hover:bg-transparent hover:text-foreground"
-                onClick={() => openDialog("testSuite", { name: testSuite.name })}
+                onClick={() => openDialog("testSuite", { charterName: testSuite.charterName, name: testSuite.name })}
               >
                 Edit
               </Button>
@@ -139,7 +171,7 @@ export function TestSuites() {
                 {testSuite.fault.data.message} <span className="text-zinc-400">{testSuite.fault.data.fix}</span>
               </p>
             )}
-            {openedTestSuiteName === testSuite.name &&
+            {openedTestSuiteName === testSuitePath &&
               testSuite.cases.map(({ data: testCase }, caseIndex) => (
                 <TestCaseRow
                   // biome-ignore lint/suspicious/noArrayIndexKey: a case has no identity but its place in the file.

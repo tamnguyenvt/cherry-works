@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
-import { PrimitiveLayer } from "../src/module/charter/domain/models/primitive/primitive-layer.value-object.js";
-import { RawPrimitive } from "../src/module/charter/domain/models/primitive/raw-primitive.js";
+import { CharterInstall } from "../src/module/charter/domain/models/vendor/charter-install.js";
+import { SourceCharter, VendorSource } from "../src/module/charter/domain/models/vendor/vendor-source.js";
+import { VendorSourceOrigin } from "../src/module/charter/domain/models/vendor/vendor-source-origin.value-object.js";
 import { FileCharterRepository } from "../src/module/charter/infra/file-charter.repository.js";
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { AdapterFault } from "../src/module/shared/domain/models/adapter.fault.js";
@@ -46,7 +47,7 @@ test("one use case set up on each repository's storage answers for that reposito
     `---\nkind: guide\nid: ${guideId}\ndescription: A guide of ${guideId}.\n---\nKeep it.\n`;
   const charterAppOn = (repoFolder: URL, guideId: string) => {
     const fileReaders = new InMemoryFileReaders(
-      { [new URL(`.cw/charter/primitive/guide/${guideId}/index.md`, repoFolder).href]: guideOf(guideId) },
+      { [new URL(`.cw/charter/team/primitive/guide/${guideId}/index.md`, repoFolder).href]: guideOf(guideId) },
       repoFolder,
     );
     return authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter());
@@ -60,7 +61,7 @@ test("one use case set up on each repository's storage answers for that reposito
     assert.equal(explanationOutcome.type, "ExplanationOutcome", JSON.stringify(explanationOutcome));
     assert.equal(
       explanationOutcome.data.primitive.data.file,
-      new URL(`.cw/charter/primitive/guide/${guideId}/index.md`, repoFolder).href,
+      new URL(`.cw/charter/team/primitive/guide/${guideId}/index.md`, repoFolder).href,
     );
   }
 });
@@ -82,9 +83,16 @@ test("a path starting at / or stepping out with .. reaches nothing outside the r
   }
   const charterRepository = new FileCharterRepository(fileReaders, fileOutput, new InMemorySources(fileReaders));
   await assert.rejects(
-    charterRepository.injectPrimitives([
-      new RawPrimitive(PrimitiveLayer.REPO, "guide", "../../../../outside", "written", [], ""),
-    ]),
+    charterRepository.storeCharters(
+      new VendorSource(new VendorSourceOrigin("team/source"), "commit", "0123456789abcdef0123456789abcdef01234567", []),
+      [
+        new CharterInstall(
+          "../../../..",
+          new SourceCharter("published", false, [], ".cw/charter/published", []),
+          undefined,
+        ),
+      ],
+    ),
     /would land outside/,
   );
   assert.equal(await fileReaders.readFile(new URL("file:///outside.md")), "Not the repository's.");

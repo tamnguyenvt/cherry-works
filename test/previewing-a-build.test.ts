@@ -10,7 +10,7 @@ import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory
 import { buildingCharterOf } from "./use-cases-of.js";
 
 const repo = new URL("file:///repo/");
-const root = new URL(".cw/charter/primitive/", repo);
+const root = new URL(".cw/charter/team/primitive/", repo);
 
 const primitive = (kind: string, id: string, headers: readonly string[] = [], body = `The body of ${id}.`) =>
   [
@@ -220,6 +220,6 @@ test("a charter with an error previews nothing, and says which files (FR-009)", 
 
   assert.deepEqual(changed(previewed ?? nothing), {});
   assert.deepEqual(Object.keys(faultsByFiles?.files ?? {}), [
-    "file:///repo/.cw/charter/primitive/guide/no-any/index.md",
+    "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md",
   ]);
 });

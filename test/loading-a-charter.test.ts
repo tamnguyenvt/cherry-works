@@ -13,8 +13,8 @@ import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 
-const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
-const vendorRoot = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/vendor/");
+const charterMetadataList = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/");
+const root = FolderAddress.parseFolderUrl(new URL("team/primitive/", charterMetadataList));
 const guide = new URL("guide/no-any/index.md", root);
 const corpus = new URL("corpus/type-safety/index.md", root);
 
@@ -42,6 +42,21 @@ const charterHolding = () =>
 
 const load = (files: InMemoryFileReaders) => loadCharterRoot(files);
 
+/** A charter installed from `source`, its primitives written under it. */
+const writeInstalledCharter = (
+  files: InMemoryFileReaders,
+  charterName: string,
+  primitiveTextByPath: Readonly<Record<string, string>>,
+  source = "team/rules",
+) => {
+  files.writeFile(
+    new URL(`${charterName}/cw-vendor.json`, charterMetadataList),
+    `${JSON.stringify({ charter: charterName, source, version: "HEAD" })}\n`,
+  );
+  for (const [path, text] of Object.entries(primitiveTextByPath))
+    files.writeFile(new URL(`${charterName}/primitive/${path}`, charterMetadataList), text);
+};
+
 /** What one layer of a charter declares, by id. */
 const ids = (layerName: LayerName, charter: CharterRoot) =>
   charter.primitives
@@ -51,32 +66,39 @@ const ids = (layerName: LayerName, charter: CharterRoot) =>
 
 /** What reading the charter asks of the files before it reads them: whether
  *  the repository is laid out the old way (CORE-FR-226). */
-const layoutCheckCalls = ["folders under file:///repo/.cw/", "folders under file:///repo/.cw/charter/"];
+const layoutCheckCalls = ["folders under file:///repo/.cw/", `folders under ${charterMetadataList.href}`];
 
 test("every file the root lists is read as a primitive", async () => {
   const charter = await load(charterHolding());
   assert.deepEqual(ids(PrimitiveLayer.REPO.name, charter), ["no-any", "type-safety"]);
 });
 
-test("the charter is read once, and its vendors once more, however many are installed (CORE Story 1 scenario 9)", async () => {
+test("the charter is read once, and its charters listed once more, however many are installed (CORE Story 1 scenario 9, VENDOR-FR-010)", async () => {
   const files = charterHolding();
-  files.writeFile(new URL("team/rules/root/primitive/guide/no-any/index.md", vendorRoot), primitive("guide", "no-any"));
+  writeInstalledCharter(files, "rules", { "guide/no-any/index.md": primitive("guide", "no-any") });
 
   await load(files);
 
-  // One read of what this repository authored and one of what its vendors
-  // installed, whichever sources or owners of sources they are (FR-050): the
-  // engine reads which is which off the files it is handed. The settings the
-  // repository configured itself with are read from their own file, not from
-  // the charter (FR-037).
-  assert.deepEqual(files.calls, [...layoutCheckCalls, `bytes under ${root.href}`, `bytes under ${vendorRoot.href}`]);
+  // One read of every charter, authored or installed, whichever sources or
+  // owners of sources they are (FR-050), and one listing of the charters, each
+  // asked for its cw-vendor.json: the engine reads which is which off the
+  // files it is handed. The settings the repository configured itself with
+  // are read from their own file, not from the charter (FR-037).
+  assert.deepEqual(files.calls, [
+    ...layoutCheckCalls,
+    ...layoutCheckCalls,
+    `bytes under ${charterMetadataList.href}`,
+    `folders under ${charterMetadataList.href}`,
+    `read ${charterMetadataList.href}team/cw-vendor.json`,
+    `read ${charterMetadataList.href}rules/cw-vendor.json`,
+  ]);
 });
 
 test("a file outside a kind's folder is no one's primitive (FR-002)", async () => {
   const files = charterHolding();
   files.writeFile(new URL("catalog.json", root), "{}");
   files.writeFile(new URL("README.md", root), "How this repository authors its charter.\n");
-  files.writeFile(new URL("team/rules/root/primitive/charter.lock.json", vendorRoot), "{}");
+  writeInstalledCharter(files, "rules", { "charter.lock.json": "{}" });
 
   const charter = await load(files);
 
@@ -99,8 +121,7 @@ test("a load reads what is there now, not what was there before", async () => {
 
 test("what a vendor published is read as a layer of its own", async () => {
   const files = charterHolding();
-  const vendor = FolderAddress.parseFolderUrl(new URL("team/rules/root/primitive/", vendorRoot));
-  files.writeFile(new URL("guide/no-any/index.md", vendor), primitive("guide", "no-any"));
+  writeInstalledCharter(files, "rules", { "guide/no-any/index.md": primitive("guide", "no-any") });
 
   const charter = await load(files);
 
@@ -115,11 +136,8 @@ test("what a vendor published is read as a layer of its own", async () => {
 
 test("each vendor is its own layer, and a repository with none has none", async () => {
   const files = charterHolding();
-  files.writeFile(new URL("team/rules/root/primitive/guide/no-any/index.md", vendorRoot), primitive("guide", "no-any"));
-  files.writeFile(
-    new URL("design/skills/root/primitive/skill/naming/index.md", vendorRoot),
-    primitive("skill", "naming"),
-  );
+  writeInstalledCharter(files, "rules", { "guide/no-any/index.md": primitive("guide", "no-any") });
+  writeInstalledCharter(files, "skills", { "skill/naming/index.md": primitive("skill", "naming") }, "design/skills");
 
   assert.deepEqual([...new Set((await load(files)).primitives.map((primitive) => primitive.layer.name))].sort(), [
     PrimitiveLayer.BUILTIN.name,
@@ -144,7 +162,13 @@ test("what the engine brings is no folder: it adds no read, and is read without 
   ]);
   assert.equal(charter.primitiveById.get("cw-author")?.uri, "(built into cw)/skill/cw-author/index.md");
   assert.deepEqual(charter.faultsByFiles.faultsByFilePath, {});
-  assert.deepEqual(files.calls, [...layoutCheckCalls, `bytes under ${root.href}`, `bytes under ${vendorRoot.href}`]);
+  assert.deepEqual(files.calls, [
+    ...layoutCheckCalls,
+    ...layoutCheckCalls,
+    `bytes under ${charterMetadataList.href}`,
+    `folders under ${charterMetadataList.href}`,
+    `read ${charterMetadataList.href}team/cw-vendor.json`,
+  ]);
 });
 
 /** A primitive the engine might bring, ready-made, whose headers its kind refuses. */
@@ -158,20 +182,20 @@ test("what the engine brings is read as a layer of its own, first (FR-015, FR-01
   const charter = CharterRootFactory.create(
     [
       new RawPrimitive(
-        PrimitiveLayer.REPO,
+        PrimitiveLayer.authoredLayerOf("team"),
         "corpus",
         "type-safety",
         primitive("corpus", "type-safety"),
         [],
-        ".cw/charter/primitive/corpus/type-safety/index.md",
+        ".cw/charter/team/primitive/corpus/type-safety/index.md",
       ),
       new RawPrimitive(
-        PrimitiveLayer.vendorLayerOf("team/rules/root"),
+        PrimitiveLayer.installedLayerOf("rules"),
         "guide",
         "no-any",
         primitive("guide", "no-any"),
         [],
-        ".cw/charter/vendor/team/rules/root/primitive/guide/no-any/index.md",
+        ".cw/charter/rules/primitive/guide/no-any/index.md",
       ),
       new CwAuthorSkill(),
     ],
@@ -182,8 +206,8 @@ test("what the engine brings is read as a layer of its own, first (FR-015, FR-01
     charter.primitives.map(({ headers, layer, uri }) => [headers.id, layer.name, uri]),
     [
       ["cw-author", PrimitiveLayer.BUILTIN.name, "(built into cw)/skill/cw-author/index.md"],
-      ["type-safety", PrimitiveLayer.REPO.name, ".cw/charter/primitive/corpus/type-safety/index.md"],
-      ["no-any", PrimitiveLayer.vendorName, ".cw/charter/vendor/team/rules/root/primitive/guide/no-any/index.md"],
+      ["type-safety", PrimitiveLayer.REPO.name, ".cw/charter/team/primitive/corpus/type-safety/index.md"],
+      ["no-any", PrimitiveLayer.vendorName, ".cw/charter/rules/primitive/guide/no-any/index.md"],
     ],
   );
 });
@@ -199,12 +223,12 @@ test("a repository claiming what the engine brings is the collision, filed again
   const charter = CharterRootFactory.create(
     [
       new RawPrimitive(
-        PrimitiveLayer.REPO,
+        PrimitiveLayer.authoredLayerOf("team"),
         "skill",
         "cw-author",
         primitive("skill", "cw-author"),
         [],
-        ".cw/charter/primitive/skill/cw-author/index.md",
+        ".cw/charter/team/primitive/skill/cw-author/index.md",
       ),
       new CwAuthorSkill(),
     ],
@@ -213,7 +237,7 @@ test("a repository claiming what the engine brings is the collision, filed again
 
   assert.equal(charter.primitiveById.get("cw-author")?.layer, PrimitiveLayer.BUILTIN);
   const [collision, ...rest] =
-    charter.compositeFaultsByFiles.faultsByFilePath[".cw/charter/primitive/skill/cw-author/index.md"] ?? [];
+    charter.compositeFaultsByFiles.faultsByFilePath[".cw/charter/team/primitive/skill/cw-author/index.md"] ?? [];
   assert.deepEqual(rest, []);
   assert.match(collision?.message ?? "", /already declared by \(built into cw\)\/skill\/cw-author\/index\.md/);
   assert.match(collision?.fix ?? "", /the engine's own .* the one to rename is yours/);
@@ -222,7 +246,7 @@ test("a repository claiming what the engine brings is the collision, filed again
 test("a repository is read through the charter it keeps, and no other", async () => {
   const files = charterHolding();
   const elsewhere = new URL("file:///other/");
-  files.writeFile(new URL(".cw/charter/primitive/skill/naming/index.md", elsewhere), primitive("skill", "naming"));
+  files.writeFile(new URL(".cw/charter/team/primitive/skill/naming/index.md", elsewhere), primitive("skill", "naming"));
 
   const charter = await loadCharterRoot(files.createFolderReader(elsewhere));
 
@@ -235,7 +259,7 @@ test("a file the format refuses is a problem naming that file, not a read that f
 
   assert.deepEqual(ids(PrimitiveLayer.REPO.name, charter), []);
   assert.deepEqual(Object.keys(charter.faultsByFiles.faultsByFilePath), [
-    "file:///repo/.cw/charter/primitive/guide/no-any/index.md",
+    "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md",
   ]);
 });
 
@@ -259,7 +283,7 @@ test("what reads is kept, and what does not is named, in one read", async () => 
 
   assert.deepEqual(ids(PrimitiveLayer.REPO.name, charter), ["no-any", "type-safety"]);
   assert.deepEqual(Object.keys(charter.faultsByFiles.faultsByFilePath), [
-    "file:///repo/.cw/charter/primitive/guide/broken/index.md",
+    "file:///repo/.cw/charter/team/primitive/guide/broken/index.md",
   ]);
 });
 
@@ -272,47 +296,46 @@ test("every bad file in a charter is named in one read", async () => {
   );
 
   assert.deepEqual(Object.keys(charter.faultsByFiles.faultsByFilePath).sort(), [
-    "file:///repo/.cw/charter/primitive/guide/one/index.md",
-    "file:///repo/.cw/charter/primitive/guide/other/index.md",
+    "file:///repo/.cw/charter/team/primitive/guide/one/index.md",
+    "file:///repo/.cw/charter/team/primitive/guide/other/index.md",
   ]);
 });
 
 test("a root is a folder, and one written as a file is refused", () => {
-  assert.equal(FolderAddress.parseFolderUrl(new URL("file:///repo/.cw/charter/primitive/")).href, root.href);
+  assert.equal(FolderAddress.parseFolderUrl(new URL("file:///repo/.cw/charter/")).href, charterMetadataList.href);
   assert.throws(() => FolderAddress.parseFolderUrl("file:///repo/.cw/charter"), /names a file/);
 });
 
 test("a broken file in a vendored layer is named like any other, and costs that layer nothing else", async () => {
   const files = charterHolding();
-  files.writeFile(new URL("team/rules/root/primitive/guide/broken/index.md", vendorRoot), "Just prose.\n");
-  files.writeFile(new URL("team/rules/root/primitive/guide/no-any/index.md", vendorRoot), primitive("guide", "no-any"));
+  writeInstalledCharter(files, "rules", {
+    "guide/broken/index.md": "Just prose.\n",
+    "guide/no-any/index.md": primitive("guide", "no-any"),
+  });
 
   const charter = await load(files);
 
   assert.deepEqual(Object.keys(charter.faultsByFiles.faultsByFilePath), [
-    "file:///repo/.cw/charter/vendor/team/rules/root/primitive/guide/broken/index.md",
+    "file:///repo/.cw/charter/rules/primitive/guide/broken/index.md",
   ]);
   assert.deepEqual(ids(PrimitiveLayer.vendorName, charter), ["no-any"]);
 });
 
 test("what only shows when files are read together is kept apart from what one file got wrong", async () => {
   const files = charterHolding();
-  files.writeFile(
-    new URL("acme/charter/root/primitive/guide/no-any/index.md", vendorRoot),
-    primitive("guide", "no-any"),
-  );
+  writeInstalledCharter(files, "acme", { "guide/no-any/index.md": primitive("guide", "no-any") }, "acme/charter");
   files.writeFile(new URL("guide/broken/index.md", root), "Just prose.\n");
 
   const charter = await load(files);
 
   assert.deepEqual(Object.keys(charter.faultsByFiles.faultsByFilePath), [
-    "file:///repo/.cw/charter/primitive/guide/broken/index.md",
+    "file:///repo/.cw/charter/team/primitive/guide/broken/index.md",
   ]);
   // The second of the two to be read: the repository's layer is read before a
   // vendor's. The corpus nobody cites is only a warning, and not what is asked
   // here.
   assert.deepEqual(Object.keys(charter.compositeFaultsByFiles.filterErrors().faultsByFilePath), [
-    "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/guide/no-any/index.md",
+    "file:///repo/.cw/charter/acme/primitive/guide/no-any/index.md",
   ]);
 });
 
@@ -345,11 +368,11 @@ test("a markdown file kept as a file of its own, or an index.md kept where its k
   assert.deepEqual(ids(PrimitiveLayer.REPO.name, charter), ["no-any", "type-safety"]);
   const faultsByFile = charter.allFaultsByFiles.filterErrors().faultsByFilePath;
   assert.match(
-    faultsByFile["file:///repo/.cw/charter/primitive/mcp/billing.md"]?.[0]?.fix ?? "",
-    /Move it to "file:\/\/\/repo\/\.cw\/charter\/primitive\/mcp\/billing\/index\.md"/,
+    faultsByFile["file:///repo/.cw/charter/team/primitive/mcp/billing.md"]?.[0]?.fix ?? "",
+    /Move it to "file:\/\/\/repo\/\.cw\/charter\/team\/primitive\/mcp\/billing\/index\.md"/,
   );
   assert.match(
-    faultsByFile["file:///repo/.cw/charter/primitive/guide/elsewhere/index.md"]?.[0]?.fix ?? "",
-    /Move its folder to "file:\/\/\/repo\/\.cw\/charter\/primitive\/guide\/house\/style\/"/,
+    faultsByFile["file:///repo/.cw/charter/team/primitive/guide/elsewhere/index.md"]?.[0]?.fix ?? "",
+    /Move its folder to "file:\/\/\/repo\/\.cw\/charter\/team\/primitive\/guide\/house\/style\/"/,
   );
 });

@@ -23,7 +23,7 @@ const repo = "/repo";
 
 /** Whose home the command line runs in: what is installed on this machine is
  *  detected under it, and nothing here asks. */
-const root = new URL("file:///repo/.cw/charter/primitive/");
+const root = new URL("file:///repo/.cw/charter/team/primitive/");
 
 /** One authored file, holding what the kind of the directory it lands in
  *  requires. */
@@ -36,7 +36,7 @@ const guide = (id: string, headers: readonly string[] = []) =>
 /** A test file naming one guide, so no warning says nothing pins it down
  *  (FR-014). */
 const pinningDown = (id: string) => ({
-  [`file:///repo/.cw/charter/test/${id.replace("/", "-")}.json`]: JSON.stringify({
+  [`file:///repo/.cw/charter/team/test/${id.replace("/", "-")}.json`]: JSON.stringify({
     cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: id } }],
   }),
 });
@@ -145,14 +145,18 @@ test("a file is named as the user would type it, under the repository they ran i
     [new URL("guide/no-any/index.md", root).href]: guide("no-any", ['mixins: ["absent"]']),
   });
 
-  assert.match(printedOutput.everything, /^\.cw\/charter\/primitive\/guide\/no-any\/index\.md$/m);
+  assert.match(printedOutput.everything, /^\.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md$/m);
 });
 
 test("what is wrong with the charter as a whole fails the run too (CORE Story 2 scenario 2)", async () => {
   const { code, printedOutput } = await run({
     [new URL("guide/no-any/index.md", root).href]: guide("no-any"),
-    [new URL("file:///repo/.cw/charter/vendor/acme/charter/root/primitive/guide/no-any/index.md").href]:
-      guide("no-any"),
+    [new URL("file:///repo/.cw/charter/acme/primitive/guide/no-any/index.md").href]: guide("no-any"),
+    [new URL("file:///repo/.cw/charter/acme/cw-vendor.json").href]: JSON.stringify({
+      charter: "acme",
+      source: "acme/charter",
+      version: "HEAD",
+    }),
   });
 
   assert.equal(code, EXIT_FAILURE);

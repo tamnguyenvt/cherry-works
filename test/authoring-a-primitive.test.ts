@@ -31,6 +31,13 @@ const primitive = (kind: string, id: string, headers: readonly string[] = [], bo
 const guide = (id: string, headers: readonly string[] = []) =>
   primitive("guide", id, ['globs: ["src/**/*.ts"]', ...headers]);
 
+/** The record that makes `rules` a charter installed from `team/rules`, so the
+ *  primitives under it are the vendor layer's, read-only (VENDOR-FR-010). */
+const rulesVendorRecord = {
+  [at(".cw/charter/rules/cw-vendor.json")]:
+    `${JSON.stringify({ charter: "rules", source: "team/rules", version: "HEAD" })}\n`,
+};
+
 /** The engine over one repository held in memory, and the files it holds, so a
  *  test reads back what was written and changes what is on disk between two
  *  calls. */
@@ -72,24 +79,24 @@ test("a primitive added with a body is the file cw add writes, with the body und
   const withoutBody = authoring();
   const headers = { description: "No any.", globs: ["src/**/*.ts"] };
 
-  await withBody.charterAuthoringApp.addPrimitive("guide", "no-any", headers, "# No any\n\nNever write `any`.");
-  await withoutBody.charterAuthoringApp.addPrimitive("guide", "no-any", headers);
+  await withBody.charterAuthoringApp.addPrimitive("guide", "no-any", "team", headers, "# No any\n\nNever write `any`.");
+  await withoutBody.charterAuthoringApp.addPrimitive("guide", "no-any", "team", headers);
 
-  const savedPrimitiveText = (await withBody.fileAt(".cw/charter/primitive/guide/no-any/index.md")) ?? "";
-  const scaffolded = (await withoutBody.fileAt(".cw/charter/primitive/guide/no-any/index.md")) ?? "";
+  const savedPrimitiveText = (await withBody.fileAt(".cw/charter/team/primitive/guide/no-any/index.md")) ?? "";
+  const scaffolded = (await withoutBody.fileAt(".cw/charter/team/primitive/guide/no-any/index.md")) ?? "";
   assert.equal(savedPrimitiveText, `${scaffolded.trimEnd()}\n\n# No any\n\nNever write \`any\`.\n`);
 });
 
 test("a disable-user-invocation answered as a line is written as the yes or no it is, and read back so (CORE-FR-173)", async () => {
   const { charterAuthoringApp, fileAt } = authoring();
 
-  await charterAuthoringApp.addPrimitive("skill", "ship-review", {
+  await charterAuthoringApp.addPrimitive("skill", "ship-review", "team", {
     description: "Review what ships.",
     triggers: ["review the release"],
     "disable-user-invocation": "true",
   });
 
-  const savedPrimitiveText = (await fileAt(".cw/charter/primitive/skill/ship-review/index.md")) ?? "";
+  const savedPrimitiveText = (await fileAt(".cw/charter/team/primitive/skill/ship-review/index.md")) ?? "";
   assert.match(savedPrimitiveText, /\ndisable-user-invocation: true\n/);
   const { data: openedPrimitive } = CharterDTOs.Primitive.parse(await charterAuthoringApp.openPrimitive("ship-review"));
   assert.equal(openedPrimitive.headers["disable-user-invocation"], "true");
@@ -97,27 +104,33 @@ test("a disable-user-invocation answered as a line is written as the yes or no i
 
 test("an id another layer already holds is refused naming its file, and nothing is written (FR-014, CORE Story 10 scenario 5)", async () => {
   const { charterAuthoringApp, fileAt } = authoring({
-    [at(".cw/charter/vendor/team/rules/root/primitive/guide/no-any/index.md")]: guide("no-any"),
+    ...rulesVendorRecord,
+    [at(".cw/charter/rules/primitive/guide/no-any/index.md")]: guide("no-any"),
   });
 
   assert.match(
-    faultTextOf(await charterAuthoringApp.addPrimitive("guide", "no-any", { description: "Mine.", globs: ["src/**"] })),
-    /"no-any" is already there, declared by file:\/\/\/repo\/\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/no-any\/index\.md/,
+    faultTextOf(
+      await charterAuthoringApp.addPrimitive("guide", "no-any", "team", { description: "Mine.", globs: ["src/**"] }),
+    ),
+    /"no-any" is already there, declared by file:\/\/\/repo\/\.cw\/charter\/rules\/primitive\/guide\/no-any\/index\.md/,
   );
   assert.match(
     faultTextOf(
-      await charterAuthoringApp.addPrimitive("skill", "cw-author", { description: "Mine.", triggers: ["write"] }),
+      await charterAuthoringApp.addPrimitive("skill", "cw-author", "team", {
+        description: "Mine.",
+        triggers: ["write"],
+      }),
     ),
     /declared by \(built into cw\)\/skill\/cw-author\/index\.md/,
   );
-  assert.equal(await fileAt("file:///repo/.cw/charter/primitive/guide/no-any/index.md"), undefined);
+  assert.equal(await fileAt("file:///repo/.cw/charter/team/primitive/guide/no-any/index.md"), undefined);
 });
 
 test("a primitive opens with its headers, body, file, layer and revision, whatever else is wrong (FR-075)", async () => {
   const text = guide("no-any", ["rationale: why"]);
   const { charterAuthoringApp } = authoring({
-    [at(".cw/charter/primitive/guide/no-any/index.md")]: text,
-    [at(".cw/charter/primitive/guide/broken/index.md")]: guide("broken", ['mixins: ["nowhere"]']),
+    [at(".cw/charter/team/primitive/guide/no-any/index.md")]: text,
+    [at(".cw/charter/team/primitive/guide/broken/index.md")]: guide("broken", ['mixins: ["nowhere"]']),
   });
 
   const { data: openedPrimitive } = CharterDTOs.Primitive.parse(await charterAuthoringApp.openPrimitive("no-any"));
@@ -125,7 +138,7 @@ test("a primitive opens with its headers, body, file, layer and revision, whatev
   // The hash is of the primitive written out, which is what a save writes.
   assert.equal(openedPrimitive.hash, ContentHelper.createContentHash(text));
   assert.equal(openedPrimitive.body, "The body of no-any.");
-  assert.equal(openedPrimitive.file, "file:///repo/.cw/charter/primitive/guide/no-any/index.md");
+  assert.equal(openedPrimitive.file, "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md");
   assert.equal(openedPrimitive.layerName, "repo");
   assert.deepEqual(openedPrimitive.headers.globs, ["src/**/*.ts"]);
   assert.equal(openedPrimitive.headers.rationale, "why");
@@ -133,15 +146,13 @@ test("a primitive opens with its headers, body, file, layer and revision, whatev
 
 test("a vendored and a builtin primitive open too, each under its own layer", async () => {
   const { charterAuthoringApp } = authoring({
-    [at(".cw/charter/vendor/team/rules/root/primitive/guide/no-any/index.md")]: guide("no-any"),
+    ...rulesVendorRecord,
+    [at(".cw/charter/rules/primitive/guide/no-any/index.md")]: guide("no-any"),
   });
 
   const vendorPrimitiveDTO = answerOf(await charterAuthoringApp.openPrimitive("no-any")).data;
   assert.equal(vendorPrimitiveDTO.layerName, "vendor");
-  assert.equal(
-    vendorPrimitiveDTO.file,
-    "file:///repo/.cw/charter/vendor/team/rules/root/primitive/guide/no-any/index.md",
-  );
+  assert.equal(vendorPrimitiveDTO.file, "file:///repo/.cw/charter/rules/primitive/guide/no-any/index.md");
 
   const builtin = answerOf(await charterAuthoringApp.openPrimitive("cw-author")).data;
   assert.equal(builtin.layerName, "builtin");
@@ -173,8 +184,8 @@ test("a rewrite at the revision opened replaces the headers and body, keeping ki
   // Written somewhere other than the convention: where a file sits says only
   // that it is looked at, so a rewrite leaves it there.
   const { charterAuthoringApp, fileAt, held } = authoring({
-    [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
-    [at(".cw/charter/primitive/corpus/why/index.md")]: primitive("corpus", "why"),
+    [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any"),
+    [at(".cw/charter/team/primitive/corpus/why/index.md")]: primitive("corpus", "why"),
   });
   const filesOnDisk = async () =>
     new Map((await held.readFilesRecursively(repoPath)).map(({ fileUrl, contents }) => [fileUrl.href, contents]));
@@ -189,7 +200,7 @@ test("a rewrite at the revision opened replaces the headers and body, keeping ki
   );
 
   assert.equal(primitiveDTO.type, "Primitive");
-  const rewritten = (await fileAt(".cw/charter/primitive/guide/no-any/index.md")) ?? "";
+  const rewritten = (await fileAt(".cw/charter/team/primitive/guide/no-any/index.md")) ?? "";
   assert.match(
     rewritten,
     /^---\nkind: guide\nid: no-any\ndescription: Never any\.\nglobs: \["src\/\*\*\/\*\.ts", "test\/\*\*\/\*\.ts"\]\n---\n\nUse unknown\.\n$/,
@@ -197,8 +208,8 @@ test("a rewrite at the revision opened replaces the headers and body, keeping ki
   // Nothing else on disk moved.
   assert.deepEqual([...(await filesOnDisk()).keys()].sort(), [...before.keys()].sort());
   assert.equal(
-    await fileAt(".cw/charter/primitive/corpus/why/index.md"),
-    before.get(at(".cw/charter/primitive/corpus/why/index.md")),
+    await fileAt(".cw/charter/team/primitive/corpus/why/index.md"),
+    before.get(at(".cw/charter/team/primitive/corpus/why/index.md")),
   );
 });
 
@@ -218,7 +229,9 @@ test("a file written by hand in another layout saves at the revision it opened a
     "Body.",
     "",
   ].join("\n");
-  const { charterAuthoringApp, fileAt } = authoring({ [at(".cw/charter/primitive/guide/no-any/index.md")]: byHand });
+  const { charterAuthoringApp, fileAt } = authoring({
+    [at(".cw/charter/team/primitive/guide/no-any/index.md")]: byHand,
+  });
   const { hash: revision } = answerOf(await charterAuthoringApp.openPrimitive("no-any")).data;
 
   const primitiveDTO = answerOf(
@@ -231,44 +244,47 @@ test("a file written by hand in another layout saves at the revision it opened a
   );
 
   assert.equal(primitiveDTO.type, "Primitive");
-  assert.match((await fileAt(".cw/charter/primitive/guide/no-any/index.md")) ?? "", /description: Never any\./);
+  assert.match((await fileAt(".cw/charter/team/primitive/guide/no-any/index.md")) ?? "", /description: Never any\./);
 });
 
 test("a rewrite over a file changed since it was opened is refused naming it, and the change stays (FR-078)", async () => {
   const { charterAuthoringApp, fileAt, held } = authoring({
-    [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
+    [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any"),
   });
   const { hash: revision } = answerOf(await charterAuthoringApp.openPrimitive("no-any")).data;
   const changedOnDisk = guide("no-any", ["tags: [edited]"]);
-  held.writeFile(new URL(at(".cw/charter/primitive/guide/no-any/index.md")), changedOnDisk);
+  held.writeFile(new URL(at(".cw/charter/team/primitive/guide/no-any/index.md")), changedOnDisk);
 
   assert.match(
     faultTextOf(
       await charterAuthoringApp.rewritePrimitive("no-any", { description: "Mine.", globs: ["src/**"] }, "", revision),
     ),
-    /\.cw\/charter\/primitive\/guide\/no-any\/index\.md changed on disk after it was opened/,
+    /\.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md changed on disk after it was opened/,
   );
-  assert.equal(await fileAt(".cw/charter/primitive/guide/no-any/index.md"), changedOnDisk);
+  assert.equal(await fileAt(".cw/charter/team/primitive/guide/no-any/index.md"), changedOnDisk);
 });
 
 test("answers the kind refuses are refused on a rewrite in the words add refuses them in (FR-075)", async () => {
   const sensor = primitive("sensor", "on-stop", ["signal: Stop", "run: pnpm test"]);
-  const { charterAuthoringApp, fileAt } = authoring({ [at(".cw/charter/primitive/sensor/on-stop/index.md")]: sensor });
+  const { charterAuthoringApp, fileAt } = authoring({
+    [at(".cw/charter/team/primitive/sensor/on-stop/index.md")]: sensor,
+  });
   const { hash: revision } = answerOf(await charterAuthoringApp.openPrimitive("on-stop")).data;
   const answers = { description: "On stop.", signal: "NotAnEvent", run: "pnpm test", colour: "red" };
 
   const rewriteFaults = answerOf(await charterAuthoringApp.rewritePrimitive("on-stop", answers, "", revision));
-  const addFaults = answerOf(await authoring().charterAuthoringApp.addPrimitive("sensor", "on-stop", answers));
+  const addFaults = answerOf(await authoring().charterAuthoringApp.addPrimitive("sensor", "on-stop", "team", answers));
 
   assert.equal(rewriteFaults.type, "Faults");
   assert.deepEqual(rewriteFaults, addFaults);
-  assert.equal(await fileAt(".cw/charter/primitive/sensor/on-stop/index.md"), sensor);
+  assert.equal(await fileAt(".cw/charter/team/primitive/sensor/on-stop/index.md"), sensor);
 });
 
 test("a vendored or builtin primitive is neither rewritten nor removed, naming where it came from (FR-077)", async () => {
   const vendorGuideText = guide("no-any");
   const { charterAuthoringApp, fileAt } = authoring({
-    [at(".cw/charter/vendor/team/rules/root/primitive/guide/no-any/index.md")]: vendorGuideText,
+    ...rulesVendorRecord,
+    [at(".cw/charter/rules/primitive/guide/no-any/index.md")]: vendorGuideText,
   });
   const { hash: revision } = answerOf(await charterAuthoringApp.openPrimitive("no-any")).data;
 
@@ -276,31 +292,31 @@ test("a vendored or builtin primitive is neither rewritten nor removed, naming w
     faultTextOf(
       await charterAuthoringApp.rewritePrimitive("no-any", { description: "Mine.", globs: ["src/**"] }, "", revision),
     ),
-    /\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/no-any\/index\.md is read-only/,
+    /\.cw\/charter\/rules\/primitive\/guide\/no-any\/index\.md is read-only/,
   );
   assert.match(
     faultTextOf(await charterAuthoringApp.removePrimitive("no-any")),
-    /\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/no-any\/index\.md is read-only/,
+    /\.cw\/charter\/rules\/primitive\/guide\/no-any\/index\.md is read-only/,
   );
   assert.match(faultTextOf(await charterAuthoringApp.removePrimitive("cw-author")), /built into cw/);
-  assert.equal(await fileAt(".cw/charter/vendor/team/rules/root/primitive/guide/no-any/index.md"), vendorGuideText);
+  assert.equal(await fileAt(".cw/charter/rules/primitive/guide/no-any/index.md"), vendorGuideText);
 });
 
 test("a removed primitive's file is gone and nothing else is, and what named it is dangling at the next check (FR-076)", async () => {
   const hosting = guide("uses-it", ['mixins: ["shared"]']);
   const { charterAuthoringApp, charterRuntimeApps, fileAt } = authoring({
-    [at(".cw/charter/primitive/mixin/shared/index.md")]: primitive("mixin", "shared"),
-    [at(".cw/charter/primitive/guide/uses-it/index.md")]: hosting,
+    [at(".cw/charter/team/primitive/mixin/shared/index.md")]: primitive("mixin", "shared"),
+    [at(".cw/charter/team/primitive/guide/uses-it/index.md")]: hosting,
   });
 
   const primitiveDTO = answerOf(await charterAuthoringApp.removePrimitive("shared"));
 
-  assert.equal(primitiveDTO.data.file, "file:///repo/.cw/charter/primitive/mixin/shared/index.md");
-  assert.equal(await fileAt("file:///repo/.cw/charter/primitive/mixin/shared/index.md"), undefined);
-  assert.equal(await fileAt("file:///repo/.cw/charter/primitive/guide/uses-it/index.md"), hosting);
+  assert.equal(primitiveDTO.data.file, "file:///repo/.cw/charter/team/primitive/mixin/shared/index.md");
+  assert.equal(await fileAt("file:///repo/.cw/charter/team/primitive/mixin/shared/index.md"), undefined);
+  assert.equal(await fileAt("file:///repo/.cw/charter/team/primitive/guide/uses-it/index.md"), hosting);
   const { data: charterDiagnosis } = answerOf(await charterRuntimeApps.diagnoseCharter());
   assert.ok(
-    charterDiagnosis.faultsByFile.data.files["file:///repo/.cw/charter/primitive/guide/uses-it/index.md"]?.some(
+    charterDiagnosis.faultsByFile.data.files["file:///repo/.cw/charter/team/primitive/guide/uses-it/index.md"]?.some(
       ({ data: { message } }) => /the mixin "shared"/.test(message),
     ),
   );
@@ -319,7 +335,7 @@ test("cw remove asks first, naming the file, and removes it only on a yes (FR-07
   });
   process.stdin.isTTY = true;
   const { charterAuthoringApp, fileAt } = authoring({
-    [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
+    [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any"),
   });
 
   prompts.inject([false]);
@@ -329,7 +345,7 @@ test("cw remove asks first, naming the file, and removes it only on a yes (FR-07
   });
   assert.equal(declinedRemoveOutcome.exitCode, EXIT_OK);
   assert.equal(declinedRemoveOutcome.resultText, "Nothing was removed.\n");
-  assert.ok(await fileAt(".cw/charter/primitive/guide/no-any/index.md"));
+  assert.ok(await fileAt(".cw/charter/team/primitive/guide/no-any/index.md"));
 
   prompts.inject([true]);
   const confirmedRemoveOutcome = await new RemoveCommand().runCommand(contextOver(charterAuthoringApp), {
@@ -338,9 +354,9 @@ test("cw remove asks first, naming the file, and removes it only on a yes (FR-07
   });
   assert.match(
     stripVTControlCharacters(confirmedRemoveOutcome.resultText ?? ""),
-    /^✔ Removed \.cw\/charter\/primitive\/guide\/no-any\/index\.md\./,
+    /^✔ Removed \.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md\./,
   );
-  assert.equal(await fileAt(".cw/charter/primitive/guide/no-any/index.md"), undefined);
+  assert.equal(await fileAt(".cw/charter/team/primitive/guide/no-any/index.md"), undefined);
 });
 
 test("cw remove with nobody at the terminal removes only with --yes (FR-076, FR-109)", async (t) => {
@@ -350,7 +366,7 @@ test("cw remove with nobody at the terminal removes only with --yes (FR-076, FR-
   });
   process.stdin.isTTY = false;
   const { charterAuthoringApp, fileAt } = authoring({
-    [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
+    [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any"),
   });
 
   assert.match(
@@ -358,11 +374,11 @@ test("cw remove with nobody at the terminal removes only with --yes (FR-076, FR-
       .problemText ?? "",
     /nobody is at the terminal/,
   );
-  assert.ok(await fileAt(".cw/charter/primitive/guide/no-any/index.md"));
+  assert.ok(await fileAt(".cw/charter/team/primitive/guide/no-any/index.md"));
 
   const outcome = await new RemoveCommand().runCommand(contextOver(charterAuthoringApp), { id: "no-any", yes: true });
   assert.equal(outcome.exitCode, EXIT_OK);
-  assert.equal(await fileAt(".cw/charter/primitive/guide/no-any/index.md"), undefined);
+  assert.equal(await fileAt(".cw/charter/team/primitive/guide/no-any/index.md"), undefined);
 });
 
 test("text not shaped as an id is refused before the engine is asked (FR-172)", async () => {
@@ -381,13 +397,14 @@ test("text not shaped as an id is refused before the engine is asked (FR-172)", 
 
 test("cw remove refuses a vendored primitive before asking anything (FR-077)", async () => {
   const { charterAuthoringApp } = authoring({
-    [at(".cw/charter/vendor/team/rules/root/primitive/guide/theirs/index.md")]: guide("theirs"),
+    ...rulesVendorRecord,
+    [at(".cw/charter/rules/primitive/guide/theirs/index.md")]: guide("theirs"),
   });
 
   assert.match(
     (await new RemoveCommand().runCommand(contextOver(charterAuthoringApp), { id: "theirs", yes: false }))
       .problemText ?? "",
-    /\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/theirs\/index\.md is read-only/,
+    /\.cw\/charter\/rules\/primitive\/guide\/theirs\/index\.md is read-only/,
   );
 });
 
@@ -400,7 +417,7 @@ test("cw edit refuses with no editor set, and on what the engine brings (FR-109)
   process.env.VISUAL = "";
   process.env.EDITOR = "";
   const context = contextOver(
-    authoring({ [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any") }).charterAuthoringApp,
+    authoring({ [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any") }).charterAuthoringApp,
   );
 
   assert.match(
@@ -424,11 +441,11 @@ test("cw edit hands the primitive's file to $VISUAL and writes nothing itself (F
   // An editor that writes down the file it was handed and exits.
   process.env.VISUAL = `node -e "require('node:fs').writeFileSync('${handedOver}', process.argv[1])"`;
   const text = guide("no-any");
-  const { charterAuthoringApp, fileAt } = authoring({ [at(".cw/charter/primitive/guide/no-any/index.md")]: text });
+  const { charterAuthoringApp, fileAt } = authoring({ [at(".cw/charter/team/primitive/guide/no-any/index.md")]: text });
 
   const outcome = await new EditCommand().runCommand(contextOver(charterAuthoringApp), { id: "no-any" });
 
   assert.equal(outcome.exitCode, EXIT_OK);
-  assert.equal(await readFile(handedOver, "utf8"), "/repo/.cw/charter/primitive/guide/no-any/index.md");
-  assert.equal(await fileAt(".cw/charter/primitive/guide/no-any/index.md"), text);
+  assert.equal(await readFile(handedOver, "utf8"), "/repo/.cw/charter/team/primitive/guide/no-any/index.md");
+  assert.equal(await fileAt(".cw/charter/team/primitive/guide/no-any/index.md"), text);
 });

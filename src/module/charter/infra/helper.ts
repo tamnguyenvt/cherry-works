@@ -5,13 +5,11 @@ import {
   charterPath,
   type ForReadingFiles,
   OldLayoutFault,
-  OldVendorLayoutFault,
   outputPath,
   type PrimitiveLayer,
   Primitives,
   RawPrimitive,
   type ReadFile,
-  vendorSourcePath,
 } from "../app/port/out/managing-charter.port.js";
 import {
   McpAuthMethod,
@@ -20,35 +18,37 @@ import {
   McpCredential,
 } from "../app/port/out/storing-credentials.port.js";
 
-/** How many folders under `skills/` a skill's folder may sit, as `npx skills`
- *  walks it: `skills/<name>/`, `skills/<group>/<name>/`, and one group more
- *  (CORE-FR-185). */
-const SKILLS_FOLDER_DEPTH = 3;
-
-/** Where a skills repository keeps what it depends on, never a skill of its
- *  own (CORE-FR-185). */
-const DEPENDENCIES_FOLDER_NAME = "node_modules";
-
 /** The parts a repository laid out the old way keeps right under its
- *  workspace, beside the charter, as their paths from the repository. */
-const OLD_LAYOUT_FOLDER_PATHS = ["test", "eval", "vendor"].map(
-  (folderName) => `${charterPath.workspaceFolderPath}/${folderName}`,
-);
+ *  workspace, beside the charter root, or right under the charter root, beside
+ *  its charters, as their paths from the repository (CORE-FR-226,
+ *  VENDOR-FR-011). */
+const OLD_LAYOUT_FOLDER_PATHS = [
+  ...[charterPath.testFolderName, charterPath.evalFolderName, charterPath.oldVendorsFolderName].map(
+    (folderName) => `${charterPath.workspaceFolderPath}/${folderName}`,
+  ),
+  ...[
+    charterPath.primitivesFolderName,
+    charterPath.testFolderName,
+    charterPath.evalFolderName,
+    charterPath.oldVendorsFolderName,
+  ].map((folderName) => `${charterPath.charterFolderPath}/${folderName}`),
+];
 
 /** What a repository, or a source, laid out the old way is refused with,
  *  naming the skill that moves it (CORE-FR-226, CORE-FR-227). */
 export function createOldLayoutFault(layoutOwner: string, oldPaths: readonly string[]): AdapterFault {
   return new OldLayoutFault(
-    `${layoutOwner} is laid out the old way: ${oldPaths.join(", ")} ${oldPaths.length === 1 ? "sits" : "sit"} where the charter now keeps its primitives, tests, eval cases and vendors under ${charterPath.charterFolderPath}/.`,
-    `Have your agent follow the cw-author skill to move it: each kind's folder under ${charterPath.charterFolderPath}/ into ${charterPath.charterFolderPath}/primitive/, and .cw/test/, .cw/eval/ and .cw/vendor/ into ${charterPath.charterFolderPath}/test/, ${charterPath.charterFolderPath}/eval/ and ${charterPath.charterFolderPath}/vendor/.`,
+    `${layoutOwner} is laid out the old way: ${oldPaths.join(", ")} ${oldPaths.length === 1 ? "sits" : "sit"} where the charter root now keeps every primitive, test case and eval case in a named charter, ${charterPath.charterFolderPath}/<charter>/.`,
+    `Have your agent follow the cw-author skill to move it into a named charter: each kind's folder into ${charterPath.charterFolderPath}/<charter>/${charterPath.primitivesFolderName}/, the test cases into <charter>/${charterPath.testFolderName}/ and the eval cases into <charter>/${charterPath.evalFolderName}/; delete each vendor under ${charterPath.charterFolderPath}/${charterPath.oldVendorsFolderName}/ and install it again with "cw vendor add".`,
     { internal: false },
   );
 }
 
 /** Each path a layout of the old way keeps, among these paths of a
  *  repository or a source, each folder named once: a part right under the
- *  workspace beside the charter, or a kind's folder right under the charter
- *  (CORE-FR-226). */
+ *  workspace beside the charter root, or right under the charter root beside
+ *  its charters, or a kind's folder right under the charter root
+ *  (CORE-FR-226, VENDOR-FR-011). */
 export function findOldLayoutPaths(paths: readonly string[], sourcePrefix = ""): readonly string[] {
   const oldPaths = paths.flatMap((path) => {
     if (!path.startsWith(sourcePrefix)) return [];
@@ -57,73 +57,28 @@ export function findOldLayoutPaths(paths: readonly string[], sourcePrefix = ""):
       (folderPath) => repoPath === folderPath || repoPath.startsWith(`${folderPath}/`),
     );
     if (oldFolderPath !== undefined) return [`${sourcePrefix}${oldFolderPath}/`];
-    const [kindName] = repoPath.startsWith(`${charterPath.charterFolderPath}/`)
+    const [charterRootChildFolderName] = repoPath.startsWith(`${charterPath.charterFolderPath}/`)
       ? repoPath.slice(`${charterPath.charterFolderPath}/`.length).split("/")
       : [];
-    return kindName !== undefined && Primitives.isKind(kindName)
-      ? [`${sourcePrefix}${charterPath.charterFolderPath}/${kindName}/`]
+    return Primitives.isKind(charterRootChildFolderName)
+      ? [`${sourcePrefix}${charterPath.charterFolderPath}/${charterRootChildFolderName}/`]
       : [];
   });
   return [...new Set(oldPaths)].sort();
 }
 
-/** Refused where the repository is laid out the old way (CORE-FR-226). */
+/** Refused where the repository is laid out the old way (CORE-FR-226,
+ *  VENDOR-FR-011). */
 export async function assertNewLayout(fileReader: ForReadingFiles): Promise<void> {
-  const [workspaceFolderPaths, charterFolderPaths] = await Promise.all([
-    fileReader.listFolders(charterPath.workspaceFolderPath),
-    fileReader.listFolders(charterPath.charterFolderPath),
-  ]);
-  const oldPaths = findOldLayoutPaths(
-    [...workspaceFolderPaths, ...charterFolderPaths].map((folderPath) => `${folderPath}/`),
-  );
+  const folderPaths = (
+    await Promise.all(
+      [charterPath.workspaceFolderPath, charterPath.charterFolderPath].map((folderPath) =>
+        fileReader.listFolders(folderPath),
+      ),
+    )
+  ).flat();
+  const oldPaths = findOldLayoutPaths(folderPaths.map((folderPath) => `${folderPath}/`));
   if (oldPaths.length > 0) throw createOldLayoutFault("This repository", oldPaths);
-}
-
-/** How deep a vendor's name goes under the vendor folder:
- *  `<owner>/<repository>/<name>` (FR-050, CORE-FR-196). */
-const VENDOR_NAME_DEPTH = 3;
-
-/**
- * The name of each vendor these files under the vendor folder keep, each file
- * by its path from that folder: every vendor at
- * `<owner>/<repository>/<name>/<primitives folder>/`, named by those three
- * folders. A file kept anywhere else is a vendor installed the way an earlier
- * version laid one, refused naming the folder to take away before it is
- * installed again: nothing of it is read as a vendor (FR-180).
- */
-export function findVendorNames(
-  vendorFilePaths: readonly string[],
-  findFileAddress: (path: string) => string,
-): readonly string[] {
-  // A file kept right in the vendor folder, its `.gitkeep`, is no vendor's.
-  const nestedVendorFilePaths = vendorFilePaths.filter((filePath) => filePath.includes("/"));
-  const oldFolderNames = [
-    ...new Set(
-      nestedVendorFilePaths
-        .filter(
-          (filePath) =>
-            filePath.split("/")[VENDOR_NAME_DEPTH] !== charterPath.primitivesFolderName ||
-            filePath.split("/").length <= VENDOR_NAME_DEPTH + 1,
-        )
-        // A kind's folder right under the first is a vendor named by that
-        // one folder alone; otherwise the owner and the repository name it.
-        .map((filePath) =>
-          filePath
-            .split("/")
-            .slice(0, Primitives.isKind(filePath.split("/")[1]) ? 1 : 2)
-            .join("/"),
-        ),
-    ),
-  ].sort();
-  if (oldFolderNames.length > 0)
-    throw new OldVendorLayoutFault(
-      `${oldFolderNames.map((oldFolderName) => findFileAddress(`${charterPath.vendorsFolderPath}/${oldFolderName}`)).join(", ")} ${oldFolderNames.length === 1 ? "is" : "are"} laid out the way an earlier version installed a vendor, not as <owner>/<repository>/<name>/${charterPath.primitivesFolderName}/.`,
-      `Delete ${oldFolderNames.length === 1 ? "it" : "them"}, then install each source again with "cw vendor add".`,
-      { internal: false },
-    );
-  return [
-    ...new Set(nestedVendorFilePaths.map((filePath) => filePath.split("/").slice(0, VENDOR_NAME_DEPTH).join("/"))),
-  ].sort();
 }
 
 export function readRawPrimitives(
@@ -186,26 +141,6 @@ export function readRawPrimitives(
         );
       }),
   ];
-}
-
-export function findSkillFilePaths(sourcePaths: readonly string[]): readonly string[] {
-  const skillFolderPaths = sourcePaths
-    .filter(
-      (sourcePath) =>
-        sourcePath.startsWith(`${vendorSourcePath.skillsFolderPath}/`) &&
-        sourcePath.endsWith(`/${vendorSourcePath.skillFileName}`),
-    )
-    .map((skillFilePath) => skillFilePath.slice(0, -`/${vendorSourcePath.skillFileName}`.length))
-    .filter((skillFolderPath) => {
-      const folderNames = skillFolderPath.split("/");
-      return folderNames.length - 1 <= SKILLS_FOLDER_DEPTH && !folderNames.includes(DEPENDENCIES_FOLDER_NAME);
-    });
-  return skillFolderPaths
-    .filter(
-      (skillFolderPath) =>
-        !skillFolderPaths.some((outerFolderPath) => skillFolderPath.startsWith(`${outerFolderPath}/`)),
-    )
-    .map((skillFolderPath) => `${skillFolderPath}/${vendorSourcePath.skillFileName}`);
 }
 
 /** The folder a build's own output is laid in, from the repository's root:

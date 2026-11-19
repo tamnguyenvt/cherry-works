@@ -1,9 +1,9 @@
-# What cw build compiles each charter to, here and in each charter under
-# charters/: built again from .cw/charter/ by "cw build", never committed.
+# What cw build compiles the charter to: built again from .cw/charter/ by
+# "cw build", never committed.
 **/.cw/out/
 
-# What cw build generates for each agent, here and in each charter under
-# charters/: built again from .cw/ by "cw build", never committed.
+# What cw build generates for each agent: built again from .cw/ by
+# "cw build", never committed.
 .claude/
 .agents/
 .codex/

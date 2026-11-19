@@ -77,10 +77,16 @@ export interface ForAuthoringCharter {
    * kind, the description, when the kind comes up, the file or any header
    * value, ignoring case.
    *
+   * Given a charter's name, only the primitives of that charter, refused
+   * naming the charters held where it holds none (VENDOR-FR-016).
+   *
    * A charter with an error is refused with nothing listed and the errors given
    * back, as `listCatalogue` refuses it.
    */
-  listPrimitives(searchText?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  listPrimitives(
+    searchText?: string,
+    charterName?: string,
+  ): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /**
    * Which file declares one id, and which layer that file arrived in
@@ -158,6 +164,11 @@ export interface ForAuthoringCharter {
    * Nothing is compiled: a build is the command that compiles a charter
    * (FR-020, FR-079).
    *
+   * It is written into the charter named, made where the charter holds none of
+   * that name; a charter installed is read-only, and a name that is empty, no
+   * id or a kind's is refused naming the charters held (VENDOR-FR-014,
+   * VENDOR-FR-015).
+   *
    * A word that is no kind, and an id the charter already holds in any
    * layer, are answered as one fault rather than under a file: neither leaves a file to report a
    * fault under, and the second names the file already holding it.
@@ -165,9 +176,16 @@ export interface ForAuthoringCharter {
   addPrimitive(
     kind: string,
     id: string,
+    charterName: string,
     headers: UnparsedHeaders,
     body?: string,
   ): Promise<CharterDTOs.Primitive | FaultDTOs.Faults | FaultDTOs.Fault>;
+
+  /**
+   * Every charter the charter root holds, authored or installed, with where an
+   * installed one came from (VENDOR-FR-009, VENDOR-FR-021). Reads and says.
+   */
+  listCharters(): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
 
   /**
    * One primitive as the charter read it — its headers, its body, the file
@@ -180,6 +198,13 @@ export interface ForAuthoringCharter {
    * nothing of is answered as a fault, as `explainPrimitive` answers it.
    */
   openPrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
+
+  /**
+   * One primitive opened, as `openPrimitive` opens it, to be edited in its
+   * file: refused as read-only where a charter installed holds it
+   * (VENDOR-FR-010). Reads and says, as `openPrimitive` does.
+   */
+  openEditablePrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
 
   /**
    * One repository primitive's headers and body written over, its kind, id and
@@ -209,8 +234,8 @@ export interface ForAuthoringCharter {
   removePrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
 
   /**
-   * Install one source under this repository's vendor folder, pinned to this
-   * version where one is named (FR-023, FR-027).
+   * Install the charters one source authored, pinned to this version where
+   * one is named (FR-023, FR-027).
    *
    * The source is passed on as it was written: which transport it names and
    * whether the credentials for it are there is version control's business, and
@@ -221,57 +246,52 @@ export interface ForAuthoringCharter {
    *
    * The folder need not be a repository; a machine without git is refused
    * (CORE-FR-205). What it installs is left unstaged for the user to read and
-   * commit, whatever else is in hand (CORE-FR-190).
+   * commit, whatever else is in hand.
    *
-   * What is taken is read off the source's shape where neither `selectedSkillIds` nor
-   * `selectedCharterNames` is given: its one charter, else every charter under its
-   * `charters/`, else every skill under its `skills/` (CORE-FR-193).
-   * `selectedCharterNames` picks charters from `charters/`, each installed whole in a
-   * vendor folder of its own (CORE-FR-195, CORE-FR-196); `selectedSkillIds` takes
-   * skills from `skills/`, every one it holds where the shape takes them and
-   * none is named, asking nothing (CORE-FR-184, CORE-FR-188).
+   * What is taken is every charter the source authored where
+   * `selectedCharterNames` names none, else the charters named; every charter
+   * of the source a charter taken
+   * names an id of comes with it, each copied whole, its test and eval cases
+   * included, beside a `cw-vendor.json` naming the charter in the source, the
+   * source and the version, or its own where the source installed it
+   * (VENDOR-FR-017 to VENDOR-FR-019). `asName` installs the one charter named under it; a name already held by a
+   * charter installed from the same source is replaced whole, and one held
+   * otherwise is refused (VENDOR-FR-020).
    *
-   * What it answers is each folder it filled, and the primitives installed
-   * there, each skill with the headers its `SKILL.md` declared that were left
-   * out (CORE-FR-186).
+   * What it answers is each charter it filled, and the primitives installed
+   * there.
    */
   addVendor(
     sourceUri: string,
     version?: string,
-    selectedSkillIds?: readonly string[],
     selectedCharterNames?: readonly string[],
+    asName?: string,
   ): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
 
-  /** Copy source primitives into the own charter, unstaged, refusing collisions before writing (CORE-FR-198–200). */
+  /** The charters `addVendor` would install, copied in with no
+   *  `cw-vendor.json`, the repository's own from then on; a charter name or an
+   *  id already held is refused naming both, with nothing written
+   *  (VENDOR-FR-022). */
   injectVendor(
     sourceUri: string,
     version?: string,
-    selectedSkillIds?: readonly string[],
     selectedCharterNames?: readonly string[],
+    asName?: string,
   ): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
 
   /**
-   * Take one installed charter away, named by the folder it was installed as
-   * (FR-030), and answer that folder.
-   *
-   * Named by the folder rather than by the address it came from: the folder is
-   * what a reader of this repository sees, and what the charter is read out of.
-   *
-   * Its folder is left gone in the working tree for the user to commit, whatever
-   * else is in hand, in a repository or out of one. A name no vendor folder
-   * answers to is refused, changing nothing (CORE-FR-204).
+   * Take one installed charter away whole, named as it is held, and answer its
+   * folder (VENDOR-FR-021). Left gone in the working tree for the user to
+   * commit. A name no charter installed answers to — one the repository
+   * authored among them — is refused, changing nothing.
    */
-  removeVendor(name: string): Promise<CharterDTOs.VendorFolder | FaultDTOs.Fault>;
+  removeVendor(charterName: string): Promise<CharterDTOs.VendorFolder | FaultDTOs.Fault>;
 
   /**
-   * Every folder a source was installed as, under this repository's vendor
-   * folder, sorted (FR-053, FR-122).
-   *
-   * The folder is all there is to say: nothing is recorded of where one came
-   * from or at which version, since version control keeps no such record
-   * either and a record kept beside it is one more thing to drift (FR-046).
+   * Every charter this repository installed, with the source and the version
+   * its `cw-vendor.json` names, sorted by name (VENDOR-FR-021).
    */
-  listVendors(): Promise<CharterDTOs.VendorFolders | FaultDTOs.Fault>;
+  listVendors(): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
 
   /**
    * Every test file under `.cw/charter/test/`, run or not: its name, its text, and its
@@ -284,24 +304,35 @@ export interface ForAuthoringCharter {
   listTestSuites(): Promise<CharterDTOs.TestSuites | FaultDTOs.Fault>;
 
   /**
-   * A new test file, under a name no other test file has, holding one sample
-   * case that reads as a suite (FR-091). What comes back is its name.
+   * One test file of a charter as it was read, as `listTestSuites` lists it, to
+   * be opened; its charter found as a new one's is, and a name that is no test
+   * file of it answered as a fault (FR-090, VENDOR-FR-009).
    */
-  addTestSuite(): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+  openTestSuite(charterName: string, name: string): Promise<CharterDTOs.TestSuite | FaultDTOs.Fault>;
+
+  /**
+   * A new test file in a charter, under a name no other test file of it has,
+   * holding one sample case that reads as a suite (FR-091). What comes back is
+   * its name and its charter. The charter is the one named,
+   * or where it is `""`, the one charter the repository authored; none such, or a
+   * charter installed, is refused (VENDOR-FR-009, VENDOR-FR-010).
+   */
+  addTestSuite(charterName?: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
 
   /**
    * One existing test file written over with this text (FR-090). Text that does
    * not read as a suite is answered as a fault with the refusal and sample `cw test` gives,
-   * and nothing is written; so is a name that is no test file. What comes back
-   * is its name.
+   * and nothing is written; so is a name that is no test file of the charter.
+   * What comes back is its name and its charter, found as a new one's is.
    */
-  writeTestSuite(name: string, text: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+  writeTestSuite(charterName: string, name: string, text: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
 
   /**
-   * One test file taken away, and nothing else (FR-092). A name that is no test
-   * file is answered as a fault. What comes back is its name.
+   * One test file of a charter taken away, and nothing else (FR-092). A name
+   * that is no test file of it is answered as a fault. What comes back is its
+   * name and its charter, found as a new one's is.
    */
-  removeTestSuite(name: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+  removeTestSuite(charterName: string, name: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
 
   /**
    * Every file of evaluation cases, evaluated or not: its name, its text, and
@@ -312,24 +343,26 @@ export interface ForAuthoringCharter {
   listEvalSuites(): Promise<CharterDTOs.EvalSuites | FaultDTOs.Fault>;
 
   /**
-   * A new file of evaluation cases, under a name no other has, holding one
-   * sample case that reads as a suite. What comes back is its name.
+   * A new file of evaluation cases in a charter, under a name no other of it
+   * has, holding one sample case that reads as a suite. What comes back is its
+   * name and its charter, found as a test file's is.
    */
-  addEvalSuite(): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
+  addEvalSuite(charterName?: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
 
   /**
    * One existing file of evaluation cases written over with this text. Text
    * that does not read as a suite is answered as a fault, with a sample, and
-   * nothing is written; so is a name that is no such file. What comes back is
-   * its name.
+   * nothing is written; so is a name that is no such file of the charter. What
+   * comes back is its name and its charter, found as a new one's is.
    */
-  writeEvalSuite(name: string, text: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
+  writeEvalSuite(charterName: string, name: string, text: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
 
   /**
-   * One file of evaluation cases taken away, and nothing else. A name that is
-   * no such file is answered as a fault. What comes back is its name.
+   * One file of evaluation cases of a charter taken away, and nothing else. A
+   * name that is no such file of it is answered as a fault. What comes back is
+   * its name and its charter, found as a new one's is.
    */
-  removeEvalSuite(name: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
+  removeEvalSuite(charterName: string, name: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
 
   /**
    * Every address an mcp origin of the charter takes a sign-in at, ordered by
@@ -362,13 +395,16 @@ export interface ForAuthoringCharter {
    * Every situation this repository wrote down, resolved against its charter
    * (FR-048, FR-049, FR-050). Runs nothing, fetches nothing and asks no agent.
    * A charter with an error, or a test file that does not read, resolves
-   * nothing and is answered as its faults (FR-009). Reads and says (FR-041).
+   * nothing and is answered as its faults (FR-009). Every charter's cases, or
+   * the named charter's alone; a charter named that the charter does not hold is
+   * refused naming those it does, and nothing runs (VENDOR-FR-024,
+   * VENDOR-FR-026). Reads and says (FR-041).
    */
-  testCharter(): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  testCharter(charterName?: string): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /**
-   * A folder per kind for a charter to be authored in, and the parts kept
-   * beside it, laid out where nothing is yet (FR-037, CORE-FR-224). Run again,
+   * The folder of the charter root's charters, holding none, laid out where nothing
+   * is yet (FR-037, CORE-FR-224, VENDOR-FR-013). Run again,
    * it discards nothing anybody wrote. What comes back is where the charter
    * is kept.
    */

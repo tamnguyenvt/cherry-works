@@ -1,6 +1,0 @@
-{
-  "description": "Each file the agent writes is formatted and linted with Biome.",
-  "cases": [
-    { "when": "PostToolUse", "expect": { "run": "biome-on-edit" } }
-  ]
-}

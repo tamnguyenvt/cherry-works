@@ -13,20 +13,25 @@ import { answerOf, faultOf, faultTextOf } from "./answer-of.js";
 import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repoPath = new URL("file:///repo/");
-const vendoredAt = (vendor: string, path: string) => new URL(`.cw/charter/vendor/${vendor}/${path}`, repoPath).href;
+const charterAt = (charterName: string, path: string) => new URL(`.cw/charter/${charterName}/${path}`, repoPath).href;
+const vendorRecordTextOf = (charterName: string, source: string, version: string) =>
+  `${JSON.stringify({ charter: charterName, source, version })}\n`;
 
 const guide = (id: string) =>
   ["---", "kind: guide", `id: ${id}`, `description: About ${id}.`, "---", "", "Body.", ""].join("\n");
 
-/** Three vendors on disk — `acme/charters/baseline` picked from a source of
- *  many, `team/rules/root` and `team/skills/root` each a source's own — and one
- *  guide authored here. */
+/** Three installed charters on disk — `baseline` from `acme/charters`, `rules`
+ *  from `team/rules` and `skills` from `team/skills` — and one charter, `team`,
+ *  authored here. */
 const threeVendors = () =>
   new InMemoryFileReaders({
-    [vendoredAt("acme/charters/baseline", "primitive/guide/old/index.md")]: guide("old"),
-    [vendoredAt("team/rules/root", "primitive/guide/small-diffs/index.md")]: guide("small-diffs"),
-    [vendoredAt("team/skills/root", "primitive/guide/one-question/index.md")]: guide("one-question"),
-    [new URL(".cw/charter/primitive/guide/no-any/index.md", repoPath).href]: guide("no-any"),
+    [charterAt("baseline", "cw-vendor.json")]: vendorRecordTextOf("baseline", "acme/charters", "v1.0.0"),
+    [charterAt("baseline", "guide/old/index.md")]: guide("old"),
+    [charterAt("rules", "cw-vendor.json")]: vendorRecordTextOf("rules", "team/rules", "HEAD"),
+    [charterAt("rules", "guide/small-diffs/index.md")]: guide("small-diffs"),
+    [charterAt("skills", "cw-vendor.json")]: vendorRecordTextOf("skills", "team/skills", "v2"),
+    [charterAt("skills", "guide/one-question/index.md")]: guide("one-question"),
+    [charterAt("team", "guide/no-any/index.md")]: guide("no-any"),
   });
 
 /** What `cw vendor list` printed, over one repository held in memory. */
@@ -67,7 +72,7 @@ async function listing(fileReaders: InMemoryFileReaders) {
   }
 }
 
-test("every source folder under the vendor folder is listed by owner, repository and name, sorted, and nothing authored here (FR-053, CORE-FR-196)", async () => {
+test("every installed charter is listed by name, with its source and version, sorted, and nothing authored here (FR-053, VENDOR Story 3 scenario 21)", async () => {
   assert.deepEqual(
     answerOf(
       await authoringCharterOf(
@@ -76,16 +81,20 @@ test("every source folder under the vendor folder is listed by owner, repository
         new InMemoryReporter(),
         { sourceFetcher: new InMemorySources() },
       ).listVendors(),
-    ).data.folders,
+    ).data.charters.map(({ data: { name, source, version } }) => ({
+      name,
+      source,
+      version,
+    })),
     [
-      "file:///repo/.cw/charter/vendor/acme/charters/baseline",
-      "file:///repo/.cw/charter/vendor/team/rules/root",
-      "file:///repo/.cw/charter/vendor/team/skills/root",
+      { name: "baseline", source: "acme/charters", version: "v1.0.0" },
+      { name: "rules", source: "team/rules", version: "HEAD" },
+      { name: "skills", source: "team/skills", version: "v2" },
     ],
   );
 });
 
-test("a folder laid out the way an earlier version installed a vendor is refused, saying to install each source again (FR-180)", async () => {
+test("a folder laid out the way an earlier version installed a vendor is refused as the old layout, saying to install each source again (FR-180, VENDOR Story 3 scenario 4)", async () => {
   for (const vendorFilePath of [
     "legacy/guide/old/index.md",
     "team/rules/guide/old/index.md",
@@ -101,15 +110,20 @@ test("a folder laid out the way an earlier version installed a vendor is refused
         sourceFetcher: new InMemorySources(),
       }).listVendors(),
     );
-    assert.equal(name, "OldVendorLayoutFault", vendorFilePath);
-    assert.match(message, /is laid out the way an earlier version installed a vendor/, vendorFilePath);
-    assert.match(fix, /install each source again with "cw vendor add"/, vendorFilePath);
+    assert.equal(name, "OldLayoutFault", vendorFilePath);
+    assert.match(message, /is laid out the old way: \.cw\/charter\/vendor\/ sits/, vendorFilePath);
+    assert.match(fix, /cw-author/, vendorFilePath);
+    assert.match(
+      fix,
+      /delete each vendor under \.cw\/charter\/vendor\/ and install it again with "cw vendor add"/,
+      vendorFilePath,
+    );
   }
 });
 
-test("a charter holding a folder an earlier version laid out is refused when listed and when built, naming that folder, with the fix to delete it and install its source again (CORE Story 30 scenario 3, FR-180, CORE Story 55 scenario 8)", async () => {
+test("a charter holding a folder an earlier version laid out is refused when listed and when built, naming that folder, with the fix to delete it and install its source again (CORE Story 30 scenario 3, FR-180, CORE Story 55 scenario 8, VENDOR Story 3 scenario 4)", async () => {
   const fileReaders = new InMemoryFileReaders({
-    [vendoredAt("legacy", "guide/old/index.md")]: guide("old"),
+    [new URL(".cw/charter/vendor/legacy/guide/old/index.md", repoPath).href]: guide("old"),
     [new URL(".cw/settings.json", repoPath).href]: '{"agents":["claude"]}',
   });
   const charterAuthoringApp = authoringCharterOf(
@@ -132,11 +146,11 @@ test("a charter holding a folder an earlier version laid out is refused when lis
     faultTextOf(await charterAuthoringApp.listPrimitives()),
     faultTextOf(await charterRuntimeApps.buildCharter()),
   ]) {
+    assert.match(refusalText, /is laid out the old way: \.cw\/charter\/vendor\/ sits/);
     assert.match(
       refusalText,
-      /\.cw\/charter\/vendor\/legacy is laid out the way an earlier version installed a vendor/,
+      /delete each vendor under \.cw\/charter\/vendor\/ and install it again with "cw vendor add"/,
     );
-    assert.match(refusalText, /Delete it, then install each source again with "cw vendor add"/);
   }
   assert.equal(
     await fileReaders.readIfThere(new URL(".cw/out/catalogue.json", repoPath)),
@@ -145,15 +159,17 @@ test("a charter holding a folder an earlier version laid out is refused when lis
   );
 });
 
-test("a file kept right in the vendor folder is no vendor's", async () => {
-  const fileReaders = new InMemoryFileReaders({ [new URL(".cw/charter/vendor/.gitkeep", repoPath).href]: "" });
+test("a file kept right in the charters' folder is no charter's", async () => {
+  const fileReaders = new InMemoryFileReaders({
+    [new URL(".cw/charter/.gitkeep", repoPath).href]: "",
+  });
 
   assert.deepEqual(
     answerOf(
       await authoringCharterOf(fileReaders, new InMemoryFileOutput(fileReaders), new InMemoryReporter(), {
         sourceFetcher: new InMemorySources(),
       }).listVendors(),
-    ).data.folders,
+    ).data.charters,
     [],
   );
 });
@@ -167,18 +183,18 @@ test("a repository with no vendor lists none", async () => {
         new InMemoryReporter(),
         { sourceFetcher: new InMemorySources() },
       ).listVendors(),
-    ).data.folders,
+    ).data.charters,
     [],
   );
 });
 
-test("cw vendor list prints each folder on a line of its own", async () => {
+test("cw vendor list prints each installed charter on a line of its own, with its source and version (VENDOR Story 3 scenario 21)", async () => {
   const { code, said } = await listing(threeVendors());
 
   assert.equal(code, EXIT_OK);
   assert.equal(
     said,
-    "Vendors\n  .cw/charter/vendor/acme/charters/baseline\n  .cw/charter/vendor/team/rules/root\n  .cw/charter/vendor/team/skills/root\n",
+    "Installed charters\n  baseline  acme/charters v1.0.0\n  rules     team/rules HEAD\n  skills    team/skills v2\n",
   );
 });
 
@@ -186,6 +202,6 @@ test("cw vendor list says when none is installed, and how to install one", async
   const { code, said } = await listing(new InMemoryFileReaders({}));
 
   assert.equal(code, EXIT_OK);
-  assert.match(said, /No vendor source is installed/);
+  assert.match(said, /No charter is installed/);
   assert.match(said, /cw vendor add/);
 });

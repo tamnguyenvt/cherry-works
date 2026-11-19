@@ -66,10 +66,10 @@ const settingsText = `${JSON.stringify({ agents: ["claude"] })}\n`;
 /** One repository laid out in three parts, as files. */
 const filesInThreeParts = {
   [repoFileUrlOf(".cw/settings.json")]: settingsText,
-  [repoFileUrlOf(".cw/charter/primitive/guide/kept-guide/index.md")]: keptGuideText,
-  [repoFileUrlOf(".cw/charter/primitive/skill/kept-skill/index.md")]: keptSkillText,
-  [repoFileUrlOf(".cw/charter/test/kept.json")]: testSuiteText,
-  [repoFileUrlOf(".cw/charter/eval/skills.json")]: evalSuiteText,
+  [repoFileUrlOf(".cw/charter/team/primitive/guide/kept-guide/index.md")]: keptGuideText,
+  [repoFileUrlOf(".cw/charter/team/primitive/skill/kept-skill/index.md")]: keptSkillText,
+  [repoFileUrlOf(".cw/charter/team/test/kept.json")]: testSuiteText,
+  [repoFileUrlOf(".cw/charter/team/eval/skills.json")]: evalSuiteText,
 };
 
 /** The same repository laid out the old way. */
@@ -89,9 +89,9 @@ const billingEndpoint = "https://billing.example/mcp";
  *  each operation of `operationAnswersOf` has run. */
 const filesReachingEveryAdapter = {
   ...filesInThreeParts,
-  [repoFileUrlOf(".cw/charter/primitive/sensor/stopped/index.md")]:
+  [repoFileUrlOf(".cw/charter/team/primitive/sensor/stopped/index.md")]:
     '---\nkind: sensor\nid: stopped\ndescription: Say the agent stopped.\nsignal: Stop\nrun: "echo stopped"\n---\nSay so.\n',
-  [repoFileUrlOf(".cw/charter/primitive/mcp/billing/index.md")]:
+  [repoFileUrlOf(".cw/charter/team/primitive/mcp/billing/index.md")]:
     `---\nkind: mcp\nid: billing\ndescription: Billing.\nendpoint: ${billingEndpoint}\nauth: ["oauth"]\ntools: ["get_file_contents"]\n---\nBilling.\n`,
 };
 
@@ -595,7 +595,7 @@ const ADAPTER_KEYS_BY_OPERATION_NAME: Readonly<Record<string, readonly string[]>
     "mcpServerCaller",
   ],
   predictMainContext: ["agentProvider", "charterRepository", "fileReader", "tokenCounter"],
-  addVendor: ["charterRepository", "fileReader", "sourceFetcher"],
+  addVendor: ["charterRepository", "fileReader", "fileWriter", "sourceFetcher"],
   runSensors: ["charterRepository", "fileReader", "shell"],
   callTool: ["charterRepository", "credentialsRepository", "fileReader", "mcpServerCaller"],
   evaluateCharter: [
@@ -818,19 +818,22 @@ test("the eval cases are listed, added, rewritten and removed by the one store t
   const adapters = adaptersInMemory(filesInThreeParts);
   const { charterAuthoringApp } = composeEngine(claudeSettings, pluginsInMemory(adapters));
   const evalFilePathsOf = async () =>
-    (await adapters.fileReader.readFilesRecursively(".cw/charter/eval")).map(({ path }) => path).sort();
+    (await adapters.fileReader.readFilesRecursively(".cw/charter/team/eval")).map(({ path }) => path).sort();
 
   assert.deepEqual(
     answerOf(await charterAuthoringApp.listEvalSuites()).data.evalSuites.map(({ data: evalSuite }) => evalSuite.name),
     ["skills.json"],
   );
   const addedName = answerOf(await charterAuthoringApp.addEvalSuite()).data.name;
-  assert.deepEqual(await evalFilePathsOf(), [`.cw/charter/eval/${addedName}`, ".cw/charter/eval/skills.json"].sort());
+  assert.deepEqual(
+    await evalFilePathsOf(),
+    [`.cw/charter/team/eval/${addedName}`, ".cw/charter/team/eval/skills.json"].sort(),
+  );
   const rewrittenText = `${JSON.stringify({ cases: [{ prompt: "rewrite it", expect: { follow: "kept-guide" } }] })}\n`;
-  answerOf(await charterAuthoringApp.writeEvalSuite(addedName, rewrittenText));
-  assert.equal(await adapters.fileReader.readIfThere(`.cw/charter/eval/${addedName}`), rewrittenText);
-  answerOf(await charterAuthoringApp.removeEvalSuite(addedName));
-  assert.deepEqual(await evalFilePathsOf(), [".cw/charter/eval/skills.json"]);
+  answerOf(await charterAuthoringApp.writeEvalSuite("team", addedName, rewrittenText));
+  assert.equal(await adapters.fileReader.readIfThere(`.cw/charter/team/eval/${addedName}`), rewrittenText);
+  answerOf(await charterAuthoringApp.removeEvalSuite("team", addedName));
+  assert.deepEqual(await evalFilePathsOf(), [".cw/charter/team/eval/skills.json"]);
 });
 
 test("every command and the portal are handed the applications of the modules and nothing else (CORE-FR-222)", () => {
@@ -855,7 +858,7 @@ test("every command and the portal are handed the applications of the modules an
   assert.doesNotMatch(mainText, /new (?:AuthoringCharter|BuildingCharter|RunningCharter|ManagingWorkspace)\(/);
 });
 
-test("a repository set up holds the charter with its primitives, tests, eval cases and vendors under it, the output and the log (CORE Story 52 scenario 7)", async () => {
+test("a repository set up holds the charter's folder of charters, holding no charter, the output and the log (CORE Story 52 scenario 7, VENDOR Story 3 scenario 6)", async () => {
   const adapters = adaptersInMemory({});
 
   const { code } = await printedBy(commandLineOver(adapters), ["init", "--agent", "claude"]);
@@ -863,12 +866,11 @@ test("a repository set up holds the charter with its primitives, tests, eval cas
   assert.equal(code, EXIT_OK);
   const keptPaths = (await adapters.fileReader.readBytesRecursively(".cw")).map(({ path }) => path);
   assert.ok(keptPaths.includes(".cw/settings.json"));
-  assert.ok(keptPaths.some((path) => path.startsWith(".cw/charter/primitive/guide/")));
-  for (const partPath of [".cw/charter/test/", ".cw/charter/eval/", ".cw/charter/vendor/", ".cw/out/"])
-    assert.ok(
-      keptPaths.some((path) => path.startsWith(partPath)),
-      `nothing under ${partPath}`,
-    );
+  assert.deepEqual(
+    keptPaths.filter((path) => path.startsWith(".cw/charter/")),
+    [".cw/charter/.gitkeep"],
+  );
+  assert.ok(keptPaths.some((path) => path.startsWith(".cw/out/")));
   assert.deepEqual(
     keptPaths.filter((path) => /^\.cw\/(?:test|eval|vendor)\//.test(path)),
     [],
@@ -895,9 +897,10 @@ test("every command refuses a repository laid out the old way, naming the author
 test("a vendor source laid out the old way is refused, naming the source and the authoring skill, and nothing is installed (CORE Story 52 scenario 9)", async () => {
   const adapters = adaptersInMemory(filesInThreeParts);
   adapters.sourceFetcher.sourceFilesBySource["team/old"] = {
-    "charters/published/.cw/charter/guide/published/index.md": publishedText,
+    ".cw/charter/guide/published/index.md": publishedText,
   };
   const { charterAuthoringApp } = composeEngine(claudeSettings, pluginsInMemory(adapters));
+  const charterFilesBefore = await adapters.fileReader.readBytesRecursively(".cw/charter");
 
   const vendorAddAnswer = await charterAuthoringApp.addVendor("team/old");
 
@@ -906,20 +909,20 @@ test("a vendor source laid out the old way is refused, naming the source and the
   assert.match(message, /team\/old/);
   assert.match(message, /laid out the old way/);
   assert.match(fix ?? "", /cw-author/);
-  assert.deepEqual(await adapters.fileReader.readBytesRecursively(".cw/charter/vendor"), []);
+  assert.deepEqual(await adapters.fileReader.readBytesRecursively(".cw/charter"), charterFilesBefore);
 });
 
 test("updating a vendor whose source has gone over to the old layout is refused, naming the source and the authoring skill, and the vendor installed is left as it was (CORE Story 52 scenario 9)", async () => {
   const adapters = adaptersInMemory(filesInThreeParts);
   adapters.sourceFetcher.sourceFilesBySource["team/kept"] = {
-    "charters/published/.cw/charter/primitive/guide/published/index.md": publishedText,
+    ".cw/charter/published/primitive/guide/published/index.md": publishedText,
   };
   const { charterAuthoringApp } = composeEngine(claudeSettings, pluginsInMemory(adapters));
   answerOf(await charterAuthoringApp.addVendor("team/kept"));
-  const installedVendorFiles = await adapters.fileReader.readBytesRecursively(".cw/charter/vendor");
+  const installedVendorFiles = await adapters.fileReader.readBytesRecursively(".cw/charter/published");
   assert.ok(installedVendorFiles.length > 0);
   adapters.sourceFetcher.sourceFilesBySource["team/kept"] = {
-    "charters/published/.cw/charter/guide/published/index.md": publishedText.replace("Published.", "Published again."),
+    ".cw/charter/guide/published/index.md": publishedText.replace("Published.", "Published again."),
   };
 
   const vendorUpdateAnswer = await charterAuthoringApp.addVendor("team/kept");
@@ -929,17 +932,22 @@ test("updating a vendor whose source has gone over to the old layout is refused,
   assert.match(message, /team\/kept/);
   assert.match(message, /laid out the old way/);
   assert.match(fix ?? "", /cw-author/);
-  assert.deepEqual(await adapters.fileReader.readBytesRecursively(".cw/charter/vendor"), installedVendorFiles);
+  assert.deepEqual(await adapters.fileReader.readBytesRecursively(".cw/charter/published"), installedVendorFiles);
 });
 
 test("following the authoring skill moves a repository laid out the old way, and the build is the same byte for byte (CORE Story 52 scenario 10)", async () => {
   const skillBody = new CwAuthorSkill().body;
+  // The developer answers `team` for the charter of the repository's own
+  // primitives (VENDOR Story 3 scenario 5).
   const movedPathPairs = [...skillBody.matchAll(/^- `([^`]+)` → `([^`]+)`/gm)].flatMap(([, oldPath, newPath]) =>
     oldPath!.includes("<kind>")
-      ? Primitives.kinds.map((kind) => [oldPath!.replace("<kind>", kind), newPath!.replace("<kind>", kind)] as const)
-      : [[oldPath!, newPath!] as const],
+      ? Primitives.kinds.map(
+          (kind) =>
+            [oldPath!.replace("<kind>", kind), newPath!.replace("<kind>", kind).replace("<charter>", "team")] as const,
+        )
+      : [[oldPath!, newPath!.replace("<charter>", "team")] as const],
   );
-  assert.ok(movedPathPairs.length >= 4, skillBody);
+  assert.ok(movedPathPairs.length >= 6, skillBody);
 
   const movedFiles = Object.fromEntries(
     Object.entries(filesLaidOutTheOldWay).map(([fileUrl, contents]) => {

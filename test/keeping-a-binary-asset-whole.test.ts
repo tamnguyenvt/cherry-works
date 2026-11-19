@@ -29,7 +29,8 @@ const pngBytes = Uint8Array.from([
 
 const skillMarkdown =
   '---\nkind: skill\nid: diagrams\ndescription: Draw the flow.\ntriggers: ["draw"]\n---\n\nSee diagram.png.\n';
-const sourceSkillMarkdown = "---\nname: diagrams\ndescription: Draw the flow.\n---\nSee diagram.png.\n";
+/** Where the source authors the skill `diagrams`: in its charter `drawing`. */
+const SOURCE_SKILL_FOLDER = ".cw/charter/drawing/primitive/skill/diagrams";
 
 /** A temporary directory, taken away when the test that asked for it is done. */
 async function temporaryFolderOf(t: { after(fn: () => unknown): void }, name: string): Promise<string> {
@@ -42,7 +43,7 @@ async function temporaryFolderOf(t: { after(fn: () => unknown): void }, name: st
  *  charter's use cases over the disk's own adapters. */
 async function authorDiagramsSkill(t: { after(fn: () => unknown): void }) {
   const repo = await temporaryFolderOf(t, "repo");
-  const skillFolder = join(repo, ".cw", "charter", "primitive", "skill", "diagrams");
+  const skillFolder = join(repo, ".cw", "charter", "team", "primitive", "skill", "diagrams");
   await mkdir(skillFolder, { recursive: true });
   await writeFile(join(skillFolder, "index.md"), skillMarkdown);
   await writeFile(join(skillFolder, "diagram.png"), pngBytes);
@@ -62,13 +63,13 @@ async function authorDiagramsSkill(t: { after(fn: () => unknown): void }) {
   return { repo, skillFolder, charterAuthoringApp, charterRuntimeApps };
 }
 
-/** A repository to take from: one skill with a PNG beside its `SKILL.md`, one
- *  commit, one tag. */
+/** A repository to take from: one charter, `drawing`, authoring one skill with
+ *  a PNG beside its index.md, one commit, one tag. */
 async function publishedSourceFolderOf(t: { after(fn: () => unknown): void }): Promise<string> {
   const sourceFolder = await temporaryFolderOf(t, "source");
-  await mkdir(join(sourceFolder, "skills", "diagrams"), { recursive: true });
-  await writeFile(join(sourceFolder, "skills", "diagrams", "SKILL.md"), sourceSkillMarkdown);
-  await writeFile(join(sourceFolder, "skills", "diagrams", "diagram.png"), pngBytes);
+  await mkdir(join(sourceFolder, SOURCE_SKILL_FOLDER), { recursive: true });
+  await writeFile(join(sourceFolder, SOURCE_SKILL_FOLDER, "index.md"), skillMarkdown);
+  await writeFile(join(sourceFolder, SOURCE_SKILL_FOLDER, "diagram.png"), pngBytes);
   await runCommand("git", ["init", "-q", "-b", "main"], { cwd: sourceFolder });
   await runCommand("git", ["add", "."], { cwd: sourceFolder });
   await runCommand(
@@ -105,16 +106,9 @@ test("a binary file a source holds lands identical, installed or injected (CORE 
       { sourceFetcher: new GitSources(pathToFileURL(`${repo}/`)) },
     );
 
-    await charterAuthoringApp[vendoringMethodName](sourceFolder, "v1.0.0", ["diagrams"]);
+    answerOf(await charterAuthoringApp[vendoringMethodName](sourceFolder, "v1.0.0", ["drawing"]));
 
-    const landedFolder =
-      vendoringMethodName === "addVendor"
-        ? join(repo, ".cw", "charter", "vendor")
-        : join(repo, ".cw", "charter", "primitive", "skill", "diagrams");
-    const landedFile =
-      vendoringMethodName === "addVendor"
-        ? (await runCommand("find", [landedFolder, "-name", "diagram.png"])).stdout.trim()
-        : join(landedFolder, "diagram.png");
+    const landedFile = join(repo, ".cw", "charter", "drawing", "primitive", "skill", "diagrams", "diagram.png");
     assert.deepEqual(new Uint8Array(await readFile(landedFile)), pngBytes, `${vendoringMethodName} damaged the file`);
   }
 });
@@ -175,12 +169,15 @@ test("a fetched file's bytes cross the source port whole, from git and in memory
   const gitSources = new GitSources(pathToFileURL(`${await temporaryFolderOf(t, "repo")}/`));
   const fetchedCommit = await gitSources.fetchCommit(sourceFolder, "v1.0.0");
   t.after(() => gitSources.removeFetchedCommit(fetchedCommit));
-  assert.deepEqual(await gitSources.readBytesAt(fetchedCommit, "skills/diagrams/diagram.png"), pngBytes);
+  assert.deepEqual(await gitSources.readBytesAt(fetchedCommit, `${SOURCE_SKILL_FOLDER}/diagram.png`), pngBytes);
 
   const inMemorySources = new InMemorySources();
-  inMemorySources.sourceFilesBySource["team/source"] = { "skills/diagrams/diagram.png": pngBytes };
+  inMemorySources.sourceFilesBySource["team/source"] = { [`${SOURCE_SKILL_FOLDER}/diagram.png`]: pngBytes };
   assert.deepEqual(
-    await inMemorySources.readBytesAt(await inMemorySources.fetchCommit("team/source"), "skills/diagrams/diagram.png"),
+    await inMemorySources.readBytesAt(
+      await inMemorySources.fetchCommit("team/source"),
+      `${SOURCE_SKILL_FOLDER}/diagram.png`,
+    ),
     pngBytes,
   );
 });
@@ -194,7 +191,7 @@ test("an index.md a source holds lands as its bytes when it is injected unconver
   const fileReader = new InMemoryFileReaders();
   const sourceFetcher = new InMemorySources(fileReader);
   sourceFetcher.sourceFilesBySource["team/source"] = {
-    "charters/published/.cw/charter/primitive/guide/published/index.md": guideBytes,
+    ".cw/charter/published/primitive/guide/published/index.md": guideBytes,
   };
   const charterAuthoringApp = authoringCharterOf(
     fileReader,
@@ -206,7 +203,7 @@ test("an index.md a source holds lands as its bytes when it is injected unconver
   await charterAuthoringApp.injectVendor("team/source");
 
   assert.deepEqual(
-    await fileReader.readBytesIfThere(new URL("file:///repo/.cw/charter/primitive/guide/published/index.md")),
+    await fileReader.readBytesIfThere(new URL("file:///repo/.cw/charter/published/primitive/guide/published/index.md")),
     guideBytes,
   );
 });
@@ -215,8 +212,8 @@ test("a file a source names with a `..` to land outside its primitive's folder i
   const fileReader = new InMemoryFileReaders();
   const sourceFetcher = new InMemorySources(fileReader);
   sourceFetcher.sourceFilesBySource["team/source"] = {
-    "skills/diagrams/SKILL.md": sourceSkillMarkdown,
-    "skills/diagrams/../../../escape.png": pngBytes,
+    [`${SOURCE_SKILL_FOLDER}/index.md`]: skillMarkdown,
+    [`${SOURCE_SKILL_FOLDER}/../../../escape.png`]: pngBytes,
   };
   const charterAuthoringApp = authoringCharterOf(
     fileReader,
@@ -226,8 +223,8 @@ test("a file a source names with a `..` to land outside its primitive's folder i
   );
 
   assert.match(
-    faultTextOf(await charterAuthoringApp.injectVendor("team/source", undefined, ["diagrams"])),
-    /would land outside/,
+    faultTextOf(await charterAuthoringApp.injectVendor("team/source", undefined, ["drawing"])),
+    /would land outside the folder it is copied into/,
   );
 
   assert.deepEqual(await fileReader.readBytesRecursively(new URL("file:///")), []);

@@ -96,6 +96,8 @@ export interface ForBuildingCharter {
   /** Every evaluation case the store holds now, committed or not, checked
    *  against the charter it holds: a charter with an error, a file that does not read,
    *  or a case naming a skill or a guide the charter does not hold, is answered
-   *  as faults under their files (EVAL-FR-026). */
-  listEvalCases(): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+   *  as faults under their files (EVAL-FR-026). Every charter's cases, or the
+   *  named charter's alone; a charter named that the charter does not hold is
+   *  refused naming those it does (VENDOR-FR-025, VENDOR-FR-026). */
+  listEvalCases(charterName?: string): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 }

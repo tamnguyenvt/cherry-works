@@ -112,7 +112,7 @@ test("a compiled charter's items are each known by their path inside the output 
       );
   // Every primitive with files beside its document carries each of them, as
   // its author kept it, among its assets.
-  const primitiveFolderUrl = "file:///repo/.cw/charter/primitive/";
+  const primitiveFolderUrl = "file:///repo/.cw/charter/team/primitive/";
   const compiledPrimitives = charterOutput.charterOutputItems.filter(
     (charterOutputItem): charterOutputItem is CompiledPrimitive => charterOutputItem instanceof CompiledPrimitive,
   );

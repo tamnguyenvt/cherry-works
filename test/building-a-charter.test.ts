@@ -14,7 +14,7 @@ import { faultTextOf } from "./answer-of.js";
 import { buildingCharterOf } from "./use-cases-of.js";
 
 const repo = new URL("file:///repo/");
-const root = new URL(".cw/charter/primitive/", repo);
+const root = new URL(".cw/charter/team/primitive/", repo);
 
 const primitive = (kind: string, id: string, headers: readonly string[] = [], body = `The body of ${id}.`) =>
   [
@@ -396,7 +396,7 @@ test("a charter with an error builds nothing at all, and says which files (FR-00
 
   assert.ok(planSummaryDTO.type === "FaultsByFile");
   assert.deepEqual(Object.keys(planSummaryDTO.data.files), [
-    "file:///repo/.cw/charter/primitive/guide/no-any/index.md",
+    "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md",
   ]);
   await assert.rejects(() => contentsOf(held, "file:///repo/.cw/out/CHARTER.md"));
 });
@@ -434,7 +434,7 @@ test("a disable-user-invocation that is neither true nor false stops the build u
     assert.ok(planSummaryDTO.type === "FaultsByFile", kind);
     assert.deepEqual(
       Object.keys(planSummaryDTO.data.files),
-      [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`],
+      [`file:///repo/.cw/charter/team/primitive/${kind}/ship/index.md`],
       kind,
     );
     assert.match(JSON.stringify(planSummaryDTO.data.files), /written true or false/, kind);
@@ -457,7 +457,7 @@ test("a disable-model-invocation that is neither true nor false stops the build 
     assert.ok(planSummaryDTO.type === "FaultsByFile", kind);
     assert.deepEqual(
       Object.keys(planSummaryDTO.data.files),
-      [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`],
+      [`file:///repo/.cw/charter/team/primitive/${kind}/ship/index.md`],
       kind,
     );
     assert.match(JSON.stringify(planSummaryDTO.data.files), /written true or false/, kind);
@@ -481,7 +481,7 @@ test("a skill nobody could open, kept from both the user and the agent, stops th
     assert.ok(planSummaryDTO.type === "FaultsByFile", kind);
     assert.deepEqual(
       Object.keys(planSummaryDTO.data.files),
-      [`file:///repo/.cw/charter/primitive/${kind}/ship/index.md`],
+      [`file:///repo/.cw/charter/team/primitive/${kind}/ship/index.md`],
       kind,
     );
     assert.match(JSON.stringify(planSummaryDTO.data.files), /neither the user nor the agent/, kind);
@@ -942,7 +942,7 @@ test("a sensor's run naming a script no layer holds stops the build, under the s
 
   assert.ok(planSummaryDTO.type === "FaultsByFile");
   const [file, faults] = Object.entries(planSummaryDTO.data.files)[0] ?? [];
-  assert.equal(file, "file:///repo/.cw/charter/primitive/sensor/check-on-stop/index.md");
+  assert.equal(file, "file:///repo/.cw/charter/team/primitive/sensor/check-on-stop/index.md");
   assert.match(faults?.[0]?.data.message ?? "", /names "missing"/);
 });
 

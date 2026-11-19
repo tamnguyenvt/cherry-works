@@ -93,12 +93,17 @@ const DIALOGS = {
   },
   /** One test file's text, to save or delete (FR-090, FR-092). */
   testSuite: {
-    title: ({ name: testSuiteName }: { name: string }) => `.cw/charter/test/${testSuiteName}`,
+    title: ({ charterName, name: testSuiteName }: { charterName: string; name: string }) =>
+      `.cw/charter/${charterName}/test/${testSuiteName}`,
     context: () => "",
     holdsDraft: true,
-    renderContent: ({ name: testSuiteName }: { name: string }, { closeDialog }: DialogHelpers) => (
+    renderContent: (
+      { charterName, name: testSuiteName }: { charterName: string; name: string },
+      { closeDialog }: DialogHelpers,
+    ) => (
       <TestSuiteEditor
-        key={testSuiteName}
+        key={`${charterName}/${testSuiteName}`}
+        charterName={charterName}
         testSuiteName={testSuiteName}
         onDone={showWrittenToast(closeDialog)}
         onClose={closeDialog}

@@ -12,7 +12,7 @@ import { COMMANDS } from "../src/presentation/cli/commands/index.js";
 import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
-const root = new URL("file:///repo/.cw/charter/primitive/");
+const root = new URL("file:///repo/.cw/charter/team/primitive/");
 const at = (path: string) => new URL(path, root).href;
 const inRepo = (path: string) => new URL(path, "file:///repo/").href;
 
@@ -29,7 +29,7 @@ const settings = { [inRepo(".cw/settings.json")]: `${JSON.stringify({ agents: []
 /** One test file, written the way an author writes it, in the folder tests are
  *  read from. */
 const suiteFilesOf = (authoredSuite: unknown, suiteName = "suite"): Record<string, string> => ({
-  [inRepo(`.cw/charter/test/${suiteName}.json`)]: `${JSON.stringify(authoredSuite, undefined, 2)}\n`,
+  [inRepo(`.cw/charter/team/test/${suiteName}.json`)]: `${JSON.stringify(authoredSuite, undefined, 2)}\n`,
 });
 
 /** Everything one run wrote, kept apart the way a pipeline reads it. */
@@ -264,7 +264,7 @@ test("every case in the file is run, and the count is of all of them (CORE Story
 test("a test file that will not read is refused, naming it, and nothing is resolved (FR-009, CORE Story 3 scenario 8)", async () => {
   const run = commandLine({
     ...charter,
-    [inRepo(".cw/charter/test/broken.json")]: "{ not json",
+    [inRepo(".cw/charter/team/test/broken.json")]: "{ not json",
     ...suiteFilesOf({ cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }] }),
   });
 
@@ -272,14 +272,14 @@ test("a test file that will not read is refused, naming it, and nothing is resol
 
   assert.equal(code, EXIT_FAILURE);
   assert.equal(outputText, "");
-  assert.match(problem, /\.cw\/charter\/test\/broken\.json\n {2}✘ error: {2}This file is not JSON/);
+  assert.match(problem, /\.cw\/charter\/team\/test\/broken\.json\n {2}✘ error: {2}This file is not JSON/);
 });
 
 test("a repository that wrote no test is told so and passes (CORE Story 3 scenario 9)", async () => {
   const { code, outputText } = await commandLine(charter)();
 
   assert.equal(code, EXIT_OK);
-  assert.match(outputText, /No tests: \.cw\/charter\/test\/ holds no case\./);
+  assert.match(outputText, /No tests: no charter holds a case under \.cw\/charter\/<charter>\/test\/\./);
 });
 
 test("a charter with an error resolves nothing and says where to read what is wrong (FR-009)", async () => {
@@ -294,7 +294,7 @@ test("a charter with an error resolves nothing and says where to read what is wr
   assert.equal(code, EXIT_FAILURE);
   assert.equal(outputText, "");
   assert.match(problem, /Nothing was resolved\./);
-  assert.match(problem, /\.cw\/charter\/primitive\/guide\/broken\/index\.md/);
+  assert.match(problem, /\.cw\/charter\/team\/primitive\/guide\/broken\/index\.md/);
 });
 
 test("a body naming an mcp no layer holds is an error, and the tests do not run (FR-143, CORE Story 17 scenario 3, CORE Story 21 scenario 10)", async () => {

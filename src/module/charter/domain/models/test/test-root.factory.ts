@@ -19,6 +19,7 @@ export class TestRootFactory {
     const faultsByFile: Record<string, readonly DomainFault[]> = {};
 
     const suiteNameByFile = Object.fromEntries(rawTestSuites.map(({ uri, name }) => [uri, name]));
+    const suiteCharterByFile = Object.fromEntries(rawTestSuites.map(({ uri, charterName }) => [uri, charterName]));
     // Read in the order the paths sort in, whatever order they arrived in, so two
     // runs over one repository report in the same order (SC-007).
     for (const { uri, text } of [...rawTestSuites].sort((leftTestSuite, rightTestSuite) =>
@@ -34,7 +35,7 @@ export class TestRootFactory {
       }
     }
 
-    return new TestRoot(testSuiteByFile, new FaultsByFile(faultsByFile), suiteNameByFile);
+    return new TestRoot(testSuiteByFile, new FaultsByFile(faultsByFile), suiteNameByFile, suiteCharterByFile);
   }
 
   private constructor() {}

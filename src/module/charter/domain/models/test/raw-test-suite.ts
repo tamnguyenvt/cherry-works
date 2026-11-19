@@ -5,6 +5,8 @@
 export class RawTestSuite {
   constructor(
     readonly name: string,
+    /** The charter it is kept in (VENDOR-FR-009). */
+    readonly charterName: string,
     readonly text: string,
     readonly uri: string,
   ) {}

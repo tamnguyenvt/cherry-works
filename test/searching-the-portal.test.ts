@@ -3,8 +3,8 @@ import { test } from "node:test";
 import { inTheBrowser } from "./in-the-browser.js";
 import { rowsOf } from "./listing-in-the-browser.js";
 
-const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
-const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/").href;
+const at = (path: string) => new URL(path, "file:///repo/.cw/charter/team/primitive/").href;
+const vendoredAt = (path: string) => new URL(path, "file:///repo/.cw/charter/acme/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   [
@@ -22,6 +22,7 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 /** A primitive of each layer that mentions "lint", and one that does not. */
 const charter = {
   [at("sensor/check/index.md")]: primitive("sensor", "check", ["signal: PostToolUse", "run: pnpm lint"]),
+  ["file:///repo/.cw/charter/acme/cw-vendor.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
   [vendoredAt("guide/lint-clean/index.md")]: primitive("guide", "lint-clean"),
   [at("guide/no-any/index.md")]: primitive("guide", "no-any"),
 };

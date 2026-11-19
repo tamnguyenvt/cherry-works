@@ -31,11 +31,14 @@ const fileIn = (files: InMemoryFileReaders, path: string) => files.readIfThere(n
 /** The label of every row the form shows, in order. */
 const rowLabelsOf = (page: Page) => page.getByRole("dialog").locator('[data-slot="label"]').allTextContents();
 
-/** A new primitive of one kind started from the Repo Charter view. */
+/** A new primitive of one kind started from the Repo Charter view, written
+ *  into the charter `team` where the repository authored none. */
 const startingNew = async (page: Page, kind: string) => {
   await page.getByRole("radio", { name: kind }).click();
   await page.getByRole("button", { name: `New ${kind}` }).click();
   await page.getByRole("dialog").getByLabel("description", { exact: true }).waitFor();
+  const charterBox = page.getByRole("dialog").getByLabel("charter", { exact: true });
+  if ((await charterBox.inputValue()) === "") await charterBox.fill("team");
 };
 
 /** One primitive of the listing opened by its id. */
@@ -55,7 +58,7 @@ test("for every kind, New asks the id, the description, every header that kind r
       await page
         .getByRole("dialog")
         .locator('[data-slot="label"]')
-        .nth(kindHeaders.length + 1)
+        .nth(kindHeaders.length + 2)
         .waitFor();
       const rowLabels = await rowLabelsOf(page);
 
@@ -63,6 +66,7 @@ test("for every kind, New asks the id, the description, every header that kind r
       // well: the scenario rules out only another kind's.
       for (const askedField of [
         "id",
+        "charter",
         "description",
         "rationale",
         "mixins",
@@ -88,6 +92,7 @@ test("New asks the kind, the id and every header the kind takes, each in its sha
     assert.deepEqual(await rowLabelsOf(page), [
       "kind",
       "id",
+      "charter",
       ...Primitives.headersOf("guide").map(({ field }) => field),
     ]);
     // A list is a box per entry, with a way to add the next.
@@ -131,7 +136,7 @@ test("creating writes the file cw add writes, with the body typed, and the listi
       headers: { kind: "guide", id: "no-any", description: "Never write any.", globs: ["src/**/*.ts"] },
       body: "Use unknown.",
     }).writeMarkdown();
-    assert.equal(await fileIn(files, ".cw/charter/primitive/guide/no-any/index.md"), expectedMarkdown);
+    assert.equal(await fileIn(files, ".cw/charter/team/primitive/guide/no-any/index.md"), expectedMarkdown);
     await page.getByRole("button", { name: "no-any", exact: true }).waitFor();
     // Nothing was compiled (CORE Story 6 scenario 8).
     assert.deepEqual((await files.readFilesRecursively(new URL(at(".cw/out/")))).length, 0);
@@ -150,79 +155,85 @@ test("creating a script writes its index.md in the folders its id names, and an 
     await page.getByText(/\.\/run\.sh beside it is the file it runs/).waitFor();
 
     assert.match(
-      (await fileIn(files, ".cw/charter/primitive/script/release/check/index.md")) ?? "",
+      (await fileIn(files, ".cw/charter/team/primitive/script/release/check/index.md")) ?? "",
       /^executionPath: \.\/run\.sh$/m,
     );
-    assert.equal(await fileIn(files, ".cw/charter/primitive/script/release/check/run.sh"), "");
+    assert.equal(await fileIn(files, ".cw/charter/team/primitive/script/release/check/run.sh"), "");
   });
 });
 
 test("answers the kind refuses, and an id already claimed, are shown in the engine's words and nothing is written (CORE Story 6 scenario 3)", async () => {
-  await inTheBrowser({ [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any") }, async (page, files) => {
-    await startingNew(page, "guide");
-    await page.getByRole("dialog").getByLabel("id", { exact: true }).fill("Not A Slug");
-    await page.getByRole("button", { name: "Create primitive" }).click();
-    await page.getByRole("dialog").getByRole("alert").waitFor();
-    assert.match(
-      await page.getByRole("dialog").getByRole("alert").innerText(),
-      /These headers are not what a guide holds/,
-    );
+  await inTheBrowser(
+    { [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any") },
+    async (page, files) => {
+      await startingNew(page, "guide");
+      await page.getByRole("dialog").getByLabel("id", { exact: true }).fill("Not A Slug");
+      await page.getByRole("button", { name: "Create primitive" }).click();
+      await page.getByRole("dialog").getByRole("alert").waitFor();
+      assert.match(
+        await page.getByRole("dialog").getByRole("alert").innerText(),
+        /These headers are not what a guide holds/,
+      );
 
-    await page.getByRole("dialog").getByLabel("id", { exact: true }).fill("no-any");
-    await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Again.");
-    await page.getByRole("dialog").getByLabel("globs 1", { exact: true }).fill("src/**");
-    await page.getByRole("button", { name: "Create primitive" }).click();
-    await page.getByRole("dialog").getByRole("alert").filter({ hasText: "already there" }).waitFor();
-    assert.match(
-      await page.getByRole("dialog").getByRole("alert").innerText(),
-      /declared by \.cw\/charter\/primitive\/guide\/no-any\/index\.md/,
-    );
+      await page.getByRole("dialog").getByLabel("id", { exact: true }).fill("no-any");
+      await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Again.");
+      await page.getByRole("dialog").getByLabel("globs 1", { exact: true }).fill("src/**");
+      await page.getByRole("button", { name: "Create primitive" }).click();
+      await page.getByRole("dialog").getByRole("alert").filter({ hasText: "already there" }).waitFor();
+      assert.match(
+        await page.getByRole("dialog").getByRole("alert").innerText(),
+        /declared by \.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md/,
+      );
 
-    assert.equal(await fileIn(files, ".cw/charter/primitive/guide/not-a-slug/index.md"), undefined);
-    assert.equal(await fileIn(files, ".cw/charter/primitive/guide/no-any/index.md"), guide("no-any"));
-  });
+      assert.equal(await fileIn(files, ".cw/charter/team/primitive/guide/not-a-slug/index.md"), undefined);
+      assert.equal(await fileIn(files, ".cw/charter/team/primitive/guide/no-any/index.md"), guide("no-any"));
+    },
+  );
 });
 
 test("an existing primitive opens locked to its id, saves over its file and deletes it (CORE Story 6 scenarios 4 – 6)", async () => {
-  await inTheBrowser({ [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any") }, async (page, files) => {
-    await opening(page, "no-any");
-    await page.getByRole("dialog").getByLabel("description", { exact: true }).waitFor();
+  await inTheBrowser(
+    { [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any") },
+    async (page, files) => {
+      await opening(page, "no-any");
+      await page.getByRole("dialog").getByLabel("description", { exact: true }).waitFor();
 
-    assert.equal(await page.getByRole("dialog").getByLabel("kind", { exact: true }).count(), 0);
-    assert.equal(await page.getByRole("dialog").getByLabel("id", { exact: true }).count(), 0);
-    assert.match(
-      await page.getByRole("dialog").innerText(),
-      /rename by creating a new primitive and deleting this one/,
-    );
-    assert.equal(await page.getByRole("dialog").getByLabel("globs 1", { exact: true }).inputValue(), "src/**/*.ts");
+      assert.equal(await page.getByRole("dialog").getByLabel("kind", { exact: true }).count(), 0);
+      assert.equal(await page.getByRole("dialog").getByLabel("id", { exact: true }).count(), 0);
+      assert.match(
+        await page.getByRole("dialog").innerText(),
+        /rename by creating a new primitive and deleting this one/,
+      );
+      assert.equal(await page.getByRole("dialog").getByLabel("globs 1", { exact: true }).inputValue(), "src/**/*.ts");
 
-    await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Never any.");
-    await page.getByRole("button", { name: "Save" }).click();
-    await page.getByText("Primitive saved").waitFor();
-    assert.match(
-      (await fileIn(files, ".cw/charter/primitive/guide/no-any/index.md")) ?? "",
-      /description: Never any\.[\s\S]*The body of no-any\.\n$/,
-    );
+      await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Never any.");
+      await page.getByRole("button", { name: "Save" }).click();
+      await page.getByText("Primitive saved").waitFor();
+      assert.match(
+        (await fileIn(files, ".cw/charter/team/primitive/guide/no-any/index.md")) ?? "",
+        /description: Never any\.[\s\S]*The body of no-any\.\n$/,
+      );
 
-    await page.getByRole("dialog").waitFor({ state: "detached" });
-    await opening(page, "no-any");
-    await page.getByRole("button", { name: "Delete" }).click();
-    await page.getByText("Primitive deleted").waitFor();
-    assert.equal(await fileIn(files, ".cw/charter/primitive/guide/no-any/index.md"), undefined);
-    assert.equal(await columnOf(page, 1).count(), 0);
-  });
+      await page.getByRole("dialog").waitFor({ state: "detached" });
+      await opening(page, "no-any");
+      await page.getByRole("button", { name: "Delete" }).click();
+      await page.getByText("Primitive deleted").waitFor();
+      assert.equal(await fileIn(files, ".cw/charter/team/primitive/guide/no-any/index.md"), undefined);
+      assert.equal(await columnOf(page, 1).count(), 0);
+    },
+  );
 });
 
 test("a primitive whose id holds / opens, saves and deletes like any other (FR-141)", async () => {
   await inTheBrowser(
-    { [at(".cw/charter/primitive/guide/mfbs/no-any/index.md")]: guide("mfbs/no-any") },
+    { [at(".cw/charter/team/primitive/guide/mfbs/no-any/index.md")]: guide("mfbs/no-any") },
     async (page, files) => {
       await opening(page, "mfbs/no-any");
       await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Never any.");
       await page.getByRole("button", { name: "Save" }).click();
       await page.getByText("Primitive saved").waitFor();
       assert.match(
-        (await fileIn(files, ".cw/charter/primitive/guide/mfbs/no-any/index.md")) ?? "",
+        (await fileIn(files, ".cw/charter/team/primitive/guide/mfbs/no-any/index.md")) ?? "",
         /description: Never any\./,
       );
 
@@ -230,33 +241,40 @@ test("a primitive whose id holds / opens, saves and deletes like any other (FR-1
       await opening(page, "mfbs/no-any");
       await page.getByRole("button", { name: "Delete" }).click();
       await page.getByText("Primitive deleted").waitFor();
-      assert.equal(await fileIn(files, ".cw/charter/primitive/guide/mfbs/no-any/index.md"), undefined);
+      assert.equal(await fileIn(files, ".cw/charter/team/primitive/guide/mfbs/no-any/index.md"), undefined);
     },
   );
 });
 
 test("a save over a file changed on disk is refused naming it, and the other change stays (CORE Story 6 scenario 9)", async () => {
-  await inTheBrowser({ [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any") }, async (page, files) => {
-    await opening(page, "no-any");
-    await page.getByRole("dialog").getByLabel("description", { exact: true }).waitFor();
-    const changedOnDisk = guide("no-any").replace("About no-any.", "Changed elsewhere.");
-    files.writeFile(new URL(at(".cw/charter/primitive/guide/no-any/index.md")), changedOnDisk);
+  await inTheBrowser(
+    { [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any") },
+    async (page, files) => {
+      await opening(page, "no-any");
+      await page.getByRole("dialog").getByLabel("description", { exact: true }).waitFor();
+      const changedOnDisk = guide("no-any").replace("About no-any.", "Changed elsewhere.");
+      files.writeFile(new URL(at(".cw/charter/team/primitive/guide/no-any/index.md")), changedOnDisk);
 
-    await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Mine.");
-    await page.getByRole("button", { name: "Save" }).click();
-    await page.getByRole("dialog").getByRole("alert").waitFor();
+      await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Mine.");
+      await page.getByRole("button", { name: "Save" }).click();
+      await page.getByRole("dialog").getByRole("alert").waitFor();
 
-    assert.match(
-      await page.getByRole("dialog").getByRole("alert").innerText(),
-      /\.cw\/charter\/primitive\/guide\/no-any\/index\.md changed on disk/,
-    );
-    assert.equal(await fileIn(files, ".cw/charter/primitive/guide/no-any/index.md"), changedOnDisk);
-  });
+      assert.match(
+        await page.getByRole("dialog").getByRole("alert").innerText(),
+        /\.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md changed on disk/,
+      );
+      assert.equal(await fileIn(files, ".cw/charter/team/primitive/guide/no-any/index.md"), changedOnDisk);
+    },
+  );
 });
 
 test("a vendored primitive opens read-only, saying how to differ from it (CORE Story 6 scenario 7)", async () => {
   await inTheBrowser(
-    { [at(".cw/charter/vendor/team/rules/root/primitive/guide/theirs/index.md")]: guide("theirs") },
+    {
+      [at(".cw/charter/rules/cw-vendor.json")]:
+        `${JSON.stringify({ charter: "rules", source: "team/rules", version: "v1" })}\n`,
+      [at(".cw/charter/rules/primitive/guide/theirs/index.md")]: guide("theirs"),
+    },
     async (page) => {
       await page.getByRole("tab", { name: "Vendor" }).click();
       await opening(page, "theirs");
@@ -266,7 +284,7 @@ test("a vendored primitive opens read-only, saying how to differ from it (CORE S
       assert.match(await note.innerText(), /author a primitive of your own under an id of its own/);
       assert.match(
         await page.getByRole("dialog").innerText(),
-        /\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/theirs\/index\.md/,
+        /\.cw\/charter\/rules\/primitive\/guide\/theirs\/index\.md/,
       );
       assert.equal(await page.getByRole("button", { name: "Save" }).count(), 0);
       assert.equal(await page.getByRole("button", { name: "Delete" }).count(), 0);
@@ -287,7 +305,7 @@ test("Preview renders the body, raw HTML shown as text rather than run (FR-119, 
     body,
     "",
   ].join("\n");
-  await inTheBrowser({ [at(".cw/charter/primitive/guide/no-any/index.md")]: withHtml }, async (page) => {
+  await inTheBrowser({ [at(".cw/charter/team/primitive/guide/no-any/index.md")]: withHtml }, async (page) => {
     await opening(page, "no-any");
     const source = page.getByRole("dialog").locator(".cm-content");
     await source.waitFor();
@@ -301,4 +319,40 @@ test("Preview renders the body, raw HTML shown as text rather than run (FR-119, 
     assert.equal(await preview.locator("img").count(), 0);
     assert.notEqual(await page.title(), "ran");
   });
+});
+
+test("New asks the charter among those the repository authored, or a new one, and writes into it (VENDOR Story 3 scenario 13)", async () => {
+  await inTheBrowser(
+    {
+      [at(".cw/charter/team/primitive/guide/kept/index.md")]: guide("kept"),
+      [at(".cw/charter/grill/cw-vendor.json")]:
+        `${JSON.stringify({ charter: "grill", source: "mattpocock/skills", version: "v1" })}\n`,
+      [at(".cw/charter/grill/primitive/guide/grilled/index.md")]: guide("grilled"),
+    },
+    async (page, files) => {
+      await page.getByRole("radio", { name: "guide" }).click();
+      await page.getByRole("button", { name: "New guide" }).click();
+      const charterBox = page.getByRole("dialog").getByLabel("charter", { exact: true });
+      await page.locator("#charter-names option").first().waitFor({ state: "attached" });
+      assert.equal(await charterBox.inputValue(), "team");
+      assert.deepEqual(
+        await page
+          .locator("#charter-names option")
+          .evaluateAll((options) => options.map((option) => option.getAttribute("value"))),
+        ["team"],
+      );
+
+      await charterBox.fill("review");
+      await page.getByRole("dialog").getByLabel("id", { exact: true }).fill("no-mocks");
+      await page.getByRole("dialog").getByLabel("description", { exact: true }).fill("Never mock.");
+      await page.getByRole("dialog").getByLabel("globs 1", { exact: true }).fill("src/**/*.ts");
+      await page.getByRole("button", { name: "Create primitive" }).click();
+      await page.getByText("Primitive created").waitFor();
+
+      assert.match(
+        (await fileIn(files, ".cw/charter/review/primitive/guide/no-mocks/index.md")) ?? "",
+        /^id: no-mocks$/m,
+      );
+    },
+  );
 });

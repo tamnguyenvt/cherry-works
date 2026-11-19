@@ -7,8 +7,8 @@ import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-mem
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
 import { authoringCharterOf } from "./use-cases-of.js";
 
-const root = new URL("file:///repo/.cw/charter/primitive/");
-const vendored = new URL("file:///repo/.cw/charter/vendor/acme/charter/root/primitive/");
+const root = new URL("file:///repo/.cw/charter/team/primitive/");
+const vendored = new URL("file:///repo/.cw/charter/acme/primitive/");
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   [
@@ -28,6 +28,7 @@ const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
 const charter = {
   [new URL("guide/no-any/index.md", root).href]: primitive("guide", "no-any", ['globs: ["src/**/*.ts"]']),
   [new URL("sensor/lint/index.md", root).href]: primitive("sensor", "lint", ["signal: PostToolUse", "run: pnpm lint"]),
+  ["file:///repo/.cw/charter/acme/cw-vendor.json"]: `${JSON.stringify({ charter: "acme", source: "acme/charter", version: "HEAD" })}\n`,
   [new URL("guide/small-diffs/index.md", vendored).href]: primitive("guide", "small-diffs"),
 };
 
@@ -62,7 +63,7 @@ test("each primitive carries every header it declared, the ones the catalogue do
   const answer = CharterDTOs.Primitives.parse(await fullListOf(charter));
   const sensorPrimitiveDTO = answer.data.primitives.find(({ data: primitive }) => primitive.id === "lint")!;
 
-  assert.equal(sensorPrimitiveDTO.data.file, "file:///repo/.cw/charter/primitive/sensor/lint/index.md");
+  assert.equal(sensorPrimitiveDTO.data.file, "file:///repo/.cw/charter/team/primitive/sensor/lint/index.md");
   assert.equal(sensorPrimitiveDTO.data.headers.signal, "PostToolUse");
   assert.equal(sensorPrimitiveDTO.data.headers.run, "pnpm lint");
 });
@@ -94,6 +95,6 @@ test("a charter with an error lists nothing and hands back what is wrong under i
 
   assert.equal(answer.type, "FaultsByFile");
   assert.deepEqual(Object.keys(FaultDTOs.FaultsByFile.parse(answer).data.files), [
-    "file:///repo/.cw/charter/primitive/guide/broken/index.md",
+    "file:///repo/.cw/charter/team/primitive/guide/broken/index.md",
   ]);
 });

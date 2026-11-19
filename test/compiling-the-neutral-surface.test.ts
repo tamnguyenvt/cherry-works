@@ -10,7 +10,7 @@ import { putDownBy } from "./put-down-by.js";
 import { loadCharterRoot } from "./use-cases-of.js";
 
 const repo = new URL("file:///repo/");
-const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
+const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/team/primitive/");
 const CLAUDE = new AgentProvider("claude");
 const CHARTER_MD = ".cw/out/CHARTER.md";
 

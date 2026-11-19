@@ -34,7 +34,7 @@ export class FileReaders implements ForReadingFiles {
     return Promise.all(
       (await this.#listFilesUnder(this.#resolveFolderUrl(folderPath))).map(async (fileUrl) => ({
         path: findRelativePath(this.#rootFolder, fileUrl),
-        contents: await readFile(fileUrl, "utf8"),
+        contents: new TextDecoder("utf-8", { ignoreBOM: true }).decode(await this.#readListedFile(fileUrl)),
       })),
     );
   }
@@ -43,7 +43,7 @@ export class FileReaders implements ForReadingFiles {
     return Promise.all(
       (await this.#listFilesUnder(this.#resolveFolderUrl(folderPath))).map(async (fileUrl) => ({
         path: findRelativePath(this.#rootFolder, fileUrl),
-        contents: new Uint8Array(await readFile(fileUrl)),
+        contents: new Uint8Array(await this.#readListedFile(fileUrl)),
       })),
     );
   }
@@ -127,6 +127,22 @@ export class FileReaders implements ForReadingFiles {
         `Hand the engine a fileReader of your own that reads ${this.#rootFolder.protocol} addresses, or compose it at a file: address.`,
         { internal: false },
       );
+  }
+
+  /** What one file listed under a folder holds. A link listed there to a
+   *  folder is refused naming it, as the caller's to correct: nothing is read,
+   *  or written, through one (CORE-FR-044). */
+  async #readListedFile(fileUrl: URL): Promise<Buffer> {
+    try {
+      return await readFile(fileUrl);
+    } catch (readError) {
+      if ((readError as NodeJS.ErrnoException).code !== "EISDIR") throw readError;
+      throw new UnreadableFileFault(
+        `"${findRelativePath(this.#rootFolder, fileUrl)}" is a link to a folder, and nothing is read through one.`,
+        `Delete "${findRelativePath(this.#rootFolder, fileUrl)}", and run this again.`,
+        { internal: false, cause: readError },
+      );
+    }
   }
 
   /** Every file under one folder, at any depth. */

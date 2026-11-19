@@ -103,8 +103,8 @@ function useMarkWrittenStale() {
 export function useAddPrimitive() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
-    mutationFn: async (answers: InferRequestType<typeof client.charter.root.primitives.$post>["json"]) =>
-      (await client.charter.root.primitives.$post({ json: answers })).json(),
+    mutationFn: async (request: InferRequestType<(typeof client.charter)[":charterName"]["primitives"]["$post"]>) =>
+      (await client.charter[":charterName"].primitives.$post(request)).json(),
     onSuccess: markWrittenStale,
   });
 }
@@ -195,8 +195,16 @@ export function useBuildCharter() {
   });
 }
 
-/** Every folder a vendor source was installed as (FR-122). */
-export function useVendorFolders() {
+/** Every charter of the charter root, authored or installed (VENDOR-FR-016). */
+export function useCharters() {
+  return useQuery({
+    queryKey: ["charters"],
+    queryFn: async () => (await client.charter.root.charters.$get()).json(),
+  });
+}
+
+/** Every charter installed, with its source and version (VENDOR-FR-021). */
+export function useInstalledCharters() {
   return useQuery({
     queryKey: ["vendors"],
     queryFn: async () => (await client.vendors.$get()).json(),
@@ -258,8 +266,8 @@ export function useAddTestSuite() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
     // Sent as JSON though it carries none, as a delete is (plan §12.4).
-    mutationFn: async () =>
-      (await client["test-suites"].$post({}, { headers: { "Content-Type": "application/json" } })).json(),
+    mutationFn: async (charterName: string) =>
+      (await client["test-suites"].$post({ json: charterName === "" ? {} : { charterName } })).json(),
     onSuccess: markWrittenStale,
   });
 }
@@ -269,8 +277,21 @@ export function useAddTestSuite() {
 export function useWriteTestSuite() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
-    mutationFn: async ({ name: testSuiteName, text }: { name: string; text: string }) =>
-      (await client["test-suites"][":name"].$put({ param: { name: testSuiteName }, json: { text } })).json(),
+    mutationFn: async ({
+      charterName,
+      name: testSuiteName,
+      text,
+    }: {
+      charterName: string;
+      name: string;
+      text: string;
+    }) =>
+      (
+        await client["test-suites"][":charterName"][":name"].$put({
+          param: { charterName, name: testSuiteName },
+          json: { text },
+        })
+      ).json(),
     // A refused text wrote nothing, so the outcome still says how the cases
     // on disk come out.
     onSuccess: async (testSuiteNameDTO) => {
@@ -283,10 +304,10 @@ export function useWriteTestSuite() {
 export function useRemoveTestSuite() {
   const markWrittenStale = useMarkWrittenStale();
   return useMutation({
-    mutationFn: async (testSuiteName: string) => {
+    mutationFn: async ({ charterName, name: testSuiteName }: { charterName: string; name: string }) => {
       // Sent as JSON though it carries none, as a delete is (plan §12.4).
-      const httpResponse = await client["test-suites"][":name"].$delete(
-        { param: { name: testSuiteName } },
+      const httpResponse = await client["test-suites"][":charterName"][":name"].$delete(
+        { param: { charterName, name: testSuiteName } },
         { headers: { "Content-Type": "application/json" } },
       );
       return httpResponse.status === 422 ? httpResponse.json() : null;

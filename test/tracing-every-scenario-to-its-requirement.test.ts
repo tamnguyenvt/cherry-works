@@ -2,15 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-const specFileNames = ["spec-core.md", "spec-sdk.md", "spec-eval.md"];
+const specFileNames = ["spec-core.md", "spec-sdk.md", "spec-eval.md", "spec-vendor.md"];
 const specTexts = specFileNames.map((specFileName) =>
   readFileSync(new URL(`../specs/${specFileName}`, import.meta.url), "utf8"),
 );
 
-const requirementIdPattern = /\b(?:CORE|SDK|EVAL)-(?:FR|SC)-\d{3}\b/g;
+const requirementIdPattern = /\b(?:CORE|SDK|EVAL|VENDOR)-(?:FR|SC)-\d{3}\b/g;
 const definedRequirementIds = new Set(
   specTexts.flatMap((specText) =>
-    [...specText.matchAll(/\*\*((?:CORE|SDK|EVAL)-(?:FR|SC)-\d{3})\*\*:/g)].map(
+    [...specText.matchAll(/\*\*((?:CORE|SDK|EVAL|VENDOR)-(?:FR|SC)-\d{3})\*\*:/g)].map(
       (definitionMatch) => definitionMatch[1]!,
     ),
   ),

@@ -14,6 +14,7 @@ export class EvalRootFactory {
     const faultsByFile: Record<string, readonly DomainFault[]> = {};
     const suiteNameByFile = Object.fromEntries(rawEvalSuites.map(({ uri, name }) => [uri, name]));
     const suiteTextByFile = Object.fromEntries(rawEvalSuites.map(({ uri, text }) => [uri, text]));
+    const suiteCharterByFile = Object.fromEntries(rawEvalSuites.map(({ uri, charterName }) => [uri, charterName]));
     for (const { uri, text } of [...rawEvalSuites].sort((leftEvalSuite, rightEvalSuite) =>
       leftEvalSuite.uri.localeCompare(rightEvalSuite.uri),
     )) {
@@ -24,7 +25,13 @@ export class EvalRootFactory {
         faultsByFile[uri] = [raisedValue];
       }
     }
-    return new EvalRoot(evalSuiteByFile, new FaultsByFile(faultsByFile), suiteNameByFile, suiteTextByFile);
+    return new EvalRoot(
+      evalSuiteByFile,
+      new FaultsByFile(faultsByFile),
+      suiteNameByFile,
+      suiteTextByFile,
+      suiteCharterByFile,
+    );
   }
 
   private constructor() {}

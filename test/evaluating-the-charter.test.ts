@@ -26,28 +26,28 @@ const primitive = (kind: string, id: string, headers: readonly string[], body: s
  *  and the evaluation cases this repository wrote for it. */
 const holding = (evalCases: readonly object[]) => ({
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
-  [at(".cw/charter/primitive/skill/planning/index.md")]: primitive(
+  [at(".cw/charter/team/primitive/skill/planning/index.md")]: primitive(
     "skill",
     "planning",
     ["description: Plan a feature.", 'triggers: ["plan this feature"]'],
     "Plan it.",
   ),
-  [at(".cw/charter/primitive/skill/refactoring/index.md")]: primitive(
+  [at(".cw/charter/team/primitive/skill/refactoring/index.md")]: primitive(
     "skill",
     "refactoring",
     ["description: Change how code is structured.", 'triggers: ["refactor this"]'],
     "Refactor it.",
   ),
-  [at(".cw/charter/primitive/guide/plain-names/index.md")]: primitive(
+  [at(".cw/charter/team/primitive/guide/plain-names/index.md")]: primitive(
     "guide",
     "plain-names",
     ["description: Name a variable after what it holds.", 'globs: ["src/**/*.ts"]'],
     "Never name a variable `data`.",
   ),
-  [at(".cw/charter/test/guides.json")]: JSON.stringify({
+  [at(".cw/charter/team/test/guides.json")]: JSON.stringify({
     cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "plain-names" } }],
   }),
-  [at(".cw/charter/eval/skills.json")]: JSON.stringify({ cases: evalCases }),
+  [at(".cw/charter/team/eval/skills.json")]: JSON.stringify({ cases: evalCases }),
 });
 
 /** How promptfoo graded one test: each assertion's pass and reason, and the
@@ -178,7 +178,7 @@ test("a guide is handed to the grader as written: what reads as a template in it
   const promptfoo = new InMemoryPromptfoo();
   const files = {
     ...holding([{ prompt: "write a parser", expect: { follow: "plain-names" } }]),
-    [at(".cw/charter/primitive/guide/plain-names/index.md")]: primitive(
+    [at(".cw/charter/team/primitive/guide/plain-names/index.md")]: primitive(
       "guide",
       "plain-names",
       ["description: Name a variable after what it holds.", 'globs: ["src/**/*.ts"]'],
@@ -398,7 +398,7 @@ test("a case naming a skill or a guide the charter does not hold refuses the run
   const { code, problem } = await printed(cli, ["eval"]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.match(problem, /\.cw\/charter\/eval\/skills\.json/);
+  assert.match(problem, /\.cw\/charter\/team\/eval\/skills\.json/);
   assert.match(problem, /holds no skill or playbook called "plannning"/);
   assert.match(problem, /"planning" is a skill, and a case follows a guide/);
   assert.equal(promptfoo.evaluatedTests.length, 0);
@@ -408,16 +408,16 @@ test("an evaluation file that does not read refuses the run, and none written is
   const promptfoo = new InMemoryPromptfoo();
   const badFiles = {
     ...holding([]),
-    [at(".cw/charter/eval/skills.json")]: JSON.stringify({ cases: [{ prompt: "plan", expect: {} }] }),
+    [at(".cw/charter/team/eval/skills.json")]: JSON.stringify({ cases: [{ prompt: "plan", expect: {} }] }),
   };
   const refused = await printed(surfaces(badFiles, promptfoo).cli, ["eval"]);
   assert.equal(refused.code, EXIT_FAILURE);
-  assert.match(refused.problem, /\.cw\/charter\/eval\/skills\.json/);
+  assert.match(refused.problem, /\.cw\/charter\/team\/eval\/skills\.json/);
 
-  const { [at(".cw/charter/eval/skills.json")]: _evalFile, ...withoutEvals } = holding([]);
+  const { [at(".cw/charter/team/eval/skills.json")]: _evalFile, ...withoutEvals } = holding([]);
   const { code, outputText } = await printed(surfaces(withoutEvals, promptfoo).cli, ["eval"]);
   assert.equal(code, EXIT_OK);
-  assert.match(outputText, /No evaluation: \.cw\/charter\/eval\/ holds no case\./);
+  assert.match(outputText, /No evaluation: no charter holds a case under \.cw\/charter\/<charter>\/eval\/\./);
   assert.equal(promptfoo.evaluatedTests.length, 0);
 });
 
@@ -681,14 +681,14 @@ test("no case outside a git repository answers that there is none, as in a repos
   const commandOutput = await printed(cli, ["eval"]);
 
   assert.equal(commandOutput.code, EXIT_OK);
-  assert.match(commandOutput.outputText, /holds no case/);
+  assert.match(commandOutput.outputText, /no charter holds a case/);
 });
 
 test("a folder of notes and no case outside a git repository answers that there is none (CORE-FR-206)", async () => {
   const { cli } = surfaces(
     {
       [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude"] })}\n`,
-      [at(".cw/charter/eval/notes.md")]: "# Notes\n",
+      [at(".cw/charter/team/eval/notes.md")]: "# Notes\n",
     },
     new InMemoryPromptfoo(),
     new InMemoryAgentCli(),
@@ -698,7 +698,7 @@ test("a folder of notes and no case outside a git repository answers that there 
   const commandOutput = await printed(cli, ["eval"]);
 
   assert.equal(commandOutput.code, EXIT_OK);
-  assert.match(commandOutput.outputText, /holds no case/);
+  assert.match(commandOutput.outputText, /no charter holds a case/);
 });
 
 test("what a stopped run left, and no case, outside a git repository answers that there is none (CORE-FR-206)", async () => {
@@ -713,5 +713,5 @@ test("what a stopped run left, and no case, outside a git repository answers tha
   const commandOutput = await printed(cli, ["eval"]);
 
   assert.equal(commandOutput.code, EXIT_OK);
-  assert.match(commandOutput.outputText, /holds no case/);
+  assert.match(commandOutput.outputText, /no charter holds a case/);
 });

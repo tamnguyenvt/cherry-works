@@ -46,7 +46,7 @@ export {
   NoFolderAddressFault,
   OccupiedPrimitiveFileFault,
   OldLayoutFault,
-  OldVendorLayoutFault,
+  OrphanPrimitiveFault,
   OverlappingPrimitiveFoldersFault,
   PathOutsideFolderFault,
   RefusedSecretStoreFault,

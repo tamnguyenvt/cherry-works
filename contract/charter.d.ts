@@ -564,6 +564,7 @@ declare const CharterDTOs: {
         type: z.ZodLiteral<"TestSuite">;
         data: z.ZodObject<{
             name: z.ZodString;
+            charterName: z.ZodString;
             text: z.ZodOptional<z.ZodString>;
             description: z.ZodOptional<z.ZodString>;
             cases: z.ZodReadonly<z.ZodArray<z.ZodObject<{
@@ -618,6 +619,7 @@ declare const CharterDTOs: {
     }, z.core.$strip> & {
         of: (dataValue: {
             name: string;
+            charterName: string;
             cases: readonly {
                 type: "TestCase";
                 data: {
@@ -641,6 +643,7 @@ declare const CharterDTOs: {
             type: "TestSuite";
             data: {
                 name: string;
+                charterName: string;
                 cases: readonly {
                     type: "TestCase";
                     data: {
@@ -670,6 +673,7 @@ declare const CharterDTOs: {
                 type: z.ZodLiteral<"TestSuite">;
                 data: z.ZodObject<{
                     name: z.ZodString;
+                    charterName: z.ZodString;
                     text: z.ZodOptional<z.ZodString>;
                     description: z.ZodOptional<z.ZodString>;
                     cases: z.ZodReadonly<z.ZodArray<z.ZodObject<{
@@ -724,6 +728,7 @@ declare const CharterDTOs: {
             }, z.core.$strip> & {
                 of: (dataValue: {
                     name: string;
+                    charterName: string;
                     cases: readonly {
                         type: "TestCase";
                         data: {
@@ -747,6 +752,7 @@ declare const CharterDTOs: {
                     type: "TestSuite";
                     data: {
                         name: string;
+                        charterName: string;
                         cases: readonly {
                             type: "TestCase";
                             data: {
@@ -776,6 +782,7 @@ declare const CharterDTOs: {
                 type: "TestSuite";
                 data: {
                     name: string;
+                    charterName: string;
                     cases: readonly {
                         type: "TestCase";
                         data: {
@@ -804,6 +811,7 @@ declare const CharterDTOs: {
                     type: "TestSuite";
                     data: {
                         name: string;
+                        charterName: string;
                         cases: readonly {
                             type: "TestCase";
                             data: {
@@ -832,14 +840,17 @@ declare const CharterDTOs: {
         type: z.ZodLiteral<"TestSuiteName">;
         data: z.ZodObject<{
             name: z.ZodString;
+            charterName: z.ZodString;
         }, z.core.$strip>;
     }, z.core.$strip> & {
         of: (dataValue: {
             name: string;
+            charterName: string;
         }) => {
             type: "TestSuiteName";
             data: {
                 name: string;
+                charterName: string;
             };
         };
     };
@@ -874,6 +885,7 @@ declare const CharterDTOs: {
         type: z.ZodLiteral<"EvalSuite">;
         data: z.ZodObject<{
             name: z.ZodString;
+            charterName: z.ZodString;
             text: z.ZodOptional<z.ZodString>;
             description: z.ZodOptional<z.ZodString>;
             cases: z.ZodReadonly<z.ZodArray<z.ZodObject<{
@@ -934,6 +946,7 @@ declare const CharterDTOs: {
     }, z.core.$strip> & {
         of: (dataValue: {
             name: string;
+            charterName: string;
             cases: readonly {
                 type: "EvalCase";
                 data: {
@@ -959,6 +972,7 @@ declare const CharterDTOs: {
             type: "EvalSuite";
             data: {
                 name: string;
+                charterName: string;
                 cases: readonly {
                     type: "EvalCase";
                     data: {
@@ -990,6 +1004,7 @@ declare const CharterDTOs: {
                 type: z.ZodLiteral<"EvalSuite">;
                 data: z.ZodObject<{
                     name: z.ZodString;
+                    charterName: z.ZodString;
                     text: z.ZodOptional<z.ZodString>;
                     description: z.ZodOptional<z.ZodString>;
                     cases: z.ZodReadonly<z.ZodArray<z.ZodObject<{
@@ -1050,6 +1065,7 @@ declare const CharterDTOs: {
             }, z.core.$strip> & {
                 of: (dataValue: {
                     name: string;
+                    charterName: string;
                     cases: readonly {
                         type: "EvalCase";
                         data: {
@@ -1075,6 +1091,7 @@ declare const CharterDTOs: {
                     type: "EvalSuite";
                     data: {
                         name: string;
+                        charterName: string;
                         cases: readonly {
                             type: "EvalCase";
                             data: {
@@ -1106,6 +1123,7 @@ declare const CharterDTOs: {
                 type: "EvalSuite";
                 data: {
                     name: string;
+                    charterName: string;
                     cases: readonly {
                         type: "EvalCase";
                         data: {
@@ -1136,6 +1154,7 @@ declare const CharterDTOs: {
                     type: "EvalSuite";
                     data: {
                         name: string;
+                        charterName: string;
                         cases: readonly {
                             type: "EvalCase";
                             data: {
@@ -1166,14 +1185,103 @@ declare const CharterDTOs: {
         type: z.ZodLiteral<"EvalSuiteName">;
         data: z.ZodObject<{
             name: z.ZodString;
+            charterName: z.ZodString;
         }, z.core.$strip>;
     }, z.core.$strip> & {
         of: (dataValue: {
             name: string;
+            charterName: string;
         }) => {
             type: "EvalSuiteName";
             data: {
                 name: string;
+                charterName: string;
+            };
+        };
+    };
+    CharterMetadata: z.ZodObject<{
+        type: z.ZodLiteral<"CharterMetadata">;
+        data: z.ZodObject<{
+            name: z.ZodString;
+            folder: z.ZodString;
+            isInstalled: z.ZodBoolean;
+            source: z.ZodOptional<z.ZodString>;
+            version: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            name: string;
+            folder: string;
+            isInstalled: boolean;
+            source?: string | undefined;
+            version?: string | undefined;
+        }) => {
+            type: "CharterMetadata";
+            data: {
+                name: string;
+                folder: string;
+                isInstalled: boolean;
+                source?: string | undefined;
+                version?: string | undefined;
+            };
+        };
+    };
+    CharterMetadataList: z.ZodObject<{
+        type: z.ZodLiteral<"CharterMetadataList">;
+        data: z.ZodObject<{
+            charters: z.ZodReadonly<z.ZodArray<z.ZodObject<{
+                type: z.ZodLiteral<"CharterMetadata">;
+                data: z.ZodObject<{
+                    name: z.ZodString;
+                    folder: z.ZodString;
+                    isInstalled: z.ZodBoolean;
+                    source: z.ZodOptional<z.ZodString>;
+                    version: z.ZodOptional<z.ZodString>;
+                }, z.core.$strip>;
+            }, z.core.$strip> & {
+                of: (dataValue: {
+                    name: string;
+                    folder: string;
+                    isInstalled: boolean;
+                    source?: string | undefined;
+                    version?: string | undefined;
+                }) => {
+                    type: "CharterMetadata";
+                    data: {
+                        name: string;
+                        folder: string;
+                        isInstalled: boolean;
+                        source?: string | undefined;
+                        version?: string | undefined;
+                    };
+                };
+            }>>;
+        }, z.core.$strip>;
+    }, z.core.$strip> & {
+        of: (dataValue: {
+            charters: readonly {
+                type: "CharterMetadata";
+                data: {
+                    name: string;
+                    folder: string;
+                    isInstalled: boolean;
+                    source?: string | undefined;
+                    version?: string | undefined;
+                };
+            }[];
+        }) => {
+            type: "CharterMetadataList";
+            data: {
+                charters: readonly {
+                    type: "CharterMetadata";
+                    data: {
+                        name: string;
+                        folder: string;
+                        isInstalled: boolean;
+                        source?: string | undefined;
+                        version?: string | undefined;
+                    };
+                }[];
             };
         };
     };
@@ -1189,21 +1297,6 @@ declare const CharterDTOs: {
             type: "VendorFolder";
             data: {
                 folder: string;
-            };
-        };
-    };
-    VendorFolders: z.ZodObject<{
-        type: z.ZodLiteral<"VendorFolders">;
-        data: z.ZodObject<{
-            folders: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-        }, z.core.$strip>;
-    }, z.core.$strip> & {
-        of: (dataValue: {
-            folders: readonly string[];
-        }) => {
-            type: "VendorFolders";
-            data: {
-                folders: readonly string[];
             };
         };
     };
@@ -1384,21 +1477,18 @@ declare const CharterDTOs: {
             kind: z.ZodString;
             id: z.ZodString;
             description: z.ZodString;
-            leftOutHeaders: z.ZodReadonly<z.ZodArray<z.ZodString>>;
         }, z.core.$strip>;
     }, z.core.$strip> & {
         of: (dataValue: {
             kind: string;
             id: string;
             description: string;
-            leftOutHeaders: readonly string[];
         }) => {
             type: "VendorPrimitive";
             data: {
                 kind: string;
                 id: string;
                 description: string;
-                leftOutHeaders: readonly string[];
             };
         };
     };
@@ -2555,21 +2645,18 @@ declare const CharterDTOs: {
                     kind: z.ZodString;
                     id: z.ZodString;
                     description: z.ZodString;
-                    leftOutHeaders: z.ZodReadonly<z.ZodArray<z.ZodString>>;
                 }, z.core.$strip>;
             }, z.core.$strip> & {
                 of: (dataValue: {
                     kind: string;
                     id: string;
                     description: string;
-                    leftOutHeaders: readonly string[];
                 }) => {
                     type: "VendorPrimitive";
                     data: {
                         kind: string;
                         id: string;
                         description: string;
-                        leftOutHeaders: readonly string[];
                     };
                 };
             }>>;
@@ -2583,7 +2670,6 @@ declare const CharterDTOs: {
                     kind: string;
                     id: string;
                     description: string;
-                    leftOutHeaders: readonly string[];
                 };
             }[];
         }[]) => {
@@ -2596,7 +2682,6 @@ declare const CharterDTOs: {
                         kind: string;
                         id: string;
                         description: string;
-                        leftOutHeaders: readonly string[];
                     };
                 }[];
             }[];
@@ -2610,6 +2695,8 @@ declare namespace CharterDTOs {
     type Catalogue = z.infer<typeof CharterDTOs.Catalogue>;
     type CatalogueEntry = z.infer<typeof CharterDTOs.CatalogueEntry>;
     type CharterLayout = z.infer<typeof CharterDTOs.CharterLayout>;
+    type CharterMetadata = z.infer<typeof CharterDTOs.CharterMetadata>;
+    type CharterMetadataList = z.infer<typeof CharterDTOs.CharterMetadataList>;
     type DeclaredTool = z.infer<typeof CharterDTOs.DeclaredTool>;
     type DeclaredTools = z.infer<typeof CharterDTOs.DeclaredTools>;
     type DoctorOutcome = z.infer<typeof CharterDTOs.DoctorOutcome>;
@@ -2643,40 +2730,44 @@ declare namespace CharterDTOs {
     type TestSuites = z.infer<typeof CharterDTOs.TestSuites>;
     type VendorAddOutcome = z.infer<typeof CharterDTOs.VendorAddOutcome>;
     type VendorFolder = z.infer<typeof CharterDTOs.VendorFolder>;
-    type VendorFolders = z.infer<typeof CharterDTOs.VendorFolders>;
     type VendorPrimitive = z.infer<typeof CharterDTOs.VendorPrimitive>;
 }
 
-/** The names a layer goes by: what this repository authored itself; what it
- *  installed from someone else, under the name it installed it as (FR-023);
- *  and what the running engine brings itself, supplied on every read and kept
- *  nowhere in the repository, so nothing can refresh, edit or remove it
- *  (FR-015, FR-016). */
+/** The names a layer goes by: what this repository authored itself, in a
+ *  charter of its own; what it installed from someone else, in a charter holding
+ *  where it came from (VENDOR-FR-010); and what the running engine brings
+ *  itself, supplied on every read and kept nowhere in the repository, so
+ *  nothing can refresh, edit or remove it (FR-015, FR-016). */
 declare const LAYER_NAMES: readonly ["repo", "vendor", "builtin"];
 
 /** Whose layer a primitive came from, and there are only the three. It says
  *  where a primitive was written, never what it is called: one charter has one
- *  id space, whichever layer a file arrived in (FR-014, FR-019). */
+ *  id space, whichever layer or charter a file arrived in (FR-014, FR-019,
+ *  VENDOR-FR-009). */
 type LayerName = (typeof LAYER_NAMES)[number];
 
-/** The layer a primitive was read in: whose it is, and for a vendor's, the
- *  name this repository installed it as (FR-023). Where it is kept is what
- *  keeps it to know, never the layer's (CORE-FR-213). */
+/** The layer a primitive was read in: whose it is, and for one kept in the
+ *  repository, the charter it is kept in (VENDOR-FR-009). Where it is kept is
+ *  what keeps it to know, never the layer's (CORE-FR-213). */
 declare class PrimitiveLayer<Name extends LayerName = LayerName> {
     readonly name: Name;
-    /** The name a vendor's layer was installed as: `team/charter`. */
-    readonly vendorName?: string | undefined;
-    /** This repository's own layer: where a primitive is written when it is
-     *  authored here (FR-039). */
+    /** The charter it is kept in: `sdd`. None for the engine's own. */
+    readonly charterName?: string | undefined;
+    /** This repository's own layer, before a charter is named for it: a
+     *  primitive an author answered, not kept yet (FR-039). */
     static readonly REPO: PrimitiveLayer<"repo">;
     /** The engine's own layer: kept nowhere, so there is nothing to open (FR-015,
      *  FR-018). */
     static readonly BUILTIN: PrimitiveLayer<"builtin">;
     private constructor();
-    /** The name every vendor's layer goes by. */
+    /** The name every layer the repository installed goes by. */
     static get vendorName(): "vendor";
-    /** The layer of the vendor this repository installed under this name. */
-    static vendorLayerOf(vendorName: string): PrimitiveLayer<"vendor">;
+    /** The layer of a charter this repository authored: where a primitive is
+     *  written when it is authored here (FR-039, VENDOR-FR-010). */
+    static authoredLayerOf(charterName: string): PrimitiveLayer<"repo">;
+    /** The layer of a charter this repository installed, read-only
+     *  (VENDOR-FR-010). */
+    static installedLayerOf(charterName: string): PrimitiveLayer<"vendor">;
 }
 
 /** What one primitive's author answered, under the header each answer fills
@@ -2739,10 +2830,13 @@ interface ForAuthoringCharter {
      * kind, the description, when the kind comes up, the file or any header
      * value, ignoring case.
      *
+     * Given a charter's name, only the primitives of that charter, refused
+     * naming the charters held where it holds none (VENDOR-FR-016).
+     *
      * A charter with an error is refused with nothing listed and the errors given
      * back, as `listCatalogue` refuses it.
      */
-    listPrimitives(searchText?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    listPrimitives(searchText?: string, charterName?: string): Promise<CharterDTOs.Primitives | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
     /**
      * Which file declares one id, and which layer that file arrived in
      * (FR-017, SC-006); the mixins it uses and the corpus it cites, and what
@@ -2816,11 +2910,21 @@ interface ForAuthoringCharter {
      * Nothing is compiled: a build is the command that compiles a charter
      * (FR-020, FR-079).
      *
+     * It is written into the charter named, made where the charter holds none of
+     * that name; a charter installed is read-only, and a name that is empty, no
+     * id or a kind's is refused naming the charters held (VENDOR-FR-014,
+     * VENDOR-FR-015).
+     *
      * A word that is no kind, and an id the charter already holds in any
      * layer, are answered as one fault rather than under a file: neither leaves a file to report a
      * fault under, and the second names the file already holding it.
      */
-    addPrimitive(kind: string, id: string, headers: UnparsedHeaders, body?: string): Promise<CharterDTOs.Primitive | FaultDTOs.Faults | FaultDTOs.Fault>;
+    addPrimitive(kind: string, id: string, charterName: string, headers: UnparsedHeaders, body?: string): Promise<CharterDTOs.Primitive | FaultDTOs.Faults | FaultDTOs.Fault>;
+    /**
+     * Every charter the charter root holds, authored or installed, with where an
+     * installed one came from (VENDOR-FR-009, VENDOR-FR-021). Reads and says.
+     */
+    listCharters(): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
     /**
      * One primitive as the charter read it — its headers, its body, the file
      * and the layer — and the hash of it written out, what a save is made over
@@ -2832,6 +2936,12 @@ interface ForAuthoringCharter {
      * nothing of is answered as a fault, as `explainPrimitive` answers it.
      */
     openPrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
+    /**
+     * One primitive opened, as `openPrimitive` opens it, to be edited in its
+     * file: refused as read-only where a charter installed holds it
+     * (VENDOR-FR-010). Reads and says, as `openPrimitive` does.
+     */
+    openEditablePrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
     /**
      * One repository primitive's headers and body written over, its kind, id and
      * file kept (FR-075).
@@ -2853,8 +2963,8 @@ interface ForAuthoringCharter {
      */
     removePrimitive(id: string): Promise<CharterDTOs.Primitive | FaultDTOs.Fault>;
     /**
-     * Install one source under this repository's vendor folder, pinned to this
-     * version where one is named (FR-023, FR-027).
+     * Install the charters one source authored, pinned to this version where
+     * one is named (FR-023, FR-027).
      *
      * The source is passed on as it was written: which transport it names and
      * whether the credentials for it are there is version control's business, and
@@ -2865,44 +2975,39 @@ interface ForAuthoringCharter {
      *
      * The folder need not be a repository; a machine without git is refused
      * (CORE-FR-205). What it installs is left unstaged for the user to read and
-     * commit, whatever else is in hand (CORE-FR-190).
+     * commit, whatever else is in hand.
      *
-     * What is taken is read off the source's shape where neither `selectedSkillIds` nor
-     * `selectedCharterNames` is given: its one charter, else every charter under its
-     * `charters/`, else every skill under its `skills/` (CORE-FR-193).
-     * `selectedCharterNames` picks charters from `charters/`, each installed whole in a
-     * vendor folder of its own (CORE-FR-195, CORE-FR-196); `selectedSkillIds` takes
-     * skills from `skills/`, every one it holds where the shape takes them and
-     * none is named, asking nothing (CORE-FR-184, CORE-FR-188).
+     * What is taken is every charter the source authored where
+     * `selectedCharterNames` names none, else the charters named; every charter
+     * of the source a charter taken
+     * names an id of comes with it, each copied whole, its test and eval cases
+     * included, beside a `cw-vendor.json` naming the charter in the source, the
+     * source and the version, or its own where the source installed it
+     * (VENDOR-FR-017 to VENDOR-FR-019). `asName` installs the one charter named under it; a name already held by a
+     * charter installed from the same source is replaced whole, and one held
+     * otherwise is refused (VENDOR-FR-020).
      *
-     * What it answers is each folder it filled, and the primitives installed
-     * there, each skill with the headers its `SKILL.md` declared that were left
-     * out (CORE-FR-186).
+     * What it answers is each charter it filled, and the primitives installed
+     * there.
      */
-    addVendor(sourceUri: string, version?: string, selectedSkillIds?: readonly string[], selectedCharterNames?: readonly string[]): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
-    /** Copy source primitives into the own charter, unstaged, refusing collisions before writing (CORE-FR-198–200). */
-    injectVendor(sourceUri: string, version?: string, selectedSkillIds?: readonly string[], selectedCharterNames?: readonly string[]): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
+    addVendor(sourceUri: string, version?: string, selectedCharterNames?: readonly string[], asName?: string): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
+    /** The charters `addVendor` would install, copied in with no
+     *  `cw-vendor.json`, the repository's own from then on; a charter name or an
+     *  id already held is refused naming both, with nothing written
+     *  (VENDOR-FR-022). */
+    injectVendor(sourceUri: string, version?: string, selectedCharterNames?: readonly string[], asName?: string): Promise<CharterDTOs.VendorAddOutcome | FaultDTOs.Fault>;
     /**
-     * Take one installed charter away, named by the folder it was installed as
-     * (FR-030), and answer that folder.
-     *
-     * Named by the folder rather than by the address it came from: the folder is
-     * what a reader of this repository sees, and what the charter is read out of.
-     *
-     * Its folder is left gone in the working tree for the user to commit, whatever
-     * else is in hand, in a repository or out of one. A name no vendor folder
-     * answers to is refused, changing nothing (CORE-FR-204).
+     * Take one installed charter away whole, named as it is held, and answer its
+     * folder (VENDOR-FR-021). Left gone in the working tree for the user to
+     * commit. A name no charter installed answers to — one the repository
+     * authored among them — is refused, changing nothing.
      */
-    removeVendor(name: string): Promise<CharterDTOs.VendorFolder | FaultDTOs.Fault>;
+    removeVendor(charterName: string): Promise<CharterDTOs.VendorFolder | FaultDTOs.Fault>;
     /**
-     * Every folder a source was installed as, under this repository's vendor
-     * folder, sorted (FR-053, FR-122).
-     *
-     * The folder is all there is to say: nothing is recorded of where one came
-     * from or at which version, since version control keeps no such record
-     * either and a record kept beside it is one more thing to drift (FR-046).
+     * Every charter this repository installed, with the source and the version
+     * its `cw-vendor.json` names, sorted by name (VENDOR-FR-021).
      */
-    listVendors(): Promise<CharterDTOs.VendorFolders | FaultDTOs.Fault>;
+    listVendors(): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
     /**
      * Every test file under `.cw/charter/test/`, run or not: its name, its text, and its
      * description and cases — or, for a file that does not read, why (FR-124).
@@ -2913,22 +3018,32 @@ interface ForAuthoringCharter {
      */
     listTestSuites(): Promise<CharterDTOs.TestSuites | FaultDTOs.Fault>;
     /**
-     * A new test file, under a name no other test file has, holding one sample
-     * case that reads as a suite (FR-091). What comes back is its name.
+     * One test file of a charter as it was read, as `listTestSuites` lists it, to
+     * be opened; its charter found as a new one's is, and a name that is no test
+     * file of it answered as a fault (FR-090, VENDOR-FR-009).
      */
-    addTestSuite(): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+    openTestSuite(charterName: string, name: string): Promise<CharterDTOs.TestSuite | FaultDTOs.Fault>;
+    /**
+     * A new test file in a charter, under a name no other test file of it has,
+     * holding one sample case that reads as a suite (FR-091). What comes back is
+     * its name and its charter. The charter is the one named,
+     * or where it is `""`, the one charter the repository authored; none such, or a
+     * charter installed, is refused (VENDOR-FR-009, VENDOR-FR-010).
+     */
+    addTestSuite(charterName?: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
     /**
      * One existing test file written over with this text (FR-090). Text that does
      * not read as a suite is answered as a fault with the refusal and sample `cw test` gives,
-     * and nothing is written; so is a name that is no test file. What comes back
-     * is its name.
+     * and nothing is written; so is a name that is no test file of the charter.
+     * What comes back is its name and its charter, found as a new one's is.
      */
-    writeTestSuite(name: string, text: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+    writeTestSuite(charterName: string, name: string, text: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
     /**
-     * One test file taken away, and nothing else (FR-092). A name that is no test
-     * file is answered as a fault. What comes back is its name.
+     * One test file of a charter taken away, and nothing else (FR-092). A name
+     * that is no test file of it is answered as a fault. What comes back is its
+     * name and its charter, found as a new one's is.
      */
-    removeTestSuite(name: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
+    removeTestSuite(charterName: string, name: string): Promise<CharterDTOs.TestSuiteName | FaultDTOs.Fault>;
     /**
      * Every file of evaluation cases, evaluated or not: its name, its text, and
      * its description and cases — or, for a file that does not read, why
@@ -2937,22 +3052,24 @@ interface ForAuthoringCharter {
      */
     listEvalSuites(): Promise<CharterDTOs.EvalSuites | FaultDTOs.Fault>;
     /**
-     * A new file of evaluation cases, under a name no other has, holding one
-     * sample case that reads as a suite. What comes back is its name.
+     * A new file of evaluation cases in a charter, under a name no other of it
+     * has, holding one sample case that reads as a suite. What comes back is its
+     * name and its charter, found as a test file's is.
      */
-    addEvalSuite(): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
+    addEvalSuite(charterName?: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
     /**
      * One existing file of evaluation cases written over with this text. Text
      * that does not read as a suite is answered as a fault, with a sample, and
-     * nothing is written; so is a name that is no such file. What comes back is
-     * its name.
+     * nothing is written; so is a name that is no such file of the charter. What
+     * comes back is its name and its charter, found as a new one's is.
      */
-    writeEvalSuite(name: string, text: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
+    writeEvalSuite(charterName: string, name: string, text: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
     /**
-     * One file of evaluation cases taken away, and nothing else. A name that is
-     * no such file is answered as a fault. What comes back is its name.
+     * One file of evaluation cases of a charter taken away, and nothing else. A
+     * name that is no such file of it is answered as a fault. What comes back is
+     * its name and its charter, found as a new one's is.
      */
-    removeEvalSuite(name: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
+    removeEvalSuite(charterName: string, name: string): Promise<CharterDTOs.EvalSuiteName | FaultDTOs.Fault>;
     /**
      * Every address an mcp origin of the charter takes a sign-in at, ordered by
      * address, and whether the developer has signed in there (FR-150). Asks
@@ -2978,12 +3095,15 @@ interface ForAuthoringCharter {
      * Every situation this repository wrote down, resolved against its charter
      * (FR-048, FR-049, FR-050). Runs nothing, fetches nothing and asks no agent.
      * A charter with an error, or a test file that does not read, resolves
-     * nothing and is answered as its faults (FR-009). Reads and says (FR-041).
+     * nothing and is answered as its faults (FR-009). Every charter's cases, or
+     * the named charter's alone; a charter named that the charter does not hold is
+     * refused naming those it does, and nothing runs (VENDOR-FR-024,
+     * VENDOR-FR-026). Reads and says (FR-041).
      */
-    testCharter(): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+    testCharter(charterName?: string): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
     /**
-     * A folder per kind for a charter to be authored in, and the parts kept
-     * beside it, laid out where nothing is yet (FR-037, CORE-FR-224). Run again,
+     * The folder of the charter root's charters, holding none, laid out where nothing
+     * is yet (FR-037, CORE-FR-224, VENDOR-FR-013). Run again,
      * it discards nothing anybody wrote. What comes back is where the charter
      * is kept.
      */
@@ -3058,6 +3178,18 @@ interface ForAuthorizingOAuthClients {
     renewGrant(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined>;
 }
 
+/** One charter of primitives as its store keeps it, before the engine reads
+ *  it: its name, the text of its `cw-vendor.json` where it holds one, and
+ *  where it and that file are kept, said back and never read
+ *  (VENDOR-FR-009, VENDOR-FR-010). */
+declare class RawCharterMetadata {
+    readonly name: string;
+    readonly vendorRecordText: string | undefined;
+    readonly uri: string;
+    readonly vendorRecordUri: string;
+    constructor(name: string, vendorRecordText: string | undefined, uri: string, vendorRecordUri: string);
+}
+
 /**
  * What one evaluation case may say (EVAL-FR-020): a prompt put to the agent,
  * and what is expected of it — a skill invoked, a guide followed, at most a
@@ -3128,9 +3260,13 @@ declare const DEFAULT_EVAL_SUITE_BODY: string;
  *  is kept, said back and never read (CORE-FR-213). */
 declare class RawEvalSuite {
     readonly name: string;
+    /** The charter it is kept in (VENDOR-FR-009). */
+    readonly charterName: string;
     readonly text: string;
     readonly uri: string;
-    constructor(name: string, text: string, uri: string);
+    constructor(name: string, 
+    /** The charter it is kept in (VENDOR-FR-009). */
+    charterName: string, text: string, uri: string);
 }
 
 /** One file of a primitive's folder beside its `index.md`: the path it has in
@@ -3920,9 +4056,13 @@ declare class RawPrimitive {
  *  (CORE-FR-213). */
 declare class RawTestSuite {
     readonly name: string;
+    /** The charter it is kept in (VENDOR-FR-009). */
+    readonly charterName: string;
     readonly text: string;
     readonly uri: string;
-    constructor(name: string, text: string, uri: string);
+    constructor(name: string, 
+    /** The charter it is kept in (VENDOR-FR-009). */
+    charterName: string, text: string, uri: string);
 }
 
 /**
@@ -4087,102 +4227,85 @@ declare const SAMPLE: string;
  *  looks the format up (FR-091). */
 declare const DEFAULT_TEST_SUITE_BODY: string;
 
-/** What this repository installed from others, as what keeps it keeps it,
- *  before the engine reads it: the name each vendor is kept under,
- *  `<owner>/<repository>/<name>` (FR-050, CORE-FR-196). */
-declare class RawVendorRoot {
-    readonly vendorNames: readonly string[];
-    constructor(vendorNames: readonly string[]);
+/** What a `cw-vendor.json` holds: the charter, the source and the version,
+ *  each a string (VENDOR-FR-010). Whatever else it holds is left unread. */
+declare const VendorRecordSchema: z.ZodObject<{
+    charter: z.ZodString;
+    source: z.ZodString;
+    version: z.ZodString;
+}, z.core.$strip>;
+
+/** Where an installed charter came from, as its `cw-vendor.json` says: the
+ *  charter's name in its source, the source as it was typed, and the version
+ *  installed (VENDOR-FR-010, VENDOR-FR-017). */
+declare class VendorRecord {
+    readonly charterName: string;
+    readonly source: string;
+    readonly version: string;
+    static get schema(): typeof VendorRecordSchema;
+    constructor(charterName: string, source: string, version: string);
+    /** What a `cw-vendor.json` holds of it. */
+    toJSON(): z.infer<typeof VendorRecordSchema>;
 }
 
-/** A charter this repository installs rather than authors: the source as it
- *  was typed, handed to version control as it is, and the name of the folder
- *  it lands in under the vendor folder, its owner and its repository (FR-049,
+/** Where a charter this repository installs rather than authors comes from:
+ *  the source as it was typed, handed to version control as it is (FR-049,
  *  FR-050). */
 declare class VendorSourceOrigin {
     readonly sourceUri: string;
-    readonly name: string;
-    constructor(sourceUri: string, name: string);
+    constructor(sourceUri: string);
 }
 
-/** One charter a source keeps under `charters/`, named by its folder
- *  (CORE-FR-195); whether a charter is there
- *  at all, whether it installed vendors of its own (FR-170), and its
- *  primitives as the source keeps them. `uri` is where in the source it sits, and `vendorsUri` where its
- *  own vendors would, in the words of what read it: said back and never
- *  read. `sourceFolder` is where its primitives sit in the source, for what
- *  copies them. */
+/** One charter a source keeps, `.cw/charter/<charter>/`, named by its
+ *  folder (VENDOR-FR-017): whether the source installed it itself, holding a
+ *  `cw-vendor.json`, and its primitives as the source keeps them, what
+ *  tells which other charters it includes (VENDOR-FR-018, VENDOR-FR-019).
+ *  `sourceFolder` is where it sits in the source, for what copies it. */
 declare class SourceCharter {
     readonly name: string;
-    readonly hasCharter: boolean;
-    readonly hasVendors: boolean;
+    /** Whether the source installed it from elsewhere, rather than authored
+     *  it (VENDOR-FR-019). */
+    readonly isInstalled: boolean;
     readonly rawPrimitives: readonly RawPrimitive[];
-    readonly uri: string;
-    readonly vendorsUri: string;
     readonly sourceFolder: string;
-    constructor(name: string, hasCharter: boolean, hasVendors: boolean, rawPrimitives: readonly RawPrimitive[], uri: string, vendorsUri: string, sourceFolder: string);
+    /** The folders of it that are copied, by their paths in it: each
+     *  primitive's, and those of its test cases and eval cases. */
+    readonly keptFolderPaths: readonly string[];
+    constructor(name: string, 
+    /** Whether the source installed it from elsewhere, rather than authored
+     *  it (VENDOR-FR-019). */
+    isInstalled: boolean, rawPrimitives: readonly RawPrimitive[], sourceFolder: string, 
+    /** The folders of it that are copied, by their paths in it: each
+     *  primitive's, and those of its test cases and eval cases. */
+    keptFolderPaths: readonly string[]);
     /** The description one of its primitives declares, empty where it
      *  declares none. Shown, never refused: the charter is installed whole, as
-     *  its source holds it (CORE-FR-196). */
+     *  its source holds it (VENDOR-FR-017). */
     descriptionOf(rawPrimitive: RawPrimitive): string;
 }
 
-/** One skill a skills repository keeps, converted (CORE-FR-185,
- *  CORE-FR-186): the skill it converts to, the headers its `SKILL.md`
- *  declares that the charter has no field for, every other file of its
- *  folder, where it sits in the source, said back and never read, and the
- *  folder it sits in, for what copies it. */
-declare class SourceSkill {
-    readonly convertedSkill: SkillPrimitive;
-    readonly leftOutHeaders: readonly string[];
-    readonly assets: readonly AssetFile[];
-    readonly uri: string;
-    readonly sourceFolder: string;
-    constructor(convertedSkill: SkillPrimitive, leftOutHeaders: readonly string[], assets: readonly AssetFile[], uri: string, sourceFolder: string);
-}
-
-/** What one commit of a source holds, read: the charters it keeps under
- *  `charters/`, the skills it publishes, each converted, and why each skill
- *  that does not convert does not (CORE-FR-192, CORE-FR-193). `commit` is
- *  what was fetched, for what fetched it alone to read again. */
+/** What one commit of a source holds, as what fetched it read it: the
+ *  charters it keeps (VENDOR-FR-017). `commit` is what was fetched, for what
+ *  fetched it alone to read again; `commitId` is its id in version control. */
 declare class VendorSource {
     readonly origin: VendorSourceOrigin;
     readonly commit: string;
+    readonly commitId: string;
     readonly charters: readonly SourceCharter[];
-    readonly skills: readonly SourceSkill[];
-    /** Held rather than raised: a skill that does not convert refuses taking
-     *  skills, and nothing else (CORE-FR-192). */
-    readonly skillFaults: readonly DomainFault[];
-    constructor(origin: VendorSourceOrigin, commit: string, charters: readonly SourceCharter[], skills: readonly SourceSkill[], 
-    /** Held rather than raised: a skill that does not convert refuses taking
-     *  skills, and nothing else (CORE-FR-192). */
-    skillFaults: readonly DomainFault[]);
-    /** Whether it publishes any skill, converted or not (CORE-FR-185). */
-    get hasSkills(): boolean;
+    constructor(origin: VendorSourceOrigin, commit: string, commitId: string, charters: readonly SourceCharter[]);
 }
 
-/** One skill a skills repository keeps, as it is handed in, before the engine
- *  converts it (CORE-FR-185): the text of its `SKILL.md`, every other file of
- *  its folder, where it sits in the source, said back and never read, and the
- *  folder it sits in, for what copies it. */
-declare class RawSourceSkill {
-    readonly text: string;
-    readonly assets: readonly AssetFile[];
-    readonly uri: string;
-    readonly sourceFolder: string;
-    constructor(text: string, assets: readonly AssetFile[], uri: string, sourceFolder: string);
-}
-
-/** What one commit of a source holds, as what fetched it read it, before the
- *  engine reads its skills: the charters it keeps under `charters/`, and the
- *  skills it publishes under `skills/` (CORE-FR-193). `commit` is what was fetched, for
- *  what fetched it alone to read again. */
-declare class RawVendorSource {
-    readonly origin: VendorSourceOrigin;
-    readonly commit: string;
-    readonly charters: readonly SourceCharter[];
-    readonly rawSourceSkills: readonly RawSourceSkill[];
-    constructor(origin: VendorSourceOrigin, commit: string, charters: readonly SourceCharter[], rawSourceSkills: readonly RawSourceSkill[]);
+/** One charter a source's install or injection puts in the repository, every
+ *  refusal settled: the name it is held under here; the source's charter
+ *  copied into it; and what its `cw-vendor.json` says once it is down, written
+ *  on this machine, or none for a charter the repository now owns
+ *  (VENDOR-FR-017 to VENDOR-FR-022). What the name held before is replaced
+ *  whole. */
+declare class CharterInstall {
+    readonly charterName: string;
+    readonly sourceCharter: SourceCharter;
+    readonly vendorRecord: VendorRecord | undefined;
+    constructor(charterName: string, sourceCharter: SourceCharter, vendorRecord: VendorRecord | undefined);
 }
 
 /**
@@ -4199,32 +4322,29 @@ declare class CharterPath {
      *  the charter compiles to, so the three are under one folder rather than
      *  three that drift. */
     readonly workspaceFolderPath = ".cw";
-    /** The charter itself, the only part of the workspace a person authors: its
-     *  primitives, its tests, its eval cases and its vendors, each in a folder of
-     *  its own under it (CORE-FR-224). */
+    /** The charter root, the only part of the workspace a person authors: one
+     *  folder per charter, `.cw/charter/<charter>/`, each holding its
+     *  primitives, test cases and eval cases (CORE-FR-224, VENDOR-FR-009). */
     readonly charterFolderPath: string;
-    /** The folder a charter keeps its primitives in, one folder per kind under
-     *  it: the repository's own under the charter, and each vendor's under its
-     *  own folder, laid out as the repository's (CORE-FR-196, CORE-FR-224). */
+    /** Where the charters of a source are checked out before any charter the
+     *  charter root holds is replaced, so a source refused while copied
+     *  replaces nothing; taken away once the install is over (VENDOR-FR-017). */
+    readonly installingFolderPath: string;
+    /** The folder of a charter holding its primitives, a folder per kind:
+     *  `.cw/charter/<charter>/primitive/<kind>/<id>/` (VENDOR-FR-009). */
     readonly primitivesFolderName = "primitive";
-    /** The repository's own primitives, a folder per kind, under the charter
-     *  (CORE-FR-224). */
-    readonly primitivesFolderPath: string;
-    /** The situations this repository pins its charter down with, one file of
-     *  cases each (FR-047), under the charter (CORE-FR-224). Apart from the
-     *  primitives: a test is not a primitive, nothing compiles it and no agent is
-     *  instructed by it, so it is read only when tests run. */
-    readonly testFolderPath: string;
-    /** The cases this repository evaluates its charter by against the real
-     *  agent, one file of cases each (EVAL-FR-020), under the charter
-     *  (CORE-FR-224). Beside the tests rather than inside them: a test is
-     *  resolved offline, and an evaluation spends a key. */
-    readonly evalFolderPath: string;
-    /** What this repository installed from someone else, one folder per vendor,
-     *  `<owner>/<repository>` (FR-023, FR-024, FR-050), under the charter
-     *  (CORE-FR-224). Apart from the primitives: what a vendor published is
-     *  read-only, and what this repository authored is not. */
-    readonly vendorsFolderPath: string;
+    /** The file that makes a charter installed, read-only: where it came from
+     *  (VENDOR-FR-010). */
+    readonly vendorRecordFileName = "cw-vendor.json";
+    /** The folder of a charter holding its test cases, one file of cases each
+     *  (VENDOR-FR-009). */
+    readonly testFolderName = "test";
+    /** The folder an older layout kept vendors in, right under the workspace
+     *  or the charter root: refused where it is still held (VENDOR-FR-011). */
+    readonly oldVendorsFolderName = "vendor";
+    /** The folder of a charter holding its eval cases, one file of cases each
+     *  (VENDOR-FR-009). */
+    readonly evalFolderName = "eval";
 }
 
 /**
@@ -4282,7 +4402,7 @@ declare class OutputPath {
 
 /**
  * The charter module's constants: the layout of the store `cw` keeps the
- * charter in, of a source vendors are installed from, and of the output, each
+ * charter root in, which a source keeps its charters in too, and of the output, each
  * one value, and nothing of
  * where the repository is (CORE-FR-215, CORE-FR-217).
  */
@@ -4389,9 +4509,13 @@ interface ForFetchingCharterSources {
      *
      * A source that cannot be reached, a version that is not there, and a machine
      * that cannot fetch at all each raise an `AdapterFault` saying so
-     * (CORE-FR-190, CORE-FR-205).
+     * (CORE-FR-205).
      */
     fetchCommit(source: string, version?: string): Promise<string>;
+    /** The id version control gives this fetched commit, its hash: what a
+     *  charter installed with no version asked for records as its version
+     *  (VENDOR-FR-017). */
+    findCommitId(commit: string): Promise<string>;
     /** Every file this fetched commit holds, by its path in it, at any depth, in
      *  no promised order. */
     listFilesAt(commit: string): Promise<readonly string[]>;
@@ -4405,8 +4529,7 @@ interface ForFetchingCharterSources {
      * at this folder of this repository, replacing whatever that folder held and
      * nothing beside it. The empty path is the commit's root. Nothing is staged
      * and nothing is committed: what lands is left in the working tree for the
-     * user to read, whatever else is in hand (FR-023, FR-042, CORE-FR-187,
-     * CORE-FR-190).
+     * user to read, whatever else is in hand (FR-023, FR-042).
      */
     checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
     /** This fetched commit let go, with all the adapter kept to answer for it;
@@ -4423,11 +4546,15 @@ interface ForFetchingCharterSources {
  *  a primitive by its layer, kind and id and a suite by its name
  *  (CORE-FR-213). */
 interface ForManagingCharter {
-    /** Every primitive kept of the repository's charter, its own layer and each
-     *  vendor's, each with its assets. */
+    /** Every primitive kept of the repository's charter, each with its assets,
+     *  in the layer of the charter it is kept in: authored, or installed where the
+     *  charter holds where it came from (VENDOR-FR-009, VENDOR-FR-010). */
     loadCharter(): Promise<readonly RawPrimitive[]>;
-    /** A place laid out for each kind of primitive, where none was: what a
-     *  repository is set up with (FR-057). */
+    /** Every charter kept, each with what it holds of where it came from where it
+     *  was installed (VENDOR-FR-009, VENDOR-FR-010). */
+    loadCharterMetadata(): Promise<readonly RawCharterMetadata[]>;
+    /** A place laid out for the charter root's charters, holding none: what a
+     *  repository is set up with (FR-057, VENDOR-FR-013). */
     createCharter(): Promise<void>;
     /** One new primitive of the repository's own layer kept, with its assets
      *  where none stands there already, and a file already in its folder left
@@ -4436,13 +4563,6 @@ interface ForManagingCharter {
      *  the charter (FR-167, CORE-FR-044). Handed the primitive as authored, which
      *  is kept nowhere yet. */
     addPrimitive(primitive: Primitive): Promise<string>;
-    /** New primitives of the repository's own layer kept together, each one's
-     *  uri in order; refused, with nothing written, as one added is, and where
-     *  any file is already in one's folder (CORE-FR-194). Handed each as it is
-     *  kept, not as a `Primitive` the way `addPrimitive` is: what is injected is
-     *  a vendor's source copied byte for byte, and a primitive written again
-     *  from the model would not be those bytes. */
-    injectPrimitives(rawPrimitives: readonly RawPrimitive[]): Promise<readonly string[]>;
     /** Refused where the repository is laid out in a way this store no longer
      *  keeps, naming what moves it (CORE-FR-226). */
     assertLayout(): Promise<void>;
@@ -4459,45 +4579,39 @@ interface ForManagingCharter {
      *  and nothing else (FR-076, FR-167). */
     removePrimitive(primitive: Primitive): Promise<void>;
     /** One commit of this source, at this version where one is named, fetched
-     *  and read: its own charter, the charters it keeps apart, and its skills.
-     *  Whoever asked says `removeFetchedSource` once done. A source that cannot be
-     *  reached raises an `AdapterFault` saying so (CORE-FR-190). */
-    fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<RawVendorSource>;
+     *  and read: the charters it keeps (VENDOR-FR-017). Whoever asked says
+     *  `removeFetchedSource` once done. A source that cannot be reached raises
+     *  an `AdapterFault` saying so. */
+    fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<VendorSource>;
     /** The temporary folder a source was fetched into, removed with all it holds. */
-    removeFetchedSource(rawVendorSource: RawVendorSource): Promise<void>;
-    /** The name of every vendor kept, `<owner>/<repository>/<name>`; a vendor
-     *  laid out the way an earlier version installed one is refused by the
-     *  store, naming the folder to delete (FR-053, FR-180). */
-    loadVendorRoot(): Promise<RawVendorRoot>;
-    /** One vendor of a source fetched and filtered kept under the name its
-     *  origin gives it: each charter's primitives copied whole, as the source
-     *  holds them, the source's own under `vendorSourcePath.ownCharterName` and each
-     *  kept apart under its own name; each skill's folder copied under the own
-     *  charter's and kept as the skill it converts to. Each replaces what stood
-     *  there before it; what else the vendor's folder holds is left as it was
-     *  (CORE-FR-042, CORE-FR-186 to CORE-FR-189, CORE-FR-196). */
-    storeVendor(vendorSource: VendorSource): Promise<void>;
-    /** Where a vendor installed under this name is kept, in this keeper's
-     *  words: said back, never read. */
-    findVendorUri(vendorName: string): string;
-    /** The vendor installed under this name taken away, with each folder above
-     *  it that leaves empty (FR-047, CORE-FR-204). */
-    removeVendor(vendorName: string): Promise<void>;
-    /** Every test suite kept, by its name, with what it holds. */
+    removeFetchedSource(vendorSource: VendorSource): Promise<void>;
+    /** Each charter of a source fetched put in the repository as planned: what
+     *  its name held taken away whole, the folders of the source's charter
+     *  copied in as the source holds them, and its `cw-vendor.json` written, or
+     *  taken away where it keeps none (VENDOR-FR-017 to VENDOR-FR-022). Nothing
+     *  is staged and nothing committed. */
+    storeCharters(vendorSource: VendorSource, charterInstalls: readonly CharterInstall[]): Promise<void>;
+    /** Where a charter of this name is kept, in this keeper's words: said back,
+     *  never read. */
+    findCharterFolderUri(charterName: string): string;
+    /** The charter of this name taken away whole (VENDOR-FR-021). */
+    removeCharter(charterName: string): Promise<void>;
+    /** Every test suite kept, by its name in its charter and that charter, with
+     *  what it holds (VENDOR-FR-009). */
     loadTestSuites(): Promise<readonly RawTestSuite[]>;
-    /** One test suite kept under this name, as its author wrote it, over
+    /** One test suite kept under this name in this charter, as its author wrote it, over
      *  whatever it held. */
-    writeTestSuite(name: string, testSuite: TestSuite): Promise<void>;
-    /** The test suite kept under this name taken away. */
-    removeTestSuite(name: string): Promise<void>;
-    /** Every file of evaluation cases kept, by the name it is reported under,
-     *  with what it holds. */
+    writeTestSuite(charterName: string, name: string, testSuite: TestSuite): Promise<void>;
+    /** The test suite kept under this name in this charter taken away. */
+    removeTestSuite(charterName: string, name: string): Promise<void>;
+    /** Every file of evaluation cases kept, by its name in its charter and that
+     *  charter, with what it holds (VENDOR-FR-009). */
     loadEvalSuites(): Promise<readonly RawEvalSuite[]>;
-    /** One file of evaluation cases kept under this name, as its author wrote
+    /** One file of evaluation cases kept under this name in this charter, as its author wrote
      *  it, over whatever it held. */
-    writeEvalSuite(name: string, evalSuite: EvalSuite): Promise<void>;
-    /** The file of evaluation cases kept under this name taken away. */
-    removeEvalSuite(name: string): Promise<void>;
+    writeEvalSuite(charterName: string, name: string, evalSuite: EvalSuite): Promise<void>;
+    /** The file of evaluation cases kept under this name in this charter taken away. */
+    removeEvalSuite(charterName: string, name: string): Promise<void>;
     /** The text a build laid for the item at this path inside its output, as
      *  it was laid; nothing where none was. */
     readCompiledOutputItem(itemPath: string): Promise<string | undefined>;
@@ -4656,6 +4770,11 @@ declare class CharterRoot {
     citersOf(corpus: Primitive): readonly Primitive[];
     /** Every primitive naming one, as `[[<id>]]` (FR-144, FR-163, FR-172). */
     mentionersOf(referencedPrimitive: Primitive): readonly Primitive[];
+    /** Every id one primitive names, whether the charter holds it or not: as
+     *  `[[<id>]]`, as an mcp origin among its tools, as a script its `run`
+     *  names, as a mixin it pulls in, or as its rationale — what a charter
+     *  including another is read off (VENDOR-FR-018). */
+    namedIdsOf(namingPrimitive: Primitive): readonly string[];
     /** The ids one primitive names as `[[<id>]]`, whether the charter holds them
      *  or not: in its body (FR-143, FR-172); for an agent, each mcp origin it holds by
      *  listing it among its tools (FR-156); and for a sensor, each script its
@@ -4748,8 +4867,10 @@ interface ForBuildingCharter {
     /** Every evaluation case the store holds now, committed or not, checked
      *  against the charter it holds: a charter with an error, a file that does not read,
      *  or a case naming a skill or a guide the charter does not hold, is answered
-     *  as faults under their files (EVAL-FR-026). */
-    listEvalCases(): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+     *  as faults under their files (EVAL-FR-026). Every charter's cases, or the
+     *  named charter's alone; a charter named that the charter does not hold is
+     *  refused naming those it does (VENDOR-FR-025, VENDOR-FR-026). */
+    listEvalCases(charterName?: string): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 }
 
 /**
@@ -5327,44 +5448,42 @@ declare class CodexProjection extends AgentProjection {
 
 /**
  * Keeps a charter as files, all of it through the one port (CORE-FR-228),
- * under `.cw/charter/` (CORE-FR-224): the repository's own primitives under
- * `primitive/`, each a folder of its kind's, `<kind>/<id>/`, holding its
- * index.md and its assets; the vendors it installed under `vendor/`, each
- * named as it was installed; its test cases under `test/` and its eval cases
- * under `eval/`, a JSON file each. A source is read as cw lays one out: its
- * own charter at `.cw/charter/primitive/`, charters kept apart at
- * `charters/<name>/.cw/charter/primitive/`, and skills under `skills/`
- * (CORE-FR-185, CORE-FR-195).
+ * under `.cw/charter/` (CORE-FR-224, VENDOR-FR-009): one folder per
+ * charter, `<charter>/`, holding its primitives, `primitive/<kind>/<id>/`, each index.md
+ * and its assets; its test cases under `test/` and its eval cases under
+ * `eval/`, a JSON file each; and, where it was installed, its
+ * `cw-vendor.json` (VENDOR-FR-010). A source is read as cw lays one out: its
+ * charters as a repository keeps its own (VENDOR-FR-017).
  *
- * A repository laid out the old way — its kinds right under `.cw/charter/`,
- * its tests, eval cases and vendors right under `.cw/` — is refused by every
- * operation, and so is a source laid out that way, naming the skill that
- * moves it (CORE-FR-226).
+ * A repository laid out the old way — its kinds right under `.cw/charter/` or
+ * `.cw/charter/primitive/`, its tests, eval cases and vendors right under
+ * `.cw/` or `.cw/charter/` — is refused by every operation, and so is a source
+ * laid out that way, naming the skill that moves it (CORE-FR-226,
+ * VENDOR-FR-011).
  */
 declare class FileCharterRepository implements ForManagingCharter {
     #private;
     constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles, sourceFetcher: ForFetchingCharterSources);
     loadCharter(): Promise<readonly RawPrimitive[]>;
+    loadCharterMetadata(): Promise<readonly RawCharterMetadata[]>;
     createCharter(): Promise<void>;
     addPrimitive(primitive: Primitive): Promise<string>;
-    injectPrimitives(rawPrimitives: readonly RawPrimitive[]): Promise<readonly string[]>;
     assertLayout(): Promise<void>;
     describeCharterPlace(): string;
     findCharterUri(): string;
     rewritePrimitive(primitive: Primitive): Promise<void>;
     removePrimitive(primitive: Primitive): Promise<void>;
-    fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<RawVendorSource>;
-    removeFetchedSource(rawVendorSource: RawVendorSource): Promise<void>;
-    loadVendorRoot(): Promise<RawVendorRoot>;
-    storeVendor(vendorSource: VendorSource): Promise<void>;
-    findVendorUri(vendorName: string): string;
-    removeVendor(vendorName: string): Promise<void>;
+    fetchVendorSource(vendorSourceOrigin: VendorSourceOrigin, version?: string): Promise<VendorSource>;
+    removeFetchedSource(vendorSource: VendorSource): Promise<void>;
+    storeCharters(vendorSource: VendorSource, charterInstalls: readonly CharterInstall[]): Promise<void>;
+    findCharterFolderUri(charterName: string): string;
+    removeCharter(charterName: string): Promise<void>;
     loadTestSuites(): Promise<readonly RawTestSuite[]>;
-    writeTestSuite(name: string, testSuite: TestSuite): Promise<void>;
-    removeTestSuite(name: string): Promise<void>;
+    writeTestSuite(charterName: string, name: string, testSuite: TestSuite): Promise<void>;
+    removeTestSuite(charterName: string, name: string): Promise<void>;
     loadEvalSuites(): Promise<readonly RawEvalSuite[]>;
-    writeEvalSuite(name: string, evalSuite: EvalSuite): Promise<void>;
-    removeEvalSuite(name: string): Promise<void>;
+    writeEvalSuite(charterName: string, name: string, evalSuite: EvalSuite): Promise<void>;
+    removeEvalSuite(charterName: string, name: string): Promise<void>;
     readCompiledOutputItem(itemPath: string): Promise<string | undefined>;
     describeItemPlace(itemPath: string): string;
     resolveOutputLinks(laidText: string): string;
@@ -5390,6 +5509,8 @@ declare class GitSources implements ForFetchingCharterSources {
     /** `git init --bare` first, as nothing else needs a folder: a refusal with
      *  no such command is a machine without git, not a source out of reach. */
     fetchCommit(source: string, version?: string): Promise<string>;
+    /** `git rev-parse FETCH_HEAD`. */
+    findCommitId(commit: string): Promise<string>;
     /** `git ls-tree -r`, the paths split on the NUL `-z` ends each with, so a
      *  path holding a newline or a quote is read as it is. */
     listFilesAt(commit: string): Promise<readonly string[]>;

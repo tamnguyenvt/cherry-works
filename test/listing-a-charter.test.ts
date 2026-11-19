@@ -21,7 +21,7 @@ const repo = "/repo";
 
 /** Whose home the command line runs in: what is installed on this machine is
  *  detected under it, and nothing here asks. */
-const root = new URL("file:///repo/.cw/charter/primitive/");
+const root = new URL("file:///repo/.cw/charter/team/primitive/");
 
 /** One authored file, holding what the kind it declares requires. */
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
@@ -168,9 +168,9 @@ test("the full listing opens each primitive on its id and description, with the 
   assert.equal(code, EXIT_OK);
   assert.match(
     results,
-    /^ {2}no-any {2,}What no-any is for\.\n( {4,})\.cw\/charter\/primitive\/guide\/no-any\/index\.md\n\1globs: src\/\*\*\/\*\.ts\n/m,
+    /^ {2}no-any {2,}What no-any is for\.\n( {4,})\.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md\n\1globs: src\/\*\*\/\*\.ts\n/m,
   );
-  assert.match(results, /^ {4,}\.cw\/charter\/primitive\/guide\/no-any\/index\.md$/m);
+  assert.match(results, /^ {4,}\.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md$/m);
   assert.match(results, /^ {4,}globs: src\/\*\*\/\*\.ts$/m);
   // Every other header is read from the file the line above names.
   assert.doesNotMatch(results, /tags:/);
@@ -178,13 +178,15 @@ test("the full listing opens each primitive on its id and description, with the 
 
 test("a listing is read off the charter, so every layer is named where it was authored, not where it compiled (FR-140, CORE Story 16 scenario 6)", async () => {
   const { results } = await run({
-    "file:///repo/.cw/charter/vendor/team/rules/root/primitive/guide/no-console/index.md": primitive(
-      "guide",
-      "no-console",
-    ),
+    "file:///repo/.cw/charter/rules/primitive/guide/no-console/index.md": primitive("guide", "no-console"),
+    "file:///repo/.cw/charter/rules/cw-vendor.json": JSON.stringify({
+      charter: "rules",
+      source: "team/rules",
+      version: "HEAD",
+    }),
   });
 
-  assert.match(results, /^ {4,}\.cw\/charter\/vendor\/team\/rules\/root\/primitive\/guide\/no-console\/index\.md$/m);
+  assert.match(results, /^ {4,}\.cw\/charter\/rules\/primitive\/guide\/no-console\/index\.md$/m);
   assert.match(results, /^ {4,}\(built into cw\)\/skill\/cw-author\/index\.md$/m);
   assert.doesNotMatch(results, /\.cw\/out\//);
 });

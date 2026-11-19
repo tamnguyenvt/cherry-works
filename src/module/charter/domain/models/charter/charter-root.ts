@@ -142,6 +142,18 @@ export class CharterRoot {
     );
   }
 
+  /** Every id one primitive names, whether the charter holds it or not: as
+   *  `[[<id>]]`, as an mcp origin among its tools, as a script its `run`
+   *  names, as a mixin it pulls in, or as its rationale — what a charter
+   *  including another is read off (VENDOR-FR-018). */
+  namedIdsOf(namingPrimitive: Primitive): readonly string[] {
+    return [
+      ...this.findMentionedIds(namingPrimitive),
+      ...(namingPrimitive.headers.mixins ?? []),
+      ...(namingPrimitive.headers.rationale === undefined ? [] : [namingPrimitive.headers.rationale]),
+    ];
+  }
+
   /** The ids one primitive names as `[[<id>]]`, whether the charter holds them
    *  or not: in its body (FR-143, FR-172); for an agent, each mcp origin it holds by
    *  listing it among its tools (FR-156); and for a sensor, each script its

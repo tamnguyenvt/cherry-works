@@ -111,7 +111,7 @@ const credentialsRepository: ForStoringCredentials = { async readCredential(addr
 const sourceFetcher: ForFetchingCharterSources = {
   async fetchCommit() { throw new AdapterFault('No source is reached here.', 'Vendor with cw.', { internal: false }); },
   async listFilesAt() { return []; }, async readFileAt() { return ''; }, async readBytesAt() { return new Uint8Array(); },
-  async checkOutFolder() {}, async removeFetchedCommit() {}
+  async checkOutFolder() {}, async removeFetchedCommit() {}, async findCommitId() { return ''; }
 };
 const sessionAnalysisRepository: ForLoadingSessionAnalysis = { async loadSessionLogs(writtenFromMs, writtenUntilMs): Promise<SessionLogs> { return new SessionLogs('sessions', []); } };
 let workspaceSettingsText: string | undefined;
@@ -432,17 +432,17 @@ test("charter content that does not hold stays data grouped by file, not a fault
   runConsumerCode(
     failureConsumerCode +
       String.raw`
-await fileWriter.writeFile('.cw/charter/primitive/guide/broken/index.md', '---\nkind: guide\nid: broken\n---\nBody');
+await fileWriter.writeFile('.cw/charter/team/primitive/guide/broken/index.md', '---\nkind: guide\nid: broken\n---\nBody');
 const buildAnswer = await charterBuildingApp.buildCharter();
 assert.equal(buildAnswer.type, 'FaultsByFile');
-assert.deepEqual(Object.keys(buildAnswer.data.files), [fileAddressOf('.cw/charter/primitive/guide/broken/index.md').href]);
+assert.deepEqual(Object.keys(buildAnswer.data.files), [fileAddressOf('.cw/charter/team/primitive/guide/broken/index.md').href]);
 
 // Frontmatter that is no set of named headers is a finding under its file
 // too, in the engine's words.
-await fileWriter.writeFile('.cw/charter/primitive/guide/unread/index.md', '---\nunreadable\n---\nBody');
+await fileWriter.writeFile('.cw/charter/team/primitive/guide/unread/index.md', '---\nunreadable\n---\nBody');
 const refusedBuildAnswer = await charterBuildingApp.buildCharter();
 assert.equal(refusedBuildAnswer.type, 'FaultsByFile');
-assert.deepEqual(refusedBuildAnswer.data.files[fileAddressOf('.cw/charter/primitive/guide/unread/index.md').href].map(({ data }) => data.message), ['The frontmatter must be a list of named headers, one per line — not a bare value or a list.']);
+assert.deepEqual(refusedBuildAnswer.data.files[fileAddressOf('.cw/charter/team/primitive/guide/unread/index.md').href].map(({ data }) => data.message), ['The frontmatter must be a list of named headers, one per line — not a bare value or a list.']);
 assert.deepEqual(progressReporter.problems, []);
 `,
   );
@@ -478,9 +478,9 @@ test("validation through the installed engine answers faults by file (SDK Story 
     memoryConsumerCode +
       String.raw`
 const { charterBuildingApp } = await composeOverMemory([]);
-await fileWriter.writeFile('.cw/charter/primitive/guide/broken/index.md', '---\nkind: guide\nid: broken\n---\nBody');
+await fileWriter.writeFile('.cw/charter/team/primitive/guide/broken/index.md', '---\nkind: guide\nid: broken\n---\nBody');
 const doctorOutcome = await charterBuildingApp.diagnoseCharter();
-assert.deepEqual(Object.keys(doctorOutcome.data.faultsByFile.data.files), [fileAddressOf('.cw/charter/primitive/guide/broken/index.md').href]);
+assert.deepEqual(Object.keys(doctorOutcome.data.faultsByFile.data.files), [fileAddressOf('.cw/charter/team/primitive/guide/broken/index.md').href]);
 assert.ok(doctorOutcome.data.errorCount > 0);
 `,
   );
@@ -629,17 +629,14 @@ async function setUp() {
 }
 `;
 
-test("setup through the installed engine keeps settings, empty kind files and its first build in memory (SDK Story 3 scenario 1)", () => {
+test("setup through the installed engine keeps settings, the empty folder of its charters and its first build in memory (SDK Story 3 scenario 1, VENDOR-FR-013)", () => {
   runConsumerCode(
     memoryAuthoringConsumerCode +
       `
 const setupOutcome = await setUp();
 assert.equal(setupOutcome.type, 'ProjectionPlanSummary', JSON.stringify(setupOutcome));
 assert.deepEqual(JSON.parse(await fileReader.readIfThere('.cw/settings.json')), { agents: ['claude'] });
-const primitiveKinds = await charterAuthoringApp.listKinds();
-for (const primitiveKind of Object.keys(primitiveKinds.data)) {
- assert.deepEqual(await fileReader.readBytesIfThere('.cw/charter/primitive/' + primitiveKind + '/.gitkeep'), new Uint8Array());
-}
+assert.deepEqual(await fileReader.readBytesIfThere('.cw/charter/.gitkeep'), new Uint8Array());
 assert.match(await fileReader.readIfThere('.cw/out/CHARTER.md'), /Charter/);
 assert.ok(fileBytesByAddress.has(new URL('CLAUDE.md', repositoryAddress).href));
 assert.ok([...fileBytesByAddress.keys()].every(fileAddress => fileAddress.startsWith(repositoryAddress.href)));
@@ -653,9 +650,9 @@ test("adding and validating a guide through the installed engine uses only its o
     memoryAuthoringConsumerCode +
       String.raw`
 await setUp();
-const addedPrimitive = await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', guideHeaders, 'Keep the boundary clear.');
+const addedPrimitive = await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', 'team', guideHeaders, 'Keep the boundary clear.');
 assert.equal(addedPrimitive.type, 'Primitive', JSON.stringify(addedPrimitive));
-assert.match(await fileReader.readIfThere('.cw/charter/primitive/guide/clear-boundary/index.md'), /Keep the boundary clear\./);
+assert.match(await fileReader.readIfThere('.cw/charter/team/primitive/guide/clear-boundary/index.md'), /Keep the boundary clear\./);
 const doctorOutcome = await charterBuildingApp.diagnoseCharter();
 assert.equal(doctorOutcome.data.errorCount, 0, JSON.stringify(doctorOutcome));
 const buildOutcome = await charterBuildingApp.buildCharter();
@@ -672,7 +669,7 @@ test("an invalid addition through the installed engine answers faults and writes
       `
 await setUp();
 const originalFiles = [...fileBytesByAddress];
-const refusedPrimitive = await charterAuthoringApp.addPrimitive('guide', 'broken', {}, 'Body');
+const refusedPrimitive = await charterAuthoringApp.addPrimitive('guide', 'broken', 'team', {}, 'Body');
 assert.equal(refusedPrimitive.type, 'Faults', JSON.stringify(refusedPrimitive));
 assert.ok(refusedPrimitive.data.faults.length > 0);
 for (const faultDTO of refusedPrimitive.data.faults) {
@@ -690,8 +687,8 @@ test("a memory build matches cw on disk byte for byte, including escaped binary 
     memoryAuthoringConsumerCode +
       String.raw`
 await setUp();
-await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', guideHeaders, 'Keep the boundary clear.');
-const assetFile = '.cw/charter/primitive/guide/clear-boundary/a #%.bin';
+await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', 'team', guideHeaders, 'Keep the boundary clear.');
+const assetFile = '.cw/charter/team/primitive/guide/clear-boundary/a #%.bin';
 await fileWriter.writeFile(assetFile, new Uint8Array([0, 255, 128, 13, 10]));
 const buildOutcome = await charterBuildingApp.buildCharter();
 assert.equal(buildOutcome.type, 'ProjectionPlanSummary', JSON.stringify(buildOutcome));
@@ -740,7 +737,7 @@ test("every authoring operation honours a minimal read-after-write adapter (SDK 
       `
 assert.equal((await setUp()).type, 'ProjectionPlanSummary');
 assert.equal((await charterAuthoringApp.listPrimitiveRequirements('guide')).type, 'PrimitiveRequirements');
-assert.equal((await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', guideHeaders, 'First body.')).type, 'Primitive');
+assert.equal((await charterAuthoringApp.addPrimitive('guide', 'clear-boundary', 'team', guideHeaders, 'First body.')).type, 'Primitive');
 assert.equal((await charterAuthoringApp.listCatalogue('guide')).type, 'Catalogue');
 assert.equal((await charterAuthoringApp.listPrimitives('clear-boundary')).data.primitives.length, 1);
 assert.equal((await charterAuthoringApp.explainPrimitive('clear-boundary')).type, 'ExplanationOutcome');
@@ -758,11 +755,11 @@ assert.equal((await charterAuthoringApp.testCharter()).type, 'TestRunReport');
 assert.equal((await charterBuildingApp.buildCharter()).type, 'ProjectionPlanSummary');
 assert.deepEqual((await charterBuildingApp.previewCharterBuild()).data.added, []);
 assert.deepEqual((await charterBuildingApp.previewCharterBuild()).data.edited, []);
-const escapedAssetFile = '.cw/charter/primitive/guide/clear-boundary/a #%.bin';
+const escapedAssetFile = '.cw/charter/team/primitive/guide/clear-boundary/a #%.bin';
 await fileWriter.writeFile(escapedAssetFile, new Uint8Array([0, 255]));
 assert.equal((await charterAuthoringApp.removePrimitive('clear-boundary')).type, 'Primitive');
 assert.equal(await fileReader.readBytesIfThere(escapedAssetFile), undefined);
-assert.equal(await fileReader.readIfThere('.cw/charter/primitive/guide/clear-boundary/index.md'), undefined);
+assert.equal(await fileReader.readIfThere('.cw/charter/team/primitive/guide/clear-boundary/index.md'), undefined);
 const cleanupOutcome = await charterBuildingApp.buildCharter();
 assert.equal(cleanupOutcome.type, 'ProjectionPlanSummary');
 assert.ok(cleanupOutcome.data.deleted.includes('.cw/out/guide/clear-boundary/index.md'));
@@ -781,8 +778,8 @@ test("a memory build reports a failed write and keeps completed writes (SDK Stor
     memoryAuthoringConsumerCode +
       String.raw`
 await setUp();
-await charterAuthoringApp.addPrimitive('guide', 'first-guide', guideHeaders, 'First guide.');
-await charterAuthoringApp.addPrimitive('guide', 'second-guide', guideHeaders, 'Second guide.');
+await charterAuthoringApp.addPrimitive('guide', 'first-guide', 'team', guideHeaders, 'First guide.');
+await charterAuthoringApp.addPrimitive('guide', 'second-guide', 'team', guideHeaders, 'Second guide.');
 const completedWriteAddresses = [];
 const failingWriter = { ...fileWriter, async writeFile(filePath, fileContents, writeOptions) {
  if (completedWriteAddresses.length === 1) throw new Error('Store write refused.');
@@ -1038,10 +1035,11 @@ assert.ok(charterPath instanceof CharterPath);
 assert.ok(outputPath instanceof OutputPath);
 assert.equal(charterPath.charterFolderPath, '.cw/charter');
 assert.equal(charterPath.primitivesFolderName, 'primitive');
-assert.equal(charterPath.primitivesFolderPath, '.cw/charter/primitive');
-assert.equal(charterPath.testFolderPath, '.cw/charter/test');
-assert.equal(charterPath.evalFolderPath, '.cw/charter/eval');
-assert.equal(charterPath.vendorsFolderPath, '.cw/charter/vendor');
+assert.equal(charterPath.primitivesFolderName, 'primitive');
+assert.equal(charterPath.vendorRecordFileName, 'cw-vendor.json');
+assert.equal(charterPath.testFolderName, 'test');
+assert.equal(charterPath.evalFolderName, 'eval');
+assert.equal('vendorsFolderPath' in charterPath, false);
 `);
 });
 
@@ -1268,9 +1266,9 @@ const shell = { async runShellCommand(command) { shellCommands.push(command); re
 const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = await composeOverMemory(['claude'], { shell });
 assert.equal((await charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
 // One sensor on Stop kept for claude, one kept for no agent.
-const claudeSensorAnswer = await charterAuthoringApp.addPrimitive('sensor', 'claude-check', { description: 'Check when claude stops.', signal: 'Stop', run: 'echo claude-check', 'agent-provider': ['claude'] }, 'Check.');
+const claudeSensorAnswer = await charterAuthoringApp.addPrimitive('sensor', 'claude-check', 'team', { description: 'Check when claude stops.', signal: 'Stop', run: 'echo claude-check', 'agent-provider': ['claude'] }, 'Check.');
 assert.equal(claudeSensorAnswer.type, 'Primitive', JSON.stringify(claudeSensorAnswer));
-const everyAgentSensorAnswer = await charterAuthoringApp.addPrimitive('sensor', 'every-agent-check', { description: 'Check when any agent stops.', signal: 'Stop', run: 'echo every-agent-check' }, 'Check.');
+const everyAgentSensorAnswer = await charterAuthoringApp.addPrimitive('sensor', 'every-agent-check', 'team', { description: 'Check when any agent stops.', signal: 'Stop', run: 'echo every-agent-check' }, 'Check.');
 assert.equal(everyAgentSensorAnswer.type, 'Primitive', JSON.stringify(everyAgentSensorAnswer));
 assert.equal((await charterBuildingApp.buildCharter()).type, 'ProjectionPlanSummary');
 const unnamedAnswer = await charterRuntimeApp.runSensors('Stop', '{}', undefined);
@@ -1310,7 +1308,7 @@ const { charterAuthoringApp, charterBuildingApp, charterRuntimeApp } = await com
  shell,
 });
 assert.equal((await charterAuthoringApp.setUpCharter()).type, 'CharterLayout');
-const addedAnswer = await charterAuthoringApp.addPrimitive('sensor', 'quill-check', { description: 'Check when quill stops.', signal: 'Stop', run: 'echo quill', 'agent-provider': ['quill'] }, 'Check.');
+const addedAnswer = await charterAuthoringApp.addPrimitive('sensor', 'quill-check', 'team', { description: 'Check when quill stops.', signal: 'Stop', run: 'echo quill', 'agent-provider': ['quill'] }, 'Check.');
 assert.equal(addedAnswer.type, 'Primitive', JSON.stringify(addedAnswer));
 const buildAnswer = await charterBuildingApp.buildCharter();
 assert.equal(buildAnswer.type, 'ProjectionPlanSummary', JSON.stringify(buildAnswer));

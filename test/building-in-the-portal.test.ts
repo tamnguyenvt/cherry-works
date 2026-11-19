@@ -32,8 +32,8 @@ const guide = (id: string, headers: readonly string[] = []) =>
 
 /** One guide, and the case naming it. */
 const holding = (extra: Record<string, string> = {}) => ({
-  [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
-  [at(".cw/charter/test/no-any.json")]: JSON.stringify({
+  [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any"),
+  [at(".cw/charter/team/test/no-any.json")]: JSON.stringify({
     cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }],
   }),
   ...extra,
@@ -104,7 +104,7 @@ test("building from the preview writes, and lists what it wrote (FR-120, CORE St
 
 test("a charter with an error builds nothing, and its faults are shown under their files (FR-120, CORE Story 7 scenario 3)", async () => {
   await inTheBrowser(
-    holding({ [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }),
+    holding({ [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any", ['mixins: ["nowhere"]']) }),
     async (page, files) => {
       await page.getByRole("button", { name: "Build", exact: true }).click();
 
@@ -112,7 +112,7 @@ test("a charter with an error builds nothing, and its faults are shown under the
       await refused.waitFor();
       assert.match(
         await refused.innerText(),
-        /\.cw\/charter\/primitive\/guide\/no-any\/index\.md[\s\S]*the mixin "nowhere"/,
+        /\.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md[\s\S]*the mixin "nowhere"/,
       );
       assert.equal(await files.readIfThere(new URL(at(".cw/out/CHARTER.md"))), undefined);
     },
@@ -121,7 +121,7 @@ test("a charter with an error builds nothing, and its faults are shown under the
 
 test("Doctor shows the three answers and every warning, and builds when the output is behind (FR-121, CORE Story 7 scenario 5, CORE Story 14 scenario 4)", async () => {
   await inTheBrowser(
-    holding({ [at(".cw/charter/primitive/corpus/why/index.md")]: primitive("corpus", "why") }),
+    holding({ [at(".cw/charter/team/primitive/corpus/why/index.md")]: primitive("corpus", "why") }),
     async (page, files) => {
       await page.getByRole("button", { name: "Doctor" }).click();
 
@@ -135,7 +135,7 @@ test("Doctor shows the three answers and every warning, and builds when the outp
       assert.match(answers, /Built\s+\d+ files out of date\./i);
       assert.match(
         await page.getByRole("table", { name: "Faults" }).innerText(),
-        /\.cw\/charter\/primitive\/corpus\/why\/index\.md[\s\S]*warn[\s\S]*No primitive cites "why"/,
+        /\.cw\/charter\/team\/primitive\/corpus\/why\/index\.md[\s\S]*warn[\s\S]*No primitive cites "why"/,
       );
 
       await page.getByRole("dialog").getByRole("button", { name: "Build", exact: true }).click();
@@ -149,8 +149,8 @@ test("Doctor gives what cw doctor gives for the same repository: its main-contex
   await inTheBrowser(
     holding({
       [at(".cw/settings.json")]: `${JSON.stringify({ agents: ["claude", "codex"] })}\n`,
-      [at(".cw/charter/primitive/corpus/why/index.md")]: primitive("corpus", "why"),
-      [at(".cw/charter/primitive/mixin/ts/index.md")]: primitive("mixin", "ts"),
+      [at(".cw/charter/team/primitive/corpus/why/index.md")]: primitive("corpus", "why"),
+      [at(".cw/charter/team/primitive/mixin/ts/index.md")]: primitive("mixin", "ts"),
     }),
     async (page, files) => {
       const doctorText = await printedDoctorOf(files);

@@ -33,8 +33,8 @@ const suiteText = (authoredSuite: unknown) => `${JSON.stringify(authoredSuite, u
 /** A repository with one guide, one passing case and one failing one. */
 const withOnePassingOneFailing = () => ({
   [at(".cw/settings.json")]: `${JSON.stringify({ agents: [] })}\n`,
-  [at(".cw/charter/primitive/guide/no-any/index.md")]: guide("no-any"),
-  [at(".cw/charter/test/guides.json")]: suiteText({
+  [at(".cw/charter/team/primitive/guide/no-any/index.md")]: guide("no-any"),
+  [at(".cw/charter/team/test/guides.json")]: suiteText({
     cases: [
       { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
       { do: { touchFile: "docs/a.md" }, expect: { activate: "no-any" } },
@@ -102,14 +102,17 @@ test("the outcome is how cw test resolves every case, each under its file (CORE 
       testCaseReport.passed,
     ]),
     [
-      ["guides.json", true],
-      ["guides.json", false],
+      ["team/guides.json", true],
+      ["team/guides.json", false],
     ],
   );
 });
 
 test("a run stopped by a test file that does not read is a 422 naming it (FR-088)", async () => {
-  const { portalRoutes } = portal({ ...withOnePassingOneFailing(), [at(".cw/charter/test/broken.json")]: "{ nope" });
+  const { portalRoutes } = portal({
+    ...withOnePassingOneFailing(),
+    [at(".cw/charter/team/test/broken.json")]: "{ nope",
+  });
 
   const answer = await portalRoutes.request("/test-suites/outcome");
 
@@ -120,22 +123,41 @@ test("a run stopped by a test file that does not read is a 422 naming it (FR-088
 test("a test file posted is written under a free name, and answered with its path (CORE Story 9 scenario 6)", async () => {
   const { portalRoutes, fileAt } = portal(withOnePassingOneFailing());
 
-  const answer = await portalRoutes.request("/test-suites", sending("POST"));
+  const answer = await portalRoutes.request("/test-suites", sending("POST", {}));
 
   assert.equal(answer.status, 201);
-  assert.deepEqual(await answer.json(), { type: "TestSuiteName", data: { name: "untitled-1.json" } });
-  assert.equal(answer.headers.get("Location"), "/api/test-suites/untitled-1.json");
-  assert.ok(await fileAt(".cw/charter/test/untitled-1.json"));
+  assert.deepEqual(await answer.json(), {
+    type: "TestSuiteName",
+    data: { name: "untitled-1.json", charterName: "team" },
+  });
+  assert.equal(answer.headers.get("Location"), "/api/test-suites/team/untitled-1.json");
+  assert.ok(await fileAt(".cw/charter/team/test/untitled-1.json"));
+});
+
+test("a test file posted into a charter named is written there, where the repository authored more than one (VENDOR Story 3 scenario 28)", async () => {
+  const { portalRoutes, fileAt } = portal({
+    ...withOnePassingOneFailing(),
+    [at(".cw/charter/other/primitive/guide/theirs/index.md")]: guide("theirs"),
+  });
+
+  const unnamedAnswer = await portalRoutes.request("/test-suites", sending("POST", {}));
+  assert.equal(unnamedAnswer.status, 422);
+  assert.match(JSON.stringify(await unnamedAnswer.json()), /authored more than one/);
+
+  const answer = await portalRoutes.request("/test-suites", sending("POST", { charterName: "other" }));
+  assert.equal(answer.status, 201);
+  assert.equal(answer.headers.get("Location"), "/api/test-suites/other/untitled-1.json");
+  assert.ok(await fileAt(".cw/charter/other/test/untitled-1.json"));
 });
 
 test("text put that reads as a suite is written (CORE Story 9 scenario 3)", async () => {
   const { portalRoutes, fileAt } = portal(withOnePassingOneFailing());
   const text = suiteText({ cases: [{ do: { touchFile: "src/two.ts" }, expect: { activate: "no-any" } }] });
 
-  const answer = await portalRoutes.request("/test-suites/guides.json", sending("PUT", { text }));
+  const answer = await portalRoutes.request("/test-suites/team/guides.json", sending("PUT", { text }));
 
   assert.equal(answer.status, 200);
-  assert.equal(await fileAt(".cw/charter/test/guides.json"), text);
+  assert.equal(await fileAt(".cw/charter/team/test/guides.json"), text);
 });
 
 test("text put that is not a suite is a 422 with the sample, and nothing is written (CORE Story 9 scenario 4)", async () => {
@@ -143,20 +165,20 @@ test("text put that is not a suite is a 422 with the sample, and nothing is writ
   const { portalRoutes, fileAt } = portal(files);
 
   for (const text of ["{ nope", suiteText({ cases: [] })]) {
-    const answer = await portalRoutes.request("/test-suites/guides.json", sending("PUT", { text }));
+    const answer = await portalRoutes.request("/test-suites/team/guides.json", sending("PUT", { text }));
     assert.equal(answer.status, 422);
     assert.match(FaultDTOs.Fault.parse(await answer.json()).data.fix, /^Write it as \{ "cases": \[/);
   }
-  assert.equal(await fileAt(".cw/charter/test/guides.json"), files[at(".cw/charter/test/guides.json")]);
+  assert.equal(await fileAt(".cw/charter/team/test/guides.json"), files[at(".cw/charter/team/test/guides.json")]);
 });
 
 test("a test file deleted is gone, and a name that is none is a 422 (CORE Story 9 scenario 7)", async () => {
   const { portalRoutes, fileAt } = portal(withOnePassingOneFailing());
 
-  const refused = await portalRoutes.request("/test-suites/missing.json", sending("DELETE"));
+  const refused = await portalRoutes.request("/test-suites/team/missing.json", sending("DELETE"));
   assert.equal(refused.status, 422);
 
-  const answer = await portalRoutes.request("/test-suites/guides.json", sending("DELETE"));
+  const answer = await portalRoutes.request("/test-suites/team/guides.json", sending("DELETE"));
   assert.equal(answer.status, 204);
-  assert.equal(await fileAt(".cw/charter/test/guides.json"), undefined);
+  assert.equal(await fileAt(".cw/charter/team/test/guides.json"), undefined);
 });

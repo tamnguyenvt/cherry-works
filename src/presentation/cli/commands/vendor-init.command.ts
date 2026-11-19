@@ -5,23 +5,16 @@ import prompts from "prompts";
 import changelogMd from "../templates/vendor-init-command/CHANGELOG.md";
 import gitignoreTxt from "../templates/vendor-init-command/gitignore.txt";
 import readmeMd from "../templates/vendor-init-command/README.md";
-import vendorReleaseSkillMd from "../templates/vendor-init-command/vendor-release.skill.md";
-import vendorReleaseActionMjs from "../templates/vendor-init-command/vendor-release-action.mjs";
-import vendorReleaseActionScriptMd from "../templates/vendor-init-command/vendor-release-action.script.md";
 import { type Command, type Context, EXIT_FAILURE, EXIT_OK, type Outcome } from "./command.interface.js";
 import { formatHeading, formatMention, formatStatusLine, printProblem, refuseCommand, reportFault } from "./helper.js";
 
 /** Every file `cw vendor init` writes, by its path from the folder's root, as
  *  its template holds it: README.md's `{{name}}` and `{{description}}` are
- *  the author's answers. */
+ *  the author's answers. No charter is made (VENDOR-FR-013). */
 const TEMPLATE_TEXT_BY_PATH: Readonly<Record<string, string>> = {
   "README.md": readmeMd,
   "CHANGELOG.md": changelogMd,
   ".gitignore": gitignoreTxt,
-  "charters/.gitkeep": "",
-  ".cw/charter/primitive/skill/vendor-release/index.md": vendorReleaseSkillMd,
-  ".cw/charter/primitive/script/vendor-release-action/index.md": vendorReleaseActionScriptMd,
-  ".cw/charter/primitive/script/vendor-release-action/vendor-release-action.mjs": vendorReleaseActionMjs,
 };
 
 /** What a stop after `cw init` ran ends on: the folder holds what was
@@ -38,8 +31,7 @@ const HALF_SET_UP_LINE = 'The folder is left half set up: empty it, then run "cw
  * description are asked first. Then `cw init` runs here, asking the agent as
  * it always does; the folder is made a git repository on
  * `main` where it has no `.git`; the template is copied in — README,
- * changelog, `.gitignore`, `charters/`, and `/vendor-release` with the script
- * it runs in the root's charter — and `cw build` runs. Nothing is committed.
+ * changelog and `.gitignore` — and `cw build` runs. Nothing is committed.
  */
 export class VendorInitCommand implements Command {
   readonly name = "vendor init";
@@ -155,7 +147,7 @@ export class VendorInitCommand implements Command {
         formatHeading(
           formatStatusLine("good", `Set up ${repositoryName.trim()} as a charter repository, with nothing committed.`),
         ),
-        `Set each charter up under ${formatMention("charters/<name>/")} with "cw init" there, commit, push, then ask your agent "/vendor-release" at the root.`,
+        `Write each charter under ${formatMention(".cw/charter/<charter>/")} with "cw add <kind> <id> --charter=<charter>", commit, push, then ask your agent "/vendor-release" at the root.`,
         "",
       ].join("\n"),
     };

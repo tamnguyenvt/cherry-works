@@ -14,7 +14,7 @@ import { wrapAppToShowPaths } from "../src/presentation/cli/commands/helper.js";
 import { buildPortalRoutes } from "../src/presentation/portal/portal.routes.js";
 import { authoringCharterOf, buildingCharterOf, workspaceSettingsLoaderOf } from "./use-cases-of.js";
 
-const at = (path: string) => new URL(path, "file:///repo/.cw/charter/primitive/").href;
+const at = (path: string) => new URL(path, "file:///repo/.cw/charter/team/primitive/").href;
 
 const primitive = (kind: string, id: string, headers: readonly string[] = []) =>
   [
@@ -80,6 +80,25 @@ test("the listing is sent as every primitive the charter read, each under its la
   );
 });
 
+test("one charter's primitives are sent alone, and a charter not held is refused naming those held (VENDOR Story 3 scenario 28)", async () => {
+  const portalRoutes = portal({
+    [at("guide/no-any/index.md")]: guide("no-any"),
+    ["file:///repo/.cw/charter/other/primitive/guide/theirs/index.md"]: guide("theirs"),
+  });
+
+  const answer = await portalRoutes.request("/charter/team/primitives");
+  assert.equal(answer.status, 200);
+  const { data: primitivesListing } = CharterDTOs.Primitives.parse(await answer.json());
+  assert.deepEqual(
+    primitivesListing.primitives.map((primitiveDTO) => primitiveDTO.data.id),
+    ["no-any"],
+  );
+
+  const refusedAnswer = await portalRoutes.request("/charter/missing/primitives");
+  assert.equal(refusedAnswer.status, 422);
+  assert.match(JSON.stringify(await refusedAnswer.json()), /holds no charter \\"missing\\".*other, team/);
+});
+
 test("a word sent with the listing narrows it to what mentions the word, and an empty one narrows nothing (FR-114)", async () => {
   const portalRoutes = portal({
     [at("guide/no-any/index.md")]: guide("no-any"),
@@ -129,7 +148,7 @@ test("a charter with an error explains nothing and hands back what is wrong unde
 
   assert.equal(answer.status, 422);
   assert.deepEqual(Object.keys(FaultDTOs.FaultsByFile.parse(await answer.json()).data.files), [
-    ".cw/charter/primitive/guide/no-any/index.md",
+    ".cw/charter/team/primitive/guide/no-any/index.md",
   ]);
 });
 
@@ -150,14 +169,14 @@ test("a charter with an error lists nothing and hands back what is wrong under i
   assert.equal(answer.status, 422);
   const { type, data: faultsByFile } = FaultDTOs.FaultsByFile.parse(await answer.json());
   assert.equal(type, "FaultsByFile");
-  assert.deepEqual(Object.keys(faultsByFile.files), [".cw/charter/primitive/guide/no-any/index.md"]);
+  assert.deepEqual(Object.keys(faultsByFile.files), [".cw/charter/team/primitive/guide/no-any/index.md"]);
 });
 
 test("what validating found is sent as it stands, a charter that holds having nothing wrong (FR-013)", async () => {
   const holds = await portal({
     [at("guide/no-any/index.md")]: guide("no-any"),
     // A guide no test case names is a warning (FR-014); this one is named.
-    "file:///repo/.cw/charter/test/no-any.json": JSON.stringify({
+    "file:///repo/.cw/charter/team/test/no-any.json": JSON.stringify({
       cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } }],
     }),
   }).request("/charter/root/faults");
@@ -174,7 +193,7 @@ test("what validating found is sent as it stands, a charter that holds having no
   assert.equal(invalidMixinAnswer.status, 200);
   const { data: faultsByFile } = FaultDTOs.FaultsByFile.parse(await invalidMixinAnswer.json());
   assert.ok(
-    faultsByFile.files[".cw/charter/primitive/guide/no-any/index.md"]?.some(({ data: { message } }) =>
+    faultsByFile.files[".cw/charter/team/primitive/guide/no-any/index.md"]?.some(({ data: { message } }) =>
       /the mixin "nowhere"/.test(message),
     ),
   );

@@ -38,7 +38,12 @@ test("every command the body names is one cw answers (CORE Story 12 scenario 8)"
 });
 
 test("the body says the procedure in order: ask the kind, add with flags, build (FR-024, CORE Story 12 scenario 8)", () => {
-  const steps = ["`cw kinds`", "`cw kinds <kind>`", "`cw add <kind> <id> --header <name>=<value>`", "`cw build`"];
+  const steps = [
+    "`cw kinds`",
+    "`cw kinds <kind>`",
+    "`cw add <kind> <id> --charter=<charter> --header <name>=<value>`",
+    "`cw build`",
+  ];
 
   const positions = steps.map((step) => skillBody.indexOf(step));
 

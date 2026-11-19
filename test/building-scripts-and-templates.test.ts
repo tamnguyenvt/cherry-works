@@ -11,7 +11,7 @@ import { answerOf, faultTextOf } from "./answer-of.js";
 import { authoringCharterOf, buildingCharterOf } from "./use-cases-of.js";
 
 const repo = new URL("file:///repo/");
-const root = new URL(".cw/charter/primitive/", repo);
+const root = new URL(".cw/charter/team/primitive/", repo);
 
 const at = (path: string) => new URL(path, root).href;
 const inRepo = (path: string) => new URL(path, repo).href;
@@ -180,8 +180,8 @@ test("the catalogue names each primitive's compiled file, and a listing the inde
   assert.equal(catalogue.find((entry) => entry.id === "note")?.file, ".cw/out/template/note/index.md");
   const listing = answerOf(await charterAuthoringApp.listPrimitives());
   assert.ok(listing.type === "Primitives");
-  assert.match(JSON.stringify(listing.data), /\.cw\/charter\/primitive\/script\/check\/index\.md/);
-  assert.match(JSON.stringify(listing.data), /\.cw\/charter\/primitive\/template\/note\/index\.md/);
+  assert.match(JSON.stringify(listing.data), /\.cw\/charter\/team\/primitive\/script\/check\/index\.md/);
+  assert.match(JSON.stringify(listing.data), /\.cw\/charter\/team\/primitive\/template\/note\/index\.md/);
 });
 
 test("a template whose body changes, its file alone edited, keeps the file the catalogue names for it, and no primitive naming it changes (CORE Story 22 scenario 2, FR-164, FR-161, CORE Story 55 scenario 6)", async () => {
@@ -310,14 +310,16 @@ test("a script or a template no primitive names is a warning, and the build stil
 
 test("a vendor's assets, and its templates, are built into the repository's output folder like ones it authored (CORE Story 21 scenario 9, FR-159, CORE Story 55 scenario 8, CORE Story 24 scenario 6)", async () => {
   const { held, build } = building({
-    [inRepo(".cw/charter/vendor/team/rules/root/primitive/script/check/index.md")]: primitive(
+    [inRepo(".cw/charter/rules/cw-vendor.json")]:
+      `${JSON.stringify({ charter: "rules", source: "team/rules", version: "HEAD" })}\n`,
+    [inRepo(".cw/charter/rules/primitive/script/check/index.md")]: primitive(
       "script",
       "check",
       ["executionPath: ./run.sh"],
       "",
     ),
-    [inRepo(".cw/charter/vendor/team/rules/root/primitive/script/check/run.sh")]: runFile,
-    [inRepo(".cw/charter/vendor/team/rules/root/primitive/template/note/index.md")]: template("note"),
+    [inRepo(".cw/charter/rules/primitive/script/check/run.sh")]: runFile,
+    [inRepo(".cw/charter/rules/primitive/template/note/index.md")]: template("note"),
     [at("skill/release/index.md")]: skillNaming("[[check]]", "[[note]]"),
   });
 
@@ -345,7 +347,7 @@ test("a script is added as its index.md and an empty asset at its executionPath 
   const { held, charterAuthoringApp } = building({});
 
   const primitiveDTO = answerOf(
-    await charterAuthoringApp.addPrimitive("script", "release/check", {
+    await charterAuthoringApp.addPrimitive("script", "release/check", "team", {
       description: "Check the changelog.",
       executionPath: "./run.sh",
     }),
@@ -366,7 +368,9 @@ test("a primitive added inside another's folder, or around one, is refused and n
 
   for (const id of ["team/review/strict", "team"])
     assert.match(
-      faultTextOf(await charterAuthoringApp.addPrimitive("skill", id, { description: "Mine.", triggers: ["mine"] })),
+      faultTextOf(
+        await charterAuthoringApp.addPrimitive("skill", id, "team", { description: "Mine.", triggers: ["mine"] }),
+      ),
       /skill\/team\/review\/index\.md is a primitive/,
     );
   assert.equal(await held.readIfThere(new URL(at("skill/team/review/strict/index.md"))), undefined);
@@ -391,7 +395,7 @@ test("a template is added as its index.md with an empty body, and its id is one 
   const { held, charterAuthoringApp } = building({});
 
   const primitiveDTO = answerOf(
-    await charterAuthoringApp.addPrimitive("template", "release-note", { description: "The release's note." }),
+    await charterAuthoringApp.addPrimitive("template", "release-note", "team", { description: "The release's note." }),
   );
 
   assert.equal(primitiveDTO.type, "Primitive");
@@ -406,7 +410,7 @@ test("a template is added as its index.md with an empty body, and its id is one 
 test("a template declaring a header no kind takes is refused naming that header, and nothing is written (CORE Story 21 scenario 5, FR-072, FR-158, CORE Story 55 scenario 8)", async () => {
   const { held, charterAuthoringApp } = building({});
 
-  const addFaultsDTO = await charterAuthoringApp.addPrimitive("template", "release-note", {
+  const addFaultsDTO = await charterAuthoringApp.addPrimitive("template", "release-note", "team", {
     description: "The release's note.",
     signal: "SessionStart",
   });

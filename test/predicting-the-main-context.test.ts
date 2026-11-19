@@ -28,31 +28,31 @@ const primitive = (kind: string, id: string, headers: readonly string[], body: s
  *  warning is said of it. */
 const holding = (settings: object = { agents: ["claude"] }) => ({
   [at(".cw/settings.json")]: `${JSON.stringify(settings)}\n`,
-  [at(".cw/charter/primitive/guide/plain-words/index.md")]: primitive(
+  [at(".cw/charter/team/primitive/guide/plain-words/index.md")]: primitive(
     "guide",
     "plain-words",
     ["description: Write in plain words."],
     "Write every sentence in plain words, whole, with no shorthand. ".repeat(20),
   ),
-  [at(".cw/charter/primitive/guide/no-any/index.md")]: primitive(
+  [at(".cw/charter/team/primitive/guide/no-any/index.md")]: primitive(
     "guide",
     "no-any",
     ["description: Reject the any type.", 'globs: ["src/**/*.ts"]'],
     "Never write any.",
   ),
-  [at(".cw/charter/primitive/skill/refactoring/index.md")]: primitive(
+  [at(".cw/charter/team/primitive/skill/refactoring/index.md")]: primitive(
     "skill",
     "refactoring",
     ["description: Change how code is structured without changing what it does.", 'triggers: ["refactor this"]'],
     "Refactor.",
   ),
-  [at(".cw/charter/primitive/agent/reviewer/index.md")]: primitive(
+  [at(".cw/charter/team/primitive/agent/reviewer/index.md")]: primitive(
     "agent",
     "reviewer",
     ["description: Review a diff.", 'tools: ["Read"]'],
     "Review.",
   ),
-  [at(".cw/charter/test/guides.json")]: JSON.stringify({
+  [at(".cw/charter/team/test/guides.json")]: JSON.stringify({
     cases: [
       { do: { touchFile: "src/one.ts" }, expect: { activate: "no-any" } },
       { do: { touchFile: "README.md" }, expect: { activate: "plain-words" } },
@@ -189,7 +189,7 @@ test("a guide naming files is listed apart, as loaded when one is touched, and i
 test("each mcp is counted by the names of the tools the server lists for it, and no schema (EVAL-FR-029, EVAL Story 5 scenario 4)", async () => {
   const { portalRoutes } = surfaces({
     ...holding(),
-    [at(".cw/charter/primitive/mcp/linear/index.md")]: primitive(
+    [at(".cw/charter/team/primitive/mcp/linear/index.md")]: primitive(
       "mcp",
       "linear",
       [

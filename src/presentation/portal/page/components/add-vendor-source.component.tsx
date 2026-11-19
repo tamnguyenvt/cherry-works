@@ -9,8 +9,8 @@ import { Label } from "./ui/label.js";
 
 /**
  * A source to install, by the address git fetches and an optional version
- * (FR-123), above the directory names reserved under a source's
- * `.cw/charter/`: the kind folders, as the engine names every kind. A refusal stays here in the
+ * (FR-123), above the directory names reserved in each charter of a source:
+ * the kind folders, as the engine names every kind (VENDOR-FR-017). A refusal stays here in the
  * engine's words, and nothing closes.
  */
 export function AddVendorSource({
@@ -42,7 +42,8 @@ export function AddVendorSource({
   return (
     <div className="space-y-3.5">
       <p className="text-[13px] leading-[1.65] text-zinc-700">
-        A vendor source is a repository governed by cw: only its charter, under .cw/charter/, is installed.
+        A vendor source is a repository governed by cw: every charter it authored, under .cw/charter/&lt;charter&gt;/,
+        is installed, each with the charters it includes.
       </p>
       <div className="divide-y divide-zinc-100 overflow-hidden rounded-[11px] border border-[#f0f0f0]">
         <div className="flex items-center gap-3 px-[13px] py-2.5">
@@ -79,7 +80,7 @@ export function AddVendorSource({
       </div>
       <div className="rounded-[11px] border bg-zinc-50 px-3.5 py-3" aria-label="Reserved directories">
         <div className="mb-1 text-[11px] font-bold tracking-[0.07em] text-zinc-400 uppercase">
-          Directories under its .cw/charter/
+          Directories in each of its charters
         </div>
         {Object.entries(kindsQuery.data?.data ?? {}).map(([kind, activatesWhen]) => (
           <div key={kind} className="flex items-baseline gap-[9px] border-t border-zinc-100 py-[7px]">

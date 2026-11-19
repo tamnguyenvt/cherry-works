@@ -10,12 +10,9 @@ AGENTS.md
 CLAUDE.md
 .mcp.json
 
-.cw/out/
+.cw/
 
 # The agent providers' files and the SDD workflow are kept out of this repository.
 .sdd/
 learning/
 specs/handoff/
-
-# The sdd-charter vendor is kept on this machine only, never shared.
-.cw/charter/vendor/tamnguyenvt/sdd-charter/

@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { charterPath, vendorSourcePath } from "../src/module/charter/domain/constants.js";
-import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
+import {
+  IN_MEMORY_COMMIT_ID,
+  InMemorySources,
+} from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memory-agent-cli.adapter.js";
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
@@ -11,9 +13,27 @@ import { Commander } from "../src/presentation/cli/cli.commander.js";
 import { EXIT_FAILURE, EXIT_OK, EXIT_USAGE } from "../src/presentation/cli/commands/command.interface.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
 import { answerOf } from "./answer-of.js";
-import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
+import { authoringCharterOf, buildingCharterOf, commandLineOf, installedFoldersOf } from "./use-cases-of.js";
 
 const repo = "/repo";
+
+/** What every source here publishes unless a test says otherwise: one charter,
+ *  `published`, holding one guide. */
+const publishedCharterFiles = {
+  ".cw/charter/published/primitive/guide/published/index.md":
+    "---\nkind: guide\nid: published\ndescription: Published.\n---\n",
+  "README.md": "# Published\n",
+};
+
+/** Sources held in memory, each of these addresses publishing the charter
+ *  `published`. The sources held in memory read the version asked for after
+ *  an `@`, so an address holding one is published by what comes before it. */
+const sourcesPublishing = (sources: readonly string[], fileReaders?: InMemoryFileReaders) => {
+  const sourceFetcher = new InMemorySources(fileReaders);
+  for (const source of sources)
+    sourceFetcher.sourceFilesBySource[source.split("@")[0] ?? source] = publishedCharterFiles;
+  return sourceFetcher;
+};
 
 /** A charter nothing here builds or tests: a context carries every
  *  application, and these commands reach for the authoring one only. */
@@ -66,44 +86,71 @@ async function running(
   }
 }
 
-test("a source's charter folder is installed under the folder its owner and its repository name (FR-050, CORE Story 30 scenario 1)", async () => {
-  const { code, commandOutput, sourceFetcher } = await running(["vendor", "add", "git@github.com:team/charter.git"]);
+test("a source's charter is installed under the folder of its name, among the repository's charters (FR-050, CORE Story 30 scenario 1, VENDOR Story 3 scenario 14)", async () => {
+  const { code, commandOutput, sourceFetcher } = await running(
+    ["vendor", "add", "git@github.com:team/charter.git"],
+    sourcesPublishing(["git@github.com:team/charter.git"]),
+  );
 
-  assert.equal(code, EXIT_OK);
+  assert.equal(code, EXIT_OK, commandOutput);
   assert.deepEqual(sourceFetcher.fetchedSources, [{ source: "git@github.com:team/charter.git" }]);
-  assert.deepEqual(sourceFetcher.checkedOutFolders, [
+  assert.deepEqual(installedFoldersOf(sourceFetcher), [
     {
       commit: "git@github.com:team/charter.git",
-      fromFolder: "charters/published/.cw/charter/primitive",
-      intoSubFolder: ".cw/charter/vendor/team/charter/published/primitive",
+      fromFolder: ".cw/charter/published/primitive/guide/published",
+      intoSubFolder: ".cw/charter/published/primitive/guide/published",
     },
   ]);
-  assert.match(commandOutput, /\.cw\/charter\/vendor\/team\/charter\/published/);
+  assert.match(commandOutput, /\.cw\/charter\/published/);
   assert.match(commandOutput, /cw build/, "what is installed is compiled by the one command that writes");
 });
 
-test("the source is passed on as it was typed, whatever transport it names, into the folder of its owner and its repository (FR-050)", async () => {
-  for (const [source, intoSubFolder] of [
-    ["https://github.com/team/charter.git", ".cw/charter/vendor/team/charter/published/primitive"],
-    ["git@github.com:team/charter.git", ".cw/charter/vendor/team/charter/published/primitive"],
-    ["ssh://git@git.example.com:2222/team/charter", ".cw/charter/vendor/team/charter/published/primitive"],
-    ["https://gitlab.com/group/team/charter", ".cw/charter/vendor/team/charter/published/primitive"],
-    ["/srv/charters/charter", ".cw/charter/vendor/charters/charter/published/primitive"],
-  ] as const) {
-    const { sourceFetcher } = await running(["vendor", "add", source]);
+test("the source is passed on as it was typed, whatever transport it names, and its cw-vendor.json names it so (FR-050, VENDOR Story 3 scenario 14)", async () => {
+  for (const source of [
+    "https://github.com/team/charter.git",
+    "git@github.com:team/charter.git",
+    "ssh://git@git.example.com:2222/team/charter",
+    "https://gitlab.com/charter/team/charter",
+    "/srv/charters/charter",
+  ]) {
+    const fileReaders = new InMemoryFileReaders({});
+    const sourceFetcher = sourcesPublishing([source], fileReaders);
+    await running(["vendor", "add", source], sourceFetcher, fileReaders);
     assert.equal(sourceFetcher.fetchedSources[0]?.source, source);
-    assert.equal(sourceFetcher.checkedOutFolders[0]?.intoSubFolder, intoSubFolder, source);
+    assert.equal(
+      installedFoldersOf(sourceFetcher)[0]?.intoSubFolder,
+      ".cw/charter/published/primitive/guide/published",
+      source,
+    );
+    assert.deepEqual(
+      JSON.parse(await fileReaders.readFile(new URL(`file://${repo}/.cw/charter/published/cw-vendor.json`))),
+      { charter: "published", source, version: IN_MEMORY_COMMIT_ID },
+      source,
+    );
   }
 });
 
-test("two repositories of one name under two owners land side by side (FR-050, SC-051, CORE Story 2 scenario 1, CORE Story 30 scenario 2)", async () => {
-  const sourceFetcher = new InMemorySources();
-  await running(["vendor", "add", "acme/skills"], sourceFetcher);
-  await running(["vendor", "add", "other/skills"], sourceFetcher);
+test("two sources publishing one charter name land side by side once the second is installed --as another name, and not before (FR-050, SC-051, CORE Story 2 scenario 1, CORE Story 30 scenario 2, VENDOR Story 3 scenarios 18, 19)", async () => {
+  const fileReaders = new InMemoryFileReaders({});
+  const sourceFetcher = sourcesPublishing(["acme/skills"], fileReaders);
+  // The same charter name, holding an id of its own: one id names one primitive
+  // in the whole charter.
+  sourceFetcher.sourceFilesBySource["other/skills"] = {
+    ".cw/charter/published/primitive/guide/other-guide/index.md":
+      "---\nkind: guide\nid: other-guide\ndescription: Other.\n---\n",
+  };
+  assert.equal((await running(["vendor", "add", "acme/skills"], sourceFetcher, fileReaders)).code, EXIT_OK);
+
+  const refusedRun = await running(["vendor", "add", "other/skills"], sourceFetcher, fileReaders);
+  assert.equal(refusedRun.code, EXIT_FAILURE);
+  assert.match(refusedRun.commandOutput, /installed from acme\/skills/);
+  assert.match(refusedRun.commandOutput, /--as/);
+  const asRun = await running(["vendor", "add", "other/skills", "--as=other-published"], sourceFetcher, fileReaders);
+  assert.equal(asRun.code, EXIT_OK, asRun.commandOutput);
 
   assert.deepEqual(
-    sourceFetcher.checkedOutFolders.map(({ intoSubFolder }) => intoSubFolder),
-    [".cw/charter/vendor/acme/skills/published/primitive", ".cw/charter/vendor/other/skills/published/primitive"],
+    installedFoldersOf(sourceFetcher).map(({ intoSubFolder }) => intoSubFolder),
+    [".cw/charter/published/primitive/guide/published", ".cw/charter/other-published/primitive/guide/other-guide"],
   );
 });
 
@@ -112,25 +159,22 @@ test("a source whose address names no owner is refused, and nothing is installed
     const { code, commandOutput, sourceFetcher } = await running(["vendor", "add", source]);
 
     assert.equal(code, EXIT_FAILURE, source);
-    assert.deepEqual(sourceFetcher.checkedOutFolders, [], source);
+    assert.deepEqual(installedFoldersOf(sourceFetcher), [], source);
     assert.match(commandOutput, /Invalid path/, source);
   }
 });
 
 test("a version is what the source is pinned to (CORE Story 2 scenario 1)", async () => {
-  const { commandOutput, sourceFetcher } = await running(["vendor", "add", "team/charter", "--ref", "v1.2.0"]);
+  const { commandOutput, sourceFetcher } = await running(
+    ["vendor", "add", "team/charter", "--ref", "v1.2.0"],
+    sourcesPublishing(["team/charter"]),
+  );
 
   assert.equal(sourceFetcher.fetchedSources[0]?.version, "v1.2.0");
   assert.match(commandOutput, /v1\.2\.0/);
 });
 
-test("a source's own charter is where the store reads it, the folder a refusal of its shape names (CORE Story 2 scenario 4, CORE-FR-042)", () => {
-  // The store reads a source as a repository set up by cw is laid out; the
-  // source's layout says that folder again for the use case's refusals.
-  assert.equal(vendorSourcePath.ownCharterFolderPath, charterPath.charterFolderPath);
-});
-
-test("a source holding neither a charter folder nor a skill at the version asked for is refused as holding neither, saying how to make it one, and nothing is installed (CORE Story 2 scenario 4, CORE-FR-042, CORE Story 55 scenario 8)", async () => {
+test("a source authoring no charter at the version asked for is refused as no vendor, saying how to make it one, and nothing is installed (CORE Story 2 scenario 4, CORE-FR-042, CORE Story 55 scenario 8)", async () => {
   const sourceFetcher = new InMemorySources();
   sourceFetcher.sourcesWithoutSubFolder.push("team/notes");
 
@@ -140,21 +184,24 @@ test("a source holding neither a charter folder nor a skill at the version asked
   );
 
   assert.equal(code, EXIT_FAILURE);
-  assert.deepEqual(sourceFetcher.checkedOutFolders, []);
+  assert.deepEqual(installedFoldersOf(sourceFetcher), []);
   assert.deepEqual(await vendoredFiles(fileReaders), []);
-  assert.match(commandOutput, /is no vendor: it holds no charter under "charters\/" and no SKILL\.md under "skills\/"/);
+  assert.match(commandOutput, /is no vendor: it authors no charter\./);
   assert.match(commandOutput, /at the version asked for/);
 });
 
-test("a source that installs vendors of its own is refused: vendoring is one level deep (CORE Story 2 scenario 5)", async () => {
+test("a source keeping vendors of its own the old way, under .cw/charter/vendor/, is refused as laid out the old way (VENDOR Story 3 scenario 4)", async () => {
   const sourceFetcher = new InMemorySources();
-  sourceFetcher.sourcesHoldingRefusedFolder.push("team/stacked");
+  sourceFetcher.sourceFilesBySource["team/stacked"] = {
+    ...publishedCharterFiles,
+    ".cw/charter/vendor/other/guide/x/index.md": "x",
+  };
 
   const { code, commandOutput } = await running(["vendor", "add", "team/stacked"], sourceFetcher);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.deepEqual(sourceFetcher.checkedOutFolders, []);
-  assert.match(commandOutput, /holds "charters\/published\/\.cw\/charter\/vendor"/);
+  assert.deepEqual(installedFoldersOf(sourceFetcher), []);
+  assert.match(commandOutput, /team\/stacked is laid out the old way: \.cw\/charter\/vendor\/ sits/);
 });
 
 test("a machine with no git is told so, and nothing is installed (CORE Story 37 scenario 4)", async () => {
@@ -164,12 +211,12 @@ test("a machine with no git is told so, and nothing is installed (CORE Story 37 
   const { code, commandOutput } = await running(["vendor", "add", "team/charter"], sourceFetcher);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.deepEqual(sourceFetcher.checkedOutFolders, []);
+  assert.deepEqual(installedFoldersOf(sourceFetcher), []);
   assert.match(commandOutput, /needs git/);
 });
 
 test("what was fetched is let go of, installed or refused", async () => {
-  const sourceFetcher = new InMemorySources();
+  const sourceFetcher = sourcesPublishing(["team/charter"]);
   sourceFetcher.sourcesWithoutSubFolder.push("team/empty");
 
   await running(["vendor", "add", "team/charter"], sourceFetcher);
@@ -183,37 +230,34 @@ test("what was fetched is let go of, installed or refused", async () => {
 test("a repository with work in hand installs all the same, and that work is as it was", async () => {
   const { code, sourceFetcher, fileReaders } = await running(
     ["vendor", "add", "team/charter"],
-    undefined,
-    fileReadersHoldingVendor("other/charter/root"),
+    sourcesPublishing(["team/charter"]),
+    fileReadersHoldingVendor("charter"),
   );
 
   assert.equal(code, EXIT_OK);
-  assert.equal(
-    sourceFetcher.checkedOutFolders[0]?.intoSubFolder,
-    ".cw/charter/vendor/team/charter/published/primitive",
-  );
+  assert.equal(installedFoldersOf(sourceFetcher)[0]?.intoSubFolder, ".cw/charter/published/primitive/guide/published");
   assert.equal(await fileReaders.readFile(new URL(`file://${repo}/work.txt`)), "In hand.\n");
 });
 
-/** One repository holding this vendor, two guides, beside work of its own. */
-const fileReadersHoldingVendor = (vendorName: string) =>
+/** One repository holding this installed charter, two guides beside its
+ *  cw-vendor.json, beside work of its own. */
+const fileReadersHoldingVendor = (charterName: string) =>
   new InMemoryFileReaders({
-    [`file://${repo}/.cw/charter/vendor/${vendorName}/primitive/guide/one/index.md`]: "---\nkind: guide\n---\n",
-    [`file://${repo}/.cw/charter/vendor/${vendorName}/primitive/guide/two/index.md`]: "---\nkind: guide\n---\n",
+    [`file://${repo}/.cw/charter/${charterName}/cw-vendor.json`]: `${JSON.stringify({ charter: charterName, source: "other/charter", version: "HEAD" })}\n`,
+    [`file://${repo}/.cw/charter/${charterName}/primitive/guide/one/index.md`]: "---\nkind: guide\n---\n",
+    [`file://${repo}/.cw/charter/${charterName}/primitive/guide/two/index.md`]: "---\nkind: guide\n---\n",
     [`file://${repo}/work.txt`]: "In hand.\n",
   });
 
-/** Every file left under the vendor folder. */
+/** Every file left among the repository's charters. */
 const vendoredFiles = async (fileReaders: InMemoryFileReaders) =>
-  (await fileReaders.readFilesRecursively(new URL(`file://${repo}/.cw/charter/vendor/`))).map(
-    ({ fileUrl }) => fileUrl.href,
-  );
+  (await fileReaders.readFilesRecursively(new URL(`file://${repo}/.cw/charter/`))).map(({ fileUrl }) => fileUrl.href);
 
-test("an installed charter is taken away by the folder it was installed as, owner, repository and name (CORE Story 37 scenario 2)", async () => {
+test("an installed charter is taken away whole by its name (CORE Story 37 scenario 2, VENDOR Story 3 scenario 21)", async () => {
   const { code, commandOutput, fileReaders } = await running(
-    ["vendor", "remove", "team/charter/root"],
+    ["vendor", "remove", "charter"],
     undefined,
-    fileReadersHoldingVendor("team/charter/root"),
+    fileReadersHoldingVendor("charter"),
   );
 
   assert.equal(code, EXIT_OK, commandOutput);
@@ -229,19 +273,19 @@ test("vendor commands leave what the engine brings alone: it is listed as no ven
   const builtSkillUrls = [".cw/out/skill/cw-author/index.md", ".claude/skills/cw-author/SKILL.md"].map(
     (path) => new URL(`file://${repo}/${path}`),
   );
-  const fileReaders = fileReadersHoldingVendor("team/charter/root");
+  const fileReaders = fileReadersHoldingVendor("charter");
   for (const builtSkillUrl of builtSkillUrls) fileReaders.writeFile(builtSkillUrl, "As the last build wrote it.\n");
 
   const listingRun = await running(["vendor", "list"], undefined, fileReaders);
   assert.equal(listingRun.code, EXIT_OK, listingRun.commandOutput);
-  assert.match(listingRun.commandOutput, /team\/charter\/root/);
+  assert.match(listingRun.commandOutput, /charter {2}other\/charter HEAD/);
   assert.doesNotMatch(listingRun.commandOutput, /builtin|built into cw|cw-author/);
   for (const builtinName of ["builtin", "cw-author", "builtin/skill/cw-author"]) {
     const removingRun = await running(["vendor", "remove", builtinName], undefined, fileReaders);
     assert.equal(removingRun.code, EXIT_FAILURE, builtinName);
-    assert.match(removingRun.commandOutput, /No vendor folder is named/, builtinName);
+    assert.match(removingRun.commandOutput, /No charter is named/, builtinName);
   }
-  assert.equal((await running(["vendor", "remove", "team/charter/root"], undefined, fileReaders)).code, EXIT_OK);
+  assert.equal((await running(["vendor", "remove", "charter"], undefined, fileReaders)).code, EXIT_OK);
 
   for (const builtSkillUrl of builtSkillUrls)
     assert.equal(await fileReaders.readFile(builtSkillUrl), "As the last build wrote it.\n", builtSkillUrl.href);
@@ -253,10 +297,10 @@ test("vendor commands leave what the engine brings alone: it is listed as no ven
   assert.match(JSON.stringify(cwAuthorExplanation), /"builtin"/);
 });
 
-test("a vendor laid out the old way, removed and installed again, lands in its owner and repository folder, and the old folder is gone (CORE Story 30 scenario 4, FR-050, CORE Story 55 scenario 7)", async () => {
+test("a vendor laid out the old way, removed and installed again, lands in a charter of its own, and the old folder is gone (CORE Story 30 scenario 4, FR-050, CORE Story 55 scenario 7, VENDOR Story 3 scenario 4)", async () => {
   const oldGuideUrl = new URL(`file://${repo}/.cw/charter/vendor/charter/guide/one/index.md`);
   const fileReaders = new InMemoryFileReaders({ [oldGuideUrl.href]: "---\nkind: guide\n---\n" });
-  const sourceFetcher = new InMemorySources(fileReaders);
+  const sourceFetcher = sourcesPublishing(["team/charter"], fileReaders);
   assert.equal((await running(["vendor", "list"], sourceFetcher, fileReaders)).code, EXIT_FAILURE);
 
   // What the refusal says to do: delete the folder, then install the source again.
@@ -267,41 +311,41 @@ test("a vendor laid out the old way, removed and installed again, lands in its o
   const vendoredPaths = await vendoredFiles(fileReaders);
   assert.ok(vendoredPaths.length > 0);
   for (const vendoredPath of vendoredPaths)
-    assert.ok(
-      vendoredPath.startsWith(`file://${repo}/.cw/charter/vendor/team/charter/published/primitive/`),
-      vendoredPath,
-    );
+    assert.ok(vendoredPath.startsWith(`file://${repo}/.cw/charter/published/`), vendoredPath);
   const listingRun = await running(["vendor", "list"], sourceFetcher, fileReaders);
   assert.equal(listingRun.code, EXIT_OK, listingRun.commandOutput);
-  assert.match(listingRun.commandOutput, /team\/charter\/published/);
+  assert.match(listingRun.commandOutput, new RegExp(`published {2}team/charter ${IN_MEMORY_COMMIT_ID}`));
 });
 
-test("a source an earlier version named by its repository alone is refused, saying to install it again, and nothing is taken away (FR-180)", async () => {
+test("a source an earlier version named by its repository alone is refused as the old layout, saying to install it again, and nothing is taken away (FR-180, VENDOR Story 3 scenario 4)", async () => {
   const fileReaders = new InMemoryFileReaders({
     [`file://${repo}/.cw/charter/vendor/charter/guide/one/index.md`]: "---\nkind: guide\n---\n",
   });
   const { code, commandOutput } = await running(["vendor", "remove", "charter"], undefined, fileReaders);
 
   assert.equal(code, EXIT_FAILURE, commandOutput);
+  assert.match(commandOutput, /is laid out the old way: \.cw\/charter\/vendor\/ sits/);
   assert.match(
     commandOutput,
-    /\.cw\/charter\/vendor\/charter is laid out the way an earlier version installed a vendor/,
+    /delete each vendor under \.cw\/charter\/vendor\/ and install it again with "cw vendor add"/,
   );
-  assert.match(commandOutput, /install each source again with "cw vendor add"/);
-  assert.equal((await vendoredFiles(fileReaders)).length, 1);
+  assert.equal(
+    await fileReaders.readFile(new URL(`file://${repo}/.cw/charter/vendor/charter/guide/one/index.md`)),
+    "---\nkind: guide\n---\n",
+  );
 });
 
-test("a name no vendor folder answers to is refused, and nothing changes (CORE Story 37 scenario 3)", async () => {
-  for (const name of ["absent/charter/root", "team/charter", "team"]) {
+test("a name no installed charter answers to is refused, and nothing changes (CORE Story 37 scenario 3, VENDOR Story 3 scenario 21)", async () => {
+  for (const name of ["absent", "other/charter", "charter/guide"]) {
     const { code, commandOutput, fileReaders } = await running(
       ["vendor", "remove", name],
       undefined,
-      fileReadersHoldingVendor("team/charter/root"),
+      fileReadersHoldingVendor("charter"),
     );
 
     assert.equal(code, EXIT_FAILURE, name);
-    assert.match(commandOutput, /No vendor folder is named/, name);
-    assert.equal((await vendoredFiles(fileReaders)).length, 2, name);
+    assert.match(commandOutput, /No charter is named/, name);
+    assert.equal((await vendoredFiles(fileReaders)).length, 3, name);
   }
 });
 
@@ -309,20 +353,20 @@ test("a source nobody named is a usage error, not a vendoring one", async () => 
   const { code, sourceFetcher } = await running(["vendor", "add"]);
 
   assert.equal(code, EXIT_USAGE);
-  assert.deepEqual(sourceFetcher.checkedOutFolders, []);
+  assert.deepEqual(installedFoldersOf(sourceFetcher), []);
 });
 
 test("a name that is no folder is refused, and nothing is taken away (FR-044)", async () => {
-  for (const name of ["..", ".", "team/..", "../../src", "group/team/charter/more"]) {
+  for (const name of ["..", ".", "team/..", "../../src", "charter/team/charter/more"]) {
     const { code, commandOutput, fileReaders } = await running(
       ["vendor", "remove", name],
       undefined,
-      fileReadersHoldingVendor("team/charter/root"),
+      fileReadersHoldingVendor("charter"),
     );
 
     assert.equal(code, EXIT_FAILURE, name);
-    assert.equal((await vendoredFiles(fileReaders)).length, 2, name);
-    assert.match(commandOutput, /No vendor folder is named/, name);
+    assert.equal((await vendoredFiles(fileReaders)).length, 3, name);
+    assert.match(commandOutput, /No charter is named/, name);
   }
 });
 
@@ -330,21 +374,23 @@ test("a source whose address ends in no folder is refused, and nothing is instal
   const { code, commandOutput, sourceFetcher } = await running(["vendor", "add", "https://example.com/team/.."]);
 
   assert.equal(code, EXIT_FAILURE);
-  assert.deepEqual(sourceFetcher.checkedOutFolders, []);
+  assert.deepEqual(installedFoldersOf(sourceFetcher), []);
   assert.match(commandOutput, /Invalid path/);
 });
 
-test("vendor inject exposes the same source, version and skill flags as add", async () => {
-  const sourceFetcher = new InMemorySources();
-  sourceFetcher.sourceFilesBySource["team/skills"] = {
-    "skills/grill/SKILL.md": "---\nname: grill-me\ndescription: Ask questions.\n---\nAsk.\n",
-  };
-  const { code, commandOutput } = await running(
-    ["vendor", "inject", "team/skills", "--ref", "v1", "--skill", "grill-me"],
-    sourceFetcher,
+test("vendor inject exposes the same source, version and charter flags as add (CORE-FR-198)", async () => {
+  const { code, commandOutput, sourceFetcher } = await running(
+    ["vendor", "inject", "team/charter", "--ref", "v1", "--charter", "published"],
+    sourcesPublishing(["team/charter"]),
   );
-  assert.equal(code, EXIT_OK);
-  assert.match(commandOutput, /Injected skill grill-me/);
-  assert.deepEqual(sourceFetcher.fetchedSources, [{ source: "team/skills", version: "v1" }]);
-  assert.deepEqual(sourceFetcher.checkedOutFolders, []);
+  assert.equal(code, EXIT_OK, commandOutput);
+  assert.match(commandOutput, /Injected guide published/);
+  assert.deepEqual(sourceFetcher.fetchedSources, [{ source: "team/charter", version: "v1" }]);
+  assert.deepEqual(installedFoldersOf(sourceFetcher), [
+    {
+      commit: "team/charter@v1",
+      fromFolder: ".cw/charter/published/primitive/guide/published",
+      intoSubFolder: ".cw/charter/published/primitive/guide/published",
+    },
+  ]);
 });

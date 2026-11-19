@@ -8,20 +8,20 @@ import { SkillPrimitive } from "../src/module/charter/domain/models/primitive/sk
 import { FolderAddress } from "../src/module/shared/app/port/out/folder-address.port.js";
 import { charterRootOf } from "./use-cases-of.js";
 
-const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/primitive/");
+const root = FolderAddress.parseFolderUrl("file:///repo/.cw/charter/team/primitive/");
 
 type Authored = Primitive;
 
 /** One authored primitive as the charter holds it: under the id its layer
  *  gives it, which is what reading a charter works out. */
-const layered = (vendor: string | undefined, file: string, primitive: Primitive): Authored =>
+const layered = (installedCharterName: string | undefined, file: string, primitive: Primitive): Authored =>
   Primitives.classes
     .find((primitiveClass) => primitiveClass.kind === primitive.kind)!
     .of(
       primitive.headers,
       primitive.body,
       [],
-      vendor === undefined ? PrimitiveLayer.REPO : PrimitiveLayer.vendorLayerOf(vendor),
+      installedCharterName === undefined ? PrimitiveLayer.REPO : PrimitiveLayer.installedLayerOf(installedCharterName),
       file,
     );
 
@@ -145,8 +145,8 @@ test("what the domain finds on its own is reported too", () => {
     messages([
       primitive(GuidePrimitive, "no-any"),
       layered(
-        "acme/charter/root",
-        "file:///repo/.cw/charter/vendor/acme/charter/root/primitive/guide/no-any/index.md",
+        "acme",
+        "file:///repo/.cw/charter/acme/primitive/guide/no-any/index.md",
         primitive(GuidePrimitive, "no-any"),
       ),
     ]),

@@ -348,13 +348,15 @@ test("the repository and a vendor declaring one address under two ids are listed
     `---\nkind: mcp\nid: ${id}\ndescription: Billing's code.\nendpoint: ${GITHUB}\nauth: [token]\ntools: [${tools}]\n---\n\nRead it.\n`;
   const held = new InMemoryFileReaders({
     "file:///repo/.cw/settings.json": `${JSON.stringify({ agents: ["claude"] })}\n`,
-    "file:///repo/.cw/charter/primitive/guide/no-any/index.md":
+    "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md":
       '---\nkind: guide\nid: no-any\ndescription: No any.\nglobs: ["src/**/*.ts"]\n---\n\nRead [[billing]] and [[acme/code]].\n',
-    "file:///repo/.cw/charter/primitive/mcp/billing/index.md": mcpText("billing", "search_code"),
-    "file:///repo/.cw/charter/vendor/acme/tools/root/primitive/mcp/acme/code/index.md": mcpText(
-      "acme/code",
-      "get_file_contents",
-    ),
+    "file:///repo/.cw/charter/team/primitive/mcp/billing/index.md": mcpText("billing", "search_code"),
+    "file:///repo/.cw/charter/acme/primitive/mcp/acme/code/index.md": mcpText("acme/code", "get_file_contents"),
+    "file:///repo/.cw/charter/acme/cw-vendor.json": JSON.stringify({
+      charter: "acme",
+      source: "acme/tools",
+      version: "HEAD",
+    }),
   });
   const credentialsRepository = new InMemoryCredentialsRepository();
   await signIn(credentialsRepository, GITHUB);

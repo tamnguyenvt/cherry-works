@@ -163,11 +163,15 @@ test("the headers it names are the ones cw add takes, one flag apiece (FR-004, C
     // it takes is its author's choice, so neither is required (plan §19.1).
     const shapeFlags =
       kind === "mcp" ? ["--header", "endpoint=https://mcp.example.com/", "--header", "auth=oauth"] : [];
-    const { code, held: files, problems } = await asking(["add", kind, "something", ...flags, ...shapeFlags]);
+    const {
+      code,
+      held: files,
+      problems,
+    } = await asking(["add", kind, "something", "--charter=team", ...flags, ...shapeFlags]);
 
     assert.equal(code, EXIT_OK, `${kind}: ${problems}`);
     assert.notEqual(
-      await files.readIfThere(new URL(`.cw/charter/primitive/${kind}/something/index.md`, repoPath)),
+      await files.readIfThere(new URL(`.cw/charter/team/primitive/${kind}/something/index.md`, repoPath)),
       undefined,
       kind,
     );
@@ -180,7 +184,7 @@ test("for every kind, what cw kinds names, what cw add asks for and what a refus
     const namedFields = headersNamedIn(kindAnswer).map(({ field }) => field);
 
     // What cw add asks for, said where nobody is at the terminal to be asked.
-    const { code: addCode, problems: addProblems } = await asking(["add", kind, "something"]);
+    const { code: addCode, problems: addProblems } = await asking(["add", kind, "something", "--charter=team"]);
     assert.equal(addCode, EXIT_FAILURE, kind);
     const [, askedFieldsText = ""] = /requires (.*), and nobody is at the terminal/.exec(addProblems) ?? [];
     assert.deepEqual(

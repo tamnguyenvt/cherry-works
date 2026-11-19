@@ -23,8 +23,8 @@ const OPTIONS = {
  *
  * It writes nothing: the engine is asked which file declares the id, and
  * whoever saves in the editor is the one who wrote it. So there is no revision
- * to check here, and a vendored primitive opens like any other. What the engine
- * brings has no file, and is refused.
+ * to check here. What the engine brings has no file, and what a charter installed
+ * holds is read-only (VENDOR-FR-010): both are refused.
  *
  * The editor is `$VISUAL`, else `$EDITOR`, as `editInEditor` runs it.
  */
@@ -37,7 +37,7 @@ export class EditCommand implements Command<typeof OPTIONS> {
     { cwd, charterAuthoringApp, isJsonAnswer }: Context,
     { id }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    const primitiveDTO = await charterAuthoringApp.openPrimitive(id ?? "");
+    const primitiveDTO = await charterAuthoringApp.openEditablePrimitive(id ?? "");
     if (primitiveDTO.type === "Fault") return reportFault(primitiveDTO);
     const primitive = primitiveDTO.data;
     if (primitive.layerName === BUILTIN_LAYER_NAME)

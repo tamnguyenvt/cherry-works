@@ -9,6 +9,6 @@ import { PrimitiveLayer } from "../primitive/primitive-layer.value-object.js";
  */
 export class RepoLayerPrimitiveSpec {
   isSatisfiedBy(primitive: Primitive): boolean {
-    return primitive.layer === PrimitiveLayer.REPO;
+    return primitive.layer.name === PrimitiveLayer.REPO.name;
   }
 }

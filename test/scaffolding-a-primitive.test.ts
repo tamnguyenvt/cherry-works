@@ -17,12 +17,18 @@ const repoPath = new URL("file:///repo/");
 
 /** The command line as a user meets it, over a repository held in memory: the
  *  real `cw add`, the real service behind it, and the answers whoever is at the
- *  terminal would have typed. */
+ *  terminal would have typed; written into the charter `team` where the test
+ *  names none, and into none where `charterName` is `null`. */
 const adding = async (
   argv: readonly string[],
   answers: readonly unknown[] | undefined = undefined,
   files: Readonly<Record<string, string>> = {},
+  charterName: string | null = "team",
 ) => {
+  const groupedArgv =
+    charterName !== null && !argv.some((argument) => argument.startsWith("--charter"))
+      ? [...argv, `--charter=${charterName}`]
+      : argv;
   const held = new InMemoryFileReaders(files);
   const charterAuthoringApp = authoringCharterOf(held, new InMemoryFileOutput(held), new InMemoryReporter());
   const charterRuntimeApps = buildingCharterOf(
@@ -50,7 +56,7 @@ const adding = async (
         repo,
       ),
       COMMANDS,
-    ).runCommandLine(argv);
+    ).runCommandLine(groupedArgv);
     return { code, held, results: results.join(""), problems: problems.join("") };
   } finally {
     process.stdout.write = kept.out;
@@ -111,7 +117,7 @@ const answerableKinds = Primitives.kinds.filter((kind) => kind !== "mcp");
 test("what is answered is what the file holds, read back as the same primitive (FR-039, CORE Story 4 scenario 1)", async () => {
   for (const kind of answerableKinds) {
     const { code, held: files } = await adding(["add", kind, "something"], answering(kind));
-    const keptText = (await held(files, `.cw/charter/primitive/${kind}/something/index.md`)) ?? "";
+    const keptText = (await held(files, `.cw/charter/team/primitive/${kind}/something/index.md`)) ?? "";
 
     assert.equal(code, 0);
     const keptPrimitive = readPrimitive(keptText);
@@ -123,7 +129,9 @@ test("what is answered is what the file holds, read back as the same primitive (
 
 test("an id holding / is written as one file in its kind's folder, each / as - (FR-141, CORE Story 23 scenario 1)", async () => {
   const { code, held: files } = await adding(["add", "guide", "mfbs/no-any"], ["what description holds"]);
-  const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/guide/mfbs/no-any/index.md")) ?? "");
+  const keptPrimitive = readPrimitive(
+    (await held(files, ".cw/charter/team/primitive/guide/mfbs/no-any/index.md")) ?? "",
+  );
 
   assert.equal(code, 0);
   assert.equal(keptPrimitive.headers.id, "mfbs/no-any");
@@ -141,7 +149,7 @@ test("a successful add compiles nothing: its file alone is written, for its auth
 
   assert.equal(code, 0);
   assert.deepEqual((await files.readFilesRecursively(repoPath)).map(({ fileUrl }) => fileUrl.href).sort(), [
-    "file:///repo/.cw/charter/primitive/guide/no-any/index.md",
+    "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md",
     "file:///repo/.cw/settings.json",
   ]);
   assert.match(results, /Write what it has to say in the body, then run "cw build"\./);
@@ -165,7 +173,7 @@ test("cw add mcp mfbs/billing, its address, ways to sign in and tools given, wri
   ]);
 
   assert.equal(code, 0);
-  const mcpPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/mcp/mfbs/billing/index.md")) ?? "");
+  const mcpPrimitive = readPrimitive((await held(files, ".cw/charter/team/primitive/mcp/mfbs/billing/index.md")) ?? "");
   assert.equal(mcpPrimitive.kind, "mcp");
   assert.equal(mcpPrimitive.headers.id, "mfbs/billing");
   const charterAuthoringApp = authoringCharterOf(files, new InMemoryFileOutput(files), new InMemoryReporter());
@@ -183,7 +191,7 @@ test("an id with an empty segment is refused with the kind's sample, and nothing
 
     assert.equal(code, EXIT_FAILURE, id);
     assert.match(problems, /not what a guide holds/, id);
-    assert.equal(await held(files, `.cw/charter/primitive/guide/${id}/index.md`), undefined, id);
+    assert.equal(await held(files, `.cw/charter/team/primitive/guide/${id}/index.md`), undefined, id);
   }
 });
 
@@ -205,7 +213,7 @@ test("an answer its kind refuses is said before any file is written (FR-004, FR-
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /not what a sensor holds/);
   assert.match(problems, /signal: Stop/);
-  assert.equal(await held(files, ".cw/charter/primitive/sensor/on-stop/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/team/primitive/sensor/on-stop/index.md"), undefined);
 });
 
 test("a list answer holds the names typed, each trimmed and a blank one dropped (FR-039)", async () => {
@@ -213,7 +221,9 @@ test("a list answer holds the names typed, each trimmed and a blank one dropped 
     ["add", "skill", "refactoring"],
     ["what description holds", [" refactor ", "", "  "]],
   );
-  const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/skill/refactoring/index.md")) ?? "");
+  const keptPrimitive = readPrimitive(
+    (await held(files, ".cw/charter/team/primitive/skill/refactoring/index.md")) ?? "",
+  );
 
   assert.equal(code, 0);
   assert.deepEqual("triggers" in keptPrimitive.headers ? keptPrimitive.headers.triggers : undefined, ["refactor"]);
@@ -228,7 +238,7 @@ test("a list answer left empty is refused once, as the list it should hold (FR-0
 
   assert.equal(code, EXIT_FAILURE);
   assert.equal(problems.match(/not what a skill holds/g)?.length, 1);
-  assert.equal(await held(files, ".cw/charter/primitive/skill/refactoring/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/team/primitive/skill/refactoring/index.md"), undefined);
 });
 
 test("nobody at the terminal is told what the kind requires, and nothing is written (FR-039)", async () => {
@@ -236,7 +246,7 @@ test("nobody at the terminal is told what the kind requires, and nothing is writ
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"description".*"triggers"/);
-  assert.equal(await held(files, ".cw/charter/primitive/skill/refactoring/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/team/primitive/skill/refactoring/index.md"), undefined);
 });
 
 test("a file that is already there is never written over (FR-039, CORE Story 4 scenario 3)", async () => {
@@ -249,12 +259,12 @@ test("a file that is already there is never written over (FR-039, CORE Story 4 s
     problems,
     held: files,
   } = await adding(["add", "guide", "no-any"], answering("guide"), {
-    "file:///repo/.cw/charter/primitive/guide/no-any/index.md": authoredText,
+    "file:///repo/.cw/charter/team/primitive/guide/no-any/index.md": authoredText,
   });
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /already there/);
-  assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), authoredText);
+  assert.equal(await held(files, ".cw/charter/team/primitive/guide/no-any/index.md"), authoredText);
 });
 
 test("what is typed as flags is the file that is written from answers, word for word (FR-014, SC-005, CORE Story 10 scenario 1)", async () => {
@@ -264,8 +274,8 @@ test("what is typed as flags is the file that is written from answers, word for 
 
     assert.equal(typed.code, 0);
     assert.equal(
-      await held(typed.held, `.cw/charter/primitive/${kind}/something/index.md`),
-      await held(answered.held, `.cw/charter/primitive/${kind}/something/index.md`),
+      await held(typed.held, `.cw/charter/team/primitive/${kind}/something/index.md`),
+      await held(answered.held, `.cw/charter/team/primitive/${kind}/something/index.md`),
     );
   }
 });
@@ -277,7 +287,7 @@ test("a header typed as a flag is an answer, so nothing is asked at a terminal e
   const { code, held: files } = await adding(["add", "skill", "refactoring", ...flagging("skill")], []);
 
   assert.equal(code, 0);
-  assert.match((await held(files, ".cw/charter/primitive/skill/refactoring/index.md")) ?? "", /triggers:/);
+  assert.match((await held(files, ".cw/charter/team/primitive/skill/refactoring/index.md")) ?? "", /triggers:/);
 });
 
 test("a list header typed twice holds both, in the order they were typed (FR-007, CORE Story 10 scenario 2)", async () => {
@@ -292,7 +302,9 @@ test("a list header typed twice holds both, in the order they were typed (FR-007
     "--header",
     "triggers=inline",
   ]);
-  const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/skill/refactoring/index.md")) ?? "");
+  const keptPrimitive = readPrimitive(
+    (await held(files, ".cw/charter/team/primitive/skill/refactoring/index.md")) ?? "",
+  );
 
   assert.equal(code, 0);
   assert.deepEqual("triggers" in keptPrimitive.headers ? keptPrimitive.headers.triggers : undefined, [
@@ -310,7 +322,7 @@ test("a header holding one line is refused where it was typed twice, naming it (
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"description" holds one line, and was typed 2 times/);
-  assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/team/primitive/guide/no-any/index.md"), undefined);
 });
 
 test("a flag naming nothing to put a value under is refused, quoting it (FR-008, CORE Story 10 scenario 8)", async () => {
@@ -318,7 +330,7 @@ test("a flag naming nothing to put a value under is refused, quoting it (FR-008,
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /"--header description" names nothing to put a value under/);
-  assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/team/primitive/guide/no-any/index.md"), undefined);
 });
 
 test("a value holding an = is kept whole, everything after the first one (FR-008, CORE Story 10 scenario 8)", async () => {
@@ -329,7 +341,7 @@ test("a value holding an = is kept whole, everything after the first one (FR-008
     "--header",
     "description=Reject a = where an == was meant.",
   ]);
-  const keptPrimitive = readPrimitive((await held(files, ".cw/charter/primitive/guide/no-any/index.md")) ?? "");
+  const keptPrimitive = readPrimitive((await held(files, ".cw/charter/team/primitive/guide/no-any/index.md")) ?? "");
 
   assert.equal(code, 0);
   assert.equal(keptPrimitive.headers.description, "Reject a = where an == was meant.");
@@ -352,7 +364,7 @@ test("a header the kind does not take is named, and nothing is written (FR-011, 
 
   assert.equal(code, EXIT_FAILURE);
   assert.match(problems, /A guide holds no "signal"/);
-  assert.equal(await held(files, ".cw/charter/primitive/guide/no-any/index.md"), undefined);
+  assert.equal(await held(files, ".cw/charter/team/primitive/guide/no-any/index.md"), undefined);
 });
 
 test("a header the kind requires and nobody answered is refused in the same words either way, and in the words reading the charter refuses it with, naming what it takes (FR-010, FR-012, SC-004, CORE Story 10 scenario 3, FR-071, FR-073, CORE Story 55 scenario 8)", async () => {
@@ -363,7 +375,7 @@ test("a header the kind requires and nobody answered is refused in the same word
   assert.equal(answered.code, EXIT_FAILURE);
   assert.equal(typed.problems, answered.problems);
   assert.match(typed.problems, /not what a skill holds/);
-  assert.equal(await held(typed.held, ".cw/charter/primitive/skill/refactoring/index.md"), undefined);
+  assert.equal(await held(typed.held, ".cw/charter/team/primitive/skill/refactoring/index.md"), undefined);
   assert.deepEqual(await typed.held.readFilesRecursively(repoPath), [], "nothing is written");
   // The same file missing the same header, as reading the charter refuses it.
   const readFaults = (() => {
@@ -384,7 +396,7 @@ test("a header the kind requires and nobody answered is refused in the same word
 });
 
 test("adding a script says the file it runs was written too, so its author knows where to write it (FR-167, CORE Story 24 scenario 2)", async () => {
-  const { code, results } = await adding([
+  const { code, results, problems } = await adding([
     "add",
     "script",
     "release/check",
@@ -394,9 +406,96 @@ test("adding a script says the file it runs was written too, so its author knows
     "executionPath=./run.sh",
   ]);
 
-  assert.equal(code, 0);
+  assert.equal(code, 0, problems);
   assert.deepEqual(results.split("\n").slice(0, 2), [
-    "✔ Wrote .cw/charter/primitive/script/release/check/index.md.",
+    "✔ Wrote .cw/charter/team/primitive/script/release/check/index.md.",
     "Wrote ./run.sh beside it, the file it runs: write the script there.",
   ]);
+});
+
+/** A repository holding the charter `team`, authored, and `grill`, installed. */
+const filesInTwoCharters = {
+  "file:///repo/.cw/charter/team/primitive/guide/kept/index.md":
+    '---\nkind: guide\nid: kept\ndescription: Kept.\nglobs: ["src/**"]\n---\nKept.\n',
+  "file:///repo/.cw/charter/grill/cw-vendor.json": `${JSON.stringify({ charter: "grill", source: "mattpocock/skills", version: "v1" })}\n`,
+  "file:///repo/.cw/charter/grill/primitive/skill/grill-me/index.md":
+    '---\nkind: skill\nid: grill-me\ndescription: Grill me.\ntriggers: ["grill me"]\n---\nGrill.\n',
+};
+
+/** Every file the repository holds, by its path from its root. */
+const heldPaths = async (files: InMemoryFileReaders) =>
+  (await files.readBytesRecursively(".")).map(({ path }) => path).sort();
+
+test("--charter naming a charter the repository authored writes the primitive into it, and nothing else (VENDOR Story 3 scenario 8)", async () => {
+  const before = new InMemoryFileReaders(filesInTwoCharters);
+  const { code, held: files } = await adding(
+    ["add", "guide", "no-any", "--charter=team"],
+    ["what description holds"],
+    filesInTwoCharters,
+  );
+
+  assert.equal(code, 0);
+  assert.deepEqual(
+    await heldPaths(files),
+    [...(await heldPaths(before)), ".cw/charter/team/primitive/guide/no-any/index.md"].sort(),
+  );
+});
+
+test("--charter naming no charter yet makes the charter, holding the primitive (VENDOR Story 3 scenario 9)", async () => {
+  const { code, held: files } = await adding(
+    ["add", "guide", "no-mocks", "--charter=review"],
+    ["what description holds"],
+    filesInTwoCharters,
+  );
+
+  assert.equal(code, 0);
+  assert.equal(
+    readPrimitive((await held(files, ".cw/charter/review/primitive/guide/no-mocks/index.md")) ?? "").headers.id,
+    "no-mocks",
+  );
+});
+
+test("--charter naming an installed charter is refused as read-only, and nothing is written (VENDOR Story 3 scenario 10)", async () => {
+  const before = new InMemoryFileReaders(filesInTwoCharters);
+  const {
+    code,
+    problems,
+    held: files,
+  } = await adding(["add", "guide", "no-any", "--charter=grill"], ["what description holds"], filesInTwoCharters);
+
+  assert.equal(code, EXIT_FAILURE);
+  assert.match(problems, /grill was installed/);
+  assert.match(problems, /read-only/);
+  assert.deepEqual(await heldPaths(files), await heldPaths(before));
+});
+
+test("with no --charter at a terminal, the charters the repository authored are listed to pick from, or a charter name is asked where it holds none (VENDOR Story 3 scenario 11)", async () => {
+  const pickedCharterAdding = await adding(
+    ["add", "guide", "no-any"],
+    ["team", "what description holds"],
+    filesInTwoCharters,
+    null,
+  );
+  assert.equal(pickedCharterAdding.code, 0);
+  assert.ok(await held(pickedCharterAdding.held, ".cw/charter/team/primitive/guide/no-any/index.md"));
+
+  const namedCharterAdding = await adding(["add", "guide", "no-any"], ["first", "what description holds"], {}, null);
+  assert.equal(namedCharterAdding.code, 0);
+  assert.ok(await held(namedCharterAdding.held, ".cw/charter/first/primitive/guide/no-any/index.md"));
+});
+
+test("with no --charter and nobody at the terminal, or --json, it is refused naming the charters held, and nothing is written (VENDOR Story 3 scenario 12)", async () => {
+  for (const argv of [
+    ["add", "guide", "no-any", "--header", "description=what description holds", "--header", "globs=src/**"],
+    ["add", "guide", "no-any", "--header", "description=what description holds", "--header", "globs=src/**", "--json"],
+    ["add", "guide", "no-any"],
+    ["add", "guide", "no-any", "--json"],
+  ]) {
+    const before = new InMemoryFileReaders(filesInTwoCharters);
+    const { code, problems, results, held: files } = await adding(argv, undefined, filesInTwoCharters, null);
+
+    assert.equal(code, EXIT_FAILURE, `${argv.join(" ")}: ${problems}${results}`);
+    assert.match(`${problems}${results}`, /grill, team/, argv.join(" "));
+    assert.deepEqual(await heldPaths(files), await heldPaths(before), argv.join(" "));
+  }
 });

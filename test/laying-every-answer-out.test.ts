@@ -16,7 +16,7 @@ import type { AnswersOfEveryCommand } from "./every-command-in-turn.js";
 import { authoringCharterOf, buildingCharterOf, commandLineOf } from "./use-cases-of.js";
 
 const repo = "/repo";
-const root = new URL("file:///repo/.cw/charter/primitive/");
+const root = new URL("file:///repo/.cw/charter/team/primitive/");
 const at = (path: string) => new URL(path, root).href;
 const inRepo = (path: string) => new URL(path, "file:///repo/").href;
 
@@ -39,7 +39,7 @@ const settingsOf = (...agents: readonly string[]) => ({
 
 /** A test file naming one guide, so no warning says nothing pins it down. */
 const pinningDown = (id: string) => ({
-  [inRepo(`.cw/charter/test/${id}.json`)]: JSON.stringify({
+  [inRepo(`.cw/charter/team/test/${id}.json`)]: JSON.stringify({
     cases: [{ do: { touchFile: "src/one.ts" }, expect: { activate: id } }],
   }),
 });
@@ -150,7 +150,7 @@ test("an answer has a heading over each part, each label and its value in one al
   const idLines = listLines.filter((line) => /^ {2}\S/.test(line));
   assert.ok(idLines.length >= 2);
   assert.equal(new Set(valueColumnOf(idLines, /^ {2}\S+\s+/)).size, 1);
-  assert.match(listText, /\n {2}no-any +About no-any\.\n +\.cw\/charter\/primitive\/guide\/no-any\/index\.md\n/);
+  assert.match(listText, /\n {2}no-any +About no-any\.\n +\.cw\/charter\/team\/primitive\/guide\/no-any\/index\.md\n/);
 
   // At a terminal, every heading is bold, and every id and path is set apart
   // in a colour of its own.
@@ -160,29 +160,42 @@ test("an answer has a heading over each part, each label and its value in one al
   const { resultText: colouredListText } = await run(["list"], atTerminal);
   assert.ok(colouredListText.startsWith(`${BOLD_CODE}Guides`));
   assert.ok(colouredListText.includes(`${MENTION_CODE}no-any${RESET_CODE}`));
-  assert.ok(colouredListText.includes(`${MENTION_CODE}.cw/charter/primitive/guide/no-any/index.md${RESET_CODE}`));
+  assert.ok(colouredListText.includes(`${MENTION_CODE}.cw/charter/team/primitive/guide/no-any/index.md${RESET_CODE}`));
 });
 
 test("a path an answer names in its words, not in a row, is set apart as well (CORE Story 67 scenario 1)", async () => {
   const atTerminal = { isTerminal: true, isNoColourSet: false };
 
-  const { resultText: initText } = await commandLine({}).run(["init", "--agent", "claude"], atTerminal);
-  assert.ok(initText.includes(`under ${MENTION_CODE}.cw/charter/primitive/guide/${RESET_CODE}`), initText);
-
   const { run } = commandLine(settingsOf("claude"));
   await run(["build"]);
   const { resultText: testText } = await run(["test"], atTerminal);
-  assert.ok(testText.includes(`No tests: ${MENTION_CODE}.cw/charter/test/${RESET_CODE} holds no case.`), testText);
-  assert.ok(testText.includes(`Write one as ${MENTION_CODE}.cw/charter/test/<name>.json${RESET_CODE}`), testText);
+  assert.ok(
+    testText.includes(
+      `No tests: no charter holds a case under ${MENTION_CODE}.cw/charter/<charter>/test/${RESET_CODE}.`,
+    ),
+    testText,
+  );
+  assert.ok(
+    testText.includes(`Write one as ${MENTION_CODE}.cw/charter/<charter>/test/<name>.json${RESET_CODE}`),
+    testText,
+  );
   const { resultText: evalText } = await run(["eval"], atTerminal);
-  assert.ok(evalText.includes(`No evaluation: ${MENTION_CODE}.cw/charter/eval/${RESET_CODE} holds no case.`), evalText);
-  assert.ok(evalText.includes(`Write one as ${MENTION_CODE}.cw/charter/eval/<name>.json${RESET_CODE}`), evalText);
+  assert.ok(
+    evalText.includes(
+      `No evaluation: no charter holds a case under ${MENTION_CODE}.cw/charter/<charter>/eval/${RESET_CODE}.`,
+    ),
+    evalText,
+  );
+  assert.ok(
+    evalText.includes(`Write one as ${MENTION_CODE}.cw/charter/<charter>/eval/<name>.json${RESET_CODE}`),
+    evalText,
+  );
 });
 
 test("faults and warnings in two files are each printed under the file that has to change (CORE Story 67 scenario 2)", async () => {
   const faultyFilePaths = [
-    ".cw/charter/primitive/guide/broken/index.md",
-    ".cw/charter/primitive/guide/cracked/index.md",
+    ".cw/charter/team/primitive/guide/broken/index.md",
+    ".cw/charter/team/primitive/guide/cracked/index.md",
   ];
   const { run: runFaulty } = commandLine({
     ...settingsOf("claude"),
@@ -190,8 +203,8 @@ test("faults and warnings in two files are each printed under the file that has 
     [at("guide/cracked/index.md")]: guide("cracked", ["globs: nope"]),
   });
   const warnedFilePaths = [
-    ".cw/charter/primitive/guide/unpinned/index.md",
-    ".cw/charter/primitive/guide/unsure/index.md",
+    ".cw/charter/team/primitive/guide/unpinned/index.md",
+    ".cw/charter/team/primitive/guide/unsure/index.md",
   ];
   const { run: runWarned } = commandLine({
     ...settingsOf("claude"),
@@ -288,7 +301,7 @@ test("an answer written to a file, or with NO_COLOR set, is laid out as at a ter
 
 /** The headings the layout adds over a part of an answer that had none: every
  *  other line of an answer says what it said before this story. */
-const LAYOUT_HEADINGS: readonly string[] = ["Kinds", "Vendors", "To fix, by file"];
+const LAYOUT_HEADINGS: readonly string[] = ["Kinds", "Installed charters", "To fix, by file"];
 
 /** `cw list`'s heading per kind, in place of "Primitives" (CORE Story 72). */
 const KIND_HEADINGS: readonly string[] = Primitives.kinds.map((kindName) =>
@@ -318,7 +331,7 @@ test("every command but the three cw run commands says what it said before this 
     assert.equal(answerNow.status, answerBefore.status, `cw ${answerNow.args}`);
     // The help is yargs' own and laid out by CORE Story 69.
     if (answerNow.args.includes("--help")) return;
-    // `cw list` groups its primitives by kind since CORE Story 72, so it says
+    // `cw list` charters its primitives by kind since CORE Story 72, so it says
     // the same words, the headings aside, in another order.
     if (answerNow.args.split(" ")[0] === "list") {
       for (const streamName of ["stdout", "stderr"] as const)

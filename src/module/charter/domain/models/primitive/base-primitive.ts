@@ -157,7 +157,7 @@ export abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeader
       this.activatesWhen,
       `${this.primitiveFolder}/${this.index}`,
       this.layer.name,
-      this.layer.vendorName ?? "",
+      this.layer.charterName ?? "",
       ...headerValues,
     ].some((searchedText) => searchedText.toLowerCase().includes(loweredWord));
   }

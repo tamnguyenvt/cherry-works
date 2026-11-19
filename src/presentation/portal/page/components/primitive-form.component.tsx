@@ -6,6 +6,7 @@ import type { FaultDTOs } from "#module/shared/module.js";
 import type { client } from "../portal.client.js";
 import {
   useAddPrimitive,
+  useCharters,
   useKinds,
   usePrimitive,
   usePrimitiveRequirements,
@@ -96,7 +97,7 @@ function PrimitiveEditor({
   const [kind, setKind] = useState(primitive?.kind ?? newKind);
   const [id, setId] = useState(primitive === undefined ? "" : String(primitive.headers.id));
   const [answers, setAnswers] = useState<
-    InferRequestType<typeof client.charter.root.primitives.$post>["json"]["headers"]
+    InferRequestType<(typeof client.charter)[":charterName"]["primitives"]["$post"]>["json"]["headers"]
   >(() =>
     Object.fromEntries(
       Object.entries(primitive?.headers ?? {})
@@ -104,12 +105,14 @@ function PrimitiveEditor({
         .map(([field, headerValue]) => [field, typeof headerValue === "string" ? headerValue : [...headerValue]]),
     ),
   );
+  const [charterName, setCharterName] = useState<string | undefined>(undefined);
   const [body, setBody] = useState(openedPrimitive?.data.body ?? "");
   const [faults, setFaults] = useState<readonly FaultDTOs.Fault[]>([]);
 
   const { data: kindsAnswer } = useKinds();
   const { data: requirementsAnswer } = usePrimitiveRequirements(kind);
   const { data: primitivesAnswer } = usePrimitives();
+  const { data: chartersAnswer } = useCharters();
   const addPrimitiveMutation = useAddPrimitive();
   const rewritePrimitiveMutation = useRewritePrimitive();
   const removePrimitiveMutation = useRemovePrimitive();
@@ -124,6 +127,17 @@ function PrimitiveEditor({
           .filter(({ data: primitive }) => primitive.kind === "corpus")
           .map(({ data: primitive }) => primitive.id)
       : [];
+
+  // A new one is written into a charter the repository authored, or a new one
+  // named here; the first authored is offered until another is typed
+  // (VENDOR-FR-016).
+  const authoredCharterNames =
+    chartersAnswer?.type === "CharterMetadataList"
+      ? chartersAnswer.data.charters
+          .filter(({ data: charter }) => !charter.isInstalled)
+          .map(({ data: charter }) => charter.name)
+      : [];
+  const shownCharterName = charterName ?? authoredCharterNames[0] ?? "";
 
   // Only what the kind takes is sent, and nothing left blank: a header answered
   // with nothing is a header not answered.
@@ -144,7 +158,10 @@ function PrimitiveEditor({
   const savePrimitive = async () => {
     const primitiveDTO =
       openedPrimitive === null
-        ? await addPrimitiveMutation.mutateAsync({ kind, id, headers: answeredHeaders, body })
+        ? await addPrimitiveMutation.mutateAsync({
+            param: { charterName: shownCharterName.trim() },
+            json: { kind, id, headers: answeredHeaders, body },
+          })
         : await rewritePrimitiveMutation.mutateAsync({
             param: { id: openedPrimitive.data.id },
             header: { "if-match": entityTag },
@@ -192,6 +209,17 @@ function PrimitiveEditor({
                 placeholder="no-any"
                 spellCheck={false}
                 onChange={(event) => setId(event.currentTarget.value)}
+              />
+            </FormRow>
+            <FormRow label="charter" htmlFor="primitive-charter" hint="one of yours, or a new one">
+              <Input
+                id="primitive-charter"
+                value={shownCharterName}
+                placeholder="team"
+                spellCheck={false}
+                autoComplete="off"
+                list="charter-names"
+                onChange={(event) => setCharterName(event.currentTarget.value)}
               />
             </FormRow>
           </>
@@ -242,6 +270,11 @@ function PrimitiveEditor({
           </FormRow>
         ))}
       </div>
+      <datalist id="charter-names">
+        {authoredCharterNames.map((authoredCharterName) => (
+          <option key={authoredCharterName} value={authoredCharterName} />
+        ))}
+      </datalist>
       <datalist id="corpus-ids">
         {corpusIds.map((corpusId) => (
           <option key={corpusId} value={corpusId} />

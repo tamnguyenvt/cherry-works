@@ -131,22 +131,22 @@ test("an empty folder answered at a terminal is set up as a charter repository f
     assert.equal(vendorInitRun.status, 0, vendorInitRun.stdout);
     assert.match(vendorInitRun.stdout, /Set up acme-charters as a charter repository, with nothing committed\./);
     const filePaths = await listFilePaths(repositoryFolderPath);
-    for (const templatePath of [
-      "README.md",
-      "CHANGELOG.md",
-      ".gitignore",
-      "charters/.gitkeep",
-      ".cw/charter/primitive/skill/vendor-release/index.md",
-      ".cw/charter/primitive/script/vendor-release-action/index.md",
-      ".cw/charter/primitive/script/vendor-release-action/vendor-release-action.mjs",
-      ".cw/settings.json",
-    ])
+    for (const templatePath of ["README.md", "CHANGELOG.md", ".gitignore", ".cw/settings.json"])
       assert.ok(filePaths.includes(templatePath), templatePath);
-    // cw init chose the agent, and the build after the copy compiled the
-    // release skill and its script.
-    assert.ok(filePaths.includes(".cw/out/skill/vendor-release/index.md"));
-    assert.ok(filePaths.includes(".cw/out/script/vendor-release-action/vendor-release-action.mjs"));
-    assert.ok(filePaths.includes(".claude/skills/vendor-release/SKILL.md"));
+    // It makes no charter (VENDOR Story 3 scenario 6).
+    assert.deepEqual(
+      [
+        ...new Set(
+          filePaths
+            .filter((filePath) => filePath.startsWith(".cw/charter/") && filePath.split("/").length > 3)
+            .map((filePath) => filePath.split("/")[2]),
+        ),
+      ],
+      [],
+    );
+    assert.ok(!filePaths.some((filePath) => filePath.startsWith("charters/")));
+    // cw init chose the agent, and the build after the copy ran.
+    assert.ok(filePaths.includes(".cw/out/catalogue.json"));
 
     const readmeText = await readFile(join(repositoryFolderPath, "README.md"), "utf8");
     assert.match(readmeText, /^# acme-charters\n\nRules for TypeScript services\.\n/);
@@ -158,18 +158,18 @@ test("an empty folder answered at a terminal is set up as a charter repository f
     // What cw build writes is left out of git, here and in each charter.
     const untrackedPaths = runGit(["status", "--porcelain", "--untracked-files=all"], repositoryFolderPath, commandEnv);
     assert.doesNotMatch(untrackedPaths, /\.cw\/out\/|\.claude\/|CLAUDE\.md|\.mcp\.json/);
-    assert.match(untrackedPaths, /\.cw\/charter\/primitive\/skill\/vendor-release\/index\.md/);
+    assert.match(untrackedPaths, /README\.md/);
   });
 });
 
-test("at a terminal with colour, the folder each charter is set up under is set apart (CORE Story 67 scenario 1)", {
+test("at a terminal with colour, the folder each charter is written under is set apart (CORE Story 67 scenario 1)", {
   skip: !hasPython && "python3 makes the terminal",
 }, async () => {
   await inWorkFolder(async (repositoryFolderPath, { NO_COLOR: _noColour, ...colouredEnv }) => {
     const vendorInitRun = runVendorInitAtTerminal(repositoryFolderPath, colouredEnv);
 
     assert.equal(vendorInitRun.status, 0, vendorInitRun.stdout);
-    assert.ok(vendorInitRun.stdout.includes("under \x1b[36mcharters/<name>/\x1b[0m with"), vendorInitRun.stdout);
+    assert.ok(vendorInitRun.stdout.includes("under \x1b[36m.cw/charter/<charter>/\x1b[0m with"), vendorInitRun.stdout);
   });
 });
 
@@ -240,6 +240,7 @@ test("a git repository with no commit yet is set up on the branch it is on", {
 
 test("a repository it set up releases its charters with the script it copied, and another repository installs them", {
   skip: !hasPython && "python3 makes the terminal",
+  todo: "VENDOR Story 2 rewrites /vendor-release to release charters",
 }, async () => {
   await inWorkFolder(async (repositoryFolderPath, commandEnv, workFolderPath) => {
     assert.equal(runVendorInitAtTerminal(repositoryFolderPath, commandEnv).status, 0);

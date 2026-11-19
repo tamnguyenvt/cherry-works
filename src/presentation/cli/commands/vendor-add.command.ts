@@ -11,7 +11,7 @@ import { formatHeading, formatMention, formatStatusLine, layAnswerRows, reportFa
 const OPTIONS = {
   source: {
     type: "string",
-    describe: "What git fetches the charter or the skills from: an address over any transport, or a path on disk",
+    describe: "What git fetches the charters from: an address over any transport, or a path on disk",
   },
   ref: {
     type: "string",
@@ -21,51 +21,45 @@ const OPTIONS = {
     type: "string",
     isArray: true,
     describe:
-      "A charter to pick from the source's charters/ folder, by its name; typed once per charter, each installed in a vendor folder of its own",
+      "A charter the source authored, by its name; typed once per charter, and every charter it authored where none is named. What a charter names of another charter of the source comes with it",
   },
-  skill: {
+  as: {
     type: "string",
-    isArray: true,
-    describe:
-      "A skill to take from the source's skills/ folder, by its name; typed once per skill, and every skill it holds where none is named",
+    describe: "The name the one charter named is held under here; its own where none is given",
   },
 } as const satisfies OptionSpec;
 
 /**
- * `cw vendor add`: install a charter this repository did not author (FR-023,
- * FR-027).
+ * `cw vendor add`: install charters this repository did not author, or bring
+ * them up to date (FR-023, VENDOR-FR-017).
  *
  * The source is passed on as it was typed. Which transport it names, whether
  * the credentials for it are there, whether the version exists: git answers all
  * of that, and what git says is what the user reads — there is no second
  * opinion here to disagree with it (FR-031).
  *
- * Running it again on a source already installed brings it up to date (FR-030),
- * so there is one thing to type rather than two to remember.
+ * With no `--charter`, every charter the source authored is installed;
+ * `--charter` names charters, each installed whole with every charter of the
+ * source it names, beside a `cw-vendor.json` saying where it came from
+ * (VENDOR-FR-017 to VENDOR-FR-019). `--as` holds the one charter under another
+ * name (VENDOR-FR-020). Running it again on a charter installed from the same
+ * source replaces it whole.
  *
- * With neither `--charter` nor `--skill`, the source's shape decides what is
- * taken: its one charter, else every charter under its `charters/`, else every
- * skill under its `skills/` (CORE-FR-193). `--charter` picks charters from
- * `charters/`, each installed whole in a vendor folder of its own
- * (CORE-FR-195, CORE-FR-196); `--skill` takes skills from `skills/`, each
- * converted into a skill of the charter, asking nothing, and what each left
- * out of its `SKILL.md` is said (CORE-FR-184, CORE-FR-186, CORE-FR-188).
- *
- * What is installed is left unstaged, with the source's README beside it, for
- * the user to read and commit, whatever else is in hand; and the build that
- * compiles it is not run here: a charter is read and compiled by `cw build`,
- * which is the one command that writes what an agent reads (FR-020).
+ * What is installed is left unstaged for the user to read and commit, whatever
+ * else is in hand; and the build that compiles it is not run here: a charter is
+ * read and compiled by `cw build`, which is the one command that writes what
+ * an agent reads (FR-020).
  */
 export class VendorAddCommand implements Command<typeof OPTIONS> {
   readonly name = "vendor add <source>";
-  readonly summary = "Install a charter or skills from a git source, or bring an installed one up to date";
+  readonly summary = "Install charters from a git source, or bring an installed charter up to date";
   readonly options = OPTIONS;
 
   async runCommand(
     { charterAuthoringApp }: Context,
-    { source, ref, charter: charterNames, skill: skillNames }: Options<typeof OPTIONS>,
+    { source, ref, charter: charterNames, as: asName }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    const vendorAddOutcomeDTO = await charterAuthoringApp.addVendor(source ?? "", ref, skillNames, charterNames);
+    const vendorAddOutcomeDTO = await charterAuthoringApp.addVendor(source ?? "", ref, charterNames, asName);
     if (vendorAddOutcomeDTO.type === "Fault") return reportFault(vendorAddOutcomeDTO);
     const vendorInstalls = vendorAddOutcomeDTO.data;
 
@@ -79,12 +73,7 @@ export class VendorAddCommand implements Command<typeof OPTIONS> {
               `Installed ${formatMention(source ?? "")} under ${formatMention(folderPath)}${ref === undefined ? "" : `, pinned to ${ref}`}.`,
             ),
           ),
-          ...layAnswerRows(
-            primitives.map(({ data: { kind, id, leftOutHeaders } }) => [
-              kind,
-              `${formatMention(id)}${leftOutHeaders.length === 0 ? "" : `, leaving out ${leftOutHeaders.join(", ")}: the charter has no field for them`}`,
-            ]),
-          ),
+          ...layAnswerRows(primitives.map(({ data: { kind, id } }) => [kind, formatMention(id)])),
         ]),
         'Run "cw build" to compile what it adds to this charter.',
         "",

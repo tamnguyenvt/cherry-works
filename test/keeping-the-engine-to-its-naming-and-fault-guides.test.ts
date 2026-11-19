@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import ts from "typescript";
 
 const repositoryUrl = new URL("../", import.meta.url);
 const sourceFolderUrl = new URL("src/", repositoryUrl);
-const guideFolderUrl = new URL(".cw/charter/primitive/guide/", repositoryUrl);
+const guideFolderUrl = new URL(".cw/charter/coding-standard-charter/primitive/guide/", repositoryUrl);
+/** Whether this repository's charter is on this machine: `.cw/` is kept out of
+ *  git, so a clone holds none, and the test reading its guides is skipped there. */
+const isCharterHere = existsSync(guideFolderUrl);
 
 /** What the engine's own code is, read file by file: the files a generator
  *  wrote (the portal's shadcn components and their `cn`) and the assets put
@@ -557,7 +560,9 @@ const architectureGuideIds = [
   "driven-port-speaks-its-adapter",
 ];
 
-test("the naming and architecture guides name no type or operation the code does not hold (CORE Story 53 scenario 2)", () => {
+test("the naming and architecture guides name no type or operation the code does not hold (CORE Story 53 scenario 2)", {
+  skip: !isCharterHere && "this repository's charter is kept on this machine alone, out of git",
+}, () => {
   const sourceText = [...sourceFileByPath.values()].map((sourceFile) => sourceFile.text).join("\n");
   const sourceWords = new Set(sourceText.match(/#?\w+/g));
   const unheldNames = architectureGuideIds.flatMap((guideId) => {

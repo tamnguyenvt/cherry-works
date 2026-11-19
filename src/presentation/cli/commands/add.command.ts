@@ -34,6 +34,10 @@ const OPTIONS = {
     type: "string",
     describe: 'What it is named by across the whole charter: "no-any"',
   },
+  charter: {
+    type: "string",
+    describe: 'The charter it is written into, made where there is none of that name: "team"',
+  },
   header: {
     type: "string",
     isArray: true,
@@ -51,6 +55,11 @@ const OPTIONS = {
  * and whether an answer is one the kind takes are both the engine's to say, and
  * what it says is what the user reads.
  *
+ * It is written into the charter `--charter` names; with none, whoever is at the
+ * terminal picks one of the charters the repository authored, or names one where
+ * it holds none, and with nobody there the engine refuses it, naming the charters
+ * held (VENDOR-FR-014, VENDOR-FR-015).
+ *
  * Nothing is compiled after it: the body is what its author has yet to write
  * (FR-020).
  */
@@ -61,8 +70,38 @@ export class AddCommand implements Command<typeof OPTIONS> {
 
   async runCommand(
     { charterAuthoringApp, isAtTerminal }: Context,
-    { kind, id, header }: Options<typeof OPTIONS>,
+    { kind, id, charter, header }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
+    let charterName = charter ?? "";
+    if (charter === undefined && isAtTerminal) {
+      const chartersDTO = await charterAuthoringApp.listCharters();
+      if (chartersDTO.type === "Fault") return reportFault(chartersDTO);
+      const authoredCharterNames = chartersDTO.data.charters
+        .filter((charterDTO) => !charterDTO.data.isInstalled)
+        .map((charterDTO) => charterDTO.data.name);
+      const charterAnswer =
+        authoredCharterNames.length === 0
+          ? await prompts({ type: "text", name: "charterName", message: "Which charter is it written into?" })
+          : await prompts({
+              type: "select",
+              name: "charterName",
+              message: "Which charter is it written into?",
+              choices: authoredCharterNames.map((authoredCharterName) => ({
+                title: authoredCharterName,
+                value: authoredCharterName,
+              })),
+            });
+      if (typeof charterAnswer.charterName !== "string")
+        return reportFault(
+          refuseCommand(
+            "StoppedPromptFault",
+            "This was stopped before it had its answers, so nothing was written.",
+            'Run "cw add" again.',
+          ),
+        );
+      charterName = charterAnswer.charterName.trim();
+    }
+
     const primitiveRequirementsDTO = await charterAuthoringApp.listPrimitiveRequirements(kind ?? "");
     if (primitiveRequirementsDTO.type === "Fault") return reportFault(primitiveRequirementsDTO);
     const primitiveHeaders = primitiveRequirementsDTO.data.headers.map((primitiveHeader) => primitiveHeader.data);
@@ -122,6 +161,12 @@ export class AddCommand implements Command<typeof OPTIONS> {
       // author to find that out later (FR-035 is setup's, and this asks for
       // what nothing can default).
       const requiredHeaders = primitiveHeaders.filter((primitiveHeader) => primitiveHeader.required);
+      // No charter named either is refused as that, by the engine, naming the
+      // charters held (VENDOR-FR-015).
+      if (!isAtTerminal && charter === undefined) {
+        const refusedDTO = await charterAuthoringApp.addPrimitive(kind ?? "", id ?? "", "", {});
+        if (refusedDTO.type === "Fault") return reportFault(refusedDTO);
+      }
       if (!isAtTerminal)
         return reportFault(
           refuseCommand(
@@ -154,7 +199,7 @@ export class AddCommand implements Command<typeof OPTIONS> {
         );
       headerAnswers = promptAnswers;
     }
-    const primitiveDTO = await charterAuthoringApp.addPrimitive(kind ?? "", id ?? "", headerAnswers);
+    const primitiveDTO = await charterAuthoringApp.addPrimitive(kind ?? "", id ?? "", charterName, headerAnswers);
 
     if (primitiveDTO.type === "Fault") return reportFault(primitiveDTO);
     if (primitiveDTO.type === "Faults")
