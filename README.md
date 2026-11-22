@@ -1,6 +1,6 @@
 # Cherry Works
 
-Current version: **1.3.0**
+Current version: **1.4.1**
 
 Stable version: **1.3.0**
 
