@@ -2,7 +2,7 @@
 
 Current version: **1.4.1**
 
-Stable version: **1.3.0**
+Stable version: **1.4.1**
 
 **Your team's way of working, written once for coding agents.**
 
