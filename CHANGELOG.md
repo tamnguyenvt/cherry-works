@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.4.1 — 2026-11-22
+
 - **Breaking:** primitives, tests and evals live in charters you name under `.cw/charter/<charter>/` (a 1.3.0 layout is refused: follow `/cw-author` to move it); `cw add`, `cw list`, `cw suite`, `cw test`, `cw eval` and the portal take `--charter=<name>`, and `--skill` is gone.
 - **Breaking:** `cw charter` (`pull`, `create`, `update`, `remove`) replaces `cw vendor`, and `/charter-release` comes with cw in place of `/vendor-release`, keeping the changelog in `.cw/CHANGELOG.md`; `npm install -g cherry-works` installs the stable version, `@next` the newest.
 - **Breaking:** the library names charters where it named vendors and takes a charter's name in its ports: update code that calls or implements them.
