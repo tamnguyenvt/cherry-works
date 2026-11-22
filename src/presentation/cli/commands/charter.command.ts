@@ -11,29 +11,31 @@ export class CharterCommand implements Command {
   readonly summary = "List the charters this repository holds, authored or installed, with where each came from";
 
   async runCommand({ charterAuthoringApp }: Context): Promise<Outcome> {
-    const chartersDTO = await charterAuthoringApp.listCharters();
-    if (chartersDTO.type === "Fault") return reportFault(chartersDTO);
-    const heldCharters = chartersDTO.data.charters.map(({ data: heldCharter }) => heldCharter);
-    if (heldCharters.length === 0)
+    const charterMetadataListDTO = await charterAuthoringApp.listCharters();
+    if (charterMetadataListDTO.type === "Fault") return reportFault(charterMetadataListDTO);
+    const heldCharterMetadatas = charterMetadataListDTO.data.charters.map(
+      ({ data: heldCharterMetadata }) => heldCharterMetadata,
+    );
+    if (heldCharterMetadatas.length === 0)
       return {
         exitCode: EXIT_OK,
         resultText:
           'No charter is held. Run "cw charter create <name>" to make one, or "cw charter pull <source>" to install one.\n',
-        answerDTO: chartersDTO,
+        answerDTO: charterMetadataListDTO,
       };
     return {
       exitCode: EXIT_OK,
       resultText: [
         formatHeading("Charters"),
         ...layAnswerRows(
-          heldCharters.map(({ name, isInstalled, source, version }) => [
+          heldCharterMetadatas.map(({ name, isInstalled, source, version }) => [
             formatMention(name),
             isInstalled ? `installed  ${`${source ?? ""} ${version ?? ""}`.trim()}` : "authored",
           ]),
         ),
         "",
       ].join("\n"),
-      answerDTO: chartersDTO,
+      answerDTO: charterMetadataListDTO,
     };
   }
 }

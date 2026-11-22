@@ -83,7 +83,7 @@ async function installed(source: string, repo: string, version?: string): Promis
 const installedGuideTextOf = (repo: string) =>
   readFile(join(repo, ".cw", "charter", "base", "primitive", "guide", "no-any", "index.md"), "utf8");
 
-test("a source's charter folder checked out at its commit lands where it is told, left unstaged and uncommitted (CORE Story 2 scenario 1)", async (t) => {
+test("a source's charter folder checked out at its commit lands where it is told, left unstaged and uncommitted (CORE Story 2 scenario 1, CORE Story 33 scenario 1, VENDOR Story 3 scenario 14, VENDOR Story 6 scenario 1)", async (t) => {
   const [source, repo] = [await published(t), await repository(t)];
   const { stdout: headBefore } = await run("git", ["rev-parse", "HEAD"], { cwd: repo });
 

@@ -7,8 +7,15 @@
  * remote. A publish that fails says nothing was published (SDK-FR-019).
  *
  *   pnpm release <version>            check, then commit, tag, push and publish
+ *                                     under npm's tag next: what
+ *                                     cherry-works@next installs
  *   pnpm release <version> --dry-run  check only; package.json, README.md and
  *                                     the contract are put back
+ *   pnpm release <version> --stable   a version published, marked stable: the
+ *                                     README's stable line committed and
+ *                                     pushed, then npm's tag latest moved to
+ *                                     it, what cherry-works installs
+ *                                     (CORE-FR-247)
  */
 import { spawnSync } from "node:child_process";
 import { lstat, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -97,6 +104,7 @@ function declarationByNameOf(declarationsText: string): Map<string, string> {
 const releaseArguments = process.argv.slice(2);
 const version = releaseArguments.find((argument) => !argument.startsWith("--"));
 const isDryRun = releaseArguments.includes("--dry-run");
+const isStable = releaseArguments.includes("--stable");
 const rootSpawnOptions = { cwd: ROOT, encoding: "utf8" } as const;
 
 try {
@@ -115,10 +123,16 @@ try {
     number[],
   ];
   const firstDifferenceIndex = nextParts.findIndex((nextPart, partIndex) => nextPart !== currentParts[partIndex]);
-  if (firstDifferenceIndex === -1 || nextParts[firstDifferenceIndex]! < currentParts[firstDifferenceIndex]!) {
+  const isAboveCurrent =
+    firstDifferenceIndex !== -1 && nextParts[firstDifferenceIndex]! > currentParts[firstDifferenceIndex]!;
+  if (isStable && isDryRun)
+    throw new ReleaseError("--stable and --dry-run cannot be combined: --stable changes the README, develop and npm.");
+  if (isStable && isAboveCurrent)
+    throw new ReleaseError(`${version} is above ${currentVersion}, the version package.json holds: release it first.`);
+  if (!isStable && !isAboveCurrent) {
     throw new ReleaseError(`${version} is not above ${currentVersion}, the version package.json holds.`);
   }
-  if (currentParts[0] === 0 && version !== "1.0.0")
+  if (!isStable && currentParts[0] === 0 && version !== "1.0.0")
     throw new ReleaseError(
       `${version} is not 1.0.0, the first version ${packageName} is released at under its contract.`,
     );
@@ -130,6 +144,15 @@ try {
       `README.md must hold exactly one "Current version: **${currentVersion}**" line matching package.json.`,
     );
   }
+  // The version cherry-works installs, which a release leaves as it is
+  // (CORE-FR-247).
+  const stableVersionLines = readmeText.match(/^Stable version: \*\*\d+\.\d+\.\d+\*\*$/gm) ?? [];
+  if (stableVersionLines.length !== 1)
+    throw new ReleaseError(
+      'README.md must hold exactly one "Stable version: **<version>**" line, naming the version cherry-works installs.',
+    );
+  if (isStable && stableVersionLines[0] === `Stable version: **${version}**`)
+    throw new ReleaseError(`${version} is already the stable version README.md names.`);
 
   // Signed in to the registry, as an account that may publish this package:
   // without it, npm publish answers a misleading E404 only after the release
@@ -159,9 +182,15 @@ try {
       `the registry could not be asked whether ${packageName} ${version} is published.\n${registryView.stderr}`,
     );
   }
-  if (registryView.stdout.trim() !== "") throw new ReleaseError(`${packageName} ${version} is already published.`);
+  if (isStable && registryView.stdout.trim() === "")
+    throw new ReleaseError(`${packageName} ${version} is not published: release it first.`);
+  if (!isStable && registryView.stdout.trim() !== "")
+    throw new ReleaseError(`${packageName} ${version} is already published.`);
 
-  if (spawnSync("git", ["rev-parse", "--quiet", "--verify", `refs/tags/v${version}`], rootSpawnOptions).status === 0) {
+  if (
+    !isStable &&
+    spawnSync("git", ["rev-parse", "--quiet", "--verify", `refs/tags/v${version}`], rootSpawnOptions).status === 0
+  ) {
     throw new ReleaseError(`the tag v${version} already exists.`);
   }
 
@@ -181,6 +210,35 @@ try {
   );
   if (localCommitId !== remoteCommitId)
     throw new ReleaseError(`${RELEASE_BRANCH} is not level with origin/${RELEASE_BRANCH}. Pull or push first.`);
+
+  if (isStable) {
+    // The README says it first, so what a reader is told is never behind npm.
+    await writeFile(README_MD, readmeText.replace(stableVersionLines[0]!, `Stable version: **${version}**`));
+    if (
+      spawnSync("git", ["commit", "--quiet", "--message", `Mark ${version} stable`, "--", "README.md"], {
+        cwd: ROOT,
+        stdio: "inherit",
+      }).status !== 0
+    ) {
+      await writeFile(README_MD, readmeText);
+      throw new ReleaseError("the commit marking it stable could not be made.");
+    }
+    // The commit is kept from here on, as a release keeps its commit once a
+    // push is attempted.
+    if (spawnSync("git", ["push", "origin", RELEASE_BRANCH], { cwd: ROOT, stdio: "inherit" }).status !== 0)
+      throw new PublicationError(
+        `the push failed; npm's tag latest was not moved. The commit marking ${version} stable is kept. Check origin, then run "git push origin ${RELEASE_BRANCH}" and "npm dist-tag add ${packageName}@${version} latest".`,
+      );
+    if (
+      spawnSync("npm", ["dist-tag", "add", `${packageName}@${version}`, "latest"], { cwd: ROOT, stdio: "inherit" })
+        .status !== 0
+    )
+      throw new PublicationError(
+        `npm's tag latest could not be moved to ${version}; ${RELEASE_BRANCH} was pushed. Run "npm dist-tag add ${packageName}@${version} latest".`,
+      );
+    console.info(`Marked ${version} stable: pushed ${RELEASE_BRANCH}, and ${packageName} now installs ${version}.`);
+    process.exit(0);
+  }
 
   const lastContractTextByFileName = await readContractFolder(ROOT);
   if (lastContractTextByFileName === undefined && currentParts[0]! > 0) {
@@ -364,13 +422,15 @@ try {
           `the push failed; ${version} was not published. The release commit and tag are kept. Check origin, then retry: git push origin ${RELEASE_BRANCH} v${version}`,
         );
       }
-      if (spawnSync("npm", ["publish", tarball], { cwd: ROOT, stdio: "inherit" }).status !== 0) {
+      // Under next, so what cherry-works installs stays the stable version
+      // until it is marked (CORE-FR-247).
+      if (spawnSync("npm", ["publish", tarball, "--tag", "next"], { cwd: ROOT, stdio: "inherit" }).status !== 0) {
         throw new PublicationError(
-          `${packageName} ${version} could not be published, so nothing was published. ${RELEASE_BRANCH} and v${version} were pushed; the release commit and tag are kept. Confirm what is on npm first with "npm view ${packageName}@${version} version". Then, to publish ${version}, from the release commit run "pnpm build", then "npm pack" and "npm publish <tarball>".`,
+          `${packageName} ${version} could not be published, so nothing was published. ${RELEASE_BRANCH} and v${version} were pushed; the release commit and tag are kept. Confirm what is on npm first with "npm view ${packageName}@${version} version". Then, to publish ${version}, from the release commit run "pnpm build", then "npm pack" and "npm publish <tarball> --tag next".`,
         );
       }
       console.info(
-        `Released ${version}: pushed ${RELEASE_BRANCH} and v${version}, then published the checked ${packageName}.`,
+        `Released ${version}: pushed ${RELEASE_BRANCH} and v${version}, then published the checked ${packageName} under next. Mark it stable with "pnpm release ${version} --stable".`,
       );
     }
   } finally {

@@ -62,7 +62,7 @@ async function inReleaseFolder(
         join(repositoryFolderPath, "README.md"),
         "# acme-charters\n\nRules for TypeScript services.\n\n<!-- charter-release-action: charters -->\n<!-- /charter-release-action: charters -->\n\n## Releasing\n\nAsk your agent `/charter-release`.\n",
       );
-      await writeFile(join(repositoryFolderPath, "CHANGELOG.md"), "# Changelog\n");
+      await writeFile(join(repositoryFolderPath, ".cw/CHANGELOG.md"), "# Changelog\n");
     }
     for (const [charterFilePath, charterText] of Object.entries(charterTextByPath)) {
       await mkdir(join(repositoryFolderPath, charterFilePath, ".."), { recursive: true });
@@ -123,7 +123,7 @@ const CHARTER_TEXT_BY_PATH = {
   ".cw/charter/grill/cw-package.json": `${JSON.stringify({ charter: "grill", source: "mattpocock/skills", version: "v1.0.0" })}\n`,
 };
 
-test("released from the default branch of origin, the install section and the entry are committed, pushed and tagged, and another repository installs a charter with the line the README gives (VENDOR Story 2 scenario 1)", async () => {
+test("released from the default branch of origin, the install section and the entry are committed, pushed and tagged, and another repository installs a charter with the line the README gives, the line installing them all naming each charter authored and never the one installed (VENDOR Story 2 scenario 1, VENDOR Story 8 scenario 5, VENDOR-FR-005, VENDOR-FR-006)", async () => {
   await inReleaseFolder(CHARTER_TEXT_BY_PATH, async (releaseFolder) => {
     const { repositoryFolderPath, originFolderPath, workFolderPath, commandEnv } = releaseFolder;
     // What this machine ignores, a file its desktop leaves, is no file the
@@ -141,9 +141,15 @@ test("released from the default branch of origin, the install section and the en
     const readmeRun = runReleaseAction(["readme"], releaseFolder);
     assert.equal(readmeRun.status, 0, readmeRun.stderr);
     const readmeText = await readFile(join(repositoryFolderPath, "README.md"), "utf8");
-    assert.match(readmeText, /cw charter pull acme\/acme-charters\n/);
-    assert.match(readmeText, /### baseline\n\n```bash\ncw charter pull acme\/acme-charters --charter=baseline\n/);
-    assert.match(readmeText, /### sdd\n\n```bash\ncw charter pull acme\/acme-charters --charter=sdd\n/);
+    // Every charter authored named, never the one installed (VENDOR-FR-005).
+    assert.ok(
+      readmeText.includes(`cw charter pull ${originFolderPath} --charter=baseline --charter=sdd\n`),
+      readmeText,
+    );
+    assert.ok(
+      readmeText.includes(`### baseline\n\n\`\`\`bash\ncw charter pull ${originFolderPath} --charter=baseline\n`),
+    );
+    assert.ok(readmeText.includes(`### sdd\n\n\`\`\`bash\ncw charter pull ${originFolderPath} --charter=sdd\n`));
     assert.match(readmeText, /\| `\/greet` \| Say hello\. \|/);
     // Only what the repository authored, never cw's own skills.
     const installSectionText = readmeText.slice(
@@ -168,7 +174,7 @@ test("released from the default branch of origin, the install section and the en
     assert.equal(runGit(["tag", "--list"], originFolderPath, commandEnv), "v0.1.0");
     assert.equal(runGit(["log", "-1", "--format=%s", "main"], originFolderPath, commandEnv), "release v0.1.0");
     assert.equal(
-      runGit(["show", "main:CHANGELOG.md"], originFolderPath, commandEnv),
+      runGit(["show", "main:.cw/CHANGELOG.md"], originFolderPath, commandEnv),
       "# Changelog\n\n## 0.1.0 — 2026-11-19\n\n- First.",
     );
     assert.equal(statusOf(releaseFolder), "");
@@ -177,15 +183,10 @@ test("released from the default branch of origin, the install section and the en
     await mkdir(consumerFolderPath);
     runGit(["init", "--quiet"], consumerFolderPath, commandEnv);
     assert.equal(runCw(["init", "--agent", "claude"], consumerFolderPath, commandEnv).status, 0);
-    // The line the README gives, its source the origin on disk that
-    // acme/acme-charters stands for here.
-    const readmeInstallArgs = /^cw charter pull acme\/acme-charters (--charter=sdd)$/m.exec(readmeText)?.slice(1) ?? [];
-    assert.deepEqual(readmeInstallArgs, ["--charter=sdd"]);
-    const charterPullRun = runCw(
-      ["charter", "pull", originFolderPath, ...readmeInstallArgs],
-      consumerFolderPath,
-      commandEnv,
-    );
+    // The line the README gives, run as it is written.
+    const readmeInstallArgs = /^cw (charter pull \S+ --charter=sdd)$/m.exec(readmeText)?.[1]?.split(" ") ?? [];
+    assert.deepEqual(readmeInstallArgs, ["charter", "pull", originFolderPath, "--charter=sdd"]);
+    const charterPullRun = runCw(readmeInstallArgs, consumerFolderPath, commandEnv);
     assert.equal(charterPullRun.status, 0, charterPullRun.stderr);
     assert.deepEqual(
       (await readdir(join(consumerFolderPath, ".cw/charter"))).filter((entryName) => entryName !== ".gitkeep").sort(),
@@ -233,6 +234,48 @@ test("a release on another branch, with a change not committed, with no origin, 
     const noOriginRun = runReleaseAction(["check"], releaseFolder);
     assert.equal(noOriginRun.status, 1);
     assert.match(noOriginRun.stderr, /main has no origin to push to/);
+    assert.equal(statusOf(releaseFolder), "");
+  });
+});
+
+test("a build that changes what is committed is refused at check, the release writing nothing of its own (VENDOR Story 2 scenario 10, VENDOR-FR-005)", async () => {
+  await inReleaseFolder(CHARTER_TEXT_BY_PATH, async (releaseFolder) => {
+    const { repositoryFolderPath, commandEnv } = releaseFolder;
+    await writeFile(join(repositoryFolderPath, ".cw/out/CHARTER.md"), "Stale.\n");
+    runGit(["add", "--force", ".cw/out/CHARTER.md"], repositoryFolderPath, commandEnv);
+    runGit(["commit", "--quiet", "-m", "Stale output"], repositoryFolderPath, commandEnv);
+    runGit(["push", "--quiet", "origin", "main"], repositoryFolderPath, commandEnv);
+
+    const checkRun = runReleaseAction(["check"], releaseFolder);
+
+    assert.equal(checkRun.status, 1);
+    assert.match(checkRun.stderr, /The build changed what is committed/);
+    assert.match(checkRun.stderr, /\.cw\/out\/CHARTER\.md/);
+    // Nothing of the release's own: the build's output alone is changed.
+    assert.equal(statusOf(releaseFolder), "M .cw/out/CHARTER.md");
+    assert.equal(runGit(["tag", "--list"], repositoryFolderPath, commandEnv), "");
+  });
+});
+
+test("a version or date the author names that a release would refuse is refused at draft, before the README is written (VENDOR Story 2 scenario 10, VENDOR-FR-005)", async () => {
+  await inReleaseFolder(CHARTER_TEXT_BY_PATH, async (releaseFolder) => {
+    const { repositoryFolderPath, commandEnv } = releaseFolder;
+    runGit(["tag", "-a", "v0.2.0", "-m", "release v0.2.0"], repositoryFolderPath, commandEnv);
+    await writeFile(join(repositoryFolderPath, ".cw/CHANGELOG.md"), "# Changelog\n\n## 0.2.0 — 2026-11-01\n");
+    runGit(["commit", "--quiet", "-am", "Released"], repositoryFolderPath, commandEnv);
+
+    for (const [draftArgs, refusalPattern] of [
+      [["--version", "1.2"], /"1\.2" is no version/],
+      [["--version", "0.2.0"], /v0\.2\.0 is already a tag/],
+      [["--version", "0.1.9"], /0\.1\.9 is not after the last release, v0\.2\.0/],
+      [["--version", "0.3.0", "--date", "20-11-2026"], /"20-11-2026" is no date/],
+    ] as const) {
+      const draftRun = runReleaseAction(["draft", ...draftArgs], releaseFolder);
+      assert.equal(draftRun.status, 1, draftArgs.join(" "));
+      assert.match(draftRun.stderr, refusalPattern);
+    }
+    const acceptedRun = runReleaseAction(["draft", "--version", "0.3.0", "--date", "2026-11-20"], releaseFolder);
+    assert.equal(acceptedRun.status, 0, acceptedRun.stderr);
     assert.equal(statusOf(releaseFolder), "");
   });
 });
@@ -303,15 +346,40 @@ test("with no tag 0.1.0 is proposed, and a last tag the changelog's top heading 
     runGit(["tag", "-a", "v0.2.0", "-m", "release v0.2.0"], repositoryFolderPath, commandEnv);
     const mismatchRun = runReleaseAction(["draft"], releaseFolder);
     assert.equal(mismatchRun.status, 1);
-    assert.match(mismatchRun.stderr, /The last tag is v0\.2\.0, and the top heading of CHANGELOG\.md is none/);
+    assert.match(mismatchRun.stderr, /The last tag is v0\.2\.0, and the top heading of \.cw\/CHANGELOG\.md is none/);
     assert.equal(statusOf(releaseFolder), "");
+
+    // The top heading is the one compared, quoted as written, never a release
+    // heading below it.
+    await writeFile(
+      join(repositoryFolderPath, ".cw/CHANGELOG.md"),
+      "# Changelog\n\n## Unreleased\n\n## 0.2.0 — 2026-11-01\n\n- First.\n",
+    );
+    runGit(["commit", "--quiet", "-am", "Unreleased"], repositoryFolderPath, commandEnv);
+    const unreleasedRun = runReleaseAction(["draft"], releaseFolder);
+    assert.equal(unreleasedRun.status, 1);
+    assert.match(unreleasedRun.stderr, /the top heading of \.cw\/CHANGELOG\.md is "## Unreleased"/);
+    // A changelog not opening with its heading is refused before the README.
+    await writeFile(join(repositoryFolderPath, ".cw/CHANGELOG.md"), "Changes\n\n## 0.2.0\n");
+    runGit(["commit", "--quiet", "-am", "No heading"], repositoryFolderPath, commandEnv);
+    const unheadedRun = runReleaseAction(["draft"], releaseFolder);
+    assert.equal(unheadedRun.status, 1);
+    assert.match(unheadedRun.stderr, /\.cw\/CHANGELOG\.md does not open with "# Changelog"/);
+    // A top heading naming the tag, dated or not, lets the draft through.
+    await writeFile(join(repositoryFolderPath, ".cw/CHANGELOG.md"), "# Changelog\n\n## 0.2.0\n\n- First.\n");
+    runGit(["commit", "--quiet", "-am", "Dateless"], repositoryFolderPath, commandEnv);
+    const datelessRun = runReleaseAction(["draft"], releaseFolder);
+    assert.equal(datelessRun.status, 0, datelessRun.stderr);
   });
 });
 
 test("after a release, the patch and the minor bump are proposed, with what was removed or renamed under the charters and every commit since (VENDOR Story 2 scenario 4)", async () => {
   await inReleaseFolder(CHARTER_TEXT_BY_PATH, async (releaseFolder) => {
     const { repositoryFolderPath, commandEnv } = releaseFolder;
-    await writeFile(join(repositoryFolderPath, "CHANGELOG.md"), "# Changelog\n\n## 0.1.0 — 2026-11-19\n\n- First.\n");
+    await writeFile(
+      join(repositoryFolderPath, ".cw/CHANGELOG.md"),
+      "# Changelog\n\n## 0.1.0 — 2026-11-19\n\n- First.\n",
+    );
     runGit(["commit", "--quiet", "-am", "release v0.1.0"], repositoryFolderPath, commandEnv);
     runGit(["tag", "-a", "v0.1.0", "-m", "release v0.1.0"], repositoryFolderPath, commandEnv);
     runGit(["rm", "--quiet", "-r", ".cw/charter/baseline"], repositoryFolderPath, commandEnv);
@@ -356,6 +424,14 @@ test("an origin naming no default branch has the author asked which branch relea
     const shellBranchRun = runReleaseAction(["check", "--branch", "main;rm -rf ~"], releaseFolder);
     assert.equal(shellBranchRun.status, 1);
     assert.match(shellBranchRun.stderr, /"main;rm -rf ~" is no branch a release is made from/);
+
+    // An origin that cannot be reached is said as it is, never asked as a
+    // branch.
+    runGit(["remote", "set-url", "origin", join(workFolderPath, "gone.git")], repositoryFolderPath, commandEnv);
+    const unreachableRun = runReleaseAction(["check"], releaseFolder);
+    assert.equal(unreachableRun.status, 1);
+    assert.match(unreachableRun.stderr, /origin could not be reached/);
+    assert.doesNotMatch(unreachableRun.stderr, /Unsure which branch/);
   });
 });
 
@@ -380,7 +456,7 @@ test("a push that fails stops the release at that step, saying which steps ran a
 
     assert.equal(publishRun.status, 1);
     assert.match(publishRun.stderr, /Stopped at "push main"/);
-    assert.match(publishRun.stderr, /Ran: write the entry into CHANGELOG\.md, commit\./);
+    assert.match(publishRun.stderr, /Ran: write the entry into \.cw\/CHANGELOG\.md, commit\./);
     assert.match(
       publishRun.stderr,
       /To finish: git push origin main && git tag -a v0\.1\.0 -m "release v0\.1\.0" && git push origin v0\.1\.0/,
@@ -418,10 +494,35 @@ test("a tag push that fails stops the release at that step, saying which steps r
 
     assert.equal(publishRun.status, 1);
     assert.match(publishRun.stderr, /Stopped at "push v0\.1\.0"/);
-    assert.match(publishRun.stderr, /Ran: write the entry into CHANGELOG\.md, commit, push main, tag v0\.1\.0\./);
+    assert.match(publishRun.stderr, /Ran: write the entry into \.cw\/CHANGELOG\.md, commit, push main, tag v0\.1\.0\./);
     assert.match(publishRun.stderr, /To finish: git push origin v0\.1\.0$/m);
     assert.equal(runGit(["tag", "--list"], originFolderPath, commandEnv), "");
   });
+});
+
+test("cw init and cw charter create in an empty folder set a repository releasing charters up: the charter held, empty, /charter-release laid, no mark in the settings (VENDOR Story 1 scenario 1, VENDOR-FR-032, VENDOR-FR-029, VENDOR-SC-001)", async () => {
+  await inReleaseFolder(
+    {},
+    async ({ repositoryFolderPath, commandEnv }) => {
+      const createRun = runCw(["charter", "create", "sdd"], repositoryFolderPath, commandEnv);
+      assert.equal(createRun.status, 0, createRun.stderr);
+
+      assert.deepEqual(
+        (await readdir(join(repositoryFolderPath, ".cw/charter"))).filter((entryName) => entryName !== ".gitkeep"),
+        ["sdd"],
+      );
+      assert.deepEqual(
+        (await readdir(join(repositoryFolderPath, ".cw/charter/sdd"))).filter((entryName) => entryName !== ".gitkeep"),
+        [],
+      );
+      assert.ok((await readFile(join(repositoryFolderPath, ".cw/out/skill/charter-release/index.md"), "utf8")) !== "");
+      assert.deepEqual(
+        Object.keys(JSON.parse(await readFile(join(repositoryFolderPath, ".cw/settings.json"), "utf8"))),
+        ["agents"],
+      );
+    },
+    false,
+  );
 });
 
 test("any repository builds /charter-release and its script from cw itself, into no charter of its own (VENDOR Story 8 scenario 1, VENDOR Story 2 scenario 7, VENDOR-FR-027)", async () => {
@@ -449,7 +550,7 @@ test("any repository builds /charter-release and its script from cw itself, into
   });
 });
 
-test("released with no README and no changelog, both are written and committed with the release, the README holding the install section alone (VENDOR Story 8 scenario 2, VENDOR-FR-006, VENDOR-FR-007)", async () => {
+test("released with no README and no changelog, both are written and committed with the release, the README holding the install section alone (VENDOR Story 8 scenario 2, VENDOR Story 2 scenario 9, VENDOR-FR-006, VENDOR-FR-007)", async () => {
   await inReleaseFolder(
     CHARTER_TEXT_BY_PATH,
     async (releaseFolder) => {
@@ -460,7 +561,7 @@ test("released with no README and no changelog, both are written and committed w
       const readmeText = await readFile(join(repositoryFolderPath, "README.md"), "utf8");
       assert.ok(readmeText.startsWith("<!-- charter-release-action: charters -->\n## Install\n"), readmeText);
       assert.ok(readmeText.endsWith("<!-- /charter-release-action: charters -->\n"), readmeText);
-      assert.match(readmeText, /^cw charter pull acme\/acme-charters --charter=sdd$/m);
+      assert.ok(readmeText.includes(`\ncw charter pull ${originFolderPath} --charter=sdd\n`), readmeText);
       const draftRun = runReleaseAction(["draft"], releaseFolder);
       assert.equal(draftRun.status, 0, draftRun.stderr);
       assert.match(draftRun.stdout, /Version: 0\.1\.0/);
@@ -474,7 +575,7 @@ test("released with no README and no changelog, both are written and committed w
       assert.equal(publishRun.status, 0, publishRun.stderr);
       assert.equal(runGit(["tag", "--list"], originFolderPath, commandEnv), "v0.1.0");
       assert.equal(
-        runGit(["show", "main:CHANGELOG.md"], originFolderPath, commandEnv),
+        runGit(["show", "main:.cw/CHANGELOG.md"], originFolderPath, commandEnv),
         "# Changelog\n\n## 0.1.0 — 2026-11-19\n\n- First.",
       );
       assert.equal(runGit(["show", "main:README.md"], originFolderPath, commandEnv), readmeText.trim());
@@ -560,7 +661,7 @@ for (const [caseName, primitiveKind, primitiveText] of [
     });
   });
 
-test("a README /vendor-release wrote is refused naming the markers to rename, and nothing is written (VENDOR-FR-006)", async () => {
+test("a README /vendor-release wrote is refused naming the markers to rename, and nothing is written (VENDOR Story 8 scenario 6, VENDOR-FR-006)", async () => {
   await inReleaseFolder(
     CHARTER_TEXT_BY_PATH,
     async (releaseFolder) => {
@@ -581,6 +682,175 @@ test("a README /vendor-release wrote is refused naming the markers to rename, an
         /rename them "<!-- charter-release-action: charters -->" … "<!-- \/charter-release-action: charters -->"/,
       );
       assert.equal(await readFile(join(repositoryFolderPath, "README.md"), "utf8"), oldReadmeText);
+    },
+    false,
+  );
+});
+
+test("a README holding no install section gets it at its end, the rest kept as it is (VENDOR Story 8 scenario 7, VENDOR-FR-006)", async () => {
+  await inReleaseFolder(
+    CHARTER_TEXT_BY_PATH,
+    async (releaseFolder) => {
+      const { repositoryFolderPath, originFolderPath, commandEnv } = releaseFolder;
+      const ownReadmeText = "# acme-charters\n\nRules for TypeScript services.\n";
+      await writeFile(join(repositoryFolderPath, "README.md"), ownReadmeText);
+      runGit(["add", "README.md"], repositoryFolderPath, commandEnv);
+      runGit(["commit", "--quiet", "-m", "The README GitHub made"], repositoryFolderPath, commandEnv);
+      runGit(["push", "--quiet", "origin", "main"], repositoryFolderPath, commandEnv);
+      assert.equal(runReleaseAction(["check"], releaseFolder).status, 0);
+
+      const readmeRun = runReleaseAction(["readme"], releaseFolder);
+
+      assert.equal(readmeRun.status, 0, readmeRun.stderr);
+      const readmeText = await readFile(join(repositoryFolderPath, "README.md"), "utf8");
+      assert.ok(
+        readmeText.startsWith(`${ownReadmeText}\n<!-- charter-release-action: charters -->\n## Install\n`),
+        readmeText,
+      );
+      assert.ok(readmeText.endsWith("<!-- /charter-release-action: charters -->\n"), readmeText);
+      assert.ok(readmeText.includes(`\ncw charter pull ${originFolderPath} --charter=sdd\n`), readmeText);
+    },
+    false,
+  );
+});
+
+test("the README installs from the address origin names, a credential an https address carries left out (VENDOR-SC-002, VENDOR-FR-006)", async () => {
+  await inReleaseFolder(CHARTER_TEXT_BY_PATH, async (releaseFolder) => {
+    const { repositoryFolderPath, commandEnv } = releaseFolder;
+    runGit(
+      ["remote", "set-url", "origin", "https://someone:secret-token@example.com/acme/acme-charters.git"],
+      repositoryFolderPath,
+      commandEnv,
+    );
+
+    const readmeRun = runReleaseAction(["readme"], releaseFolder);
+
+    assert.equal(readmeRun.status, 0, readmeRun.stderr);
+    const readmeText = await readFile(join(repositoryFolderPath, "README.md"), "utf8");
+    assert.ok(
+      readmeText.includes(
+        "\ncw charter pull https://example.com/acme/acme-charters.git --charter=baseline --charter=sdd\n",
+      ),
+      readmeText,
+    );
+    assert.doesNotMatch(readmeText, /secret-token|someone@/);
+  });
+});
+
+test("a charter the repository installed that does not build refuses the release, showing why, and nothing is written (VENDOR Story 8 scenario 8, VENDOR-FR-005)", async () => {
+  await inReleaseFolder(CHARTER_TEXT_BY_PATH, async (releaseFolder) => {
+    const { repositoryFolderPath, commandEnv } = releaseFolder;
+    const brokenFolderPath = join(repositoryFolderPath, ".cw/charter/broken");
+    await mkdir(join(brokenFolderPath, "primitive/guide/no-description"), { recursive: true });
+    await writeFile(
+      join(brokenFolderPath, "primitive/guide/no-description/index.md"),
+      "---\nkind: guide\nid: no-description\n---\n\nSay nothing of what it is.\n",
+    );
+    await writeFile(
+      join(brokenFolderPath, "cw-package.json"),
+      `${JSON.stringify({ charter: "broken", source: "acme/broken", version: "v1.0.0" })}\n`,
+    );
+    runGit(["add", "."], repositoryFolderPath, commandEnv);
+    runGit(["commit", "--quiet", "-m", "A charter installed"], repositoryFolderPath, commandEnv);
+    runGit(["push", "--quiet", "origin", "main"], repositoryFolderPath, commandEnv);
+    const readmeTextBefore = await readFile(join(repositoryFolderPath, "README.md"), "utf8");
+
+    const checkRun = runReleaseAction(["check"], releaseFolder);
+
+    assert.equal(checkRun.status, 1);
+    assert.match(checkRun.stderr, /"broken" does not build/);
+    assert.match(checkRun.stderr, /broken\/primitive\/guide\/no-description/);
+    assert.equal(await readFile(join(repositoryFolderPath, "README.md"), "utf8"), readmeTextBefore);
+    assert.equal(statusOf(releaseFolder), "");
+  });
+});
+
+for (const [caseName, brokenReadmeText] of [
+  ["its end marker alone", "# acme-charters\n\n<!-- /charter-release-action: charters -->\n"],
+  ["its start marker alone", "# acme-charters\n\n<!-- charter-release-action: charters -->\n"],
+  [
+    "its two markers out of order",
+    "# acme-charters\n\n<!-- /charter-release-action: charters -->\n<!-- charter-release-action: charters -->\n",
+  ],
+] as const)
+  test(`a README holding ${caseName} is refused, naming both lines, and nothing is written (VENDOR Story 8 scenario 9, VENDOR-FR-006)`, async () => {
+    await inReleaseFolder(
+      CHARTER_TEXT_BY_PATH,
+      async (releaseFolder) => {
+        const { repositoryFolderPath, commandEnv } = releaseFolder;
+        await writeFile(join(repositoryFolderPath, "README.md"), brokenReadmeText);
+        runGit(["add", "README.md"], repositoryFolderPath, commandEnv);
+        runGit(["commit", "--quiet", "-m", "A broken section"], repositoryFolderPath, commandEnv);
+        runGit(["push", "--quiet", "origin", "main"], repositoryFolderPath, commandEnv);
+        assert.equal(runReleaseAction(["check"], releaseFolder).status, 0);
+
+        const readmeRun = runReleaseAction(["readme"], releaseFolder);
+
+        assert.equal(readmeRun.status, 1);
+        assert.match(
+          readmeRun.stderr,
+          /holds only one of "<!-- charter-release-action: charters -->" and "<!-- \/charter-release-action: charters -->", or the two out of order/,
+        );
+        assert.equal(await readFile(join(repositoryFolderPath, "README.md"), "utf8"), brokenReadmeText);
+      },
+      false,
+    );
+  });
+
+test("a release keeps the charters' changelog in .cw/CHANGELOG.md, leaves a CHANGELOG.md at the root as it is, and links it from the README (VENDOR Story 8 scenario 10, VENDOR-FR-007)", async () => {
+  await inReleaseFolder(
+    CHARTER_TEXT_BY_PATH,
+    async (releaseFolder) => {
+      const { repositoryFolderPath, originFolderPath, workFolderPath, commandEnv } = releaseFolder;
+      const ownChangelogText = "# Our own changelog\n\n## 9.9.9\n\n- Not the charters'.\n";
+      await writeFile(join(repositoryFolderPath, "CHANGELOG.md"), ownChangelogText);
+      runGit(["add", "CHANGELOG.md"], repositoryFolderPath, commandEnv);
+      runGit(["commit", "--quiet", "-m", "Our own changelog"], repositoryFolderPath, commandEnv);
+      runGit(["push", "--quiet", "origin", "main"], repositoryFolderPath, commandEnv);
+      assert.equal(runReleaseAction(["check"], releaseFolder).status, 0);
+      const draftRun = runReleaseAction(["draft"], releaseFolder);
+      assert.equal(draftRun.status, 0, draftRun.stderr);
+      assert.match(draftRun.stdout, /Version: 0\.1\.0/);
+      assert.equal(runReleaseAction(["readme"], releaseFolder).status, 0);
+      await writeFile(join(workFolderPath, "entry.md"), "- First.\n");
+
+      const publishRun = runReleaseAction(
+        ["publish", "0.1.0", join(workFolderPath, "entry.md"), "--date", "2026-11-20"],
+        releaseFolder,
+      );
+
+      assert.equal(publishRun.status, 0, publishRun.stderr);
+      assert.equal(
+        runGit(["show", "main:.cw/CHANGELOG.md"], originFolderPath, commandEnv),
+        "# Changelog\n\n## 0.1.0 — 2026-11-20\n\n- First.",
+      );
+      assert.equal(runGit(["show", "main:CHANGELOG.md"], originFolderPath, commandEnv), ownChangelogText.trim());
+      assert.match(
+        runGit(["show", "main:README.md"], originFolderPath, commandEnv),
+        /What changed in each release: \[the changelog of these charters\]\(\.cw\/CHANGELOG\.md\), kept by Cherry Works\.\n<!-- \/charter-release-action: charters -->/,
+      );
+    },
+    false,
+  );
+});
+
+test("a repository tagged before it kept .cw/CHANGELOG.md drafts the release after its last tag (VENDOR-FR-007)", async () => {
+  await inReleaseFolder(
+    CHARTER_TEXT_BY_PATH,
+    async (releaseFolder) => {
+      const { repositoryFolderPath, commandEnv } = releaseFolder;
+      runGit(["tag", "-a", "v0.2.0", "-m", "release v0.2.0"], repositoryFolderPath, commandEnv);
+      await writeFile(join(repositoryFolderPath, "notes.md"), "A change after it.\n");
+      runGit(["add", "notes.md"], repositoryFolderPath, commandEnv);
+      runGit(["commit", "--quiet", "-m", "A change after it"], repositoryFolderPath, commandEnv);
+
+      const draftRun = runReleaseAction(["draft"], releaseFolder);
+
+      assert.equal(draftRun.status, 0, draftRun.stderr);
+      assert.match(draftRun.stdout, /Last release: v0\.2\.0\n/);
+      assert.match(draftRun.stdout, /Patch: 0\.2\.1\n/);
+      assert.match(draftRun.stdout, /Landed:\n {2}\S+ A change after it\n/);
+      assert.doesNotMatch(draftRun.stdout, /Version: 0\.1\.0/);
     },
     false,
   );

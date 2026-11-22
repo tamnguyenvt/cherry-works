@@ -63,7 +63,7 @@ const charterNamesOf = async (fileReader: InMemoryFileReaders) =>
 const installedCharterRecordOf = async (fileReader: InMemoryFileReaders, charterName: string) =>
   JSON.parse((await fileReader.readIfThere(`.cw/charter/${charterName}/cw-package.json`)) ?? "null");
 
-test("cw charter pull --charter=sdd installs the whole charter, its test and eval cases, beside a cw-package.json naming it, the source and the version (VENDOR Story 3 scenario 14)", async () => {
+test("cw charter pull --charter=sdd installs the whole charter, its test and eval cases, beside a cw-package.json naming it, the source and the version (VENDOR Story 3 scenario 14, VENDOR Story 6 scenario 1, CORE Story 33 scenario 1)", async () => {
   const { fileReader, charterAuthoringApp } = repositoryWith();
 
   answerOf(await charterAuthoringApp.pullCharters(SOURCE, false, "v1.0.0", ["sdd"]));
@@ -154,6 +154,16 @@ test("--as installs the charter under that name, its cw-package.json naming the 
   });
 });
 
+test("--as names the charter picked alone: a charter it includes keeps its own name (VENDOR-FR-020, VENDOR-FR-018)", async () => {
+  const { fileReader, charterAuthoringApp } = repositoryWith();
+
+  answerOf(await charterAuthoringApp.pullCharters(SOURCE, false, undefined, ["sdd"], "team"));
+
+  assert.deepEqual(await charterNamesOf(fileReader), ["baseline", "grill", "team"]);
+  assert.equal((await installedCharterRecordOf(fileReader, "team")).charter, "sdd");
+  assert.equal((await installedCharterRecordOf(fileReader, "baseline")).charter, "baseline");
+});
+
 test("--as a name a charter may not take installs nothing, saying it cannot name a charter (VENDOR-FR-020)", async () => {
   for (const asName of ["root", "guide", "Not An Id"]) {
     const { fileReader, charterAuthoringApp } = repositoryWith();
@@ -193,7 +203,7 @@ test("a name held by a charter installed from the same source is replaced whole;
   }
 });
 
-test("a charter installed --as another name, then under its own, is refused naming both files of the id they share, and nothing is written (VENDOR Story 3 scenario 19)", async () => {
+test("a charter installed --as another name, then under its own, is refused naming both files of the id they share, and nothing is written (VENDOR-FR-009, VENDOR-FR-020)", async () => {
   const { fileReader, charterAuthoringApp } = repositoryWith();
   answerOf(await charterAuthoringApp.pullCharters(SOURCE, false, undefined, ["lone"], "solo"));
 
@@ -220,9 +230,9 @@ test("cw charter names each installed charter with its source and version; cw ch
   });
   answerOf(await charterAuthoringApp.pullCharters(SOURCE, false, "v1", ["lone"]));
 
-  const chartersDTO = answerOf(await charterAuthoringApp.listCharters(true));
+  const charterMetadataListDTO = answerOf(await charterAuthoringApp.listCharters(true));
   assert.deepEqual(
-    chartersDTO.data.charters.map(({ data: { name, source, version } }) => ({ name, source, version })),
+    charterMetadataListDTO.data.charters.map(({ data: { name, source, version } }) => ({ name, source, version })),
     [{ name: "lone", source: SOURCE, version: "v1" }],
   );
 

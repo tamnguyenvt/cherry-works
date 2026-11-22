@@ -38,20 +38,24 @@ export class CharterRemoveCommand implements Command<typeof OPTIONS> {
     { charterAuthoringApp }: Context,
     { charter: charterName, all: isAll }: Options<typeof OPTIONS>,
   ): Promise<Outcome> {
-    const chartersDTO = await charterAuthoringApp.removeCharters(charterName ?? "", isAll, false);
-    if (chartersDTO.type === "Fault") return reportFault(chartersDTO);
-    if (chartersDTO.data.charters.length === 0)
-      return { exitCode: EXIT_OK, resultText: "No charter is held: nothing to remove.\n", answerDTO: chartersDTO };
+    const charterMetadataListDTO = await charterAuthoringApp.removeCharters(charterName ?? "", isAll, false);
+    if (charterMetadataListDTO.type === "Fault") return reportFault(charterMetadataListDTO);
+    if (charterMetadataListDTO.data.charters.length === 0)
+      return {
+        exitCode: EXIT_OK,
+        resultText: "No charter is held: nothing to remove.\n",
+        answerDTO: charterMetadataListDTO,
+      };
     return {
       exitCode: EXIT_OK,
       resultText: [
-        ...chartersDTO.data.charters.map(({ data: { folder: folderPath } }) =>
+        ...charterMetadataListDTO.data.charters.map(({ data: { folder: folderPath } }) =>
           formatHeading(formatStatusLine("good", `Removed ${formatMention(folderPath)}.`)),
         ),
-        'Run "cw build" to compile this charter without it.',
+        `Run "cw build" to build the charter root without ${charterMetadataListDTO.data.charters.length === 1 ? "it" : "them"}.`,
         "",
       ].join("\n"),
-      answerDTO: chartersDTO,
+      answerDTO: charterMetadataListDTO,
     };
   }
 }

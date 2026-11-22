@@ -8,6 +8,6 @@
 export interface ForReportingProgress {
   /** A result the user asked for. */
   reportProgress(text: string): void;
-  /** A problem, and the next move after it (FR-009, SC-003). */
+  /** A problem, and the next move after it (CORE-FR-012, SC-003). */
   reportProblem(text: string): void;
 }

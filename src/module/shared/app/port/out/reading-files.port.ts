@@ -33,8 +33,8 @@ export interface ForReadingFiles {
   readBytesRecursively(folderPath: string): Promise<readonly ReadFile<Uint8Array>[]>;
 
   /** The folders one level under one folder, in no promised order. A charter
-   *  asks this of `.cw/charter/vendor/` and of each owner's folder under it, where each
-   *  folder is one layer someone installed (FR-023, FR-024, FR-050). */
+   *  asks this of `.cw/charter/`, where each folder is one charter
+   *  (VENDOR-FR-009). */
   listFolders(folderPath: string): Promise<readonly string[]>;
 
   /** The text of one file that may not be there, and nothing where it is not.

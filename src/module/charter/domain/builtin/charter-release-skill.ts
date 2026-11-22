@@ -30,34 +30,42 @@ tagged before the user confirms at the gate.
    tree that is not clean, no \`origin\`, the branch behind or diverged from
    \`origin\`, or a charter that does not build with the charters it includes
    alone, named with why. Where it says it is unsure which branch to release
-   from, ask the user which branch releases are made from, offering the branch
-   it names as the default, and run
+   from, ask the user which branch releases are made from, proposing the branch
+   it names, the one stood on, and run
    \`charter-release-action.mjs check --branch <name>\` with their answer; pass
    that same \`--branch\` to publish.
 2. **Draft** — run \`charter-release-action.mjs draft\`, which writes nothing. Where it
    says there is nothing to release, say so and stop; where the last tag and
-   the changelog's top heading differ, quote both and stop.
+   the top heading of the changelog, \`.cw/CHANGELOG.md\`, differ, quote both
+   and stop.
    - **Version**: \`0.1.0\` where there is no tag. Otherwise the patch bump,
      or the minor bump where what landed breaks a repository already
      installing a charter of it — a charter or a primitive removed or
      renamed, an id changed, a skill or a command a user types gone — said
-     with its reason. Where the user named a version, take it, and say so
-     only where it is not what the changes call for.
+     with its reason. Where the user named a version or a date, take it, and
+     say so only where it is not what the changes call for; run
+     \`charter-release-action.mjs draft\` again with \`--version <version>\`, and
+     \`--date <date>\` where they named one, and where it stops, quote what it
+     says and ask for another.
    - **Entry**: one bullet per change a user of a charter notices, from the
      commits it lists, in the voice of the changelog's earlier entries: what a
      user can now do, or what changed for them. Leave out what changes only
      this repository's tooling.
-3. **README** — only once nothing above stopped, run
+3. **Gate** — show the version with its reason, the date, the entry as it
+   will read under \`## <version> — <date>\`, and that the README's install and
+   charters section is written from the charters. Ask one question: confirm,
+   or correct the version, the date or the entry. On a correction of the
+   version or the date, run
+   \`charter-release-action.mjs draft --version <version> --date <date>\`, and
+   where it stops, quote what it says and ask again; show the correction and
+   ask again, until they confirm.
+4. **README** — only once they confirm, run
    \`charter-release-action.mjs readme\`. Where it stops, quote what it says and
    stop. It rewrites only the install and charters section of \`README.md\`,
-   writing \`README.md\` holding that section alone where there is none; the
-   rest is the authors' and is never touched.
-4. **Gate** — show the version with its reason, the date, the entry as it
-   will read under \`## <version> — <date>\`, and whether the README's charters
-   section changed. Ask one question: confirm, or correct the version, the
-   date or the entry. On a correction, show it again and ask again, until
-   they confirm.
-5. **Release** — once they confirm, write the entry to a temporary file
+   writing \`README.md\` holding that section alone where there is no
+   \`README.md\`, and putting the section at its end where the README holds
+   none; the rest is the authors' and is never touched.
+5. **Release** — then write the entry to a temporary file
    outside the repository, and run
    \`charter-release-action.mjs publish <version> <entry-file> --date <date>\`,
    with the \`--branch\` the user confirmed at Check, if any. Where it

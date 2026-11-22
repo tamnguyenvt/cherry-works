@@ -1,15 +1,15 @@
 # Extending the engine
 
 `cw` is one front end of the Cherry Works engine. The same package exports the
-engine as a library, so your own tool — an editor extension, a CI job, a web
-service — can author, build, test and evaluate a charter without shelling out
+engine as a library, so your own integrator — an editor extension, a CI job, a
+web service — can author, build, test and evaluate a charter without shelling out
 to `cw`, and can keep a repository's files wherever it likes.
 
-This guide is for tool authors. It shows how to compose the engine, how to
+This guide is for integrators. It shows how to compose the engine, how to
 read what it answers, and how to hand it adapters of your own. The precise
 contract is in [the reference](reference.md#the-engine-as-a-library).
 
-![The engine of cw: the charter, runtime and workspace modules, driven by the command line, the portal, the MCP gateway and the SDK](images/architecture.svg)
+![The engine of cw: the charter, runtime and workspace modules, driven by the command line, the portal, the MCP server (`cw run mcp`) and the SDK](images/architecture.svg)
 
 ## What you can change
 
@@ -57,7 +57,7 @@ It answers `workspaceApp` and `engineApp`:
 | `workspaceApp` | `ForManagingWorkspace` | reads and writes `.cw/settings.json`: which agents a repository chose |
 | `engineApp.charterAuthoringApp` | `ForAuthoringCharter` | primitives, charters, test and eval files, the tests, signing in to mcp origins |
 | `engineApp.charterBuildingApp` | `ForBuildingCharter` | the build, its preview, the health check, the context, the sensors |
-| `engineApp.charterRuntimeApp` | `ForRunningCharter` | runs evaluations, executes sensors for the agent you name, and serves the mcp gateway |
+| `engineApp.charterRuntimeApp` | `ForRunningCharter` | runs evaluations, executes sensors for the agent you name, and serves every mcp origin to the agent |
 
 The engine is composed for the settings the repository holds **when one of
 `engineApp`'s applications is first called**; composing itself reads nothing,
@@ -118,14 +118,14 @@ and `FaultDTOs`, each exported as types for TypeScript.
 ## Replace an adapter
 
 Hand only what you replace. A progress reporter of your own, for instance,
-sends what the engine reports to your tool's log instead of the terminal:
+sends what the engine reports to your integrator's log instead of the terminal:
 
 ```ts
 import type { ForReportingProgress } from "cherry-works";
 
 const progressReporter: ForReportingProgress = {
-  report: (text) => myLogger.info(text),
-  problem: (text) => myLogger.warn(text),
+  reportProgress: (text) => myLogger.info(text),
+  reportProblem: (text) => myLogger.warn(text),
 };
 
 const { engineApp } = await composeApplications(repoFolder, homeFolder, { progressReporter });
@@ -138,8 +138,8 @@ Every adapter you may hand, as a `Partial<EngineAdapters>`:
 | `agentProvider` | `{ [agent]: { projection: ForManagingLocalAgentOutput, agentCli: ForCheckingAgentCli } }` | Claude Code's and Codex's: `ClaudeProjection`, `CodexProjection`, `ClaudeCli`, `CodexCli` |
 | `charterRepository` | `ForManagingCharter` | `FileCharterRepository`: the charter as files under `.cw/charter/` |
 | `workspaceSettingsRepository` | `ForStoringWorkspaceSettings` | `FileWorkspaceSettingsRepository`: `.cw/settings.json`, through the file adapters |
-| `sessionAnalysisRepository` | `ForLoadingSessionAnalysis` | `FileSessionAnalysisRepository`: the session logs under the home |
-| `localOutput` | `ForManagingLocalOutput` | `LocalRepoManipulator`: lays a build's output into `.cw/out/`, through the file adapters |
+| `sessionAnalysisRepository` | `ForLoadingSessionAnalysis` | `FileSessionAnalysisRepository`: the sessions kept under the home |
+| `localOutput` | `ForManagingLocalOutput` | `LocalRepoManipulator`: lays the compiled output into `.cw/out/`, through the file adapters |
 | `fileReader` | `ForReadingFiles` | the repository's files on disk |
 | `fileWriter` | `ForWritingFiles` | the repository's files on disk |
 | `sourceFetcher` | `ForFetchingCharterSources` | git, to fetch a charter source |
@@ -203,7 +203,7 @@ constructor, and one that does not is refused with
 in: `cw`'s own, with the one the repository's settings name. A store of your
 own knows where it keeps them.
 
-Every adapter of `cw`'s in the table above is exported, for a tool to extend
+Every adapter of `cw`'s in the table above is exported, for an integrator to extend
 rather than write anew: an extension is handed as any other adapter.
 
 ```ts
@@ -268,7 +268,7 @@ A build is not atomic: when a write fails halfway, what was written stays.
 When your adapter cannot do what it was asked, throw. The engine catches it
 and answers a `Fault` DTO; it never reaches your caller as an exception.
 
-- Throw `AdapterFault` for a failure the person using your tool can act on,
+- Throw `AdapterFault` for a failure the person using your integrator can act on,
   and mark it `{ internal: false }` so its message reaches them as written:
 
   ```ts
@@ -278,7 +278,7 @@ and answers a `Fault` DTO; it never reaches your caller as an exception.
   ```
 
 - Anything else you throw is treated as the system's own: the engine logs it,
-  with its stack and causes, through `progressReporter.problem`, and answers
+  with its stack and causes, through `progressReporter.reportProblem`, and answers
   a generic internal fault instead. Put no secret in a message or a cause.
 - An MCP client throws `UnauthorizedMcpFault` when an mcp origin refuses its
   credential (`401`): the engine renews the credential and asks again.

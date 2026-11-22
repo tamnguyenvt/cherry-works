@@ -2,7 +2,7 @@
 
 **Created**: 2026-11-02
 
-**Updated**: 2026-11-14
+**Updated**: 2026-11-20
 
 **Input**: User description: "Publish the Cherry Works hexagon as an npm package, so a third party can import the engine's logic and write driver and driven adapters of their own, without `main.ts`, the command line or any adapter of this repository; a repository's address need not be a `file:` one; a test proves authoring through the built package on in-memory adapters, touching no disk." Then: "Ship the repositories as adapters in a package of their own…"
 
@@ -120,7 +120,7 @@ An integrator writes a reader and a writer over a map in memory, and hands them,
 
 **Status**: Done
 
-A maintainer releases one version. The library goes out inside `cherry-works`, at its number, under its checks, with nothing published if a preflight check fails. A failure during publication is reported with the state reached and the recovery action. The first release under the contract is 1.0.0, and from then on a change that breaks the contract is at least a minor one, written in the changelog.
+A maintainer releases one version. The library goes out inside `cherry-works`, at its number, under its checks, with nothing published if a preflight check fails. A failure during publication is reported with the state reached and the recovery action. The first release under the contract is 1.0.0, and from then on a change that breaks the contract is at least a minor one, written in `cw`'s changelog.
 
 **Why this priority**: A contract nobody can install promises nothing; it comes last because a publish cannot be taken back.
 
@@ -131,7 +131,7 @@ A maintainer releases one version. The library goes out inside `cherry-works`, a
 1. **Given** a release of one version, **When** it passes, **Then** the one package, `cw` and the library in it, is published at that version ([SDK-FR-016](#sdk-fr-016)).
 2. **Given** a check of `cw` or of the library failing, **When** a release is asked for, **Then** nothing is published, and it says which check failed ([SDK-FR-016](#sdk-fr-016)).
 3. **Given** a contract narrowed or changed against the last release, **When** a patch is released, **Then** it is refused, naming what changed and the minor to release instead ([SDK-FR-015](#sdk-fr-015), [SDK-SC-003](#sdk-sc-003)).
-4. **Given** a release that breaks the contract, minor or major, **When** it is published, **Then** the changelog names each change that broke the contract ([SDK-FR-015](#sdk-fr-015)).
+4. **Given** a release that breaks the contract, minor or major, **When** it is published, **Then** `cw`'s changelog names each change that broke the contract ([SDK-FR-015](#sdk-fr-015)).
 
 ---
 
@@ -267,10 +267,10 @@ A maintainer reads the evidence of each `Done` story and knows it proves the sce
 
 - <a id="sdk-fr-013"></a>**SDK-FR-013**: `cw` and the library MUST be one package, `cherry-works`, depending on no other, and `cw` MUST run as it did before the library was in it.
 - <a id="sdk-fr-014"></a>**SDK-FR-014**: The contract MUST be what the package exports and what [SDK-FR-008](#sdk-fr-008) states, and nothing else: anything reached any other way is internal, and MAY change in any release.
-- <a id="sdk-fr-015"></a>**SDK-FR-015**: From the first publish, removing an exported name or changing the contents of an existing declaration — a compatible optional member added included — MUST be at least a minor version, a major one being the maintainer's choice; adding a newly named declaration MUST be a minor one; comments or layout alone MUST change no version. Compatibility MUST NOT be analysed beyond that. A patch breaking the contract or adding a newly named declaration MUST be refused, naming what changed. A breaking change MUST be named in the changelog. Only what the package exports is compared: the duties [SDK-FR-008](#sdk-fr-008) states are prose, and whoever changes them versions and names the change by hand. Each release MUST record the contract anew, module by module, from the library it publishes, and the contract MUST say how it was made and whether anything has been published under it.
+- <a id="sdk-fr-015"></a>**SDK-FR-015**: From the first publish, removing an exported name or changing the contents of an existing declaration — a compatible optional member added included — MUST be at least a minor version, a major one being the maintainer's choice; adding a newly named declaration MUST be a minor one; comments or layout alone MUST change no version. Compatibility MUST NOT be analysed beyond that. A patch breaking the contract or adding a newly named declaration MUST be refused, naming what changed. A breaking change MUST be named in `cw`'s changelog. Only what the package exports is compared: the duties [SDK-FR-008](#sdk-fr-008) states are prose, and whoever changes them versions and names the change by hand. Each release MUST record the contract anew, module by module, from the library it publishes, and the contract MUST say how it was made and whether anything has been published under it.
 - <a id="sdk-fr-016"></a>**SDK-FR-016**: The library MUST go out only inside `cherry-works`, at its version, after the checks of [CORE-FR-134](spec-core.md#core-fr-134) and an import of the installed library pass. A preflight check failing MUST publish nothing. A failure of the publication MUST be reported under [SDK-FR-019](#sdk-fr-019). The first version published under this contract MUST be 1.0.0.
 - <a id="sdk-fr-019"></a>**SDK-FR-019**: A release that fails during publication MUST report that nothing was published, that the release commit and tag pushed are kept, and how the maintainer can publish at the same version; it MUST NOT claim that anything was rolled back.
-- <a id="sdk-fr-020"></a>**SDK-FR-020**: The library MUST export how `cw` composes the engine, taking only the adapters an integrator replaces and composing `cw`'s own for every other ([CORE-FR-230](spec-core.md#core-fr-230)). Every store and runner the engine is composed with MUST be replaceable — the store that keeps the charter, the sessions, the settings, the local output, and each agent's projection and command line included — all handed as one set that may be partial. The library MUST export each adapter's port, the models that port names, and `cw`'s own adapters for an integrator to extend; the layout of the store `cw` keeps MUST be one value, as the output's layout is, and no constant or helper MUST be exported beside them. An agent's projection MUST be told where the charter is edited, never read it off the layout of `cw`'s store. Where an integrator hands no store or projection, `cw`'s own MUST be set up over the file adapters it hands, the sessions store included — a file reader handed without a way to read another root folder answering a fault the caller corrects, naming it — so files kept anywhere keep the charter and the sessions there too.
+- <a id="sdk-fr-020"></a>**SDK-FR-020**: The library MUST export how `cw` composes the engine, taking only the adapters an integrator replaces and composing `cw`'s own for every other ([CORE-FR-230](spec-core.md#core-fr-230)). Every store and runner the engine is composed with MUST be replaceable — the store that keeps the charters, the sessions, the settings, the local output, and each agent's projection and command line included — all handed as one set that may be partial. The library MUST export each adapter's port, the models that port names, and `cw`'s own adapters for an integrator to extend; the layout of the store `cw` keeps MUST be one value, as the output's layout is, and no constant or helper MUST be exported beside them. An agent's projection MUST be told where the charter is edited, never read it off the layout of `cw`'s store. Where an integrator hands no store or projection, `cw`'s own MUST be set up over the file adapters it hands, the sessions store included — a file reader handed without a way to read another root folder answering a fault the caller corrects, naming it — so files kept anywhere keep the charter and the sessions there too.
 
 **Failures**
 
@@ -290,7 +290,7 @@ A maintainer reads the evidence of each `Done` story and knows it proves the sce
 
 - <a id="sdk-sc-001"></a>**SDK-SC-001**: Through the built package alone, one test sets a repository up, adds a primitive, validates it and builds it, with 0 file-system calls and 0 processes started.
 - <a id="sdk-sc-002"></a>**SDK-SC-002**: For the same charter, the files a build leaves in memory and the files `cw build` leaves on disk are identical, byte for byte.
-- <a id="sdk-sc-003"></a>**SDK-SC-003**: Every incompatible change to the contract between two published versions carries at least a minor version, and is named in the changelog.
+- <a id="sdk-sc-003"></a>**SDK-SC-003**: Every incompatible change to the contract between two published versions carries at least a minor version, and is named in `cw`'s changelog.
 - <a id="sdk-sc-004"></a>**SDK-SC-004**: An integrator composes the engine to author a charter with fewer than 100 lines of adapter of their own.
 - <a id="sdk-sc-005"></a>**SDK-SC-005**: For 100% of the adapters the engine is composed with, a test replaces `cw`'s own with one of its own, and every use case that uses it answers through it; an evaluation runner handed still runs in a real folder.
 - <a id="sdk-sc-006"></a>**SDK-SC-006**: Composing the engine at a repository and a home of a scheme other than `file:`, with no adapter handed, makes 0 file-system calls and raises 0 failures.

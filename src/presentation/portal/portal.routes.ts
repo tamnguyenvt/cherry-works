@@ -178,12 +178,12 @@ export function buildPortalRoutes(
         },
       }),
       async (requestContext) => {
-        const chartersDTO = await charterAuthoringApp.listCharters(
+        const charterMetadataListDTO = await charterAuthoringApp.listCharters(
           requestContext.req.valid("query").layer === PACKAGE_LAYER_NAME,
         );
-        return chartersDTO.type === "CharterMetadataList"
-          ? requestContext.json(chartersDTO, 200)
-          : requestContext.json(chartersDTO, 422);
+        return charterMetadataListDTO.type === "CharterMetadataList"
+          ? requestContext.json(charterMetadataListDTO, 200)
+          : requestContext.json(charterMetadataListDTO, 422);
       },
     )
     .openapi(
@@ -227,12 +227,12 @@ export function buildPortalRoutes(
         },
       }),
       async (requestContext) => {
-        const chartersDTO = await charterAuthoringApp.removeCharters(
+        const charterMetadataListDTO = await charterAuthoringApp.removeCharters(
           requestContext.req.valid("param").charterName,
           false,
           true,
         );
-        if (chartersDTO.type === "Fault") return requestContext.json(chartersDTO, 422);
+        if (charterMetadataListDTO.type === "Fault") return requestContext.json(charterMetadataListDTO, 422);
         return requestContext.body(null, 204);
       },
     )

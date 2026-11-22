@@ -55,14 +55,14 @@ export class CharterMetadataList {
         internal: false,
       });
     if (!isAll) {
-      const namedCharter = this.findCharterOrFault(charterName);
-      if (isInstalledOnly && !namedCharter.isInstalled)
+      const targetCharterMetadata = this.findCharterOrFault(charterName);
+      if (isInstalledOnly && !targetCharterMetadata.isInstalled)
         throw new UninstalledCharterFault(
           `${charterName} is a charter this repository authored, and was pulled from no source.`,
           `Name a charter it installed: ${this.installedCharters.map(({ name }) => name).join(", ") || "it installed none"}.`,
           { internal: false },
         );
-      return [namedCharter];
+      return [targetCharterMetadata];
     }
     return isInstalledOnly ? this.installedCharters : this.charters;
   }

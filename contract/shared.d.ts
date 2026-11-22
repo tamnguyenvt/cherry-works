@@ -223,7 +223,7 @@ declare namespace FaultDTOs {
 interface ForReportingProgress {
     /** A result the user asked for. */
     reportProgress(text: string): void;
-    /** A problem, and the next move after it (FR-009, SC-003). */
+    /** A problem, and the next move after it (CORE-FR-012, SC-003). */
     reportProblem(text: string): void;
 }
 
@@ -334,8 +334,8 @@ interface ForReadingFiles {
      *  CORE-FR-208). */
     readBytesRecursively(folderPath: string): Promise<readonly ReadFile<Uint8Array>[]>;
     /** The folders one level under one folder, in no promised order. A charter
-     *  asks this of `.cw/charter/vendor/` and of each owner's folder under it, where each
-     *  folder is one layer someone installed (FR-023, FR-024, FR-050). */
+     *  asks this of `.cw/charter/`, where each folder is one charter
+     *  (VENDOR-FR-009). */
     listFolders(folderPath: string): Promise<readonly string[]>;
     /** The text of one file that may not be there, and nothing where it is not.
      *  What is asked of a file the engine allows to be absent: the settings a
@@ -387,12 +387,12 @@ interface ForTellingTime {
  * needs: put this text at this path, and take that file away. Every path is
  * the repository's, as `ForReadingFiles` says one (CORE-FR-217).
  *
- * Apart from `ForReadingFiles` because the split is the point (FR-041). A
+ * Apart from `ForReadingFiles` because the split is the point (CORE-FR-093). A
  * service constructed without this one cannot write whoever calls it, which is
  * what makes `diagnoseCharter` provably read-only rather than politely so.
  *
  * Files, never patches: compiled output is regenerated whole, so what is handed
- * over is everything the file should hold (FR-020).
+ * over is everything the file should hold (CORE-FR-032).
  */
 interface ForWritingFiles {
     /** Put this text, or these bytes as they are, at this file, whatever is

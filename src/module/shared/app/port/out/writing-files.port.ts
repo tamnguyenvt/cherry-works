@@ -13,12 +13,12 @@ export {
  * needs: put this text at this path, and take that file away. Every path is
  * the repository's, as `ForReadingFiles` says one (CORE-FR-217).
  *
- * Apart from `ForReadingFiles` because the split is the point (FR-041). A
+ * Apart from `ForReadingFiles` because the split is the point (CORE-FR-093). A
  * service constructed without this one cannot write whoever calls it, which is
  * what makes `diagnoseCharter` provably read-only rather than politely so.
  *
  * Files, never patches: compiled output is regenerated whole, so what is handed
- * over is everything the file should hold (FR-020).
+ * over is everything the file should hold (CORE-FR-032).
  */
 export interface ForWritingFiles {
   /** Put this text, or these bytes as they are, at this file, whatever is

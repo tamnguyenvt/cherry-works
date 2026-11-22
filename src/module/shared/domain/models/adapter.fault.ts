@@ -58,10 +58,10 @@ export class MissingFolderReaderFault extends AdapterFault {}
  *  arguments, and that does not build itself over the checkout (EVAL-FR-021). */
 export class UnbuiltCheckoutAdapterFault extends AdapterFault {}
 
-/** A primitive's index.md where one is already written (FR-039). */
+/** A primitive's index.md where one is already written (CORE-FR-064). */
 export class OccupiedPrimitiveFileFault extends AdapterFault {}
 
-/** Two primitives whose folders would hold one another's files (CORE-FR-199). */
+/** Two primitives whose folders would hold one another's files (CORE-FR-167). */
 export class OverlappingPrimitiveFoldersFault extends AdapterFault {}
 
 /** A primitive to be written that names no charter to be kept in
@@ -83,7 +83,7 @@ export class UnwritableSourceStoreFault extends AdapterFault {}
 /** A repository whose git config git could not read. */
 export class UnreadableGitConfigFault extends AdapterFault {}
 
-/** A source git could not fetch (FR-031). */
+/** A source git could not fetch (CORE-FR-049). */
 export class UnreachableSourceFault extends AdapterFault {}
 
 /** A fetched source whose files could not be listed or read. */

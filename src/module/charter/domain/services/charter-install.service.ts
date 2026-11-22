@@ -138,18 +138,18 @@ export class CharterInstallService {
           "Install it under another name with --as.",
           { internal: false },
         );
-      const heldCharter = charterMetadataList.findCharter(charterName);
-      if (heldCharter === undefined) continue;
+      const heldCharterMetadata = charterMetadataList.findCharter(charterName);
+      if (heldCharterMetadata === undefined) continue;
       const isFromTheSameSource =
         !isForked &&
-        heldCharter.installedCharterRecord !== undefined &&
+        heldCharterMetadata.installedCharterRecord !== undefined &&
         installedCharterRecord !== undefined &&
-        heldCharter.installedCharterRecord.source === installedCharterRecord.source;
+        heldCharterMetadata.installedCharterRecord.source === installedCharterRecord.source;
       if (!isFromTheSameSource)
         throw new HeldCharterNameFault(
-          heldCharter.installedCharterRecord === undefined
-            ? `${charterName} is a charter this repository authored, at ${heldCharter.uri}.`
-            : `${charterName} is held by a charter installed from ${heldCharter.installedCharterRecord.source}, at ${heldCharter.uri}.`,
+          heldCharterMetadata.installedCharterRecord === undefined
+            ? `${charterName} is a charter this repository authored, at ${heldCharterMetadata.uri}.`
+            : `${charterName} is held by a charter installed from ${heldCharterMetadata.installedCharterRecord.source}, at ${heldCharterMetadata.uri}.`,
           `Install it under another name with --as=<name>.`,
           { internal: false },
         );

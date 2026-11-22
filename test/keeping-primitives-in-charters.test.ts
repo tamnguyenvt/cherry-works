@@ -128,7 +128,7 @@ test("a build at the root holds every charter's primitives, and every agent chos
   }
 });
 
-test("a charter holding a cw-package.json is read as installed, and editing or removing its primitives is refused (VENDOR Story 3 scenario 2)", async () => {
+test("a charter holding a cw-package.json is read as installed, and editing or removing its primitives is refused (VENDOR Story 3 scenario 2, VENDOR Story 6 scenario 2)", async () => {
   const adapters = adaptersInMemory(filesInThreeCharters);
   const { charterAuthoringApp } = engineOver(adapters);
 
@@ -199,12 +199,12 @@ test("a primitive right under its kind's folder, test or eval cases right under 
   }
 });
 
-test("following /cw-author moves a repository laid out the old way into the charter the developer names, has each installed charter installed again, and the repository builds (VENDOR Story 3 scenario 5)", async () => {
+test("following /cw-author moves a repository laid out the old way into the charter the developer names, has each installed charter installed again, and the repository builds (VENDOR Story 3 scenario 5, CORE Story 52 scenario 10)", async () => {
   const skillBody = new CwAuthorSkill().body;
   assert.match(skillBody, /ask\s+the developer which charter/);
   assert.match(
     skillBody,
-    /installed charter[\s\S]*never moved[\s\S]*delete the folder[\s\S]*installed again with the latest cw/,
+    /installed charter[\s\S]*never moved[\s\S]*delete the folder[\s\S]*installed again with a cw of 1\.4\.0 or later/,
   );
   // The developer answers `team`.
   const movedPathPairs = [...skillBody.matchAll(/^- `([^`]+)` → `([^`]+)`/gm)].flatMap(([, oldPath, newPath]) =>
@@ -353,7 +353,7 @@ test("--charter naming no charter held refuses cw test and cw eval, naming the c
   assert.deepEqual(adapters.promptfooRunner.evaluatedTests, []);
 });
 
-test("a suite command names its charter with --charter, and with none takes the one charter the repository authored, else is refused naming the charters held (VENDOR Story 3 scenario 24)", async () => {
+test("a suite command names its charter with --charter, and with none takes the one charter the repository authored, else is refused naming the charters held (VENDOR Story 3 scenario 30, VENDOR-FR-009)", async () => {
   const oneCharterAdapters = adaptersInMemory({
     [repoFileUrlOf(".cw/settings.json")]: settingsText,
     [repoFileUrlOf(".cw/charter/sdd/primitive/skill/sdd-plan/index.md")]: skillTextOf("sdd-plan"),
@@ -371,4 +371,35 @@ test("a suite command names its charter with --charter, and with none takes the 
   assert.ok(await twoCharterAdapters.fileReader.readIfThere(".cw/charter/baseline/test/untitled-1.json"));
   assert.equal((await problemPrintedBy(twoCharterAdapters, ["suite", "remove", "plan.json", "--charter=sdd"])).code, 0);
   assert.equal(await twoCharterAdapters.fileReader.readIfThere(".cw/charter/sdd/test/plan.json"), undefined);
+});
+
+test("a charter held under root, made by hand, is written into as any charter: root is refused only where a charter is made (VENDOR Story 3 scenario 32, VENDOR-FR-014, VENDOR-FR-020)", async () => {
+  const rootCharterAdapters = adaptersInMemory({
+    [repoFileUrlOf(".cw/settings.json")]: settingsText,
+    [repoFileUrlOf(".cw/charter/root/primitive/skill/sdd-plan/index.md")]: skillTextOf("sdd-plan"),
+  });
+  const addRun = await problemPrintedBy(rootCharterAdapters, [
+    "add",
+    "guide",
+    "no-any",
+    "--charter=root",
+    "--header",
+    "description=Never write any.",
+  ]);
+  assert.equal(addRun.code, 0, addRun.problem);
+  assert.ok(await rootCharterAdapters.fileReader.readIfThere(".cw/charter/root/primitive/guide/no-any/index.md"));
+  assert.equal((await problemPrintedBy(rootCharterAdapters, ["suite", "add"])).code, 0);
+  assert.ok(await rootCharterAdapters.fileReader.readIfThere(".cw/charter/root/test/untitled-1.json"));
+
+  const newCharterAdapters = adaptersInMemory({ [repoFileUrlOf(".cw/settings.json")]: settingsText });
+  const refusedRun = await problemPrintedBy(newCharterAdapters, [
+    "add",
+    "guide",
+    "no-any",
+    "--charter=root",
+    "--header",
+    "description=Never write any.",
+  ]);
+  assert.equal(refusedRun.code, EXIT_FAILURE);
+  assert.match(refusedRun.problem, /cannot name a charter/);
 });

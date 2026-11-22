@@ -20,6 +20,7 @@ export { CharterDTOs } from "./app/port/in/charter.dto.js";
 export {
   AdapterFault,
   type ForAuthorizingOAuthClients,
+  type OAuthClientRegistration,
   type OAuthGrant,
 } from "./app/port/out/authorizing-oauth-clients.port.js";
 export type { ForCountingTokens } from "./app/port/out/counting-tokens.port.js";
@@ -67,15 +68,18 @@ export { BuildCharterService, buildCharterService } from "./app/services/build-c
 export { LoadCharterService, loadCharterService } from "./app/services/load-charter.service.js";
 export { LoadMcpOriginsService, loadMcpOriginsService } from "./app/services/load-mcp-origins.service.js";
 export { InstalledCharterRecord } from "./domain/models/charter/installed-charter-record.value-object.js";
+export { RawCharterMetadata } from "./domain/models/charter/raw-charter-metadata.js";
 export { InvalidPrimitiveFault } from "./domain/models/charter.fault.js";
 export { CopyPlan } from "./domain/models/charter-output/projection-plan.js";
 export { CharterInstall } from "./domain/models/charter-source/charter-install.js";
 export { CharterSource } from "./domain/models/charter-source/charter-source.js";
 export { CharterSourceOrigin } from "./domain/models/charter-source/charter-source-origin.value-object.js";
+export { EvalSuite } from "./domain/models/eval/eval-suite.js";
 export { RawEvalSuite } from "./domain/models/eval/raw-eval-suite.js";
 export { McpAuthMethod, type McpAuthMethodName } from "./domain/models/mcp/mcp-auth-method.value-object.js";
 export { McpClientRegistration } from "./domain/models/mcp/mcp-client-registration.js";
 export { McpCredential } from "./domain/models/mcp/mcp-credential.js";
+export { AssetFile } from "./domain/models/primitive/asset-file.js";
 export type { Primitive } from "./domain/models/primitive/primitive.js";
 export { PrimitiveLayer } from "./domain/models/primitive/primitive-layer.value-object.js";
 export { RawPrimitive } from "./domain/models/primitive/raw-primitive.js";

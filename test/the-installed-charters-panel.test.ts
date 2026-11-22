@@ -145,7 +145,7 @@ test("a source that cannot be reached installs nothing, touches nothing installe
   );
 });
 
-test("a source whose charter would land on a name a charter may not take installs nothing, touches nothing installed, and the dialog shows why (CORE Story 8 scenario 6, CORE-FR-123, CORE-FR-226, CORE Story 55 scenario 11, VENDOR Story 3 scenario 7)", async () => {
+test("a source whose charter would land on a name a charter may not take installs nothing, touches nothing installed, and the dialog shows why (CORE Story 8 scenario 6, CORE-FR-123, CORE-FR-226, CORE Story 55 scenario 11)", async () => {
   const sourceFetcher = new InMemorySources();
   sourceFetcher.sourceFilesBySource["team/charters"] = {
     ".cw/charter/primitive/guide/one-rule/index.md": primitive("guide", "one-rule"),

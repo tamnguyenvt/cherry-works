@@ -63,6 +63,15 @@ test("the body says whose it is, and what it does not cover (FR-025, FR-027, COR
   assert.match(skillBody, /Changing or removing one that already exists\s+is not what it covers/);
 });
 
+test("moving a repository laid out the old way, it names the vendor-release skill and script an earlier cw wrote for the developer to delete, deleting neither (VENDOR Story 3 scenario 31, VENDOR-FR-012)", () => {
+  const flatBody = skillBody.replace(/\s+/g, " ");
+  assert.match(
+    flatBody,
+    /A skill `vendor-release` and a script `vendor-release-action` that an earlier cw wrote are not moved: name them to the developer, and ask them to delete them/,
+  );
+  assert.match(flatBody, /replaces them; never delete them yourself\./);
+});
+
 test("the skill the engine brings is of the engine's layer, at the name that layer gives its files (FR-015, FR-018)", () => {
   const cwAuthorSkill = new CwAuthorSkill();
 

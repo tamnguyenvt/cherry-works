@@ -10,7 +10,8 @@ for (const releaseMode of ["dry-run", "publish", "tests-fail", "publish-fails", 
       { currentVersion: "1.0.0", nextVersion: "1.1.0", releaseMode, builtContractText: "", lastContractText: "" },
       async (releaseRun, fixtureFolder) => {
         const originalPackageText = '{"name": "cherry-works", "version": "1.0.0", "type": "module"}\n';
-        const originalReadmeText = "# Fixture\n\nCurrent version: **1.0.0**\n\nKeep this text.\n";
+        const originalReadmeText =
+          "# Fixture\n\nCurrent version: **1.0.0**\n\nStable version: **1.0.0**\n\nKeep this text.\n";
         assert.equal(releaseRun.status, releaseMode.includes("fail") ? 1 : 0, releaseRun.stderr);
         assert.match(
           await readFile(join(fixtureFolder, "checked-readme.txt"), "utf8"),

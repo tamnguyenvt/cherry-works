@@ -68,12 +68,13 @@ delete it, then run \`git worktree prune\`. Then move:
 An installed charter under \`.cw/vendor/\` or \`.cw/charter/vendor/\` is never moved: name
 each to the developer, and ask them to delete the folder; never delete it
 yourself. Once the repository builds, each
-is installed again with the latest cw, \`cw charter pull <source>\`, from a
+is installed again with a cw of 1.4.0 or later, \`cw charter pull <source>\`, from a
 source laid out as that cw reads one.
 
 A skill \`vendor-release\` and a script \`vendor-release-action\` that an
 earlier cw wrote are not moved: name them to the developer, and ask them to
-delete them, since \`/charter-release\` comes with cw and replaces them.
+delete them, since \`/charter-release\` comes with cw and replaces them; never
+delete them yourself.
 
 \`.cw/settings.json\` and what a build put out stay where they are. In
 \`.cw/.gitignore\`, the line \`eval/.worktrees/\`

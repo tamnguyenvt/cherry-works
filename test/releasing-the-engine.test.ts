@@ -95,7 +95,7 @@ test("a release that passes publishes cherry-works, cw and its library, at its v
         publishCommands.map((publishCommand) =>
           publishCommand.slice(1).map((publishArgument) => publishArgument.replace(/^.*\//, "")),
         ),
-        [["publish", "fixture.tgz"]],
+        [["publish", "fixture.tgz", "--tag", "next"]],
       );
       assert.ok(releaseCommands.indexOf(publishCommands[0]!) > pushIndex, "push must precede publish");
       const recordedRelease = JSON.parse(await readFile(join(fixtureFolder, "recorded-release.json"), "utf8"));
@@ -115,7 +115,7 @@ test("a release that passes publishes cherry-works, cw and its library, at its v
       assert.ok(recordedRelease.arguments.includes("package.json"));
       const tagCommand = releaseCommands.find(([commandName, action]) => commandName === "git" && action === "tag");
       assert.equal(tagCommand?.at(-1), "v1.1.0");
-      assert.match(releaseRun.stdout, /published the checked cherry-works\.$/m);
+      assert.match(releaseRun.stdout, /published the checked cherry-works under next\./m);
     },
   );
 });
@@ -352,7 +352,7 @@ test("the package failing to publish says nothing was published, and how to publ
       );
       assert.match(
         releaseRun.stderr,
-        /Confirm what is on npm first with "npm view cherry-works@1\.1\.0 version"\. Then, to publish 1\.1\.0, from the release commit run "pnpm build", then "npm pack" and "npm publish <tarball>"\./,
+        /Confirm what is on npm first with "npm view cherry-works@1\.1\.0 version"\. Then, to publish 1\.1\.0, from the release commit run "pnpm build", then "npm pack" and "npm publish <tarball> --tag next"\./,
       );
       const publishCommands = (await releaseCommandsIn(fixtureFolder)).filter(
         ([commandName, action]) => commandName === "npm" && action === "publish",
@@ -771,4 +771,174 @@ test("a probe file taken away while the contract is split from the build fails n
   } finally {
     await rm(rootPath, { recursive: true, force: true });
   }
+});
+
+test("a release leaves the stable version the README names, and says how to mark the new one stable (CORE Story 15 scenario 6, CORE-FR-247)", async () => {
+  await inARelease(
+    {
+      currentVersion: "1.0.0",
+      nextVersion: "1.1.0",
+      releaseMode: "publish",
+      builtContractText: LAST_CONTRACT,
+      lastContractText: LAST_CONTRACT,
+    },
+    async (releaseRun, fixtureFolder) => {
+      assert.equal(releaseRun.status, 0, releaseRun.stderr);
+      const recordedRelease = JSON.parse(await readFile(join(fixtureFolder, "recorded-release.json"), "utf8"));
+      assert.match(recordedRelease.readme, /^Current version: \*\*1\.1\.0\*\*$/m);
+      assert.match(recordedRelease.readme, /^Stable version: \*\*1\.0\.0\*\*$/m);
+      assert.match(releaseRun.stdout, /Mark it stable with "pnpm release 1\.1\.0 --stable"\./);
+    },
+  );
+});
+
+test("marking a published version stable commits the README's stable line, pushes it, then moves npm's tag latest to it (CORE Story 15 scenario 7, CORE-FR-247)", async () => {
+  await inARelease(
+    {
+      currentVersion: "1.1.0",
+      nextVersion: "1.1.0",
+      stableVersion: "1.0.0",
+      releaseMode: "stable",
+      builtContractText: LAST_CONTRACT,
+      lastContractText: LAST_CONTRACT,
+    },
+    async (releaseRun, fixtureFolder) => {
+      assert.equal(releaseRun.status, 0, releaseRun.stderr);
+      const releaseCommands = await releaseCommandsIn(fixtureFolder);
+      const commitIndex = releaseCommands.findIndex(
+        ([commandName, action]) => commandName === "git" && action === "commit",
+      );
+      const pushIndex = releaseCommands.findIndex(
+        ([commandName, action]) => commandName === "git" && action === "push",
+      );
+      const distTagIndex = releaseCommands.findIndex(
+        ([commandName, action]) => commandName === "npm" && action === "dist-tag",
+      );
+      assert.deepEqual(releaseCommands[distTagIndex], ["npm", "dist-tag", "add", "cherry-works@1.1.0", "latest"]);
+      assert.ok(commitIndex !== -1 && commitIndex < pushIndex && pushIndex < distTagIndex);
+      assert.equal(
+        releaseCommands.some(([commandName, action]) => commandName === "npm" && action === "publish"),
+        false,
+      );
+      const recordedRelease = JSON.parse(await readFile(join(fixtureFolder, "recorded-release.json"), "utf8"));
+      assert.match(recordedRelease.readme, /^Stable version: \*\*1\.1\.0\*\*$/m);
+      assert.match(recordedRelease.readme, /^Current version: \*\*1\.1\.0\*\*$/m);
+    },
+  );
+});
+
+test("marking stable a version not published, or the one already stable, is refused, changing nothing (CORE Story 15 scenario 7, CORE-FR-247)", async () => {
+  for (const [stableVersion, releaseMode, refusalPattern] of [
+    ["1.0.0", "stable-unpublished", /is not published: release it first/],
+    ["1.1.0", "stable", /already the stable version/],
+  ] as const) {
+    await inARelease(
+      {
+        currentVersion: "1.1.0",
+        nextVersion: "1.1.0",
+        stableVersion,
+        releaseMode,
+        builtContractText: LAST_CONTRACT,
+        lastContractText: LAST_CONTRACT,
+      },
+      async (releaseRun, fixtureFolder) => {
+        assert.equal(releaseRun.status, 1, releaseMode);
+        assert.match(releaseRun.stderr, refusalPattern);
+        const releaseCommands = await releaseCommandsIn(fixtureFolder).catch(() => []);
+        assert.equal(
+          releaseCommands.some(
+            ([commandName, action]) =>
+              (commandName === "npm" && ["publish", "dist-tag"].includes(action!)) ||
+              (commandName === "git" && ["commit", "push"].includes(action!)),
+          ),
+          false,
+          releaseMode,
+        );
+        assert.match(
+          await readFile(join(fixtureFolder, "README.md"), "utf8"),
+          new RegExp(`Stable version: \\*\\*${stableVersion.replace(/\./g, "\\.")}\\*\\*`),
+        );
+      },
+    );
+  }
+});
+
+test("a stable mark whose tag move fails says the push was made and the command that finishes it (CORE-FR-247)", async () => {
+  await inARelease(
+    {
+      currentVersion: "1.1.0",
+      nextVersion: "1.1.0",
+      stableVersion: "1.0.0",
+      releaseMode: "dist-tag-fails",
+      builtContractText: LAST_CONTRACT,
+      lastContractText: LAST_CONTRACT,
+    },
+    async (releaseRun) => {
+      assert.equal(releaseRun.status, 1);
+      assert.match(
+        releaseRun.stderr,
+        /Release failed during publication: .*Run "npm dist-tag add cherry-works@1\.1\.0 latest"/,
+      );
+    },
+  );
+});
+
+test("marking stable is refused beside --dry-run, or for a version above package.json's, changing nothing (CORE Story 15 scenario 7, CORE-FR-247)", async () => {
+  for (const [nextVersion, releaseMode, refusalPattern] of [
+    ["1.1.0", "stable-dry-run", /--stable and --dry-run cannot be combined/],
+    ["1.2.0", "stable", /1\.2\.0 is above 1\.1\.0, the version package\.json holds: release it first/],
+  ] as const) {
+    await inARelease(
+      {
+        currentVersion: "1.1.0",
+        nextVersion,
+        stableVersion: "1.0.0",
+        releaseMode,
+        builtContractText: LAST_CONTRACT,
+        lastContractText: LAST_CONTRACT,
+      },
+      async (releaseRun, fixtureFolder) => {
+        assert.equal(releaseRun.status, 1, releaseMode);
+        assert.match(releaseRun.stderr, refusalPattern);
+        const releaseCommands = await releaseCommandsIn(fixtureFolder).catch(() => []);
+        assert.equal(
+          releaseCommands.some(
+            ([commandName, action]) =>
+              (commandName === "npm" && ["publish", "dist-tag"].includes(action!)) ||
+              (commandName === "git" && ["commit", "push"].includes(action!)),
+          ),
+          false,
+          releaseMode,
+        );
+        assert.match(await readFile(join(fixtureFolder, "README.md"), "utf8"), /Stable version: \*\*1\.0\.0\*\*/);
+      },
+    );
+  }
+});
+
+test("a stable mark whose push fails keeps its commit, moves no tag, and names the commands that finish it (CORE-FR-247)", async () => {
+  await inARelease(
+    {
+      currentVersion: "1.1.0",
+      nextVersion: "1.1.0",
+      stableVersion: "1.0.0",
+      releaseMode: "stable-push-fails",
+      builtContractText: LAST_CONTRACT,
+      lastContractText: LAST_CONTRACT,
+    },
+    async (releaseRun, fixtureFolder) => {
+      assert.equal(releaseRun.status, 1);
+      assert.match(
+        releaseRun.stderr,
+        /Release failed during publication: the push failed; npm's tag latest was not moved\./,
+      );
+      assert.match(releaseRun.stderr, /"git push origin develop" and "npm dist-tag add cherry-works@1\.1\.0 latest"/);
+      const releaseCommands = await releaseCommandsIn(fixtureFolder);
+      assert.equal(
+        releaseCommands.some(([commandName, action]) => commandName === "npm" && action === "dist-tag"),
+        false,
+      );
+      assert.match(await readFile(join(fixtureFolder, "README.md"), "utf8"), /Stable version: \*\*1\.1\.0\*\*/);
+    },
+  );
 });

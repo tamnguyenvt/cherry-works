@@ -14,9 +14,9 @@ export type { AgentProviderName };
 /** What a repository configured itself with that a projection is built for,
  *  handed by whoever composes it, which keeps it (CORE-FR-231). */
 export interface ProjectionSettings {
-  /** Which agents this repository chose (FR-033). None is a repository
+  /** Which agents this repository chose (CORE-FR-055). None is a repository
    *  that chose none and still gets the neutral surface
-   *  (FR-019). */
+   *  (CORE-FR-031). */
   readonly agentNames: readonly string[];
   /** The tokens past which the health check warns of the main context a
    *  session opens with (EVAL-FR-006); none is 20,000. */
@@ -40,28 +40,28 @@ export interface ProjectionSettings {
  */
 export interface ForBuildingCharter {
   /**
-   * The three questions about this repository, asked in one go (FR-040): which
+   * The three questions about this repository, asked in one go (CORE-FR-080): which
    * agents it chose, what validating its charter finds — its test files'
    * findings among it — and how many files a build would still change, with
    * the main context each agent opens with, estimated. Reads and says
-   * (FR-041).
+   * (CORE-FR-093).
    */
   diagnoseCharter(): Promise<CharterDTOs.DoctorOutcome | FaultDTOs.Fault>;
 
   /** What each agent this repository chose is sent of the charter when
    *  a session opens, estimated by a tokenizer on this machine (EVAL-FR-001,
-   *  EVAL-FR-002). Reads and says (FR-041). */
+   *  EVAL-FR-002). Reads and says (CORE-FR-093). */
   predictMainContext(): Promise<CharterDTOs.MainContexts | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /**
-   * One reading of the charter, put on disk (FR-020, FR-021): a charter with
+   * One reading of the charter, put on disk (CORE-FR-032, CORE-FR-033): a charter with
    * an error is refused before anything is touched, with its errors given back
-   * (FR-005, FR-009); an mcp origin that cannot be asked for its tools stops it
+   * (CORE-FR-040, FR-009); an mcp origin that cannot be asked for its tools stops it
    * as an error does (EVAL-FR-031).
    */
   buildCharter(): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
-  /** The build, worked out and stopped short of disk (FR-022). */
+  /** The build, worked out and stopped short of disk (CORE-FR-034). */
   previewCharterBuild(): Promise<CharterDTOs.ProjectionPlanSummary | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /** Every tool the mcp origins the last build listed serve, read off what it

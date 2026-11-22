@@ -4,7 +4,8 @@
 //
 //   node charter-release-action.mjs check [--branch <name>]       the release branch ready, every charter built at the root
 //   node charter-release-action.mjs readme                        README.md's install and charters section composed from what each charter holds
-//   node charter-release-action.mjs draft                         the last release, the versions after it, what landed since
+//   node charter-release-action.mjs draft [--version x.y.z] [--date yyyy-mm-dd]
+//                                                         the last release, the versions after it, what landed since; a version or date given refused as publish would
 //   node charter-release-action.mjs publish <version> <entry-file> [--date yyyy-mm-dd] [--branch <name>]
 //                                                         the entry written, committed, the release branch pushed, the tag made and pushed
 //
@@ -15,7 +16,9 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const CHANGELOG_FILE = "CHANGELOG.md";
+// Kept with the charters, apart from a changelog the repository keeps of its
+// own at its root, which a release never reads (VENDOR-FR-007).
+const CHANGELOG_FILE = ".cw/CHANGELOG.md";
 // A branch name holding no space and no character a shell reads as more than
 // a word.
 const BRANCH_PATTERN = /^[^\s;&|$`'"\\<>(){}*?!~#]+$/;
@@ -104,12 +107,13 @@ function listCharterNames() {
 
 /** The branch a release is made from: origin's default branch, the one its
  *  HEAD names, whatever it is called — main, develop or another. Where origin
- *  names none — there is no origin, or it holds no commit yet — it is never
- *  guessed: the user confirms one, passed as --branch. */
+ *  names none — it holds no commit yet — it is never guessed: the user
+ *  confirms one, passed as --branch. An origin that cannot be reached is said
+ *  as it is. */
 function findReleaseBranch(confirmedBranch) {
-  const defaultBranch = /^ref: refs\/heads\/(\S+)\tHEAD$/m.exec(
-    runGit(["ls-remote", "--symref", "origin", "HEAD"]).stdout,
-  )?.[1];
+  const originHeadRun = runGit(["ls-remote", "--symref", "origin", "HEAD"]);
+  if (originHeadRun.status !== 0) stopRelease(`origin could not be reached: ${decisiveLineOf(originHeadRun)}`);
+  const defaultBranch = /^ref: refs\/heads\/(\S+)\tHEAD$/m.exec(originHeadRun.stdout)?.[1];
   if (defaultBranch !== undefined) {
     if (confirmedBranch !== undefined && confirmedBranch !== defaultBranch)
       stopRelease(
@@ -190,7 +194,12 @@ function checkRelease(confirmedBranch) {
   if (buildRun.isMissing) stopRelease("cw is not installed here: install it, then ask /charter-release again.");
   if (buildRun.status !== 0) {
     const buildOutputLines = `${buildRun.stdout}\n${buildRun.stderr}`.split("\n").filter((line) => line.trim() !== "");
-    const brokenCharterNames = charterNames.filter((charterName) =>
+    // Every charter held, installed ones too, is named where the build names
+    // its files (VENDOR-FR-005).
+    const heldCharterNames = readdirSync(CHARTER_FOLDER, { withFileTypes: true })
+      .filter((charterEntry) => charterEntry.isDirectory())
+      .map((charterEntry) => charterEntry.name);
+    const brokenCharterNames = heldCharterNames.filter((charterName) =>
       buildOutputLines.some((line) => line.includes(`${CHARTER_FOLDER}/${charterName}/`)),
     );
     stopRelease(
@@ -200,6 +209,14 @@ function checkRelease(confirmedBranch) {
       ...buildOutputLines.map((line) => `  ${line}`),
     );
   }
+  // A build that changes what is committed would leave the release to refuse
+  // after the README is written: it is refused here (VENDOR-FR-005).
+  const builtPaths = runGit(["status", "--porcelain"]).stdout.split("\n").filter((line) => line.trim() !== "");
+  if (builtPaths.length > 0)
+    stopRelease(
+      "The build changed what is committed: commit what cw build writes, or have git ignore it, first.",
+      ...builtPaths.slice(0, 10).map((line) => `  ${line}`),
+    );
   process.stdout.write(
     `Ready: ${releaseBranch} is clean and not behind origin/${releaseBranch}; built ${charterNames.join(", ")}.\n`,
   );
@@ -210,27 +227,33 @@ function checkRelease(confirmedBranch) {
  *  holds, cw's own skills left out. The source is read off origin. A skill is
  *  the charter's when it is kept under the charter's primitive/skill/; its
  *  description is the one the build at check put in the catalogue. Where
- *  there is no README.md, it is written holding that section alone
- *  (VENDOR-FR-006). */
+ *  there is no README.md, it is written holding that section alone; where it
+ *  holds no section, the section is put at its end (VENDOR-FR-006). */
 function composeReadme() {
-  const readmeText = existsSync(README_FILE)
-    ? readFileSync(README_FILE, "utf8")
-    : `${README_START_MARKER}\n${README_END_MARKER}\n`;
-  const startIndex = readmeText.indexOf(README_START_MARKER);
-  const endIndex = readmeText.indexOf(README_END_MARKER);
+  const heldReadmeText = existsSync(README_FILE) ? readFileSync(README_FILE, "utf8") : "";
   // A README /vendor-release wrote, before 1.4.0, holds the section under
   // the markers of its day.
-  if (startIndex === -1 && readmeText.includes("<!-- vendor-release-action: charters -->"))
+  if (!heldReadmeText.includes(README_START_MARKER) && heldReadmeText.includes("<!-- vendor-release-action: charters -->"))
     stopRelease(
       `${README_FILE} holds its section under "<!-- vendor-release-action: charters -->" … "<!-- /vendor-release-action: charters -->": rename them "${README_START_MARKER}" … "${README_END_MARKER}", then ask /charter-release again.`,
     );
+  const readmeText =
+    heldReadmeText.includes(README_START_MARKER) || heldReadmeText.includes(README_END_MARKER)
+      ? heldReadmeText
+      : `${heldReadmeText.trimEnd()}${heldReadmeText.trim() === "" ? "" : "\n\n"}${README_START_MARKER}\n${README_END_MARKER}\n`;
+  const startIndex = readmeText.indexOf(README_START_MARKER);
+  const endIndex = readmeText.indexOf(README_END_MARKER);
+  // One marker alone, or the two out of order: which was meant is not known.
   if (startIndex === -1 || endIndex < startIndex)
     stopRelease(
-      `${README_FILE} holds no "${README_START_MARKER}" … "${README_END_MARKER}" section: put both lines where the install and the charters are listed.`,
+      `${README_FILE} holds only one of "${README_START_MARKER}" and "${README_END_MARKER}", or the two out of order: put both lines, in that order, where the install and the charters are listed.`,
     );
-  const originUrl = runGit(["remote", "get-url", "origin"]).stdout.trim();
-  const sourceName =
-    /[:/]([^/:]+\/[^/]+?)(?:\.git)?\/?$/.exec(originUrl)?.[1] ?? "<owner>/<repository>";
+  // The address git fetches, as origin names it, so each line installs as it
+  // is written (VENDOR-SC-002); a credential an https address carries never
+  // reaches the README.
+  const sourceAddress = runGit(["remote", "get-url", "origin"])
+    .stdout.trim()
+    .replace(/^(https?:\/\/)[^@/]+@/, "$1");
   if (!existsSync(CATALOGUE_FILE)) stopRelease(`The charters are not built: run "charter-release-action.mjs check" first.`);
   const catalogueEntries = JSON.parse(readFileSync(CATALOGUE_FILE, "utf8"));
   const charterNames = listCharterNames();
@@ -256,7 +279,7 @@ function composeReadme() {
       `### ${charterName}`,
       "",
       "```bash",
-      `cw charter pull ${sourceName} --charter=${charterName}`,
+      `cw charter pull ${sourceAddress} --charter=${charterName}`,
       "cw build",
       "```",
       "",
@@ -267,7 +290,10 @@ function composeReadme() {
     "## Install",
     "",
     "```bash",
-    `cw charter pull ${sourceName}`,
+    // Each charter authored named, so a charter this repository installed is
+    // never taken with them but one an authored charter includes
+    // (VENDOR-FR-005, VENDOR-FR-018).
+    `cw charter pull ${sourceAddress} ${charterNames.map((charterName) => `--charter=${charterName}`).join(" ")}`,
     "cw build",
     "```",
     "",
@@ -276,6 +302,8 @@ function composeReadme() {
     "## Charters",
     "",
     ...(charterSections.length === 0 ? ["None yet."] : [charterSections.join("\n\n")]),
+    "",
+    `What changed in each release: [the changelog of these charters](${CHANGELOG_FILE}), kept by Cherry Works.`,
   ].join("\n");
   const composedText = `${readmeText.slice(0, startIndex + README_START_MARKER.length)}\n${sectionText}\n${readmeText.slice(endIndex)}`;
   if (composedText !== readmeText || !existsSync(README_FILE)) writeFileSync(README_FILE, composedText);
@@ -284,13 +312,36 @@ function composeReadme() {
   );
 }
 
-function draftRelease() {
+/** The version and date a release is made under, refused as publish refuses
+ *  them, so draft can refuse them before the README is written; one not
+ *  given is not asked about. */
+function checkReleaseVersionAndDate(versionText, dateText, lastVersion) {
+  if (dateText !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(dateText))
+    stopRelease(`"${dateText}" is no date: name one as yyyy-mm-dd.`);
+  if (versionText === undefined) return;
+  if (parseVersion(versionText) === undefined) stopRelease(`"${versionText}" is no version: name one as 1.2.3.`);
+  if (runGit(["rev-parse", "--quiet", "--verify", `refs/tags/v${versionText}`]).status === 0)
+    stopRelease(`v${versionText} is already a tag, and a tag is never moved.`);
+  if (lastVersion !== undefined && compareVersions(parseVersion(versionText), parseVersion(lastVersion)) <= 0)
+    stopRelease(`${versionText} is not after the last release, v${lastVersion}.`);
+}
+
+function draftRelease(versionText, dateText) {
   const lastVersion = findLastVersion();
-  // The version of the changelog's first `## <version> — <date>` heading.
-  const changelogVersion = /^## (\d+\.\d+\.\d+) — /m.exec(readChangelog())?.[1];
-  if (changelogVersion !== lastVersion)
+  // A version the user named, or corrected at the gate, refused before
+  // anything is written (VENDOR-FR-005).
+  checkReleaseVersionAndDate(versionText, dateText, lastVersion);
+  // The changelog's top `## ` heading as written, and the version it names.
+  const changelogTopHeading = /^## .*$/m.exec(readChangelog())?.[0];
+  const changelogVersion = /^## v?(\d+\.\d+\.\d+)(?:\s|$)/.exec(changelogTopHeading ?? "")?.[1];
+  // Refused here, before the README is written, as publish would refuse it.
+  if (existsSync(CHANGELOG_FILE) && !readChangelog().startsWith(`${CHANGELOG_HEADING}\n`))
+    stopRelease(`${CHANGELOG_FILE} does not open with "${CHANGELOG_HEADING}".`);
+  // A changelog not written yet starts with this release, whatever was tagged
+  // before it.
+  if (existsSync(CHANGELOG_FILE) && changelogVersion !== lastVersion)
     stopRelease(
-      `The last tag is ${lastVersion === undefined ? "none" : `v${lastVersion}`}, and the top heading of ${CHANGELOG_FILE} is ${changelogVersion ?? "none"}: they must name the same release.`,
+      `The last tag is ${lastVersion === undefined ? "none" : `v${lastVersion}`}, and the top heading of ${CHANGELOG_FILE} is ${changelogTopHeading === undefined ? "none" : `"${changelogTopHeading}"`}: they must name the same release.`,
     );
   const logRange = lastVersion === undefined ? ["HEAD"] : [`v${lastVersion}..HEAD`];
   const landedCommits = runGit(["log", "--format=%h %s", ...logRange])
@@ -327,15 +378,10 @@ function draftRelease() {
 
 function publishRelease(versionText, entryFilePath, dateText, confirmedBranch) {
   const releaseBranch = findReleaseBranch(confirmedBranch);
-  if (parseVersion(versionText ?? "") === undefined) stopRelease(`"${versionText}" is no version: name one as 1.2.3.`);
   if (entryFilePath === undefined || !existsSync(entryFilePath)) stopRelease("Name the file holding the entry.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) stopRelease(`"${dateText}" is no date: name one as yyyy-mm-dd.`);
-  const tagName = `v${versionText}`;
-  if (runGit(["rev-parse", "--quiet", "--verify", `refs/tags/${tagName}`]).status === 0)
-    stopRelease(`${tagName} is already a tag, and a tag is never moved.`);
   const lastVersion = findLastVersion();
-  if (lastVersion !== undefined && compareVersions(parseVersion(versionText), parseVersion(lastVersion)) <= 0)
-    stopRelease(`${versionText} is not after the last release, v${lastVersion}.`);
+  checkReleaseVersionAndDate(versionText ?? "", dateText, lastVersion);
+  const tagName = `v${versionText}`;
   const branchName = runGit(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.trim();
   if (branchName !== releaseBranch)
     stopRelease(`On branch "${branchName}", not "${releaseBranch}": a release is made from ${releaseBranch} alone, origin's default branch.`);
@@ -426,10 +472,10 @@ for (let argIndex = 0; argIndex < actionArgs.length; argIndex++) {
 }
 if (actionName === "check") checkRelease(flagValueByName.branch);
 else if (actionName === "readme") composeReadme();
-else if (actionName === "draft") draftRelease();
+else if (actionName === "draft") draftRelease(flagValueByName.version, flagValueByName.date);
 else if (actionName === "publish")
   publishRelease(positionalArgs[0], positionalArgs[1], flagValueByName.date ?? todayDate(), flagValueByName.branch);
 else
   stopRelease(
-    "Run it as: charter-release-action.mjs check [--branch <name>] | readme | draft | publish <version> <entry-file> [--date yyyy-mm-dd] [--branch <name>]",
+    "Run it as: charter-release-action.mjs check [--branch <name>] | readme | draft [--version x.y.z] [--date yyyy-mm-dd] | publish <version> <entry-file> [--date yyyy-mm-dd] [--branch <name>]",
   );

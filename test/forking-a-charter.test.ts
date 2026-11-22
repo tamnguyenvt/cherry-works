@@ -255,10 +255,30 @@ test("--as forks the one charter under that name, the repository's own, and is r
     undefined,
   );
 
-  const manyFixture = createInstallingFixture(sourceFiles);
-  const manyFault = faultOf(
-    await manyFixture.charterAuthoringApp.pullCharters("team/source", true, undefined, [], "solo"),
-  );
-  assert.equal(manyFault.name, "AmbiguousAsNameFault");
-  assert.deepEqual(await manyFixture.fileReader.readFilesRecursively(new URL(".cw/charter/", repoPath)), []);
+  for (const pickedCharterNames of [[], ["lone", "other"]]) {
+    const manyFixture = createInstallingFixture(sourceFiles);
+    const manyFault = faultOf(
+      await manyFixture.charterAuthoringApp.pullCharters("team/source", true, undefined, pickedCharterNames, "solo"),
+    );
+    assert.equal(manyFault.name, "AmbiguousAsNameFault");
+    assert.deepEqual(await manyFixture.fileReader.readFilesRecursively(new URL(".cw/charter/", repoPath)), []);
+  }
+});
+
+test("--as on a pull that would install more than one charter is refused, nothing written (VENDOR Story 6 scenario 6, VENDOR-FR-020)", async () => {
+  const { charterAuthoringApp, fileReader } = createInstallingFixture({
+    ".cw/charter/baseline/primitive/guide/published/index.md": guideMarkdown,
+    ".cw/charter/sdd/primitive/guide/other-published/index.md": guideMarkdown.replace(
+      "id: published",
+      "id: other-published",
+    ),
+  });
+
+  for (const pickedCharterNames of [[], ["baseline", "sdd"]]) {
+    const manyFault = faultOf(
+      await charterAuthoringApp.pullCharters("team/source", false, undefined, pickedCharterNames, "team"),
+    );
+    assert.equal(manyFault.name, "AmbiguousAsNameFault");
+    assert.deepEqual(await fileReader.readFilesRecursively(new URL(".cw/charter/", repoPath)), []);
+  }
 });

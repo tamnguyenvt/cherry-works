@@ -1,6 +1,6 @@
 # Reference
 
-Detailed commands, host mappings and configuration for Cherry Works.
+Detailed commands, agent mappings and configuration for Cherry Works.
 For a first rule, start with [Writing a charter](writing-a-charter.md).
 
 ## Charter → agent outputs
@@ -30,7 +30,7 @@ with its mixins and assets.
 `CLAUDE.md` and `AGENTS.md` point to `.cw/out/CHARTER.md` and their own
 catalogues: `catalogue.json` holds primitives supporting every known provider,
 while `catalogue.<provider>.json` holds only primitives restricted to that
-provider. Each host reads both files; shared
+provider. Each agent reads both files; shared
 entries are not duplicated in provider catalogues. Entries have no
 `agent-provider` field.
 
@@ -39,7 +39,7 @@ entries are not duplicated in provider catalogues. Entries have no
 | `disable-user-invocation: true` | `user-invocable: false`; model invocation remains available | Kept in the catalogue and entry instructions, outside native skills; no documented native flag hides only explicit invocation |
 | `disable-model-invocation: true` | `disable-model-invocation: true`; explicit invocation remains available | `agents/openai.yaml` → `policy.allow_implicit_invocation: false` |
 
-The main host differences:
+The main differences between agents:
 
 - **Guide scope:** Codex discovers nested `AGENTS.md` along root → cwd. Root
   instructions retain glob pointers; file-specific conditions remain in the
@@ -50,7 +50,7 @@ The main host differences:
   to write grants or denies; `Read` maps to read, `Write`/`Edit` to write. Denying
   `Read` blocks both reads and writes; denying `Write`/`Edit` makes the path read-only.
   Legacy sandbox settings can override profiles. Unsupported mappings produce warnings.
-- **Hooks and agents:** Sensors receive their host's event JSON; scripts that
+- **Hooks and agents:** Sensors receive their agent's event JSON; scripts that
   assume Claude payloads need adaptation. Unsupported Codex events produce build
   warnings; new hooks require trust through `/hooks`. Subagent feature flags
   restrict capability groups, not exact tool or MCP whitelists.
@@ -72,7 +72,7 @@ The main host differences:
 |---|---|
 | `cw init [--agent]` | Set the repository up under a charter, and build it |
 | `cw build [--preview]` | Compile the charter, or show what a build would write |
-| `cw list [--kind] [--min]` | List what the charter holds |
+| `cw list [--kind] [--charter] [--min]` | List what the charter holds, or one charter's primitives alone |
 | `cw kinds [kind]` | List the kinds, or the fields one of them requires |
 | `cw add <kind> <id> [--charter] [--header k=v …]` | Write a new primitive |
 | `cw edit <id>` | Open a primitive's file in your editor |
@@ -82,7 +82,8 @@ The main host differences:
 | `cw context [--agent=<agent>]` | Say how many tokens the charter puts into the agent's context when a session opens |
 | `cw sessions [--since] [--until]` | Sum up the tokens of the sessions kept on this machine, by day and by session |
 | `cw test [--charter]` | Run every case in each charter's `.cw/charter/<charter>/test/`, or one charter's, against the charter |
-| `cw eval [--charter]` | Put every case in each charter's `.cw/charter/<charter>/eval/`, or one charter's, to the real agent under promptfoo |
+| `cw eval [--agent] [--charter]` | Put every case in each charter's `.cw/charter/<charter>/eval/`, or one charter's, to the real agent under promptfoo |
+| `cw eval-analyze [--log]` | Read an evaluation's results, its tool evidence and the agents' session paths, running no agent |
 | `cw suite add \| edit \| remove [--charter]` | Manage test files, in the charter named or the one this repository authored |
 | `cw charter` | List every charter this repository holds, authored or installed, an installed one with its source and version |
 | `cw charter create <name>` | Make an empty charter of your own |
@@ -241,8 +242,8 @@ few.
 
 ### Saved evaluation logs
 
-Each new case retains a private `run-*` folder under
-`~/.cherry-works/promptfoo/<version>/`, with `promptfooconfig.json`, the raw
+Each new case retains a private `run-*` folder under `.cw/log/eval/runs/`,
+in the log version control ignores, with `promptfooconfig.json`, the raw
 promptfoo `output.json` when produced, `stdout.log`, `stderr.log`, and a
 `case.json` manifest. `cw eval` prints the manifest path beside each case,
 including failed cases. Process errors preserve diagnostics too.
@@ -281,8 +282,8 @@ cw context --agent=claude  # estimated and counted through claude's own command 
 With `--agent`, each primitive is listed with its estimate, the exact count and
 how far apart they are, then the totals; a warning is printed when the totals
 differ by more than 15%, and the command still succeeds. Where the agent cannot
-be counted through — no exact count for it yet, the repository does not compile
-for it, or its command line is not installed — the command is refused, and
+be counted through — no exact count for it yet, one the repository did not
+choose, or its command line is not installed — the command is refused, and
 `cw context` with no agent named still estimates, needing nothing.
 
 A guide with `globs` is listed apart: it is loaded only when a file it names is
@@ -330,7 +331,7 @@ To publish rules or skills for other repositories to install, follow
 cw charter pull git@github.com:your-org/charter-baseline.git --ref v1.2.0
 ```
 
-A charter source is a git repository publishing the charters it holds, each
+A charter source is a git repository every charter it holds can be pulled from, each
 under `.cw/charter/<charter>/`: author them, test them, and push. Each charter
 installed is copied whole — its primitives, its test cases and its eval cases —
 into your own `.cw/charter/<charter>/`, beside a `cw-package.json` naming the
@@ -427,8 +428,8 @@ tool of an mcp origin, or `[[<id>]]:<tool>` for one of them.
 
 ## The engine as a library
 
-`cherry-works` is also a library for TypeScript and JavaScript tools, on Node.js
-22 or later. It exports only what a tool needs: `composeApplications` and the
+`cherry-works` is also a library for TypeScript and JavaScript integrators, on Node.js
+22 or later. It exports only what an integrator needs: `composeApplications` and the
 types it takes and answers (`EngineAdapters`, `ComposedApplications`,
 `ComposedEngine`); the four driver ports it answers through
 (`ForAuthoringCharter`, `ForBuildingCharter`, `ForRunningCharter`,
@@ -446,11 +447,11 @@ import type { EngineAdapters, ForReadingFiles, ForWritingFiles, ForReportingProg
 `composeApplications(repoFolder, homeFolder, adapters?)` composes the
 workspace and the engine as `cw` does. It answers `workspaceApp`, which keeps
 a repository's settings, and `engineApp`, whose applications are authoring
-the charter (`charterAuthoringApp`: its primitives, installed charters, test files, and
-signing in to its mcp origins), building it for each agent provider
-(`charterBuildingApp`: the build, the health check, the context, the sensors
-and serving the mcp origins) and running it (`charterRuntimeApp`: the tests,
-the evaluations and reviewing the sessions). A driver port answers DTOs
+the charter (`charterAuthoringApp`: its primitives, installed charters, test files,
+the tests, and signing in to its mcp origins), building it for each agent
+(`charterBuildingApp`: the build, the health check, the context, and the sensors
+and tools it lists) and running it (`charterRuntimeApp`: running the sensors,
+forwarding calls to the mcp origins, the evaluations and reviewing the sessions). A driver port answers DTOs
 alone, never a model of the domain. The engine is composed for the settings
 the repository holds when it is composed: compose again after setting a
 repository up.
@@ -464,8 +465,10 @@ the agent's name), `charterRepository` (`ForManagingCharter`), `sourceFetcher`
 (`ForAuthorizingOAuthClients`), `mcpServerCaller` (`ForCallingMcpServers`),
 `tokenCounter` (`ForCountingTokens`), `clock` (`ForTellingTime`), `shell`
 (`ForRunningShellCommands`), `progressReporter` (`ForReportingProgress`),
-`promptfooRunner` (`ForRunningPromptfoo`) and `credentialsRepository`
-(`ForStoringCredentials`). The agents a repository may be set up for are the
+`promptfooRunner` (`ForRunningPromptfoo`), `credentialsRepository`
+(`ForStoringCredentials`), `workspaceSettingsRepository`
+(`ForStoringWorkspaceSettings`), `sessionAnalysisRepository`
+(`ForLoadingSessionAnalysis`) and `localOutput` (`ForManagingLocalOutput`). The agents a repository may be set up for are the
 keys of `agentProvider`. Where you hand no store or projection, `cw`'s own are
 set up over the `fileReader` and `fileWriter` handed: hand file adapters over
 memory, at a `memory:` address, and a charter is authored and built with no
@@ -475,13 +478,14 @@ abstract bases (`AgentProjection`, `AgentCli`) are exported for you to extend,
 with the models the charter's store and the projections speak in.
 
 A `ForReportingProgress` is where a use case logs an internal failure for
-whoever runs the tool. A use case takes no address: every path it hands a
+whoever runs the integrator. A use case takes no address: every path it hands a
 driven port is from the repository's root, such as `.cw/settings.json`, and
 the empty path is the root itself. Set your adapters up on the repository's
 address; an address must have a hierarchical path ending in `/`, and its
 scheme belongs to your adapters. A credential store is handed, and hands
-back, `McpCredential`, and a sign-in answers an `OAuthGrant` holding an
-`McpClientRegistration`; both classes are exported. Builtin primitives and
+back, `McpCredential`, which holds an `McpClientRegistration`, both classes
+exported; a sign-in answers an `OAuthGrant` holding an `OAuthClientRegistration`,
+both exported as types. Builtin primitives and
 their assets are embedded in the package.
 
 A use case never throws for a failure of what it was asked: every answer is a
@@ -491,9 +495,9 @@ A fault that stops a use case comes back as a `Fault` DTO carrying `name`,
 
 A fault is the system's own unless raised with `{ internal: false }`. Your
 adapters raise `AdapterFault`, and an mcp client `UnauthorizedMcpFault` where
-an mcp origin refuses its credential: mark the ones the person using your tool can act on with
+an mcp origin refuses its credential: mark the ones the person using your integrator can act on with
 `{ internal: false }`. Anything else a port raises, an internal fault
-included, is logged through `ForReportingProgress.problem` — its stack and
+included, is logged through `ForReportingProgress.reportProblem` — its stack and
 causes, never the arguments of the call — and answered as `InternalFault`,
 in the system's own words. An internal fault's message and every cause under
 it are logged as they are, so an adapter puts no secret in either.
@@ -578,7 +582,10 @@ to put it back whole.
 
 Only after the checks pass does it write the contract, commit it with
 `package.json` and the README, tag `v<version>`, push `develop` and the tag,
-then publish `cherry-works`. `pnpm release <version> --dry-run` runs every
+then publish `cherry-works` under npm's tag `next`: `npm install -g
+cherry-works@next` installs it, while `npm install -g cherry-works` still
+installs the stable version, which the README's **Stable version** line
+names and a release leaves as it is. `pnpm release <version> --dry-run` runs every
 check and restores all three files. A failed check also restores them, and is
 reported as `Release refused:`, naming the check; nothing is then published.
 If push fails, nothing is published. Once a push is attempted, the release
@@ -591,14 +598,22 @@ asks you to confirm what is on npm with `npm view cherry-works@<version>
 version`, which prints the version only where it is published. A plain
 `npm publish` is refused.
 
+`pnpm release <version> --stable` makes a published version the stable one:
+it refuses a version not published, above `package.json`'s, or already
+stable, and `--dry-run` beside it; then it writes the README's **Stable
+version** line, commits it, pushes `develop`, and moves npm's tag `latest` to
+that version, what `npm install -g cherry-works` installs. A push or a tag
+move that fails is reported as `Release failed during publication:`, the
+commit kept, naming the commands that finish it.
+
 The engine follows a hexagonal layout of two modules. `src/module/charter/`
 keeps, tests and builds the charter; `src/module/runtime/` runs what it
 built — its sensors, its mcp calls, its evaluations — and reads the agents'
 sessions, asking the charter only through its applications. Each holds
 `app/` (use cases and ports), `domain/` and `infra/` (the adapters for files,
 git, YAML and the agents' command lines); `src/module/shared/` holds what
-both use. `src/presentation/` holds the CLI, which keeps `.cw/settings.json`, and
-the portal that drive it.
+both use; `src/module/workspace/` keeps `.cw/settings.json` and sets a
+repository up. `src/presentation/` holds the CLI and the portal that drive it.
 What it must do is written in [specs/spec.md](../specs/spec.md).
 
 This repository is governed by its own charter under [.cw/charter/](../.cw/charter/).

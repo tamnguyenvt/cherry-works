@@ -387,11 +387,23 @@ test("a driver port answers shapes made for the driver, and takes none of the do
   // stays the engine's.
   const engineIndexText = readFileSync(new URL("src/index.ts", repositoryUrl), "utf8");
   const exportedNames = new Set(
-    [...engineIndexText.matchAll(/^export \{ (.+) \} from /gm)].flatMap((exportMatch) =>
-      exportMatch[1]!.split(", ").map((exportedName) => exportedName.replace(/^type /, "")),
+    [...engineIndexText.matchAll(/^export \{([^}]+)\} from /gm)].flatMap((exportMatch) =>
+      exportMatch[1]!
+        .split(",")
+        .map((exportedName) => exportedName.trim().replace(/^type /, ""))
+        .filter((exportedName) => exportedName !== ""),
     ),
   );
-  const drivenPortFolderUrls = ["charter", "runtime", "shared"].map(
+  // Every shape a driver port takes is public to the driver (SDK-FR-002).
+  const driverTypeNames = (Object.keys(operationNamesByPortName) as (keyof typeof operationNamesByPortName)[])
+    .flatMap((portName) => operationsOf(portName).flatMap(({ parameterTypeTexts }) => parameterTypeTexts))
+    .flatMap((parameterTypeText) => parameterTypeText.split(" | "))
+    .filter((parameterTypeName) => /^[A-Z]\w*$/.test(parameterTypeName));
+  assert.deepEqual(
+    [...new Set(driverTypeNames)].filter((driverTypeName) => !exportedNames.has(driverTypeName)),
+    [],
+  );
+  const drivenPortFolderUrls = ["charter", "runtime", "shared", "workspace"].map(
     (moduleName) => new URL(`${moduleName}/app/port/out/`, hexagonFolderUrl),
   );
   const drivenModelNames = drivenPortFolderUrls
@@ -400,20 +412,26 @@ test("a driver port answers shapes made for the driver, and takes none of the do
         .filter((portFileName) => !/\.probe\./.test(portFileName))
         .map((portFileName) => new URL(portFileName, drivenPortFolderUrl)),
     )
-    .filter((portFileUrl) =>
-      [...readFileSync(portFileUrl, "utf8").matchAll(/^export interface (For\w+)/gm)].some((portMatch) =>
-        exportedNames.has(portMatch[1]!),
-      ),
-    )
-    .flatMap((portFileUrl) => [
-      ...readFileSync(portFileUrl, "utf8").matchAll(
-        /^import (?:type )?\{ (.+) \} from "(?:\.\.\/)+(?:(?:shared|charter|runtime|workspace)\/)?domain\/models\/.+";$/gm,
-      ),
-    ])
-    .flatMap((importMatch) =>
-      importMatch[1]!.split(",").map((importedName) => importedName.trim().replace(/^type /, "")),
-    )
-    .filter((modelName) => modelName !== "DomainFault");
+    .filter((portFileUrl) => /^export interface For\w+/m.test(readFileSync(portFileUrl, "utf8")))
+    .flatMap((portFileUrl) => {
+      const portText = readFileSync(portFileUrl, "utf8");
+      return [
+        ...[
+          ...portText.matchAll(
+            /^import (?:type )?\{([^}]+)\} from "(?:#module\/\w+\/module\.js|(?:\.\.\/)+(?:(?:shared|charter|runtime|workspace)\/)?(?:domain\/models\/.+|module\.js))";$/gm,
+          ),
+        ].flatMap((importMatch) =>
+          importMatch[1]!
+            .split(",")
+            .map((importedName) => importedName.trim().replace(/^type /, ""))
+            .filter((importedName) => importedName !== ""),
+        ),
+        // The shapes a port file declares for what crosses it.
+        ...[...portText.matchAll(/^export (?:interface|type) (\w+)/gm)].map((declaredMatch) => declaredMatch[1]!),
+      ];
+    })
+    // A fault is the engine's own, never one an adapter makes.
+    .filter((modelName) => !modelName.endsWith("Fault"));
   assert.deepEqual(
     [...new Set(drivenModelNames)].filter((modelName) => !exportedNames.has(modelName)),
     [],

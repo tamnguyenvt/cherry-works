@@ -49,9 +49,9 @@ export interface McpOriginAddress {
  */
 export interface ForAuthoringCharter {
   /**
-   * What this repository's charter holds, listed (FR-011, FR-012).
+   * What this repository's charter holds, listed (CORE-FR-028).
    *
-   * Reads and says: there is no way through this to write anything (FR-041).
+   * Reads and says: there is no way through this to write anything.
    * What comes back is the listing the charter compiles to and not a second
    * one made for this command, so what a user reads and what an agent reads
    * are the same listing said twice (SC-004).
@@ -63,9 +63,14 @@ export interface ForAuthoringCharter {
    *
    * A charter with an error is refused with nothing listed and the errors given
    * back, for the reason a build is: a listing of a charter that does not hold
-   * would say a charter holds primitives it has not got (FR-009).
+   * would say a charter holds primitives it has not got (FR-009). A charter
+   * named narrows it to that charter's primitives, a name no charter is held
+   * under refused naming those held (VENDOR-FR-016).
    */
-  listCatalogue(kind?: string): Promise<CharterDTOs.Catalogue | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
+  listCatalogue(
+    kind?: string,
+    charterName?: string,
+  ): Promise<CharterDTOs.Catalogue | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /**
    * Every primitive of every layer, off the charter as it was read rather than
@@ -94,7 +99,7 @@ export interface ForAuthoringCharter {
    * uses, cites or names it (FR-014, FR-163).
    *
    * Reads and says, as `listCatalogue` does: there is no way through this to write
-   * anything (FR-041).
+   * anything.
    *
    * The id is taken as typed. Text that is not an id, `<kind>:<id>` among it, and an
    * id this charter holds nothing of, are answered as one fault rather than under a file,
@@ -112,14 +117,14 @@ export interface ForAuthoringCharter {
   /**
    * What one kind takes of whoever authors a primitive of it: each header,
    * whether it holds a line or a list, and whether a file written without it is
-   * refused (FR-004, FR-039).
+   * refused (CORE-FR-004, CORE-FR-059, CORE-FR-062).
    *
    * Every header the kind takes is named, not only the ones it refuses a file
    * without: a header an author may write is one they have to know the shape of,
    * and the shape is read off the same schema the file is refused against.
    *
    * Reads and says, as `listCatalogue` does: there is no way through this to write
-   * anything (FR-041). No charter is read either — what a kind demands is the
+   * anything. No charter is read either — what a kind demands is the
    * kind's own contract, and it is the same in a repository that has authored
    * nothing.
    *
@@ -134,7 +139,7 @@ export interface ForAuthoringCharter {
 
   /**
    * Every kind the charter knows, and when a primitive of that kind comes up
-   * (FR-010).
+   * (CORE-FR-060).
    *
    * Reads and says, and reads no charter either: what a kind is and when it
    * applies is the kind's own contract, so the answer is the same in a
@@ -148,7 +153,7 @@ export interface ForAuthoringCharter {
   listKinds(): Promise<CharterDTOs.PrimitiveKinds | FaultDTOs.Fault>;
 
   /**
-   * One primitive written where its kind's primitives are authored (FR-039).
+   * One primitive written where its kind's primitives are authored (CORE-FR-064).
    *
    * Writes exactly one file. What arrives is what the kind was asked for —
    * `listPrimitiveRequirements` said which headers, and these are the
@@ -162,7 +167,7 @@ export interface ForAuthoringCharter {
    * line the body is written in an editor afterwards (FR-117).
    *
    * Nothing is compiled: a build is the command that compiles a charter
-   * (FR-020, FR-079).
+   * (CORE-FR-032, CORE-FR-079).
    *
    * It is written into the charter named, made where the charter holds none of
    * that name; a charter installed is read-only, and a name that is empty, no
@@ -194,7 +199,7 @@ export interface ForAuthoringCharter {
    * and the layer — and the hash of it written out, what a save is made over
    * (FR-075, FR-078).
    *
-   * Reads and says: there is no way through this to write anything (FR-041).
+   * Reads and says: there is no way through this to write anything.
    * Asked of the files as read rather than of the validation, so a primitive
    * opens whatever else in the charter is wrong. An id the charter holds
    * nothing of is answered as a fault, as `explainPrimitive` answers it.
@@ -237,14 +242,14 @@ export interface ForAuthoringCharter {
 
   /**
    * Pull the charters one source holds, pinned to this version where
-   * one is named (FR-023, FR-027, VENDOR-FR-017).
+   * one is named (CORE-FR-041, CORE-FR-042, VENDOR-FR-017).
    *
    * The source is passed on as it was written: which transport it names and
    * whether the credentials for it are there is version control's business, and
-   * what it says when it refuses is what the caller is told (FR-031).
+   * what it says when it refuses is what the caller is told (CORE-FR-049).
    *
    * Installing one that is already there brings it up to date instead, so a
-   * repository has one way of saying what it wants rather than two (FR-030).
+   * repository has one way of saying what it wants rather than two (CORE-FR-047).
    *
    * The folder need not be a repository; a machine without git is refused
    * (CORE-FR-205). What it installs is left unstaged for the user to read and
@@ -305,7 +310,7 @@ export interface ForAuthoringCharter {
   ): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault>;
 
   /**
-   * Every test file under `.cw/charter/test/`, run or not: its name, its text, and its
+   * Every test file of every charter, under `.cw/charter/<charter>/test/`, run or not: its name, its text, and its
    * description and cases — or, for a file that does not read, why (FR-124).
    *
    * Reads and says, and reads no charter: nothing is resolved here, which is
@@ -404,18 +409,18 @@ export interface ForAuthoringCharter {
 
   /**
    * Every situation this repository wrote down, resolved against its charter
-   * (FR-048, FR-049, FR-050). Runs nothing, fetches nothing and asks no agent.
+   * (CORE-FR-083, CORE-FR-084). Runs nothing, fetches nothing and asks no agent.
    * A charter with an error, or a test file that does not read, resolves
    * nothing and is answered as its faults (FR-009). Every charter's cases, or
    * the named charter's alone; a charter named that the charter does not hold is
    * refused naming those it does, and nothing runs (VENDOR-FR-024,
-   * VENDOR-FR-026). Reads and says (FR-041).
+   * VENDOR-FR-026). Reads and says.
    */
   testCharter(charterName?: string): Promise<CharterDTOs.TestRunReport | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
 
   /**
    * The folder of the charter root's charters, holding none, laid out where nothing
-   * is yet (FR-037, CORE-FR-224, VENDOR-FR-013). Run again,
+   * is yet (CORE-FR-057, CORE-FR-224, VENDOR-FR-013). Run again,
    * it discards nothing anybody wrote. What comes back is where the charter
    * is kept.
    */

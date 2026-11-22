@@ -89,8 +89,8 @@ the agent trace when diagnosing a failure.
 
 ## Run and inspect
 
-Commit the suites and charter before running: `cw eval` evaluates the last
-commit, rebuilding the charter in an isolated worktree for each case. It
+Each case runs in an isolated worktree of the last commit, with the charter
+and its cases built into it as they stand, committed or not. It
 uses the evaluating agent's sign-in or the API key the environment sets, and spends tokens.
 
 ```bash
@@ -111,7 +111,7 @@ cw eval-analyze
 
 Analysis runs offline. Without `--log`, it shows the latest twenty saved case
 logs for the current repository. Logs live under
-`~/.cherry-works/promptfoo/<version>/run-*/`; old runs whose artifacts were
+`.cw/log/eval/runs/run-*/`; old runs whose artifacts were
 not retained cannot be reconstructed.
 
 See [the command reference](reference.md#evaluating-against-the-real-agent)

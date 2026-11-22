@@ -16,8 +16,8 @@
         "CORE Story 1"
       ],
       "evidence": {
-        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
-        "date": "2026-11-14"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed. Reworded for cw charter pull, cw charter and cw-package.json, its scenarios held now by test/checking-at-the-command-line.test.ts, test/fetching-a-charter-source.test.ts, test/installing-a-charter.test.ts, test/pulling-a-charter.test.ts and test/validating-a-charter.test.ts, whose labels cite them (VENDOR Story 6 scenario 5, VENDOR Story 7 scenario 9); pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     },
     {
@@ -83,8 +83,8 @@
         "CORE Story 2"
       ],
       "evidence": {
-        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
-        "date": "2026-11-14"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed. Reworded for cw charter pull, cw charter and cw-package.json, its scenarios held now by test/pulling-charters-over-http.test.ts and test/the-installed-charters-panel.test.ts, whose labels cite them (VENDOR Story 6 scenario 5, VENDOR Story 7 scenario 9); pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     },
     {
@@ -128,8 +128,8 @@
         "CORE Story 10"
       ],
       "evidence": {
-        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
-        "date": "2026-11-14"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed. Scenario 6, reworded for cw charter, held on 2026-11-20 by test/pulling-a-charter.test.ts, cw charter update and cw charter remove refused for the builtin layer (VENDOR Story 7 scenario 9); pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     },
     {
@@ -161,8 +161,8 @@
         "CORE Story 13"
       ],
       "evidence": {
-        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
-        "date": "2026-11-14"
+        "summary": "test/releasing-the-engine.test.ts, test/getting-cw-from-the-readme.test.ts and test/packaging-the-engine.test.ts (scenario 5) hold its scenarios, test/updating-the-release-version.test.ts the README's version lines a release writes, 6 and 7 added on 2026-11-20 (a release under npm's tag next, the README's stable line left as it is, pnpm release <version> --stable marking a published version stable, its refusals); pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     },
     {
@@ -327,8 +327,8 @@
         "CORE Story 2"
       ],
       "evidence": {
-        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
-        "date": "2026-11-14"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed. Reworded for cw charter pull, cw charter and cw-package.json, its scenarios held now by test/listing-the-installed-charters.test.ts and test/pulling-a-charter.test.ts, whose labels cite them (VENDOR Story 6 scenario 5); pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     },
     {
@@ -347,12 +347,11 @@
       "title": "Pick charters from a source that gathers many",
       "dependsOn": [
         "CORE Story 30",
-        "CORE Story 31",
         "CORE Story 23"
       ],
       "evidence": {
-        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
-        "date": "2026-11-14"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed. Reworded for cw charter pull, cw charter and cw-package.json, its scenarios held now by test/fetching-a-charter-source.test.ts, test/installing-a-charter.test.ts and test/picking-a-charter.test.ts, whose labels cite them (VENDOR Story 6 scenario 5, VENDOR Story 7 scenario 9); pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     },
     {
@@ -362,8 +361,8 @@
         "CORE Story 33"
       ],
       "evidence": {
-        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
-        "date": "2026-11-14"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed. Reworded for cw charter pull, cw charter and cw-package.json, its scenarios held now by test/fetching-a-charter-source.test.ts and test/forking-a-charter.test.ts, whose labels cite them (VENDOR Story 6 scenario 5, VENDOR Story 7 scenario 9); pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     },
     {
@@ -450,8 +449,8 @@
         "CORE Story 8"
       ],
       "evidence": {
-        "summary": "pnpm test: 753 pass, 0 fail, with commit signing off as this machine's signing agent refuses commits; typecheck and lint:deps clean; cw vendor add and remove run in a folder with no git",
-        "date": "2026-11-03"
+        "summary": "Reworded for cw charter pull and cw charter remove, its scenarios proved now by test/fetching-a-charter-source.test.ts, test/pulling-a-charter.test.ts and test/keeping-a-binary-asset-whole.test.ts (VENDOR Story 6 scenario 5, VENDOR Story 7 scenario 9); pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     },
     {
@@ -684,8 +683,8 @@
         "CORE Story 48"
       ],
       "evidence": {
-        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed",
-        "date": "2026-11-14"
+        "summary": "Proved by pnpm test twice on fix/quality-after-handoff-leftovers over 9b0d4b8 (typecheck, dependency rules, Biome, builds, tests): 1034 pass, 0 fail, 0 skipped; each scenario held by the tests whose labels cite it; specs check passed. Scenario 10, worded on 2026-11-20 to leave out the installed charters the move deletes, as CORE-FR-227 does, held by test/composing-the-engine-of-two-modules.test.ts and, with an installed charter, test/keeping-primitives-in-charters.test.ts; pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     },
     {
@@ -851,33 +850,57 @@
       }
     },
     {
-      "id": "VENDOR Story 1",
-      "title": "Set a charter repository up in an empty folder",
-      "dependsOn": [],
-      "evidence": {
-        "summary": "written from the code landed in 421f9fc: test/setting-a-charter-vendor-up.test.ts covers set-up on main with nothing committed, a branch of a repository with no commit, an occupied or committed folder refused, no terminal, a flag refused, an empty description; pnpm test 1081 pass, 0 fail on develop at 5bcad97",
-        "date": "2026-11-18"
-      }
-    },
-    {
       "id": "VENDOR Story 3",
       "title": "Keep, author, install and test charters in the charter root",
       "dependsOn": [],
       "evidence": {
-        "summary": "Full suite 1097 tests, 1096 pass, 0 fail, 1 todo (VENDOR Story 2's); tsc (server and portal page), biome, lint, lint:deps and specs check clean; by hand in a fresh repository: cw add --charter, cw vendor add from a local git source, cw vendor list, cw build, cw test --charter, and the portal's charter routes",
-        "date": "2026-11-19"
+        "summary": "Reworded for cw charter pull by VENDOR Story 6, its scenarios proved now by the tests whose labels cite them, in test/authoring-in-the-portal.test.ts, test/checking-a-repository.test.ts, test/composing-the-engine-of-two-modules.test.ts, test/fetching-a-charter-source.test.ts, test/forking-a-charter.test.ts, test/installing-a-charter.test.ts, test/keeping-primitives-in-charters.test.ts, test/listing-the-installed-charters.test.ts, test/managing-test-files.test.ts, test/picking-a-charter.test.ts, test/pulling-a-charter.test.ts, test/pulling-charters-over-http.test.ts, test/reading-the-charter-over-http.test.ts, test/reading-the-installed-charter-layer.test.ts, test/scaffolding-a-primitive.test.ts, test/setting-a-repository-up.test.ts, test/test-suites-over-http.test.ts, test/the-authoring-skill.test.ts and test/the-installed-charters-panel.test.ts; scenario 33, added on 2026-11-20 (cw list --charter), held by test/pulling-a-charter.test.ts; pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
+      }
+    },
+    {
+      "id": "VENDOR Story 6",
+      "title": "Pull a charter from its source with `cw charter pull`",
+      "dependsOn": [
+        "VENDOR Story 3"
+      ],
+      "evidence": {
+        "summary": "pnpm test 1129/1129 (lint:deps, biome, build), typecheck and specs check clean; by hand in a git repository: cw charter pull of every charter a source holds, --charter naming one the source installed, --charter=nope refused naming what it holds, --fork, and cw vendor refused; scenarios 1 and 2 held by test/installing-a-charter.test.ts, test/fetching-a-charter-source.test.ts and test/keeping-primitives-in-charters.test.ts, whose labels cite them; scenario 5 widened on 2026-11-20 to CORE Story 2, CORE Story 30 and CORE Story 33, held by test/picking-a-charter.test.ts, test/fetching-a-charter-source.test.ts, test/pulling-a-charter.test.ts, test/listing-the-installed-charters.test.ts, test/installing-a-charter.test.ts, test/validating-a-charter.test.ts and test/checking-at-the-command-line.test.ts; scenario 6, added on 2026-11-20, held by test/forking-a-charter.test.ts; pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
+      }
+    },
+    {
+      "id": "VENDOR Story 7",
+      "title": "See, create, update and remove charters with `cw charter`",
+      "dependsOn": [
+        "VENDOR Story 6"
+      ],
+      "evidence": {
+        "summary": "pnpm test 1129/1129, typecheck and specs check clean; by hand: cw charter, cw charter create, update --all and remove, and the portal's /charters routes, DELETE of an authored charter refused with 422; scenario 9, added on 2026-11-20, held by the tests of VENDOR Story 3 and CORE Stories 2, 8, 12, 33, 34 and 37, pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     },
     {
       "id": "VENDOR Story 2",
       "title": "Release the charters with `/charter-release`",
       "dependsOn": [
-        "VENDOR Story 1",
         "VENDOR Story 3"
       ],
       "evidence": {
-        "summary": "pnpm test 1114/1114 (lint:deps, biome, build), typecheck and specs check clean; by hand: a vendor build lays /vendor-release, cw init keeps the mark, a guide naming it refused, the vendor docs' commands run, and /vendor-release walked by an agent to its gate with nothing committed, pushed or tagged",
-        "date": "2026-11-19"
+        "summary": "Reworded for /charter-release by VENDOR Story 8, its scenarios 1 to 9 proved now by test/releasing-charters.test.ts (scenario 7 built into every repository, scenario 9 the README and changelog written at the first release); scenario 10, added on 2026-11-20 (a build changing what is committed, a version or date refused at draft), held there too; pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
+      }
+    },
+    {
+      "id": "VENDOR Story 1",
+      "title": "Set a repository releasing charters up in an empty folder",
+      "dependsOn": [
+        "VENDOR Story 2",
+        "VENDOR Story 7"
+      ],
+      "evidence": {
+        "summary": "Rewritten with VENDOR Story 7 and 8, its scenarios proved now by test/releasing-charters.test.ts (cw init and cw charter create in an empty folder: the charter held, empty, /charter-release laid, no mark in the settings) and test/pulling-a-charter.test.ts (cw vendor init refused as a command cw does not have); pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     },
     {
@@ -895,37 +918,17 @@
       }
     },
     {
-      "id": "VENDOR Story 6",
-      "title": "Pull a charter from its source with `cw charter pull`",
-      "dependsOn": [
-        "VENDOR Story 3"
-      ],
-      "evidence": {
-        "summary": "pnpm test 1129/1129 (lint:deps, biome, build), typecheck and specs check clean; by hand in a git repository: cw charter pull of every charter a source holds, --charter naming one the source installed, --charter=nope refused naming what it holds, --fork, and cw vendor refused",
-        "date": "2026-11-19"
-      }
-    },
-    {
-      "id": "VENDOR Story 7",
-      "title": "See, create, update and remove charters with `cw charter`",
-      "dependsOn": [
-        "VENDOR Story 6"
-      ],
-      "evidence": {
-        "summary": "pnpm test 1129/1129, typecheck and specs check clean; by hand: cw charter list, create, update --all and remove, and the portal's /charters routes, DELETE of an authored charter refused with 422",
-        "date": "2026-11-19"
-      }
-    },
-    {
       "id": "VENDOR Story 8",
       "title": "Release charters from any repository with `/charter-release`",
       "dependsOn": [
+        "VENDOR Story 1",
         "VENDOR Story 2",
-        "VENDOR Story 6"
+        "VENDOR Story 6",
+        "VENDOR Story 7"
       ],
       "evidence": {
-        "summary": "pnpm test 1129/1129, typecheck and specs check clean; a build lays /charter-release from the built-in charter, its release action script tested, the docs' commands run",
-        "date": "2026-11-19"
+        "summary": "typecheck and specs check clean; a build lays /charter-release from the built-in charter; test/releasing-charters.test.ts holds its scenarios, 5 to 10 added on 2026-11-20 (the install-all line naming each authored charter, the old markers refused, a README holding no section given it at its end, an installed charter that does not build refusing the release, named, one marker alone or the two out of order refused, the changelog kept in .cw/CHANGELOG.md and linked); test/configuring-a-repository.test.ts and test/pulling-a-charter.test.ts hold scenario 3; pnpm test 1151/1151 on 011-vendor-development",
+        "date": "2026-11-20"
       }
     }
   ]

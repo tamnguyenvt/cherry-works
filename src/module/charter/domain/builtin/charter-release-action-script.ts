@@ -32,15 +32,16 @@ the changelog says, are never its to decide.
 \`\`\`bash
 node <the path of charter-release-action.mjs> check [--branch <name>]
 node <the path of charter-release-action.mjs> readme
-node <the path of charter-release-action.mjs> draft
+node <the path of charter-release-action.mjs> draft [--version x.y.z] [--date yyyy-mm-dd]
 node <the path of charter-release-action.mjs> publish <version> <entry-file> [--date yyyy-mm-dd] [--branch <name>]
 \`\`\`
 
 The release branch is \`origin\`'s default branch, the one its \`HEAD\` names,
-whatever it is called: \`main\`, \`develop\` or another. With no \`origin\`, or an
-\`origin\` holding no commit yet, it is never guessed: **check** and **publish**
-stop, naming the branch stood on, until the branch the user confirms is passed
-as \`--branch <name>\`. A \`--branch\` other than \`origin\`'s default branch is
+whatever it is called: \`main\`, \`develop\` or another. Where \`origin\` names
+no default branch — it holds no commit yet — it is never guessed: **check** and
+**publish** stop, naming the branch stood on, until the branch the user confirms
+is passed as \`--branch <name>\`; an \`origin\` that cannot be reached stops them,
+saying so. A \`--branch\` other than \`origin\`'s default branch is
 refused.
 
 A charter the repository authored is a folder under \`.cw/charter/\` that git
@@ -51,29 +52,41 @@ released here.
   branch, the working tree is clean, the branch has an \`origin\` and is neither
   behind nor diverged from it there, and git ignores no file under
   \`.cw/charter/\`, which no install would hold; then it runs \`cw build\` at the root, and
-  stops naming each charter that does not build, with what the build said. No
+  stops naming each charter that does not build, with what the build said, or
+  naming what the build changed of what is committed. No
   primitive may hold or name what cw builds into every repository to release
   charters, so a
   charter building here builds with the charters it includes alone.
 - **readme** rewrites the section of \`README.md\` between
   \`<!-- charter-release-action: charters -->\` and \`<!-- /charter-release-action: charters -->\`
-  from the charters as built: the \`cw charter pull <owner>/<repository>\` that
-  installs every charter, the owner and repository read off \`origin\`, then for
+  from the charters as built: the \`cw charter pull <address>\` that
+  installs every charter the repository authored, naming each with
+  \`--charter=<name>\` so that none it installed is taken with them but one
+  an authored charter includes, the address the one \`origin\` names, a
+  credential an \`https://\` address carries left out, then for
   each charter the repository authored, the \`--charter=<name>\` that installs it
-  alone and a table of its skills with their descriptions. A skill is listed
+  alone and a table of its skills with their descriptions, and last a link to
+  \`.cw/CHANGELOG.md\`, the changelog of these charters. A skill is listed
   when it is kept under the charter's \`primitive/skill/\`; cw's own skills, such
   as \`cw-author\`, are left out. The rest of \`README.md\` is left as it is;
-  where there is no \`README.md\`, it is written holding that section alone.
+  where there is no \`README.md\`, it is written holding that section alone,
+  and where it holds no section, the section is put at its end; one holding
+  one of the two lines alone, or the two out of order, is refused.
+  A \`README.md\` holding the section under the markers an earlier
+  \`/vendor-release\` wrote is refused, naming the markers to rename.
 - **draft** reads the last release, the highest \`v<version>\` tag, and stops
-  unless the top \`## <version> — <date>\` heading of \`CHANGELOG.md\` names
-  it. It prints \`0.1.0\` with no tag, else the patch and the minor bump after
+  unless \`.cw/CHANGELOG.md\`, where it is there, opens with \`# Changelog\` and
+  its top \`## \` heading names it. It prints \`0.1.0\` with no tag, else the patch and the minor bump after
   it, what was removed or renamed under \`.cw/charter/\`, today's date and every
-  commit since; with none, it says there is nothing to release.
+  commit since; with none, it says there is nothing to release. With
+  \`--version\` or \`--date\`, it first refuses them as **publish** would: no
+  version, a tag already there, a version not after the last release, no date.
 - **publish** writes the entry the file holds as \`## <version> — <date>\`
-  under \`# Changelog\`, writing \`CHANGELOG.md\` where there is none, commits
+  under \`# Changelog\` in \`.cw/CHANGELOG.md\`, writing it where it is not
+  there and never reading a \`CHANGELOG.md\` at the root, commits
   it with what \`readme\` changed as \`release v<version>\`, pushes the release branch, makes the annotated tag \`v<version>\`
   and pushes it, in that order. It stops, writing nothing, where anything
-  but \`README.md\` and \`CHANGELOG.md\` changed since check. It
+  but \`README.md\` and \`.cw/CHANGELOG.md\` changed since check. It
   stops at the first step that fails, quoting its decisive line, saying which
   steps ran and the command that finishes the rest. It never force-pushes, and
   never moves or deletes a tag.`,

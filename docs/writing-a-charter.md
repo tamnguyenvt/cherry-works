@@ -1,7 +1,7 @@
 # Writing a charter
 
 A charter tells a coding agent how your team works: which rules apply to a
-file, how to carry out a request, and which checks the host runs automatically.
+file, how to carry out a request, and which checks the agent runs automatically.
 Write the sources under `.cw/charter/`, then run `cw build` to generate what the
 agent reads. This guide walks through a first rule and a reusable workflow.
 
@@ -50,9 +50,10 @@ cw doctor
 ```
 
 Review and commit the source together with the generated changes. Edit the
-source again whenever the rule changes, and rebuild. Generated files such as
-`.cw/out/`, `CLAUDE.md`, `AGENTS.md` and host settings are build outputs; keep
-your charter instructions in `.cw/charter/`.
+source again whenever the rule changes, and rebuild. `.cw/out/` and the agent
+settings are build outputs; `CLAUDE.md` and `AGENTS.md` are the repository's own,
+the build writing only the one section it marks in each. Keep your charter
+instructions in `.cw/charter/`.
 
 ## Choose the kind by its job
 
@@ -64,17 +65,17 @@ its kind before writing the body:
 | A standard for files or for every turn | `guide` | File globs select it; omitting globs makes it apply every turn |
 | Instructions for carrying out a request | `skill` | Its triggers match the request, or the user invokes it |
 | A workflow made of several skills | `playbook` | The agent follows its sequence when requested |
-| A command run automatically on an event | `sensor` | The host fires its signal and runs its command |
-| Permissions for files or commands | `posture` | Compiled into the host's supported permission controls |
+| A command run automatically on an event | `sensor` | The agent fires its signal and runs its command |
+| Permissions for files or commands | `posture` | Compiled into the agent's supported permission controls |
 | A delegated role | `agent` | Spawned by its id |
 | Reasoning behind a rule | `corpus` | Read when a primitive cites it as its rationale |
-| Instructions or headers shared by several primitives | `mixin` | Included by the primitives that name it |
+| Instructions shared by several primitives | `mixin` | Included by the primitives that name it |
 | An external MCP server | `mcp` | Reached through `cw run mcp` when referenced |
 | Executable files shipped with the charter | `script` | Referenced by another primitive or run by a sensor |
 | A document to fill in or copy | `template` | Read when another primitive references it |
 
 Run `cw kinds <kind>` for the fields and example of the kind you chose. Use
-that contract rather than borrowing headers from a host's native skill format.
+that contract rather than borrowing headers from an agent's native skill format.
 
 ## Name and scope each primitive
 
@@ -132,7 +133,7 @@ playbook when those steps are already useful skills of their own.
 A skill or playbook used only as a step can declare
 `disable-user-invocation: true`. One that must be started explicitly by the user
 can declare `disable-model-invocation: true`. Do not set both to true. See the
-[host mappings](reference.md#charter--agent-outputs) for how each agent supports
+[agent mappings](reference.md#charter--agent-outputs) for how each agent supports
 these controls.
 
 ## Reuse instructions and explain why
@@ -145,7 +146,7 @@ mixins: [review-reporting]
 ```
 
 Here, `useful-failure-messages` must be a corpus and `review-reporting` a mixin
-that your charter holds. A mixin lends its headers and body to its hosts; it
+that your charter holds. A mixin lends its body to the primitives that pull it in; it
 cannot pull in another mixin. In a markdown body, write `[[review-a-change]]`
 to reference that skill. The build resolves these references and reports names
 that do not exist.
@@ -158,7 +159,7 @@ and which tests name it.
 To copy a charter a source holds into a charter of your own:
 
 ```bash
-cw charter pull acme/charters --fork --charter=baseline --ref=v1.2.0
+cw charter pull git@github.com:acme/charters.git --fork --charter=baseline --ref=v1.2.0
 ```
 
 The source and ref must exist. Forking selects charters as `cw charter pull`
@@ -204,7 +205,7 @@ body. For that, use [evaluations](reference.md#evaluating-against-the-real-agent
 with a few representative requests; they run the real agent and spend tokens.
 
 Open `.cw/out/guide/explain-failures/index.md` to read the compiled guide,
-including any mixins and assets. Review the generated host changes too.
+including any mixins and assets. Review the generated agent changes too.
 `cw context` helps you spot instructions that make every session unnecessarily
 large.
 

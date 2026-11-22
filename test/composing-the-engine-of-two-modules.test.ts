@@ -880,7 +880,7 @@ test("a repository set up holds the charter's folder of charters, holding no cha
   assert.match((await adapters.fileReader.readIfThere(".cw/.gitignore")) ?? "", /^log\/$/m);
 });
 
-test("every command refuses a repository laid out the old way, naming the authoring skill (CORE Story 52 scenario 8)", async () => {
+test("every command refuses a repository laid out the old way, naming the authoring skill (CORE Story 52 scenario 8, VENDOR Story 3 scenario 7)", async () => {
   // Every command, each argument it requires given a value: the refusal comes
   // before any of them is run.
   for (const argv of COMMANDS.map((command) =>

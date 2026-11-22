@@ -36,13 +36,13 @@ const OPTIONS = {
 
 /**
  * `cw charter pull`: install charters this repository did not author, or
- * bring them up to date; with `--fork`, copy them in as its own (FR-023,
+ * bring them up to date; with `--fork`, copy them in as its own (CORE-FR-047,
  * VENDOR-FR-017, VENDOR-FR-022).
  *
  * The source is passed on as it was typed. Which transport it names, whether
  * the sign-in to it is there, whether the version exists: git answers all of
  * that, and what git says is what the user reads — there is no second
- * opinion here to disagree with it (FR-031).
+ * opinion here to disagree with it (CORE-FR-049).
  *
  * With no `--charter`, every charter the source holds is pulled, authored
  * or installed there alike; `--charter` names charters, each pulled whole with every charter of the
@@ -54,7 +54,7 @@ const OPTIONS = {
  * What is pulled is left unstaged for the user to read and commit, whatever
  * else is in hand; and the build that compiles it is not run here: a charter is
  * read and compiled by `cw build`, which is the one command that writes what
- * an agent reads (FR-020).
+ * an agent reads (CORE-FR-052).
  */
 export class CharterPullCommand implements Command<typeof OPTIONS> {
   readonly name = "charter pull <source>";

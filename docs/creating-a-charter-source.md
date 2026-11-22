@@ -9,9 +9,9 @@ coding agent.
 Every primitive belongs to a charter its author names, kept at
 `.cw/charter/<charter>/primitive/<kind>/<id>/`, its test cases under
 `.cw/charter/<charter>/test/` and its eval cases under
-`.cw/charter/<charter>/eval/`. A source publishes every charter it holds: the
-ones it authored, and the ones it installed itself, each of those copied as it
-stands. What a build writes is never installed.
+`.cw/charter/<charter>/eval/`. Every charter a source holds can be pulled from
+it: the ones it authored, and the ones it installed itself, each of those copied
+as it stands; `/charter-release` releases the ones it authored alone. What a build writes is never installed.
 
 ## 1. Create the source repository
 
@@ -61,8 +61,8 @@ Your published source has this shape:
 ```text
 charter-baseline/
 ├── README.md
-├── CHANGELOG.md
 └── .cw/
+    ├── CHANGELOG.md
     ├── settings.json
     └── charter/
         └── baseline/
@@ -74,10 +74,13 @@ charter-baseline/
                 └── baseline.json
 ```
 
-`README.md` and `CHANGELOG.md` are written by the first `/charter-release`
-where there are none. Leave what `cw build` writes out of git: `.cw/out/`, and
-each agent's files, such as `.claude/`, `.agents/`, `.codex/`, `.mcp.json`,
-`CLAUDE.md` and `AGENTS.md`.
+`README.md` and `.cw/CHANGELOG.md`, the changelog of the charters, are written
+by the first `/charter-release` where they are not there, the README linking
+to the changelog; a `CHANGELOG.md` at the root is the repository's own, never
+read. Leave what `cw build` writes out of git: `.cw/out/`, and
+each agent's files, such as `.claude/`, `.agents/`, `.codex/` and `.mcp.json`.
+`CLAUDE.md` and `AGENTS.md` are the repository's own: the build writes only the
+section it marks in each.
 
 Add skills, playbooks, templates or other primitives under their respective
 kind folders. Run `cw kinds <kind>` to see the fields each kind accepts.
@@ -129,7 +132,7 @@ Create `.cw/charter/baseline/test/baseline.json`:
 Check the charters at the root, commit and push, then ask your agent
 `/charter-release` there: it checks the default branch of `origin`, clean and
 level with it, builds the charters at the root, lists how to install each one
-and its skills in the README, proposes the version and the changelog entry,
+it authored and its skills in the README, never one it installed, proposes the version and the changelog entry,
 and once you confirm, commits, pushes and tags.
 
 ```bash
@@ -186,12 +189,13 @@ so uncommitted source changes are not installed.
 ## 5. Publish updates
 
 Edit the source primitives, rerun the checks, commit, push, and ask
-`/charter-release` again; it proposes the next version, such as `v0.2.0`.
+`/charter-release` again; it proposes the next version, such as `v0.1.1`, or
+`v0.2.0` where what landed breaks an install.
 Consumers opt into a version by pulling it, or into the newest with
 `cw charter update`:
 
 ```bash
-cw charter pull git@github.com:your-org/charter-baseline.git --charter=baseline --ref v0.2.0
+cw charter pull git@github.com:your-org/charter-baseline.git --charter=baseline --ref v0.1.1
 cw charter update --charter=baseline
 cw charter update --all
 cw build
@@ -229,14 +233,15 @@ of its own:
 
 Keep ids unique across every charter: one id names one primitive in the whole
 charter root. A charter's name must not be a primitive kind such as `guide` or
-`skill`, nor `primitive`, `test`, `eval`, `vendor` or `root`.
+`skill`, nor `primitive`, `test`, `eval` or `vendor`; `root` is refused where a
+charter is created or pulled under that name.
 
 Consumers take every charter, or pick some:
 
 ```bash
-cw charter pull your-org/charters --ref v1.0.0
-cw charter pull your-org/charters --charter=baseline --charter=reviews --ref v1.0.0
-cw charter pull your-org/charters --charter=reviews --as=team-reviews --ref v1.0.0
+cw charter pull git@github.com:your-org/charters.git --ref v1.0.0
+cw charter pull git@github.com:your-org/charters.git --charter=baseline --charter=reviews --ref v1.0.0
+cw charter pull git@github.com:your-org/charters.git --charter=reviews --as=team-reviews --ref v1.0.0
 ```
 
 Each lands under `.cw/charter/<charter>/`, or the name `--as` gives it, and

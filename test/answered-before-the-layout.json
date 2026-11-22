@@ -140,7 +140,7 @@
   {
     "args": "charter remove --charter <listed charter>",
     "status": 0,
-    "stdout": "Removed .cw/charter/grill.\nRun \"cw build\" to compile this charter without it.\n",
+    "stdout": "Removed .cw/charter/grill.\nRun \"cw build\" to build the charter root without it.\n",
     "stderr": ""
   },
   {

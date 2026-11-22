@@ -18,7 +18,7 @@ export {
  * library or a test's own answer tomorrow — is the adapter's business.
  *
  * The folder a source lands in need not be a repository: nothing here needs a
- * repository, and nothing here writes to one (FR-023, CORE-FR-205).
+ * repository, and nothing here writes to one (CORE-FR-205).
  */
 export interface ForFetchingCharterSources {
   /**
@@ -56,7 +56,7 @@ export interface ForFetchingCharterSources {
    * at this folder of this repository, replacing whatever that folder held and
    * nothing beside it. The empty path is the commit's root. Nothing is staged
    * and nothing is committed: what lands is left in the working tree for the
-   * user to read, whatever else is in hand (FR-023, FR-042).
+   * user to read, whatever else is in hand (CORE-FR-052, CORE-FR-042).
    */
   checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
 

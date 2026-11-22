@@ -209,7 +209,7 @@ test("a source holding no charter at the version asked for is refused as no char
   assert.match(commandOutput, /at the version asked for/);
 });
 
-test("a source keeping installed charters of its own the old way, under .cw/charter/vendor/, is refused as laid out the old way (VENDOR Story 3 scenario 4)", async () => {
+test("a source keeping installed charters of its own the old way, under .cw/charter/vendor/, is refused as laid out the old way (CORE-FR-226, CORE Story 52 scenario 9)", async () => {
   const sourceFetcher = new InMemorySources();
   sourceFetcher.sourceFilesBySource["team/stacked"] = {
     ...publishedCharterFiles,
@@ -272,6 +272,25 @@ const fileReadersHoldingInstalledCharter = (charterName: string) =>
 const installedFiles = async (fileReaders: InMemoryFileReaders) =>
   (await fileReaders.readFilesRecursively(new URL(`file://${repo}/.cw/charter/`))).map(({ fileUrl }) => fileUrl.href);
 
+test("cw list --charter lists that charter's primitives alone, and refuses a name no charter is held under, naming those held (VENDOR Story 3 scenario 33, VENDOR-FR-016)", async () => {
+  const fileReaders = new InMemoryFileReaders({
+    [`file://${repo}/.cw/charter/charter/cw-package.json`]: `${JSON.stringify({ charter: "charter", source: "other/charter", version: "HEAD" })}\n`,
+    [`file://${repo}/.cw/charter/charter/primitive/guide/one/index.md`]:
+      "---\nkind: guide\nid: one\ndescription: One.\n---\n",
+    [`file://${repo}/.cw/charter/team/primitive/guide/three/index.md`]:
+      "---\nkind: guide\nid: three\ndescription: Three.\n---\n",
+  });
+
+  const listingRun = await running(["list", "--charter=team"], undefined, fileReaders);
+  assert.equal(listingRun.code, EXIT_OK, listingRun.commandOutput);
+  assert.match(listingRun.commandOutput, /\bthree\b/);
+  assert.doesNotMatch(listingRun.commandOutput, /\bone\b/);
+
+  const unknownRun = await running(["list", "--charter=nope"], undefined, fileReaders);
+  assert.equal(unknownRun.code, EXIT_FAILURE, unknownRun.commandOutput);
+  assert.match(unknownRun.commandOutput, /charter, team/);
+});
+
 test("an installed charter is taken away whole by its name (CORE Story 37 scenario 2, VENDOR Story 3 scenario 21)", async () => {
   const { code, commandOutput, fileReaders } = await running(
     ["charter", "remove", "--charter=charter"],
@@ -288,7 +307,7 @@ test("an installed charter is taken away whole by its name (CORE Story 37 scenar
   );
 });
 
-test("installed charter commands leave what the engine brings alone: it is listed as no installed charter, removed by no name, and still read after an installed charter goes (CORE Story 12 scenario 6, FR-023, CORE Story 55 scenario 3)", async () => {
+test("installed charter commands leave what the engine brings alone: it is listed as no installed charter, removed or updated by no name, and still read after an installed charter goes (CORE Story 12 scenario 6, FR-023, CORE Story 55 scenario 3)", async () => {
   const builtSkillUrls = [".cw/out/skill/cw-author/index.md", ".claude/skills/cw-author/SKILL.md"].map(
     (path) => new URL(`file://${repo}/${path}`),
   );
@@ -303,6 +322,8 @@ test("installed charter commands leave what the engine brings alone: it is liste
     const removingRun = await running(["charter", "remove", `--charter=${builtinName}`], undefined, fileReaders);
     assert.equal(removingRun.code, EXIT_FAILURE, builtinName);
     assert.match(removingRun.commandOutput, /holds no charter/, builtinName);
+    const updatingRun = await running(["charter", "update", `--charter=${builtinName}`], undefined, fileReaders);
+    assert.equal(updatingRun.code, EXIT_FAILURE, builtinName);
   }
   assert.equal((await running(["charter", "remove", "--charter=charter"], undefined, fileReaders)).code, EXIT_OK);
 
@@ -407,7 +428,7 @@ test("cw charter pull --fork takes the same source, version and charter flags as
   ]);
 });
 
-test("cw vendor and every command it held are refused as commands cw does not have, writing nothing (VENDOR Story 6 scenario 4, VENDOR Story 8 scenario 3, VENDOR-SC-007)", async () => {
+test("cw vendor and every command it held are refused as commands cw does not have, writing nothing (VENDOR Story 6 scenario 4, VENDOR Story 8 scenario 3, VENDOR Story 1 scenario 2, VENDOR-FR-033, VENDOR-SC-007)", async () => {
   for (const commandArgs of [
     ["vendor"],
     ["vendor", "add", "team/charter"],

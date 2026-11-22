@@ -9,11 +9,12 @@ import {
 } from "./command.interface.js";
 import { formatKindHeading, formatMention, layAnswerRows, printProblem, reportFault } from "./helper.js";
 
-/** What `cw list` takes: which kind to narrow to, and how much of each
- *  primitive to say. Both are how the listing is read, never what is in it —
+/** What `cw list` takes: which kind and which charter to narrow to, and how
+ *  much of each primitive to say. Each is how the listing is read, never what is in it —
  *  the listing is the charter's own and this command only asks it for less. */
 const OPTIONS = {
   kind: { type: "string", describe: "Only the primitives of this kind" },
+  charter: { type: "string", describe: 'Only the primitives of this charter: "team"' },
   min: {
     type: "boolean",
     describe: "What an agent surveys by: id and description, nothing else",
@@ -46,8 +47,11 @@ export class ListCommand implements Command<typeof OPTIONS> {
   readonly summary = "Say what the charter holds";
   readonly options = OPTIONS;
 
-  async runCommand({ charterAuthoringApp }: Context, { kind, min: isMin }: Options<typeof OPTIONS>): Promise<Outcome> {
-    const catalogueDTO = await charterAuthoringApp.listCatalogue(kind);
+  async runCommand(
+    { charterAuthoringApp }: Context,
+    { kind, charter: charterName, min: isMin }: Options<typeof OPTIONS>,
+  ): Promise<Outcome> {
+    const catalogueDTO = await charterAuthoringApp.listCatalogue(kind, charterName);
     if (catalogueDTO.type === "Fault") return reportFault(catalogueDTO);
 
     if (catalogueDTO.type === "FaultsByFile") {

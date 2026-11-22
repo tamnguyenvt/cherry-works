@@ -49,16 +49,16 @@ interface ForManagingWorkspace {
      *  was composed to compile for (CORE-FR-221). */
     readonly agentProviderNames: readonly string[];
     /** The settings the repository keeps; none is a repository never set up,
-     *  which chose no agent (FR-019). */
+     *  which chose no agent (CORE-FR-031). */
     readWorkspaceSettings(): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
     /**
-     * The repository set up for these agents (FR-032 – FR-038): its settings
+     * The repository set up for these agents (CORE-FR-054 – CORE-FR-058): its settings
      * kept, the ceiling kept where one was set now or before and written only
      * where it is not the 20,000 none means, and version control told to ignore
      * the log, once, every other line of its ignore file kept (CORE-FR-225), and a
      * README written where it has none, naming the `cw` that set it up.
      * No agent, an agent this engine compiles for none of, and a ceiling that
-     * is no whole number above 0 are refused, nothing kept (FR-033).
+     * is no whole number above 0 are refused, nothing kept (CORE-FR-055).
      */
     setUpWorkspace(agents: readonly string[], cwVersion: string, mainContextCeiling?: number): Promise<WorkspaceDTOs.WorkspaceSettings | FaultDTOs.Fault>;
 }

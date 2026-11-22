@@ -74,11 +74,11 @@ export class AddCommand implements Command<typeof OPTIONS> {
   ): Promise<Outcome> {
     let charterName = charter ?? "";
     if (charter === undefined && isAtTerminal) {
-      const chartersDTO = await charterAuthoringApp.listCharters();
-      if (chartersDTO.type === "Fault") return reportFault(chartersDTO);
-      const authoredCharterNames = chartersDTO.data.charters
-        .filter((charterDTO) => !charterDTO.data.isInstalled)
-        .map((charterDTO) => charterDTO.data.name);
+      const charterMetadataListDTO = await charterAuthoringApp.listCharters();
+      if (charterMetadataListDTO.type === "Fault") return reportFault(charterMetadataListDTO);
+      const authoredCharterNames = charterMetadataListDTO.data.charters
+        .filter((charterMetadataDTO) => !charterMetadataDTO.data.isInstalled)
+        .map((charterMetadataDTO) => charterMetadataDTO.data.name);
       const charterAnswer =
         authoredCharterNames.length === 0
           ? await prompts({ type: "text", name: "charterName", message: "Which charter is it written into?" })

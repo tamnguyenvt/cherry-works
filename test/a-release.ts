@@ -10,7 +10,10 @@ export interface ReleaseFixture {
   /** The version asked for. */
   nextVersion: string;
   /** What the fake commands do: `dry-run`, `publish` and `unpublished`
-   *  pass, the last with the package never published; `tests-fail`,
+   *  pass, the last with the package never published; `stable` marks a
+   *  published version stable, and `stable-unpublished`, `stable-dry-run`,
+   *  `stable-push-fails` and `dist-tag-fails` fail where they say;
+   *  `tests-fail`,
    *  `uncommitted`, `install-fails`, `cw-build-fails`, `cw-version-wrong`, `library-version-wrong`, `maintainer-denied`,
    *  `already-published`, `commit-fails`, `publish-fails` and `push-fails`
    *  fail where they say. */
@@ -24,6 +27,8 @@ export interface ReleaseFixture {
    *  `contract/`, by file name, in place of `lastContractText`. */
   lastContractTextByFileName?: Readonly<Record<string, string>>;
   changelogText?: string;
+  /** The stable version the README names; the current one where none. */
+  stableVersion?: string;
 }
 
 /** A release run by `scripts/release.ts` itself in a folder of its own, with
@@ -55,7 +60,7 @@ export async function inARelease(
     );
     await writeFile(
       join(fixtureFolder, "README.md"),
-      `# Fixture\n\nCurrent version: **${releaseFixture.currentVersion}**\n\nKeep this text.\n`,
+      `# Fixture\n\nCurrent version: **${releaseFixture.currentVersion}**\n\nStable version: **${releaseFixture.stableVersion ?? releaseFixture.currentVersion}**\n\nKeep this text.\n`,
     );
     await writeFile(join(fixtureFolder, "built-contract.d.ts"), releaseFixture.builtContractText);
     const lastContractTextByFileName =
@@ -93,7 +98,7 @@ if (commandName === 'pnpm') {
     }
     console.info(JSON.stringify([releaseMode === 'maintainer-denied' ? 'someone <someone@example.test>' : 'maintainer <fixture@example.test>']));
   }
-  if (commandArguments[0] === 'view' && commandArguments[2] === 'version' && releaseMode === 'already-published') {
+  if (commandArguments[0] === 'view' && commandArguments[2] === 'version' && ['already-published', 'stable', 'stable-dry-run', 'stable-push-fails', 'dist-tag-fails'].includes(releaseMode)) {
     console.info(commandArguments[1].split('@').at(-1));
   }
   if (commandArguments[0] === 'pack') {
@@ -113,9 +118,10 @@ if (commandName === 'pnpm') {
     fs.writeFileSync(path.join(libraryFolder, 'index.js'), 'export const VERSION = "' + (releaseMode === 'library-version-wrong' ? '0.0.0' : packageVersion) + '";\\n');
   }
   if (commandArguments[0] === 'publish' && releaseMode === 'publish-fails') process.exit(1);
+  if (commandArguments[0] === 'dist-tag' && releaseMode === 'dist-tag-fails') process.exit(1);
 } else if (commandName === 'git') {
   if (commandArguments[0] === 'status' && releaseMode === 'uncommitted') console.info(' M README.md');
-  if (commandArguments[0] === 'push' && releaseMode === 'push-fails') process.exit(1);
+  if (commandArguments[0] === 'push' && ['push-fails', 'stable-push-fails'].includes(releaseMode)) process.exit(1);
   if (commandArguments[0] === 'rev-parse' && commandArguments.includes('--verify')) process.exit(1);
   if (commandArguments[0] === 'rev-parse') console.info('fixture-commit');
   if (commandArguments[0] === 'branch') console.info('develop');
@@ -145,7 +151,10 @@ if (commandName === 'pnpm') {
         import.meta.resolve("tsx"),
         join(fixtureFolder, "scripts/release.ts"),
         releaseFixture.nextVersion,
-        ...(releaseFixture.releaseMode === "dry-run" ? ["--dry-run"] : []),
+        ...(["dry-run", "stable-dry-run"].includes(releaseFixture.releaseMode) ? ["--dry-run"] : []),
+        ...(releaseFixture.releaseMode.startsWith("stable") || releaseFixture.releaseMode === "dist-tag-fails"
+          ? ["--stable"]
+          : []),
       ],
       {
         cwd: fixtureFolder,

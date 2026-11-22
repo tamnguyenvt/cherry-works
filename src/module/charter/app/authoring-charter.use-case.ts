@@ -129,7 +129,10 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
    * Reads and says: this holds a writing port and never reaches for it, which is
    * what keeps a reading use case unable to write (FR-041).
    */
-  async listCatalogue(kind?: string): Promise<CharterDTOs.Catalogue | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
+  async listCatalogue(
+    kind?: string,
+    charterName?: string,
+  ): Promise<CharterDTOs.Catalogue | FaultDTOs.FaultsByFile | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.listCatalogue", async () => {
       // Asked before the charter is read: a word that is no kind leaves this
       // nothing to narrow by, so it is answered as one fault rather than under a
@@ -141,6 +144,11 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
           `Ask for one the charter knows: ${Primitives.kinds.join(", ")}.`,
           { internal: false },
         );
+      // A charter named is one held (VENDOR-FR-016).
+      if (charterName !== undefined)
+        (await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository)).findCharterOrFault(
+          charterName,
+        );
 
       // A warning is said and lets the run through; what refuses it is only the
       // errors among the faults (FR-005, FR-009).
@@ -149,11 +157,17 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
       if (!charterErrorFaultsByFile.isEmpty) return this.faultsByFileDTOOf(charterErrorFaultsByFile);
 
       const catalogue = CatalogueFactory.create(charterRoot, (primitive) => primitive.uri);
+      const charterPrimitiveUris = new Set(
+        charterRoot.primitives
+          .filter((primitive) => primitive.layer.charterName === charterName)
+          .map((primitive) => primitive.uri),
+      );
       return CharterDTOs.Catalogue.of({
         // Each entry copied out of its model, so the caller is answered plain
         // data (CORE-FR-223).
-        entries: (kind === undefined ? catalogue : catalogue.filterByKind(kind)).entries.map(
-          ({ agentProviders, id, kind: entryKind, description, file: filePath, globs }) =>
+        entries: (kind === undefined ? catalogue : catalogue.filterByKind(kind)).entries
+          .filter(({ file: filePath }) => charterName === undefined || charterPrimitiveUris.has(filePath))
+          .map(({ agentProviders, id, kind: entryKind, description, file: filePath, globs }) =>
             CharterDTOs.CatalogueEntry.of({
               agentProviders:
                 agentProviders === "all" ? "all" : agentProviders.map((agentProvider) => agentProvider.name),
@@ -163,7 +177,7 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
               file: filePath,
               ...(globs === undefined ? {} : { globs }),
             }),
-        ),
+          ),
       });
     });
   }
@@ -366,16 +380,18 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
           charterNameFix,
           { internal: false },
         );
-      if (!new ValidCharterNameSpec().isSatisfiedBy(charterName))
+      const writtenCharterMetadata = charterMetadataList.findCharter(charterName);
+      // A name is checked where it makes a charter, never where one is held
+      // under it (VENDOR-FR-014, VENDOR-FR-020).
+      if (writtenCharterMetadata === undefined && !new ValidCharterNameSpec().isSatisfiedBy(charterName))
         throw new ReservedCharterNameFault(
           `"${charterName}" cannot name a charter: a charter is named as an id is, and never as a kind is, as a folder an older layout kept, nor as root.`,
           charterNameFix,
           { internal: false },
         );
-      const writtenCharter = charterMetadataList.findCharter(charterName);
-      if (writtenCharter?.isInstalled)
+      if (writtenCharterMetadata?.isInstalled)
         throw new ReadOnlyCharterFault(
-          `${charterName} was installed, and ${writtenCharter.uri} is read-only here.`,
+          `${charterName} was installed, and ${writtenCharterMetadata.uri} is read-only here.`,
           `Write it into a charter of your own: ${charterMetadataList.authoredCharters.map(({ name }) => name).join(", ") || "a new one"}.`,
           { internal: false },
         );
@@ -586,10 +602,10 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
           { internal: false },
         );
       const charterMetadataList = await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository);
-      const heldCharter = charterMetadataList.findCharter(charterName);
-      if (heldCharter !== undefined)
+      const heldCharterMetadata = charterMetadataList.findCharter(charterName);
+      if (heldCharterMetadata !== undefined)
         throw new HeldCharterNameFault(
-          `A charter is already held under "${charterName}": ${heldCharter.uri}.`,
+          `A charter is already held under "${charterName}": ${heldCharterMetadata.uri}.`,
           "Name the new charter otherwise.",
           { internal: false },
         );
@@ -605,13 +621,13 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   async updateCharters(charterName: string, isAll: boolean): Promise<CharterDTOs.CharterPullOutcome | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.updateCharters", async () => {
       const charterMetadataList = await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository);
-      const updatedCharters = charterMetadataList.findTargetChartersOrFault(
+      const updatedCharterMetadatas = charterMetadataList.findTargetChartersOrFault(
         charterName,
         isAll,
         true,
         'Run "cw charter update --charter=<name>" for one installed charter, or "cw charter update --all" for every one.',
       );
-      const installedCharterRecords = updatedCharters.flatMap(({ name, installedCharterRecord }) =>
+      const installedCharterRecords = updatedCharterMetadatas.flatMap(({ name, installedCharterRecord }) =>
         installedCharterRecord === undefined ? [] : [{ charterName: name, installedCharterRecord }],
       );
       // Every source fetched once, before anything is written, so one that
@@ -693,14 +709,14 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
   ): Promise<CharterDTOs.CharterMetadataList | FaultDTOs.Fault> {
     return this.answerWithFaultDTO("AuthoringCharter.removeCharters", async () => {
       const charterMetadataList = await this.#loadCharterService.loadCharterMetadataList(this.#charterRepository);
-      const removedCharters = charterMetadataList.findTargetChartersOrFault(
+      const removedCharterMetadatas = charterMetadataList.findTargetChartersOrFault(
         charterName,
         isAll,
         isInstalledOnly,
         'Run "cw charter remove --charter=<name>" for one charter, or "cw charter remove --all" for every one.',
       );
-      for (const { name } of removedCharters) await this.#charterRepository.removeCharter(name);
-      return this.#charterMetadataListDTOOf(removedCharters);
+      for (const { name } of removedCharterMetadatas) await this.#charterRepository.removeCharter(name);
+      return this.#charterMetadataListDTOOf(removedCharterMetadatas);
     });
   }
 
@@ -1137,16 +1153,16 @@ export class AuthoringCharter extends ApplicationService implements ForAuthoring
         { internal: false },
       );
     const writtenCharterName = charterName === "" ? (onlyAuthoredCharter?.name ?? "") : charterName;
-    if (!new ValidCharterNameSpec().isSatisfiedBy(writtenCharterName))
+    const writtenCharterMetadata = charterMetadataList.findCharter(writtenCharterName);
+    if (writtenCharterMetadata === undefined && !new ValidCharterNameSpec().isSatisfiedBy(writtenCharterName))
       throw new ReservedCharterNameFault(
         `"${writtenCharterName}" cannot name a charter: a charter is named as an id is, and never as a kind is, as a folder an older layout kept, nor as root.`,
         `Name one with "--charter=<name>".`,
         { internal: false },
       );
-    const writtenCharter = charterMetadataList.findCharter(writtenCharterName);
-    if (writtenCharter?.isInstalled)
+    if (writtenCharterMetadata?.isInstalled)
       throw new ReadOnlyCharterFault(
-        `${writtenCharterName} was installed, and ${writtenCharter.uri} is read-only here.`,
+        `${writtenCharterName} was installed, and ${writtenCharterMetadata.uri} is read-only here.`,
         `Write into a charter of your own: ${authoredCharters.map(({ name }) => name).join(", ") || "a new one"}.`,
         { internal: false },
       );

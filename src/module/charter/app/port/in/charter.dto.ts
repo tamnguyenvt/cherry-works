@@ -140,7 +140,7 @@ const TestCaseSchema = dto(
   }),
 );
 
-/** One test file, by its name under `.cw/charter/test/`: the text it holds, what it is
+/** One test file, by its name under `.cw/charter/<charter>/test/`: the text it holds, what it is
  *  about and the cases it pins down, or — for a file that does not read — why
  *  not (FR-124). */
 const TestSuiteSchema = dto(
@@ -163,7 +163,7 @@ const TestSuitesSchema = dto(
   }),
 );
 
-/** The name of one test file under `.cw/charter/test/`, written or taken away
+/** The name of one test file under `.cw/charter/<charter>/test/`, written or taken away
  *  (FR-090 – FR-092). */
 const TestSuiteNameSchema = dto(
   "TestSuiteName",

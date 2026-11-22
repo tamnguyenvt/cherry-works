@@ -41,60 +41,49 @@ below this comment; leave that section to it. -->
 What the user chose on purpose: a pass checks it against this list and counts
 none of it as a warning or a violation.
 
-- `cw vendor init` checks its folder, runs git and writes its template in
-  `src/presentation/cli/commands/vendor-init.command.ts`: it is CLI-only work,
-  neither the charter's nor runtime's (2026-11-19).
-- [VENDOR Story 1](spec-vendor.md#vendor-story-1---set-a-charter-repository-up-in-an-empty-folder-priority-p2) scenario 6: an answer on more than one line cannot be typed
-  at a terminal, so no test holds that case; the blank name and the empty
-  description are held (2026-11-19).
-
 ## Last pass
 
-**Date**: 2026-11-19
+**Date**: 2026-11-20
 
-**Cross-check story**: [VENDOR Story 5](spec-vendor.md#vendor-story-5---quality-cross-check-of-core-story-72-vendor-story-1-vendor-story-2-vendor-story-3-priority-p3), on task/vendor-5-quality-cross-check (the working tree over 2e36cb0), the thirteenth pass
+**Cross-check story**: on request, on 011-vendor-development over `222d10d` with its working tree, after [VENDOR Story 6](spec-vendor.md#vendor-story-6---pull-a-charter-from-its-source-with-cw-charter-pull-priority-p1), [VENDOR Story 7](spec-vendor.md#vendor-story-7---see-create-update-and-remove-charters-with-cw-charter-priority-p1) and [VENDOR Story 8](spec-vendor.md#vendor-story-8---release-charters-from-any-repository-with-charter-release-priority-p2) landed; the passes of 2026-11-19 and 2026-11-20 run until one found nothing
 
-**Product grade**: **A** — every item passes; the two choices `## Bypassed` lists are not counted.
+**Product grade**: **A** — every item passes. The last code pass (the forty-seventh) and the last spec pass (the fifty-fifth) found nothing, and only the specs, `CHANGELOG.md` and `docs/` changed between them. Each pass since the first, of 2026-11-19, which graded D, repaired what the one before found.
 
 ### Scope and evidence
 
-Read `spec.md`, the four specs, `plan.json`, `manifest.md`, `docs/`, `README.md` and the guides; checked the code and tests of [CORE Story 72](spec-core.md#core-story-72---read-the-charter-grouped-by-kind-in-cw-list-priority-p2) and VENDOR Stories 1, 2 and 3 (`4b677d5`, `421f9fc`, `16bb4a4`, `2e36cb0`) against every item. Thirteen passes, each by sdd-review-agent (claude-opus-5-5), the first two with one reviewer for the code and one for the specs; what each found was repaired in this story before the next, as the assumption on cross-checks from [CORE Story 55](spec-core.md#core-story-55---quality-cross-check-of-sdk-story-8-core-story-53-sdk-story-10-core-story-56-eval-story-9-priority-p3) on says.
+Read `spec.md`, the four specs, `plan.json`, `manifest.md`, `README.md`, `CHANGELOG.md`, `docs/`, `contract/` and the guides; checked the whole codebase against every story. Each pass by sdd-review-agent reviewers (claude-opus-5-5), one for the code against the stories, one for the specs against each other and against the docs; each finding was read again at its line before it was counted or repaired.
 
 | Check | First run | Second run |
 |---|---|---|
 | `pnpm typecheck` | passed | — |
-| `pnpm lint:deps` | no violation (342 modules, 1129 dependencies) | — |
-| `pnpm test` (dependency rules, Biome, builds, tests) | 1120 passed; 0 failed; 0 skipped | 1120 passed; 0 failed; 0 skipped |
+| `pnpm test` (dependency rules, Biome, builds, tests) | 1151 passed; 0 failed; 0 skipped | 1151 passed; 0 failed; 0 skipped |
 | `node --test .cw/out/script/sdd-specs/specs.test.mjs` | 70 passed; 0 failed | — |
 | `node .cw/out/script/sdd-specs/specs.mjs check` | passed | — |
 
-### Results for each checklist item
+### Results for each checklist item, last pass
 
-| Item | Result | Violations |
-|---|---|---|
-| Every scenario of a `Done` story is held by a test or by its evidence | **pass** | |
-| Every test and static check passes twice, none skipped | **pass** | |
-| The code of each `Done` story does what its FR say | **pass** | |
-| No code beyond the FR, nothing out of scope built | **pass** | |
-| The code keeps the guides that apply to it | **pass** | |
-| Consistent | **pass** | |
-| Complete | **pass** | |
-| No conflict | **pass** | |
-| Roadmap | **pass** | `check` passes; [VENDOR Story 5](spec-vendor.md#vendor-story-5---quality-cross-check-of-core-story-72-vendor-story-1-vendor-story-2-vendor-story-3-priority-p3) `In Progress` |
-| Format | **pass** | |
+| Item | Result |
+|---|---|
+| Every scenario of a `Done` story is held by a test or by its evidence | **pass** |
+| Every test and static check passes twice, none skipped | **pass** |
+| The code of each `Done` story does what its FR say | **pass** |
+| No code beyond the FR, nothing out of scope built | **pass** |
+| The code keeps the guides that apply to it | **pass** |
+| Consistent | **pass** |
+| Complete | **pass** |
+| No conflict | **pass** |
+| Roadmap | **pass** — `check` passes, no story `ready` |
+| Format | **pass** |
 
-### Violations and proposed repairs
+### What the passes repaired, by the user's choices
 
-None left. Repaired in this story, by pass:
+- The specs and the roadmap brought to what VENDOR Stories 6, 7 and 8 made true: old clarifications annotated "(now …)", one term for each thing (the charter source, the charters' changelog, a charter release, a release of `cw`), VENDOR Stories 1, 2 and 3 marked as reworded by the later stories, and `plan.json` in build order with each dependency borne out.
+- `root` a name refused only where a charter is made or pulled; a charter `.cw/charter/root/` made by hand read as any.
+- `/charter-release` lists the charters the repository authored alone, naming each on the line installing them all, and is refused where any charter held does not build; it puts its section at the end of a README holding none, refuses one marker alone and the markers of `/vendor-release`, and keeps the charters' changelog in `.cw/CHANGELOG.md`, linked from the README, a `CHANGELOG.md` at the root never read.
+- A release of `cw` publishes under npm's tag `next` as the current version; `pnpm release <version> --stable` marks a published version stable, what `npm install -g cherry-works` installs; the README names both versions and how to install each ([CORE-FR-247](spec-core.md#core-fr-247)).
+- `CHANGELOG.md` names the move into named charters, `--charter` on `cw add`, `cw test` and `cw eval`, the two install channels and the charters' changelog; the README gains a Discord line, a `/cw-author` paragraph and `## Contributors`.
+- The passes of 2026-11-20 after the ninth, run without asking: `/charter-release` writes the address `origin` names into the README, a credential left out, refuses before it writes anything of its own — a build changing what is committed, a changelog not opening with `# Changelog`, a version or date `draft --version --date` refuses — and writes the README only after the gate; `cw list --charter` gives the command line what the portal lists; the library exports every type its ports take or name, a test holding it; the changelog names every change to the library's contract since 1.3.0; and the specs, `plan.json`, the test labels, the port comments and `docs/` were brought to one another and to the code.
 
-- Pass 1: the contract test raced a probe file another test puts in `src/` (`scripts/bundle-contract.ts` skips `.probe.` files); scenarios no test held got tests ([VENDOR Story 1](spec-vendor.md#vendor-story-1---set-a-charter-repository-up-in-an-empty-folder-priority-p2) scenario 6's blank name, Story 2 scenario 6's tag push, Story 3 scenario 1 for both agents, 29, 30); `InstallCharterService` moved to the domain as `CharterInstallService`; CORE, EVAL and VENDOR specs, `spec.md`, `plan.json`'s order and the docs brought to the charter root (`.cw/charter/<charter>/`, `cw-vendor.json`, `--as`). `cw vendor inject --as` written into [VENDOR-FR-022](spec-vendor.md#vendor-fr-022) (the user).
-- Pass 2: the rest of the specs, docs and README brought to the charter root; [VENDOR Story 1](spec-vendor.md#vendor-story-1---set-a-charter-repository-up-in-an-empty-folder-priority-p2) no longer names `/vendor-release`; `cw init` makes no charter ([CORE-FR-057](spec-core.md#core-fr-057)).
-- Pass 3: a source address needs its repository folder alone ([CORE-FR-049](spec-core.md#core-fr-049), the user); [CORE-FR-043](spec-core.md#core-fr-043) cited; [CORE-FR-180](spec-core.md#core-fr-180); old-layout paths; terminal tests no longer skipped without `python3`.
-- Pass 4: the old-layout fault names the vendor folder held, `.cw/vendor/` tested; the portal's vendor dialog lists no name (the user).
-- Passes 5 to 13: the specs say one thing in one term — "the address git fetches, as typed" for a source; "installed charter" for a charter installed from a vendor source (the user), "vendor" kept for the commands, the vendor layer, the vendor source, `cw-vendor.json`, the old folders and the engine's "no vendor"; "installing a charter or bringing an installed charter up to date" for what needs the network; [CORE-FR-227](spec-core.md#core-fr-227) and [CORE-SC-065](spec-core.md#core-sc-065) except the installed charters deleted; the edge case of a source under `charters/` answered by [CORE-FR-042](spec-core.md#core-fr-042); [VENDOR-FR-020](spec-vendor.md#vendor-fr-020) names the names a charter may not take, tested; the faults the domain raises extend `DomainFault`.
+The two entries `## Bypassed` held were stale — `vendor-init.command.ts` gone, [VENDOR Story 1](spec-vendor.md#vendor-story-1---set-a-repository-releasing-charters-up-in-an-empty-folder-priority-p2) holding two scenarios — and were dropped at the user's word.
 
-Beside the story, at the user's request: the portal page names `logo.png` as its icon.
-
-Bypassed, as `## Bypassed` above lists, not counted: `cw vendor init` working in the presentation, and [VENDOR Story 1](spec-vendor.md#vendor-story-1---set-a-charter-repository-up-in-an-empty-folder-priority-p2) scenario 6's answer on more than one line, which has no test.
-
-Of note, not a violation: a `.cw/charter/root/` folder made by hand is not refused; the portal's vendor view keeps its heading "Vendor sources" and its empty state "No vendor source installed" (the user asked the portal be left as it is). The contract of the package is as at `2e36cb0`.
+Of note, not a violation: the built `.cw/out` guides and the git-ignored `src/AGENTS.md` still name the vendor models, as no build runs here without `.cw/settings.json`.

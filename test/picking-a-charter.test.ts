@@ -96,7 +96,7 @@ const installedCharterNamesOf = async (fileReaders: InMemoryFileReaders, sourceF
     }).listCharters(true),
   ).data.charters.map(({ data: { name } }) => name);
 
-test("a charter picked from a source of many lands in a charter of its own, left unstaged, and the others do not arrive (CORE-FR-195, CORE-FR-196, CORE-SC-052, CORE Story 33 scenario 1, VENDOR Story 3 scenario 14)", async () => {
+test("a charter picked from a source of many lands in a charter of its own, and the others do not arrive (CORE-FR-195, CORE-FR-196, CORE-SC-052, CORE Story 33 scenario 1, VENDOR Story 3 scenario 14)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished();
 
   const { code, commandOutput } = await running(
@@ -219,7 +219,7 @@ test("a source whose charter holds no charter is no charter source, and nothing 
   assert.deepEqual(installedFoldersOf(sourceFetcher), []);
 });
 
-test("a source set up by cw init, its charters' folder holding its .gitkeep beside its charters, is installed (FR-170, VENDOR Story 3 scenario 6)", async () => {
+test("a source set up by cw init, its charters' folder holding its .gitkeep beside its charters, is installed (CORE-FR-042, VENDOR-FR-017)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished({
     ...acmeCharters(),
     ".cw/charter/.gitkeep": "",
@@ -266,7 +266,7 @@ test("a source holding no charter, given --charter, is refused, taking nothing, 
   assert.deepEqual(installedFoldersOf(sourceFetcher), []);
 });
 
-test("a folder under the source's charters named as a kind is refused as the old layout, naming the folder (CORE-FR-197, CORE Story 33 scenario 7, VENDOR Story 3 scenario 7)", async () => {
+test("a folder under the source's charters named as a kind is refused as the old layout, naming the folder (CORE-FR-226, CORE Story 52 scenario 9)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished({
     ...acmeCharters(),
     ".cw/charter/guide/x/index.md": guide("x"),
@@ -283,7 +283,7 @@ test("a folder under the source's charters named as a kind is refused as the old
   assert.deepEqual(installedFoldersOf(sourceFetcher), []);
 });
 
-test("a charter the source itself installed, picked, is installed as any other, its cw-package.json written here naming the source asked (CORE-FR-170, CORE-FR-197, CORE Story 33 scenario 7, VENDOR-FR-019)", async () => {
+test("a charter the source itself installed, picked, is installed as any other, its cw-package.json written here naming the source asked (CORE-FR-170, CORE Story 33 scenario 7, VENDOR-FR-019)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished({
     ...acmeCharters(),
     ".cw/charter/grill/cw-package.json": installedCharterRecordTextOf("grill", "mattpocock/skills"),
@@ -308,7 +308,7 @@ test("a charter the source itself installed, picked, is installed as any other, 
   });
 });
 
-test("a source that installed charters of its own the old way is refused as laid out the old way (FR-170, VENDOR Story 3 scenario 4)", async () => {
+test("a source that installed charters of its own the old way is refused as laid out the old way (CORE-FR-226, CORE Story 52 scenario 9)", async () => {
   const { fileReaders, sourceFetcher } = withChartersPublished({
     ...acmeCharters(),
     ".cw/charter/vendor/other/guide/x/index.md": guide("x"),

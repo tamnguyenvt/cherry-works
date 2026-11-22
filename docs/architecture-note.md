@@ -5,7 +5,7 @@ note is rewritten whenever the code or the user's word changes it, and says
 only what is true now; a decision that breaks the architecture's design is an
 ADR instead, never rewritten.
 
-![The engine of cw: the charter, runtime and workspace modules, driven by the command line, the portal, the MCP gateway and the SDK](images/architecture.svg)
+![The engine of cw: the charter, runtime and workspace modules, driven by the command line, the portal, the MCP server (`cw run mcp`) and the SDK](images/architecture.svg)
 
 ## A primitive is named by its id alone
 
@@ -31,7 +31,7 @@ pulling and forking a charter fetch its source, on a port named for
 fetching sources, and an evaluation runs each case in a worktree of the last
 commit. Setup and the portal ask nothing of git, and removing a charter
 neither commits nor looks at work in hand. A repository without git has no
-review, history or undo of its charter; the tool or the developer takes them
+review, history or undo of its charter; the integrator or the developer takes them
 on.
 
 ## Nothing tells an edited installed charter
@@ -72,7 +72,7 @@ Every spec names each thing by one term, and no term names two things:
 | The per-agent adapter laying the compiled output | projection | — |
 | What a build compiles | the compiled output, a compiled file | projection, projected file, output folder, build's output |
 | What compiles a charter and applies it | the engine | harness |
-| `.cw/`: the charter, the compiled output and the log, the settings apart | the workspace | — |
+| `.cw/`: the charters of the charter root, the compiled output and the log, the settings apart | the workspace | — |
 | The store laying the compiled output and each agent's files onto a checkout | the local output | — |
 
 A test or an eval case is kept beside the charter's primitives and is none of them.
