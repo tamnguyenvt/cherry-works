@@ -8,12 +8,17 @@ How work on a story is carried out and finished in this repository. Read by
 - **Document language**: English
 - **Folder**: `specs`
 - **Quality cross-check**: every 5 stories
+- **Decision records**: `docs/ADR.md`
+- **Architecture notes**: `docs/architecture-notes.md`
+- **Feature list**: `docs/features.md`
+- **Architecture overview**: `docs/architecture.md`
 
 ## Working
 
 - **Worktree**: main — every story in the main worktree, on its own branch.
 - **Order**: linear — one story at a time, in plan.json order.
 - **Development branch**: `develop`.
+- **Ceiling**: 1000000 changed lines per change, generated files and comment lines not counted
 - **Branches**: phase branch `<nnn>-<slug>` (`007-sdd-and-host-names`); story branch `task/<prefix>-<n>-<slug>` started from it (`task/core-15-publish-a-release`); a bug fix on `fix/<slug>` from the development branch.
 
 ## Talking
